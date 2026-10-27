@@ -4,3 +4,11 @@
    one value *after* the honest witness is built; assert the verifier returns the typed error named in `catalog.md`.
 3. Add the catalog row: id, binding, RFC section, tamper description, expected error, status.
 4. A control that is *accepted* by the verifier is a release blocker and a P0 issue; never weaken the control.
+
+RFC-0012 A1 exception for NC-0801 only: this is registry configuration validation,
+not a proof witness. Run the actual core registry validator on an honest registry,
+replace exactly one label with another, and require DuplicateLabel. Check honest
+acceptance, exact mutation and exact rejection through a dedicated configuration
+control path; do not invent a proof verifier or count it as a statement binding.
+Production must use the same validation. All proof-witness controls retain steps
+1–4 above and the real prover/verifier requirement.

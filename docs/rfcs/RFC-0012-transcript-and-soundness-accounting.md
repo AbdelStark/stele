@@ -50,13 +50,13 @@ NC-0803 query indices from stale state; NC-0804 ledger total tampered; NC-0805 p
 
 ### A1 — Canonical transcript bytes and unbiased extension challenges
 
-Status: Draft. Research question Q11. Candidate byte oracle and checks:
+Status: Accepted. Research question Q11. Review: [A1 skill passes](../../agents/reviews/transcript-a1.md). Byte oracle and checks:
 [transcript study](../../research/transcript/REPORT.md).
 
 Motivation: §1 does not specify length widths, initial state, squeeze domain,
 rejection handling, state updates after challenges, or OM31's eight limbs. Two
-implementations can follow the sketch and disagree. E2-01 is blocked on this
-amendment; no core code may use the candidate before acceptance.
+implementations can follow the sketch and disagree. This amendment resolves that
+byte-contract blocker; implementation and protocol controls remain incomplete.
 
 Exact replacement for §1:
 
@@ -165,11 +165,15 @@ Primitive tests must check byte framing, registry uniqueness, forced rejection,
 field/basis selection, state updates, and sensitivity to reordered/omitted
 messages. Such tests alone earn no protocol NC catalog credit. NC-0800/0802 must
 exercise real prover/verifier schedules, including a downstream challenge after
-final claims. NC-0801 must reject the applicable collision at the actual registry
-validation boundary and cannot be represented by a toy proof verifier.
+final claims. NC-0801 is a configuration-validation control: accept the honest registry,
+replace exactly one registered label with another, and require DuplicateLabel
+from the actual core registry validator. It is not a proof-witness control and
+cannot be represented by a toy proof verifier. Workflow 08 records this narrow
+exception. The same validation must guard the production registry; a test-only
+validator or a bypass in transcript construction is forbidden.
 
-On acceptance, add E2-00 for the primitive, KATs, registry/sampling checks and
-actual primitive/accounting gate wiring. E3-01 depends on E2-00 instead of E2-01.
+The accepted DAG adds E2-00 for the primitive, KATs, registry/sampling checks,
+NC-0801 configuration validation and actual primitive/accounting gate wiring. E3-01 depends on E2-00 instead of E2-01.
 E2-01 retains every original acceptance criterion and additionally depends on
 E2-00 and E3-01, so real protocol controls can exist before it is completed. The
 remaining gates must continue rejecting unvalidated changes to other protocol
@@ -177,5 +181,6 @@ crates; changing a scaffold hash to bless implementation is not gate wiring.
 This refines the DAG without deleting or crediting any security obligation.
 Affected tasks: E2-00 (new), E2-01, E3-01, E8-04, E8-05 and E12-09.
 
-Review required before acceptance: soundness-auditor, rfc-author,
-pcs-engineer (stele-hash owner), sumcheck-prover-engineer (schedule consumer).
+Completed same-author skill reviews (not independent audit): soundness-auditor,
+rfc-author, pcs-engineer (stele-hash owner), sumcheck-prover-engineer (schedule
+consumer), recorded in the linked review.

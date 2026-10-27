@@ -21,6 +21,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: false
       - uses: actions/cache@v4
         id: cargo-deny
         with:
@@ -33,6 +38,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: python3 research/r-octic/check_modulus.py
       - run: python3 research/cqis-rounding/check_rounding.py
+      - run: uv run --locked --script research/transcript/check_transcript.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check

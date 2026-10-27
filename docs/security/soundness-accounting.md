@@ -15,3 +15,14 @@ Total error ε = Σ SC + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC-0012 §
 Illustrative treaty budget for W4 appears in RFC-0012 §5; the generator must reproduce it. The gate
 `scripts/gates/soundness-accounting.sh` diffs the generator's instance enumeration against the transcript labels actually
 used by the prover (every `challenge(label)` call must map to a ledger line).
+
+## Transcript label mapping (RFC-0012 A1)
+
+The initial challenge label `stele/v0.1/sumcheck/challenge` maps to SC, once per
+round in each consuming sumcheck; absorption labels introduce no random challenge.
+QM31/OM31 denominators are exactly p^4/p^8. A1's conditional uniformity argument
+adds no sampling-error line; exhaustion aborts and cannot certify a statement.
+FS/H still cover all adversary queries and grinding. This mapping is a requirement
+for E2-00's producer/gate, not evidence that instance accounting is implemented.
+Q12 (RFC-0019) tracks the missing concrete FS theorem/query convention and the
+incompatible illustrative H budget. No profile can be certified from placeholders.

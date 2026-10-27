@@ -64,3 +64,7 @@ Fiat-Shamir theorem. In particular, Q=2^100 gives the current H formula 2^-56,
 which cannot meet 2^-128. A profile must not be certified using that illustration.
 The final proof/accounting tasks must resolve query conventions and admissible
 budgets, including failed attempts and grinding, and reject invalid profiles.
+
+Graduation: RFC-0012 A1 is Accepted with the linked same-author skill review.
+The candidate filename is retained as study provenance. E2-00 still has to deliver
+the core primitive and gates; E2-01 still requires the actual protocol controls.

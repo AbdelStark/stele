@@ -208,18 +208,33 @@ tasks:
   - bucketed == naive bit-exact
   - bytes/element measured
   - eq table in O(N) adds
+- id: E2-00
+  epic: E2
+  title: Canonical transcript primitive and registry/accounting gates (RFC-0012 A1)
+  depends:
+  - E1-02
+  rfc:
+  - RFC-0012 A1
+  skill: pcs-engineer
+  crate: stele-hash
+  status: ready
+  acceptance:
+  - QM31/OM31 KATs match the independent byte-framing oracle
+  - label registry uniqueness and NC-0801 actual configuration validation
+  - challenge distribution checks plus forced rejection, exhaustion and state-update tests
+  - actual primitive/accounting gates wired; other protocol scaffold guards retained
+  - no NC-0800/0802 credit from primitive-only sensitivity tests
 - id: E2-01
   epic: E2
   title: Blake3 duplex Transcript with registered labels and rejection-sampled K challenges
   depends:
-  - E1-02
+  - E2-00
+  - E3-01
   rfc:
   - RFC-0012 §1-2
   skill: pcs-engineer
   crate: stele-hash
-  status: blocked(RFC-0012-A1)
-  agent: codex-root
-  branch: task/E2-01-transcript-spec
+  status: ready
   acceptance:
   - KAT vectors committed
   - label registry uniqueness test
@@ -255,7 +270,7 @@ tasks:
   title: Generic sumcheck prover/verifier degree<=4 with Summand trait
   depends:
   - E1-05
-  - E2-01
+  - E2-00
   rfc:
   - RFC-0006 §1-2
   skill: sumcheck-prover-engineer
@@ -266,6 +281,7 @@ tasks:
   - rejects NC-0200/0201
   - ledger line SC emitted
   - final claims absorbed
+  - NC-0800/0802 real schedule controls for E2-01 integration
 - id: E3-02
   epic: E3
   title: Batching of equal/unequal-size instances with gamma from transcript

@@ -108,3 +108,17 @@ suffix sums with the signed offset restored. The eq table uses one multiply and
 one subtraction per split; its allocation-free verifier evaluator is checked at
 extension-field points. No challenge, padding, claim edge, integer bound
 certificate or cost-model fit is introduced. Status: Accepted.
+
+## ADR-021 — Canonical transcript contract and honest control dependencies
+
+Context: RFC-0012 A1 and E2-01. Decision: fixed framed BLAKE3 operations, a hashed
+initial domain, distinct absorb/request/update tags, explicit extension degree,
+masked rejection sampling and mandatory state updates define transcript bytes.
+A bounded sampler aborts on exhaustion; it never returns biased fallback values.
+E2-00 supplies the primitive and actual gate wiring. E3-01 can then implement real
+sumcheck consumers; E2-01 remains incomplete until all its original acceptance
+criteria, including NC-0800..0802, hold. NC-0801 is explicitly a configuration
+control using the production registry validator, not a toy proof verifier.
+Same-author skill passes approve the byte contract, not an independent audit or
+Fiat-Shamir security theorem. Q12 tracks the unresolved full FS/H budget. No
+catalog control is marked done by the research checks. Status: Accepted.
