@@ -217,9 +217,9 @@ tasks:
   - RFC-0012 A1
   skill: pcs-engineer
   crate: stele-hash
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E2-00-registry-gates
+  branch: task/E2-00-transcript-primitive
   acceptance:
   - QM31/OM31 KATs match the independent byte-framing oracle
   - label registry uniqueness and NC-0801 actual configuration validation

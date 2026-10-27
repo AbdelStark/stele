@@ -1,9 +1,11 @@
-//! Canonical transcript registry governed by RFC-0012 A1.
+//! Canonical transcript and registry governed by RFC-0012 A1.
 #![forbid(unsafe_code)]
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
-/// A registry validation failure; invalid registries cannot be used for transcripts.
+use stele_field::{M31, OM31, QM31};
+
+/// A transcript or registry validation failure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     /// Label bytes are not versioned ASCII of length 1..255.
@@ -12,6 +14,12 @@ pub enum Error {
     DuplicateLabel,
     /// Only challenge labels may carry a soundness-accounting line.
     InvalidAccounting,
+    /// Construction requires nonempty canonical public-input bytes.
+    EmptyPublicInput,
+    /// A frame length cannot be represented without truncation.
+    LengthOverflow,
+    /// Fewer than d canonical coefficients were found in 64 words; abort the proof.
+    SamplingExhausted,
 }
 /// Operation class of a registered label (RFC-0012 A1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,7 +105,165 @@ pub fn registry() -> Result<&'static [RegistryEntry<'static>; 5], Error> {
     Ok(&REGISTRY)
 }
 
+// RFC-0012 A1: only the two canonical extension fields can be challenge targets.
+mod sealed {
+    pub trait Target {
+        const DEGREE: usize;
+        fn from_limbs(limbs: [stele_field::M31; 8]) -> Self;
+    }
+}
+/// Closed challenge targets: QM31 and OM31, selected from a verified profile.
+///
+/// ```compile_fail
+/// use stele_hash::Transcript;
+/// use stele_field::M31;
+/// let transcript = Transcript::<M31>::new(b"public");
+/// ```
+pub trait ChallengeField: sealed::Target + stele_field::Field {}
+impl sealed::Target for QM31 {
+    const DEGREE: usize = 4;
+    fn from_limbs(l: [M31; 8]) -> Self {
+        Self(stele_field::CM31(l[0], l[1]), stele_field::CM31(l[2], l[3]))
+    }
+}
+impl ChallengeField for QM31 {}
+impl sealed::Target for OM31 {
+    const DEGREE: usize = 8;
+    fn from_limbs(l: [M31; 8]) -> Self {
+        Self(
+            QM31(stele_field::CM31(l[0], l[1]), stele_field::CM31(l[2], l[3])),
+            QM31(stele_field::CM31(l[4], l[5]), stele_field::CM31(l[6], l[7])),
+        )
+    }
+}
+impl ChallengeField for OM31 {}
+
+/// Closed message labels from RFC-0012 A1; public input is constructor-only.
+#[derive(Clone, Copy, Debug)]
+pub enum AbsorbLabel {
+    /// Canonical instance description, encoded by the consuming protocol.
+    Instance,
+    /// Canonical sumcheck round polynomial.
+    Round,
+    /// Canonical final claims, before the next dependent challenge.
+    Final,
+}
+impl AbsorbLabel {
+    fn entry(self) -> &'static RegistryEntry<'static> {
+        &REGISTRY[match self {
+            Self::Instance => 1,
+            Self::Round => 2,
+            Self::Final => 3,
+        }]
+    }
+}
+/// Closed random-challenge labels from RFC-0012 A1.
+#[derive(Clone, Copy, Debug)]
+pub enum ChallengeLabel {
+    /// Sumcheck round challenge, accounted under SC plus FS/H.
+    Sumcheck,
+}
+impl ChallengeLabel {
+    fn entry(self) -> &'static RegistryEntry<'static> {
+        &REGISTRY[4]
+    }
+}
+
+/// Deterministic BLAKE3 transcript with mandatory public-input absorption (RFC-0012 A1).
+/// The caller validates the public input/profile and follows its protocol's message schedule.
+/// No state import, alternate registry or external random-byte source is accepted.
+pub struct Transcript<K: ChallengeField> {
+    state: [u8; 32],
+    field: core::marker::PhantomData<K>,
+}
+impl<K: ChallengeField> Transcript<K> {
+    /// Validate the fixed registry and absorb nonempty canonical public-input bytes.
+    pub fn new(public: &[u8]) -> Result<Self, Error> {
+        registry()?;
+        if public.is_empty() {
+            return Err(Error::EmptyPublicInput);
+        }
+        let initial = *blake3::hash(b"stele/v0.1/transcript/init").as_bytes();
+        Ok(Self {
+            state: *frame(&initial, 0, REGISTRY[0].label, public)?
+                .finalize()
+                .as_bytes(),
+            field: core::marker::PhantomData,
+        })
+    }
+    /// Absorb a registered message; encoding/schedule checks belong to its consumer.
+    pub fn absorb(&mut self, label: AbsorbLabel, bytes: &[u8]) -> Result<(), Error> {
+        self.state = *frame(&self.state, 0, label.entry().label, bytes)?
+            .finalize()
+            .as_bytes();
+        Ok(())
+    }
+    /// Sample exactly d canonical coefficients, then commit the result into the state.
+    /// Errors leave the state unchanged; exhaustion requires aborting the proof attempt.
+    pub fn challenge(&mut self, label: ChallengeLabel) -> Result<K, Error> {
+        let degree = K::DEGREE as u8;
+        let mut raw = [0; 256];
+        frame(&self.state, 1, label.entry().label, &[degree])?
+            .finalize_xof()
+            .fill(&mut raw);
+        let (limbs, consumed) = sample::<K>(&raw)?;
+        let value = K::from_limbs(limbs);
+        let canonical = value.to_le_bytes();
+        let mut payload = [0; 37];
+        payload[0] = degree;
+        payload[1..5].copy_from_slice(&consumed.to_le_bytes());
+        payload[5..5 + 4 * K::DEGREE].copy_from_slice(canonical.as_ref());
+        // RFC-0012 A1: all fallible work precedes the sole state assignment.
+        self.state = *frame(
+            &self.state,
+            2,
+            label.entry().label,
+            &payload[..5 + 4 * K::DEGREE],
+        )?
+        .finalize()
+        .as_bytes();
+        Ok(value)
+    }
+}
+
+fn frame(state: &[u8; 32], tag: u8, label: &str, payload: &[u8]) -> Result<blake3::Hasher, Error> {
+    let label_length = u32::try_from(label.len()).map_err(|_| Error::LengthOverflow)?;
+    let payload_length = u64::try_from(payload.len()).map_err(|_| Error::LengthOverflow)?;
+    let mut h = blake3::Hasher::new();
+    for part in [
+        state.as_slice(),
+        &[tag],
+        &label_length.to_le_bytes(),
+        label.as_bytes(),
+        &payload_length.to_le_bytes(),
+        payload,
+    ] {
+        h.update(part);
+    }
+    Ok(h)
+}
+
+// RFC-0012 A1: pure decoder for forced-rejection tests, never an injectable RNG.
+fn sample<K: ChallengeField>(raw: &[u8; 256]) -> Result<([M31; 8], u32), Error> {
+    let mut limbs = [M31::ZERO; 8];
+    let mut accepted = 0;
+    for (index, word) in raw.chunks_exact(4).enumerate() {
+        let candidate = u32::from_le_bytes([word[0], word[1], word[2], word[3]]) & 0x7fff_ffff;
+        if let Some(limb) = M31::from_canonical(candidate) {
+            limbs[accepted] = limb;
+            accepted += 1;
+            if accepted == K::DEGREE {
+                return Ok((limbs, (index + 1) as u32));
+            }
+        }
+    }
+    Err(Error::SamplingExhausted)
+}
+
 #[cfg(test)]
 extern crate std;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod transcript_tests;
