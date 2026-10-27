@@ -1,4 +1,4 @@
-//! Field arithmetic and canonical encoding governed by RFC-0003 §§1,2,6.
+//! Field arithmetic and canonical encoding governed by RFC-0003 §§1,2,5,6.
 #![forbid(unsafe_code)]
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
@@ -7,6 +7,8 @@ use core::ops::{Add, Mul, Neg, Sub};
 
 mod m31;
 pub use m31::M31;
+mod koalabear;
+pub use koalabear::KoalaBear;
 
 /// Multiplicative inversion; zero has no inverse (RFC-0003 §6).
 pub trait Inverse: Sized {
