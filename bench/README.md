@@ -64,8 +64,11 @@ Recorded sample: [E1-02 scalar field multiplication](ledger/e1-02-scalar-field-m
 From a clean committed checkout, run `python3 bench/simd_ops.py <new-ledger.json>`.
 Native release parity runs before timing. Set `STELE_REQUIRE_SIMD=neon` locally or
 `STELE_REQUIRE_SIMD=avx2,avx512` on x86 to require those backends rather than merely
-recording available ones. CI requires both x86 backends and preserves a ledger
-artifact for the exact PR head or main commit; it does not commit measurements.
+recording available ones. CI requires AVX2 and tests/measures AVX-512 whenever the
+assigned runner supports it. The executed-backend inventory is retained; a green
+run alone does not establish AVX-512 coverage. CI preserves a ledger artifact for
+the exact PR head or main commit; it does not commit measurements. E1-04 acceptance
+uses the explicit all-backend record below, not inferred runner capabilities.
 
 The ledger records scalar and native add/subtract/multiply over cache-resident
 sixteen-lane blocks, with input black boxes preventing loop-invariant hoisting.
