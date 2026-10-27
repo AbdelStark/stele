@@ -10,12 +10,44 @@ extern crate self as stele_negative_controls;
 mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
-pub const CONTROLS: &[catalog::RegisteredControl] = &[catalog::RegisteredControl {
-    id: 801,
-    kind: catalog::ControlKind::Configuration,
-    expected_error: "DuplicateLabel",
-    run: nc_0801::run,
-}];
+pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 200,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || sumcheck::run(200),
+    },
+    catalog::RegisteredControl {
+        id: 201,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || sumcheck::run(201),
+    },
+    catalog::RegisteredControl {
+        id: 205,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || sumcheck::run(205),
+    },
+    catalog::RegisteredControl {
+        id: 800,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || sumcheck::run(800),
+    },
+    catalog::RegisteredControl {
+        id: 802,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || sumcheck::run(802),
+    },
+    catalog::RegisteredControl {
+        id: 801,
+        kind: catalog::ControlKind::Configuration,
+        expected_error: "DuplicateLabel",
+        run: nc_0801::run,
+    },
+];
 
 /// A one-value mutation applied to an honest witness, proof or configuration.
 /// Each control must assert that exactly its intended value changes.
