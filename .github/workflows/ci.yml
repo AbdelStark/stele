@@ -1,10 +1,19 @@
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 jobs:
   gates:
     runs-on: ubuntu-latest
+    outputs:
+      gpu: ${{ steps.scope.outputs.gpu }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        run: python3 scripts/ci_scope.py >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90.0
@@ -12,7 +21,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: cargo install cargo-deny --version 0.20.2 --locked
+      - uses: actions/cache@v4
+        id: cargo-deny
+        with:
+          path: ~/.cargo/bin/cargo-deny
+          key: cargo-deny-0.20.2-${{ runner.os }}-${{ runner.arch }}
+      - if: steps.cargo-deny.outputs.cache-hit != 'true'
+        run: cargo install cargo-deny --version 0.20.2 --locked
       - run: cargo deny --offline check bans
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: cargo build --workspace --locked --offline
@@ -24,9 +39,11 @@ jobs:
       - run: scripts/gates/soundness-accounting.sh
       - run: scripts/gates/ledger-validate.sh
       - run: scripts/gates/rfc-status.sh
+      - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
   gpu-parity:
-    if: contains(github.event.head_commit.modified, 'crates/stele-gpu') || contains(github.event.head_commit.modified, 'crates/stele-kernels')
+    needs: gates
+    if: needs.gates.outputs.gpu == 'true'
     runs-on: [self-hosted, gpu]
     steps:
       - uses: actions/checkout@v4
