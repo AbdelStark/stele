@@ -31,6 +31,8 @@ jobs:
       - run: cargo fetch --locked
       - run: cargo deny --offline check bans
       - run: python3 -m unittest discover -s scripts/tests -v
+      - run: python3 research/r-octic/check_modulus.py
+      - run: python3 research/cqis-rounding/check_rounding.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check

@@ -28,8 +28,8 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0000 | Index and RFC process | Accepted |
 | 0001 | First principles, statement, architecture | Accepted |
 | 0002 | Threat model, security and soundness requirements | Accepted |
-| 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted |
-| 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted |
+| 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted (A1) |
+| 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1) |
 | 0005 | Tensor IR, claim graph, witness capture | Accepted |
 | 0006 | Sumcheck engine and layer-stacked GKR core | Accepted |
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |

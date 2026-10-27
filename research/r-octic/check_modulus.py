@@ -28,6 +28,10 @@ def power(base, exponent, modulus):
     return result
 
 
+def accepts_quadratic_constant(value, order, modulus):
+    return power(value, (order - 1) // 2, modulus) == (P - 1,) + (0,) * (len(value) - 1)
+
+
 def check():
     # Trial division proves primality here; no probabilistic primality assumption.
     assert P % 2 and all(P % d for d in range(3, isqrt(P) + 1, 2))
@@ -39,8 +43,10 @@ def check():
     assert power((0, 1, 0, 0), 4, qm) == (P - 5, 0, 4, 0)
     assert power((2, 1), (P**2 - 1) // 2, cm) == (P - 1, 0)
     assert power((0, 1, 0, 0), (P**4 - 1) // 2, qm) == (P - 1, 0, 0, 0)
-    # Negative comparison: a square is unsuitable as a quadratic modulus constant.
-    assert power((4, 0, 0, 0), (P**4 - 1) // 2, qm) == (1, 0, 0, 0)
+    assert accepts_quadratic_constant((0, 1, 0, 0), P**4, qm)
+    # Replacing only the proposed constant by zero or a square must reject it.
+    for value in [(0, 0, 0, 0), (1, 0, 0, 0), (4, 0, 0, 0)]:
+        assert not accepts_quadratic_constant(value, P**4, qm)
     print("PASS: p prime; 5, 2+i and u nonsquare in their respective fields")
 
 

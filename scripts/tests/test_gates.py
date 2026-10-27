@@ -15,7 +15,7 @@ class GateTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = pathlib.Path(self.directory.name)
-        for name in ('scripts', 'crates', 'docs', 'tests', 'bench'):
+        for name in ('scripts', 'crates', 'docs', 'tests', 'bench', 'agents'):
             shutil.copytree(ROOT / name, self.root / name)
         for name in ('README.md', 'Cargo.toml', 'Cargo.lock'):
             shutil.copy(ROOT / name, self.root / name)
