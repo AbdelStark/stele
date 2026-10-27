@@ -58,3 +58,27 @@ harness overhead; it is not SIMD/GPU throughput, inference performance or a fit 
 the cost model. No core proof binding applies to this microbenchmark.
 
 Recorded sample: [E1-02 scalar field multiplication](ledger/e1-02-scalar-field-mul.json).
+
+## Native SIMD throughput (E1-04)
+
+From a clean committed checkout, run `python3 bench/simd_ops.py <new-ledger.json>`.
+Native release parity runs before timing. Set `STELE_REQUIRE_SIMD=neon` locally or
+`STELE_REQUIRE_SIMD=avx2,avx512` on x86 to require those backends rather than merely
+recording available ones. CI requires AVX2 and tests/measures AVX-512 whenever the
+assigned runner supports it. The executed-backend inventory is retained; a green
+run alone does not establish AVX-512 coverage. CI preserves a ledger artifact for
+the exact PR head or main commit; it does not commit measurements. E1-04 acceptance
+uses the explicit all-backend record below, not inferred runner capabilities.
+
+The ledger records scalar and native add/subtract/multiply over cache-resident
+sixteen-lane blocks, with input black boxes preventing loop-invariant hoisting.
+All samples, aggregate element counts and integer-floor rates are retained.
+Logical byte rates count two input reads and one result write per operation;
+they do not measure DRAM traffic. Dispatch and canonicalization are timed;
+construction, warmup, parity and export are excluded. CPU/OS, toolchain and the
+SHA-256 benchmark-plan digest are captured automatically. No CUDA performance,
+proof speed, constant-time guarantee or cost-model fit follows from these records.
+
+Recorded samples: [NEON](ledger/e1-04-neon-throughput.json) and
+[AVX2/AVX-512](ledger/e1-04-x86-throughput.json). The x86 record was downloaded unchanged
+from [CI run 40565652650](https://github.com/AbdelStark/stele/actions/runs/40565652650).

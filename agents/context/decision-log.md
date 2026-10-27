@@ -82,3 +82,15 @@ pointer bounds. Parity tests inspect raw kernel exits before export normalizatio
 No allocation, new dependency, challenge, proof binding or weight pass is introduced
 by these arithmetic calls. Throughput evidence is a separate E1-04 deliverable;
 no cost-model fit or GPU/inference performance is claimed. Status: Accepted.
+
+## ADR-019 — Record native SIMD coverage explicitly
+
+Context: E1-04, RFC-0003 §6. Hosted run 40566209234 assigned AVX-512 to the
+correctness job but not to its separate throughput job; the latter correctly
+failed the explicit requirement. Decision: ordinary x86 CI requires AVX2 and
+executes every available backend, retaining the inventory. AVX-512 coverage is
+claimed only from a log/ledger that executed it. E1-04 has explicit native NEON
+and AVX2/AVX-512 evidence for unchanged kernel sources. Per-head mandatory
+AVX-512 coverage requires a dedicated compatible runner; a successful ordinary
+run is not evidence for unavailable hardware. No arithmetic test, unsupported
+backend rejection, or proof binding is removed. Status: Accepted.
