@@ -83,6 +83,21 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('batch instance checks failed', result.stderr)
 
+    def test_rejects_claim_coefficient_and_consumer_bypasses(self):
+        source = self.root / 'crates/stele-sumcheck/src/claim_batch.rs'
+        original = source.read_text()
+        for before, after, error in [
+            ('*target = *target + weight * value;', '*target = weight * value;', 'RoundSumMismatch'),
+            ('if actual != result.claims[0].value', 'if false && actual != result.claims[0].value', 'TamperAccepted'),
+        ]:
+            self.assertIn(before, original)
+            source.write_text(original.replace(before, after))
+            result = self.run_gate('soundness-accounting')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('batch instance checks failed', result.stderr)
+            self.assertIn(error, result.stderr)
+        source.write_text(original)
+
     def test_rejects_merkle_binding_and_batch_bypasses(self):
         source = self.root / 'crates/stele-hash/src/merkle.rs'
         original = source.read_text()

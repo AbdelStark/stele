@@ -232,7 +232,7 @@ def verify(t, b, proof, tables):
     return {'point': point, 'gamma': gamma, 'rlc': count, 'sc': m * degree, 'degree': degree}
 
 
-def checks(all_instances=False):
+def checks(all_instances=False, all_claims=False):
     vectors, honest = [], 0
     for d in (4, 8):
         for delta, dimensions in itertools.product(range(5), ((0,), (1, 1), (0, 2), (3, 1, 0))):
@@ -252,7 +252,7 @@ def checks(all_instances=False):
             table = [sc.scalar(2*j+3, d) for j in range(2**m)]
             points = [tuple(sc.scalar((j+k) % 3, d) for k in range(m)) for j in range(3)]
             b = {'mode': 1, 'id': 2, 'tensor': 77, 'm': m, 'claims': [(z, folded(table, z)) for z in points]}
-            exercise(b, table, d, vectors if m == 2 else None)
+            exercise(b, table, d, vectors if all_claims or m == 2 else None)
             honest += 1
         if all_instances:
             members = [{'id': 10+j, 'm': m, 'ids': [], 'terms': [(sc.scalar(1, d), [])], 'sum': sc.scalar(2**m, d)} for j, m in enumerate((0, 2))]
@@ -369,9 +369,10 @@ def exercise(b, tables, d, vectors):
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] == ['--instance-vectors']:
-        for record in checks(all_instances=True)[0]:
-            if record['batch']['mode'] == 0:
+    if sys.argv[1:] in (['--instance-vectors'], ['--claim-vectors']):
+        mode = int(sys.argv[1] == '--claim-vectors')
+        for record in checks(all_instances=mode == 0, all_claims=mode == 1)[0]:
+            if record['batch']['mode'] == mode:
                 print(json.dumps(record, separators=(',', ':')))
         sys.exit(0)
     vectors, honest = checks()

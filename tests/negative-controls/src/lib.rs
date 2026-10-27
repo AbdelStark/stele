@@ -16,6 +16,18 @@ mod nc_0801;
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
     catalog::RegisteredControl {
+        id: 202,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || batching::run(202),
+    },
+    catalog::RegisteredControl {
+        id: 206,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || batching::run(206),
+    },
+    catalog::RegisteredControl {
         id: 602,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
@@ -37,7 +49,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 205,
         kind: catalog::ControlKind::Proof,
         expected_error: "ClaimMismatch",
-        run: || sumcheck::run(205),
+        run: || {
+            sumcheck::run(205)?;
+            batching::run(205)
+        },
     },
     catalog::RegisteredControl {
         id: 800,
@@ -49,7 +64,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 802,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",
-        run: || sumcheck::run(802),
+        run: || {
+            sumcheck::run(802)?;
+            batching::run(802)
+        },
     },
     catalog::RegisteredControl {
         id: 801,

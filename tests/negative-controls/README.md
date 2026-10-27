@@ -20,8 +20,8 @@ For each protocol binding:
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
 label with `DuplicateLabel`; it earns configuration coverage only. Including the
-five sumcheck controls and Merkle NC-0602, 7/68 controls run,
-61 remain missing, and 3/17 catalog binding categories have proof controls. Range rows expand
+seven sumcheck/batching controls and Merkle NC-0602, 9/68 controls run,
+59 remain missing, and 3/17 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 
 Coverage is over the current catalog, not a complete enumerated claim graph. Several
@@ -54,6 +54,7 @@ NC-0602 authenticates actual Merkle openings for both byte columns and child roo
 Its one-byte leaf and sibling mutations must fail with RootMismatch; membership
 does not establish PCS encoding/proximity, query selection or full inference.
 
-E3-02 instance-mode controls live in `src/batching.rs` and run through the real
-prover/public verifier in both fields: NC-0202/0206 and extensions of 0205/0802.
-The gate executes them, but full A2 catalog credit waits for claim-mode coverage.
+E3-02 batching controls live in `src/batching.rs` and run through the real prover/
+public verifiers in both modes and fields: NC-0202/0206 and extensions of 0205/0802.
+NC-0205 also changes one unclaimed virtual-tensor entry while keeping the initial
+claims fixed; the public consumer must reject the false final evaluation.

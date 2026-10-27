@@ -103,7 +103,7 @@ def sumcheck_corpus(root):
 
 
 def batch_instances(root):
-    """Real instance-batch bytes, records and controls; no claim-mode completion credit."""
+    """Real instance-batch bytes/records and both-mode production controls."""
     commands = [
         ('matches_reference_batch_bytes_and_accounting', ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'batch', '--locked', '--offline']),
         ('batching::rejects_batch_binding_tampers', ['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'batching::', '--locked', '--offline']),
@@ -116,7 +116,23 @@ def batch_instances(root):
     expected = (root / 'crates/stele-sumcheck/tests/fixtures/batch-instances.jsonl').read_text()
     if result.stdout != expected:
         raise ValueError('batch instance byte/accounting oracle mismatch')
-    print('gate batching: instance-mode bytes/SC/RLC/controls checked; E3-02 remains incomplete')
+    print('gate batching: instance bytes/SC/RLC and both-mode controls checked; E3-02 remains incomplete')
+
+
+def batch_claims(root):
+    """Check the separate mode-1 prover/verifier and sparse/direct coefficient agreement."""
+    tests = ['matches_reference_claim_bytes_and_accounting',
+             'matches_reference_coefficients_at_ten_thousand_points_per_field']
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'claim_batch', '--locked', '--offline'],
+                            cwd=root, text=True, capture_output=True)
+    if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in tests):
+        raise ValueError(f'claim batch checks failed: {result.stdout} {result.stderr}')
+    result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/batching/check_batching.py', '--claim-vectors'],
+                            cwd=root, text=True, capture_output=True)
+    expected = (root / 'crates/stele-sumcheck/tests/fixtures/batch-claims.jsonl').read_text()
+    if result.returncode or result.stdout != expected:
+        raise ValueError(f'claim batch byte/accounting oracle mismatch: {result.stderr}')
+    print('gate claim batching: bytes/SC/RLC and 10000 coefficient points per field checked; no profile certified')
 
 
 def merkle_vectors(root):
@@ -214,6 +230,7 @@ def main():
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
                 batch_instances(ROOT)
+                batch_claims(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
