@@ -61,3 +61,7 @@ Q1 residual-only cuts for MoE routers · Q2 octic vs double-α · Q3 optimal var
 attention tile cache vs recompute crossover · Q5 ZK masks interaction with small-value first rounds (masks are K-valued ⇒
 the first rounds lose the base-field trick: measure) · Q6 Blake3 vs Poseidon2 for cut Merkle trees when the wrapper is
 mandatory · Q7 proof-size floor for native verification · Q8 int24 wide path with DPA for fidelity-critical models.
+
+Q9: which explicit OM31 modulus/basis and checked signed-recovery contract complete
+RFC-0003 §§2,6? Candidate: RFC-0003 A1, supported by `research/r-octic/REPORT.md`.
+This does not resolve Q2's profile comparison.

@@ -155,7 +155,7 @@ tasks:
   - RFC-0003 §2
   skill: sumcheck-prover-engineer
   crate: stele-field
-  status: in_progress
+  status: blocked(RFC-0003-A1)
   agent: codex-root
   branch: task/E1-02-extension-spec
   acceptance:
