@@ -93,7 +93,9 @@ tasks:
   - RFC-0002 §7
   skill: negative-control-author
   crate: tests
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-03-negative-controls
   acceptance:
   - catalog.md parsed
   - coverage report lists bindings vs controls
