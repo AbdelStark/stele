@@ -120,3 +120,27 @@ The [initial dense baseline](ledger/e3-01-dense-sumcheck.json) includes slower f
 samples for degrees zero and one; no samples were discarded. It establishes a
 naive c_sc(degree, small=false) baseline, not a fitted cost model or performance
 improvement. GPU, OM31 timing, inference workloads and ZK remain unmeasured here.
+
+## Batching (E3-02)
+
+On macOS, run `python3 bench/batching.py QM31 <new-ledger.json>` and repeat with
+`OM31`. Start from a clean committed checkout; use output paths outside the checkout
+when measuring both fields before importing the ledgers. The runner never overwrites
+an existing record and checks source state again after measurement.
+
+Cases cover equal/unequal instance sizes at polynomial degrees 0, 2 and 4, and
+virtual-tensor claims with disjoint, overlapping and arbitrary points. Unequal
+constant instances have shared degree one because of the leading selectors.
+Every warmup/measured proof passes the actual public-table verifier outside timing;
+its SC/RLC records and deterministic proof bytes are checked. Prover timing includes
+cloning, allocation, transcript setup, coefficient construction, rounds and BatchFinal.
+All samples are retained; case order reverses between samples.
+
+The exact time/point denominator is the sum of original member hypercube sizes in
+mode 0, and the tensor size in mode 1. Different statements/shapes are not speedup
+comparisons. Logical working-table payload includes prover-owned inputs and the
+mode-1 coefficient table; it excludes caller originals, descriptors, temporary eq
+tables, proof and allocator metadata. Separate-process peak RSS includes those
+objects, setup, warmup, verification, code and allocator retention; it is not isolated
+scratch or measured DRAM traffic. Profile names select the field only here. This is
+CPU microbenchmark evidence, not inference, GPU, ZK or profile-security certification.
