@@ -74,7 +74,7 @@ fn matches_reference_million_ring_and_encoding_cases() {
             Some(Scalar::from_u64(u64::from(lazy)))
         );
         let signed = (next(&mut seed) % P) as i64 - (P / 2) as i64;
-        assert_eq!(Scalar::from_i64(signed).to_i64_signed(), signed);
+        assert_eq!(Scalar::from_i64(signed).to_i64_signed(), Some(signed));
     }
 }
 
@@ -126,7 +126,7 @@ fn matches_reference_boundary_arithmetic() {
 fn matches_reference_signed_boundaries() {
     let half = (P / 2) as i64;
     for value in [-half, -half + 1, -1, 0, 1, half - 1, half] {
-        assert_eq!(Scalar::from_i64(value).to_i64_signed(), value);
+        assert_eq!(Scalar::from_i64(value).to_i64_signed(), Some(value));
     }
     for value in [
         i64::MIN,
@@ -138,11 +138,14 @@ fn matches_reference_signed_boundaries() {
     ] {
         let a = Scalar::from_i64(value);
         assert_eq!(i64::from(a.as_u32()), value.rem_euclid(P as i64));
-        assert!((-half..=half).contains(&a.to_i64_signed()));
-        assert_eq!(Scalar::from_i64(a.to_i64_signed()), a);
+        assert!((-half..=half).contains(&a.to_i64_signed().expect("prime-subfield element")));
+        assert_eq!(
+            Scalar::from_i64(a.to_i64_signed().expect("prime-subfield element")),
+            a
+        );
     }
-    assert_eq!(Scalar::from_u64(P / 2).to_i64_signed(), half);
-    assert_eq!(Scalar::from_u64(P / 2 + 1).to_i64_signed(), -half);
+    assert_eq!(Scalar::from_u64(P / 2).to_i64_signed(), Some(half));
+    assert_eq!(Scalar::from_u64(P / 2 + 1).to_i64_signed(), Some(-half));
 }
 
 #[test]

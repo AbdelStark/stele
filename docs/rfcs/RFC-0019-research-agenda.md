@@ -66,6 +66,10 @@ Q9: which explicit OM31 modulus/basis and checked signed-recovery contract compl
 RFC-0003 §§2,6? Candidate: RFC-0003 A1, supported by `research/r-octic/REPORT.md`.
 This does not resolve Q2's profile comparison.
 
+Q9 resolution: RFC-0003 A1 Accepted with the skill-review record; E1-02 implements it.
+
 Q10: resolve the conflicting signed rounding definitions and remainder relation in
 RFC-0004 §§3,5.1. Candidate: RFC-0004 A1; counterexamples and exact-arithmetic checks
 are in `research/cqis-rounding/REPORT.md`.
+
+Q10 resolution: RFC-0004 A1 Accepted with the skill-review record; E5-01 implements it.

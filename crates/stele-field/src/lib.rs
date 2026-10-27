@@ -40,6 +40,6 @@ pub trait Field:
     const MODULUS: u32;
     /// Embed an integer modulo the characteristic.
     fn from_i64(value: i64) -> Self;
-    /// Recover the centered signed representative (RFC-0003 §1).
-    fn to_i64_signed(self) -> i64;
+    /// Recover a prime-subfield element, or reject nonconstant coefficients (RFC-0003 A1).
+    fn to_i64_signed(self) -> Option<i64>;
 }

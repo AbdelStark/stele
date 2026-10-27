@@ -71,13 +71,13 @@ impl Field for KoalaBear {
         Self(value.rem_euclid(i64::from(Self::MODULUS)) as u32)
     }
 
-    fn to_i64_signed(self) -> i64 {
+    fn to_i64_signed(self) -> Option<i64> {
         // RFC-0003 §§5,6: centered recovery keeps floor(q/2) positive.
-        if self.0 <= Self::MODULUS / 2 {
+        Some(if self.0 <= Self::MODULUS / 2 {
             i64::from(self.0)
         } else {
             i64::from(self.0) - i64::from(Self::MODULUS)
-        }
+        })
     }
 }
 

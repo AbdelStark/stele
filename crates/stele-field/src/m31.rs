@@ -75,13 +75,13 @@ impl Field for M31 {
         Self(value.rem_euclid(i64::from(Self::MODULUS)) as u32)
     }
 
-    fn to_i64_signed(self) -> i64 {
+    fn to_i64_signed(self) -> Option<i64> {
         // RFC-0003 §1 uses the rational p/2; floor(p/2) remains positive.
-        if self.0 <= Self::MODULUS / 2 {
+        Some(if self.0 <= Self::MODULUS / 2 {
             i64::from(self.0)
         } else {
             i64::from(self.0) - i64::from(Self::MODULUS)
-        }
+        })
     }
 }
 

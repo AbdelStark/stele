@@ -107,13 +107,13 @@ NC-0107 tie-break violation in argmax; NC-0108 wrong sampling seed; NC-0109 cert
 
 ### A1 — Consistent signed round-half-away relation
 
-Status: Draft. Not binding until the required reviews are recorded and it is Accepted.
+Status: Accepted. Review record: [A1 skill reviews](../../agents/reviews/field-cqis-a1.md).
 
 Motivation: §3 names half-even, §5.1 names half-away but supplies a half-up formula,
 and its unadjusted nonnegative-remainder relation cannot represent rounding up.
 `research/cqis-rounding/REPORT.md` gives exact counterexamples. Q10 tracks the issue.
 
-Proposed exact replacement for the paragraph after §3's layer definition:
+Exact replacement for the paragraph after §3's layer definition:
 
 > All `requantN` operations use signed round-half-away as defined in §5.1, with
 > public positive integer mantissa `m` and nonnegative integer right-shift `e`.
@@ -121,7 +121,7 @@ Proposed exact replacement for the paragraph after §3's layer definition:
 > must fit the requested signed int8 or int16 format; no saturation or wrapping is
 > allowed. An unsupported scale/shift or an out-of-range result is an error.
 
-Proposed exact replacement for §5.1:
+Exact replacement for §5.1:
 
 > Let `t = acc·m`, `D = 2^e`, `a = |t|`, `b = 1` iff `t < 0` (otherwise zero),
 > and `h = 2^(e-1)` for `e > 0`, or `h = 0` for `e = 0`.
@@ -145,11 +145,11 @@ RFC-0012 before implementation; no error term or bound is waived by this proposa
 Existing controls NC-0100 and NC-0101 must cover both signed ties and a tampered biased
 remainder; NC-0109 must cover the static bounds. No new claim-graph edge is introduced.
 Cost model: the sign/magnitude relations contribute to `c_a` when implemented; no
-measured constant changes here. Affected tasks: E5-01 (blocked on A1), E5-03,
+measured constant changes here. Affected tasks: E5-01 (unblocked by A1), E5-03,
 E7 requant reductions and their downstream consumers. No existing core arithmetic
 implements either disputed formula.
 
-Required review before acceptance (Workflow 02):
-- [ ] soundness-auditor: integer equivalence, sign/range bindings, static bounds
-- [ ] rfc-author: consistency with ADR-005, formats and glossary
-- [ ] stele-cqis owner: supported arithmetic, Rust/NumPy parity and error behavior
+Completed skill review passes (Workflow 02; same authoring agent, not independent review):
+- [x] soundness-auditor (codex-root): integer equivalence, sign/range bindings, static bounds
+- [x] rfc-author (codex-root): consistency with ADR-005, formats and glossary
+- [x] stele-cqis owner / cqis-numerics (codex-root): supported arithmetic, Rust/NumPy parity and error behavior

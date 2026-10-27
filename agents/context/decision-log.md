@@ -37,3 +37,23 @@ The kernel traits use fixed-size little-endian byte arrays without dependencies 
 allocation. Tests compare against integer remainder arithmetic. No constant-time,
 SIMD/GPU parity, or performance claim is made by this scalar implementation.
 No protocol challenge, soundness-ledger line, or cost-model constant changes. Status: Accepted.
+
+## ADR-015 — Exact octic tower and checked signed recovery
+
+Context: RFC-0003 A1, E1-02. Decision: use `v²-u` over QM31, ordered tower limbs,
+and `Option<i64>` for recovery from the prime subfield. Reject a square modulus,
+noncanonical encoded limbs and nonconstant signed recovery. The norm proof and
+independent-arithmetic checks support the modulus choice; profile selection stays
+with R-OCTIC. Base-field callers migrate with acceptance. No error term or measured
+cost constant changes. Status: Accepted after the named same-agent skill passes in
+`agents/reviews/field-cqis-a1.md`; independent review is not claimed.
+
+## ADR-016 — Signed magnitude requantisation
+
+Context: RFC-0004 A1, E5-01, ADR-005. Decision: implement round-half-away by rounding
+the nonnegative magnitude and restoring its sign. Reject target overflow; bind the
+biased quotient/remainder rather than the unadjusted output. The prior half-up
+formula and half-even wording conflict with ADR-005 and fail the documented ties.
+Static bounds and actual reduction accounting remain implementation obligations.
+No benchmark or model-fidelity result is implied. Status: Accepted after the named
+same-agent skill passes in `agents/reviews/field-cqis-a1.md`.

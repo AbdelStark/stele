@@ -46,13 +46,13 @@ Frobenius, inverse, serialisation round-trip, lazy-reduction equivalence, 10⁶ 
 
 ### A1 — Explicit octic modulus, basis and checked signed recovery
 
-Status: Draft. Not binding until the required reviews are recorded and it is Accepted.
+Status: Accepted. Review record: [A1 skill reviews](../../agents/reviews/field-cqis-a1.md).
 
 Motivation: E1-02 cannot implement interoperable OM31 arithmetic from an unspecified
 modulus. The §6 interface also leaves signed recovery undefined for an extension
 element outside the prime subfield. Q9 in RFC-0019 tracks both issues.
 
-Proposed exact replacement for the OM31 and serialisation bullets in §2:
+Exact replacement for the OM31 and serialisation bullets in §2:
 
 > - `OM31 = QM31[v]/(v²-u)` (degree 8). Its field order is exactly `p⁸`, not `2²⁴⁸`.
 >   This fixes the field representation only; profile selection remains governed by
@@ -62,7 +62,7 @@ Proposed exact replacement for the OM31 and serialisation bullets in §2:
 >   Reject any limb outside `[0,p)`; do not reduce encoded limbs. Encodings have
 >   exactly 8, 16 and 32 bytes respectively.
 
-Proposed exact replacement for §6's trait sketch and its signed-conversion semantics:
+Exact replacement for §6's trait sketch and its signed-conversion semantics:
 
 > `trait Field: Copy + Add + Sub + Mul + Neg + Inverse + Serialize { const MODULUS: u32; fn from_i64(value: i64) -> Self; fn to_i64_signed(self) -> Option<i64>; }`
 >
@@ -82,12 +82,12 @@ Soundness accounting: no new challenge, binding, or error term. Implemented acco
 must use exact orders `p⁴`/`p⁸` in existing SC/RLC/LU/MASK denominators; bit widths alone
 are not cardinalities. This amendment does not establish any profile error budget.
 Cost model: no measured constant changes; E1-02 still requires the QM31:M31 ledger.
-Affected tasks: E1-02 is blocked on A1; E1-01/E1-03 signed-recovery callers must be
-updated atomically if A1 is accepted. E2-01 uses the explicit basis on acceptance.
+Affected tasks: E1-02 is unblocked by A1; E1-01/E1-03 signed-recovery callers must be
+updated atomically with acceptance of A1. E2-01 uses the explicit basis on acceptance.
 No new NC catalog binding; acceptance tests must reject noncanonical limbs at every
 position and reject signed recovery when each nonconstant coefficient is nonzero.
 
-Required review before acceptance (Workflow 02):
-- [ ] soundness-auditor: norm proof, exact field orders, error terms
-- [ ] rfc-author: glossary, basis consistency, profile scope
-- [ ] stele-field owner: API migration and independent irreducibility tests
+Completed skill review passes (Workflow 02; same authoring agent, not independent review):
+- [x] soundness-auditor (codex-root): norm proof, exact field orders, error terms
+- [x] rfc-author (codex-root): glossary, basis consistency, profile scope
+- [x] stele-field owner / sumcheck-prover-engineer (codex-root): API migration and independent irreducibility tests
