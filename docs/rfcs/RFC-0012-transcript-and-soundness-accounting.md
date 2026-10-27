@@ -45,3 +45,137 @@ QM31 are *not* allowed — folds must be in the challenge field), accepting ≈ 
 ## 6. Negative controls
 NC-0800 challenge drawn before a message is absorbed; NC-0801 label collision; NC-0802 final value not absorbed;
 NC-0803 query indices from stale state; NC-0804 ledger total tampered; NC-0805 profile downgrade in public input.
+
+## 7. Amendment log
+
+### A1 — Canonical transcript bytes and unbiased extension challenges
+
+Status: Draft. Research question Q11. Candidate byte oracle and checks:
+[transcript study](../../research/transcript/REPORT.md).
+
+Motivation: §1 does not specify length widths, initial state, squeeze domain,
+rejection handling, state updates after challenges, or OM31's eight limbs. Two
+implementations can follow the sketch and disagree. E2-01 is blocked on this
+amendment; no core code may use the candidate before acceptance.
+
+Exact replacement for §1:
+
+> The transcript is a domain-separated Blake3 hash chain with extendable-output
+> challenge requests, not an invocation of an unspecified sponge API. Let H(x)
+> be the first 32 bytes of ordinary, unkeyed BLAKE3 output and XOF(x) its ordinary
+> extendable output. Keyed mode and derive-key mode are not used. Before the first
+> public-input absorb, S = H(ASCII("stele/v0.1/transcript/init")). Define
+>
+> `frame(S, tag, label, payload) = S || u8(tag) || u32le(len(label)) || label || u64le(len(payload)) || payload`.
+>
+> S is exactly 32 bytes. Lengths count bytes, are unsigned fixed-width
+> little-endian integers, and must fit without truncation. Labels are registered
+> ASCII byte strings of length 1..255. Tags are 0 = absorb, 1 = challenge request,
+> 2 = challenge state update. No alignment padding, terminator or implicit
+> text encoding is present. Frame concatenation is unambiguous because every
+> variable-size field has its own length and state/tag widths are fixed.
+>
+> Construction performs exactly one tag-0 absorb of the nonempty canonical
+> public-input encoding under `stele/v0.1/public`. Its complete semantic encoding
+> is governed by RFC-0001/RFC-0016; accepting arbitrary bytes in the primitive
+> does not verify that encoding. The proof verifier must derive/check the public
+> input and profile before constructing its transcript. The public-input label
+> cannot be used again through the public absorb API. Every subsequent absorb
+> sets S = H(frame(S, 0, label, bytes)) with a registered absorb label.
+>
+> A transcript has one fixed extension degree d, either 4 for QM31 or 8 for
+> OM31, selected by the caller from the verified profile. Arbitrary Field
+> implementations are not challenge targets. Each challenge request uses a
+> registered challenge label. Let X = the first 256 bytes of
+> XOF(frame(S, 1, label, u8(d))). Read X in consecutive four-byte little-endian
+> words w, replacing each by c = w AND 0x7fffffff. Reject c = p = 2^31-1;
+> accept c < p as the next coefficient. Stop after d accepted coefficients.
+> Encode them as canonical u32le limbs in the RFC-0003 A1 basis order.
+>
+> At most 64 candidate words may be examined per request. If fewer than d
+> coefficients are accepted, return SamplingExhausted, leave S unchanged and
+> abort the proof attempt. Do not reduce p to zero, reuse coefficients, switch
+> field, accept a short result, or retry with another domain or seed. If n words
+> were consumed successfully and C is the canonical challenge encoding, set
+> S = H(frame(S, 2, label, u8(d) || u32le(n) || C)) before returning C. Consecutive
+> challenges therefore use different state even when their labels repeat.
+> Input-validation errors also leave S unchanged and return no challenge.
+>
+> Production transcript construction cannot import an arbitrary state or an
+> external byte generator. Forced-rejection vectors exercise the pure coefficient
+> decoder in tests; there is no injected-randomness or check-disabling API.
+> Neither the primitive nor a transcript digest proves that a protocol followed
+> its required message schedule. Each prover/verifier must follow the same
+> Accepted schedule, with each required message absorbed before its challenge.
+
+Addition to §2 (initial registry and owners):
+
+| Kind | Label bytes | Consumer / accounting |
+|---|---|---|
+| Constructor absorb | `stele/v0.1/public` | full public input; no random challenge |
+| Absorb | `stele/v0.1/sumcheck/instance` | instance description supplied by sumcheck; no random challenge |
+| Absorb | `stele/v0.1/sumcheck/round` | round polynomial; no random challenge |
+| Absorb | `stele/v0.1/sumcheck/final` | final claims; no random challenge |
+| Challenge | `stele/v0.1/sumcheck/challenge` | one round challenge; SC, plus existing FS/H |
+
+Labels must be unique across both kinds and exposed as closed typed choices, not
+arbitrary caller strings. Repeated calls using one registered label are allowed;
+that is distinct from registering two meanings with the same bytes. Protocol
+owners must specify canonical message encoding and instance context before using
+these labels. Future labels require an RFC-governed schedule, a registry entry,
+and an accounting mapping; a free-form label escape hatch is forbidden.
+The primitive supports both fields; this amendment does not decide R-OCTIC's
+profile comparison, remove profile checks, or authorize QM31 in a treaty stage
+whose Accepted schedule requires OM31.
+
+Soundness: under ideal independent XOF words, masking gives exactly two u32
+preimages per 31-bit candidate. Conditional on acceptance, every M31 coefficient
+has probability 1/p. Rejection decisions depend only on whether a word is in the
+two rejected preimages, so conditioning on obtaining d limbs within 64 words
+preserves independence and uniformity of the accepted vector. No statistical
+sampling loss is added to SC/RLC/LU/MASK; use exact field sizes p^4 or p^8.
+This is an elementary counting argument, checked exhaustively for reduced-width
+analogues and boundary vectors; an empirical histogram is not its proof.
+
+Exhaustion for d <= 8 requires at least 57 rejected words among 64. A union bound
+over subsets gives probability at most 2^64 * (2^-31)^57 = 2^-1703 in the ideal
+model. This is completeness/availability loss, not probability of accepting a
+false statement. Abort is mandatory even on that event. No new soundness error
+line or discount for failed attempts is introduced. FS/H must count all adversary
+queries and grinding, including failed attempts, initialization, absorbs,
+challenge XOF evaluations and state updates under their respective oracle model.
+
+Cryptographic status: these byte rules and the counting lemma do not prove the
+Fiat-Shamir transformation of Stele's IOP. BLAKE3 is specified by the
+[official specification](https://github.com/BLAKE3-team/BLAKE3-specs).
+RFC-0002 assumptions A1/A2 remain assumptions, not proven hash properties. The
+existing FS formula is still a placeholder needing a concrete theorem and query
+convention before any profile can be certified. Q12 tracks that obligation,
+including reconciliation of the stated Q caps with the H budget. No treaty or
+standard soundness-budget claim follows from this amendment.
+
+Costs: initialization adds one fixed hash, each absorb hashes the framed payload,
+and each challenge computes a request XOF and one fixed-size state-update hash,
+examining at most 64 words. Storage is constant apart from the caller's message.
+This contributes to T_misc; no measured constant or cost-model fit changes.
+Prover and verifier use identical byte rules and coefficient decoding.
+
+Controls and task dependency: retain E2-01's complete NC-0800..0802 acceptance.
+Primitive tests must check byte framing, registry uniqueness, forced rejection,
+field/basis selection, state updates, and sensitivity to reordered/omitted
+messages. Such tests alone earn no protocol NC catalog credit. NC-0800/0802 must
+exercise real prover/verifier schedules, including a downstream challenge after
+final claims. NC-0801 must reject the applicable collision at the actual registry
+validation boundary and cannot be represented by a toy proof verifier.
+
+On acceptance, add E2-00 for the primitive, KATs, registry/sampling checks and
+actual primitive/accounting gate wiring. E3-01 depends on E2-00 instead of E2-01.
+E2-01 retains every original acceptance criterion and additionally depends on
+E2-00 and E3-01, so real protocol controls can exist before it is completed. The
+remaining gates must continue rejecting unvalidated changes to other protocol
+crates; changing a scaffold hash to bless implementation is not gate wiring.
+This refines the DAG without deleting or crediting any security obligation.
+Affected tasks: E2-00 (new), E2-01, E3-01, E8-04, E8-05 and E12-09.
+
+Review required before acceptance: soundness-auditor, rfc-author,
+pcs-engineer (stele-hash owner), sumcheck-prover-engineer (schedule consumer).
