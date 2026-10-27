@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/dense-sumcheck",
+  "commit": "7de27e4fc05c357d475549fb764bd8fa2aff4bc7",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "dense sumcheck prove",
+      "field": "QM31",
+      "small": false,
+      "variables": 14,
+      "inputs": 2,
+      "degrees": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "iterations": 3,
+      "samples": 3,
+      "warmup_calls": 1,
+      "build": "release",
+      "order": "reverse degrees on odd samples",
+      "polynomial": "f0^degree + 2*f1^(max(degree-1,0))",
+      "values": [
+        "((j*73+19)%31)-15",
+        "((j*29+7)%17)-8"
+      ],
+      "timed": "table clone/allocation, transcript initialization, dense prover and final absorb",
+      "verification": "every warmup/measured proof checked by public adapter outside timing"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "sample_times_ns": {
+      "degree0": [
+        10545709,
+        2273917,
+        2295749
+      ],
+      "degree1": [
+        7951333,
+        4534708,
+        4592251
+      ],
+      "degree2": [
+        10091459,
+        9983792,
+        10044250
+      ],
+      "degree3": [
+        18587834,
+        18462916,
+        18507625
+      ],
+      "degree4": [
+        30665708,
+        30487332,
+        30251833
+      ]
+    },
+    "peak_process_rss_bytes": {
+      "degree0": [
+        2736128,
+        2736128,
+        2736128
+      ],
+      "degree1": [
+        3276800,
+        2736128,
+        2736128
+      ],
+      "degree2": [
+        2752512,
+        2736128,
+        2752512
+      ],
+      "degree3": [
+        2768896,
+        2768896,
+        2768896
+      ],
+      "degree4": [
+        2785280,
+        2768896,
+        2801664
+      ]
+    },
+    "dense_table_payload_bytes": 524288,
+    "c_sc_ns_per_point": {
+      "degree0": {
+        "numerator": 15115375,
+        "denominator": 147456
+      },
+      "degree1": {
+        "numerator": 17078292,
+        "denominator": 147456
+      },
+      "degree2": {
+        "numerator": 30119501,
+        "denominator": 147456
+      },
+      "degree3": {
+        "numerator": 55558375,
+        "denominator": 147456
+      },
+      "degree4": {
+        "numerator": 91404873,
+        "denominator": 147456
+      }
+    },
+    "subproof_values_sha256": {
+      "0": "3b254f7464a765ab63acc1ab2bc4e4d703f32ce502dcb50a00cb8f34aabc1447",
+      "1": "3b609bc07d83da4d6170ac05aabb9260a662d1c9882452f25642946b5d061d83",
+      "2": "9ecddba958e1180ce677e685c64576c29c1ccfc6044779d8efd5f6b53ed2157f",
+      "3": "bb79cc260d4c6154df01c4934a41f663a2f03ede14a70c59480197a2e3e7b165",
+      "4": "795e039d3427359b4f3122da4e418c6edd6138a20d5823cd6d9a784e6c7253bd"
+    }
+  },
+  "plan_digest": "6af76e1b7ca9f215a71f8dd62fa13841014b7e638427cd6372af4ab1a492b6b8",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 209276416,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "degree0": 15115375,
+    "degree1": 17078292,
+    "degree2": 30119501,
+    "degree3": 55558375,
+    "degree4": 91404873
+  },
+  "kernel_counters": {
+    "degree0/input_field_elements": 294912,
+    "degree1/input_field_elements": 294912,
+    "degree2/input_field_elements": 294912,
+    "degree3/input_field_elements": 294912,
+    "degree4/input_field_elements": 294912
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Native dense QM31 baseline for c_sc(degree, small=false), including clone/allocation and transcript overhead. Every timed proof is subsequently verified with all public obligations consumed; correctness gates run first. Process RSS includes input setup, warmup, prover, verifier, code and allocator; it is not isolated scratch or DRAM traffic. Dense table payload counts logical working field elements only, excluding allocator/Vec metadata and proof storage. Exact integer time/point ratios are baseline measurements, not a cost-model fit. Micro schema proof/verifier/control fields are zero because no inference evidence is claimed. No GPU, ZK or profile-security certification."
+}

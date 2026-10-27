@@ -61,10 +61,11 @@ python3 -m unittest discover -s scripts/tests -v
 ```
 
 `deny.toml` restricts direct crate imports, including renamed, build, and test dependencies.
-The isolated mutation tests verify those restrictions. The digest, controls, accounting, and GPU parity gates currently verify only that
-their scoped crates remain empty scaffolds. They fail on changed code or unvalidated artifacts
-until the corresponding producer and validator are implemented. A successful bootstrap
-gate is not evidence of a valid proof. See `scripts/gates/README.md` for the gate contracts.
+The isolated mutation tests verify those restrictions. Controls and accounting now exercise
+the production transcript and dense sumcheck against an independent Python corpus, including
+final public evaluation obligations. Unimplemented protocol crates still have fail-closed
+scaffold guards. These checks do not establish a complete inference proof, zero-knowledge,
+or a soundness profile. See `scripts/gates/README.md` for the gate contracts.
 
 ## License
 

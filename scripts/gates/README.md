@@ -7,16 +7,19 @@ it does not validate remote URLs or heading fragments. Fenced examples are exclu
 
 The negative-control gate now validates the suite layout, runs harness tests, and
 executes registered controls before reporting catalog coverage. The stub self-control
-has no NC id and receives no inference coverage credit. Protocol source guards remain
-until actual controls accompany the first implementations. Undeclared control source
+has no NC id and receives no inference coverage credit. Real transcript/sumcheck
+controls now run; other protocol source guards remain until their controls exist. Undeclared control source
 files and `done` rows without an executable registration fail CI.
 
-The ledger gate runs the Rust validator on `bench/ledger/*.json`; no measurements exist yet.
+The ledger gate runs the Rust validator on `bench/ledger/*.json`; native CPU
+measurements are linked from `bench/README.md`.
 Locked dependencies are fetched before the offline build and validation steps.
 
-The remaining protocol gates cannot validate proofs before their producers exist.
-They may print `nothing to check` only when the relevant crate files exactly match the
-empty bootstrap snapshots and no corresponding artifacts exist:
+The accounting gate compares the production transcript registry and actual sumcheck
+SC receipts against the independent corpus and descriptors. Mutations of the SC
+numerator or Final label fail. This covers the implemented reduction, not complete
+inference accounting or a profile budget. Remaining unimplemented protocol crates
+must match the empty bootstrap snapshots, with no unvalidated artifacts:
 
 | Gate | Replacement task | Required validator |
 |---|---|---|
