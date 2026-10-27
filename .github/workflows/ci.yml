@@ -66,7 +66,7 @@ jobs:
           toolchain: 1.95.0
       - name: Regenerate pinned upstream Poseidon2 vectors
         run: |
-          cargo run --manifest-path vendor-ref/poseidon2-m31/Cargo.toml --example vectors --locked > "$RUNNER_TEMP/poseidon2.jsonl"
+          cargo +1.95.0 run --manifest-path vendor-ref/poseidon2-m31/Cargo.toml --example vectors --locked > "$RUNNER_TEMP/poseidon2.jsonl"
           cmp research/poseidon2/reference.jsonl "$RUNNER_TEMP/poseidon2.jsonl"
   simd-throughput:
     needs: gates
