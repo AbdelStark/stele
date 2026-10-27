@@ -203,7 +203,7 @@ tasks:
   crate: stele-poly
   status: in_progress
   agent: codex-root
-  branch: task/E1-05-polynomial-core
+  branch: task/E1-05-poly-ledger
   acceptance:
   - bucketed == naive bit-exact
   - bytes/element measured
