@@ -8,7 +8,6 @@ description = "Stele — stele-verifier (see RFC-0016)"
 [dependencies]
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }
-stele-proof = { path = "../stele-proof" }
 
 [lints]
 workspace = true

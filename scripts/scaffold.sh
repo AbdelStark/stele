@@ -18,22 +18,26 @@ stele-ir|RFC-0005|stele-cqis|no
 stele-reductions|RFC-0007 RFC-0008 RFC-0009 RFC-0017|stele-gkr stele-lookup stele-pcs stele-ir|no
 stele-proof|RFC-0016 §1|stele-field|no
 stele-prover|RFC-0007 §4 RFC-0014 §4|stele-reductions stele-proof|no
-stele-verifier|RFC-0016|stele-field stele-hash stele-proof|no
+stele-verifier|RFC-0016|stele-field stele-hash|no
 stele-kernels|RFC-0014 §2|stele-field|no
 stele-gpu|RFC-0014|stele-kernels stele-prover|yes
 stele-dist|RFC-0015|stele-gpu|no
-stele-passport|RFC-0011|stele-pcs stele-cqis|no
+stele-passport|RFC-0011|stele-pcs stele-cqis stele-wrapper|no
 stele-wrapper|RFC-0016 §5|stele-verifier|no
 stele-bench|RFC-0018|stele-prover|no
 stele-cli|RFC-0020|stele-prover stele-verifier stele-passport stele-bench|no
+stele-py|RFC-0020 §1|stele-prover stele-verifier|no
 '
-members=""
 echo "$CRATES" | grep -v '^$' | while IFS='|' read -r name rfc deps uns; do
   d="crates/$name"; [ -d "$d" ] && continue
   mkdir -p "$d/src"
   depl=""; for x in $deps; do depl="$depl$x = { path = \"../$x\" }\n"; done
   printf '[package]\nname = "%s"\nversion = "0.1.0"\nedition = "2021"\nlicense = "Apache-2.0"\ndescription = "Stele — %s (see %s)"\n\n[dependencies]\n%b\n[lints]\nworkspace = true\n' "$name" "$name" "$rfc" "$depl" > "$d/Cargo.toml"
   if [ "$uns" = "yes" ]; then forbid='// unsafe allowed in this crate: every block carries a // SAFETY: comment (agents/guardrails/code.md)'; else forbid='#![forbid(unsafe_code)]'; fi
+  case "$name" in
+    stele-field|stele-hash|stele-proof|stele-verifier) forbid="$forbid
+#![no_std]" ;;
+  esac
   printf '//! %s — governed by %s. No behaviour exists here that is not specified there (INV-1).\n%s\n#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn skeleton_compiles() {}\n}\n' "$name" "$rfc" "$forbid" > "$d/src/lib.rs"
 done
 echo "scaffold complete"

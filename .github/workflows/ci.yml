@@ -5,10 +5,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cargo install cargo-deny --version 0.20.2 --locked
+      - run: cargo deny --offline check bans
+      - run: python3 -m unittest discover -s scripts/tests -v
+      - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+      - run: cargo test --workspace --locked --offline
       - run: scripts/gates/digest.sh
       - run: scripts/gates/negative-controls.sh
       - run: scripts/gates/soundness-accounting.sh

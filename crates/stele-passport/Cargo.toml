@@ -8,6 +8,7 @@ description = "Stele — stele-passport (see RFC-0011)"
 [dependencies]
 stele-pcs = { path = "../stele-pcs" }
 stele-cqis = { path = "../stele-cqis" }
+stele-wrapper = { path = "../stele-wrapper" }
 
 [lints]
 workspace = true

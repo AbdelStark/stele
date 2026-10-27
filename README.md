@@ -42,8 +42,28 @@ bench/                    ← benchmark protocol and result ledger format
 
 ## Status
 
-`v0.1.0` — specification complete, implementation not started. The task graph (`agents/tasks/graph.yaml`)
+`v0.1.0` — workspace bootstrap in progress. Crates are skeletons; inference proving, verification,
+zero-knowledge, and GPU execution are not implemented. The task graph (`agents/tasks/graph.yaml`)
 is the single source of truth for what to build next. There are no human timelines in this repository by design.
+
+## Bootstrap checks
+
+Rust is pinned by `rust-toolchain.toml`. With Python 3.11+ and cargo-deny 0.20.2 installed:
+
+```sh
+bash scripts/scaffold.sh
+cargo build --workspace --locked --offline
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+cargo test --workspace --locked --offline
+cargo deny --offline check bans
+python3 -m unittest discover -s scripts/tests -v
+```
+
+`deny.toml` restricts direct crate imports, including renamed, build, and test dependencies.
+The isolated mutation tests verify those restrictions. The digest, controls, accounting,
+and GPU parity scripts remain placeholders until their task implementations land;
+a successful skeleton gate is not evidence of a valid proof.
 
 ## License
 
