@@ -171,7 +171,7 @@ tasks:
   - RFC-0003 §5
   skill: sumcheck-prover-engineer
   crate: stele-field
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E1-03-koalabear
   acceptance:
