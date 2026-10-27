@@ -17,7 +17,8 @@ class GateTests(unittest.TestCase):
         self.root = pathlib.Path(self.directory.name)
         for name in ('scripts', 'crates', 'docs', 'tests', 'bench'):
             shutil.copytree(ROOT / name, self.root / name)
-        shutil.copy(ROOT / 'README.md', self.root / 'README.md')
+        for name in ('README.md', 'Cargo.toml', 'Cargo.lock'):
+            shutil.copy(ROOT / name, self.root / name)
 
     def run_gate(self, gate):
         return subprocess.run(['bash', str(self.root / 'scripts/gates' / f'{gate}.sh')],
@@ -72,8 +73,20 @@ class GateTests(unittest.TestCase):
                 file.write_text(original + f'\n// RFC-{reference}\n')
                 self.assertNotEqual(self.run_gate('rfc-status').returncode, 0)
         file.write_text(original)
+        harness = self.root / 'tests/negative-controls/src/lib.rs'
+        harness_source = harness.read_text()
+        harness.write_text(harness_source + '\n// RFC-9998\n')
+        self.assertNotEqual(self.run_gate('rfc-status').returncode, 0)
+        harness.write_text(harness_source)
         (self.root / 'docs/rfcs/RFC-0003-duplicate.md').write_text('Status: Accepted\n')
         self.assertNotEqual(self.run_gate('rfc-status').returncode, 0)
+
+    def test_rejects_catalog_claiming_unexecuted_coverage(self):
+        catalog = self.root / 'tests/negative-controls/catalog.md'
+        catalog.write_text(catalog.read_text().replace('| todo |', '| done |', 1))
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('done without an executable control', result.stdout + result.stderr)
 
     def test_rejects_broken_local_doc_link(self):
         file = self.root / 'README.md'
