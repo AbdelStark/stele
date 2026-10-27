@@ -9,6 +9,8 @@ mod m31;
 pub use m31::M31;
 mod koalabear;
 pub use koalabear::KoalaBear;
+mod tower;
+pub use tower::{CM31, OM31, QM31};
 
 /// Multiplicative inversion; zero has no inverse (RFC-0003 §6).
 pub trait Inverse: Sized {

@@ -57,3 +57,15 @@ formula and half-even wording conflict with ADR-005 and fail the documented ties
 Static bounds and actual reduction accounting remain implementation obligations.
 No benchmark or model-fidelity result is implied. Status: Accepted after the named
 same-agent skill passes in `agents/reviews/field-cqis-a1.md`.
+
+## ADR-017 — Scalar quadratic tower reference
+
+Context: RFC-0003 §2/A1, E1-02. Decision: share the quadratic identities through one
+local macro with explicit, fixed types and nonresidue maps. Use three lower-field
+products for Karatsuba and recursive norm inversion. Fixed Frobenius coefficients
+are checked against prime-characteristic powers of every basis vector and against
+an independent power-basis oracle on seeded inputs. Public tuple coefficients are
+canonical field types, so composition cannot introduce an invalid limb. No generic
+configurable modulus or new dependency is exposed. No challenge, soundness-ledger
+line or cost-model fit changes. The scalar multiplication ratio is measured by the
+E1-02 microbenchmark, without a GPU or inference claim. Status: Accepted.
