@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
     'digest': ('prover', 'proof'),
-    'negative-controls': ('sumcheck', 'gkr', 'lookup', 'pcs', 'verifier', 'reductions'),
-    'soundness-accounting': ('sumcheck', 'gkr', 'lookup', 'pcs', 'verifier'),
+    'negative-controls': ('gkr', 'lookup', 'pcs', 'verifier', 'reductions'),
+    'soundness-accounting': ('gkr', 'lookup', 'pcs', 'verifier'),
     'parity': ('gpu', 'kernels'),
 }
 OWNERS = {
@@ -71,11 +71,42 @@ def transcript_registry(root):
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
 
 
+def sumcheck_corpus(root):
+    """Compare real Rust/Python decisions and each accepted instance's SC record."""
+    path = 'research/sumcheck/corpus.jsonl'
+    commands = [
+        ['cargo', 'run', '-q', '-p', 'stele-sumcheck', '--example', 'corpus', '--locked', '--offline', '--', path],
+        ['uv', 'run', '--locked', '--script', 'research/sumcheck/check_sumcheck.py', '--verify-corpus', path],
+    ]
+    outputs = []
+    for command in commands:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode:
+            raise ValueError(f'sumcheck corpus producer failed: {result.stdout} {result.stderr}')
+        outputs.append([json.loads(line) for line in result.stdout.splitlines()])
+    cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
+    if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
+        raise ValueError('sumcheck corpus decisions/accounting mismatch')
+    for case, result in zip(cases, outputs[0]):
+        if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
+            raise ValueError('sumcheck corpus expected rejection mismatch')
+        if case['expected'] == 'accept':
+            if len(result['receipts']) != len(case['instances']):
+                raise ValueError('sumcheck instance enumeration mismatch')
+            for record, receipt in zip(case['instances'], result['receipts']):
+                i = record['instance']
+                degree = max((len(t['factors']) for t in i['terms']), default=0)
+                expected = dict(id=i['id'], m=i['m'], degree=degree, field_degree=case['field_degree'], numerator=i['m']*degree)
+                if receipt['sc'] != expected or len(receipt['point']) != i['m']:
+                    raise ValueError('sumcheck SC record/challenge count mismatch')
+    print(f'gate sumcheck: {len(cases)} actual corpus decisions and SC records; no profile budget certified')
+
+
 def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -152,6 +183,7 @@ def main():
             bootstrap_guard(ROOT, args.gate)
             if args.gate in ('negative-controls', 'soundness-accounting'):
                 transcript_registry(ROOT)
+                sumcheck_corpus(ROOT)
     except (OSError, ValueError, KeyError) as error:
         print(f'gate {args.gate}: {error}', file=sys.stderr)
         return 1

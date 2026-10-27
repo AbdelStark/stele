@@ -12,7 +12,7 @@ deny = [
   { name = "stele-code", wrappers = ["stele-pcs"] },
   { name = "stele-cqis", wrappers = ["stele-ir", "stele-passport"] },
   { name = "stele-dist", wrappers = ["stele-dist"] },
-  { name = "stele-field", wrappers = ["stele-code", "stele-cqis", "stele-hash", "stele-kernels", "stele-poly", "stele-proof", "stele-simd", "stele-verifier"] },
+  { name = "stele-field", wrappers = ["stele-code", "stele-cqis", "stele-hash", "stele-kernels", "stele-poly", "stele-proof", "stele-simd", "stele-verifier", "stele-sumcheck", "stele-negative-controls"] },
   { name = "stele-gkr", wrappers = ["stele-lookup", "stele-reductions"] },
   { name = "stele-gpu", wrappers = ["stele-dist"] },
   { name = "stele-hash", wrappers = ["stele-pcs", "stele-sumcheck", "stele-verifier", "stele-negative-controls"] },
@@ -28,7 +28,7 @@ deny = [
   { name = "stele-py", wrappers = ["stele-py"] },
   { name = "stele-reductions", wrappers = ["stele-prover"] },
   { name = "stele-simd", wrappers = ["stele-code", "stele-poly"] },
-  { name = "stele-sumcheck", wrappers = ["stele-gkr"] },
+  { name = "stele-sumcheck", wrappers = ["stele-gkr", "stele-negative-controls"] },
   { name = "stele-verifier", wrappers = ["stele-cli", "stele-py", "stele-wrapper"] },
   { name = "stele-wrapper", wrappers = ["stele-passport"] },
 ]
