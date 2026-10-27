@@ -153,3 +153,13 @@ PCS consumers. Membership does not certify unopened subtrees or zero knowledge.
 Q17 retains the unresolved 1-versus-N-shard digest semantics; different logical
 root lists are not claimed to hash equally. Same-author reviews approve these
 bytes, not an independent audit or Q12's full security budget. Status: Accepted.
+
+## ADR-025 — Ordered batch powers and explicit zero-extension
+
+Context: E3-02, RFC-0006 A2 / RFC-0012 A4, Q18. Decision: bind the complete ordered
+batch before one gamma, use successive powers, and retain every final obligation.
+Unequal instances wrap the whole summand in a leading zero-selector; virtual-tensor
+claims use a public coefficient with verifier-computed evaluation. Sparse blocks
+accumulate overlaps; arbitrary points do not receive an unconditional linear-cost
+claim. Exact RLC/SC records and closed labels remain production gates. Same-author
+reviews and research vectors give no control/profile credit. Status: Accepted.

@@ -192,3 +192,142 @@ actual protocol corpus (RFC-0002 S10), both-field byte vectors, malformed-shape 
 degree tests, and real accounting/control gates before removing the sumcheck
 scaffold guards. E2-01 retains its full NC-0800..0802 integration acceptance.
 Affected tasks: E3-01, E2-01, E8-04, E8-05, E12-09; no dependency is removed.
+
+### A2 — Ordered batching, zero-extension and virtual-tensor claims
+
+Status: Accepted. Question Q18. Review: [skill passes](../../agents/reviews/batching-a2.md).
+Evidence: [batching study](../../research/batching/REPORT.md).
+Motivation: §§2,4 omit the coefficient schedule, encoding, padding degree and
+final obligations; §4's unconditional linear coefficient cost needs qualification.
+The following replaces their batching rules; A1's unbatched bytes stay unchanged.
+
+**Statement and verifier inputs.** K and d follow A1. An ordered nonempty batch
+has a verifier-owned u64 batch id and one of two modes. All counts fit u32;
+canonical K encodings, checked lengths, allocation arithmetic and error-abort
+rules follow A1. Plan instance/batch ids are distinct across invocations; tensor
+ids are a separate namespace. The plan fixes ordering before any batch challenge.
+Mode 0 contains t A1 instances with distinct member ids, none equal to the batch
+id. Each keeps its own m_b, polynomial P_b, degree δ_b and claimed sum v_b.
+An input tensor id repeated across members must have the same dimension and
+refer to the same tensor. Define M=max m_b, p_b=M-m_b, and
+D=max(max δ_b, 1 if any p_b>0 else 0). On x in K^M define
+
+```
+S_b(x) = product_{j=0}^{p_b-1}(1-x_j)
+G(x) = sum_{b=0}^{t-1} gamma^b S_b(x) P_b(f_b,1(x[p_b:]), ...)
+V = sum_b gamma^b v_b
+```
+
+This is zero-extension of the whole summand, not of each input before applying
+P_b. Its Boolean sum preserves each original sum, including constant P_b.
+Padding and real coordinates are disjoint, so individual degree is at most D<=4,
+not δ_b+1. Equal-size batches have empty selectors. Empty input/term lists,
+m_b=0 and t=1 remain valid. No member or input obligation may be dropped because
+its coefficient, selector or polynomial happens to vanish.
+
+Mode 1 contains one virtual tensor id y, its u32 dimension m, and t ordered
+claims (z_b,v_b), with exactly m coordinates in each z_b. D=2, M=m, and
+
+```
+A(x) = sum_b gamma^b eq(z_b,x)
+G(x) = y(x) A(x); V = sum_b gamma^b v_b
+```
+
+Arbitrary K points, overlapping blocks and duplicate claims are allowed. The
+verifier derives the virtual role from its authenticated plan; no proof flag
+can select this route. Committed tensors retain the PCS functional-opening
+route of RFC-0010. A is public and verifier-computable, never committed and
+never accepted as a prover-supplied final evaluation.
+
+**Exact bytes and schedule.** Integers are unsigned little-endian. K uses A1's
+canonical 4d bytes. There is no alignment or implicit normalization. Before any
+challenge, absorb Batch (RFC-0012 A4) with this complete descriptor:
+
+```
+u8(1) || u8(d) || u8(mode) || u64(batch id) || body
+mode 0 body: u32(t) || u32(M) || u8(D) || members
+  each member: u64(byte length of its full A1 Instance payload) || that payload
+mode 1 body: u64(y id) || u32(m) || u32(t) || claims
+  each claim: m ordered K coordinates || K value
+```
+
+M,D are recomputed from the verifier's inputs, never trusted from the proof.
+Draw exactly one challenge(BatchCoefficient) after this absorb; use powers
+1,gamma,...,gamma^(t-1), including for singleton batches. Zero and roots of unity
+are valid challenges, not retry conditions. Do not separately absorb the member
+Instance payloads or draw member challenges. Run M rounds exactly as A1 at
+individual degree D, starting from V, with the batch id in each Round payload.
+This includes A1's doubled sole evaluation when D=0. Draw Sumcheck only after
+each Round absorb. Final proof values are ordered by member/input for mode 0,
+or exactly one y value for mode 1. Preflight all proof lengths before replay.
+The verifier checks G(r) using these values and its own selectors/A(r), then
+absorbs BatchFinal before returning any result:
+
+```
+u64(batch id) || u8(mode) || body
+mode 0 body: u32(t) || [u64(member id) || u32(input count) || ordered K values]_b
+mode 1 body: u64(y id) || K value
+```
+
+Use ProofShape, RoundSumMismatch and FinalEvaluationMismatch as in A1;
+invalid descriptors are InvalidBatch. For M=0 there are no rounds, but both
+batch absorbs and gamma still occur and G()=V is checked directly. Mode 0 emits
+all (tensor id, r[p_b:], value) obligations in order; selectors do not scale their
+values. Mode 1 emits (y id,r,value), even if A(r)=0. A successful reduction is not
+statement acceptance. Real consumers must discharge every emitted obligation.
+The public-table adapter checks counts, exact 2^m_b lengths and consistent alias
+tables before replay, then evaluates every obligation independently; shape/alias
+errors are PublicShape and wrong evaluations are ClaimMismatch.
+
+**Algorithms and costs.** Mode 0 folds original tables only on their active
+suffix coordinates, using virtual selectors rather than 2^M copies of smaller
+tables. With a_b inputs and e_b operations per P_b, a direct reference costs
+O(sum_b (D+1)(a_b+e_b)2^m_b + t M (D+1)) field operations, plus descriptor
+processing; keep original tables and per-member partial sums until activation.
+For padded-prefix rounds, the residual contribution is the member's computed
+true sum times its prefix selector, never a trusted claimed v_b. Memory is
+O(sum_b a_b 2^m_b + t + M(D+1)) field elements excluding descriptors/obligations.
+Verifier arithmetic is O(M D^2 + t (M+1) + sum_b(a_b+e_b)), excluding consumers.
+
+Mode 1 finds each z_b's maximal leading Boolean prefix of length k_b and adds
+its weighted suffix eq table into that contiguous block. Accumulate overlaps;
+never overwrite. Building eq tables by successive splits costs
+O(2^m + t m + sum_b 2^(m-k_b)), with O(2^m+t) working field elements plus inputs.
+Disjoint blocks give O(2^m+t m+t); arbitrary points can require O(t 2^m+t m).
+The y*A sumcheck then costs O(2^m); the verifier computes A(r) directly in O(t (m+1))
+and checks m degree-2 rounds. The exhaustive research oracle is not this efficient
+implementation. These terms contribute to c_sc and T_misc (and consuming-stage
+c_a/c_x); no measured constant, weight-pass count or committed tensor changes.
+E3-02 must record actual c_sc and peak memory in a bench ledger before completion.
+
+**Soundness and accounting.** For fixed inputs with at least one false sum/claim,
+the aggregate error is a nonzero polynomial in gamma of degree at most t-1.
+The root bound gives (t-1)/p^d; conditioned on avoiding those roots, sumcheck
+adds M D/p^d when all emitted evaluations are true. See the explicit
+[interactive obligation](../../formal/batching.md); these are proven algebraic
+bounds, conditional on independent uniform challenges, not a Fiat–Shamir theorem.
+Emit one RLC record (batch id,t,d,numerator=t) and one SC record
+(batch id,M,D,d,numerator=M D), denominators exactly p^d. Keep singleton and
+zero-round records. Do not count member SC records or add a second RLC for mode 1.
+The conservative RLC t/p^d follows the existing ledger, even for t=1.
+Standard uses d=4 and treaty d=8; neither has a certified total until Q12 and the
+remaining PCS/composition/ZK obligations are resolved. No integer identity or
+bound certificate is added. FS/H still include every adversary query.
+
+**Controls and delivery.** NC-0202 omits one member's actual weighted contribution
+from one first-round evaluation under the unchanged full descriptor. In mode 1
+it omits one claim's contribution. Require a nonzero difference and
+RoundSumMismatch using the real prover/public verifier in both modes/fields.
+NC-0206 changes one first-round evaluation to that computed using gamma drawn
+before Batch, requiring the same error. Both use A1's one-value post-proof hook;
+no injected state, cached challenge API or verifier bypass is permitted.
+Extend NC-0205 to an unused input of a batched constant polynomial (ClaimMismatch),
+and NC-0802 to omission of BatchFinal before a real subsequent A1 instance
+(one changed subsequent final value, FinalEvaluationMismatch). Existing controls
+remain required. NC-0203's wrong-layer GKR requirement remains with E3-06.
+E3-02 also requires both-field bytes, Rust/Python acceptance/rejection agreement,
+10^4 seeded prover/verifier coefficient evaluations (including arbitrary points,
+Boolean-prefix blocks, overlaps and duplicates), unequal-size/constant/empty/zero
+cases, and actual SC/RLC descriptor/challenge accounting gates. The production
+registry and canonical label inventory must change together. Research earns no
+NC credit. Affected tasks: E3-02, E3-06, E8-04/E8-05, E12-09; no dependency removed.

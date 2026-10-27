@@ -365,3 +365,24 @@ in their owning tasks. No change to RFC-0010's algebraic opening relation.
 
 Completed same-author skill passes (not independent audit): soundness-auditor,
 rfc-author, pcs-engineer (stele-hash owner), distributed-systems-engineer.
+
+### A4 — Batching labels and per-invocation RLC records
+
+Status: Accepted. Question Q18. Review: [skill passes](../../agents/reviews/batching-a2.md).
+Motivation: bind the RFC-0006 A2 ordered batch before its coefficient and all
+final values before continuation. Add these closed labels to A1's registry:
+
+| Kind | Label bytes | Consumer / accounting |
+|---|---|---|
+| Absorb | `stele/v0.1/sumcheck/batch` | Batch; complete A2 descriptor, no challenge |
+| Absorb | `stele/v0.1/sumcheck/batch-final` | BatchFinal; complete A2 final values, no challenge |
+| Challenge | `stele/v0.1/sumcheck/batch-coefficient` | BatchCoefficient; one per A2 batch, RLC |
+
+A1 framing, field selection, rejection sampling and state updates are unchanged.
+RFC-0006 A2 supplies exact messages, order, algebraic proof, costs and controls
+NC-0202/0206 plus extensions of NC-0205/0802. Its single RLC record has numerator
+t; shared rounds supply one SC record with numerator M D, both over p^d. FS/H
+remain separate, Q12 open. No label-registration escape hatch, new loss family,
+measured constant or weight pass is introduced. E3-02 must implement the registry,
+canonical inventory and record/consumer gates atomically; this specification
+alone adds no production challenge or coverage. Other consumers keep A1 bytes.

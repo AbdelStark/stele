@@ -42,6 +42,7 @@ jobs:
       - run: uv run --locked --script research/transcript/check_transcript.py
       - run: uv run --locked --script research/merkle/check_merkle.py
       - run: uv run --locked --script research/sumcheck/check_sumcheck.py
+      - run: uv run --locked --script research/batching/check_batching.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check
