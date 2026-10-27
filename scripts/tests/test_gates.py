@@ -74,6 +74,15 @@ class GateTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('sumcheck corpus decisions/accounting mismatch', result.stderr)
 
+    def test_rejects_batch_rlc_accounting_drift(self):
+        source = self.root / 'crates/stele-sumcheck/src/batch.rs'
+        old = source.read_text()
+        self.assertIn('numerator: self.instances.len() as u64', old)
+        source.write_text(old.replace('numerator: self.instances.len() as u64', 'numerator: 0'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('batch instance checks failed', result.stderr)
+
     def test_rejects_merkle_binding_and_batch_bypasses(self):
         source = self.root / 'crates/stele-hash/src/merkle.rs'
         original = source.read_text()

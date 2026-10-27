@@ -50,6 +50,8 @@ pub enum LabelKind {
 pub enum LossLine {
     /// One sumcheck round; instance degree/round counts are supplied by the consumer.
     Sc,
+    /// One ordered batching coefficient (RFC-0012 A4).
+    Rlc,
 }
 /// Registered label metadata; validation does not authorize a caller-supplied registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -61,7 +63,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 5] = [
+const REGISTRY: [RegistryEntry<'static>; 8] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -86,6 +88,21 @@ const REGISTRY: [RegistryEntry<'static>; 5] = [
         label: "stele/v0.1/sumcheck/challenge",
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Sc),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/batch",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/batch-final",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/batch-coefficient",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Rlc),
     },
 ];
 
@@ -114,7 +131,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 5], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 8], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -161,6 +178,10 @@ pub enum AbsorbLabel {
     Round,
     /// Canonical final claims, before the next dependent challenge.
     Final,
+    /// Complete ordered batch descriptor (A4).
+    Batch,
+    /// Complete batched final claims (A4).
+    BatchFinal,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -168,6 +189,8 @@ impl AbsorbLabel {
             Self::Instance => 1,
             Self::Round => 2,
             Self::Final => 3,
+            Self::Batch => 5,
+            Self::BatchFinal => 6,
         }]
     }
 }
@@ -176,10 +199,15 @@ impl AbsorbLabel {
 pub enum ChallengeLabel {
     /// Sumcheck round challenge, accounted under SC plus FS/H.
     Sumcheck,
+    /// Ordered batch coefficient, accounted under RLC plus FS/H (A4).
+    BatchCoefficient,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
-        &REGISTRY[4]
+        &REGISTRY[match self {
+            Self::Sumcheck => 4,
+            Self::BatchCoefficient => 7,
+        }]
     }
 }
 

@@ -52,9 +52,9 @@ alone does not certify codeword validity, canonical field encodings, unopened
 subtrees or a profile budget. NC-0602 now checks both leaf kinds through actual construction/authentication;
 this supplies membership-binding evidence, not a PCS or hash-budget certificate.
 
-RFC-0006 A2 / RFC-0012 A4 specify the future BatchCoefficient label mapped to RLC,
-with one numerator t plus one shared SC numerator M D per invocation, over p^d.
-The [interactive batching obligation](../../formal/batching.md) gives the sharper
-(t-1+M D)/p^d bound conditioned on true final evaluations. The registry/inventory
-and actual consumer gate remain unchanged until E3-02 implements both modes;
-research vectors are not accounting coverage. Q12 still blocks certification.
+RFC-0006 A2 / RFC-0012 A4 now have an instance-batch consumer: one BatchCoefficient
+challenge maps to RLC t/p^d and shared rounds to SC M D/p^d. The registry has eight
+entries. The gate checks 42 Rust/Python byte/record cases and actual mode-0 controls.
+The [interactive obligation](../../formal/batching.md) remains conditional on true
+final evaluations. Mode 1 and full E3-02 evidence remain incomplete; Q12 still
+blocks certification. The catalog retains no new two-mode control credit yet.

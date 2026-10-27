@@ -6,10 +6,10 @@ use stele_sumcheck::{
     message_bytes, prove, verify_public, Dense, Error, Instance, Proof, Summand, Term,
 };
 
-fn transcript<K: ChallengeField>() -> Transcript<K> {
+pub(crate) fn transcript<K: ChallengeField>() -> Transcript<K> {
     Transcript::new(b"control public").expect("public fixture")
 }
-fn instance<K: Field>(id: u64, constant: bool) -> Instance<K> {
+pub(crate) fn instance<K: Field>(id: u64, constant: bool) -> Instance<K> {
     Instance {
         id,
         num_vars: 1,
@@ -21,7 +21,7 @@ fn instance<K: Field>(id: u64, constant: bool) -> Instance<K> {
         claimed_sum: K::from_i64(if constant { 2 } else { 8 }),
     }
 }
-fn produce<K: ChallengeField + Eq>(
+pub(crate) fn produce<K: ChallengeField + Eq>(
     i: &Instance<K>,
     t: &mut Transcript<K>,
 ) -> Result<Proof<K>, Error> {
@@ -38,9 +38,9 @@ fn scalars<K: Copy>(proofs: &[Proof<K>]) -> Vec<K> {
         .copied()
         .collect()
 }
-struct Change<K> {
-    round: bool,
-    value: K,
+pub(crate) struct Change<K> {
+    pub(crate) round: bool,
+    pub(crate) value: K,
 }
 impl<K: Copy + Eq> ProverHook<Vec<Proof<K>>> for Change<K> {
     fn tamper(&self, proofs: &mut Vec<Proof<K>>) {

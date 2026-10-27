@@ -60,3 +60,11 @@ path = "sumcheck/nc_0802.rs"
 [[test]]
 name = "nc-0602"
 path = "pcs/nc_0602.rs"
+
+[[test]]
+name = "nc-0202"
+path = "sumcheck/nc_0202.rs"
+
+[[test]]
+name = "nc-0206"
+path = "sumcheck/nc_0206.rs"

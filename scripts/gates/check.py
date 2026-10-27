@@ -102,6 +102,23 @@ def sumcheck_corpus(root):
     print(f'gate sumcheck: {len(cases)} actual corpus decisions and SC records; no profile budget certified')
 
 
+def batch_instances(root):
+    """Real instance-batch bytes, records and controls; no claim-mode completion credit."""
+    commands = [
+        ('matches_reference_batch_bytes_and_accounting', ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'batch', '--locked', '--offline']),
+        ('batching::rejects_batch_binding_tampers', ['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'batching::', '--locked', '--offline']),
+        ('', ['uv', 'run', '--locked', '--script', 'research/batching/check_batching.py', '--instance-vectors']),
+    ]
+    for test, command in commands:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or (test and f'test {test} ... ok' not in result.stdout):
+            raise ValueError(f'batch instance checks failed: {result.stdout} {result.stderr}')
+    expected = (root / 'crates/stele-sumcheck/tests/fixtures/batch-instances.jsonl').read_text()
+    if result.stdout != expected:
+        raise ValueError('batch instance byte/accounting oracle mismatch')
+    print('gate batching: instance-mode bytes/SC/RLC/controls checked; E3-02 remains incomplete')
+
+
 def merkle_vectors(root):
     """Execute actual authentication/KATs and check the independent candidate oracle."""
     for command in [
@@ -118,7 +135,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -196,6 +213,7 @@ def main():
             if args.gate in ('negative-controls', 'soundness-accounting'):
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
+                batch_instances(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:

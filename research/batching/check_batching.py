@@ -232,11 +232,11 @@ def verify(t, b, proof, tables):
     return {'point': point, 'gamma': gamma, 'rlc': count, 'sc': m * degree, 'degree': degree}
 
 
-def checks():
+def checks(all_instances=False):
     vectors, honest = [], 0
     for d in (4, 8):
         for delta, dimensions in itertools.product(range(5), ((0,), (1, 1), (0, 2), (3, 1, 0))):
-            pairs = [sc.instance(d, m, delta, identity=10+j) for j, m in enumerate(dimensions)]
+            pairs = [sc.instance(d, m, (delta+j) % 5 if all_instances and delta < 4 and len(dimensions) == 3 else delta, identity=10+j) for j, m in enumerate(dimensions)]
             for j, (i, _) in enumerate(pairs):
                 i['ids'] = [100 + 2*j, 101 + 2*j]
             b = {'mode': 0, 'id': 1, 'instances': [i for i, _ in pairs]}
@@ -246,7 +246,7 @@ def checks():
                 malformed = copy.deepcopy(tables)
                 malformed[1][0][0] = sc.add(malformed[1][0][0], sc.scalar(1, d))
                 sc.rejects(lambda: public_shape(b, malformed, d), 'PublicShape')
-            exercise(b, tables, d, vectors if delta == 4 and len(dimensions) == 3 else None)
+            exercise(b, tables, d, vectors if all_instances or (delta == 4 and len(dimensions) == 3) else None)
             honest += 1
         for m in (0, 2, 3):
             table = [sc.scalar(2*j+3, d) for j in range(2**m)]
@@ -254,6 +254,9 @@ def checks():
             b = {'mode': 1, 'id': 2, 'tensor': 77, 'm': m, 'claims': [(z, folded(table, z)) for z in points]}
             exercise(b, table, d, vectors if m == 2 else None)
             honest += 1
+        if all_instances:
+            members = [{'id': 10+j, 'm': m, 'ids': [], 'terms': [(sc.scalar(1, d), [])], 'sum': sc.scalar(2**m, d)} for j, m in enumerate((0, 2))]
+            exercise({'mode': 0, 'id': 1, 'instances': members}, [[], []], d, vectors)
         rng = random.Random(920+d)
         # Full-extension public coefficient checks; the implementation task retains its 10^4 gate.
         for _ in range(100):
@@ -287,11 +290,13 @@ def attacks(b, tables, d, proof):
     malformed = copy.deepcopy(tables)
     if b['mode'] == 1:
         malformed.pop()
-    else:
+    elif malformed[0]:
         malformed[0][0].pop()
+    else:
+        malformed[0].append([sc.scalar(0, d)])
     sc.rejects(lambda: verify(Transcript(b'batch study', d), b, proof, malformed), 'PublicShape')
     context, m, _, count = describe(b, d)
-    if b['mode'] == 0 and all(sc.degree(i) == 0 for i in b['instances']):
+    if b['mode'] == 0 and proof['final'][0] and all(sc.degree(i) == 0 for i in b['instances']):
         changed = copy.deepcopy(proof)
         changed['final'][0][0] = sc.add(changed['final'][0][0], sc.scalar(1, d))
         sc.rejects(lambda: verify(Transcript(b'batch study', d), b, changed, tables), 'ClaimMismatch')
@@ -364,6 +369,11 @@ def exercise(b, tables, d, vectors):
 
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['--instance-vectors']:
+        for record in checks(all_instances=True)[0]:
+            if record['batch']['mode'] == 0:
+                print(json.dumps(record, separators=(',', ':')))
+        sys.exit(0)
     vectors, honest = checks()
     path = Path(__file__).with_name('vectors.jsonl')
     if sys.argv[1:] == ['--write-vectors']:

@@ -1,6 +1,8 @@
 //! RFC-0002 §7 — separate control harness; never linked into a prover or verifier.
 #![forbid(unsafe_code)]
 
+#[doc(hidden)]
+pub mod batching;
 pub mod catalog;
 #[doc(hidden)]
 pub mod sumcheck;

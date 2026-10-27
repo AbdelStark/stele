@@ -63,7 +63,9 @@ python3 -m unittest discover -s scripts/tests -v
 `deny.toml` restricts direct crate imports, including renamed, build, and test dependencies.
 The isolated mutation tests verify those restrictions. Controls and accounting now exercise
 the production transcript and dense sumcheck against an independent Python corpus, including
-final public evaluation obligations. Merkle construction/authentication agrees with the
+final public evaluation obligations. Ordered instance batching also has both-field byte,
+SC/RLC and rejection checks; virtual-tensor claim batching remains E3-02 work.
+Merkle construction/authentication agrees with the
 A3 byte vectors, and both leaf kinds have an executed rejection control.
 Unimplemented protocol crates still have fail-closed
 scaffold guards. These checks do not establish a complete inference proof, zero-knowledge,
