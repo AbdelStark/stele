@@ -284,7 +284,7 @@ tasks:
   crate: stele-sumcheck
   status: in_progress
   agent: codex-root
-  branch: task/E3-01-sumcheck-contract
+  branch: task/E3-01-proof-controls
   acceptance:
   - accepts honest
   - rejects NC-0200/0201
