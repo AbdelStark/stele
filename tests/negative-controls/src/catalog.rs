@@ -103,13 +103,24 @@ pub fn parse(text: &str) -> Result<Vec<Entry<'_>>, CatalogError> {
     Ok(entries)
 }
 
+/// The validation boundary exercised by a registered control (RFC-0012 A1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ControlKind {
+    /// A real prover/verifier control for a proof statement.
+    Proof,
+    /// Production registry validation; currently authorized only for NC-0801.
+    Configuration,
+}
+
 /// An executable control, registered explicitly rather than inferred from a filename.
 pub struct RegisteredControl {
+    /// Configuration validation never earns proof-statement binding coverage.
+    pub kind: ControlKind,
     /// Id matched against the catalog.
     pub id: u16,
     /// Error name matched against the catalog before execution.
     pub expected_error: &'static str,
-    /// Runs honest acceptance and exact rejection through `check_control`.
+    /// Runs honest acceptance and exact rejection through the appropriate harness path.
     pub run: fn() -> Result<(), String>,
 }
 
@@ -117,7 +128,12 @@ pub struct RegisteredControl {
 /// A `done` row without a successful registered control is an error, not coverage.
 pub fn report(entries: &[Entry<'_>], controls: &[RegisteredControl]) -> Result<String, String> {
     let mut passed = BTreeSet::new();
+    let mut configurations = BTreeSet::new();
     for control in controls {
+        // RFC-0012 A1 authorizes this one configuration boundary, not arbitrary reclassification.
+        if (control.id == 801) != (control.kind == ControlKind::Configuration) {
+            return Err(format!("NC-{:04}: unauthorized control kind", control.id));
+        }
         let entry = entries
             .iter()
             .find(|entry| entry.id == control.id)
@@ -132,6 +148,9 @@ pub fn report(entries: &[Entry<'_>], controls: &[RegisteredControl]) -> Result<S
             ));
         }
         (control.run)().map_err(|error| format!("NC-{:04}: {error}", control.id))?;
+        if control.kind == ControlKind::Configuration {
+            configurations.insert(control.id);
+        }
     }
     let mut bindings = BTreeSet::new();
     let mut covered = BTreeSet::new();
@@ -145,7 +164,7 @@ pub fn report(entries: &[Entry<'_>], controls: &[RegisteredControl]) -> Result<S
             ));
         }
         bindings.insert(entry.binding);
-        if accepted_control {
+        if accepted_control && !configurations.contains(&entry.id) {
             covered.insert(entry.binding);
         }
         output.push_str(&format!(
@@ -153,7 +172,9 @@ pub fn report(entries: &[Entry<'_>], controls: &[RegisteredControl]) -> Result<S
             entry.id,
             entry.binding,
             entry.rfc,
-            if accepted_control {
+            if configurations.contains(&entry.id) {
+                "passed (configuration)"
+            } else if accepted_control {
                 "passed"
             } else {
                 "MISSING"
@@ -166,6 +187,10 @@ pub fn report(entries: &[Entry<'_>], controls: &[RegisteredControl]) -> Result<S
         bindings.len(),
         passed.len(),
         entries.len()
+    ));
+    output.push_str(&format!(
+        "Configuration controls: {} (not proof-statement coverage).\n",
+        configurations.len()
     ));
     Ok(output)
 }
