@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/field-mul",
+  "commit": "043706f089b030e4493ee53ffc2eae38a200cc0c",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "chained multiplication",
+      "iterations": 1000000,
+      "samples": 5,
+      "warmup_per_field": 10000,
+      "fields": [
+        "M31",
+        "QM31"
+      ],
+      "order": "alternating",
+      "build": "release",
+      "m31_seed_factor": [
+        1729,
+        7919
+      ],
+      "qm31_seed": [
+        3,
+        5,
+        7,
+        11
+      ],
+      "qm31_factor": [
+        13,
+        17,
+        19,
+        23
+      ]
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "sample_times_ns": [
+      [
+        10864625,
+        28891958
+      ],
+      [
+        2669042,
+        17035541
+      ],
+      [
+        2806208,
+        17218333
+      ],
+      [
+        2691166,
+        16998167
+      ],
+      [
+        2792500,
+        17332333
+      ]
+    ],
+    "ratio_numerator": 97476332,
+    "ratio_denominator": 21823541
+  },
+  "plan_digest": "9c74615154eb59e59703d7a7fd8f64b13e35484ec51e89db4ff65c9585fff23c",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 119300250,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "m31": 21823541,
+    "qm31": 97476332
+  },
+  "kernel_counters": {
+    "m31_multiplications": 5000000,
+    "qm31_multiplications": 5000000
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Scalar CPU dependency-chain multiplication with black_box per result; ratio is total QM31 time / total M31 time. Warmup excluded; total includes all timed samples. SHA-256 of compact sorted JSON plan. No proof, inference, GPU, constant-time or cost-model fit claim; no applicable proof binding is disabled."
+}

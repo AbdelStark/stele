@@ -56,3 +56,5 @@ all sample times and the exact QM31:M31 ratio as an integer numerator/denominato
 Existing ledgers are never overwritten. This is a scalar latency comparison with
 harness overhead; it is not SIMD/GPU throughput, inference performance or a fit of
 the cost model. No core proof binding applies to this microbenchmark.
+
+Recorded sample: [E1-02 scalar field multiplication](ledger/e1-02-scalar-field-mul.json).
