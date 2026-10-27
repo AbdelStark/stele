@@ -281,7 +281,9 @@ tasks:
   - RFC-0006 §1-2
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E3-01-sumcheck-contract
   acceptance:
   - accepts honest
   - rejects NC-0200/0201
