@@ -184,3 +184,68 @@ Affected tasks: E2-00 (new), E2-01, E3-01, E8-04, E8-05 and E12-09.
 Completed same-author skill reviews (not independent audit): soundness-auditor,
 rfc-author, pcs-engineer (stele-hash owner), sumcheck-prover-engineer (schedule
 consumer), recorded in the linked review.
+
+### A2 — Fixed wrapper Poseidon2-M31 permutation
+
+Status: Accepted. Questions Q13/Q14. Review: [skill passes](../../agents/reviews/poseidon2-a2.md). Evidence: [parameter study](../../research/poseidon2/REPORT.md).
+
+Motivation: §3 does not identify the permutation required by E2-03. Width, rounds,
+linear layers and constants must be fixed before interoperable code can exist.
+This amendment supplies that primitive contract. It does not define a hash mode.
+
+Addition to §3:
+
+> E2-03 implements the fixed permutation `poseidon2_m31_16` over sixteen canonical
+> M31 elements. It is available only with the `wrapper` feature, has no custom
+> constants or round-count API, and is not used by native transcripts or Merkle
+> commitments. The reference is Plonky3 `p3-mersenne-31=0.8.0`, published from
+> commit `a21e3ed42905040ad49c519e402f018381c12d0c`, function
+> `default_mersenne31_poseidon2_16`. The exact 142 constants are the `initial`,
+> `internal`, and `final` arrays in the first record of the committed
+> [reference vectors](../../research/poseidon2/reference.jsonl). These integers,
+> not a dependency's changing defaults or an unspecified random seed, are normative.
+>
+> All operations are in F_p, p = 2^31-1; state positions are numbered 0..15.
+> Apply the external linear layer once before the rounds. Then apply four full
+> rounds, fourteen partial rounds, and four full rounds. A full round first adds
+> its sixteen constants, raises every element to the fifth power, then applies
+> the external linear layer. A partial round adds its constant only to position
+> 0, raises only that position to the fifth power, then applies the internal layer.
+>
+> External layer: split the state into four consecutive length-four column vectors.
+> Multiply each by M4 = [[2,3,1,1], [1,2,3,1], [1,1,2,3], [3,1,1,2]]. For each
+> position j within a block, add the sum of position j across all four transformed
+> blocks to that position in every block. Sums use the transformed values before
+> any of these final additions.
+>
+> Internal layer: for the state after its S-box, compute s = sum(x_i); output
+> y_i = s + d_i*x_i, where d = [-2,1,2,4,8,16,32,64,128,256,1024,4096,8192,
+> 16384,32768,65536]. Both the sum and each product use the original layer input.
+>
+> The API operates on field arrays, without byte reduction, padding, squeezing,
+> challenge sampling, or a claimed digest size. Canonical fixture bytes use
+> RFC-0003's u32 little-endian element encoding in state order. E14-01 must first
+> resolve Q14 with an Accepted wrapper mode and separate accounting before using
+> this permutation for any hash, commitment or transcript. Native verification
+> continues to use BLAKE3 under A1. Completing E2-03 does not complete E14-01.
+
+Soundness: no new random challenge, claim edge or ledger term is introduced by
+an unused permutation primitive. The fifth power and both linear layers are
+invertible over M31, checked by exact arithmetic; invertibility is not collision
+resistance. The [Poseidon2 paper](https://eprint.iacr.org/2023/323) and the pinned
+upstream parameters are cryptographic design evidence, not an unconditional
+security theorem. No standard/treaty bound is certified here. Q12 and Q14 remain
+open; in particular, a string of eight M31 elements has fewer than 248 bits of
+range, so calling its encoding 256 bits does not yield a 128-bit birthday bound.
+
+Costs: eight full rounds each use sixteen fifth powers and an external layer;
+fourteen partial rounds each use one fifth power and an internal layer; one
+initial external layer. Thus 142 fifth powers, nine external and fourteen internal
+layers per permutation. This contributes to wrapper T_misc when consumed; no
+native term, weight-pass count, measured constant or benchmark result changes.
+
+Validation: E2-03 retains KATs versus an executed reference and adds exact fixture
+parity with the integer oracle, canonical boundary inputs, and disabled-by-default
+wrapper API coverage. Research mutation checks receive no protocol control id.
+NC-1203 and all E14-01 obligations remain incomplete. No catalog status changes.
+Affected tasks: E2-03, E14-01; no dependency or original acceptance is removed.

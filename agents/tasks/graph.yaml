@@ -261,12 +261,16 @@ tasks:
   depends:
   - E1-02
   rfc:
-  - RFC-0012 §3
+  - RFC-0012 §3, A2
   skill: pcs-engineer
   crate: stele-hash
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E2-03-poseidon2-contract
   acceptance:
   - KATs vs a reference implementation
+  - A2 exact permutation parameters and canonical boundary inputs
+  - wrapper feature required; native transcript unchanged
 - id: E3-01
   epic: E3
   title: Generic sumcheck prover/verifier degree<=4 with Summand trait
@@ -1235,6 +1239,7 @@ tasks:
   acceptance:
   - W8 certificate <= 500 KB verified <= 200 ms
   - NC-1203
+  - Q14 resolved by Accepted wrapper mode and separate soundness accounting before Poseidon2 use
 - id: E14-02
   epic: E14
   title: Checkpoint-binding one-time proof (hash of committed plaintext == digest_cqis)
