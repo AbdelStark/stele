@@ -144,3 +144,9 @@ tables, proof and allocator metadata. Separate-process peak RSS includes those
 objects, setup, warmup, verification, code and allocator retention; it is not isolated
 scratch or measured DRAM traffic. Profile names select the field only here. This is
 CPU microbenchmark evidence, not inference, GPU, ZK or profile-security certification.
+
+Recorded baselines: [QM31](ledger/e3-02-batching-qm31.json) and
+[OM31](ledger/e3-02-batching-om31.json), measured from clean commit
+`095cfa445f864c7ecd3ae7ccef72fbf5c6be463f` on the recorded Apple M4 Max. Each field
+retains three samples for each of nine cases. These establish native c_sc and
+process-memory baselines; they do not fit the cost model or establish a speedup.

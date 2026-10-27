@@ -311,9 +311,9 @@ tasks:
   - RFC-0012 A4
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E3-02-batching-bench
+  branch: task/E3-02-batching-evidence
   acceptance:
   - NC-0202
   - ledger RLC and shared SC records checked against actual descriptors/challenges

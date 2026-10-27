@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/batching",
+  "commit": "095cfa445f864c7ecd3ae7ccef72fbf5c6be463f",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "batch prove",
+      "field": "OM31",
+      "small": false,
+      "variables": 12,
+      "cases": [
+        "instances-equal-d0",
+        "instances-unequal-d0",
+        "instances-equal-d2",
+        "instances-unequal-d2",
+        "instances-equal-d4",
+        "instances-unequal-d4",
+        "claims-disjoint",
+        "claims-overlap",
+        "claims-arbitrary"
+      ],
+      "instance_dimensions": {
+        "equal": [
+          12,
+          12,
+          12
+        ],
+        "unequal": [
+          12,
+          10,
+          8
+        ]
+      },
+      "inputs_per_instance": 2,
+      "instance_polynomial": "f0^degree + 2*f1^(max(degree-1,0))",
+      "instance_values": [
+        "((j*73+19+member)%31)-15",
+        "((j*29+7+member)%17)-8"
+      ],
+      "claim_count": 4,
+      "claim_table": "((j*73+19)%31)-15",
+      "claim_points": "first two coordinates are block bits for disjoint/overlap; others are 2+coordinate+claim",
+      "claim_blocks": {
+        "disjoint": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "overlap": [
+          0,
+          1,
+          0,
+          1
+        ]
+      },
+      "samples": 3,
+      "iterations": 3,
+      "warmup_calls": 1,
+      "build": "release",
+      "order": "reverse cases on odd samples",
+      "timed": "clone/allocation, transcript initialization, coefficient construction, rounds and BatchFinal",
+      "verification": "every warmup/measured proof fully checked outside timing"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "sample_times_ns": {
+      "instances-equal-d0": [
+        5180792,
+        5176208,
+        5219542
+      ],
+      "instances-unequal-d0": [
+        2564208,
+        2532292,
+        2535416
+      ],
+      "instances-equal-d2": [
+        22897916,
+        22127583,
+        22183083
+      ],
+      "instances-unequal-d2": [
+        10785916,
+        10751168,
+        10779833
+      ],
+      "instances-equal-d4": [
+        64669332,
+        64719666,
+        64324208
+      ],
+      "instances-unequal-d4": [
+        31607750,
+        31670500,
+        31611500
+      ],
+      "claims-disjoint": [
+        7088917,
+        7006917,
+        6992332
+      ],
+      "claims-overlap": [
+        7090250,
+        7085457,
+        7003583
+      ],
+      "claims-arbitrary": [
+        9381374,
+        9278375,
+        9420541
+      ]
+    },
+    "peak_process_rss_bytes": {
+      "instances-equal-d0": [
+        3686400,
+        3522560,
+        3522560
+      ],
+      "instances-unequal-d0": [
+        2686976,
+        2686976,
+        2703360
+      ],
+      "instances-equal-d2": [
+        5193728,
+        3538944,
+        3571712
+      ],
+      "instances-unequal-d2": [
+        2703360,
+        2736128,
+        2703360
+      ],
+      "instances-equal-d4": [
+        3571712,
+        3571712,
+        3571712
+      ],
+      "instances-unequal-d4": [
+        2736128,
+        2736128,
+        2736128
+      ],
+      "claims-disjoint": [
+        2392064,
+        2342912,
+        2375680
+      ],
+      "claims-overlap": [
+        2359296,
+        2359296,
+        2375680
+      ],
+      "claims-arbitrary": [
+        2441216,
+        2490368,
+        2473984
+      ]
+    },
+    "working_table_payload_bytes": {
+      "instances-equal-d0": 786432,
+      "instances-unequal-d0": 344064,
+      "instances-equal-d2": 786432,
+      "instances-unequal-d2": 344064,
+      "instances-equal-d4": 786432,
+      "instances-unequal-d4": 344064,
+      "claims-disjoint": 262144,
+      "claims-overlap": 262144,
+      "claims-arbitrary": 262144
+    },
+    "c_sc_ns_per_point": {
+      "instances-equal-d0": {
+        "numerator": 15576542,
+        "denominator": 110592
+      },
+      "instances-unequal-d0": {
+        "numerator": 7631916,
+        "denominator": 48384
+      },
+      "instances-equal-d2": {
+        "numerator": 67208582,
+        "denominator": 110592
+      },
+      "instances-unequal-d2": {
+        "numerator": 32316917,
+        "denominator": 48384
+      },
+      "instances-equal-d4": {
+        "numerator": 193713206,
+        "denominator": 110592
+      },
+      "instances-unequal-d4": {
+        "numerator": 94889750,
+        "denominator": 48384
+      },
+      "claims-disjoint": {
+        "numerator": 21088166,
+        "denominator": 36864
+      },
+      "claims-overlap": {
+        "numerator": 21179290,
+        "denominator": 36864
+      },
+      "claims-arbitrary": {
+        "numerator": 28080290,
+        "denominator": 36864
+      }
+    },
+    "subproof_values_sha256": {
+      "instances-equal-d0": "5167bf6850a0cdace1d8f3577170e72a8f69d2489c368a3b6fd7a1e6c25a4700",
+      "instances-unequal-d0": "2a875f1fe0e0bffad265e61a53454e66ccc48c32500e61cb7356fbe878879fac",
+      "instances-equal-d2": "83d17cbbc07e6fe715ec4eeba863f68aa7d93f77c03754cc3a3d391ae307d10b",
+      "instances-unequal-d2": "d32cd74b39cfe80db2eadf988412d7cb157d030c266ab88f06a096d1b4ee8959",
+      "instances-equal-d4": "7b2ac132c8c54d6f1108db18dbf0ed3716c3b5ee833bc7faa307f465920abdc5",
+      "instances-unequal-d4": "4b5ed9130b760d6aecb5d94e6e78a20c74679174c2b3ed2e9ee1e7fef24e8e80",
+      "claims-disjoint": "3bee9cda076349a3bb9441e53d0d939605a34de181c84d78c6be36ff5f7228e1",
+      "claims-overlap": "8a69b1c26e3b00fd85830c34b6f9d22b7e4da2be77e5d55fbc05be0a47f3e986",
+      "claims-arbitrary": "5887a2a4449a657cb1dc883344028416f8e53ec2aabac7a4b0f57e5d55e7eeb9"
+    }
+  },
+  "plan_digest": "319e623f7fa2e7bf730e215d00077a70443e4f798a045ad1d87c5f6fad477940",
+  "profile": "treaty",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 481684659,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "instances-equal-d0": 15576542,
+    "instances-unequal-d0": 7631916,
+    "instances-equal-d2": 67208582,
+    "instances-unequal-d2": 32316917,
+    "instances-equal-d4": 193713206,
+    "instances-unequal-d4": 94889750,
+    "claims-disjoint": 21088166,
+    "claims-overlap": 21179290,
+    "claims-arbitrary": 28080290
+  },
+  "kernel_counters": {
+    "instances-equal-d0/summand_points": 110592,
+    "instances-unequal-d0/summand_points": 48384,
+    "instances-equal-d2/summand_points": 110592,
+    "instances-unequal-d2/summand_points": 48384,
+    "instances-equal-d4/summand_points": 110592,
+    "instances-unequal-d4/summand_points": 48384,
+    "claims-disjoint/summand_points": 36864,
+    "claims-overlap/summand_points": 36864,
+    "claims-arbitrary/summand_points": 36864
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Native CPU batch baseline with all public obligations verified outside timing. c_sc denominator is the sum of original member hypercube sizes in mode 0, and tensor size in mode 1; mode 1 includes coefficient construction. Shapes/statements differ: ratios across cases are not speedups. Working table payload counts prover-owned input tables and the mode-1 coefficient table before folding, excluding caller originals, descriptors, temporary eq tables, proof and allocator metadata. Process peak RSS includes setup, warmup, prover, verifier, code and allocator; not isolated scratch or DRAM traffic. Exact time/point ratios are measurements, not a cost-model fit. Profile selects only the field for this microbenchmark; no inference, GPU, ZK or profile-security certification. No samples discarded."
+}
