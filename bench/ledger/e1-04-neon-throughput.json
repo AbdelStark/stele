@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/simd-ops",
+  "commit": "42e42c1c5dfad7956991ff44eaf66f8aefbd99e3",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "cache-resident packed field ops",
+      "iterations": 100000,
+      "samples": 3,
+      "lanes": 16,
+      "warmup_per_case": 1000,
+      "fields": [
+        "m31",
+        "qm31"
+      ],
+      "operations": [
+        "Add",
+        "Sub",
+        "Mul"
+      ],
+      "order": "rotate backend each sample",
+      "build": "release",
+      "input_a": "(column*16+lane+1)*8191",
+      "input_b": "(column*16+lane+17)*65521"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "executed_backends": [
+      "Neon",
+      "Scalar"
+    ],
+    "required_backends": "neon",
+    "sample_times_ns": {
+      "Scalar/m31/Add": [
+        1683125,
+        1679500,
+        1727542
+      ],
+      "Scalar/qm31/Add": [
+        20545750,
+        20739834,
+        20741583
+      ],
+      "Scalar/m31/Sub": [
+        1735000,
+        1735625,
+        1759917
+      ],
+      "Scalar/qm31/Sub": [
+        20726125,
+        20950250,
+        21275333
+      ],
+      "Scalar/m31/Mul": [
+        2172792,
+        2177958,
+        2286708
+      ],
+      "Scalar/qm31/Mul": [
+        33089833,
+        33405875,
+        33878750
+      ],
+      "Neon/m31/Add": [
+        784917,
+        786292,
+        786750
+      ],
+      "Neon/qm31/Add": [
+        4714417,
+        4698583,
+        4731208
+      ],
+      "Neon/m31/Sub": [
+        785750,
+        796583,
+        775750
+      ],
+      "Neon/qm31/Sub": [
+        4643042,
+        4734292,
+        4780792
+      ],
+      "Neon/m31/Mul": [
+        1003042,
+        994125,
+        1043875
+      ],
+      "Neon/qm31/Mul": [
+        8373041,
+        8758042,
+        8716833
+      ]
+    },
+    "rates_floor": {
+      "Scalar/m31/Add": {
+        "elements_per_second": 942994601,
+        "logical_bytes_per_second": 11315935213
+      },
+      "Scalar/qm31/Add": {
+        "elements_per_second": 77385446,
+        "logical_bytes_per_second": 3714501421
+      },
+      "Scalar/m31/Sub": {
+        "elements_per_second": 917686924,
+        "logical_bytes_per_second": 11012243090
+      },
+      "Scalar/qm31/Sub": {
+        "elements_per_second": 76248924,
+        "logical_bytes_per_second": 3659948352
+      },
+      "Scalar/m31/Mul": {
+        "elements_per_second": 723168417,
+        "logical_bytes_per_second": 8678021013
+      },
+      "Scalar/qm31/Mul": {
+        "elements_per_second": 47820930,
+        "logical_bytes_per_second": 2295404673
+      },
+      "Neon/m31/Add": {
+        "elements_per_second": 2035658804,
+        "logical_bytes_per_second": 24427905659
+      },
+      "Neon/qm31/Add": {
+        "elements_per_second": 339361525,
+        "logical_bytes_per_second": 16289353210
+      },
+      "Neon/m31/Sub": {
+        "elements_per_second": 2035551759,
+        "logical_bytes_per_second": 24426621115
+      },
+      "Neon/qm31/Sub": {
+        "elements_per_second": 339027919,
+        "logical_bytes_per_second": 16273340129
+      },
+      "Neon/m31/Mul": {
+        "elements_per_second": 1578406348,
+        "logical_bytes_per_second": 18940876186
+      },
+      "Neon/qm31/Mul": {
+        "elements_per_second": 185701624,
+        "logical_bytes_per_second": 8913677992
+      }
+    }
+  },
+  "plan_digest": "a3c47c874e72cc0e7a0f323b423bd82f6673eaf885dfcdd41de69cf51b033f72",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 304222417,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "Scalar/m31/Add": 5090167,
+    "Scalar/qm31/Add": 62027167,
+    "Scalar/m31/Sub": 5230542,
+    "Scalar/qm31/Sub": 62951708,
+    "Scalar/m31/Mul": 6637458,
+    "Scalar/qm31/Mul": 100374458,
+    "Neon/m31/Add": 2357959,
+    "Neon/qm31/Add": 14144208,
+    "Neon/m31/Sub": 2358083,
+    "Neon/qm31/Sub": 14158126,
+    "Neon/m31/Mul": 3041042,
+    "Neon/qm31/Mul": 25847916
+  },
+  "kernel_counters": {
+    "Scalar/m31/Add/elements": 4800000,
+    "Scalar/qm31/Add/elements": 4800000,
+    "Scalar/m31/Sub/elements": 4800000,
+    "Scalar/qm31/Sub/elements": 4800000,
+    "Scalar/m31/Mul/elements": 4800000,
+    "Scalar/qm31/Mul/elements": 4800000,
+    "Neon/m31/Add/elements": 4800000,
+    "Neon/qm31/Add/elements": 4800000,
+    "Neon/m31/Sub/elements": 4800000,
+    "Neon/qm31/Sub/elements": 4800000,
+    "Neon/m31/Mul/elements": 4800000,
+    "Neon/qm31/Mul/elements": 4800000,
+    "Scalar/m31/Add/logical_bytes": 57600000,
+    "Scalar/qm31/Add/logical_bytes": 230400000,
+    "Scalar/m31/Sub/logical_bytes": 57600000,
+    "Scalar/qm31/Sub/logical_bytes": 230400000,
+    "Scalar/m31/Mul/logical_bytes": 57600000,
+    "Scalar/qm31/Mul/logical_bytes": 230400000,
+    "Neon/m31/Add/logical_bytes": 57600000,
+    "Neon/qm31/Add/logical_bytes": 230400000,
+    "Neon/m31/Sub/logical_bytes": 57600000,
+    "Neon/qm31/Sub/logical_bytes": 230400000,
+    "Neon/m31/Mul/logical_bytes": 57600000,
+    "Neon/qm31/Mul/logical_bytes": 230400000
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Native parity precedes measurement. Timed calls include dispatch and canonicalization; checked construction, warmup and export excluded. Black-box inputs prevent hoisting. Logical bytes count two reads and one write, not measured DRAM traffic. Rates use aggregate samples with integer floor. SHA-256 compact sorted JSON plan. No proof/GPU/inference/constant-time/cost-model fit claim; no applicable proof binding is disabled."
+}
