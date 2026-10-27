@@ -93,7 +93,7 @@ tasks:
   - RFC-0002 §7
   skill: negative-control-author
   crate: tests
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E0-03-negative-controls
   acceptance:
