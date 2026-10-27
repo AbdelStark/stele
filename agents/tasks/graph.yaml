@@ -461,7 +461,7 @@ tasks:
   - RFC-0004 §2,§5.1-5.2
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: blocked(RFC-0004-A1)
   agent: codex-root
   branch: task/E5-01-rounding-spec
   acceptance:
