@@ -110,6 +110,10 @@ def generate():
             ('ordinal', lambda r: r['instance']['terms'][0].update(factors=[2]), 'InvalidInstance'),
             ('ids', lambda r: r['instance'].update(ids=[11, 11]), 'InvalidInstance'),
             ('public-shape', lambda r: r['tables'].pop(), 'PublicShape'),
+            ('public-length', lambda r: r['tables'][0].pop(), 'PublicShape'),
+            ('round-count', lambda r: r['proof']['rounds'].pop(), 'ProofShape'),
+            ('round-length', lambda r: r['proof']['rounds'][0].pop(), 'ProofShape'),
+            ('field-width', lambda r: r['proof']['final'].__setitem__(0, ''), 'NoncanonicalField'),
             ('field', lambda r: r['proof']['final'].__setitem__(0, struct.pack('<I', sc.P).hex()+'00'*(4*d-4)), 'NoncanonicalField'),
         ]:
             bad = copy.deepcopy(original); mutation(bad)
