@@ -2,6 +2,8 @@
 #![forbid(unsafe_code)]
 
 pub mod catalog;
+#[doc(hidden)]
+pub mod sumcheck;
 
 extern crate self as stele_negative_controls;
 #[path = "../transcript/nc_0801.rs"]

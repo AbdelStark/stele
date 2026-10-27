@@ -25,6 +25,8 @@ name = "configuration"
 path = "harness/configuration.rs"
 
 [dependencies]
+stele-sumcheck = { path = "../../crates/stele-sumcheck" }
+stele-field = { path = "../../crates/stele-field" }
 stele-hash = { path = "../../crates/stele-hash" }
 
 [[test]]
@@ -34,3 +36,23 @@ path = "transcript/nc_0801.rs"
 [[test]]
 name = "proof-control"
 path = "harness/proof.rs"
+
+[[test]]
+name = "nc-0200"
+path = "sumcheck/nc_0200.rs"
+
+[[test]]
+name = "nc-0201"
+path = "sumcheck/nc_0201.rs"
+
+[[test]]
+name = "nc-0205"
+path = "sumcheck/nc_0205.rs"
+
+[[test]]
+name = "nc-0800"
+path = "sumcheck/nc_0800.rs"
+
+[[test]]
+name = "nc-0802"
+path = "sumcheck/nc_0802.rs"

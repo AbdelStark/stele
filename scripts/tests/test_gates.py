@@ -32,8 +32,8 @@ class GateTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_rejects_unvalidated_implementation(self):
-        for gate, crate in [('digest', 'prover'), ('negative-controls', 'sumcheck'),
-                            ('soundness-accounting', 'sumcheck'), ('parity', 'gpu')]:
+        for gate, crate in [('digest', 'prover'), ('negative-controls', 'gkr'),
+                            ('soundness-accounting', 'gkr'), ('parity', 'gpu')]:
             with self.subTest(gate=gate):
                 source = self.root / f'crates/stele-{crate}/src/lib.rs'
                 original = source.read_text()
@@ -58,6 +58,21 @@ class GateTests(unittest.TestCase):
         result = self.run_gate('negative-controls')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('registry producer failed', result.stderr)
+
+    def test_rejects_sumcheck_accounting_drift(self):
+        source = self.root / 'crates/stele-sumcheck/src/lib.rs'
+        original = source.read_text()
+        for before, after in [
+            ('numerator: u64::from(i.num_vars) * degree as u64',
+             'numerator: u64::from(i.num_vars) * degree as u64 + 1'),
+            ('AbsorbLabel::Final', 'AbsorbLabel::Round'),
+        ]:
+            changed = original.replace(before, after, 1)
+            self.assertNotEqual(original, changed)
+            source.write_text(changed)
+            result = self.run_gate('soundness-accounting')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('sumcheck corpus decisions/accounting mismatch', result.stderr)
 
     def test_rejects_poseidon2_constant_drift(self):
         source = self.root / 'crates/stele-hash/src/poseidon2/constants.rs'

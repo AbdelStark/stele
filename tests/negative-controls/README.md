@@ -44,3 +44,7 @@ RFC-0006 A1 proof-artifact controls use `check_proof_control`: produce and accep
 an honest proof, clone it, mutate one declared value through `ProverHook`, and
 require the same production verifier's exact rejection. The control asserts the
 single-value difference. The helper's self-checks earn no catalog coverage.
+
+E3-01's standalone NC-0200/0201/0205/0800/0802 tests now run both challenge fields
+through the real sumcheck engine and public consumer. They remain unregistered in
+the coverage inventory until the E3-01 benchmark/registration follow-up completes.
