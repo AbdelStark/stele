@@ -253,7 +253,9 @@ tasks:
   - RFC-0012 §3
   skill: pcs-engineer
   crate: stele-hash
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E2-02-merkle-contract
   acceptance:
   - path verification controls NC-0602
   - root-of-roots support
