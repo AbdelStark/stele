@@ -155,7 +155,9 @@ tasks:
   - RFC-0003 §2
   skill: sumcheck-prover-engineer
   crate: stele-field
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E1-02-extension-spec
   acceptance:
   - Frobenius and inverse tests
   - mult cost benchmark recorded (QM31:M31 ratio)
