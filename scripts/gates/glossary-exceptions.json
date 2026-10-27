@@ -1,0 +1,194 @@
+[
+  {
+    "path": "agents/context/decision-log.md",
+    "text": "| ADR-001 | Sumcheck/GKR core; no trace, no zkVM, no fork of Stwo | Accepted | 0001 D1 |",
+    "count": 1,
+    "reason": "Append-only decision record; original text preserved."
+  },
+  {
+    "path": "agents/context/glossary.md",
+    "text": "\"prover-side randomness\".",
+    "count": 1,
+    "reason": "Policy definition names the forbidden wording."
+  },
+  {
+    "path": "agents/context/glossary.md",
+    "text": "- **reduction** — a sub-protocol that consumes claims and emits claims (never \"gadget\", never \"component\").",
+    "count": 1,
+    "reason": "Policy definition names the forbidden wording."
+  },
+  {
+    "path": "agents/context/glossary.md",
+    "text": "Forbidden synonyms: \"circuit\" (say reduction/claim graph), \"trace\" (nothing is traced), \"gadget\", \"constraint system\",",
+    "count": 1,
+    "reason": "Policy definition names the forbidden wording."
+  },
+  {
+    "path": "agents/context/reading-list.md",
+    "text": "| Thaler, \"Time-optimal interactive proofs for circuit evaluation\" (2013) | matmul sumcheck §4; the `O(n·d + d·m)` prover |",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "agents/guardrails/forbidden.md",
+    "text": "3. Challenges from anything but `Transcript`; prover-side randomness in the transcript path (ZK masks are drawn from an RNG *and then committed* — that is allowed).",
+    "count": 1,
+    "reason": "Policy definition names the forbidden wording."
+  },
+  {
+    "path": "agents/workflows/03-review.md",
+    "text": "Mandatory for `stele-{sumcheck,gkr,lookup,pcs,hash,verifier,reductions}`: trace every challenge to its absorb; trace every",
+    "count": 1,
+    "reason": "Existing instruction uses the word as an ordinary verb."
+  },
+  {
+    "path": "docs/prd.md",
+    "text": "- A general‑purpose zkVM or circuit DSL. Stele proves tensor programs under CQIS; arbitrary code is out of scope.",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/inventions.md",
+    "text": "- **ST‑3**: SHA‑256 in‑circuit cost for 10¹¹ bytes is a one‑time 10³–10⁴ GPU‑s job (recursion wrapper); Blake3 digest variant 10× cheaper. Obligation: define the canonical serialisation of the CQIS artefact so the digest is unambiguous.",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/sota-analysis.md",
+    "text": "- A zkVM or gate‑level circuit layer (stwo‑circuits, Cairo): generality we do not need and a 10³× cost we cannot afford.",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/sota-analysis.md",
+    "text": "- Interaction (lookup) columns 42%, base trace 35%, segment setup 12%, proof system 4.6% (GPU).",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/sota-analysis.md",
+    "text": "- Trace segments as the unit of parallelism: we parallelise over *layers and heads inside one proof* (stacked GKR), which keeps one weight pass per proof instead of one per segment.",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/sota-analysis.md",
+    "text": "- bf16 lookups for nonlinearities (SASH): we use int16 fixed point; same table sizes, no rounding‑chain gadgets.",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/sota-analysis.md",
+    "text": "Vanilla STARK → Circle STARK moved the cost of a **field operation** down ~10×. Commit‑the‑trace systems still",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/research/sota-analysis.md",
+    "text": "| **SASH zk‑inference‑prover** (open, Sep 2026) | commit‑the‑trace Circle STARK (Stwo fork + NitrooZK CUDA), LogUp, Freivalds for weight matmuls, 5 sumcheck‑style reductions | int8 matmuls (per‑token dyn. scale), bf16 elsewhere via lookups | Blake2s Merkle + circle FRI, M31 | 1×H100 | Llama‑3.1‑8B, 4096+512: **1.0–1.5 h** (1.25 pos/s loop; 16 pos/s proof‑system ceiling; 27 pos/s commit ceiling) | 18.5 GiB (4.3 MB/pos) | 79 M committed cells/position; proof system = 5% of time; not ZK; 100‑bit conjectural; 405B projected 16–24 h |",
+    "count": 1,
+    "reason": "Existing comparison, citation, or imported description; exact wording preserved."
+  },
+  {
+    "path": "docs/rfcs/RFC-0001-first-principles-and-architecture.md",
+    "text": "### 1.2 Where the work is in a commit-the-trace STARK",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0001-first-principles-and-architecture.md",
+    "text": "Every computed value (and every MAC, unless a Freivalds/sumcheck gadget removes it) becomes a trace cell. A cell",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0001-first-principles-and-architecture.md",
+    "text": "Field cost (Stone → Stwo): ≈10×. Cell-count × cell-cost (commit-the-trace → Stele): ≈10× fewer elements per position",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0001-first-principles-and-architecture.md",
+    "text": "| D1 | Sumcheck/GKR core, no trace | AIR/Circle STARK core (Stwo fork), zkVM | per-byte cost, no intermediate commitments |",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0001-first-principles-and-architecture.md",
+    "text": "| D5 | int8 matmul inputs, int16 elsewhere, exact int32 accumulate | bf16 lookups (SASH), 12-bit ints (DeepProve) | field-native, same table sizes as bf16, simpler gadgets |",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0004-cqis.md",
+    "text": "- `sampled(seed_commitment, temperature, top_p)`: CQIS defines `softmax_q` over logits (same gadgets), the CDF in fixed point, `u_t = H(seed ∥ t)` reduced to the CDF scale, and the chosen token as the CDF bucket containing `u_t`; top-p as a prefix-sum threshold with an attained-boundary gadget.",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0004-cqis.md",
+    "text": "`acc·m = y·2^e + r`, `0 ≤ r < 2^e`, `y` in the target range (int8/int16) ⇒ one zerocheck + `range_e(r)` (decomposed) + the target range implied by the consuming table or an explicit `range` lookup. Rounding half-to-even: `r ≤ 2^{e−1}` with tie rule proven by one extra bit lookup; CQIS v0.1 uses **round-half-away** (`acc·m + 2^{e−1}` then floor) to avoid the tie gadget. Default.",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0004-cqis.md",
+    "text": "attained if `127·s_x[i] − maxabs_i < 127`; proven by the same gadget on `|x|` with a sign-bit witness.",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0004-cqis.md",
+    "text": "claim (row sum of the virtual `P̂`), `ρ` range-checked against `Z_i` by a comparison gadget (`Z_i − ρ − 1 ∈ range_{E+log n}`).",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0011-model-passport.md",
+    "text": "   to `digest_cqis` is proven in the wrapper (SHA-256 or Blake3 in-circuit, one-time, RFC-0016 §6).",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0011-model-passport.md",
+    "text": "proximity certificate ≈ one weight pass; checkpoint binding ≈ hashing 400 GB in-circuit ≈ 10³–10⁴ GPU-s (Blake3) or",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0016-verifier-proof-format-recursion.md",
+    "text": "Checkpoint-binding proof (RFC-0011 §1.5): hash `digest_cqis` over the committed plaintext in-circuit; batched over the",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0017-architecture-coverage.md",
+    "text": "| 4 | MoE (top-k router, shared experts) | router logits = matmul; top-k proven by comparisons (range lookups) against the k-th score (attained gadget); expert matmuls as `MatmulW` with the routed subset of positions: `X_e = Sel_e·X` where `Sel_e` is the public-after-commitment 0/1 routing matrix (committed aux, verified against the top-k proof); stacked over `(ℓ, e)`; unused experts contribute no claims | one pass over touched experts only |",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0017-architecture-coverage.md",
+    "text": "| 8 | Hidden architecture | shapes become private: wrapper-mode only, with `plan.json` as a committed witness and verifier-side structure checks in-circuit (research, RFC-0019 R-HIDE) | |",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0019-research-agenda.md",
+    "text": "Q: Prove with `plan.json` private (wrapper-only). Deliverable: cost of structure checks in-circuit.",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "docs/rfcs/RFC-0020-monorepo-and-crates.md",
+    "text": "  stele-wrapper     recursion wrapper adapters (Stwo verifier circuit), table openings            [verifier]",
+    "count": 1,
+    "reason": "Existing RFC text; changes require the RFC amendment process."
+  },
+  {
+    "path": "tests/negative-controls/catalog.md",
+    "text": "| NC-0100–0109 | CQIS gadgets | 0004 §10 | see RFC | typed per gadget | todo |",
+    "count": 1,
+    "reason": "Existing catalog category; rename when expanding controls in E8-04."
+  }
+]
