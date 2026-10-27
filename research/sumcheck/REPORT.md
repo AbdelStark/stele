@@ -57,10 +57,11 @@ PCS composition or a profile budget. Q12 and the remaining MVP tasks stay open.
 
 ## Shared verifier corpus (E3-01)
 
-`corpus.jsonl` contains 192 named chains with explicit expected acceptance or exact
+`corpus.jsonl` contains 196 named chains with explicit expected acceptance or exact
 rejection. It includes degrees 0..4 in both fields, empty polynomials, malformed
 shapes/fields/instances, false sums, unresolved public claims, early/stale
-challenges and an omitted Final absorb. Default reproduction checks the entire
+challenges, mixed-input products, a zero-coefficient leading term and an omitted
+Final absorb. Default reproduction checks the entire
 committed corpus against its generator and the Python verifier. To emit actual
 Python decisions and successful receipts for comparison with Rust:
 

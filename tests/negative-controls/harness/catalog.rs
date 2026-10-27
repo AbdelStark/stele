@@ -15,9 +15,9 @@ fn accepts_repository_catalog_without_crediting_stub() {
         "done requires executed registration"
     );
     let coverage =
-        report(&catalog, stele_negative_controls::CONTROLS).expect("executed registry control");
-    assert!(coverage.contains("0/17 bindings; 1/67 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 66);
+        report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
+    assert!(coverage.contains("2/17 bindings; 6/67 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 61);
     assert!(coverage.contains("Configuration controls: 1 (not proof-statement coverage)"));
 }
 

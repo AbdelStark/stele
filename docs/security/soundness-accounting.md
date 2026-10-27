@@ -25,9 +25,9 @@ adds no sampling-error line; exhaustion aborts and cannot certify a statement.
 FS/H still cover all adversary queries and grinding. The gate compares the validated
 `stele-hash` registry producer with [the canonical inventory](transcript-labels.json)
 and runs the registry and transcript primitive unit tests. NC-0801 rejects a duplicated label at that same
-production validator. Remaining protocol crates retain their scaffold guards.
-This validates registry mapping, not per-instance accounting or a profile budget;
-challenge generation follows A1, while real schedule consumers are still pending.
+production validator. Unimplemented protocol crates retain their scaffold guards.
+Registry validation alone does not establish per-instance accounting or a profile
+budget; the sumcheck consumer is checked separately below.
 Q12 (RFC-0019) tracks the missing concrete FS theorem/query convention and the
 incompatible illustrative H budget. No profile can be certified from placeholders.
 
@@ -38,6 +38,9 @@ mode and its separate budget before E14-01 consumes it. Native A1 is unchanged.
 RFC-0006 A1 specifies the SC record: instance id, m, degree bound δ, field degree d,
 and exact numerator m*δ over symbolic p^d. Its [interactive obligation](../../formal/sumcheck.md)
 bounds passing a false initial sum together with true final evaluations; every
-emitted evaluation still needs a consumer. The production record generator and
-instance/challenge comparison remain E3-01 requirements. Research vectors do not
-replace that gate or discharge Q12.
+emitted evaluation still needs a consumer. The gate executes the actual Rust
+prover/public verifier and independent Python verifier over the shared corpus.
+It compares emitted SC records to verifier-owned descriptors and derived-point
+lengths. NC-0200/0201/0205/0800/0802 exercise the actual reduction/consumer and
+transcript schedule. Full inference enumeration remains E8-05; these finite checks
+do not discharge Q12 or certify a profile.

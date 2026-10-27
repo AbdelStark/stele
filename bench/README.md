@@ -104,3 +104,19 @@ Recorded sample: [E1-05 partial evaluation](ledger/e1-05-partial-evaluation.json
 Its int4/int8 bucketed totals are lower than naive; int16 is higher on the recorded
 row shape. Strategy selection remains explicit; this sample does not justify a
 universal automatic threshold.
+
+## Dense sumcheck (E3-01)
+
+On macOS, run `python3 bench/sumcheck.py <new-ledger.json>` from a clean committed
+checkout. Correctness/control gates run before the dense QM31 measurement. Every
+warmup and timed proof is checked by the public-table consumer; verification is
+outside prover timing. Timed work includes table cloning/allocation, transcript
+initialization, rounds and Final absorption. Synthetic input construction is excluded.
+
+The ledger retains every sample, exact aggregate nanoseconds per hypercube point,
+logical dense-table payload and separate-process peak RSS. RSS also includes setup,
+verification, code and allocator memory. It does not isolate prover scratch.
+The [initial dense baseline](ledger/e3-01-dense-sumcheck.json) includes slower first
+samples for degrees zero and one; no samples were discarded. It establishes a
+naive c_sc(degree, small=false) baseline, not a fitted cost model or performance
+improvement. GPU, OM31 timing, inference workloads and ZK remain unmeasured here.

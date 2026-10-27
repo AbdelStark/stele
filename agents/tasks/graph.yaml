@@ -282,9 +282,9 @@ tasks:
   - RFC-0020 A1
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E3-01-core
+  branch: task/E3-01-baseline
   acceptance:
   - accepts honest
   - rejects NC-0200/0201

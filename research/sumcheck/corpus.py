@@ -76,6 +76,16 @@ def generate():
                     bad = copy.deepcopy(record)
                     bad['proof']['final'][0] = sc.encode(sc.add(proof['final'][0], sc.scalar(1, d))).hex()
                     add(name+'-claim', d, [bad], 'ClaimMismatch')
+        for name, terms in [
+            ('mixed', [(tuple(range(1, d+1)), [0, 1, 0, 1]), (sc.scalar(-3, d), [1, 0]), (sc.scalar(5, d), [])]),
+            ('zero-leading', [(sc.scalar(0, d), [0, 1, 0, 1]), (sc.scalar(1, d), [0])]),
+        ]:
+            i, tables = sc.instance(d, 2, 4)
+            i['terms'], i['sum'] = terms, sc.scalar(0, d)
+            for row in zip(*tables):
+                i['sum'] = sc.add(i['sum'], sc.compose(terms, row, d))
+            proof, _ = sc.prove(sc.Transcript(b'public', d), i, tables)
+            add(f'd{d}-{name}', d, [encode_case(i, tables, proof)])
         for m in (0, 3):
             for constant in (0, 9):
                 i = {'id': 1, 'm': m, 'ids': [], 'terms': [] if constant == 0 else [(sc.scalar(constant, d), [])],
@@ -131,4 +141,4 @@ def check():
     for case in cases:
         actual = evaluate(case)
         assert actual.get('error', 'accept') == case['expected'], (case['name'], actual)
-    print(f'{len(cases)} shared sumcheck cases checked by Python; Rust agreement pending')
+    print(f'{len(cases)} shared sumcheck cases checked by Python; Rust agreement enforced by sumcheck gate')

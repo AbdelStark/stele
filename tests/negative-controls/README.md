@@ -19,8 +19,9 @@ For each protocol binding:
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
-label with `DuplicateLabel`. It is configuration coverage only: 1/67 controls run,
-66 remain missing, and 0/17 proof-statement bindings are covered. Range rows expand
+label with `DuplicateLabel`; it earns configuration coverage only. Including the
+five sumcheck controls, 6/67 controls run,
+61 remain missing, and 2/17 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 
 Coverage is over the current catalog, not a complete enumerated claim graph. Several
@@ -46,5 +47,5 @@ require the same production verifier's exact rejection. The control asserts the
 single-value difference. The helper's self-checks earn no catalog coverage.
 
 E3-01's standalone NC-0200/0201/0205/0800/0802 tests now run both challenge fields
-through the real sumcheck engine and public consumer. They remain unregistered in
-the coverage inventory until the E3-01 benchmark/registration follow-up completes.
+through the real sumcheck engine and public consumer. They are registered in the
+coverage inventory; the covered categories do not imply all their controls exist.
