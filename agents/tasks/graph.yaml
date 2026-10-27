@@ -236,7 +236,7 @@ tasks:
   - RFC-0012 §1-2
   skill: pcs-engineer
   crate: stele-hash
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E2-01-transcript-integration
   acceptance:
