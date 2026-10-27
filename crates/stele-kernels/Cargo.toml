@@ -1,0 +1,12 @@
+[package]
+name = "stele-kernels"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-kernels (see RFC-0014 §2)"
+
+[dependencies]
+stele-field = { path = "../stele-field" }
+
+[lints]
+workspace = true

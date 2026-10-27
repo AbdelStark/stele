@@ -1,0 +1,4 @@
+disallowed-types = [
+  { path = "f32", reason = "INV-12: no floating point in prover/verifier crates" },
+  { path = "f64", reason = "INV-12: no floating point in prover/verifier crates" },
+]

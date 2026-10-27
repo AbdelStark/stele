@@ -1,0 +1,13 @@
+[package]
+name = "stele-prover"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-prover (see RFC-0007 §4 RFC-0014 §4)"
+
+[dependencies]
+stele-reductions = { path = "../stele-reductions" }
+stele-proof = { path = "../stele-proof" }
+
+[lints]
+workspace = true

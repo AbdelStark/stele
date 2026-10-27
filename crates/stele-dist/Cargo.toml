@@ -1,0 +1,12 @@
+[package]
+name = "stele-dist"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-dist (see RFC-0015)"
+
+[dependencies]
+stele-gpu = { path = "../stele-gpu" }
+
+[lints]
+workspace = true

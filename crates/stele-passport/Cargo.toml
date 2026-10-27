@@ -1,0 +1,13 @@
+[package]
+name = "stele-passport"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-passport (see RFC-0011)"
+
+[dependencies]
+stele-pcs = { path = "../stele-pcs" }
+stele-cqis = { path = "../stele-cqis" }
+
+[lints]
+workspace = true

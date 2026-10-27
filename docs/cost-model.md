@@ -1,0 +1,65 @@
+# Cost model — closed form, constants, projections
+
+Every optimisation in this repository must name the term it moves. Every benchmark must report the measured
+constants so the model can be re‑fitted (RFC‑0018). Units: **Mops** = M31 multiply‑equivalents (an M31 add ≈ ¼,
+a QM31 mult ≈ 10–12, a base×QM31 MAC ≈ 4).
+
+## 1. Symbols
+
+| Symbol | Meaning |
+|---|---|
+| `n` | positions in the proof (prompt + generated, all sequences in the batch) |
+| `L, d, d_ff, h, h_kv, d_h, V` | layers, model dim, FFN dim, heads, KV heads, head dim, vocabulary |
+| `P` | parameters touched (dense: all; MoE: experts touched by any position) |
+| `N_act` | nonlinear‑path activation elements per layer per position ≈ `7d + 4·h_kv·d_h + 4·d_ff` (requant outputs, SiLU, gate product, two norms, RoPE) |
+| `N_attn` | exp lookups ≈ `n²/2 · h · L` (causal, dense), windowed: `n·w·h·L` |
+| `C_cut` | committed residual‑cut elements = `n·d·L` (int16) |
+| `c_w` | Mops per weight in the weight pass (4; ≈1 with bucketing, then bandwidth‑bound) |
+| `c_a` | Mops per nonlinear activation element (≈ 1.5–3 lookups × 60–150 + partial evaluations) — default **200** |
+| `c_x` | Mops per attention score (1 exp lookup + partial evals) — default **110** |
+| `c_c` | Mops per committed element (linear‑time encode + Blake3) — default **30** |
+| `R` | effective Mops/s of the device (H100: peak ≈ 10¹³; **planning value 3·10¹²** = 30% utilisation) |
+| `BW` | HBM bandwidth (H100 ≈ 3.3 TB/s) |
+
+## 2. Per‑proof cost
+
+```
+T_weights   = max( P·c_w / R ,  P·bytes_per_weight / BW )      # one pass (RFC-0007), fused opening (RFC-0010)
+T_act       = n·L·N_act·c_a / R
+T_attn      = N_attn·c_x / R
+T_cuts      = C_cut·c_c / R  + 2·C_cut·4 / R                      # commit + batched opening passes
+T_misc      = (n·V·c_lu [argmax/sampling] + multiplicities + transcript) / R     # small
+T_witness   ≈ one int8 forward pass (recomputed from cuts, RFC-0014 §4)
+T_proof     = T_weights + T_act + T_attn + T_cuts + T_misc        (+ T_witness on the same device)
+```
+Everything except `T_weights` is linear in `n` (and `T_attn` quadratic). `T_weights` is paid **once per proof**
+whatever `n`, `L` or the batch; with epoch batching (RFC‑0019 R‑EPOCH) once per epoch.
+
+## 3. Projections (planning value R = 3·10¹² Mops/s, one H100; 4096‑token prompt + 512 generated, batch 1)
+
+| Model | P | n·L·N_act | N_attn | T_weights | T_act | T_attn | T_cuts | **T_proof (1×H100)** | Open SOTA (SASH) | Serving (vLLM, same request) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Llama‑3.1‑8B | 8·10⁹ | 1.3·10¹⁰ | 1.1·10¹⁰ | 0.01 s | 0.9 s | 0.4 s | 0.01 s | **≈ 1.3 s** | 3,600–5,400 s measured | 3.4 s |
+| Llama‑3.1‑70B | 70·10⁹ | 6.2·10¹⁰ | 3.4·10¹⁰ | 0.1 s | 4.1 s | 1.2 s | 0.04 s | **≈ 5.5 s** | 5–8 h projected | ≈ 20 GPU‑s ∂ |
+| Llama‑3.1‑405B | 405·10⁹ | 1.9·10¹¹ | 1.7·10¹¹ | 0.5 s | 13 s | 6.3 s | 0.2 s | **≈ 20 s** | 16–24 h projected | ≈ 67 GPU‑s ∂ (8×H100, batch 1) |
+| DeepSeek‑V3 (671B MoE, all experts touched) | 671·10⁹ | 3.5·10¹⁰ | 8.3·10¹⁰ | 0.9 s | 2.3 s | 3.0 s | 0.1 s | **≈ 6.5 s** | 8–12 h projected | ≈ 25 GPU‑s ∂ |
+
+Reading: at the planning utilisation the proof costs **less than serving** for decode‑heavy requests at 405B
+(the serving decode is memory‑bound on 8 GPUs; the proof reads the weights once). The 8B request is ~2,000–4,000×
+cheaper than the measured open SOTA and ~15–20× cheaper than the best closed number (Attestable, 195 tok/s).
+Engineering acceptance for the first GPU milestone is **10× off these numbers** (PRD G1); the gap closes with
+the kernel work in RFC‑0014.
+
+## 4. Memory (405B, n = 4608)
+
+| Object | Size | Where |
+|---|---|---|
+| int8 weights (one pass, streamed) | 405 GB | sharded across GPUs or NVMe→HBM streaming at BW |
+| residual cuts (int16) | 19 GB | HBM/host, committed once |
+| one layer's activations (recompute window) | ≈ 15 GB (incl. n²·h scores for the exp phase, tiled) | HBM, per layer in flight |
+| stacked sumcheck state after round 1 (QM31) | ≤ 2× the stacked tensor bytes; first rounds in base field (ST‑9) | sharded by layer |
+| proof (native) | ≈ 50–150 MB | dominated by weight column openings; Ligerito mode → ≈ 1 MB |
+
+## 5. Constants to measure first (bench targets, RFC‑0018)
+`c_a`, `c_x`, `c_c`, `c_w`, `R` on H100/B200, and the QM31‑mult : M31‑mult ratio under the chosen representation.
+Until measured, every number above is a projection and must be labelled so.

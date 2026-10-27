@@ -1,0 +1,15 @@
+[package]
+name = "stele-reductions"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-reductions (see RFC-0007 RFC-0008 RFC-0009 RFC-0017)"
+
+[dependencies]
+stele-gkr = { path = "../stele-gkr" }
+stele-lookup = { path = "../stele-lookup" }
+stele-pcs = { path = "../stele-pcs" }
+stele-ir = { path = "../stele-ir" }
+
+[lints]
+workspace = true

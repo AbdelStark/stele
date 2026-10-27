@@ -1,0 +1,13 @@
+# Review checklist (answer every line)
+- [ ] Which RFC section does each new public item implement? (cite)
+- [ ] For each challenge: what was absorbed before it, and is that the RFC order?
+- [ ] For each emitted claim: who consumes it, and is the consumer's point the same object?
+- [ ] For each new binding: which control catches a one-value tamper? (id)
+- [ ] Ledger: which lines change, and does `soundness-accounting.sh` agree?
+- [ ] Bound certificate: which instances are new, and are they static?
+- [ ] Padding/masks: are padded rows excluded from lookups and zerochecks?
+- [ ] Determinism: any iteration over hash maps or timing-dependent reduction order?
+- [ ] Parity: CPU/SIMD/CUDA digests identical? (link)
+- [ ] Cost model: which term moved, by how much, ledger link?
+- [ ] Verifier: still `no_std`, no panics, lengths from plan?
+- [ ] Glossary: any forbidden synonyms introduced?

@@ -1,0 +1,5 @@
+target/
+*.ledger.tmp
+harness/.venv/
+research/**/out/
+.DS_Store

@@ -1,0 +1,13 @@
+[package]
+name = "stele-gpu"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-gpu (see RFC-0014)"
+
+[dependencies]
+stele-kernels = { path = "../stele-kernels" }
+stele-prover = { path = "../stele-prover" }
+
+[lints]
+workspace = true

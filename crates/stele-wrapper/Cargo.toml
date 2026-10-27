@@ -1,0 +1,12 @@
+[package]
+name = "stele-wrapper"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-wrapper (see RFC-0016 §5)"
+
+[dependencies]
+stele-verifier = { path = "../stele-verifier" }
+
+[lints]
+workspace = true

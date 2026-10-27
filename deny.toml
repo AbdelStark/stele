@@ -1,0 +1,3 @@
+[bans]
+multiple-versions = "deny"
+deny = [ { name = "stwo" }, { name = "plonky3" }, { name = "halo2_proofs" } ]  # no vendored proof systems in crates/ (forbidden.md #5)

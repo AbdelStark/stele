@@ -1,0 +1,12 @@
+[package]
+name = "stele-gkr"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-gkr (see RFC-0006 §3,§6)"
+
+[dependencies]
+stele-sumcheck = { path = "../stele-sumcheck" }
+
+[lints]
+workspace = true

@@ -1,0 +1,29 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: scripts/gates/digest.sh
+      - run: scripts/gates/negative-controls.sh
+      - run: scripts/gates/soundness-accounting.sh
+      - run: scripts/gates/ledger-validate.sh
+      - run: scripts/gates/rfc-status.sh
+      - run: scripts/gates/glossary-lint.sh
+  gpu-parity:
+    if: contains(github.event.head_commit.modified, 'crates/stele-gpu') || contains(github.event.head_commit.modified, 'crates/stele-kernels')
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/gates/parity.sh
+  nightly-w1:
+    if: github.event_name == 'schedule'
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo run -p stele-cli --release --features cuda -- bench --workload W1 --profile treaty --ledger bench/ledger/nightly-${{ github.sha }}.json

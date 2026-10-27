@@ -1,0 +1,12 @@
+[package]
+name = "stele-simd"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-simd (see RFC-0003 §6)"
+
+[dependencies]
+stele-field = { path = "../stele-field" }
+
+[lints]
+workspace = true

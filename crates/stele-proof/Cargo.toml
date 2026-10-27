@@ -1,0 +1,12 @@
+[package]
+name = "stele-proof"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-proof (see RFC-0016 §1)"
+
+[dependencies]
+stele-field = { path = "../stele-field" }
+
+[lints]
+workspace = true

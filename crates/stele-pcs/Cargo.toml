@@ -1,0 +1,13 @@
+[package]
+name = "stele-pcs"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-pcs (see RFC-0010)"
+
+[dependencies]
+stele-code = { path = "../stele-code" }
+stele-hash = { path = "../stele-hash" }
+
+[lints]
+workspace = true

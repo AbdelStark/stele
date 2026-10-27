@@ -1,0 +1,14 @@
+[package]
+name = "stele-verifier"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-verifier (see RFC-0016)"
+
+[dependencies]
+stele-field = { path = "../stele-field" }
+stele-hash = { path = "../stele-hash" }
+stele-proof = { path = "../stele-proof" }
+
+[lints]
+workspace = true

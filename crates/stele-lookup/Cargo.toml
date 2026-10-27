@@ -1,0 +1,12 @@
+[package]
+name = "stele-lookup"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-lookup (see RFC-0008)"
+
+[dependencies]
+stele-gkr = { path = "../stele-gkr" }
+
+[lints]
+workspace = true

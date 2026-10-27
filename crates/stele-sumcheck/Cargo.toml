@@ -1,0 +1,13 @@
+[package]
+name = "stele-sumcheck"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-sumcheck (see RFC-0006)"
+
+[dependencies]
+stele-poly = { path = "../stele-poly" }
+stele-hash = { path = "../stele-hash" }
+
+[lints]
+workspace = true
