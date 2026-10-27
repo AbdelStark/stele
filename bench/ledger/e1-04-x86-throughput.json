@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/simd-ops",
+  "commit": "b39e142bbfe94f4b8733fd0b993c99760111603c",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "x86_64 AMD EPYC 9V74 80-Core Processor",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "cache-resident packed field ops",
+      "iterations": 100000,
+      "samples": 3,
+      "lanes": 16,
+      "warmup_per_case": 1000,
+      "fields": [
+        "m31",
+        "qm31"
+      ],
+      "operations": [
+        "Add",
+        "Sub",
+        "Mul"
+      ],
+      "order": "rotate backend each sample",
+      "build": "release",
+      "input_a": "(column*16+lane+1)*8191",
+      "input_b": "(column*16+lane+17)*65521"
+    },
+    "os": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+    "executed_backends": [
+      "Avx2",
+      "Avx512",
+      "Scalar"
+    ],
+    "required_backends": "avx2,avx512",
+    "sample_times_ns": {
+      "Scalar/m31/Add": [
+        4085001,
+        4093063,
+        4036888
+      ],
+      "Scalar/qm31/Add": [
+        26299428,
+        26299568,
+        26347641
+      ],
+      "Scalar/m31/Sub": [
+        3905200,
+        3891538,
+        3897468
+      ],
+      "Scalar/qm31/Sub": [
+        25976460,
+        26000496,
+        26005063
+      ],
+      "Scalar/m31/Mul": [
+        4724266,
+        4692138,
+        4635463
+      ],
+      "Scalar/qm31/Mul": [
+        54615723,
+        54547890,
+        54691286
+      ],
+      "Avx2/m31/Add": [
+        1687399,
+        1617964,
+        1690604
+      ],
+      "Avx2/qm31/Add": [
+        3613388,
+        3621111,
+        3888013
+      ],
+      "Avx2/m31/Sub": [
+        1704906,
+        1658245,
+        1663994
+      ],
+      "Avx2/qm31/Sub": [
+        3653258,
+        3636262,
+        3636093
+      ],
+      "Avx2/m31/Mul": [
+        1902794,
+        1881983,
+        1885798
+      ],
+      "Avx2/qm31/Mul": [
+        7197492,
+        7265114,
+        7229030
+      ],
+      "Avx512/m31/Add": [
+        1707399,
+        1689673,
+        1700589
+      ],
+      "Avx512/qm31/Add": [
+        3414908,
+        3410191,
+        3352074
+      ],
+      "Avx512/m31/Sub": [
+        1726198,
+        1718967,
+        1729773
+      ],
+      "Avx512/qm31/Sub": [
+        3355579,
+        3413567,
+        3449831
+      ],
+      "Avx512/m31/Mul": [
+        1976226,
+        1941773,
+        1980241
+      ],
+      "Avx512/qm31/Mul": [
+        6583675,
+        6534150,
+        6510175
+      ]
+    },
+    "rates_floor": {
+      "Scalar/m31/Add": {
+        "elements_per_second": 392961020,
+        "logical_bytes_per_second": 4715532242
+      },
+      "Scalar/qm31/Add": {
+        "elements_per_second": 60800563,
+        "logical_bytes_per_second": 2918427038
+      },
+      "Scalar/m31/Sub": {
+        "elements_per_second": 410459675,
+        "logical_bytes_per_second": 4925516106
+      },
+      "Scalar/qm31/Sub": {
+        "elements_per_second": 61552651,
+        "logical_bytes_per_second": 2954527248
+      },
+      "Scalar/m31/Mul": {
+        "elements_per_second": 341591619,
+        "logical_bytes_per_second": 4099099429
+      },
+      "Scalar/qm31/Mul": {
+        "elements_per_second": 29294211,
+        "logical_bytes_per_second": 1406122132
+      },
+      "Avx2/m31/Add": {
+        "elements_per_second": 960774961,
+        "logical_bytes_per_second": 11529299533
+      },
+      "Avx2/qm31/Add": {
+        "elements_per_second": 431557187,
+        "logical_bytes_per_second": 20714745014
+      },
+      "Avx2/m31/Sub": {
+        "elements_per_second": 954816302,
+        "logical_bytes_per_second": 11457795627
+      },
+      "Avx2/qm31/Sub": {
+        "elements_per_second": 439334616,
+        "logical_bytes_per_second": 21088061603
+      },
+      "Avx2/m31/Mul": {
+        "elements_per_second": 846475004,
+        "logical_bytes_per_second": 10157700056
+      },
+      "Avx2/qm31/Mul": {
+        "elements_per_second": 221283447,
+        "logical_bytes_per_second": 10621605488
+      },
+      "Avx512/m31/Add": {
+        "elements_per_second": 941608318,
+        "logical_bytes_per_second": 11299299816
+      },
+      "Avx512/qm31/Add": {
+        "elements_per_second": 471643746,
+        "logical_bytes_per_second": 22638899820
+      },
+      "Avx512/m31/Sub": {
+        "elements_per_second": 927547344,
+        "logical_bytes_per_second": 11130568134
+      },
+      "Avx512/qm31/Sub": {
+        "elements_per_second": 469714336,
+        "logical_bytes_per_second": 22546288146
+      },
+      "Avx512/m31/Mul": {
+        "elements_per_second": 813802083,
+        "logical_bytes_per_second": 9765625000
+      },
+      "Avx512/qm31/Mul": {
+        "elements_per_second": 244548604,
+        "logical_bytes_per_second": 11738332993
+      }
+    }
+  },
+  "plan_digest": "a3c47c874e72cc0e7a0f323b423bd82f6673eaf885dfcdd41de69cf51b033f72",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 474379186,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "Scalar/m31/Add": 12214952,
+    "Scalar/qm31/Add": 78946637,
+    "Scalar/m31/Sub": 11694206,
+    "Scalar/qm31/Sub": 77982019,
+    "Scalar/m31/Mul": 14051867,
+    "Scalar/qm31/Mul": 163854899,
+    "Avx2/m31/Add": 4995967,
+    "Avx2/qm31/Add": 11122512,
+    "Avx2/m31/Sub": 5027145,
+    "Avx2/qm31/Sub": 10925613,
+    "Avx2/m31/Mul": 5670575,
+    "Avx2/qm31/Mul": 21691636,
+    "Avx512/m31/Add": 5097661,
+    "Avx512/qm31/Add": 10177173,
+    "Avx512/m31/Sub": 5174938,
+    "Avx512/qm31/Sub": 10218977,
+    "Avx512/m31/Mul": 5898240,
+    "Avx512/qm31/Mul": 19628000
+  },
+  "kernel_counters": {
+    "Scalar/m31/Add/elements": 4800000,
+    "Scalar/qm31/Add/elements": 4800000,
+    "Scalar/m31/Sub/elements": 4800000,
+    "Scalar/qm31/Sub/elements": 4800000,
+    "Scalar/m31/Mul/elements": 4800000,
+    "Scalar/qm31/Mul/elements": 4800000,
+    "Avx2/m31/Add/elements": 4800000,
+    "Avx2/qm31/Add/elements": 4800000,
+    "Avx2/m31/Sub/elements": 4800000,
+    "Avx2/qm31/Sub/elements": 4800000,
+    "Avx2/m31/Mul/elements": 4800000,
+    "Avx2/qm31/Mul/elements": 4800000,
+    "Avx512/m31/Add/elements": 4800000,
+    "Avx512/qm31/Add/elements": 4800000,
+    "Avx512/m31/Sub/elements": 4800000,
+    "Avx512/qm31/Sub/elements": 4800000,
+    "Avx512/m31/Mul/elements": 4800000,
+    "Avx512/qm31/Mul/elements": 4800000,
+    "Scalar/m31/Add/logical_bytes": 57600000,
+    "Scalar/qm31/Add/logical_bytes": 230400000,
+    "Scalar/m31/Sub/logical_bytes": 57600000,
+    "Scalar/qm31/Sub/logical_bytes": 230400000,
+    "Scalar/m31/Mul/logical_bytes": 57600000,
+    "Scalar/qm31/Mul/logical_bytes": 230400000,
+    "Avx2/m31/Add/logical_bytes": 57600000,
+    "Avx2/qm31/Add/logical_bytes": 230400000,
+    "Avx2/m31/Sub/logical_bytes": 57600000,
+    "Avx2/qm31/Sub/logical_bytes": 230400000,
+    "Avx2/m31/Mul/logical_bytes": 57600000,
+    "Avx2/qm31/Mul/logical_bytes": 230400000,
+    "Avx512/m31/Add/logical_bytes": 57600000,
+    "Avx512/qm31/Add/logical_bytes": 230400000,
+    "Avx512/m31/Sub/logical_bytes": 57600000,
+    "Avx512/qm31/Sub/logical_bytes": 230400000,
+    "Avx512/m31/Mul/logical_bytes": 57600000,
+    "Avx512/qm31/Mul/logical_bytes": 230400000
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Native parity precedes measurement. Timed calls include dispatch and canonicalization; checked construction, warmup and export excluded. Black-box inputs prevent hoisting. Logical bytes count two reads and one write, not measured DRAM traffic. Rates use aggregate samples with integer floor. SHA-256 compact sorted JSON plan. No proof/GPU/inference/constant-time/cost-model fit claim; no applicable proof binding is disabled."
+}

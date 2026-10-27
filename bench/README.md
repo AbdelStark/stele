@@ -75,3 +75,7 @@ they do not measure DRAM traffic. Dispatch and canonicalization are timed;
 construction, warmup, parity and export are excluded. CPU/OS, toolchain and the
 SHA-256 benchmark-plan digest are captured automatically. No CUDA performance,
 proof speed, constant-time guarantee or cost-model fit follows from these records.
+
+Recorded samples: [NEON](ledger/e1-04-neon-throughput.json) and
+[AVX2/AVX-512](ledger/e1-04-x86-throughput.json). The x86 record was downloaded unchanged
+from [CI run 40565652650](https://github.com/AbdelStark/stele/actions/runs/40565652650).
