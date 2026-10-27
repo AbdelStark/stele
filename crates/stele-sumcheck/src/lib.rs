@@ -7,6 +7,8 @@ use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
 /// Ordered instance batching, RFC-0006 A2.
 pub mod batch;
+/// Virtual-tensor claim batching, RFC-0006 A2.
+pub mod claim_batch;
 mod dense;
 mod instance;
 pub use dense::Dense;

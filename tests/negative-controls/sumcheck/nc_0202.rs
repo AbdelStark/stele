@@ -1,4 +1,4 @@
-//! RFC-0006 A2: instance-mode control; full two-mode credit awaits E3-02 completion.
+//! RFC-0006 A2: both-mode, both-field production control.
 #![forbid(unsafe_code)]
 #[test]
 fn rejects_nc_0202() {

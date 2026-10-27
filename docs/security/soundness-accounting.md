@@ -52,9 +52,10 @@ alone does not certify codeword validity, canonical field encodings, unopened
 subtrees or a profile budget. NC-0602 now checks both leaf kinds through actual construction/authentication;
 this supplies membership-binding evidence, not a PCS or hash-budget certificate.
 
-RFC-0006 A2 / RFC-0012 A4 now have an instance-batch consumer: one BatchCoefficient
-challenge maps to RLC t/p^d and shared rounds to SC M D/p^d. The registry has eight
-entries. The gate checks 42 Rust/Python byte/record cases and actual mode-0 controls.
+RFC-0006 A2 / RFC-0012 A4 now have both batching consumers: one BatchCoefficient
+challenge maps to RLC t/p^d and shared rounds to SC M D/p^d (D=2 for claim mode).
+The eight-entry registry is unchanged. Gates check 42 instance and six claim byte/
+record cases, 10^4 coefficient evaluations per field, and actual two-mode controls.
 The [interactive obligation](../../formal/batching.md) remains conditional on true
-final evaluations. Mode 1 and full E3-02 evidence remain incomplete; Q12 still
-blocks certification. The catalog retains no new two-mode control credit yet.
+final evaluations. Full E3-02 rejection-corpus/benchmark evidence remains incomplete;
+Q12 still blocks certification. Catalog coverage is nine controls, not a full claim graph.
