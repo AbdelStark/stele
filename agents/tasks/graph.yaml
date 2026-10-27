@@ -264,9 +264,9 @@ tasks:
   - RFC-0012 §3, A2
   skill: pcs-engineer
   crate: stele-hash
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E2-03-poseidon2-contract
+  branch: task/E2-03-poseidon2-primitive
   acceptance:
   - KATs vs a reference implementation
   - A2 exact permutation parameters and canonical boundary inputs

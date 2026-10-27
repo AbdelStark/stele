@@ -63,6 +63,8 @@ def main():
     altered = {**constants, 'internal': constants['internal'].copy()}
     altered['internal'][0] = (altered['internal'][0] + 1) % P
     assert permutation(list(range(16)), altered) != expected
+    core = Path(__file__).resolve().parents[2] / 'crates/stele-hash/tests/fixtures/poseidon2.jsonl'
+    assert core.read_bytes() == Path(__file__).with_name('reference.jsonl').read_bytes(), 'core KAT fixture drift'
     print('35 upstream vectors matched; initial-layer, diagonal and constant mutants detected; no hash security claim')
 
 

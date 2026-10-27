@@ -59,6 +59,16 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('registry producer failed', result.stderr)
 
+    def test_rejects_poseidon2_constant_drift(self):
+        source = self.root / 'crates/stele-hash/src/poseidon2/constants.rs'
+        original = source.read_text()
+        changed = original.replace('0x768bab52', '0x768bab53', 1)
+        self.assertNotEqual(original, changed)
+        source.write_text(changed)
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('transcript primitive tests failed', result.stderr)
+
     def test_rejects_deleted_or_additional_source(self):
         source = self.root / 'crates/stele-prover/src/lib.rs'
         source.unlink()

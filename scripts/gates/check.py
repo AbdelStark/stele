@@ -64,7 +64,7 @@ def transcript_registry(root):
     expected = json.loads((root / 'docs/security/transcript-labels.json').read_text())
     if actual != expected:
         raise ValueError('transcript registry mapping mismatch against soundness inventory')
-    result = subprocess.run(['cargo', 'test', '-p', 'stele-hash', '--lib', '--locked', '--offline'],
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-hash', '--lib', '--all-features', '--locked', '--offline'],
                             cwd=root, text=True, capture_output=True)
     if result.returncode:
         raise ValueError(f'transcript primitive tests failed: {result.stdout}\n{result.stderr}')
