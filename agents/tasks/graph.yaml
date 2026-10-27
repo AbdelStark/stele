@@ -313,7 +313,7 @@ tasks:
   crate: stele-sumcheck
   status: in_progress
   agent: codex-root
-  branch: task/E3-02-batch-corpus
+  branch: task/E3-02-batching-bench
   acceptance:
   - NC-0202
   - ledger RLC and shared SC records checked against actual descriptors/challenges
