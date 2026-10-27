@@ -299,6 +299,18 @@ def vectors():
 
 
 if __name__ == '__main__':
+    import corpus
+    if sys.argv[1:2] == ['--verify-corpus']:
+        assert len(sys.argv) == 3, 'usage: --verify-corpus path'
+        for line in Path(sys.argv[2]).read_text().splitlines():
+            case = json.loads(line)
+            print(json.dumps({'name': case['name'], **corpus.evaluate(case)}, sort_keys=True))
+        sys.exit(0)
+    if sys.argv[1:] == ['--write-corpus']:
+        with corpus.PATH.open('x') as output:
+            output.write(''.join(json.dumps(case, sort_keys=True) + '\n' for case in corpus.generate()))
+        sys.exit(0)
+    corpus.check()
     checks()
     path = Path(__file__).with_name('candidate-vectors.jsonl')
     data = vectors()

@@ -54,3 +54,21 @@ The [sumcheck theorem](https://people.cs.georgetown.edu/jthaler/ProofsArgsAndZK.
 supports the conditional interactive reduction bound; `formal/sumcheck.md` states
 that obligation explicitly. These finite checks do not prove Fiat–Shamir, privacy,
 PCS composition or a profile budget. Q12 and the remaining MVP tasks stay open.
+
+## Shared verifier corpus (E3-01)
+
+`corpus.jsonl` contains 184 named chains with explicit expected acceptance or exact
+rejection. It includes degrees 0..4 in both fields, empty polynomials, malformed
+shapes/fields/instances, false sums, unresolved public claims, early/stale
+challenges and an omitted Final absorb. Default reproduction checks the entire
+committed corpus against its generator and the Python verifier. To emit actual
+Python decisions and successful receipts for comparison with Rust:
+
+```sh
+uv run --locked --script research/sumcheck/check_sumcheck.py --verify-corpus research/sumcheck/corpus.jsonl
+```
+
+This is an interchange fixture for the logical A1 subproof, not the RFC-0016
+inference-proof container. The Rust implementation must agree on these actual
+chains, messages and final obligations before its scaffold guard is removed.
+Python-only results remain research evidence and earn no NC coverage.
