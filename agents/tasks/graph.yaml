@@ -78,7 +78,9 @@ tasks:
   - RFC-0020 §5
   skill: rfc-author
   crate: ci
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-02-ci-gates
   acceptance:
   - each gate script exits 0 with 'nothing to check' on skeleton
   - gates fail on a synthetic violation fixture
