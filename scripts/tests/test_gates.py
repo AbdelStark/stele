@@ -73,6 +73,11 @@ class GateTests(unittest.TestCase):
                 file.write_text(original + f'\n// RFC-{reference}\n')
                 self.assertNotEqual(self.run_gate('rfc-status').returncode, 0)
         file.write_text(original)
+        harness = self.root / 'tests/negative-controls/src/lib.rs'
+        harness_source = harness.read_text()
+        harness.write_text(harness_source + '\n// RFC-9998\n')
+        self.assertNotEqual(self.run_gate('rfc-status').returncode, 0)
+        harness.write_text(harness_source)
         (self.root / 'docs/rfcs/RFC-0003-duplicate.md').write_text('Status: Accepted\n')
         self.assertNotEqual(self.run_gate('rfc-status').returncode, 0)
 

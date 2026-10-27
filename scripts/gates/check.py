@@ -85,7 +85,8 @@ def rfc_status(root):
             raise ValueError(f'RFC-{key} has no status')
         statuses[key] = status[1]
     references = 0
-    sources = sorted((root / 'crates').rglob('*.rs'))
+    sources = sorted(file for directory in ('crates', 'tests/negative-controls')
+                     for file in (root / directory).rglob('*.rs'))
     if not sources:
         raise ValueError('no Rust sources found')
     for file in sources:
