@@ -124,7 +124,9 @@ tasks:
   - RFC-0018 §1
   skill: benchmark-runner
   crate: stele-bench
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-05-benchmark-ledgers
   acceptance:
   - schema documented
   - validator rejects ledgers with bindings_all_on false

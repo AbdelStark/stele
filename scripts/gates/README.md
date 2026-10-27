@@ -11,6 +11,9 @@ has no NC id and receives no inference coverage credit. Protocol source guards r
 until actual controls accompany the first implementations. Undeclared control source
 files and `done` rows without an executable registration fail CI.
 
+The ledger gate runs the Rust validator on `bench/ledger/*.json`; no measurements exist yet.
+Locked dependencies are fetched before the offline build and validation steps.
+
 The remaining protocol gates cannot validate proofs before their producers exist.
 They may print `nothing to check` only when the relevant crate files exactly match the
 empty bootstrap snapshots and no corresponding artifacts exist:
@@ -21,7 +24,7 @@ empty bootstrap snapshots and no corresponding artifacts exist:
 | negative-controls | E8-04 | Expand the E0-03 harness to actual protocol bindings |
 | soundness-accounting | E2-01, E8-05 | Compare transcript challenges to ledger enumeration |
 | parity | E10-01 | Compare real CPU/CUDA bytes on the GPU runner |
-| ledger-validate | E0-05 | Parse benchmark ledgers and reject disabled bindings |
+| ledger-validate | Implemented in E0-05 | Validate measured records with `stele-bench ledger validate` |
 
 `bootstrap-sources.json` fingerprints empty crate manifests and sources. These are
 **not proof digests**. Do not refresh this file to accept new protocol behavior.

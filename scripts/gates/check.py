@@ -24,14 +24,13 @@ SCOPES = {
 OWNERS = {
     'digest': 'E8-06', 'negative-controls': 'E0-03',
     'soundness-accounting': 'E2-01 / E8-05', 'parity': 'E10-01',
-    'ledger-validate': 'E0-05',
+
 }
 ARTIFACTS = {
     'digest': ('tests/digests',),
     'negative-controls': (),
     'soundness-accounting': ('tests/soundness',),
     'parity': ('tests/parity',),
-    'ledger-validate': ('bench/ledger',),
 }
 
 
