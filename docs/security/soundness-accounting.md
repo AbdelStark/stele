@@ -58,5 +58,5 @@ The eight-entry registry is unchanged. Gates check 42 instance and six claim byt
 record cases, 10^4 coefficient evaluations per field, and actual two-mode controls.
 The [interactive obligation](../../formal/batching.md) remains conditional on true
 final evaluations. The 276-case shared Rust/Python corpus checks exact decisions, every returned obligation,
-and SC/RLC records against descriptors. E3-02 benchmark evidence remains incomplete;
+and SC/RLC records against descriptors. E3-02 has [both-field CPU baseline ledgers](../../bench/README.md#batching-e3-02);
 Q12 still blocks certification. Catalog coverage is nine controls, not a full claim graph.
