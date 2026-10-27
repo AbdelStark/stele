@@ -10,6 +10,7 @@ fn main() -> Result<(), String> {
         let loss = match entry.loss {
             None => "-",
             Some(LossLine::Sc) => "SC",
+            Some(LossLine::Rlc) => "RLC",
         };
         println!("{kind}\t{}\t{loss}", entry.label);
     }

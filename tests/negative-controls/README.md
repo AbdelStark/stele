@@ -53,3 +53,7 @@ coverage inventory; the covered categories do not imply all their controls exist
 NC-0602 authenticates actual Merkle openings for both byte columns and child roots.
 Its one-byte leaf and sibling mutations must fail with RootMismatch; membership
 does not establish PCS encoding/proximity, query selection or full inference.
+
+E3-02 instance-mode controls live in `src/batching.rs` and run through the real
+prover/public verifier in both fields: NC-0202/0206 and extensions of 0205/0802.
+The gate executes them, but full A2 catalog credit waits for claim-mode coverage.

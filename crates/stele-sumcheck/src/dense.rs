@@ -23,6 +23,14 @@ pub struct Dense<K> {
     remaining: u32,
 }
 impl<K: ChallengeField> Dense<K> {
+    // RFC-0006 A2: inactive prefixes use the computed sum, not a claimed sum.
+    pub(crate) fn sum(&self, i: &Instance<K>) -> Result<K, Error> {
+        if self.remaining == 0 {
+            return Ok(i.evaluate(&self.final_values()?));
+        }
+        let row = self.round(i)?;
+        Ok(row[0] + row[if row.len() == 1 { 0 } else { 1 }])
+    }
     /// Validate all shapes before taking the first challenge.
     pub fn new(i: &Instance<K>, tables: Vec<Vec<K>>) -> Result<Self, Error> {
         check_tables(i, &tables)?;

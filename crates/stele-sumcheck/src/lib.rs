@@ -5,6 +5,8 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
+/// Ordered instance batching, RFC-0006 A2.
+pub mod batch;
 mod dense;
 mod instance;
 pub use dense::Dense;
@@ -15,6 +17,8 @@ pub use instance::{Instance, Term};
 pub enum Error {
     /// Invalid degree, factor ordinal, repeated input id or width.
     InvalidInstance,
+    /// Empty or inconsistent ordered batch descriptor.
+    InvalidBatch,
     /// Subproof dimensions differ from the verifier-owned instance.
     ProofShape,
     /// Input tables or strategy dimensions differ from the instance.
@@ -72,7 +76,7 @@ pub struct ScRecord {
     pub id: u64,
     /// Number of rounds/challenges.
     pub m: u32,
-    /// Degree derived from P.
+    /// Individual-variable degree derived from the relation.
     pub degree: u8,
     /// Canonical extension degree, 4 or 8.
     pub field_degree: u8,
@@ -120,7 +124,7 @@ fn interpolate<K: ChallengeField>(values: &[K], point: K) -> Result<K, Error> {
     Ok(sum)
 }
 fn round<K: ChallengeField + Eq>(
-    i: &Instance<K>,
+    id: u64,
     index: u32,
     values: &[K],
     running: K,
@@ -129,7 +133,7 @@ fn round<K: ChallengeField + Eq>(
     if values[0] + values[if values.len() == 1 { 0 } else { 1 }] != running {
         return Err(Error::RoundSumMismatch);
     }
-    transcript.absorb(AbsorbLabel::Round, &message_bytes(i.id, index, values)?)?;
+    transcript.absorb(AbsorbLabel::Round, &message_bytes(id, index, values)?)?;
     let challenge = transcript.challenge(ChallengeLabel::Sumcheck)?;
     Ok((challenge, interpolate(values, challenge)?))
 }
@@ -167,7 +171,7 @@ pub fn prove<K: ChallengeField + Eq>(
         if values.len() != degree + 1 {
             return Err(Error::ProofShape);
         }
-        let (challenge, next) = round(i, index, &values, running, transcript)?;
+        let (challenge, next) = round(i.id, index, &values, running, transcript)?;
         summand.fold(challenge)?;
         if summand.shape() != (i.num_vars - index - 1, i.inputs.len()) {
             return Err(Error::PublicShape);
@@ -205,7 +209,7 @@ pub fn verify<K: ChallengeField + Eq>(
     transcript.absorb(AbsorbLabel::Instance, &i.encode()?)?;
     let mut running = i.claimed_sum;
     for (index, values) in proof.rounds.iter().enumerate() {
-        let (challenge, next) = round(i, index as u32, values, running, transcript)?;
+        let (challenge, next) = round(i.id, index as u32, values, running, transcript)?;
         point.push(challenge);
         running = next;
     }
