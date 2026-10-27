@@ -31,7 +31,18 @@ Deleted files, added files, and unrecognised artifacts fail closed. There is no 
 
 The artifact locations are `tests/digests/`, `tests/negative-controls/`, `tests/soundness/`,
 `tests/parity/`, and `bench/ledger/`. `README.md`, `catalog.md`, and `.gitkeep` alone do
-not constitute runnable artifacts. The glossary linter remains assigned to E0-04.
+not constitute runnable artifacts. The glossary linter reads the forbidden-word list from the glossary and rejects new
+occurrences in repository Markdown. `glossary-exceptions.json` records exact existing
+lines with reasons and occurrence counts, preserving Accepted RFCs and historical
+comparisons. Repeating an exempt line or leaving a stale exception fails the gate.
+Exceptions require review; they are not a document-wide opt-out.
+
+`rust-policy.sh` supplements Clippy by rejecting direct floating-point types and literals
+in core and control-suite Rust sources, including literals without explicit type annotations.
+It skips strings, character literals, and nested comments. Clippy's type/arithmetic lints
+are forbidden at workspace level, so source-level lint allowances cannot weaken them.
+This is a source policy check, not a proof about macro expansions or third-party API return
+types; new macros and dependencies still require review under the existing guardrails.
 
 CI runs on pull requests and pushes to main, avoiding duplicate branch/PR builds.
 The parity job uses the actual Git diff. Push events compare before/after commits;

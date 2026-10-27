@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# Gate: glossary-lint — see AGENTS.md §3.5 and RFC-0020 §5. On the skeleton this exits 0 with "nothing to check".
+# RFC-0020 §4 — glossary policy from the repository root, independent of cwd.
 set -euo pipefail
-echo "gate glossary-lint: nothing to check (skeleton)"
+exec python3 "$(dirname "$0")/../glossary_lint.py" "$@"

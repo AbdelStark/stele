@@ -109,7 +109,9 @@ tasks:
   - RFC-0020 §4
   skill: rfc-author
   crate: ci
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-04-code-policy
   acceptance:
   - float type in prover crate fails CI
   - forbidden word in docs flagged

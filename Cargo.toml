@@ -11,8 +11,8 @@ license = "Apache-2.0"
 unsafe_code = "warn"
 
 [workspace.lints.clippy]
-float_arithmetic = "deny"
-disallowed_types = "deny"
+float_arithmetic = "forbid"
+disallowed_types = "forbid"
 unwrap_used = "warn"
 panic = "warn"
 
