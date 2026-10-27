@@ -23,7 +23,7 @@ fn descriptor(kind: Kind, count: u64, width: u64) -> Descriptor {
 #[test]
 fn matches_reference_roots_paths_and_rejections() {
     let mut cases = 0;
-    for line in include_str!("../../../research/merkle/vectors.jsonl").lines() {
+    for line in include_str!("fixtures/merkle.jsonl").lines() {
         let v: Value = serde_json::from_str(line).expect("valid fixture");
         let d = &v["tree"];
         let kind = d["kind"].as_u64().expect("fixture kind");
