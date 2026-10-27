@@ -102,3 +102,54 @@ part of CQIS (K int8 after RoPE, V int8), so the serving KV cache must store tho
 NC-0100 wrong rounding direction; NC-0101 remainder out of range; NC-0102 non-attained scale; NC-0103 non-attained softmax max;
 NC-0104 exp index out of domain (score above max); NC-0105 norm statistic limb overflow; NC-0106 RoPE table index mismatch;
 NC-0107 tie-break violation in argmax; NC-0108 wrong sampling seed; NC-0109 certificate forged to hide overflow.
+
+## 11. Amendment log
+
+### A1 — Consistent signed round-half-away relation
+
+Status: Draft. Not binding until the required reviews are recorded and it is Accepted.
+
+Motivation: §3 names half-even, §5.1 names half-away but supplies a half-up formula,
+and its unadjusted nonnegative-remainder relation cannot represent rounding up.
+`research/cqis-rounding/REPORT.md` gives exact counterexamples. Q10 tracks the issue.
+
+Proposed exact replacement for the paragraph after §3's layer definition:
+
+> All `requantN` operations use signed round-half-away as defined in §5.1, with
+> public positive integer mantissa `m` and nonnegative integer right-shift `e`.
+> `m ∈ [1, 2¹⁶)`. The input accumulator is an exact signed int32 integer. The result
+> must fit the requested signed int8 or int16 format; no saturation or wrapping is
+> allowed. An unsupported scale/shift or an out-of-range result is an error.
+
+Proposed exact replacement for §5.1:
+
+> Let `t = acc·m`, `D = 2^e`, `a = |t|`, `b = 1` iff `t < 0` (otherwise zero),
+> and `h = 2^(e-1)` for `e > 0`, or `h = 0` for `e = 0`.
+> Define `q = floor((a+h)/D)`, `r = a+h-q·D`, and `y = (1-2b)·q`.
+> This is round-half-away for either sign, including exact ties and the identity
+> shift `e = 0`. All intermediate integer arithmetic is exact and checked; an
+> implementation must reject configurations exceeding its supported arithmetic.
+>
+> The proved relation is `t = acc·m`, `t = (1-2b)·a`, `a+h = q·D+r`,
+> and `y = (1-2b)·q`, with `b ∈ {0,1}`, nonnegative bounded `a,q`,
+> `0 ≤ r < D`, and `y` in the target signed range. The sign witness is canonical:
+> `b = 0` when `a = 0`. The bounds and any necessary limb decomposition are static
+> certificate data under §6, including the multiplication and biased magnitude.
+> Every sign/range check must be enforced by the appropriate consuming lookup or
+> an explicit lookup under the range discipline. Witness generation alone does
+> not enforce them. No target-range check may be replaced by saturation.
+
+Soundness accounting: no new challenge in this semantic correction. Reduction work
+must account for every zerocheck/lookup it instantiates and its actual degree under
+RFC-0012 before implementation; no error term or bound is waived by this proposal.
+Existing controls NC-0100 and NC-0101 must cover both signed ties and a tampered biased
+remainder; NC-0109 must cover the static bounds. No new claim-graph edge is introduced.
+Cost model: the sign/magnitude relations contribute to `c_a` when implemented; no
+measured constant changes here. Affected tasks: E5-01 (blocked on A1), E5-03,
+E7 requant reductions and their downstream consumers. No existing core arithmetic
+implements either disputed formula.
+
+Required review before acceptance (Workflow 02):
+- [ ] soundness-auditor: integer equivalence, sign/range bindings, static bounds
+- [ ] rfc-author: consistency with ADR-005, formats and glossary
+- [ ] stele-cqis owner: supported arithmetic, Rust/NumPy parity and error behavior

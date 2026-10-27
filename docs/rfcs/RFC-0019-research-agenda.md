@@ -65,3 +65,7 @@ mandatory · Q7 proof-size floor for native verification · Q8 int24 wide path w
 Q9: which explicit OM31 modulus/basis and checked signed-recovery contract complete
 RFC-0003 §§2,6? Candidate: RFC-0003 A1, supported by `research/r-octic/REPORT.md`.
 This does not resolve Q2's profile comparison.
+
+Q10: resolve the conflicting signed rounding definitions and remainder relation in
+RFC-0004 §§3,5.1. Candidate: RFC-0004 A1; counterexamples and exact-arithmetic checks
+are in `research/cqis-rounding/REPORT.md`.
