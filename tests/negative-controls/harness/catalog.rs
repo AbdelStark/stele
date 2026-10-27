@@ -10,9 +10,15 @@ fn accepts_repository_catalog_without_crediting_stub() {
     assert_eq!(catalog.len(), 66);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
     assert_eq!(catalog.last().map(|entry| entry.id), Some(1203));
-    let coverage = report(&catalog, &[]).expect("planned rows are gaps");
-    assert!(coverage.contains("0/17 bindings; 0/66 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 66);
+    assert!(
+        report(&catalog, &[]).is_err(),
+        "done requires executed registration"
+    );
+    let coverage =
+        report(&catalog, stele_negative_controls::CONTROLS).expect("executed registry control");
+    assert!(coverage.contains("0/17 bindings; 1/66 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 65);
+    assert!(coverage.contains("Configuration controls: 1 (not proof-statement coverage)"));
 }
 
 #[test]

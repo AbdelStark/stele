@@ -1,0 +1,7 @@
+[
+  ["constructor", "stele/v0.1/public", "-"],
+  ["absorb", "stele/v0.1/sumcheck/instance", "-"],
+  ["absorb", "stele/v0.1/sumcheck/round", "-"],
+  ["absorb", "stele/v0.1/sumcheck/final", "-"],
+  ["challenge", "stele/v0.1/sumcheck/challenge", "SC"]
+]

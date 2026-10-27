@@ -22,7 +22,11 @@ The initial challenge label `stele/v0.1/sumcheck/challenge` maps to SC, once per
 round in each consuming sumcheck; absorption labels introduce no random challenge.
 QM31/OM31 denominators are exactly p^4/p^8. A1's conditional uniformity argument
 adds no sampling-error line; exhaustion aborts and cannot certify a statement.
-FS/H still cover all adversary queries and grinding. This mapping is a requirement
-for E2-00's producer/gate, not evidence that instance accounting is implemented.
+FS/H still cover all adversary queries and grinding. The gate compares the validated
+`stele-hash` registry producer with [the canonical inventory](transcript-labels.json)
+and runs the registry unit tests. NC-0801 rejects a duplicated label at that same
+production validator. Remaining protocol crates retain their scaffold guards.
+This validates registry mapping, not per-instance accounting or a profile budget;
+challenge generation and real schedule consumers are still pending.
 Q12 (RFC-0019) tracks the missing concrete FS theorem/query convention and the
 incompatible illustrative H budget. No profile can be certified from placeholders.

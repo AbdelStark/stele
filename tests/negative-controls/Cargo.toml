@@ -23,3 +23,10 @@ path = "harness/catalog.rs"
 [[test]]
 name = "configuration"
 path = "harness/configuration.rs"
+
+[dependencies]
+stele-hash = { path = "../../crates/stele-hash" }
+
+[[test]]
+name = "nc-0801"
+path = "transcript/nc_0801.rs"

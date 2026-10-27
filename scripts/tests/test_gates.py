@@ -1,4 +1,5 @@
 """RFC-0020 §5: real gate entry points must reject synthetic violations."""
+import json
 import pathlib
 import shutil
 import subprocess
@@ -24,7 +25,7 @@ class GateTests(unittest.TestCase):
         return subprocess.run(['bash', str(self.root / 'scripts/gates' / f'{gate}.sh')],
                               cwd='/', text=True, capture_output=True)
 
-    def test_accepts_empty_scaffold(self):
+    def test_accepts_current_validated_state(self):
         for gate in GATES:
             with self.subTest(gate=gate):
                 result = self.run_gate(gate)
@@ -32,7 +33,7 @@ class GateTests(unittest.TestCase):
 
     def test_rejects_unvalidated_implementation(self):
         for gate, crate in [('digest', 'prover'), ('negative-controls', 'sumcheck'),
-                            ('soundness-accounting', 'hash'), ('parity', 'gpu')]:
+                            ('soundness-accounting', 'sumcheck'), ('parity', 'gpu')]:
             with self.subTest(gate=gate):
                 source = self.root / f'crates/stele-{crate}/src/lib.rs'
                 original = source.read_text()
@@ -41,6 +42,22 @@ class GateTests(unittest.TestCase):
                 source.write_text(original)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('not wired', result.stderr)
+
+    def test_rejects_registry_mapping_drift_and_invalid_production_registry(self):
+        inventory = self.root / 'docs/security/transcript-labels.json'
+        original = inventory.read_text()
+        rows = json.loads(original)
+        rows[-1][-1] = 'LU'
+        inventory.write_text(json.dumps(rows))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('registry mapping mismatch', result.stderr)
+        inventory.write_text(original)
+        source = self.root / 'crates/stele-hash/src/lib.rs'
+        source.write_text(source.read_text().replace('loss: Some(LossLine::Sc)', 'loss: None'))
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('registry producer failed', result.stderr)
 
     def test_rejects_deleted_or_additional_source(self):
         source = self.root / 'crates/stele-prover/src/lib.rs'

@@ -1,9 +1,7 @@
 //! RFC-0002 §7 — execute registered controls and report catalog coverage.
 #![forbid(unsafe_code)]
-use stele_negative_controls::catalog::{parse, report, RegisteredControl};
-
-// No protocol controls exist yet. The harness self-control is not an inference binding.
-const CONTROLS: &[RegisteredControl] = &[];
+use stele_negative_controls::catalog::{parse, report};
+use stele_negative_controls::CONTROLS;
 
 fn main() -> std::process::ExitCode {
     if std::env::args().skip(1).collect::<Vec<_>>() != ["--coverage"] {

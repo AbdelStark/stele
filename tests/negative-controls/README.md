@@ -12,14 +12,16 @@ For each protocol binding:
 2. Use `check_control` with the real prover and verifier. It first verifies the honest
    witness, applies `ProverHook` to a clone, proves again, and requires the exact typed
    rejection. Prover failures, no mutation, acceptance, and unrelated errors fail the test.
-3. Share that control's runner with the explicit registry in `src/main.rs`. Set the catalog
+3. Share that control's runner with the explicit registry in `src/lib.rs`. Set the catalog
    row to `done` with the same expected error name. Failed, duplicate, unknown, or mismatched
    registrations cannot earn coverage. Error strings must not expose witness data.
 
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
-The registry is empty: all 66 currently cataloged controls, spanning 17 catalog bindings,
-remain missing. Range rows expand to individual ids; malformed and duplicate ids fail.
+NC-0801 executes the production transcript registry validator and rejects one duplicated
+label with `DuplicateLabel`. It is configuration coverage only: 1/66 controls run,
+65 remain missing, and 0/17 proof-statement bindings are covered. Range rows expand
+to individual ids; malformed and duplicate ids fail.
 
 Coverage is over the current catalog, not a complete enumerated claim graph. Several
 rows are still broad categories or lack exact errors. E8-04 must expand those rows and

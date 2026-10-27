@@ -15,7 +15,7 @@
 | NC-0600–0605 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0012 §6, A1 | draw challenge before required message in the real protocol | | todo |
-| NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | todo |
+| NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
 | NC-0802–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
