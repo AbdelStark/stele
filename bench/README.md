@@ -99,3 +99,8 @@ warmup, code and allocator memory, so it is not a scratch-buffer or DRAM-traffic
 measurement. Ratios compare aggregate bucketed and naive times for the same width.
 This measures the partial-evaluation work contributing to `c_w`; it does not fit
 the full weight-pass constant or establish a bandwidth-bound inference prover.
+
+Recorded sample: [E1-05 partial evaluation](ledger/e1-05-partial-evaluation.json).
+Its int4/int8 bucketed totals are lower than naive; int16 is higher on the recorded
+row shape. Strategy selection remains explicit; this sample does not justify a
+universal automatic threshold.

@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/partial-eval",
+  "commit": "93d9b1bcfa72b00629c4b879804aa0f4ef110352",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "trailing partial evaluation",
+      "field": "QM31",
+      "rows": 4,
+      "columns": 16384,
+      "bits": [
+        4,
+        8,
+        16
+      ],
+      "strategies": [
+        "naive",
+        "bucketed"
+      ],
+      "iterations": 10,
+      "samples": 3,
+      "warmup_calls": 1,
+      "order": "reverse cases on odd samples",
+      "build": "release",
+      "values": "((index*73+19) % 2^bits) - 2^(bits-1)",
+      "point": "QM31(CM31(i+3,i+17),CM31(i+29,i+43)), i in 0..14"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "sample_times_ns": {
+      "int4/naive": [
+        8299000,
+        8117875,
+        8504875
+      ],
+      "int4/bucketed": [
+        2101791,
+        2105250,
+        2077791
+      ],
+      "int8/naive": [
+        7996459,
+        7947000,
+        7898291
+      ],
+      "int8/bucketed": [
+        2080291,
+        2045958,
+        1984166
+      ],
+      "int16/naive": [
+        7910167,
+        7920750,
+        7955125
+      ],
+      "int16/bucketed": [
+        11003125,
+        11014209,
+        11066500
+      ]
+    },
+    "peak_process_rss_bytes": {
+      "int4/naive": [
+        1884160,
+        1884160,
+        1884160
+      ],
+      "int4/bucketed": [
+        1900544,
+        1900544,
+        1900544
+      ],
+      "int8/naive": [
+        2048000,
+        2048000,
+        2326528
+      ],
+      "int8/bucketed": [
+        2080768,
+        2080768,
+        2080768
+      ],
+      "int16/naive": [
+        1982464,
+        1982464,
+        1982464
+      ],
+      "int16/bucketed": [
+        3031040,
+        3031040,
+        3031040
+      ]
+    },
+    "input_payload_bytes": {
+      "int4/naive": 32768,
+      "int4/bucketed": 32768,
+      "int8/naive": 65536,
+      "int8/bucketed": 65536,
+      "int16/naive": 131072,
+      "int16/bucketed": 131072
+    },
+    "bytes_per_element_denominator": 65536,
+    "bucketed_to_naive_ratio": {
+      "4": {
+        "bucketed_ns": 6284832,
+        "naive_ns": 24921750
+      },
+      "8": {
+        "bucketed_ns": 6110415,
+        "naive_ns": 23841750
+      },
+      "16": {
+        "bucketed_ns": 33083834,
+        "naive_ns": 23786042
+      }
+    }
+  },
+  "plan_digest": "62d7be6d0c2762aaf6e539edc3525282c5e33ad12dc69fd454941050a729525c",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 118028623,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "int4/naive": 24921750,
+    "int4/bucketed": 6284832,
+    "int8/naive": 23841750,
+    "int8/bucketed": 6110415,
+    "int16/naive": 23786042,
+    "int16/bucketed": 33083834
+  },
+  "kernel_counters": {
+    "int4/naive/elements": 1966080,
+    "int4/bucketed/elements": 1966080,
+    "int8/naive/elements": 1966080,
+    "int8/bucketed/elements": 1966080,
+    "int16/naive/elements": 1966080,
+    "int16/bucketed/elements": 1966080
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Native CPU microbenchmark. Timed calls include eq-table construction, workspace allocation and partial evaluation; exclude input construction, warmup and output encoding. Total sums measured samples. Payload excludes spare capacity/allocator metadata. macOS time -l maximum RSS is bytes for each separate case process, including setup, warmup, code and allocator; it is not kernel scratch size or DRAM traffic. Each process runs one strategy. Outputs match byte-for-byte across strategies and samples. Targets c_w; no inference, GPU, soundness or cost-model fit claim. No applicable proof binding disabled."
+}
