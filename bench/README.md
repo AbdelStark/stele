@@ -82,3 +82,25 @@ proof speed, constant-time guarantee or cost-model fit follows from these record
 Recorded samples: [NEON](ledger/e1-04-neon-throughput.json) and
 [AVX2/AVX-512](ledger/e1-04-x86-throughput.json). The x86 record was downloaded unchanged
 from [CI run 40565652650](https://github.com/AbdelStark/stele/actions/runs/40565652650).
+
+## Polynomial partial evaluation (E1-05)
+
+On macOS, run `python3 bench/partial_eval.py <new-ledger.json>` from a clean,
+committed checkout. The runner first tests the polynomial kernels, then measures
+naive and bucketed evaluation on identical synthetic QM31 inputs for int4/int8/int16.
+It reverses case order between samples and checks result bytes across strategies.
+Timing includes eq construction, allocation and partial evaluation; it excludes
+input construction, warmup and encoding. Source state is checked before and after.
+
+Input payload bytes are measured from the actual packed/native storage; divide
+by the recorded element denominator for bytes/element. Peak RSS comes from macOS
+`time -l` in bytes, with a separate process for each case. It includes setup,
+warmup, code and allocator memory, so it is not a scratch-buffer or DRAM-traffic
+measurement. Ratios compare aggregate bucketed and naive times for the same width.
+This measures the partial-evaluation work contributing to `c_w`; it does not fit
+the full weight-pass constant or establish a bandwidth-bound inference prover.
+
+Recorded sample: [E1-05 partial evaluation](ledger/e1-05-partial-evaluation.json).
+Its int4/int8 bucketed totals are lower than naive; int16 is higher on the recorded
+row shape. Strategy selection remains explicit; this sample does not justify a
+universal automatic threshold.
