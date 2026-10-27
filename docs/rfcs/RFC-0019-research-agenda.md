@@ -88,3 +88,18 @@ in E8-05/E12-09; do not infer certification from a transcript KAT or a placehold
 Q11 resolution: RFC-0012 A1 Accepted with same-author skill reviews. E2-00
 implements the kernel; E2-01 retains every original acceptance criterion and
 waits for E3-01's real consumers. Q12 remains open and blocks profile certification.
+
+Q13: which fixed Poseidon2-M31 permutation parameters and reference vectors
+complete E2-03 without implicitly choosing a wrapper sponge or transcript?
+Candidate: RFC-0012 A2; independent integer checks and pinned upstream execution
+are recorded in `research/poseidon2/REPORT.md`. E2-03 is blocked on acceptance.
+
+Q14: which wrapper hash/transcript mode, encoding, capacity, digest length and
+concrete security accounting support E14-01? A permutation KAT supplies none of
+these. Eight M31 output limbs have fewer than 248 bits of range and cannot alone
+justify a 256-bit digest or a 128-bit generic collision target. Resolve before
+using Poseidon2 for wrapper challenges or commitments; retain native BLAKE3.
+
+Q13 resolution: RFC-0012 A2 Accepted after the linked same-author skill reviews
+and independent integer/upstream checks. E2-03 implements that primitive; Q14
+remains open and blocks any unaccounted wrapper hash/transcript construction.

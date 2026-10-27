@@ -38,6 +38,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: python3 research/r-octic/check_modulus.py
       - run: python3 research/cqis-rounding/check_rounding.py
+      - run: python3 research/poseidon2/check_poseidon2.py
       - run: uv run --locked --script research/transcript/check_transcript.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
@@ -56,6 +57,17 @@ jobs:
       - run: scripts/gates/rfc-status.sh
       - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
+  poseidon2-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.95.0
+      - name: Regenerate pinned upstream Poseidon2 vectors
+        run: |
+          cargo run --manifest-path vendor-ref/poseidon2-m31/Cargo.toml --example vectors --locked > "$RUNNER_TEMP/poseidon2.jsonl"
+          cmp research/poseidon2/reference.jsonl "$RUNNER_TEMP/poseidon2.jsonl"
   simd-throughput:
     needs: gates
     runs-on: ubuntu-latest

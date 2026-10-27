@@ -122,3 +122,12 @@ control using the production registry validator, not a toy proof verifier.
 Same-author skill passes approve the byte contract, not an independent audit or
 Fiat-Shamir security theorem. Q12 tracks the unresolved full FS/H budget. No
 catalog control is marked done by the research checks. Status: Accepted.
+
+## ADR-022 — Fixed Poseidon2 permutation, explicit wrapper-mode gate
+
+Context: E2-03 and RFC-0012 A2. Decision: pin width 16, exponent 5, 8 full and
+14 partial rounds, the exact Plonky3 0.8.0 matrices/constants, and executed
+reference vectors. Core implementation is independent and wrapper-feature-only.
+A permutation KAT is not a hash-mode or collision-security theorem. Q14 must
+resolve wrapper encoding, capacity, digest and accounting before E14-01 uses it;
+native BLAKE3 and the Q12 obligation remain unchanged. Status: Accepted.
