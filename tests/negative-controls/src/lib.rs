@@ -3,7 +3,7 @@
 
 pub mod catalog;
 
-/// A one-value mutation applied after an honest witness has been constructed.
+/// A one-value mutation applied after an honest witness or configuration is built.
 /// Each control must assert that exactly its intended value changes.
 pub trait ProverHook<W> {
     /// Mutate the selected value without changing the public statement.
@@ -58,5 +58,50 @@ where
         Ok(()) => Err(ControlFailure::TamperAccepted),
         Err(actual) if actual == expected => Ok(()),
         Err(actual) => Err(ControlFailure::WrongRejection { expected, actual }),
+    }
+}
+
+/// Failure of a configuration-validation control (RFC-0012 A1, NC-0801 only).
+#[derive(Debug, PartialEq, Eq)]
+pub enum ConfigurationFailure<E> {
+    /// The production validator rejected the honest configuration.
+    HonestRejected(E),
+    /// The hook did not change the configuration.
+    NoTamper,
+    /// The production validator accepted the tampered configuration.
+    TamperAccepted,
+    /// Rejection occurred at a different boundary than the control targets.
+    WrongRejection {
+        /// Required rejection.
+        expected: E,
+        /// Observed rejection.
+        actual: E,
+    },
+}
+
+/// Validate the honest configuration and its one-value-tampered copy.
+/// This path has no proof wrapper and earns no proof-statement binding coverage.
+/// The caller must use the production validator and assert its exact mutation.
+pub fn check_configuration<C, H, E>(
+    honest: &C,
+    hook: &H,
+    validate: impl Fn(&C) -> Result<(), E>,
+    expected: E,
+) -> Result<(), ConfigurationFailure<E>>
+where
+    C: Clone + PartialEq,
+    H: ProverHook<C>,
+    E: PartialEq,
+{
+    validate(honest).map_err(ConfigurationFailure::HonestRejected)?;
+    let mut tampered = honest.clone();
+    hook.tamper(&mut tampered);
+    if tampered == *honest {
+        return Err(ConfigurationFailure::NoTamper);
+    }
+    match validate(&tampered) {
+        Ok(()) => Err(ConfigurationFailure::TamperAccepted),
+        Err(actual) if actual == expected => Ok(()),
+        Err(actual) => Err(ConfigurationFailure::WrongRejection { expected, actual }),
     }
 }

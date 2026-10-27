@@ -25,3 +25,15 @@ Coverage is over the current catalog, not a complete enumerated claim graph. Sev
 rows are still broad categories or lack exact errors. E8-04 must expand those rows and
 cross-check the implemented claim graph, PCS checks, and ledger lines. No complete proof
 or 100% binding coverage is claimed by the harness bootstrap.
+
+RFC-0012 A1 authorizes a separate `check_configuration` path for the registry
+collision control only. It must call the production registry validator on both
+honest and one-value-mutated configurations. No-op mutations, honest rejection,
+tamper acceptance and wrong errors fail. The harness configuration fixture is
+not the production control and earns no catalog credit.
+
+Registrations declare `ControlKind`. Only the registry collision id may be
+`Configuration`; it may not be relabelled `Proof`. Configuration passes count
+as executed controls, are printed explicitly, and never count toward covered
+proof-statement bindings. All proof controls still require real prover/verifier
+execution through `check_control`.

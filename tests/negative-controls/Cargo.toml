@@ -19,3 +19,7 @@ workspace = true
 [[test]]
 name = "catalog"
 path = "harness/catalog.rs"
+
+[[test]]
+name = "configuration"
+path = "harness/configuration.rs"
