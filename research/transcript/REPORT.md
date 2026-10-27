@@ -68,3 +68,9 @@ budgets, including failed attempts and grinding, and reject invalid profiles.
 Graduation: RFC-0012 A1 is Accepted with the linked same-author skill review.
 The candidate filename is retained as study provenance. E2-00 still has to deliver
 the core primitive and gates; E2-01 still requires the actual protocol controls.
+
+Core delivery: the Rust transcript now checks a copy of these unchanged candidate
+vectors, and the oracle verifies that copy has not drifted. Both fields match all
+intermediate states and challenge bytes. Decoder boundary and histogram tests
+complement the oracle; they add no proof-statement control coverage. NC-0801 now
+uses the actual core registry validator. Full protocol controls remain pending.

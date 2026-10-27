@@ -176,4 +176,6 @@ if __name__ == "__main__":
     else:
         assert not sys.argv[1:], "unknown arguments"
         assert json.loads(path.read_text()) == data
+    core_fixture = pathlib.Path(__file__).resolve().parents[2] / "crates/stele-hash/tests/fixtures/transcript.json"
+    assert json.loads(core_fixture.read_text()) == data, "core KAT fixture drift"
     print("candidate framing, rejection, label, ratchet and message-sensitivity checks passed; no protocol coverage")

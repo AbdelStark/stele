@@ -1,0 +1,104 @@
+{
+  "spec": "RFC-0012-A1-candidate",
+  "hash_backend": "blake3-py 1.0.11 (official Rust backend)",
+  "vectors": [
+    {
+      "degree": 4,
+      "events": [
+        {
+          "public_hex": "73796e746865746963207075626c696320696e7075743b206e6f7420612070726f6f66",
+          "state_hex": "2604b0b14cdc7661bec71f680e04927bee7fa6bb2255ab213709844549f5cf48"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/instance",
+          "message_hex": "000102030405060708090a0b0c0d0e0f",
+          "state_hex": "d9a5e159fc97e49223fcf4fa0c076740b53bc9cb6ed2f34cf1d86795e1e90727"
+        },
+        {
+          "challenge_hex": "e60f2d76b360d520490afe0284d2ed45",
+          "consumed_words": 4,
+          "state_hex": "b8efe79a9bc6cca69ca12c44d6ecc2d574750f1dbb164b99fdd843cfe6c4126d"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/round",
+          "message_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+          "state_hex": "05706449f50d42765f4623f8900278edd28ff05435e9741150bbb7ef21593363"
+        },
+        {
+          "challenge_hex": "1ea0e45257d33914362e5018f148ab7e",
+          "consumed_words": 4,
+          "state_hex": "23c670061fbbee4f881764687f278206ffc106585e6372d7dcff2713a10f86bb"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/final",
+          "message_hex": "66696e616c20636c61696d73",
+          "state_hex": "dc0b9a874f825c3a96cdea7450dea8ac854b671b81cb674ef3eeb95efa205083"
+        },
+        {
+          "challenge_hex": "51cc8c0a0e798504b638e074e39ecc02",
+          "consumed_words": 4,
+          "state_hex": "bee7dcb146409c3597056d552d486c79e481aea5c8fbc6bce2dc0be25ae7f4b2"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/round",
+          "message_hex": "7365636f6e6420726f756e64",
+          "state_hex": "cd64ccd56000c229035683cf4d74c12f17d5585fac4ed72c7ae273e17d5970d5"
+        },
+        {
+          "challenge_hex": "ac2eba7ccc339031b46d03003e75341e",
+          "consumed_words": 4,
+          "state_hex": "1dd4bb3e2531ad5cd94f9322921a98967a2ee2bc5e509c92573885e5fa7a04b4"
+        }
+      ]
+    },
+    {
+      "degree": 8,
+      "events": [
+        {
+          "public_hex": "73796e746865746963207075626c696320696e7075743b206e6f7420612070726f6f66",
+          "state_hex": "2604b0b14cdc7661bec71f680e04927bee7fa6bb2255ab213709844549f5cf48"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/instance",
+          "message_hex": "000102030405060708090a0b0c0d0e0f",
+          "state_hex": "d9a5e159fc97e49223fcf4fa0c076740b53bc9cb6ed2f34cf1d86795e1e90727"
+        },
+        {
+          "challenge_hex": "09bfd42af55c503e0bbb0b7410ee8270e345c137cedb835c745e0802fd43ff53",
+          "consumed_words": 8,
+          "state_hex": "31db8250ba635a380f5574a5f79409229fb3448688d090905ea031ab9b840895"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/round",
+          "message_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+          "state_hex": "29fccfefe6fe6991a2d8b2dc51d2b62228beaee2b3ebd60d91518e20596b2c39"
+        },
+        {
+          "challenge_hex": "18c2ac6ffdeefc387a67722de496f8148fc0262f08c91b19e2e35639dd518803",
+          "consumed_words": 8,
+          "state_hex": "71e156e6bb25ecc6c6984ce04826ed6b78416eb3df4c54ac3595af3c33410db0"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/final",
+          "message_hex": "66696e616c20636c61696d73",
+          "state_hex": "2617f9c369d696fcb5e2a2fb58dc69376618b27bb69647c283d76236735911e1"
+        },
+        {
+          "challenge_hex": "dd70b92fa074057f0fedba79a210f409c1c34d1419a7c55f033b437f23ea3d59",
+          "consumed_words": 8,
+          "state_hex": "08308fd62538ffa2b5a65e7228f0e58c67f737d4f3bff841300a78abdfbc4c1a"
+        },
+        {
+          "label": "stele/v0.1/sumcheck/round",
+          "message_hex": "7365636f6e6420726f756e64",
+          "state_hex": "adb9d437b4cf2cb679c5679430d2d633a8da9ea6e7d840b50275a33b32c2d588"
+        },
+        {
+          "challenge_hex": "2b4d1f5440de0073e2b5ed4cb0932e674fcefa35e2bb17129cafd14ea7e2bc7e",
+          "consumed_words": 8,
+          "state_hex": "ffdd6173145df1607c3372193cbf7c258c4aa329d29628626aaf028ce4e835ad"
+        }
+      ]
+    }
+  ]
+}
