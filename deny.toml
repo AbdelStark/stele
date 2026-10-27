@@ -15,7 +15,7 @@ deny = [
   { name = "stele-field", wrappers = ["stele-code", "stele-cqis", "stele-hash", "stele-kernels", "stele-poly", "stele-proof", "stele-simd", "stele-verifier"] },
   { name = "stele-gkr", wrappers = ["stele-lookup", "stele-reductions"] },
   { name = "stele-gpu", wrappers = ["stele-dist"] },
-  { name = "stele-hash", wrappers = ["stele-pcs", "stele-sumcheck", "stele-verifier"] },
+  { name = "stele-hash", wrappers = ["stele-pcs", "stele-sumcheck", "stele-verifier", "stele-negative-controls"] },
   { name = "stele-ir", wrappers = ["stele-reductions"] },
   { name = "stele-kernels", wrappers = ["stele-gpu"] },
   { name = "stele-lookup", wrappers = ["stele-reductions"] },

@@ -165,6 +165,9 @@ dependencies = [
 [[package]]
 name = "stele-negative-controls"
 version = "0.1.0"
+dependencies = [
+ "stele-hash",
+]
 
 [[package]]
 name = "stele-passport"

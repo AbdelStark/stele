@@ -3,6 +3,18 @@
 
 pub mod catalog;
 
+extern crate self as stele_negative_controls;
+#[path = "../transcript/nc_0801.rs"]
+mod nc_0801;
+
+/// Executable controls; configuration passes do not earn statement-binding credit.
+pub const CONTROLS: &[catalog::RegisteredControl] = &[catalog::RegisteredControl {
+    id: 801,
+    kind: catalog::ControlKind::Configuration,
+    expected_error: "DuplicateLabel",
+    run: nc_0801::run,
+}];
+
 /// A one-value mutation applied after an honest witness or configuration is built.
 /// Each control must assert that exactly its intended value changes.
 pub trait ProverHook<W> {
