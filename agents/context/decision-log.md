@@ -141,3 +141,15 @@ leaves explicit evaluations for real consumers; only the public adapter closes
 public tables. Post-proof controls retain a real-prover/verifier honest baseline
 and one-value tamper. Research bytes earn no protocol coverage. Direct field
 dependencies support the implementation without importing proof systems. Status: Accepted.
+
+## ADR-024 — Canonical Merkle bytes with explicit consumer obligations
+
+Context: E2-02, RFC-0012 A3 and Q16. Decision: authenticate fixed-width byte
+columns under a verifier-owned descriptor; use typed absent padding, explicit
+position/level framing, full 256-bit digests, exact bottom-up paths and complete
+ordered batches. Roots of roots hash ordered child roots as type-2 leaves.
+Canonical field/code interpretation and transcript-derived indices belong to
+PCS consumers. Membership does not certify unopened subtrees or zero knowledge.
+Q17 retains the unresolved 1-versus-N-shard digest semantics; different logical
+root lists are not claimed to hash equally. Same-author reviews approve these
+bytes, not an independent audit or Q12's full security budget. Status: Accepted.

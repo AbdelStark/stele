@@ -113,3 +113,19 @@ E3-01 is blocked on acceptance; Q12 remains a separate profile-certification gat
 Q15 resolution: RFC-0006 A1 and RFC-0020 A1 Accepted with the linked same-author
 skill reviews. E3-01 must deliver the actual core, both-verifier corpus, accounting
 gate and benchmark evidence before it is done. Research checks credit no controls.
+
+Q16: which exact leaf/internal/root-of-roots bytes, tree shape, padding and batch
+path rules make E2-02 interoperable? Candidate: RFC-0012 A3, with checks in
+`research/merkle/REPORT.md`. E2-02 is blocked on amendment acceptance; Q12 remains
+an independent profile-certification obligation.
+
+Q17: E4-07 requests the same digest for 1 and N shards. A typed root-of-roots
+list changes when its logical partition changes; it cannot also equal an
+arbitrary flat-tree root. Which canonical logical shard partition and device
+assignment meet that criterion, or which explicit amendment is needed? Resolve
+before E4-07 implementation. E2-02 authenticates a fixed descriptor/list only;
+it does not claim partition-independent roots or distributed proof parity.
+
+Q16 resolution: RFC-0012 A3 Accepted with linked same-author skill reviews and
+candidate byte checks. E2-02 is ready for production implementation and actual
+NC-0602; research checks earn no control credit. Q12 and Q17 remain open.

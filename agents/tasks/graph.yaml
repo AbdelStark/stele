@@ -250,15 +250,17 @@ tasks:
   depends:
   - E2-01
   rfc:
-  - RFC-0012 §3
+  - RFC-0012 §3, A3
   skill: pcs-engineer
   crate: stele-hash
-  status: in_progress
+  status: ready
   agent: codex-root
   branch: task/E2-02-merkle-contract
   acceptance:
   - path verification controls NC-0602
   - root-of-roots support
+  - canonical byte-vector parity and exact path/batch validation
+  - actual Merkle control gate; no research-only catalog credit
 - id: E2-03
   epic: E2
   title: Poseidon2-M31 (wrapper only)
