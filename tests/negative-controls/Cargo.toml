@@ -30,3 +30,7 @@ stele-hash = { path = "../../crates/stele-hash" }
 [[test]]
 name = "nc-0801"
 path = "transcript/nc_0801.rs"
+
+[[test]]
+name = "proof-control"
+path = "harness/proof.rs"
