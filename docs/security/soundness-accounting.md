@@ -51,3 +51,10 @@ PCS ε_Merkle/H still require Q12's concrete global query accounting. Membership
 alone does not certify codeword validity, canonical field encodings, unopened
 subtrees or a profile budget. NC-0602 now checks both leaf kinds through actual construction/authentication;
 this supplies membership-binding evidence, not a PCS or hash-budget certificate.
+
+RFC-0006 A2 / RFC-0012 A4 specify the future BatchCoefficient label mapped to RLC,
+with one numerator t plus one shared SC numerator M D per invocation, over p^d.
+The [interactive batching obligation](../../formal/batching.md) gives the sharper
+(t-1+M D)/p^d bound conditioned on true final evaluations. The registry/inventory
+and actual consumer gate remain unchanged until E3-02 implements both modes;
+research vectors are not accounting coverage. Q12 still blocks certification.

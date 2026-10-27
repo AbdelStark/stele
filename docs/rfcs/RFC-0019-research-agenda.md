@@ -129,3 +129,12 @@ it does not claim partition-independent roots or distributed proof parity.
 Q16 resolution: RFC-0012 A3 Accepted with linked same-author skill reviews and
 candidate byte checks. E2-02 is ready for production implementation and actual
 NC-0602; research checks earn no control credit. Q12 and Q17 remain open.
+
+Q18: which coefficient schedule, zero-extension semantics, final obligations and
+message encoding complete both RFC-0006 §2 instance batching and §4 virtual-tensor
+claim batching? Candidate: RFC-0006 A2 and RFC-0012 A4. E3-02 is blocked on their
+acceptance; research checks earn no production control or profile credit.
+
+Q18 resolution: RFC-0006 A2 and RFC-0012 A4 Accepted with same-author skill reviews
+and candidate byte/algebra checks. E3-02 is ready for both production modes,
+real controls, accounting gates and benchmarks; Q12 remains open.

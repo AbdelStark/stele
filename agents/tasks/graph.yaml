@@ -307,13 +307,19 @@ tasks:
   depends:
   - E3-01
   rfc:
-  - RFC-0006 §2,§4
+  - RFC-0006 §2,§4, A2
+  - RFC-0012 A4
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
   status: ready
   acceptance:
   - NC-0202
-  - ledger RLC
+  - ledger RLC and shared SC records checked against actual descriptors/challenges
+  - both instance and virtual-tensor claim modes, equal/unequal sizes, both fields
+  - NC-0206 early coefficient and batched extensions of NC-0205/0802
+  - 10^4 seeded coefficient evaluations including sparse, overlapping and arbitrary points
+  - Rust/Python bytes and acceptance/rejection agreement; all final obligations consumed
+  - closed registry/inventory update and c_sc/peak-memory benchmark ledger
 - id: E3-03
   epic: E3
   title: eq-trick / univariate-skip strategy
