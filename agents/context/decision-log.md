@@ -69,3 +69,16 @@ canonical field types, so composition cannot introduce an invalid limb. No gener
 configurable modulus or new dependency is exposed. No challenge, soundness-ledger
 line or cost-model fit changes. The scalar multiplication ratio is measured by the
 E1-02 microbenchmark, without a GPU or inference claim. Status: Accepted.
+
+## ADR-018 — Checked packed SIMD boundary
+
+Context: RFC-0003 §§1,2,6 and E1-04. Decision: expose fixed blocks of sixteen lanes,
+with four columns for QM31 in the Accepted tower basis. Constructors reject limbs
+outside the lazy range; exports canonicalise. Explicit backend selection rejects
+unsupported CPU/OS features, while automatic detection selects a supported backend.
+NEON and x86 widening products share the same quadratic identities. Unsafe code is
+limited to the SIMD crate exception in AGENTS.md §6, with documented intrinsic and
+pointer bounds. Parity tests inspect raw kernel exits before export normalization.
+No allocation, new dependency, challenge, proof binding or weight pass is introduced
+by these arithmetic calls. Throughput evidence is a separate E1-04 deliverable;
+no cost-model fit or GPU/inference performance is claimed. Status: Accepted.

@@ -185,7 +185,9 @@ tasks:
   - RFC-0003 §6
   skill: cuda-kernel-author
   crate: stele-simd
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E1-04-simd
   acceptance:
   - bit-identical to scalar on 1e5 random vectors
   - throughput ledger
