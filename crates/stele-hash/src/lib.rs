@@ -1,5 +1,14 @@
 //! Canonical transcript and registry governed by RFC-0012 A1.
 #![forbid(unsafe_code)]
+#![cfg_attr(
+    not(feature = "wrapper"),
+    doc = r#"
+The wrapper permutation is absent unless explicitly enabled:
+```compile_fail
+use stele_hash::poseidon2::permute;
+```
+"#
+)]
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
@@ -267,3 +276,6 @@ mod tests;
 
 #[cfg(test)]
 mod transcript_tests;
+
+#[cfg(feature = "wrapper")]
+pub mod poseidon2;

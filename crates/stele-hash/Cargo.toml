@@ -5,6 +5,9 @@ edition = "2021"
 license = "Apache-2.0"
 description = "Stele — stele-hash (see RFC-0012)"
 
+[features]
+wrapper = []
+
 [dependencies]
 blake3 = { version = "=1.8.7", default-features = false }
 stele-field = { path = "../stele-field" }

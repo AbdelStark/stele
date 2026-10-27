@@ -30,3 +30,7 @@ This validates registry mapping, not per-instance accounting or a profile budget
 challenge generation follows A1, while real schedule consumers are still pending.
 Q12 (RFC-0019) tracks the missing concrete FS theorem/query convention and the
 incompatible illustrative H budget. No profile can be certified from placeholders.
+
+The gate also runs A2's wrapper-feature permutation KATs. This unused permutation
+adds no challenge or ledger line. Q14 must resolve the wrapper hash/transcript
+mode and its separate budget before E14-01 consumes it. Native A1 is unchanged.
