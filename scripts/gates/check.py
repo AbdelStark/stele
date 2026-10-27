@@ -135,6 +135,41 @@ def batch_claims(root):
     print('gate claim batching: bytes/SC/RLC and 10000 coefficient points per field checked; no profile certified')
 
 
+
+def batch_corpus(root):
+    """Compare actual closed-statement decisions, every obligation, and both loss records."""
+    path = 'research/batching/corpus.jsonl'
+    outputs = []
+    for command in [
+        ['cargo', 'run', '-q', '-p', 'stele-sumcheck', '--example', 'batch_corpus', '--locked', '--offline', '--', path],
+        ['uv', 'run', '--locked', '--script', 'research/batching/check_batching.py', '--verify-corpus', path],
+    ]:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode:
+            raise ValueError(f'batch corpus producer failed: {result.stdout} {result.stderr}')
+        outputs.append([json.loads(line) for line in result.stdout.splitlines()])
+    cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
+    if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
+        raise ValueError('batch corpus decisions/obligations/accounting mismatch')
+    for case, result in zip(cases, outputs[0]):
+        if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
+            raise ValueError('batch corpus expected rejection mismatch')
+        if case['expected'] == 'accept':
+            b, d = case['batch'], case['degree']
+            if b['mode']:
+                m, degree, count, claims = b['m'], 2, len(b['claims']), 1
+            else:
+                members = b['instances']; m = max(i['m'] for i in members)
+                degree = max([int(any(i['m'] != m for i in members))] +
+                             [len(factors) for i in members for _, factors in i['terms']])
+                count, claims = len(members), sum(len(i['ids']) for i in members)
+            if (result['sc'] != dict(id=b['id'], m=m, degree=degree, field_degree=d, numerator=m*degree) or
+                result['rlc'] != dict(id=b['id'], t=count, field_degree=d, numerator=count) or
+                len(result['point']) != m or len(result['claims']) != claims):
+                raise ValueError('batch corpus descriptor/accounting mismatch')
+    print(f'gate batching: {len(cases)} shared decisions, all obligations and SC/RLC checked; no profile certified')
+
+
 def merkle_vectors(root):
     """Execute actual authentication/KATs and check the independent candidate oracle."""
     for command in [
@@ -231,6 +266,7 @@ def main():
                 sumcheck_corpus(ROOT)
                 batch_instances(ROOT)
                 batch_claims(ROOT)
+                batch_corpus(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
