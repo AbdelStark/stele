@@ -95,6 +95,17 @@ def rejects(function, reason):
 
 def checks():
     registry(LABELS)
+    rejects(lambda: Transcript(b"", 4), "InvalidTranscript")
+    rejects(lambda: Transcript(b"public", 3), "InvalidTranscript")
+    rejects(lambda: sample(bytes(256), 3), "InvalidSamplingInput")
+    rejects(lambda: sample(bytes(255), 4), "InvalidSamplingInput")
+    rejects(lambda: frame(bytes(31), 0, PUBLIC, b"x"), "InvalidFrame")
+    rejects(lambda: frame(bytes(32), 3, PUBLIC, b"x"), "InvalidFrame")
+    rejects(lambda: frame(bytes(32), 0, b"unknown", b"x"), "InvalidFrame")
+    rejects(lambda: decode_frame(bytes(44)), "InvalidFrame")
+    t = Transcript(b"public", 4); state = t.state
+    rejects(lambda: t.absorb(PUBLIC, b"again"), "InvalidAbsorbLabel")
+    assert t.state == state
     assert blake3(b"").hexdigest() == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262"
     changed = list(LABELS); changed[-1] = changed[2]
     rejects(lambda: registry(changed), "DuplicateLabel")
