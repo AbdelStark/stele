@@ -49,4 +49,5 @@ RFC-0012 A3 fixes Merkle authentication bytes without adding a challenge or an
 algebraic loss. Its binding argument is conditional on BLAKE3 collision resistance;
 PCS ε_Merkle/H still require Q12's concrete global query accounting. Membership
 alone does not certify codeword validity, canonical field encodings, unopened
-subtrees or a profile budget. NC-0602 remains todo until actual core integration.
+subtrees or a profile budget. NC-0602 now checks both leaf kinds through actual construction/authentication;
+this supplies membership-binding evidence, not a PCS or hash-budget certificate.

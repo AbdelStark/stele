@@ -16,8 +16,8 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("2/17 bindings; 6/67 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 61);
+    assert!(coverage.contains("3/17 bindings; 7/67 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 60);
     assert!(coverage.contains("Configuration controls: 1 (not proof-statement coverage)"));
 }
 

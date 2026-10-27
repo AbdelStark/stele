@@ -6,11 +6,19 @@ pub mod catalog;
 pub mod sumcheck;
 
 extern crate self as stele_negative_controls;
+#[path = "../pcs/nc_0602.rs"]
+mod nc_0602;
 #[path = "../transcript/nc_0801.rs"]
 mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 602,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: nc_0602::run,
+    },
     catalog::RegisteredControl {
         id: 200,
         kind: catalog::ControlKind::Proof,
