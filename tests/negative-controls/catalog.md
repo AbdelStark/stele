@@ -14,9 +14,13 @@
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600–0605 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
-| NC-0800–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
+| NC-0800 | transcript/ledger | 0012 §6, A1 | draw challenge before required message in the real protocol | | todo |
+| NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | todo |
+| NC-0802–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
+
+The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.

@@ -73,3 +73,18 @@ RFC-0004 §§3,5.1. Candidate: RFC-0004 A1; counterexamples and exact-arithmetic
 are in `research/cqis-rounding/REPORT.md`.
 
 Q10 resolution: RFC-0004 A1 Accepted with the skill-review record; E5-01 implements it.
+
+Q11: which byte framing, XOF/rejection algorithm, state update and field-domain
+selection make RFC-0012 §1 interoperable? RFC-0012 A1 is the candidate. Its DAG
+refinement must retain E2-01's real protocol controls without inventing a toy
+verifier to satisfy a primitive-only dependency.
+
+Q12: which precise Fiat-Shamir theorem/query convention supports the instantiated
+Stele IOP, and which admissible adversary query cap reconciles FS/H with each
+profile target? The existing Q <= 2^100 illustration gives H = 2^-56 under the
+stated Q^2/2^256 formula, exceeding the treaty target before other losses. Resolve
+in E8-05/E12-09; do not infer certification from a transcript KAT or a placeholder.
+
+Q11 resolution: RFC-0012 A1 Accepted with same-author skill reviews. E2-00
+implements the kernel; E2-01 retains every original acceptance criterion and
+waits for E3-01's real consumers. Q12 remains open and blocks profile certification.
