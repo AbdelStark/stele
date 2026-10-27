@@ -42,7 +42,7 @@ bench/                    ← benchmark protocol and result ledger format
 
 ## Status
 
-`v0.1.0` — workspace bootstrap complete; CI gate implementation in progress. Crates are skeletons; inference proving, verification,
+`v0.1.0` — workspace bootstrap and CI guards implemented. Crates are skeletons; inference proving, verification,
 zero-knowledge, and GPU execution are not implemented. The task graph (`agents/tasks/graph.yaml`)
 is the single source of truth for what to build next. There are no human timelines in this repository by design.
 
