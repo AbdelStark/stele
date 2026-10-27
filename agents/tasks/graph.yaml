@@ -201,7 +201,7 @@ tasks:
   - ST-9
   skill: sumcheck-prover-engineer
   crate: stele-poly
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E1-05-poly-ledger
   acceptance:
