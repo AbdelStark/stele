@@ -24,3 +24,21 @@ not discharge E3-02's 10^4-point gate. See the [obligation](../../formal/batchin
 Recommendation: accept A2/A4 after skill review, then implement both modes and
 real controls. Arbitrary points can cost O(t 2^m); disjoint prefix blocks admit
 linear construction. No performance, GPU, independent-audit or profile claim.
+
+## Production corpus (RFC-0006 A2, E3-02)
+
+`uv run --locked --script research/batching/check_batching.py --verify-corpus research/batching/corpus.jsonl`
+regenerates and checks the committed 276 cases; `--write-corpus` regenerates the fixture.
+`cargo run -q -p stele-sumcheck --example batch_corpus -- research/batching/corpus.jsonl`
+uses the real Rust public-table verifiers and checks production prover bytes on honest cases.
+Both control/accounting gates compare exact decisions, all suffix-point obligations, and SC/RLC records.
+The JSON mode/statement/tables are verifier-owned harness inputs, not proof-supplied routing.
+This is a logical subproof corpus, not RFC-0016's inference-proof parser or profile certification.
+
+Cases include both fields/modes, singleton and zero rounds, degree 0..4, mixed degrees,
+unequal-size padding, empty inputs, aliases, zero relations and full-extension witnesses/points.
+False statements get fresh oracle proofs. Malformed lengths, out-of-range limbs/ids,
+invalid descriptors, conflicting aliases, unused/unclaimed values and omitted BatchFinal
+have exact expected errors. Every accepted result's obligations are independently consumed.
+The existing named NC controls remain the catalog evidence; this corpus adds no NC credit.
+E3-02 still requires its measured c_sc/peak-memory ledger.

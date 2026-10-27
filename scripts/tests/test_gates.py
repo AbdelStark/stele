@@ -83,6 +83,24 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('batch instance checks failed', result.stderr)
 
+    def test_rejects_batch_corpus_drift_and_accounting(self):
+        corpus = self.root / 'research/batching/corpus.jsonl'
+        original = corpus.read_text()
+        rows = [json.loads(line) for line in original.splitlines()]
+        rows[0]['expected'] = 'ClaimMismatch'
+        corpus.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('batch corpus drift', result.stderr)
+        corpus.write_text(original)
+        source = self.root / 'crates/stele-sumcheck/examples/batch_corpus.rs'
+        old = source.read_text()
+        self.assertIn('"numerator":result.rlc.numerator', old)
+        source.write_text(old.replace('"numerator":result.rlc.numerator', '"numerator":result.rlc.numerator + 1'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('batch corpus decisions/obligations/accounting mismatch', result.stderr)
+
     def test_rejects_claim_coefficient_and_consumer_bypasses(self):
         source = self.root / 'crates/stele-sumcheck/src/claim_batch.rs'
         original = source.read_text()

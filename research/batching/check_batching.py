@@ -369,6 +369,14 @@ def exercise(b, tables, d, vectors):
 
 
 if __name__ == '__main__':
+    if sys.argv[1:2] in (['--write-corpus'], ['--verify-corpus']):
+        import batch_corpus as corpus
+        if sys.argv[1:] == ['--write-corpus']:
+            corpus.PATH.write_text(''.join(json.dumps(c, separators=(',', ':'))+'\n' for c in corpus.generate()))
+        else:
+            require(len(sys.argv) == 3, 'Arguments')
+            corpus.check([json.loads(line) for line in Path(sys.argv[2]).read_text().splitlines()])
+        sys.exit(0)
     if sys.argv[1:] in (['--instance-vectors'], ['--claim-vectors']):
         mode = int(sys.argv[1] == '--claim-vectors')
         for record in checks(all_instances=mode == 0, all_claims=mode == 1)[0]:

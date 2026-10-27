@@ -64,7 +64,7 @@ python3 -m unittest discover -s scripts/tests -v
 The isolated mutation tests verify those restrictions. Controls and accounting now exercise
 the production transcript and dense sumcheck against an independent Python corpus, including
 final public evaluation obligations. Instance and virtual-tensor claim batching have both-field byte, SC/RLC and rejection
-checks; the full batching rejection corpus and benchmarks remain E3-02 work.
+checks plus a 276-case shared Rust/Python acceptance/rejection corpus; batching benchmarks remain E3-02 work.
 Merkle construction/authentication agrees with the
 A3 byte vectors, and both leaf kinds have an executed rejection control.
 Unimplemented protocol crates still have fail-closed
