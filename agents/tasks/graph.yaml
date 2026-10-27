@@ -109,7 +109,7 @@ tasks:
   - RFC-0020 §4
   skill: rfc-author
   crate: ci
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E0-04-code-policy
   acceptance:
