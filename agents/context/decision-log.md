@@ -14,3 +14,14 @@
 | ADR-010 | Output-side softmax normalisation; attained-max selection sumcheck | Accepted | 0009 |
 | ADR-011 | Witness recompute from cuts instead of witness storage | Accepted | 0014 §4 |
 | ADR-012 | Treaty profile uses proven PCS bounds only | Accepted | 0010 §6 |
+
+## ADR-013 — Locked JSON parser for benchmark ledgers
+
+Context: RFC-0018 §1, task E0-05 requires validation of untrusted JSON records.
+Decision: use exact-version `serde` and `serde_json` dependencies in `stele-bench`,
+with Cargo.lock checksums, retained parser depth limits, a byte limit, integer-only
+visitation, and duplicate-key rejection at every depth. No derive feature is enabled.
+A handwritten JSON parser was rejected because correct escaping, Unicode, numeric
+syntax, and nesting checks are substantive parsing work. These dependencies do not
+enter the prover or verifier dependency paths. Fetch locked sources before offline
+builds. No protocol, soundness-ledger line, or cost-model term changes. Status: Accepted.

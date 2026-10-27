@@ -61,7 +61,20 @@ class GateTests(unittest.TestCase):
                 result = self.run_gate(gate)
                 file.unlink()
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn('not wired', result.stderr)
+                expected = 'missing or unknown fields' if gate == 'ledger-validate' else 'not wired'
+                self.assertIn(expected, result.stderr)
+
+    def test_accepts_ledger_and_rejects_disabled_bindings_through_gate(self):
+        fixture = (self.root / 'crates/stele-bench/tests/fixtures/valid.json').read_text()
+        ledger = self.root / 'bench/ledger/fixture.json'
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        ledger.write_text(fixture)
+        result = self.run_gate('ledger-validate')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        ledger.write_text(fixture.replace('"bindings_all_on": true', '"bindings_all_on": false'))
+        result = self.run_gate('ledger-validate')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('bindings_all_on must be true', result.stderr)
 
     def test_rejects_draft_research_missing_and_duplicate_rfc(self):
         file = self.root / 'crates/stele-field/src/lib.rs'

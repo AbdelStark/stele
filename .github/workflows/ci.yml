@@ -28,6 +28,7 @@ jobs:
           key: cargo-deny-0.20.2-${{ runner.os }}-${{ runner.arch }}
       - if: steps.cargo-deny.outputs.cache-hit != 'true'
         run: cargo install cargo-deny --version 0.20.2 --locked
+      - run: cargo fetch --locked
       - run: cargo deny --offline check bans
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: scripts/gates/rust-policy.sh

@@ -41,6 +41,7 @@ class ScaffoldTests(unittest.TestCase):
             root = pathlib.Path(directory)
             shutil.copy(ROOT / 'Cargo.toml', root / 'Cargo.toml')
             shutil.copy(ROOT / 'deny.toml', root / 'deny.toml')
+            shutil.copy(ROOT / 'Cargo.lock', root / 'Cargo.lock')
             shutil.copytree(ROOT / 'tests/negative-controls', root / 'tests/negative-controls')
             for manifest in (ROOT / 'crates').glob('*/Cargo.toml'):
                 crate = root / 'crates' / manifest.parent.name

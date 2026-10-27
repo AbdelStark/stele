@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stele benchmark ledger v1 (RFC-0018 section 1)",
+  "$comment": "The CLI also enforces integer encoding, duplicate-key rejection, byte/depth limits, workload-kind rules, and time/count consistency.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "workload", "commit", "toolchain", "device", "driver", "model_config", "plan_digest", "profile", "bindings_all_on", "batch_size", "prompt_tokens", "generated_tokens", "prover_time_ns", "witness_recompute_ns", "stage_times_ns", "kernel_counters", "proof_size_bytes", "verifier_time_ns", "controls", "note"],
+  "properties": {
+    "workload": {"$ref": "#/$defs/text"},
+    "toolchain": {"$ref": "#/$defs/text"},
+    "device": {"$ref": "#/$defs/text"},
+    "driver": {"$ref": "#/$defs/text"},
+    "note": {"$ref": "#/$defs/text"},
+    "batch_size": {"$ref": "#/$defs/u64", "minimum": 1},
+    "prompt_tokens": {"$ref": "#/$defs/u64"},
+    "generated_tokens": {"$ref": "#/$defs/u64"},
+    "prover_time_ns": {"$ref": "#/$defs/u64", "minimum": 1},
+    "witness_recompute_ns": {"$ref": "#/$defs/u64"},
+    "proof_size_bytes": {"$ref": "#/$defs/u64"},
+    "schema_version": {"const": 1},
+    "kind": {"enum": ["inference", "micro"]},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "plan_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "profile": {"enum": ["standard", "treaty"]},
+    "bindings_all_on": {"const": true},
+    "model_config": {"type": "object", "minProperties": 1, "propertyNames": {"type": "string", "pattern": "\\S"}, "additionalProperties": {"$ref": "#/$defs/json"}},
+    "stage_times_ns": {"$ref": "#/$defs/counters"},
+    "kernel_counters": {"$ref": "#/$defs/counters"},
+    "verifier_time_ns": {"type": "object", "additionalProperties": false, "required": ["rust", "python"], "properties": {"rust": {"$ref": "#/$defs/u64"}, "python": {"$ref": "#/$defs/u64"}}},
+    "controls": {"type": "object", "additionalProperties": false, "required": ["total", "passed", "failed"], "properties": {"total": {"$ref": "#/$defs/u64"}, "passed": {"$ref": "#/$defs/u64"}, "failed": {"$ref": "#/$defs/u64"}}}
+  },
+  "$defs": {
+    "text": {"type": "string", "pattern": "\\S"},
+    "u64": {"type": "integer", "minimum": 0, "maximum": 18446744073709551615},
+    "counters": {"type": "object", "minProperties": 1, "propertyNames": {"type": "string", "pattern": "\\S"}, "additionalProperties": {"$ref": "#/$defs/u64"}},
+    "json": {"anyOf": [{"type": "null"}, {"type": "boolean"}, {"type": "string"}, {"type": "integer", "minimum": -9223372036854775808, "maximum": 18446744073709551615}, {"type": "array", "items": {"$ref": "#/$defs/json"}}, {"type": "object", "propertyNames": {"type": "string", "pattern": "\\S"}, "additionalProperties": {"$ref": "#/$defs/json"}}]}
+  }
+}
