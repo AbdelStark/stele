@@ -201,7 +201,9 @@ tasks:
   - ST-9
   skill: sumcheck-prover-engineer
   crate: stele-poly
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E1-05-polynomial-core
   acceptance:
   - bucketed == naive bit-exact
   - bytes/element measured
