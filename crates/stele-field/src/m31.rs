@@ -12,6 +12,11 @@ impl M31 {
     /// Multiplicative identity.
     pub const ONE: Self = Self(1);
 
+    /// Prime-field Frobenius is the identity (RFC-0003 §6).
+    pub const fn frobenius(self) -> Self {
+        self
+    }
+
     /// Accept a canonical limb without modular reduction.
     pub const fn from_canonical(value: u32) -> Option<Self> {
         if value < Self::MODULUS {

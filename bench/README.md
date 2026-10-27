@@ -40,3 +40,21 @@ Validation checks record structure and internal consistency; it does not authent
 the measurement, establish coverage, or verify an inference proof. Fixtures under
 `crates/stele-bench/tests/fixtures/` are synthetic and are never benchmark evidence.
 No performance result is supplied by this task. Fitting constants remains E9-03.
+
+## Scalar field multiplication (E1-02)
+
+From a clean committed checkout, run:
+
+```sh
+python3 bench/field_mul.py bench/ledger/field-mul-<run>.json
+```
+
+The runner captures the source SHA, toolchain, CPU, OS and SHA-256 benchmark-plan
+digest. It measures five alternating-order samples of one million chained products
+per field after warmup. Each result passes through `black_box`. The ledger contains
+all sample times and the exact QM31:M31 ratio as an integer numerator/denominator.
+Existing ledgers are never overwritten. This is a scalar latency comparison with
+harness overhead; it is not SIMD/GPU throughput, inference performance or a fit of
+the cost model. No core proof binding applies to this microbenchmark.
+
+Recorded sample: [E1-02 scalar field multiplication](ledger/e1-02-scalar-field-mul.json).
