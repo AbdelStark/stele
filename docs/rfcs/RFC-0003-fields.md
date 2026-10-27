@@ -41,3 +41,53 @@ RFC-0010 §8). Verifier accepts only if both transcripts accept. Integer identit
 with `M31`, `CM31`, `QM31`, `OM31`, `KoalaBear` implementations in `stele-field`; SIMD specialisations in
 `stele-simd`; CUDA mirrors generated from the same op table (RFC-0014 §2). Property tests: ring axioms,
 Frobenius, inverse, serialisation round-trip, lazy-reduction equivalence, 10⁶ random cases per op per backend.
+
+## 7. Amendment log
+
+### A1 — Explicit octic modulus, basis and checked signed recovery
+
+Status: Draft. Not binding until the required reviews are recorded and it is Accepted.
+
+Motivation: E1-02 cannot implement interoperable OM31 arithmetic from an unspecified
+modulus. The §6 interface also leaves signed recovery undefined for an extension
+element outside the prime subfield. Q9 in RFC-0019 tracks both issues.
+
+Proposed exact replacement for the OM31 and serialisation bullets in §2:
+
+> - `OM31 = QM31[v]/(v²-u)` (degree 8). Its field order is exactly `p⁸`, not `2²⁴⁸`.
+>   This fixes the field representation only; profile selection remains governed by
+>   RFC-0012 and R-OCTIC. Irreducibility must be checked in the field CI tests.
+> - Serialisation uses canonical M31 limbs in little-endian order. The ordered bases
+>   are CM31 `(1,i)`, QM31 `(1,i,u,iu)`, OM31 `(1,i,u,iu,v,iv,uv,iuv)`.
+>   Reject any limb outside `[0,p)`; do not reduce encoded limbs. Encodings have
+>   exactly 8, 16 and 32 bytes respectively.
+
+Proposed exact replacement for §6's trait sketch and its signed-conversion semantics:
+
+> `trait Field: Copy + Add + Sub + Mul + Neg + Inverse + Serialize { const MODULUS: u32; fn from_i64(value: i64) -> Self; fn to_i64_signed(self) -> Option<i64>; }`
+>
+> `MODULUS` is the prime characteristic, not the field order. `from_i64` reduces
+> modulo that characteristic and embeds into the prime subfield. `to_i64_signed`
+> returns `Some(z)` for a prime-subfield element with its unique centered signed
+> representative, and `None` if any nonconstant coefficient is nonzero. For M31
+> and KoalaBear it always returns `Some`. It never silently projects an extension
+> element onto its constant coefficient. Inversion returns `None` exactly at zero.
+
+Proof basis: `research/r-octic/REPORT.md` derives irreducibility using the cyclic
+multiplicative group theorem and quadratic norms. Its independent exact-arithmetic
+script verifies the nonsquare certificates for `5`, `2+i` and `u`.
+No conjectural assumption is needed for this algebraic claim.
+
+Soundness accounting: no new challenge, binding, or error term. Implemented accounting
+must use exact orders `p⁴`/`p⁸` in existing SC/RLC/LU/MASK denominators; bit widths alone
+are not cardinalities. This amendment does not establish any profile error budget.
+Cost model: no measured constant changes; E1-02 still requires the QM31:M31 ledger.
+Affected tasks: E1-02 is blocked on A1; E1-01/E1-03 signed-recovery callers must be
+updated atomically if A1 is accepted. E2-01 uses the explicit basis on acceptance.
+No new NC catalog binding; acceptance tests must reject noncanonical limbs at every
+position and reject signed recovery when each nonconstant coefficient is nonzero.
+
+Required review before acceptance (Workflow 02):
+- [ ] soundness-auditor: norm proof, exact field orders, error terms
+- [ ] rfc-author: glossary, basis consistency, profile scope
+- [ ] stele-field owner: API migration and independent irreducibility tests
