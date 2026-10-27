@@ -5,6 +5,12 @@
 `docs-links.sh` checks inline Markdown local file targets in README, docs, and agents;
 it does not validate remote URLs or heading fragments. Fenced examples are excluded.
 
+The negative-control gate now validates the suite layout, runs harness tests, and
+executes registered controls before reporting catalog coverage. The stub self-control
+has no NC id and receives no inference coverage credit. Protocol source guards remain
+until actual controls accompany the first implementations. Undeclared control source
+files and `done` rows without an executable registration fail CI.
+
 The remaining protocol gates cannot validate proofs before their producers exist.
 They may print `nothing to check` only when the relevant crate files exactly match the
 empty bootstrap snapshots and no corresponding artifacts exist:
@@ -12,7 +18,7 @@ empty bootstrap snapshots and no corresponding artifacts exist:
 | Gate | Replacement task | Required validator |
 |---|---|---|
 | digest | E8-06 | Generate fixed W8 proofs and compare reference digests |
-| negative-controls | E0-03, E8-04 | Execute controls and report binding coverage |
+| negative-controls | E8-04 | Expand the E0-03 harness to actual protocol bindings |
 | soundness-accounting | E2-01, E8-05 | Compare transcript challenges to ledger enumeration |
 | parity | E10-01 | Compare real CPU/CUDA bytes on the GPU runner |
 | ledger-validate | E0-05 | Parse benchmark ledgers and reject disabled bindings |

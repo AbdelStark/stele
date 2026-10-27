@@ -1,0 +1,21 @@
+[package]
+name = "stele-negative-controls"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "stele-controls"
+path = "src/main.rs"
+
+[[test]]
+name = "harness"
+path = "harness/nc_stub.rs"
+
+[lints]
+workspace = true
+
+[[test]]
+name = "catalog"
+path = "harness/catalog.rs"

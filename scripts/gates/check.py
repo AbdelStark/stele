@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import tomllib
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,7 +28,7 @@ OWNERS = {
 }
 ARTIFACTS = {
     'digest': ('tests/digests',),
-    'negative-controls': ('tests/negative-controls',),
+    'negative-controls': (),
     'soundness-accounting': ('tests/soundness',),
     'parity': ('tests/parity',),
     'ledger-validate': ('bench/ledger',),
@@ -51,6 +52,22 @@ def bootstrap_guard(root, gate):
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
     print(f'gate {gate}: nothing to check (verified empty scaffold; task {OWNERS[gate]})')
+
+
+def controls_layout(root):
+    """Every standalone control source must be a declared Cargo test target."""
+    suite = root / 'tests/negative-controls'
+    manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'Cargo.toml'}
+    for target in manifest.get('test', []):
+        path = Path(target['path'])
+        if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
+            raise ValueError('invalid control test path')
+        allowed.add(str(path))
+    actual = {str(p.relative_to(suite)) for p in suite.rglob('*') if p.is_file()
+              and p.suffix != '.md' and p.name != '.gitkeep'}
+    if actual != allowed:
+        raise ValueError(f'negative-controls: sources not wired to Cargo targets: {sorted(actual ^ allowed)}')
 
 
 def rfc_status(root):
@@ -112,6 +129,8 @@ def main():
         elif args.gate == 'docs-links':
             docs_links(ROOT)
         else:
+            if args.gate == 'negative-controls':
+                controls_layout(ROOT)
             bootstrap_guard(ROOT, args.gate)
     except (OSError, ValueError, KeyError) as error:
         print(f'gate {args.gate}: {error}', file=sys.stderr)

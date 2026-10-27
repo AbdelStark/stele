@@ -19,6 +19,7 @@ deny = [
   { name = "stele-ir", wrappers = ["stele-reductions"] },
   { name = "stele-kernels", wrappers = ["stele-gpu"] },
   { name = "stele-lookup", wrappers = ["stele-reductions"] },
+  { name = "stele-negative-controls", wrappers = ["stele-negative-controls"] },
   { name = "stele-passport", wrappers = ["stele-cli"] },
   { name = "stele-pcs", wrappers = ["stele-passport", "stele-reductions"] },
   { name = "stele-poly", wrappers = ["stele-sumcheck"] },

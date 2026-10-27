@@ -41,6 +41,7 @@ class ScaffoldTests(unittest.TestCase):
             root = pathlib.Path(directory)
             shutil.copy(ROOT / 'Cargo.toml', root / 'Cargo.toml')
             shutil.copy(ROOT / 'deny.toml', root / 'deny.toml')
+            shutil.copytree(ROOT / 'tests/negative-controls', root / 'tests/negative-controls')
             for manifest in (ROOT / 'crates').glob('*/Cargo.toml'):
                 crate = root / 'crates' / manifest.parent.name
                 (crate / 'src').mkdir(parents=True)
@@ -55,12 +56,14 @@ class ScaffoldTests(unittest.TestCase):
                 ('stele-verifier', 'stele-cqis', 'build-dependencies'),
                 ('stele-verifier', 'stele-cqis', 'dev-dependencies'),
                 ('stele-dist', 'stele-cli', 'dependencies'),
+                ('stele-cli', 'stele-negative-controls', 'dependencies'),
             ]
             for caller, dependency, section in cases:
                 with self.subTest(caller=caller, dependency=dependency, section=section):
                     manifest = root / 'crates' / caller / 'Cargo.toml'
                     original = manifest.read_text()
-                    entry = f'alias = {{ package = "{dependency}", path = "../{dependency}" }}'
+                    path = "../../tests/negative-controls" if dependency == "stele-negative-controls" else f"../{dependency}"
+                    entry = f'alias = {{ package = "{dependency}", path = "{path}" }}'
                     if f'[{section}]' in original:
                         mutated = original.replace(f'[{section}]', f'[{section}]\n{entry}')
                     else:

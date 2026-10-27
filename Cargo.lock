@@ -89,6 +89,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "stele-negative-controls"
+version = "0.1.0"
+
+[[package]]
 name = "stele-passport"
 version = "0.1.0"
 dependencies = [

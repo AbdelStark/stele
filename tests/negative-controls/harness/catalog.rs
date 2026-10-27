@@ -1,0 +1,88 @@
+//! RFC-0002 §7 — malformed catalogs and false coverage must be rejected.
+#![forbid(unsafe_code)]
+use stele_negative_controls::catalog::{parse, report, RegisteredControl};
+
+const ROW: &str = "| NC-0001 | binding | 0002 §7 | change cell | ExactError | todo |";
+
+#[test]
+fn accepts_repository_catalog_without_crediting_stub() {
+    let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
+    assert_eq!(catalog.len(), 66);
+    assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
+    assert_eq!(catalog.last().map(|entry| entry.id), Some(1203));
+    let coverage = report(&catalog, &[]).expect("planned rows are gaps");
+    assert!(coverage.contains("0/17 bindings; 0/66 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 66);
+}
+
+#[test]
+fn rejects_malformed_catalogs() {
+    for text in [
+        "".to_owned(),
+        "|".to_owned(),
+        ROW.repeat(2),
+        format!("{ROW}\n{ROW}"),
+        ROW.replace("0001", "0002–0001"),
+        ROW.replace("0001", "xyz"),
+        ROW.replace("todo", "ignored"),
+        ROW.replace("ExactError", "").replace("todo", "done"),
+        ROW.trim_end_matches('|').to_owned(),
+        ROW.replace("binding", ""),
+        ROW.replace("NC-0001", "NC-0001–99999"),
+        ROW.replace("| NC-", "NC-"),
+    ] {
+        assert!(parse(&text).is_err(), "unexpected acceptance: {text}");
+    }
+}
+
+#[test]
+fn accepts_range_expansion_and_detects_overlap() {
+    let range = ROW.replace("NC-0001", "NC-0001–0003");
+    let entries = parse(&range).expect("valid range");
+    assert_eq!(
+        entries.iter().map(|entry| entry.id).collect::<Vec<_>>(),
+        [1, 2, 3]
+    );
+    assert!(parse(&format!("{range}\n{ROW}")).is_err());
+}
+
+#[test]
+fn rejects_unexecuted_or_failed_coverage() {
+    let row = ROW.replace("todo", "done");
+    let entries = parse(&row).expect("valid implemented row");
+    assert!(report(&entries, &[]).is_err());
+    let control = RegisteredControl {
+        id: 1,
+        expected_error: "ExactError",
+        run: || Err("failed".into()),
+    };
+    assert!(report(&entries, &[control]).is_err());
+    let control = RegisteredControl {
+        id: 1,
+        expected_error: "WrongError",
+        run: || Ok(()),
+    };
+    assert!(report(&entries, &[control]).is_err());
+    let control = RegisteredControl {
+        id: 2,
+        expected_error: "ExactError",
+        run: || Ok(()),
+    };
+    assert!(report(&entries, &[control]).is_err());
+}
+
+#[test]
+fn accepts_executed_registration_and_rejects_duplicates() {
+    let row = ROW.replace("todo", "done");
+    let entries = parse(&row).expect("valid implemented row");
+    let control = || RegisteredControl {
+        id: 1,
+        expected_error: "ExactError",
+        run: || Ok(()),
+    };
+    assert!(report(&entries, &[control()])
+        .expect("executed fixture")
+        .contains("1/1 bindings; 1/1 controls"));
+    assert!(report(&entries, &[control(), control()]).is_err());
+    assert!(report(&parse(ROW).expect("planned row"), &[control()]).is_err());
+}
