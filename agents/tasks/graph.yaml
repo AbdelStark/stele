@@ -264,7 +264,9 @@ tasks:
   - RFC-0012 §3
   skill: pcs-engineer
   crate: stele-hash
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E2-03-poseidon2-contract
   acceptance:
   - KATs vs a reference implementation
 - id: E3-01
