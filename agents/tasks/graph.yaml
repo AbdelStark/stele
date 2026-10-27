@@ -187,7 +187,7 @@ tasks:
   crate: stele-simd
   status: in_progress
   agent: codex-root
-  branch: task/E1-04-simd
+  branch: task/E1-04-simd-ledgers
   acceptance:
   - bit-identical to scalar on 1e5 random vectors
   - throughput ledger
