@@ -258,7 +258,9 @@ Motivation: §3 fixes hash domains but not leaf bytes, shape, padding, index bin
 or batch verification. E2-02 cannot choose those silently. This amendment defines
 an authentication primitive; it does not implement a PCS or select its queries.
 
-Exact addition to §3:
+Exact replacement for the Merkle part of §3 (the transcript and wrapper rules
+remain in force). In particular, 0x02 tags child-root leaves; the explicit rules
+below govern every internal node, including a root-of-roots tree root:
 
 > **Statement and context.** A tree authenticates an ordered list of fixed-width
 > byte payloads. Its verifier-owned descriptor is `(kind, id, n, w)`: kind 0 for
