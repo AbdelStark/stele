@@ -185,7 +185,7 @@ tasks:
   - RFC-0003 §6
   skill: cuda-kernel-author
   crate: stele-simd
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E1-04-simd-ledgers
   acceptance:
