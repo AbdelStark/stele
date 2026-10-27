@@ -236,7 +236,9 @@ tasks:
   - RFC-0012 §1-2
   skill: pcs-engineer
   crate: stele-hash
-  status: ready
+  status: done
+  agent: codex-root
+  branch: task/E2-01-transcript-integration
   acceptance:
   - KAT vectors committed
   - label registry uniqueness test
