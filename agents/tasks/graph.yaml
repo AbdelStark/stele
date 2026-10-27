@@ -139,7 +139,9 @@ tasks:
   - RFC-0003 §1,§6
   skill: sumcheck-prover-engineer
   crate: stele-field
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E1-01-m31
   acceptance:
   - ring property tests 1e6 cases
   - signed embed/recover round trip

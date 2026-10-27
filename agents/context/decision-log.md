@@ -25,3 +25,15 @@ A handwritten JSON parser was rejected because correct escaping, Unicode, numeri
 syntax, and nesting checks are substantive parsing work. These dependencies do not
 enter the prover or verifier dependency paths. Fetch locked sources before offline
 builds. No protocol, soundness-ledger line, or cost-model term changes. Status: Accepted.
+
+## ADR-014 — Canonical scalar M31 boundary
+
+Context: RFC-0003 §§1,2,6, task E1-01 requires scalar arithmetic and lazy reduction.
+Decision: keep the M31 limb private and canonical. Arithmetic and explicit modular
+conversion reduce; decoding rejects noncanonical limbs. Lazy input is accepted only
+in `[0, 2p)` and immediately canonicalised. Signed recovery interprets the RFC's `p/2`
+mathematically, so `floor(p/2)` is positive. Zero inversion returns `None`.
+The kernel traits use fixed-size little-endian byte arrays without dependencies or
+allocation. Tests compare against integer remainder arithmetic. No constant-time,
+SIMD/GPU parity, or performance claim is made by this scalar implementation.
+No protocol challenge, soundness-ledger line, or cost-model constant changes. Status: Accepted.
