@@ -249,3 +249,119 @@ parity with the integer oracle, canonical boundary inputs, and disabled-by-defau
 wrapper API coverage. Research mutation checks receive no protocol control id.
 NC-1203 and all E14-01 obligations remain incomplete. No catalog status changes.
 Affected tasks: E2-03, E14-01; no dependency or original acceptance is removed.
+
+### A3 — Canonical byte-column Merkle trees and roots of roots
+
+Status: Accepted. Question Q16. Review: [skill passes](../../agents/reviews/merkle-a3.md). Candidate checks: [Merkle study](../../research/merkle/REPORT.md).
+
+Motivation: §3 fixes hash domains but not leaf bytes, shape, padding, index binding
+or batch verification. E2-02 cannot choose those silently. This amendment defines
+an authentication primitive; it does not implement a PCS or select its queries.
+
+Exact replacement for the Merkle part of §3 (the transcript and wrapper rules
+remain in force). In particular, 0x02 tags child-root leaves; the explicit rules
+below govern every internal node, including a root-of-roots tree root:
+
+> **Statement and context.** A tree authenticates an ordered list of fixed-width
+> byte payloads. Its verifier-owned descriptor is `(kind, id, n, w)`: kind 0 for
+> byte columns, kind 2 for roots of roots; unsigned tree id `id < 2^64`; real leaf
+> count `1 <= n <= 2^63`; payload width `1 <= w < 2^64` bytes. Kind 2 requires
+> w = 32 and each payload is one child root, ordered by the plan's shard index.
+> Other kinds, empty trees and zero-width payloads are invalid. The verifier
+> derives/checks the descriptor, expected root and requested indices from its
+> authenticated plan/commitments, never from unauthenticated opening metadata.
+> Tree ids distinguish roles within that plan. The descriptor is not a complete
+> plan encoding and does not validate a passport, profile, code or field format.
+>
+> Byte columns contain exactly one column in row order. PCS consumers must encode
+> and validate their field elements canonically under RFC-0003 and enforce their
+> own row count, packing and code parameters. The hash primitive treats payloads
+> as bytes, not field values. A short column changes w, not the authentication rule.
+> DPA/mixed-field encoding and recursion consumers require their own contracts.
+>
+> **Hash inputs.** Let H be ordinary unkeyed BLAKE3's first 32 output bytes. All
+> roots and siblings are exactly 32 bytes, in both profiles; optional standard
+> truncation is not implemented by this contract. Define the fixed-length header
+> `D = ASCII("stele/v0.1/merkle") || u8(kind) || u64le(id) || u64le(n) || u64le(w)`.
+> Let h = ceil(log2(n)), including h = 0 for n = 1, and P = 2^h. Positions are
+> zero-based, left to right. Level 0 contains P leaves; level h contains the root.
+> The leaf digest at position i < P is
+> `H(u8(kind) || D || u64le(i) || u8(present) || payload)`.
+> For i < n, present = 1 and payload has exactly w bytes. For n <= i < P,
+> present = 0 and payload is empty. These are tree padding, not additional tensor
+> rows or zero-valued real leaves; they cannot be requested as openings.
+> The digest of internal node j at level l, 1 <= l <= h, is
+> `H(0x01 || D || u32le(l) || u64le(j) || left_digest || right_digest)`.
+> No terminators, alignment, implicit padding, field reduction, keyed hashing,
+> variable digest lengths or alternate empty-tree rule are permitted. For n = 1
+> the leaf digest itself is the root. Kind-2 trees use the same construction;
+> their child roots are hashed as 0x02 leaves, never inserted as untyped nodes.
+> The root binds this ordered logical partition; it is not invariant under changing
+> its descriptor/list and need not equal a flat-tree root. Q17 must resolve E4-07
+> shard/digest semantics before distributed implementation.
+>
+> **Opening and verification.** An opening consists of the w-byte payload and
+> exactly h sibling digests in bottom-up order. Its index is a separate
+> verifier-owned argument. Reject i >= n, wrong payload length, wrong path
+> length or any non-32-byte digest before authentication. Starting from the real
+> leaf digest at i, at step d = 0..h-1 let k = i >> d. If k is even, the current
+> value is the left child; otherwise it is the right child. Hash the ordered
+> children at level d+1, position k >> 1. Accept only equality with the expected
+> root after all h steps; root mismatch is RootMismatch, never a partial success.
+> No supplied direction bits, ignored trailing siblings or unchecked path suffixes.
+> Implementations check all size/index arithmetic and conversions without truncation.
+>
+> Batched verification receives one descriptor/root, a nonempty strictly
+> increasing list of distinct requested real indices, and exactly one opening
+> per index in that order. Reject a count mismatch, duplicate or unsorted request,
+> invalid index, malformed opening or any failed authentication. Acceptance is
+> atomic: all requested openings pass. The baseline sends full paths; no shared
+> sibling compression or implicit duplicate elimination is specified. This API
+> does not sample indices, prove they came from a transcript, or choose a PCS
+> query count. A consumer must specify that schedule before use (NC-0601/0803).
+> A root-of-roots opening authenticates a child root only; its column opening
+> must separately verify against that exact child root and the child's descriptor.
+> Membership alone does not establish encoding/proximity, canonical contents of
+> unopened subtrees, shard ownership, field faithfulness, inference or privacy.
+>
+> **Prover/verifier costs.** Honest construction hashes n*w payload bytes, P leaf
+> frames (including P-n empty padding payloads), and P-1 fixed-size internal
+> frames. A baseline stored tree needs 32*(2*P-1) digest bytes, plus caller-owned
+> payloads. An opening carries w+32*h bytes. A q-opening batch uses q leaf hashes
+> and q*h internal hashes and carries q*(w+32*h) bytes, excluding outer framing.
+> Root-of-roots substitutes w = 32. These hashes contribute to commitment c_c
+> (T_cuts; passport weight encoding is one-time), and authentication to verifier
+> work/T_misc as applicable. No weight-pass count, measured constant or fit moves.
+>
+> **Soundness.** Under collision resistance of H, two different accepted payloads
+> at the same descriptor/index/root imply a collision: compare their paths from
+> the equal root down to the first different child input, or to different leaf
+> frames if all siblings agree. Fixed widths, role tags, indices and descriptor
+> bytes make those distinct input strings. This is an elementary binding reduction,
+> not a theorem that BLAKE3 is collision resistant. Unqueried leaves/codewords are
+> not certified by an inclusion proof. Ordinary leaf/internal domain separation
+> follows the established rationale in RFC 9162 §2.1.1, but Stele's headers,
+> padding and root-of-roots bytes are defined here; it is not that RFC's tree format.
+> There is no challenge or algebraic loss. Existing PCS ε_Merkle/H must account
+> for all relevant hash queries without treating repeated use as free or silently
+> double-counting the same event. No concrete profile budget follows: Q12 still
+> blocks certification, and 256-bit outputs alone do not settle its query model.
+> No conjectural coding gap or PCS proximity claim is introduced for either profile.
+
+Controls and acceptance: retain NC-0602, exercised against actual construction
+and authentication for both kinds: after an honest baseline, replace exactly one
+payload byte or one sibling digest and require RootMismatch. Include a wrong-leaf
+variant, index/descriptor sensitivity, equal payloads at distinct positions,
+singleton trees, non-power-of-two counts, padding rejection, exact path lengths,
+and batch completeness/order tests. Research checks earn no catalog credit.
+E2-02 remains incomplete until production implementation, both-kind NC-0602,
+byte-vector parity and actual Merkle gate wiring pass. PCS consumers retain
+NC-0600/0601/0603..0605 and distributed consumers retain their own obligations.
+
+Affected tasks: E2-02, E4-03, E4-07, E8-04/E8-05 and the E10 GPU commitment work.
+No original acceptance criterion is removed. Q16 resolves only this byte contract;
+Q12, query sampling, field/code validation and distributed scheduling remain open
+in their owning tasks. No change to RFC-0010's algebraic opening relation.
+
+Completed same-author skill passes (not independent audit): soundness-auditor,
+rfc-author, pcs-engineer (stele-hash owner), distributed-systems-engineer.

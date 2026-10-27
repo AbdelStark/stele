@@ -44,3 +44,9 @@ It compares emitted SC records to verifier-owned descriptors and derived-point
 lengths. NC-0200/0201/0205/0800/0802 exercise the actual reduction/consumer and
 transcript schedule. Full inference enumeration remains E8-05; these finite checks
 do not discharge Q12 or certify a profile.
+
+RFC-0012 A3 fixes Merkle authentication bytes without adding a challenge or an
+algebraic loss. Its binding argument is conditional on BLAKE3 collision resistance;
+PCS ε_Merkle/H still require Q12's concrete global query accounting. Membership
+alone does not certify codeword validity, canonical field encodings, unopened
+subtrees or a profile budget. NC-0602 remains todo until actual core integration.
