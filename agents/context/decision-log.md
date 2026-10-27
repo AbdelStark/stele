@@ -94,3 +94,17 @@ and AVX2/AVX-512 evidence for unchanged kernel sources. Per-head mandatory
 AVX-512 coverage requires a dedicated compatible runner; a successful ordinary
 run is not evidence for unavailable hardware. No arithmetic test, unsupported
 backend rejection, or proof binding is removed. Status: Accepted.
+
+## ADR-020 — Polynomial table order and signed buckets
+
+Context: E1-05, RFC-0005 §2, RFC-0006 §5 and RFC-0007 §§1,5. Decision:
+row-major Boolean tables use the first coordinate as the most significant bit;
+partial evaluation fixes trailing coordinates, so each contiguous weight row
+produces one result. Dense tables must have power-of-two length, including one
+for constants. Signed int4 is checked once and packed low nibble first; int8 and
+int16 retain native integer storage. Both strategies read each entry once per
+call. Buckets are indexed by value plus half the signed domain and combined by
+suffix sums with the signed offset restored. The eq table uses one multiply and
+one subtraction per split; its allocation-free verifier evaluator is checked at
+extension-field points. No challenge, padding, claim edge, integer bound
+certificate or cost-model fit is introduced. Status: Accepted.
