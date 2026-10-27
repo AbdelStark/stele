@@ -15,7 +15,7 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[catalog::RegisteredControl
     run: nc_0801::run,
 }];
 
-/// A one-value mutation applied after an honest witness or configuration is built.
+/// A one-value mutation applied to an honest witness, proof or configuration.
 /// Each control must assert that exactly its intended value changes.
 pub trait ProverHook<W> {
     /// Mutate the selected value without changing the public statement.
@@ -25,15 +25,15 @@ pub trait ProverHook<W> {
 /// A control passes only on the expected verifier rejection, never a prover error.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ControlFailure<P, V> {
-    /// The unmodified witness could not be proven.
+    /// The honest proof could not be produced.
     HonestProverFailed(P),
     /// The verifier rejected the honest proof.
     HonestRejected(V),
-    /// The hook did not change the witness.
+    /// The hook did not change the witness or proof.
     NoTamper,
     /// The modified witness did not reach the verifier.
     TamperedProverFailed(P),
-    /// The verifier accepted the modified witness's proof.
+    /// The verifier accepted the tampered proof.
     TamperAccepted,
     /// The verifier failed a different check than the control targets.
     WrongRejection {
@@ -67,6 +67,33 @@ where
     }
     let proof = prove(&tampered).map_err(ControlFailure::TamperedProverFailed)?;
     match verify(&proof) {
+        Ok(()) => Err(ControlFailure::TamperAccepted),
+        Err(actual) if actual == expected => Ok(()),
+        Err(actual) => Err(ControlFailure::WrongRejection { expected, actual }),
+    }
+}
+
+/// RFC-0006 A1: verify an honest production proof, then one mutated proof value.
+/// The control asserts exactly one change and supplies the unchanged real verifier.
+pub fn check_proof_control<Proof, H, P, V>(
+    prove: impl FnOnce() -> Result<Proof, P>,
+    hook: &H,
+    verify: impl Fn(&Proof) -> Result<(), V>,
+    expected: V,
+) -> Result<(), ControlFailure<P, V>>
+where
+    Proof: Clone + PartialEq,
+    H: ProverHook<Proof>,
+    V: PartialEq,
+{
+    let honest = prove().map_err(ControlFailure::HonestProverFailed)?;
+    verify(&honest).map_err(ControlFailure::HonestRejected)?;
+    let mut tampered = honest.clone();
+    hook.tamper(&mut tampered);
+    if tampered == honest {
+        return Err(ControlFailure::NoTamper);
+    }
+    match verify(&tampered) {
         Ok(()) => Err(ControlFailure::TamperAccepted),
         Err(actual) if actual == expected => Ok(()),
         Err(actual) => Err(ControlFailure::WrongRejection { expected, actual }),

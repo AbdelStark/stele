@@ -39,3 +39,8 @@ Registrations declare `ControlKind`. Only the registry collision id may be
 as executed controls, are printed explicitly, and never count toward covered
 proof-statement bindings. All proof controls still require real prover/verifier
 execution through `check_control`.
+
+RFC-0006 A1 proof-artifact controls use `check_proof_control`: produce and accept
+an honest proof, clone it, mutate one declared value through `ProverHook`, and
+require the same production verifier's exact rejection. The control asserts the
+single-value difference. The helper's self-checks earn no catalog coverage.
