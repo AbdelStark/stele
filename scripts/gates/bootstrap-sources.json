@@ -1,0 +1,46 @@
+{
+  "stele-gkr": {
+    "Cargo.toml": "be33053765c01fc399183c7ed10d3d69dcb66df2c4dfd43193f8ef9d7be8f463",
+    "src/lib.rs": "62228a55e21fb95873ce8d4e9e516e417a02d7b90fe0a1a05b5a9f8ec34813f5"
+  },
+  "stele-gpu": {
+    "Cargo.toml": "73ffe89ee74d69df21c4b2f0cf27682e68e375434ec903476387c9dfd3fb0688",
+    "src/lib.rs": "19c93753751e0bb2531838b7cb5179caabe1f9f05567c41090dd1124ef5fe957"
+  },
+  "stele-hash": {
+    "Cargo.toml": "95a4cdf7a17f94b5756250d52d6b6bbbb2cc2d994142eb2e95b4480c52157eae",
+    "src/lib.rs": "8789e6e6cda89a8628d2a1ec1472b20aa3615dea925c2abb298d0717c8586208"
+  },
+  "stele-kernels": {
+    "Cargo.toml": "d258521c7510c74ade8b60d630158b0959f4fad4d7f1539395722cbcfb1077f5",
+    "src/lib.rs": "712e4ae2a98e5f61b35aeb50908467fc045b5dfc1e66a9b7884f28837d2f66ac"
+  },
+  "stele-lookup": {
+    "Cargo.toml": "fc7701dd95f367e7952f51ef55ec3e46426b96d642af74d7605b24cb817eddb8",
+    "src/lib.rs": "274c76f0d10967ec1a2f8a2d60feefc0f1c81143d758406ce176a28319967dba"
+  },
+  "stele-pcs": {
+    "Cargo.toml": "44d756138043268dfdbdc7ba1d625cf41c450e99f1df331d813831f3fbcd0b4f",
+    "src/lib.rs": "bea2ddc10a78ed7d7a80d428a3f0b1832f849a8ca9721f3863a7667beed20b5c"
+  },
+  "stele-proof": {
+    "Cargo.toml": "8cfe42c53a8d1feb69b7b7f9711f674e95013375870324d950b2bfe988e9caf1",
+    "src/lib.rs": "cea7adedd549d5eb950c36f6126f36435243da16c1a84fc10b10c020b42f29f0"
+  },
+  "stele-prover": {
+    "Cargo.toml": "9c5318e8b49388bd295497654841e5c347f79418c6decc6b5ede094897e55404",
+    "src/lib.rs": "9cc9b128c408e1f96dc3d409f8b1dfa378c8872edd9014f495bd8a7953cf63d3"
+  },
+  "stele-reductions": {
+    "Cargo.toml": "1bff9b95bf010328bdc295f03b9b1e9e78b78cb619056684a48b30292bc31145",
+    "src/lib.rs": "b940c184684cb97563d958162efa688ec9cb1b4686908d3e947f84c3f9a084a9"
+  },
+  "stele-sumcheck": {
+    "Cargo.toml": "2eab22ced7636db8b055bbce670fc06a9a13b682addaeb92dfd54aeb49ff8c68",
+    "src/lib.rs": "61df2eecd352302e5aaf1194752c54990f0c70df426a56a2a7134d0608df62aa"
+  },
+  "stele-verifier": {
+    "Cargo.toml": "e5f8cd946755ca13490306f1da1ae4f36e80c4eedb136cc6bd19c1772c1a343d",
+    "src/lib.rs": "d56f6d64bc351b02f76b5b53a90c76f9d1ff0f3baa4044789560633a76bc00be"
+  }
+}

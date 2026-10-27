@@ -42,7 +42,7 @@ bench/                    ← benchmark protocol and result ledger format
 
 ## Status
 
-`v0.1.0` — workspace bootstrap in progress. Crates are skeletons; inference proving, verification,
+`v0.1.0` — workspace bootstrap complete; CI gate implementation in progress. Crates are skeletons; inference proving, verification,
 zero-knowledge, and GPU execution are not implemented. The task graph (`agents/tasks/graph.yaml`)
 is the single source of truth for what to build next. There are no human timelines in this repository by design.
 
@@ -61,9 +61,10 @@ python3 -m unittest discover -s scripts/tests -v
 ```
 
 `deny.toml` restricts direct crate imports, including renamed, build, and test dependencies.
-The isolated mutation tests verify those restrictions. The digest, controls, accounting,
-and GPU parity scripts remain placeholders until their task implementations land;
-a successful skeleton gate is not evidence of a valid proof.
+The isolated mutation tests verify those restrictions. The digest, controls, accounting, and GPU parity gates currently verify only that
+their scoped crates remain empty scaffolds. They fail on changed code or unvalidated artifacts
+until the corresponding producer and validator are implemented. A successful bootstrap
+gate is not evidence of a valid proof. See `scripts/gates/README.md` for the gate contracts.
 
 ## License
 

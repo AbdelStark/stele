@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# Gate: digest — see AGENTS.md §3.5 and RFC-0020 §5. On the skeleton this exits 0 with "nothing to check".
+# RFC-0020 §5 — digest gate.
 set -euo pipefail
-echo "gate digest: nothing to check (skeleton)"
+exec python3 "$(dirname "$0")/check.py" digest "$@"
