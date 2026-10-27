@@ -102,6 +102,18 @@ def sumcheck_corpus(root):
     print(f'gate sumcheck: {len(cases)} actual corpus decisions and SC records; no profile budget certified')
 
 
+def merkle_vectors(root):
+    """Execute actual authentication/KATs and check the independent candidate oracle."""
+    for command in [
+        ['cargo', 'test', '-p', 'stele-hash', '--test', 'merkle', '--locked', '--offline'],
+        ['uv', 'run', '--locked', '--script', 'research/merkle/check_merkle.py'],
+    ]:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode:
+            raise ValueError(f'Merkle authentication/vector checks failed: {result.stdout} {result.stderr}')
+    print('gate Merkle: actual roots, paths, batches and byte vectors checked; no PCS/profile certification')
+
+
 def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
@@ -184,6 +196,8 @@ def main():
             if args.gate in ('negative-controls', 'soundness-accounting'):
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
+                if args.gate == 'negative-controls':
+                    merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
         print(f'gate {args.gate}: {error}', file=sys.stderr)
         return 1

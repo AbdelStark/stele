@@ -12,6 +12,11 @@ use stele_hash::poseidon2::permute;
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
+extern crate alloc;
+
+/// Canonical Merkle authentication (RFC-0012 A3).
+pub mod merkle;
+
 use stele_field::{M31, OM31, QM31};
 
 /// A transcript or registry validation failure.

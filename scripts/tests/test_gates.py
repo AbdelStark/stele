@@ -74,6 +74,20 @@ class GateTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('sumcheck corpus decisions/accounting mismatch', result.stderr)
 
+    def test_rejects_merkle_binding_and_batch_bypasses(self):
+        source = self.root / 'crates/stele-hash/src/merkle.rs'
+        original = source.read_text()
+        for before, after in [
+            ('if current == *root {', 'if true || current == *root {'),
+            ('spec.authenticate(root, index, opening)?;', 'let _ = (root, index, opening);'),
+        ]:
+            changed = original.replace(before, after, 1)
+            self.assertNotEqual(original, changed)
+            source.write_text(changed)
+            result = self.run_gate('negative-controls')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('Merkle authentication/vector checks failed', result.stderr)
+
     def test_rejects_poseidon2_constant_drift(self):
         source = self.root / 'crates/stele-hash/src/poseidon2/constants.rs'
         original = source.read_text()

@@ -16,7 +16,7 @@
 | NC-0400–0405 | lookups | 0008 §7 | see RFC | `LogUpImbalance` etc. | todo |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600–0601 | PCS | 0010 §10 | see RFC | | todo |
-| NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | todo |
+| NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1, 0012 A1 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |

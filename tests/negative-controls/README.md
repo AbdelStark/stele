@@ -20,8 +20,8 @@ For each protocol binding:
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
 label with `DuplicateLabel`; it earns configuration coverage only. Including the
-five sumcheck controls, 6/67 controls run,
-61 remain missing, and 2/17 catalog binding categories have proof controls. Range rows expand
+five sumcheck controls and Merkle NC-0602, 7/67 controls run,
+60 remain missing, and 3/17 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 
 Coverage is over the current catalog, not a complete enumerated claim graph. Several
@@ -49,3 +49,7 @@ single-value difference. The helper's self-checks earn no catalog coverage.
 E3-01's standalone NC-0200/0201/0205/0800/0802 tests now run both challenge fields
 through the real sumcheck engine and public consumer. They are registered in the
 coverage inventory; the covered categories do not imply all their controls exist.
+
+NC-0602 authenticates actual Merkle openings for both byte columns and child roots.
+Its one-byte leaf and sibling mutations must fail with RootMismatch; membership
+does not establish PCS encoding/proximity, query selection or full inference.

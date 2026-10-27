@@ -167,4 +167,6 @@ if __name__ == "__main__":
     else:
         require(not sys.argv[1:], "unknown arguments")
         assert [json.loads(line) for line in fixture.read_text().splitlines()] == vectors
+    core = Path(__file__).resolve().parents[2] / "crates/stele-hash/tests/fixtures/merkle.jsonl"
+    assert core.read_bytes() == fixture.read_bytes(), "core KAT fixture drift"
     print(f"candidate: {honest} honest paths, {mutations} rejection cases, {len(vectors)} vectors; no protocol coverage")

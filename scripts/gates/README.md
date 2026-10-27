@@ -7,7 +7,7 @@ it does not validate remote URLs or heading fragments. Fenced examples are exclu
 
 The negative-control gate now validates the suite layout, runs harness tests, and
 executes registered controls before reporting catalog coverage. The stub self-control
-has no NC id and receives no inference coverage credit. Real transcript/sumcheck
+has no NC id and receives no inference coverage credit. Real transcript/sumcheck/Merkle
 controls now run; other protocol source guards remain until their controls exist. Undeclared control source
 files and `done` rows without an executable registration fail CI.
 
@@ -64,3 +64,8 @@ python3 -m unittest discover -s scripts/tests -v
 ```
 
 Tests invoke the shell entry points from outside the checkout and mutate isolated copies.
+
+The control gate also runs actual Merkle root/path/batch tests against RFC-0012 A3
+vectors and regenerates those vectors with the independent Python tree oracle.
+Root-comparison and batch-authentication bypass mutants fail this gate. Merkle
+membership does not certify PCS encoding, query scheduling or a profile budget.
