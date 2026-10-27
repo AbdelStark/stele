@@ -131,3 +131,13 @@ reference vectors. Core implementation is independent and wrapper-feature-only.
 A permutation KAT is not a hash-mode or collision-security theorem. Q14 must
 resolve wrapper encoding, capacity, digest and accounting before E14-01 uses it;
 native BLAKE3 and the Q12 obligation remain unchanged. Status: Accepted.
+
+## ADR-023 — Explicit sumcheck relation and final evaluation obligations
+
+Context: E3-01, RFC-0006 A1 and RFC-0020 A1. Decision: the verifier owns the ordered
+polynomial/instance description; degree follows factor counts. Canonical messages
+bind it before rounds, and final values precede continuation. A reduction result
+leaves explicit evaluations for real consumers; only the public adapter closes
+public tables. Post-proof controls retain a real-prover/verifier honest baseline
+and one-value tamper. Research bytes earn no protocol coverage. Direct field
+dependencies support the implementation without importing proof systems. Status: Accepted.

@@ -103,3 +103,13 @@ using Poseidon2 for wrapper challenges or commitments; retain native BLAKE3.
 Q13 resolution: RFC-0012 A2 Accepted after the linked same-author skill reviews
 and independent integer/upstream checks. E2-03 implements that primitive; Q14
 remains open and blocks any unaccounted wrapper hash/transcript construction.
+
+Q15: which explicit polynomial/instance representation, message encoding, final
+evaluation obligation and chained-transcript controls complete RFC-0006 §§1–2?
+Candidate: RFC-0006 A1, with independent both-field prototype checks in
+`research/sumcheck/REPORT.md` and dependency clarification RFC-0020 A1.
+E3-01 is blocked on acceptance; Q12 remains a separate profile-certification gate.
+
+Q15 resolution: RFC-0006 A1 and RFC-0020 A1 Accepted with the linked same-author
+skill reviews. E3-01 must deliver the actual core, both-verifier corpus, accounting
+gate and benchmark evidence before it is done. Research checks credit no controls.

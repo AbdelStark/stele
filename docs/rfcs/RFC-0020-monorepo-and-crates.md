@@ -57,3 +57,16 @@ RFC status check (no code references a `Draft` RFC).
 ## 6. Versioning
 Protocol version in `stele-proof-v1` header; CQIS version in `cqis_id`; crates semver; `CHANGELOG.md` per release with
 the list of ADRs and RFC amendments.
+
+## 7. Amendment log
+
+### A1 — Direct sumcheck field dependency
+
+Status: Accepted. Review: [skill passes](../../agents/reviews/sumcheck-a1.md). Companion to RFC-0006 A1. The `stele-sumcheck` dependency list is
+`[field, poly, hash]`: its generic polynomial, canonical field encoding and
+interpolation implementations may use the field contract directly. The negative
+control harness may import sumcheck and field for real protocol controls. These
+are downward/test-only edges; no core crate may import the control harness or an
+upstream proof implementation. No soundness term or cost-model constant changes.
+Affected tasks: E3-01, E2-01. Dependency bans must enforce the amended edges when
+implementation is delivered; the amendment alone adds no Cargo dependency.

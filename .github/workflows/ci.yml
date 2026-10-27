@@ -40,6 +40,7 @@ jobs:
       - run: python3 research/cqis-rounding/check_rounding.py
       - run: python3 research/poseidon2/check_poseidon2.py
       - run: uv run --locked --script research/transcript/check_transcript.py
+      - run: uv run --locked --script research/sumcheck/check_sumcheck.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check

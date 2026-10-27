@@ -12,3 +12,13 @@ acceptance, exact mutation and exact rejection through a dedicated configuration
 control path; do not invent a proof verifier or count it as a statement binding.
 Production must use the same validation. All proof-witness controls retain steps
 1–4 above and the real prover/verifier requirement.
+
+RFC-0006 A1 also permits `check_proof_control`: produce an honest proof through the
+real prover, require honest acceptance, clone the proof, apply `ProverHook` to
+exactly one declared proof value, and require the unchanged real verifier's exact
+rejection. Assert the single-value difference and hold its public statement fixed.
+For transcript controls, an adversarial replay using production Transcript/prover
+operations may compute the replacement; no state import, injected RNG, test-only
+verifier bypass or toy verifier is permitted. This is a proof-artifact control,
+not a configuration-validation exception. Honest/prover failures, no-op mutations,
+acceptance and wrong errors fail. Witness-first controls retain their existing path.
