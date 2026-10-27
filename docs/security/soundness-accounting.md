@@ -34,3 +34,10 @@ incompatible illustrative H budget. No profile can be certified from placeholder
 The gate also runs A2's wrapper-feature permutation KATs. This unused permutation
 adds no challenge or ledger line. Q14 must resolve the wrapper hash/transcript
 mode and its separate budget before E14-01 consumes it. Native A1 is unchanged.
+
+RFC-0006 A1 specifies the SC record: instance id, m, degree bound δ, field degree d,
+and exact numerator m*δ over symbolic p^d. Its [interactive obligation](../../formal/sumcheck.md)
+bounds passing a false initial sum together with true final evaluations; every
+emitted evaluation still needs a consumer. The production record generator and
+instance/challenge comparison remain E3-01 requirements. Research vectors do not
+replace that gate or discharge Q12.

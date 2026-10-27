@@ -31,7 +31,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted (A1) |
 | 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1) |
 | 0005 | Tensor IR, claim graph, witness capture | Accepted |
-| 0006 | Sumcheck engine and layer-stacked GKR core | Accepted |
+| 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1) |
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted |
 | 0009 | Attention protocol | Accepted |
@@ -45,7 +45,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted |
 | 0019 | Research agenda | Research |
-| 0020 | Monorepo and crate architecture | Accepted |
+| 0020 | Monorepo and crate architecture | Accepted (A1) |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`

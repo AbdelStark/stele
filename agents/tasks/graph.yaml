@@ -278,7 +278,8 @@ tasks:
   - E1-05
   - E2-00
   rfc:
-  - RFC-0006 §1-2
+  - RFC-0006 §1-2, A1
+  - RFC-0020 A1
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
   status: in_progress
@@ -290,6 +291,10 @@ tasks:
   - ledger line SC emitted
   - final claims absorbed
   - NC-0800/0802 real schedule controls for E2-01 integration
+  - NC-0205 consumes final public evaluation obligations
+  - Rust/Python actual protocol corpus agreement and both-field byte vectors
+  - actual sumcheck accounting/control gates replace only its scaffold guards
+  - naive c_sc and working-memory benchmark ledger
 - id: E3-02
   epic: E3
   title: Batching of equal/unequal-size instances with gamma from transcript

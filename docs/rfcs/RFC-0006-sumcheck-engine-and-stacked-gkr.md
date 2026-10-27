@@ -54,3 +54,141 @@ element amortised, minus small-value savings. Recorded as `c_sc(δ, small)` in t
 ## 8. Negative controls
 NC-0200 wrong round polynomial; NC-0201 challenge reuse across instances; NC-0202 batching with one instance omitted;
 NC-0203 block-sparse coefficient hitting wrong layer; NC-0204 small-value strategy on out-of-range inputs.
+
+## 9. Amendment log
+
+### A1 — Canonical instance, final obligations and sumcheck schedule
+
+Status: Accepted. Question Q15. Review: [skill passes](../../agents/reviews/sumcheck-a1.md). Evidence: [sumcheck study](../../research/sumcheck/REPORT.md).
+Motivation: §§1–2 leave P's verifier representation, message bytes, degree-zero
+behavior and consumption of final claims implicit. This amendment makes those
+boundaries explicit before E3-01 implementation; it does not instantiate PCS,
+batching, zero-knowledge or a complete inference verifier.
+
+Addition to §§1–2 (statement and API contract):
+
+> An instance is supplied by the verifier's Accepted reduction/plan, never copied
+> from proof metadata. It contains a u64 instance id, u32 variable count m, an
+> ordered list of distinct u64 input tensor ids, an ordered polynomial description
+> P, and the claimed sum v in K. Ids identify plan instances/tensors under the
+> already-absorbed public input; independent plan instances have distinct ids.
+> The field K is fixed by the verified profile and the RFC-0012 A1 Transcript.
+>
+> P is a sum of ordered terms. Each term consists of a coefficient in K and a
+> list of zero to four u32 input ordinals; repeated factors represent powers.
+> Ordinals must be in range. Empty factors mean a constant; an empty term list
+> means zero. The degree bound δ is the maximum factor count (zero for no terms),
+> computed from this description, not declared by the prover. Zero coefficients
+> do not lower this conservative bound. The verifier evaluates this same P; an
+> unaccounted callback or prover-supplied degree/evaluation function is forbidden.
+> Term/factor order is the plan's order; no sorting or semantic normalization is
+> implicit. The input list may include unused tensors, whose emitted evaluations
+> remain obligations. Counts and ids must fit their specified widths without
+> truncation. Inputs are multilinear tables on the same m-dimensional hypercube.
+>
+> `Summand` is a prover-side strategy interface for round evaluations, folding and
+> final values. The engine supplies the independently derived instance, enforces
+> message dimensions and transcript order, and draws every challenge itself.
+> The first implementation is the dense CPU reference for arbitrary P of degree
+> at most four. It folds the leading remaining coordinate: first point coordinate
+> is the most significant table-index bit. It never silently pads or reorders.
+> Future strategies retain this relation and the reference-parity requirement.
+>
+> A subproof contains exactly m round messages of δ+1 field elements each and
+> exactly one final value per ordered input id. Before replay, the verifier checks
+> all these lengths against its instance. Canonical field parsing rejects limbs
+> outside [0,p). This is the logical subproof, not a replacement for RFC-0016's
+> eventual inference-proof container. No prover-supplied point is accepted.
+
+Addition to §2 (exact schedule and byte encoding):
+
+> Use RFC-0012 A1's existing Instance, Round, Final and Sumcheck labels. Integers
+> below are unsigned little-endian with the stated widths; K elements are their
+> canonical RFC-0003 basis encodings (4d bytes, d=4 or 8). Concatenations have no
+> padding, alignment or terminators. All lengths are checked before conversion.
+>
+> Instance payload, before any round: u8(1) format version, u8(d), u64(instance id),
+> u32(m), u8(δ), u32(input count), u32(term count), then all input ids as u64; then
+> each term as coefficient K, u8(factor count), factor ordinals as u32; finally v.
+> Absorb this under Instance exactly once for this invocation.
+>
+> In round r=0..m-1, interpret the δ+1 message elements as g_r(0)..g_r(δ).
+> Check g_r(0)+g_r(1) equals the running claim (initially v). For δ=0, g_r(1)
+> equals the sole transmitted value, so the check is 2*g_r(0)=running claim.
+> A mismatch is `RoundSumMismatch`. Absorb u64(instance id), u32(r), followed
+> by exactly δ+1 K elements under Round. Only then draw `challenge(Sumcheck)`.
+> Evaluate the unique degree-at-most-δ interpolant at that challenge to obtain
+> the next running claim; the prover folds at the identical challenge. Nodes
+> 0..δ are distinct because p>4. No cached challenge or externally supplied RNG.
+>
+> After all rounds, check P(final values) equals the running claim, otherwise
+> `FinalEvaluationMismatch`. Absorb u64(instance id), u32(input count), then all
+> ordered final K values under Final before returning or beginning any dependent
+> operation. For m=0 there are no rounds/challenges; this final check is P(final)=v
+> and the same Instance/Final absorbs still occur, even with an empty final list.
+> Any error aborts the proof attempt; no rollback/retry contract is provided for
+> a partially advanced transcript. Return no usable reduction result on error.
+>
+> Successful reduction verification returns the derived point, ordered input
+> evaluation obligations (tensor id, that same point, final value), and an SC
+> accounting record. It is not acceptance of a complete statement. Every final
+> obligation must be discharged by the consuming reduction or PCS opening.
+> The production public-table adapter discharges them by evaluating the supplied,
+> verifier-owned tables at the returned point; mismatch is `ClaimMismatch`.
+> It validates table counts/shapes and never substitutes prover-supplied tables.
+> This adapter is the real closed-statement verifier for initial protocol controls.
+
+Soundness and accounting (§§1,7): δ is a static bound on every individual variable
+of P(f_1,..,f_t). For a false initial sum, the probability that interactive sumcheck
+passes and all emitted evaluations are true is at most m*δ/p^d by the standard
+round-by-round Schwartz–Zippel argument ([Thaler §4.1](https://people.cs.georgetown.edu/jthaler/ProofsArgsAndZK.pdf)).
+The precise obligation is recorded in [the formal statement](../../formal/sumcheck.md).
+No integer field-faithfulness certificate is needed for these field-only identities.
+The SC record contains instance id, m, δ, d and exact u64 numerator m*δ; denominator
+is symbolically p^d, never a rounded bit length or floating approximation. Emit
+one record per verified instance, including zero-numerator instances, mapped to
+the existing SC label. The gate must compare records with actual descriptors and
+challenge counts; it must not certify a full profile from this partial enumeration.
+The public adapter closes the evaluation obligations exactly, but neither adapter
+nor research tests prove the Fiat–Shamir transformation. Q12 remains unresolved;
+FS/H include all adversary queries. PCS, composition, ZK and profile errors remain
+separate obligations. No new random challenge or soundness-loss family is added.
+
+Prover/verifier costs (§7): for N=2^m, t inputs and e field operations per P
+application, the dense reference uses O(N*(δ+1)*(e+t)) field operations and O(t*N)
+working field elements, plus proof storage. Verifier work is O(m*δ^2+e+t), excluding
+consumption of final obligations; the public adapter additionally reads all tables.
+These contribute to c_sc and T_misc. E3-01 must record the naive c_sc measurement
+and working-memory evidence in a real benchmark ledger; no measured constant is
+changed by this amendment. Weight-pass phases are unaffected. E3-03..E3-05 retain
+all their optimization and reference-parity obligations.
+
+Controls (§8): NC-0200 changes one round evaluation; NC-0201 replaces one final
+evaluation by the value folded with a challenge from another instance; NC-0800
+uses a challenge drawn before its required round absorb. In the latter two,
+choose a one-round nonconstant summand so precisely one final value changes and
+`FinalEvaluationMismatch` is required. NC-0802 uses two real consecutive instances:
+replay the first history omitting its Final message, then run the production prover
+for a one-round single-input second instance. Its round message is unchanged and
+exactly its one final value changes; the honest chained verifier must reject it
+with `FinalEvaluationMismatch`. Both honest instances must first be accepted.
+NC-0205 changes one unused input's final value in a constant-P instance: reduction
+verification leaves that value as an obligation, and the real public adapter must
+reject it with `ClaimMismatch`. These are finite controls, not soundness proofs.
+
+Workflow 08 additionally permits a post-proof control path: produce and verify
+an honest proof with the real implementations, clone that artifact, mutate exactly
+one declared value, then require the same real verifier's exact rejection. The
+hook must assert the one-value difference and hold the verifier's statement fixed.
+A malicious transcript-history calculation may compute the replacement value,
+using only the production Transcript operations and prover; it cannot inject
+state/RNG, disable verifier checks or replace a verifier with a toy relation.
+No-op mutation, honest rejection, prover failure, acceptance or wrong error fails.
+This remains proof coverage, not a new configuration exception. Witness-first
+controls remain available. Research-only prototypes receive no catalog credit.
+
+E3-01 delivery also requires Rust/Python acceptance and rejection agreement on the
+actual protocol corpus (RFC-0002 S10), both-field byte vectors, malformed-shape and
+degree tests, and real accounting/control gates before removing the sumcheck
+scaffold guards. E2-01 retains its full NC-0800..0802 integration acceptance.
+Affected tasks: E3-01, E2-01, E8-04, E8-05, E12-09; no dependency is removed.

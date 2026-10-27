@@ -19,8 +19,8 @@ For each protocol binding:
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
-label with `DuplicateLabel`. It is configuration coverage only: 1/66 controls run,
-65 remain missing, and 0/17 proof-statement bindings are covered. Range rows expand
+label with `DuplicateLabel`. It is configuration coverage only: 1/67 controls run,
+66 remain missing, and 0/17 proof-statement bindings are covered. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 
 Coverage is over the current catalog, not a complete enumerated claim graph. Several
