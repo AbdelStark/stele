@@ -62,7 +62,9 @@ tasks:
   - RFC-0020 §1-3
   skill: rfc-author
   crate: workspace
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-01-workspace
   acceptance:
   - cargo build/test green on skeleton
   - every crate has lib.rs doc citing its RFC

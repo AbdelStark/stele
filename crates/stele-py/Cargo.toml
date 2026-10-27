@@ -1,0 +1,13 @@
+[package]
+name = "stele-py"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Stele — stele-py (see RFC-0020 §1)"
+
+[dependencies]
+stele-prover = { path = "../stele-prover" }
+stele-verifier = { path = "../stele-verifier" }
+
+[lints]
+workspace = true
