@@ -48,5 +48,16 @@ field parsing, public shapes, unused tables/slices and empty/constant relations.
 Complete-skip proofs disclose every original slice; changing an id or term order
 can preserve a true assertion and its proof while changing the transcript and
 metadata. Those cases require acceptance and exact updated receipts, not rejection.
-These checks add no NC credit. Seeded 10^3-per-degree reference coverage and
-complete cost/memory measurements remain E3-03 acceptance requirements.
+These checks add no NC credit and complement the seeded reference comparisons below.
+
+The CPU reference test now checks 1,000 seeded cases per polynomial degree 0..4
+in each of QM31 and OM31 (10,000 total). It computes residual sums directly from
+original slice MLEs, without dense hybrid construction or tail folding. Cases
+cover every eligible (m,k) through m=4 and maximum skip with a tail at m=5,
+full-extension and Boolean tables, mixed
+and repeated factors, zero coefficients with conservative degrees, term ordering,
+constants and unused inputs. Both modes must match proof values, every original
+claim must pass public consumption, and prover/reference/verifier continuations
+must agree. Both control/accounting gates require each field's named test to run;
+a missing-field-test mutation must fail. This is finite algorithm parity evidence;
+complete prover/consumer and memory measurements remain E3-03 requirements.
