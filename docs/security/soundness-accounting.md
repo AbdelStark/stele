@@ -94,4 +94,6 @@ require actual Small prover bytes followed by an A1 continuation. Corrupted roun
 proof lengths, unused finals and truncated originals yield 226 exact rejections.
 Both gates check regeneration, checked adapter narrowing and actual prover parity;
 regressions reject corpus drift, broken adapter selection and missing claims.
-Measured memory/cost evidence remains pending; these finite checks certify no profile.
+E3-04 now has [both-field complete-cost/memory ledgers](../../bench/README.md#small-value-pipeline-e3-04),
+including consumer-dominated pipeline peaks and all losses. Performance evidence
+does not change the SC bound; these finite checks certify no profile.

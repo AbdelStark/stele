@@ -237,3 +237,67 @@ are excluded from operation timing and explicitly recorded in the plan.
 No measurement is supplied by the harness change. Ledgers require clean-source
 provenance, actual control/accounting gates and acceptance of all warmup/measured
 proofs. These synthetic CPU cases do not certify inference, GPU, ZK or a profile.
+
+Recorded E3-04 ledgers: [QM31](ledger/e3-04-small-value-qm31.json) and
+[OM31](ledger/e3-04-small-value-om31.json), from clean commit
+`3a77a9d5a5996df63025efb81dc1e082a49d028c` on the recorded Apple M4 Max.
+Each retains all 24 cases and three samples; 288 proofs per field, including
+warmups, passed the actual public consumer. Imports preserve every JSON value.
+
+For m=8, these are exact aggregate nanoseconds across nine measured proofs per
+cell. k=0 is Dense; k=2/3/4 is Small. Divide prover columns by 2,304 points for
+the observed c_sc ns/point. These observations do not fit a global cost constant.
+
+| Field | Degree | Dense prover | k=2 prover | k=3 prover | k=4 prover |
+|---|---:|---:|---:|---:|---:|
+| QM31 | 0 | 294,916 | 249,541 | 230,999 | 220,625 |
+| QM31 | 1 | 515,167 | 431,792 | 377,919 | 560,125 |
+| QM31 | 2 | 1,401,417 | 1,038,206 | 875,209 | 883,499 |
+| QM31 | 3 | 1,968,043 | 1,354,501 | 772,667 | 1,352,541 |
+| QM31 | 4 | 2,284,957 | 1,815,335 | 2,034,079 | 3,685,207 |
+| OM31 | 0 | 738,457 | 669,583 | 624,290 | 555,874 |
+| OM31 | 1 | 1,553,874 | 1,655,918 | 1,854,252 | 2,091,209 |
+| OM31 | 2 | 7,503,958 | 4,108,289 | 3,178,457 | 3,123,042 |
+| OM31 | 3 | 10,126,417 | 5,199,709 | 4,449,542 | 5,342,250 |
+| OM31 | 4 | 12,264,957 | 5,265,081 | 6,014,041 | 5,497,334 |
+
+| Field | Degree | Dense prove+consume | k=2 complete | k=3 complete | k=4 complete |
+|---|---:|---:|---:|---:|---:|
+| QM31 | 0 | 492,291 | 447,208 | 432,040 | 417,250 |
+| QM31 | 1 | 727,376 | 712,502 | 593,169 | 920,916 |
+| QM31 | 2 | 1,792,041 | 1,426,166 | 1,265,084 | 1,276,750 |
+| QM31 | 3 | 2,415,251 | 1,621,251 | 1,076,210 | 1,716,543 |
+| QM31 | 4 | 2,568,375 | 2,311,212 | 2,525,204 | 4,181,249 |
+| OM31 | 0 | 1,167,375 | 1,091,874 | 1,078,416 | 1,052,208 |
+| OM31 | 1 | 2,117,207 | 2,176,544 | 3,131,588 | 3,781,834 |
+| OM31 | 2 | 9,325,374 | 5,935,789 | 5,004,957 | 4,949,875 |
+| OM31 | 3 | 12,109,251 | 7,160,085 | 6,410,334 | 7,314,541 |
+| OM31 | 4 | 14,461,082 | 6,911,664 | 7,282,332 | 6,695,082 |
+
+For m=18, degree 1, the time columns again aggregate nine measured proofs; divide
+prover time by 2,359,296 points for observed c_sc. RSS is the maximum measured
+native process peak across the three samples, in exact KiB (1,024 bytes).
+
+| Field | k | Prover ns | Complete ns | Prover KiB | Consumer KiB | Pipeline KiB |
+|---|---:|---:|---:|---:|---:|---:|
+| QM31 | 0 | 446,737,957 | 557,936,039 | 20,432 | 24,768 | 24,768 |
+| QM31 | 2 | 289,875,169 | 399,971,544 | 14,288 | 24,768 | 24,768 |
+| QM31 | 3 | 221,885,167 | 331,627,709 | 10,176 | 24,768 | 24,768 |
+| QM31 | 4 | 184,935,709 | 296,020,960 | 9,376 | 24,768 | 24,768 |
+| OM31 | 0 | 1,329,326,041 | 1,689,342,956 | 36,928 | 45,472 | 45,472 |
+| OM31 | 2 | 821,020,250 | 1,179,428,207 | 14,176 | 45,472 | 45,472 |
+| OM31 | 3 | 641,549,126 | 1,001,501,834 | 10,048 | 45,488 | 45,488 |
+| OM31 | 4 | 544,147,626 | 901,837,210 | 8,016 | 45,488 | 45,488 |
+
+In the large case, every tested Small prefix lowers prover peak RSS and aggregate
+prover/complete time in both fields. The consumer dominates the native pipeline
+peak: it is unchanged in QM31 and varies by one 16-KiB page in OM31. Thus the
+measured memory improvement is in the prover, not the complete public-consumer
+pipeline. Peaks include transition overlap and retained allocation capacity.
+
+At m=8, complete aggregates improve in 13/15 Small cases for QM31 and 12/15 for
+OM31. QM31 loses at (degree 1,k=4) and (degree 4,k=4); OM31 loses for every tested
+prefix at degree 1. Individual samples also lose in some aggregate-winning cases.
+No sample is discarded. No significance, universal size threshold or automatic
+prefix choice follows from this single-host experiment. Both complete stage costs
+and all process peaks remain in the ledgers; no GPU/inference/ZK/profile claim follows.

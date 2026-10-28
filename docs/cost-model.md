@@ -63,3 +63,13 @@ the kernel work in RFC‑0014.
 ## 5. Constants to measure first (bench targets, RFC‑0018)
 `c_a`, `c_x`, `c_c`, `c_w`, `R` on H100/B200, and the QM31‑mult : M31‑mult ratio under the chosen representation.
 Until measured, every number above is a projection and must be labelled so.
+
+## 6. Native small-value observations
+
+The [E3-04 CPU ledgers and tables](../bench/README.md#small-value-pipeline-e3-04)
+measure c_sc/T_misc preparation, proving and public consumption for the Accepted
+RFC-0006 A5 strategy. They include separate prover/consumer process peaks,
+transition overlap, retained capacity and losing cases. Observed ns/point values
+are microbenchmark evidence; they do not refit the planning constants above or
+change the weight-pass count. The measured prover-memory saving does not lower
+the complete public-consumer pipeline peak in this experiment.
