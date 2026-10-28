@@ -23,9 +23,9 @@ Each distinct row has one sample; no row is rescaled or substituted for another.
 The ledger retains every receipt, actual input/output capacities, and macOS
 `time -l` resource reports. Peak RSS includes original input, internal capacities
 and overlap, returned output, validation and runtime; it excludes the Python
-controller and is not isolated scratch or live allocated bytes. No timing result,
-statistical comparison, fitted constant, PCS admission or inference result is
-supplied by this harness change. The schema's standard profile is a tag only.
+controller and is not isolated scratch or live allocated bytes. These row
+measurements establish no statistical comparison, fitted constant, PCS admission
+or inference result. The schema's standard profile is a tag only.
 
 Recorded [E4-02 circle ledger](ledger/e4-02-circle-code.json), measured from clean
 commit `31e957a8f3f7c7e2ee4a5987a8f6e9e91ad4960a` on Apple M4 Max with Rust 1.90.0.

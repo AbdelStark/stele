@@ -45,11 +45,10 @@ different domain/construction. A2 preserves a 2^30-input-symbol benchmark throug
 the actual row-wise matrix encoding: two rows at rate 1/2 and four rows at rate
 1/4, each producing 2^30 codeword symbols. Every row must actually run; scaling one
 row's timing is insufficient. Both per-row and aggregate input/output dimensions
-are recorded. No large allocation or benchmark was run here, and the task remains
-incomplete until the actual required ledger exists.
+are recorded. The algebraic study performs no large allocation; the separate
+full benchmark delivery below supplies that measurement.
 
-Recommendation: accept the explicit encoder-only contract after the required
-reviews, then implement it with independent vectors, real memory/cost evidence,
+The Accepted encoder-only contract now has independent vectors, CPU implementation
 and the full 2^30-input-symbol benchmark. Encoding cannot admit a PCS profile: A1's
 registry/provenance contract, codeword validity, proximity, query accounting and
 authentication remain separate. There is no GPU or full-inference result here.
