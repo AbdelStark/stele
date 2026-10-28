@@ -41,7 +41,7 @@ class Parameters:
     cap_f: int = 0
 
     def __post_init__(self):
-        require(type(self.kind) is str and self.kind in ('sigmoid','silu','softcap')
+        require(type(self.kind) is str and self.kind in ('sigmoid','silu','softcap','gelu','gelu_tanh')
                 and all(type(v) is int for v in (self.F,self.E,self.cap_m,self.cap_f))
                 and 0 <= self.F <= 30 and 0 <= self.E <= 14,'Parameters')
         if self.kind == 'softcap':
@@ -57,6 +57,12 @@ class Parameters:
 def interval(p,t,bits):
     require(type(t) is int and -32768 <= t <= 32767,'Domain')
     x,scale = Q(t,1 << p.F),1 << p.E
+    if p.kind in ('gelu','gelu_tanh'):
+        # Imported at use to share the strict rounding/certificate path without
+        # creating a module-initialization cycle with the Gaussian enclosures.
+        from certified_gelu import gaussian_interval
+        low,high,strict = gaussian_interval(p.kind,x,bits)
+        return low*scale,high*scale,strict
     cap = Q(p.cap_m,1 << p.cap_f) if p.kind == 'softcap' else Q(1)
     exponent = 2*abs(x)/cap if p.kind == 'softcap' else abs(x)
     lo,hi,strict = strict_exp(exponent,bits)

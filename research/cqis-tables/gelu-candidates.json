@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "scope": "research; distinct variants, no native identity or model fidelity",
+  "cases": [
+    {
+      "parameters": [
+        "gelu",
+        8,
+        8,
+        0,
+        0
+      ],
+      "entries": 65536,
+      "minimum": -44,
+      "maximum": 32767,
+      "sha256": "55356834663b4256774cbb8d4a8ea67e8ff7f0f98f3619edf4fd6dae1ba1811d"
+    },
+    {
+      "parameters": [
+        "gelu_tanh",
+        8,
+        8,
+        0,
+        0
+      ],
+      "entries": 65536,
+      "minimum": -44,
+      "maximum": 32767,
+      "sha256": "d406cb7dfcc48e28d08ed8a3fb1b1310b5783a2a97bea05f850a058afae4dd5a"
+    }
+  ],
+  "random_checks_per_variant": 10000,
+  "absolute_error_to_own_real_variant": [
+    1,
+    2
+  ],
+  "different_example_entries": 108,
+  "largest_integer_example_difference": 1
+}

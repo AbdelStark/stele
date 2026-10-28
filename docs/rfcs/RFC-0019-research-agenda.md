@@ -241,6 +241,13 @@ Full signed-int16 tables and seeded scale/cap cases match an independent exact
 oracle; overflow and altered certificates reject. GeLU variants, total RMSNorm,
 canonical identities and production consumers remain open; A2 stays Draft.
 
+Q25 GeLU continuation: formal/cqis-gelu.md certifies distinct exact and tanh
+variants with rational constants, strict tails and signed half-away. A separate
+pi identity, root bisection and positive integral series cross-check both full
+example tables and varied-scale cases. Exact/tanh integer outputs differ at
+108 example entries. Normalization, canonical identities, scale selection and
+native/fidelity evidence remain required; no production admission is claimed.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.
