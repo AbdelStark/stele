@@ -92,3 +92,13 @@ large case, while every tested streaming schedule increases complete runtime.
 The original public consumer still determines the complete pipeline memory peak.
 These observations do not refit the planning constants or establish an inference
 planner, virtual-tensor recomputation cost, GPU bound or additional weight pass.
+
+## 9. Bounded native encoder evidence
+
+The [E4-08 native ledger and report](../bench/README.md#bounded-native-encoder-e4-08)
+record the full c_c/T_misc operation for RFC-0010 A4/A5 in all supported fields
+through the required measured size. Per-call generation, observation overhead,
+base/sparse work, initialization, copies and full query re-encoding are charged.
+Actual owned/caller capacities, compiled native/hash frames and process RSS retain
+separate scopes. These CPU observations do not refit planning constants, add a
+weight pass, authenticate a commitment or establish a PCS/profile error bound.
