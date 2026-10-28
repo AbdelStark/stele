@@ -200,6 +200,10 @@ bounded sampler and all-seed ideal-oracle argument in formal/seeded-setup.md
 strengthen the finite event bound to cover quantum selection without a query cap.
 The old classical formula's counterexample remains; actual admission and Q12
 composition are still required. RFC-0012 A7 remains Draft.
+The identity follow-up in formal/code-identity.md specifies a closed factory,
+checked registry export and derived encoder parameters. Research calls regenerate
+the map from its identity; false proven flags cannot be promoted by editing TOML.
+Native allocation, authenticated consumers, proximity and PCS admission remain open.
 
 Q24: which ordered domains, FFT span, normalization, distance bound and maximum
 size define the circle encoder? Candidate RFC-0010 A2 gives a concrete map and

@@ -214,3 +214,34 @@ and multiplication per field limb. This is an exact algorithmic count, not measu
 throughput. Complete recursive edge counts remain E(J); setup caps, linear work
 and storage bounds stay fixed. No production coefficient, weight pass, benchmark,
 GPU result, PCS control or admitted profile is supplied.
+
+## Code identity and checked registry study
+
+Question: can one checked identity select the exact map, field-independent
+parameters and encoding path, without trusting raw graphs or metadata supplied
+by a prover? Security property: code identity and parameter provenance; cost terms:
+setup preparation, c_c and retained graph/byte storage. Kill criterion: caller
+metadata changes a bound/map, unknown or duplicate registry data is accepted,
+invalid row/query reaches setup allocation, or syntax is mistaken for PCS admission.
+
+
+Run `uv run --locked --script research/code-provenance/check_identity.py`.
+The [candidate contract](../../formal/code-identity.md) fixes two identity formats,
+explicit field selection, derived parameters and a sealed native API proposal.
+The research encoder accepts only identities, regenerates actual v2 setups and
+uses the existing maps. The catalog checker compares every field and type against
+fixed definitions; neither TOML metadata nor a returned parameter snapshot is
+consumed as encoding authority. Both PCS proven flags remain false.
+
+Thirty field/map cases pass complete-word and duplicate-query parity. All 72 sizes
+resolve in three fields without setup/FFT calls. Each catalog field is mutated
+individually; duplicate/unknown/missing/wrong-type/oversized data rejects. Invalid
+rows/columns and empty queries reach no setup or FFT work. Different seeds with
+equal parameters produce different maps, so consumers must bind the full identity
+and field rather than only dimensions or a theorem name.
+
+Recommendation: continue A1 with this common identity boundary. Actual native
+capacity handling and authenticated PCS/plan/passport consumers remain required,
+as do proximity, query/error composition and profile admission. The extra bounded
+registry/descriptor work changes no measured c_c/T_misc constant or weight-pass
+count; regeneration, full encoding, raw copies and peak storage are still charged.
