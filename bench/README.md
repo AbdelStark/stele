@@ -180,3 +180,31 @@ headers and stack, and are not isolated measured scratch peaks or DRAM traffic.
 The plan records each bound formula; changing allocation structure requires revisiting
 those formulas. This is CPU microbenchmark evidence; profile names select the field,
 not a security certificate. No cost-model fit, inference, GPU or ZK result follows.
+
+Recorded E3-03 ledgers: [QM31](ledger/e3-03-zerocheck-qm31.json) and
+[OM31](ledger/e3-03-zerocheck-om31.json), from clean commit
+`4541fb8c77c3c99462a23999b09dfb85db07d98d` on the recorded Apple M4 Max.
+Both retain all 34 strategy/degree/skip cases and three samples per case.
+The table shows exact aggregate nanoseconds over nine measured proofs per cell;
+divide prover columns by 2,304 original points for the observed c_sc ns/point.
+These are measurements, not fitted constants.
+
+| Field | Degree | k=0 prover | k=1 prover | k=0 prove+consume | k=1 prove+consume |
+|---|---:|---:|---:|---:|---:|
+| QM31 | 1 | 894,791 | 621,456 | 1,224,164 | 1,122,497 |
+| QM31 | 2 | 1,249,876 | 960,211 | 1,622,374 | 1,500,835 |
+| QM31 | 3 | 1,608,667 | 1,326,082 | 1,987,623 | 1,866,042 |
+| QM31 | 4 | 2,008,292 | 1,793,832 | 2,389,710 | 2,356,248 |
+| OM31 | 1 | 2,467,543 | 1,643,208 | 3,215,919 | 2,973,499 |
+| OM31 | 2 | 3,395,752 | 2,647,374 | 4,188,128 | 4,043,000 |
+| OM31 | 3 | 4,509,584 | 3,704,707 | 5,346,500 | 5,109,039 |
+| OM31 | 4 | 5,901,250 | 5,169,917 | 6,834,544 | 6,672,293 |
+
+In these aggregates, k=1 reduces prover and complete time for degrees 1..4 in both
+fields; individual OM31 samples at degrees 2 and 4 do not all improve. No statistical
+significance or universal threshold is claimed. Every measured k=2/k=4 complete
+aggregate is slower than k=0 for the same degree/field; public claim expansion is
+included. Dense beats the exhaustive reference in all 17 aggregate comparisons
+per field, but that reference is not a tuned linear-time competitor. The ledger
+also retains process RSS, actual input/proof payloads and separate conservative
+prover/consumer scratch bounds. No samples were discarded and no k is auto-selected.

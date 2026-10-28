@@ -60,4 +60,11 @@ constants and unused inputs. Both modes must match proof values, every original
 claim must pass public consumption, and prover/reference/verifier continuations
 must agree. Both control/accounting gates require each field's named test to run;
 a missing-field-test mutation must fail. This is finite algorithm parity evidence;
-complete prover/consumer and memory measurements remain E3-03 requirements.
+complete prover/consumer and memory measurements are recorded in the
+[E3-03 ledgers](../../bench/README.md#zerocheck-e3-03).
+
+E3-03 evidence now includes the production engine/consumers, 314 shared decisions,
+10,000 seeded direct-reference comparisons and both-field complete-cost ledgers.
+The ledgers preserve skip losses, actual process peaks and qualified scratch bounds.
+This closes the component task when the evidence PR passes required gates and merges;
+Q12, inference composition, PCS, ZK and GPU delivery remain separate obligations.

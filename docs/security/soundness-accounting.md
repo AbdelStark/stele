@@ -76,4 +76,5 @@ regressions reject changed corpus expectations, omitted claims and wrong records
 Both gates also require 1,000 seeded direct-reference cases per degree and field,
 including every eligible (m,k) through m=4, maximum skip with a tail at m=5,
 and public claim consumption.
-E3-03 still requires measured c_sc/total consumer cost and memory evidence. Q12 remains open; these gates do not certify a profile.
+E3-03 has [both-field complete-cost/memory ledgers](../../bench/README.md#zerocheck-e3-03);
+performance evidence does not strengthen the conditional algebraic bound. Q12 remains open; these gates do not certify a profile.
