@@ -483,3 +483,31 @@ regeneration copies. Stronger v2 degrees increase exact edge work/storage (9728
 versus 7424 edges at n=256); these are operation counts, not benchmarks. No measured coefficient or weight-pass count changes. Affected
 tasks: E4-01/E4-03/E4-05, E8-05, E12-04/E12-09. A1 and A7 remain Draft; this
 research does not enable a code registry, PCS parameter or treaty profile.
+
+### A8 — Require the characteristic and pole hypotheses of LU accounting
+
+Status: Draft. Question Q31; companion RFC-0008 A2.
+Evidence: [LogUp algebra and counterexamples](../../formal/logup-characteristic.md).
+Motivation: the N≈2^37 illustrative lookup exceeds char(M31); changing to QM31
+or OM31 does not change that characteristic. An identically zero bad-instance
+rational function has no small root-bound error to square.
+
+Proposed replacement requirements for the LU row in §4 and its use in §5:
+
+> Derive each LU record from the exact Accepted lookup mode and static public
+> shape/selector bounds. Ordinary unit multiplicities require fewer selected
+> positions than the characteristic. Missing count/unit, source binding, pole,
+> compression or consumer hypotheses mean unsupported configuration, never a
+> zero term or admission based on the field extension size alone.
+> Include tuple compression, rational-identity, GKR and any batching/unit errors
+> under their actual challenge schedule. Square only the independent repeated
+> event justified by its theorem; shared or separately bounded errors retain
+> separate accounting. Partitioned or weighted-unit modes need their complete
+> exact formulas and registered challenges before use.
+
+The bounded-count note gives a conditional power-compression identity bound
+min(1,(N+c*|T|-1)/|K|). It is not a complete LU record or new production schema.
+No challenge, label, verifier admission or ledger line changes in this Draft.
+Q12 and all source/PCS/ZK composition obligations remain. Cost terms include
+c_lu/T_misc, multiplicity/table work and memory, with no measured constant.
+Affected tasks: E3-07, E8-05, E12-02/E12-03 and every lookup consumer.

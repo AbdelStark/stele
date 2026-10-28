@@ -301,3 +301,12 @@ profile admission. E14-01 is blocked on A1; Q12/Q14, actual verifier translation
 full extraction/simulation composition, W8 and NC-1203 remain required. Selecting
 this path for treaty privacy would need an explicit mandatory architecture
 amendment; neither the finite search study nor upstream names choose that change.
+
+Q31: which count/unit and nonzero-denominator contract makes LogUp sound at
+the inference shapes? Draft RFC-0008 A2 / RFC-0012 A8 and
+formal/logup-characteristic.md give an exact p-copy counterexample, bounded-count
+residue/compression lemmas and pole/padding requirements. Extension challenges
+and repetitions do not change the characteristic. Static partitions or a complete
+weighted-unit construction are candidate repairs with distinct costs and source/
+challenge obligations. E3-07 is blocked on A2; actual GKR/PCS/privacy consumers,
+NC-0400..0403, c_lu measurement and complete accounting remain required.
