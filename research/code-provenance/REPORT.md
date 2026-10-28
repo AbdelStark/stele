@@ -276,3 +276,13 @@ native bytes/sampling/consumers and arbitrary/batched modes are specified; prese
 those requirements and the fused one-weight-pass contract. Neither query arithmetic
 nor a below-target subtotal enables the catalog's proven flags. Measure the actual
 proof/verifier cost and any added proximity work before claiming the intended MVP.
+
+
+## Bounded encoder execution study
+
+Question: can the exact v2 encoder regenerate individual graph rows and use one
+fixed recursion workspace instead of retaining/serializing the full sparse setup?
+Cost terms: setup/hash work in T_misc, sparse arithmetic in c_c, and complete
+input/output/workspace overlap. Kill criterion: any map/byte mismatch, omitted
+zero edge or exhausted stream, workspace overrun, unchecked size conversion, or
+claim of native/process-memory evidence from Python object counts.
