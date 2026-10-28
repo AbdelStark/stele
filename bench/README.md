@@ -353,3 +353,79 @@ prefix at degree 1. Individual samples also lose in some aggregate-winning cases
 No sample is discarded. No significance, universal size threshold or automatic
 prefix choice follows from this single-host experiment. Both complete stage costs
 and all process peaks remain in the ledgers; no GPU/inference/ZK/profile claim follows.
+
+
+## Streaming pipeline (E3-05)
+
+From a clean committed macOS checkout, run fields sequentially after validation
+workers finish:
+
+```sh
+python3 bench/streaming.py QM31 /tmp/streaming-qm31.json
+python3 bench/streaming.py OM31 /tmp/streaming-om31.json
+```
+
+The frozen plan compares Dense, tail materialization, one window and multiple
+windows at m=8 for degrees 0..4, plus m=18 degree 1. It uses full-extension
+synthetic inputs, including an unused input, and three fresh samples per case.
+There is no warmup or cache flush. Budgets are explicit workspace cells fixed
+before measurement; selected window cases use less workspace than dense inputs.
+
+Separate native processes generate/write original files and prepare the layout,
+prove, then consume every original claim from the preserved files. Operation times
+include file I/O, allocation, window/tail transitions, transport encoding/decoding
+and continuation checks. Argument parsing, launch/exit, result JSON formatting,
+controller cleanup and small final-buffer destruction are excluded explicitly.
+Every proof must verify, and all strategy proof/continuation bytes must agree.
+
+Actual Vec/PathBuf capacities and compiled named state sizes are reported apart
+from process RSS. The consumer's transient equality table is included in its RSS.
+Native pipeline peak is the maximum of sequential preparation/prover/consumer
+peaks, including allocation retention and transport overlap. Python/controller
+and OS filesystem caches are excluded: this is not a total-host-memory bound.
+External storage and successful logical I/O operations are recorded; no physical
+storage traffic is inferred. All raw samples and losing schedules are retained.
+
+Recorded [QM31](ledger/e3-05-streaming-qm31.json) and
+[OM31](ledger/e3-05-streaming-om31.json) ledgers come from clean commit
+`c9fd07538ff239462ac87225d4d3221c8ea3f983`, Apple M4 Max, Rust 1.90.0.
+Each field completed 72 proofs with all original claims and continuation checked.
+All four strategies produced identical bytes for each descriptor. Stored ledgers
+preserve every exported JSON value; whitespace is compacted to one sample per line.
+
+The table reports m=18, degree 1. Times are sums of three samples, including fixture
+creation, layout preparation, proving and original consumption. RSS is the maximum
+observed native process peak across those samples. Buffer capacity is the actual
+retained prover allocation payload, including caller, descriptor, proof and source;
+it excludes separately reported inline state and is not an RSS bound.
+
+| Field | Strategy | Complete ns | Prover ns | Work cells | Prover buffers bytes | Prover RSS bytes | Pipeline RSS bytes |
+|---|---|---:|---:|---:|---:|---:|---:|
+| QM31 | dense | 3,945,533,750 | 788,487,750 | 0 | 12,584,854 | 14,417,920 | 18,628,608 |
+| QM31 | tail | 7,625,567,001 | 847,268,584 | 786,435 | 12,584,839 | 14,401,536 | 18,628,608 |
+| QM31 | one | 80,420,888,084 | 73,630,972,542 | 2,054 | 34,740 | 1,835,008 | 18,628,608 |
+| QM31 | multi | 15,871,414,876 | 9,051,666,584 | 262 | 6,086 | 1,769,472 | 18,628,608 |
+| OM31 | dense | 4,330,088,750 | 1,013,133,791 | 0 | 25,168,470 | 27,017,216 | 35,422,208 |
+| OM31 | tail | 7,941,723,998 | 1,198,973,749 | 786,435 | 25,168,503 | 27,000,832 | 35,422,208 |
+| OM31 | one | 198,110,167,333 | 191,399,867,250 | 2,054 | 68,308 | 1,884,160 | 35,422,208 |
+| OM31 | multi | 27,494,733,083 | 20,876,796,334 | 262 | 10,982 | 1,818,624 | 35,422,208 |
+
+Dense has no streaming arena; its three original tables contain 786,432 K cells.
+The one-window schedule [9] uses 2,054 workspace cells and two source visits;
+[6,6] uses 262 cells and three visits. Preparation and original consumption add
+separate reads outside those visits. All supplied capacities and logical I/O counts
+remain in the ledgers, including the tail-only path and external source storage.
+
+These windows reduce prover memory, but the original consumer dominates every
+m=18 pipeline peak. Total time increases for every tested streaming case: all
+15 m=8 schedule/degree combinations per field and all three m=18 schedules.
+The one-window complete totals are 20.38x Dense for QM31 and 45.75x for OM31;
+multiple windows are 4.02x and 6.35x respectively (rounded ratios of summed times).
+The simple direct grid algorithm trades computation and file access for workspace.
+No winning sample is selected or losing schedule omitted; no significance or
+universal planner threshold follows from this single-host experiment.
+
+Inclusive micro-operation time includes original consumption; inference evidence
+fields remain zero. Actual subproof results, stage costs and executed control
+coverage are in model_config. There is no fitted constant, GPU, inference, ZK,
+profile-certification or complete-host-memory claim, and no weight-pass change.
