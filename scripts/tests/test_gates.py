@@ -144,6 +144,16 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('TamperAccepted', result.stdout + result.stderr)
 
+    def test_rejects_fraction_transcript_control_omission(self):
+        source = self.root / 'tests/negative-controls/src/fraction_transcript.rs'
+        original = source.read_text()
+        self.assertIn('fn rejects_fraction_missing_final_continuations()', original)
+        source.write_text(original.replace('fn rejects_fraction_missing_final_continuations()',
+                                          'fn omitted_fraction_continuation_check()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction transcript controls failed', result.stderr)
+
     def test_rejects_external_field_seal_removal(self):
         source = self.root / 'crates/stele-code/src/encoder.rs'
         original = source.read_text()

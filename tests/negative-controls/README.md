@@ -20,7 +20,7 @@ For each protocol binding:
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
 label with `DuplicateLabel`; it earns configuration coverage only. Including the
-twelve sumcheck/batching/zerocheck/small/streaming controls and Merkle NC-0602 plus fraction NC-0406..0410, 19/77 controls run,
+twelve sumcheck/batching/zerocheck/small/streaming controls and Merkle NC-0602 plus fraction NC-0406..0411, 20/78 controls run,
 58 remain missing, and 4/18 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 Streaming NC-0210 uses a real prepared file: change one unused source record,
@@ -74,3 +74,10 @@ with the catalog errors. NC-0409/0410 now reject selector and unused original-co
 selected-product prover and actual public source consumer. NC-0409 also changes
 one upstream unused tree child, requiring p=sigma_tilde(r) to reject. Full lookup
 remains missing.
+
+NC-0411 derives one next-layer round value with Gamma before Fraction/Layer or
+Fold before Final, then applies only that value to an honest native proof.
+NC-0802 also omits the tree/selected-product A1 Final when deriving one final
+value for a following real sumcheck. Both fields reject at the catalog boundary.
+Exact-order replay must first match the native proof; no alternate verifier or
+state import is used. These controls do not add an FS theorem or profile admission.

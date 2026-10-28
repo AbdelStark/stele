@@ -7,6 +7,8 @@ pub mod catalog;
 #[doc(hidden)]
 pub mod fraction;
 #[doc(hidden)]
+pub mod fraction_transcript;
+#[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
 pub mod streaming;
@@ -23,6 +25,12 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 411,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: fraction_transcript::run_order,
+    },
     catalog::RegisteredControl {
         id: 409,
         kind: catalog::ControlKind::Proof,
@@ -138,7 +146,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || {
             sumcheck::run(802)?;
             batching::run(802)?;
-            zerocheck::run(802)
+            zerocheck::run(802)?;
+            fraction_transcript::run_continuation()
         },
     },
     catalog::RegisteredControl {
