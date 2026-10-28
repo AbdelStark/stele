@@ -442,7 +442,7 @@ tasks:
   crate: stele-code
   status: blocked(RFC-0010 A1)
   agent: codex-root
-  branch: task/E4-01-code-identity
+  branch: task/E4-01-tensor-proximity
   acceptance:
   - linearity tests
   - distance estimate script
