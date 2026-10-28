@@ -433,7 +433,7 @@ tasks:
   crate: stele-lookup
   status: blocked(RFC-0008 A2)
   agent: codex-root
-  branch: task/E3-07-logup-characteristic-study
+  branch: task/E3-07-weighted-units-study
   acceptance:
   - NC-0400..0403
   - c_lu measured
