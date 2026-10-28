@@ -14,6 +14,18 @@ mod private {
 /// fn supported<K: stele_code::CodeField>() {}
 /// supported::<stele_field::CM31>();
 /// ```
+/// ```compile_fail,E0277
+/// fn supported<K: stele_code::CodeField>() {}
+/// supported::<stele_field::KoalaBear>();
+/// ```
+/// An external field implementation satisfies every Field requirement, but cannot
+/// supply the private seal. Both examples use the same complete implementation.
+#[doc = concat!("```\n", include_str!("encoder/field-doctest.md"),
+    "\nfn field<K: Field>() {}\nfield::<Other>();\n```\n",
+    "```compile_fail,E0277\n", include_str!("encoder/field-doctest.md"),
+    "\nimpl stele_code::CodeField for Other {\n",
+    "const DEGREE: u8 = 1;\n",
+    "fn mul_base(self, c: M31) -> Self { Self(self.0 * c) }\n}\n```")]
 pub trait CodeField: Field + private::SealedField {
     /// Canonical number of M31 limbs.
     const DEGREE: u8;
