@@ -390,6 +390,7 @@ tasks:
   title: Stacked reduction runtime + public MLE kinds (eq, causal, window, rope, onehot_sparse, gqa)
   depends:
   - E3-02
+  - E3-06a
   rfc:
   - RFC-0006 §3,§6
   skill: gkr-reduction-author
@@ -401,6 +402,24 @@ tasks:
   - prover/verifier MLE agreement 1e4 points per kind
   - NC-0203
   - per-block partial sums exposed
+- id: E3-06a
+  epic: E3
+  title: Public coefficient arithmetic primitives for stacked reductions
+  depends:
+  - E3-02
+  rfc:
+  - RFC-0006 A7
+  - RFC-0020 A3
+  skill: gkr-reduction-author
+  crate: stele-gkr
+  status: in_progress
+  agent: codex-root
+  branch: task/E3-06a-public-mle-primitives
+  acceptance:
+  - all six kinds match independent Boolean-table MLEs at 10000 points per kind per extension field
+  - selected axes, irregular padding, reordered axes and zero-bit axes covered
+  - large mask domains use bounded state; malformed shapes and resource limits reject
+  - no source authentication, transcript, stage or NC-0203 credit; E3-06 retains every original obligation
 - id: E3-07
   epic: E3
   title: LogUp-GKR fraction trees with selectors; single and double challenge
