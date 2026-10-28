@@ -1,5 +1,6 @@
 """Q24: independent circle-transform algebra, not a PCS or size benchmark."""
 import random
+from pathlib import Path
 
 P = 2**31-1
 G = (1717986917, 1288490189)
@@ -97,7 +98,19 @@ def encode(row, log_blowup):
     return transform(coefficients+[0]*(2**(m+log_blowup)-len(row)), domain(m+log_blowup))
 
 
+def vectors():
+    rows = []
+    for m in range(6):
+        coefficients = [(37+19*j*j-11*j) % P for j in range(2**m)]
+        row = [direct(coefficients, pt) for pt in domain(m)]
+        for b in (1, 2):
+            word = [direct(coefficients, pt) for pt in domain(m+b)]
+            rows.append(f'{m} {b} ' + ','.join(map(str, row)) + ' ' + ','.join(map(str, word)))
+    return '\n'.join(rows) + '\n'
+
+
 def checks():
+    assert Path(__file__).with_name('vectors.txt').read_text() == vectors(), 'circle vectors drift'
     assert G == ((-3*pow(5, P-2, P)) % P, (4*pow(5, P-2, P)) % P)
     assert (G[0]*G[0]+G[1]*G[1]) % P == 1
     assert power(G, 2**30) == (P-1, 0) and power(G, 2**31) == (1, 0)
@@ -164,6 +177,7 @@ def checks():
     print('Vanishing top polynomial demonstrates the extra full-space dimension for logs 1..6.')
     print('A length-four, dimension-two word has weight two: do not import the ordinary RS MDS formula.')
     print('Research only: no 2^30 allocation, performance ledger, PCS parameter or GPU parity claim.')
+    print('Twelve shared canonical M31 vectors match independent direct evaluation.')
 
 
 if __name__ == '__main__':
