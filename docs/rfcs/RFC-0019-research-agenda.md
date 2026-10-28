@@ -155,3 +155,14 @@ Draft. The stacking study gives counterexamples to interchanging nonlinear
 layer folds or Boolean-product extensions and checks canonical axis restoration.
 E3-06 is blocked on the complete amendment and its required reviews; research
 checks provide no production control, profile or performance credit.
+
+Q21: which typed eligibility, deferred-prefix state and actual out-of-range misuse
+control complete the small-value strategy without changing the A1 protocol?
+Candidate: RFC-0006 A5, with two independent grid builders, both-field A1 parity
+and a one-value truncation reproduction in research/small-value. E3-04 is blocked
+on amendment acceptance; no production NC or performance credit is claimed.
+
+Q21 resolution: RFC-0006 A5 Accepted with linked same-author skill passes and a
+deterministic parity argument. E3-04 is ready for production implementation and
+its actual constructor/control/parity/cost/memory gates. The strategy does not
+prove range, change A1 bytes, certify a profile or complete the task.
