@@ -126,6 +126,15 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('fraction codec checks failed', result.stderr)
 
+    def test_rejects_selected_product_codec_reference_drift(self):
+        fixture = self.root / 'crates/stele-lookup/tests/fixtures/leaf-codec.jsonl'
+        rows = [json.loads(line) for line in fixture.read_text().splitlines()]
+        rows[0]['unexpected_reference_metadata'] = 1
+        fixture.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('selected-product codec reference drift', result.stderr)
+
     def test_rejects_external_field_seal_removal(self):
         source = self.root / 'crates/stele-code/src/encoder.rs'
         original = source.read_text()

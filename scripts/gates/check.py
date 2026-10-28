@@ -58,7 +58,8 @@ def fraction_codecs(root):
     """Actual A3 tree producer/consumers; full lookup and selected product stay guarded."""
     crate = root / 'crates/stele-lookup'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
-               'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs'}
+               'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs',
+               'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
                '//! Tree arithmetic returns conditional claims; full lookup/leaf verification is absent.\n'
@@ -79,7 +80,9 @@ def fraction_codecs(root):
     names = ('matches_reference_qm31_fraction_codec','matches_reference_om31_fraction_codec',
              'rejects_fraction_codec_boundaries','accepts_maximum_verifier_shape_without_domain_allocation',
              'accepts_qm31_fraction_tree_original_consumers','accepts_om31_fraction_tree_original_consumers',
-             'rejects_fraction_tree_source_shape_and_poles')
+             'rejects_fraction_tree_source_shape_and_poles', 'rejects_qm31_leaf_codec_boundaries',
+             'rejects_om31_leaf_codec_boundaries', 'matches_reference_qm31_selected_product_codec',
+             'matches_reference_om31_selected_product_codec')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
         raise ValueError(f'fraction codec checks failed: {result.stdout} {result.stderr}')
     result = subprocess.run(['uv','run','--locked','--script',
@@ -87,6 +90,11 @@ def fraction_codecs(root):
                             cwd=root,text=True,capture_output=True)
     if result.returncode or '12 both-field native codec fixtures match' not in result.stdout:
         raise ValueError(f'fraction codec reference drift: {result.stdout} {result.stderr}')
+    result = subprocess.run(['uv','run','--locked','--script',
+                             'research/logup-characteristic/check_fraction.py','--leaf-codec'],
+                            cwd=root,text=True,capture_output=True)
+    if result.returncode or '12 both-field selected-product codec fixtures match' not in result.stdout:
+        raise ValueError(f'selected-product codec reference drift: {result.stdout} {result.stderr}')
     print('gate fraction tree: both-field proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
 
 

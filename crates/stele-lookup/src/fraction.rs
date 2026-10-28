@@ -1,5 +1,8 @@
 //! Conditional fraction tree, original public consumer and codecs, RFC-0008 A3.
 //! No private source authentication or lookup membership follows.
+#[path = "leaf_codec.rs"]
+mod leaf_codec;
+pub use leaf_codec::LeafDescriptor;
 #[path = "tree.rs"]
 mod tree;
 use alloc::vec::Vec;
