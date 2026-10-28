@@ -1,8 +1,11 @@
-//! Canonical fraction descriptors and unverified proof payloads, RFC-0008 A3.
-//! No source authentication, transcript execution or lookup acceptance occurs here.
+//! Conditional fraction tree, original public consumer and codecs, RFC-0008 A3.
+//! No private source authentication or lookup membership follows.
+#[path = "tree.rs"]
+mod tree;
 use alloc::vec::Vec;
 use stele_hash::ChallengeField;
 use stele_sumcheck::Proof as SumcheckProof;
+pub use tree::{check_roots, Accounting, Reduction};
 
 /// Invalid metadata, payload or resource request; no partially decoded proof escapes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -15,6 +18,30 @@ pub enum Error {
     NoncanonicalField,
     /// Checked size or allocation exceeds available capacity.
     Capacity,
+    /// Original source dimensions disagree with the descriptor.
+    SourceShape,
+    /// Exact equality coefficient consumption failed.
+    CoefficientMismatch,
+    /// At least one original public leaf evaluation disagrees.
+    LeafMismatch,
+    /// A rational root equation contains a zero denominator.
+    Pole,
+    /// The nonzero-denominator root equation failed.
+    RootMismatch,
+    /// The underlying A1 reduction rejected; abort the entire attempt.
+    Sumcheck(stele_sumcheck::Error),
+    /// The production transcript aborted; never resample.
+    Transcript(stele_hash::Error),
+}
+impl From<stele_sumcheck::Error> for Error {
+    fn from(e: stele_sumcheck::Error) -> Self {
+        Self::Sumcheck(e)
+    }
+}
+impl From<stele_hash::Error> for Error {
+    fn from(e: stele_hash::Error) -> Self {
+        Self::Transcript(e)
+    }
 }
 fn reserve<T>(out: &mut Vec<T>, count: usize) -> Result<(), Error> {
     out.try_reserve_exact(count).map_err(|_| Error::Capacity)
@@ -116,8 +143,7 @@ pub struct Proof<K: ChallengeField> {
     pub steps: Vec<SumcheckProof<K>>,
 }
 impl<K: ChallengeField> Proof<K> {
-    /// Serialize exact dimensions with no prover-supplied counts or points.
-    pub fn encode(&self, descriptor: &Descriptor<K>) -> Result<Vec<u8>, Error> {
+    fn validate(&self, descriptor: &Descriptor<K>) -> Result<(), Error> {
         if self.steps.len() != descriptor.m as usize
             || self.steps.iter().enumerate().any(|(k, step)| {
                 step.rounds.len() != k
@@ -127,6 +153,11 @@ impl<K: ChallengeField> Proof<K> {
         {
             return Err(Error::ProofShape);
         }
+        Ok(())
+    }
+    /// Serialize exact dimensions with no prover-supplied counts or points.
+    pub fn encode(&self, descriptor: &Descriptor<K>) -> Result<Vec<u8>, Error> {
+        self.validate(descriptor)?;
         let mut out = Vec::new();
         reserve(&mut out, descriptor.proof_size()?)?;
         for value in self.root {

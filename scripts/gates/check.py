@@ -55,29 +55,31 @@ def bootstrap_guard(root, gate):
 
 
 def fraction_codecs(root):
-    """A3 codecs only; reject unwired native reduction/lookup implementation."""
+    """Actual A3 tree producer/consumers; full lookup and selected product stay guarded."""
     crate = root / 'crates/stele-lookup'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
-               'tests/fixtures/fraction-codec.jsonl'}
+               'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
-               '//! Codecs return unverified objects; the native reduction engine is not exported.\n'
-               '//! ```compile_fail\n//! use stele_lookup::fraction::verify;\n//! ```\n'
+               '//! Tree arithmetic returns conditional claims; full lookup/leaf verification is absent.\n'
+               '//! ```compile_fail\n//! use stele_lookup::fraction::verify_lookup;\n//! ```\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                'extern crate alloc;\npub mod fraction;\n')
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
-    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('gkr','hash','sumcheck')}
+    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('gkr','hash','sumcheck','poly')}
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'stele-field': {'path': '../stele-field'}, 'serde_json': '1.0'}
             or any(key in manifest for key in ('build-dependencies','target','features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('fraction engine/lookup validator not wired; only A3 codecs admitted (E3-07a)')
+        raise ValueError('fraction engine/lookup validator not wired; only A3 tree/codec consumers admitted (E3-07a)')
     result = subprocess.run(['cargo','test','-p','stele-lookup','--locked','--offline'],
                             cwd=root,text=True,capture_output=True)
     names = ('matches_reference_qm31_fraction_codec','matches_reference_om31_fraction_codec',
-             'rejects_fraction_codec_boundaries','accepts_maximum_verifier_shape_without_domain_allocation')
+             'rejects_fraction_codec_boundaries','accepts_maximum_verifier_shape_without_domain_allocation',
+             'accepts_qm31_fraction_tree_original_consumers','accepts_om31_fraction_tree_original_consumers',
+             'rejects_fraction_tree_source_shape_and_poles')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
         raise ValueError(f'fraction codec checks failed: {result.stdout} {result.stderr}')
     result = subprocess.run(['uv','run','--locked','--script',
@@ -85,7 +87,7 @@ def fraction_codecs(root):
                             cwd=root,text=True,capture_output=True)
     if result.returncode or '12 both-field native codec fixtures match' not in result.stdout:
         raise ValueError(f'fraction codec reference drift: {result.stdout} {result.stderr}')
-    print('gate fraction codecs: exact original fields/bytes and malformed inputs checked; no native reduction or NC credit')
+    print('gate fraction tree: both-field proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
 
 
 def public_coefficients(root):
@@ -400,7 +402,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

@@ -189,10 +189,18 @@ def codec_vectors():
                 identity = len(result)+31 if d == 4 else (1 << 64)-1-len(result)
                 s = dict(id=identity,m=m,b=b,leaves=(101,(1 << 63)+102),theta=[rand() for _ in range(m-b)])
                 leaves = [(rand(),rand()) for _ in range(1 << m)]
-                proof,_ = ft.prove(ft.Transcript(public(s,leaves,d),d),s,leaves)
+                context = public(s,leaves,d)
+                transcript = ft.Transcript(context,d)
+                proof,receipt = ft.prove(transcript,s,leaves)
+                verified = ft.verify(ft.Transcript(context,d),s,proof)
+                ft.consume(verified,leaves,d)
+                assert receipt == verified
                 encoded = lambda values: [sc.encode(x).hex() for x in values]
                 result.append(dict(degree=d,descriptor={**s,'leaves':list(s['leaves']),'theta':encoded(s['theta'])},
                     descriptor_hex=ft.descriptor(s,d).hex(),payload_hex=ft.proof_bytes(s,proof,d).hex(),
+                    public=context.hex(),leaves=[encoded(row) for row in leaves],
+                    point=encoded(receipt['point']),values=encoded(receipt['values']),
+                    records=receipt['sc'],numerator=receipt['numerator'],continuation=sc.encode(sc.challenge(transcript)).hex(),
                     proof=dict(root=encoded(proof['root']),steps=[dict(rounds=[encoded(row) for row in step['rounds']],
                         final=encoded(step['final'])) for step in proof['steps']])))
     return result

@@ -21,9 +21,9 @@
 | NC-0210 | sumcheck engine | 0006 A6 | change one unused Streaming source value; one changed final under original consumer | `ClaimMismatch` | done |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
 | NC-0400–0405 | lookups | 0008 §7 | see RFC | `LogUpImbalance` etc. | todo |
-| NC-0406 | fraction reduction | 0008 A3 | change one root numerator | `FinalEvaluationMismatch` | todo |
-| NC-0407 | fraction reduction | 0008 A3 | change one otherwise unused child final | `LeafMismatch` | todo |
-| NC-0408 | fraction reduction | 0008 A3 | change one equality final under zero products | `CoefficientMismatch` | todo |
+| NC-0406 | fraction reduction | 0008 A3 | change one root numerator | `FinalEvaluationMismatch` | done |
+| NC-0407 | fraction reduction | 0008 A3 | change one otherwise unused child final | `LeafMismatch` | done |
+| NC-0408 | fraction reduction | 0008 A3 | change one equality final under zero products | `CoefficientMismatch` | done |
 | NC-0409 | fraction reduction | 0008 A3 | change one selector final under zero products | `SelectorMismatch` | todo |
 | NC-0410 | fraction reduction | 0008 A3 | change one zero-coefficient source final | `SourceMismatch` | todo |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |

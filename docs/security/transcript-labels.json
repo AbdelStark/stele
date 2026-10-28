@@ -10,5 +10,9 @@
   ["absorb", "stele/v0.1/sumcheck/zero", "-"],
   ["challenge", "stele/v0.1/sumcheck/zero-weight", "SC"],
   ["absorb", "stele/v0.1/sumcheck/zero-skip", "-"],
-  ["absorb", "stele/v0.1/sumcheck/zero-final", "-"]
+  ["absorb", "stele/v0.1/sumcheck/zero-final", "-"],
+  ["absorb", "stele/v0.1/lookup/fraction", "-"],
+  ["absorb", "stele/v0.1/lookup/layer", "-"],
+  ["challenge", "stele/v0.1/lookup/gamma", "RLC"],
+  ["challenge", "stele/v0.1/lookup/fold", "RLC"]
 ]

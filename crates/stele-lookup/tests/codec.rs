@@ -2,7 +2,7 @@
 use serde_json::Value;
 use std::fmt::Debug;
 use stele_field::{OM31, QM31};
-use stele_hash::ChallengeField;
+use stele_hash::{ChallengeField, ChallengeLabel, Transcript};
 use stele_lookup::fraction::{Descriptor, Error, Proof};
 use stele_sumcheck::Proof as SumcheckProof;
 
@@ -99,6 +99,65 @@ where
         assert_eq!(
             descriptor.proof_size().expect("valid codec fixture"),
             payload.len()
+        );
+        let context = hex(record["public"].as_str().expect("public context"));
+        let leaves: Vec<[K; 2]> = record["leaves"]
+            .as_array()
+            .expect("sources")
+            .iter()
+            .map(|row| values::<K>(row).try_into().expect("source pair"))
+            .collect();
+        let mut pt = Transcript::new(&context).expect("transcript");
+        let (native, pr) = descriptor.prove(&leaves, &mut pt).expect("native prover");
+        assert_eq!(native, expected);
+        let mut vt = Transcript::new(&context).expect("transcript");
+        let vr = descriptor
+            .verify_public(&expected, &leaves, &mut vt)
+            .expect("original consumer");
+        assert_eq!(pr, vr);
+        assert_eq!(vr.claims.map(|c| c.0), descriptor.leaf_ids());
+        assert_eq!(vr.accounting.tree_id, descriptor.id());
+        assert_eq!(vr.point, values::<K>(&record["point"]));
+        assert_eq!(
+            vr.claims.map(|c| c.1).as_slice(),
+            values::<K>(&record["values"])
+        );
+        assert_eq!(
+            vr.accounting.gamma
+                + vr.accounting.fold
+                + vr.accounting
+                    .layers
+                    .iter()
+                    .map(|r| r.numerator)
+                    .sum::<u64>(),
+            record["numerator"].as_u64().expect("loss")
+        );
+        for (r, expected) in vr
+            .accounting
+            .layers
+            .iter()
+            .zip(record["records"].as_array().expect("records"))
+        {
+            for (name, v) in [
+                ("id", r.id),
+                ("m", u64::from(r.m)),
+                ("degree", u64::from(r.degree)),
+                ("field_degree", u64::from(r.field_degree)),
+                ("numerator", r.numerator),
+            ] {
+                assert_eq!(expected[name].as_u64().expect("record"), v);
+            }
+        }
+        let next = field::<K>(&record["continuation"]);
+        assert_eq!(
+            pt.challenge(ChallengeLabel::Sumcheck)
+                .expect("continuation"),
+            next
+        );
+        assert_eq!(
+            vt.challenge(ChallengeLabel::Sumcheck)
+                .expect("continuation"),
+            next
         );
         count += 1;
     }
