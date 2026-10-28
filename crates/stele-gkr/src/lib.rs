@@ -1,9 +1,7 @@
-//! stele-gkr — governed by RFC-0006 §3,§6. No behaviour exists here that is not specified there (INV-1).
+//! Stacked reduction primitives governed by RFC-0006 A7.
 #![forbid(unsafe_code)]
+#![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn skeleton_compiles() {}
-}
+extern crate alloc;
+pub mod public_mle;

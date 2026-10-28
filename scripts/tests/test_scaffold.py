@@ -52,6 +52,8 @@ class ScaffoldTests(unittest.TestCase):
             result = subprocess.run(command, cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             cases = [
+                ('stele-gkr', 'stele-hash', 'dependencies'),
+                ('stele-gkr', 'stele-pcs', 'dependencies'),
                 ('stele-prover', 'stele-verifier', 'dependencies'),
                 ('stele-verifier', 'stele-proof', 'dependencies'),
                 ('stele-verifier', 'stele-cqis', 'build-dependencies'),
