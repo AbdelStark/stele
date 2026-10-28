@@ -546,7 +546,7 @@ work; all original acceptance criteria remain required.
 
 ### A5 — Typed small-value inputs and deferred prefix folding
 
-Status: Draft. Question Q21. Evidence: [small-value study](../../research/small-value/REPORT.md).
+Status: Accepted. Question Q21. Review: [skill passes](../../agents/reviews/small-value-a5.md). Evidence: [small-value study](../../research/small-value/REPORT.md).
 Motivation: §5's small-value bullet does not distinguish retained input storage
 from the challenge-dependent grid, specify static eligibility or define NC-0204's
 actual verifier rejection. This amendment completes that prover optimization

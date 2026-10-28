@@ -175,3 +175,17 @@ separately for weight collapse, skip and tail rounds. Final payload/consumer
 costs remain part of the benchmark, including cases where skipping loses.
 Same-author reviews approve the contract; production controls, reference parity,
 measured improvement and Q12 remain required. Status: Accepted.
+
+## ADR-027 — Typed small-value storage with ordinary A1 proofs
+
+Context: E3-04, RFC-0006 A5 and Q21. Decision: defer a bounded prefix using
+base-field monomial grids, combine coefficients and fold only the small grid in
+K, then materialize the reduced original-input tail. Signed/unsigned 16-bit
+representations establish optimization eligibility; they do not replace range
+proofs, original-value consumers or CQIS integer certificates. Every valid k
+retains exact A1 bytes, all final obligations and the inherited SC accounting.
+NC-0204 must reject a real truncated-input Small artifact for the unchanged public
+statement; research rejects earn no catalog credit. Complete costs and memory,
+including transition overlap and losses, remain delivery gates. Same-author
+reviews approve the contract, not independent audit or profile security.
+Status: Accepted.

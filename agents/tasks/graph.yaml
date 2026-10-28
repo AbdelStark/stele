@@ -351,14 +351,19 @@ tasks:
   - E3-03
   rfc:
   - RFC-0006 §5
+  - RFC-0006 A5
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: blocked(RFC-0006 A5)
+  status: ready
   agent: codex-root
   branch: task/E3-04-small-value-contract
   acceptance:
   - NC-0204
   - memory reduction measured
+  - both-field A1 bytes, all final obligations and continuation; 1000 seeded cases per degree
+  - typed constructor boundaries and cached-instance rejection; all supported k
+  - independent Rust/Python decisions and actual NC-0204 original-value rejection
+  - c_sc and complete cost/memory ledger including transition overlap and losses
 - id: E3-05
   epic: E3
   title: Streaming/two-pass strategy for oversized instances

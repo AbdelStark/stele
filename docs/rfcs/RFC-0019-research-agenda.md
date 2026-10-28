@@ -161,3 +161,8 @@ control complete the small-value strategy without changing the A1 protocol?
 Candidate: RFC-0006 A5, with two independent grid builders, both-field A1 parity
 and a one-value truncation reproduction in research/small-value. E3-04 is blocked
 on amendment acceptance; no production NC or performance credit is claimed.
+
+Q21 resolution: RFC-0006 A5 Accepted with linked same-author skill passes and a
+deterministic parity argument. E3-04 is ready for production implementation and
+its actual constructor/control/parity/cost/memory gates. The strategy does not
+prove range, change A1 bytes, certify a profile or complete the task.
