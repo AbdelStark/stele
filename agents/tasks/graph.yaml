@@ -543,6 +543,7 @@ tasks:
   - E4-02
   rfc:
   - RFC-0010 A4
+  - RFC-0010 A5
   skill: pcs-engineer
   crate: stele-code
   status: in_progress

@@ -373,3 +373,46 @@ Cost impact: d*E(J) sparse adds/multiplies plus fixed base and capped regenerati
 with explicit input/output/scratch/base/query overlap. Native benchmarks must charge
 all work and process memory; no measured constant, c_c claim or weight-pass change.
 Affected tasks: E4-08, E4-01 and their E4/E10/E12 consumers.
+
+### A5 — Observed native encoder work and allocation reports
+
+Status: Accepted. Task E4-08. Review: [measurement review](../../agents/reviews/encoder-measurement.md).
+Motivation: A4 delivery needs actual allocation and complete work evidence from
+its production path. Requested workspace formulas alone cannot supply that data.
+This amendment adds observations to A4, without changing its identity, map,
+validation, caps, sealed fields, errors or authority boundary.
+
+Exact addition to the A4 native interface:
+
+- `Encoder::encode_measured` and `Encoder::eval_row_measured` return
+  `MeasuredEncoding<K> { values: Vec<K>, work: EncoderWork }` on success.
+- EncoderWork contains observed peak owned vector capacity in bytes, hash blocks,
+  completed sparse rows, sparse base-limb additions/products, initialized/copied
+  K slots, Circle calls, Circle transform K additions/products, constructed base
+  twiddle elements, inverse-prefix elements and maximum recursive frame count.
+  Field names and units are documented on the public Rust members.
+- Ordinary and measured calls execute one implementation. Ordinary calls discard
+  observations. No caller supplies a sampler, counter, field implementation,
+  resource width, admission flag or observation callback through this interface.
+- Actual vector capacities are charged when allocated and released in execution
+  order, including the outer output, scratch, temporary Circle output, all
+  twiddle/header/prefix allocations and selected-column/full-encoding overlap.
+  Borrowed input, stack, allocator metadata and process/runtime memory are outside
+  the owned-vector measure and must be recorded separately by the benchmark.
+- Counters count completed logical operations, not machine instructions or DRAM
+  traffic. Each sparse edge executes d base-limb products/additions, including
+  zero edges. Circle transform counters use K operations; twiddle construction,
+  inversions, sampling comparisons/sorting and hashing remain additional work.
+  Full operation timing must include every category and observation overhead.
+- Whole-request validation and A4 capacity checks still precede generation. An
+  error returns no measured encoding. Empty queries perform no allocation or
+  generation. No partially accumulated report is a successful encoding.
+
+Reports are descriptive outputs. No production function may accept them as code,
+source, distance, setup, PCS or profile authority. No verifier reads a report.
+No proof bytes, challenge, claim, binding, soundness loss or negative-control id
+changes. E4-01/A1, A3/A7 and Q12 retain all original obligations. All A4 delivery
+gates remain, including actual capacity/stack/process and complete per-call work
+ledgers through 2^20 input symbols in every supported field. Changes in c_c/T_misc
+from observation overhead require measured ledgers; no constant or speed result
+is supplied here. No committed tensor or matmul weight pass changes.
