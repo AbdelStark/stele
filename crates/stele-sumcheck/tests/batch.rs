@@ -3,7 +3,7 @@ use serde_json::Value;
 use stele_field::{Field, OM31, QM31};
 use stele_hash::{ChallengeField, Transcript};
 use stele_sumcheck::{batch::Batch, Error, Instance, Term};
-mod support;
+pub mod support;
 use support::*;
 fn check<K: ChallengeField + Eq + core::fmt::Debug>(v: &Value)
 where

@@ -172,9 +172,9 @@ def checks():
                     assert len(receipt['claims']) == len(i['ids'])*2**k
                     assert sum(v['numerator'] for v in receipt['sc']) == (m-k)*(delta+1)+delta*(2**k-1)
                     count += 1
-                    if (m, k, delta) in ((2, 0, 4), (2, 2, 2), (3, 1, 3), (4, 4, 4)):
-                        vectors.append({'field': d, 'descriptor_hex': describe(i, d).hex(), 'proof': proof, 'receipt': receipt,
-                                        'final_state_hex': verifier.state.hex()})
+                    vectors.append({'field': d, 'instance': i, 'tables': tables, 'descriptor_hex': describe(i, d).hex(),
+                                        'proof': proof, 'receipt': receipt, 'final_state_hex': verifier.state.hex(),
+                                        'continuation_challenge': copy.deepcopy(verifier).challenge()[0].hex()})
                     bad = copy.deepcopy(proof)
                     bad['final'][-1][-1] = sc.add(bad['final'][-1][-1], sc.scalar(1, d))
                     tr.rejects(lambda: verify(Transcript(b'zerocheck', d), i, bad, tables), 'ClaimMismatch')
