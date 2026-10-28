@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "scope": "research identity/data bytes; no passport or lookup admission",
+  "descriptors": [
+    {
+      "name": "exp_q/hi",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e7469747908006578705f712f68690100000004000e0a0c07",
+      "table_id": "49890bb997bb1dccb5c76f5b59350ee42d53c37165e731cca6d05928dcb4ddb1"
+    },
+    {
+      "name": "exp_q/lo",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e7469747908006578705f712f6c6f0100000004000e0a0c07",
+      "table_id": "838b8493d3fd8a3b9f1b81f74e81b31f5595e145512fc62fc0d9ff5e568873cd"
+    },
+    {
+      "name": "exp_q/direct",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e746974790c006578705f712f646972656374010000000300070a0c",
+      "table_id": "7b99ec6e1cd01ecd5245efbcbca02182a128b1dd08dd521c68536cd424505376"
+    },
+    {
+      "name": "exp_q/correction",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e7469747910006578705f712f636f7272656374696f6e010000000400070a0c07",
+      "table_id": "a23a8f71ef8443c6f7aa60ca2ece71d446eb98d55a3851a384a55330117a12f5"
+    },
+    {
+      "name": "silu_q",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e74697479060073696c755f710100000002000a0c",
+      "table_id": "006be87176e273b3ede513029692cbd8fa51ed171f0c8e63f0b2536296fff38a"
+    },
+    {
+      "name": "sigmoid_q",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e7469747909007369676d6f69645f710100000002000a0c",
+      "table_id": "5c5e11118f22306e49ab7c838c50fa4f1f7af6a50bd15944ae95a6b1833ef6c0"
+    },
+    {
+      "name": "gelu_q",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e74697479060067656c755f710100000002000a0c",
+      "table_id": "97175aea3eaab2fa506a6d90a7bc49073a7b1a7ceb7287942d36f04885a44205"
+    },
+    {
+      "name": "gelu_tanh_q",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e746974790b0067656c755f74616e685f710100000002000a0c",
+      "table_id": "08f794372cdd33dea1d2aaf64da8c666664a0d20437fa7a542141a955ec747f5"
+    },
+    {
+      "name": "softcap_q",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e746974790900736f66746361705f710100000005000a0c030001",
+      "table_id": "4b11998022417abe57faeff02dedb86a5c98e2377321b7134c883d559b6bdd5c"
+    },
+    {
+      "name": "rsqrt_q",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e74697479070072737172745f71010000000000",
+      "table_id": "6a294f93958b840a3c672080f6f0cb3239848fb655e59bb93754c5fa4dd5c0d8"
+    },
+    {
+      "name": "range_8",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e74697479070072616e67655f38010000000000",
+      "table_id": "4195a90da0cdc67021d94d34c1d48fc5505208ab0f8dc2c12252cf1713b4cf82"
+    },
+    {
+      "name": "range_12",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e74697479080072616e67655f3132010000000000",
+      "table_id": "da4b33c7d01c56bae694f8f3dc501963dc6ec89e58e2924eec6ccb8c909b5a7a"
+    },
+    {
+      "name": "range_16",
+      "descriptor": "7374656c652f76302e312f7461626c652f6964656e74697479080072616e67655f3136010000000000",
+      "table_id": "5cf4106f625f9199bdb0d0c5bb79015e1e8681beca9fb1155b27fb57ce788e86"
+    }
+  ],
+  "data": [
+    {
+      "name": "exp_q/hi",
+      "rows": 129,
+      "padded": 256,
+      "columns": 2,
+      "byte_length": 2110,
+      "data_digest": "3cd76d99e1f3b4af559c36c628132739e505bd287de1066b8cf10dfc2bf656ed"
+    },
+    {
+      "name": "exp_q/lo",
+      "rows": 128,
+      "padded": 128,
+      "columns": 2,
+      "byte_length": 1086,
+      "data_digest": "14753ecb84dc3ab5bdd6f1f9fbb82c24d037ca72a41b1932dc5f4b10159971e6"
+    },
+    {
+      "name": "exp_q/direct",
+      "rows": 129,
+      "padded": 256,
+      "columns": 2,
+      "byte_length": 2110,
+      "data_digest": "e77144a4c1a1445e1a94b4313d73be2a6b17fb56ea840d973536896ce8a67444"
+    },
+    {
+      "name": "exp_q/correction",
+      "rows": 129,
+      "padded": 256,
+      "columns": 2,
+      "byte_length": 2110,
+      "data_digest": "f9974a6db13e61ff415ee7315e15e5b49b6317039031a8df4771b7c007dc8ead"
+    },
+    {
+      "name": "sigmoid_q",
+      "rows": 65536,
+      "padded": 65536,
+      "columns": 2,
+      "byte_length": 524350,
+      "data_digest": "40ffb78442b1e05c8762cf3f44b96fd66f6e6b535f77d97b52be9f0e4d5d2027"
+    },
+    {
+      "name": "rsqrt_q",
+      "rows": 49152,
+      "padded": 65536,
+      "columns": 2,
+      "byte_length": 524350,
+      "data_digest": "eecaf393220d045df868d3d378276b8bbf3cf53d62087f89ff6e8e0668780c54"
+    },
+    {
+      "name": "range_8",
+      "rows": 256,
+      "padded": 256,
+      "columns": 1,
+      "byte_length": 1086,
+      "data_digest": "a55621f44ce92611bbe71bbbfba19ddc5029def018f94e16dae37d674e03ae45"
+    },
+    {
+      "name": "range_12",
+      "rows": 4096,
+      "padded": 4096,
+      "columns": 1,
+      "byte_length": 16446,
+      "data_digest": "24fcea0861fb0ccabcd79c79245142f13b4da9a684d67da0c17dd3a2baeba521"
+    },
+    {
+      "name": "range_16",
+      "rows": 65536,
+      "padded": 65536,
+      "columns": 1,
+      "byte_length": 262206,
+      "data_digest": "a77adda22fbd81e5bf673104a7e86dcf8aff33e8ecf4b3e4430711a99b9f929b"
+    }
+  ]
+}

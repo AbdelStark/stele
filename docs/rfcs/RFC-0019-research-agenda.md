@@ -263,6 +263,13 @@ wide configurations and sampled products. Split-dependent outputs remain part
 of identity; full correction storage is not hidden. Wide index consumers,
 canonical bytes and attention-scale/native/model integration remain open.
 
+Q25 identity continuation: formal/cqis-table-identity.md supplies candidate
+component descriptor/parameter bytes, signed row order, derived padding and
+complete-definition validation. Exact frames and full data encodings reject
+identity, shape, entry, padding, order, alias and length tampering. Complete
+composition/configuration identities and passport root derivation remain open;
+these are not native lookup/identity controls or A2 acceptance.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.
