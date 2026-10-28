@@ -533,6 +533,8 @@ tasks:
   skill: pcs-engineer
   crate: stele-pcs
   status: ready
+  agent: codex-root
+  branch: task/E4-05-commitment-privacy-study
   acceptance:
   - NC-0604
   - proven-only params enforced in treaty
