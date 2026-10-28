@@ -21,10 +21,16 @@ where
     K::Bytes: TryFrom<Vec<u8>>,
 {
     for degree in 0..=4 {
-        let mut shapes = [[0; 5]; 5];
+        let mut shapes = [[0; 5]; 6];
         for case in 0..1000 {
-            let m = case % 5;
-            let k = if degree == 0 { 0 } else { (case / 5) % (m + 1) };
+            let m = if case == 999 { 5 } else { case % 5 };
+            let k = if degree == 0 {
+                0
+            } else if case == 999 {
+                4
+            } else {
+                (case / 5) % (m + 1)
+            };
             shapes[m][k] += 1;
             let mut seed = 1 + (degree * 1000 + case) as u64;
             let mut tables: Vec<Vec<K>> = (0..4)
@@ -112,7 +118,8 @@ where
                 next
             );
         }
-        for (m, counts) in shapes.iter().enumerate() {
+        assert_eq!(shapes[5][if degree == 0 { 0 } else { 4 }], 1);
+        for (m, counts) in shapes[..5].iter().enumerate() {
             for count in &counts[..if degree == 0 { 1 } else { m + 1 }] {
                 assert!(*count > 0);
             }

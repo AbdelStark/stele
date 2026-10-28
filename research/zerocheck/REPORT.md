@@ -53,7 +53,8 @@ These checks add no NC credit and complement the seeded reference comparisons be
 The CPU reference test now checks 1,000 seeded cases per polynomial degree 0..4
 in each of QM31 and OM31 (10,000 total). It computes residual sums directly from
 original slice MLEs, without dense hybrid construction or tail folding. Cases
-cover every eligible (m,k) through m=4, full-extension and Boolean tables, mixed
+cover every eligible (m,k) through m=4 and maximum skip with a tail at m=5,
+full-extension and Boolean tables, mixed
 and repeated factors, zero coefficients with conservative degrees, term ordering,
 constants and unused inputs. Both modes must match proof values, every original
 claim must pass public consumption, and prover/reference/verifier continuations

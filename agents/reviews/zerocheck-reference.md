@@ -23,7 +23,8 @@ Workflow 03 checklist:
 - Certificates: no integer identity or field-faithfulness certificate added.
 - Padding/masks: unchanged plan obligations; no new privacy claim.
 - Determinism: fixed fixture seed and iteration order; every eligible shape
-  appears among 1,000 cases per degree per field, 10,000 total.
+  through m=4 appears among 1,000 cases per degree per field, 10,000 total;
+  maximum skip also runs with a tail at m=5.
 - Parity: direct CPU versus dense CPU in both fields; GPU not changed.
 - Costs: no measured improvement or fit; reference may support later comparison.
 - Verifier: no_std code unchanged; allocations/assertions belong to small tests.
