@@ -69,3 +69,10 @@ The control gate also runs actual Merkle root/path/batch tests against RFC-0012 
 vectors and regenerates those vectors with the independent Python tree oracle.
 Root-comparison and batch-authentication bypass mutants fail this gate. Merkle
 membership does not certify PCS encoding, query scheduling or a profile budget.
+
+RFC-0006 A7 replaces only the GKR arithmetic scaffold guard: the real six-kind,
+120,000-point differential suite runs in both control/accounting gates. A closed
+file inventory, exact arithmetic-only module entry and field-only dependency
+manifest continue to reject unwired GKR stage/source/transcript additions.
+This earns no NC-0203, source authentication or stage accounting coverage. The
+bootstrap snapshot is not refreshed; E3-06 still requires its full producer.
