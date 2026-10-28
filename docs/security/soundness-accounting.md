@@ -147,3 +147,12 @@ original lengths require exact rejection. Every claim, SC record and canonical
 payload is compared. Actual source I/O receipts prevent a Dense-only adapter from
 passing. Both gates check regeneration and the adapter; mutants corrupt the
 fixture expectation or bypass Streaming. Complete pipeline ledgers remain open.
+
+Q31 / Draft RFC-0008 A2 and RFC-0012 A8 identify another uninstantiated LU
+hypothesis: ordinary unit multiplicities need a selected-count bound below the
+field characteristic. QM31/OM31 share M31's characteristic. The exact p-copy
+counterexample has zero rational difference even for invalid values, so no
+extension-size root bound or squaring can justify it. Actual LU admission also
+needs nonzero bound denominators, selector/padding, tuple compression and full
+consumer/composition accounting. The [research note](../../formal/logup-characteristic.md)
+changes no production record or challenge and supplies no profile admission.

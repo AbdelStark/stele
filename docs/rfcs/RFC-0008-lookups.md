@@ -67,3 +67,64 @@ earn credit. No production challenge or loss changes; future terms need ledger
 lines. Decomposition moves c_lu/c_a/T_misc and memory, with no measured constant
 or benchmark supplied here. Affected tasks: E3-08, E4-03, E5/E6 range lowering and
 E7/E10 packed consumers; all original acceptance criteria remain.
+
+### A2 — Characteristic-safe multiplicities and nonzero denominators
+
+Status: Draft. Question Q31. Companion RFC-0012 A8.
+Evidence: [algebra and sources](../../formal/logup-characteristic.md),
+[exact finite study](../../research/logup-characteristic/REPORT.md).
+Review: [same-author skill passes](../../agents/reviews/logup-characteristic-study.md).
+Motivation: p repetitions of an invalid tuple vanish from the ordinary LogUp
+identity in characteristic p; extension fields and repeated challenges do not
+repair it. The cited LogUp-GKR theorem has a characteristic hypothesis absent
+from §§1–2. Cross multiplication also needs nonzero bound denominators.
+
+Proposed replacement requirements for §§1–2 and clarification of §6, pending
+the complete selected protocol and byte contract:
+
+> Every ordinary unit-weight lookup instance has a verifier-derived static
+> upper bound on its total selected positions strictly below char(K), not |K|.
+> All batched columns/layers and every repeated selected value count toward
+> that limit. Selectors are authenticated Boolean values with exact padding
+> semantics. A bound based on observed honest multiplicities is insufficient.
+> For larger instances, use a complete Accepted partitioned or weighted-unit
+> construction with its own authenticated layouts, challenges and consumers;
+> do not silently truncate, switch fields or reuse the ordinary formula.
+>
+> Fix exact tuple compression, coefficient powers and challenge order. Bind
+> the original tuples/table before relevant challenges and multiplicities as
+> required by the chosen theorem. Account explicitly for compression collisions
+> and rational-identity error. Original source claims and table-side committed
+> multiplicities must reach their actual consumers in every selected mode.
+>
+> An inactive/padded fraction leaf is the neutral (0,1), proven against the
+> same selector used by the lookup. Active leaves follow the selected identity.
+> Both root denominators must be nonzero, and all parent/leaf relations must
+> be proven against the original sources. Cross multiplication or a nonzero
+> supplied root alone is insufficient. Fix honest pole rejection and attempt/
+> retry semantics in the transcript contract; no silent challenge resampling.
+>
+> If static partitions are selected, derive their exact source coverage and
+> count bounds from the public plan; authenticate each partition's multiplicity
+> table and equality independently, or use a fully accounted batching reduction.
+> Merely adding the equalities can restore the characteristic cancellation.
+> Weighted units are a distinct protocol with their own numerator/multiplicity
+> representation and commitment order. No such mode is admitted by this Draft.
+>
+> Two repetitions square only an identity error under the applicable fixed-data
+> and independent-challenge hypotheses. Shared preliminary failures, GKR checks,
+> PCS, binding and Fiat-Shamir errors require their own composition. Neither
+> repetitions nor OM31 cure the ordinary p-copy counterexample.
+
+Before acceptance: select the full protocol, layouts/bytes/transcript labels,
+static certificates, selectors/poles, tuple bound, exact GKR degrees/rounds,
+source/table/committed consumers, privacy and all actual negative controls.
+Preserve original NC-0400..0403 and c_lu gates; add real count-bound, zero-root,
+padding/partition-coverage and mode-substitution controls with the implementation.
+
+Soundness: no production record or challenge changes. The note proves conditional
+bounded-count residue and power-compression bounds; it does not instantiate GKR,
+PCS, ZK or Q12. Existing LU formulas must not admit an unsupported shape. Cost:
+c_lu/T_misc, multiplicity/table work, commitments and peak state; no measured
+constant or weight-pass change. E3-07 is blocked on A2; E12-02/E12-03 and lookup
+consumers are affected. All original acceptance criteria remain.
