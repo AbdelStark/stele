@@ -164,3 +164,11 @@ sumcheck/challenge has 3m(m-1)/2. Its selected-product leaf has another 3m under
 A1. Each tree/repetition adds its own terms, separately from the identity bound
 and actual source/PCS/FS losses. Full labels have prefix stele/v0.1/. This does
 not add labels to the production registry or grant a native LU/profile record.
+
+The [whole Q31 candidate](../../formal/lookup-consumers.md) draws r*h lookup/unit,
+r lookup/beta and r lookup/alpha after the stated source/unit/multiplicity phases.
+These are jointly charged to the unit theorem's e^r. It separately adds
+r*[F(m)+F(k)+3m]/|K| for both depth-m/k trees and the selected-product leaf, with
+F(n)=3n(n-1)/2+2n. Actual transcript events are checked against these counts.
+Full revealing openings add exact evaluation conditional on actual Merkle binding;
+binding and FS/H still need Q12. This adds no production registry or profile.

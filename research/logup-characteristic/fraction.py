@@ -14,20 +14,23 @@ TREE, LAYER, GAMMA, FOLD, LEAF = [PREFIX+x for x in (b'fraction',b'layer',b'gamm
 
 class Transcript(tr.Transcript):
     """Candidate labels over A1 framing/sampling; production registry unchanged."""
+    absorbs = (TREE,LAYER,LEAF)
+    draws = (GAMMA,FOLD)
+
     def __init__(self, public, degree):
-        tr.registry((*tr.LABELS,TREE,LAYER,GAMMA,FOLD,LEAF))
+        tr.registry((*tr.LABELS,*self.absorbs,*self.draws))
         super().__init__(public,degree)
 
     def frame(self,tag,label,payload):
-        require(label in (TREE,LAYER,GAMMA,FOLD,LEAF) and tag in (0,1,2),'InvalidFrame')
+        require(label in (*self.absorbs,*self.draws) and tag in (0,1,2),'InvalidFrame')
         return self.state+bytes([tag])+struct.pack('<I',len(label))+label+struct.pack('<Q',len(payload))+payload
 
     def bind(self,label,payload):
-        require(label in (TREE,LAYER,LEAF),'InvalidAbsorbLabel')
+        require(label in self.absorbs,'InvalidAbsorbLabel')
         self.state = tr.blake3(self.frame(0,label,payload)).digest()
 
     def draw(self,label):
-        require(label in (GAMMA,FOLD),'InvalidChallengeLabel')
+        require(label in self.draws,'InvalidChallengeLabel')
         raw = tr.blake3(self.frame(1,label,bytes([self.degree]))).digest(length=256)
         value,consumed = tr.sample(raw,self.degree)
         payload = bytes([self.degree])+struct.pack('<I',consumed)+value

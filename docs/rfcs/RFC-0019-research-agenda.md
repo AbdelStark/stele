@@ -324,3 +324,9 @@ study implement the conditional tree and selected-product leaf reductions.
 Every original leaf/source claim has a public consumer, including unused final
 values. Native private/table-side consumers, full lookup framing/admission,
 privacy, NC-0400..0403 and measured c_lu remain required under Draft A2/A8.
+
+Q31 consumer continuation: formal/lookup-consumers.md composes the whole single/
+paired schedule and consumes original source/multiplicity claims through actual
+Merkle roots and full reveals. The exact table-padding and early-denominator
+attacks reject at their consumers. This closes the revealing research computation,
+not the private PCS/ZK/native implementation or any original task criterion.

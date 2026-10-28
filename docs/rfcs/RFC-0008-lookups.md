@@ -152,3 +152,11 @@ the lookup denominator and exports every original tuple column. Exact public
 consumers close the research computations; committed K-valued multiplicities,
 private source consumers, full plan/bytes, native controls and costs remain
 required. No new intermediate commitment or Accepted protocol is introduced.
+
+A2 consumer continuation: [whole schedule](../../formal/lookup-consumers.md) and
+[exact study](../../research/logup-characteristic/LOOKUP.md) connect the two trees
+to source roots, pre-challenge K-valued mu roots and exact table padding. A
+revealing Merkle adapter authenticates full original vectors and consumes every
+derived claim. It is research evidence for binding/composition, not the required
+private PCS, ZK, native control or c_lu implementation. The full private consumers,
+plan/wire admission and all original E3-07 criteria remain prerequisites.
