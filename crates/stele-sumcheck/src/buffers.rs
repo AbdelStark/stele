@@ -20,9 +20,7 @@ pub fn prove_into<K: ChallengeField + Eq>(
     transcript: &mut Transcript<K>,
 ) -> Result<(), Error> {
     let degree = i.validate()?;
-    if summand.shape() != (i.num_vars, i.inputs.len()) {
-        return Err(Error::PublicShape);
-    }
+    summand.validate_instance(i)?;
     if proof.rounds.len() != i.num_vars as usize
         || proof.rounds.iter().any(|row| row.len() != degree + 1)
         || proof.final_values.len() != i.inputs.len()

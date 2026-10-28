@@ -116,6 +116,15 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('small strategy parity/control mismatch', result.stderr)
 
+    def test_rejects_streaming_wrong_tail_order(self):
+        source = self.root / 'crates/stele-sumcheck/src/streaming.rs'
+        original = source.read_text()
+        self.assertIn('reverse(block, suffix)', original)
+        source.write_text(original.replace('reverse(block, suffix)', 'block'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('streaming A1 source/arena mismatch', result.stderr)
+
     def test_rejects_buffered_padding_and_missing_field_check(self):
         source = self.root / 'crates/stele-sumcheck/src/buffers.rs'
         original = source.read_text()

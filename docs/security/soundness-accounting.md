@@ -119,3 +119,10 @@ parity, unchanged caller capacities and typed preflight/false-sum/unused-final
 rejections. Independent A1 corpus and digest checks still cover the shared
 encoders/interpolator. This engine is not the Streaming strategy: NC-0210, actual
 source capacity accounting and complete pipeline memory/cost evidence remain open.
+
+The A6 generic source/arena strategy now preserves A1 proofs and original claims
+in both fields. Gates require 1,000 cases per degree/field, canonical tail order,
+source visit/error checks, workspace capacity limits and cached-instance rejection
+including m=0. Its bound remains the same SC line. A generic source is not an
+authenticated consumer or a file adapter; independent streaming corpus decisions,
+NC-0210 and complete preparation/consumer memory ledgers are still required.
