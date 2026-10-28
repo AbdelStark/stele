@@ -246,3 +246,15 @@ with no amortization inferred from sparse counts. No binding, error term, accept
 PCS parameter, fitted constant or weight-pass count changes. Same-author skill
 reviews accept the contract; actual native/benchmark evidence remains required.
 Status: Accepted.
+
+## ADR-032 — Public coefficient arithmetic before stage integration
+
+Context: E3-06a, RFC-0006 A7 / RFC-0020 A3. Decision: implement six checked
+Boolean-table evaluators independently of the blocked A4 stage/source contract.
+Selectors and padding are inside the extended table. The immutable API returns
+only field values and has no authentication flag or callback. Source disclosure,
+CQIS generation, private/virtual consumers, transcript and NC-0203 remain E3-06
+obligations. This preserves the complete inference objective while allowing
+its arithmetic prerequisites to be tested. No challenge, fitted constant or
+weight pass changes. Same-author skill reviews, not independent audit.
+Status: Accepted.
