@@ -32,10 +32,10 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1); A2, A3 Draft |
 | 0005 | Tensor IR, claim graph, witness capture | Accepted |
 | 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3, A5, A6, A7); A4 Draft |
-| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |
-| 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted |
+| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted; A1 Draft |
+| 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted; A1 Draft |
 | 0009 | Attention protocol | Accepted |
-| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2, A4, A5); A1, A3 Draft |
+| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2, A4, A5); A1, A3, A6 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted |
 | 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5); A6, A7 Draft |
 | 0013 | Zero-knowledge | Accepted |

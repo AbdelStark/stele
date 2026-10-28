@@ -264,3 +264,12 @@ prerequisite of E4-01; all original E4-01 criteria and its A1 block remain. Actu
 registry/source/PCS consumers, setup/proximity composition, profile admission and
 Q12 remain open. The existing research checks do not complete native parity,
 malformed/fault controls, compile-fail API checks or full cost/memory ledgers.
+
+Q28: which injective packing/layout and authenticated decomposition reconcile
+RFC-0010 §8, RFC-0007 §3/§5 and RFC-0008 §5? Four unrestricted int8/two int16
+values cannot fit in one M31 element; even legal packing changes the original
+fused row functional. Draft RFC-0010 A6 / RFC-0007 A1 / RFC-0008 A1 and
+formal/packed-commitments.md record exact collisions, the fused-row counterexample,
+a fixed 30-bit codec candidate and full remaining consumer/range/ZK/cost obligations.
+E4-03 remains blocked on A3/A6; no codec test supplies NC-0603, a private
+decomposition proof or the actual one-weight-pass fused opening.

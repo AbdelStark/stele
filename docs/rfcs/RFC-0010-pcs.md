@@ -424,3 +424,48 @@ gates remain, including actual capacity/stack/process and complete per-call work
 ledgers through 2^20 input symbols in every supported field. Changes in c_c/T_misc
 from observation overhead require measured ledgers; no constant or speed result
 is supplied here. No committed tensor or matmul weight pass changes.
+
+### A6 — Injective packing and authenticated original-value functionals
+
+Status: Draft. Question Q28. Evidence: [packing and fused-row study](../../formal/packed-commitments.md)
+and [executable report](../../research/packing/REPORT.md).
+Review: [same-author skill passes](../../agents/reviews/packing-contract-study.md).
+Motivation: §8's four int8/two int16 values contain 32 unrestricted bits and cannot
+fit injectively in one M31 element. A legal integer packing map also changes the
+linear functional and cannot automatically preserve §5's original B identity.
+
+Proposed replacement for §8's packing bullet, pending the consumer below:
+
+> Physical source bytes and committed field-message packing are distinct formats.
+> Use a registered injective source map with explicit signed representation,
+> word count, logical axes, row boundaries, code padding and canonical decoding.
+> The candidate packed30 map in formal/packed-commitments.md uses fixed 30-bit
+> words and rejects nonzero tail/message padding; its word count is derived from
+> the authenticated shape. Never reduce an unrestricted 32-bit source word into
+> one M31 element or treat source-range rejection as support for that source.
+> Every original-value claim must be connected to this same committed packed
+> source by an Accepted decomposition/range/sign/position reduction. A codec,
+> source flag, digest or equality on unbounded digits does not supply that proof.
+
+Open requirements before acceptance:
+1. Select the complete versioned packing/layout bytes and canonical source/field
+   decoding. Compare valid alternatives with full message/padding and consumer
+   costs; packed30 is a candidate, not an unmeasured optimum or admitted format.
+2. Specify the actual decomposition/range/sign/fragment/padding reduction and
+   static certificates, range-table registry and every final claim consumer.
+   Preserve privacy and the dominating-check rule of RFC-0008 §5.
+3. Reconcile the original B and the packed opening row, including arbitrary lane
+   functionals and the full one-weight-pass schedule. Amend RFC-0007 explicitly;
+   a packed row must not silently replace the B consumed by the sumcheck.
+4. Exercise NC-0603 with the real private range/claim consumer and fused NC-0605
+   with the actual B object. Require both-field decisions, exact proof bytes,
+   canonical padding and complete native cost/memory/read-count evidence.
+
+Soundness: the counterexamples are exact finite arithmetic, not a cryptographic
+attack on implemented PCS code. No production challenge, binding, loss or NC
+credit changes. Future reduction challenges and controls must be accounted before
+acceptance. A3, setup/registry admission, ZK and Q12 retain their obligations.
+Cost: message/encoded counts, c_c, decomposition in c_a/T_misc, state and query
+work. No measured constant, benchmark or extra weight pass is introduced.
+Affected tasks: E4-03 (blocked on A3/A6), E4-04, E5-03/E6 range lowering, E7 weight/
+cut consumers and E10/E12 passport/inference work. Original criteria remain.

@@ -493,11 +493,12 @@ tasks:
   rfc:
   - RFC-0010 §1-2,§4,§8
   - RFC-0010 A3
+  - RFC-0010 A6
   skill: pcs-engineer
   crate: stele-pcs
-  status: blocked(RFC-0010 A3)
+  status: blocked(RFC-0010 A3; RFC-0010 A6)
   agent: codex-root
-  branch: task/E4-03-certified-functional-study
+  branch: task/E4-03-packing-contract-study
   acceptance:
   - NC-0600..0603
   - ledger PCS line
@@ -511,9 +512,11 @@ tasks:
   rfc:
   - RFC-0010 §5
   - RFC-0007 §5
+  - RFC-0010 A6
+  - RFC-0007 A1
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: blocked(RFC-0010 A6; RFC-0007 A1)
   acceptance:
   - NC-0305/0605
   - zero extra passes asserted by counter
