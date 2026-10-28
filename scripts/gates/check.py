@@ -303,7 +303,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
