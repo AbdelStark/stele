@@ -290,3 +290,14 @@ formal/commitment-privacy.md gives exact linear-view conditions and a limited
 randomized-row example; neither is a complete simulator or native ZK protocol.
 E4-05/E12-01 are blocked on the full amended contract, retaining their actual
 controls, proven-only parameters, <=5% overhead and one-weight-pass requirements.
+
+Q30: which complete private-verifier relation and quantitatively composable ZK
+argument of knowledge provide a sound, private and affordable wrapper?
+Draft RFC-0016 A1 and formal/private-verification.md separate language membership
+from extraction of an accepted inner proof, bind the complete expected statement
+and verifier, and preserve all native/privacy/cost obligations. The pinned Stwo
+inspection identifies privacy code and a 96-bit configuration target, not Stele
+profile admission. E14-01 is blocked on A1; Q12/Q14, actual verifier translation,
+full extraction/simulation composition, W8 and NC-1203 remain required. Selecting
+this path for treaty privacy would need an explicit mandatory architecture
+amendment; neither the finite search study nor upstream names choose that change.

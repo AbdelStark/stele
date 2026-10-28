@@ -1348,9 +1348,10 @@ tasks:
   - E2-03
   rfc:
   - RFC-0016 §5
+  - RFC-0016 A1
   skill: pcs-engineer
   crate: stele-wrapper
-  status: ready
+  status: blocked (RFC-0016 A1)
   agent: codex-root
   branch: task/E14-01-private-verifier-study
   acceptance:
