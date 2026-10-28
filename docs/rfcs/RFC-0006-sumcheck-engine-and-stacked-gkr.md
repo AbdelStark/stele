@@ -535,6 +535,12 @@ in both full extension fields. It covers overlapping mask/selector axes and
 charges retained bit weights and exact-table enumeration. This is research
 algebra evidence, not the actual source resolver, Rust parity or control closure.
 
+The [closed public-stage study](../../formal/stacked-statement.md) also exercises
+Stack/A1 framing, canonical restoration, independent A evaluation and all original
+public consumers in both fields. Its actual public table bytes precede challenges.
+Wrong-layer/coordinate/source-final and stale-continuation examples reject for
+named reasons, but provide no production NC, private-source or inference credit.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
