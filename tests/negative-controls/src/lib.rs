@@ -7,6 +7,8 @@ pub mod catalog;
 #[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
+pub mod streaming;
+#[doc(hidden)]
 pub mod sumcheck;
 #[doc(hidden)]
 pub mod zerocheck;
@@ -19,6 +21,12 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 210,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: streaming::run,
+    },
     catalog::RegisteredControl {
         id: 204,
         kind: catalog::ControlKind::Proof,

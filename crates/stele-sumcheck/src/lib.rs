@@ -3,6 +3,11 @@
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+/// Canonical file source and preparation (RFC-0006 A6), opt-in host I/O.
+#[cfg(feature = "std")]
+pub mod file;
 use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
 /// Ordered instance batching, RFC-0006 A2.

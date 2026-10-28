@@ -109,20 +109,27 @@ cannot admit a profile or certify codeword validity of a Merkle commitment.
 RFC-0006 A6's streaming contract retains A1's m*delta/p^d record, messages and
 all original final consumers. No challenge, label or implemented loss changes.
 Its source/layout/capacity studies establish neither production NC-0210 nor
-profile security. The actual strategy, both-field corpus, control and accounting
-gate integration remain E3-05 delivery requirements; Q12 is unchanged.
+profile security. The production strategy/file/control gates below do not resolve independent
+streaming corpus and complete pipeline ledger requirements; Q12 is unchanged.
 
 The A6 caller-buffer engine reuses A1's round/final checks and original public
 consumer, without changing any loss line. Both accounting and control gates
 require 1,000 Dense/buffered cases per degree and field, full proof/continuation
 parity, unchanged caller capacities and typed preflight/false-sum/unused-final
 rejections. Independent A1 corpus and digest checks still cover the shared
-encoders/interpolator. This engine is not the Streaming strategy: NC-0210, actual
-source capacity accounting and complete pipeline memory/cost evidence remain open.
+encoders/interpolator. This engine alone is not the Streaming strategy; complete source capacity and
+pipeline memory/cost evidence remain separate delivery obligations.
 
 The A6 generic source/arena strategy now preserves A1 proofs and original claims
 in both fields. Gates require 1,000 cases per degree/field, canonical tail order,
 source visit/error checks, workspace capacity limits and cached-instance rejection
 including m=0. Its bound remains the same SC line. A generic source is not an
-authenticated consumer or a file adapter; independent streaming corpus decisions,
-NC-0210 and complete preparation/consumer memory ledgers are still required.
+authenticated consumer. Independent streaming corpus decisions and complete
+preparation/consumer memory ledgers are still required.
+
+The opt-in std file adapter validates canonical limbs, exact lengths and EOF while
+retaining read-only handles. Bounded preparation preserves originals and rejects
+existing destinations. Both gates execute its real file tests and NC-0210 in both
+fields: one unused source record changes one real-prover final, through ProverHook,
+and the unchanged original consumer rejects ClaimMismatch. No new loss or trust in
+source metadata is introduced. These checks do not certify a process-memory bound.
