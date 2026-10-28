@@ -1,5 +1,5 @@
 //! Closed code identity, approved fields and resource boundaries, RFC-0010 A4.
-use super::{reserved, Circle, Error};
+use super::{measurement, Circle, Error, MeasuredEncoding, Measurement};
 use alloc::vec::Vec;
 use core::mem::size_of;
 use stele_field::{Field, CM31, M31, OM31, QM31};
@@ -108,9 +108,10 @@ fn mul(a: u64, b: u64) -> Result<u64, Error> {
 fn hash(frame: &[u8; 74]) -> [u8; 32] {
     *blake3::hash(frame).as_bytes()
 }
-fn zeros<K: CodeField>(len: usize) -> Result<Vec<K>, Error> {
-    let mut out = reserved(len)?;
+fn zeros<K: CodeField>(len: usize, measured: &mut Measurement) -> Result<Vec<K>, Error> {
+    let mut out = measured.reserve(len)?;
     out.resize(len, K::from_i64(0));
+    measured.work.initialized_symbols += len as u64;
     Ok(out)
 }
 impl Encoder {
@@ -202,33 +203,35 @@ impl Encoder {
             usize::try_from(scratch).map_err(|_| Error::Capacity)?,
         ))
     }
-    fn encode_with<K: CodeField>(
+    fn encode_recorded<K: CodeField>(
         &self,
         row: &[K],
         hash: &mut impl FnMut(&[u8; 74]) -> [u8; 32],
+        measured: &mut Measurement,
     ) -> Result<Vec<K>, Error> {
         self.validate(row)?;
         let (length, scratch) = self.capacity::<K>(0)?;
         if self.len == 21 {
-            return Circle::new(u32::from(self.id[19]), u32::from(self.id[20]))?.encode(row);
+            return Circle::new(u32::from(self.id[19]), u32::from(self.id[20]))?
+                .encode_recorded(row, measured);
         }
-        let mut output = zeros(length)?;
-        let mut work = zeros(scratch)?;
-        expander::run(
-            &self.id[23..],
-            self.id[22],
-            row,
-            &mut output,
-            &mut work,
+        let mut output = zeros(length, measured)?;
+        let mut work = zeros(scratch, measured)?;
+        expander::Execution {
+            seed: &self.id[23..],
             hash,
-        )?;
+            measured,
+        }
+        .run(self.id[22], row, &mut output, &mut work, 1)?;
+        measured.release(measurement::bytes(&work));
         Ok(output)
     }
-    fn eval_with<K: CodeField>(
+    fn eval_recorded<K: CodeField>(
         &self,
         row: &[K],
         columns: &[usize],
         hash: &mut impl FnMut(&[u8; 74]) -> [u8; 32],
+        measured: &mut Measurement,
     ) -> Result<Vec<K>, Error> {
         self.validate(row)?;
         if columns.iter().any(|c| *c as u64 >= self.info.codeword_len) {
@@ -238,10 +241,51 @@ impl Encoder {
             return Ok(Vec::new());
         }
         self.capacity::<K>(columns.len())?;
-        let mut selected = reserved(columns.len())?;
-        let encoded = self.encode_with(row, hash)?;
+        let mut selected = measured.reserve(columns.len())?;
+        let encoded = self.encode_recorded(row, hash, measured)?;
         selected.extend(columns.iter().map(|c| encoded[*c]));
+        measured.work.copied_symbols += columns.len() as u64;
+        measured.release(measurement::bytes(&encoded));
         Ok(selected)
+    }
+    /// A5 observations from the canonical production encoding, with no PCS authority.
+    pub fn encode_measured<K: CodeField>(&self, row: &[K]) -> Result<MeasuredEncoding<K>, Error> {
+        let mut measured = Measurement::default();
+        let values = self.encode_recorded(row, &mut hash, &mut measured)?;
+        Ok(MeasuredEncoding {
+            values,
+            work: measured.work,
+        })
+    }
+    /// A5 observations including selected-column/full-encoding overlap.
+    pub fn eval_row_measured<K: CodeField>(
+        &self,
+        row: &[K],
+        columns: &[usize],
+    ) -> Result<MeasuredEncoding<K>, Error> {
+        let mut measured = Measurement::default();
+        let values = self.eval_recorded(row, columns, &mut hash, &mut measured)?;
+        Ok(MeasuredEncoding {
+            values,
+            work: measured.work,
+        })
+    }
+    #[cfg(test)]
+    fn encode_with<K: CodeField>(
+        &self,
+        row: &[K],
+        hash: &mut impl FnMut(&[u8; 74]) -> [u8; 32],
+    ) -> Result<Vec<K>, Error> {
+        self.encode_recorded(row, hash, &mut Measurement::default())
+    }
+    #[cfg(test)]
+    fn eval_with<K: CodeField>(
+        &self,
+        row: &[K],
+        columns: &[usize],
+        hash: &mut impl FnMut(&[u8; 74]) -> [u8; 32],
+    ) -> Result<Vec<K>, Error> {
+        self.eval_recorded(row, columns, hash, &mut Measurement::default())
     }
 }
 impl Code for Encoder {
@@ -252,10 +296,10 @@ impl Code for Encoder {
         self.info
     }
     fn encode<K: CodeField>(&self, row: &[K]) -> Result<Vec<K>, Error> {
-        self.encode_with(row, &mut hash)
+        Ok(self.encode_measured(row)?.values)
     }
     fn eval_row<K: CodeField>(&self, row: &[K], columns: &[usize]) -> Result<Vec<K>, Error> {
-        self.eval_with(row, columns, &mut hash)
+        Ok(self.eval_row_measured(row, columns)?.values)
     }
 }
 

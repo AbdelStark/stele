@@ -234,3 +234,15 @@ consumers, all soundness accounting and Q12 remain open. This stages contract
 acceptance and implementation delivery; it does not reduce the full MVP scope.
 Same-author skill reviews approve the contract, not independent audit, native
 implementation, measured memory/performance or a profile. Status: Accepted.
+
+## ADR-031 — Observe complete encoder work on its production path
+
+Context: E4-08, RFC-0010 A5. Decision: ordinary and measured native encoding share
+one implementation. Reports count live owned vector capacities and logical work;
+they never affect map selection, output values, errors or profile admission.
+Borrowed input, stack/hash state and complete process peaks remain separate
+benchmark obligations. Sampling, base work, copies and instrumentation are timed,
+with no amortization inferred from sparse counts. No binding, error term, accepted
+PCS parameter, fitted constant or weight-pass count changes. Same-author skill
+reviews accept the contract; actual native/benchmark evidence remains required.
+Status: Accepted.
