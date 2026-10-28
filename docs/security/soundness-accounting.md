@@ -101,7 +101,7 @@ does not change the SC bound; these finite checks certify no profile.
 RFC-0010 A2's circle map has a deterministic distance lower bound N-k for k>=2,
 and N for a constant message. This is not a PCS proximity-gap or profile bound.
 Its encoder contract adds no transcript label, challenge or implemented loss line.
-The CPU map now has direct-reference and Python-vector checks under E4-02, with
-the full input-size cost/memory benchmark still pending. A1's parameter provenance
+The CPU map now has direct-reference and Python-vector checks under E4-02, plus
+the full input-size cost/memory ledger at both rates. A1's parameter provenance
 and the actual PCS consumer/accounting tasks remain open. The code identity alone
 cannot admit a profile or certify codeword validity of a Merkle commitment.

@@ -73,3 +73,11 @@ transition overlap, retained capacity and losing cases. Observed ns/point values
 are microbenchmark evidence; they do not refit the planning constants above or
 change the weight-pass count. The measured prover-memory saving does not lower
 the complete public-consumer pipeline peak in this experiment.
+
+## 7. One-time circle registration baseline
+
+The [E4-02 CPU ledger and report](../bench/README.md#circle-encoding-e4-02)
+measure actual full-size circle encoding at both required rates, including
+preparation, exhaustive output validation and native process memory peaks.
+This is one-time weight-registration work. It does not fit c_c for linear-time
+cut encoding, add a per-proof weight pass or change the planning constants above.

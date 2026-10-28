@@ -27,6 +27,31 @@ controller and is not isolated scratch or live allocated bytes. No timing result
 statistical comparison, fitted constant, PCS admission or inference result is
 supplied by this harness change. The schema's standard profile is a tag only.
 
+Recorded [E4-02 circle ledger](ledger/e4-02-circle-code.json), measured from clean
+commit `31e957a8f3f7c7e2ee4a5987a8f6e9e91ad4960a` on Apple M4 Max with Rust 1.90.0.
+Both rates process exactly 1,073,741,824 input symbols. Every output was checked:
+2,147,483,648 at rate 1/2 and 4,294,967,296 at rate 1/4. All six native row
+processes completed; the imported ledger is byte-identical to the emitted file.
+
+Times below are exact sums in nanoseconds across every required row. Peak RSS is
+the maximum native row-process measurement in bytes, not the sum of sequential
+process peaks. Per-row receipts and complete resource reports remain in the ledger.
+
+| Rate | Rows × input symbols | Preparation ns | Encode ns | Validation ns | Peak RSS bytes |
+|---|---:|---:|---:|---:|---:|
+| 1/2 | 2 × 536,870,912 | 4,945,779,084 | 110,563,338,167 | 10,206,113,375 | 12,889,145,344 |
+| 1/4 | 4 × 268,435,456 | 5,127,879,667 | 200,823,224,541 | 21,584,528,500 | 10,741,596,160 |
+
+Complete totals, including preparation and validation, are 125,715,230,626 ns and
+227,535,632,708 ns respectively. Every row returns 1,073,741,824 symbols and a
+4,294,967,296-byte output capacity; input capacities are 2,147,483,648 and
+1,073,741,824 bytes respectively. Internal capacities and overlap contribute to
+process RSS but are not isolated measurements. These are one-sample, four-coefficient
+fixture baselines, with no random dense-coefficient, statistical, GPU, inference,
+profile-certification or fitted-cost claim. No per-proof weight pass changes.
+
+## Ledger format
+
 Real measurements belong in `bench/ledger/<run>.json`. The value schema is
 `crates/stele-bench/schema.json`. Validate without changing files:
 
