@@ -7,7 +7,7 @@ const ROW: &str = "| NC-0001 | binding | 0002 §7 | change cell | ExactError | t
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 72);
+    assert_eq!(catalog.len(), 77);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
     assert_eq!(catalog.last().map(|entry| entry.id), Some(1203));
     assert!(
@@ -16,8 +16,8 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("3/17 bindings; 14/72 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 58);
+    assert!(coverage.contains("3/18 bindings; 14/77 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 63);
     let streaming = catalog
         .iter()
         .find(|entry| entry.id == 210)
