@@ -81,6 +81,12 @@ RFC-0012 A7 records the proposed separate setup error. Stronger finite parameter
 bound the complete 256-bit seed universe in the ideal oracle, independent of quantum
 selection. V1 descriptors reject. Actual admission/consumer binding and Q12 remain
 open; regeneration consistency alone supplies no concrete distance/profile certificate.
+Candidate common API and registry: [code identity](../../formal/code-identity.md).
+The factory derives map/length/distance/setup metadata from exact Circle or v2
+manifest bytes; arbitrary raw graphs and caller-modified metadata are not inputs.
+A sealed native Code interface and separate fail-closed PCS parameter resolution
+are proposed. The research codes.toml is a checked export; both proven flags stay
+false. No proximity parameter, native capacity contract or profile is admitted.
 Motivation: §3 names code families but does not fix a concrete M31 encoder, setup
 or supported lengths. The distance-estimate task and a `proven` boolean cannot
 replace evidence for the distance and proximity hypotheses of §6. This draft
