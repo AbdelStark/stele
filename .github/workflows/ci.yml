@@ -42,6 +42,7 @@ jobs:
       - run: python3 research/cqis-tables/check_exp.py
       - run: python3 research/cqis-tables/check_activations.py
       - run: python3 research/cqis-tables/check_gelu.py
+      - run: python3 research/cqis-tables/check_rmsnorm.py
       - run: python3 research/cqis-bounds/check_bounds.py
       - run: uv run --locked --script harness/cqis/check_arithmetic.py
       - run: python3 research/poseidon2/check_poseidon2.py
