@@ -63,6 +63,7 @@ jobs:
       - run: cargo test -p stele-sumcheck --example batching --locked --offline
       - run: cargo test -p stele-sumcheck --example zerocheck --locked --offline
       - run: cargo test -p stele-sumcheck --example small_bench --locked --offline
+      - run: cargo test -p stele-code --example circle_bench --locked --offline
       - run: cargo clippy -p stele-hash --all-targets --all-features --locked --offline -- -D warnings
       - run: scripts/gates/digest.sh
       - run: scripts/gates/negative-controls.sh

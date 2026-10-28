@@ -1,5 +1,32 @@
 # Benchmark ledgers (RFC-0018 §1, task E0-05)
 
+## Circle encoding (E4-02)
+
+On macOS, from a clean committed checkout, run
+`python3 bench/circle.py /tmp/circle-<run>.json`. This is the full A2 gate:
+two actual rows of 2^29 M31 input symbols at rate 1/2 and four actual rows of
+2^28 symbols at rate 1/4, each producing 2^30 outputs. Rows run sequentially
+in separate native processes. It is a large-memory CPU job; ordinary CI runs
+only the worker's small reference and rejection tests.
+
+Each row evaluates a specified four-coefficient polynomial containing the
+high basis term v_(m-1) and its product with y. Every returned symbol is checked
+by independent integer circle arithmetic. The encoder executes its complete,
+value-independent loops; this does not represent random dense coefficients.
+Preparation, complete encoding, and exhaustive validation are timed separately
+and included in the total. Encoding includes inverse normalization, allocation,
+coefficient expansion, all domain/twiddle work and the forward transform.
+No setup is amortized. Final deallocation, process launch and JSON serialization
+are outside those timers.
+
+Each distinct row has one sample; no row is rescaled or substituted for another.
+The ledger retains every receipt, actual input/output capacities, and macOS
+`time -l` resource reports. Peak RSS includes original input, internal capacities
+and overlap, returned output, validation and runtime; it excludes the Python
+controller and is not isolated scratch or live allocated bytes. No timing result,
+statistical comparison, fitted constant, PCS admission or inference result is
+supplied by this harness change. The schema's standard profile is a tag only.
+
 Real measurements belong in `bench/ledger/<run>.json`. The value schema is
 `crates/stele-bench/schema.json`. Validate without changing files:
 
