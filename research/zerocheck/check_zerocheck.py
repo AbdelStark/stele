@@ -243,6 +243,13 @@ def checks():
 
 
 if __name__ == '__main__':
+    if sys.argv[1:2] in (['--write-corpus'], ['--verify-corpus']):
+        import zero_corpus as corpus
+        if sys.argv[1:] == ['--write-corpus']:
+            corpus.PATH.write_text(''.join(json.dumps(c, separators=(',', ':'))+'\n' for c in corpus.generate()))
+        else:
+            corpus.check([json.loads(line) for line in Path(sys.argv[2]).read_text().splitlines()])
+        sys.exit(0)
     result = checks()
     encoded = ''.join(json.dumps(v, separators=(',', ':')) + '\n' for v in result['vectors'])
     path = Path(__file__).with_name('vectors.jsonl')

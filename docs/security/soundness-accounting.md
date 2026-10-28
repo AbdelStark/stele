@@ -70,5 +70,8 @@ Rust/Python byte/claim/record cases against descriptors and transcript continuat
 plus NC-0207..0209 and the ZeroFinal extension of NC-0802. Numerator, final-label
 and public-consumer bypass mutants fail the gate. The reduction alone does not
 accept a statement; the public adapter consumes every original slice claim.
-E3-03 still requires broader rejection/reference coverage and measured c_sc/total
+The shared 314-case Rust/Python corpus additionally compares exact public-verifier
+decisions, every original claim, phased SC records and the next challenge. Gate
+regressions reject changed corpus expectations, omitted claims and wrong records.
+E3-03 still requires 10^3-per-degree reference coverage and measured c_sc/total
 consumer cost. Q12 remains open; these gates do not certify a profile.

@@ -89,6 +89,27 @@ class GateTests(unittest.TestCase):
             self.assertIn('zerocheck bytes/claims/accounting/control mismatch', result.stderr)
         source.write_text(original)
 
+    def test_rejects_zerocheck_corpus_drift_and_receipts(self):
+        corpus = self.root / 'research/zerocheck/corpus.jsonl'
+        original = corpus.read_text()
+        rows = [json.loads(line) for line in original.splitlines()]
+        rows[0]['expected'] = 'ClaimMismatch'
+        corpus.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('zerocheck corpus drift', result.stderr)
+        corpus.write_text(original)
+        source = self.root / 'crates/stele-sumcheck/examples/zero_corpus.rs'
+        original = source.read_text()
+        for before, after in [('"numerator":r.numerator', '"numerator":r.numerator + 1'),
+                              ('result.claims.into_iter()', 'result.claims.into_iter().take(0)')]:
+            self.assertIn(before, original)
+            source.write_text(original.replace(before, after, 1))
+            result = self.run_gate('soundness-accounting')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('zerocheck corpus decisions/claims/accounting mismatch', result.stderr)
+        source.write_text(original)
+
     def test_rejects_batch_rlc_accounting_drift(self):
         source = self.root / 'crates/stele-sumcheck/src/batch.rs'
         old = source.read_text()

@@ -35,3 +35,18 @@ Research checks earn no NC, GPU, performance, independent-audit or profile credi
 The vector set now records every one of the 130 honest cases, including the
 verifier-owned descriptor/tables and the first challenge after ZeroFinal. These
 inputs support production parity tests; the research checks still earn no NC credit.
+
+E3-03 now adds a shared [314-case decision corpus](corpus.jsonl). Regenerate with
+`uv run --locked --script research/zerocheck/check_zerocheck.py --write-corpus`;
+verify with the same command using `--verify-corpus research/zerocheck/corpus.jsonl`.
+The Rust `zero_corpus` example calls the actual public verifier and, for accepted
+cases, compares the actual prover's proof. Both gates compare exact errors, every
+ordered original slice claim, all three SC records and the next challenge.
+The corpus includes fresh false rows (including zero-sum residuals), changed
+coefficients/ids/order/dimensions/skip, short/long proof dimensions, canonical
+field parsing, public shapes, unused tables/slices and empty/constant relations.
+Complete-skip proofs disclose every original slice; changing an id or term order
+can preserve a true assertion and its proof while changing the transcript and
+metadata. Those cases require acceptance and exact updated receipts, not rejection.
+These checks add no NC credit. Seeded 10^3-per-degree reference coverage and
+complete cost/memory measurements remain E3-03 acceptance requirements.
