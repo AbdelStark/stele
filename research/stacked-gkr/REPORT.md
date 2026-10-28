@@ -67,3 +67,31 @@ Keep A4 Draft and E3-06 blocked until complete bytes, actual source authenticati
 claim consumers, block ownership and required reviews are resolved. These checks
 are M31 algebra, not full-extension production parity, NC credit, a bound certificate,
 a benchmark or profile evidence. No research module is imported by core crates.
+
+## Candidate round ownership
+
+Question: can both permitted layer orders expose deterministic block partials
+whose sum is the actual globally restricted polynomial? Cost terms: c_sc/T_misc,
+current-state relocation and partial/input storage. Kill criterion: any partial
+or restored final differs from direct evaluation of an original input table.
+
+Run `python3 research/stacked-gkr/check_ownership.py`. Across 1,000 seeded layouts
+and both orders, 4,000 rounds compare every block's endpoint vector with a direct
+original-table restriction and independently computed owner. Final values for all
+three inputs, including the unused input, equal original MLE evaluations at the
+restored point. Degrees 0..4, empty coordinates, constant terms, zero/non-Boolean
+challenges and real/padded layer boundaries are covered. The original tables are
+zero-padded, but constant terms intentionally demonstrate why slots cannot be
+dropped merely because their inputs are padded.
+
+A suffix is owned by its remaining layer bits in their original positions, with
+fixed/currently paired layer bits zero in the representative id. When a layer axis
+folds, both endpoint input vectors must reach this representative before nonlinear
+P is evaluated. The prototype counts the resulting logical owner crossings and
+checks their exact dimension formula. It does not execute distributed transport.
+An all-reduce of existing partial messages cannot replace that input movement.
+
+Recommendation: continue Q20 using formal/stacked-ownership.md alongside the
+public-MLE algebra. The full statement bytes, source authentication and actual
+consumers remain acceptance prerequisites. No production/GPU parity, negative
+control, benchmark or profile credit follows from this M31 research model.

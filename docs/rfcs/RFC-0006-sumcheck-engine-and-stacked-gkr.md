@@ -516,6 +516,12 @@ mask evaluator and explicit sparse/table evaluation costs. The M31 differential
 study checks these formulas only. Source authentication, complete descriptor bytes
 and the remaining requirements below are still unresolved; A4 remains Draft.
 
+Candidate [round ownership](../../formal/stacked-ownership.md) partitions the
+actual restricted-input polynomial by surviving canonical layer bits. It defines
+both elimination orders, endpoint coalescing and original-point restoration,
+with an independent M31 original-table oracle. This resolves a proposed algebraic
+rule, not its production wire/source/consumer or transport implementation.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
