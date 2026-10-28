@@ -153,3 +153,44 @@ protocol parity and reviews. The candidate evaluator retains O(m) bit weights
 beyond its constant-state DP, copies D descriptor bytes during admission, and
 charges k products per exact-table source entry. No measured performance, bound
 certificate, authenticated CQIS/index source or production NC credit is claimed.
+
+
+## Closed public-stage integration study
+
+Question: does the proposed Stack/A1 wrapper restore canonical points, check A
+and consume every original public table without losing the continuation? Security
+properties: coefficient/original-final binding and the coordinate frame. Cost terms:
+c_sc plus T_misc for descriptor processing, actual table movement/evaluation and
+public consumption. Kill criterion: accepting a wrong-layer original value, unchecked
+coefficient final or stale continuation, or exporting a draw-order original claim.
+The study is a closed public algebra relation; it does not authenticate a private
+index source, derive a CQIS table or certify a complete inference.
+
+
+Run `uv run --locked --script research/stacked-gkr/check_stage.py`. The prototype
+uses existing field/A1/transcript arithmetic, the independent Boolean-table
+coefficient builder, both frame orders and the weighted coefficient verifier.
+The fixture binds the actual canonical original table bytes into Public before
+Stack; source and selector bytes remain in Stack. A context string without those
+original inputs is not sufficient binding evidence.
+
+600 seeded stages per field cover all six coefficient kinds, both orders, degrees
+0..4, full-K values, scalar and three-bit domains. Twelve extra cases have no
+original inputs, with empty/constant P at m=0/1/3. The public consumer checks all
+original values at the restored point; both sides reach the same continuation.
+Malformed shapes/limbs/padding and field mismatch reject before replay. Independent
+Stack framing and original-public-byte sensitivity checks cover the fixture context.
+
+The one-value wrong-layer and draw-order final examples target an unused original
+claim: the conditional reduction accepts them, while the real public consumer
+rejects ClaimMismatch. A changed one-entry source with empty P and m=0 rejects
+CoefficientMismatch. A stale continuation produced by omitting the first Final
+changes only the next proof's original final and rejects FinalEvaluationMismatch.
+The verifier has no omitted-final mode or check bypass. These are research
+examples, not production controls or private source authentication.
+
+Recommendation: continue Q20 with formal/stacked-statement.md §5. Keep A4 Draft;
+exact private source/CQIS consumers, Rust protocol parity, production errors,
+resource admission and complete control closure remain open. Charge dense table
+reordering/materialization, direct O(a*m*2^m) original consumption, retained table
+copies and the bound public context bytes; no performance or inference claim.

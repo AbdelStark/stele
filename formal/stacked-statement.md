@@ -158,3 +158,50 @@ Before delivery: actual NC-0203 wrong-layer rejection, one-source-value tamperin
 wrong canonical final coordinates and chained-final controls, both-field protocol
 bytes/decisions and original consumption. Research codec round-trips and truncated
 payload rejection earn no production binding or source-authentication credit.
+
+
+## 5. Closed public execution study
+
+The research wrapper `research/stacked-gkr/stage.py` instantiates this schedule
+with the prior A1 oracle. It proves only the stated algebraic relation with all
+original tables and coefficient source values fixed as actual public inputs.
+It does not derive A/P from an inference operation or authenticate private sources.
+The consuming plan and any production private/CQIS paths remain prerequisites.
+
+The fixture's Public payload contains the actual original values: research prefix
+`Q20/public-tables/v1`, field-width byte, common Layout, u32 table count and each
+original u64 id followed by all its canonical K entries in plan order. Every table
+has exactly 2^m entries. This is a test-context envelope, not the production
+inference public-input format. Fix and bind these inputs before any challenge;
+a literal context string alone is not a binding to mutable original tables.
+All coefficient source/selector bytes are then bound by the complete Stack frame.
+
+The prover builds the canonical Boolean A table independently of the weighted
+verifier evaluator, reorders every actual input into the selected frame and calls
+A1. The verifier replays A1, restores the point, checks its last A final against
+the weighted evaluator and exports only the original claims with their common
+canonical point. The public adapter checks every one against the actual original
+table, including unused inputs. It also validates shape, canonical limbs and
+zero padding before replay. Failed post-absorb checks invalidate the whole attempt.
+
+Research errors: descriptor/field mismatch is InvalidStacked; invalid original
+shape/limbs/padding is PublicShape; a wrong A final is CoefficientMismatch; an
+original evaluation mismatch is ClaimMismatch. A1 retains its own errors. This
+mapping is candidate evidence only, not accepted production resource/error policy.
+
+The seeded study checks 600 stages per field across all kinds, both layer orders,
+full extension limbs, degrees 0..4 and m=0/3, plus 12 no-original-input boundary
+cases. A wrong-layer unused final and a draw-order unused final each pass the
+conditional reduction but fail actual public consumption with ClaimMismatch.
+Changing one exact table source at m=0 with empty P changes one proof final and
+fails CoefficientMismatch. Omitting a prior Final only in the adversarial prover
+changes one final of the next one-round proof and fails FinalEvaluationMismatch.
+These are research rejection examples, not NC-0203 or source-authentication credit.
+
+The dense research preparation and direct original consumers explicitly charge
+O((a+1)*m*2^m) work (plus scalar cases), with a original inputs, multiple live table
+copies and O((a+1)*2^m) field storage beyond the public context bytes. A1 proving,
+weighted A evaluation and descriptor work are additional. No streaming, measured
+cost constant, weight-pass guarantee, distributed partial execution or production
+parity is claimed. The SC record remains m*delta/p^d; Q12/FS/H and profile bounds
+are not resolved by honest transcript agreement or these rejection examples.

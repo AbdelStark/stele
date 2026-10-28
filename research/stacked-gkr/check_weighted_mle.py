@@ -11,8 +11,8 @@ from statement import P, encode
 from weighted_mle import evaluate, add, mul, neg, scalar
 
 
-def direct(s, point):
-    """Materialize the canonical Boolean table, then fold; no evaluator DP/weights."""
+def boolean_table(s):
+    """Materialize the canonical Boolean table; no evaluator DP/weights."""
     d, axes, c = s['field'], s['layout'], s['coefficient']
     one, zero = scalar(1, d), scalar(0, d)
     table = []
@@ -41,6 +41,11 @@ def direct(s, point):
                     for bit, z in enumerate(reversed(selector)):
                         term = mul(term, z if i >> bit & 1 else add(one, neg(z)))
         table.append(term)
+    return table
+
+
+def direct(s, point):
+    table = boolean_table(s)
     for r in point:
         half = len(table)//2
         table = [add(a, mul(r, add(b, neg(a)))) for a, b in zip(table[:half], table[half:])]
