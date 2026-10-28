@@ -70,6 +70,7 @@ NC-0605 fused `u ≠ B` (cross-check with NC-0305).
 ### A1 — Concrete encoder identity and parameter provenance
 
 Status: Draft. Question Q23. Evidence: [code provenance study](../../research/code-provenance/REPORT.md).
+Follow-up: [finite expander bounds](../../research/code-provenance/EXPANDER.md).
 Motivation: §3 names code families but does not fix a concrete M31 encoder, setup
 or supported lengths. The distance-estimate task and a `proven` boolean cannot
 replace evidence for the distance and proximity hypotheses of §6. This draft
