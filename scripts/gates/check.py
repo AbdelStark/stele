@@ -98,6 +98,12 @@ def fraction_reductions(root):
                             cwd=root,text=True,capture_output=True)
     if result.returncode or '12 both-field selected-product codec fixtures match' not in result.stdout:
         raise ValueError(f'selected-product codec reference drift: {result.stdout} {result.stderr}')
+    result = subprocess.run(['cargo','test','-p','stele-negative-controls','--lib',
+                             'fraction_transcript::','--locked','--offline'],
+                            cwd=root,text=True,capture_output=True)
+    names = ('rejects_fraction_challenge_order_tampers','rejects_fraction_missing_final_continuations')
+    if result.returncode or any(f'fraction_transcript::{name} ... ok' not in result.stdout for name in names):
+        raise ValueError(f'fraction transcript controls failed: {result.stdout} {result.stderr}')
     print('gate fraction reductions: tree/selected-product proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
 
 
@@ -413,7 +419,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

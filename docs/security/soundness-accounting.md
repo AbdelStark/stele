@@ -195,3 +195,11 @@ record fields and continuation; real NC-0408..0410 consume Eq, public selector
 and every original column. Initial p=sigma_tilde(r) has a real upstream tree
 mutation control. This remains conditional arithmetic, without a complete
 lookup/private source/PCS/ZK/FS admission or measured c_lu.
+
+Actual fraction transcript controls now replay Gamma before Fraction/Layer and
+Fold before Final (NC-0411), and omit tree/selected-product A1 Final before a
+following real sumcheck (NC-0802 extension). Each first compares exact-order
+replay with the native prover, then applies one replacement through ProverHook
+and requires the unchanged real verifier's catalog rejection in both fields.
+The accounting gate requires both named controls. No production draw, loss,
+label, FS theorem, profile admission or measured constant changes.

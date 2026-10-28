@@ -26,6 +26,7 @@
 | NC-0408 | fraction reduction | 0008 A3 | change one equality final under zero products | `CoefficientMismatch` | done |
 | NC-0409 | fraction reduction | 0008 A3 | change one selector final under zero products or one unused incoming tree child | `SelectorMismatch` | done |
 | NC-0410 | fraction reduction | 0008 A3 | change one zero-coefficient source final | `SourceMismatch` | done |
+| NC-0411 | fraction reduction | 0008 A3, 0012 A9 | one next-layer round value from Gamma before Fraction/Layer or Fold before Final | `RoundSumMismatch` | done |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600–0601 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
@@ -33,7 +34,7 @@
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3, 0012 A1,A4,A5 | next instance's one final value generated after omitting Final, BatchFinal or ZeroFinal | `FinalEvaluationMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3, 0008 A3, 0012 A1,A4,A5,A9 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal or ZeroFinal | `FinalEvaluationMismatch` | done |
 | NC-0803–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
