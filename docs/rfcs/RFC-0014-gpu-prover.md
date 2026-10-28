@@ -55,27 +55,31 @@ GPU-specific: NC-1000 lazy reduction leaking `p` as a value; NC-1001 bucket over
 
 ### A1 — Account for the streaming fallback's source and transition
 
-Status: Draft. Question Q22; paired with RFC-0006 A6. Motivation: §4's fallback
-does not establish that two visits suffice under every device-memory budget or
-that logical visits are physical reads. [Study](../../research/streaming/REPORT.md).
+Status: Accepted. Question Q22; paired with RFC-0006 A6. Review:
+[A6/A1 skill passes](../../agents/reviews/streaming-a6.md).
+Motivation: the original 40% rule counts only a folded-tail estimate and promises
+an unspecified two-pass fallback. The complete CPU contract separates source
+visits, preallocated work/proof buffers and actual process/device resources.
 
-Proposed replacement for §4's stacked-sumcheck-state bullet, pending A6 completion:
+Exact replacement for §4's stacked-sumcheck-state bullet:
 
-> Select only a strategy whose full device allocation peak fits the plan's budget,
-> including source buffers, prefix grid, tail construction and retained capacity.
-> The 40% limit applies to that full stacked-sumcheck state, not just a tail-size
-> estimate. Report host/external source storage and total pipeline memory too.
-> If a validated small-value configuration does not fit, use an Accepted streaming
-> schedule under RFC-0006 A6 or reject the unsupported plan. Two logical visits are
-> one possible specialization, not a universal fallback. Source replay, layout
-> conversion, transfer bytes and virtual-tensor recomputation must be charged to
-> the plan. No replay permits an additional weight pass under RFC-0007.
+> Select a strategy whose complete planned device allocation peak fits the
+> plan's budget. The 40% limit includes every device-resident source buffer,
+> grid, tail, proof/descriptor buffer, scratch allocation and retained capacity;
+> host/external source storage and total pipeline memory are reported separately.
+> If a validated small-value configuration does not fit, use an explicit
+> schedule under RFC-0006 A6 and its detailed buffer contract, or reject the
+> unsupported plan. Two source visits are a feasible one-window specialization,
+> not a universal fallback. Charge layout preparation, source replay, transfer
+> bytes and any virtual-tensor recomputation to the plan. A replay cannot add
+> a weight pass under RFC-0007.
 
-Open before acceptance: A6's source/schedule/peak contract, consistent plan-derived
-budget validation and a CPU test of the actual bound. GPU implementation retains
-the device parity gate and requires real device allocation/transfer evidence.
-Soundness impact: no implemented challenge or ledger change; original bindings
-and CQIS certificates remain. Cost impact: c_sc/T_misc, source/working memory and
-T_witness recomputation; no measured constant or weight-pass count changes.
-Affected tasks: E3-05 and downstream GPU planning/streaming work. This draft grants
-no GPU parity, production control or complete-inference credit.
+The CPU source and arena contract does not approve a GPU implementation or
+establish a device budget from host measurements. GPU delivery must measure
+actual device allocation and transfer lifetimes, including host/device overlap,
+then pass the unchanged CPU/CUDA byte-parity gate. A caller's workspace budget
+alone cannot establish the 40% condition. No new GPU code is introduced here.
+Soundness: no implemented challenge or ledger change; original consumers and
+CQIS certificates remain. Cost: c_sc/T_misc, source/working memory and T_witness
+when recomputation is actually integrated. No measured constant or pass count
+changes. Affected tasks: E3-05 and downstream GPU planning/streaming work.

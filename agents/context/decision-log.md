@@ -204,3 +204,16 @@ unsupported 2^30-symbol input row or extrapolated timing is claimed.
 Same-author reviews approve the encoder contract, not independent audit, PCS
 profile parameters or completion of the actual implementation/benchmark.
 Status: Accepted.
+
+## ADR-029 — Sequential sources and preallocated streaming buffers
+
+Context: E3-05, RFC-0006 A6 / RFC-0014 A1, Q22. Decision: explicit round windows
+read bit-reversed original-input records, interpolate the same A1 polynomial,
+then materialize every original tail at canonical suffix positions. Reuse an
+owned work arena and preallocated proof/byte buffers in the bounded path.
+Reject unsupported schedules/capacities; a universal two-visit fallback is not
+promised. Source preparation, retained capacities, original consumption and
+process/device peaks remain explicit evidence obligations. Source metadata is
+not authentication, and replay cannot add a weight pass. No challenge, loss or
+measured constant changes. Same-author reviews approve the contract, not an
+independent audit, actual memory measurement or task completion. Status: Accepted.

@@ -20,9 +20,10 @@ For each protocol binding:
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
 label with `DuplicateLabel`; it earns configuration coverage only. Including the
-ten sumcheck/batching/zerocheck controls and Merkle NC-0602, 12/71 controls run,
+eleven sumcheck/batching/zerocheck/small controls and Merkle NC-0602, 13/72 controls run,
 59 remain missing, and 3/17 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
+Streaming NC-0210 remains planned and earns no coverage from its research study.
 
 Coverage is over the current catalog, not a complete enumerated claim graph. Several
 rows are still broad categories or lack exact errors. E8-04 must expand those rows and

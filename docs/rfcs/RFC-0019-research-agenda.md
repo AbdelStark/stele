@@ -211,3 +211,10 @@ Exact research checks show the advertised dimension endpoints violate p/2 and
 the stated upper-only scale inequality admits an undersized scale. E5-03 is
 blocked on the complete amendments; no runtime bound, certificate verifier,
 NC-0109 result or model quantisation is supplied by this study.
+
+Q22 resolution: RFC-0006 A6 and RFC-0014 A1 Accepted with the linked same-author
+skill reviews, deterministic equivalence argument and sequential-source evidence.
+The contract fixes explicit schedules, bounded record preparation, preallocated
+work/proof/byte buffers and separate full-process/device evidence obligations.
+E3-05 is ready for production implementation and its real capacity/parity/control/
+ledger gates. No estimator, source study or read count completes those gates.
