@@ -329,14 +329,21 @@ tasks:
   - E3-01
   rfc:
   - RFC-0006 §5
+  - RFC-0006 A3
+  - RFC-0012 A5
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: blocked(RFC-0006-A3/RFC-0012-A5)
+  status: ready
   agent: codex-root
   branch: task/E3-03-eq-contract
   acceptance:
   - matches_reference_naive
   - c_sc improvement ledger
+  - both eq-only and bounded-skip modes; 10^3 seeded reference cases per degree
+  - both-field Rust/Python bytes and decisions, all original slice claims consumed
+  - NC-0207..0209 and ZeroFinal continuation extension of NC-0802
+  - closed registry/inventory and three-phase SC descriptor/challenge accounting
+  - complete cost and memory ledger including skip losses and final claim consumption
 - id: E3-04
   epic: E3
   title: Small-value first-rounds strategy (BDT Alg 3/4) with static magnitude bound

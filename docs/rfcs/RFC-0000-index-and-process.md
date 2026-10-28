@@ -31,13 +31,13 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted (A1) |
 | 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1) |
 | 0005 | Tensor IR, claim graph, witness capture | Accepted |
-| 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2) |
+| 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3) |
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted |
 | 0009 | Attention protocol | Accepted |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted |
 | 0011 | Model passport and checkpoint binding | Accepted |
-| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4) |
+| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5) |
 | 0013 | Zero-knowledge | Accepted |
 | 0014 | GPU prover architecture | Accepted |
 | 0015 | Distributed proving | Accepted |

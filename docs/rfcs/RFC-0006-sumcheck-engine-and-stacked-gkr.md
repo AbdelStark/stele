@@ -334,7 +334,8 @@ NC credit. Affected tasks: E3-02, E3-06, E8-04/E8-05, E12-09; no dependency remo
 
 ### A3 — Eq-factored zerocheck and bounded univariate skip
 
-Status: Draft. Question Q19. Evidence: [zerocheck study](../../research/zerocheck/REPORT.md).
+Status: Accepted. Question Q19. Review: [skill passes](../../agents/reviews/zerocheck-a3.md).
+Evidence: [zerocheck study](../../research/zerocheck/REPORT.md).
 Motivation: §5's skip changes both the round schedule and the final functional;
 A1's ordinary MLE result cannot represent it. The following replaces that bullet's
 protocol contract. A1/A2 bytes and APIs remain unchanged. This is a separate,

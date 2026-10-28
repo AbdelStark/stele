@@ -163,3 +163,15 @@ claims use a public coefficient with verifier-computed evaluation. Sparse blocks
 accumulate overlaps; arbitrary points do not receive an unconditional linear-cost
 claim. Exact RLC/SC records and closed labels remain production gates. Same-author
 reviews and research vectors give no control/profile credit. Status: Accepted.
+
+## ADR-026 — Eq-factored zerocheck with original slice claims
+
+Context: E3-03, RFC-0006 A3 / RFC-0012 A5, Q19. Decision: use full weighted
+endpoints without random-value division; optionally skip at most four leading
+coordinates using integer-node interpolation. The verifier's plan fixes k.
+Hybrid finals are recombined from all original tensor slice claims, never
+misrepresented as a single MLE or committed as an intermediate tensor. Account
+separately for weight collapse, skip and tail rounds. Final payload/consumer
+costs remain part of the benchmark, including cases where skipping loses.
+Same-author reviews approve the contract; production controls, reference parity,
+measured improvement and Q12 remain required. Status: Accepted.

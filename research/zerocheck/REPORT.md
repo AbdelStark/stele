@@ -20,10 +20,10 @@ uses independent eq-weighted full-table evaluation, not the prover's folding.
 The exact bytes, all claims, three SC records and final transcript states are
 recorded for both fields, eq-only, partial skip and complete skip cases.
 
-Checks cover degrees 0..4, m=0..4, all eligible k, full-extension data, fresh
+Checks cover 130 honest cases with degrees 0..4, m=0..4, all eligible k, full-extension data, fresh
 false-row proofs, one-value skip/tail/unused-slice tampering, malformed shapes,
-noncanonical limbs, invalid descriptors, node interpolation and zero/one endpoint
-weights. A real A1 research continuation detects an omitted ZeroFinal through
+noncanonical limbs, invalid descriptors, early weights, node interpolation and zero/one endpoint
+weights, plus empty zero/nonzero constant relations. An A1 research continuation detects an omitted ZeroFinal through
 one changed final value. For s=4,u=4, L_0 L_3 differs from L_1 L_2: the hybrid
 weights cannot be eq weights at any two-coordinate MLE point.
 

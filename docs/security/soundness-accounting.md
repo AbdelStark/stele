@@ -60,3 +60,12 @@ The [interactive obligation](../../formal/batching.md) remains conditional on tr
 final evaluations. The 276-case shared Rust/Python corpus checks exact decisions, every returned obligation,
 and SC/RLC records against descriptors. E3-02 has [both-field CPU baseline ledgers](../../bench/README.md#batching-e3-02);
 Q12 still blocks certification. Catalog coverage is nine controls, not a full claim graph.
+
+RFC-0006 A3 / RFC-0012 A5 specify a pending zerocheck consumer. With j=m-k and
+D=δ*(2^k-1), its SC phases record j (ZeroWeight challenges), D (the optional
+skip Sumcheck challenge), and j*δ (tail Sumcheck challenges), all over p^d.
+The [interactive obligation](../../formal/zerocheck.md) is conditional on every
+original slice evaluation being true. Implementation must extend the closed
+registry/inventory and check each phased record against the actual descriptor
+and challenge schedule atomically. Research vectors provide no production
+coverage; the current eight-entry registry is unchanged. Q12 remains open.

@@ -143,3 +143,8 @@ Q19: which eq-factored zerocheck schedule, skip domain and final claims complete
 RFC-0006 §5 without treating a hybrid interpolation as an ordinary MLE?
 Candidate: RFC-0006 A3 / RFC-0012 A5. E3-03 is blocked on acceptance; retain both
 optimizations, reference parity and the measured improvement criterion.
+
+Q19 resolution: RFC-0006 A3 / RFC-0012 A5 Accepted with same-author skill reviews,
+an explicit interactive obligation and both-field research checks. E3-03 is ready
+for production implementation and its full parity/control/improvement gates.
+The hybrid final is closed through original slice claims; Q12 remains open.

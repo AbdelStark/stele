@@ -213,9 +213,19 @@ def checks():
             assert sc.add(sc.mul(sc.add(sc.scalar(1, d), sc.neg(alpha)), a), sc.mul(alpha, b)) == expected
         i, tables = instance(d, 2, 1, 2)
         proof = prove(Transcript(b'zerocheck', d), i, tables)
+        early = Transcript(b'zerocheck', d)
+        alpha = [struct.unpack('<' + 'I'*d, early.challenge(WEIGHT)[0])]
+        weights = basis(sc.scalar(2, d), 2)
+        wrong = total((sc.mul(eq(alpha, z, d), sc.compose(i['terms'],
+                       [dot(weights, [folded(table[b*2:(b+1)*2], z) for b in range(2)], d) for table in tables], d))
+                       for z in boolean(1, d)), d)
+        bad = copy.deepcopy(proof); bad['skip'][0] = wrong
+        assert wrong != proof['skip'][0]
+        tr.rejects(lambda: verify(Transcript(b'zerocheck', d), i, bad, tables), 'RoundSumMismatch')
         for key in ('skip', 'rounds', 'final'):
-            bad = copy.deepcopy(proof); bad[key].append(bad[key][0])
-            tr.rejects(lambda: verify(Transcript(b'zerocheck', d), i, bad, tables), 'ProofShape')
+            for replacement in (proof[key][:-1], proof[key]+proof[key][:1]):
+                bad = copy.deepcopy(proof); bad[key] = replacement
+                tr.rejects(lambda: verify(Transcript(b'zerocheck', d), i, bad, tables), 'ProofShape')
         bad = copy.deepcopy(proof); bad['skip'][0] = (sc.P,) + (0,)*(d-1)
         tr.rejects(lambda: verify(Transcript(b'zerocheck', d), i, bad, tables), 'NoncanonicalField')
         for changed in ({**i, 'k': 5}, {**i, 'k': 3}, {**i, 'terms': []}, {**i, 'ids': [11, 11, 13]}):

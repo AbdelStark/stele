@@ -389,7 +389,8 @@ alone adds no production challenge or coverage. Other consumers keep A1 bytes.
 
 ### A5 — Zerocheck weights, skip and final framing
 
-Status: Draft. Question Q19. Motivation: RFC-0006 A3 changes the relation and
+Status: Accepted. Question Q19. Review: [skill passes](../../agents/reviews/zerocheck-a3.md).
+Motivation: RFC-0006 A3 changes the relation and
 schedule; bind its descriptor, skip polynomial and all original slice claims.
 Add these closed labels to A1's registry when implementing the consumer:
 
