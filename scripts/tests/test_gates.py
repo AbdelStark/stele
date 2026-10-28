@@ -142,6 +142,15 @@ class GateTests(unittest.TestCase):
         source.write_text(original.replace('if actual != *expected {', 'if false {'))
         result = self.run_gate('negative-controls')
         self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction corpus decisions/claims/accounting/continuation mismatch',
+                      result.stdout + result.stderr)
+        # The corpus now detects this mutation before the gate reaches catalog
+        # controls. Still exercise the real controls and require their reason.
+        result = subprocess.run(['cargo','run','-q','-p','stele-negative-controls',
+                                 '--bin','stele-controls','--locked','--offline','--','--coverage'],
+                                cwd=self.root,text=True,capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('NC-0410', result.stdout + result.stderr)
         self.assertIn('TamperAccepted', result.stdout + result.stderr)
 
     def test_rejects_fraction_transcript_control_omission(self):
