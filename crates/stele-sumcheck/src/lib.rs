@@ -107,24 +107,33 @@ pub trait Summand<K: ChallengeField> {
     /// Evaluations after every coordinate has been fixed.
     fn final_values(&self) -> Result<Vec<K>, Error>;
 }
-fn interpolate<K: ChallengeField>(values: &[K], point: K) -> Result<K, Error> {
-    let mut sum = K::from_i64(0);
-    for (i, value) in values.iter().enumerate() {
+// RFC-0006 A3: up to 61 nodes; factorial denominators must never use machine integers.
+fn interpolation_weights<K: ChallengeField>(count: usize, point: K) -> Result<Vec<K>, Error> {
+    if !(1..=61).contains(&count) {
+        return Err(Error::InvalidInstance);
+    }
+    let mut weights = Vec::new();
+    reserve(&mut weights, count)?;
+    for i in 0..count {
         let mut basis = K::from_i64(1);
-        let mut denominator = 1i64;
-        for j in 0..values.len() {
+        let mut denominator = K::from_i64(1);
+        for j in 0..count {
             if i != j {
                 basis = basis * (point - K::from_i64(j as i64));
-                denominator *= i as i64 - j as i64;
+                denominator = denominator * K::from_i64(i as i64 - j as i64);
             }
         }
-        let inverse = K::from_i64(denominator)
-            .inverse()
-            .ok_or(Error::InvalidInstance)?;
-        sum = sum + *value * basis * inverse;
+        weights.push(basis * denominator.inverse().ok_or(Error::InvalidInstance)?);
     }
-    Ok(sum)
+    Ok(weights)
 }
+fn interpolate<K: ChallengeField>(values: &[K], point: K) -> Result<K, Error> {
+    Ok(values
+        .iter()
+        .zip(interpolation_weights(values.len(), point)?)
+        .fold(K::from_i64(0), |sum, (value, weight)| sum + *value * weight))
+}
+
 fn round<K: ChallengeField + Eq>(
     id: u64,
     index: u32,
@@ -258,3 +267,6 @@ pub fn verify_public<K: ChallengeField + Eq>(
     }
     Ok(result)
 }
+
+#[cfg(test)]
+mod interpolation_tests;
