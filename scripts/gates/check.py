@@ -171,18 +171,20 @@ def batch_corpus(root):
 
 
 def small_strategy(root):
-    """A5 directed parity and actual original-value consumer rejection."""
+    """A5 directed/seeded parity and actual original-value consumer rejection."""
     for package, target, tests in [
         ('stele-sumcheck', 'small', ('matches_reference_small_qm31',
          'matches_reference_small_om31', 'rejects_small_constructor_and_cached_instance',
          'matches_reference_small_zero_one_folds')),
+        ('stele-sumcheck', 'small_reference', ('matches_reference_naive_small_qm31',
+         'matches_reference_naive_small_om31')),
         ('stele-negative-controls', 'nc-0204', ('rejects_nc_0204',)),
     ]:
         result = subprocess.run(['cargo', 'test', '-p', package, '--test', target,
                                  '--locked', '--offline'], cwd=root, text=True, capture_output=True)
         if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
             raise ValueError(f'small strategy parity/control mismatch: {result.stdout} {result.stderr}')
-    print('gate small strategy: directed both-field parity and NC-0204; seeded corpus and measured costs pending')
+    print('gate small strategy: 1000 direct-reference cases per degree/field and NC-0204; independent decisions and measured costs pending')
 
 
 def zerocheck(root):
