@@ -82,3 +82,12 @@ prover-supplied authentication callback. No dependency is added by this Draft.
 On acceptance/implementation, update dependency bans and their rejection tests
 with the actual API change. No challenge, soundness loss or measured cost changes.
 Affected task: E3-06; source/consumer closure and required reviews remain open.
+
+### A3 — Public coefficient field dependency
+
+Status: Accepted. Review: [skill passes](../../agents/reviews/public-coefficient-a7.md).
+For RFC-0006 A7, `stele-gkr` may directly depend on `stele-field` in addition to
+`stele-sumcheck`. This downward edge exposes typed field arithmetic only; no
+hash, PCS, poly or authentication edge is authorized by A3. A2 remains Draft.
+Update dependency bans with this exact edge. No external dependency, protocol,
+challenge, loss or measured constant changes. Affected task: E3-06a.
