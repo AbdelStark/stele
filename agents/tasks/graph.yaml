@@ -553,7 +553,9 @@ tasks:
   - RFC-0004 §4
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E5-02-table-contract
   acceptance:
   - table ids stable
   - max abs error documented
