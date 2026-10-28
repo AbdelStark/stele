@@ -165,6 +165,21 @@ impl<K: ChallengeField> Summand<K> for Capture<'_, K> {
         self.dense.final_values()
     }
 }
+// Shared A1 strategy observation, without transcript replay or additional draws.
+pub(super) fn prove_dense<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    tables: Vec<Vec<K>>,
+    t: &mut Transcript<K>,
+) -> Result<(stele_sumcheck::Proof<K>, Vec<K>), Error> {
+    let mut point = Vec::new();
+    reserve(&mut point, i.num_vars as usize)?;
+    let strategy = Capture {
+        dense: Dense::new(i, tables)?,
+        point: &mut point,
+    };
+    let proof = stele_sumcheck::prove(i, strategy, t)?;
+    Ok((proof, point))
+}
 impl<K: ChallengeField + Eq> Descriptor<K> {
     /// Build and reduce the dense tree; all returned original claims remain obligations.
     pub fn prove(
@@ -207,13 +222,7 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 tables.push(table);
             }
             tables.push(stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?);
-            let mut next = Vec::new();
-            reserve(&mut next, point.len())?;
-            let strategy = Capture {
-                dense: Dense::new(&i, tables)?,
-                point: &mut next,
-            };
-            let step = stele_sumcheck::prove(&i, strategy, t)?;
+            let (step, next) = prove_dense(&i, tables, t)?;
             a.layers.push(ScRecord {
                 id: i.id,
                 m: i.num_vars,

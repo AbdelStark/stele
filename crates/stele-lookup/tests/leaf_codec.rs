@@ -1,7 +1,7 @@
 //! Selected-product wire shape and exact field order, RFC-0008 A3.
 use stele_field::{OM31, QM31};
-use stele_hash::ChallengeField;
-use stele_lookup::fraction::{Descriptor, Error, LeafDescriptor};
+use stele_hash::{ChallengeField, ChallengeLabel, Transcript};
+use stele_lookup::fraction::{Descriptor, Error, LeafDescriptor, SelectedProduct};
 use stele_sumcheck::Proof;
 fn check<K: ChallengeField + Eq + core::fmt::Debug>()
 where
@@ -146,6 +146,74 @@ where
         let bytes = hex(&row["payload_hex"]);
         assert_eq!(leaf.decode(&bytes).expect("decoded fields"), expected);
         assert_eq!(leaf.encode(&expected).expect("exact bytes"), bytes);
+        let context = hex(&row["public"]);
+        let sigma = fields::<K>(&row["sigma"]);
+        let xs: Vec<_> = row["xs"]
+            .as_array()
+            .expect("original sources")
+            .iter()
+            .map(fields::<K>)
+            .collect();
+        let leaves: Vec<[K; 2]> = row["leaves"]
+            .as_array()
+            .expect("leaves")
+            .iter()
+            .map(|v| fields::<K>(v).try_into().expect("pair"))
+            .collect();
+        let alpha = fields::<K>(&serde_json::json!([row["alpha"]]))[0];
+        let beta = fields::<K>(&serde_json::json!([row["beta"]]))[0];
+        let mut pt = Transcript::new(&context).expect("transcript");
+        let (native, pr) = tree.prove(&leaves, &mut pt).expect("tree prover");
+        assert_eq!(
+            native.encode(&tree).expect("tree bytes"),
+            hex(&row["tree_hex"])
+        );
+        let mut vt = Transcript::new(&context).expect("transcript");
+        let vr = tree.verify(&native, &mut vt).expect("tree claims");
+        let (proof, pr) = SelectedProduct::new(leaf, &pr, &sigma, alpha, beta)
+            .expect("selector")
+            .prove(&xs, &mut pt)
+            .expect("selected-product prover");
+        assert_eq!(proof, expected);
+        let vr = SelectedProduct::new(leaf, &vr, &sigma, alpha, beta)
+            .expect("selector")
+            .verify_public(&expected, &xs, &mut vt)
+            .expect("original consumers");
+        assert_eq!(pr, vr);
+        assert_eq!(vr.tree_id, tree.id());
+        assert_eq!(vr.point, fields::<K>(&row["point"]));
+        let claims: Vec<_> = row["claims"]
+            .as_array()
+            .expect("claims")
+            .iter()
+            .map(|c| {
+                (
+                    c[0].as_u64().expect("identity"),
+                    fields::<K>(&serde_json::json!([c[1]]))[0],
+                )
+            })
+            .collect();
+        assert_eq!(vr.claims, claims);
+        for (name, value) in [
+            ("id", vr.sc.id),
+            ("m", u64::from(vr.sc.m)),
+            ("degree", u64::from(vr.sc.degree)),
+            ("field_degree", u64::from(vr.sc.field_degree)),
+            ("numerator", vr.sc.numerator),
+        ] {
+            assert_eq!(row["record"][name].as_u64().expect("record field"), value);
+        }
+        let next = fields::<K>(&serde_json::json!([row["continuation"]]))[0];
+        assert_eq!(
+            pt.challenge(ChallengeLabel::Sumcheck)
+                .expect("continuation"),
+            next
+        );
+        assert_eq!(
+            vt.challenge(ChallengeLabel::Sumcheck)
+                .expect("continuation"),
+            next
+        );
         count += 1;
     }
     assert_eq!(count, 6);

@@ -1,6 +1,9 @@
-//! Unverified selected-product A1 payloads, RFC-0008 A3. No transcript or consumer.
+//! Selected-product descriptors and unverified A1 payloads, RFC-0008 A3.
+#[path = "selected.rs"]
+mod selected;
 use super::{read_values, reserve, Descriptor, Error};
 use alloc::vec::Vec;
+pub use selected::{LeafReduction, SelectedProduct};
 use stele_hash::ChallengeField;
 use stele_sumcheck::Proof;
 

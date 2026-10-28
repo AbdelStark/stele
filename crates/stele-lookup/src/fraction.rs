@@ -2,7 +2,7 @@
 //! No private source authentication or lookup membership follows.
 #[path = "leaf_codec.rs"]
 mod leaf_codec;
-pub use leaf_codec::LeafDescriptor;
+pub use leaf_codec::{LeafDescriptor, LeafReduction, SelectedProduct};
 #[path = "tree.rs"]
 mod tree;
 use alloc::vec::Vec;
@@ -23,6 +23,12 @@ pub enum Error {
     Capacity,
     /// Original source dimensions disagree with the descriptor.
     SourceShape,
+    /// The fixed public selector contains a non-Boolean field value.
+    Selector,
+    /// An incoming or final selector evaluation disagrees with the original.
+    SelectorMismatch,
+    /// An original column evaluation disagrees, even under a zero coefficient.
+    SourceMismatch,
     /// Exact equality coefficient consumption failed.
     CoefficientMismatch,
     /// At least one original public leaf evaluation disagrees.
