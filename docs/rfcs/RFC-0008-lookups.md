@@ -128,3 +128,18 @@ PCS, ZK or Q12. Existing LU formulas must not admit an unsupported shape. Cost:
 c_lu/T_misc, multiplicity/table work, commitments and peak state; no measured
 constant or weight-pass change. E3-07 is blocked on A2; E12-02/E12-03 and lookup
 consumers are affected. All original acceptance criteria remain.
+
+A2 candidate continuation: [grouped equality units](../../formal/weighted-logup.md)
+and [reproducible evidence](../../research/logup-characteristic/WEIGHTED.md),
+reviewed in the [same-author record](../../agents/reviews/weighted-logup-study.md).
+This proposes public groups of B=2^b<p positions, with canonical MSB-first group
+ids and equality-basis units sampled after sources/selectors are fixed. One or
+two K-valued multiplicity vectors are committed after the unit vectors and before
+every alpha/beta. The lookup tree is ordinary within groups and weighted above
+them; the table tree is ordinary. No correction divides by a unit. The derivation
+accounts for compression and unit failures and distinguishes independent from
+shared-unit repetitions. It also identifies the actual selector/source reduction
+needed for neutral denominator leaves. These are candidate requirements, not
+admitted bytes, challenge labels, K-valued commitment formats or implementations.
+The original actual consumer, privacy, native controls and complete c_lu gates
+remain required; E3-07 stays blocked on A2.
