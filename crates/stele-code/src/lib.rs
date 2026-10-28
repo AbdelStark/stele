@@ -1,4 +1,4 @@
-//! Canonical circle encoding, RFC-0010 A2. Encoding alone admits no PCS profile.
+//! Canonical circle/v2 encoding, RFC-0010 A2/A4. Encoding admits no PCS profile.
 #![forbid(unsafe_code)]
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
@@ -6,6 +6,8 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use stele_field::{Field, M31};
+mod encoder;
+pub use encoder::{Code, CodeField, Encoder, EncoderInfo};
 
 /// Invalid encoding request or an allocation that cannot be represented/satisfied.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -20,6 +22,10 @@ pub enum Error {
     FieldMismatch,
     /// Address-space overflow or allocation failure.
     Capacity,
+    /// Unknown, malformed or unsupported canonical code identity.
+    InvalidCodeId,
+    /// A deterministic row stream exhausted its fixed 256-word cap.
+    SamplingExhausted,
 }
 
 /// The fixed non-systematic M31 circle map, extended to the element field.

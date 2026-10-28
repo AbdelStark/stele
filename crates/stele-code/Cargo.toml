@@ -6,6 +6,7 @@ license = "Apache-2.0"
 description = "Stele — stele-code (see RFC-0010 §3)"
 
 [dependencies]
+blake3 = { version = "=1.8.7", default-features = false }
 stele-field = { path = "../stele-field" }
 stele-simd = { path = "../stele-simd" }
 
