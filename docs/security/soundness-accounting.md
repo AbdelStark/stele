@@ -203,3 +203,14 @@ replay with the native prover, then applies one replacement through ProverHook
 and requires the unchanged real verifier's catalog rejection in both fields.
 The accounting gate requires both named controls. No production draw, loss,
 label, FS theorem, profile admission or measured constant changes.
+
+The shared conditional fraction decision corpus now has 162 cases across QM31
+and OM31: 28 honest reductions and 134 declared rejections. Both adapters run
+the actual public consumers; accepted cases additionally reprove and compare
+proofs, all original claims, tree/phase-scoped SC/RLC records and continuation.
+Malformed bytes, changed roots/rounds/originals, zero-coefficient finals and
+root poles require their stated errors and export no partial result. The gate
+regenerates the corpus and checks every decision; regressions reject a missing
+case or Fold accounting omission. This adds no soundness loss or full lookup,
+PCS, private consumer, ZK, FS or benchmark admission. E3-07a primitive runtime
+and memory ledgers remain required.
