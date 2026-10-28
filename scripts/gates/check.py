@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
     'digest': ('prover', 'proof'),
-    'negative-controls': ('lookup', 'pcs', 'verifier', 'reductions'),
-    'soundness-accounting': ('lookup', 'pcs', 'verifier'),
+    'negative-controls': ('pcs', 'verifier', 'reductions'),
+    'soundness-accounting': ('pcs', 'verifier'),
     'parity': ('gpu', 'kernels'),
 }
 OWNERS = {
@@ -52,6 +52,40 @@ def bootstrap_guard(root, gate):
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
+
+
+def fraction_codecs(root):
+    """A3 codecs only; reject unwired native reduction/lookup implementation."""
+    crate = root / 'crates/stele-lookup'
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
+               'tests/fixtures/fraction-codec.jsonl'}
+    actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
+    library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
+               '//! Codecs return unverified objects; the native reduction engine is not exported.\n'
+               '//! ```compile_fail\n//! use stele_lookup::fraction::verify;\n//! ```\n'
+               '#![forbid(unsafe_code)]\n#![no_std]\n'
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+               'extern crate alloc;\npub mod fraction;\n')
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('gkr','hash','sumcheck')}
+    if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
+            or manifest.get('dependencies') != dependencies
+            or manifest.get('dev-dependencies') != {'stele-field': {'path': '../stele-field'}, 'serde_json': '1.0'}
+            or any(key in manifest for key in ('build-dependencies','target','features'))
+            or 'build' in manifest.get('package', {})):
+        raise ValueError('fraction engine/lookup validator not wired; only A3 codecs admitted (E3-07a)')
+    result = subprocess.run(['cargo','test','-p','stele-lookup','--locked','--offline'],
+                            cwd=root,text=True,capture_output=True)
+    names = ('matches_reference_qm31_fraction_codec','matches_reference_om31_fraction_codec',
+             'rejects_fraction_codec_boundaries','accepts_maximum_verifier_shape_without_domain_allocation')
+    if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
+        raise ValueError(f'fraction codec checks failed: {result.stdout} {result.stderr}')
+    result = subprocess.run(['uv','run','--locked','--script',
+                             'research/logup-characteristic/check_fraction.py','--codec'],
+                            cwd=root,text=True,capture_output=True)
+    if result.returncode or '12 both-field native codec fixtures match' not in result.stdout:
+        raise ValueError(f'fraction codec reference drift: {result.stdout} {result.stderr}')
+    print('gate fraction codecs: exact original fields/bytes and malformed inputs checked; no native reduction or NC credit')
 
 
 def public_coefficients(root):
@@ -440,6 +474,8 @@ def main():
         else:
             if args.gate == 'negative-controls':
                 controls_layout(ROOT)
+            if args.gate in ('negative-controls', 'soundness-accounting'):
+                fraction_codecs(ROOT)
             bootstrap_guard(ROOT, args.gate)
             if args.gate == 'digest':
                 native_encoder(ROOT)

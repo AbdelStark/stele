@@ -7,6 +7,12 @@ description = "Stele — stele-lookup (see RFC-0008)"
 
 [dependencies]
 stele-gkr = { path = "../stele-gkr" }
+stele-hash = { path = "../stele-hash" }
+stele-sumcheck = { path = "../stele-sumcheck" }
+
+[dev-dependencies]
+stele-field = { path = "../stele-field" }
+serde_json = "1.0"
 
 [lints]
 workspace = true
