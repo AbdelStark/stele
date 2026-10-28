@@ -134,10 +134,32 @@ fn parity<K: ChallengeField + Eq + core::fmt::Debug>(
         final_values: vec![K::from_i64(0); 3],
     };
     let mut bytes = vec![0; 512];
+    let rows: Vec<_> = proof
+        .rounds
+        .iter()
+        .map(|r| (r.as_ptr(), r.capacity()))
+        .collect();
+    let outer = (proof.rounds.as_ptr(), proof.rounds.capacity());
+    let finals = (proof.final_values.as_ptr(), proof.final_values.capacity());
+    let absorb = (bytes.as_ptr(), bytes.capacity());
     let mut a = Transcript::new(b"stream").expect("domain");
     let mut b = Transcript::new(b"stream").expect("domain");
     let mut c = Transcript::new(b"stream").expect("domain");
     prove_into(&i, &mut state, &mut proof, &mut bytes, &mut a).expect("stream");
+    assert_eq!(outer, (proof.rounds.as_ptr(), proof.rounds.capacity()));
+    assert_eq!(
+        finals,
+        (proof.final_values.as_ptr(), proof.final_values.capacity())
+    );
+    assert_eq!(absorb, (bytes.as_ptr(), bytes.capacity()));
+    assert_eq!(
+        rows,
+        proof
+            .rounds
+            .iter()
+            .map(|r| (r.as_ptr(), r.capacity()))
+            .collect::<Vec<_>>()
+    );
     assert_eq!(
         proof,
         prove(&i, Dense::new(&i, tables.clone()).expect("dense"), &mut b).expect("proof")

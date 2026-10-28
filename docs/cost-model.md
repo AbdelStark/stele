@@ -81,3 +81,14 @@ measure actual full-size circle encoding at both required rates, including
 preparation, exhaustive output validation and native process memory peaks.
 This is one-time weight-registration work. It does not fit c_c for linear-time
 cut encoding, add a per-proof weight pass or change the planning constants above.
+
+## 8. Native streaming observations
+
+The [E3-05 CPU ledgers and tables](../bench/README.md#streaming-pipeline-e3-05)
+measure the Accepted RFC-0006 A6 strategy's c_sc/T_misc tradeoff, including fixture
+creation, layout conversion, source I/O, proving and original claim consumption.
+Explicit windows reduce prover buffer capacity and process peaks in the measured
+large case, while every tested streaming schedule increases complete runtime.
+The original public consumer still determines the complete pipeline memory peak.
+These observations do not refit the planning constants or establish an inference
+planner, virtual-tensor recomputation cost, GPU bound or additional weight pass.
