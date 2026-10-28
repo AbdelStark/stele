@@ -412,7 +412,7 @@ tasks:
   - RFC-0020 A3
   skill: gkr-reduction-author
   crate: stele-gkr
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E3-06a-public-evidence
   acceptance:
@@ -530,9 +530,13 @@ tasks:
   rfc:
   - RFC-0010 §6,§8
   - RFC-0013 §3.2
+  - RFC-0010 A7
+  - RFC-0013 A1
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: blocked(RFC-0010 A7; RFC-0013 A1)
+  agent: codex-root
+  branch: task/E4-05-commitment-privacy-study
   acceptance:
   - NC-0604
   - proven-only params enforced in treaty
@@ -1145,9 +1149,10 @@ tasks:
   - E4-05
   rfc:
   - RFC-0013
+  - RFC-0013 A1
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-pcs
-  status: ready
+  status: blocked(RFC-0013 A1)
   acceptance:
   - NC-0900/0901
   - overhead <= 5%

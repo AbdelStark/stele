@@ -475,3 +475,27 @@ Cost: message/encoded counts, c_c, decomposition in c_a/T_misc, state and query
 work. No measured constant, benchmark or extra weight pass is introduced.
 Affected tasks: E4-03 (blocked on A3/A6), E4-04, E5-03/E6 range lowering, E7 weight/
 cut consumers and E10/E12 passport/inference work. Original criteria remain.
+
+### A7 — Separate column privacy from row-combination masking
+
+Status: Draft. Question Q29. Companion RFC-0013 A1 and RFC-0011 A1.
+Evidence: [complete-view privacy study](../../formal/commitment-privacy.md).
+Motivation: §8's extra row leaves the original encoded column entries exposed;
+extension-field rows and repeated openings add separate masking obligations.
+
+Proposed replacement for §8's blinding bullet, pending RFC-0013 A1:
+
+> Use the complete Accepted joint-view ZK construction for the committed oracle,
+> row messages and hidden final claims. Its source/mask code and field, leaf
+> bytes, point/query restrictions, mask coefficients and lifetime policy must
+> all be explicit. A random appended row alone neither hides opened columns
+> nor proves privacy of general extension-field messages. Code distance or a
+> proximity certificate does not establish mask rank or hiding. Include all
+> certificate, inference and recursive disclosures in the same privacy analysis.
+
+No production format, randomized encoder, coefficient rule or extra commitment
+is admitted by this Draft. A1/A3/A6, Q12 and the complete simulator remain open.
+E4-05 is blocked on A7/RFC-0013 A1; its NC-0604 and proven-parameter criteria
+remain. E4-03/E4-04/E4-06 retain their source, packing and fused requirements.
+No ledger line or measured constant changes; any eventual randomization must
+account for source reads, code dimensions/rates, entropy, state and native costs.

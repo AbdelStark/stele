@@ -30,6 +30,12 @@ Registry validation alone does not establish per-instance accounting or a profil
 budget; the sumcheck consumer is checked separately below.
 Q12 (RFC-0019) tracks the missing concrete FS theorem/query convention and the
 incompatible illustrative H budget. No profile can be certified from placeholders.
+Q29 and Draft RFC-0013 A1 additionally track the missing joint-view privacy and
+mask-lifetime construction. The MASK placeholder above is not an instantiated
+ZK theorem: an accounting record or mask-presence check cannot establish hiding.
+Soundness losses, statistical privacy errors and mask-generation assumptions
+must be derived separately for the eventual protocol. No production label or
+accounting record is added by the privacy study.
 
 The gate also runs A2's wrapper-feature permutation KATs. This unused permutation
 adds no challenge or ledger line. Q14 must resolve the wrapper hash/transcript
