@@ -54,18 +54,21 @@ this supplies membership-binding evidence, not a PCS or hash-budget certificate.
 
 RFC-0006 A2 / RFC-0012 A4 now have both batching consumers: one BatchCoefficient
 challenge maps to RLC t/p^d and shared rounds to SC M D/p^d (D=2 for claim mode).
-The eight-entry registry is unchanged. Gates check 42 instance and six claim byte/
+Those eight label meanings are unchanged; A3 extends the registry below. Gates check 42 instance and six claim byte/
 record cases, 10^4 coefficient evaluations per field, and actual two-mode controls.
 The [interactive obligation](../../formal/batching.md) remains conditional on true
 final evaluations. The 276-case shared Rust/Python corpus checks exact decisions, every returned obligation,
 and SC/RLC records against descriptors. E3-02 has [both-field CPU baseline ledgers](../../bench/README.md#batching-e3-02);
-Q12 still blocks certification. Catalog coverage is nine controls, not a full claim graph.
+Q12 still blocks certification. Catalog coverage is twelve controls, not a full claim graph.
 
-RFC-0006 A3 / RFC-0012 A5 specify a pending zerocheck consumer. With j=m-k and
-D=δ*(2^k-1), its SC phases record j (ZeroWeight challenges), D (the optional
-skip Sumcheck challenge), and j*δ (tail Sumcheck challenges), all over p^d.
-The [interactive obligation](../../formal/zerocheck.md) is conditional on every
-original slice evaluation being true. Implementation must extend the closed
-registry/inventory and check each phased record against the actual descriptor
-and challenge schedule atomically. Research vectors provide no production
-coverage; the current eight-entry registry is unchanged. Q12 remains open.
+RFC-0006 A3 / RFC-0012 A5 now have a production zerocheck consumer. With j=m-k
+and D=δ*(2^k-1), the three ordered SC phases record j (ZeroWeight), D (optional
+skip Sumcheck), and j*δ (tail Sumcheck), over p^d. The twelve-label registry and
+canonical inventory include its four labels. The [interactive obligation](../../formal/zerocheck.md)
+remains conditional on all original slice claims. Both gates check 130 actual
+Rust/Python byte/claim/record cases against descriptors and transcript continuation,
+plus NC-0207..0209 and the ZeroFinal extension of NC-0802. Numerator, final-label
+and public-consumer bypass mutants fail the gate. The reduction alone does not
+accept a statement; the public adapter consumes every original slice claim.
+E3-03 still requires broader rejection/reference coverage and measured c_sc/total
+consumer cost. Q12 remains open; these gates do not certify a profile.

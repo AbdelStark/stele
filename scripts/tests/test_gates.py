@@ -74,6 +74,21 @@ class GateTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('sumcheck corpus decisions/accounting mismatch', result.stderr)
 
+    def test_rejects_zerocheck_accounting_final_absorb_and_consumer_drift(self):
+        source = self.root / 'crates/stele-sumcheck/src/zerocheck.rs'
+        original = source.read_text()
+        for before, after in [
+            ('numerator: u64::from(m) * degree as u64', 'numerator: u64::from(m) * degree as u64 + 1'),
+            ('AbsorbLabel::ZeroFinal', 'AbsorbLabel::Final'),
+            ('if dot(table, &weights) != claim.value', 'if false'),
+        ]:
+            self.assertIn(before, original)
+            source.write_text(original.replace(before, after, 1))
+            result = self.run_gate('soundness-accounting')
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('zerocheck bytes/claims/accounting/control mismatch', result.stderr)
+        source.write_text(original)
+
     def test_rejects_batch_rlc_accounting_drift(self):
         source = self.root / 'crates/stele-sumcheck/src/batch.rs'
         old = source.read_text()

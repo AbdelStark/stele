@@ -6,6 +6,8 @@ pub mod batching;
 pub mod catalog;
 #[doc(hidden)]
 pub mod sumcheck;
+#[doc(hidden)]
+pub mod zerocheck;
 
 extern crate self as stele_negative_controls;
 #[path = "../pcs/nc_0602.rs"]
@@ -15,6 +17,24 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 207,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch / FinalEvaluationMismatch",
+        run: || zerocheck::run(207),
+    },
+    catalog::RegisteredControl {
+        id: 208,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zerocheck::run(208),
+    },
+    catalog::RegisteredControl {
+        id: 209,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zerocheck::run(209),
+    },
     catalog::RegisteredControl {
         id: 202,
         kind: catalog::ControlKind::Proof,
@@ -58,7 +78,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 800,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",
-        run: || sumcheck::run(800),
+        run: || {
+            sumcheck::run(800)?;
+            zerocheck::run(800)
+        },
     },
     catalog::RegisteredControl {
         id: 802,
@@ -66,7 +89,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "FinalEvaluationMismatch",
         run: || {
             sumcheck::run(802)?;
-            batching::run(802)
+            batching::run(802)?;
+            zerocheck::run(802)
         },
     },
     catalog::RegisteredControl {

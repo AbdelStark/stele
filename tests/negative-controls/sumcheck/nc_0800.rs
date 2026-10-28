@@ -3,4 +3,5 @@
 #[test]
 fn rejects_nc_0800() {
     stele_negative_controls::sumcheck::run(800).expect("exact rejection in both fields");
+    stele_negative_controls::zerocheck::run(800).expect("zerocheck tail extension");
 }

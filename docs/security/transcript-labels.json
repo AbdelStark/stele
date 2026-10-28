@@ -6,5 +6,9 @@
   ["challenge", "stele/v0.1/sumcheck/challenge", "SC"],
   ["absorb", "stele/v0.1/sumcheck/batch", "-"],
   ["absorb", "stele/v0.1/sumcheck/batch-final", "-"],
-  ["challenge", "stele/v0.1/sumcheck/batch-coefficient", "RLC"]
+  ["challenge", "stele/v0.1/sumcheck/batch-coefficient", "RLC"],
+  ["absorb", "stele/v0.1/sumcheck/zero", "-"],
+  ["challenge", "stele/v0.1/sumcheck/zero-weight", "SC"],
+  ["absorb", "stele/v0.1/sumcheck/zero-skip", "-"],
+  ["absorb", "stele/v0.1/sumcheck/zero-final", "-"]
 ]
