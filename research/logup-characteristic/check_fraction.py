@@ -206,6 +206,49 @@ def codec_vectors():
     return result
 
 
+def leaf_codec_vectors():
+    """Real selected-product proofs, closed against their original public sources."""
+    rng = random.Random(310810)
+    result = []
+    for d in (4,8):
+        for m in (0,1,3):
+            for c in (1,3):
+                rand = lambda: tuple(rng.randrange(sc.P) for _ in range(d))
+                sigma = [sc.scalar(rng.randrange(2),d) for _ in range(1 << m)]
+                xs = [[rand() for _ in sigma] for _ in range(c)]
+                alpha,beta = rand(),rand() if c == 1 else sc.scalar(0,d)
+                ids = tuple((1 << 64)-1-j for j in range(c))
+                s = dict(id=len(result)+71,m=m,b=m,leaves=(11,12),theta=[])
+                leaves = ft.lookup_leaves(sigma,xs,alpha,beta,d)
+                context = public(s,leaves,d,ft.fields([alpha,beta,*sigma,*[v for col in xs for v in col]],d))
+                pt,vt = ft.Transcript(context,d),ft.Transcript(context,d)
+                tree,pr = ft.prove(pt,s,leaves)
+                vr = ft.verify(vt,s,tree)
+                proof,receipt = ft.prove_leaf(pt,s,pr,sigma,ids,xs,alpha,beta)
+                verified = ft.verify_leaf(vt,s,vr,sigma,ids,proof,alpha,beta)
+                ft.consume_sources(verified,ids,xs,d)
+                assert receipt == verified and pt.state == vt.state
+                encoded = lambda values: [sc.encode(v).hex() for v in values]
+                payload = b''.join(ft.fields(row,d) for row in [*proof['rounds'],proof['final']])
+                assert len(payload) == 4*d*(4*m+c+2)
+                result.append(dict(degree=d,id=s['id'],m=m,sources=list(ids),
+                    payload_hex=payload.hex(),rounds=[encoded(row) for row in proof['rounds']],
+                    final=encoded(proof['final'])))
+    return result
+
+
+def check_leaf_codec_vectors(write=False):
+    path = Path(__file__).resolve().parents[2] / 'crates/stele-lookup/tests/fixtures/leaf-codec.jsonl'
+    records = leaf_codec_vectors()
+    if write:
+        with path.open('x') as output:
+            output.write(''.join(json.dumps(record,separators=(',',':'))+'\n' for record in records))
+    else:
+        assert [json.loads(line) for line in path.read_text().splitlines()] == records
+    assert len(records) == 12
+    print('12 both-field selected-product codec fixtures match actual Python proofs; no native leaf-engine credit')
+
+
 def check_codec_vectors(write=False):
     path = Path(__file__).resolve().parents[2] / 'crates/stele-lookup/tests/fixtures/fraction-codec.jsonl'
     records = codec_vectors()
@@ -223,9 +266,13 @@ if __name__ == '__main__':
     if sys.argv[1:] in (['--codec'],['--write-codec']):
         check_codec_vectors(sys.argv[1:] == ['--write-codec'])
         raise SystemExit(0)
+    if sys.argv[1:] in (['--leaf-codec'],['--write-leaf-codec']):
+        check_leaf_codec_vectors(sys.argv[1:] == ['--write-leaf-codec'])
+        raise SystemExit(0)
     assert not sys.argv[1:]
     trees,leaves = check_trees(),check_leaf_sources()
     check_boundaries()
     check_codec_vectors()
+    check_leaf_codec_vectors()
     print(f'{trees} full-K fraction trees and {leaves} selector/source reductions: claims, bytes, accounting and continuation agree')
     print('root/round/coefficient/leaf/pole/malformed controls reject; no native NC, PCS, ZK or profile credit')
