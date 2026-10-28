@@ -1,0 +1,22 @@
+# RFC-0010 A4 native catalog export; proven means complete PCS parameters.
+# Neither family currently has an admitted PCS/profile parameter set.
+version = 1
+
+[[code]]
+id = "circle-m31/v1"
+proven = false
+distance_evidence = "rfc-0010-a2/root-bound-v1"
+assumption = "none"
+max_log_codeword = 30
+log_blowups = [1, 2]
+
+[[code]]
+id = "expander-m31/v2"
+proven = false
+distance_evidence = "rfc-0010-a1/finite-v2"
+assumption = "blake3-random-oracle"
+setup_evidence = "rfc-0012-a7/2^256-all-seeds-v2"
+exponents = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+seed_bits = 256
+setup_loss_numerator = 200431782
+setup_loss_denominator_bits = 160

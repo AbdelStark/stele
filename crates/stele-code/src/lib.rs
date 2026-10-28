@@ -6,10 +6,19 @@
 extern crate alloc;
 use alloc::vec::Vec;
 use stele_field::{Field, M31};
+mod expander;
+mod native;
+pub use native::{Code, CodeId, Element, Parameters, PreparedCode, Profile};
 
 /// Invalid encoding request or an allocation that cannot be represented/satisfied.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
+    /// Unknown, malformed or unsupported closed code identity.
+    InvalidCodeId,
+    /// A bounded setup stream did not produce a complete row.
+    SamplingExhausted,
+    /// No complete PCS parameter set is admitted for this request.
+    UnsupportedParameters,
     /// Unsupported message dimension or log blowup.
     InvalidSize,
     /// The row does not have the configured message length.

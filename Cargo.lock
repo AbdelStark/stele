@@ -166,6 +166,7 @@ name = "stele-code"
 version = "0.1.0"
 dependencies = [
  "stele-field",
+ "stele-hash",
  "stele-simd",
 ]
 
