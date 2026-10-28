@@ -436,3 +436,43 @@ inventory and actual accounting/control gates atomically. The current production
 registry remains unchanged; this Draft alone grants no label or protocol access.
 Cost impact: descriptor/source-byte absorption in T_misc, with no fitted constant
 or weight-pass change. Affected tasks: E3-06 and its reduction consumers.
+
+
+### A7 — Separate setup failure and adaptive seed selection
+
+Status: Draft. Questions Q23/Q12. Companion to RFC-0010 A1. Candidate contract and
+self-contained conditional argument: [seeded setup](../../formal/seeded-setup.md).
+Motivation: a uniformly sampled code theorem does not certify a chosen seed, and
+a setup error cannot disappear into the PCS column-query term or hash loss.
+
+Proposed addition to §4, pending the quantum theorem and full admission contract:
+
+> Account separately for the event that an admitted code setup fails its required
+> support/distance properties. Add that event's bound to the protocol error
+> conditional on good setup; do not assume good setup from parser success or a
+> `proven` flag. Its exact distribution, versions, lifetime/query policy, reuse
+> and authoritative consumers must be fixed and checked. Missing evidence rejects
+> admission rather than assigning a zero loss.
+>
+> For the candidate classical random-oracle model only, the finite tower bound is
+> epsilon=200431782/2^288. With Q charged classical oracle queries/preprocessing
+> and S distinct previously untouched output seeds, use min(1,(Q+S)*epsilon).
+> Bounded-stream exhaustion rejects completely and is coupled to the uncapped
+> ensemble, without conditioning away failures. Reused prefixes/fields share the
+> same tower event. Neither Q nor S is a trusted prover assertion.
+>
+> This classical expression is inapplicable to the quantum adversaries allowed
+> by RFC-0002. Supply an applicable quantum theorem, exact query convention and
+> FS/H composition before acceptance; change finite parameters if required. The
+> exact quantum-search counterexample in the study rejects unqualified reuse of
+> the classical formula. Concrete BLAKE3 vectors do not prove an oracle assumption.
+
+Soundness impact: proposes a separate setup term, with no production ledger or
+loss-family change until admission and its theorem are complete. No proof challenge,
+transcript label or challenge derivation changes. Q12 still blocks certification.
+The sampler is deterministic setup expansion, not a second Fiat-Shamir mechanism.
+
+Cost impact: bounded setup hashing/preparation in T_misc/c_c, graph storage and
+regeneration copies. No measured coefficient or weight-pass count changes. Affected
+tasks: E4-01/E4-03/E4-05, E8-05, E12-04/E12-09. A1 and A7 remain Draft; this
+research does not enable a code registry, PCS parameter or treaty profile.

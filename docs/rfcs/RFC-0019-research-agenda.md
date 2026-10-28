@@ -84,6 +84,8 @@ Stele IOP, and which admissible adversary query cap reconciles FS/H with each
 profile target? The existing Q <= 2^100 illustration gives H = 2^-56 under the
 stated Q^2/2^256 formula, exceeding the treaty target before other losses. Resolve
 in E8-05/E12-09; do not infer certification from a transcript KAT or a placeholder.
+RFC-0012 A7 also requires quantum setup-selection accounting: its classical
+first-touch bound is explicitly inapplicable to RFC-0002's quantum threat model.
 
 Q11 resolution: RFC-0012 A1 Accepted with same-author skill reviews. E2-00
 implements the kernel; E2-01 retains every original acceptance criterion and
@@ -193,7 +195,10 @@ Draft. The code-provenance study checks fixed-map linearity and exact small-code
 distances, and exhibits a low-weight word hidden by 1,000 random samples. Binary
 RAA parameters and sampled minima do not certify the M31 code. E4-01 is blocked
 on the complete construction/API/evidence contract; production ledgers, controls
-and profile admission remain separate requirements.
+and profile admission remain separate requirements. The candidate seeded manifest,
+bounded sampler and classical ROM argument in formal/seeded-setup.md preserve
+that boundary. Their quantum counterexample requires an applicable quantum setup
+bound and Q12 composition before admission; RFC-0012 A7 remains Draft.
 
 Q24: which ordered domains, FFT span, normalization, distance bound and maximum
 size define the circle encoder? Candidate RFC-0010 A2 gives a concrete map and

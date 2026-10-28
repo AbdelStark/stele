@@ -76,6 +76,10 @@ Accepted A2 circle base and all twelve finite-bound degree pairs. Independent de
 encoding and the legal zero-edge distance-one counterexample separate map correctness
 from setup admission. The candidate does not resolve registry/proximity or authorize
 a production encoder/profile; all remaining requirements below stay in force.
+Seeded candidate: [manifest, bounded sampler and classical setup loss](../../formal/seeded-setup.md).
+RFC-0012 A7 records the proposed separate setup error. The classical bound does
+not cover RFC-0002's quantum adversary; quantum setup selection and Q12 remain
+acceptance gates. Regeneration consistency supplies no distance/profile certificate.
 Motivation: §3 names code families but does not fix a concrete M31 encoder, setup
 or supported lengths. The distance-estimate task and a `proven` boolean cannot
 replace evidence for the distance and proximity hypotheses of §6. This draft
