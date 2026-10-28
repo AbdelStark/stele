@@ -250,3 +250,39 @@ Native registry/MLE evaluation parity, real NC-0404/0405/0701 consumers and the
 full A2 acceptance remain. This study neither proves lookup inclusion nor
 turns a research data digest into a passport commitment. No performance result,
 new challenge, field-faithfulness exception or committed intermediate is added.
+
+## Function composition identity investigation (Q25 continuation)
+
+Question: can semantic function identities, selected representations and exact
+component closure be bound without confusing corrected/direct exp with the
+split-dependent product or dropping RMSNorm parameters? Kill criterion: a
+representation changes a function's integers under the same identity, wrong
+components are accepted, norm epsilon/scales are omitted, or a manifest digest
+is treated as the complete model/passport identity. The security property is
+definition/representation binding; generation and validation remain T_misc.
+This prototype leaves operation/source mapping, code roots and full native
+lookup/configuration delivery explicit obligations.
+
+The [function/representation candidate](../../formal/cqis-function-identity.md)
+binds product splits and every RMSNorm dimension/scale/epsilon parameter in
+FunctionId. Correctly rounded nearest exp has a split-independent FunctionId;
+direct and corrected evaluation have distinct RepresentationIds and fixed
+component roles. A verifier-owned choice determines all dependencies. An
+equivalent but differently selected representation still rejects under that
+configuration, preserving deterministic lowering and proof bytes.
+
+The manifest sorts unique functions and the exact component union by their
+raw identities, binds descriptor/representation bytes and regenerates every
+canonical component-data digest. It adopts no claimed shapes, digests or
+choices from supplied bytes. `check_functions.py` independently assembles frames
+and parses the full manifest, checks actual corrected/direct outputs against
+an independent exact oracle, and rejects changed parameters, roles, ordering,
+duplicates, lengths and representation substitutions. The
+[artifact](function-identity-candidates.json) retains all exact evidence bytes.
+
+Recommendation: incorporate these function/component contracts into the complete
+A2/RFC-0008/0011 amendment review and deliver native generators. The manifest
+is a function set, not operation order, source binding, a full model configuration
+or a passport. Actual code-root derivation, operation-to-function mapping and
+native lookup/range/normalization consumers remain mandatory. Native E5 table
+delivery should not be credited with those later integration obligations.

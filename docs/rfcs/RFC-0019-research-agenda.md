@@ -270,6 +270,13 @@ identity, shape, entry, padding, order, alias and length tampering. Complete
 composition/configuration identities and passport root derivation remain open;
 these are not native lookup/identity controls or A2 acceptance.
 
+Q25 function continuation: formal/cqis-function-identity.md separates semantic
+function identities from chosen representations, binds RMSNorm parameters and
+derives exact component closure. Canonical manifests regenerate every component
+data digest from the definition. Independent frame/manifest checks and actual
+direct/corrected output agreement support the candidate. Full operation/source
+and passport code-root binding, normative review and native delivery remain.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.
