@@ -150,3 +150,33 @@ Recorded baselines: [QM31](ledger/e3-02-batching-qm31.json) and
 `095cfa445f864c7ecd3ae7ccef72fbf5c6be463f` on the recorded Apple M4 Max. Each field
 retains three samples for each of nine cases. These establish native c_sc and
 process-memory baselines; they do not fit the cost model or establish a speedup.
+
+## Zerocheck (E3-03)
+
+On macOS, run `python3 bench/zerocheck.py QM31 <new-ledger.json>` and repeat for
+`OM31`, from a clean committed checkout. Keep output outside the checkout while
+measuring both fields. The runner freezes its plan, captures source/device/toolchain,
+never overwrites a record and checks source state again after measurement.
+
+Cases fix m=8 and cover degrees 0..4, eq-only and k=1/2/4 when eligible. Reference
+and dense strategies must produce identical subproof values for each fixed
+(descriptor,k). Different k selects a different A3 protocol for the same row-zero
+assertion; claim count and SC losses change. The direct reference recomputes
+original slice MLEs through exhaustive residual sums; it is not a tuned linear-time
+baseline. Both strategies consume every timed proof with the actual public verifier.
+
+The ledger retains separate prover/consumer times, complete-operation time per
+original hypercube point, all samples and integer ratios. Allocation, descriptor
+processing and transcript initialization are timed; synthetic input construction,
+encoding and receipt/continuation assertions are outside timing. Case order reverses
+between samples. Skip losses remain in the record; no plan's k is selected automatically.
+
+Separate-process peak RSS includes setup, warmup, prover, public consumer, encoding,
+code and allocator retention. Caller-owned input and returned-proof payloads are
+reported separately. Scratch figures are conservative requested-payload bounds,
+summing field-buffer maxima and descriptor/message framing from the implementation;
+consumer bounds include returned claim values and points. They exclude Vec/allocator
+headers and stack, and are not isolated measured scratch peaks or DRAM traffic.
+The plan records each bound formula; changing allocation structure requires revisiting
+those formulas. This is CPU microbenchmark evidence; profile names select the field,
+not a security certificate. No cost-model fit, inference, GPU or ZK result follows.
