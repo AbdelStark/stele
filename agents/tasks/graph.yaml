@@ -530,9 +530,11 @@ tasks:
   rfc:
   - RFC-0010 §6,§8
   - RFC-0013 §3.2
+  - RFC-0010 A7
+  - RFC-0013 A1
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: blocked(RFC-0010 A7; RFC-0013 A1)
   agent: codex-root
   branch: task/E4-05-commitment-privacy-study
   acceptance:
@@ -1147,9 +1149,10 @@ tasks:
   - E4-05
   rfc:
   - RFC-0013
+  - RFC-0013 A1
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-pcs
-  status: ready
+  status: blocked(RFC-0013 A1)
   acceptance:
   - NC-0900/0901
   - overhead <= 5%

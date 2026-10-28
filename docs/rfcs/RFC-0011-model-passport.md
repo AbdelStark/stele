@@ -36,3 +36,29 @@ statement is unchanged. A `session_id` field allows multi-turn chaining (RFC-001
 ## 6. Negative controls
 NC-0700 passport root mismatch; NC-0701 table commitment swapped; NC-0702 certificate for a different root; NC-0703 scale
 tensor altered after registration.
+
+## 7. Amendment log
+
+### A1 — Confidentiality across a fixed passport's lifetime
+
+Status: Draft. Question Q29. Companions RFC-0013 A1 and RFC-0010 A7.
+Evidence: [mask lifetime and fixed-oracle analysis](../../formal/commitment-privacy.md).
+Motivation: a mask row committed in a passport is fixed with its root. Fresh
+proof challenges cannot refresh it, and raw coordinate disclosures accumulate.
+
+Proposed addition to §§2,4:
+
+> Specify the complete confidentiality lifetime of each committed weight oracle,
+> including its certificate and every later opening. Any query-bounded masking
+> argument must count the cumulative disclosures to that same oracle. Fresh
+> session identifiers, seeds or challenges do not change its committed mask.
+> A mask refresh must bind the unchanged source to the resulting commitment and
+> justify certificate reuse or replacement. Its source reads, registration work,
+> storage and per-proof costs require explicit accounting. Alternatively specify
+> a protocol hiding the queried payload itself. Neither path is selected here.
+
+The original checkpoint/source binding, public statement, privacy goal and
+one-weight-pass requirement remain. No new root, seed API, certificate format,
+loss or profile is admitted. Costs and possible protocol losses depend on the
+complete replacement; no measured constant changes. Affected tasks: E4-05,
+E4-06, E10 passport/inference and E12 privacy/certificate consumers.

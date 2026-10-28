@@ -281,3 +281,12 @@ separate short-column u_s-to-B fold, with symbolic costs and a both-field
 one-visit prototype. This recommends an explicit weight-layout amendment; it
 does not admit that layout, remove private packing requirements, supply a native
 pass-count gate or resolve A3/A6, ZK or the full authenticated phase schedule.
+
+Q29: which complete commitment/sumcheck view and mask lifecycle provide privacy
+for base-field sources, extension-field claims and repeated passport openings?
+RFC-0013 A1 / RFC-0010 A7 / RFC-0011 A1 record the appended-row column leak,
+base-mask support gap, joint-view/reuse failures and cumulative-query requirement.
+formal/commitment-privacy.md gives exact linear-view conditions and a limited
+randomized-row example; neither is a complete simulator or native ZK protocol.
+E4-05/E12-01 are blocked on the full amended contract, retaining their actual
+controls, proven-only parameters, <=5% overhead and one-weight-pass requirements.
