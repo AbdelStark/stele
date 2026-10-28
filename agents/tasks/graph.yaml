@@ -1351,6 +1351,8 @@ tasks:
   skill: pcs-engineer
   crate: stele-wrapper
   status: ready
+  agent: codex-root
+  branch: task/E14-01-private-verifier-study
   acceptance:
   - W8 certificate <= 500 KB verified <= 200 ms
   - NC-1203
