@@ -88,6 +88,17 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('native corpus byte mismatch', result.stderr)
 
+    def test_rejects_native_measurement_overlap_omission(self):
+        source = self.root / 'crates/stele-code/src/measurement.rs'
+        original = source.read_text()
+        before = 'self.work.peak_owned_bytes.max(self.live)'
+        self.assertIn(before, original)
+        source.write_text(original.replace(before, 'self.work.peak_owned_bytes.max(bytes(&values))'))
+        result = self.run_gate('digest')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native encoder gate failed', result.stderr)
+        self.assertIn('matches_reference_complete_work_and_capacity_all_fields', result.stderr)
+
     def test_rejects_registry_mapping_drift_and_invalid_production_registry(self):
         inventory = self.root / 'docs/security/transcript-labels.json'
         original = inventory.read_text()

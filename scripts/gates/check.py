@@ -82,6 +82,7 @@ def native_encoder(root):
     commands = [
         (['cargo', 'test', '-p', 'stele-code', '--locked', '--offline'],
          ['test matches_reference_materialized_codeword_digests ... ok',
+          'test matches_reference_complete_work_and_capacity_all_fields ... ok',
           'test encoder::tests::rejects_outer_inner_and_late_sampling_exhaustion ... ok']),
         (['uv', 'run', '--locked', '--script', 'research/code-provenance/check_native.py'],
          [f'native d={d}: 1006 full words and ordered queries; {{3: 900, 4: 90, 5: 10}} seeds'

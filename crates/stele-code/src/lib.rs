@@ -7,7 +7,10 @@ extern crate alloc;
 use alloc::vec::Vec;
 use stele_field::{Field, M31};
 mod encoder;
+mod measurement;
 pub use encoder::{Code, CodeField, Encoder, EncoderInfo};
+use measurement::Measurement;
+pub use measurement::{EncoderWork, MeasuredEncoding};
 
 /// Invalid encoding request or an allocation that cannot be represented/satisfied.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -88,12 +91,23 @@ impl Circle {
     /// Interpolate the exact FFT span, then zero-extend coefficients and evaluate.
     /// Preparation and transforms are included; the borrowed input is retained.
     pub fn encode<K: Field>(&self, row: &[K]) -> Result<Vec<K>, Error> {
+        self.encode_recorded(row, &mut Measurement::default())
+    }
+
+    fn encode_recorded<K: Field>(
+        &self,
+        row: &[K],
+        measured: &mut Measurement,
+    ) -> Result<Vec<K>, Error> {
         self.validate(row)?;
-        let mut output = reserved(self.codeword_len)?;
+        measured.work.circle_calls += 1;
+        let mut output = measured.reserve(self.codeword_len)?;
         output.extend_from_slice(row);
         output.resize(self.codeword_len, K::from_i64(0));
-        transform(&mut output[..self.message_len], true)?;
-        transform(&mut output, false)?;
+        measured.work.copied_symbols += row.len() as u64;
+        measured.work.initialized_symbols += (self.codeword_len - row.len()) as u64;
+        transform_recorded(&mut output[..self.message_len], true, measured)?;
+        transform_recorded(&mut output, false, measured)?;
         Ok(output)
     }
 
@@ -137,14 +151,14 @@ fn generator_power(mut exponent: u32) -> (M31, M31) {
 }
 
 // RFC-0010 A2: root y, then x quotients under x -> 2*x*x-1; N-1 base elements.
-fn twiddles(log: u32) -> Result<Vec<Vec<M31>>, Error> {
-    let mut levels = reserved(log as usize)?;
+fn twiddles(log: u32, measured: &mut Measurement) -> Result<Vec<Vec<M31>>, Error> {
+    let mut levels = measured.reserve(log as usize)?;
     if log == 0 {
         return Ok(levels);
     }
     let half = 1usize << (log - 1);
-    let mut ys = reserved(half)?;
-    let mut xs = reserved(half / 2)?;
+    let mut ys = measured.reserve(half)?;
+    let mut xs = measured.reserve(half / 2)?;
     let mut pt = generator_power(1 << (30 - log));
     let step = multiply(pt, pt);
     for j in 0..half {
@@ -160,7 +174,7 @@ fn twiddles(log: u32) -> Result<Vec<Vec<M31>>, Error> {
     }
     for level in 2..log as usize {
         let previous = &levels[level - 1];
-        let mut next = reserved(previous.len() / 2)?;
+        let mut next = measured.reserve(previous.len() / 2)?;
         for x in &previous[..previous.len() / 2] {
             let square = *x * *x;
             next.push(square + square - M31::ONE);
@@ -170,9 +184,11 @@ fn twiddles(log: u32) -> Result<Vec<Vec<M31>>, Error> {
     Ok(levels)
 }
 
-fn invert_twiddles(levels: &mut [Vec<M31>]) -> Result<(), Error> {
+fn invert_twiddles(levels: &mut [Vec<M31>], measured: &mut Measurement) -> Result<(), Error> {
     for level in levels {
-        let mut prefixes = reserved(level.len())?;
+        let mut prefixes = measured.reserve(level.len())?;
+        let prefix_bytes = measurement::bytes(&prefixes);
+        measured.work.inverse_prefix_elements += level.len() as u64;
         let mut product = M31::ONE;
         for value in level.iter() {
             prefixes.push(product);
@@ -185,6 +201,7 @@ fn invert_twiddles(levels: &mut [Vec<M31>]) -> Result<(), Error> {
             *value = inverse * prefix;
             inverse = inverse * original;
         }
+        measured.release(prefix_bytes);
     }
     Ok(())
 }
@@ -198,14 +215,24 @@ fn bit_reverse<K>(values: &mut [K], log: u32) {
     }
 }
 
-fn transform<K: Field>(values: &mut [K], inverse: bool) -> Result<(), Error> {
+fn transform_recorded<K: Field>(
+    values: &mut [K],
+    inverse: bool,
+    measured: &mut Measurement,
+) -> Result<(), Error> {
     if values.len() == 1 {
         return Ok(());
     }
     let log = values.len().trailing_zeros();
-    let mut levels = twiddles(log)?;
+    let mut levels = twiddles(log, measured)?;
+    let level_bytes =
+        measurement::bytes(&levels) + levels.iter().map(measurement::bytes).sum::<usize>();
+    measured.work.twiddle_elements += (values.len() - 1) as u64;
+    measured.work.circle_transform_additions += values.len() as u64 * u64::from(log);
+    measured.work.circle_transform_products +=
+        values.len() as u64 / 2 * u64::from(log) + if inverse { values.len() as u64 } else { 0 };
     if inverse {
-        invert_twiddles(&mut levels)?;
+        invert_twiddles(&mut levels, measured)?;
         for level in &levels {
             let width = 2 * level.len();
             for block in values.chunks_exact_mut(width) {
@@ -242,7 +269,13 @@ fn transform<K: Field>(values: &mut [K], inverse: bool) -> Result<(), Error> {
             }
         }
     }
+    measured.release(level_bytes);
     Ok(())
+}
+
+#[cfg(test)]
+fn transform<K: Field>(values: &mut [K], inverse: bool) -> Result<(), Error> {
+    transform_recorded(values, inverse, &mut Measurement::default())
 }
 
 #[cfg(test)]
@@ -257,9 +290,10 @@ mod tests {
     #[test]
     fn matches_reference_twiddle_inverses_and_transform_round_trips() {
         for log in 0..=10 {
-            let original = twiddles(log).expect("twiddles");
+            let mut measured = Measurement::default();
+            let original = twiddles(log, &mut measured).expect("twiddles");
             let mut inverse = original.clone();
-            invert_twiddles(&mut inverse).expect("inversion");
+            invert_twiddles(&mut inverse, &mut measured).expect("inversion");
             assert_eq!(original.iter().map(Vec::len).sum::<usize>(), (1 << log) - 1);
             for (a, b) in original.iter().flatten().zip(inverse.iter().flatten()) {
                 assert_eq!(*a * *b, M31::ONE);
