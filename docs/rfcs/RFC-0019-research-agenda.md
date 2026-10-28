@@ -182,3 +182,17 @@ distances, and exhibits a low-weight word hidden by 1,000 random samples. Binary
 RAA parameters and sampled minima do not certify the M31 code. E4-01 is blocked
 on the complete construction/API/evidence contract; production ledgers, controls
 and profile admission remain separate requirements.
+
+Q24: which ordered domains, FFT span, normalization, distance bound and maximum
+size define the circle encoder? Candidate RFC-0010 A2 gives a concrete map and
+self-contained derivation. The circle study checks 140 complete small encodings,
+the extra full-space dimension and a counterexample to the ordinary RS MDS bound.
+E4-02 is blocked on A2 acceptance; no production or 2^30 benchmark credit follows
+from these checks. The benchmark preserves 2^30 total input symbols at both rates,
+using supported rows with all per-row and aggregate lengths recorded explicitly.
+
+Q24 resolution: RFC-0010 A2 Accepted with same-author encoder/rfc/soundness passes
+and a self-contained deterministic derivation. E4-02 is ready for implementation.
+The large benchmark explicitly covers 2^30 input symbols at each rate; all rows
+must actually be encoded, with input/output lengths and counts recorded. A1, PCS parameters,
+profile accounting and actual production parity/benchmark evidence remain open.

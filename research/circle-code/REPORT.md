@@ -1,0 +1,55 @@
+# Q24 — Canonical circle encoding
+
+Question: which basis, ordered domain, interpolation normalization and maximum
+size define RFC-0010's circle encoder? Cost term: one-time weight registration
+encoding and its preparation/memory, not the per-proof weight pass. Kill criteria:
+any direct-evaluation disagreement, zero divisor in a supported transform,
+ambiguous interpolation, wrong distance bound or silently reduced benchmark size.
+
+The primary reference is [Haböck–Levit–Papini, Circle STARKs, §4](https://eprint.iacr.org/2024/278).
+The indexed primary-paper §4 excerpt gives the y/v_h basis and even/odd recursion.
+Full PDF fetches were unavailable. An automatically converted copy was used to
+locate sections, not as theorem authority: the candidate uses the self-contained
+[derivation](../../formal/circle-code.md) and the tests below. No upstream prover
+implementation was copied. The encoder's distance claim is limited to the proved
+root bound; no paper's PCS parameters or proximity theorem are instantiated.
+
+Run `python3 research/circle-code/check_circle.py` (standard library only).
+It derives the generator from t=2 in the rational circle parametrization, checks
+its exact order and defines domains by odd generator exponents. It compares a
+recursive even/odd transform against independent direct basis evaluation. The
+inverse includes every factor of 1/2. Canonical coefficient order has the y bit
+least significant, followed by x, 2*x^2-1, and subsequent doubled-angle polynomials.
+
+Results: 70 seeded interpolation/evaluation round trips, 28 directed boundary
+round trips and 140 complete encodings for
+message logs 0..6 and rates 1/2,1/4 agree with direct evaluation. Each encoding
+also passes a linear-combination check. Complete small-domain order is checked
+through log six; endpoint formulas and generator-order arithmetic are checked
+through log 30 without allocating those large domains. Tests distinguish reversed
+order and missing normalization, reject invalid shapes/rates/log 31, and cover
+the explicit constant-only base case. These are M31 algebra tests; actual Rust
+and extension-field implementation parity remains a delivery requirement.
+
+Two counterexamples prevent overclaiming. The omitted top polynomial v_m vanishes
+at every message-domain point but not every expanded-domain point; interpolation
+over the full total-degree space would therefore be ambiguous. Separately, the
+dimension-two, length-four FFT code has a weight-two nonzero word. Its distance
+is not the ordinary Reed–Solomon MDS value N-k+1. The supported general lower
+bound is N-k (and N for a constant message), as proved in the derivation.
+
+The ordinary twin-coset construction supports at most 2^30 codeword symbols over
+M31. Rate-1/2 and rate-1/4 messages at that output size contain 2^29 and 2^28
+symbols respectively. A single 2^30-symbol input row at those rates would need a
+different domain/construction. A2 preserves a 2^30-input-symbol benchmark through
+the actual row-wise matrix encoding: two rows at rate 1/2 and four rows at rate
+1/4, each producing 2^30 codeword symbols. Every row must actually run; scaling one
+row's timing is insufficient. Both per-row and aggregate input/output dimensions
+are recorded. No large allocation or benchmark was run here, and the task remains
+incomplete until the actual required ledger exists.
+
+Recommendation: accept the explicit encoder-only contract after the required
+reviews, then implement it with independent vectors, real memory/cost evidence,
+and the full 2^30-input-symbol benchmark. Encoding cannot admit a PCS profile: A1's
+registry/provenance contract, codeword validity, proximity, query accounting and
+authentication remain separate. There is no GPU or full-inference result here.

@@ -36,3 +36,8 @@
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.
+
+RFC-0010 A2 specifies a circle encoder only. Its research order/normalization and
+distance counterexamples add no PCS binding or NC coverage. NC-0600..0605 still
+require the actual commitment/opening consumers; E4-02 encoder tests cannot mark
+them done or admit a PCS profile.

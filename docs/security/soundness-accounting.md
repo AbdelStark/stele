@@ -97,3 +97,10 @@ regressions reject corpus drift, broken adapter selection and missing claims.
 E3-04 now has [both-field complete-cost/memory ledgers](../../bench/README.md#small-value-pipeline-e3-04),
 including consumer-dominated pipeline peaks and all losses. Performance evidence
 does not change the SC bound; these finite checks certify no profile.
+
+RFC-0010 A2's circle map has a deterministic distance lower bound N-k for k>=2,
+and N for a constant message. This is not a PCS proximity-gap or profile bound.
+Its encoder contract adds no transcript label, challenge or implemented loss line.
+The map remains to be implemented under E4-02; A1's parameter provenance and the
+actual PCS consumer/accounting tasks remain open. The code identity alone cannot
+admit a profile or certify codeword validity of a Merkle commitment.

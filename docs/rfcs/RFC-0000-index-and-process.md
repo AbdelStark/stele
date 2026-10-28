@@ -35,7 +35,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted |
 | 0009 | Attention protocol | Accepted |
-| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted; A1 Draft |
+| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2); A1 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted |
 | 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5) |
 | 0013 | Zero-knowledge | Accepted |

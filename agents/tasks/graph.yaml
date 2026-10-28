@@ -450,13 +450,16 @@ tasks:
   - E1-04
   rfc:
   - RFC-0010 §3
+  - RFC-0010 A2
   - RFC-0003 §3
   skill: pcs-engineer
   crate: stele-code
   status: ready
+  agent: codex-root
+  branch: task/E4-02-circle-contract
   acceptance:
   - matches naive evaluation
-  - 2^30 encode benchmark
+  - 2^30 input-element encode benchmark at both rates using valid rows (RFC-0010 A2)
 - id: E4-03
   epic: E4
   title: 'Interleaved-code PCS: commit, functional opening a⊗b, column spot checks, packing int8/int16'
