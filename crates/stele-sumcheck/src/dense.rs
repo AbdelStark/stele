@@ -23,6 +23,16 @@ pub struct Dense<K> {
     remaining: u32,
 }
 impl<K: ChallengeField> Dense<K> {
+    // RFC-0006 A5: a materialized prefix tail keeps the original A1 instance.
+    pub(crate) fn from_folded(tables: Vec<Vec<K>>, remaining: u32) -> Result<Self, Error> {
+        if tables
+            .iter()
+            .any(|t| !t.len().is_power_of_two() || t.len().trailing_zeros() != remaining)
+        {
+            return Err(Error::PublicShape);
+        }
+        Ok(Self { tables, remaining })
+    }
     // RFC-0006 A2: inactive prefixes use the computed sum, not a claimed sum.
     pub(crate) fn sum(&self, i: &Instance<K>) -> Result<K, Error> {
         if self.remaining == 0 {

@@ -11,10 +11,12 @@ pub mod batch;
 pub mod claim_batch;
 mod dense;
 mod instance;
+mod small;
 /// Eq-factored zerocheck and bounded skip, RFC-0006 A3.
 pub mod zerocheck;
 pub use dense::Dense;
 pub use instance::{Instance, Term};
+pub use small::{Small, SmallTable};
 
 /// Invalid input or failed reduction; abort the entire transcript attempt on error.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -25,6 +27,8 @@ pub enum Error {
     InvalidBatch,
     /// Invalid row-zero descriptor or plan-selected skip count.
     InvalidZerocheck,
+    /// Unsupported small-value prefix or a different cached instance.
+    InvalidSmallValue,
     /// Subproof dimensions differ from the verifier-owned instance.
     ProofShape,
     /// Input tables or strategy dimensions differ from the instance.

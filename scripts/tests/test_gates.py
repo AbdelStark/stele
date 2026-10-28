@@ -98,6 +98,15 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('zerocheck bytes/claims/accounting/control mismatch', result.stderr)
 
+    def test_rejects_missing_small_field_check(self):
+        source = self.root / 'crates/stele-sumcheck/tests/small.rs'
+        original = source.read_text()
+        self.assertIn('fn matches_reference_small_om31()', original)
+        source.write_text(original.replace('fn matches_reference_small_om31()', 'fn omitted_small_check()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('small strategy parity/control mismatch', result.stderr)
+
     def test_rejects_zerocheck_corpus_drift_and_receipts(self):
         corpus = self.root / 'research/zerocheck/corpus.jsonl'
         original = corpus.read_text()

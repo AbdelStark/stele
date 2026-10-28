@@ -170,6 +170,21 @@ def batch_corpus(root):
     print(f'gate batching: {len(cases)} shared decisions, all obligations and SC/RLC checked; no profile certified')
 
 
+def small_strategy(root):
+    """A5 directed parity and actual original-value consumer rejection."""
+    for package, target, tests in [
+        ('stele-sumcheck', 'small', ('matches_reference_small_qm31',
+         'matches_reference_small_om31', 'rejects_small_constructor_and_cached_instance',
+         'matches_reference_small_zero_one_folds')),
+        ('stele-negative-controls', 'nc-0204', ('rejects_nc_0204',)),
+    ]:
+        result = subprocess.run(['cargo', 'test', '-p', package, '--test', target,
+                                 '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+        if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
+            raise ValueError(f'small strategy parity/control mismatch: {result.stdout} {result.stderr}')
+    print('gate small strategy: directed both-field parity and NC-0204; seeded corpus and measured costs pending')
+
+
 def zerocheck(root):
     """Actual A3 bytes, all slice claims, SC phases and one-value controls."""
     for test, command in [
@@ -230,7 +245,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -308,6 +323,7 @@ def main():
             if args.gate in ('negative-controls', 'soundness-accounting'):
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
+                small_strategy(ROOT)
                 batch_instances(ROOT)
                 batch_claims(ROOT)
                 batch_corpus(ROOT)
