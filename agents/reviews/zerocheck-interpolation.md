@@ -2,7 +2,7 @@
 
 Reviewer: codex-root, also the author. Same-author soundness-auditor and
 sumcheck-prover-engineer passes; not independent audit. Scope: interpolation
-arithmetic and expanded research fixtures, not the A3 production consumer.
+arithmetic, static descriptor encoding and expanded fixtures, not the A3 consumer.
 
 A3 permits 61 nodes. Products of their integer differences overflow i64;
 accumulating denominators in K avoids overflow while preserving their value
@@ -19,7 +19,9 @@ node endpoints, and invalid counts; research fixtures now include all 130 honest
 cases and the first challenge after ZeroFinal. Fixtures earn no NC credit.
 
 Workflow 03 checklist:
-- Public items: none; private arithmetic follows RFC-0006 A1/A3.
+- Public items: A3 descriptor and proof/result data; no prover/verifier yet.
+  Encode checks zero claimed_sum, distinct ids, factors/degree and k eligibility.
+  All 130 descriptors match the oracle; invalid configurations reject.
 - Challenges/absorbs: no production schedule or label change.
 - Claims/consumers: unchanged; all A1/A2 obligations remain.
 - Bindings/controls: none added; existing NC-0200/0201/0205/0202/0206/0802 retained.
