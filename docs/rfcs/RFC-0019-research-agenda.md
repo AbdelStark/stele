@@ -256,6 +256,13 @@ overflow rejection and approximation bounds. Static wide-arithmetic magnitudes
 and base-256 multiplication identities are retained. Canonical identities,
 complete native consumers and model evidence remain open under A2/A3.
 
+Q25 larger-domain continuation: formal/cqis-wide-exp.md gives explicit split
+parameters, sub-tables bounded by 2^16 rows, full endpoints and strict absolute
+error for B<=31. Independent exact checks cover every sub-table entry in six
+wide configurations and sampled products. Split-dependent outputs remain part
+of identity; full correction storage is not hidden. Wide index consumers,
+canonical bytes and attention-scale/native/model integration remain open.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.

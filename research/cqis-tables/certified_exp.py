@@ -16,9 +16,12 @@ def round_nonnegative(value):
 
 @lru_cache(maxsize=65536,typed=True)
 def enclosure(x, bits):
-    """Alternating Taylor on [0,1/2], then outward-rounded dyadic squaring."""
-    require(type(x) is Q and 0 <= x <= 32768,'Argument')
+    """Strict tail bound or alternating Taylor and outward dyadic squaring."""
+    require(type(x) is Q and 0 <= x <= 1 << 31,'Argument')
     require(type(bits) is int and bits in (32,64,128,256),'Precision')
+    if x >= bits+1:
+        # exp(1)>2 implies 0<exp(-x)<2^-(bits+1); never round the real tail to zero.
+        return 0,1,bits+1
     y, squarings = x,0
     while y > Q(1,2):
         y /= 2
@@ -65,23 +68,25 @@ class Parameters:
     B: int
     F: int
     E: int
+    split: int = 7
 
     def __post_init__(self):
-        require(all(type(x) is int for x in (self.B,self.F,self.E))
-                and 7 <= self.B <= 15 and 0 <= self.F <= 30 and 0 <= self.E <= 14,'Parameters')
+        require(all(type(x) is int for x in (self.B,self.F,self.E,self.split))
+                and 7 <= self.B <= 31 and 0 <= self.F <= 30 and 0 <= self.E <= 14
+                and 1 <= self.split <= 16 and 0 <= self.B-self.split <= 15,'Parameters')
 
 
 def generate(p):
-    return dict(parameters=[p.B,p.F,p.E],
-        high=[certify(Q(128*i,1 << p.F),p.E) for i in range((1 << (p.B-7))+1)],
-        low=[certify(Q(i,1 << p.F),p.E) for i in range(128)])
+    return dict(parameters=[p.B,p.F,p.E,p.split],
+        high=[certify(Q((1 << p.split)*i,1 << p.F),p.E) for i in range((1 << (p.B-p.split))+1)],
+        low=[certify(Q(i,1 << p.F),p.E) for i in range(1 << p.split)])
 
 
 def verify(p,table):
     require(type(table) is dict and set(table) == {'parameters','high','low'},'TableShape')
     require(type(table['parameters']) is list and all(type(v) is int for v in table['parameters'])
-            and table['parameters'] == [p.B,p.F,p.E],'Parameters')
-    for tag,count,multiplier in [('high',(1 << (p.B-7))+1,128),('low',128,1)]:
+            and table['parameters'] == [p.B,p.F,p.E,p.split],'Parameters')
+    for tag,count,multiplier in [('high',(1 << (p.B-p.split))+1,1 << p.split),('low',1 << p.split,1)]:
         require(type(table[tag]) is list and len(table[tag]) == count,'TableShape')
         for i,cert in enumerate(table[tag]):
             expected = certify(Q(i*multiplier,1 << p.F),p.E)
@@ -92,12 +97,13 @@ def verify(p,table):
 def evaluate(p,table,t):
     """The fixed-table caller must first validate all certificates with verify."""
     require(type(t) is int and -(1 << p.B) <= t <= 0,'Domain')
-    high,low = divmod(-t,128)
+    high,low = divmod(-t,1 << p.split)
     return (table['high'][high]['value']*table['low'][low]['value'])//(1 << p.E)
 
 
 def corrected(p):
     """Same exact real target for direct and decomposed evaluation; full correction cost."""
+    require(p.B <= 15,'CorrectionSize')
     base = generate(p)
     direct = [certify(Q(-t,1 << p.F),p.E) for t in range(-(1 << p.B),1)]
     corrections = [cert['value']-evaluate(p,base,t) for t,cert in zip(range(-(1 << p.B),1),direct)]
@@ -106,6 +112,7 @@ def corrected(p):
 
 
 def verify_corrected(p,table):
+    require(p.B <= 15,'CorrectionSize')
     require(type(table) is dict and set(table) == {'base','direct','corrections'},'TableShape')
     verify(p,table['base'])
     require(all(type(table[k]) is list and len(table[k]) == (1 << p.B)+1
@@ -120,4 +127,5 @@ def verify_corrected(p,table):
 
 
 def evaluate_corrected(p,table,t):
+    require(p.B <= 15,'CorrectionSize')
     return evaluate(p,table['base'],t)+table['corrections'][t+(1 << p.B)]

@@ -182,3 +182,36 @@ Recommendation: integrate the candidate with canonical registry/passport bytes
 and complete A2/A3 review, then deliver native generators/reductions and fidelity
 evidence. No default epsilon, scale, architecture, benchmark constant, extra
 weight pass or committed intermediate is selected by this research.
+
+## Larger exponential-domain investigation (Q25 continuation)
+
+Question: can the product construction cover larger integer score differences
+without an exponential-size full table or an implicit change of integer
+semantics? Kill criterion: either sub-table exceeds 2^16 rows, the inclusive
+endpoint is lost, split-dependent rounding is hidden, or a full correction table
+is treated as constant storage. Table/evaluation work concerns c_lu/T_misc;
+integer index/recombination bounds remain mandatory. This extends the candidate
+domain while leaving the complete attention and A2 contracts unadmitted.
+
+The [wider construction](../../formal/cqis-wide-exp.md) supports B<=31 with an
+explicit split k, two sub-tables of at most 65,536 rows each, and the same strict
+two-unit absolute error bound. The split is semantic: at B=14,F=10,E=12,
+k=7 versus k=6 changes 1,239 outputs, including 0 versus 1 at t=-9152.
+It must be authenticated by the future table identity. The full u bound and
+wide integer/limb obligations remain; small sub-tables alone do not prove them.
+
+`check_wide_exp.py` checks 305,286 sub-table entries against independent exact
+rounding, then endpoints/partition boundaries and 10,000 seeded draws per wide
+case. The [artifact](wide-exp-candidates.json) records parameters, row counts,
+sample counts and digests. These are cardinalities, not timing measurements;
+the large virtual domains are sampled, not exhaustively enumerated. A strict
+positive exponential-tail enclosure certifies large arguments without replacing
+the real function by zero. Wrong split metadata, missing endpoint, altered
+certificate, invalid domain and excessive correction allocation reject.
+
+Recommendation: carry the explicit split and parameter/domain consumers into
+the A2 registry contract. Direct/corrected D remains limited to B<=15 by this
+research API because its indexed correction table has 2^B+1 rows; wider P_k
+uses no such table. The original default-split outputs remain unchanged.
+Attention score alignment, canonical bytes, native consumers/parity and model
+fidelity remain separate delivery obligations. A2/E5-02 stay Draft/blocked.
