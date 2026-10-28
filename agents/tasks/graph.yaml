@@ -536,6 +536,7 @@ tasks:
   - E1-01
   rfc:
   - RFC-0004 §2,§5.1-5.2
+  - RFC-0004 A1
   skill: cqis-numerics
   crate: stele-cqis
   status: in_progress

@@ -38,6 +38,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts/tests -v
       - run: python3 research/r-octic/check_modulus.py
       - run: python3 research/cqis-rounding/check_rounding.py
+      - run: uv run --locked --script harness/cqis/check_arithmetic.py
       - run: python3 research/poseidon2/check_poseidon2.py
       - run: uv run --locked --script research/transcript/check_transcript.py
       - run: uv run --locked --script research/merkle/check_merkle.py
