@@ -308,3 +308,60 @@ Recommendation: continue Q23 with this execution contract before native graduati
 Keep A1 Draft until exact native APIs/consumers and required reviews are complete;
 then deliver production parity, malformed-input controls and full operation/memory
 ledgers. No distance, setup, proximity, PCS/profile or weight-pass claim changes.
+
+## Certified arbitrary and batched functionals
+
+Question: can one fixed-oracle proximity certificate support arbitrary adaptive
+functionals while preserving fused B and the weight-pass invariant? Security:
+consistency with one uniquely determined near message matrix. Cost terms:
+certificate preparation, row-vector work, query bytes and verifier operations.
+Kill criterion: any finite-bound violation, uncharged certificate attempt,
+incorrect batch cancellation or hidden per-proof weight reread.
+
+Run `uv run --locked --script research/code-provenance/check_certified.py`.
+The [candidate argument](../../formal/certified-functional-opening.md) imports
+only the existing tensor certificate bound, then separately derives D-e
+disagreements for every incorrect arbitrary row on a near oracle. General
+batches keep all row vectors and check every column equation, with one RLC
+scalar equation and shared fresh queries. A lifetime union bound charges the
+certificate bad event once and each later adaptive opening's own error; it
+does not condition the certificate error away or assume independent retries.
+
+The [8,2,4] toy code consists of two independent fourfold repetition blocks.
+The checker exhausts all 5,265 F3 matrices within one column of an interleaved
+codeword and all 379,080 arbitrary incorrect row proposals. It checks 168 false
+batch statements over every coefficient and every adaptive row pair, including
+zero coefficients and different column functionals. Direct query-sequence
+enumeration checks the actual verifier predicates. Seventy-five F17 matrices
+(72 far) cover all tensor points and the best proposed certificate row before
+queries. These finite checks support the prototype; the general proof is the
+linked argument, not an inference from sampled success.
+
+The grouped variant checks 96 additional false batch statements over all
+coefficients and proposed rows, with equal/different b vectors and zero aggregate
+rows. Equal b vectors share one weighted row; different b vectors retain their
+separate equations. A small exact accumulator matches direct row combinations
+while reading each input coordinate once. This is a feasible algebraic schedule,
+not a native bandwidth, pass-counter, capacity or benchmark result.
+
+Four attacks retain their failed premise explicitly: a changed oracle cannot
+reuse its old certificate; aggregating column equations permits cancellation
+after gamma; values chosen after gamma defeat batch binding; and reusing a known
+column defeats the fresh-query bound. With two genuinely fresh adaptive attempts,
+the enumerated acceptance is 7/16 and obeys the stated union bound. Research
+checks earn no production NC, Merkle authentication or source-consumer credit.
+
+All 72 code sizes have exact minimal 130-bit opening query counts checked. For
+Circle(10,1)/(10,2), the certificate uses 494/314 draws and subsequent certified
+openings use 223/130. For expander messages 256/2^30, the respective counts are
+11489/13472 and 5722/6714. These are conditional integer counts, not runtime,
+measured proof sizes or an admitted security budget. General batches retain
+k*C elements and k encodings; a weight certificate is registration work, while
+every fresh cut/auxiliary commitment still needs its actual proximity path.
+Exact-b grouping reduces row counts to g, with its O(k*(R+C)) preparation,
+g*R aggregate coefficients and complete encoder/consumer workspace still charged.
+
+Recommendation: continue Q27 with this mode and preserve all E4-03 criteria.
+A3 remains Draft until real certificate/root/cache binding, native bytes and
+sampling, extraction, packing, ZK and complete soundness composition are supplied.
+The production transcript/ledger, proven flags and weight passes are unchanged.

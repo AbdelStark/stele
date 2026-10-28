@@ -286,6 +286,14 @@ and research/code-provenance/check_proximity.py. Motivation: §2's arbitrary pub
 functional is not automatically a valid random proximity test, and §6 does not
 instantiate a finite exceptional-combination bound or integer query count.
 
+Candidate continuation: [certified arbitrary/batched openings](../../formal/certified-functional-opening.md)
+derives a near-matrix bound after a separate certificate and a lifetime union
+bound for adaptive reuse. Its general batch retains all row equations; aggregating
+them with coefficients already known to the prover is explicitly rejected by the
+study. This is ideal-oracle research only. Native certificate/root/cache binding,
+extraction, packed values, ZK, transcript bytes and Q12 remain acceptance gates;
+neither this argument nor its smaller conditional query count enables a profile.
+
 Proposed addition to §§2,5,6, pending the complete native/mode contracts:
 
 > For the fresh random tensor mode, bind the exact code ID, field, dimensions and
