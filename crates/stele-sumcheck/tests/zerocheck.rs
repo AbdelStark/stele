@@ -25,21 +25,7 @@ where
     K::Bytes: TryFrom<Vec<u8>>,
 {
     let i = &v["instance"];
-    let ids: Vec<_> = array(&i["ids"]).iter().map(number).collect();
-    let terms: Vec<_> = array(&i["terms"])
-        .iter()
-        .map(|v| Term {
-            coefficient: field::<K>(&v[0]),
-            factors: array(&v[1]).iter().map(|x| number(x) as u32).collect(),
-        })
-        .collect();
-    let instance = Instance {
-        id: number(&i["id"]),
-        num_vars: number(&i["m"]) as u32,
-        inputs: ids,
-        terms,
-        claimed_sum: K::from_i64(0),
-    };
+    let instance = support::zerocheck_instance::<K>(i);
     let z = Zerocheck {
         instance: &instance,
         skip: number(&i["k"]) as u8,

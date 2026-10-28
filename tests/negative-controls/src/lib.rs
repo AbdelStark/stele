@@ -78,7 +78,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 800,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",
-        run: || sumcheck::run(800),
+        run: || {
+            sumcheck::run(800)?;
+            zerocheck::run(800)
+        },
     },
     catalog::RegisteredControl {
         id: 802,

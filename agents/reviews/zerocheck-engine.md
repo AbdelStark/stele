@@ -6,7 +6,8 @@ public consumer and controls; broader corpus/reference and performance work rema
 
 I tried to break it by changing one unused slice final, and the control
 ClaimMismatch rejected it. Skip and tail changes reject at their specified
-checks; omitting ZeroFinal changes one A1 continuation final and rejects.
+checks; early weight/skip/tail challenges change one value and reject at the
+round/final check. Omitting ZeroFinal changes one A1 continuation final and rejects.
 All variants use actual prover/verifier code and assert a one-value mutation.
 The gate also rejects altered SC numerators, a changed final label and a bypassed
 public consumer. Both fields match all 130 oracle descriptors, proofs, claims,
@@ -19,7 +20,8 @@ Workflow 03 checklist:
   weighted endpoint check and Round precede Sumcheck. No division by challenges.
 - Claims/consumers: every original (Boolean prefix,tail point) claim survives;
   public eq-dot consumes all, other callers retain reduction/PCS obligations.
-- Bindings: NC-0207/0208/0209 and the three skip variants of NC-0802 pass both fields.
+- Bindings: NC-0207/0208/0209, the early-tail NC-0800 extension and the three
+  skip variants of NC-0802 pass both fields.
 - Ledger: three ordered SC records j,D,j*δ; actual bytes/records/continuations
   checked by both gates. Twelve fixed registry entries match the inventory.
 - Certificates: field-only identities; integer/range certification remains external.
