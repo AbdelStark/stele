@@ -170,6 +170,16 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('fraction corpus decisions/claims/accounting/continuation mismatch', result.stderr)
 
+    def test_rejects_fraction_benchmark_consumer_test_omission(self):
+        source = self.root / 'crates/stele-lookup/examples/fraction_bench.rs'
+        original = source.read_text()
+        self.assertIn('fn accepts_fraction_benchmark_original_consumers()', original)
+        source.write_text(original.replace('fn accepts_fraction_benchmark_original_consumers()',
+                                          'fn omitted_benchmark_consumer_check()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction benchmark pipeline failed', result.stderr)
+
     def test_rejects_external_field_seal_removal(self):
         source = self.root / 'crates/stele-code/src/encoder.rs'
         original = source.read_text()
