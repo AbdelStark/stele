@@ -161,3 +161,94 @@ research counts additions for a deliberately unspecified-for-production RAA map;
 it changes no measured constant, benchmark or weight-pass count. Affected tasks:
 E4-01, E4-03/E4-05, E10-06 and E12-04, with original criteria retained. The circle
 RS encoder E4-02 still requires its own construction/parameter evidence.
+
+### A2 — Canonical M31 circle encoder
+
+Status: Draft. Question Q24. Evidence: [circle study](../../research/circle-code/REPORT.md)
+and [deterministic derivation](../../formal/circle-code.md).
+Motivation: §3 leaves the circle basis, ordered domains, normalization and maximum
+size unspecified. The full circle polynomial space is one dimension larger than
+the FFT span; its name alone cannot determine interoperable codewords. This
+amendment fixes an encoder independently of A1's unresolved PCS parameter registry.
+
+Exact addition to §3's weight-code row and encoder contract:
+
+> Use p=2^31-1, g=(-3/5,4/5)=(1717986917,1288490189), with circle multiplication
+> (x,y)*(u,v)=(xu-yv,xv+yu). For 0<=h<=30 define ordered
+> D_h[j]=g^((2j+1)*2^(30-h)), 0<=j<2^h. This order is part of the code definition;
+> it is not a freely permutable implementation convention. D_0={(-1,0)} is the
+> constant-only base case. Never use the full group as though it were this domain.
+>
+> Define v_1=x and v_(h+1)=2*v_h^2-1. For coefficient index j with bits j_0,j_1,...
+> from least to most significant, b_j=y^j_0*product_(h>=1) v_h^j_h. Message rows of
+> length k=2^m are evaluations on D_m, not coefficients. Interpolate in exactly the
+> span of b_0..b_(k-1), zero-pad the coefficient vector to N=2^(m+b), then evaluate
+> on D_(m+b). Supported log blowups are b=1 and b=2, with m>=0 and m+b<=30.
+> Input and output domains differ; this encoder is not systematic. No raw input
+> prefix or packed-byte layout may be assumed by its consumers.
+>
+> Interpolation splits inverse-point indices j,k-1-j using
+> even=(f_j+f_(k-1-j))/2 and odd=(f_j-f_(k-1-j))/(2*y_j).
+> On the first-half x quotient, split x,-x by the same formulas with x_j replacing
+> y_j and recurse on 2*x_j^2-1. Interleave the resulting even/odd coefficients at
+> indices 2i,2i+1. Evaluation reverses these splits using even +/- twiddle*odd.
+> Every factor 1/2 is included; a scaled transform must normalize before it returns.
+> All required divisors are nonzero on supported domains. Length-one transforms
+> return the constant. Implementations may reorder internal work only if returned
+> coefficients/codewords retain these exact conventions.
+>
+> The concrete Circle encoder accepts checked log dimensions and exposes message
+> and codeword lengths, encode(row), and eval_row(row,cols). Both row methods use
+> the identical map and preserve selected-column order and duplicates; an empty
+> column list returns empty only after row/field validation. Support the validated
+> M31 field and its extensions by embedding twiddles; reject a different base
+> characteristic. Typed field values are already canonical; byte decoding remains
+> the caller's checked field decoder. The code identity is the fixed ASCII bytes
+> `stele/circle-m31/v1` followed by m and b as one byte each. It identifies the base
+> linear map; surrounding protocols must also bind the element field/encoding.
+>
+> Reject unsupported dimensions/rates as InvalidSize, wrong row length as RowShape,
+> any column >=N as Column, wrong characteristic as FieldMismatch, and checked
+> size/allocation failure as Capacity. Validate dimensions before shifting,
+> allocating or generating domains. Validate the whole row/column request before
+> returning output; no unchecked truncation, padding, partial-success result or
+> fallback code is allowed. Capacity is a resource error, not a false-statement
+> acceptance. Allocation capacities and construction overlap count in measurements.
+> eval_row may use complete encoding then selection; no sublinear-query cost is
+> promised. This concrete API may precede the general Code trait, whose integration
+> still requires A1's contract. It exposes no admissible PCS/profile parameters.
+
+Distance and soundness: the map is injective and linear by invertible butterflies.
+For k>=2 its minimum symbol distance is at least N-k, by the rational
+parametrization/root bound in the derivation; for k=1 it is N. The same bound
+holds in M31 extensions. Do not silently replace this bound with N-k+1: the study
+gives a counterexample. The omitted v_m vanishes on D_m, so interpolating the
+entire degree-k/2 circle space instead of the specified span is incorrect.
+This is a distance lower bound only, not an exact-distance, proximity-gap,
+codeword-validity, PCS, zero-knowledge or profile certificate. No challenge,
+commitment, transcript label or certified ledger line is introduced. A1/E4-03,
+E4-05/E12-04 and Q12 retain their full obligations; §6 is not discharged here.
+
+E4-02 acceptance retains direct-naive parity and the actual large benchmark:
+the unqualified `2^30 encode benchmark` means N=2^30 encoded symbols, at both
+rates, with k=2^29 and k=2^28 reported explicitly. It does not claim to encode
+2^30 input symbols. The ledger must include preparation, inverse transform,
+expansion, domain/twiddle work, output validation and peak memory; separately
+report reusable setup if amortized. A formula, sampled output without performing
+the full encoding, extrapolated runtime or metadata-only case is not this gate.
+Require independent vectors/direct evaluation at small sizes, generator order,
+both-field extension parity, linearity, selected-column parity, constant case,
+malformed dimensions/rows/columns and normalized inverse round trips. Test the
+maximum dimension's arithmetic without allocating it in ordinary unit tests.
+
+Binding/control impact: no PCS binding is implemented. Encoder/order/normalization
+mutations must be detected by independent expected codewords. NC-0600..0605 remain
+actual consumer controls, not credited by constructor errors or research checks.
+The full degree-space and MDS counterexamples are algebraic diagnostics only.
+
+Cost impact: O(k log k+N log N) arithmetic for complete encoding, with base-field
+twiddles, and O(N) storage achievable by butterfly reuse. Include inversions,
+twiddle/domain generation and allocation; no fitted constant or speed claim is
+made. This is one-time weight registration work, not another per-proof weight
+pass. Existing c_c/fused-opening/per-proof terms do not change. Affected tasks:
+E4-02 and its registration/PCS consumers. A2 does not complete E4-02.

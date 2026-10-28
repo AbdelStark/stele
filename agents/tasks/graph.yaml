@@ -450,10 +450,11 @@ tasks:
   - E1-04
   rfc:
   - RFC-0010 §3
+  - RFC-0010 A2
   - RFC-0003 §3
   skill: pcs-engineer
   crate: stele-code
-  status: in_progress
+  status: blocked(RFC-0010 A2)
   agent: codex-root
   branch: task/E4-02-circle-contract
   acceptance:
