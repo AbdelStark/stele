@@ -32,18 +32,21 @@ def column(tables, point, suffix, m, visits, d):
     return values
 
 
-def window_prove(t, i, tables, windows, alter_tail=False):
+def window_prove(t, i, tables, windows, alter_tail=False, blocks=None):
     d, m, delta = t.degree, i['m'], s.degree(i)
     assert all(type(w) is int and w > 0 for w in windows) and sum(windows) <= m
     width = max(2, delta+1)
+    def indexed_blocks(point, w, visits):
+        for suffix in range(2**(m-len(point)-w)):
+            yield suffix, [column(tables, point, u*2**(m-len(point)-w)+suffix,
+                                  m, visits, d) for u in range(2**w)]
+    blocks = indexed_blocks if blocks is None else blocks
     t.absorb(s.INSTANCE, s.instance_bytes(i, d))
     point, rounds, scans = [], [], []
     for w in windows:
         visits = []
         grid = [s.scalar(0, d)] * width**w
-        for suffix in range(2**(m-len(point)-w)):
-            boolean = [column(tables, point, u*2**(m-len(point)-w)+suffix,
-                              m, visits, d) for u in range(2**w)]
+        for _, boolean in blocks(point, w, visits):
             for index, nodes in enumerate(itertools.product(range(width), repeat=w)):
                 values = [s.scalar(0, d)] * len(tables)
                 for u, row in enumerate(boolean):
@@ -69,8 +72,10 @@ def window_prove(t, i, tables, windows, alter_tail=False):
                     for z in range(stride)]
     # All original inputs survive, even those absent from every monomial.
     visits = []
-    rows = [column(tables, point, z, m, visits, d) for z in range(2**(m-len(point)))]
-    state = [[row[a] for row in rows] for a in range(len(tables))]
+    state = [[s.scalar(0, d)] * 2**(m-len(point)) for _ in tables]
+    for suffix, boolean in blocks(point, 0, visits):
+        for a, value in enumerate(boolean[0]):
+            state[a][suffix] = value
     scans.append(visits)
     if alter_tail:
         state[-1][0] = s.add(state[-1][0], s.scalar(1, d))

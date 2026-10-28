@@ -640,6 +640,9 @@ A1/A2/A3 bytes and all unrelated acceptance criteria remain unchanged.
 ### A6 — Streaming source visits, round windows and peak memory
 
 Status: Draft. Question Q22. Evidence: [streaming study](../../research/streaming/REPORT.md).
+The sequential-file experiment in that study supplies a tested bit-reversed
+candidate layout and exact file-position/read-byte evidence. It does not close
+the source preparation, immutable identity or allocation-capacity requirements.
 Motivation: §5 does not specify what a two-pass source can enumerate, whether its
 order matches storage layout, or a bound including the prefix-grid/dense-tail
 transition. RFC-0014 §4 inherits the ambiguity. This draft authorizes no production
