@@ -412,7 +412,7 @@ tasks:
   - RFC-0020 A3
   skill: gkr-reduction-author
   crate: stele-gkr
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E3-06a-public-evidence
   acceptance:
