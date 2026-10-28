@@ -538,9 +538,9 @@ tasks:
   - RFC-0004 §2,§5.1-5.2
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: in_progress
   agent: codex-root
-  branch: task/E5-01-rounding-spec
+  branch: task/E5-01-cqis-arithmetic
   acceptance:
   - Rust == NumPy int64 reference 1e4 cases/op
 - id: E5-02
