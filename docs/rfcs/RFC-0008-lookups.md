@@ -40,3 +40,30 @@ octic challenge field (RFC-0019 R-OCTIC). Standard profile: one pair.
 NC-0400 multiplicity inflated by one; NC-0401 lookup value outside table; NC-0402 selector flipped to include a padding
 row; NC-0403 second challenge pair reusing the first; NC-0404 table id mismatch with passport; NC-0405 decomposed
 table recombination wrong by one.
+
+## 8. Amendment log
+
+### A1 — Range discipline for packed source decompositions
+
+Status: Draft. Question Q28. Companion RFC-0010 A6 and RFC-0007 A1; evidence:
+[packing obligations](../../formal/packed-commitments.md).
+Motivation: an integer packing equality permits noncanonical alternative digits
+unless their ranges and relationship to the same source are actually enforced.
+
+Proposed addition to §5:
+
+> For a packed committed source, the dominating-check analysis must include the
+> canonical word range, every digit/fragment range, signed reconstruction,
+> position mapping and all tail/message padding. Each check must refer to the
+> same source and use the plan's registered decomposition. Checking the original
+> format label, a revealed honest source, or only a field recombination is not
+> a private decomposition proof. Every original claim must reach its actual
+> reduction/PCS consumer. Bound certificates are static and verifier-recomputed.
+
+The exact reduction, table identities, claim schedule, privacy and controls are
+required before acceptance. Candidate range-15 parts in packed30 are not newly
+registered tables. NC-0603/0405 need their real consumer; research checks do not
+earn credit. No production challenge or loss changes; future terms need ledger
+lines. Decomposition moves c_lu/c_a/T_misc and memory, with no measured constant
+or benchmark supplied here. Affected tasks: E3-08, E4-03, E5/E6 range lowering and
+E7/E10 packed consumers; all original acceptance criteria remain.

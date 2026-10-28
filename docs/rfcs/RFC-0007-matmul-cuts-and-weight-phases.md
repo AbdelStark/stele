@@ -69,3 +69,31 @@ check (RFC-0010 §6). Total ≪ 1 ms per phase natively.
 NC-0300 `B` computed with a wrong `r_j`; NC-0301 swapped layer blocks in `W_τ`; NC-0302 X-claim value forged;
 NC-0303 requant zerocheck omitted for one layer; NC-0304 extra position appended to `X` without `R` cut;
 NC-0305 fused opening with a row vector that is not the sumcheck's `B`.
+
+## 9. Amendment log
+
+### A1 — Packed sources and the fused row identity
+
+Status: Draft. Question Q28. Companion RFC-0010 A6; evidence:
+[packing and fused-row study](../../formal/packed-commitments.md).
+Motivation: §3's two unrestricted int16 values do not fit in M31, and §5's
+original-value B is not the PCS row of an unspecified packed message matrix.
+
+Proposed replacement of §3's packing parenthesis and addition to §5:
+
+> Derive the committed message count/layout from an Accepted injective source
+> map, including canonical signed representation and tail/code padding. Do not
+> assume two int16 values per M31 element. Physical int8/int16 source storage
+> remains distinct from the field-message representation used by the code.
+> B is still the partial evaluation of the original signed weight tensor at the
+> exact stage point. The opening must consume that same object or an explicitly
+> specified authenticated reduction from it to the committed representation.
+> A packed row functional is not a substitute. The complete reduction schedule
+> must retain exactly one source weight visit per proof, with all required
+> functionals accumulated in that visit and every source claim consumed.
+
+The packing/decomposition consumer and full fused schedule remain open in Q28;
+this Draft authorizes no alternate weight pass or commitment. E4-04 and E7
+criteria, NC-0300..0305/0605 and static certificates remain unchanged. Any future
+challenges/losses require explicit accounting. Message counts, c_w/c_c/T_misc,
+decomposition and memory need actual ledgers; no measured constant changes here.
