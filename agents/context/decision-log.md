@@ -258,3 +258,15 @@ obligations. This preserves the complete inference objective while allowing
 its arithmetic prerequisites to be tested. No challenge, fitted constant or
 weight pass changes. Same-author skill reviews, not independent audit.
 Status: Accepted.
+
+## ADR-033 — Conditional fraction arithmetic before complete lookup admission
+
+Context: E3-07a, RFC-0008 A3 / RFC-0012 A9 / RFC-0020 A4, Q31. Decision:
+implement exact fraction-tree and selected-product native primitives. Parsers
+produce unverified objects; reductions emit original claims. Actual consumers,
+controls, parity and complete primitive benchmarks are required before E3-07a
+delivery. No receipt, revealing adapter or codec grants lookup/profile/ZK
+admission. A2 remains Draft; E3-07 retains its private source/multiplicity,
+NC-0400..0403 and c_lu criteria. Native labels/accounting must accompany the
+actual engine. No constant or weight-pass count changes. Same-author skill
+reviews, not independent audit. Status: Accepted.

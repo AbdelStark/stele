@@ -91,3 +91,15 @@ For RFC-0006 A7, `stele-gkr` may directly depend on `stele-field` in addition to
 hash, PCS, poly or authentication edge is authorized by A3. A2 remains Draft.
 Update dependency bans with this exact edge. No external dependency, protocol,
 challenge, loss or measured constant changes. Affected task: E3-06a.
+
+### A4 — Conditional fraction reduction dependencies
+
+Status: Accepted. Companion RFC-0008 A3 / RFC-0012 A9.
+Review: [skill passes](../../agents/reviews/fraction-a3.md).
+stele-lookup may directly depend on field, poly, hash and sumcheck in addition
+to gkr, for canonical encoding, equality coefficients, production transcript
+and A1 reuse. These are downward edges; no authentication callback or upstream
+proof implementation is authorized. Test-only serde_json may read the shared
+byte corpus. Update dependency policy and native gates at implementation;
+preserve guards for unimplemented lookup/PCS/verifier work. Codec tests earn
+no binding/profile credit. No measured constant changes. Affected task: E3-07a.

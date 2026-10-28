@@ -537,3 +537,19 @@ adds r*[F(m)+F(k)+3m]/|K| to e^r, F(n)=3n(n-1)/2+2n, plus actual binding/FS term
 The study checks actual Transcript draw counts and ordering, not receipt fields
 alone. Full revealing Merkle openings do not instantiate private PCS or ZK;
 no production labels, ledger schema or profile admission change.
+
+### A9 — Conditional fraction reduction labels and accounting
+
+Status: Accepted. Companion RFC-0008 A3. Review: [skill passes](../../agents/reviews/fraction-a3.md).
+Reserve stele/v0.1/lookup/fraction, /layer and /leaf as absorbs, and
+stele/v0.1/lookup/gamma and /fold as RLC challenges. A1 framing, capped sampling
+and ratcheting are unchanged. Gamma follows descriptor/root/current claims;
+Fold follows complete A1 Final and exact Eq consumption. No unit, alpha, beta
+or multiplicity label is admitted by A9; A8 remains Draft.
+Per tree, Gamma and Fold each contribute m/|K|; scoped A1 SC contributes
+3m(m-1)/2 over |K|. The selected-product leaf adds 3m/|K| via existing A1 draws.
+Keep tree/phase/level identity even when local SC ids repeat. Native registration
+and use must update inventory and actual producer/gate together; codecs alone
+add no production label or loss. No complete LU record, profile, privacy, source
+authentication or Q12 result follows. No measured constant changes.
+Affected tasks: E3-07a, E3-07, E8-05.

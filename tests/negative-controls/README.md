@@ -20,8 +20,8 @@ For each protocol binding:
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
 label with `DuplicateLabel`; it earns configuration coverage only. Including the
-twelve sumcheck/batching/zerocheck/small/streaming controls and Merkle NC-0602, 14/72 controls run,
-58 remain missing, and 3/17 catalog binding categories have proof controls. Range rows expand
+twelve sumcheck/batching/zerocheck/small/streaming controls and Merkle NC-0602, 14/77 controls run,
+63 remain missing, and 3/18 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 Streaming NC-0210 uses a real prepared file: change one unused source record,
 produce the changed Streaming proof, and apply its single changed final through

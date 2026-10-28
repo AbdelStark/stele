@@ -172,3 +172,8 @@ r*[F(m)+F(k)+3m]/|K| for both depth-m/k trees and the selected-product leaf, wit
 F(n)=3n(n-1)/2+2n. Actual transcript events are checked against these counts.
 Full revealing openings add exact evaluation conditional on actual Merkle binding;
 binding and FS/H still need Q12. This adds no production registry or profile.
+
+RFC-0008 A3 / RFC-0012 A9 now fix the conditional native fraction contract.
+Its Gamma/Fold RLC and scoped A1 SC terms are required with the actual engine.
+Canonical types/codecs add no draw or production registry entry. Native original
+consumers, controls and full enumeration remain required; A2/A8 and Q12 stay open.
