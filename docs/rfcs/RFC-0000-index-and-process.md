@@ -31,7 +31,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted (A1) |
 | 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1) |
 | 0005 | Tensor IR, claim graph, witness capture | Accepted |
-| 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3); A4 Draft |
+| 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3); A4, A5 Draft |
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted |
 | 0009 | Attention protocol | Accepted |

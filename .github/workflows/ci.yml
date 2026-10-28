@@ -45,6 +45,8 @@ jobs:
       - run: uv run --locked --script research/batching/check_batching.py
       - run: uv run --locked --script research/zerocheck/check_zerocheck.py
       - run: python3 research/stacked-gkr/check_stacking.py
+      - run: python3 research/small-value/check_grid.py
+      - run: uv run --locked --script research/small-value/check_small_value.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check

@@ -543,3 +543,96 @@ satisfy them. Cost impact: c_sc, public evaluation in T_misc, memory and block-s
 redistribution. No measured constant, weight-pass count or performance result
 changes here. Affected tasks: E3-06 and downstream GKR/lookup/reduction/distribution
 work; all original acceptance criteria remain required.
+
+### A5 — Typed small-value inputs and deferred prefix folding
+
+Status: Draft. Question Q21. Evidence: [small-value study](../../research/small-value/REPORT.md).
+Motivation: §5's small-value bullet does not distinguish retained input storage
+from the challenge-dependent grid, specify static eligibility or define NC-0204's
+actual verifier rejection. This amendment completes that prover optimization
+without changing A1's statement, proof bytes, transcript or verifier.
+
+Exact replacement for §5's small-value bullet and its strategy contract:
+
+> Use the A1 Summand interface for a deferred-prefix small-value strategy.
+> Every input table is owned signed i16 or unsigned u16 storage: its representation
+> statically implies [-32768,32767] or [0,65535], respectively. Different tables
+> may use different representations. Canonical signed/unsigned embedding gives
+> the original M31/K values. Validate the instance and all counts/shapes at
+> construction. Do not accept arbitrary K/i64 tables plus an asserted smallness
+> flag or infer eligibility from a scanned runtime maximum. External narrowing
+> must be checked; never wrap, truncate, saturate or project a K challenge to M31.
+> Other input formats use a suitable separately validated strategy such as Dense.
+>
+> Choose k in {2,3,4} with k<=m before proving. This is a prover configuration,
+> not new proof metadata: all valid choices must produce exactly the A1 proof.
+> Reject invalid k as InvalidSmallValue, malformed tables as PublicShape and
+> address/allocation overflow as Capacity; invalid A1 instances retain their
+> existing errors. A cached polynomial/descriptor must match the Instance passed
+> by the engine before any round result is used. Small dimensions may use Dense.
+>
+> Define N=2^m, s=2^k, W=N/s, a=input count, delta=A1 degree and b=max(2,delta+1).
+> On the prefix grid {0,..,b-1}^k compute, for every ordered monomial t,
+> q_t(X)=sum_{z Boolean^(m-k)} product_{i in t} f_i(X,z) in M31. Apply its
+> original coefficient c_t in K after this suffix sum and accumulate q=sum_t c_t q_t.
+> A simple builder extends each factor's Boolean prefix table one axis at a time
+> with f(u)=f(0)+u*(f(1)-f(0)), preserving MSB coordinate order. Accumulate one
+> monomial grid at a time; constants include the exact suffix multiplicity.
+> Repeated factors and zero coefficients retain A1's degree/ordering semantics.
+> M31 arithmetic is modular field arithmetic; do not treat it as an unproved
+> no-wrap integer identity or add delayed machine-integer accumulation implicitly.
+>
+> At prefix round h, send exactly the A1 nodes 0..delta of
+> sum_{y Boolean^(k-h-1)} q(r[:h],T,y). Absorb the ordinary Round message and
+> obtain its challenge only through the A1 engine, then fold the small grid in K.
+> The large original input storage stays 16-bit; the grid, messages and challenges
+> are K-valued. Thus "base-field sized state" does not mean all state stays in M31.
+> Degree-zero uses a constant grid and A1's single transmitted endpoint; zero/one
+> challenges remain valid without retries or random inversions.
+>
+> After k rounds compute f_i(r[:k],z) by a direct prefix eq dot product from each
+> original table, allocating only a*W K values rather than a full a*N K copy.
+> Include every input, even one unused by P. Release original storage when its
+> ownership permits, and use ordinary dense A1 folds for the tail. Preserve all
+> original final obligations, the complete Final absorb and the continuation.
+> Construction/transition overlap and retained allocation capacities count in
+> peak memory; claimed memory savings cannot omit them or downstream consumption.
+
+Verifier and soundness: A1 is unchanged. No new public item in the proof, transcript
+label, challenge, commitment or SC record is introduced; the same m challenges and
+exact m*delta/p^d bound apply for d=4 and d=8. The [parity argument](../../formal/small-value.md)
+uses only multilinearity, field embedding and interpolation on fixed distinct
+nodes. It proves deterministic equivalence, conditional on correct implementation,
+not Q12 or profile certification. Typed magnitude eligibility is not a private
+range proof or a CQIS integer bound certificate. Original authenticated inputs
+still require every range/consumer obligation in their Accepted reduction; K-valued
+masked tables are not eligible merely because their unmasked source was small.
+
+Cost impact: with F=sum of term factor counts and T=term count, the simple builder
+uses O(F*k*b^k*N/2^k) M31 operations plus O(T*b^k) K scale/add work. Early grid
+folds/sums cost O(k*b^k) K work; prefix materialization costs O(a*N) base-by-K
+operations, followed by the reduced-size A1 dense tail. Non-input working storage
+is O(b^k+s+a*N/2^k+m*(delta+1)+a) field elements, with a fixed number of per-term
+base grids. Retained typed inputs cost 2*a*N bytes; descriptors and allocation
+headers/capacities are additional. These move c_sc/T_misc, not a weight-pass count
+or fitted constant. Benchmark complete preparation/proving/claim consumption and
+peak memory, keep all tested k/degree losses, and do not auto-select k without
+measured evidence. The simple builder claims no optimal product-engine constant.
+
+NC-0204: verify an honest constant-zero A1 statement with an unused original table
+containing 65536 using Dense. A control-side truncating adapter feeds zero to the
+real Small strategy, under the unchanged instance. Require exactly one changed
+unused final value (all round values unchanged), then require the original real
+public consumer to reject with ClaimMismatch. Assert a nonzero difference and
+both-field honest acceptance; no verifier bypass, substituted public table or
+constructor failure earns control credit. This tests actual small-strategy misuse
+and original-value binding, not a new proof of range. Separate construction tests
+cover k/shape/cached-instance errors and checked conversion boundaries.
+
+E3-04 delivery retains measured memory reduction and NC-0204, and requires both-field
+byte/receipt/continuation parity with 1,000 seeded cases per degree, all supported
+k, boundary types, constants, empty/unused inputs and zero coefficients; independent
+Python/Rust decisions; actual control and accounting gates; and clean-source c_sc
+and complete-cost/memory ledgers including losses. A5 does not complete E3-04.
+Affected tasks: E3-04, later streaming/GPU strategies and their consumers. Existing
+A1/A2/A3 bytes and all unrelated acceptance criteria remain unchanged.
