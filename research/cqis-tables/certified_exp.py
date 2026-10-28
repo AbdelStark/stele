@@ -14,7 +14,7 @@ def round_nonnegative(value):
     return (2*value.numerator+value.denominator)//(2*value.denominator)
 
 
-@lru_cache(maxsize=65536)
+@lru_cache(maxsize=65536,typed=True)
 def enclosure(x, bits):
     """Alternating Taylor on [0,1/2], then outward-rounded dyadic squaring."""
     require(type(x) is Q and 0 <= x <= 32768,'Argument')
