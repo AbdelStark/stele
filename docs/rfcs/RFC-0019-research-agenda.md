@@ -310,3 +310,11 @@ and repetitions do not change the characteristic. Static partitions or a complet
 weighted-unit construction are candidate repairs with distinct costs and source/
 challenge obligations. E3-07 is blocked on A2; actual GKR/PCS/privacy consumers,
 NC-0400..0403, c_lu measurement and complete accounting remain required.
+
+Q31 continuation: formal/weighted-logup.md derives a grouped equality-unit mode,
+its tuple/identity bound and independent-repetition composition. A virtual tree
+applies weights above the groups; single/paired preparation uses one logical
+source visit and table-sized accumulators. Exact subset/full-field tests and
+schedule attacks retain clear research scope. The actual K-valued commitment,
+privacy, source/selector/GKR consumers, bytes, accounting and native cost/control
+gates remain open; A2/A8 are Draft and E3-07 remains blocked.

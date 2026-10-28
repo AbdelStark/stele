@@ -37,3 +37,7 @@ blocked until the selected count/unit, pole, selector, compression and repetitio
 contracts are complete. Preserve actual table-side committed consumption,
 NC-0400..0403 and c_lu measurement. No production challenge/ledger record, core
 lookup implementation, admitted profile or native control credit is supplied.
+
+The [weighted-unit continuation](WEIGHTED.md) gives a grouped equality-unit
+candidate, a conditional repetition proof, a virtual tree and instrumented
+single/paired preparation. It retains all native/privacy/consumer requirements.

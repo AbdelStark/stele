@@ -511,3 +511,12 @@ No challenge, label, verifier admission or ledger line changes in this Draft.
 Q12 and all source/PCS/ZK composition obligations remain. Cost terms include
 c_lu/T_misc, multiplicity/table work and memory, with no measured constant.
 Affected tasks: E3-07, E8-05, E12-02/E12-03 and every lookup consumer.
+
+A8 candidate continuation: [grouped-unit derivation](../../formal/weighted-logup.md)
+proposes r*h additional unit challenges before r weighted multiplicity commitments,
+then independent beta/alpha pairs. Its single rational-identity bound is
+e=min(1,(h+N+c*|T|-1)/|K|). Under the exact fixed-source, joint-commitment and
+independent-unit schedule it proves e^r for those identity events only. Sharing
+units does not establish that bound; GKR/PCS/source/FS/privacy failures stay
+separate. No production registry or ledger schema changes; complete framing,
+sampler/domain composition and actual consumers remain prerequisites.
