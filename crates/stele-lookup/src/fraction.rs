@@ -7,7 +7,7 @@ use stele_hash::ChallengeField;
 use stele_sumcheck::Proof as SumcheckProof;
 pub use tree::{check_roots, Accounting, Reduction};
 
-/// Invalid metadata, payload or resource request; no partially decoded proof escapes.
+/// Invalid input, resource failure or rejected reduction; abort the entire attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     /// Depth, group boundary, leaf ids or unit-vector length is invalid.

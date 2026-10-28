@@ -476,8 +476,6 @@ def main():
         else:
             if args.gate == 'negative-controls':
                 controls_layout(ROOT)
-            if args.gate in ('negative-controls', 'soundness-accounting'):
-                fraction_codecs(ROOT)
             bootstrap_guard(ROOT, args.gate)
             if args.gate == 'digest':
                 native_encoder(ROOT)
@@ -485,6 +483,7 @@ def main():
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
+                fraction_codecs(ROOT)
                 small_strategy(ROOT)
                 small_corpus(ROOT)
                 batch_instances(ROOT)
