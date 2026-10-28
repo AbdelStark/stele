@@ -741,3 +741,24 @@ No benchmark constant or weight-pass count changes. Production ledgers must
 retain losing cases and full consumer/transition peaks. Affected tasks: E3-05,
 E3-06 integration and downstream GPU/distribution planning. RFC-0014 A1 retains
 its actual device evidence and parity requirements.
+
+### A7 — Standalone public coefficient arithmetic
+
+Status: Accepted. Contract: [public coefficient arithmetic](../../formal/public-coefficient.md).
+Review: [skill passes](../../agents/reviews/public-coefficient-a7.md). Question Q20.
+Motivation: A4's source/statement contract blocks the stacked protocol, but the
+six exact Boolean-table evaluations can be implemented and audited independently.
+
+Exact addition to §6: `stele-gkr::public_mle` implements the complete mathematical
+contract above. Its checked, immutable descriptor and evaluator return only field
+values. They authenticate no source and consume/emit no claim. A7 authorizes no
+Stack label, stage bytes, plan interpretation, private index disclosure or CQIS
+rotation generation. A4 remains Draft. E3-06a records primitive delivery; E3-06
+retains all original acceptance criteria and remains blocked on A4.
+
+Soundness: deterministic expansion of the specified Boolean table; no challenge,
+SC degree/record, binding, certificate, proof byte or profile changes. The mask
+DP invariant and explicit sums prove the arithmetic identity over K. Cost impact
+is public evaluation in T_misc with the contract's per-kind bounds; no measured
+constant, benchmark or weight-pass change. Companion RFC-0020 A3 permits only
+the required direct field dependency. Production composition remains separate.
