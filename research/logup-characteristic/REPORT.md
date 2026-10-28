@@ -41,3 +41,6 @@ lookup implementation, admitted profile or native control credit is supplied.
 The [weighted-unit continuation](WEIGHTED.md) gives a grouped equality-unit
 candidate, a conditional repetition proof, a virtual tree and instrumented
 single/paired preparation. It retains all native/privacy/consumer requirements.
+
+The [fraction continuation](FRACTION.md) executes the conditional tree reduction
+and selected-product leaf equation with complete public original-array consumers.

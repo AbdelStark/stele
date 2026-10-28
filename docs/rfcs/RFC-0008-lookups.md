@@ -143,3 +143,12 @@ needed for neutral denominator leaves. These are candidate requirements, not
 admitted bytes, challenge labels, K-valued commitment formats or implementations.
 The original actual consumer, privacy, native controls and complete c_lu gates
 remain required; E3-07 stays blocked on A2.
+
+A2 fraction continuation: [conditional reduction](../../formal/fraction-reduction.md)
+and [executable evidence](../../research/logup-characteristic/FRACTION.md) fix a
+candidate descriptor, per-layer P/Q combination, all-child Final absorption and
+canonical child-coordinate fold. A separate selected-product sumcheck consumes
+the lookup denominator and exports every original tuple column. Exact public
+consumers close the research computations; committed K-valued multiplicities,
+private source consumers, full plan/bytes, native controls and costs remain
+required. No new intermediate commitment or Accepted protocol is introduced.

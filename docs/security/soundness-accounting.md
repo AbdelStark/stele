@@ -156,3 +156,11 @@ extension-size root bound or squaring can justify it. Actual LU admission also
 needs nonzero bound denominators, selector/padding, tuple compression and full
 consumer/composition accounting. The [research note](../../formal/logup-characteristic.md)
 changes no production record or challenge and supplies no profile admission.
+
+The [Q31 fraction candidate](../../formal/fraction-reduction.md) proposes these
+research-local lines per depth-m tree (denominator |K|): lookup/gamma has m
+degree-one combinations; lookup/fold has m degree-one child folds; enclosed A1
+sumcheck/challenge has 3m(m-1)/2. Its selected-product leaf has another 3m under
+A1. Each tree/repetition adds its own terms, separately from the identity bound
+and actual source/PCS/FS losses. Full labels have prefix stele/v0.1/. This does
+not add labels to the production registry or grant a native LU/profile record.

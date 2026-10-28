@@ -318,3 +318,9 @@ source visit and table-sized accumulators. Exact subset/full-field tests and
 schedule attacks retain clear research scope. The actual K-valued commitment,
 privacy, source/selector/GKR consumers, bytes, accounting and native cost/control
 gates remain open; A2/A8 are Draft and E3-07 remains blocked.
+
+Q31 fraction continuation: formal/fraction-reduction.md and the exact public
+study implement the conditional tree and selected-product leaf reductions.
+Every original leaf/source claim has a public consumer, including unused final
+values. Native private/table-side consumers, full lookup framing/admission,
+privacy, NC-0400..0403 and measured c_lu remain required under Draft A2/A8.
