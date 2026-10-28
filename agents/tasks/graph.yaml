@@ -335,7 +335,7 @@ tasks:
   crate: stele-sumcheck
   status: in_progress
   agent: codex-root
-  branch: task/E3-03-zerocheck-corpus
+  branch: task/E3-03-zerocheck-reference
   acceptance:
   - matches_reference_naive
   - c_sc improvement ledger
