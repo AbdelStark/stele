@@ -329,8 +329,47 @@ E8-05 and E12-04; no production c_c/T_misc constant changes.
 
 ### A4 — Native deterministic v2 encoder and closed identity factory
 
-Status: Draft. Question Q23. This separates the deterministic encoder implementation
+Status: Accepted. Question Q23. Review: [skill passes](../../agents/reviews/native-code-a4.md).
+This separates the deterministic encoder implementation
 from A1's unresolved parameter/consumer admission, following A2's circle precedent.
 The original E4-01 criteria remain; E4-08 becomes its native encoder prerequisite.
 Exact contract and delivery gates: [native code](../../formal/native-code.md).
 No profile, PCS parameter or soundness-ledger admission follows from an encoding.
+
+Exact addition to §3's deterministic encoder interface, independently of the
+unaccepted A1 parameter/consumer contract:
+
+> Implement the exact native API, identity and validation rules in native-code.md.
+> Code and CodeField are sealed; Encoder::from_code_id is the only new factory.
+> Accept exact A2 Circle IDs and exact v2 expander manifests, retaining all bytes.
+> No raw graph, arbitrary Field/Code implementation, metadata snapshot or registry
+> override is an input to this factory. Existing Circle APIs remain compatible.
+>
+> EncoderInfo returns only mathematical message/codeword lengths and sparse row/
+> edge counts in u64. It is not ProximityParams or authority for a profile. A1's
+> registry/provenance requirements and §6's full soundness budget remain required.
+>
+> Use recursive-code.md §§1–2 for the fixed v2 map/base/degrees/coordinates,
+> seeded-setup.md §1 for exact deterministic manifest and capped block generation,
+> and bounded-encoder.md §§1–2 for execution and checked resource handling.
+> Preserve all zero edges and generate every row. SamplingExhausted rejects the
+> whole operation; no partial output, fallback seed or code is returned.
+>
+> Use the same pinned no_std BLAKE3 dependency as stele-hash directly in stele-code.
+> These bytes are setup expansion, never Fiat-Shamir challenges. No internal
+> dependency edge, transcript label or production soundness line changes.
+
+The accepted scope is algorithm/API implementation. Native parity,
+malformed-input/fault tests, sealed API checks, actual capacities/process peaks,
+complete preparation/arithmetic ledgers and repository gates remain E4-08 delivery
+requirements. E4-01 retains every original criterion and depends on E4-08; it stays
+blocked on A1. A1/A3/A7 and Q12 are not accepted, weakened or marked complete here.
+No new proof binding or NC id is created by returning encoded values.
+
+Soundness impact: none added to a verifier. Deterministic map equality is checked;
+codeword validity, minimum-distance admission, setup/proximity composition and all
+actual source/PCS consumers remain separate. No proven flag becomes true.
+Cost impact: d*E(J) sparse adds/multiplies plus fixed base and capped regeneration,
+with explicit input/output/scratch/base/query overlap. Native benchmarks must charge
+all work and process memory; no measured constant, c_c claim or weight-pass change.
+Affected tasks: E4-08, E4-01 and their E4/E10/E12 consumers.

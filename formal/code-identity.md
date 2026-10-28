@@ -86,6 +86,10 @@ Q12 and the actual PCS consumers remain required before such a set can be admitt
 
 ## 4. Native API proposal and research behavior
 
+RFC-0010 A4 and [native-code.md](native-code.md) fix the implemented encoder
+surface independently: EncoderInfo contains lengths/counts only. The broader
+parameter/registry discussion here remains Draft A1 and cannot extend that API.
+
 Replace §3's underspecified general API with a sealed `Code` trait and a closed
 factory resolving only these two checked identities. Callers must not implement
 the trusted trait, inject a raw graph, or construct an instance with unchecked

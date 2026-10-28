@@ -217,3 +217,20 @@ process/device peaks remain explicit evidence obligations. Source metadata is
 not authentication, and replay cannot add a weight pass. No challenge, loss or
 measured constant changes. Same-author reviews approve the contract, not an
 independent audit, actual memory measurement or task completion. Status: Accepted.
+
+
+## ADR-030 — Deterministic encoder implementation before PCS admission
+
+Context: E4-08/E4-01, RFC-0010 A4 and Q23. Decision: accept the exact v2 map,
+manifest/capped expansion, sealed code/field factory and bounded native execution
+contract independently of A1's registry/consumer admission. EncoderInfo supplies
+only lengths and work counts; no distance, loss, proven flag or profile authority.
+Use the existing pinned no_std BLAKE3 primitive for setup expansion only. Every
+stream is generated and exhaustion rejects the whole operation without fallback.
+E4-08 carries native parity, malformed/fault/compile-fail tests and complete cost/
+memory ledgers through 2^20 symbols in all three fields. E4-01 retains every original
+criterion, depends on E4-08 and stays blocked on A1. A1/A3/A7, actual PCS/source
+consumers, all soundness accounting and Q12 remain open. This stages contract
+acceptance and implementation delivery; it does not reduce the full MVP scope.
+Same-author skill reviews approve the contract, not independent audit, native
+implementation, measured memory/performance or a profile. Status: Accepted.

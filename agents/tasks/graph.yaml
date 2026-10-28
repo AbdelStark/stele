@@ -545,7 +545,7 @@ tasks:
   - RFC-0010 A4
   skill: pcs-engineer
   crate: stele-code
-  status: blocked(RFC-0010 A4)
+  status: ready
   agent: codex-root
   branch: task/E4-08-native-contract
   acceptance:

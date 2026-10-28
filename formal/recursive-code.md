@@ -1,7 +1,8 @@
 # Candidate recursive M31 code map and setup bytes (Q23 / RFC-0010 A1)
 
-Status: Draft, v2 (supersedes the research v1 degree schedule). This specifies a candidate encoder and concrete base for the finite
-expander schedule. It does not admit a setup, code registry entry, PCS or profile.
+Status: RFC-0010 A4 governs the deterministic map/structural representation in
+§§1–2. The distance/admission discussion remains candidate A1 evidence. V2
+supersedes the research v1 schedule; no PCS parameter or profile is admitted.
 Canonical syntax, injectivity and sampling bounds are separate properties.
 
 ## 1. Exact map and field
@@ -66,8 +67,10 @@ production implementation; research parsing is not a production resource policy.
 
 These bytes fully determine the map. They are a structural representation, not
 semantic normalization: different zero-edge locations can describe equal maps
-with different descriptor bytes. A future code identity must bind the complete
-chosen descriptor; a family name or seed alone does not identify it. V1 raw descriptors reject, even for the base-only map. Seeded v2 regeneration is
+with different descriptor bytes. A4's complete manifest identifies this
+representation through its fixed expansion
+algorithm, or returns SamplingExhausted. No supplied raw descriptor is accepted
+by the native factory; a family name or seed without its algorithm is insufficient. V1 raw descriptors reject, even for the base-only map. Seeded v2 regeneration is
 specified separately in [seeded-setup.md](seeded-setup.md); no registry/profile
 acceptance is supplied here. Arbitrary `proven` metadata is not
 part of this descriptor and cannot enable a consumer.
@@ -115,5 +118,7 @@ matrix, then uses dense matrix products. Tests compare the full generator at n=2
 and recursive dense products at n=64/1024 in M31/QM31/OM31, with full-extension
 linearity, zero input, exact operation counts, query parity and malformed requests.
 No maximum-size recursive run, Rust/GPU parity, NC-0600..0605 credit, benchmark or
-profile claim follows. Complete setup/registry/admission/proximity contracts and
-required reviews remain prerequisites to accepting RFC-0010 A1.
+profile claim follows. A4 permits the exact deterministic encoder under its
+native delivery gates.
+Complete registry/admission/proximity contracts and required reviews remain
+prerequisites to accepting RFC-0010 A1.
