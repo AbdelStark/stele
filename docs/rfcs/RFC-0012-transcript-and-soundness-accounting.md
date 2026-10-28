@@ -438,14 +438,14 @@ Cost impact: descriptor/source-byte absorption in T_misc, with no fitted constan
 or weight-pass change. Affected tasks: E3-06 and its reduction consumers.
 
 
-### A7 — Separate setup failure and adaptive seed selection
+### A7 — Separate setup failure over the complete seed universe
 
 Status: Draft. Questions Q23/Q12. Companion to RFC-0010 A1. Candidate contract and
 self-contained conditional argument: [seeded setup](../../formal/seeded-setup.md).
 Motivation: a uniformly sampled code theorem does not certify a chosen seed, and
 a setup error cannot disappear into the PCS column-query term or hash loss.
 
-Proposed addition to §4, pending the quantum theorem and full admission contract:
+Proposed addition to §4, pending the full admission and FS/H composition contract:
 
 > Account separately for the event that an admitted code setup fails its required
 > support/distance properties. Add that event's bound to the protocol error
@@ -454,25 +454,32 @@ Proposed addition to §4, pending the quantum theorem and full admission contrac
 > and authoritative consumers must be fixed and checked. Missing evidence rejects
 > admission rather than assigning a zero loss.
 >
-> For the candidate classical random-oracle model only, the finite tower bound is
-> epsilon=200431782/2^288. With Q charged classical oracle queries/preprocessing
-> and S distinct previously untouched output seeds, use min(1,(Q+S)*epsilon).
-> Bounded-stream exhaustion rejects completely and is coupled to the uncapped
-> ensemble, without conditioning away failures. Reused prefixes/fields share the
-> same tower event. Neither Q nor S is a trusted prover assertion.
+> V2 uses the exact manifest/map/block identities in the candidate contract and
+> 416-bit finite event bounds. In the ideal random-oracle experiment the probability
+> that any successfully regenerated supported code from any of the 2^256 seeds
+> fails is at most 200431782/2^160 < 2^-132. This union bounds all seeds together:
+> outside that event every seed is good, irrespective of classical or quantum
+> selection, queries, outputs or reuse. Bounded-stream exhaustion rejects and is
+> coupled to the uncapped ensemble without conditioning away failures.
 >
-> This classical expression is inapplicable to the quantum adversaries allowed
-> by RFC-0002. Supply an applicable quantum theorem, exact query convention and
-> FS/H composition before acceptance; change finite parameters if required. The
-> exact quantum-search counterexample in the study rejects unqualified reuse of
-> the classical formula. Concrete BLAKE3 vectors do not prove an oracle assumption.
+> Reject v1, unknown identities, unsupported seed lengths and arbitrary raw maps.
+> The bound has no caller-supplied query/attempt budget. The v1 classical-only
+> expression is superseded; its quantum counterexample remains a regression check.
+> Concrete BLAKE3 vectors do not prove the oracle assumption. Authenticate the
+> actual regenerated source and fixed parameters before applying this setup bound.
+>
+> Compose with the actual protocol failure event outside bad setup under its
+> applicable oracle model. Conditioning on good setup need not preserve fresh
+> independent oracle outputs; a simple union decomposition does not supply the
+> remaining FS/H proof. Q12's quantum FS/hash and budget obligations remain open.
 
 Soundness impact: proposes a separate setup term, with no production ledger or
-loss-family change until admission and its theorem are complete. No proof challenge,
+loss-family change until admission and composition are complete. No proof challenge,
 transcript label or challenge derivation changes. Q12 still blocks certification.
 The sampler is deterministic setup expansion, not a second Fiat-Shamir mechanism.
 
 Cost impact: bounded setup hashing/preparation in T_misc/c_c, graph storage and
-regeneration copies. No measured coefficient or weight-pass count changes. Affected
+regeneration copies. Stronger v2 degrees increase exact edge work/storage (9728
+versus 7424 edges at n=256); these are operation counts, not benchmarks. No measured coefficient or weight-pass count changes. Affected
 tasks: E4-01/E4-03/E4-05, E8-05, E12-04/E12-09. A1 and A7 remain Draft; this
 research does not enable a code registry, PCS parameter or treaty profile.

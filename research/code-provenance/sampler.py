@@ -5,8 +5,8 @@ import struct
 from blake3 import blake3
 from recursive import geometry, setup_bytes, decode_setup, sc
 
-DOMAIN = b'stele/v0.1/setup/expander/block/v1'
-MANIFEST = b'stele/expander-seed/v1'
+DOMAIN = b'stele/v0.1/setup/expander/block/v2'
+MANIFEST = b'stele/expander-seed/v2'
 WORDS = 256
 EVENTS = 200431782
 
@@ -42,7 +42,7 @@ def block(seed, level, kind, row, stream, counter):
 
 def neighbors(words, columns, degree):
     require(type(columns) is int and 1 <= columns <= 1 << 29 and columns & (columns-1) == 0)
-    require(type(degree) is int and 1 <= degree <= min(columns, 22))
+    require(type(degree) is int and 1 <= degree <= min(columns, 26))
     selected = set()
     for word in islice(words, WORDS):
         require(type(word) is int and 0 <= word < 1 << 32)
@@ -53,7 +53,7 @@ def neighbors(words, columns, degree):
 
 
 def coefficients(words, degree):
-    require(type(degree) is int and 1 <= degree <= 22)
+    require(type(degree) is int and 1 <= degree <= 26)
     values = []
     for word in islice(words, WORDS):
         require(type(word) is int and 0 <= word < 1 << 32)
@@ -98,7 +98,6 @@ def check_setup(raw_manifest, raw_setup):
     require(setup_bytes(expected) == raw_setup, 'SetupMismatch')
 
 
-def setup_bound(queries, fresh):
-    # Classical ROM only: queried seed attempts plus unqueried final seed outputs.
-    require(type(queries) is int and queries >= 0 and type(fresh) is int and fresh >= 0, 'InvalidBudget')
-    return min(Fraction(1), Fraction((queries+fresh)*EVENTS, 1 << 288))
+def all_seeds_bound():
+    # Fixed v2 seed universe: no query cap or adversary-selection restriction.
+    return Fraction((1 << 256)*EVENTS, 1 << 416)

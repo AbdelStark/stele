@@ -24,9 +24,15 @@ The schedule N=2n, contraction 1/4, D=floor(N/50)+1 covers every power of
 four from n=256 through 2^30. Below support 128 the checker uses exact
 combinatorics; above it, the [rational interval derivation](../../formal/expander-sampling.md)
 bounds the whole interval. It cross-checks those inequalities against exact
-combinatorics at n=4096. All 200,431,782 events have bounds at most 2^-288;
-their union is below 2^-260. These are sufficient sampling bounds, not fixed-setup certificates.
+combinatorics at n=4096. All 200,431,782 events have bounds at most 2^-416;
+their union is below 2^-388. These are sufficient sampling bounds, not fixed-setup certificates.
 
-Production still needs canonical setup/identity, base encoding, grinding/reuse
-accounting and proximity parameters. E4-01 remains blocked; no registry,
+Production still needs authenticated setup/identity consumers, resource policy,
+joint FS/H accounting and proximity parameters. E4-01 remains blocked; no registry,
 encoder, profile admission, NC credit or benchmark result is delivered.
+
+V2 strengthens the finite event budget to support the all-seed union in
+[seeded-setup.md](../../formal/seeded-setup.md). For its exact 256-bit seed universe,
+the ideal-oracle probability of any successfully regenerated bad supported map is
+below 2^-132, irrespective of how a seed is selected. This is setup-only evidence;
+concrete BLAKE3, proximity, actual source consumers and Q12 remain separate.

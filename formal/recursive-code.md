@@ -1,6 +1,6 @@
 # Candidate recursive M31 code map and setup bytes (Q23 / RFC-0010 A1)
 
-Status: Draft. This specifies a candidate encoder and concrete base for the finite
+Status: Draft, v2 (supersedes the research v1 degree schedule). This specifies a candidate encoder and concrete base for the finite
 expander schedule. It does not admit a setup, code registry entry, PCS or profile.
 Canonical syntax, injectivity and sampling bounds are separate properties.
 
@@ -32,12 +32,12 @@ checker; the row domain changes at each recursive level, not with each input.
 
 | J | A degree | B degree |
 |---|---|---|
-| 4 | 18 | 22 |
-| 5 | 16 | 17 |
-| 6 | 15 | 17 |
-| 7,8 | 14 | 17 |
-| 9,10,11,12,13 | 13 | 17 |
-| 14,15 | 14 | 17 |
+| 4 | 25 | 26 |
+| 5 | 21 | 21 |
+| 6,7 | 19 | 18 |
+| 8,9 | 18 | 18 |
+| 10,11,12 | 17 | 18 |
+| 13,14,15 | 18 | 18 |
 
 Each row lists that many distinct in-range neighbor columns in strictly increasing
 order, paired with M31 coefficients. Zero-valued edges stay in the list; do not
@@ -49,7 +49,7 @@ sampler or evidence that a production setup obeyed the sampling assumptions.
 
 ## 2. Canonical setup descriptor
 
-The exact descriptor is ASCII `stele/expander-m31/v1`, followed by u8(J), followed
+The exact descriptor is ASCII `stele/expander-m31/v2`, followed by u8(J), followed
 by the 21-byte base identity `stele/circle-m31/v1 || u8(6) || u8(1)`.
 This header is 43 bytes. Then serialize levels J,J-1,...,4. At each level serialize
 A and then B, rows in increasing input-coordinate order. Each edge is
@@ -67,8 +67,9 @@ production implementation; research parsing is not a production resource policy.
 These bytes fully determine the map. They are a structural representation, not
 semantic normalization: different zero-edge locations can describe equal maps
 with different descriptor bytes. A future code identity must bind the complete
-chosen descriptor; a family name or seed alone does not identify it. No hash or
-registry/profile acceptance is supplied here. Arbitrary `proven` metadata is not
+chosen descriptor; a family name or seed alone does not identify it. V1 raw descriptors reject, even for the base-only map. Seeded v2 regeneration is
+specified separately in [seeded-setup.md](seeded-setup.md); no registry/profile
+acceptance is supplied here. Arbitrary `proven` metadata is not
 part of this descriptor and cannot enable a consumer.
 
 ## 3. Algebra, distance and admission boundary
