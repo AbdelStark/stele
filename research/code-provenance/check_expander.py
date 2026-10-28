@@ -4,7 +4,7 @@ from itertools import combinations, product
 from math import comb
 
 P = (1 << 31) - 1
-BITS = 224
+BITS = 288
 CUTOFF = 128
 MAX_MESSAGE = 1 << 30
 
@@ -111,7 +111,7 @@ def exhaustive():
 def main():
     exhaustive()
     limit = Fraction(1, 1 << BITS)
-    for kind, degree in [('A', 9), ('B', 17)]:
+    for kind, degree in [('A', 10), ('B', 17)]:
         assert 0 < graph_interval(kind, degree) < 1
         assert graph_interval(kind, degree) ** CUTOFF <= limit
         assert graph_interval(kind, degree - 1) ** CUTOFF > limit
@@ -123,7 +123,7 @@ def main():
     distance = 2 * n // 50 + 1
     for k in range(CUTOFF, distance):
         for kind, rows, cols, target, bound, degree in [
-            ('A', n, n // 4, 1, 2 * k, 9),
+            ('A', n, n // 4, 1, 2 * k, 10),
             ('B', n // 2, n // 2, distance - k, distance + k, 17),
         ]:
             assert graph_bound(rows, cols, degree, k, bound) <= graph_interval(kind, degree) ** k
@@ -134,14 +134,16 @@ def main():
         total, inner = 2 * message, message // 2
         distance, inner_distance = total // 50 + 1, inner // 50 + 1
         a_terms, b_terms = distance - 1, distance - inner_distance
-        a_degree = max(9, parameters(message, message // 4,
+        a_degree = max(10, parameters(message, message // 4,
             [(k, 1) for k in range(1, min(CUTOFF, distance))]))
         b_degree = max(17, parameters(inner, total - message - inner,
             [(k, distance - k) for k in range(inner_distance, min(CUTOFF, distance))]))
         events += 2 * (a_terms + b_terms)
         print(f'n={message}: N={total}, D={distance}, A degree={a_degree}, B degree={b_degree}, '
               f'{a_terms+b_terms} support sizes, each graph/entry bound <=2^-{BITS}', flush=True)
-    assert Fraction(events, 1 << BITS) <= Fraction(1, 1 << 128)
+    assert Fraction(events, 1 << BITS) < Fraction(1, 1 << 260)
+    # Arithmetic headroom only; this does not prove an FS/setup composition theorem.
+    assert Fraction(events * (1 << 100), 1 << BITS) < Fraction(1, 1 << 160)
     print(f'PASS: {events} bounded events; union <= {events}/2^{BITS}; not a fixed-setup certificate')
 
 

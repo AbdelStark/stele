@@ -58,13 +58,18 @@ gives `E_B^k`, where `E_B=56,250,000/p`.
 
 ## Exact certification and its limit
 
-The checker verifies `0<G_A(9),G_B(17),E_A,E_B<1` and their 128th powers
-are at most 2^-224. Therefore each event at every larger support is bounded
-by 2^-224. It checks all supports below 128 exactly, raises the degree where
+The checker verifies `0<G_A(10),G_B(17),E_A,E_B<1` and their 128th powers
+are at most 2^-288. Therefore each event at every larger support is bounded
+by 2^-288. It checks all supports below 128 exactly, raises the degree where
 needed, and checks monotonicity by rejecting the preceding degree. It also
 compares the interval inequalities to exact combinatorics for every large
 support at n=4096. The total event count is computed over all twelve steps;
-the union bound is verified to be at most 2^-128.
+the union bound is verified to be below 2^-260.
+
+The 288-bit per-event budget leaves arithmetic headroom for RFC-0002's stated
+grinding allowance: even multiplying this union by 2^100 stays below 2^-160.
+That check is not a theorem composing setup sampling with Fiat-Shamir or a
+profile certificate. Q12's FS/H obligations remain unchanged.
 
 These bounds cover only powers of four from 256 through 2^30, with a valid
 base map and the stated sampling distribution. They do not certify a PRNG,

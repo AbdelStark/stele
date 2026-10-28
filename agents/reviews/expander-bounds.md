@@ -24,7 +24,7 @@ that a particular production graph has good distance.
 - The schedule covers twelve recursive steps, n=4^j for j=4..15. Each matrix
   checks every support below 128 exactly. The new formal derivation covers every
   larger support with rational bases G_A/G_B/E_A/E_B less than one, whose
-  128th powers are checked against 2^-224. No floating-point/entropy estimate
+  128th powers are checked against 2^-288. No floating-point/entropy estimate
   or sampled interval point is used as certification. Exact combinatorics at
   n=4096 cross-check the implemented interval inequalities.
 - Low-support threshold search brackets upward before binary search, avoiding
@@ -35,9 +35,11 @@ that a particular production graph has good distance.
   determine the ranges. A must map nonzero input of weight below D to nonzero;
   B requires image weight D-k for each inner weight k below D. The formal
   induction requires a valid n=64, N=128 base code of distance at least three.
-- The 200,431,782 graph/entry events contribute at most 200431782/2^224,
-  below 2^-196, under the stated uniform sampling. This is not a certificate
+- The 200,431,782 graph/entry events contribute at most 200431782/2^288,
+  below 2^-260, under the stated uniform sampling. This is not a certificate
   for an arbitrary fixed seed, adversarial setup, PRNG heuristic or profile.
+  The stricter per-event allowance leaves arithmetic headroom for the stated
+  grinding cap; it does not discharge Q12 or prove an FS/setup composition.
 - Code identity, setup selection/grinding/reuse, base encoding and PCS proximity
   remain open. Other lengths are not covered. No registry or proof binding is
   enabled; no challenge, production loss line, NC status, measured constant or
