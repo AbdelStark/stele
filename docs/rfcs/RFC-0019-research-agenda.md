@@ -249,3 +249,10 @@ arithmetic and fixed-point/late-row counterexamples. Arbitrary/batched functiona
 complete native bytes/sampling, extraction/multi-opening semantics and actual
 controls remain required. E4-03 is blocked on A3; no profile or PCS implementation
 is supplied by the toy checks or an interactive subtotal below a budget.
+
+Q23 continuation: RFC-0010 A4 and formal/native-code.md accept only the deterministic
+encoder API/map/resource contract. E4-08 now tracks native delivery and is a
+prerequisite of E4-01; all original E4-01 criteria and its A1 block remain. Actual
+registry/source/PCS consumers, setup/proximity composition, profile admission and
+Q12 remain open. The existing research checks do not complete native parity,
+malformed/fault controls, compile-fail API checks or full cost/memory ledgers.

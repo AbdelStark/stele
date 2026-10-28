@@ -1,9 +1,9 @@
 # Candidate bounded v2 encoder execution (Q23 / RFC-0010 A1)
 
-Status: Draft. This fixes a candidate native execution/resource contract for the
+Status: §§1–2 are the execution/resource contract adopted by RFC-0010 A4 for the
 existing v2 map. The Python study checks algebra, traversal and logical workspace;
 it does not implement Rust allocation policy, certify process memory or admit PCS
-parameters. No Accepted protocol text or code identity changes.
+parameters. The code identity and exact map are unchanged.
 
 ## 1. Same map, different traversal
 
@@ -119,6 +119,6 @@ The checker initially exposed a capacity mistake that treated operation counters
 as address-sized buffers; the corrected rule keeps u64 counters separate and tests
 a case whose hash count exceeds 2^32 while its 32-bit requested payload fits.
 This is an algorithm/resource-contract study, not production NC, independent audit,
-maximum-size execution, native parity or an encoder benchmark. A1 remains Draft;
-complete native interfaces, source/parameter consumers, reviews and measured cost/
-memory gates remain necessary. A3/Q12 and all unsupported PCS parameters stay open.
+maximum-size execution, native parity or an encoder benchmark. A4 and
+[native-code.md](native-code.md) separate native implementation/delivery from A1's
+remaining source/parameter consumers; measured cost/memory gates remain necessary. A3/Q12 and all unsupported PCS parameters stay open.

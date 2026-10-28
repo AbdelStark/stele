@@ -1,11 +1,13 @@
 # Candidate v2 seeded setup and all-seed setup-loss bound (Q23)
 
-Status: Draft, RFC-0010 A1 / RFC-0012 A7. V2 strengthens the finite parameters
+Status: §1's deterministic manifest/sampler is governed by RFC-0010 A4. The
+security/admission argument remains Draft RFC-0010 A1 / RFC-0012 A7. V2 strengthens the finite parameters
 and bounds all seeds simultaneously in an ideal random-oracle experiment. The
 setup event is independent of any seed-selection algorithm, including quantum
 selection. This is not a concrete BLAKE3 guarantee or complete profile bound.
 It supersedes v1; raw setup, manifest and block domains all change to v2. V1
-bytes reject, including at the unchanged circle base. No production API changes.
+bytes reject, including at the unchanged circle base. A4 permits only encoder
+implementation; no production setup-distance/profile admission follows.
 
 ## 1. Manifest, expansion and rejection
 

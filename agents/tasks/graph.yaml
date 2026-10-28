@@ -435,6 +435,7 @@ tasks:
   title: Code trait + codes.toml with proven flags; RAA/expander linear-time encoder
   depends:
   - E1-04
+  - E4-08
   rfc:
   - RFC-0010 §3
   - RFC-0010 A1
@@ -534,6 +535,26 @@ tasks:
   status: ready
   acceptance:
   - digest identical for 1 and N shards
+- id: E4-08
+  epic: E4
+  title: Native v2 expander encoder and closed code identity API
+  depends:
+  - E1-04
+  - E4-02
+  rfc:
+  - RFC-0010 A4
+  skill: pcs-engineer
+  crate: stele-code
+  status: ready
+  agent: codex-root
+  branch: task/E4-08-native-contract
+  acceptance:
+  - full native contract and delivery gates in formal/native-code.md
+  - M31/QM31/OM31 exact Rust/Python words and query coordinates; 1000 seeded small cases per field
+  - malformed identity/row/column rejection and outer/inner/late sampling exhaustion
+  - closed factory and sealed field/code compile-fail tests; no raw graph or metadata injection
+  - complete adds/multiplies, generation/preparation and memory ledgers on all three fields through 2^20 input symbols
+  - native no_std, deterministic digests and all required gates; no PCS admission or NC credit
 - id: E5-01
   epic: E5
   title: CQIS types, formats, round-half-away requant, residual add rules
