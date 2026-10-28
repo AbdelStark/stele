@@ -63,7 +63,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 12] = [
+const REGISTRY: [RegistryEntry<'static>; 16] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -124,6 +124,26 @@ const REGISTRY: [RegistryEntry<'static>; 12] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/fraction",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/layer",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/gamma",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Rlc),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/fold",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Rlc),
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -151,7 +171,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 12], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 16], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -208,6 +228,10 @@ pub enum AbsorbLabel {
     ZeroSkip,
     /// Every original tensor slice final (A5).
     ZeroFinal,
+    /// Conditional tree descriptor and roots (A9).
+    Fraction,
+    /// Tree id, level and current evaluation claims (A9).
+    FractionLayer,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -220,6 +244,8 @@ impl AbsorbLabel {
             Self::Zero => 8,
             Self::ZeroSkip => 10,
             Self::ZeroFinal => 11,
+            Self::Fraction => 12,
+            Self::FractionLayer => 13,
         }]
     }
 }
@@ -232,6 +258,10 @@ pub enum ChallengeLabel {
     BatchCoefficient,
     /// Zerocheck tail weight, SC phase 0 (A5).
     ZeroWeight,
+    /// Pair combination after current claims (A9), RLC.
+    FractionGamma,
+    /// Child interpolation after all A1 finals (A9), RLC.
+    FractionFold,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -239,6 +269,8 @@ impl ChallengeLabel {
             Self::Sumcheck => 4,
             Self::BatchCoefficient => 7,
             Self::ZeroWeight => 9,
+            Self::FractionGamma => 14,
+            Self::FractionFold => 15,
         }]
     }
 }

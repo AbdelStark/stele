@@ -3,8 +3,8 @@ use stele_hash::{registry, validate_registry, Error, RegistryEntry};
 use stele_negative_controls::{check_configuration, ProverHook};
 
 struct DuplicateLabel;
-impl ProverHook<[RegistryEntry<'static>; 12]> for DuplicateLabel {
-    fn tamper(&self, entries: &mut [RegistryEntry<'static>; 12]) {
+impl<const N: usize> ProverHook<[RegistryEntry<'static>; N]> for DuplicateLabel {
+    fn tamper(&self, entries: &mut [RegistryEntry<'static>; N]) {
         let before = *entries;
         entries[4].label = entries[2].label;
         assert_eq!(

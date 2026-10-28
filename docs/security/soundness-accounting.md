@@ -177,3 +177,12 @@ RFC-0008 A3 / RFC-0012 A9 now fix the conditional native fraction contract.
 Its Gamma/Fold RLC and scoped A1 SC terms are required with the actual engine.
 Canonical types/codecs add no draw or production registry entry. Native original
 consumers, controls and full enumeration remain required; A2/A8 and Q12 stay open.
+
+The native RFC-0008 A3 tree now registers Fraction/Layer absorbs and Gamma/Fold
+RLC draws from A9. Its actual prover/verifier return a tree-scoped record with
+Gamma=m, Fold=m and ordered A1 records (id=k,m=k,degree=3,numerator=3k).
+The gate compares both fields' proof bytes, every original claim, all record
+fields and transcript continuation against Python, and runs actual public
+consumers plus NC-0406..0408. This accounts for F(m)/|K| conditionally; selected
+products, full lookup identity, private source/PCS, ZK and FS/H remain separate.
+The unused Leaf label remains reserved, not registered by this tree-only change.

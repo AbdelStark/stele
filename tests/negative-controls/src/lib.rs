@@ -5,6 +5,8 @@
 pub mod batching;
 pub mod catalog;
 #[doc(hidden)]
+pub mod fraction;
+#[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
 pub mod streaming;
@@ -21,6 +23,24 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 406,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || fraction::run(406),
+    },
+    catalog::RegisteredControl {
+        id: 407,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "LeafMismatch",
+        run: || fraction::run(407),
+    },
+    catalog::RegisteredControl {
+        id: 408,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CoefficientMismatch",
+        run: || fraction::run(408),
+    },
     catalog::RegisteredControl {
         id: 210,
         kind: catalog::ControlKind::Proof,

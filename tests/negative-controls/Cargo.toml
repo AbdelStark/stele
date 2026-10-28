@@ -25,6 +25,7 @@ name = "configuration"
 path = "harness/configuration.rs"
 
 [dependencies]
+stele-lookup = { path = "../../crates/stele-lookup" }
 stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }
 stele-field = { path = "../../crates/stele-field" }
 stele-hash = { path = "../../crates/stele-hash" }

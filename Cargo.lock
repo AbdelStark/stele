@@ -234,6 +234,7 @@ dependencies = [
  "stele-field",
  "stele-gkr",
  "stele-hash",
+ "stele-poly",
  "stele-sumcheck",
 ]
 
@@ -243,6 +244,7 @@ version = "0.1.0"
 dependencies = [
  "stele-field",
  "stele-hash",
+ "stele-lookup",
  "stele-sumcheck",
 ]
 

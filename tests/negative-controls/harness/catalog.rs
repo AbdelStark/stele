@@ -16,8 +16,8 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("3/18 bindings; 14/77 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 63);
+    assert!(coverage.contains("4/18 bindings; 17/77 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 60);
     let streaming = catalog
         .iter()
         .find(|entry| entry.id == 210)

@@ -6,6 +6,7 @@ license = "Apache-2.0"
 description = "Stele — stele-lookup (see RFC-0008)"
 
 [dependencies]
+stele-poly = { path = "../stele-poly" }
 stele-gkr = { path = "../stele-gkr" }
 stele-hash = { path = "../stele-hash" }
 stele-sumcheck = { path = "../stele-sumcheck" }

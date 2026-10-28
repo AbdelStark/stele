@@ -114,10 +114,7 @@ class GateTests(unittest.TestCase):
         fixture.write_text(original)
         records = [json.loads(line) for line in original.splitlines()]
         record = records[0]
-        record['descriptor']['id'] += 1
-        encoded = bytearray.fromhex(record['descriptor_hex'])
-        encoded[2:10] = record['descriptor']['id'].to_bytes(8,'little')
-        record['descriptor_hex'] = encoded.hex()
+        record['unexpected_reference_metadata'] = 1
         fixture.write_text(''.join(json.dumps(row)+'\n' for row in records))
         result = self.run_gate('soundness-accounting')
         self.assertNotEqual(result.returncode, 0)
