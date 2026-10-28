@@ -70,3 +70,23 @@ pub fn continuation<K: ChallengeField + Eq + core::fmt::Debug>(
     assert_eq!(continued, expected);
     let _ = stele_sumcheck::verify_public(&next, &continued, &data, vt).expect("same continuation");
 }
+
+/// Decode a trusted A3 research fixture, not a production proof container.
+pub fn zerocheck_instance<K: ChallengeField>(v: &Value) -> Instance<K>
+where
+    K::Bytes: TryFrom<Vec<u8>>,
+{
+    Instance {
+        id: number(&v["id"]),
+        num_vars: number(&v["m"]) as u32,
+        inputs: array(&v["ids"]).iter().map(number).collect(),
+        terms: array(&v["terms"])
+            .iter()
+            .map(|term| Term {
+                coefficient: field(&term[0]),
+                factors: array(&term[1]).iter().map(|x| number(x) as u32).collect(),
+            })
+            .collect(),
+        claimed_sum: K::from_i64(0),
+    }
+}

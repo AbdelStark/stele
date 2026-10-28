@@ -11,6 +11,8 @@ pub mod batch;
 pub mod claim_batch;
 mod dense;
 mod instance;
+/// Static zerocheck descriptor and proof data, RFC-0006 A3.
+pub mod zerocheck;
 pub use dense::Dense;
 pub use instance::{Instance, Term};
 
@@ -21,6 +23,8 @@ pub enum Error {
     InvalidInstance,
     /// Empty or inconsistent ordered batch descriptor.
     InvalidBatch,
+    /// Invalid row-zero descriptor or plan-selected skip count.
+    InvalidZerocheck,
     /// Subproof dimensions differ from the verifier-owned instance.
     ProofShape,
     /// Input tables or strategy dimensions differ from the instance.
