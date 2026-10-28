@@ -63,6 +63,7 @@ jobs:
       - run: uv run --locked --script research/code-provenance/check_sampler.py
       - run: uv run --locked --script research/code-provenance/check_identity.py
       - run: uv run --locked --script research/code-provenance/check_proximity.py
+      - run: uv run --locked --script research/code-provenance/estimate_native_distance.py
       - run: python3 research/circle-code/check_circle.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline

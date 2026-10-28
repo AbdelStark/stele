@@ -15,6 +15,8 @@ def check():
     run = subprocess.run(['cargo','run','-q','-p','stele-code','--example','native_vectors','--locked','--offline'], cwd=root, capture_output=True, text=True, check=True)
     validate_catalog((root / 'crates/stele-code/codes.toml').read_bytes())
     base = base_generator()
+    base_bytes = b''.join(v.to_bytes(4,'little') for row in base for v in row)
+    assert (root / 'crates/stele-code/examples/support/circle-base.bin').read_bytes() == base_bytes
     cases = 0
     expected_order = [(d,j,seed) for seed in (0,1) for j in (3,4,5) for d in (1,4,8)]
     lines = run.stdout.splitlines()
