@@ -82,3 +82,34 @@ F=10 is an example only. The study does not select a model's score scale,
 authorize either representation, define canonical table/passport bytes or prove
 model fidelity. A2's other activations, total RMSNorm and registry requirements
 remain. Certificate/index/parameter mutations are research controls only.
+
+## Strict activation-rounding investigation (Q25 continuation)
+
+Question: can explicit sigmoid, SiLU and softcap candidates certify their signed
+int16 outputs across independently chosen scales, including values arbitrarily
+close to a rounding boundary? The security property is deterministic agreement
+with the stated real function; table generation and direct lookup cost concern
+c_a/c_lu/T_misc. Kill criterion: any uncertified rounding, substituted limit,
+silent clipping or dependence on host floating-point behavior. Strict rational
+enclosures and an independent positive-series oracle test this question.
+
+The [candidate definitions and proof](../../formal/cqis-activations.md) retain
+strict interval endpoints, including a rounded-to-zero exponential lower bound.
+At (F,E,t)=(1,0,32767), SiLU rounds to 16383, whereas its limiting input value
+rounds to 16384. A softcap with c=1/2,E=0 rounds every finite input to zero,
+whereas its positive limiting cap rounds to one. Neither limit substitution
+preserves the integer function, regardless of its small real approximation error.
+
+`check_activations.py` compares every entry of three complete int16 tables
+(196,608 entries) and 30,000 seeded scale/cap cases against independent positive
+Taylor/reciprocal bounds. The [artifact](activation-candidates.json) records
+exact extrema and digests. Each certified entry has absolute error at most
+1/2 output unit; generation rejects overflow or unresolved bounded precision.
+Parameter boundaries, strict endpoints, exact zero/ties and one-field
+certificate/metadata/shape mutations are included. Direct tables have 65,536
+rows each; no decomposition or protocol-byte identity is selected here.
+
+Recommendation: continue Q25 with GeLU variants, total RMSNorm/rsqrt, authenticated
+registry bytes and scale alignment, then complete A2 review and native delivery.
+This continuation leaves A2 Draft and E5-02 blocked. No lookup/range binding,
+native negative-control, static-certificate or model-fidelity credit is claimed.

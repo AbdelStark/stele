@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "scope": "research; no table identity, native admission or fidelity",
+  "cases": [
+    {
+      "parameters": [
+        "sigmoid",
+        8,
+        12,
+        0,
+        0
+      ],
+      "entries": 65536,
+      "minimum": 0,
+      "maximum": 4096,
+      "sha256": "69fd0c44f1b411f3ceb418c64a931fc69c20d77f3993fd12c0525b2817353288"
+    },
+    {
+      "parameters": [
+        "silu",
+        8,
+        8,
+        0,
+        0
+      ],
+      "entries": 65536,
+      "minimum": -71,
+      "maximum": 32767,
+      "sha256": "876726e5989e269c1b24085588a81ed80e36ac916be40a171ef5104ac8f0ac16"
+    },
+    {
+      "parameters": [
+        "softcap",
+        8,
+        8,
+        30,
+        0
+      ],
+      "entries": 65536,
+      "minimum": -7677,
+      "maximum": 7677,
+      "sha256": "7705fcc9447f86bb26549e931fe0e297b0095d0752c0d4d12a86ae6799dcf1f9"
+    }
+  ],
+  "random_checks": {
+    "sigmoid": 10000,
+    "silu": 10000,
+    "softcap": 10000
+  },
+  "boundary_checks": 150,
+  "absolute_error_output_units": [
+    1,
+    2
+  ],
+  "strict_endpoint_witness": {
+    "parameters": [
+      "silu",
+      1,
+      0,
+      0,
+      0
+    ],
+    "input": 32767,
+    "value": 16383,
+    "rounded_limit": 16384
+  },
+  "softcap_half_limit": {
+    "parameters": [
+      "softcap",
+      0,
+      0,
+      1,
+      1
+    ],
+    "positive_tail": 0,
+    "rounded_limit": 1
+  }
+}
