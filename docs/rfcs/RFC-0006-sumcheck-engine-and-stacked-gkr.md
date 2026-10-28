@@ -522,6 +522,13 @@ both elimination orders, endpoint coalescing and original-point restoration,
 with an independent M31 original-table oracle. This resolves a proposed algebraic
 rule, not its production wire/source/consumer or transport implementation.
 
+The [candidate statement grammar](../../formal/stacked-statement.md) now gives
+exact layouts, consumed-claim/P/coefficient bytes and an A1 reuse schedule. It
+binds all resolved source values but explicitly does not authenticate them.
+Weighted Boolean-table selector composition and the fixed source-resolution
+interface still require their production review/evidence. Companion RFC-0012 A6
+and RFC-0020 A2 remain Draft; no registry or dependency change is implemented.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,

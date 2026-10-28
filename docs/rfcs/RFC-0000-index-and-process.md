@@ -37,7 +37,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0009 | Attention protocol | Accepted |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2); A1 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted |
-| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5) |
+| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5); A6 Draft |
 | 0013 | Zero-knowledge | Accepted |
 | 0014 | GPU prover architecture | Accepted (A1) |
 | 0015 | Distributed proving | Accepted |
@@ -45,7 +45,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted |
 | 0019 | Research agenda | Research |
-| 0020 | Monorepo and crate architecture | Accepted (A1) |
+| 0020 | Monorepo and crate architecture | Accepted (A1); A2 Draft |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`

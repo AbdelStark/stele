@@ -37,6 +37,12 @@ candidate neither adds a commitment nor discharges an original input claim.
 | gqa_broadcast | head h then group g; lengths H,G; H divisible by G | 1 when g=floor(h/(H/G)), else 0 |
 | rope_tables | explicitly ordered table axes and exact source values | the supplied, authenticated CQIS table entry |
 
+The candidate descriptor in stacked-statement.md additionally defines selected-axis
+weights for every kind. Its eq tag uses one as the primitive and places all target
+points in those selectors; the all-axis equality above is its fully selected special
+case. The general weighted evaluator still needs its own delivery evidence. These
+Drafts do not authorize silently changing a production coefficient polynomial.
+
 The window includes the current position and the preceding w-1 positions. Widths
 covering the entire padded row domain reduce to the causal mask. Real row and
 column lengths can differ; their padded bit widths must agree for these mask kinds.
