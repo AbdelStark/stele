@@ -159,6 +159,10 @@ Candidate public-MLE algebra and padding semantics are in formal/public-mle.md;
 the research evaluator agrees with direct M31 tables and retains O(log n) causal
 and window evaluation. Actual source authentication, complete wire/ownership
 contracts and extension-field production evidence remain open.
+The candidate in formal/stacked-ownership.md now fixes logical round ownership,
+folded-input redistribution and canonical point restoration for both layer orders.
+The independent original-table oracle is research evidence only; full A4 closure
+and all production delivery requirements remain mandatory.
 
 Q21: which typed eligibility, deferred-prefix state and actual out-of-range misuse
 control complete the small-value strategy without changing the A1 protocol?
