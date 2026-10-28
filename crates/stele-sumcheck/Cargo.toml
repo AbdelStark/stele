@@ -22,3 +22,7 @@ std = []
 [[test]]
 name = "file_source"
 required-features = ["std"]
+
+[[example]]
+name = "streaming_bench"
+required-features = ["std"]
