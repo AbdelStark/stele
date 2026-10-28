@@ -116,6 +116,24 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('small strategy parity/control mismatch', result.stderr)
 
+    def test_rejects_buffered_padding_and_missing_field_check(self):
+        source = self.root / 'crates/stele-sumcheck/src/buffers.rs'
+        original = source.read_text()
+        self.assertIn('AbsorbLabel::Instance, &bytes[..size]', original)
+        source.write_text(original.replace('AbsorbLabel::Instance, &bytes[..size]',
+                                           'AbsorbLabel::Instance, bytes', 1))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('buffered A1 parity/consumer mismatch', result.stderr)
+        source.write_text(original)
+        source = self.root / 'crates/stele-sumcheck/tests/buffers.rs'
+        original = source.read_text()
+        self.assertIn('fn matches_reference_buffered_om31()', original)
+        source.write_text(original.replace('fn matches_reference_buffered_om31()', 'fn omitted_buffered_check()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('buffered A1 parity/consumer mismatch', result.stderr)
+
     def test_rejects_small_corpus_drift_and_prover_mismatch(self):
         corpus = self.root / 'research/small-value/corpus.jsonl'
         original = corpus.read_text()
