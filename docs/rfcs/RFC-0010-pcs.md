@@ -272,3 +272,51 @@ twiddle/domain generation and allocation; no fitted constant or speed claim is
 made. This is one-time weight registration work, not another per-proof weight
 pass. Existing c_c/fused-opening/per-proof terms do not change. Affected tasks:
 E4-02 and its registration/PCS consumers. A2 does not complete E4-02.
+
+
+### A3 — Functional-opening proximity hypotheses and finite query parameters
+
+Status: Draft. Question Q27. Evidence: [conditional tensor opening](../../formal/tensor-opening.md)
+and research/code-provenance/check_proximity.py. Motivation: §2's arbitrary public
+functional is not automatically a valid random proximity test, and §6 does not
+instantiate a finite exceptional-combination bound or integer query count.
+
+Proposed addition to §§2,5,6, pending the complete native/mode contracts:
+
+> For the fresh random tensor mode, bind the exact code ID, field, dimensions and
+> encoded-column oracle before all independent uniform row challenges. Use the
+> ordered tensor of (1-r,r) factors and bind u, b and v before any independent
+> uniform column draws. Check dot(u,b)=v and every authenticated column equation.
+> Native challenges come only from Transcript; a caller-provided point or mode
+> flag does not certify freshness or its distribution.
+>
+> The conditional lemma in formal/tensor-opening.md uses the proved distance lower
+> bound D, e=floor((D-1)/3), exceptional term 2*ell*(e+1)/|K|, and query miss term
+> ((N-e-1)/N)^q. It covers rejection of far matrices and consistency with the unique
+> near matrix. Keep setup, Merkle, FS/H and other losses separate. Derive the least
+> q satisfying the exact 130-bit miss inequality; unsupported arithmetic/budgets
+> reject. A distance theorem alone cannot authorize arbitrary query counts.
+>
+> Preserve support for arbitrary and batched functionals, but provide their actual
+> admissible-query or prior-proximity relation and consumers before enabling them.
+> Do not apply the fresh-tensor theorem to a fixed point, an arbitrary coefficient
+> vector, or a batched sum merely by naming it a tensor. Do not silently introduce
+> another weight pass or replace the actual fused u=B object with an unbound copy.
+
+Acceptance still requires exact native statement/proof bytes, label/order and
+unbiased index sampling, canonical leaf interpretation, source/extraction and
+multi-opening semantics, complete arbitrary/batched modes, parameter policy,
+prover/verifier APIs and actual NC-0600/0601/0603/0605 consumers (NC-0602 remains
+Merkle authentication only). No production protocol or parameter set is enabled
+by this draft. E4-03 is blocked on A3; E4-01 A1 retains its full obligations.
+
+Soundness impact: proposes finite tensor/query terms in the PCS record; no new
+production challenge, label, registry flag or ledger line. The complete bound and
+Q12 remain open. The conservative generic-code theorem is not a conjectural
+larger-radius gap or the paper's full extraction theorem.
+
+Cost impact: verifier work and proof bytes depend on actual q (up to 13472 draws
+in the checked examples). Counts are exact arithmetic, not a benchmark. Additional
+proximity work, if selected for other modes, must be measured/accounted while
+preserving the one-weight-pass invariant. Affected tasks: E4-01/E4-03/E4-04/E4-05,
+E8-05 and E12-04; no production c_c/T_misc constant changes.

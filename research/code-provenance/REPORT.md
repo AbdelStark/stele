@@ -245,3 +245,34 @@ capacity handling and authenticated PCS/plan/passport consumers remain required,
 as do proximity, query/error composition and profile admission. The extra bounded
 registry/descriptor work changes no measured c_c/T_misc constant or weight-pass
 count; regeneration, full encoding, raw copies and peak storage are still charged.
+
+## Tensor proximity and query-count study
+
+Question: which exact finite bound applies to a fresh random tensor row functional,
+and which counterexamples prevent applying it to arbitrary public functionals or
+late-chosen rows? Security property: interleaved proximity and functional consistency;
+cost terms: query bytes and verifier work. Kill criterion: any hypothesis mismatch,
+incorrect integer rounding/minimal query count, row-distance substituted for column
+distance, or claim of full PCS/profile soundness from this conditional lemma.
+
+
+Run `uv run --locked --script research/code-provenance/check_proximity.py`.
+The [formal note](../../formal/tensor-opening.md) applies the published generic-code
+tensor theorem under its actual hypotheses, then proves the near/far query argument.
+The checker covers all 72 code sizes over QM31/OM31, independent exact minimal-query
+calculations, and 298 toy matrices with all tensor points enumerated per matrix.
+It preserves column distance, the actual proposed row before query selection, and
+a separate scalar functional check. Fixed tensor points and late-chosen rows give
+explicit counterexamples to omitting those premises; these are not full PCS attacks.
+
+For the 130-bit miss target, Circle(10,1)/(10,2) require 494/314 draws; expander
+messages 256/2^30 require 11489/13472 draws under this conservative bound. These are
+exact integer counts, not timings or proof-size measurements. With ell=20 at the
+largest expander size, QM31's tensor error exceeds 2^-100; OM31's setup/tensor/query
+subtotal is below 2^-128 but omits the remaining protocol and FS/H losses.
+
+Recommendation: continue with Draft RFC-0010 A3. Keep E4-03 blocked until exact
+native bytes/sampling/consumers and arbitrary/batched modes are specified; preserve
+those requirements and the fused one-weight-pass contract. Neither query arithmetic
+nor a below-target subtotal enables the catalog's proven flags. Measure the actual
+proof/verifier cost and any added proximity work before claiming the intended MVP.

@@ -442,7 +442,7 @@ tasks:
   crate: stele-code
   status: blocked(RFC-0010 A1)
   agent: codex-root
-  branch: task/E4-01-code-identity
+  branch: task/E4-01-tensor-proximity
   acceptance:
   - linearity tests
   - distance estimate script
@@ -472,9 +472,10 @@ tasks:
   - E2-02
   rfc:
   - RFC-0010 §1-2,§4,§8
+  - RFC-0010 A3
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: blocked(RFC-0010 A3)
   acceptance:
   - NC-0600..0603
   - ledger PCS line

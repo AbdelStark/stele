@@ -240,3 +240,12 @@ The contract fixes explicit schedules, bounded record preparation, preallocated
 work/proof/byte buffers and separate full-process/device evidence obligations.
 E3-05 is ready for production implementation and its real capacity/parity/control/
 ledger gates. No estimator, source study or read count completes those gates.
+
+
+Q27: which admissible functional distributions, finite proximity/query bounds and
+source/commitment consumers complete RFC-0010 §§2,5,6? Draft A3 and
+formal/tensor-opening.md give a conditional fresh random tensor lemma, exact query
+arithmetic and fixed-point/late-row counterexamples. Arbitrary/batched functionals,
+complete native bytes/sampling, extraction/multi-opening semantics and actual
+controls remain required. E4-03 is blocked on A3; no profile or PCS implementation
+is supplied by the toy checks or an interactive subtotal below a budget.
