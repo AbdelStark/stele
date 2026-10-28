@@ -354,9 +354,9 @@ tasks:
   - RFC-0006 A5
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: ready
+  status: in_progress
   agent: codex-root
-  branch: task/E3-04-small-value-contract
+  branch: task/E3-04-small-value
   acceptance:
   - NC-0204
   - memory reduction measured

@@ -58,3 +58,9 @@ E3-02 batching controls live in `src/batching.rs` and run through the real prove
 public verifiers in both modes and fields: NC-0202/0206 and extensions of 0205/0802.
 NC-0205 also changes one unclaimed virtual-tensor entry while keeping the initial
 claims fixed; the public consumer must reject the false final evaluation.
+
+NC-0204 uses the production Small strategy on an unsigned table narrowed from
+an original value of 65536. The unused input keeps all round messages unchanged;
+exactly one final evaluation changes. Both fields require the unchanged public
+consumer to reject with ClaimMismatch against the original table. A constructor
+error earns no credit, and typed storage alone supplies no authenticated range proof.

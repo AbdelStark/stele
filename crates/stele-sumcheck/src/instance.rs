@@ -3,7 +3,7 @@ use crate::{append, Error};
 use alloc::vec::Vec;
 use stele_hash::ChallengeField;
 /// One ordered product, including repeated factors and empty constant products.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Term<K> {
     /// Field coefficient; zero does not reduce the conservative degree bound.
     pub coefficient: K,
@@ -11,7 +11,7 @@ pub struct Term<K> {
     pub factors: Vec<u32>,
 }
 /// Verifier-owned instance; validate at every protocol entry, never trust proof metadata.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Instance<K> {
     /// Plan instance identity, unique in the surrounding plan.
     pub id: u64,

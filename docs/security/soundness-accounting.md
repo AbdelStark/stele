@@ -59,7 +59,7 @@ record cases, 10^4 coefficient evaluations per field, and actual two-mode contro
 The [interactive obligation](../../formal/batching.md) remains conditional on true
 final evaluations. The 276-case shared Rust/Python corpus checks exact decisions, every returned obligation,
 and SC/RLC records against descriptors. E3-02 has [both-field CPU baseline ledgers](../../bench/README.md#batching-e3-02);
-Q12 still blocks certification. Catalog coverage is twelve controls, not a full claim graph.
+Q12 still blocks certification. Catalog coverage is thirteen controls, not a full claim graph.
 
 RFC-0006 A3 / RFC-0012 A5 now have a production zerocheck consumer. With j=m-k
 and D=δ*(2^k-1), the three ordered SC phases record j (ZeroWeight), D (optional
@@ -78,3 +78,10 @@ including every eligible (m,k) through m=4, maximum skip with a tail at m=5,
 and public claim consumption.
 E3-03 has [both-field complete-cost/memory ledgers](../../bench/README.md#zerocheck-e3-03);
 performance evidence does not strengthen the conditional algebraic bound. Q12 remains open; these gates do not certify a profile.
+
+RFC-0006 A5's Small strategy retains the A1 transcript, final obligations and
+SC m*δ/p^d record without new challenges or registry entries. Both gates require
+QM31/OM31 directed proof parity, transcript continuation and the actual NC-0204
+original-value rejection. Typed i16/u16 storage is an optimization eligibility
+contract, not a range proof. E3-04's seeded corpus, independent decision comparison
+and measured memory/cost evidence remain pending; no profile is certified.
