@@ -529,3 +529,11 @@ added separately from the repeated rational-identity bound. All children precede
 tau, and the next layer's P/Q claims precede gamma. These are research-local
 Transcript labels and conditional interactive losses, not production registry,
 LU admission, private consumers or Q12 composition.
+
+A8 consumer continuation: [complete event inventory](../../formal/lookup-consumers.md)
+binds all r multiplicity roots before every beta/alpha, then consumes both trees
+and all original claims. With table depth k, the conservative conditional bound
+adds r*[F(m)+F(k)+3m]/|K| to e^r, F(n)=3n(n-1)/2+2n, plus actual binding/FS terms.
+The study checks actual Transcript draw counts and ordering, not receipt fields
+alone. Full revealing Merkle openings do not instantiate private PCS or ZK;
+no production labels, ledger schema or profile admission change.

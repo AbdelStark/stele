@@ -44,3 +44,6 @@ single/paired preparation. It retains all native/privacy/consumer requirements.
 
 The [fraction continuation](FRACTION.md) executes the conditional tree reduction
 and selected-product leaf equation with complete public original-array consumers.
+
+The [whole lookup continuation](LOOKUP.md) connects these claims to actual source
+and multiplicity Merkle roots, with explicit revealing consumers and full accounting.
