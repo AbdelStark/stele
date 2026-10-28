@@ -13,12 +13,14 @@ pub mod claim_batch;
 mod dense;
 mod instance;
 mod small;
+mod streaming;
 /// Eq-factored zerocheck and bounded skip, RFC-0006 A3.
 pub mod zerocheck;
 pub use buffers::prove_into;
 pub use dense::Dense;
 pub use instance::{Instance, Term};
 pub use small::{Small, SmallTable};
+pub use streaming::{Source, Streaming};
 
 /// Invalid input or failed reduction; abort the entire transcript attempt on error.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,6 +33,10 @@ pub enum Error {
     InvalidZerocheck,
     /// Unsupported small-value prefix or a different cached instance.
     InvalidSmallValue,
+    /// Invalid window schedule or a different cached streaming instance.
+    InvalidStreaming,
+    /// Source I/O, malformed record, early EOF or extra rows.
+    Source,
     /// Subproof dimensions differ from the verifier-owned instance.
     ProofShape,
     /// Input tables or strategy dimensions differ from the instance.
@@ -149,6 +155,13 @@ pub trait Summand<K: ChallengeField> {
     fn fold(&mut self, challenge: K) -> Result<(), Error>;
     /// Evaluations after every coordinate has been fixed.
     fn final_values(&self) -> Result<Vec<K>, Error>;
+    /// Validate strategy identity before the first absorb, including zero-round instances.
+    fn validate_instance(&self, instance: &Instance<K>) -> Result<(), Error> {
+        if self.shape() != (instance.num_vars, instance.inputs.len()) {
+            return Err(Error::PublicShape);
+        }
+        Ok(())
+    }
     /// Fill existing endpoint storage. The default allocates; bounded strategies override it.
     fn round_into(&self, instance: &Instance<K>, out: &mut [K]) -> Result<(), Error> {
         let values = self.round(instance)?;
@@ -264,9 +277,7 @@ pub fn prove<K: ChallengeField + Eq>(
     transcript: &mut Transcript<K>,
 ) -> Result<Proof<K>, Error> {
     let degree = i.validate()?;
-    if summand.shape() != (i.num_vars, i.inputs.len()) {
-        return Err(Error::PublicShape);
-    }
+    summand.validate_instance(i)?;
     let mut rounds = Vec::new();
     reserve(&mut rounds, i.num_vars as usize)?;
     transcript.absorb(AbsorbLabel::Instance, &i.encode()?)?;

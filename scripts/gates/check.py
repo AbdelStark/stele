@@ -213,6 +213,19 @@ def buffered_engine(root):
     print('gate buffered A1: 1000 cases per degree/field, unchanged capacities, consumers and continuations')
 
 
+def streaming_strategy(root):
+    """A6 source/arena behavior; file adapter, NC-0210 and pipeline evidence remain open."""
+    tests = ('matches_reference_streaming_qm31', 'matches_reference_streaming_om31',
+             'accepts_workspace_smaller_than_dense_input', 'rejects_source_failures_and_capacity_overrun',
+             'rejects_cached_instance_even_without_rounds', 'accepts_no_inputs_without_source_access',
+             'rejects_source_failure_during_window_transition', 'matches_reference_zero_and_one_challenges')
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'streaming',
+                             '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+    if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
+        raise ValueError(f'streaming A1 source/arena mismatch: {result.stdout} {result.stderr}')
+    print('gate streaming A1: 1000 cases per degree/field; source visits, errors and arena limits')
+
+
 def zerocheck(root):
     """Actual A3 bytes, all slice claims, SC phases and one-value controls."""
     for test, command in [
@@ -359,6 +372,7 @@ def main():
                 zerocheck(ROOT)
                 zero_corpus(ROOT)
                 buffered_engine(ROOT)
+                streaming_strategy(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
