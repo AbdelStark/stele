@@ -91,3 +91,12 @@ For RFC-0006 A7, `stele-gkr` may directly depend on `stele-field` in addition to
 hash, PCS, poly or authentication edge is authorized by A3. A2 remains Draft.
 Update dependency bans with this exact edge. No external dependency, protocol,
 challenge, loss or measured constant changes. Affected task: E3-06a.
+
+### A4 — Fixed setup expansion dependency
+
+Status: Accepted. Review: [native code skill passes](../../agents/reviews/native-code-a4.md).
+For RFC-0010 A4, stele-code may import stele-hash for the fixed expander setup
+block function only. Its exact framing is domain-separated from Transcript and
+accepts no arbitrary domain. All proof challenges still come from Transcript.
+No external dependency is added. Update dependency bans with this downward edge;
+no PCS, prover or verifier dependency is permitted. No challenge/profile changes.

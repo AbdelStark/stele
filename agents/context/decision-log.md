@@ -229,3 +229,15 @@ obligations. This preserves the complete inference objective while allowing
 its arithmetic prerequisites to be tested. No challenge, fitted constant or
 weight pass changes. Same-author skill reviews, not independent audit.
 Status: Accepted.
+
+## ADR-031 — Regenerated native code identity with separate PCS admission
+
+Context: E4-01, RFC-0010 A4 / RFC-0020 A4. Decision: implement the fixed v2
+recursive expander and existing Circle under a sealed identity-selected API.
+Setup expansion uses its fixed BLAKE3 domain, capped rejection streams and
+explicit graph-memory budget. The native factory regenerates every edge; raw
+maps and metadata overrides are not accepted. Derived distance/setup evidence
+never enables a PCS profile; both registry proven flags remain false until the
+opening/composition contract is complete. Every E4-01 test and ledger remains
+required before completion. No new proof challenge or weight pass. Same-author
+skill review, not independent audit. Status: Accepted.

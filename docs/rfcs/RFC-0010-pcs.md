@@ -320,3 +320,26 @@ in the checked examples). Counts are exact arithmetic, not a benchmark. Addition
 proximity work, if selected for other modes, must be measured/accounted while
 preserving the one-weight-pass invariant. Affected tasks: E4-01/E4-03/E4-04/E4-05,
 E8-05 and E12-04; no production c_c/T_misc constant changes.
+
+### A4 — Native linear-time encoder and closed identity boundary
+
+Status: Accepted. Contract: [native code](../../formal/native-code.md).
+Review: [skill passes](../../agents/reviews/native-code-a4.md). Questions Q23/Q27.
+Exact replacement of §3's encoder API: implement the full native contract above,
+using the fixed v2 recursive map, deterministic capped setup and closed identities.
+This adopts A1's encoder/identity research with explicit native resource handling;
+A1's commitment/proximity/profile integration and A3 remain Draft. Code metadata
+is EncoderParameters, not ProximityParams; neither supported family admits a PCS
+profile through this API. Both registry proven flags remain false.
+
+Soundness: the elementary finite-support induction, capped-stream coupling and
+all-seed union are explicitly conditional on the ideal setup oracle. They do not
+certify FS/H, proximity, source bindings or zero knowledge. No proof challenge,
+transcript label or admitted error ledger changes; future composition must charge
+the separate setup event under RFC-0012 A7 before a profile can be enabled.
+
+Costs: linear sparse edge work and bounded setup hashing in c_c/T_misc, explicit
+retained graph and recursive-buffer memory. Full native ledgers remain E4-01
+acceptance criteria; no fitted constant, benchmark or weight pass changes here.
+No PCS negative control is credited by encoder tests. E4-01 can implement this
+contract; E4-03/E4-05/E12-04 retain every opening/admission requirement.

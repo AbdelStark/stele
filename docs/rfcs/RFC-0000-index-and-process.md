@@ -35,7 +35,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted |
 | 0009 | Attention protocol | Accepted |
-| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2); A1, A3 Draft |
+| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2, A4); A1, A3 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted |
 | 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5); A6, A7 Draft |
 | 0013 | Zero-knowledge | Accepted |
@@ -45,7 +45,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted |
 | 0019 | Research agenda | Research |
-| 0020 | Monorepo and crate architecture | Accepted (A1, A3); A2 Draft |
+| 0020 | Monorepo and crate architecture | Accepted (A1, A3, A4); A2 Draft |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`
