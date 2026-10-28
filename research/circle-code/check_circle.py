@@ -109,6 +109,11 @@ def checks():
         pts = domain(m)
         assert len(set(pts)) == 2**m
         assert pts == [point(m, j) for j in range(2**m)]
+        for boundary in ([0]*len(pts), [1]*len(pts), [P-1]*len(pts),
+                         [j % 2 for j in range(len(pts))]):
+            values = transform(boundary, pts)
+            assert values == [direct(boundary, pt) for pt in pts]
+            assert transform(values, pts, True) == boundary
         for _ in range(10):
             coefficients = [rng.randrange(P) for _ in pts]
             values = transform(coefficients, pts)
@@ -154,7 +159,7 @@ def checks():
         pass
     else:
         raise AssertionError('unsupported twin-coset size accepted')
-    print(f'{count} rate-1/2 and rate-1/4 encodings match direct basis evaluation; linearity holds.')
+    print(f'{count} seeded rate-1/2 and rate-1/4 encodings match direct evaluation; 28 boundary round trips agree.')
     print('Generator order, domain endpoint formulas through log 30, inverse normalization and size rejection checked.')
     print('Vanishing top polynomial demonstrates the extra full-space dimension for logs 1..6.')
     print('A length-four, dimension-two word has weight two: do not import the ordinary RS MDS formula.')

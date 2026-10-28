@@ -189,3 +189,18 @@ statement; research rejects earn no catalog credit. Complete costs and memory,
 including transition overlap and losses, remain delivery gates. Same-author
 reviews approve the contract, not independent audit or profile security.
 Status: Accepted.
+
+## ADR-028 — Canonical circle FFT subspace and full input-size benchmark
+
+Context: E4-02, RFC-0010 A2, Q24. Decision: use the fixed M31 circle generator,
+odd-exponent ordered domains, LSB-first y/v_h basis and fully normalized inverse.
+Only the FFT subspace is interpolated; the extra full-space dimension is excluded.
+Use the deterministic distance lower bound N-k, not an ordinary RS MDS claim.
+Encoding is non-systematic. Preserve a 2^30-input-symbol benchmark at both rates:
+two rows of length 2^29 at rate 1/2, four of length 2^28 at rate 1/4. Each encoded
+row has 2^30 symbols, the maximum ordinary twin-coset output size over M31. All
+rows must actually run, with total and per-row dimensions recorded. No single
+unsupported 2^30-symbol input row or extrapolated timing is claimed.
+Same-author reviews approve the encoder contract, not independent audit, PCS
+profile parameters or completion of the actual implementation/benchmark.
+Status: Accepted.

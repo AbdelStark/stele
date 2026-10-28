@@ -164,7 +164,7 @@ RS encoder E4-02 still requires its own construction/parameter evidence.
 
 ### A2 — Canonical M31 circle encoder
 
-Status: Draft. Question Q24. Evidence: [circle study](../../research/circle-code/REPORT.md)
+Status: Accepted. Question Q24. Review: [skill passes](../../agents/reviews/circle-a2.md). Evidence: [circle study](../../research/circle-code/REPORT.md)
 and [deterministic derivation](../../formal/circle-code.md).
 Motivation: §3 leaves the circle basis, ordered domains, normalization and maximum
 size unspecified. The full circle polynomial space is one dimension larger than
@@ -230,10 +230,13 @@ commitment, transcript label or certified ledger line is introduced. A1/E4-03,
 E4-05/E12-04 and Q12 retain their full obligations; §6 is not discharged here.
 
 E4-02 acceptance retains direct-naive parity and the actual large benchmark:
-the unqualified `2^30 encode benchmark` means N=2^30 encoded symbols, at both
-rates, with k=2^29 and k=2^28 reported explicitly. It does not claim to encode
-2^30 input symbols. The ledger must include preparation, inverse transform,
-expansion, domain/twiddle work, output validation and peak memory; separately
+the `2^30 encode benchmark` must process 2^30 input symbols at each rate. Use two
+rows of k=2^29 at rate 1/2 and four rows of k=2^28 at rate 1/4; every row produces
+N=2^30 codeword symbols. Report both per-row and total input/output lengths.
+This is the existing row-wise matrix encoding, not a single unsupported 2^30-symbol
+row. Reusing or rescaling one measured row does not meet the gate: execute every
+required row. The ledger must include preparation, inverse transform, expansion,
+domain/twiddle work, output validation and peak memory; separately
 report reusable setup if amortized. A formula, sampled output without performing
 the full encoding, extrapolated runtime or metadata-only case is not this gate.
 Require independent vectors/direct evaluation at small sizes, generator order,

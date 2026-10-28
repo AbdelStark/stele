@@ -188,5 +188,11 @@ size define the circle encoder? Candidate RFC-0010 A2 gives a concrete map and
 self-contained derivation. The circle study checks 140 complete small encodings,
 the extra full-space dimension and a counterexample to the ordinary RS MDS bound.
 E4-02 is blocked on A2 acceptance; no production or 2^30 benchmark credit follows
-from these checks. The proposed benchmark scope is 2^30 codeword symbols at both
-rates with both input lengths recorded explicitly.
+from these checks. The benchmark preserves 2^30 total input symbols at both rates,
+using supported rows with all per-row and aggregate lengths recorded explicitly.
+
+Q24 resolution: RFC-0010 A2 Accepted with same-author encoder/rfc/soundness passes
+and a self-contained deterministic derivation. E4-02 is ready for implementation.
+The large benchmark explicitly covers 2^30 input symbols at each rate; all rows
+must actually be encoded, with input/output lengths and counts recorded. A1, PCS parameters,
+profile accounting and actual production parity/benchmark evidence remain open.

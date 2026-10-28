@@ -21,7 +21,8 @@ recursive even/odd transform against independent direct basis evaluation. The
 inverse includes every factor of 1/2. Canonical coefficient order has the y bit
 least significant, followed by x, 2*x^2-1, and subsequent doubled-angle polynomials.
 
-Results: 70 interpolation/evaluation round trips and 140 complete encodings for
+Results: 70 seeded interpolation/evaluation round trips, 28 directed boundary
+round trips and 140 complete encodings for
 message logs 0..6 and rates 1/2,1/4 agree with direct evaluation. Each encoding
 also passes a linear-combination check. Complete small-domain order is checked
 through log six; endpoint formulas and generator-order arithmetic are checked
@@ -39,15 +40,16 @@ bound is N-k (and N for a constant message), as proved in the derivation.
 
 The ordinary twin-coset construction supports at most 2^30 codeword symbols over
 M31. Rate-1/2 and rate-1/4 messages at that output size contain 2^29 and 2^28
-symbols respectively. A 2^30-symbol input at those rates would need a different
-supported domain/construction; this study makes no such claim. The proposed A2
-contract makes E4-02's previously unqualified benchmark size explicitly the
-codeword size and requires both rates, complete encoding and recorded input/output
-dimensions. No large allocation or benchmark was run here, and the task remains
+symbols respectively. A single 2^30-symbol input row at those rates would need a
+different domain/construction. A2 preserves a 2^30-input-symbol benchmark through
+the actual row-wise matrix encoding: two rows at rate 1/2 and four rows at rate
+1/4, each producing 2^30 codeword symbols. Every row must actually run; scaling one
+row's timing is insufficient. Both per-row and aggregate input/output dimensions
+are recorded. No large allocation or benchmark was run here, and the task remains
 incomplete until the actual required ledger exists.
 
 Recommendation: accept the explicit encoder-only contract after the required
 reviews, then implement it with independent vectors, real memory/cost evidence,
-and the full 2^30-codeword benchmark. Encoding cannot admit a PCS profile: A1's
+and the full 2^30-input-symbol benchmark. Encoding cannot admit a PCS profile: A1's
 registry/provenance contract, codeword validity, proximity, query accounting and
 authentication remain separate. There is no GPU or full-inference result here.
