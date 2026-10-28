@@ -65,6 +65,7 @@ jobs:
       - run: uv run --locked --script research/code-provenance/check_proximity.py
       - run: uv run --locked --script research/code-provenance/check_certified.py
       - run: python3 research/packing/check_packing.py
+      - run: uv run --locked --script research/packing/check_fused.py
       - run: uv run --locked --script research/code-provenance/check_bounded.py
       - run: uv run --locked --script research/code-provenance/check_measurement.py
       - run: python3 research/circle-code/check_circle.py

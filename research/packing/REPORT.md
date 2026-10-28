@@ -40,3 +40,33 @@ keep them Draft until the complete consumer and one-pass schedule are specified.
 Keep E4-03 blocked on A3/A6, retain every original packing/fused/negative-control
 criterion, and continue the complete PCS/inference objective. No core protocol,
 transcript/ledger, code identity, admitted format or measured constant changes.
+
+## Direct fused layouts and short-column tradeoffs
+
+Run `uv run --locked --script research/packing/check_fused.py`. The
+[continuation](../../formal/fused-layout.md) proves a rank obstruction to any
+fixed affine decoder recovering all T original coordinates from fewer than T
+message coordinates, even when the source codec itself is nonlinear. Exhausting
+15,625 maps/decoders over F_5 corroborates the proof; a selected-functional
+positive example prevents interpreting it as a ban on all compressed proofs.
+
+The signed identity layout satisfies literal u=B. Its prototype pads each axis
+independently and distinguishes signed field embedding from unsigned raw bytes.
+Across 2,000 full-QM31/OM31 cases, independent dense MLE folding matches B,
+every short-column row coordinate, the final tensor evaluation and arbitrary
+original column functionals. There are 58,100 logical value reads and one source
+visit per case. Reusing the guarded research source rejects. This is algebraic
+read instrumentation, not measured native I/O or the actual fused PCS gate.
+
+Short columns keep the padded message count constant, shrink queried columns
+and enlarge the sent/retained u_s row. For a positive split, B is a separate
+low-coordinate fold; source work and this state traversal are counted separately.
+The exact payload/state formulas are tested across all splits in the declared
+small grid. The example selecting s=4 minimizes only the two stated payload
+terms; it is not a full proof-size optimum, timing benchmark or parameter policy.
+
+Recommendation: explicitly specify the signed layout for the literal fused
+contract and a separate consumer for short-column folding. Keep authenticated
+compressed sources and every existing E4-03/E4-04 packing/control requirement
+open. The rank argument cannot justify skipping range/passport/ZK checks, and
+the prototype does not authorize a production map or another weight visit.
