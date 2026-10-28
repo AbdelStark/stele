@@ -568,9 +568,13 @@ tasks:
   rfc:
   - RFC-0004 §2,§6
   - RFC-0003 §4
+  - RFC-0003 A2
+  - RFC-0004 A3
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: blocked(RFC-0003 A2; RFC-0004 A3)
+  agent: codex-root
+  branch: task/E5-03-quantiser-contract
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
