@@ -425,6 +425,7 @@ tasks:
   title: LogUp-GKR fraction trees with selectors; single and double challenge
   depends:
   - E3-06
+  - E3-07a
   rfc:
   - RFC-0008 §1-3,§6
   - RFC-0008 A2
@@ -438,6 +439,25 @@ tasks:
   - NC-0400..0403
   - c_lu measured
   - table-side sum over committed multiplicities
+- id: E3-07a
+  epic: E3
+  title: Conditional fraction-tree and selected-product native reductions
+  depends:
+  - E3-01
+  - E3-06a
+  rfc:
+  - RFC-0008 A3
+  - RFC-0012 A9
+  - RFC-0020 A4
+  skill: gkr-reduction-author
+  crate: stele-lookup
+  status: ready
+  acceptance:
+  - checked canonical descriptors and exact proof codecs in QM31 and OM31; malformed and maximum verifier shapes
+  - native tree and selected-product engines with original public consumers, complete records and no receipt-as-acceptance
+  - real NC-0406..0410 via ProverHook plus challenge-order and continuation controls
+  - shared Rust/Python proof, decision, claim, accounting and continuation corpus plus 1000 seeded cases per field
+  - complete primitive cost and memory ledgers; E3-07 retains all private consumer, full lookup, NC-0400..0403 and c_lu criteria
 - id: E3-08
   epic: E3
   title: Table registry + decomposition compiler (large table = composition of <=2^16 tables)

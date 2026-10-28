@@ -160,3 +160,85 @@ revealing Merkle adapter authenticates full original vectors and consumes every
 derived claim. It is research evidence for binding/composition, not the required
 private PCS, ZK, native control or c_lu implementation. The full private consumers,
 plan/wire admission and all original E3-07 criteria remain prerequisites.
+
+### A3 — Conditional fraction-tree and selected-product reductions
+
+Status: Accepted. Question Q31. Review: [skill passes](../../agents/reviews/fraction-a3.md).
+Evidence: [tree argument](../../formal/fraction-reduction.md) and
+[closed computation](../../formal/lookup-consumers.md). Companions: RFC-0012 A9,
+RFC-0020 A4. This implements the common arithmetic prerequisite without admitting
+a lookup mode, private consumer, revealing production PCS, profile or inference
+statement. A2 remains Draft; E3-07 retains every original requirement. E3-07a
+delivers the conditional native primitives, controls, parity and primitive ledgers.
+
+Addition to §2, as a standalone conditional reduction:
+
+1. Only canonical QM31/OM31 are supported. The immutable verifier-owned descriptor
+   has u64 tree id, u32 m,b with 0<=b<=m<=63, two distinct u64 leaf ids and m-b
+   K elements theta in MSB-first order. It is supplied by the consumer, never
+   adopted from proof metadata. Generic arithmetic does not admit a weighted
+   lookup: the complete protocol must separately enforce A2's static count bounds.
+   Original arrays are fixed before relevant challenges and have 2^m pairs (P,Q).
+2. At parent layer k from the root, a=1-theta[k],z=theta[k] when k<m-b, otherwise
+   a=z=1. Children are adjacent: P=a*P0*Q1+z*P1*Q0, Q=Q0*Q1. Bind descriptor and
+   both roots. For each k<m bind tree id,k,r,p,q before Gamma. A1 proves sum
+   p+gamma*q on k variables with ordered inputs P0,Q0,P1,Q1,Eq(r,.) and terms
+   a*P0*Q1*Eq + z*P1*Q0*Eq + gamma*Q0*Q1*Eq. Zero coefficients retain degree 3.
+3. A1 absorbs all five finals. Check Eq(r,u) exactly, then draw Fold tau and
+   propagate p'=(1-tau)*p0+tau*p1, q'=(1-tau)*q0+tau*q1 at (u,tau). The appended
+   coordinate is the canonical child bit. Local child ids 0..4 never escape.
+   k=0 still draws Gamma/Fold around a scalar A1 final; m=0 has no layer or draw.
+   Export exactly the two original leaf claims. Every final, including unused
+   values, needs an actual original reduction/opening consumer. A public adapter
+   checks original arrays. No receipt alone accepts lookup membership.
+4. Q=0 is allowed for generic pair arithmetic. The separate root consumer requires
+   both denominators nonzero, then checks cross multiplication. This check alone
+   is not lookup acceptance. Any failure or sampling exhaustion aborts the attempt;
+   no resampling, fallback, new intermediate commitment or partial acceptance.
+5. The selected-product leaf consumes p,q at r, fixed alpha,beta, fixed public
+   Boolean sigma and c>0 distinct ordered original ids >=2. Check p=sigma_tilde(r).
+   Prove H=1+(alpha-1)*p-q with degree-three A1 terms beta^j*Eq(r,.)*sigma*x_j,
+   j=0..c-1, input ids [0,1,original ids]. Bind descriptor,c,original ids,
+   alpha,beta,r,p,q first. Check final Eq and sigma independently, then emit every
+   original column at the same point, including zero-coefficient columns. A public
+   adapter consumes all actual columns. This is the MLE of a Boolean selected
+   product, not a product of separately evaluated MLEs.
+
+Canonical encoding and resource contract:
+
+- All integers are little endian; K values use canonical RFC-0003 limbs. Reject
+  noncanonical limbs rather than reduce them. Descriptor: u8 version=1, u8 field
+  degree, u64 id, u32 m, u32 b, two u64 leaf ids, then theta. Proof: two K roots,
+  then for k=0..m-1, k A1 rows of four K values and five finals. Exact length is
+  4d*(2+2m^2+3m). No points, counts, ids or extra bytes are adopted from the proof.
+  Decode against a validated descriptor; reject short/trailing bytes before
+  allocation or absorption. Decoding produces an unverified proof object only.
+- The leaf A1 payload has m rows of four values and c+2 finals, exact length
+  4d*(4m+c+2). Scalar boundaries retain their prescribed finals. All sizes,
+  shifts and allocations are checked. The verifier never allocates 2^m from a
+  proof. Dense prover/public-consumer materialization rejects Capacity when its
+  actual buffers cannot fit; complete protocol/profile resource admission remains
+  mandatory. Both-field codec tests compare decoded fields, not just round trips.
+- Fraction absorbs descriptor+roots; Layer absorbs u64 id,u32 k,r,p,q; Leaf absorbs
+  descriptor,u32 c,c u64 original ids,alpha,beta,r,p,q. A1 framing is unchanged.
+  Tree SC id=k is local to its preceding frame; leaf SC id=tree id is scoped by
+  Leaf. Tag accounting records by tree and phase/level; equal local ids from
+  different invocations must not overwrite one another.
+- Invalid descriptors, proof shapes/lengths and field encodings have distinct
+  typed errors. A parser supplies no transcript/consumer check. Native engine
+  parity must cover proofs, decisions, original claims, records and continuation.
+
+Soundness: F(m)/|K| for the tree, F(m)=3m(m-1)/2+2m, conditional on true original
+leaf evaluations. Gamma and Fold each contribute m/|K|; scoped A1 records sum to
+3m(m-1)/2 over |K|. The selected-product leaf adds 3m/|K|. Exact root/Eq/public
+selector checks add no random loss. The explicit argument is in the linked
+fraction note. PCS/binding, source authentication, full lookup identity, ZK and
+FS/H remain separate; Q12 is unresolved and GKR losses are not automatically squared.
+
+Implementation order: canonical types/bytes, native engines and actual public
+consumers, real controls, shared parity corpus, then complete primitive ledgers.
+None alone completes E3-07a. NC-0406..0410 are reserved; research/codec checks
+earn no coverage. E3-07 retains NC-0400..0403, committed multiplicities, private
+integration and measured c_lu. Cost terms: c_lu/c_sc, T_misc and owned source,
+tree, proof and coefficient storage. Use linear-size equality construction and
+charge all retained levels/copies. No fitted constant or weight-pass count changes.

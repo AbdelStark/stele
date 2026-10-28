@@ -330,3 +330,8 @@ paired schedule and consumes original source/multiplicity claims through actual
 Merkle roots and full reveals. The exact table-padding and early-denominator
 attacks reject at their consumers. This closes the revealing research computation,
 not the private PCS/ZK/native implementation or any original task criterion.
+
+Q31 native prerequisite: Accepted RFC-0008 A3 / RFC-0012 A9 / RFC-0020 A4 fix the
+conditional fraction/selected-product contract for E3-07a. Native types, engines,
+actual public consumers, controls, shared parity and complete primitive ledgers
+are all required. This does not accept A2's whole lookup or reduce E3-07's scope.
