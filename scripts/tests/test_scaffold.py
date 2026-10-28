@@ -54,6 +54,8 @@ class ScaffoldTests(unittest.TestCase):
             cases = [
                 ('stele-gkr', 'stele-hash', 'dependencies'),
                 ('stele-gkr', 'stele-pcs', 'dependencies'),
+                ('stele-lookup', 'stele-pcs', 'dependencies'),
+                ('stele-lookup', 'stele-verifier', 'dev-dependencies'),
                 ('stele-prover', 'stele-verifier', 'dependencies'),
                 ('stele-verifier', 'stele-proof', 'dependencies'),
                 ('stele-verifier', 'stele-cqis', 'build-dependencies'),

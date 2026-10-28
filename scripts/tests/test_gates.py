@@ -95,6 +95,40 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('native encoder gate failed', result.stderr)
 
+    def test_rejects_unwired_fraction_engine_codec_drift_and_missing_field(self):
+        extra = self.root / 'crates/stele-lookup/src/engine.rs'
+        extra.write_text('pub fn unvalidated() {}')
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not wired', result.stderr)
+        extra.unlink()
+        fixture = self.root / 'crates/stele-lookup/tests/fixtures/fraction-codec.jsonl'
+        original = fixture.read_text()
+        records = [json.loads(line) for line in original.splitlines()]
+        record = records[0]
+        record['payload_hex'] = ('00' if record['payload_hex'][:2] != '00' else '01') + record['payload_hex'][2:]
+        fixture.write_text(''.join(json.dumps(row)+'\n' for row in records))
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction codec checks failed', result.stderr)
+        fixture.write_text(original)
+        records = [json.loads(line) for line in original.splitlines()]
+        record = records[0]
+        record['descriptor']['id'] += 1
+        encoded = bytearray.fromhex(record['descriptor_hex'])
+        encoded[2:10] = record['descriptor']['id'].to_bytes(8,'little')
+        record['descriptor_hex'] = encoded.hex()
+        fixture.write_text(''.join(json.dumps(row)+'\n' for row in records))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction codec reference drift', result.stderr)
+        fixture.write_text(original)
+        tests = self.root / 'crates/stele-lookup/tests/codec.rs'
+        tests.write_text(tests.read_text().replace('fn matches_reference_om31_fraction_codec()', 'fn omitted_field_check()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction codec checks failed', result.stderr)
+
     def test_rejects_external_field_seal_removal(self):
         source = self.root / 'crates/stele-code/src/encoder.rs'
         original = source.read_text()

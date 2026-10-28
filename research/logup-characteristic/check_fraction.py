@@ -4,6 +4,7 @@
 # ///
 """Q31 closed public fraction reductions; no native lookup, PCS, ZK or NC credit."""
 import copy
+import json
 from pathlib import Path
 import random
 import struct
@@ -177,8 +178,46 @@ def check_boundaries():
     rejects('TreeShape',lambda: ft.descriptor(bad,d))
 
 
+def codec_vectors():
+    """Actual Python tree proofs, plus independently described field order."""
+    rng = random.Random(310809)
+    result = []
+    for d in (4,8):
+        for m in (0,1,3):
+            for b in sorted({0,m//2,m}):
+                rand = lambda: tuple(rng.randrange(sc.P) for _ in range(d))
+                identity = len(result)+31 if d == 4 else (1 << 64)-1-len(result)
+                s = dict(id=identity,m=m,b=b,leaves=(101,(1 << 63)+102),theta=[rand() for _ in range(m-b)])
+                leaves = [(rand(),rand()) for _ in range(1 << m)]
+                proof,_ = ft.prove(ft.Transcript(public(s,leaves,d),d),s,leaves)
+                encoded = lambda values: [sc.encode(x).hex() for x in values]
+                result.append(dict(degree=d,descriptor={**s,'leaves':list(s['leaves']),'theta':encoded(s['theta'])},
+                    descriptor_hex=ft.descriptor(s,d).hex(),payload_hex=ft.proof_bytes(s,proof,d).hex(),
+                    proof=dict(root=encoded(proof['root']),steps=[dict(rounds=[encoded(row) for row in step['rounds']],
+                        final=encoded(step['final'])) for step in proof['steps']])))
+    return result
+
+
+def check_codec_vectors(write=False):
+    path = Path(__file__).resolve().parents[2] / 'crates/stele-lookup/tests/fixtures/fraction-codec.jsonl'
+    records = codec_vectors()
+    if write:
+        path.parent.mkdir(parents=True,exist_ok=True)
+        with path.open('x') as output:
+            output.write(''.join(json.dumps(record,separators=(',',':'))+'\n' for record in records))
+    else:
+        assert [json.loads(line) for line in path.read_text().splitlines()] == records
+    assert len(records) == 12
+    print('12 both-field native codec fixtures match actual Python proofs; no native proof verification credit')
+
+
 if __name__ == '__main__':
+    if sys.argv[1:] in (['--codec'],['--write-codec']):
+        check_codec_vectors(sys.argv[1:] == ['--write-codec'])
+        raise SystemExit(0)
+    assert not sys.argv[1:]
     trees,leaves = check_trees(),check_leaf_sources()
     check_boundaries()
+    check_codec_vectors()
     print(f'{trees} full-K fraction trees and {leaves} selector/source reductions: claims, bytes, accounting and continuation agree')
     print('root/round/coefficient/leaf/pole/malformed controls reject; no native NC, PCS, ZK or profile credit')

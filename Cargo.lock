@@ -230,7 +230,11 @@ dependencies = [
 name = "stele-lookup"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
+ "stele-field",
  "stele-gkr",
+ "stele-hash",
+ "stele-sumcheck",
 ]
 
 [[package]]
