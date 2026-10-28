@@ -453,7 +453,7 @@ tasks:
   crate: stele-lookup
   status: in_progress
   agent: codex-root
-  branch: task/E3-07a-fraction-transcript-controls
+  branch: task/E3-07a-fraction-corpus
   acceptance:
   - checked canonical descriptors and exact proof codecs in QM31 and OM31; malformed and maximum verifier shapes
   - native tree and selected-product engines with original public consumers, complete records and no receipt-as-acceptance
