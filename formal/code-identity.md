@@ -111,10 +111,15 @@ existing checked recursive encoder; Circle uses the existing component transform
 Returned metadata is a descriptive snapshot and is never accepted as an encoding
 input. The APIs accept neither raw matrices nor caller-supplied `proven` metadata.
 
+The [bounded v2 execution proposal](bounded-encoder.md) supplies a graph-free
+candidate traversal and explicit requested-payload formulas. Native delivery still
+requires actual allocation, complete memory/cost evidence and approved consumers.
+
 Native capacity calculations must use checked shifts/products/sums before allocation
 and must use fallible reservation for every live buffer, mapping failure to
-`Capacity`. Account for N field elements, E graph records, nested row storage,
-base transforms, generated raw bytes, scratch and construction overlap. Smaller
+`Capacity`. Account for N field elements, nested row storage, base transforms, scratch and
+construction overlap. Charge E graph records and generated raw bytes when those
+are materialized; the bounded traversal instead charges per-row generation state. Smaller
 address spaces may reject a supported mathematical size as `Capacity`; never
 truncate it or change the code. The Python study does not establish that native
 allocation contract or a production peak-memory bound; Python resource exceptions
