@@ -196,3 +196,10 @@ and a self-contained deterministic derivation. E4-02 is ready for implementation
 The large benchmark explicitly covers 2^30 input symbols at each rate; all rows
 must actually be encoded, with input/output lengths and counts recorded. A1, PCS parameters,
 profile accounting and actual production parity/benchmark evidence remain open.
+
+Q25: which complete nonlinear table definitions, canonical registry bytes and
+total integer RMSNorm normalization complete RFC-0004 §§4,5.3? Draft A2 records
+the required contract. The exact table study reproduces the exp domain/index
+size conflict and valid sum-of-squares inputs without the stated normalized
+representation. E5-02 is blocked on A2; research checks establish no generated
+table, max-error bound, production lookup control or complete forward pass.

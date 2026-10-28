@@ -551,9 +551,10 @@ tasks:
   - E5-01
   rfc:
   - RFC-0004 §4
+  - RFC-0004 A2
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: blocked(RFC-0004 A2)
   agent: codex-root
   branch: task/E5-02-table-contract
   acceptance:
