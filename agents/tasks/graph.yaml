@@ -442,7 +442,7 @@ tasks:
   crate: stele-code
   status: blocked(RFC-0010 A1)
   agent: codex-root
-  branch: task/E4-01-expander-bounds
+  branch: task/E4-01-recursive-contract
   acceptance:
   - linearity tests
   - distance estimate script

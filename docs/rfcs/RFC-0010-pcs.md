@@ -71,6 +71,11 @@ NC-0605 fused `u ≠ B` (cross-check with NC-0305).
 
 Status: Draft. Question Q23. Evidence: [code provenance study](../../research/code-provenance/REPORT.md).
 Follow-up: [finite expander bounds](../../research/code-provenance/EXPANDER.md).
+Candidate map/bytes: [recursive encoder](../../formal/recursive-code.md), using the
+Accepted A2 circle base and all twelve finite-bound degree pairs. Independent dense
+encoding and the legal zero-edge distance-one counterexample separate map correctness
+from setup admission. The candidate does not resolve registry/proximity or authorize
+a production encoder/profile; all remaining requirements below stay in force.
 Motivation: §3 names code families but does not fix a concrete M31 encoder, setup
 or supported lengths. The distance-estimate task and a `proven` boolean cannot
 replace evidence for the distance and proximity hypotheses of §6. This draft
