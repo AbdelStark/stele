@@ -43,6 +43,33 @@ class GateTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('not wired', result.stderr)
 
+    def test_rejects_public_coefficient_drift_and_missing_field_check(self):
+        extra = self.root / 'crates/stele-gkr/src/stage.rs'
+        extra.write_text('pub fn unvalidated() {}')
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not wired', result.stderr)
+        extra.unlink()
+        manifest = self.root / 'crates/stele-gkr/Cargo.toml'
+        original_manifest = manifest.read_text()
+        manifest.write_text(original_manifest + '\n[dev-dependencies]\nstele-hash = { path = "../stele-hash" }\n')
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('not wired', result.stderr)
+        manifest.write_text(original_manifest)
+        source = self.root / 'crates/stele-gkr/src/public_mle.rs'
+        original = source.read_text()
+        source.write_text(original.replace('state[0]', 'state[1]'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('public coefficient arithmetic checks failed', result.stderr)
+        source.write_text(original)
+        tests = self.root / 'crates/stele-gkr/tests/public_mle.rs'
+        tests.write_text(tests.read_text().replace('fn matches_reference_om31_all_kinds()', 'fn omitted_field_check()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('public coefficient arithmetic checks failed', result.stderr)
+
     def test_rejects_native_digest_drift_and_missing_test(self):
         vectors = self.root / 'crates/stele-code/tests/encoder-vectors.txt'
         original = vectors.read_bytes()

@@ -414,7 +414,7 @@ tasks:
   crate: stele-gkr
   status: in_progress
   agent: codex-root
-  branch: task/E3-06a-public-contract
+  branch: task/E3-06a-public-implementation
   acceptance:
   - all six kinds match independent Boolean-table MLEs at 10000 points per kind per extension field
   - selected axes, irregular padding, reordered axes and zero-bit axes covered

@@ -6,7 +6,7 @@ license = "Apache-2.0"
 description = "Stele — stele-gkr (see RFC-0006 §3,§6)"
 
 [dependencies]
-stele-sumcheck = { path = "../stele-sumcheck" }
+stele-field = { path = "../stele-field" }
 
 [lints]
 workspace = true
