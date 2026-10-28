@@ -141,3 +141,15 @@ original lengths require exact rejection. Every claim, SC record and canonical
 payload is compared. Actual source I/O receipts prevent a Dense-only adapter from
 passing. Both gates check regeneration and the adapter; mutants corrupt the
 fixture expectation or bypass Streaming. Complete pipeline ledgers remain open.
+
+## Native encoder setup metadata (RFC-0010 A4)
+
+The identity-selected v2 encoder exposes the separate conditional all-seed setup
+bound 200431782/2^160 (zero for the fixed Circle base). This is descriptive
+encoder evidence, not an instantiated proof ledger or successful profile request.
+Both catalog PCS proven flags remain false; native requests reject as
+UnsupportedParameters. No setup block is a Fiat-Shamir challenge or registry
+label. The fixed framing, capped sampling, native map parity and catalog export
+are checked by the accounting gate. Before any PCS admission, RFC-0012 A7/Q12
+must supply the actual joint setup/protocol/FS/H bound and ledger consumer;
+no uncharged setup term or independence assumption is permitted.

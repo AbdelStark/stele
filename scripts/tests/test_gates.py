@@ -70,6 +70,21 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('public coefficient arithmetic checks failed', result.stderr)
 
+    def test_rejects_native_code_map_and_registry_substitution(self):
+        source = self.root / 'crates/stele-code/src/expander.rs'
+        original = source.read_text()
+        self.assertIn('coefficient: *coefficient', original)
+        source.write_text(original.replace('coefficient: *coefficient', 'coefficient: -*coefficient'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native code identity/map checks failed', result.stderr)
+        source.write_text(original)
+        registry = self.root / 'crates/stele-code/codes.toml'
+        registry.write_text(registry.read_text().replace('proven = false', 'proven = true', 1))
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native code identity/map checks failed', result.stderr)
+
     def test_rejects_registry_mapping_drift_and_invalid_production_registry(self):
         inventory = self.root / 'docs/security/transcript-labels.json'
         original = inventory.read_text()

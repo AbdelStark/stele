@@ -76,3 +76,10 @@ file inventory, exact arithmetic-only module entry and field-only dependency
 manifest continue to reject unwired GKR stage/source/transcript additions.
 This earns no NC-0203, source authentication or stage accounting coverage. The
 bootstrap snapshot is not refreshed; E3-06 still requires its full producer.
+
+RFC-0010 A4's native code checks run the actual capped sampler, immutable identity
+factory, both-field/base-field linearity and complete native codeword comparison
+against the independent dense Python map. The same gate validates every field of
+the fixed catalog export and the setup hash framing vectors. Changing a sparse
+coefficient while preserving linearity, or toggling a PCS proven flag, rejects.
+These checks enable no PCS/profile or NC-06xx coverage.

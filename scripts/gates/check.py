@@ -79,6 +79,21 @@ def public_coefficients(root):
     print('gate public coefficients: 10000 points/kind/field; no stage, source or NC-0203 credit')
 
 
+def native_code(root):
+    """A4 actual generated maps; no PCS/profile admission from these checks."""
+    checks = [
+        ('rejects_exhausted_streams_and_accepts_last_word', ['cargo','test','-p','stele-code','--lib','--locked','--offline']),
+        ('matches_reference_linearity_all_fields_and_seed_separation', ['cargo','test','-p','stele-code','--test','native_code','--locked','--offline']),
+        ('matches_reference_setup_blocks_and_rejects_invalid_coordinates', ['cargo','test','-p','stele-hash','--test','setup','--locked','--offline']),
+        ('', ['uv','run','--locked','--script','research/code-provenance/check_native.py']),
+    ]
+    for test, command in checks:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or (test and not re.search(r'test (?:[a-z_]+::)*'+test+r' \.\.\. ok', result.stdout)):
+            raise ValueError(f'native code identity/map checks failed: {result.stdout} {result.stderr}')
+    print('gate native code: exact seeded maps, cap boundaries and registry checked; no PCS/profile credit')
+
+
 def transcript_registry(root):
     """Compare the real validated registry producer with the RFC/accounting inventory."""
     command = ['cargo', 'run', '-q', '-p', 'stele-hash', '--example', 'registry', '--locked', '--offline']
@@ -419,6 +434,7 @@ def main():
             bootstrap_guard(ROOT, args.gate)
             if args.gate in ('negative-controls', 'soundness-accounting'):
                 public_coefficients(ROOT)
+                native_code(ROOT)
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
                 small_strategy(ROOT)
