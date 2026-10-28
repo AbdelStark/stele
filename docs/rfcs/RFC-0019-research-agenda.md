@@ -155,6 +155,10 @@ Draft. The stacking study gives counterexamples to interchanging nonlinear
 layer folds or Boolean-product extensions and checks canonical axis restoration.
 E3-06 is blocked on the complete amendment and its required reviews; research
 checks provide no production control, profile or performance credit.
+Candidate public-MLE algebra and padding semantics are in formal/public-mle.md;
+the research evaluator agrees with direct M31 tables and retains O(log n) causal
+and window evaluation. Actual source authentication, complete wire/ownership
+contracts and extension-field production evidence remain open.
 
 Q21: which typed eligibility, deferred-prefix state and actual out-of-range misuse
 control complete the small-value strategy without changing the A1 protocol?

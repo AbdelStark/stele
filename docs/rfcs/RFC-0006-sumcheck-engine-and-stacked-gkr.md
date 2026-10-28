@@ -510,6 +510,12 @@ Proposed addition to §6 (pending exact kinds and encoding):
 > four bound applies to the complete summand; unsupported degrees must reject or
 > use a separately Accepted reduction. No intermediate commitment is introduced.
 
+Candidate algebra is now detailed in [public-MLE semantics](../../formal/public-mle.md),
+with six Boolean-table definitions, zero-padding rules, a constant-state O(log n)
+mask evaluator and explicit sparse/table evaluation costs. The M31 differential
+study checks these formulas only. Source authentication, complete descriptor bytes
+and the remaining requirements below are still unresolved; A4 remains Draft.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
