@@ -94,3 +94,42 @@ script and adds/element ledger remain required production deliverables. E4-03,
 E4-05 and E12-04 must still supply actual PCS binding, profile enforcement, theorem
 instantiation and full accounting. There is no production `codes.toml` entry,
 query count, benchmark, certified profile or changed verifier in this study.
+
+
+## Canonical recursive encoder study
+
+Question: can the finite expander schedule be made into an exact field-agnostic
+map with a concrete base code, unambiguous setup bytes and independent encoding
+checks? Cost term: c_c plus setup/matrix storage. Kill criterion: any dense-matrix
+disagreement, noncanonical setup admission, or distance/profile claim inferred
+from syntax, injectivity or a seeded test generator. All source coefficients and
+coordinate order must be explicit; setup provenance remains a separate obligation.
+
+
+Run `uv run --locked --script research/code-provenance/check_recursive.py`.
+The candidate in [recursive-code.md](../../formal/recursive-code.md) fixes
+x || E_previous(xA) || E_previous(xA)B, all per-level degrees, canonical ordered
+M31 edge records and the accepted circle base. Its deterministic base distance
+is at least 64, so the finite induction's base requirement is met. This is not a
+certificate for any chosen outer setup.
+
+The script independently re-derives the twelve degree pairs. Nine field/size
+cases cover n=64/256/1024 over M31/QM31/OM31, exact sparse-edge counts, full-K
+linearity and complete-codeword query parity. The oracle inverts the circle basis
+matrix by Gaussian elimination instead of FFT, composes a full generator at
+n=256 and uses dense matrix/vector products elsewhere. Malformed setup, noncanonical
+coefficients, wrong rows, unsupported fields and invalid columns reject. The
+codec checks the implied full byte budget before graph allocation.
+
+A structurally valid setup with all edge coefficients zero encodes (x,0,0) at
+n=256. Its minimum distance is exactly one, even though it is linear, injective,
+correctly encoded and queryable. The test deliberately preserves this distinction;
+no `proven` field or source-authentication flag can convert it into an admitted code.
+
+Recommendation: continue Q23 with this candidate map/base/byte contract. Keep A1
+Draft and E4-01 blocked until setup selection/grinding/reuse, authoritative registry,
+proximity hypotheses, actual binding consumers and production admission are closed.
+The sparse operation formula and O(n) storage analysis exclude base-transform,
+parser/allocator and encoding-copy constants; production adds/element and complete
+memory ledgers remain required. No small-case result certifies the full supported
+size range or the seeded fixture's setup distribution.
