@@ -73,6 +73,7 @@ fn main() -> Result<(), String> {
     }
     let j: u8 = args[0].parse().map_err(|_| "j")?;
     let d: usize = args[1].parse().map_err(|_| "field")?;
+    drop(args); // No argument buffers remain live inside the measured operation.
     if !(3..=9).contains(&j) {
         return Err("unsupported benchmark size".into());
     }

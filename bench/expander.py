@@ -65,8 +65,8 @@ def main():
         validation='separate integer sparse evaluator, independently derived dense Circle base; '
                    'shares fixed hash block primitive already checked against Python',
         timing='includes input allocation, setup regeneration, encoding, query allocation/full '
-               're-encoding and every-symbol validation; excludes build, process launch, final '
-               'drops and stdout',
+               're-encoding and every-symbol validation; excludes build, process launch, '
+               'argument parsing, final drops and stdout',
         heap='actual native live heap capacities, including graph, recursive overlap, base '
              'transforms, retained caller input/output/id and query result; excludes validator, '
              'stack, runtime and allocator metadata',
