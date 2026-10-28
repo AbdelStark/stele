@@ -71,6 +71,29 @@ def transcript_registry(root):
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
 
 
+def native_encoder(root):
+    """Actual A4 codeword digests and full-byte differential corpus, not PCS proofs."""
+    generated = subprocess.run(
+        ['uv', 'run', '--locked', '--script', 'research/code-provenance/check_native.py', '--vectors'],
+        cwd=root, capture_output=True)
+    expected = (root / 'crates/stele-code/tests/encoder-vectors.txt').read_bytes()
+    if generated.returncode or generated.stdout != expected:
+        raise ValueError(f'native encoder reference digests drift: {generated.stderr.decode()}')
+    commands = [
+        (['cargo', 'test', '-p', 'stele-code', '--locked', '--offline'],
+         ['test matches_reference_materialized_codeword_digests ... ok',
+          'test encoder::tests::rejects_outer_inner_and_late_sampling_exhaustion ... ok']),
+        (['uv', 'run', '--locked', '--script', 'research/code-provenance/check_native.py'],
+         [f'native d={d}: 1006 full words and ordered queries; {{3: 900, 4: 90, 5: 10}} seeds'
+          for d in (1, 4, 8)] + ['native corpus: malformed adapter inputs reject; no PCS/profile or NC credit']),
+    ]
+    for command, receipts in commands:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or any(receipt not in result.stdout for receipt in receipts):
+            raise ValueError(f'native encoder gate failed: {result.stdout} {result.stderr}')
+    print('gate digest: native encoder digests, sealed API and full-byte corpus checked; no PCS proof claim')
+
+
 def sumcheck_corpus(root, path='research/sumcheck/corpus.jsonl', features=()):
     """Compare real Rust/Python decisions, all claims and every SC record."""
     commands = [
@@ -392,6 +415,8 @@ def main():
             if args.gate == 'negative-controls':
                 controls_layout(ROOT)
             bootstrap_guard(ROOT, args.gate)
+            if args.gate == 'digest':
+                native_encoder(ROOT)
             if args.gate in ('negative-controls', 'soundness-accounting'):
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)

@@ -43,6 +43,51 @@ class GateTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('not wired', result.stderr)
 
+    def test_rejects_native_digest_drift_and_missing_test(self):
+        vectors = self.root / 'crates/stele-code/tests/encoder-vectors.txt'
+        original = vectors.read_bytes()
+        vectors.write_bytes(original[:-2]+b'!\n')
+        result = self.run_gate('digest')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('reference digests drift', result.stderr)
+        vectors.write_bytes(original)
+        source = self.root / 'crates/stele-code/tests/encoder.rs'
+        original = source.read_text()
+        name = 'matches_reference_materialized_codeword_digests'
+        self.assertIn(name, original)
+        source.write_text(original.replace(name, 'omitted_reference_test'))
+        result = self.run_gate('digest')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native encoder gate failed', result.stderr)
+        source.write_text(original)
+        source = self.root / 'research/code-provenance/check_native.py'
+        original = source.read_text()
+        self.assertIn('        check()', original)
+        source.write_text(original.replace('        check()', '        pass'))
+        result = self.run_gate('digest')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native encoder gate failed', result.stderr)
+
+    def test_rejects_external_field_seal_removal(self):
+        source = self.root / 'crates/stele-code/src/encoder.rs'
+        original = source.read_text()
+        before = 'CodeField: Field + private::SealedField'
+        self.assertIn(before, original)
+        source.write_text(original.replace(before, 'CodeField: Field'))
+        result = self.run_gate('digest')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Test compiled successfully, but it\'s marked `compile_fail`', result.stderr)
+
+    def test_rejects_native_query_order_drift(self):
+        source = self.root / 'crates/stele-code/examples/encoder_corpus.rs'
+        original = source.read_text()
+        before = 'word.into_iter().chain(selected)'
+        self.assertIn(before, original)
+        source.write_text(original.replace(before, 'word.into_iter().chain(selected.into_iter().rev())'))
+        result = self.run_gate('digest')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native corpus byte mismatch', result.stderr)
+
     def test_rejects_registry_mapping_drift_and_invalid_production_registry(self):
         inventory = self.root / 'docs/security/transcript-labels.json'
         original = inventory.read_text()
