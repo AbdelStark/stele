@@ -5,7 +5,7 @@ soundness-auditor passes on research/escalation only, not an independent audit.
 Decision: publish the study and Draft requirements. Do not accept A1, implement
 an arbitrary encoder, or create a usable profile entry from this research.
 
-- Public API: unchanged. `stele-code` remains a scaffold and keeps its gate guards.
+- Public API: unchanged. `stele-code` remains a scaffold; existing gate scopes are unchanged.
   Draft requirements cover encode/eval_row/parameters and their missing contract.
 - Challenges: none introduced; existing transcript and label inventory unchanged.
   Setup randomness and its distribution/failure/grinding are open obligations.
