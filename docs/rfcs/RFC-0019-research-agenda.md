@@ -166,3 +166,11 @@ Q21 resolution: RFC-0006 A5 Accepted with linked same-author skill passes and a
 deterministic parity argument. E3-04 is ready for production implementation and
 its actual constructor/control/parity/cost/memory gates. The strategy does not
 prove range, change A1 bytes, certify a profile or complete the task.
+
+Q22: which source layout, replay cost, integer window schedule and capacity-inclusive
+peak bound complete the streaming fallback? Candidate RFC-0006 A6 / RFC-0014 A1
+are Draft. The streaming study checks A1 algebra and logical visits, exhibits
+nonsequential access, and rules out a universal single-window budget for that
+grid/tail construction. It is not a physical two-pass implementation or a memory
+measurement. E3-05 is blocked on the complete contract and its required reviews;
+all original acceptance criteria remain.

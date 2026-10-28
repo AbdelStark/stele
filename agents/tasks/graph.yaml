@@ -372,9 +372,13 @@ tasks:
   rfc:
   - RFC-0006 §5
   - RFC-0014 §4
+  - RFC-0006 A6
+  - RFC-0014 A1
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: ready
+  status: blocked(RFC-0006 A6 / RFC-0014 A1)
+  agent: codex-root
+  branch: task/E3-05-streaming-contract
   acceptance:
   - peak memory bound verified in test
 - id: E3-06
