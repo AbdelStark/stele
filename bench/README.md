@@ -495,3 +495,95 @@ inside the measured process RSS. Inline object sizes are separately recorded.
 No sample is discarded or extrapolated. This supplies CPU c_c/T_misc and memory
 evidence for the bounded encoder. It makes no statistical comparison, fitted
 constant, extra weight-pass, GPU, inference, PCS/profile or ZK claim.
+
+## Conditional fraction primitives (E3-07a)
+
+The [QM31](ledger/e3-07a-fraction-qm31.json) and
+[OM31](ledger/e3-07a-fraction-om31.json) ledgers measure the complete
+RFC-0008 A3 public primitive operation from clean commit
+`8798d1ac60e67d1a6580339f3951427efd82cc05`. Each field has twenty cases
+and three fresh native processes per case, with every proof consumed against
+its original arrays. The profile field selects the challenge field only.
+
+Reproduce on macOS from that clean source commit:
+
+```sh
+python3 bench/fraction.py QM31 /tmp/fraction-qm31.json
+python3 bench/fraction.py OM31 /tmp/fraction-om31.json
+```
+
+Preparation constructs the fixed synthetic original arrays and descriptors.
+Proving includes all retained tree levels, Dense/equality copies and transcripts;
+consumption includes exact decoding and every original public claim, including
+unused columns under beta=0. Complete time also charges encoding, receipt and
+continuation checks, result construction and original-buffer cleanup. Process
+launch/exit, argument parsing, JSON serialization/printing and final result-value
+destruction are outside that timer. Their memory remains included in native RSS.
+
+Times below are means over all three samples, in milliseconds. RSS is the
+maximum native whole-operation peak across those samples, in MiB. The ledgers
+retain every sample, exact stage times, source/encoding capacities, scoped SC/RLC
+records and proof/continuation digests. Sample rows and aggregate maps are
+compacted for review; every recorded JSON value is unchanged.
+
+| Field | m | Mode | Preparation ms | Prove ms | Consume ms | Complete ms | Peak RSS MiB |
+|---|---:|---|---:|---:|---:|---:|---:|
+| QM31 | 0 | ordinary | 0.020 | 0.009 | 0.001 | 0.042 | 1.422 |
+| QM31 | 0 | weighted | 0.007 | 0.003 | 0.001 | 0.020 | 1.422 |
+| QM31 | 0 | selected1 | 0.008 | 0.009 | 0.004 | 0.035 | 1.469 |
+| QM31 | 0 | selected3zero | 0.008 | 0.009 | 0.004 | 0.037 | 1.453 |
+| QM31 | 1 | ordinary | 0.008 | 0.011 | 0.005 | 0.040 | 1.469 |
+| QM31 | 1 | weighted | 0.009 | 0.010 | 0.005 | 0.039 | 1.484 |
+| QM31 | 1 | selected1 | 0.009 | 0.017 | 0.010 | 0.057 | 1.469 |
+| QM31 | 1 | selected3zero | 0.008 | 0.019 | 0.011 | 0.059 | 1.484 |
+| QM31 | 8 | ordinary | 0.012 | 0.472 | 0.114 | 0.692 | 1.578 |
+| QM31 | 8 | weighted | 0.015 | 0.475 | 0.114 | 0.697 | 1.578 |
+| QM31 | 8 | selected1 | 0.026 | 0.662 | 0.161 | 0.960 | 1.594 |
+| QM31 | 8 | selected3zero | 0.058 | 0.850 | 0.169 | 1.191 | 1.594 |
+| QM31 | 12 | ordinary | 0.103 | 6.100 | 0.421 | 6.815 | 2.172 |
+| QM31 | 12 | weighted | 0.102 | 5.945 | 0.405 | 6.634 | 2.172 |
+| QM31 | 12 | selected1 | 0.323 | 8.730 | 0.844 | 10.111 | 2.297 |
+| QM31 | 12 | selected3zero | 0.813 | 11.924 | 0.982 | 13.938 | 2.547 |
+| QM31 | 16 | ordinary | 1.438 | 94.632 | 3.544 | 100.000 | 12.125 |
+| QM31 | 16 | weighted | 1.452 | 94.617 | 3.531 | 99.985 | 10.750 |
+| QM31 | 16 | selected1 | 5.095 | 136.942 | 9.842 | 152.416 | 12.766 |
+| QM31 | 16 | selected3zero | 12.862 | 189.725 | 11.975 | 215.208 | 16.156 |
+| OM31 | 0 | ordinary | 0.021 | 0.011 | 0.001 | 0.049 | 1.469 |
+| OM31 | 0 | weighted | 0.008 | 0.004 | 0.002 | 0.027 | 1.469 |
+| OM31 | 0 | selected1 | 0.008 | 0.010 | 0.006 | 0.041 | 1.484 |
+| OM31 | 0 | selected3zero | 0.008 | 0.015 | 0.006 | 0.047 | 1.531 |
+| OM31 | 1 | ordinary | 0.008 | 0.015 | 0.009 | 0.051 | 1.531 |
+| OM31 | 1 | weighted | 0.010 | 0.016 | 0.008 | 0.055 | 1.547 |
+| OM31 | 1 | selected1 | 0.009 | 0.029 | 0.014 | 0.081 | 1.547 |
+| OM31 | 1 | selected3zero | 0.010 | 0.030 | 0.016 | 0.087 | 1.547 |
+| OM31 | 8 | ordinary | 0.025 | 1.155 | 0.192 | 1.543 | 1.656 |
+| OM31 | 8 | weighted | 0.025 | 1.147 | 0.192 | 1.542 | 1.656 |
+| OM31 | 8 | selected1 | 0.068 | 1.649 | 0.308 | 2.236 | 1.672 |
+| OM31 | 8 | selected3zero | 0.158 | 2.203 | 0.339 | 2.915 | 1.688 |
+| OM31 | 12 | ordinary | 0.253 | 16.426 | 0.932 | 17.959 | 2.875 |
+| OM31 | 12 | weighted | 0.259 | 16.468 | 0.941 | 18.019 | 2.875 |
+| OM31 | 12 | selected1 | 0.969 | 24.080 | 2.249 | 27.708 | 3.125 |
+| OM31 | 12 | selected3zero | 2.370 | 32.401 | 2.622 | 37.799 | 3.375 |
+| OM31 | 16 | ordinary | 3.885 | 262.177 | 10.530 | 277.415 | 22.141 |
+| OM31 | 16 | weighted | 3.874 | 261.912 | 10.639 | 277.240 | 19.812 |
+| OM31 | 16 | selected1 | 15.416 | 385.043 | 31.058 | 432.688 | 32.438 |
+| OM31 | 16 | selected3zero | 37.041 | 521.928 | 37.128 | 597.359 | 27.781 |
+
+`ordinary` uses b=m; `weighted` uses b=floor(m/2). `selected1` uses
+one original column; `selected3zero` uses three columns and beta=0, retaining
+all three original obligations. Different modes are different conditional
+operations, not speedup comparisons.
+
+RSS includes all internal levels/copies, consumers, originals, proof objects,
+encoded bytes, output and allocator retention. It is a whole-operation peak,
+not an isolated prover peak or an attributed allocation/stack bound. Python
+controller and total-host memory are excluded. Named capacity fields cover only
+actual original/encoded Vec buffers. No warmup or cache flush was used; all
+observations are retained without a fitted constant or statistical comparison.
+
+These are c_sc/T_misc primitive observations. No c_lu, full lookup identity,
+private source authentication, PCS, ZK, FS, GPU, inference or profile admission
+follows. The separate root-equation predicate is outside this public reduction
+operation. Inference proof/verifier/control fields stay zero; actual primitive
+consumption and control coverage are recorded in model_config. No additional
+weight pass or planning-constant change follows.

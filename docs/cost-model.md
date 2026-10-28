@@ -102,3 +102,13 @@ base/sparse work, initialization, copies and full query re-encoding are charged.
 Actual owned/caller capacities, compiled native/hash frames and process RSS retain
 separate scopes. These CPU observations do not refit planning constants, add a
 weight pass, authenticate a commitment or establish a PCS/profile error bound.
+
+## 10. Conditional fraction primitive observations
+
+The [E3-07a CPU ledgers and tables](../bench/README.md#conditional-fraction-primitives-e3-07a)
+measure RFC-0008 A3 tree and selected-product c_sc/T_misc work, including
+preparation, all internal levels/copies, encoding, decoding, original public
+consumption and cleanup. Native whole-operation RSS includes allocator retention;
+named source/encoding capacities have a narrower scope. These observations do
+not fit c_lu, change planning constants or add a weight pass. Full lookup, private
+source authentication, PCS, ZK, FS and inference remain separate obligations.
