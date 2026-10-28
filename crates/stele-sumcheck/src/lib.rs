@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
 /// Ordered instance batching, RFC-0006 A2.
 pub mod batch;
+mod buffers;
 /// Virtual-tensor claim batching, RFC-0006 A2.
 pub mod claim_batch;
 mod dense;
@@ -14,6 +15,7 @@ mod instance;
 mod small;
 /// Eq-factored zerocheck and bounded skip, RFC-0006 A3.
 pub mod zerocheck;
+pub use buffers::prove_into;
 pub use dense::Dense;
 pub use instance::{Instance, Term};
 pub use small::{Small, SmallTable};
@@ -57,6 +59,40 @@ fn append(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), Error> {
     out.extend_from_slice(bytes);
     Ok(())
 }
+fn put(out: &mut [u8], cursor: &mut usize, bytes: &[u8]) -> Result<(), Error> {
+    let end = cursor.checked_add(bytes.len()).ok_or(Error::Capacity)?;
+    out.get_mut(*cursor..end)
+        .ok_or(Error::Capacity)?
+        .copy_from_slice(bytes);
+    *cursor = end;
+    Ok(())
+}
+/// Checked size of an A1 round/final payload, RFC-0006 A1/A6.
+pub fn message_size<K: ChallengeField>(value_count: usize) -> Result<usize, Error> {
+    value_count
+        .checked_mul(4 * K::DEGREE)
+        .and_then(|n| n.checked_add(12))
+        .ok_or(Error::Capacity)
+}
+/// Write an A1 payload prefix without allocation; short buffers are untouched.
+pub fn message_bytes_into<K: ChallengeField>(
+    id: u64,
+    index: u32,
+    values: &[K],
+    out: &mut [u8],
+) -> Result<usize, Error> {
+    let size = message_size::<K>(values.len())?;
+    if out.len() < size {
+        return Err(Error::Capacity);
+    }
+    let mut cursor = 0;
+    put(out, &mut cursor, &id.to_le_bytes())?;
+    put(out, &mut cursor, &index.to_le_bytes())?;
+    for value in values {
+        put(out, &mut cursor, value.to_le_bytes().as_ref())?;
+    }
+    Ok(cursor)
+}
 /// Canonical round/final payload: instance id, round index or input count, values.
 pub fn message_bytes<K: ChallengeField>(
     id: u64,
@@ -64,11 +100,10 @@ pub fn message_bytes<K: ChallengeField>(
     values: &[K],
 ) -> Result<Vec<u8>, Error> {
     let mut out = Vec::new();
-    append(&mut out, &id.to_le_bytes())?;
-    append(&mut out, &index.to_le_bytes())?;
-    for value in values {
-        append(&mut out, value.to_le_bytes().as_ref())?;
-    }
+    let size = message_size::<K>(values.len())?;
+    reserve(&mut out, size)?;
+    out.resize(size, 0);
+    message_bytes_into(id, index, values, &mut out)?;
     Ok(out)
 }
 /// Logical subproof; the inference-proof container belongs to RFC-0016.
@@ -114,6 +149,35 @@ pub trait Summand<K: ChallengeField> {
     fn fold(&mut self, challenge: K) -> Result<(), Error>;
     /// Evaluations after every coordinate has been fixed.
     fn final_values(&self) -> Result<Vec<K>, Error>;
+    /// Fill existing endpoint storage. The default allocates; bounded strategies override it.
+    fn round_into(&self, instance: &Instance<K>, out: &mut [K]) -> Result<(), Error> {
+        let values = self.round(instance)?;
+        if values.len() != out.len() {
+            return Err(Error::ProofShape);
+        }
+        out.copy_from_slice(&values);
+        Ok(())
+    }
+    /// Fill existing final storage. The default allocates; bounded strategies override it.
+    fn final_values_into(&self, out: &mut [K]) -> Result<(), Error> {
+        let values = self.final_values()?;
+        if values.len() != out.len() {
+            return Err(Error::ProofShape);
+        }
+        out.copy_from_slice(&values);
+        Ok(())
+    }
+}
+fn interpolation_weight<K: ChallengeField>(count: usize, i: usize, point: K) -> Result<K, Error> {
+    let mut basis = K::from_i64(1);
+    let mut denominator = K::from_i64(1);
+    for j in 0..count {
+        if i != j {
+            basis = basis * (point - K::from_i64(j as i64));
+            denominator = denominator * K::from_i64(i as i64 - j as i64);
+        }
+    }
+    Ok(basis * denominator.inverse().ok_or(Error::InvalidInstance)?)
 }
 // RFC-0006 A3: up to 61 nodes; factorial denominators must never use machine integers.
 fn interpolation_weights<K: ChallengeField>(count: usize, point: K) -> Result<Vec<K>, Error> {
@@ -123,23 +187,20 @@ fn interpolation_weights<K: ChallengeField>(count: usize, point: K) -> Result<Ve
     let mut weights = Vec::new();
     reserve(&mut weights, count)?;
     for i in 0..count {
-        let mut basis = K::from_i64(1);
-        let mut denominator = K::from_i64(1);
-        for j in 0..count {
-            if i != j {
-                basis = basis * (point - K::from_i64(j as i64));
-                denominator = denominator * K::from_i64(i as i64 - j as i64);
-            }
-        }
-        weights.push(basis * denominator.inverse().ok_or(Error::InvalidInstance)?);
+        weights.push(interpolation_weight(count, i, point)?);
     }
     Ok(weights)
 }
 fn interpolate<K: ChallengeField>(values: &[K], point: K) -> Result<K, Error> {
-    Ok(values
+    if !(1..=61).contains(&values.len()) {
+        return Err(Error::InvalidInstance);
+    }
+    values
         .iter()
-        .zip(interpolation_weights(values.len(), point)?)
-        .fold(K::from_i64(0), |sum, (value, weight)| sum + *value * weight))
+        .enumerate()
+        .try_fold(K::from_i64(0), |sum, (i, value)| {
+            Ok(sum + *value * interpolation_weight(values.len(), i, point)?)
+        })
 }
 
 fn round<K: ChallengeField + Eq>(
@@ -149,10 +210,23 @@ fn round<K: ChallengeField + Eq>(
     running: K,
     transcript: &mut Transcript<K>,
 ) -> Result<(K, K), Error> {
+    round_payload(
+        values,
+        running,
+        &message_bytes(id, index, values)?,
+        transcript,
+    )
+}
+fn round_payload<K: ChallengeField + Eq>(
+    values: &[K],
+    running: K,
+    payload: &[u8],
+    transcript: &mut Transcript<K>,
+) -> Result<(K, K), Error> {
     if values[0] + values[if values.len() == 1 { 0 } else { 1 }] != running {
         return Err(Error::RoundSumMismatch);
     }
-    transcript.absorb(AbsorbLabel::Round, &message_bytes(id, index, values)?)?;
+    transcript.absorb(AbsorbLabel::Round, payload)?;
     let challenge = transcript.challenge(ChallengeLabel::Sumcheck)?;
     Ok((challenge, interpolate(values, challenge)?))
 }
@@ -162,13 +236,25 @@ fn finish<K: ChallengeField + Eq>(
     running: K,
     transcript: &mut Transcript<K>,
 ) -> Result<(), Error> {
+    finish_payload(
+        i,
+        final_values,
+        running,
+        &message_bytes(i.id, i.inputs.len() as u32, final_values)?,
+        transcript,
+    )
+}
+fn finish_payload<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    final_values: &[K],
+    running: K,
+    payload: &[u8],
+    transcript: &mut Transcript<K>,
+) -> Result<(), Error> {
     if i.evaluate(final_values) != running {
         return Err(Error::FinalEvaluationMismatch);
     }
-    transcript.absorb(
-        AbsorbLabel::Final,
-        &message_bytes(i.id, i.inputs.len() as u32, final_values)?,
-    )?;
+    transcript.absorb(AbsorbLabel::Final, payload)?;
     Ok(())
 }
 /// Prove the verifier-owned instance with an arbitrary checked strategy.

@@ -111,3 +111,11 @@ all original final consumers. No challenge, label or implemented loss changes.
 Its source/layout/capacity studies establish neither production NC-0210 nor
 profile security. The actual strategy, both-field corpus, control and accounting
 gate integration remain E3-05 delivery requirements; Q12 is unchanged.
+
+The A6 caller-buffer engine reuses A1's round/final checks and original public
+consumer, without changing any loss line. Both accounting and control gates
+require 1,000 Dense/buffered cases per degree and field, full proof/continuation
+parity, unchanged caller capacities and typed preflight/false-sum/unused-final
+rejections. Independent A1 corpus and digest checks still cover the shared
+encoders/interpolator. This engine is not the Streaming strategy: NC-0210, actual
+source capacity accounting and complete pipeline memory/cost evidence remain open.

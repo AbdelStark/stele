@@ -108,4 +108,46 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
         result.extend(self.tables.iter().map(|table| table[0]));
         Ok(result)
     }
+    // RFC-0006 A6: evaluate factors directly, without an a-element temporary allocation.
+    fn round_into(&self, i: &Instance<K>, out: &mut [K]) -> Result<(), Error> {
+        let degree = i.validate()?;
+        if self.remaining == 0 || self.tables.len() != i.inputs.len() {
+            return Err(Error::PublicShape);
+        }
+        if out.len() != degree + 1 {
+            return Err(Error::ProofShape);
+        }
+        for (node, result) in out.iter_mut().enumerate() {
+            let x = K::from_i64(node as i64);
+            *result = K::from_i64(0);
+            if self.tables.is_empty() {
+                *result = i.evaluate(&[]);
+                for _ in 1..self.remaining {
+                    *result = *result + *result;
+                }
+            } else {
+                let half = self.tables[0].len() / 2;
+                for column in 0..half {
+                    *result = *result
+                        + i.evaluate_with(|input| {
+                            let table = &self.tables[input as usize];
+                            table[column] + x * (table[column + half] - table[column])
+                        });
+                }
+            }
+        }
+        Ok(())
+    }
+    fn final_values_into(&self, out: &mut [K]) -> Result<(), Error> {
+        if self.remaining != 0 {
+            return Err(Error::PublicShape);
+        }
+        if out.len() != self.tables.len() {
+            return Err(Error::ProofShape);
+        }
+        for (value, table) in out.iter_mut().zip(&self.tables) {
+            *value = table[0];
+        }
+        Ok(())
+    }
 }

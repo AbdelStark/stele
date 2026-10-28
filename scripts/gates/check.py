@@ -198,6 +198,21 @@ def small_strategy(root):
     print('gate small strategy: 1000 direct-reference cases per degree/field and NC-0204; independent decisions and measured costs pending')
 
 
+def buffered_engine(root):
+    """A6 engine buffers retain A1 bytes, consumers, capacities and preflight errors."""
+    tests = ('matches_reference_buffered_qm31', 'matches_reference_buffered_om31',
+             'accepts_empty_inputs_and_reuses_proof_and_byte_buffers',
+             'rejects_buffer_shapes_before_mutating_transcript',
+             'matches_reference_payloads_and_rejects_short_buffers_without_partial_writes',
+             'rejects_buffered_false_sum_and_invalid_descriptor',
+             'rejects_buffered_unused_final_value')
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'buffers',
+                             '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+    if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
+        raise ValueError(f'buffered A1 parity/consumer mismatch: {result.stdout} {result.stderr}')
+    print('gate buffered A1: 1000 cases per degree/field, unchanged capacities, consumers and continuations')
+
+
 def zerocheck(root):
     """Actual A3 bytes, all slice claims, SC phases and one-value controls."""
     for test, command in [
@@ -343,6 +358,7 @@ def main():
                 batch_corpus(ROOT)
                 zerocheck(ROOT)
                 zero_corpus(ROOT)
+                buffered_engine(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:

@@ -1,5 +1,5 @@
 //! Verifier-owned polynomial and canonical descriptor, RFC-0006 A1.
-use crate::{append, Error};
+use crate::{put, reserve, Error};
 use alloc::vec::Vec;
 use stele_hash::ChallengeField;
 /// One ordered product, including repeated factors and empty constant products.
@@ -47,37 +47,71 @@ impl<K: ChallengeField> Instance<K> {
             .unwrap_or(0))
     }
     pub(crate) fn evaluate(&self, values: &[K]) -> K {
+        self.evaluate_with(|i| values[i as usize])
+    }
+    pub(crate) fn evaluate_with(&self, mut value: impl FnMut(u32) -> K) -> K {
         self.terms.iter().fold(K::from_i64(0), |sum, term| {
             sum + term
                 .factors
                 .iter()
-                .fold(term.coefficient, |product, i| product * values[*i as usize])
+                .fold(term.coefficient, |product, i| product * value(*i))
         })
+    }
+    /// Checked canonical A1 payload length, RFC-0006 A1/A6.
+    pub fn encoded_len(&self) -> Result<usize, Error> {
+        self.validate()?;
+        let k = 4 * K::DEGREE;
+        let mut size = self
+            .inputs
+            .len()
+            .checked_mul(8)
+            .and_then(|n| n.checked_add(23 + k))
+            .ok_or(Error::Capacity)?;
+        for term in &self.terms {
+            size = size
+                .checked_add(k + 1 + 4 * term.factors.len())
+                .ok_or(Error::Capacity)?;
+        }
+        Ok(size)
+    }
+    /// Write the canonical payload prefix without allocation; validation precedes writes.
+    pub fn encode_into(&self, out: &mut [u8]) -> Result<usize, Error> {
+        let size = self.encoded_len()?;
+        if out.len() < size {
+            return Err(Error::Capacity);
+        }
+        let degree = self.validate()?;
+        let mut cursor = 0;
+        put(
+            out,
+            &mut cursor,
+            &[1, (self.claimed_sum.to_le_bytes().as_ref().len() / 4) as u8],
+        )?;
+        put(out, &mut cursor, &self.id.to_le_bytes())?;
+        put(out, &mut cursor, &self.num_vars.to_le_bytes())?;
+        put(out, &mut cursor, &[degree as u8])?;
+        put(out, &mut cursor, &(self.inputs.len() as u32).to_le_bytes())?;
+        put(out, &mut cursor, &(self.terms.len() as u32).to_le_bytes())?;
+        for id in &self.inputs {
+            put(out, &mut cursor, &id.to_le_bytes())?;
+        }
+        for term in &self.terms {
+            put(out, &mut cursor, term.coefficient.to_le_bytes().as_ref())?;
+            put(out, &mut cursor, &[term.factors.len() as u8])?;
+            for factor in &term.factors {
+                put(out, &mut cursor, &factor.to_le_bytes())?;
+            }
+        }
+        put(out, &mut cursor, self.claimed_sum.to_le_bytes().as_ref())?;
+        Ok(cursor)
     }
     /// Exact A1 payload; all lengths and ordinals are checked before serialization.
     pub fn encode(&self) -> Result<Vec<u8>, Error> {
-        let degree = self.validate()?;
+        let size = self.encoded_len()?;
         let mut out = Vec::new();
-        append(
-            &mut out,
-            &[1, (self.claimed_sum.to_le_bytes().as_ref().len() / 4) as u8],
-        )?;
-        append(&mut out, &self.id.to_le_bytes())?;
-        append(&mut out, &self.num_vars.to_le_bytes())?;
-        append(&mut out, &[degree as u8])?;
-        append(&mut out, &(self.inputs.len() as u32).to_le_bytes())?;
-        append(&mut out, &(self.terms.len() as u32).to_le_bytes())?;
-        for id in &self.inputs {
-            append(&mut out, &id.to_le_bytes())?;
-        }
-        for term in &self.terms {
-            append(&mut out, term.coefficient.to_le_bytes().as_ref())?;
-            append(&mut out, &[term.factors.len() as u8])?;
-            for factor in &term.factors {
-                append(&mut out, &factor.to_le_bytes())?;
-            }
-        }
-        append(&mut out, self.claimed_sum.to_le_bytes().as_ref())?;
+        reserve(&mut out, size)?;
+        out.resize(size, 0);
+        self.encode_into(&mut out)?;
         Ok(out)
     }
 }
