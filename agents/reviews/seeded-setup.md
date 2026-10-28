@@ -1,4 +1,6 @@
-# Q23 seeded setup review
+# Q23 seeded setup review (historical v1)
+
+Follow-up: [v2 all-seed review](all-seed-setup.md) supersedes this candidate.
 
 Reviewer: codex-root, also the author; pcs-engineer, rfc-author and soundness-auditor.
 Not an independent audit. Decision: publish the candidate and conditional classical

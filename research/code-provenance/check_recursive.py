@@ -79,7 +79,7 @@ def check():
     for j in range(4, 16):
         n = 4**j; distance, inner = n//25+1, n//100+1
         a = max(10, parameters(n, n//4, [(k, 1) for k in range(1, min(CUTOFF, distance))]))
-        b = max(17, parameters(n//2, n//2, [(k, distance-k) for k in range(inner, min(CUTOFF, distance))]))
+        b = max(18, parameters(n//2, n//2, [(k, distance-k) for k in range(inner, min(CUTOFF, distance))]))
         assert (a, b) == (A_DEGREES[j-4], B_DEGREES[j-4])
     cases = 0
     for exponent in (3, 4, 5):
@@ -90,7 +90,7 @@ def check():
         edges = sum(rows*degree for j in range(4, exponent+1) for rows, _, degree in geometry(j))
         assert len(raw) == 43+8*edges
         if exponent == 3:
-            assert raw == b'stele/expander-m31/v1\x03stele/circle-m31/v1\x06\x01'
+            assert raw == b'stele/expander-m31/v2\x03stele/circle-m31/v1\x06\x01'
         generator = None
         if exponent == 4:
             a, b = setup['levels'][0]
@@ -128,7 +128,7 @@ def check():
             if end < len(raw):
                 rejects(lambda: decode_setup(raw[:end]), 'InvalidSetup')
         rejects(lambda: decode_setup(raw+b'\x00'), 'InvalidSetup')
-        for at, value in ((0, 0), (20, ord('2')), (21, 2), (21, 16), (21, 15), (41, 7), (42, 2)):
+        for at, value in ((0, 0), (20, ord('1')), (21, 2), (21, 16), (21, 15), (41, 7), (42, 2)):
             rejects(lambda: decode_setup(raw[:at]+bytes([value])+raw[at+1:]), 'InvalidSetup')
         if exponent > 3:
             rejects(lambda: decode_setup(raw[:47]+struct.pack('<I', P)+raw[51:]), 'InvalidSetup')
@@ -152,7 +152,7 @@ def check():
     x = [sc.scalar(int(i == 0), 1) for i in range(256)]
     word, counts = encode_row(decode_setup(setup_bytes(weak)), x)
     assert word == x+[sc.scalar(0, 1)]*256 and sum(v != (0,) for v in word) == 1
-    assert counts['sparse_edges'] == 7424
+    assert counts['sparse_edges'] == 9728
     print(f'{cases} M31/QM31/OM31 encoding, dense parity, linearity and coordinate cases pass.')
     print('Twelve degree pairs re-derived; malformed setup/row/columns reject; legal zero-edge setup has distance one.')
     print('No fixed-setup, proximity, production NC, benchmark or profile certification.')

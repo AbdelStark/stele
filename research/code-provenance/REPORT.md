@@ -135,7 +135,9 @@ memory ledgers remain required. No small-case result certifies the full supporte
 size range or the seeded fixture's setup distribution.
 
 
-## Seeded setup and bounded sampling study
+## Historical v1 seeded setup and bounded sampling study
+
+The v2 follow-up below supersedes this classical-only candidate; v1 bytes reject.
 
 Question: can a fixed public manifest regenerate the canonical map with exact
 uniform-ensemble semantics in a classical random-oracle model, including sampler
@@ -172,3 +174,43 @@ more budget. BLAKE3 is a concrete candidate, not a proof of the oracle model.
 The <=64 hash blocks per row and geometric O(n) work/storage are operation bounds,
 not benchmarks. No maximum-size generation, Rust/GPU parity, production source
 authentication, proximity certificate, NC credit, registry or profile is supplied.
+
+## All-seed setup bound: research question
+
+Can stronger finite parameters bound every successfully generated 256-bit seed
+simultaneously in the ideal random-oracle experiment, so selection (including
+quantum selection) cannot evade the setup event? Security property: setup distance
+failure; cost terms: sparse edge work/storage and setup hashing. Kill criterion:
+any unsupported finite-support inequality, unnoticed change to seed/domain space,
+version confusion, or use of this setup-only result to certify FS/H/proximity.
+The existing v1 classical study remains historical evidence, not quantum admission.
+
+
+Result: the exact finite checker now bounds all 200431782 events by 2^-416.
+The versioned v2 map/manifest/block domains use the stronger twelve degree pairs.
+The all-seed union is 2^256*200431782/2^416 < 2^-132. Outside that bad-oracle event,
+every successfully regenerated supported code is good, so even arbitrary quantum
+selection cannot output a bad one. The proof in formal/seeded-setup.md needs no
+query cap or selection theorem and accounts for capped-stream rejection. This is
+an ideal-oracle setup result, not a concrete BLAKE3 or whole-protocol guarantee.
+
+The checks re-derive every degree, compare interval inequalities with exact finite
+combinatorics, retain the small-field exhaustive cases, and reject the old event
+budget and an enlarged seed universe as insufficient for the target. V2 fixed
+digests, independent expansion, actual generated-map parity, source tampering,
+exhaustion and v1 descriptor rejection pass. The generic quantum counterexample
+remains to prevent restoration of the inadequate classical-only formula.
+
+Recommendation: continue A1/A7 with v2 and remove the classical query-budget API.
+Keep production admission blocked until authenticated identity/registry/consumers,
+proximity, allocation policy and Q12 composition are complete. In particular, a
+protocol theorem that assumes fresh independent oracle outputs cannot silently
+be applied after conditioning that oracle on good setup. Both error events need
+an applicable joint argument; neither success of regeneration nor this union
+proves the remaining claim graph.
+
+The n=256 sparse map has 9728 edges versus v1's 7424, each costing one addition
+and multiplication per field limb. This is an exact algorithmic count, not measured
+throughput. Complete recursive edge counts remain E(J); setup caps, linear work
+and storage bounds stay fixed. No production coefficient, weight pass, benchmark,
+GPU result, PCS control or admitted profile is supplied.

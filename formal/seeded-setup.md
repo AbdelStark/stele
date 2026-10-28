@@ -1,14 +1,16 @@
-# Candidate seeded setup and classical setup-loss bound (Q23)
+# Candidate v2 seeded setup and all-seed setup-loss bound (Q23)
 
-Status: Draft, RFC-0010 A1 / RFC-0012 A7. This is a deterministic research sampler
-and a conditional classical random-oracle argument. It is not a quantum setup
-bound, a concrete BLAKE3 distance certificate, or permission to admit a profile.
-RFC-0002 permits quantum adversaries; that acceptance obligation remains open.
+Status: Draft, RFC-0010 A1 / RFC-0012 A7. V2 strengthens the finite parameters
+and bounds all seeds simultaneously in an ideal random-oracle experiment. The
+setup event is independent of any seed-selection algorithm, including quantum
+selection. This is not a concrete BLAKE3 guarantee or complete profile bound.
+It supersedes v1; raw setup, manifest and block domains all change to v2. V1
+bytes reject, including at the unchanged circle base. No production API changes.
 
 ## 1. Manifest, expansion and rejection
 
 Use the map, degrees, base and raw setup codec in [recursive-code.md](recursive-code.md).
-The manifest is exactly 55 bytes: ASCII `stele/expander-seed/v1` (22 bytes),
+The manifest is exactly 55 bytes: ASCII `stele/expander-seed/v2` (22 bytes),
 u8(J), and a public 32-byte seed, with integer 3<=J<=15. Unknown versions,
 truncation, suffixes and unsupported J reject as `InvalidManifest`. No caller
 supplies a degree, field, modulus, distance, success flag or security budget here.
@@ -18,7 +20,7 @@ can describe equal maps. This format does not normalize semantic equivalence.
 For each row, obtain 32-byte blocks as the unkeyed BLAKE3 digest of exactly:
 
 ```
-ASCII("stele/v0.1/setup/expander/block/v1") || seed[32] ||
+ASCII("stele/v0.1/setup/expander/block/v2") || seed[32] ||
 u8(level) || u8(kind) || u32_le(row) || u8(stream) || u8(counter)
 ```
 
@@ -70,15 +72,15 @@ each returned row equals its uncapped counterpart. Thus the event that an admitt
 prefix violates the support properties is contained in failure of the uncapped
 tower. There is no division by the probability of successful generation. Unused
 higher levels need not pass their caps. Exhaustion rejects; it is not a successful
-false statement or an excuse to retry under an uncharged new seed.
+false statement. All possible retry seeds are included in the union below.
 
 The fixed circle base has sufficient distance. Across levels j=4..15 the exact
-finite analysis supplies two events per relevant support size, each <=2^-288:
+finite analysis supplies two events per relevant support size, each <=2^-416:
 
 ```
 D_j = floor(4^j/25)+1; I_j = floor(4^j/100)+1
 L = sum_(j=4..15) 2*((D_j-1)+(D_j-I_j)) = 200431782
-epsilon = L / 2^288 < 2^-260
+epsilon = L / 2^416 < 2^-388
 ```
 
 Consequently each independent seed's uncapped tower fails with probability at most
@@ -87,43 +89,59 @@ failure event each time a size/field/proof reuses that seed. The existing compon
 argument transports M31 minimum symbol distance to QM31/OM31. Neither this bound
 nor regeneration establishes proximity, commitment codeword validity or PCS soundness.
 
-## 3. Adaptive selection: classical queries only
+## 3. Union over every seed: no selection/query restriction
 
-Let Q bound all classical oracle queries made by the adversary and preprocessing
-that can reveal setup information, including discarded attempts and information
-available through other interfaces. Let S bound distinct final output seeds whose
-setup records have never been queried. Budgets must include all relevant history;
-there is no free oracle-correlated advice or uncounted trusted party leaking rows.
+Fix precisely the v2 domains and the 32-byte seed format above. There are 2^256
+possible seeds. For each seed s, let B_s mean that at least one successfully
+regenerated supported prefix fails its required support/distance properties.
+Section 2's coupling proves Pr[B_s]<=epsilon. Exhausted prefixes are not admitted;
+base-only J=3 has deterministic distance and contributes no bad event.
 
-Lazily assign an independent complete uncapped tower when a seed is first touched
-by a canonical setup-block query. Immediately before that query, its tower is
-independent of the entire preceding classical history, so its bad-event probability
-is at most epsilon. Charge the whole bad tower at this first touch, regardless of
-how adaptively later queries inspect it or whether the seed is discarded. There
-are at most Q such first touches. Every final untouched seed is independent of
-the history used to choose it and has the same bound. A union bound gives:
+Define B as the union of B_s over this entire finite seed universe. A union bound,
+which does not require independence between the B_s, gives:
 
 ```
-Pr[any output successfully regenerates a bad supported code] <=
-    min(1, (Q+S)*epsilon).
+Pr[B] <= 2^256 * epsilon = 200431782 / 2^160 < 2^-132.
 ```
 
-This is an original elementary argument for this candidate in the stated classical
-model, not an attributed theorem about BLAKE3. One final seed gives S<=1; multiple
-final instances require their actual distinct-seed accounting. For example,
-Q=2^100,S=1 makes this expression less than 2^-160, but does not authorize that
-budget or establish any profile target. `setup_bound` checks only exact arithmetic;
-caller-supplied Q=0 is not a certificate. Reuse of an already charged seed is the
-same event; new versions/domains require explicit composition. Future admission
-must authenticate its lifetime/query policy, not trust prover-supplied attempt counts.
+For every fixed oracle outside B, **every** successfully regenerated supported
+v2 code has the asserted distance. An adversary that outputs any such bad code
+therefore succeeds only on B. This implication holds pointwise for every classical
+or quantum algorithm, arbitrary auxiliary computation, adaptive selection, number
+of queries, number of outputs, and reuse. Averaging over the initially sampled
+ideal oracle proves the bound. No first-touch argument, quantum query theorem,
+prover-declared attempt count or assumption about the selection distribution is
+needed. Merely conditioning on a deliberately selected bad oracle would change
+the stated experiment and is not what this argument proves.
 
-The distinction between a random-oracle proof and instantiation with a concrete
-hash follows the model described by [Bellare and Rogaway](https://cseweb.ucsd.edu/~mihir/papers/ro.pdf).
-The research BLAKE3 implementation and fixed vectors do not prove this assumption.
+The cap coupling is per seed; it can use auxiliary infinite streams to analyze
+that seed's marginal event without changing the finite block oracle. The finite
+union then applies directly to B_s events in the actual capped-oracle experiment.
+There is no need to enumerate the seed universe, test all matrices, or evaluate
+uncapped streams in the implementation. Extra fields/sizes use the same charged
+tower; distinct seeds are already all included. New seed lengths, map versions,
+block domains, degrees or accepted code families require a new explicit bound.
+For example, allowing 272-bit seeds with this event budget would exceed 2^-128.
+The earlier 288-bit per-event budget also fails this all-seed obligation.
 
-## 4. Quantum counterexample and remaining admission gate
+`all_seeds_bound()` returns the exact fixed rational above with no caller options.
+It is a research arithmetic check, not an admission API. Future consumers must
+bind the exact v2 identity and regenerate the actual map, reject arbitrary raw
+matrices/v1/unknown variants, and enforce an authenticated parameter registry.
+A structurally valid all-zero setup still has distance one: accepting arbitrary
+raw setups would violate the theorem's regeneration premise.
 
-Classical first-touch reasoning does not cover superposition queries. As an exact
+The distinction between an ideal random-oracle proof and instantiation with a
+concrete hash follows the model described by
+[Bellare and Rogaway](https://cseweb.ucsd.edu/~mihir/papers/ro.pdf). The concrete
+BLAKE3 implementation and fixed vectors do not establish that assumption. The
+all-seed claim is an original elementary application of the finite bound and union
+bound here, not a theorem attributed to those authors about this code or BLAKE3.
+
+## 4. Why v1 was insufficient; remaining admission gate
+
+V1 used a classical (Q+S)*epsilon charge. Classical first-touch reasoning does
+not cover superposition queries; v2 deliberately avoids that argument. As an exact
 small counterexample to reusing its formula, consider 16 inputs with independent
 oracle outputs marked with probability 1/16. Conditional on k marked inputs, put
 x=k/16. Starting from the uniform state, mark phases and invert about the mean.
@@ -142,12 +160,15 @@ be (3+1)/16=1/4, which is false in this quantum experiment. This generic sparse-
 example is not an attack on the actual expander instance or a quantum upper bound.
 It demonstrates why a classical linear query charge cannot discharge RFC-0002.
 
-Before A1/A7 acceptance, supply an applicable quantum setup-selection theorem,
-its exact oracle/query convention and composition with the actual FS/H accounting.
-Re-derive finite degrees/budgets if necessary. Q12's existing 2^100-query H example
-already exceeds the treaty target; this draft does not repair it. Conditional PCS
-error and setup failure must both appear in a complete instantiated bound, with
-actual source authentication, proximity hypotheses and profile enforcement.
+V2's all-seed argument addresses setup selection in the ideal oracle, not quantum
+Fiat-Shamir or hash-collision accounting. Q12's existing 2^100-query H example
+already exceeds the treaty target and remains unresolved. A complete bound needs
+this setup event plus the actual protocol error with good setup, including FS/H,
+proximity, codeword validity and all source bindings. Do not infer independence
+between these events or multiply their probabilities. For joint composition, bound
+the remaining failure event outside B under its actual oracle model; treating the
+oracle conditioned on good setup as fresh independent randomness needs justification.
+The union decomposition alone does not supply that missing proof.
 No production registry, loss enum, ledger entry or `proven=true` is added here.
 
 ## 5. Cost and executable evidence
@@ -162,6 +183,7 @@ and encoder benchmarks are still required; no weight-pass constant changes.
 Run `uv run --locked --script research/code-provenance/check_sampler.py` for finite
 sampler symmetry, exact cap boundaries, whole-setup rejection, independent framing/
 row expansion, four fixed full-setup digests, prefix reuse, regenerated source tamper
-rejection, actual generated-map parity in all three fields, adaptive classical toy
-selection and the exact quantum counterexample. The largest generated map is n=1024;
+rejection, actual generated-map parity in all three fields, finite all-seed unions,
+budget/seed-length rejection checks, adaptive classical toy selection and the exact
+quantum counterexample. The largest generated map is n=1024;
 there is no maximum-size, Rust/GPU parity, PCS control or independent-audit credit.

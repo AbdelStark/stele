@@ -8,10 +8,10 @@ import check_circle as circle
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'sumcheck'))
 import check_sumcheck as sc
 
-PREFIX = b'stele/expander-m31/v1'
+PREFIX = b'stele/expander-m31/v2'
 BASE = b'stele/circle-m31/v1'+bytes([6, 1])
-A_DEGREES = (18, 16, 15, 14, 14, 13, 13, 13, 13, 13, 14, 14)
-B_DEGREES = (22,)+(17,)*11
+A_DEGREES = (25, 21, 19, 19, 18, 18, 17, 17, 17, 18, 18, 18)
+B_DEGREES = (26, 21)+(18,)*10
 
 
 def need(condition):
