@@ -41,7 +41,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0013 | Zero-knowledge | Accepted; A1 Draft |
 | 0014 | GPU prover architecture | Accepted (A1) |
 | 0015 | Distributed proving | Accepted |
-| 0016 | Verifier, proof format, recursion wrapper | Accepted |
+| 0016 | Verifier, proof format, recursion wrapper | Accepted; A1 Draft |
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted |
 | 0019 | Research agenda | Research |
