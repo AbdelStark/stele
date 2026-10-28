@@ -454,9 +454,9 @@ tasks:
   - RFC-0003 §3
   skill: pcs-engineer
   crate: stele-code
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E4-02-circle-bench
+  branch: task/E4-02-circle-evidence
   acceptance:
   - matches naive evaluation
   - 2^30 input-element encode benchmark at both rates using valid rows (RFC-0010 A2)

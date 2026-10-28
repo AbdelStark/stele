@@ -45,16 +45,15 @@ different domain/construction. A2 preserves a 2^30-input-symbol benchmark throug
 the actual row-wise matrix encoding: two rows at rate 1/2 and four rows at rate
 1/4, each producing 2^30 codeword symbols. Every row must actually run; scaling one
 row's timing is insufficient. Both per-row and aggregate input/output dimensions
-are recorded. No large allocation or benchmark was run here, and the task remains
-incomplete until the actual required ledger exists.
+are recorded. The algebraic study performs no large allocation; the separate
+full benchmark delivery below supplies that measurement.
 
-Recommendation: accept the explicit encoder-only contract after the required
-reviews, then implement it with independent vectors, real memory/cost evidence,
+The Accepted encoder-only contract now has independent vectors, CPU implementation
 and the full 2^30-input-symbol benchmark. Encoding cannot admit a PCS profile: A1's
 registry/provenance contract, codeword validity, proximity, query accounting and
 authentication remain separate. There is no GPU or full-inference result here.
 
-## Production encoder tests (E4-02 in progress)
+## Production encoder tests
 
 The [CPU encoder](../../crates/stele-code/src/lib.rs) implements A2 using an output
 buffer reused across transforms, base-field twiddles and batch inversion. Its
@@ -67,3 +66,18 @@ Normalization, ordering, extension-projection and column-order mutants all fail
 the intended tests. Debug/release checks pass; no mutant remains in the source.
 This is implementation/parity evidence, not the required large performance ledger,
 an observed memory peak, GPU parity or a PCS/profile certificate.
+
+## Full benchmark delivery
+
+The [E4-02 ledger](../../bench/ledger/e4-02-circle-code.json) now supplies the
+required full-size measurement from frozen source `31e957a8f3f7c7e2ee4a5987a8f6e9e91ad4960a`.
+Two rows of 2^29 inputs at rate 1/2 and four rows of 2^28 inputs at rate 1/4
+were actually encoded; every one of the six 2^30-symbol outputs passed independent
+integer validation. The [benchmark report](../../bench/README.md) records exact
+stage totals and peaks, with all raw per-row receipts retained in the ledger.
+
+This completes the E4-02 benchmark acceptance on gated merge, alongside the
+direct-reference/extension tests. It adds no PCS/profile admission, inference or
+GPU claim. Fixtures have four nonzero basis coefficients; the complete production
+transform executes without input-dependent shortcuts. One sample per distinct row
+is retained; no scaling, omitted row, statistical speedup or cost-model fit is used.

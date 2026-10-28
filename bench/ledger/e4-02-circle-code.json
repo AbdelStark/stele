@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/circle-code",
+  "commit": "31e957a8f3f7c7e2ee4a5987a8f6e9e91ad4960a",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "M31 circle encode and exhaustive output validation",
+      "cases": [
+        [
+          29,
+          1,
+          0
+        ],
+        [
+          29,
+          1,
+          1
+        ],
+        [
+          28,
+          2,
+          0
+        ],
+        [
+          28,
+          2,
+          1
+        ],
+        [
+          28,
+          2,
+          2
+        ],
+        [
+          28,
+          2,
+          3
+        ]
+      ],
+      "input_symbols_per_rate": 1073741824,
+      "rows_per_rate": {
+        "1/2": 2,
+        "1/4": 4
+      },
+      "samples_per_row": 1,
+      "build": "release",
+      "parallel_workers": 1,
+      "fixture": "(17+r)+(29+2*r)*y+((43+3*r)+(71+5*r)*y)*v_(m-1)(x), r=row",
+      "fixture_scope": "four nonzero coefficients; value-independent full encoder loops; not random dense coefficients",
+      "stages": {
+        "preparation": "allocate and populate original row with independent integer arithmetic",
+        "encode": "complete public encode call: allocation/copy/zero expansion, inverse normalization, domain/twiddle construction and batch inversions, full forward transform",
+        "validation": "compare EVERY output with independent integer circle recurrence and polynomial; checksum all outputs"
+      },
+      "amortized_setup": false,
+      "warmup": "small release tests and m=8 smoke only, separate process",
+      "excluded": "process launch, stdout serialization and final buffer deallocation",
+      "memory": "separate native worker peak RSS per row, including retained input, all internal allocation capacities/overlap, returned output, validation and runtime; Python controller excluded",
+      "scope": "CPU weight-registration encoding only; no proof, inference, GPU, PCS/profile admission or cost-model fit"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+    "field": "M31",
+    "samples": [
+      {
+        "m": 29,
+        "b": 1,
+        "row": 0,
+        "input_symbols": 536870912,
+        "output_symbols": 1073741824,
+        "input_capacity_bytes": 2147483648,
+        "output_capacity_bytes": 4294967296,
+        "preparation_ns": 2540039959,
+        "encode_ns": 54714561000,
+        "validation_ns": 5164431750,
+        "checked_symbols": 1073741824,
+        "checksum": 13027392195077000276,
+        "peak_rss_bytes": 12884901888,
+        "native_time_resource_report": "       62.55 real        61.59 user         0.92 sys\n         12884901888  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n              786612  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                1735  involuntary context switches\n       1144701700695  instructions retired\n        256603936717  cycles elapsed\n         12890727760  peak memory footprint\n"
+      },
+      {
+        "m": 29,
+        "b": 1,
+        "row": 1,
+        "input_symbols": 536870912,
+        "output_symbols": 1073741824,
+        "input_capacity_bytes": 2147483648,
+        "output_capacity_bytes": 4294967296,
+        "preparation_ns": 2405739125,
+        "encode_ns": 55848777167,
+        "validation_ns": 5041681625,
+        "checked_symbols": 1073741824,
+        "checksum": 2960408154886657426,
+        "peak_rss_bytes": 12889145344,
+        "native_time_resource_report": "       63.39 real        62.39 user         0.67 sys\n         12889145344  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n              786869  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                4196  involuntary context switches\n       1144317412000  instructions retired\n        256340939762  cycles elapsed\n         12895004032  peak memory footprint\n"
+      },
+      {
+        "m": 28,
+        "b": 2,
+        "row": 0,
+        "input_symbols": 268435456,
+        "output_symbols": 1073741824,
+        "input_capacity_bytes": 1073741824,
+        "output_capacity_bytes": 4294967296,
+        "preparation_ns": 1221279417,
+        "encode_ns": 53900577291,
+        "validation_ns": 5395821750,
+        "checked_symbols": 1073741824,
+        "checksum": 8197302893392041454,
+        "peak_rss_bytes": 10737467392,
+        "native_time_resource_report": "       60.60 real        55.95 user         0.64 sys\n         10737467392  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n              655541  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n               22714  involuntary context switches\n        941854609577  instructions retired\n        222394034057  cycles elapsed\n         10742243152  peak memory footprint\n"
+      },
+      {
+        "m": 28,
+        "b": 2,
+        "row": 1,
+        "input_symbols": 268435456,
+        "output_symbols": 1073741824,
+        "input_capacity_bytes": 1073741824,
+        "output_capacity_bytes": 4294967296,
+        "preparation_ns": 1286025458,
+        "encode_ns": 47428327875,
+        "validation_ns": 5172131667,
+        "checked_symbols": 1073741824,
+        "checksum": 7657543139802850410,
+        "peak_rss_bytes": 10737401856,
+        "native_time_resource_report": "       53.96 real        53.23 user         0.53 sys\n         10737401856  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n              655537  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                3103  involuntary context switches\n        941492580530  instructions retired\n        217284265829  cycles elapsed\n         10742177616  peak memory footprint\n"
+      },
+      {
+        "m": 28,
+        "b": 2,
+        "row": 2,
+        "input_symbols": 268435456,
+        "output_symbols": 1073741824,
+        "input_capacity_bytes": 1073741824,
+        "output_capacity_bytes": 4294967296,
+        "preparation_ns": 1233833292,
+        "encode_ns": 47015959500,
+        "validation_ns": 5532043917,
+        "checked_symbols": 1073741824,
+        "checksum": 9747895879824653332,
+        "peak_rss_bytes": 10737401856,
+        "native_time_resource_report": "       53.89 real        52.59 user         0.60 sys\n         10737401856  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n              655537  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                9228  involuntary context switches\n        941645302137  instructions retired\n        214638271233  cycles elapsed\n         10742177616  peak memory footprint\n"
+      },
+      {
+        "m": 28,
+        "b": 2,
+        "row": 3,
+        "input_symbols": 268435456,
+        "output_symbols": 1073741824,
+        "input_capacity_bytes": 1073741824,
+        "output_capacity_bytes": 4294967296,
+        "preparation_ns": 1386741500,
+        "encode_ns": 52478359875,
+        "validation_ns": 5484531166,
+        "checked_symbols": 1073741824,
+        "checksum": 12947376600129444662,
+        "peak_rss_bytes": 10741596160,
+        "native_time_resource_report": "       59.45 real        54.17 user         0.75 sys\n         10741596160  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n              655795  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n               29243  involuntary context switches\n        941840127607  instructions retired\n        213992098526  cycles elapsed\n         10746371920  peak memory footprint\n"
+      }
+    ],
+    "rates": {
+      "1": {
+        "rows": 2,
+        "input_symbols": 1073741824,
+        "output_symbols": 2147483648,
+        "checked_symbols": 2147483648,
+        "peak_rss_bytes": 12889145344
+      },
+      "2": {
+        "rows": 4,
+        "input_symbols": 1073741824,
+        "output_symbols": 4294967296,
+        "checked_symbols": 4294967296,
+        "peak_rss_bytes": 10741596160
+      }
+    },
+    "measured_input_output_capacities": true
+  },
+  "plan_digest": "c0a1ee7a2d927580398d166106ca141b7e50fedcddfbc652b96875d5ccb0132b",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 353250863334,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "b1/row0/preparation": 2540039959,
+    "b1/row0/encode": 54714561000,
+    "b1/row0/validation": 5164431750,
+    "b1/row1/preparation": 2405739125,
+    "b1/row1/encode": 55848777167,
+    "b1/row1/validation": 5041681625,
+    "b2/row0/preparation": 1221279417,
+    "b2/row0/encode": 53900577291,
+    "b2/row0/validation": 5395821750,
+    "b2/row1/preparation": 1286025458,
+    "b2/row1/encode": 47428327875,
+    "b2/row1/validation": 5172131667,
+    "b2/row2/preparation": 1233833292,
+    "b2/row2/encode": 47015959500,
+    "b2/row2/validation": 5532043917,
+    "b2/row3/preparation": 1386741500,
+    "b2/row3/encode": 52478359875,
+    "b2/row3/validation": 5484531166
+  },
+  "kernel_counters": {
+    "input_symbols": 2147483648,
+    "output_symbols": 6442450944,
+    "checked_symbols": 6442450944
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Six actual CPU encodings: two k=2^29 rows at rate 1/2 and four k=2^28 rows at rate 1/4, all N=2^30. Every output checked with independent integer arithmetic. Four-coefficient high-basis fixtures, no input-dependent transform shortcuts. One sample per distinct row, no rescaling/extrapolation/discarding. Encode stage includes all internal preparation, inverse, expansion, twiddles and forward transform without amortization; fixture construction and exhaustive validation separately timed and included in total. RSS includes all native process capacities/overlap, not isolated scratch or live allocation; no Python controller memory. Standard is a schema tag, not profile certification. No performance comparison, fitted constant, proof or PCS admission."
+}
