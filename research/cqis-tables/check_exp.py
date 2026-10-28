@@ -48,6 +48,13 @@ def report():
     rejects('Precision',lambda: exp.enclosure(Q(1),33))
     for x in [Q(-1),Q(32769),0.5]:
         rejects('Argument',lambda: exp.enclosure(x,64))
+    # Equal numeric values of different types must not bypass validation on hits.
+    exp.enclosure(Q(1,2),64)
+    exp.enclosure(Q(0),64)
+    exp.enclosure(Q(1),64)
+    for x in (0.5,0,1,False,True):
+        rejects('Argument',lambda: exp.enclosure(x,64))
+    rejects('Precision',lambda: exp.enclosure(Q(1,2),64.0))
     rng = random.Random(2502)
     for x in [Q(0),Q(1,2**30),Q(1,2),Q(1),Q(32768)]+[Q(rng.randrange(32769),1 << rng.randrange(31)) for _ in range(100)]:
         low, high, p = exp.enclosure(x,64)

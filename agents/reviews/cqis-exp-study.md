@@ -35,3 +35,9 @@ correction, removing rows, changing scale metadata and using invalid endpoints;
 the research checks rejected them for their stated reasons. The uncorrected
 candidate's 29 nonmonotonic steps remain evidence rather than being hidden by
 tests. This is numerical research approval, not production protocol acceptance.
+
+The cache review reproduced Python's equality alias between Fraction, float,
+integer and Boolean keys: a warm cache bypassed the function's type guards.
+Typed cache keys now keep these calls distinct. The new regression first fails
+on the old decorator, then rejects each invalid argument and float precision
+after valid rational warmup. Recomputed artifacts retain identical integer values.
