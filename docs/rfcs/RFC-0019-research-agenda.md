@@ -174,3 +174,11 @@ nonsequential access, and rules out a universal single-window budget for that
 grid/tail construction. It is not a physical two-pass implementation or a memory
 measurement. E3-05 is blocked on the complete contract and its required reviews;
 all original acceptance criteria remain.
+
+Q23: which concrete M31 linear-time code, canonical setup identity and independently
+justified distance/proximity parameters complete RFC-0010 §3? Candidate A1 is
+Draft. The code-provenance study checks fixed-map linearity and exact small-code
+distances, and exhibits a low-weight word hidden by 1,000 random samples. Binary
+RAA parameters and sampled minima do not certify the M31 code. E4-01 is blocked
+on the complete construction/API/evidence contract; production ledgers, controls
+and profile admission remain separate requirements.

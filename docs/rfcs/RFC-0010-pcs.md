@@ -64,3 +64,100 @@ contributions are summed across devices; column openings touch only the device o
 NC-0600 `u` inconsistent with opened columns; NC-0601 column index not from transcript; NC-0602 Merkle path for wrong
 leaf; NC-0603 packed decomposition altered (x0 = 256, x1 − 1); NC-0604 blinding row omitted in treaty profile;
 NC-0605 fused `u ≠ B` (cross-check with NC-0305).
+
+## 11. Amendment log
+
+### A1 — Concrete encoder identity and parameter provenance
+
+Status: Draft. Question Q23. Evidence: [code provenance study](../../research/code-provenance/REPORT.md).
+Motivation: §3 names code families but does not fix a concrete M31 encoder, setup
+or supported lengths. The distance-estimate task and a `proven` boolean cannot
+replace evidence for the distance and proximity hypotheses of §6. This draft
+authorizes no production code or parameter set; E4-01 is blocked until completion
+and acceptance. Original §3/§6 text remains in force outside this amendment.
+
+Proposed addition to §3, pending the exact construction and encoding below:
+
+> A code instance is a fully specified injective M31-linear map, including its
+> message/codeword lengths, canonical coordinate order, coefficients, graph or
+> permutations, recursion/base case and padding rule. The same map extends to
+> QM31/OM31 by embedding M31 coefficients. Do not reuse binary-field distance
+> parameters for M31 by replacing XOR with modular addition. A family name or seed
+> alone is not a complete algorithm or a distance certificate.
+>
+> `encode` maps a validated row to its complete codeword. `eval_row(u, cols)` must
+> return exactly those coordinates of `encode(u)`, in the supplied order, with a
+> specified duplicate-index policy. It is an encoder query, not a PCS acceptance
+> decision. Code parameters and requested column bounds are checked before use;
+> input length mismatch, malformed setup, noncanonical coefficients, unknown code
+> identity and arithmetic/allocation overflow must fail with specified errors.
+> No malformed setup may silently fall back to another code or profile.
+>
+> `codes.toml` records exact rational/integer lengths, rate and bounds; no floating
+> point enters protocol code. Separate (1) certified minimum-distance lower bound,
+> (2) sampled-distance observations, (3) proximity radius and exceptional-combination
+> bound, (4) setup failure probability and its sampling assumptions, and (5) query
+> count. A sampled nonzero codeword gives only an upper bound on minimum distance.
+> An upper estimate must never populate a certified-lower-bound field.
+>
+> Every proven parameter requires an immutable theorem identifier/version and
+> checked hypotheses for this field, code instance/ensemble, supported lengths,
+> setup distribution and consumer. A `proven` flag is a summary of that evidence,
+> not authority supplied by the prover. Unknown or mismatched evidence rejects.
+> The verifier derives approved code parameters from its authenticated public
+> configuration; changing a TOML flag or prover-supplied theorem name cannot enable
+> acceptance. Missing evidence is unsupported, not a zero error term. Treaty
+> rejects every unproven required component; standard still requires its explicit
+> labelled assumptions and complete bound. Neither profile accepts arbitrary
+> estimates merely because an encoder passes linearity tests.
+>
+> For M31-linear maps the base/extension minimum symbol distances agree, by the
+> basis-component support argument in the study. This does not prove the base
+> distance, a proximity gap, or a codeword-validity claim for a Merkle commitment.
+> Query count alone cannot cure an unaccounted gap or setup failure probability.
+
+Open requirements before acceptance (Q23):
+
+1. Select and reproduce an applicable concrete M31 construction with exact
+   finite-length conditions. Extract the Brakedown field-agnostic construction
+   and its proof; do not substitute the weak identity-permutation RAA example.
+   Fix all integer rounding, graph/weight generation, duplicate edges, recursion,
+   base encoder, systematic/packing layout, domain restrictions and unsupported-length behavior. If RAA is
+   selected instead, supply an applicable M31 distance theorem or certificate.
+2. Specify canonical setup and code-id bytes, registry schema, authoritative
+   parameter selection and binding to future commitment/plan/passport descriptors.
+   Determine setup generation/security assumptions, who may choose or grind setup,
+   and how failure/reuse is accounted. A uniformly random ensemble theorem does
+   not automatically certify an arbitrary fixed seed or adversarial graph.
+3. Give the complete `Code`/parameter API, errors, extension-field behavior,
+   coordinate ordering and allocation limits. Specify which fields are verified
+   against fixed supported entries rather than trusted at parse time. Unknown,
+   missing, duplicated or inconsistent registry data must fail closed.
+4. Record minimum-distance and proximity hypotheses separately with exact sources,
+   rational bounds and applicability. Derive query counts with exact arithmetic
+   and instantiate exceptional-combination/setup errors before profile admission.
+   If this adds an error term to §6, amend §6/RFC-0012 and the ledger explicitly.
+   Do not hide it inside the query term or assume the code has distance by name.
+5. Require independent encoding vectors and linearity over M31/QM31/OM31, direct
+   generator-matrix parity at small lengths, `eval_row` coordinate parity and
+   malformed setup/row/column/parameter rejection. Keep distance estimates clearly
+   one-sided; use exact small cases and adversarial low-weight witnesses. Real
+   controls must reject parameter/provenance substitution under the actual
+   consumer; no research counterexample earns NC-0600..0605 credit.
+6. Supply clean-source adds/multiplications per element, preparation cost and full
+   memory ledgers for the selected production code. Include graph/permutation
+   storage and extension-field encoding. The requested linear-time encoder must
+   remain linear-time; exhaustive small-code checks are validation, not its setup
+   algorithm or a substitute for scalable distance evidence.
+
+Soundness impact: none implemented. The research makes no PCS, profile or new
+challenge claim. A code's distance, codeword validity, proximity gap, column
+authentication and Fiat–Shamir bounds are separate obligations. All existing
+consumer bindings, CQIS certificates and Q12 remain. No integer inference identity
+is introduced, and no conjectural bound is promoted to treaty evidence.
+
+Cost impact: c_c encoding work, setup/memory, PCS query work and proof size. The
+research counts additions for a deliberately unspecified-for-production RAA map;
+it changes no measured constant, benchmark or weight-pass count. Affected tasks:
+E4-01, E4-03/E4-05, E10-06 and E12-04, with original criteria retained. The circle
+RS encoder E4-02 still requires its own construction/parameter evidence.
