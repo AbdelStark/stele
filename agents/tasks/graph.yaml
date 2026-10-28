@@ -379,7 +379,7 @@ tasks:
   - RFC-0006 §3,§6
   skill: gkr-reduction-author
   crate: stele-gkr
-  status: in_progress
+  status: blocked(RFC-0006 A4)
   agent: codex-root
   branch: task/E3-06-stacked-contract
   acceptance:

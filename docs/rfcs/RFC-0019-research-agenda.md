@@ -148,3 +148,10 @@ Q19 resolution: RFC-0006 A3 / RFC-0012 A5 Accepted with same-author skill review
 an explicit interactive obligation and both-field research checks. E3-03 is ready
 for production implementation and its full parity/control/improvement gates.
 The hybrid final is closed through original slice claims; Q12 remains open.
+
+Q20: which exact coefficient/selector semantics, descriptor bytes, elimination
+permutation and block-state ownership complete RFC-0006 §§3,6? Candidate A4 is
+Draft. The stacking study gives counterexamples to interchanging nonlinear
+layer folds or Boolean-product extensions and checks canonical axis restoration.
+E3-06 is blocked on the complete amendment and its required reviews; research
+checks provide no production control, profile or performance credit.
