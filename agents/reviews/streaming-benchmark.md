@@ -17,6 +17,10 @@ Not an independent audit. Scope: harness only; no measurement is published here.
 - Ledger: no soundness line changes. The controller validates SC fields and emits
   a micro ledger only after all proof/consumer and source-count checks succeed.
   Profile selects field only; Q12 and profile admission remain open.
+  The micro schema keeps inference evidence fields zero; all subproof consumer
+  times and actual control coverage remain in model_config/stage_times_ns.
+  A consumer-dominated export regression validates both fields with the real
+  ledger validator and requires the inclusive total to include consumption.
 - Certificates: no integer-inference identity. Synthetic x^degree-y is computed in
   K with all original consumers enabled. Benchmark shapes are explicitly bounded.
 - Padding/masks: none added; original/prepared layout and canonical proof fields

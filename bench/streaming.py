@@ -101,11 +101,18 @@ def main():
     assert len(data)==24 and all(len(rows)==3 for rows in data.values())
     if commit!=run('git','rev-parse','HEAD') or run('git','status','--porcelain'):
         raise SystemExit('source state changed during measurement')
+    ledger = make_ledger(plan, data, evidence, commit, field, passed, catalog)
+    output.parent.mkdir(parents=True,exist_ok=True)
+    with output.open('x') as stream: json.dump(ledger,stream,indent=2);stream.write('\n')
+    subprocess.run(['cargo','run','-p','stele-bench','--locked','--offline','--','ledger','validate',str(output)],cwd=ROOT,check=True)
+    print(f'Validated {field} streaming ledger: {output}')
+
+
+def make_ledger(plan, data, evidence, commit, field, passed, catalog):
     totals = {name:{key:sum(row['times_ns'][key] for row in rows) for key in rows[0]['times_ns']} for name,rows in data.items()}
     complete = {name:sum(times.values()) for name,times in totals.items()}
     ratios = {name:dict(numerator=value, denominator=complete[name.rsplit('-',1)[0]+'-dense']) for name,value in complete.items()}
-    prover_total = sum(sum(v for k,v in times.items() if k!='consumer_ns') for times in totals.values())
-    ledger = dict(schema_version=1, kind='micro', workload='micro/streaming', commit=commit,
+    return dict(schema_version=1, kind='micro', workload='micro/streaming', commit=commit,
         toolchain=run('rustc','-Vv'), device=platform.machine()+' '+run('sysctl','-n','machdep.cpu.brand_string'), driver='not-applicable',
         model_config=dict(plan=plan, os=platform.platform(), samples=data, complete_over_dense=ratios,
             complete_time_ns=sum(complete.values()), proof_and_continuation_sha256=evidence, verified_proofs=72,
@@ -113,15 +120,11 @@ def main():
             observed_prover_ns_per_point={name:dict(numerator=totals[name]['prover_ns'],denominator=3*(1<<case['m'])) for case in plan['cases'] for name in [f"m{case['m']}-d{case['degree']}-{case['mode']}"]}),
         plan_digest=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
         profile='standard' if field=='QM31' else 'treaty', bindings_all_on=True, batch_size=1, prompt_tokens=0, generated_tokens=0,
-        prover_time_ns=prover_total, witness_recompute_ns=0, stage_times_ns={name+'/'+key:value for name,times in totals.items() for key,value in times.items()},
+        prover_time_ns=sum(complete.values()), witness_recompute_ns=0, stage_times_ns={name+'/'+key:value for name,times in totals.items() for key,value in times.items()},
         kernel_counters={name+'/source_records':sum(row['prover']['source_io']['reads'] for row in rows) for name,rows in data.items()},
-        proof_size_bytes=0, verifier_time_ns=dict(rust=sum(t['consumer_ns'] for t in totals.values()),python=0),
-        controls=dict(total=passed,passed=passed,failed=0),
-        note='Complete native CPU synthetic A1 pipeline: 24 cases, three fresh samples each, every proof and original public claim verified; all schedules and losses retained. Prover time includes fixture generation, preparation and proving; Rust verifier time is separate and complete ratios include both. Operation times include transport and source IO but exclude argument parsing, launch/exit, output JSON formatting, controller cleanup and small final buffer destruction. Native RSS includes these, allocator retention and transition overlap; sequential pipeline peak is max of native phases. Python/controller and OS file cache are excluded, so no total-host-memory bound. Reported capacities use actual retained Vec/PathBuf allocations; named Rust type sizes are not native stack bounds. File IO counters are successful logical operations, not physical disk traffic. No warmup/cache flush or fitted/statistical constant claim. Profile selects field only; no inference, GPU, ZK or profile certification. Controls include configuration coverage and do not establish complete claim-graph coverage.')
-    output.parent.mkdir(parents=True,exist_ok=True)
-    with output.open('x') as stream: json.dump(ledger,stream,indent=2);stream.write('\n')
-    subprocess.run(['cargo','run','-p','stele-bench','--locked','--offline','--','ledger','validate',str(output)],cwd=ROOT,check=True)
-    print(f'Validated {field} streaming ledger: {output}')
+        proof_size_bytes=0, verifier_time_ns=dict(rust=0,python=0),
+        controls=dict(total=0,passed=0,failed=0),
+        note='Complete native CPU synthetic A1 pipeline: 24 cases, three fresh samples each, every proof and original public claim verified; all schedules and losses retained. Inclusive micro-operation time includes fixture generation, preparation, proving and original consumption, with separate stage times. Inference proof/verifier/control fields remain zero; actual subproof consumption and control coverage are retained in model_config. Operation times include transport and source IO but exclude argument parsing, launch/exit, output JSON formatting, controller cleanup and small final buffer destruction. Native RSS includes these, allocator retention and transition overlap; sequential pipeline peak is max of native phases. Python/controller and OS file cache are excluded, so no total-host-memory bound. Reported capacities use actual retained Vec/PathBuf allocations; named Rust type sizes are not native stack bounds. File IO counters are successful logical operations, not physical disk traffic. No warmup/cache flush or fitted/statistical constant claim. Profile selects field only; no inference, GPU, ZK or profile certification. Controls include configuration coverage and do not establish complete claim-graph coverage.')
 
 
 if __name__=='__main__': main()
