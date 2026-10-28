@@ -15,12 +15,54 @@ import check_windows as w
 s = w.s
 
 
+def check_frames(instance, degree):
+    """Check the proposed bounded byte-buffer sizes against existing A1 encoders."""
+    a, terms = len(instance['ids']), instance['terms']
+    factors = sum(len(indices) for _, indices in terms)
+    k, delta = 4 * degree, s.degree(instance)
+    assert len(s.instance_bytes(instance, degree)) == 23 + 8*a + len(terms)*(k+1) + 4*factors + k
+    assert len(s.message(instance, 0, [s.scalar(0, degree)]*(delta+1))) == 12 + (delta+1)*k
+    assert len(s.message(instance, a, [s.scalar(0, degree)]*a)) == 12 + a*k
+
+
 def reverse(index, bits):
     result = 0
     for _ in range(bits):
         result = 2 * result + (index & 1)
         index >>= 1
     return result
+
+
+def prepare(original, destination, m, degree):
+    """One record buffer; exclusive separate output, removed on conversion failure."""
+    if degree not in (4, 8) or not 0 <= m <= 8:
+        raise ValueError('SourceShape')
+    stride, read_bytes, written_bytes = 4 * degree, 0, 0
+    with original.open('rb', buffering=0) as source:
+        if os.fstat(source.fileno()).st_size != 2**m * stride:
+            raise ValueError('SourceLength')
+        output = destination.open('xb', buffering=0)
+        try:
+            with output:
+                for j in range(2**m):
+                    assert source.tell() == j * stride
+                    raw = source.read(stride)
+                    if len(raw) != stride:
+                        raise ValueError('SourceLength')
+                    if any(limb >= s.P for limb in struct.unpack('<' + 'I' * degree, raw)):
+                        raise ValueError('SourceField')
+                    output.seek(reverse(j, m) * stride)
+                    if output.write(raw) != stride:
+                        raise ValueError('SourceWrite')
+                    read_bytes += len(raw)
+                    written_bytes += len(raw)
+                if source.read(1):
+                    raise ValueError('SourceLength')
+                assert os.fstat(output.fileno()).st_size == 2**m * stride
+        except BaseException:
+            destination.unlink()
+            raise
+    return read_bytes, written_bytes, 2**m
 
 
 class Source:
@@ -82,9 +124,13 @@ def checks():
                 for m, windows in schedules:
                     tables = [[tuple(rng.randrange(s.P) for _ in range(d)) for _ in range(2**m)]
                               for _ in paths]
-                    # Preparation intentionally uses resident reference inputs; it is not free.
+                    # Fixture creation retains references; the conversion itself streams one record.
                     for path, table in zip(paths, tables):
-                        path.write_bytes(b''.join(s.encode(table[reverse(j, m)]) for j in range(2**m)))
+                        original = path.with_suffix('.row-major')
+                        original.write_bytes(b''.join(map(s.encode, table)))
+                        path.unlink(missing_ok=True)  # This test owns all files in its temporary directory.
+                        assert prepare(original, path, m, d) == (2**m * 4*d, 2**m * 4*d, 2**m)
+                        assert original.read_bytes() == b''.join(map(s.encode, table))
                     factors = [v % 2 for v in range(delta)]
                     terms = [(tuple(rng.randrange(s.P) for _ in range(d)), factors), (s.scalar(-3, d), [])]
                     if delta:
@@ -93,6 +139,7 @@ def checks():
                     for row in zip(*tables):
                         total = s.add(total, s.compose(terms, row, d))
                     instance = {'id': cases, 'm': m, 'ids': [11, 12, 13], 'terms': terms, 'sum': total}
+                    check_frames(instance, d)
                     source = Source(paths, m, d)
                     a, b, c = [s.Transcript(b'sequential-source-research', d) for _ in range(3)]
                     proof, point, scans = w.window_prove(a, instance, tables, windows, blocks=source.blocks)
@@ -126,10 +173,26 @@ def checks():
                 paths[0].write_bytes(malformed)
                 s.rejects(lambda: list(Source(paths, m, d).blocks([], 1, [])), error)
             paths[0].write_bytes(saved)
+            original = paths[0].with_suffix('.row-major')
+            valid = original.read_bytes()
+            rejected = Path(directory) / 'rejected'
+            for malformed, error in [(valid[:-1], 'SourceLength'), (valid+b'\0', 'SourceLength'),
+                                     (struct.pack('<I', s.P)+valid[4:], 'SourceField')]:
+                original.write_bytes(malformed)
+                s.rejects(lambda: prepare(original, rejected, m, d), error)
+                assert not rejected.exists() and original.read_bytes() == malformed
+            original.write_bytes(valid)
+            try:
+                prepare(original, paths[0], m, d)
+            except FileExistsError:
+                assert paths[0].read_bytes() == saved
+            else:
+                raise AssertionError('existing destination overwritten')
             s.rejects(lambda: Source(paths, 9, d), 'SourceShape')
             s.rejects(lambda: list(Source(paths, m, d).blocks([], m+1, [])), 'SourceShape')
         for d in (4, 8):
             instance = {'id': 100, 'm': 3, 'ids': [], 'terms': [(s.scalar(9, d), [])], 'sum': s.scalar(72, d)}
+            check_frames(instance, d)
             source = Source([], 3, d)
             a, b, c = [s.Transcript(b'empty-source', d) for _ in range(3)]
             proof, point, _ = w.window_prove(a, instance, [], [1, 1], blocks=source.blocks)
@@ -140,6 +203,7 @@ def checks():
     print(f'{cases+2} both-field sequential-file/dense/public-consumer cases and continuations agree')
     print('Each visit reads a*N*4*d bytes at consecutive file positions, without seeks; OS cache traffic is not measured')
     print('10 changed-unused-source cases reject ClaimMismatch; malformed lengths/limbs reject; research only')
+    print('Preparation reads/writes each record once with positioned output; originals preserved; failed outputs removed')
 
 
 if __name__ == '__main__':

@@ -376,11 +376,15 @@ tasks:
   - RFC-0014 A1
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: blocked(RFC-0006 A6 / RFC-0014 A1)
+  status: ready
   agent: codex-root
   branch: task/E3-05-streaming-spec
   acceptance:
   - peak memory bound verified in test
+  - complete bounded-path/source contract and delivery gates in formal/streaming.md
+  - Dense bytes, claims, accounting and continuation parity in both fields
+  - independent Rust/Python decisions and actual NC-0210 source-substitution rejection
+  - complete preparation/proving/consumer capacity and process-memory ledgers including losses
 - id: E3-06
   epic: E3
   title: Stacked reduction runtime + public MLE kinds (eq, causal, window, rope, onehot_sparse, gqa)

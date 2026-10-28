@@ -639,85 +639,74 @@ A1/A2/A3 bytes and all unrelated acceptance criteria remain unchanged.
 
 ### A6 — Streaming source visits, round windows and peak memory
 
-Status: Draft. Question Q22. Evidence: [streaming study](../../research/streaming/REPORT.md).
-The sequential-file experiment in that study supplies a tested bit-reversed
-candidate layout and exact file-position/read-byte evidence. It does not close
-the source preparation, immutable identity or allocation-capacity requirements.
-Motivation: §5 does not specify what a two-pass source can enumerate, whether its
-order matches storage layout, or a bound including the prefix-grid/dense-tail
-transition. RFC-0014 §4 inherits the ambiguity. This draft authorizes no production
-behavior; E3-05 remains blocked until both amendments are complete and Accepted.
+Status: Accepted. Question Q22. Detailed contract: [streaming equivalence and buffers](../../formal/streaming.md).
+Evidence: [indexed and sequential-file studies](../../research/streaming/REPORT.md).
+Review: [A6 skill passes](../../agents/reviews/streaming-a6.md).
+Motivation: the original two-pass fallback leaves source layout, feasible schedules
+and transition memory unspecified. The earlier Draft exposed a single-window
+budget obstruction. The complete contract now specifies a sequential layout,
+explicit schedules and a bounded proving path without changing A1 proof bytes.
 
-Proposed replacement for §5's streaming bullet, pending the requirements below:
+Exact replacement for §5's streaming bullet:
 
-> Streaming is an A1 prover strategy with unchanged proof bytes, transcript and
-> verifier. Use a sequence of positive integer round-window widths with total at
-> most m. With S challenges already fixed, width w, N=2^m, a original inputs and
-> b=max(2,delta+1), construct on {0,..,b-1}^w the polynomial
-> q(X)=sum_z P(f_0(r[:S],X,z),...,f_(a-1)(r[:S],X,z)), z Boolean^(m-S-w).
-> Original input MLEs are used, not MLEs of Boolean products. Interpolate q to
-> emit the ordinary A1 nodes 0..delta, sum only the remaining Boolean coordinates,
-> and fold only after the engine absorbs that round and draws its full K challenge.
-> Constants, repeated factors, zero coefficients and zero/one challenges retain
-> their A1 semantics. No special transcript labels or extra challenges are added.
+> Streaming is an A1 strategy under the detailed six-section contract in
+> `formal/streaming.md`. Use explicit positive round-window widths whose sum is
+> at most m, followed by a dense tail. Source rows have bit-reversed Boolean
+> indices and ordered full K input values. Each window and final materialization
+> consumes one complete sequential source visit, with checked metadata, exact
+> row count, canonical bytes and error propagation. Replay means the same logical
+> inputs; a source assertion never authenticates the original final claims.
 >
-> After the last window, materialize every original input at the accumulated
-> challenge prefix and use ordinary dense A1 folds. Preserve unused inputs, all
-> original final claims, their order and complete Final absorption. A source or
-> cached state must not silently change the instance or tensor coordinates.
+> At fixed prefix r and window w, construct the grid of
+> `sum_z P(f_0(r,X,z),...,f_(a-1)(r,X,z))` at the distinct nodes
+> `{0,..,max(2,delta+1)-1}^w`. Restrict original input MLEs, not Boolean products.
+> Emit exactly A1's delta+1 nodes, absorb before drawing each challenge, and
+> fold by fixed-node interpolation. Materialize every original-input tail in
+> canonical suffix order, including unused inputs; retain all original final
+> claims, Final absorption and continuation. Degree-zero, m=0, no-input and
+> zero/one-challenge cases have the detailed contract's explicit behavior.
 >
-> A logical source visit enumerates every original input index once. In the
-> direct indexed construction, each window and final materialization requires one
-> such visit. This is not automatically a physical sequential read: the needed
-> prefix/suffix order changes with S and w. Report source bytes, seeks/gathers,
-> preparation/transposition and recomputation separately. A source resident in
-> host RAM still counts toward complete process memory even if it saves device RAM.
-> A one-window specialization uses two logical visits only if both its complete
-> grid and tail budgets fit. Do not promise two visits for all shapes/budgets.
+> The bounded path uses already allocated workspace, proof rows/finals and one
+> reusable byte buffer. Validate shapes and actual capacities before proving;
+> no work-buffer growth or replacement occurs inside that path. Reuse window
+> and tail storage according to `L_work` in the detailed contract, with no live
+> previous-block overlap. Ordinary allocating Summand wrappers are separate
+> preparation/convenience paths and cannot silently inherit the bounded claim.
+> The byte buffer contains only the existing canonical A1 payload prefixes.
 >
-> A source for virtual tensors may recompute only under an explicit cost and
-> memory contract. No window replay authorizes another weight pass. Applying this
-> strategy to a weight-bearing source requires preserving RFC-0007/INV-7, or a
-> separately Accepted RFC-0007 amendment. Distributed partial sums must partition
-> the actual global window polynomial, not independently fold nonlinear blocks.
+> One window means two source visits only when its complete resource plan fits.
+> Multiple windows require multiple visits. Count preparation, source storage,
+> reads/writes/seeks, proof/descriptor buffers, all retained capacities and
+> original-claim consumption; record actual process peaks separately from the
+> buffer-capacity bound. Do not equate workspace with total process or device
+> memory. Source replay never permits a second weight pass under RFC-0007.
+> Unsupported schedules, capacities, shapes or sources reject; no hidden fallback.
 
-Open requirements before acceptance (Q22):
+The detailed contract supplies the source interface, record layout, bounded
+preparation algorithm, size/EOF/id checks, cached-instance validation, failure
+state, exact workspace/serialization sizes, tail compaction, parity derivation,
+source/algebra costs and complete delivery gates. It is normative for this
+strategy; a production implementation must satisfy all of it before E3-05 is done.
+Its readonly-file assumption is a prover input contract, not a verifier security
+assumption or a claim that metadata detects malicious concurrent modification.
 
-1. Define the source API, stable identity/shape validation, canonical field input,
-   layout, read/rewind failures and immutable replay semantics. Give an implementable
-   bounded-memory adapter with actual storage order. Account for preparation and
-   any additional storage; an arbitrary indexed oracle is insufficient evidence.
-2. Fix a deterministic integer window schedule or checked explicit schedule and
-   its eligibility/budget rules. Cite the exact algorithm and source assumptions.
-   Handle degree zero, no inputs, m=0, impossible budgets and overflow. Do not
-   claim the paper's asymptotics for a direct-interpolation implementation.
-3. Derive the actual allocation-capacity peak including all live grid/scratch,
-   prefix weights, source buffers, proof/descriptor state, dense-tail transition
-   and retained capacities. Specify what is caller-owned, host, device or external
-   storage and report total pipeline memory separately. Validate against actual
-   storage lifetimes in tests; a formula returned by its own estimator is not a
-   measurement of the implementation. Grid b^w and tail a*2^(m-S) are lower bounds,
-   not the complete allocation contract.
-4. Specify errors and failure state, cached-instance checks, resource rejection
-   before large allocations, source count/index checks and all original final
-   obligations. Mutable/malformed sources must never yield a false accepted
-   statement under the real original consumer. Define actual misuse controls;
-   research ClaimMismatch checks earn no catalog credit.
-5. Require both-field bytes/receipts/continuations against Dense and direct
-   reference with 1,000 seeded cases per degree, every supported schedule boundary,
-   independent Python/Rust decisions, actual read-count and memory-bound tests,
-   per-block partial agreement, and full cost/memory ledgers including losses.
+Soundness: deterministic A1 equivalence through multilinearity and unique grid
+interpolation; no new challenge, registry label, commitment or SC record.
+The conditional loss stays m*delta/p^d for d=4,8. All original consumers remain
+mandatory. No integer-inference bound, profile, PCS or Fiat–Shamir claim follows;
+Q12 is unchanged. The memory tradeoff obstruction is not a general lower-bound
+or conjectural security premise.
 
-Soundness: the candidate's algebraic argument is deterministic equivalence through
-multilinearity and fixed-node interpolation. Conditional on correct implementation,
-A1's m*delta/p^d loss, for d=4,8, and all original consumer obligations are unchanged.
-No implemented challenge, ledger line, commitment, profile or CQIS bound certificate
-changes. Q12/PCS/composition remain open separately. No conjectural lower bound is
-used to justify soundness or claimed as an unconditional impossibility theorem.
+NC-0210: the exact source-substitution control in the detailed contract must
+exercise the real Streaming prover and unchanged original public consumer;
+require all rounds unchanged, exactly one nonzero unused-final difference and
+ClaimMismatch in both fields through ProverHook. Research assertions earn no
+catalog credit. Constructor, I/O, shape and capacity failures are separate tests.
 
-Cost impact: c_sc/T_misc, working/source memory and read bytes; T_witness if virtual
-tensors are recomputed. For W windows the direct indexed candidate visits a*N*(W+1)
-original field elements, excluding source preparation and consumer reads. A replay
-is not free because its output is small. No fitted constant, benchmark result or
-weight-pass count changes here. Affected tasks: E3-05, E3-06, GPU/distribution and
-their downstream consumers. The original peak-memory acceptance criterion remains.
+Cost: c_sc/T_misc, explicit source I/O/preparation, working and total memory;
+T_witness only for supported virtual-source recomputation. W windows require
+W+1 source visits; direct interpolation costs are stated in the detailed contract.
+No benchmark constant or weight-pass count changes. Production ledgers must
+retain losing cases and full consumer/transition peaks. Affected tasks: E3-05,
+E3-06 integration and downstream GPU/distribution planning. RFC-0014 A1 retains
+its actual device evidence and parity requirements.

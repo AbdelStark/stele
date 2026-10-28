@@ -105,3 +105,9 @@ The CPU map now has direct-reference and Python-vector checks under E4-02, plus
 the full input-size cost/memory ledger at both rates. A1's parameter provenance
 and the actual PCS consumer/accounting tasks remain open. The code identity alone
 cannot admit a profile or certify codeword validity of a Merkle commitment.
+
+RFC-0006 A6's streaming contract retains A1's m*delta/p^d record, messages and
+all original final consumers. No challenge, label or implemented loss changes.
+Its source/layout/capacity studies establish neither production NC-0210 nor
+profile security. The actual strategy, both-field corpus, control and accounting
+gate integration remain E3-05 delivery requirements; Q12 is unchanged.

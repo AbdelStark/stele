@@ -75,10 +75,10 @@ buffers, efficient recomputation or preservation of the one weight pass.
 
 ## Recommendation and remaining gates
 
-Amend RFC-0006 A6 and RFC-0014 A1 together. Keep E3-05 blocked on those Draft
-contracts until source layout/rewind/recompute behavior, integer window selection,
-capacity-inclusive peak bounds, transition lifetimes and exact error behavior
-are specified and reviewed. Do not replace the advertised fallback with an
+The initial study required RFC-0006 A6 and RFC-0014 A1 to specify source
+layout/rewind/recompute behavior, integer window selection, capacity-inclusive
+peak bounds, transition lifetimes and exact error behavior before implementation.
+The completed contract and review resolution below address that gate. Do not replace the fallback with an
 unaccounted full-input rescan per round. A one-window specialization may be called
 two logical visits only when its complete budget fits; physical reads need their
 own evidence. No universal impossibility or optimality claim is made.
@@ -104,9 +104,14 @@ stores each input in a separate file, with canonical K limbs at physical record 
 holding original row-major element `reverse_bits(j,m)`. Each window opens each
 file afresh and reads its records in consecutive order, without seeks. This is
 file-offset/read-byte evidence; the OS may serve reads from cache, so it is not a
-physical-disk traffic or throughput measurement. The preparation in this experiment
-uses resident reference tables and materialized output bytes, explicitly outside
-the candidate reader. It does not establish bounded-memory source preparation.
+physical-disk traffic or throughput measurement. Fixture creation retains reference
+tables and materialized row-major bytes, explicitly outside the candidate reader.
+The conversion adapter now reads one record at a time into a fixed-size buffer
+and writes it at its bit-reversed offset in a separate file. It checks exactly
+N record reads, N writes and N positioned-output operations, preserves the
+original, rejects noncanonical/short/long input, removes a failed new output and
+refuses to overwrite an existing destination. This establishes bounded record
+storage in the conversion algorithm, not a complete process-memory measurement.
 
 For S fixed coordinates, window width w and q=m-S-w suffix bits, a physical block
 of 2^(S+w) records fixes `z=reverse_bits(block,q)`. Its records cover every prefix
@@ -138,7 +143,11 @@ not an integrity commitment; source substitution must still fail at the original
 claim consumer. Source read/open errors abort the attempt rather than authorize
 replacement values. No weight-bearing source replay is authorized by this study.
 
-Recommendation: retain this layout as an implementable candidate for Q22 and
-complete A6's source/schedule/capacity/error contract before acceptance. E3-05
-remains blocked. This resolves the tested indexed-versus-sequential enumeration
-question, not complete memory accounting, a production strategy or the MVP.
+The [complete A6 contract](../../formal/streaming.md) specifies explicit schedules,
+preallocated workspace/proof/byte buffers, their full capacities, source errors,
+the preparation algorithm and exact A1 equivalence. The experiment additionally
+checks its Instance/Round/Final payload-size formulas against the existing A1
+encoder in every case. These checks do not measure the future bounded Rust path.
+Resolution: A6/A1 are Accepted with the linked same-author skill reviews. Implement
+E3-05 with its original real-memory test and all specified controls/parity/ledgers.
+The research itself completes neither production streaming nor the MVP.
