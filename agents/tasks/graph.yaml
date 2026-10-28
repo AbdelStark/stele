@@ -430,6 +430,8 @@ tasks:
   skill: gkr-reduction-author
   crate: stele-lookup
   status: ready
+  agent: codex-root
+  branch: task/E3-07-logup-characteristic-study
   acceptance:
   - NC-0400..0403
   - c_lu measured
