@@ -570,7 +570,9 @@ tasks:
   - RFC-0003 §4
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E5-03-quantiser-contract
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
