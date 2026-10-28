@@ -165,6 +165,7 @@ dependencies = [
 name = "stele-code"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "stele-field",
  "stele-simd",
 ]
