@@ -3,7 +3,8 @@
 Status: Draft. This is a proposed algebra contract, not permission for core code.
 It resolves candidate Boolean tables and evaluator costs. It does not resolve A4's
 complete reduction descriptor, transcript bytes, source authentication or ownership.
-The research evaluator uses M31; production must use both full extension fields.
+The original research evaluator uses M31. The weighted study in §7 uses both full
+extension fields; neither supplies production evaluation or source authentication.
 
 ## 1. Common convention
 
@@ -40,7 +41,7 @@ candidate neither adds a commitment nor discharges an original input claim.
 The candidate descriptor in stacked-statement.md additionally defines selected-axis
 weights for every kind. Its eq tag uses one as the primitive and places all target
 points in those selectors; the all-axis equality above is its fully selected special
-case. The general weighted evaluator still needs its own delivery evidence. These
+case. The general weighted study is described in §7; production evidence remains. These
 Drafts do not authorize silently changing a production coefficient polynomial.
 
 The window includes the current position and the preceding w-1 positions. Widths
@@ -141,3 +142,52 @@ Before E3-06 delivery: independent production prover/verifier evaluations at
 10^4 seeded points per kind in both fields, original-source consumers, actual
 NC-0203 and other bindings, byte/decision corpus, partial-sum/coordinate parity
 and complete cost evidence. The M31 research script earns none of that credit.
+
+
+## 7. General selected-axis coefficient study
+
+The candidate statement in [stacked-statement.md](stacked-statement.md) fixes a
+selector z on any complete axis. For query coordinate r, replace its Boolean
+choice weights by `w(0)=(1-r)*(1-z), w(1)=r*z`; without a selector use `(1-r,r)`.
+Each weight is linear in r. Use these weights inside the bounded-axis, mask,
+sparse-selection and exact-table sums, before any Boolean assignments are added.
+This implements the MLE of the complete Boolean table; multiplying a mask MLE
+by an independently extended selector does not. It is valid over both K fields,
+including nonzero extension limbs, without division or Boolean-only assumptions.
+
+For an axis outside the primitive's chosen axes, its bounded weighted sum factors
+out because its assignments and validity are independent. For a shared axis,
+insert the same weights into the primitive's actual finite-state transition or
+selection/table sum. The §4 induction is unchanged: each state's value is the
+weighted sum over its unique low-bit assignments. Only final state zero is valid.
+There is no multiplication by another validity MLE after that sum.
+
+`research/stacked-gkr/weighted_mle.py` reuses the candidate codec's validation
+and the existing research field arithmetic. Its independent comparison builds
+each Boolean table from integer predicates and selector factors, then folds it in
+canonical order; it does not call the evaluator's bit weights, DP or sparse sum.
+Both paths share field arithmetic, so agreement is not independent field validation.
+The script checks 10,000 seeded queries per kind per field, plus 63-bit equality,
+31-bit full-K causal/window identities, unequal sparse domains, a three-axis
+source, zero-bit axes and malformed query lengths/limbs. Sources are synthetic
+resolved inputs; no CQIS identity, commitment opening or NC coverage is established.
+
+Let m be total bits, D descriptor bytes, b_a chosen axis widths, R real rows and
+N_s the number of exact source entries. Descriptor admission separately costs
+O(D) time and transient bytes because the research evaluator calls the codec.
+All kinds retain O(m) weighted pairs; this is additional to the constant-size DP
+buffers. The following costs exclude the already-owned source and descriptor:
+
+| Kind | Field work | Additional field storage beyond O(m) pairs |
+|---|---|---|
+| eq | O(m) | two borrow states per buffer |
+| causal/window | O(m), at most two 16-state mask evaluations | two 16-state buffers and four bit-choice products |
+| onehot/GQA | O(m + 2^b_row + 2^b_column + R) | O(2^b_row + 2^b_column) |
+| exact table on k axes | O(m + sum_a 2^b_a + k*N_s) | O(sum_a 2^b_a) |
+
+The exact-table implementation enumerates real source entries and multiplies k
+axis-vector weights per entry; it does not claim the O(N) padded-fold algorithm's
+constant. Broadcast axes use bounded sums and never materialize their domains.
+These are explicit T_misc work/storage formulas, not benchmark measurements or
+production admission limits. Source resolution and original claim consumers
+remain separate obligations before A4 acceptance and E3-06 delivery.

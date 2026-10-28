@@ -125,3 +125,31 @@ not resolve or authenticate a committed index list or CQIS table. The actual fix
 source-consumer interface, weighted evaluator tests, exact production errors,
 controls and reviews remain prerequisites. No production registry/dependency,
 negative-control coverage, benchmark or profile claim changes here.
+
+
+## Weighted full-extension coefficients
+
+Question: does the candidate selected-axis descriptor admit the same exact public
+coefficient evaluation when selectors overlap mask/source axes? Cost term: T_misc
+public evaluation and temporary storage. Kill criterion: any direct-table mismatch,
+a separately extended selector product, or domain-sized causal/window state.
+
+Run `uv run --locked --script research/stacked-gkr/check_weighted_mle.py`.
+The weighted evaluator multiplies Boolean bit-choice weights before its bounded
+or mask DP; sparse/source sums use those same weighted axis vectors. An independent
+path builds canonical Boolean tables from predicates/source indexing and folds them.
+The paths share the existing research K arithmetic, not evaluator helpers.
+
+The seeded run checks 10,000 queries per kind per field: 120,000 agreements with
+nonzero QM31/OM31 limbs, optional selectors, overlapping/reordered axes, irregular
+padding, zero-bit axes and source values. Additional cases check unequal sparse
+domains, a three-axis source, 64 zero-bit axes, 63-bit equality, a 31-bit full-K
+causal/window partition identity, malformed query lengths/limbs and a concrete
+failure of multiplying separate mask/selector MLEs.
+
+Recommendation: continue Q20 with formal/public-mle.md §7. Keep A4 Draft and E3-06
+blocked pending actual source resolution, Rust consumers/controls, canonical
+protocol parity and reviews. The candidate evaluator retains O(m) bit weights
+beyond its constant-state DP, copies D descriptor bytes during admission, and
+charges k products per exact-table source entry. No measured performance, bound
+certificate, authenticated CQIS/index source or production NC credit is claimed.
