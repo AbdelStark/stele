@@ -409,3 +409,30 @@ p^d. A1/A4 consumers and their bytes remain unchanged. The production registry,
 canonical inventory and actual per-invocation accounting gate change atomically
 with the consumer; this amendment alone supplies no production coverage.
 No measured constant or weight pass moves. Q12 still blocks profile certification.
+
+### A6 — Stacked statement descriptor
+
+Status: Draft. Question Q20. Companion to RFC-0006 Draft A4.
+Motivation: bind the complete verifier-owned stacked relation, consumed claim,
+canonical layout/order and resolved coefficient source values before A1 rounds.
+Candidate payload and exact schedule: [stacked statement](../../formal/stacked-statement.md).
+
+Proposed registry addition on implementation after acceptance:
+
+| Kind | Label bytes | Consumer / accounting |
+|---|---|---|
+| Absorb | `stele/v0.1/gkr/stacked` | Stack; full A4 statement, no challenge |
+
+Stack precedes the derived A1 Instance. A1 Round, Sumcheck and Final operations
+remain unchanged, with one SC record m*delta/p^d for the complete A*P polynomial.
+No extra draw or algebraic loss is proposed; FS/H and Q12 remain separate.
+Absorbing source bytes is not authentication against their original commitment,
+public input or CQIS identity. Actual source resolution and original consumers
+remain mandatory. No private-source, profile or coverage claim follows here.
+
+Before acceptance, complete the source interface, error/control mapping and
+required A4 reviews. On implementation, change the closed registry, canonical
+inventory and actual accounting/control gates atomically. The current production
+registry remains unchanged; this Draft alone grants no label or protocol access.
+Cost impact: descriptor/source-byte absorption in T_misc, with no fitted constant
+or weight-pass change. Affected tasks: E3-06 and its reduction consumers.

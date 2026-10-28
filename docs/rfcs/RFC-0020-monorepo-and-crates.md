@@ -70,3 +70,15 @@ are downward/test-only edges; no core crate may import the control harness or an
 upstream proof implementation. No soundness term or cost-model constant changes.
 Affected tasks: E3-01, E2-01. Dependency bans must enforce the amended edges when
 implementation is delivered; the amendment alone adds no Cargo dependency.
+
+### A2 — Direct stacked-runtime primitive dependencies
+
+Status: Draft. Question Q20. Companion to RFC-0006 Draft A4 and RFC-0012 Draft A6.
+Proposed `stele-gkr` dependencies are `[field, poly, hash, sumcheck]` for exact
+coefficient arithmetic, original-point evaluation, descriptor framing and A1
+reuse. These are downward edges. Source authentication stays in the existing
+reduction/orchestration consumers; GKR must not import PCS upward or accept a
+prover-supplied authentication callback. No dependency is added by this Draft.
+On acceptance/implementation, update dependency bans and their rejection tests
+with the actual API change. No challenge, soundness loss or measured cost changes.
+Affected task: E3-06; source/consumer closure and required reviews remain open.

@@ -95,3 +95,33 @@ Recommendation: continue Q20 using formal/stacked-ownership.md alongside the
 public-MLE algebra. The full statement bytes, source authentication and actual
 consumers remain acceptance prerequisites. No production/GPU parity, negative
 control, benchmark or profile credit follows from this M31 research model.
+
+## Candidate statement bytes
+
+Question: can the full verifier-owned stacked statement be encoded without
+implicit shape, selector, source or coordinate parameters? Cost term: descriptor
+and resolved source-byte absorption in T_misc. Kill criterion: an omitted parameter,
+ambiguous accepted byte string, unchecked count, or a source-authentication claim
+based only on hashing supplied data.
+
+Run `python3 research/stacked-gkr/check_statement.py`. The candidate codec covers
+48 descriptors across both extension-field widths, all six coefficient kinds,
+both orders and present/absent axis selectors. It retains nonzero extension limbs.
+Every descriptor round-trips exactly; all 12,744 truncated prefixes reject, along
+with trailing bytes, unknown tags/flags, oversized counts, noncanonical limbs,
+invalid shapes/ordinals/source values and duplicate input/coefficient identities.
+Independent scalar and source-payload byte constructions check framing. A consumed
+claim may alias an input tensor if their layouts agree; ids do not erase points.
+
+The proposed coefficient is the MLE of one Boolean table including validity and
+selected-axis equality factors, followed by the separate product A*P. A4 binds
+an explicit coordinate frame around A1 and exports only restored original claims.
+Its proposed Stack absorb adds no challenge. The field-width codec does not test
+full-extension algebra or actual transcript/protocol parity.
+
+Recommendation: continue Q20 with formal/stacked-statement.md and Draft companions
+RFC-0012 A6 / RFC-0020 A2. Resolved source bytes are included, but the codec does
+not resolve or authenticate a committed index list or CQIS table. The actual fixed
+source-consumer interface, weighted evaluator tests, exact production errors,
+controls and reviews remain prerequisites. No production registry/dependency,
+negative-control coverage, benchmark or profile claim changes here.

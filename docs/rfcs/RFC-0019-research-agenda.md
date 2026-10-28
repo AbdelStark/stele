@@ -163,6 +163,10 @@ The candidate in formal/stacked-ownership.md now fixes logical round ownership,
 folded-input redistribution and canonical point restoration for both layer orders.
 The independent original-table oracle is research evidence only; full A4 closure
 and all production delivery requirements remain mandatory.
+The candidate in formal/stacked-statement.md fixes descriptor bytes and A1 reuse;
+RFC-0012 A6 and RFC-0020 A2 propose the corresponding absorb/dependency boundaries.
+All remain Draft. Binding resolved source bytes is not their authentication;
+actual source-resolution/consumer interfaces and production evidence remain open.
 
 Q21: which typed eligibility, deferred-prefix state and actual out-of-range misuse
 control complete the small-value strategy without changing the A1 protocol?
