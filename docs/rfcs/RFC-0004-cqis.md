@@ -153,3 +153,72 @@ Completed skill review passes (Workflow 02; same authoring agent, not independen
 - [x] soundness-auditor (codex-root): integer equivalence, sign/range bindings, static bounds
 - [x] rfc-author (codex-root): consistency with ADR-005, formats and glossary
 - [x] stele-cqis owner / cqis-numerics (codex-root): supported arithmetic, Rust/NumPy parity and error behavior
+
+### A2 — Complete nonlinear table and RMSNorm definitions
+
+Status: Draft. Question Q25. Evidence: [exact table study](../../research/cqis-tables/REPORT.md).
+Review: [draft skill passes](../../agents/reviews/cqis-tables-a2-draft.md).
+
+Motivation: §4's inclusive exp domain has 2^B+1 values and its B=14 high
+index has 129 values, contradicting the stated sizes. Section 5.3 cannot
+normalize valid sum-of-squares values 0, 1, 65536 or 131073. The named
+activation tables lack closed forms, complete scales and canonical byte rules.
+These are semantic blockers, not implementation latitude. A1 remains in force.
+
+Proposed exact addition to §4, contingent on the complete definitions below:
+
+> Every supported table has a versioned closed-form integer definition with
+> explicit input/output scales, parameter bounds, endpoint behavior, rounding,
+> overflow rejection, decomposition and canonical row order. Generation and
+> verifier evaluation use that same definition. There is no implicit choice of
+> activation variant, host floating-point rounding or saturation. The registered
+> identity covers all parameters that can change an entry; canonical framing
+> and integer encodings are specified with RFC-0008 §4 and RFC-0011 §1.
+> Unsupported definitions and malformed parameters fail before table use.
+> Error analysis names the reference real function and units, and accounts for
+> approximation, rounding and recombination separately. A generator certifies
+> the selected integer entries; numerical agreement at a chosen precision alone
+> is not a proof of correct rounding or a maximum-error bound.
+
+Required replacements before acceptance (Q25):
+
+1. Replace §4's exp row with exact domain cardinality, index maps, sub-table
+   formulas and sizes, input exponent, output exponent and product rounding.
+   Preserve the attained-maximum endpoint and specify all supported B/E values.
+   Any changed attention domain requires the matching RFC-0009 §2 amendment.
+2. Supply exact SiLU, GeLU/tanh-GeLU, sigmoid and softcap formulas and parameter
+   encodings, including input/output scales, softcap cap and out-of-range rules.
+   Define direct versus decomposed evaluation so it cannot select different
+   integer outputs for the same table identity. Range tables need byte/order
+   rules even though their sets are already defined.
+3. Replace §5.3 normalization with a total integer algorithm over the supported
+   sum-of-squares domain, including zero. Resolve parity of the exponent,
+   discarded information/remainders, dimension and epsilon semantics, rsqrt
+   scaling and the subsequent multiplication/requantisation bounds. A larger
+   mantissa interval alone does not make arbitrary statistics exactly divisible.
+   State the integer relation and range checks that the reduction must enforce.
+4. Complete RFC-0008's identity framing, definition version and parameter bytes,
+   signed entry representation, row order, invalid encoding rejection and
+   verifier evaluation contract. Coordinate passport and CQIS identity binding
+   with RFC-0011; no ad hoc JSON representation is a canonical protocol encoding.
+5. Provide reproducible generation certificates and per-table absolute-error
+   bounds in stated units. Use exact rational intervals or another explicitly
+   justified method; include ties, endpoints, underflow, overflow and worst-case
+   decomposition errors. Rust/NumPy integer parity, fixed vectors and one-value
+   table/identity/recombination controls remain production delivery requirements.
+
+Soundness impact: no challenge or error term is implemented by this Draft.
+Correct table arithmetic does not prove lookup membership, passport identity,
+range discipline or static field faithfulness. Future reductions must account
+for their actual degree/challenges, and every normalization identity needs §6
+certificates and explicit range consumers. Existing NC-0104/0105, NC-0404/0405
+and NC-0701 remain obligations; research assertions earn no control credit.
+Any new binding needs a catalog control upon acceptance. Q12 is unaffected.
+
+Cost impact: table size/evaluation and decomposition affect c_lu and c_a;
+generation and passport storage are one-time costs. No measured constant,
+weight-pass count or benchmark changes. Affected tasks: E5-02 (blocked on A2),
+E5-03's norm-related certificates, E5-04, E6 table registry, E7 nonlinear/norm
+reductions and E10 passport consumers. All original acceptance criteria remain.
+E5-01's accepted scalar arithmetic is unchanged. This draft is not sufficient
+to implement the missing functions or to claim a complete CQIS forward pass.
