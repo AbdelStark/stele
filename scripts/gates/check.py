@@ -170,6 +170,19 @@ def batch_corpus(root):
     print(f'gate batching: {len(cases)} shared decisions, all obligations and SC/RLC checked; no profile certified')
 
 
+def zerocheck(root):
+    """Actual A3 bytes, all slice claims, SC phases and one-value controls."""
+    for test, command in [
+        ('matches_reference_zerocheck_bytes_and_accounting', ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'zerocheck', '--locked', '--offline']),
+        ('zerocheck::rejects_zerocheck_binding_tampers', ['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'zerocheck::', '--locked', '--offline']),
+        ('', ['uv', 'run', '--locked', '--script', 'research/zerocheck/check_zerocheck.py']),
+    ]:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or (test and f'test {test} ... ok' not in result.stdout):
+            raise ValueError(f'zerocheck bytes/claims/accounting/control mismatch: {result.stdout} {result.stderr}')
+    print('gate zerocheck: 130 both-field vectors, all slice claims, three SC phases and actual controls; no profile certified')
+
+
 def merkle_vectors(root):
     """Execute actual authentication/KATs and check the independent candidate oracle."""
     for command in [
@@ -186,7 +199,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -267,6 +280,7 @@ def main():
                 batch_instances(ROOT)
                 batch_claims(ROOT)
                 batch_corpus(ROOT)
+                zerocheck(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:

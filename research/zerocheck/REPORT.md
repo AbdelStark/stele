@@ -31,3 +31,7 @@ Recommendation: accept A3/A5 after skill review; implement both strategies,
 production consumers/controls and reference parity, then measure complete costs.
 The s-fold final payload and original-table retention are explicit costs.
 Research checks earn no NC, GPU, performance, independent-audit or profile credit.
+
+The vector set now records every one of the 130 honest cases, including the
+verifier-owned descriptor/tables and the first challenge after ZeroFinal. These
+inputs support production parity tests; the research checks still earn no NC credit.

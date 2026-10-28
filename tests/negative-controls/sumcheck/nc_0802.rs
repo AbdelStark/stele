@@ -4,4 +4,5 @@
 fn rejects_nc_0802() {
     stele_negative_controls::sumcheck::run(802).expect("exact rejection in both fields");
     stele_negative_controls::batching::run(802).expect("instance-batch extension");
+    stele_negative_controls::zerocheck::run(802).expect("zerocheck extension");
 }

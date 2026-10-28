@@ -63,7 +63,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 8] = [
+const REGISTRY: [RegistryEntry<'static>; 12] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -104,6 +104,26 @@ const REGISTRY: [RegistryEntry<'static>; 8] = [
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Rlc),
     },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/zero",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/zero-weight",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Sc),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/zero-skip",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/sumcheck/zero-final",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -131,7 +151,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 8], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 12], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -182,6 +202,12 @@ pub enum AbsorbLabel {
     Batch,
     /// Complete batched final claims (A4).
     BatchFinal,
+    /// Complete zerocheck descriptor (A5).
+    Zero,
+    /// Initial univariate skip polynomial (A5).
+    ZeroSkip,
+    /// Every original tensor slice final (A5).
+    ZeroFinal,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -191,6 +217,9 @@ impl AbsorbLabel {
             Self::Final => 3,
             Self::Batch => 5,
             Self::BatchFinal => 6,
+            Self::Zero => 8,
+            Self::ZeroSkip => 10,
+            Self::ZeroFinal => 11,
         }]
     }
 }
@@ -201,12 +230,15 @@ pub enum ChallengeLabel {
     Sumcheck,
     /// Ordered batch coefficient, accounted under RLC plus FS/H (A4).
     BatchCoefficient,
+    /// Zerocheck tail weight, SC phase 0 (A5).
+    ZeroWeight,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
         &REGISTRY[match self {
             Self::Sumcheck => 4,
             Self::BatchCoefficient => 7,
+            Self::ZeroWeight => 9,
         }]
     }
 }
