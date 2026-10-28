@@ -87,3 +87,58 @@ Acceptance must retain production A1 reference parity, original claim consumptio
 actual misuse controls, a test of the real memory bound, and clean-source complete
 cost/memory ledgers including the source and consumer. No timing, throughput,
 physical I/O, GPU, soundness-profile or inference result is measured here.
+
+## Sequential-source experiment: question and kill criteria
+
+Can bit-reversed source rows make every window and final materialization a
+sequential file enumeration without retaining a full source table in the reader?
+The terms at stake are source read bytes, preparation/layout work and working
+storage, not a changed A1 proof. Kill criteria: any dense/public-consumer mismatch,
+missing or repeated read index, nonsequential file position, accepted malformed
+field/length, or a claim that this experiment measures total physical I/O or peak
+memory. Preparation, diagnostic visit logs and independent reference tables are
+outside the candidate reader and must not disappear from total-resource reporting.
+
+Run `uv run --locked --script research/streaming/check_source.py`. The candidate
+stores each input in a separate file, with canonical K limbs at physical record j
+holding original row-major element `reverse_bits(j,m)`. Each window opens each
+file afresh and reads its records in consecutive order, without seeks. This is
+file-offset/read-byte evidence; the OS may serve reads from cache, so it is not a
+physical-disk traffic or throughput measurement. The preparation in this experiment
+uses resident reference tables and materialized output bytes, explicitly outside
+the candidate reader. It does not establish bounded-memory source preparation.
+
+For S fixed coordinates, window width w and q=m-S-w suffix bits, a physical block
+of 2^(S+w) records fixes `z=reverse_bits(block,q)`. Its records cover every prefix
+u and window index v exactly once. The reader accumulates
+`boolean[v,i]=sum_u eq(r[:S],u)*f_i(u,v,z)` in a*2^w K cells. The window builder
+uses these values in its existing grid interpolation. Reversing the order of z
+only reorders exact field additions. Final materialization uses w=0 and writes
+each result at canonical suffix index z, preserving the dense A1 coordinate order.
+There is no new polynomial, transcript operation, commitment or SC loss.
+
+The 72 cases cover both fields, degrees 0..4, non-base coefficients/inputs,
+repeated factors, zero coefficients, constants, unused inputs, no-window dense
+tails, multiple windows, m=0 and no-input instances. Every proof, point and
+continuation matches the dense oracle and the original public consumer accepts.
+Each visit records exactly a*N*4*d bytes for extension degree d, with consecutive
+positions in each file and every original input index occurring exactly once.
+The existing indexed-source study remains a separate 60-case regression check.
+Ten one-value changes to an unused source table leave all rounds equal and alter
+exactly one final claim; the original consumer rejects ClaimMismatch. Truncated,
+overlong and noncanonical-limb files reject through the actual file reader.
+
+The scratch cell count is an observed logical list length, not an allocation
+capacity or peak-memory bound. Python object overhead, the caller's retained
+previous block while the reader allocates the next, grids, tail, descriptors,
+proof, source preparation, reference tables and diagnostic logs all remain to
+be accounted. The prototype supports only m<=8 and supplies no production API,
+immutable-source guarantee or authenticated source identity. File metadata is
+not an integrity commitment; source substitution must still fail at the original
+claim consumer. Source read/open errors abort the attempt rather than authorize
+replacement values. No weight-bearing source replay is authorized by this study.
+
+Recommendation: retain this layout as an implementable candidate for Q22 and
+complete A6's source/schedule/capacity/error contract before acceptance. E3-05
+remains blocked. This resolves the tested indexed-versus-sequential enumeration
+question, not complete memory accounting, a production strategy or the MVP.
