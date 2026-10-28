@@ -87,3 +87,14 @@ Acceptance must retain production A1 reference parity, original claim consumptio
 actual misuse controls, a test of the real memory bound, and clean-source complete
 cost/memory ledgers including the source and consumer. No timing, throughput,
 physical I/O, GPU, soundness-profile or inference result is measured here.
+
+## Sequential-source experiment: question and kill criteria
+
+Can bit-reversed source rows make every window and final materialization a
+sequential file enumeration without retaining a full source table in the reader?
+The terms at stake are source read bytes, preparation/layout work and working
+storage, not a changed A1 proof. Kill criteria: any dense/public-consumer mismatch,
+missing or repeated read index, nonsequential file position, accepted malformed
+field/length, or a claim that this experiment measures total physical I/O or peak
+memory. Preparation, diagnostic visit logs and independent reference tables are
+outside the candidate reader and must not disappear from total-resource reporting.
