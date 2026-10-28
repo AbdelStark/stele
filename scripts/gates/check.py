@@ -183,6 +183,35 @@ def zerocheck(root):
     print('gate zerocheck: 130 both-field vectors, all slice claims, three SC phases and actual controls; no profile certified')
 
 
+def zero_corpus(root):
+    """Actual A3 public decisions, all original claims and ordered SC phases."""
+    path = 'research/zerocheck/corpus.jsonl'
+    outputs = []
+    for command in [
+        ['cargo', 'run', '-q', '-p', 'stele-sumcheck', '--example', 'zero_corpus', '--locked', '--offline', '--', path],
+        ['uv', 'run', '--locked', '--script', 'research/zerocheck/check_zerocheck.py', '--verify-corpus', path],
+    ]:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode:
+            raise ValueError(f'zerocheck corpus producer failed: {result.stdout} {result.stderr}')
+        outputs.append([json.loads(line) for line in result.stdout.splitlines()])
+    cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
+    if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
+        raise ValueError('zerocheck corpus decisions/claims/accounting mismatch')
+    for case, result in zip(cases, outputs[0]):
+        if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
+            raise ValueError('zerocheck corpus expected rejection mismatch')
+        if case['expected'] == 'accept':
+            i, d = case['instance'], case['field']
+            delta = max([0] + [len(factors) for _, factors in i['terms']])
+            j, s = i['m']-i['k'], 2**i['k']
+            records = [dict(id=i['id'], phase=p, m=m, degree=degree, field_degree=d, numerator=m*degree)
+                       for p, (m, degree) in enumerate([(j, 1), (int(i['k'] > 0), delta*(s-1)), (j, delta)])]
+            if result['sc'] != records or len(result['claims']) != len(i['ids'])*s:
+                raise ValueError('zerocheck corpus descriptor/accounting mismatch')
+    print(f'gate zerocheck corpus: {len(cases)} shared decisions, all original claims and SC phases checked')
+
+
 def merkle_vectors(root):
     """Execute actual authentication/KATs and check the independent candidate oracle."""
     for command in [
@@ -281,6 +310,7 @@ def main():
                 batch_claims(ROOT)
                 batch_corpus(ROOT)
                 zerocheck(ROOT)
+                zero_corpus(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
