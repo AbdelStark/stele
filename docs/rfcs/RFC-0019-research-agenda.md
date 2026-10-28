@@ -203,3 +203,11 @@ the required contract. The exact table study reproduces the exp domain/index
 size conflict and valid sum-of-squares inputs without the stated normalized
 representation. E5-02 is blocked on A2; research checks establish no generated
 table, max-error bound, production lookup control or complete forward pass.
+
+Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
+and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
+RFC-0004 A3 record the strict field-bound correction and missing contract.
+Exact research checks show the advertised dimension endpoints violate p/2 and
+the stated upper-only scale inequality admits an undersized scale. E5-03 is
+blocked on the complete amendments; no runtime bound, certificate verifier,
+NC-0109 result or model quantisation is supplied by this study.

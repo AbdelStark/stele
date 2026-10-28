@@ -91,3 +91,38 @@ Completed skill review passes (Workflow 02; same authoring agent, not independen
 - [x] soundness-auditor (codex-root): norm proof, exact field orders, error terms
 - [x] rfc-author (codex-root): glossary, basis consistency, profile scope
 - [x] stele-field owner / sumcheck-prover-engineer (codex-root): API migration and independent irreducibility tests
+
+### A2 — Strict integer-faithfulness dimension endpoints
+
+Status: Draft. Question Q26. Evidence: [exact bound study](../../research/cqis-bounds/REPORT.md).
+Review: [draft skill passes](../../agents/reviews/cqis-bounds-draft.md).
+Motivation: §4's inclusive dimension endpoints contradict its strict inequalities
+for p=2^31-1. At those endpoints the conservative product bound is 2^30, whose
+centered M31 recovery is -(2^30-1). Field recovery itself is correct.
+
+Exact replacement for §4's int8/int4 dimension bullets:
+
+> For static nonnegative integer magnitudes A,B and inner dimension d, the
+> product-sum magnitude bound is A*B*d. Check `2*A*B*d < p` with exact checked
+> arithmetic; no rounded representation of p/2 or inclusive 2^30 endpoint.
+> For the full signed int8 ranges, A=B=128, so d<=65535. For full signed
+> int4/int8, A=8,B=128, so d<=1048575. These are conservative format bounds;
+> a narrower format requires an explicit accepted range and its enforcement.
+> A certificate must not tighten a bound from observed runtime values. Shapes
+> beyond the bound require the specified chunk/carry or DPA path; without that
+> complete supported path, reject the configuration before proving/verifying.
+
+Proof: for integer C, C<p/2 iff 2C<p, and C<=floor((p-1)/2).
+Dividing that integer maximum by A*B gives the stated dimensions. Each accepted
+integer lies in the unique centered residue interval; the endpoint 2^30 does not.
+This corrects format arithmetic only. Bounding one side of a field equality is
+not sufficient without the other side's enforced range; RFC-0004 A3 must provide
+the complete per-reduction certificate and consumer contract before E5-03.
+
+Soundness impact: no challenge or error term; a deterministic arithmetic
+prerequisite is corrected. No NC-0109 credit or profile admission follows.
+Cost impact: no measured constant or pass count changes. Boundary shapes may
+need chunking; its virtual sums/carries and c_a cost need the full contract.
+Affected tasks: E5-03, E6 plan checks, E7 reductions and future DPA work.
+Acceptance requires the linked skill reviews and coordinated A3 contract;
+this Draft does not authorize a silent production fallback.

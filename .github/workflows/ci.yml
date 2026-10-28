@@ -39,6 +39,7 @@ jobs:
       - run: python3 research/r-octic/check_modulus.py
       - run: python3 research/cqis-rounding/check_rounding.py
       - run: python3 research/cqis-tables/check_tables.py
+      - run: python3 research/cqis-bounds/check_bounds.py
       - run: uv run --locked --script harness/cqis/check_arithmetic.py
       - run: python3 research/poseidon2/check_poseidon2.py
       - run: uv run --locked --script research/transcript/check_transcript.py

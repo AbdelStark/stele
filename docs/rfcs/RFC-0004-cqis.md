@@ -222,3 +222,76 @@ E5-03's norm-related certificates, E5-04, E6 table registry, E7 nonlinear/norm
 reductions and E10 passport consumers. All original acceptance criteria remain.
 E5-01's accepted scalar arithmetic is unchanged. This draft is not sufficient
 to implement the missing functions or to claim a complete CQIS forward pass.
+
+### A3 — Canonical quantiser and static certificate contract
+
+Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).
+Review: [draft skill passes](../../agents/reviews/cqis-bounds-draft.md).
+Motivation: E5-03 needs reproducible weight/activation conversion and verifier
+certificate recomputation. Scale formats and a tuple sketch do not select those
+algorithms or their bytes. Section 5.5's upper inequality alone accepts scales
+below the ceiling; the zero row yields scale zero without a conversion rule.
+RFC-0003 A2 separately corrects the field-bound dimension endpoints.
+
+Proposed exact replacement for §5.5's final scale sentence:
+
+> Let M be the attained maximum absolute input in its specified integer units.
+> The ceiling definition `s=ceil(M/127)` is equivalent to
+> `0<=127*s-M<127`, with integer s and nonnegative M. Both inequalities must
+> be enforced; the upper inequality alone is insufficient. The proof that M
+> is the maximum and attained remains required. The conversion policy must
+> separately define the all-zero row, for which this formula gives s=0.
+> A nonzero sentinel scale is a semantic change requiring explicit specification.
+
+Proposed exact addition to §6, contingent on complete schemas below:
+
+> The verifier derives certificate bounds from authenticated static shapes,
+> formats and accepted CQIS parameters, and compares every supplied field with
+> that derivation. Do not trust a supplied bound, dimension or field-half value.
+> Checked integer computation must reject overflow and unsupported reductions.
+> Every field identity requires enforced integer ranges on both sides; their
+> difference must lie strictly between -p and p for residue equality to imply
+> integer equality. For centered arithmetic retain each side's strict p/2
+> bound, checked without rounding p/2. Native int32 fit alone is insufficient.
+> Certificates account for biased magnitude, products, sums, signed outputs,
+> remainders and each limb/carry identity. Neither runtime observations nor
+> witness generation establish a static bound or enforce a range in the proof.
+
+Open requirements before acceptance:
+
+1. Define supported checkpoint scalar encodings, exact finite conversion and
+   nonfinite rejection. Specify per-channel weight rounding, full or narrower
+   signed ranges, choice of int8/int4, shared exponent and channel mantissas,
+   tie rules and handling of all-zero channels. No machine-dependent float
+   conversion or unspecified calibration may determine canonical bytes.
+2. Define dynamic input conversion, zero rows, residual scale alignment and
+   static fallback policy. Specify its parameters, rounding, error cases and
+   any calibration inputs covered by quantiser identity. Keep scalar A1's
+   round-half-away/no-saturation rules; do not confuse a weight exponent with
+   the scalar Requant right shift. Resolve all affected format/scale uses.
+3. Fix `quantiser_id`, `cqis-weights-v1` and certificate byte encodings with
+   RFC-0011 §1. Reuse accepted packing where applicable, but define tensor
+   order, metadata, scales, framing and rejection of noncanonical encodings.
+4. Enumerate per-reduction certificate schemas and their trusted parameter
+   sources, result bounds and range consumers. Implementations need a closed
+   supported set; an arbitrary operator name or prover-supplied tuple cannot
+   authorize a bound. Incorporate RFC-0003 A2 and A1's biased requant relation.
+5. Define canonical chunking/carry or explicit unsupported behavior when a
+   shape exceeds a bound. Preserve one weight pass and uncommitted virtual
+   partial sums. DPA is still a separate research obligation, not an available
+   automatic escape. Norm-related schemas depend on A2's completed semantics.
+6. Require random-shape property checks against independent exact arithmetic,
+   supported-boundary tests, Rust/NumPy conversion parity and actual NC-0109
+   under the consuming certificate validator. Tampering each bound/format/
+   dimension/modulus field must reject for its stated reason; research checks
+   cannot satisfy that production acceptance line.
+
+Soundness impact: no new challenge or production term. Static faithfulness,
+attained maxima and range discipline remain separate enforced obligations.
+NC-0102 and NC-0109 remain required; new bindings need controls on acceptance.
+No prover-supplied number or observed fit can replace a verifier derivation.
+Cost impact: quantisation is preparation; certified chunk/carry/requant work
+affects c_a and memory. No benchmark constant or weight-pass count changes here.
+Affected tasks: E5-03 (blocked on this complete contract), E5-04, E6 lowering,
+E7 reductions and E10 checkpoint/passport work. Original acceptance criteria
+remain. E5-01 scalar arithmetic and RFC-0003 A1 field recovery are unchanged.
