@@ -353,3 +353,39 @@ prefix at degree 1. Individual samples also lose in some aggregate-winning cases
 No sample is discarded. No significance, universal size threshold or automatic
 prefix choice follows from this single-host experiment. Both complete stage costs
 and all process peaks remain in the ledgers; no GPU/inference/ZK/profile claim follows.
+
+
+## Streaming pipeline (E3-05)
+
+From a clean committed macOS checkout, run fields sequentially after validation
+workers finish:
+
+```sh
+python3 bench/streaming.py QM31 /tmp/streaming-qm31.json
+python3 bench/streaming.py OM31 /tmp/streaming-om31.json
+```
+
+The frozen plan compares Dense, tail materialization, one window and multiple
+windows at m=8 for degrees 0..4, plus m=18 degree 1. It uses full-extension
+synthetic inputs, including an unused input, and three fresh samples per case.
+There is no warmup or cache flush. Budgets are explicit workspace cells fixed
+before measurement; selected window cases use less workspace than dense inputs.
+
+Separate native processes generate/write original files and prepare the layout,
+prove, then consume every original claim from the preserved files. Operation times
+include file I/O, allocation, window/tail transitions, transport encoding/decoding
+and continuation checks. Argument parsing, launch/exit, result JSON formatting,
+controller cleanup and small final-buffer destruction are excluded explicitly.
+Every proof must verify, and all strategy proof/continuation bytes must agree.
+
+Actual Vec/PathBuf capacities and compiled named state sizes are reported apart
+from process RSS. The consumer's transient equality table is included in its RSS.
+Native pipeline peak is the maximum of sequential preparation/prover/consumer
+peaks, including allocation retention and transport overlap. Python/controller
+and OS filesystem caches are excluded: this is not a total-host-memory bound.
+External storage and successful logical I/O operations are recorded; no physical
+storage traffic is inferred. All raw samples and losing schedules are retained.
+
+This harness change publishes no measurements or fitted constant. Ledgers require
+clean-source provenance, control/accounting gates and actual original consumption.
+The experiment is a synthetic CPU A1 pipeline, not inference/GPU/ZK/profile evidence.
