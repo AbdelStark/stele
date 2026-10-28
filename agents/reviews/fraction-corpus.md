@@ -30,3 +30,12 @@ unused finals; the unchanged real verifiers rejected all 134 negative cases for
 their declared reasons. Gate regressions additionally remove a corpus case and
 erase Fold accounting from the native output. No private source/PCS/ZK/profile
 claim follows. Full primitive runtime/memory ledgers remain due for E3-07a.
+# Gate regression follow-up
+
+The new corpus detects a bypassed original-column consumer before the catalog
+controls run. Hosted CI exposed the older test's assumption that the first gate
+failure must be `TamperAccepted`. The repaired test requires the exact corpus
+mismatch, then invokes the actual coverage binary on the same mutated source
+and requires both `NC-0410` and `TamperAccepted`. Both rejection paths and the
+adjacent corpus/accounting mutation checks pass. No production check, benchmark
+operation, corpus decision or measured source is changed.
