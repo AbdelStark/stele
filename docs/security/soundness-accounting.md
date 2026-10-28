@@ -83,5 +83,10 @@ RFC-0006 A5's Small strategy retains the A1 transcript, final obligations and
 SC m*δ/p^d record without new challenges or registry entries. Both gates require
 QM31/OM31 directed proof parity, transcript continuation and the actual NC-0204
 original-value rejection. Typed i16/u16 storage is an optimization eligibility
-contract, not a range proof. E3-04's seeded corpus, independent decision comparison
-and measured memory/cost evidence remain pending; no profile is certified.
+contract, not a range proof. Both gates additionally require 1,000 seeded cases per
+degree and field against direct original-MLE evaluation and Dense, with all eligible
+(m,k) through m=4 and k=4 with a tail at m=5. These compare the full proof, final
+claims, SC record and continuation. A missing field test fails the gate. The shared
+Rust reference uses production field/eq/transcript/engine primitives; independent
+Rust/Python decisions and measured memory/cost evidence remain pending. These
+finite checks do not certify a profile.
