@@ -333,9 +333,9 @@ tasks:
   - RFC-0012 A5
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E3-03-zerocheck-bench
+  branch: task/E3-03-zerocheck-evidence
   acceptance:
   - matches_reference_naive
   - c_sc improvement ledger
