@@ -435,7 +435,9 @@ tasks:
   - RFC-0010 §3
   skill: pcs-engineer
   crate: stele-code
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E4-01-code-contract
   acceptance:
   - linearity tests
   - distance estimate script
