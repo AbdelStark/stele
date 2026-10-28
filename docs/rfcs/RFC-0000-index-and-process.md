@@ -37,7 +37,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0009 | Attention protocol | Accepted |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2); A1 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted |
-| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5); A6 Draft |
+| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5); A6, A7 Draft |
 | 0013 | Zero-knowledge | Accepted |
 | 0014 | GPU prover architecture | Accepted (A1) |
 | 0015 | Distributed proving | Accepted |

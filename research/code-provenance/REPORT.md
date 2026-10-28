@@ -133,3 +133,42 @@ The sparse operation formula and O(n) storage analysis exclude base-transform,
 parser/allocator and encoding-copy constants; production adds/element and complete
 memory ledgers remain required. No small-case result certifies the full supported
 size range or the seeded fixture's setup distribution.
+
+
+## Seeded setup and bounded sampling study
+
+Question: can a fixed public manifest regenerate the canonical map with exact
+uniform-ensemble semantics in a classical random-oracle model, including sampler
+exhaustion and adaptive seed attempts? Security property: setup provenance and
+its separately accounted failure event. Cost terms: setup hash work, c_c preparation
+and retained graph/byte storage. Kill criterion: biased accepted sampling, returning
+partial data on exhaustion, ambiguous block domains, or treating regeneration
+agreement as a fixed-distance/profile certificate.
+
+
+Run `uv run --locked --script research/code-provenance/check_sampler.py`.
+The [candidate contract and argument](../../formal/seeded-setup.md) specify manifest
+bytes, domain-separated BLAKE3 block inputs, fixed rejection caps, whole-setup failure
+and exact regeneration. Four fixed vectors cover base-only and n=256/1024 maps.
+The checks pass finite sampler symmetry, 256-word cap boundaries, forced whole-setup
+exhaustion, independent row expansion, prefix reuse, all-field generated-map parity
+and rejection of a changed source coefficient/seed/exponent. No partial setup or
+distance-admission flag is returned.
+
+The classical ROM argument charges adaptive first-touched seeds and untouched final
+outputs, including discarded attempts and preprocessing. Coupling capped streams to
+uncapped independent towers avoids dividing by the probability of sampler success.
+The finite event count is 200431782; with Q=2^100,S=1 the conditional arithmetic
+bound is below 2^-160. Those inputs do not authorize a profile/query policy.
+
+RFC-0002 permits quantum adversaries. An exact 16-input quantum-search example has
+success 13073/32768, exceeding the classical three-query/one-output expression 1/4.
+It refutes reuse of that generic classical charge for quantum queries; it is not an
+attack on this large expander or a QROM upper bound. Recommendation: keep A1/A7 Draft
+and E4-01 blocked, and require an applicable quantum setup theorem plus Q12 FS/H
+composition before parameter admission. Revisit finite degrees if that bound needs
+more budget. BLAKE3 is a concrete candidate, not a proof of the oracle model.
+
+The <=64 hash blocks per row and geometric O(n) work/storage are operation bounds,
+not benchmarks. No maximum-size generation, Rust/GPU parity, production source
+authentication, proximity certificate, NC credit, registry or profile is supplied.
