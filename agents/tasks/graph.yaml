@@ -451,7 +451,9 @@ tasks:
   - RFC-0020 A4
   skill: gkr-reduction-author
   crate: stele-lookup
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E3-07a-fraction-codec
   acceptance:
   - checked canonical descriptors and exact proof codecs in QM31 and OM31; malformed and maximum verifier shapes
   - native tree and selected-product engines with original public consumers, complete records and no receipt-as-acceptance
