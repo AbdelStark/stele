@@ -529,6 +529,12 @@ Weighted Boolean-table selector composition and the fixed source-resolution
 interface still require their production review/evidence. Companion RFC-0012 A6
 and RFC-0020 A2 remain Draft; no registry or dependency change is implemented.
 
+The weighted study in [public-MLE semantics §7](../../formal/public-mle.md)
+compares all six candidate selected-axis evaluators with explicit Boolean tables
+in both full extension fields. It covers overlapping mask/selector axes and
+charges retained bit weights and exact-table enumeration. This is research
+algebra evidence, not the actual source resolver, Rust parity or control closure.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
