@@ -325,3 +325,12 @@ in the checked examples). Counts are exact arithmetic, not a benchmark. Addition
 proximity work, if selected for other modes, must be measured/accounted while
 preserving the one-weight-pass invariant. Affected tasks: E4-01/E4-03/E4-04/E4-05,
 E8-05 and E12-04; no production c_c/T_misc constant changes.
+
+
+### A4 — Native deterministic v2 encoder and closed identity factory
+
+Status: Draft. Question Q23. This separates the deterministic encoder implementation
+from A1's unresolved parameter/consumer admission, following A2's circle precedent.
+The original E4-01 criteria remain; E4-08 becomes its native encoder prerequisite.
+Exact contract and delivery gates: [native code](../../formal/native-code.md).
+No profile, PCS parameter or soundness-ledger admission follows from an encoding.
