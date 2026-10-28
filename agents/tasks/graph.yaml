@@ -456,12 +456,12 @@ tasks:
   - E1-04
   rfc:
   - RFC-0010 §3
-  - RFC-0010 A1
+  - RFC-0010 A4
   skill: pcs-engineer
   crate: stele-code
-  status: blocked(RFC-0010 A1)
+  status: in_progress
   agent: codex-root
-  branch: task/E4-01-tensor-proximity
+  branch: task/E4-01-native-encoder
   acceptance:
   - linearity tests
   - distance estimate script
