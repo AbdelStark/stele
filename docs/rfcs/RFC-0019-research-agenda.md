@@ -138,3 +138,8 @@ acceptance; research checks earn no production control or profile credit.
 Q18 resolution: RFC-0006 A2 and RFC-0012 A4 Accepted with same-author skill reviews
 and candidate byte/algebra checks. E3-02 is ready for both production modes,
 real controls, accounting gates and benchmarks; Q12 remains open.
+
+Q19: which eq-factored zerocheck schedule, skip domain and final claims complete
+RFC-0006 §5 without treating a hybrid interpolation as an ordinary MLE?
+Candidate: RFC-0006 A3 / RFC-0012 A5. E3-03 is blocked on acceptance; retain both
+optimizations, reference parity and the measured improvement criterion.

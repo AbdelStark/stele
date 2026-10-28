@@ -386,3 +386,25 @@ remain separate, Q12 open. No label-registration escape hatch, new loss family,
 measured constant or weight pass is introduced. E3-02 must implement the registry,
 canonical inventory and record/consumer gates atomically; this specification
 alone adds no production challenge or coverage. Other consumers keep A1 bytes.
+
+### A5 — Zerocheck weights, skip and final framing
+
+Status: Draft. Question Q19. Motivation: RFC-0006 A3 changes the relation and
+schedule; bind its descriptor, skip polynomial and all original slice claims.
+Add these closed labels to A1's registry when implementing the consumer:
+
+| Kind | Label bytes | Consumer / accounting |
+|---|---|---|
+| Absorb | `stele/v0.1/sumcheck/zero` | Zero; full A3 descriptor |
+| Challenge | `stele/v0.1/sumcheck/zero-weight` | ZeroWeight; j challenges, SC phase 0 |
+| Absorb | `stele/v0.1/sumcheck/zero-skip` | ZeroSkip; A3 initial polynomial |
+| Absorb | `stele/v0.1/sumcheck/zero-final` | ZeroFinal; all A3 slice finals |
+
+Reuse Sumcheck after ZeroSkip (one challenge iff k>0, SC phase 1) and after each
+Round (j challenges, SC phase 2). A3 fixes all bytes, ordering, bounds, errors,
+costs and NC-0207..0209/0802 obligations. No sampling exclusions, retries or new
+loss family are introduced. The three SC numerators are j, δ*(2^k-1), j*δ over
+p^d. A1/A4 consumers and their bytes remain unchanged. The production registry,
+canonical inventory and actual per-invocation accounting gate change atomically
+with the consumer; this amendment alone supplies no production coverage.
+No measured constant or weight pass moves. Q12 still blocks profile certification.

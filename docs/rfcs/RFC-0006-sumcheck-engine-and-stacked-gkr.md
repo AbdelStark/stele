@@ -331,3 +331,137 @@ Boolean-prefix blocks, overlaps and duplicates), unequal-size/constant/empty/zer
 cases, and actual SC/RLC descriptor/challenge accounting gates. The production
 registry and canonical label inventory must change together. Research earns no
 NC credit. Affected tasks: E3-02, E3-06, E8-04/E8-05, E12-09; no dependency removed.
+
+### A3 — Eq-factored zerocheck and bounded univariate skip
+
+Status: Draft. Question Q19. Evidence: [zerocheck study](../../research/zerocheck/REPORT.md).
+Motivation: §5's skip changes both the round schedule and the final functional;
+A1's ordinary MLE result cannot represent it. The following replaces that bullet's
+protocol contract. A1/A2 bytes and APIs remain unchanged. This is a separate,
+plan-selected zerocheck relation, not an interchangeable A1 proof encoding.
+
+**Statement.** The verifier supplies a distinct u64 invocation id, u32 dimension
+m, u8 skip count k, ordered distinct input tensor ids and polynomial C in A1's
+ordered term representation. Its computed total degree is δ<=4; unused inputs,
+zero coefficients and empty lists retain A1's meaning. The assertion is
+C(f_1(x),...,f_a(x))=0 for every Boolean x. Tensors and C must be fixed before the
+first challenge, through the authenticated claim graph; no commitment is added.
+The plan determines padding/masks and the consumer of each original tensor claim.
+This primitive does not assert range, field faithfulness, privacy or inference.
+
+Require 0<=k<=min(m,4); when δ=0 require k=0. Define s=2^k, j=m-k and D=δ(s-1).
+For k>0 use base-field nodes B={0,...,s-1}, mapped to the k leading table-index
+bits in most-significant-first order. These are interpolation nodes, not a
+multiplicative subgroup (M31 has no such subgroup of order four). Let L_b(U)
+be the Lagrange basis on B, and define
+
+```
+F_i(U,z) = sum_{b=0}^{s-1} L_b(U) f_i(bits_k(b),z)
+Q_0(U) = sum_{z in {0,1}^j} eq(alpha,z) C(F_1(U,z),...,F_a(U,z)).
+```
+
+For k=0 there is no U: F_i(z)=f_i(z), and the initial running claim is zero.
+For k>0, Q_0 has degree at most D and vanishes on B for a true assertion.
+After its challenge u, fix U=u. In tail round h=0..j-1 send the degree-at-most-δ
+polynomial
+
+```
+Q_{h+1}(T) = sum_{z in {0,1}^{j-h-1}} eq(alpha[h+1:],z)
+            C(F_1(u,r[:h],T,z),...,F_a(u,r[:h],T,z)).
+```
+
+Omit u when k=0. Factoring eq removes its extra degree. The verifier checks
+(1-alpha_h)*Q_{h+1}(0)+alpha_h*Q_{h+1}(1)=running. No inverse of alpha_h,
+1-alpha_h, an eq factor or a random evaluation is permitted. Zero/one challenges
+remain valid, including u in B. For δ=0 both evaluations are the sole value.
+
+**Bytes and schedule.** K, canonical field parsing, checked widths/allocations,
+error-abort behavior and public-input binding follow A1. Before replay, validate
+the descriptor and every proof length. Invalid descriptors are InvalidZerocheck;
+malformed proof dimensions are ProofShape. Absorb Zero (RFC-0012 A5) with:
+
+```
+u8(1) || u8(field degree) || u64(id) || u32(m) || u8(k) || u8(δ)
+|| u32(input count) || u32(term count) || ordered u64 input ids || ordered terms
+```
+
+Terms use A1's coefficient, u8 factor count and u32 ordinals, with no claimed-sum
+suffix. Integers are little-endian; no implicit padding, sorting or normalization.
+Draw exactly j consecutive ZeroWeight challenges, in tail-coordinate order, to
+obtain alpha. Do this even for a zero/constant polynomial; j=0 draws none.
+For k>0 the proof sends exactly L=D+1-s=(δ-1)(s-1) values Q_0(s)..Q_0(D).
+The verifier prepends s implicit zeros and interpolates at nodes 0..D. Absorb
+ZeroSkip with u64(id), u32(L), then the L ordered K values; only then draw one
+Sumcheck challenge u and set running=Q_0(u). Even L=0 has this absorb/challenge.
+For k=0 there is no skip message or skip challenge and running=0.
+
+There are exactly j tail rows of δ+1 K values at 0..δ. Check the weighted identity
+above (RoundSumMismatch on failure), absorb A1's Round payload with this id and
+zero-based tail index h, then draw Sumcheck r_h and interpolate the row at r_h.
+There is no forced-zero first tail row and no compressed missing endpoint.
+After the tail rounds, read exactly a*s final values v_{i,b}, input-major then
+ascending b. For k>0 compute w_i=sum_b L_b(u)*v_{i,b}; for k=0 set w_i=v_{i,0}.
+Require C(w)=running (FinalEvaluationMismatch otherwise). Absorb ZeroFinal:
+
+```
+u64(id) || u32(a) || u32(s) || all a*s ordered K final values
+```
+
+Return every (tensor_i, bits_k(b) concatenated with r, v_{i,b}) claim in that
+same order. These are original tensor MLEs, not a hybrid value mislabeled as an
+MLE. All claims survive unused inputs, zero Lagrange weights and cancellations.
+The public adapter validates a tables of exactly 2^m entries before replay
+(PublicShape on mismatch), then independently discharges every returned claim
+(ClaimMismatch). Other consumers must discharge all claims through reductions
+or PCS; successful reduction verification alone never accepts a statement.
+No s new commitments or intermediate tensor commitments are introduced.
+The k=0,m=0 case has only Zero, the C(final)=0 check and ZeroFinal.
+
+**Soundness and accounting.** Let q=p^d. Conditional on fixed tensors and fresh
+independent uniform interactive challenges, a false row survives and all emitted
+claims are true with probability at most (j+D+j*δ)/q. A fixed bad prefix row has
+a nonzero multilinear residual in alpha, giving j/q; a false skip interpolant
+collides with the true degree-D polynomial with probability at most D/q; each
+false tail polynomial contributes at most δ/q. See [the obligation](../../formal/zerocheck.md)
+and [Gruen, Appendix A.4](https://eprint.iacr.org/2024/108). Full endpoint messages
+make the same argument valid without excluding zero challenges. For k=0 the
+skip term is absent; j=0 and zero-degree cases keep their zero terms.
+
+Emit three SC records identified by (invocation id, phase): phase 0 (weights)
+with m=j, degree=1, numerator=j; phase 1 (skip) with m=1 if k>0 else 0,
+degree=D, numerator=D; phase 2 (tail) with m=j, degree=δ, numerator=j*δ.
+All carry field degree d and symbolic denominator p^d, including zero records.
+Phase distinguishes records, not additional transcript absorbs. Check u64
+arithmetic; D<=60. Gates must compare records to the descriptor and actual
+challenge schedule. This is an algebraic SC bound for both profiles, not a full
+Fiat-Shamir/profile theorem; Q12, PCS, composition and ZK remain separate.
+
+**Algorithms and costs.** A dense strategy constructs hybrid tables at u, folds
+only the j tail coordinates, and keeps the original tables for final slice
+claims. With N=2^m and e operations per C evaluation, direct interpolation at
+the L outside nodes costs O(L*(a*s+e)*N/s+L*s^2); at u costs O(a*N+s^2). Weighted tail
+rounds cost O((δ+1)*(a+e+1)*N/s), and computing all slice finals costs O(a*N).
+Precompute the base-node Lagrange weights; direct verifier interpolation costs
+O(D^2+j*(δ^2+1)+s^2+a*s+e), excluding downstream claim consumption. Working memory
+is O(a*N+a*N/s+N/s+D+j*(δ+1)+a*s) field elements with retained originals and proof;
+report caller-owned inputs and scratch separately. Final payload grows to a*s
+values. Descriptor processing and round transcript/interpolation work are additional
+on the prover too. The k=0 strategy has no initial interpolation or slice expansion.
+These costs move c_sc and T_misc; no weight pass or fitted constant changes here.
+E3-03 must measure the complete prover and claim-consumption costs, including
+when skip loses, before selecting a plan's k. Do not claim subgroup/FFT costs.
+
+**Controls and delivery.** NC-0207 changes one skip evaluation, requiring
+RoundSumMismatch with j>0 and FinalEvaluationMismatch with j=0. NC-0208 changes
+one tail endpoint, requiring RoundSumMismatch. NC-0209 changes one unused slice
+final, requiring ClaimMismatch even though the reduction check passes. Extend
+NC-0802 with an omitted ZeroFinal before a real A1 continuation, changing exactly
+one continuation final value and requiring FinalEvaluationMismatch. Also test
+fresh false-row proofs, early weight/skip/round challenges, descriptor changes,
+all malformed shapes, δ=0..4, k=0..4, m=k, zero/one algebraic edge cases, and both
+fields. Research checks earn no NC credit. E3-03 remains incomplete until actual
+consumers, controls, registry/inventory/accounting, Rust/Python byte/decision
+parity, 10^3 seeded reference cases per degree and a measured c_sc improvement
+ledger pass. Reference and optimized provers must agree byte-for-byte within
+each (descriptor,k); different k is a different protocol, not a parity failure.
+Affected tasks: E3-03..E3-06, E8-04/E8-05, E12-09. No acceptance criterion removed.
