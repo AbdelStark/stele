@@ -85,6 +85,17 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('native code identity/map checks failed', result.stderr)
 
+    def test_rejects_omitted_native_graph_memory(self):
+        source = self.root / 'crates/stele-code/src/native.rs'
+        original = source.read_text()
+        changed = original.replace('memory.add(self.graph_capacity_bytes())?;', 'memory.add(0)?;')
+        self.assertNotEqual(original, changed)
+        source.write_text(changed)
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('native code identity/map checks failed', result.stderr)
+        self.assertIn('matches_reference_live_capacity_including_query_overlap', result.stderr)
+
     def test_rejects_registry_mapping_drift_and_invalid_production_registry(self):
         inventory = self.root / 'docs/security/transcript-labels.json'
         original = inventory.read_text()

@@ -83,6 +83,7 @@ def native_code(root):
     """A4 actual generated maps; no PCS/profile admission from these checks."""
     checks = [
         ('rejects_exhausted_streams_and_accepts_last_word', ['cargo','test','-p','stele-code','--lib','--locked','--offline']),
+        ('matches_reference_live_capacity_including_query_overlap', ['cargo','test','-p','stele-code','--test','native_code','matches_reference_live_capacity_including_query_overlap','--locked','--offline']),
         ('matches_reference_linearity_all_fields_and_seed_separation', ['cargo','test','-p','stele-code','--test','native_code','--locked','--offline']),
         ('matches_reference_setup_blocks_and_rejects_invalid_coordinates', ['cargo','test','-p','stele-hash','--test','setup','--locked','--offline']),
         ('', ['uv','run','--locked','--script','research/code-provenance/check_native.py']),

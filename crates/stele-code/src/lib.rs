@@ -7,7 +7,9 @@ extern crate alloc;
 use alloc::vec::Vec;
 use stele_field::{Field, M31};
 mod expander;
+mod memory;
 mod native;
+pub use memory::Encoding;
 pub use native::{Code, CodeId, Element, Parameters, PreparedCode, Profile};
 
 /// Invalid encoding request or an allocation that cannot be represented/satisfied.
@@ -91,12 +93,29 @@ impl Circle {
     /// Interpolate the exact FFT span, then zero-extend coefficients and evaluate.
     /// Preparation and transforms are included; the borrowed input is retained.
     pub fn encode<K: Field>(&self, row: &[K]) -> Result<Vec<K>, Error> {
+        Ok(self.encode_with_memory(row)?.word)
+    }
+
+    /// Encode with actual live heap capacities; input and process overhead excluded.
+    pub fn encode_with_memory<K: Field>(&self, row: &[K]) -> Result<Encoding<K>, Error> {
         self.validate(row)?;
-        let mut output = reserved(self.codeword_len)?;
+        let mut memory = memory::Memory::default();
+        let word = self.encode_counted(row, &mut memory)?;
+        Ok(Encoding {
+            word,
+            peak_owned_heap_bytes: memory.peak(),
+        })
+    }
+    fn encode_counted<K: Field>(
+        &self,
+        row: &[K],
+        memory: &mut memory::Memory,
+    ) -> Result<Vec<K>, Error> {
+        let mut output = memory.reserve(self.codeword_len)?;
         output.extend_from_slice(row);
         output.resize(self.codeword_len, K::from_i64(0));
-        transform(&mut output[..self.message_len], true)?;
-        transform(&mut output, false)?;
+        transform_counted(&mut output[..self.message_len], true, memory)?;
+        transform_counted(&mut output, false, memory)?;
         Ok(output)
     }
 
@@ -140,14 +159,14 @@ fn generator_power(mut exponent: u32) -> (M31, M31) {
 }
 
 // RFC-0010 A2: root y, then x quotients under x -> 2*x*x-1; N-1 base elements.
-fn twiddles(log: u32) -> Result<Vec<Vec<M31>>, Error> {
-    let mut levels = reserved(log as usize)?;
+fn twiddles(log: u32, memory: &mut memory::Memory) -> Result<Vec<Vec<M31>>, Error> {
+    let mut levels = memory.reserve(log as usize)?;
     if log == 0 {
         return Ok(levels);
     }
     let half = 1usize << (log - 1);
-    let mut ys = reserved(half)?;
-    let mut xs = reserved(half / 2)?;
+    let mut ys = memory.reserve(half)?;
+    let mut xs = memory.reserve(half / 2)?;
     let mut pt = generator_power(1 << (30 - log));
     let step = multiply(pt, pt);
     for j in 0..half {
@@ -163,7 +182,7 @@ fn twiddles(log: u32) -> Result<Vec<Vec<M31>>, Error> {
     }
     for level in 2..log as usize {
         let previous = &levels[level - 1];
-        let mut next = reserved(previous.len() / 2)?;
+        let mut next = memory.reserve(previous.len() / 2)?;
         for x in &previous[..previous.len() / 2] {
             let square = *x * *x;
             next.push(square + square - M31::ONE);
@@ -173,9 +192,10 @@ fn twiddles(log: u32) -> Result<Vec<Vec<M31>>, Error> {
     Ok(levels)
 }
 
-fn invert_twiddles(levels: &mut [Vec<M31>]) -> Result<(), Error> {
+fn invert_twiddles(levels: &mut [Vec<M31>], memory: &mut memory::Memory) -> Result<(), Error> {
     for level in levels {
-        let mut prefixes = reserved(level.len())?;
+        let mut prefixes = memory.reserve(level.len())?;
+        let prefix_bytes = memory::bytes(&prefixes);
         let mut product = M31::ONE;
         for value in level.iter() {
             prefixes.push(product);
@@ -188,6 +208,7 @@ fn invert_twiddles(levels: &mut [Vec<M31>]) -> Result<(), Error> {
             *value = inverse * prefix;
             inverse = inverse * original;
         }
+        memory.remove(prefix_bytes);
     }
     Ok(())
 }
@@ -201,14 +222,19 @@ fn bit_reverse<K>(values: &mut [K], log: u32) {
     }
 }
 
-fn transform<K: Field>(values: &mut [K], inverse: bool) -> Result<(), Error> {
+fn transform_counted<K: Field>(
+    values: &mut [K],
+    inverse: bool,
+    memory: &mut memory::Memory,
+) -> Result<(), Error> {
     if values.len() == 1 {
         return Ok(());
     }
     let log = values.len().trailing_zeros();
-    let mut levels = twiddles(log)?;
+    let mut levels = twiddles(log, memory)?;
+    let level_bytes = memory::bytes(&levels) + levels.iter().map(memory::bytes).sum::<usize>();
     if inverse {
-        invert_twiddles(&mut levels)?;
+        invert_twiddles(&mut levels, memory)?;
         for level in &levels {
             let width = 2 * level.len();
             for block in values.chunks_exact_mut(width) {
@@ -245,7 +271,13 @@ fn transform<K: Field>(values: &mut [K], inverse: bool) -> Result<(), Error> {
             }
         }
     }
+    memory.remove(level_bytes);
     Ok(())
+}
+
+#[cfg(test)]
+fn transform<K: Field>(values: &mut [K], inverse: bool) -> Result<(), Error> {
+    transform_counted(values, inverse, &mut memory::Memory::default())
 }
 
 #[cfg(test)]
@@ -260,9 +292,10 @@ mod tests {
     #[test]
     fn matches_reference_twiddle_inverses_and_transform_round_trips() {
         for log in 0..=10 {
-            let original = twiddles(log).expect("twiddles");
+            let mut memory = memory::Memory::default();
+            let original = twiddles(log, &mut memory).expect("twiddles");
             let mut inverse = original.clone();
-            invert_twiddles(&mut inverse).expect("inversion");
+            invert_twiddles(&mut inverse, &mut memory).expect("inversion");
             assert_eq!(original.iter().map(Vec::len).sum::<usize>(), (1 << log) - 1);
             for (a, b) in original.iter().flatten().zip(inverse.iter().flatten()) {
                 assert_eq!(*a * *b, M31::ONE);

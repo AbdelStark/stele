@@ -1,4 +1,5 @@
 //! RFC-0010 A4 — regenerated sparse recursive map; O(E) work and graph storage.
+use crate::memory::{self, Memory};
 use crate::{native::Element, reserved, Circle, Error};
 use alloc::vec::Vec;
 use core::mem::size_of;
@@ -182,12 +183,16 @@ impl Expander {
     pub(crate) fn hash_blocks(&self) -> u64 {
         self.blocks
     }
-    pub(crate) fn encode<K: Element>(&self, row: &[K]) -> Result<Vec<K>, Error> {
-        self.level(self.exponent, row)
+    pub(crate) fn encode<K: Element>(
+        &self,
+        row: &[K],
+        memory: &mut Memory,
+    ) -> Result<Vec<K>, Error> {
+        self.level(self.exponent, row, memory)
     }
-    fn level<K: Element>(&self, j: u8, row: &[K]) -> Result<Vec<K>, Error> {
+    fn level<K: Element>(&self, j: u8, row: &[K], memory: &mut Memory) -> Result<Vec<K>, Error> {
         if j == 3 {
-            return Circle::new(6, 1)?.encode(row);
+            return Circle::new(6, 1)?.encode_counted(row, memory);
         }
         // A4: private state comes only from a checked CodeId and full regeneration.
         // Every level offset/product below fits the admitted graph length; row
@@ -197,12 +202,13 @@ impl Expander {
         let a_degree = A[usize::from(j - 4)];
         let b_degree = B[usize::from(j - 4)];
         let b_start = start + n * a_degree;
-        let mut y = reserved(n / 4)?;
+        let mut y = memory.reserve(n / 4)?;
         y.resize(n / 4, K::from_i64(0));
         sparse(row, &self.edges[start..b_start], a_degree, &mut y);
-        let z = self.level(j - 1, &y)?;
+        let z = self.level(j - 1, &y, memory)?;
+        memory.remove(memory::bytes(&y));
         drop(y);
-        let mut out = reserved(n.checked_mul(2).ok_or(Error::Capacity)?)?;
+        let mut out = memory.reserve(n.checked_mul(2).ok_or(Error::Capacity)?)?;
         out.extend_from_slice(row);
         out.extend_from_slice(&z);
         out.resize(2 * n, K::from_i64(0));
@@ -212,6 +218,7 @@ impl Expander {
             b_degree,
             &mut out[n + n / 2..],
         );
+        memory.remove(memory::bytes(&z));
         Ok(out)
     }
 }

@@ -160,3 +160,53 @@ fn matches_reference_linearity_all_fields_and_seed_separation() {
     row[0] = M31::ONE;
     assert_ne!(codes[0].encode(&row), codes[1].encode(&row));
 }
+
+#[test]
+fn matches_reference_live_capacity_including_query_overlap() {
+    fn check<K: stele_code::Element + Eq + core::fmt::Debug>() {
+        for j in 3..=6 {
+            let code = CodeId::parse(&identity(j, 0))
+                .expect("id")
+                .prepare(1 << 24)
+                .expect("setup");
+            let n = code.parameters().message_len;
+            let row = vec![K::from_i64(7); n];
+            let report = code.encode_with_memory(&row).expect("encode");
+            // Independent liveness recurrence: base output + max(transform buffers),
+            // or top-level output and child z after y is released. Actual capacities
+            // are exact on the pinned toolchain; this detects omitted overlap/stale y.
+            let expected = code.graph_capacity_bytes()
+                + if j == 3 {
+                    128 * size_of::<K>() + 7 * size_of::<Vec<M31>>() + 127 * size_of::<M31>()
+                } else {
+                    5 * n / 2 * size_of::<K>()
+                };
+            assert_eq!(report.peak_owned_heap_bytes, expected);
+            let query = code
+                .eval_row_with_memory(&row, &[0, n, 2 * n - 1, 0])
+                .expect("query");
+            assert_eq!(
+                query.peak_owned_heap_bytes,
+                expected + query.word.capacity() * size_of::<K>()
+            );
+            assert_eq!(
+                query.word,
+                vec![
+                    report.word[0],
+                    report.word[n],
+                    report.word[2 * n - 1],
+                    report.word[0]
+                ]
+            );
+            assert_eq!(
+                code.eval_row_with_memory(&row, &[])
+                    .expect("empty")
+                    .peak_owned_heap_bytes,
+                code.graph_capacity_bytes()
+            );
+        }
+    }
+    check::<M31>();
+    check::<QM31>();
+    check::<OM31>();
+}

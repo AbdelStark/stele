@@ -1,5 +1,5 @@
 //! RFC-0010 A4 — closed code identities and typed encoder metadata.
-use crate::{expander::Expander, reserved, Circle, Error};
+use crate::{expander::Expander, memory, reserved, Circle, Encoding, Error};
 use alloc::vec::Vec;
 use stele_field::{Field, M31, OM31, QM31};
 mod sealed {
@@ -159,6 +159,52 @@ pub struct PreparedCode {
     inner: Prepared,
 }
 impl PreparedCode {
+    /// Encode through the same arithmetic path, recording every owned heap capacity.
+    /// Includes the retained graph; excludes caller input and stack/process overhead.
+    pub fn encode_with_memory<K: Element>(&self, row: &[K]) -> Result<Encoding<K>, Error> {
+        if row.len() != self.parameters().message_len {
+            return Err(Error::RowShape);
+        }
+        let mut memory = memory::Memory::default();
+        memory.add(self.graph_capacity_bytes())?;
+        let word = match &self.inner {
+            Prepared::Circle(c) => c.encode_counted(row, &mut memory)?,
+            Prepared::Expander(e) => e.encode(row, &mut memory)?,
+        };
+        Ok(Encoding {
+            word,
+            peak_owned_heap_bytes: memory.peak(),
+        })
+    }
+    /// Select columns while accounting for selected-buffer/full-word overlap.
+    pub fn eval_row_with_memory<K: Element>(
+        &self,
+        row: &[K],
+        columns: &[usize],
+    ) -> Result<Encoding<K>, Error> {
+        let p = self.parameters();
+        if row.len() != p.message_len {
+            return Err(Error::RowShape);
+        }
+        if columns.iter().any(|c| *c >= p.codeword_len) {
+            return Err(Error::Column);
+        }
+        let mut memory = memory::Memory::default();
+        memory.add(self.graph_capacity_bytes())?;
+        let mut selected = memory.reserve(columns.len())?;
+        if !columns.is_empty() {
+            let word = match &self.inner {
+                Prepared::Circle(c) => c.encode_counted(row, &mut memory)?,
+                Prepared::Expander(e) => e.encode(row, &mut memory)?,
+            };
+            selected.extend(columns.iter().map(|c| word[*c]));
+            memory.remove(memory::bytes(&word));
+        }
+        Ok(Encoding {
+            word: selected,
+            peak_owned_heap_bytes: memory.peak(),
+        })
+    }
     /// Actual retained sparse-buffer capacity; excludes encoding and caller memory.
     pub fn graph_capacity_bytes(&self) -> usize {
         match &self.inner {
@@ -193,27 +239,10 @@ impl Code for PreparedCode {
         self.id.parameters()
     }
     fn encode<K: Element>(&self, row: &[K]) -> Result<Vec<K>, Error> {
-        if row.len() != self.parameters().message_len {
-            return Err(Error::RowShape);
-        }
-        match &self.inner {
-            Prepared::Circle(c) => c.encode(row),
-            Prepared::Expander(e) => e.encode(row),
-        }
+        Ok(self.encode_with_memory(row)?.word)
     }
+
     fn eval_row<K: Element>(&self, row: &[K], columns: &[usize]) -> Result<Vec<K>, Error> {
-        let p = self.parameters();
-        if row.len() != p.message_len {
-            return Err(Error::RowShape);
-        }
-        if columns.iter().any(|c| *c >= p.codeword_len) {
-            return Err(Error::Column);
-        }
-        let mut selected = reserved(columns.len())?;
-        if !columns.is_empty() {
-            let word = self.encode(row)?;
-            selected.extend(columns.iter().map(|c| word[*c]));
-        }
-        Ok(selected)
+        Ok(self.eval_row_with_memory(row, columns)?.word)
     }
 }
