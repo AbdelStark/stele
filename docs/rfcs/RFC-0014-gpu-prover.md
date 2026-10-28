@@ -50,3 +50,32 @@ these (RFC-0018). Roofline plots are produced by `stele-bench roofline`.
 ## 7. Negative controls
 GPU-specific: NC-1000 lazy reduction leaking `p` as a value; NC-1001 bucket overflow for `b = 8` with `d_out > 2^23`
 (must be rejected statically); NC-1002 tile boundary off-by-one in masks.
+
+## 8. Amendment log
+
+### A1 — Account for the streaming fallback's source and transition
+
+Status: Draft. Question Q22; paired with RFC-0006 A6. Motivation: §4's fallback
+does not establish that two visits suffice under every device-memory budget or
+that logical visits are physical reads. [Study](../../research/streaming/REPORT.md).
+
+Proposed replacement for §4's stacked-sumcheck-state bullet, pending A6 completion:
+
+> Select only a strategy whose full device allocation peak fits the plan's budget,
+> including source buffers, prefix grid, tail construction and retained capacity.
+> The 40% limit applies to that full stacked-sumcheck state, not just a tail-size
+> estimate. Report host/external source storage and total pipeline memory too.
+> If a validated small-value configuration does not fit, use an Accepted streaming
+> schedule under RFC-0006 A6 or reject the unsupported plan. Two logical visits are
+> one possible specialization, not a universal fallback. Source replay, layout
+> conversion, transfer bytes and virtual-tensor recomputation must be charged to
+> the plan. No replay permits an additional weight pass under RFC-0007.
+
+Open before acceptance: A6's source/schedule/peak contract, consistent plan-derived
+budget validation and a CPU test of the actual bound. GPU implementation retains
+the device parity gate and requires real device allocation/transfer evidence.
+Soundness impact: no implemented challenge or ledger change; original bindings
+and CQIS certificates remain. Cost impact: c_sc/T_misc, source/working memory and
+T_witness recomputation; no measured constant or weight-pass count changes.
+Affected tasks: E3-05 and downstream GPU planning/streaming work. This draft grants
+no GPU parity, production control or complete-inference credit.
