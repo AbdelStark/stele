@@ -16,6 +16,8 @@ extern crate alloc;
 
 /// Canonical Merkle authentication (RFC-0012 A3).
 pub mod merkle;
+/// Fixed setup expansion, RFC-0010 A4. Not a proof challenge source.
+pub mod setup;
 
 use stele_field::{M31, OM31, QM31};
 
