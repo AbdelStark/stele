@@ -142,4 +142,13 @@ def checks():
 
 
 if __name__ == '__main__':
-    checks()
+    if sys.argv[1:]:
+        import json
+        import streaming_corpus
+        assert sys.argv[1:] in (['--write-corpus'], ['--check-corpus']), 'unknown arguments'
+        if sys.argv[1:] == ['--write-corpus']:
+            with streaming_corpus.PATH.open('x') as output:
+                output.write(''.join(json.dumps(case, sort_keys=True)+'\n' for case in streaming_corpus.generate()))
+        streaming_corpus.check()
+    else:
+        checks()

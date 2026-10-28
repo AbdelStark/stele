@@ -45,6 +45,12 @@ def evaluate(case):
             receipts.append({'point': [sc.encode(x).hex() for x in receipt['point']],
                 'claims': [[identity, sc.encode(value).hex()] for identity, value in receipt['claims']],
                 'sc': receipt['sc']})
+            if 'streaming' in record and case['expected'] == 'accept':
+                visits = len(record['streaming']['windows']) + 1
+                files = len(i['ids'])
+                reads = visits * files * 2**i['m']
+                receipts[-1]['source'] = dict(reads=reads, read_bytes=reads*4*d,
+                                              seeks=visits*files, eof_checks=visits*files)
         return {'receipts': receipts}
     except ValueError as error:
         return {'error': str(error)}

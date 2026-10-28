@@ -133,3 +133,11 @@ existing destinations. Both gates execute its real file tests and NC-0210 in bot
 fields: one unused source record changes one real-prover final, through ProverHook,
 and the unchanged original consumer rejects ClaimMismatch. No new loss or trust in
 source metadata is introduced. These checks do not certify a process-memory bound.
+
+The shared streaming corpus adds 420 independently generated Python/Rust A1
+decisions: 108 honest chains use actual Rust preparation/FileSource/Streaming
+proofs and an A1 continuation; 312 tampered shapes, rounds, unused finals and
+original lengths require exact rejection. Every claim, SC record and canonical
+payload is compared. Actual source I/O receipts prevent a Dense-only adapter from
+passing. Both gates check regeneration and the adapter; mutants corrupt the
+fixture expectation or bypass Streaming. Complete pipeline ledgers remain open.
