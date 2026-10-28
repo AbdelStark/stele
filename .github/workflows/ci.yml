@@ -70,6 +70,7 @@ jobs:
       - run: python3 research/private-verifier/check_boundary.py
       - run: python3 research/logup-characteristic/check_characteristic.py
       - run: uv run --locked --script research/logup-characteristic/check_units.py
+      - run: uv run --locked --script research/logup-characteristic/check_fraction.py
       - run: uv run --locked --script research/code-provenance/check_bounded.py
       - run: uv run --locked --script research/code-provenance/check_measurement.py
       - run: python3 research/circle-code/check_circle.py

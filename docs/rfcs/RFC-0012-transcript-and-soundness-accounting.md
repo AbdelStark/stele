@@ -520,3 +520,12 @@ independent-unit schedule it proves e^r for those identity events only. Sharing
 units does not establish that bound; GKR/PCS/source/FS/privacy failures stay
 separate. No production registry or ledger schema changes; complete framing,
 sampler/domain composition and actual consumers remain prerequisites.
+
+A8 fraction continuation: [candidate schedule](../../formal/fraction-reduction.md)
+names gamma and tau once per tree layer and the A1 rounds they enclose. A depth-m
+tree contributes [3m(m-1)/2+2m]/|K| conditional on its original leaf consumers;
+the selected-product leaf adds 3m/|K|. Each tree/repetition has its own terms,
+added separately from the repeated rational-identity bound. All children precede
+tau, and the next layer's P/Q claims precede gamma. These are research-local
+Transcript labels and conditional interactive losses, not production registry,
+LU admission, private consumers or Q12 composition.
