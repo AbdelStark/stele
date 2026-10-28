@@ -250,6 +250,14 @@ complete native bytes/sampling, extraction/multi-opening semantics and actual
 controls remain required. E4-03 is blocked on A3; no profile or PCS implementation
 is supplied by the toy checks or an interactive subtotal below a budget.
 
+Q27 continuation: formal/certified-functional-opening.md supplies the candidate
+arbitrary/batched mode after a fixed-oracle certificate, with D-e disagreement,
+ordered batch RLC and an adaptive lifetime union bound. The exact finite study
+exposes aggregated-column cancellation, late values, changed-oracle certificates
+and reused-query attacks. Actual certificate/root/cache and packed consumers,
+extraction, native bytes, ZK, FS/H composition and production controls remain open;
+E4-03 stays blocked on A3 and no complete PCS/profile bound is claimed.
+
 Q23 continuation: RFC-0010 A4 and formal/native-code.md accept only the deterministic
 encoder API/map/resource contract. E4-08 now tracks native delivery and is a
 prerequisite of E4-01; all original E4-01 criteria and its A1 block remain. Actual
