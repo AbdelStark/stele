@@ -208,3 +208,32 @@ included. Dense beats the exhaustive reference in all 17 aggregate comparisons
 per field, but that reference is not a tuned linear-time competitor. The ledger
 also retains process RSS, actual input/proof payloads and separate conservative
 prover/consumer scratch bounds. No samples were discarded and no k is auto-selected.
+
+## Small-value pipeline (E3-04)
+
+From a clean committed checkout:
+
+```sh
+python3 bench/small_value.py QM31 /tmp/small-value-qm31.json
+python3 bench/small_value.py OM31 /tmp/small-value-om31.json
+```
+
+This A5 harness compares Dense with Small k=2/3/4 at m=8, degrees 0..4, plus
+m=18 degree 1 for memory. All four original inputs survive, including unused
+signed/unsigned tables. Each case has three samples, three measured operations
+and one warmup; every produced proof is consumed by the real public verifier.
+It records preparation/proving and original-table materialization/consumption
+separately, exact proof/continuation parity, SC records and all raw samples.
+
+The prover and consumer execute sequentially in separate native processes so
+macOS `time -l` measures each peak RSS. The native pipeline peak is their maximum;
+the Python controller is excluded. Peaks include setup, warmup, transition
+overlap, allocation retention, serialized proof buffers and process overhead.
+They are not isolated live allocations or scratch peaks. Consumer memory can
+dominate the full operation even if prover memory falls; report both. Synthetic
+fixture construction, proof transport/parsing, assertions and process launch
+are excluded from operation timing and explicitly recorded in the plan.
+
+No measurement is supplied by the harness change. Ledgers require clean-source
+provenance, actual control/accounting gates and acceptance of all warmup/measured
+proofs. These synthetic CPU cases do not certify inference, GPU, ZK or a profile.
