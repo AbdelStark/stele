@@ -466,3 +466,80 @@ parity, 10^3 seeded reference cases per degree and a measured c_sc improvement
 ledger pass. Reference and optimized provers must agree byte-for-byte within
 each (descriptor,k); different k is a different protocol, not a parity failure.
 Affected tasks: E3-03..E3-06, E8-04/E8-05, E12-09. No acceptance criterion removed.
+
+### A4 — Stacked public coefficients and canonical claim coordinates
+
+Status: Draft. Question Q20. Evidence: [stacking study](../../research/stacked-gkr/REPORT.md).
+Motivation: §§3,6 do not fix public-MLE descriptor bytes, their padding and
+axis semantics, the consumed/output claim encoding, or the ownership changes
+required when a layer coordinate is folded. Implementing these choices implicitly
+would create protocol behavior outside an Accepted contract. This draft is not
+permission to replace a scaffold or claim E3-06 complete.
+
+Proposed replacement contract for §3 (pending the complete wire contract below):
+
+> Tensor coordinates remain in RFC-0005's canonical order with layer bits most
+> significant. A verifier-owned elimination permutation may place layer bits
+> first or last; bind it before any reduction challenge. Restore every emitted
+> point to the original tensor coordinate order before its consumer receives it.
+>
+> A single stacked invocation proves its stated polynomial over global stacked
+> input MLEs. Do not substitute an A2 batch of per-layer polynomials: applying
+> nonlinear P after folding a layer axis differs from folding the old P values.
+> Per-block round sums partition evaluations of the actual current round
+> polynomial exactly once. Their deterministic ownership must be specified for
+> every round; they cannot be independent original-layer proofs. When an axis
+> fold mixes input blocks, redistribute the required input state before computing
+> the following nonlinear round. An all-reduce of round messages alone does not
+> perform that redistribution. CPU tests must expose and sum the same partials.
+
+Proposed addition to §6 (pending exact kinds and encoding):
+
+> The verifier derives the consumed claim, public coefficient and ordered input
+> obligations from its authenticated plan. The reduction must bind their complete
+> canonical descriptor before its first challenge. A prover cannot supply a
+> coefficient evaluator, degree, coordinate permutation or substitute table id.
+> Every public final evaluation is recomputed by the verifier; all original
+> private/virtual/committed input evaluations remain real consumer obligations.
+>
+> State explicitly whether A is the MLE of a Boolean coefficient table or a
+> product of separately extended factors. These agree on Boolean points but need
+> not agree off the cube. The sumcheck degree and final equation must use the
+> chosen polynomial, including every selector. No public factor is free merely
+> because its table is Boolean, sparse or known to the verifier. A1's degree-at-most
+> four bound applies to the complete summand; unsupported degrees must reject or
+> use a separately Accepted reduction. No intermediate commitment is introduced.
+
+Open requirements before acceptance (all part of Q20):
+
+1. Specify complete bytes and validation for the consumed claim, tensor ids,
+   dimensions, real/padded blocks, coordinate permutation, polynomial and public
+   coefficient. Decide the transcript labels and how the A1 schedule is reused;
+   update RFC-0012 registry/inventory and exact SC accounting together. No new
+   random challenge is presumed by this draft.
+2. Define the six required public kinds exactly: eq, causal_mask, window_mask,
+   rope_tables, onehot_sparse and gqa_broadcast. Fix bit/axis order, real dimensions,
+   padding, window endpoints, head-to-group mapping, table identity and source
+   authentication. Selection indices must be authenticated by their actual prior
+   commitment/opening; calling them public does not waive that obligation.
+3. Give independent prover/verifier evaluations and explicit costs per kind.
+   Preserve RFC-0009's mask complexity requirement or amend it explicitly with
+   evidence. Distinguish MLE-of-product from product-of-MLE selectors. No guessed
+   RoPE table or unauthenticated index vector is acceptable.
+4. Specify per-round partial ownership and the data movement required for both
+   elimination orders. Prove that summing partials gives the global round and
+   that final claims refer to the original stacked tensors, including unused
+   inputs and padded blocks under the chosen padding rule.
+5. Define actual NC-0203 wrong-layer mutation and any new binding controls, using
+   real closed-statement consumers and exact errors. Require both-field canonical
+   bytes/decisions, 10^4 seeded points per public kind, round-partial agreement,
+   malformed descriptors and a chained-final transcript control before delivery.
+
+Soundness: this draft adds no implemented challenge or certified error term.
+Acceptance must name the complete summand degree, SC numerator and every final
+consumer; Q12 and PCS/composition remain separate. Integer inference identities
+retain RFC-0004 static certificate obligations; a field-only kernel study does not
+satisfy them. Cost impact: c_sc, public evaluation in T_misc, memory and block-state
+redistribution. No measured constant, weight-pass count or performance result
+changes here. Affected tasks: E3-06 and downstream GKR/lookup/reduction/distribution
+work; all original acceptance criteria remain required.
