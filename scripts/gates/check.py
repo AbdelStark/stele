@@ -174,13 +174,15 @@ def zerocheck(root):
     """Actual A3 bytes, all slice claims, SC phases and one-value controls."""
     for test, command in [
         ('matches_reference_zerocheck_bytes_and_accounting', ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'zerocheck', '--locked', '--offline']),
+        ('matches_reference_naive_zerocheck_qm31', ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'zerocheck_reference', 'matches_reference_naive_zerocheck_qm31', '--locked', '--offline']),
+        ('matches_reference_naive_zerocheck_om31', ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'zerocheck_reference', 'matches_reference_naive_zerocheck_om31', '--locked', '--offline']),
         ('zerocheck::rejects_zerocheck_binding_tampers', ['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'zerocheck::', '--locked', '--offline']),
         ('', ['uv', 'run', '--locked', '--script', 'research/zerocheck/check_zerocheck.py']),
     ]:
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
         if result.returncode or (test and f'test {test} ... ok' not in result.stdout):
             raise ValueError(f'zerocheck bytes/claims/accounting/control mismatch: {result.stdout} {result.stderr}')
-    print('gate zerocheck: 130 both-field vectors, all slice claims, three SC phases and actual controls; no profile certified')
+    print('gate zerocheck: 130 both-field vectors, 1000 reference cases per degree/field, all slice claims, three SC phases and actual controls; no profile certified')
 
 
 def zero_corpus(root):

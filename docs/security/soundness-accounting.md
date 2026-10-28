@@ -73,5 +73,6 @@ accept a statement; the public adapter consumes every original slice claim.
 The shared 314-case Rust/Python corpus additionally compares exact public-verifier
 decisions, every original claim, phased SC records and the next challenge. Gate
 regressions reject changed corpus expectations, omitted claims and wrong records.
-E3-03 still requires 10^3-per-degree reference coverage and measured c_sc/total
-consumer cost. Q12 remains open; these gates do not certify a profile.
+Both gates also require 1,000 seeded direct-reference cases per degree and field,
+including every eligible (m,k) through m=4 and public claim consumption.
+E3-03 still requires measured c_sc/total consumer cost and memory evidence. Q12 remains open; these gates do not certify a profile.
