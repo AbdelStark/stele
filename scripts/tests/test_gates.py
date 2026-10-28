@@ -116,6 +116,28 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('small strategy parity/control mismatch', result.stderr)
 
+    def test_rejects_small_corpus_drift_and_prover_mismatch(self):
+        corpus = self.root / 'research/small-value/corpus.jsonl'
+        original = corpus.read_text()
+        rows = [json.loads(line) for line in original.splitlines()]
+        rows[0]['expected'] = 'ClaimMismatch'
+        corpus.write_text(''.join(json.dumps(row)+'\n' for row in rows))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('small corpus drift', result.stderr)
+        corpus.write_text(original)
+        source = self.root / 'crates/stele-sumcheck/examples/corpus.rs'
+        original = source.read_text()
+        self.assertIn('Small::new(&i, source, k)', original)
+        source.write_text(original.replace('Small::new(&i, source, k)', 'Small::new(&i, source, k + 4)'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('sumcheck corpus decisions/accounting mismatch', result.stderr)
+        source.write_text(original.replace('receipt.claims.into_iter()', 'receipt.claims.into_iter().take(0)'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('sumcheck corpus decisions/accounting mismatch', result.stderr)
+
     def test_rejects_zerocheck_corpus_drift_and_receipts(self):
         corpus = self.root / 'research/zerocheck/corpus.jsonl'
         original = corpus.read_text()

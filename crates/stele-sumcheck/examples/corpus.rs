@@ -2,7 +2,9 @@
 use serde_json::{json, Value};
 use stele_field::{OM31, QM31};
 use stele_hash::{ChallengeField, Transcript};
-use stele_sumcheck::{message_bytes, prove, verify_public, Dense, Instance, Proof, Term};
+use stele_sumcheck::{
+    message_bytes, prove, verify_public, Dense, Instance, Proof, Small, SmallTable, Term,
+};
 
 fn raw(v: &Value) -> Result<Vec<u8>, String> {
     let s = v.as_str().ok_or("NoncanonicalField")?;
@@ -42,6 +44,24 @@ fn hex<K: ChallengeField>(v: K) -> String {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect()
+}
+// RFC-0006 A5: JSON fixture adapters must not silently narrow external integers.
+fn small_inputs(value: &Value) -> Result<(Vec<SmallTable>, u8), String> {
+    let error = || "InvalidSmallValue".to_owned();
+    let k = number(&value["k"])?.try_into().map_err(|_| error())?;
+    let tables = array(&value["tables"])?
+        .iter()
+        .map(|table| match table["kind"].as_str() {
+            Some("signed") => serde_json::from_value::<Vec<i16>>(table["values"].clone())
+                .map(SmallTable::Signed)
+                .map_err(|_| error()),
+            Some("unsigned") => serde_json::from_value::<Vec<u16>>(table["values"].clone())
+                .map(SmallTable::Unsigned)
+                .map_err(|_| error()),
+            _ => Err(error()),
+        })
+        .collect::<Result<_, _>>()?;
+    Ok((tables, k))
 }
 fn check<K: ChallengeField + Eq + core::fmt::Debug>(case: &Value) -> Result<Value, String>
 where
@@ -105,8 +125,15 @@ where
             verify_public(&i, &proof, &tables, &mut verifier).map_err(|e| format!("{e:?}"))?;
         // Honest fixtures also require production prover parity; rejection never depends on this flag.
         if case["expected"] == "accept" {
-            let dense = Dense::new(&i, tables).map_err(|e| format!("{e:?}"))?;
-            let produced = prove(&i, dense, &mut prover).map_err(|e| format!("{e:?}"))?;
+            let produced = if let Some(metadata) = record.get("small") {
+                let (source, k) = small_inputs(metadata)?;
+                let small = Small::new(&i, source, k).map_err(|e| format!("{e:?}"))?;
+                prove(&i, small, &mut prover)
+            } else {
+                let dense = Dense::new(&i, tables).map_err(|e| format!("{e:?}"))?;
+                prove(&i, dense, &mut prover)
+            }
+            .map_err(|e| format!("{e:?}"))?;
             if produced != proof {
                 return Err("ProverMismatch".into());
             }
@@ -132,4 +159,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{output}");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn rejects_small_corpus_unchecked_narrowing() {
+        for (kind, values) in [
+            ("signed", json!([32768])),
+            ("signed", json!([-32769])),
+            ("unsigned", json!([65536])),
+            ("unsigned", json!([-1])),
+            ("unknown", json!([0])),
+            ("signed", json!(null)),
+        ] {
+            assert!(
+                small_inputs(&json!({"k":2,"tables":[{"kind":kind,"values":values}]})).is_err()
+            );
+        }
+        assert!(small_inputs(&json!({"k":256,"tables":[]})).is_err());
+        let (tables, k) = small_inputs(&json!({"k":2,"tables":[
+            {"kind":"signed","values":[-32768,32767]},
+            {"kind":"unsigned","values":[0,65535]}
+        ]}))
+        .expect("checked boundaries");
+        assert_eq!(k, 2);
+        assert_eq!(tables.len(), 2);
+    }
 }
