@@ -348,3 +348,53 @@ fn matches_reference_zero_and_one_challenges() {
     }
     assert_eq!(state.final_values(), dense.final_values());
 }
+
+fn suffix_contributions<K: ChallengeField + Eq + core::fmt::Debug>() {
+    for degree in 1..=4 {
+        let (mut i, _, source) = fixture::<K>(4, degree, 71);
+        i.terms.pop(); // Constant multiplicity has its own no-input test; here P(0)=0.
+        i.claimed_sum = i.claimed_sum + K::from_i64(3 * 16);
+        let n = Streaming::<K, Rows<K>>::workspace_len(&i, &[2]).expect("plan");
+        let mut full = Streaming::new(&i, source, &[2], vec![K::from_i64(0); n], n).expect("full");
+        let first = full.round(&i).expect("first round");
+        full.fold(K::from_i64(17)).expect("non-Boolean challenge");
+        let second = full.round(&i).expect("second round");
+        let mut totals = [
+            vec![K::from_i64(0); degree + 1],
+            vec![K::from_i64(0); degree + 1],
+        ];
+        for suffix in 0..4 {
+            let (_, _, mut source) = fixture::<K>(4, degree, 71);
+            for (physical, row) in source.rows.iter_mut().enumerate() {
+                let canonical = physical.reverse_bits() >> (usize::BITS - 4);
+                if canonical & 3 != suffix {
+                    row.fill(K::from_i64(0));
+                }
+            }
+            let mut partial = i.clone();
+            partial.claimed_sum = source.rows.iter().fold(K::from_i64(0), |sum, row| {
+                sum + partial.terms[0]
+                    .factors
+                    .iter()
+                    .fold(partial.terms[0].coefficient, |v, f| v * row[*f as usize])
+            });
+            let mut state = Streaming::new(&partial, source, &[2], vec![K::from_i64(0); n], n)
+                .expect("one suffix");
+            for total in &mut totals {
+                for (sum, value) in total
+                    .iter_mut()
+                    .zip(state.round(&partial).expect("partial round"))
+                {
+                    *sum = *sum + value;
+                }
+                state.fold(K::from_i64(17)).expect("fold");
+            }
+        }
+        assert_eq!(totals, [first, second]);
+    }
+}
+#[test]
+fn matches_reference_window_suffix_contributions() {
+    suffix_contributions::<QM31>();
+    suffix_contributions::<OM31>();
+}

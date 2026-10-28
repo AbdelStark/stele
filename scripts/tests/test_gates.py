@@ -116,6 +116,24 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('small strategy parity/control mismatch', result.stderr)
 
+    def test_rejects_streaming_corpus_drift_and_source_bypass(self):
+        corpus = self.root / 'research/streaming/corpus.jsonl'
+        original = corpus.read_text()
+        rows = [json.loads(line) for line in original.splitlines()]
+        rows[0]['expected'] = 'ClaimMismatch'
+        corpus.write_text('\n'.join(json.dumps(row) for row in rows)+'\n')
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('streaming corpus drift or adapter failure', result.stderr)
+        corpus.write_text(original)
+        source = self.root / 'crates/stele-sumcheck/examples/corpus.rs'
+        original = source.read_text()
+        self.assertIn('record.get("streaming")', original)
+        source.write_text(original.replace('record.get("streaming")', 'record.get("omitted_streaming")'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('streaming corpus drift or adapter failure', result.stderr)
+
     def test_rejects_file_overwrite_and_missing_control(self):
         source = self.root / 'crates/stele-sumcheck/src/file.rs'
         original = source.read_text()

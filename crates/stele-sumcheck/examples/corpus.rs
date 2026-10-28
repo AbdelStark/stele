@@ -1,4 +1,7 @@
 //! RFC-0006 A1 / RFC-0002 S10: exercise the actual Rust APIs on the shared corpus.
+#[cfg(feature = "std")]
+#[path = "support/streaming.rs"]
+mod streaming;
 use serde_json::{json, Value};
 use stele_field::{OM31, QM31};
 use stele_hash::{ChallengeField, Transcript};
@@ -65,7 +68,7 @@ fn small_inputs(value: &Value) -> Result<(Vec<SmallTable>, u8), String> {
 }
 fn check<K: ChallengeField + Eq + core::fmt::Debug>(case: &Value) -> Result<Value, String>
 where
-    K::Bytes: TryFrom<Vec<u8>>,
+    K::Bytes: TryFrom<Vec<u8>> + AsMut<[u8]>,
 {
     let public = raw(&case["public_hex"])?;
     let mut verifier = Transcript::new(&public).map_err(|e| format!("{e:?}"))?;
@@ -123,9 +126,25 @@ where
         }
         let receipt =
             verify_public(&i, &proof, &tables, &mut verifier).map_err(|e| format!("{e:?}"))?;
+        #[cfg(feature = "std")]
+        let mut source_receipt: Option<Value> = None;
+        #[cfg(not(feature = "std"))]
+        let source_receipt: Option<Value> = None;
         // Honest fixtures also require production prover parity; rejection never depends on this flag.
         if case["expected"] == "accept" {
-            let produced = if let Some(metadata) = record.get("small") {
+            let produced = if let Some(metadata) = record.get("streaming") {
+                #[cfg(feature = "std")]
+                {
+                    let (proof, counts) = streaming::run(&i, &tables, metadata, &mut prover)?;
+                    source_receipt = Some(counts);
+                    Ok(proof)
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    let _ = metadata;
+                    return Err("StreamingRequiresStd".into());
+                }
+            } else if let Some(metadata) = record.get("small") {
                 let (source, k) = small_inputs(metadata)?;
                 let small = Small::new(&i, source, k).map_err(|e| format!("{e:?}"))?;
                 prove(&i, small, &mut prover)
@@ -138,10 +157,14 @@ where
                 return Err("ProverMismatch".into());
             }
         }
-        receipts.push(json!({"point": receipt.point.into_iter().map(hex).collect::<Vec<_>>(),
+        let mut output = json!({"point": receipt.point.into_iter().map(hex).collect::<Vec<_>>(),
             "claims": receipt.claims.into_iter().map(|(id, v)| json!([id, hex(v)])).collect::<Vec<_>>(),
             "sc": {"id": receipt.sc.id, "m": receipt.sc.m, "degree": receipt.sc.degree,
-                   "field_degree": receipt.sc.field_degree, "numerator": receipt.sc.numerator}}));
+                   "field_degree": receipt.sc.field_degree, "numerator": receipt.sc.numerator}});
+        if let Some(counts) = source_receipt {
+            output["source"] = counts;
+        }
+        receipts.push(output);
     }
     Ok(json!({"receipts": receipts}))
 }
@@ -164,6 +187,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "std")]
+    #[test]
+    fn matches_reference_streaming_corpus_source_receipt() {
+        let zero = "00".repeat(16);
+        let case = json!({"public_hex":"01", "expected":"accept", "instances":[{
+            "instance":{"id":1,"m":0,"ids":[11],"terms":[],"sum":zero},
+            "tables":[[zero]], "proof":{"rounds":[],"final":[zero]},
+            "streaming":{"windows":[]}
+        }]});
+        let result = check::<QM31>(&case).expect("actual file proof");
+        assert_eq!(
+            result["receipts"][0]["source"],
+            json!({"reads":1,"read_bytes":16,"seeks":1,"eof_checks":1})
+        );
+    }
     #[test]
     fn rejects_small_corpus_unchecked_narrowing() {
         for (kind, values) in [

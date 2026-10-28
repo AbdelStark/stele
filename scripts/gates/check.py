@@ -71,10 +71,11 @@ def transcript_registry(root):
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
 
 
-def sumcheck_corpus(root, path='research/sumcheck/corpus.jsonl'):
+def sumcheck_corpus(root, path='research/sumcheck/corpus.jsonl', features=()):
     """Compare real Rust/Python decisions, all claims and every SC record."""
     commands = [
-        ['cargo', 'run', '-q', '-p', 'stele-sumcheck', '--example', 'corpus', '--locked', '--offline', '--', path],
+        ['cargo', 'run', '-q', '-p', 'stele-sumcheck', '--example', 'corpus', '--locked', '--offline']
+        + (['--features', ','.join(features)] if features else []) + ['--', path],
         ['uv', 'run', '--locked', '--script', 'research/sumcheck/check_sumcheck.py', '--verify-corpus', path],
     ]
     outputs = []
@@ -218,7 +219,8 @@ def streaming_strategy(root):
     tests = ('matches_reference_streaming_qm31', 'matches_reference_streaming_om31',
              'accepts_workspace_smaller_than_dense_input', 'rejects_source_failures_and_capacity_overrun',
              'rejects_cached_instance_even_without_rounds', 'accepts_no_inputs_without_source_access',
-             'rejects_source_failure_during_window_transition', 'matches_reference_zero_and_one_challenges')
+             'rejects_source_failure_during_window_transition', 'matches_reference_zero_and_one_challenges',
+             'matches_reference_window_suffix_contributions')
     result = subprocess.run(['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'streaming',
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
@@ -241,6 +243,18 @@ def file_source(root):
         if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
             raise ValueError(f'streaming file/control mismatch: {result.stdout} {result.stderr}')
     print('gate streaming files: canonical preparation/reads, preserved originals and NC-0210 in both fields')
+
+
+def streaming_corpus(root):
+    for test, command in [
+        ('', ['uv', 'run', '--locked', '--script', 'research/streaming/check_windows.py', '--check-corpus']),
+        ('tests::matches_reference_streaming_corpus_source_receipt',
+         ['cargo', 'test', '-p', 'stele-sumcheck', '--features', 'std', '--example', 'corpus', '--locked', '--offline']),
+    ]:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or (test and f'test {test} ... ok' not in result.stdout):
+            raise ValueError(f'streaming corpus drift or adapter failure: {result.stdout} {result.stderr}')
+    sumcheck_corpus(root, 'research/streaming/corpus.jsonl', features=('std',))
 
 
 def zerocheck(root):
@@ -391,6 +405,7 @@ def main():
                 buffered_engine(ROOT)
                 streaming_strategy(ROOT)
                 file_source(ROOT)
+                streaming_corpus(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
