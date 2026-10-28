@@ -71,9 +71,8 @@ def transcript_registry(root):
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
 
 
-def sumcheck_corpus(root):
-    """Compare real Rust/Python decisions and each accepted instance's SC record."""
-    path = 'research/sumcheck/corpus.jsonl'
+def sumcheck_corpus(root, path='research/sumcheck/corpus.jsonl'):
+    """Compare real Rust/Python decisions, all claims and every SC record."""
     commands = [
         ['cargo', 'run', '-q', '-p', 'stele-sumcheck', '--example', 'corpus', '--locked', '--offline', '--', path],
         ['uv', 'run', '--locked', '--script', 'research/sumcheck/check_sumcheck.py', '--verify-corpus', path],
@@ -97,7 +96,8 @@ def sumcheck_corpus(root):
                 i = record['instance']
                 degree = max((len(t['factors']) for t in i['terms']), default=0)
                 expected = dict(id=i['id'], m=i['m'], degree=degree, field_degree=case['field_degree'], numerator=i['m']*degree)
-                if receipt['sc'] != expected or len(receipt['point']) != i['m']:
+                if (receipt['sc'] != expected or len(receipt['point']) != i['m'] or
+                    [claim[0] for claim in receipt['claims']] != i['ids']):
                     raise ValueError('sumcheck SC record/challenge count mismatch')
     print(f'gate sumcheck: {len(cases)} actual corpus decisions and SC records; no profile budget certified')
 
@@ -168,6 +168,17 @@ def batch_corpus(root):
                 len(result['point']) != m or len(result['claims']) != claims):
                 raise ValueError('batch corpus descriptor/accounting mismatch')
     print(f'gate batching: {len(cases)} shared decisions, all obligations and SC/RLC checked; no profile certified')
+
+
+def small_corpus(root):
+    for test, command in [
+        ('', ['uv', 'run', '--locked', '--script', 'research/small-value/check_small_value.py', '--check-corpus']),
+        ('tests::rejects_small_corpus_unchecked_narrowing', ['cargo', 'test', '-p', 'stele-sumcheck', '--example', 'corpus', '--locked', '--offline']),
+    ]:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or (test and f'test {test} ... ok' not in result.stdout):
+            raise ValueError(f'small corpus drift or adapter failure: {result.stdout} {result.stderr}')
+    sumcheck_corpus(root, 'research/small-value/corpus.jsonl')
 
 
 def small_strategy(root):
@@ -326,6 +337,7 @@ def main():
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
                 small_strategy(ROOT)
+                small_corpus(ROOT)
                 batch_instances(ROOT)
                 batch_claims(ROOT)
                 batch_corpus(ROOT)

@@ -87,6 +87,11 @@ contract, not a range proof. Both gates additionally require 1,000 seeded cases 
 degree and field against direct original-MLE evaluation and Dense, with all eligible
 (m,k) through m=4 and k=4 with a tail at m=5. These compare the full proof, final
 claims, SC record and continuation. A missing field test fails the gate. The shared
-Rust reference uses production field/eq/transcript/engine primitives; independent
-Rust/Python decisions and measured memory/cost evidence remain pending. These
-finite checks do not certify a profile.
+Rust reference uses production field/eq/transcript/engine primitives. The shared
+302-case small-value corpus additionally compares the actual Rust and independent
+Python A1 public decisions, every final claim and SC record. Its 76 honest chains
+require actual Small prover bytes followed by an A1 continuation. Corrupted rounds,
+proof lengths, unused finals and truncated originals yield 226 exact rejections.
+Both gates check regeneration, checked adapter narrowing and actual prover parity;
+regressions reject corpus drift, broken adapter selection and missing claims.
+Measured memory/cost evidence remains pending; these finite checks certify no profile.

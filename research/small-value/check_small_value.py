@@ -160,5 +160,14 @@ def rejects_truncated_original():
     print('Both-field one-value truncation misuse rejected with ClaimMismatch; research only.',flush=True)
 
 if __name__=='__main__':
+    if sys.argv[1:]:
+        import json
+        import small_corpus
+        assert sys.argv[1:] in (['--write-corpus'], ['--check-corpus']), 'unknown arguments'
+        if sys.argv[1:] == ['--write-corpus']:
+            with small_corpus.PATH.open('x') as output:
+                output.write(''.join(json.dumps(case,sort_keys=True)+'\n' for case in small_corpus.generate()))
+        small_corpus.check()
+        sys.exit(0)
     checks()
     rejects_truncated_original()

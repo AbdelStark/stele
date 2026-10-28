@@ -52,3 +52,28 @@ reviews, then implement and measure E3-04. The A1 transcript, verifier and SC lo
 stay unchanged. Typed optimization eligibility is distinct from authenticated
 private-tensor range discipline and CQIS integer field-faithfulness certificates.
 No runtime, peak memory, speedup or fitted constant has been measured here.
+
+## Production decision corpus
+
+`corpus.jsonl` contains 302 shared decisions: 76 accepted two-instance chains
+and 226 rejections (76 RoundSumMismatch, 76 ProofShape, 74 ClaimMismatch).
+Each accepted chain uses actual Rust Small on typed original inputs, compared
+with Python's ordinary dense A1 proof; a following A1 proof tests continuation.
+The Python generator also compares its grid candidate against dense A1. All
+supported (m,k) through m=4, k=4 with a tail at m=5, degrees 0..4, both fields,
+extrema, mixed representations, extension coefficients, zero coefficients,
+constants and empty/unused inputs appear. Mutations alter a round, proof length,
+unused final or original value; the existing NC-0204 still owns control credit.
+
+```sh
+uv run --locked --script research/small-value/check_small_value.py --check-corpus
+cargo run -q -p stele-sumcheck --example corpus --locked --offline -- research/small-value/corpus.jsonl
+uv run --locked --script research/sumcheck/check_sumcheck.py --verify-corpus research/small-value/corpus.jsonl
+```
+
+Both protocol gates compare every decision and accepted receipt, including all
+original claims and SC records. The Rust fixture adapter checks integer narrowing;
+its metadata never disables a verifier check. Honest proof parity is an extra
+producer check, while rejected fixtures always reach the unchanged real verifier.
+This complements the 10,000 seeded Rust comparisons. Complete measured costs and
+memory remain required for E3-04; the corpus makes no performance/profile claim.

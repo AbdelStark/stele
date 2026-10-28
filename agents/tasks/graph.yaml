@@ -356,7 +356,7 @@ tasks:
   crate: stele-sumcheck
   status: in_progress
   agent: codex-root
-  branch: task/E3-04-small-reference
+  branch: task/E3-04-small-corpus
   acceptance:
   - NC-0204
   - memory reduction measured
