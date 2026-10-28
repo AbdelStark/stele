@@ -273,3 +273,11 @@ formal/packed-commitments.md record exact collisions, the fused-row counterexamp
 a fixed 30-bit codec candidate and full remaining consumer/range/ZK/cost obligations.
 E4-03 remains blocked on A3/A6; no codec test supplies NC-0603, a private
 decomposition proof or the actual one-weight-pass fused opening.
+
+Q28 continuation: formal/fused-layout.md proves that even a nonlinear source
+codec needs at least T message coordinates to recover all T original coordinates
+by fixed affine functionals. It derives the signed direct u=B layout and the
+separate short-column u_s-to-B fold, with symbolic costs and a both-field
+one-visit prototype. This recommends an explicit weight-layout amendment; it
+does not admit that layout, remove private packing requirements, supply a native
+pass-count gate or resolve A3/A6, ZK or the full authenticated phase schedule.

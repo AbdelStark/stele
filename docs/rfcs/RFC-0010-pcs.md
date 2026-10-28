@@ -430,6 +430,12 @@ is supplied here. No committed tensor or matmul weight pass changes.
 Status: Draft. Question Q28. Evidence: [packing and fused-row study](../../formal/packed-commitments.md)
 and [executable report](../../research/packing/REPORT.md).
 Review: [same-author skill passes](../../agents/reviews/packing-contract-study.md).
+Continuation: [fused layout derivation](../../formal/fused-layout.md) proves a
+rank lower bound for direct linear consumption, derives the minimal signed
+u=B layout, and separates the larger short-column row from its low-coordinate
+fold B. It compares exact message/payload/state counts and instruments one source
+visit in both extension fields. This recommends a contract direction only;
+neither layout nor private packing/PCS/ZK consumer is admitted by the study.
 Motivation: §8's four int8/two int16 values contain 32 unrestricted bits and cannot
 fit injectively in one M31 element. A legal integer packing map also changes the
 linear functional and cannot automatically preserve §5's original B identity.

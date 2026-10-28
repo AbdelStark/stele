@@ -76,6 +76,11 @@ NC-0305 fused opening with a row vector that is not the sumcheck's `B`.
 
 Status: Draft. Question Q28. Companion RFC-0010 A6; evidence:
 [packing and fused-row study](../../formal/packed-commitments.md).
+Continuation: [signed and split layout derivation](../../formal/fused-layout.md).
+The direct equal-vector contract requires the signed original message row;
+short columns instead retain u_s and derive the distinct B by its low fold.
+The study gives an algebraic one-visit schedule and full symbolic row-state
+costs, without implementing a native phase or relaxing NC-0305/0605.
 Motivation: §3's two unrestricted int16 values do not fit in M31, and §5's
 original-value B is not the PCS row of an unspecified packed message matrix.
 
