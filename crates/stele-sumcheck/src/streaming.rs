@@ -16,13 +16,13 @@ pub trait Source<K> {
     /// Fill one complete row, or return false at EOF. Never silently zero-fill.
     fn next_row(&mut self, out: &mut [K]) -> Result<bool, Error>;
 }
-fn pow2(m: u32) -> Result<usize, Error> {
+pub(crate) fn pow2(m: u32) -> Result<usize, Error> {
     if m > 63 {
         return Err(Error::Capacity);
     }
     1usize.checked_shl(m).ok_or(Error::Capacity)
 }
-fn reverse(index: usize, bits: u32) -> usize {
+pub(crate) fn reverse(index: usize, bits: u32) -> usize {
     if bits == 0 {
         0
     } else {

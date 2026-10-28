@@ -214,7 +214,7 @@ def buffered_engine(root):
 
 
 def streaming_strategy(root):
-    """A6 source/arena behavior; file adapter, NC-0210 and pipeline evidence remain open."""
+    """A6 generic source/arena behavior; complete pipeline evidence remains open."""
     tests = ('matches_reference_streaming_qm31', 'matches_reference_streaming_om31',
              'accepts_workspace_smaller_than_dense_input', 'rejects_source_failures_and_capacity_overrun',
              'rejects_cached_instance_even_without_rounds', 'accepts_no_inputs_without_source_access',
@@ -224,6 +224,23 @@ def streaming_strategy(root):
     if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
         raise ValueError(f'streaming A1 source/arena mismatch: {result.stdout} {result.stderr}')
     print('gate streaming A1: 1000 cases per degree/field; source visits, errors and arena limits')
+
+
+def file_source(root):
+    """Execute the opt-in file adapter and actual source-substitution control."""
+    tests = ('matches_reference_file_source_qm31', 'matches_reference_file_source_om31',
+             'rejects_malformed_files_and_preserves_existing_paths',
+             'rejects_changed_length_on_replay_and_short_rows',
+             'rejects_extra_bytes_after_open_and_keeps_original_handles',
+             'accepts_empty_file_source_without_size_overflow')
+    for command, names in [
+        (['cargo', 'test', '-p', 'stele-sumcheck', '--features', 'std', '--test', 'file_source'], tests),
+        (['cargo', 'test', '-p', 'stele-negative-controls', '--test', 'nc-0210'], ('rejects_nc_0210',)),
+    ]:
+        result = subprocess.run(command + ['--locked', '--offline'], cwd=root, text=True, capture_output=True)
+        if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
+            raise ValueError(f'streaming file/control mismatch: {result.stdout} {result.stderr}')
+    print('gate streaming files: canonical preparation/reads, preserved originals and NC-0210 in both fields')
 
 
 def zerocheck(root):
@@ -286,7 +303,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -373,6 +390,7 @@ def main():
                 zero_corpus(ROOT)
                 buffered_engine(ROOT)
                 streaming_strategy(ROOT)
+                file_source(ROOT)
                 if args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:

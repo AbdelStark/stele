@@ -116,6 +116,21 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('small strategy parity/control mismatch', result.stderr)
 
+    def test_rejects_file_overwrite_and_missing_control(self):
+        source = self.root / 'crates/stele-sumcheck/src/file.rs'
+        original = source.read_text()
+        self.assertIn('.create_new(true)', original)
+        source.write_text(original.replace('.create_new(true)', '.create(true)'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('streaming file/control mismatch', result.stderr)
+        source.write_text(original)
+        source = self.root / 'tests/negative-controls/sumcheck/nc_0210.rs'
+        source.write_text(source.read_text().replace('fn rejects_nc_0210()', 'fn omitted_nc_0210()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('streaming file/control mismatch', result.stderr)
+
     def test_rejects_streaming_wrong_tail_order(self):
         source = self.root / 'crates/stele-sumcheck/src/streaming.rs'
         original = source.read_text()
