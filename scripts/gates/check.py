@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
     'digest': ('prover', 'proof'),
-    'negative-controls': ('gkr', 'lookup', 'pcs', 'verifier', 'reductions'),
-    'soundness-accounting': ('gkr', 'lookup', 'pcs', 'verifier'),
+    'negative-controls': ('lookup', 'pcs', 'verifier', 'reductions'),
+    'soundness-accounting': ('lookup', 'pcs', 'verifier'),
     'parity': ('gpu', 'kernels'),
 }
 OWNERS = {
@@ -52,6 +52,31 @@ def bootstrap_guard(root, gate):
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
+
+
+def public_coefficients(root):
+    """A7 arithmetic only; keep all unwired stage/consumer code fail-closed."""
+    crate = root / 'crates/stele-gkr'
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/public_mle.rs', 'tests/public_mle.rs'}
+    actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
+    library = ('//! Stacked reduction primitives governed by RFC-0006 A7.\n'
+               '#![forbid(unsafe_code)]\n#![no_std]\n'
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+               'extern crate alloc;\npub mod public_mle;\n')
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
+            or manifest.get('dependencies') != {'stele-field': {'path': '../stele-field'}}
+            or any(key in manifest for key in ('build-dependencies', 'dev-dependencies', 'target', 'features'))
+            or 'build' in manifest.get('package', {})):
+        raise ValueError('GKR stage/source validator not wired; only A7 arithmetic admitted (E3-06)')
+    tests = ('matches_reference_qm31_all_kinds', 'matches_reference_om31_all_kinds',
+             'rejects_invalid_descriptors_and_resource_limits',
+             'accepts_large_masks_and_scalar_axes_without_domain_allocation')
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-gkr', '--test', 'public_mle',
+                             '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+    if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in tests):
+        raise ValueError(f'public coefficient arithmetic checks failed: {result.stdout} {result.stderr}')
+    print('gate public coefficients: 10000 points/kind/field; no stage, source or NC-0203 credit')
 
 
 def transcript_registry(root):
@@ -393,6 +418,7 @@ def main():
                 controls_layout(ROOT)
             bootstrap_guard(ROOT, args.gate)
             if args.gate in ('negative-controls', 'soundness-accounting'):
+                public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
                 small_strategy(ROOT)
