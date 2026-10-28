@@ -1,6 +1,6 @@
 //! Conditional fraction primitives governed by RFC-0008 A3.
 //!
-//! Tree arithmetic returns conditional claims; full lookup/leaf verification is absent.
+//! Tree and selected-product arithmetic return conditional claims; full lookup is absent.
 //! ```compile_fail
 //! use stele_lookup::fraction::verify_lookup;
 //! ```

@@ -54,15 +54,16 @@ def bootstrap_guard(root, gate):
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
 
 
-def fraction_codecs(root):
-    """Actual A3 tree producer/consumers; full lookup and selected product stay guarded."""
+def fraction_reductions(root):
+    """Actual A3 tree/selected-product producers and consumers; full lookup stays guarded."""
     crate = root / 'crates/stele-lookup'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
                'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs',
-               'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl'}
+               'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl',
+               'src/selected.rs', 'tests/selected.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
-               '//! Tree arithmetic returns conditional claims; full lookup/leaf verification is absent.\n'
+               '//! Tree and selected-product arithmetic return conditional claims; full lookup is absent.\n'
                '//! ```compile_fail\n//! use stele_lookup::fraction::verify_lookup;\n//! ```\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
@@ -74,7 +75,7 @@ def fraction_codecs(root):
             or manifest.get('dev-dependencies') != {'stele-field': {'path': '../stele-field'}, 'serde_json': '1.0'}
             or any(key in manifest for key in ('build-dependencies','target','features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('fraction engine/lookup validator not wired; only A3 tree/codec consumers admitted (E3-07a)')
+        raise ValueError('fraction engine/lookup validator not wired; only A3 conditional reductions/codecs admitted (E3-07a)')
     result = subprocess.run(['cargo','test','-p','stele-lookup','--locked','--offline'],
                             cwd=root,text=True,capture_output=True)
     names = ('matches_reference_qm31_fraction_codec','matches_reference_om31_fraction_codec',
@@ -82,7 +83,9 @@ def fraction_codecs(root):
              'accepts_qm31_fraction_tree_original_consumers','accepts_om31_fraction_tree_original_consumers',
              'rejects_fraction_tree_source_shape_and_poles', 'rejects_qm31_leaf_codec_boundaries',
              'rejects_om31_leaf_codec_boundaries', 'matches_reference_qm31_selected_product_codec',
-             'matches_reference_om31_selected_product_codec')
+             'matches_reference_om31_selected_product_codec',
+             'accepts_qm31_selected_product_original_consumers','accepts_om31_selected_product_original_consumers',
+             'rejects_selected_product_context_and_source_shapes')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
         raise ValueError(f'fraction codec checks failed: {result.stdout} {result.stderr}')
     result = subprocess.run(['uv','run','--locked','--script',
@@ -95,7 +98,7 @@ def fraction_codecs(root):
                             cwd=root,text=True,capture_output=True)
     if result.returncode or '12 both-field selected-product codec fixtures match' not in result.stdout:
         raise ValueError(f'selected-product codec reference drift: {result.stdout} {result.stderr}')
-    print('gate fraction tree: both-field proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
+    print('gate fraction reductions: tree/selected-product proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
 
 
 def public_coefficients(root):
@@ -491,7 +494,7 @@ def main():
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
-                fraction_codecs(ROOT)
+                fraction_reductions(ROOT)
                 small_strategy(ROOT)
                 small_corpus(ROOT)
                 batch_instances(ROOT)

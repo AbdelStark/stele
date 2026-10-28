@@ -24,6 +24,18 @@ mod nc_0801;
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
     catalog::RegisteredControl {
+        id: 409,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "SelectorMismatch",
+        run: || fraction::run(409),
+    },
+    catalog::RegisteredControl {
+        id: 410,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "SourceMismatch",
+        run: || fraction::run(410),
+    },
+    catalog::RegisteredControl {
         id: 406,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",

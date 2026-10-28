@@ -186,3 +186,12 @@ fields and transcript continuation against Python, and runs actual public
 consumers plus NC-0406..0408. This accounts for F(m)/|K| conditionally; selected
 products, full lookup identity, private source/PCS, ZK and FS/H remain separate.
 The unused Leaf label remains reserved, not registered by this tree-only change.
+
+The native selected-product leaf now registers the reserved Leaf absorb and
+uses A1's existing m Sumcheck draws, contributing 3m/|K|. LeafReduction retains
+tree identity and the leaf-phase SC record separately from the tree's levels.
+The shared Python/native corpus checks full proof bytes, original ids/claims,
+record fields and continuation; real NC-0408..0410 consume Eq, public selector
+and every original column. Initial p=sigma_tilde(r) has a real upstream tree
+mutation control. This remains conditional arithmetic, without a complete
+lookup/private source/PCS/ZK/FS admission or measured c_lu.

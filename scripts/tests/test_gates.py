@@ -135,6 +135,15 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('selected-product codec reference drift', result.stderr)
 
+    def test_rejects_selected_product_original_consumer_bypass(self):
+        source = self.root / 'crates/stele-lookup/src/selected.rs'
+        original = source.read_text()
+        self.assertIn('if actual != *expected {', original)
+        source.write_text(original.replace('if actual != *expected {', 'if false {'))
+        result = self.run_gate('negative-controls')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('TamperAccepted', result.stdout + result.stderr)
+
     def test_rejects_external_field_seal_removal(self):
         source = self.root / 'crates/stele-code/src/encoder.rs'
         original = source.read_text()

@@ -63,7 +63,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 16] = [
+const REGISTRY: [RegistryEntry<'static>; 17] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -144,6 +144,11 @@ const REGISTRY: [RegistryEntry<'static>; 16] = [
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Rlc),
     },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/leaf",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -171,7 +176,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 16], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 17], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -232,6 +237,8 @@ pub enum AbsorbLabel {
     Fraction,
     /// Tree id, level and current evaluation claims (A9).
     FractionLayer,
+    /// Selected-product descriptor, sources and incoming claims (A9).
+    FractionLeaf,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -246,6 +253,7 @@ impl AbsorbLabel {
             Self::ZeroFinal => 11,
             Self::Fraction => 12,
             Self::FractionLayer => 13,
+            Self::FractionLeaf => 16,
         }]
     }
 }

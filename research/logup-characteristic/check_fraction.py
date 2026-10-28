@@ -233,7 +233,11 @@ def leaf_codec_vectors():
                 assert len(payload) == 4*d*(4*m+c+2)
                 result.append(dict(degree=d,id=s['id'],m=m,sources=list(ids),
                     payload_hex=payload.hex(),rounds=[encoded(row) for row in proof['rounds']],
-                    final=encoded(proof['final'])))
+                    final=encoded(proof['final']),public=context.hex(),leaves=[encoded(row) for row in leaves],
+                    tree_hex=ft.proof_bytes(s,tree,d).hex(),sigma=encoded(sigma),xs=[encoded(col) for col in xs],
+                    alpha=sc.encode(alpha).hex(),beta=sc.encode(beta).hex(),point=encoded(receipt['point']),
+                    claims=[[i,sc.encode(v).hex()] for i,v in receipt['claims']],record=receipt['sc'],
+                    continuation=sc.encode(sc.challenge(pt)).hex()))
     return result
 
 

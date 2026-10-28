@@ -14,5 +14,6 @@
   ["absorb", "stele/v0.1/lookup/fraction", "-"],
   ["absorb", "stele/v0.1/lookup/layer", "-"],
   ["challenge", "stele/v0.1/lookup/gamma", "RLC"],
-  ["challenge", "stele/v0.1/lookup/fold", "RLC"]
+  ["challenge", "stele/v0.1/lookup/fold", "RLC"],
+  ["absorb", "stele/v0.1/lookup/leaf", "-"]
 ]
