@@ -79,6 +79,9 @@ minimum for the k=16 example, nor refute a theorem with its actual hypotheses me
 
 ## Recommendation
 
+The [finite expander follow-up](EXPANDER.md) supplies exact small-size sampling
+bounds; production setup and scalable certificates remain unresolved.
+
 Amend RFC-0010 A1 before production code: fix a field-agnostic construction,
 canonical setup/code identity, supported lengths, extension semantics, error
 behavior, and independent provenance for distance and proximity parameters.
