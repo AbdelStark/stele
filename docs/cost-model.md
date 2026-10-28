@@ -92,3 +92,13 @@ large case, while every tested streaming schedule increases complete runtime.
 The original public consumer still determines the complete pipeline memory peak.
 These observations do not refit the planning constants or establish an inference
 planner, virtual-tensor recomputation cost, GPU bound or additional weight pass.
+
+## 9. Native linear-time code baseline
+
+The [E4-01 native ledger and report](../bench/README.md#native-expander-encoding-e4-01)
+record c_c/T_misc work for RFC-0010 A4: explicit regenerated setup, sparse/base
+encoding, full query re-encoding and every-output validation. Exact per-input
+arithmetic ratios, setup hash blocks and actual native live capacities accompany
+whole-process memory peaks with their different scopes. This encoder-only CPU
+baseline does not refit planning constants, add a weight pass, authenticate a
+commitment or supply a PCS error bound. Both profile admissions remain closed.

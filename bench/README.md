@@ -429,3 +429,67 @@ Inclusive micro-operation time includes original consumption; inference evidence
 fields remain zero. Actual subproof results, stage costs and executed control
 coverage are in model_config. There is no fitted constant, GPU, inference, ZK,
 profile-certification or complete-host-memory claim, and no weight-pass change.
+
+## Native expander encoding (E4-01)
+
+From a clean committed macOS checkout, run
+`python3 bench/expander.py /tmp/native-expander.json`. The worker measures full
+setup regeneration, encoding, ordered/duplicate column queries and exhaustive
+integer validation for J=3/6/9 in M31/QM31/OM31. It retains three separate-process
+samples per case. Inputs populate every field limb with the specified synthetic
+fixture. Setup is not amortized. Querying nonempty columns runs a second complete
+encoding, which is charged while the first output remains live.
+
+The independent integer evaluator regenerates the sparse map and uses a dense
+Circle base derived by Python; CI independently checks the complete base fixture
+and native small codewords. It shares the fixed setup hash primitive, whose
+framing has separate Python known-answer checks. The distance script checks all
+unit vectors, adjacent differences and deterministic dense samples at small sizes,
+then independently verifies the minimum observed witness. These are upper bounds
+on distance, never certified lower bounds or PCS parameters.
+
+Recorded [native expander ledger](ledger/e4-01-native-expander.json), from clean
+commit `88340649f35d35da3ed2fb97d1929ce29940a999`, Apple M1 Max, Rust 1.90.0.
+All 27 samples and all 4,793,472 output-symbol checks remain in the ledger.
+No samples were discarded. At J=9, each row has 262,144 input symbols. These are
+exact summed nanoseconds across three samples per field; complete time includes
+input generation, identity resolution, setup, encoding, query and validation.
+Build, process launch, argument parsing, stdout and final drops are excluded.
+
+| Field | Setup ns | Encode ns | Query ns | Validation ns | Complete ns |
+|---|---:|---:|---:|---:|---:|
+| M31 | 2,118,084,042 | 57,824,876 | 58,656,415 | 2,916,244,417 | 5,151,553,625 |
+| QM31 | 2,124,352,876 | 482,396,667 | 485,347,999 | 2,951,603,166 | 6,046,571,459 |
+| OM31 | 2,118,905,251 | 1,544,141,667 | 1,545,665,291 | 3,083,008,790 | 8,297,147,959 |
+
+Native live capacities include the graph, recursive buffers, base transforms,
+query selection and retained caller input/output/identity. Argument buffers are
+released before timing. This payload measurement excludes the integer validator,
+stack, runtime and allocator bookkeeping. Separate OS process RSS includes the
+validator, runtime and allocator retention; it excludes the Python controller.
+The following are maximum bytes across the three J=9 samples, not sums.
+
+| Field | Native live capacity bytes | Whole worker peak RSS bytes |
+|---|---:|---:|
+| M31 | 81,469,544 | 124,600,320 |
+| QM31 | 98,771,096 | 145,211,392 |
+| OM31 | 121,839,832 | 156,991,488 |
+
+Arithmetic counters come from the exact sparse and transform loop geometry, not
+hardware counters. Each entry below is the exact numerator/denominator per input
+symbol for one encoding, the same in all three fields. A nonempty query performs
+these operations again. Base-field twiddle construction and inversions are timed
+but excluded from these K arithmetic counters; setup hashing is reported separately.
+
+| J | K additions/input | Sparse K-by-base products/input | Circle transform K products/input | Setup hash blocks |
+|---|---:|---:|---:|---:|
+| 3 | 1,280/64 | 0/64 | 704/64 | 0 |
+| 6 | 157,952/4,096 | 156,672/4,096 | 704/4,096 | 49,258 |
+| 9 | 9,464,064/262,144 | 9,462,784/262,144 | 704/262,144 | 3,145,834 |
+
+The observed minimum weights are 128 for J=3 and 257 for J=4, for both checked
+seeds, from 159 and 543 candidates per seed respectively. Their witnesses are
+independently verified and retained in the ledger. These loose sampled upper
+bounds do not promote either registry proven flag or admit either PCS profile.
+This CPU encoder baseline supplies c_c/T_misc evidence, without fitting a cost
+constant or claiming an inference, GPU, profile, ZK or comparative speed result.

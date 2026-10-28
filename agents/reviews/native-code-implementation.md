@@ -1,9 +1,9 @@
 # Native code implementation review / PR record
 
 ## Task
-E4-01, branch task/E4-01-native-encoder. Native encoder implemented; task remains
-in_progress pending the native distance-estimate report and complete benchmark
-ledgers. No PCS or end-to-end completion is asserted.
+E4-01, branch task/E4-01-native-encoder. Native encoder and all E4-01 acceptance evidence are implemented; task remains
+in_progress pending merge. The distance witness script and clean-source
+benchmark ledger are linked below. No PCS or end-to-end completion is asserted.
 
 ## RFC sections implemented
 RFC-0010 A4 / RFC-0020 A4. Sealed typed encoder, closed identity resolution,
@@ -26,9 +26,12 @@ weight pass changes. Setup metadata states the conditional all-seed bound
 separately; full setup/PCS/FS/H composition remains open. Catalog proven flags
 stay false and both profile requests return UnsupportedParameters.
 Costs are sparse products/additions, fixed-domain setup hashing and complete
-retained graph/recursive allocation in c_c/T_misc. No measured constant or timing
-claim; adds/element, complete preparation/query costs and process memory still
-require a clean-source benchmark ledger before E4-01 is done.
+retained graph/recursive allocation in c_c/T_misc. The [native ledger and report](../../bench/README.md#native-expander-encoding-e4-01)
+record all 27 samples, exact adds/products per input, complete setup/encode/query
+costs, every-output integer validation, native live capacities and process RSS.
+This establishes a CPU baseline; no fitted constant or performance improvement
+is asserted. The independently checked distance witnesses are upper observations
+only and are retained in the ledger.
 
 ## Gates
 Passed fmt; workspace/all-target Clippy with warnings denied; workspace tests;
@@ -55,3 +58,36 @@ I tried to break it by negating every sparse coefficient (preserving linearity)
 and flipping a registry proven flag, and the control
 `test_rejects_native_code_map_and_registry_substitution` rejected it. The former
 requires actual independent map parity, not just linearity or metadata agreement.
+
+
+## Memory and measurement review
+
+The production encoder has one arithmetic path with live capacity reporting;
+ordinary encode/query methods discard the report, not an alternate result.
+The report counts retained graph capacity, every recursive y/z/output overlap,
+Circle level-vector headers and elements, inverse prefix buffers and selected
+columns. The worker adds retained input, original output and identity capacities;
+argument buffers are released before timing. OS process RSS additionally includes
+the separate integer validator and allocator retention. The graph budget remains
+a graph budget, never a total-memory limit.
+
+All new report APIs implement RFC-0010 A4 delivery instrumentation. No challenge,
+absorb, emitted claim, consumer, proof binding, ledger loss, integer certificate
+or padding rule changes. Fixed traversal and field arithmetic preserve exact
+outputs. The no_std library uses checked capacity additions and fallible vector
+reservations. Removal follows an owned allocation; no exposed caller controls
+these counters. Reports are measurement data, never verifier admission evidence.
+
+Workspace tests, all-target Clippy, no_std, fmt, dependency bans and all applicable
+repository gates passed. The code all-target tests, independent native map/base
+fixture checks, distance witnesses and actual benchmark receipts passed. A gate
+mutation omitting graph capacity failed; receipt mutations removing output checks,
+validation time, live memory or arithmetic work failed. The independent map test
+still rejects a changed linear map. No GPU code or end-to-end digest was added;
+existing control coverage remains unchanged. Glossary and Rust policy passed.
+
+I tried to break it by omitting retained graph memory and understating completed
+work, and the control `test_rejects_omitted_native_graph_memory` and actual-receipt
+rejection tests rejected it. These are measurement/gate tests, not additional
+proof-statement controls. This remains a same-author soundness-auditor skill
+review; no independent audit is claimed.
