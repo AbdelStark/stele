@@ -378,7 +378,7 @@ tasks:
   crate: stele-sumcheck
   status: in_progress
   agent: codex-root
-  branch: task/E3-05-streaming-bench
+  branch: task/E3-05-streaming-evidence
   acceptance:
   - peak memory bound verified in test
   - complete bounded-path/source contract and delivery gates in formal/streaming.md
