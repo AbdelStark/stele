@@ -223,6 +223,19 @@ reductions and E10 passport consumers. All original acceptance criteria remain.
 E5-01's accepted scalar arithmetic is unchanged. This draft is not sufficient
 to implement the missing functions or to claim a complete CQIS forward pass.
 
+Candidate exponential definitions are now specified in
+[certified exponential candidates](../../formal/cqis-exp.md). Exact rational
+enclosures certify all sub-table entries in a boundary grid and every correctly
+rounded entry for the B=14,F=10,E=12 example. The endpoint-safe two-table product
+has a strict two-unit error bound but exhibits nonmonotonic steps; a correction
+in {-1,0,1,2} makes direct and decomposed evaluation agree with correctly rounded
+exp. That correction requires a full indexed table and an additional lookup,
+whose cost is explicit. F=10 is an example scale, not a model/default decision.
+This resolves a candidate numerical rule and its error argument, not the full
+A2 contract: remaining activations, total RMSNorm, canonical registry/passport
+bytes, scale alignment, representation selection, production controls and model
+fidelity remain required. A2 and E5-02 stay Draft/blocked.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).
