@@ -87,6 +87,11 @@ manifest bytes; arbitrary raw graphs and caller-modified metadata are not inputs
 A sealed native Code interface and separate fail-closed PCS parameter resolution
 are proposed. The research codes.toml is a checked export; both proven flags stay
 false. No proximity parameter, native capacity contract or profile is admitted.
+Candidate native execution/resource contract: [bounded encoder](../../formal/bounded-encoder.md).
+It regenerates each exact v2 row into fixed recursion scratch; graph serialization
+is not required on the encoding path. Requested buffer bounds are separated from
+u64 operation counters and native allocator/stack/process evidence. This remains
+Draft, with no native implementation or PCS admission.
 Motivation: §3 names code families but does not fix a concrete M31 encoder, setup
 or supported lengths. The distance-estimate task and a `proven` boolean cannot
 replace evidence for the distance and proximity hypotheses of §6. This draft

@@ -286,3 +286,25 @@ Cost terms: setup/hash work in T_misc, sparse arithmetic in c_c, and complete
 input/output/workspace overlap. Kill criterion: any map/byte mismatch, omitted
 zero edge or exhausted stream, workspace overrun, unchecked size conversion, or
 claim of native/process-memory evidence from Python object counts.
+
+Run `uv run --locked --script research/code-provenance/check_bounded.py`. The
+[execution note](../../formal/bounded-encoder.md) fixes disjoint output/scratch
+regions and regenerates each v2 row exactly once without materializing a graph.
+Nine cases (J=3/4/5, M31/QM31/OM31) match the complete materialized encoder, including
+linear combinations, zero rows, ordered duplicate queries and exact operation/hash
+counts. Nested and late sampler exhaustion reject the entire operation; malformed
+rows/columns reject before allocation. All sizes have exact 32/64-bit capacity
+calculations. A test caught and corrected an operation-count/address-width mixup.
+
+The requested owned payload is `(2n+(n-64)/3+128)*4d + 127*4 + 21*sizeof(usize)`,
+plus borrowed input and query-result overlap where applicable. This is a candidate
+native vector-payload formula, not Python object storage, actual capacities or RSS.
+Sampler/hash stack, allocator overhead, copies and whole-process evidence remain
+explicit native delivery obligations. Every call regenerates graph rows; there is
+no cached-setup amortization or measured speed claim. Arithmetic remains d*E(J)
+adds and multiplies plus the fixed base, with up to 64*R(J) hash blocks.
+
+Recommendation: continue Q23 with this execution contract before native graduation.
+Keep A1 Draft until exact native APIs/consumers and required reviews are complete;
+then deliver production parity, malformed-input controls and full operation/memory
+ledgers. No distance, setup, proximity, PCS/profile or weight-pass claim changes.
