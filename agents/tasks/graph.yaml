@@ -548,7 +548,7 @@ tasks:
   crate: stele-code
   status: in_progress
   agent: codex-root
-  branch: task/E4-08-native-measurement
+  branch: task/E4-08-native-benchmark
   acceptance:
   - full native contract and delivery gates in formal/native-code.md
   - M31/QM31/OM31 exact Rust/Python words and query coordinates; 1000 seeded small cases per field
