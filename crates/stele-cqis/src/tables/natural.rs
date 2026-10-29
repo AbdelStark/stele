@@ -11,6 +11,9 @@ use core::cmp::Ordering;
 // Tanh-GeLU's exponent denominators after halving are < 2^384, so its Taylor
 // scratch uses <= 512*(384+9)+269 bits. Machin arctangent denominators use
 // <= 8+512*(16+11) bits each; cross-products and root scaling stay below the cap.
+// Exact GeLU integral denominators use <=31+512*(60+10+11) bits. For a<8,
+// the sum of <=513 term magnitudes is <2^3086, bounding signed numerators.
+// Width comparisons, normalizer products and scaling stay below 100,000 bits.
 const MAX_BITS: usize = 1 << 18;
 const MAX_WORDS: usize = MAX_BITS / 32;
 

@@ -72,13 +72,13 @@ fn accepts_strict_finite_tail_rounding_and_exact_zero() {
 }
 
 #[test]
-fn rejects_whole_table_output_overflow_and_unimplemented_kinds() {
+fn rejects_whole_table_output_overflow_and_other_components() {
     assert_eq!(generate("silu_q", &[0, 14]), Err(Error::Overflow));
     assert_eq!(
         generate("softcap_q", &[0, 14, 3, 0, 0]),
         Err(Error::Overflow)
     );
-    for (name, p) in [("range_8", &[][..]), ("gelu_q", &[8, 8][..])] {
+    for (name, p) in [("range_8", &[][..]), ("exp_q/direct", &[8, 8, 8][..])] {
         assert_eq!(generate(name, p), Err(Error::Parameters));
     }
 }

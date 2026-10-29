@@ -51,6 +51,7 @@ jobs:
       - run: python3 research/cqis-tables/check_native_exp.py
       - run: uv run --locked --script research/cqis-tables/check_native_activations.py
       - run: uv run --locked --script research/cqis-tables/check_native_tanh_gelu.py
+      - run: uv run --locked --script research/cqis-tables/check_native_exact_gelu.py
       - run: python3 research/cqis-bounds/check_bounds.py
       - run: uv run --locked --script harness/cqis/check_arithmetic.py
       - run: python3 research/poseidon2/check_poseidon2.py

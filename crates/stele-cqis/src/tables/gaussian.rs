@@ -1,10 +1,13 @@
-//! RFC-0021 §§2.2,3: Machin normalizer and strict tanh-GeLU certification.
+//! RFC-0021 §§2.2,3: Machin normalizer and distinct exact/tanh GeLU certification.
 use super::{
     activation::{strict_exp, Endpoint},
     natural::Natural,
     Descriptor, Error, Kind,
 };
 use core::cmp::Ordering;
+
+#[path = "gaussian_exact.rs"]
+mod exact;
 
 struct Ratio {
     n: Natural,
@@ -137,18 +140,24 @@ impl Gaussian {
     }
 
     pub(super) fn certify(&mut self, d: &Descriptor, t: i32) -> Result<i32, Error> {
-        if d.kind != Kind::GeluTanh || i16::try_from(t).is_err() {
+        if !matches!(d.kind, Kind::Gelu | Kind::GeluTanh) || i16::try_from(t).is_err() {
             return Err(Error::Parameters);
         }
         if t == 0 {
             return Ok(0);
         }
         for (i, bits) in [32, 64, 128, 256].into_iter().enumerate() {
-            if self.normalizers[i].is_none() {
+            let needs_normalizer = d.kind == Kind::GeluTanh
+                || u64::from(t.unsigned_abs()) < (8u64 << d.parameters()[0]);
+            if needs_normalizer && self.normalizers[i].is_none() {
                 self.normalizers[i] = Some(normalizer(bits + 8)?);
             }
-            let c = self.normalizers[i].as_ref().ok_or(Error::Interval)?;
-            let (low, high) = tanh_interval(d, t, bits, c)?;
+            let c = self.normalizers[i].as_ref();
+            let (low, high) = if d.kind == Kind::Gelu {
+                exact::interval(d, t, bits, c)?
+            } else {
+                tanh_interval(d, t, bits, c.ok_or(Error::Interval)?)?
+            };
             let a = low.rounded(1)?;
             let b = high.rounded(-1)?;
             if a == b {

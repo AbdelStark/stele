@@ -60,7 +60,7 @@ fn rsqrt(m: u32) -> Result<i32, Error> {
 /// Immutable definition-generated integer rows with canonical zero padding.
 ///
 /// Constructors cover range, rsqrt, exponential, sigmoid, SiLU, softcap and
-/// tanh-GeLU. E5-02 retains exact GeLU, function bytes and public MLE delivery.
+/// exact/tanh GeLU. E5-02 retains function bytes and public MLE delivery.
 /// No raw-row constructor, table-truth callback or configuration authority exists.
 /// ```compile_fail
 /// use stele_cqis::tables::Table;
@@ -74,12 +74,12 @@ pub struct Table {
 }
 
 impl Table {
-    /// Generate every signed-int16 input for sigmoid, SiLU, softcap or tanh-GeLU.
+    /// Generate every signed-int16 input for any registered activation component.
     /// Any uncertified or overflowing entry rejects the entire table.
     pub fn activation(descriptor: Descriptor) -> Result<Self, Error> {
         if !matches!(
             descriptor.kind,
-            Kind::Sigmoid | Kind::Silu | Kind::Softcap | Kind::GeluTanh
+            Kind::Sigmoid | Kind::Silu | Kind::Softcap | Kind::Gelu | Kind::GeluTanh
         ) {
             return Err(Error::Parameters);
         }
@@ -91,7 +91,7 @@ impl Table {
                 .checked_sub(32768)
                 .ok_or(Error::Interval)?;
             row[0] = t;
-            row[1] = if descriptor.kind == Kind::GeluTanh {
+            row[1] = if matches!(descriptor.kind, Kind::Gelu | Kind::GeluTanh) {
                 gaussian.certify(&descriptor, t)?
             } else {
                 activation::certify(&descriptor, t)?

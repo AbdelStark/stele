@@ -36,6 +36,14 @@ fn matches_reference_every_normalizer_precision_and_checks_domain() {
             assert_eq!(low.rounded(1), Ok(expected));
             assert_eq!(high.rounded(-1), Ok(expected));
         }
+        let d = Descriptor::new("gelu_q", 1, &[8, 8]).expect("exact descriptor");
+        for t in [-2049, -2048, -2047, -1, 1, 2047, 2048, 2049] {
+            let (low, high) =
+                exact::interval(&d, t, bits - 8, Some(&c)).expect("integral/tail transition");
+            let expected = Gaussian::new().certify(&d, t).expect("exact rounding");
+            assert_eq!(low.rounded(1), Ok(expected));
+            assert_eq!(high.rounded(-1), Ok(expected));
+        }
     }
     for bits in [0, 31, 273, usize::MAX] {
         assert!(matches!(normalizer(bits), Err(Error::Precision)));
@@ -45,7 +53,7 @@ fn matches_reference_every_normalizer_precision_and_checks_domain() {
     }
     let mut generator = Gaussian::new();
     for (name, p, t) in [
-        ("gelu_q", &[8, 8][..], 0),
+        ("silu_q", &[8, 8][..], 0),
         ("range_8", &[][..], 0),
         ("gelu_tanh_q", &[0, 0][..], -32769),
         ("gelu_tanh_q", &[0, 0][..], 32768),
@@ -69,6 +77,35 @@ fn matches_reference_ten_thousand_varied_tanh_gelu_entries_and_boundaries() {
     let mut generator = Gaussian::new();
     for row in bytes.chunks_exact(9) {
         let d = Descriptor::new("gelu_tanh_q", 1, &row[..2]).expect("descriptor");
+        let t = i32::from(i16::from_le_bytes(row[2..4].try_into().expect("input")));
+        let value = i32::from_le_bytes(row[5..9].try_into().expect("output"));
+        assert_eq!(
+            generator.certify(&d, t),
+            if row[4] == 1 {
+                Err(Error::Overflow)
+            } else {
+                Ok(value)
+            },
+            "{row:?}"
+        );
+    }
+}
+
+#[test]
+fn matches_reference_ten_thousand_varied_exact_gelu_entries_and_boundaries() {
+    let data: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../research/cqis-tables/native-exact-gelu.json"
+    ))
+    .expect("independent exact oracle");
+    let hex = data["records"].as_str().expect("records");
+    let bytes: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("hex"))
+        .collect();
+    assert_eq!(bytes.len(), 10030 * 9);
+    let mut generator = Gaussian::new();
+    for row in bytes.chunks_exact(9) {
+        let d = Descriptor::new("gelu_q", 1, &row[..2]).expect("descriptor");
         let t = i32::from(i16::from_le_bytes(row[2..4].try_into().expect("input")));
         let value = i32::from_le_bytes(row[5..9].try_into().expect("output"));
         assert_eq!(
