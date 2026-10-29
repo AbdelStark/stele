@@ -230,3 +230,11 @@ remain; even zero-coefficient originals are checked by the reference consumer.
 This is not production registry/profile admission, source/bit/range/PCS binding,
 FS/H accounting or ZK. Those additional consumers require their own losses;
 the unmasked prototype and public oracle fixture do not discharge them.
+
+The [weighted continuation](../../research/stacked-gkr/WEIGHTED-PRIVATE-SELECTION.md)
+replaces the candidate Evaluation absorb with Weighted, binding full layout,
+ordered source axes, category axis, source id, selectors, query and value.
+Originals and all A1 schedules remain; multi-axis padding and public weights add
+no challenge or random loss. Conditional records still total a*M draws and
+a*(3M-1)/|K|. Source-scoped originals, including zero-weight cases, require every
+real consumer. This remains unmasked research, with no production or ZK credit.

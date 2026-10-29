@@ -61,6 +61,12 @@ proposes a separate conditional index-bit consumer. Actual source/view binding,
 range/packing proofs, full selected-axis composition and joint masking remain
 prerequisites; the unmasked study is not a private resolver or a ZK construction.
 
+The [weighted continuation](../research/stacked-gkr/WEIGHTED-PRIVATE-SELECTION.md)
+checks that composition algebra and a candidate source-scoped frame for multiple
+source axes, category placement and selected broadcasts. It still requires the
+real stacked-final adapter, authenticated plan/view and private consumers; its
+public reference fixture does not close this production interface.
+
 ## 2. Byte grammar
 
 Integers are unsigned little-endian with their stated widths. K elements are d

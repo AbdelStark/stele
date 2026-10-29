@@ -497,3 +497,10 @@ Both fields agree with explicit tables and reject changed originals, padding,
 public coefficients and stale continuation. Its source oracle is a public test
 fixture and its messages are unmasked; no private PCS, range/packing consumer,
 ZK construction, production control or E3-06 completion is claimed. A4 stays Draft.
+
+Q20 weighted-source continuation: the [composition study](../../research/stacked-gkr/WEIGHTED-PRIVATE-SELECTION.md)
+checks full-layout Boolean selector weights, multiple source axes with padding
+holes, arbitrary category placement and broadcast factors in both fields. Zero
+weights retain all original claims; scoped frame bytes and a chained missing
+absorb mutation are checked. The real stacked-final adapter, authenticated
+source/view, bit/range/PCS and joint masking remain open; A4 and E3-06 stay blocked.
