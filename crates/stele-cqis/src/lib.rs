@@ -4,6 +4,9 @@
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
+/// Checked component-table metadata and canonical encodings (RFC-0021 §4).
+pub mod tables;
+
 /// A rejected arithmetic configuration or value; no saturation or wrapping.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {

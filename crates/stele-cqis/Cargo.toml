@@ -7,6 +7,10 @@ description = "Stele — stele-cqis (see RFC-0004)"
 
 [dependencies]
 stele-field = { path = "../stele-field" }
+blake3 = { version = "=1.8.7", default-features = false }
+
+[dev-dependencies]
+serde_json = "=1.0.154"
 
 [lints]
 workspace = true
