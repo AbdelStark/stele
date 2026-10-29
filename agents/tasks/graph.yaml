@@ -670,9 +670,10 @@ tasks:
   - RFC-0004 A8
   - RFC-0003 A3
   - RFC-0004 A9
+  - RFC-0004 A10
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9)
+  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
   agent: codex-root
   branch: task/E5-03-model-config
   acceptance:
@@ -713,9 +714,10 @@ tasks:
   - RFC-0004 A8
   - RFC-0003 A3
   - RFC-0004 A9
+  - RFC-0004 A10
   skill: cqis-numerics
   crate: stele-cqis+harness
-  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9)
+  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
   agent: codex-root
   branch: task/E5-04-causal-model
   acceptance:
@@ -757,9 +759,10 @@ tasks:
   - RFC-0017
   - RFC-0005 A1
   - RFC-0021 §4
+  - RFC-0004 A10
   skill: gkr-reduction-author
   crate: stele-ir
-  status: ready
+  status: blocked(RFC-0004 A10)
   acceptance:
   - plan.json canonical and deterministic
   - unsupported ops fail with RFC-0017 ids

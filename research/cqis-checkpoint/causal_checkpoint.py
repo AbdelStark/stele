@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import struct
 import causal_model as m
+import model_config as c
 import source
 import rope
 
@@ -30,30 +31,27 @@ def prepare(config_bytes, raw):
                      for name in ('input_layernorm.weight','post_attention_layernorm.weight'))
         ignored.append(prefix+'self_attn.rotary_emb.inv_freq')
     prepared = source.prepare(specs,ignored,raw,bytes.fromhex(WEIGHTS))
-    physical = source.a.parse(specs,prepared['artifact']); by_name = {s.name:s for s in specs}
-    def matrix(name):
-        s = by_name[name]; out = m.b.records.parse(s,physical[name]); n,k = s.shape
-        return m.b.Matrix(s.bits,out['exponent'],tuple(out['mantissas']),
-                          tuple(tuple(out['values'][j*k:(j+1)*k]) for j in range(n)))
-    def gain(name): return tuple(m.b.records.parse(by_name[name],physical[name])['values'])
+    by_name = {s.name:s for s in specs}
     # Explicit CQIS choices: split/base RoPE, 2048 positions, theta=10000; no float buffer reuse.
     rp = rope.Parameters(d//h,2048,Q(10000),layout='split')
-    rotations = tuple(tuple((v['cos'],v['sin']) for v in [rope.certify(rp,t,j) for j in range(rp.width//2)])
-                      for t in range(rp.length))
     att = m.b.pa.a.Config(m.b.pa.a.fn.Function('exp_q/nearest',1,bytes([15,7,12])),12,12,'dynamic',0,'dynamic',0,'exact',0)
-    ap = m.b.pa.Params(h,h,d//h,d//h,'split',12,12,'dynamic',0,'dynamic',0,1,-1,att,rotations)
+    ap = c.Projection(h,h,d//h,12,12,'dynamic',0,'dynamic',0,1,-1,att,c.fn.Representation(att.function,0,b''),rp)
     epsilon = config['rms_norm_eps']; norm = m.b.norm.Parameters(d,12,14,12,epsilon.numerator,epsilon.denominator)
     blocks = []
     for i in range(layers):
         prefix = 'model.layers.'+str(i)+'.'
-        blocks.append(m.b.Params(norm,norm,gain(prefix+'input_layernorm.weight'),gain(prefix+'post_attention_layernorm.weight'),
-                      tuple(matrix(prefix+name) for name in roles),ap,m.b.pa.a.fn.Function('silu_q',1,bytes([12,12])),
+        blocks.append(c.Block(norm,norm,by_name[prefix+'input_layernorm.weight'],by_name[prefix+'post_attention_layernorm.weight'],
+                      tuple(by_name[prefix+name] for name in roles),ap,m.b.pa.a.fn.Function('silu_q',1,bytes([12,12])),
                       12,12,12,12,('dynamic',0),('dynamic',0),('dynamic',0)))
-    model = m.Model(matrix('model.embed_tokens.weight'),matrix('lm_head.weight'),tuple(blocks),norm,
-                    gain('model.norm.weight'),('dynamic',0),12)
+    configuration = c.Config(2048,by_name['model.embed_tokens.weight'],by_name['lm_head.weight'],tuple(blocks),norm,
+                             by_name['model.norm.weight'],('dynamic',0),12)
+    config_bytes = c.encode(configuration); config_id = c.identity(configuration)
+    model = c.load(config_id,config_bytes,prepared['digest_cqis'],prepared['artifact'])
     info = dict(repository=REPOSITORY,revision=REVISION,config_sha256=CONFIG,source_sha256=WEIGHTS,
                 selected_tensors=len(specs),ignored_tensors=ignored,parameters=sum(m.b.records.count(s) for s in specs),
                 artifact_bytes=len(prepared['artifact']),quantiser_id=prepared['quantiser_id'].hex(),
+                model_config_bytes=len(config_bytes),model_config_id=config_id.hex(),
+                model_instance_id=c.instance_identity(config_id,prepared['digest_cqis']).hex(),
                 source_preparation_id=prepared['source_preparation_id'].hex(),digest_cqis=prepared['digest_cqis'].hex(),
                 choices=dict(weight_bits=8,wide_fraction=12,gain_fraction=14,epsilon=[1,1000000],
                              exp=[15,7,12],score=[1,-1],rope=[4,2048,10000,'split'],
