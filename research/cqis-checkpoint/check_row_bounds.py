@@ -1,4 +1,4 @@
-"""Q26 row constraints: independent arithmetic/columns and coherent attacks."""
+"""Q26 / Draft RFC-0004 A3/A8: independent row arithmetic and coherent attacks."""
 from dataclasses import replace
 from fractions import Fraction as Q
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Q26: complete A9 numerical row-conversion roles, not a full certificate set."""
+"""Q26 / Draft RFC-0004 A3/A8/A9: model row roles, not a full certificate set."""
 from pathlib import Path
 import hashlib
 import sys
