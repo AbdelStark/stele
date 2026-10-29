@@ -7,6 +7,9 @@
 
 extern crate alloc;
 
+/// Checked function definitions and selected component schemas (RFC-0021 §4).
+pub mod functions;
+
 /// Checked component-table metadata and canonical encodings (RFC-0021 §4).
 pub mod tables;
 
