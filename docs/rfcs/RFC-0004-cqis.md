@@ -276,6 +276,16 @@ the larger product does not use or claim that correction. Canonical identity,
 attention-domain/scale alignment and all native consumers remain required.
 This numerical extension does not change Accepted attention defaults or A2 status.
 
+[Component table identity bytes](../../formal/cqis-table-identity.md) now propose
+closed versioned descriptors and parameter framing, signed row encodings,
+descriptor-derived shapes and explicit zero padding. Definition validation
+regenerates every row; a matching TableId does not admit arbitrary contents.
+Thirteen descriptor frames and nine full data encodings have adversarial byte
+checks, including field-congruent integer aliases and hostile declared lengths.
+Function compositions, RMSNorm/configuration identities, passport root derivation
+and native consumers/parity still require the complete coordinated contract.
+This supplies component evidence only; A2 remains Draft.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).

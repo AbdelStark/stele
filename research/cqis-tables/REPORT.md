@@ -215,3 +215,38 @@ research API because its indexed correction table has 2^B+1 rows; wider P_k
 uses no such table. The original default-split outputs remain unchanged.
 Attention score alignment, canonical bytes, native consumers/parity and model
 fidelity remain separate delivery obligations. A2/E5-02 stay Draft/blocked.
+
+## Table identity investigation (Q25 continuation)
+
+Question: can every candidate component table have unambiguous version/parameter
+bytes, deterministic signed row order and padded data, with definition validation
+before admission? Kill criterion: metadata aliasing, an implicit variant/split,
+unchecked rows under an honest identity, resource-controlled allocation from
+untrusted lengths, or padding accepted as real membership. The property is
+definition binding; generation/evaluation contributes to c_lu/T_misc. This
+research does not supply a passport commitment, lookup, composition compiler or
+whole CQIS identity. A2 and E3-08 remain uncompleted.
+
+The [descriptor/data candidate](../../formal/cqis-table-identity.md) gives
+closed names, exact version and parameter framing, ordinary BLAKE3 identities,
+signed i32 row bytes and descriptor-derived padding. High/low/correction names
+bind the exp split; correctly rounded direct exp excludes that irrelevant
+parameter. Activations retain their variant/scales/cap, rsqrt fixes its versioned
+mantissa function, and range tables have one column. No unbounded virtual exp
+function is silently registered as a component table.
+
+`check_identity.py` independently assembles all 13 descriptor frames and nine
+complete table-data encodings; the [artifact](table-identity-candidates.json)
+retains exact bytes/ids, shapes and data digests. Every descriptor truncation,
+unknown/invalid parameter, huge declared length, altered id/row/order/padding,
+trailing byte and alternate field-congruent integer encoding rejects. Table
+admission regenerates the complete numerical definition; an identity or data
+digest alone never authenticates arbitrary row contents. Whole-table overflow
+also rejects even when its descriptor is syntactically valid.
+
+Recommendation: integrate this component contract with complete function
+composition/configuration identities and the passport's validated table roots.
+Native registry/MLE evaluation parity, real NC-0404/0405/0701 consumers and the
+full A2 acceptance remain. This study neither proves lookup inclusion nor
+turns a research data digest into a passport commitment. No performance result,
+new challenge, field-faithfulness exception or committed intermediate is added.
