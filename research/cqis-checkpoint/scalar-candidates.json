@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "scope": "research scalar conversion only; quantiser/certificates remain Draft",
+  "cases": [
+    {
+      "format": "binary16",
+      "checked": 65536,
+      "accepted": 63488,
+      "rejected_nonfinite": 2048,
+      "zeros": 2,
+      "sha256": "8f5ff572d5253c26d1ced31b8e8bfe9c9826aa9e726b7fd67e3e06a069e5359e"
+    },
+    {
+      "format": "bfloat16",
+      "checked": 65536,
+      "accepted": 65280,
+      "rejected_nonfinite": 256,
+      "zeros": 2,
+      "sha256": "15f36235d3f3b4c55971647a31d973aa07e843ab3f918fb01aab4a879cfaff96"
+    },
+    {
+      "format": "binary32",
+      "checked": 11536,
+      "accepted": 11493,
+      "rejected_nonfinite": 43,
+      "zeros": 2,
+      "sha256": "31f080eb15203eb56834f2171a0c0b0a5367564e1b38e2d9343d9602ce84e220"
+    },
+    {
+      "format": "binary64",
+      "checked": 22288,
+      "accepted": 22279,
+      "rejected_nonfinite": 9,
+      "zeros": 2,
+      "sha256": "f3488ea58ec1a5f3fd921f2c1d7a51b7234ae6323aa90d7e400bd5c30c941ed4"
+    }
+  ],
+  "cross_format_values": 6
+}
