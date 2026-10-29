@@ -734,3 +734,23 @@ Review: [same-author passes](../../agents/reviews/row-bounds-draft.md).
 No challenge, ledger line, cut, proof weight pass or measured cost changes.
 E5-03/04 retain their original criteria. Full schemas, canonical certificate sets,
 native parity, actual consumers, fidelity and NC-0109 remain required.
+
+### A3/A7 evidence continuation — Rotary application envelope
+
+Status: Draft research evidence; A3/A6/A7/A9 remain Draft. Question Q26.
+The [rotary bound study](../../research/cqis-bounds/ROTARY.md) proves the fixed
+Q14 coefficient envelope |C|+|S|<=23171, including a canonical example that
+requires its final unit. With signed int16 sources, both rotary numerators,
+sign/magnitude conversion and nearest rounding are faithful in M31 without
+limbs. Layout, absolute position, Q/K fractions and passthrough channels have
+explicit candidate records and plaintext checks.
+
+Component-bounded arbitrary fixtures need not meet the envelope; the new checker
+rejects them even on zero inputs. Envelope membership is not canonical coefficient
+identity. Source/function/position/range consumers remain required, and a static
+record alone authenticates none of them. The 10000-case corpus and pinned model
+records are correctness evidence only. Review:
+[same-author passes](../../agents/reviews/rotary-bounds-draft.md).
+Accepted RFC-0022 schemas, challenge/ledger lines, cuts and proof weight passes
+are unchanged. E5-03/04 retain their original criteria; complete certificate sets,
+native parity, fidelity and NC-0106/0109 remain open. No measured cost claim.
