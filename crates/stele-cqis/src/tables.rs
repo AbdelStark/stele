@@ -13,6 +13,11 @@ mod natural;
 pub use fixed::Table;
 pub use mle::{Evaluation, TableField};
 
+// RFC-0021 §2.3: reuse the certified fixed-table entry definition internally.
+pub(crate) fn rsqrt_value(m: u32) -> Result<i32, Error> {
+    fixed::rsqrt(m)
+}
+
 const PREFIX: &[u8] = b"stele/v0.1/table/identity";
 const MAX_DESCRIPTOR: usize = 128;
 

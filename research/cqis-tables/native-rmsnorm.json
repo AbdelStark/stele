@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "scope": "native RMSNorm numerical parity; no full inference or bound-certificate admission",
+  "count": 11000,
+  "accepted": 10889,
+  "overflow": 111,
+  "digest": "56f798aa328363a5bd631016d801d9c81cd84f10f8279790cd2d404647d485ab"
+}
