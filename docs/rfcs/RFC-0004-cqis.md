@@ -810,3 +810,20 @@ Review: [same-author passes](../../agents/reviews/attention-sum-bounds-draft.md)
 No Accepted behavior, challenge, ledger line, cut, proof weight pass or measured
 cost changes. E5-03/04 and E7-06/07 retain all original criteria; complete schemas,
 native parity, fidelity and NC-0109/0500..0506 remain open.
+
+### A3/A6 evidence continuation — Signed variable normalization
+
+Status: Draft research evidence; A3/A6 and RFC-0009 A2 remain Draft. Question Q26.
+The [normalization study](../../research/cqis-bounds/ATTENTION-NORMALIZATION.md)
+derives candidate static byte-column records for positive variable division,
+signed nearest ties-away rounding and int16 output. Canonical source sign,
+scaled numerator/divisor, quotient product and strict remainder gap reject
+coherent modular aliases; no observed value determines a certificate cap.
+
+Exact/NumPy checks, mixed model roles and pinned replay supply conditional
+arithmetic evidence. Block rounding/summation, score/max schemas, complete
+certificate sets and actual source/range/function/selection/PCS consumers remain
+required. Review: [same-author passes](../../agents/reviews/attention-normalization-bounds-draft.md).
+Accepted RFC-0022, challenge/ledger lines, cuts and proof weight passes are
+unchanged. E5-03/04 and E7-06/07 retain all original criteria; native parity,
+fidelity and NC-0100/0101/0109/0500..0506 remain open. No measured cost claim.
