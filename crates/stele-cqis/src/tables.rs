@@ -7,6 +7,7 @@
 mod activation;
 mod exp;
 mod fixed;
+mod gaussian;
 mod natural;
 pub use fixed::Table;
 
