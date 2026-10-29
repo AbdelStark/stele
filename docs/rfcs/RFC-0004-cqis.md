@@ -695,3 +695,23 @@ constant. Real config/role/representation/source consumers need catalogued
 negative controls when admitted; research mutation tests earn no NC credit.
 E5-03/04 and E6-01 retain all original criteria. Native parity, complete static
 schemas, supported architecture coverage, fidelity and private PCS/ZK remain open.
+
+### A3 evidence continuation — Closed scaled-linear bounds
+
+Status: Draft research evidence; A3/A8/A9 remain Draft. Question Q26.
+The [scaled-linear study](../../research/cqis-bounds/SCALED-LINEAR.md) closes a
+candidate static schema for Y=R(A*m*s*2^(ew-Fx+Fo)), including gated int32
+row-scale maxima and embedding/head conversion. Symmetric dots require
+2*dimension*127*(2^(weight_bits-1)-1)<p; larger dots need a different contract.
+Byte-limb products/division and small signed relations have explicit whole-input,
+digit, carry and boundary bounds. Extreme exponents select justified zero-output
+or zero-only branches without allocating huge powers of two.
+
+Separate research bytes do not extend Accepted RFC-0022 v1 or A1's scalar
+Requant. No complete certificate set, cqis_id, source authentication, range,
+lookup or PCS consumer, NC-0109 or profile is admitted. The 10000-case corpus
+and pinned model records are correctness evidence, not proof verification.
+Review: [same-author passes](../../agents/reviews/scaled-linear-draft.md).
+No challenge, ledger line, cut, proof weight pass or measured cost changes.
+E5-03/04 retain all original criteria; full schemas, native parity, actual
+consumers, architecture coverage and fidelity remain required.
