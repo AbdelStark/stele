@@ -60,6 +60,7 @@ jobs:
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py
       - run: uv run --locked --script research/cqis-checkpoint/check_records.py
+      - run: uv run --locked --script research/cqis-checkpoint/check_artifact.py
       - run: uv run --locked --script harness/cqis/check_arithmetic.py
       - run: python3 research/poseidon2/check_poseidon2.py
       - run: uv run --locked --script research/transcript/check_transcript.py

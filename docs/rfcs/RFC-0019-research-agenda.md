@@ -436,3 +436,10 @@ int16 gain conversion. Independent complete-byte and rational/NumPy checks cover
 regeneration, preserving the distinct origin-binding obligation. Ordered artifacts,
 quantiser identity, source-container/tied-role bindings, static certificates and
 actual consumers remain required; RFC-0004 A3 and E5-03 remain Draft/blocked.
+
+Q26 artifact continuation: the [ordered artifact study](../../research/cqis-checkpoint/ARTIFACT.md)
+specifies complete research framing for the selected tensor set, a versioned offline
+preparation identity and a distinct content digest. Independent outer encoding
+checks 10,000 mixed artifacts and exact order/count/metadata rejection. Actual source
+container/shard/alias resolution, full CQIS operation plans, static certificate
+schemas and production consumers remain open; no artifact/profile is admitted.

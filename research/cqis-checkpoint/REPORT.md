@@ -111,3 +111,13 @@ rejection and canonical final-nibble padding. A valid one-value mutation demonst
 that parsing is separate from source authentication. Complete multi-tensor artifact,
 quantiser identity, source/plan bindings, certificates and native/full inference
 remain open; the candidate is research-only and E5-03 stays blocked.
+
+## Ordered artifact and preparation identity continuation
+
+The [artifact study](ARTIFACT.md) composes the exact selected record set in name
+order and hashes all offline conversion metadata into a candidate quantiser_id.
+A separately framed content digest changes under legal value mutations. Independent
+outer encoding checks 10,000 mixed artifacts, including permutation stability,
+strict record-set/length/order checks and metadata sensitivity. This is research
+framing, not authenticated source adaptation or an admitted cqis_id/passport;
+static certificates, source/plan bindings and full native inference remain required.
