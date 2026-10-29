@@ -428,3 +428,11 @@ Q31 native prerequisite: Accepted RFC-0008 A3 / RFC-0012 A9 / RFC-0020 A4 fix th
 conditional fraction/selected-product contract for E3-07a. Native types, engines,
 actual public consumers, controls, shared parity and complete primitive ledgers
 are all required. This does not accept A2's whole lookup or reduce E3-07's scope.
+
+Q26 record continuation: the [physical tensor study](../../research/cqis-checkpoint/RECORDS.md)
+defines candidate shape/dtype/channel bytes, continuous int4 packing and exact
+int16 gain conversion. Independent complete-byte and rational/NumPy checks cover
+30,000 tensors. A legal payload mutation remains decodable but differs from source
+regeneration, preserving the distinct origin-binding obligation. Ordered artifacts,
+quantiser identity, source-container/tied-role bindings, static certificates and
+actual consumers remain required; RFC-0004 A3 and E5-03 remain Draft/blocked.
