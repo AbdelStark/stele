@@ -113,7 +113,10 @@ def check():
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] in (['--gated-product'],['--gated-product-controls']):
+    if sys.argv[1:] in (['--model-norm'],['--model-norm-controls']):
+        from check_model_norm_bounds import check, controls
+        check() if sys.argv[1]=='--model-norm' else controls()
+    elif sys.argv[1:] in (['--gated-product'],['--gated-product-controls']):
         from check_gated_product_bounds import check, controls
         check() if sys.argv[1]=='--gated-product' else controls()
     elif sys.argv[1:] in (['--attention-max'],['--attention-max-controls']):

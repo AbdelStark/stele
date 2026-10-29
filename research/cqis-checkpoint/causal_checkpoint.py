@@ -17,6 +17,7 @@ import model_attention_block_bounds
 import model_attention_score_bounds
 import model_attention_max_bounds
 import model_gated_product_bounds
+import model_norm_bounds
 import source
 import rope
 
@@ -87,6 +88,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     info.update(model_attention_score_bounds.evidence(model))
     info.update(model_attention_max_bounds.evidence(model))
     info.update(model_gated_product_bounds.evidence(model))
+    info.update(model_norm_bounds.evidence(model))
     actual = m.full(model,sequence); expected = reference(model,sequence)
     assert {k:actual[k] for k in expected}==expected
     cache = None
@@ -96,6 +98,9 @@ def check_checkpoint(prefix, reference, *, write=False):
     assert cache==actual['cache']
     generated = m.generate(model,sequence,2,1)
     replay = reference(model,generated['tokens'])
+    from check_model_norm_bounds import model_rows as norm_rows, native_rows, native_records
+    native=[]; norm_rows(model,replay,list(range(len(generated['tokens']))),native)
+    native_records([s for _,s,_ in model_norm_bounds.records(model)]); native_rows(native)
     from check_gated_product_bounds import model_rows as gated_rows
     gated_rows(model,replay,list(range(len(generated['tokens']))))
     from check_attention_sum_bounds import model_rows

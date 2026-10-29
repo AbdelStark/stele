@@ -899,3 +899,20 @@ This is conditional arithmetic; actual factor/function/range/source consumers,
 complete bound/registry sets, native parity and fidelity remain mandatory.
 No Accepted RFC-0022 field, challenge, loss, cut, weight pass or measured constant
 changes. E5-03/04 and E7-05 retain all original acceptance criteria and controls.
+
+### A3/A8/A9 evidence continuation — Model RMSNorm association
+
+Status: Draft model evidence; no Accepted RFC-0021/0022 change. Question Q26.
+The [model norm study](../../research/cqis-checkpoint/MODEL-NORM.md) derives the
+existing RMSNorm record from each layer's two expected norm parameters and the
+final norm. It retains all 2L+1 model roles even when their bytes coincide.
+Checked numerical outputs compose with the appropriate row conversion.
+
+Complete native-byte comparisons cover 10000 parameter sets and 150 model
+records. Native arithmetic agrees on 354 valid model norm rows and rejects a
+separate overflow case; coherent statistic aliases and source substitutions
+reject. Pinned exact and separate block-mode replays preserve prior fields.
+These are conditional arithmetic/model associations, not authenticated source
+or table consumers, a complete bound/registry set or an inference proof.
+All original criteria and controls remain required; no challenge, loss, cut,
+weight pass, measured constant or production schema changes.
