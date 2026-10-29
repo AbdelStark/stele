@@ -303,6 +303,14 @@ the stated upper-only scale inequality admits an undersized scale. E5-03 is
 blocked on the complete amendments; no runtime bound, certificate verifier,
 NC-0109 result or model quantisation is supplied by this study.
 
+Q26 continuation: the [checkpoint scalar study](../../research/cqis-checkpoint/REPORT.md)
+gives exact integer decoding candidates for binary16/bfloat16/binary32/binary64,
+preserves subnormals and rejects nonfinite encodings. Exhaustive 16-bit and seeded
+wider-format rational/inverse checks pass; a raw-byte dtype-confusion witness
+requires explicit source-format binding. This is research preparation only.
+Scale selection, zero-row/static policy, canonical checkpoint/quantiser bytes and
+per-reduction certificate consumers remain open; E5-03 stays blocked.
+
 Q22 resolution: RFC-0006 A6 and RFC-0014 A1 Accepted with the linked same-author
 skill reviews, deterministic equivalence argument and sequential-source evidence.
 The contract fixes explicit schedules, bounded record preparation, preallocated
