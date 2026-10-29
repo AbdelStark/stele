@@ -311,6 +311,14 @@ requires explicit source-format binding. This is research preparation only.
 Scale selection, zero-row/static policy, canonical checkpoint/quantiser bytes and
 per-reduction certificate consumers remain open; E5-03 stays blocked.
 
+Q26 scale continuation: [exact candidate policies](../../research/cqis-checkpoint/QUANTISER.md)
+give explicit shared-exponent/per-channel weight scales, int4/int8 symmetric
+ranges and zero-safe dynamic/static row conversion. Independent bisection and
+rounding checks cover 20,000 weight tensors and 20,000 row decisions, with exact
+minimality/error bounds and static overflow rejection. These are research choices,
+not Accepted scale/quantiser bytes, native parity or static certificate consumers;
+E5-03 and full inference remain uncompleted.
+
 Q22 resolution: RFC-0006 A6 and RFC-0014 A1 Accepted with the linked same-author
 skill reviews, deterministic equivalence argument and sequential-source evidence.
 The contract fixes explicit schedules, bounded record preparation, preallocated

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "scope": "research scale policy only; no native quantiser or certificate admission",
+  "weights": [
+    {
+      "bits": 4,
+      "tensors": 10000,
+      "all_zero_tensors": 1,
+      "changed_entries": 110057
+    },
+    {
+      "bits": 8,
+      "tensors": 10000,
+      "all_zero_tensors": 1,
+      "changed_entries": 112050
+    }
+  ],
+  "dynamic_rows": 10000,
+  "dynamic_zero_rows": 1,
+  "static_rows": 10000,
+  "static_accepted": 6875,
+  "static_overflow": 3125,
+  "sha256": "d67a111e76a1baab370fc32f78405d42d57ed483d553358b4361257b82fecc84"
+}

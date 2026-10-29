@@ -79,3 +79,14 @@ soundness-ledger term, NC-0109 result or profile admission. Scalar decoding is
 linear in source bytes with bounded per-scalar state during preparation; no fitted
 T_misc/c_a constant, weight-pass change or performance result is claimed. Native
 Rust/NumPy quantiser parity and full reference inference remain required.
+
+## Scale-policy continuation
+
+The [exact quantiser candidate](QUANTISER.md) continues Q26 with explicit int4/int8
+weight scales and dynamic/static int8 row policies. Independent rational bisection
+and signed-neighbor rounding agree on 20,000 weight tensors and 20,000 row decisions.
+The study proves scale minimality, symmetric ranges and per-entry error bounds;
+zero rows preserve scale zero and static overflow rejects. Reproduce with
+`python3 research/cqis-checkpoint/check_quantiser.py`. These remain candidate
+choices; complete configuration/identity, alignment, native parity, static
+certificates and real consumers are still required before E5-03 acceptance.
