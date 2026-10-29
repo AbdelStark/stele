@@ -369,6 +369,13 @@ Affected tasks: E5-03 (blocked on this complete contract), E5-04, E6 lowering,
 E7 reductions and E10 checkpoint/passport work. Original acceptance criteria
 remain. E5-01 scalar arithmetic and RFC-0003 A1 field recovery are unchanged.
 
+Q26 limb evidence: [static column bounds](../../research/cqis-bounds/LIMBS.md)
+include both sides and incoming carries, a separate final zero carry, and the
+whole-input range obligation that digit caps alone do not establish. Independent
+exact/NumPy checks support the nonnegative sum-of-products lemma, including the
+signed-int16 magnitude domain at d=16384. This does not complete signed, biased,
+norm quotient/remainder or per-reduction schemas; A3 and E5-03 remain Draft/blocked.
+
 ### A4 — Complete nonlinear function and representation contract
 
 Status: Accepted. Question Q25. Companion RFC-0021 and RFC-0005 A1, RFC-0008 A4,

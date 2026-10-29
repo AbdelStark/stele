@@ -53,3 +53,7 @@ Recommend RFC-0003 A2 and RFC-0004 A3. The strict arithmetic correction is exact
 but the complete quantiser/certificate contract remains Draft and E5-03 blocked.
 Preserve certificate property tests and the actual NC-0109 requirement. No core
 API, proof, challenge, benchmark, cost constant or production control changes.
+
+The [Q26 limb study](LIMBS.md) extends this evidence with static per-column
+carry and result-side bounds, whole-input range counterexamples and independent
+exact/NumPy checks. Closed certificate schemas and actual consumers remain open.
