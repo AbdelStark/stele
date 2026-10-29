@@ -57,3 +57,7 @@ API, proof, challenge, benchmark, cost constant or production control changes.
 The [Q26 limb study](LIMBS.md) extends this evidence with static per-column
 carry and result-side bounds, whole-input range counterexamples and independent
 exact/NumPy checks. Closed certificate schemas and actual consumers remain open.
+
+The [closed scalar Requant study](REQUANT.md) derives six fixed column
+certificates and the output sign relation for RFC-0004 A1, with native/exact/
+NumPy decision parity. Full schema coverage and proof consumers remain open.
