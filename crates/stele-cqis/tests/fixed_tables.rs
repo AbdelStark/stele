@@ -83,6 +83,43 @@ fn accepts_all_range_values_and_certifies_every_rsqrt_entry() {
 }
 
 #[test]
+fn matches_reference_numpy_integer_fixed_table_gathers() {
+    let vectors: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../research/cqis-tables/native-fixed-gathers.json"
+    ))
+    .expect("NumPy fixed gathers");
+    for (table, case) in tables()
+        .iter()
+        .zip(vectors["cases"].as_array().expect("cases"))
+    {
+        assert_eq!(case["name"], table.descriptor().name());
+        assert_eq!(case["count"], 10000);
+        assert_eq!(
+            blake3::hash(&table.encode().expect("canonical data"))
+                .to_hex()
+                .as_str(),
+            case["data_digest"].as_str().expect("full data digest")
+        );
+        let hex = case["records"].as_str().expect("gathers");
+        let records: Vec<u8> = (0..hex.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).expect("byte"))
+            .collect();
+        assert_eq!(records.len(), 10000 * 8);
+        let width = usize::from(table.descriptor().shape().columns());
+        let start = if width == 2 { 16384 } else { 0 };
+        for record in records.chunks_exact(8) {
+            let input = u32::from_le_bytes(record[..4].try_into().expect("input"));
+            let expected = i32::from_le_bytes(record[4..].try_into().expect("output"));
+            let index = usize::try_from(input.checked_sub(start).expect("domain")).expect("index");
+            assert!(index < table.descriptor().shape().rows() as usize);
+            assert_eq!(table.entries()[index * width + width - 1], expected);
+        }
+    }
+    assert_eq!(vectors["cases"].as_array().expect("cases").len(), 4);
+}
+
+#[test]
 fn rejects_changed_data_identity_shape_padding_and_integer_aliases() {
     for table in tables() {
         let honest = table.encode().expect("encoding");
