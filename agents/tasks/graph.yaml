@@ -710,6 +710,8 @@ tasks:
   skill: cqis-numerics
   crate: stele-cqis+harness
   status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7)
+  agent: codex-root
+  branch: task/E5-04-decoder-block
   acceptance:
   - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
   - decode == single causal pass test
