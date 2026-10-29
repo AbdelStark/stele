@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "scope": "research scale alignment and tied storage; no native inference or certificate admission",
+  "matmul_cases": 20000,
+  "matmul_accepted": 7435,
+  "residual_cases": 10000,
+  "residual_accepted": 3771,
+  "tied_cases": 10000,
+  "tied_witness": {
+    "source": [
+      [
+        1,
+        2
+      ],
+      [
+        3,
+        5
+      ]
+    ],
+    "row_codes": [
+      [
+        63,
+        127
+      ],
+      [
+        76,
+        127
+      ]
+    ],
+    "separately_transposed_codes": [
+      [
+        42,
+        51
+      ],
+      [
+        127,
+        127
+      ]
+    ]
+  },
+  "sha256": "c55fadf2a633e98323f27a2dd57283b8d542e79235fc699604bd31b111674ff0"
+}
