@@ -27,6 +27,9 @@
 | NC-0409 | fraction reduction | 0008 A3 | change one selector final under zero products or one unused incoming tree child | `SelectorMismatch` | done |
 | NC-0410 | fraction reduction | 0008 A3 | change one zero-coefficient source final | `SourceMismatch` | done |
 | NC-0411 | fraction reduction | 0008 A3, 0012 A9 | one next-layer round value from Gamma before Fraction/Layer or Fold before Final | `RoundSumMismatch` | done |
+| NC-0412 | configured function | 0021 §6, 0005 A1 | change one configured semantic parameter while retaining the original operation binding | `FunctionMismatch` | todo |
+| NC-0413 | selected representation | 0021 §6, 0008 A4 | change one selected representation or component role | `RepresentationMismatch` | todo |
+| NC-0414 | table data | 0021 §6, 0011 A2 | change one canonical table-data entry under the correct descriptor | `TableDataMismatch` | todo |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600–0601 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |

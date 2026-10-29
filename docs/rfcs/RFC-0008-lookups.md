@@ -245,7 +245,7 @@ charge all retained levels/copies. No fitted constant or weight-pass count chang
 
 ### A4 — Canonical public table registry and function closure
 
-Status: Draft. Companion RFC-0021/RFC-0004 A4. Review: pending.
+Status: Accepted. Companion RFC-0021/RFC-0004 A4. Review: [coordinated skill sign-off](../../agents/reviews/cqis-functions-contract-accepted.md).
 Motivation: §4's concatenation lacks field boundaries and conflates complete
 functions with small lookup components. A table name/id alone also cannot
 authenticate arbitrary supplied rows or a changed decomposition.

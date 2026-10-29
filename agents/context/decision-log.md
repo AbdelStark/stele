@@ -270,3 +270,23 @@ admission. A2 remains Draft; E3-07 retains its private source/multiplicity,
 NC-0400..0403 and c_lu criteria. Native labels/accounting must accompany the
 actual engine. No constant or weight-pass count changes. Same-author skill
 reviews, not independent audit. Status: Accepted.
+
+## ADR-034 — Exact nonlinear functions and canonical table authority
+
+Context: E5-02 / Q25, RFC-0021 and RFC-0004 A4, RFC-0005 A1, RFC-0008 A4,
+RFC-0009 A1, RFC-0011 A2. Decision: accept exact product/nearest exponential,
+activation and total RMSNorm integer definitions, versioned component/function/
+representation bytes, complete canonical data validation and explicit public
+table matrix/code/root derivation. A supplied identity or valid Merkle opening
+cannot authorize arbitrary rows. The plan binds operation/source context; the
+manifest alone is not a full CQIS configuration or passport. The incomplete
+RFC-0004 A2 proposal is superseded; A3 certificates remain unresolved.
+
+Implement native E5-02 generators, immutable validators and public MLE evaluation
+under the full RFC-0021 §6 delivery gates. Reserve NC-0412/0413/0414 as todo for
+actual consuming bindings, with no new configuration-control exception. Preserve
+E3/E5/E6/E7/E9/E10/E12 criteria, including larger-dimension norm work, model
+fidelity, complete lookup, private PCS, full outer bytes and ZK. No challenge,
+fitted constant, weight-pass count or committed intermediate changes. Same-author
+coordinated skill sign-off is not independent audit or native task completion.
+Status: Accepted.

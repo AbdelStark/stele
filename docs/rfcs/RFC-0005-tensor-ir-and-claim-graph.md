@@ -35,7 +35,7 @@ Lowering, padding, stacking order, head order, chunking decisions and table ids 
 
 ### A1 — Function and representation references in the plan
 
-Status: Draft. Companion RFC-0021 and RFC-0004 A4. Review: pending.
+Status: Accepted. Companion RFC-0021 and RFC-0004 A4. Review: [coordinated skill sign-off](../../agents/reviews/cqis-functions-contract-accepted.md).
 Motivation: a component table identity cannot bind a complete exp composition or
 RMSNorm's dimension/scales/epsilon, and a function set cannot bind operation order.
 

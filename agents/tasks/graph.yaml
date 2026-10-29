@@ -451,7 +451,7 @@ tasks:
   - RFC-0020 A4
   skill: gkr-reduction-author
   crate: stele-lookup
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E3-07a-fraction-ledger
   acceptance:
@@ -469,6 +469,8 @@ tasks:
   rfc:
   - RFC-0008 §4
   - RFC-0004 §4
+  - RFC-0008 A4
+  - RFC-0021 §§4,6
   skill: cqis-numerics
   crate: stele-lookup
   status: ready
@@ -634,15 +636,17 @@ tasks:
   - E5-01
   rfc:
   - RFC-0004 §4
-  - RFC-0004 A2
+  - RFC-0004 A4
+  - RFC-0021 §§2-6
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0004 A2)
+  status: in_progress
   agent: codex-root
-  branch: task/E5-02-table-root-binding
+  branch: task/E5-02-cqis-contract-acceptance
   acceptance:
   - table ids stable
   - max abs error documented
+  - complete native generator, canonical byte, rejection and parity requirements in RFC-0021 §6
 - id: E5-03
   epic: E5
   title: Quantiser (per-channel int8/int4 weights, dynamic per-token scales, static fallback) + bound certificates
@@ -653,6 +657,8 @@ tasks:
   - RFC-0003 §4
   - RFC-0003 A2
   - RFC-0004 A3
+  - RFC-0004 A4
+  - RFC-0021 §2.3
   skill: cqis-numerics
   crate: stele-cqis
   status: blocked(RFC-0003 A2; RFC-0004 A3)
@@ -669,6 +675,8 @@ tasks:
   - E5-03
   rfc:
   - RFC-0004 §3,§5,§7,§9
+  - RFC-0004 A4
+  - RFC-0021 §§2-5
   skill: cqis-numerics
   crate: stele-cqis+harness
   status: ready
@@ -709,6 +717,8 @@ tasks:
   rfc:
   - RFC-0005 §1
   - RFC-0017
+  - RFC-0005 A1
+  - RFC-0021 §4
   skill: gkr-reduction-author
   crate: stele-ir
   status: ready
@@ -723,6 +733,7 @@ tasks:
   rfc:
   - RFC-0005 §2
   - RFC-0008 §5
+  - RFC-0008 A4
   skill: gkr-reduction-author
   crate: stele-ir
   status: ready
@@ -779,9 +790,12 @@ tasks:
   - E7-01
   rfc:
   - RFC-0004 §5.3
+  - RFC-0004 A3
+  - RFC-0004 A4
+  - RFC-0021 §2.3
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: blocked(RFC-0004 A3)
   acceptance:
   - NC-0105
   - certificate for d up to 2^14 and chunked beyond
@@ -806,6 +820,7 @@ tasks:
   - E3-08
   rfc:
   - RFC-0004 §3
+  - RFC-0021 §2.2
   skill: gkr-reduction-author
   crate: stele-reductions
   status: ready
@@ -819,6 +834,8 @@ tasks:
   - E3-06
   rfc:
   - RFC-0009 §2
+  - RFC-0009 A1
+  - RFC-0021 §2.1
   skill: gkr-reduction-author
   crate: stele-reductions
   status: ready
@@ -1231,6 +1248,8 @@ tasks:
   - E5-05
   rfc:
   - RFC-0011 §1-2
+  - RFC-0011 A2
+  - RFC-0021 §4
   skill: pcs-engineer
   crate: stele-passport
   status: ready
