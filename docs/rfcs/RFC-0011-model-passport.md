@@ -62,3 +62,58 @@ one-weight-pass requirement remain. No new root, seed API, certificate format,
 loss or profile is admitted. Costs and possible protocol losses depend on the
 complete replacement; no measured constant changes. Affected tasks: E4-05,
 E4-06, E10 passport/inference and E12 privacy/certificate consumers.
+
+### A2 — Canonical function manifest and table commitment binding
+
+Status: Draft. Companion RFC-0021/RFC-0004 A4 and RFC-0008 A4. Review: pending.
+Motivation: a table id names a definition, while an arbitrary supplied root can
+commit to different data. The function set also omits operation/source mapping.
+
+Addition to §1 items 1,3: the passport authenticates the exact RFC-0021 function
+manifest, and each operation in its canonical model/plan identifies its expected
+FunctionId/RepresentationId and source/scale/gain tensors. The verifier derives
+the exact manifest and component closure from that authenticated configuration.
+Recompute component data from the complete definition; an id beside an unchecked
+root, or a supplied data digest, is not definition binding. Store the manifest
+as its exact binary bytes, not a reserialized JSON object. The full cqis_id and
+passport_root encodings must include these typed fields under their complete
+canonical outer contracts; this extension alone does not supply those contracts.
+
+For each component, form the public M31 message matrix with c rows and L columns:
+matrix[j,i]=canonical_lift(T[i,j]), with all prescribed padding already present.
+There is no packing, transposition choice, extra mask or omitted tuple column.
+Use the exact verifier-owned Accepted RFC-0010 A2/A4 code identity; its message
+length must equal L. Encode each row in M31. A coded column contains c canonical
+u32 M31 limbs in tuple-column order, so its byte width is 4c. Authenticate those
+columns using RFC-0012 A3 kind 0, the plan's distinct u64 tree id, codeword length
+and width 4c. Tree ids must be unique across the plan's roles and are not truncated
+TableIds. Recompute the expected root from this exact source/code/layout before
+admitting the table binding, or use a separately Accepted proof of that derivation.
+An inclusion proof alone does not establish contents or encoding.
+
+The canonical table-binding record is
+
+    ASCII("stele/v0.1/passport/tables") || H(function_manifest)[32] || u32(count)
+    || entries in raw TableId order, each:
+       TableId[32] || H(canonical_table_data)[32] || u8(field=1 for M31)
+       || u16(code_id_length) || complete_code_id || u64(tree_id) || root[32].
+
+Lengths are unsigned little-endian, with no padding, aliases or trailing bytes.
+The current closed code factory accepts only its exact 21/55-byte identities.
+Count, component set, code ids, tree ids, source dimensions and roots are checked
+against the verifier-owned configuration and complete regeneration, before use.
+No record may choose its own trusted code, field, source, shape or expected root.
+The table-binding record and manifest are mandatory typed inputs to the complete
+passport/CQIS binding; hashing them beside an opaque unvalidated config is not
+admission. Changing any selected field requires a new passport.
+
+Wrapper MLE openings must use those same matrices/roots and the full Accepted
+PCS/recursion schedule; this record does not certify a code's profile parameters,
+proximity, private weights, or ZK. A1 confidentiality requirements remain open.
+NC-0701 retains the actual swapped-root consumer; NC-0412/0413/0414 cover the
+configured function/representation/data edges when implemented. All controls
+remain real-consumer obligations, with no primitive/research catalog credit.
+One-time table generation/encoding/hash work is explicit T_misc/commitment work;
+no measured constant, additional inference weight pass or intermediate cut.
+E10 retains its complete outer bytes, registration, checkpoint, profile, fidelity
+and proof gates; none is waived by this deterministic table subrecord.
