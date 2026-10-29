@@ -639,7 +639,7 @@ tasks:
   crate: stele-cqis
   status: blocked(RFC-0004 A2)
   agent: codex-root
-  branch: task/E5-02-table-root-binding
+  branch: task/E5-02-cqis-contract-acceptance
   acceptance:
   - table ids stable
   - max abs error documented
