@@ -28,12 +28,12 @@ def field(value, d):
     return b''.join(uint(x, 32) for x in value)
 
 
-def encode(s):
+def header(s):
+    """Common candidate stage header, independent of coefficient representation."""
     need(set(s) == {'field','id','layout','order','output','coefficient_id','inputs','terms','coefficient'})
-    d, axes, o, c = s['field'], s['layout'], s['output'], s['coefficient']
+    d, axes, o = s['field'], s['layout'], s['output']
     need(d in (4, 8) and type(d) is int and s['order'] in (0, 1) and type(s['order']) is int)
     need(set(o) == {'id','layout','point','value'})
-    need(set(c) == {'kind','selectors','axes','source_id','values','width'})
     out = uint(1, 8)+uint(d, 8)+uint(s['id'], 64)+layout(axes, True)+uint(s['order'], 8)
     out += uint(o['id'], 64)+layout(o['layout'])
     need(len(o['point']) == sum(b for b, _ in o['layout']))
@@ -49,6 +49,13 @@ def encode(s):
     for coefficient, factors in s['terms']:
         need(len(factors) <= 3 and all(type(i) is int and 0 <= i < len(ids) for i in factors))
         out += field(coefficient, d)+uint(len(factors), 8)+b''.join(uint(i, 32) for i in factors)
+    return out
+
+
+def encode(s):
+    out = header(s)
+    c, d, axes, o, ids = s['coefficient'], s['field'], s['layout'], s['output'], s['inputs']
+    need(set(c) == {'kind','selectors','axes','source_id','values','width'})
     kind = c['kind']
     need(type(kind) is int and 0 <= kind <= 5 and len(c['selectors']) == len(axes))
     out += uint(kind, 8)

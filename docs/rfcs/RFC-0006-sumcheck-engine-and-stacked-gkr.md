@@ -557,6 +557,13 @@ original under zero weights. Its scoped descriptor and unchanged A1 loss are
 research evidence; actual stacked-final consumption, authenticated source/view,
 bit/range/PCS consumers and joint masking remain unresolved.
 
+The [private-stage composition](../../research/stacked-gkr/PRIVATE-STAGE.md)
+now consumes the actual reference stacked coefficient final at its restored
+canonical point, using metadata-only source framing and a shared transcript.
+Both original tensor and bit consumers run in the public oracle fixture. This
+does not close authenticated private consumers, global plan identities, joint
+ZK or the sparse production cost contract; A4 remains Draft.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,

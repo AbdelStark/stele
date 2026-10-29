@@ -182,10 +182,15 @@ def forest(spec, s, bits, d):
     return tree
 
 
-def instance(node, a, value, d):
+def instance(node, a, value, d, base=0):
+    # Logical heap position fixes the degree; the plan base fixes its wire id.
     count = 2 if node == 0 else 3
-    return dict(id=node, m=a, ids=list(range(count)),
+    return dict(id=base+node, m=a, ids=list(range(count)),
                 terms=[(sc.scalar(1, d), list(range(count)))], sum=value)
+
+
+def instance_range(base, count):
+    need(type(base) is int and 0 <= base <= (1 << 64)-count)
 
 
 def prove(t, spec, r, s, value, indices):
@@ -203,15 +208,16 @@ def _prepare(spec, rows, columns, scale, indices, d):
     return bits, tree, mask
 
 
-def _prove(t, spec, rows, columns, scale, value, indices, label, raw):
+def _prove(t, spec, rows, columns, scale, value, indices, label, raw, instance_base=0):
+    instance_range(instance_base, spec.leaves())
     bits, tree, mask = _prepare(spec, rows, columns, scale, indices, t.degree)
     m = spec.leaves()
     t.absorb(label, raw)
-    root, point = sc.prove(t, instance(0, spec.row_bits, value, t.degree), [mask, tree[1]])
+    root, point = sc.prove(t, instance(0, spec.row_bits, value, t.degree, instance_base), [mask, tree[1]])
     pending, nodes = {1: (point, root['final'][1])}, []
     for node in range(1, m):
         point, claimed = pending[node]
-        proof, next_point = sc.prove(t, instance(node, spec.row_bits, claimed, t.degree),
+        proof, next_point = sc.prove(t, instance(node, spec.row_bits, claimed, t.degree, instance_base),
                                      [weights(point, t.degree), tree[2*node], tree[2*node+1]])
         nodes.append(proof)
         pending[2*node] = (next_point, proof['final'][1])
@@ -235,19 +241,20 @@ def grid_coefficient(spec, rows, point, scale, d):
     return value
 
 
-def _verify(t, spec, rows, columns, scale, value, proof, label, raw):
+def _verify(t, spec, rows, columns, scale, value, proof, label, raw, instance_base=0):
     m, k, d = spec.leaves(), spec.category_bits, t.degree
+    instance_range(instance_base, m)
     need(type(proof) is dict and len(proof) == 3 and set(proof) == {'root', 'nodes', 'originals'} and len(proof['nodes']) == m-1
          and len(proof['originals']) == k, 'ProofShape')
     for v in proof['originals']:
         element(v, d)
     t.absorb(label, raw)
-    root = sc.verify_reduction(t, instance(0, spec.row_bits, value, d), proof['root'])
+    root = sc.verify_reduction(t, instance(0, spec.row_bits, value, d, instance_base), proof['root'])
     need(root['claims'][0][1] == grid_coefficient(spec, rows, root['point'], scale, d), 'CoefficientMismatch')
     pending, records = {1: (root['point'], root['claims'][1][1])}, [root['sc']]
     for node, p in enumerate(proof['nodes'], 1):
         point, claimed = pending[node]
-        receipt = sc.verify_reduction(t, instance(node, spec.row_bits, claimed, d), p)
+        receipt = sc.verify_reduction(t, instance(node, spec.row_bits, claimed, d, instance_base), p)
         need(receipt['claims'][0][1] == coefficient(point, receipt['point'], 1 << spec.row_bits, d), 'CoefficientMismatch')
         pending[2*node] = (receipt['point'], receipt['claims'][1][1])
         pending[2*node+1] = (receipt['point'], receipt['claims'][2][1])
