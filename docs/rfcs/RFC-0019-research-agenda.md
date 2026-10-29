@@ -473,3 +473,10 @@ native/exact/NumPy decisions. Source-residue aliases and coherent false local
 columns expose why the whole source and inter-column bindings are required.
 The full schema set, certificate identity/bytes and native proof consumers remain
 open under A3; no existing completion or control criterion is weakened.
+
+Q26 norm continuation: the [closed RMSNorm schema](../../research/cqis-bounds/NORM.md)
+derives static bounds covering every normalization exponent and output branch.
+All wide native intermediates and 11,004 output-row decisions match independent
+exact/NumPy references. Coherent false local arithmetic still fails the shared
+bindings. Actual proof consumers, certificate identity/bytes and other operator
+schemas remain required; full inference and private proving are unfinished.
