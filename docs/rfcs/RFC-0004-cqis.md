@@ -916,3 +916,21 @@ These are conditional arithmetic/model associations, not authenticated source
 or table consumers, a complete bound/registry set or an inference proof.
 All original criteria and controls remain required; no challenge, loss, cut,
 weight pass, measured constant or production schema changes.
+
+### A3/A10 evidence continuation — Scoped arithmetic record collection
+
+Status: Draft; no Accepted inner schema changes. Question Q26.
+The [collection study](../../research/cqis-checkpoint/BOUND-SET.md) fixes twelve
+existing arithmetic-template families, their order and complete scoped count
+25L+B+5 for L layers and B block-mode layers. Family/role pairs are distinct;
+equal-valued records retain all roles. A bounded canonical loader derives the
+expected model from separately expected configuration/artifact identities,
+which are both retained in the frame. Supplied record fields authorize nothing.
+
+Independent framing/role checks cover 256 models, the 3333-entry maximum-layer
+case and identity/omission/duplication/order mutations. Numerically identical
+models with different source roles or selected representations have different
+scopes. Prior pinned fixture fields remain intact. This is a static-template
+collection, not the full proof plan, function/component registry, cqis_id or
+source/range/branch/table consumer. Original criteria and controls remain
+required; no challenge, loss, cut, inference weight pass or constant changes.

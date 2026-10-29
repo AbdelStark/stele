@@ -33,6 +33,9 @@
   "attention_sum_bytes": 3146,
   "attention_sum_records": 2,
   "attention_sum_sha256": "c2b7e11cebfbdd44df99ee03c251257cbde08f5ce27709c5385b53c73a2800e9",
+  "bound_set_bytes": 66060,
+  "bound_set_records": 55,
+  "bound_set_sha256": "444e793d18d33fbdad4dfb281bb58825fd0d9e9dd89c88eb3263beb33163a712",
   "choices": {
     "accumulation": "exact",
     "epsilon": [
