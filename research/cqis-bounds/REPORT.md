@@ -61,3 +61,7 @@ exact/NumPy checks. Closed certificate schemas and actual consumers remain open.
 The [closed scalar Requant study](REQUANT.md) derives six fixed column
 certificates and the output sign relation for RFC-0004 A1, with native/exact/
 NumPy decision parity. Full schema coverage and proof consumers remain open.
+
+The [closed RMSNorm study](NORM.md) accounts for all wide arithmetic in
+RFC-0021 §2.3 using bounds that cover every allowed exponent and output branch.
+It retains source/range/table/branch bindings as actual consumer obligations.

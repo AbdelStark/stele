@@ -383,6 +383,13 @@ whole source digits, canonical input sign and all inter-column bindings remain
 separate obligations for real consumers. This does not admit native certificate
 bytes, a proof reduction or NC-0109; A3 remains Draft.
 
+Q26 norm evidence: a [closed RMSNorm arithmetic schema](../../research/cqis-bounds/NORM.md)
+covers the statistic, normalization remainder, signed products and both final
+shift branches. Bounds cover all permitted exponents without using observed
+values. Native/exact/NumPy rows agree; canonical certificate bytes and actual
+source/range/table/branch consumers remain open. A3 is still Draft; this is
+neither a native certificate verifier nor NC-0105/0109.
+
 ### A4 — Complete nonlinear function and representation contract
 
 Status: Accepted. Question Q25. Companion RFC-0021 and RFC-0005 A1, RFC-0008 A4,
