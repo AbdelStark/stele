@@ -433,3 +433,26 @@ data controls and retains existing domain/recombination/norm/passport controls.
 Cost: explicit table/limb counts in c_lu/c_a/T_misc; no measured constant,
 weight-pass change or committed intermediate. Full inference/profile admission
 still requires every downstream protocol and consumer; Q12 is unchanged.
+
+### A5 — Closed static records for Requant and RMSNorm
+
+Status: Draft. Question Q26. Contract: [RFC-0022](RFC-0022-static-arithmetic-records.md).
+Motivation: the scalar and norm numerical operations have exact native parity,
+but the static column schemas and their canonical bytes need an explicit contract
+before native derivation/validation. A generic supplied bound tuple is insufficient.
+
+Exact addition to §6:
+
+> Use RFC-0022 for deterministic static arithmetic records of scalar A1 Requant
+> and RFC-0021 RMSNorm within their stated parameter domains. Expected parameters
+> remain separate from the supplied bytes; every field is rederived. These
+> primitives do not authenticate a plan, enforce a proof range or accept an
+> inference. The full certificate-set/cqis_id format, remaining operation schemas,
+> quantiser and actual consuming reductions remain A3 and downstream work.
+
+Soundness: no challenge, ledger line or claim-graph edge; all named source,
+sign, digit, range, table, branch and output consumers remain mandatory.
+NC-0109 and the original property tests are unchanged. Cost: bounded integer
+derivation/encoding in T_misc; actual arithmetic and range work remains c_a/c_lu.
+No measured constant, weight pass or cut changes. Affected tasks: E5-03, E6
+plan derivation and E7 reductions; none is completed or unblocked by this amendment.

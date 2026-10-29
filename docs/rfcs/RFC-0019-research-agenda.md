@@ -480,3 +480,11 @@ All wide native intermediates and 11,004 output-row decisions match independent
 exact/NumPy references. Coherent false local arithmetic still fails the shared
 bindings. Actual proof consumers, certificate identity/bytes and other operator
 schemas remain required; full inference and private proving are unfinished.
+
+Q26 record continuation: the [canonical static records](../../research/cqis-bounds/ENCODING.md)
+give exact bytes, fixed role order, independent scalar/column derivation and
+bounded resources for the existing Requant and RMSNorm arithmetic schemas.
+Twenty thousand static configurations and full-byte mutation/truncation checks
+support [RFC-0022](RFC-0022-static-arithmetic-records.md). Native derivation,
+the other operation schemas, authenticated parameter/source and certificate-set
+identity, every actual consumer and NC-0109 remain required under E5-03.
