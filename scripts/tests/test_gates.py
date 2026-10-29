@@ -16,7 +16,8 @@ class GateTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = pathlib.Path(self.directory.name)
-        for name in ('scripts', 'crates', 'docs', 'tests', 'bench', 'agents', 'research', 'formal'):
+        for name in ('.github', 'scripts', 'crates', 'docs', 'tests', 'bench',
+                     'agents', 'research', 'formal'):
             shutil.copytree(ROOT / name, self.root / name)
         for name in ('README.md', 'Cargo.toml', 'Cargo.lock'):
             shutil.copy(ROOT / name, self.root / name)
@@ -527,6 +528,15 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(self.run_gate('docs-links').returncode, 0)
         file.write_text('[valid](docs/prd.md#goals)\n[remote](https://example.org)\n')
         self.assertEqual(self.run_gate('docs-links').returncode, 0)
+
+    def test_rejects_missing_workflow_link_target(self):
+        (self.root / 'README.md').write_text('[workflow](.github/workflows/ci.yml)\n')
+        result = self.run_gate('docs-links')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        (self.root / '.github/workflows/ci.yml').unlink()
+        result = self.run_gate('docs-links')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('broken local link .github/workflows/ci.yml', result.stderr)
 
 
 if __name__ == '__main__':
