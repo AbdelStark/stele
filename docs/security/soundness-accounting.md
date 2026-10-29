@@ -238,3 +238,12 @@ Originals and all A1 schedules remain; multi-axis padding and public weights add
 no challenge or random loss. Conditional records still total a*M draws and
 a*(3M-1)/|K|. Source-scoped originals, including zero-weight cases, require every
 real consumer. This remains unmasked research, with no production or ZK credit.
+
+Q20's [private-stage composition](../../research/stacked-gkr/PRIVATE-STAGE.md)
+adds the actual stage SC(m,delta) before weighted selection: PrivateStack binds
+expected metadata, stage Final precedes Weighted, and every original remains.
+There are m+a*M existing Sumcheck draws, conditional numerator
+m*delta+a*(3M-1) over |K| and no new RLC draw. Stage/selection records stay scoped;
+aligned 65-id blocks separate their actual instance ids, with pre-absorb overflow
+checks. Full plan/tensor identity validation, source/bit/range/PCS, FS/H and joint ZK remain
+unresolved. This research wrapper adds no accepted registry or profile bound.

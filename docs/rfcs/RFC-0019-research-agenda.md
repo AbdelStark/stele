@@ -504,3 +504,10 @@ holes, arbitrary category placement and broadcast factors in both fields. Zero
 weights retain all original claims; scoped frame bytes and a chained missing
 absorb mutation are checked. The real stacked-final adapter, authenticated
 source/view, bit/range/PCS and joint masking remain open; A4 and E3-06 stay blocked.
+
+Q20 stage continuation: the [private coefficient adapter](../../research/stacked-gkr/PRIVATE-STAGE.md)
+consumes the real reference stage A final at its canonical restored point, with
+metadata-only framing and a shared transcript. Both-field original consumers,
+wrong-coordinate/unused-final mutations and chained missing-frame checks pass.
+Public oracle data and unmasked messages do not supply private authentication or
+ZK; global ids, private consumers, proof bytes and sparse costs still block A4.

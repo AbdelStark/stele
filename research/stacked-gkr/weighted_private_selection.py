@@ -4,7 +4,8 @@ from private_selection import (GridSpec, Transcript, WEIGHTED, bounded, element,
                                need, pairs, _prove, _verify, sc)
 
 
-def derive(meta, point, value, d):
+def metadata(meta, d):
+    """Closed source/view frame prefix; contains no query or source values."""
     need(type(meta) is dict and len(meta) == 5 and set(meta) == {'layout', 'source_axes', 'category_axis', 'selectors', 'source_id'})
     axes, chosen, category = meta['layout'], meta['source_axes'], meta['category_axis']
     need(d in (4, 8) and type(axes) is tuple and 2 <= len(axes) <= 64)
@@ -12,7 +13,7 @@ def derive(meta, point, value, d):
         need(type(axis) is tuple and len(axis) == 2)
         bits, real = axis
         need(type(bits) is int and type(real) is int and 0 <= bits <= 63 and 1 <= real <= 1 << bits)
-    need(sum(b for b, _ in axes) <= 63 and len(point) == sum(b for b, _ in axes))
+    need(sum(b for b, _ in axes) <= 63)
     need(type(chosen) is tuple and 1 <= len(chosen) < len(axes)
          and all(type(a) is int and 0 <= a < len(axes) for a in chosen)
          and all(left < right for left, right in zip(chosen, chosen[1:])))
@@ -24,10 +25,6 @@ def derive(meta, point, value, d):
     raw = bytearray([1, d, len(axes)])
     raw.extend(b''.join(struct.pack('<BQ', *axis) for axis in axes))
     raw.extend(bytes([len(chosen), *chosen, category])+struct.pack('<Q', source_id))
-    source_axis = [False]*len(axes)
-    for axis in chosen:
-        source_axis[axis] = True
-    all_pairs, at = [], 0
     for (bits, _), selector in zip(axes, selectors):
         need(selector is None or type(selector) is tuple and len(selector) == bits)
         raw.append(selector is not None)
@@ -35,6 +32,19 @@ def derive(meta, point, value, d):
             for z in selector:
                 element(z, d)
                 raw.extend(sc.encode(z))
+    return bytes(raw)
+
+
+def derive(meta, point, value, d):
+    raw = bytearray(metadata(meta, d))
+    axes, chosen, category = meta['layout'], meta['source_axes'], meta['category_axis']
+    selectors, source_id = meta['selectors'], meta['source_id']
+    need(len(point) == sum(b for b, _ in axes))
+    source_axis = [False]*len(axes)
+    for axis in chosen:
+        source_axis[axis] = True
+    all_pairs, at = [], 0
+    for (bits, _), selector in zip(axes, selectors):
         axis_point = point[at:at+bits]
         for q in axis_point:
             element(q, d)
@@ -56,13 +66,13 @@ def derive(meta, point, value, d):
     return bytes(raw), spec, rows, all_pairs[category], scale, source_id
 
 
-def prove(t, meta, point, value, indices):
+def prove(t, meta, point, value, indices, *, instance_base=0):
     raw, spec, rows, columns, scale, _ = derive(meta, point, value, t.degree)
-    return _prove(t, spec, rows, columns, scale, value, indices, WEIGHTED, raw)
+    return _prove(t, spec, rows, columns, scale, value, indices, WEIGHTED, raw, instance_base)
 
 
-def verify_reduction(t, meta, point, value, proof):
+def verify_reduction(t, meta, point, value, proof, *, instance_base=0):
     raw, spec, rows, columns, scale, source_id = derive(meta, point, value, t.degree)
-    receipt = _verify(t, spec, rows, columns, scale, value, proof, WEIGHTED, raw)
+    receipt = _verify(t, spec, rows, columns, scale, value, proof, WEIGHTED, raw, instance_base)
     receipt['source'] = (source_id, spec.axes, spec.category_bits, spec.categories)
     return receipt

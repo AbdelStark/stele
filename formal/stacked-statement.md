@@ -67,6 +67,13 @@ source axes, category placement and selected broadcasts. It still requires the
 real stacked-final adapter, authenticated plan/view and private consumers; its
 public reference fixture does not close this production interface.
 
+The [private-stage study](../research/stacked-gkr/PRIVATE-STAGE.md) supplies an
+actual reference adapter: a separate closed metadata-only frame, canonical point
+restoration and consumption of the stage's A final by weighted selection. Its
+original data are fixed public fixture bytes; aligned instance-id blocks separate
+the stage and child nodes. Production authentication, full plan/tensor identity
+validation and joint ZK remain open.
+
 ## 2. Byte grammar
 
 Integers are unsigned little-endian with their stated widths. K elements are d
