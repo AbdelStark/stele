@@ -246,6 +246,15 @@ remain explicit. This is further numerical evidence, not acceptance: GeLU
 variants, total RMSNorm/rsqrt, authenticated registry bytes, complete model-scale
 alignment, native controls/parity and fidelity remain required under A2.
 
+[GeLU variant candidates](../../formal/cqis-gelu.md) now give separately certified
+exact and tanh forms, with rational pi/square-root bounds and strict Gaussian
+tails. Both full example tables and varied-scale inputs match a separate pi
+identity and positive integral-series oracle. Their example outputs differ,
+so the variant must remain explicit. Each error bound is relative to its own
+real function, not an implied approximation guarantee between variants.
+Total RMSNorm/rsqrt, canonical registry/passport bytes, scale alignment, native
+delivery and model fidelity remain required; this evidence does not accept A2.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).

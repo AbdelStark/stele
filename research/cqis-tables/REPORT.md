@@ -113,3 +113,34 @@ Recommendation: continue Q25 with GeLU variants, total RMSNorm/rsqrt, authentica
 registry bytes and scale alignment, then complete A2 review and native delivery.
 This continuation leaves A2 Draft and E5-02 blocked. No lookup/range binding,
 native negative-control, static-certificate or model-fidelity credit is claimed.
+
+## GeLU variant investigation (Q25 continuation)
+
+Question: can exact GeLU and the explicitly parameterized tanh approximation
+each receive correct signed integer rounding certificates, including their
+Gaussian tails and half-unit limits? Kill criterion: a guessed pi/square-root
+constant, uncertified tail, implicit variant substitution or floating-point
+authority. The security property is definition agreement; direct-table costs
+remain in c_a/c_lu/T_misc. A separate pi identity and positive integral series
+checks the candidate; the complete A2 contract remains blocked.
+
+The [definitions and argument](../../formal/cqis-gelu.md) certify exact GeLU
+and tanh-GeLU as distinct real functions, with coefficient 8943/200000 exactly
+in the latter. Machin pi bounds and exact integer-root inequalities certify
+constants. Integrated alternating-series bounds and a strict positive Gaussian
+tail bound certify the exact form; strict exponential transformations certify
+the tanh form. No tail is replaced by zero, including at rounding boundaries.
+
+`check_gelu.py` checks all 131,072 example entries and 20,000 seeded scale cases
+using another pi identity, integer root bisection and a positive integral series.
+The [artifact](gelu-candidates.json) records distinct digests and 108 differing
+entries (one integer unit each) at F=E=8. The 1/2 output-unit error guarantee is
+relative to each variant's own real function; it is not a bound on the model
+effect of choosing tanh instead of exact GeLU. Whole-configuration overflow,
+constant-cache type aliases, boundaries, altered certificates and wrong variant
+metadata reject. Direct-table and eventual membership costs remain explicit.
+
+Recommendation: continue Q25 with total RMSNorm/rsqrt and canonical registry
+and passport bytes, then complete scale alignment, review and native delivery.
+This is numerical evidence only, not production lookup/identity controls,
+static certificates, Rust/NumPy inference parity or model-fidelity acceptance.
