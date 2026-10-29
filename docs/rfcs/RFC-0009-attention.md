@@ -75,3 +75,26 @@ Attained-max and all lookup/source/PCS/FS errors require their actual schedules
 and ledger entries. No full attention protocol or profile is admitted by a
 function descriptor. E5/E7/E10 delivery retains all original gates; no measured
 constant, new committed tensor or weight-pass change is asserted.
+
+### A2 — Restore value and block units before normalization
+
+Status: Draft. Companion RFC-0004 A6; [evidence](../../research/cqis-checkpoint/ATTENTION.md)
+and [same-author review](../../agents/reviews/attention-units-draft.md).
+Motivation: raw int8 V codes with differing scales do not share physical units;
+block rounding changes those units and the existing division is ceiling.
+
+Proposed replacement for §1's value/output definitions, §2 steps 1–2 and §6:
+use RFC-0004 A6's D=s*V, fixed exact/block1024 mode, shifted signed division
+and final configured conversion. Consume each scale from the same prepared
+value source, including head/group views and cached prefixes. Keep each block
+product virtual; introduce no new cut. The row sum, exponential function,
+mask and attained maximum requirements of A1 remain in force. The old <2^30
+block claim applies only to unscaled codes, not restored values. Use the A6
+static bound and actual limb consumers for every enlarged arithmetic relation.
+
+No new challenge is specified or error term waived. A complete reduction still
+requires exact claim/consumer schedules, degree/query accounting and controls
+for source/scale association, signed division and restored block units. Charge
+these to c_a/c_x/T_misc; no measured constant or weight-pass count changes.
+E7-06/07 are blocked on A2/A6. Original NC-0500..0506, memory and cost criteria
+remain; this amendment is not a complete attention proof or profile admission.
