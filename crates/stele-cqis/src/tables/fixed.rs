@@ -35,7 +35,7 @@ fn zero_entries(d: &Descriptor) -> Result<Vec<i32>, Error> {
     Ok(values)
 }
 
-fn rsqrt(m: u32) -> Result<i32, Error> {
+pub(super) fn rsqrt(m: u32) -> Result<i32, Error> {
     if !(16384..65536).contains(&m) {
         return Err(Error::Parameters);
     }

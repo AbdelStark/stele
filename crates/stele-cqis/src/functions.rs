@@ -6,6 +6,8 @@ mod representation;
 pub use representation::Representation;
 mod manifest;
 pub use manifest::Manifest;
+mod norm_row;
+pub use norm_row::{NormError, NormEvaluation};
 
 const FUNCTION: &[u8] = b"stele/v0.1/function/identity";
 const REPRESENTATION: &[u8] = b"stele/v0.1/function/representation";
