@@ -49,6 +49,8 @@ jobs:
       - run: uv run --locked --script research/cqis-tables/check_table_bindings.py
       - run: python3 research/cqis-tables/check_native_arithmetic.py
       - run: python3 research/cqis-tables/check_native_exp.py
+      - run: uv run --locked --script research/cqis-tables/check_native_exp_functions.py
+      - run: uv run --locked --script research/cqis-tables/check_native_fixed_gathers.py
       - run: uv run --locked --script research/cqis-tables/check_native_activations.py
       - run: uv run --locked --script research/cqis-tables/check_native_tanh_gelu.py
       - run: uv run --locked --script research/cqis-tables/check_native_exact_gelu.py
