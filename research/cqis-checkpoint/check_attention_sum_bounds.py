@@ -153,10 +153,13 @@ def model_row(p,position,q,positions,keys,values,allowed,expected):
     ks=[convert(rotation(p,j,k,p.groups),p.k_mode,p.k_scale) for j,k in zip(positions,keys)]
     vs=[convert(v,p.attention.value_mode,p.attention.value_scale) for v in values]
     qs,qc=convert(rotation(p,position,q,p.heads),p.q_mode,p.q_scale); spec=model_bounds.spec(p); results=[]
+    from check_attention_score_bounds import model_row as score_row
+    checked_scores=score_row(p,position,q,positions,keys)
     for head in range(p.heads):
         group=head//(p.heads//p.groups); lo=group*p.width; hi=lo+p.width
         scores=[rounded(Q(sum(x*y for x,y in zip(qc[head*p.width:(head+1)*p.width],k[lo:hi]))*qs*s*p.score_m)*
                         Q(2)**(p.score_e-p.fq-p.fk+p.attention.function.params[1])) for s,k in ks]
+        assert scores==checked_scores[head]
         maximum=max(v for v,bit in zip(scores,allowed) if bit)
         weights=[probability(p,maximum-v) if bit else 0 for v,bit in zip(scores,allowed)]
         groups={}

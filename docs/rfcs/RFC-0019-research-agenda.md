@@ -642,3 +642,13 @@ aliases reject. A distinct pinned block-mode variant preserves baseline evidence
 Draft A3/A6 and RFC-0009 A2 remain unaccepted. Score/max schemas, complete
 certificate sets, actual consumers, native parity, fidelity and private inference
 remain required; original task criteria and production NCs are unchanged.
+
+Q26 attention-score continuation: the [scaled QK study](../../research/cqis-bounds/ATTENTION-SCORE.md)
+adds static dot/scale/nearest-rounding records and byte-faithful signed outputs.
+The 10000-configuration corpus includes 5499 valid rows and 4501 static-bound
+rejections; coherent p-separated score/product/division aliases reject.
+Whole-projection GQA slicing and pinned replay compose with attention sum/block/
+normalization arithmetic while preserving all previous fixture fields. Draft
+A3/A6 and RFC-0009 A2, original tasks and controls remain unchanged. Complete
+schemas, masked maximum/deltas, actual consumers, native parity and fidelity
+remain mandatory; this is not an inference proof or performance result.

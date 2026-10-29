@@ -846,3 +846,21 @@ Actual source/mask/position/range/function consumers, score/max schemas, complet
 certificate sets, native parity and fidelity remain required. No Accepted
 behavior, challenge/ledger line, cut, proof weight pass or measured cost changes.
 E5-03/04 and E7-06/07 retain original criteria and NC-0100/0101/0109/0500..0506.
+
+### A3/A6 evidence continuation — Scaled QK score bounds
+
+Status: Draft research evidence; A3/A6 and RFC-0009 A2 remain Draft. Question Q26.
+The [score study](../../research/cqis-bounds/ATTENTION-SCORE.md) derives closed
+per-pair records for dot, restored Q/K scales, configured score units and nearest
+rounding. The static int32 bound is required before actual inputs; masked
+scores use the same arithmetic. Dot/sign relations fit M31, while wide products,
+division and the signed score output use canonical byte relations. A legal
+output pair differing by exactly p rejects even after rebuilding all columns.
+
+Independent Fraction/NumPy/column framing, randomized full-width rows, GQA
+slicing, model replays and the pinned checkpoint support conditional arithmetic
+only. All prior fixture fields remain unchanged. Complete certificate sets,
+attained maximum/delta schemas, actual source/range/mask/function consumers,
+native full-model parity and fidelity remain required. No new challenge, cut,
+weight pass, measured constant or Accepted RFC-0022 change. E5-03/04 and E7-06/07
+retain all original criteria and NC-0100/0101/0109/0500..0506.
