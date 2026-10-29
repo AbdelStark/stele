@@ -1,12 +1,16 @@
 //! RFC-0021 §§2,4: closed component descriptors and canonical identity bytes.
 //!
-//! These allocation-free metadata operations do not generate or admit table rows,
-//! authenticate configuration, enforce membership, or accept a proof.
+//! Descriptor metadata alone does not admit table rows. Generated tables validate
+//! their complete integer encodings; neither API authenticates model configuration,
+//! enforces membership or accepts a proof.
+
+mod fixed;
+pub use fixed::Table;
 
 const PREFIX: &[u8] = b"stele/v0.1/table/identity";
 const MAX_DESCRIPTOR: usize = 128;
 
-/// A rejected component descriptor; no partial checked object is returned.
+/// Rejected table metadata or integer data; no partial checked object is returned.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     /// The component name is outside the closed registry.
@@ -19,6 +23,18 @@ pub enum Error {
     Encoding,
     /// A bounded output capacity or checked length cannot be satisfied.
     Capacity,
+    /// The complete table-data length differs from the expected descriptor.
+    Length,
+    /// The table-data domain prefix is not canonical.
+    DataHeader,
+    /// The table identity differs from the expected generated table.
+    Identity,
+    /// Claimed rows, padding or tuple width differ from the expected shape.
+    Shape,
+    /// A real row differs from the complete integer definition.
+    Entry,
+    /// A padded entry is not zero.
+    Padding,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
