@@ -59,8 +59,7 @@ fn rsqrt(m: u32) -> Result<i32, Error> {
 
 /// Immutable definition-generated integer rows with canonical zero padding.
 ///
-/// Constructors cover range, rsqrt, exponential, sigmoid, SiLU, softcap and
-/// exact/tanh GeLU. E5-02 retains function bytes and public MLE delivery.
+/// Constructors cover every registered component under RFC-0021 §2.
 /// No raw-row constructor, table-truth callback or configuration authority exists.
 /// ```compile_fail
 /// use stele_cqis::tables::Table;

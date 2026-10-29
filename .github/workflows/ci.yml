@@ -98,6 +98,8 @@ jobs:
           STELE_REQUIRE_SIMD: avx2
         run: cargo test -p stele-simd --release --locked --offline -- --nocapture
       - run: cargo test --workspace --locked --offline
+      - name: Native CQIS public-table MLE parity
+        run: cargo run -p stele-cqis --example table_mle_parity --release --locked --offline
       - run: cargo test -p stele-sumcheck --example batching --locked --offline
       - run: cargo test -p stele-sumcheck --example zerocheck --locked --offline
       - run: cargo test -p stele-sumcheck --example small_bench --locked --offline

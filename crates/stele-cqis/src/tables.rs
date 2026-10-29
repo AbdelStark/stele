@@ -8,8 +8,10 @@ mod activation;
 mod exp;
 mod fixed;
 mod gaussian;
+mod mle;
 mod natural;
 pub use fixed::Table;
+pub use mle::{Evaluation, TableField};
 
 const PREFIX: &[u8] = b"stele/v0.1/table/identity";
 const MAX_DESCRIPTOR: usize = 128;
@@ -45,6 +47,8 @@ pub enum Error {
     Precision,
     /// One generated activation output is outside signed int16.
     Overflow,
+    /// Query length differs from log2 of the canonical padded row count.
+    PointDimension,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
