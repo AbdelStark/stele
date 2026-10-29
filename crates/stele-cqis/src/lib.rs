@@ -7,6 +7,9 @@
 
 extern crate alloc;
 
+/// Closed static arithmetic records from separate checked parameters (RFC-0022).
+pub mod bounds;
+
 /// Checked function definitions and selected component schemas (RFC-0021 §4).
 pub mod functions;
 
