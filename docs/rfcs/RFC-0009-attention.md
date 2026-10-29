@@ -98,3 +98,10 @@ for source/scale association, signed division and restored block units. Charge
 these to c_a/c_x/T_misc; no measured constant or weight-pass count changes.
 E7-06/07 are blocked on A2/A6. Original NC-0500..0506, memory and cost criteria
 remain; this amendment is not a complete attention proof or profile admission.
+
+Q26 composition proposal for A2: §2 step 6 must first consume A6's score conversion
+and sq/sk source scales, then reduce the underlying int8 QK dot product. The
+original raw-score matmul is insufficient for these restored units. GQA uses
+floor(t/(h/g)); cached positions select the same public rotation and absolute
+accumulation block as full evaluation. All new source/scale/rotation/comparison
+consumers, static schemas and accounting remain mandatory before admission.

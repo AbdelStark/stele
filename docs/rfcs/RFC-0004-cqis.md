@@ -510,3 +510,38 @@ NC-0109 and NC-0500..0506 remain mandatory; source/scale association needs a new
 catalogued control when its binding is admitted. E5-03/04 and E7-06/07 remain
 blocked; no original criterion is weakened. Acceptance also requires complete
 static schemas, native parity, canonical identity and the §8 fidelity protocol.
+
+Q26 composition proposal for A6, still Draft: [projected attention study](../../research/cqis-checkpoint/PROJECTED-ATTENTION.md).
+Proposed replacement of §3's Q/K rotation and score definitions, conditional on
+canonical rotation-table generation/identity and complete A3 conversion policy:
+
+> Wide projected Q and K have source units 2^-fq and 2^-fk, fq/fk in [0,30].
+> The plan fixes rotary width r (even, 0<=r<=d_h), adjacent or split pairing,
+> and public signed Q14 rotation coefficients. Within each head/group, adjacent
+> pairs are (2j,2j+1), split pairs (j,j+r/2); channels >=r are unchanged.
+> At the absolute position, rotate (x,y) to
+> (R((x*c-y*s)/2^14),R((x*s+y*c)/2^14)); require int16 before conversion.
+> Quantise the complete Q projection row once, and the complete K projection
+> row once, retaining their respective scales sq_i and sk_j. Head/group views
+> never recompute these scales. For h query heads and g KV groups with g|h,
+> head t uses group floor(t/(h/g)). Require h*d_h<=16384 and h<=128.
+> The plan selects positive m_score<=65535 and e_score in [-62,30]; define
+> S_ij=R(dot(q_i,k_j)*sq_i*sk_j*m_score*2^(e_score-fq-fk+F)), where F is the
+> selected exponential function's parameter. This explicit dyadic multiplier
+> is not an implicit sqrt(d_h) or temperature operation. Require the static
+> worst absolute S below 2^31, using A6 restored-value bounds for Q and K.
+> Retain all score values, including masked positions; only unmasked differences
+> enter the exponential function. No score conversion depends on the mask.
+> Assemble wide outputs from every head in head order, then apply the selected
+> output conversion to that complete row. Head-local int8 conversion does not
+> define the O-projection input. Cache identity retains configuration and absolute
+> positions; eviction cannot renumber a key or change its rotation/block.
+
+For a cache with at most N rows in static absolute span L (N<=L<=2^20), the
+occupied block bound is min(N,ceil(L/1024)), not ceil(N/1024). Replace that factor
+in the A6 block sum/error bounds; the normalization divisor still uses N*2^E.
+Neither N nor L may be adopted from untrusted certificate fields. Score bounds,
+rotation, source scales, head views and positions need their own range/identity
+consumers, canonical bytes and controls. No challenge or Accepted behavior changes.
+The proposed numerical contract does not resolve table generation, model-specific
+scale selection, complete proof lowering, native forward or fidelity.

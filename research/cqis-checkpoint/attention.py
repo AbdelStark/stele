@@ -59,13 +59,16 @@ def minimum_drop(p):
     return next(c for c in range(63) if rounded(maximum, 1 << c) <= 32767)
 
 
-def bounds(p, n):
+def bounds(p, n, *, position_span=None):
     require(type(p) is Config, 'Config'); integer(n, 1, 1 << 20, 'Shape')
+    if position_span is None: position_span = n
+    integer(position_span, n, 1 << 20, 'Shape')
     probability = 1 << p.function.params[2]
     block_max = 1024*probability*restored_max(p)
     total = n*probability*restored_max(p)
     if p.accumulation == 'block1024':
-        total = ((n+1023)//1024)*rounded(block_max, 1 << p.drop)
+        blocks = min(n, (position_span+1023)//1024)
+        total = blocks*rounded(block_max, 1 << p.drop)
     exponent = p.fo-p.fv+p.drop
     return dict(restored_max=restored_max(p), probability_max=probability,
                 block_max=block_max, sum_max=total, z_max=n*probability,
@@ -131,9 +134,13 @@ def probability(function, delta):
     return (a*z) >> e
 
 
-def row(p, scores, allowed, cache):
+def wide_row(p, scores, allowed, cache, *, positions=None):
     require(type(p) is Config, 'Config'); width = validate(p, cache)
     n = len(cache.codes)
+    if positions is None: positions = tuple(range(n))
+    require(type(positions) is tuple and len(positions)==n and
+            all(type(j) is int and 0<=j<1 << 20 for j in positions) and
+            all(x<y for x,y in zip(positions,positions[1:])), 'Positions')
     require(type(scores) is list and len(scores) == n, 'Shape')
     require(type(allowed) is list and len(allowed) == n and all(type(x) is bool for x in allowed), 'Mask')
     require(all(type(x) is int and -(1 << 31) <= x < 1 << 31 for x in scores), 'Score')
@@ -147,7 +154,7 @@ def row(p, scores, allowed, cache):
     total = [0]*width; partial = [0]*width
     for j, (codes, scale, weight) in enumerate(zip(cache.codes, cache.scales, weights)):
         for c, code in enumerate(codes): partial[c] += weight*scale*code
-        if p.accumulation == 'block1024' and ((j+1)%1024 == 0 or j+1 == n):
+        if p.accumulation == 'block1024' and (j+1 == n or positions[j]//1024 != positions[j+1]//1024):
             for c, value in enumerate(partial):
                 small = rounded(value, 1 << p.drop)
                 require(-32768 <= small <= 32767, 'BlockBound')
@@ -158,6 +165,10 @@ def row(p, scores, allowed, cache):
     division = [(abs(x) << max(exponent, 0), z << max(-exponent, 0)) for x in total]
     wide = [(-1 if x < 0 else 1)*rounded(u, d) for x, (u, d) in zip(total, division)]
     require(all(-32768 <= x <= 32767 for x in wide), 'Overflow')
-    converted = convert(p, wide, output=True)
-    return dict(maximum=maximum, selected=selected, z=z, total=total, wide=wide,
-                scale=converted['scale'], codes=converted['output'], division=division)
+    return dict(maximum=maximum, selected=positions[selected], z=z, total=total, wide=wide, division=division)
+
+
+def row(p, scores, allowed, cache, *, positions=None):
+    result = wide_row(p, scores, allowed, cache, positions=positions)
+    converted = convert(p, result['wide'], output=True)
+    return dict(result, scale=converted['scale'], codes=converted['output'])

@@ -27,8 +27,8 @@ Masked keys have zero probability; real all-masked rows reject. No score rescale
 clamp or tail replacement occurs. Scores are supplied int32, not proven QK/RoPE
 outputs. The script handles one query and one value row scope, without a full
 multihead projection/assembly or GQA contract.
-Cache indices start at position zero; window masks retain those positions.
-Evicted or offset caches are unsupported by this prototype.
+The original corpus uses prefixes starting at zero. The [composition study](PROJECTED-ATTENTION.md)
+adds explicit absolute positions and a separate static position span for bounds.
 
 Exact mode sums P*s*v. Block1024 mode groups by absolute key position, rounds
 only complete/terminal block sums by public 2^c, then sums the rounded results T.
