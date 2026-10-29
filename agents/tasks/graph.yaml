@@ -654,6 +654,7 @@ tasks:
   - E5-01
   rfc:
   - RFC-0004 §2,§6
+  - RFC-0004 A1
   - RFC-0003 §4
   - RFC-0003 A2
   - RFC-0004 A3
@@ -664,7 +665,7 @@ tasks:
   crate: stele-cqis
   status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3)
   agent: codex-root
-  branch: task/E5-03-limb-bounds
+  branch: task/E5-03-requant-bounds
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109

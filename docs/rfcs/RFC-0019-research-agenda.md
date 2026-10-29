@@ -466,3 +466,10 @@ support the nonnegative lemma; a whole-input range counterexample prevents
 digit caps from standing in for source bounds. Signed and biased arithmetic,
 complete norm identities, closed schemas and native consumers remain open.
 No NC-0109, full certificate contract or end-to-end inference credit follows.
+
+Q26 scalar continuation: the [closed Requant schema](../../research/cqis-bounds/REQUANT.md)
+derives six static column certificates from A1 parameters and compares 20,420
+native/exact/NumPy decisions. Source-residue aliases and coherent false local
+columns expose why the whole source and inter-column bindings are required.
+The full schema set, certificate identity/bytes and native proof consumers remain
+open under A3; no existing completion or control criterion is weakened.

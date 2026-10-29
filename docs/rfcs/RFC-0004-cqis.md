@@ -376,6 +376,13 @@ exact/NumPy checks support the nonnegative sum-of-products lemma, including the
 signed-int16 magnitude domain at d=16384. This does not complete signed, biased,
 norm quotient/remainder or per-reduction schemas; A3 and E5-03 remain Draft/blocked.
 
+Q26 scalar evidence: a [closed Requant schema](../../research/cqis-bounds/REQUANT.md)
+derives the signed-input, product, biased quotient/remainder and output-side
+bounds from the native A1 parameters. Native/exact/NumPy decisions agree;
+whole source digits, canonical input sign and all inter-column bindings remain
+separate obligations for real consumers. This does not admit native certificate
+bytes, a proof reduction or NC-0109; A3 remains Draft.
+
 ### A4 — Complete nonlinear function and representation contract
 
 Status: Accepted. Question Q25. Companion RFC-0021 and RFC-0005 A1, RFC-0008 A4,
