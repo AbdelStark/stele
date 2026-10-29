@@ -121,3 +121,13 @@ outer encoding checks 10,000 mixed artifacts, including permutation stability,
 strict record-set/length/order checks and metadata sensitivity. This is research
 framing, not authenticated source adaptation or an admitted cqis_id/passport;
 static certificates, source/plan bindings and full native inference remain required.
+
+## Actual source-file continuation
+
+The [source study](SOURCE.md) validates complete safetensors files, matches selected
+names/dtypes/shapes, requires explicit ignored tensors and checks SHA-256 of the
+original file bytes before quantisation. Ten thousand files agree with the pinned
+upstream reader and reproduce artifacts from retained source arrays. Different
+header encodings of the same tensor data retain different source hashes. Complete
+sharded/source/plan identity, static certificates, native streaming and actual
+commitment/passport consumers remain required; E5-03 stays blocked.
