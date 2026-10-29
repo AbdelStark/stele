@@ -56,7 +56,7 @@ checks 10,000 varied static configurations per schema, boundary golden records,
 every one-byte mutation and every truncated prefix of those records, substitutions
 of valid records for different expected parameters, and resource/type rejection.
 Run `uv run --locked --script research/cqis-bounds/check_encoding.py`.
-All 20,000 configurations and six full-byte boundary vectors pass. The corpus
+All 20,000 configurations and seven full-byte boundary vectors pass. The corpus
 record lengths are 951..1176 bytes for Requant and 2208..2923 for norm; these
 are fixture sizes, not a performance measurement or a replacement for the
 analytical 4386-byte bound. Its SHA-256 is

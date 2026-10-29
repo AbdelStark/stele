@@ -436,7 +436,8 @@ still requires every downstream protocol and consumer; Q12 is unchanged.
 
 ### A5 — Closed static records for Requant and RMSNorm
 
-Status: Draft. Question Q26. Contract: [RFC-0022](RFC-0022-static-arithmetic-records.md).
+Status: Accepted. Question Q26. Contract: [RFC-0022](RFC-0022-static-arithmetic-records.md).
+Review: [coordinated skill sign-off](../../agents/reviews/cqis-static-records-contract.md).
 Motivation: the scalar and norm numerical operations have exact native parity,
 but the static column schemas and their canonical bytes need an explicit contract
 before native derivation/validation. A generic supplied bound tuple is insufficient.

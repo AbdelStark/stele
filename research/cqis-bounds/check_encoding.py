@@ -112,7 +112,7 @@ def report():
     sizes = {1:[8192,0],2:[8192,0]}
     goldens = [q.Spec(1,0,8),q.Spec(65535,62,16),q.Spec(3,2,8),
                n.Spec(1,0,0,14,1,2**32-1),n.Spec(16384,30,30,14,2**32-1,2**32-2),
-               n.Spec(3,8,14,8,1,100000)]
+               n.Spec(3,8,14,8,1,100000),n.Spec(1,30,30,0,1,1)]
     for p in goldens:
         rejects_changed_record(p,e.encode(p))
     for bad in [q.Spec(0,0,8),q.Spec(65536,0,8),q.Spec(1,63,8),q.Spec(1,1,32),

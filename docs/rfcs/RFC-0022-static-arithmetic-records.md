@@ -1,6 +1,8 @@
 # RFC-0022 — Closed static arithmetic records
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0003, RFC-0004, RFC-0021
+Status: Accepted · Version: 0.1.0 · Depends: RFC-0003, RFC-0004, RFC-0021
+
+Review: [coordinated skill sign-off](../../agents/reviews/cqis-static-records-contract.md).
 
 Evidence: [canonical records](../../research/cqis-bounds/ENCODING.md),
 [column lemma](../../research/cqis-bounds/LIMBS.md),
@@ -108,7 +110,8 @@ In particular Amax may exceed u128 even though normalized native arithmetic
 fits u128. Native derivation must retain the full static value.
 
 Required consumers: bind signed-int16 sources X,H to canonical magnitudes/signs
-using (x+32768)+2*s*abs(x)=32768+abs(x), canonical zero signs and whole ranges.
+using (x+32768)+2*s*abs(x)=32768+abs(x), with s in {0,1}, magnitude in
+[0,32768] and s=0 for zero magnitude. Enforce each source's whole signed range.
 Bind S to the sum of the same X magnitudes squared; N=ed*S+en*U;
 A=N*4^-min(a,0); D=P*4^max(a,0); MD=M*D; A=MD+R.
 Require a in [-23,9], M in [16384,65535], 0<=R<D and actual membership of
@@ -116,10 +119,11 @@ Require a in [-23,9], M in [16384,65535], 0<=R<D and actual membership of
 parameters and bounded a, not independent prover facts. A generation formula
 for J cannot replace its actual lookup consumer.
 
-Each output binds xy=abs(X)*abs(H), t=xy*J and the product sign, with zero
-predicates and sign XOR enforced. Set e=F+G+21+a-E. For e<0 use the left role
+Each output binds xy=abs(X)*abs(H), t=xy*J and product sign s: it is the
+input-sign XOR when both magnitudes are nonzero, and zero otherwise. Enforce
+the zero predicates and Boolean sign relation. Set e=F+G+21+a-E. For e<0 use the left role
 to bind q=t*2^-e and require unused qd,r to be zero. For e>=0 bind qd=q*2^e
-and t+h=qd+r, 0<=r<2^e, where h is the exact bias for e. Require q<=32768
+and t+h=qd+r, 0<=r<2^e, where h is the exact bias for e. Require 0<=q<=32768
 and signed-int16 y with (y+32768)+2*s*q=32768+q. The same digit bindings as
 §2.2 apply. These obligations include the selected branch, not just its bounds.
 
@@ -238,5 +242,6 @@ E9/E10 and E12-05. Q12 and the full private PCS/ZK/inference goal are unchanged.
 
 ## 8. Amendment log
 
-Initial Draft. No native implementation is authorized until the coordinated
-skill reviews accept this contract and RFC-0004's companion amendment.
+Initial Draft at ebdba34; adopted with the coordinated same-author skill review
+and RFC-0004 A5. Native §6 delivery and the full E5-03 requirements remain open.
+Acceptance is not independent audit, completed native validation or proof admission.

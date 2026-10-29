@@ -652,6 +652,7 @@ tasks:
   title: Quantiser (per-channel int8/int4 weights, dynamic per-token scales, static fallback) + bound certificates
   depends:
   - E5-01
+  - E5-03a
   rfc:
   - RFC-0004 §2,§6
   - RFC-0004 A1
@@ -660,6 +661,8 @@ tasks:
   - RFC-0004 A3
   - RFC-0004 A4
   - RFC-0021 §2.3
+  - RFC-0004 A5
+  - RFC-0022 §§2-6
   - RFC-0011 A3
   skill: cqis-numerics
   crate: stele-cqis
@@ -669,6 +672,23 @@ tasks:
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
+- id: E5-03a
+  epic: E5
+  title: Native closed Requant and RMSNorm static records (no proof admission)
+  depends:
+  - E5-01
+  - E5-02
+  rfc:
+  - RFC-0004 A5
+  - RFC-0022 §§2-6
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: ready
+  acceptance:
+  - exact static derivation from separate checked parameters, with no supplied schema or field authority
+  - full canonical bytes and all column fields match independent Python on 10000 configurations per schema
+  - every boundary vector, mutation, malformed length, alias, capacity and arithmetic rejection in RFC-0022 §6
+  - checked no_std implementation and all required repository gates; no NC-0109 or full E5-03 credit
 - id: E5-04
   epic: E5
   title: Bit-exact CQIS reference forward pass (Rust + NumPy) incl. attention blockwise, RMSNorm limbs, RoPE tables, decoding
