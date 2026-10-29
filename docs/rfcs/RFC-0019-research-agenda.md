@@ -540,3 +540,11 @@ GQA, wide head assembly and absolute-position cache eviction. Exact/NumPy checks
 also expose why cache row count alone cannot bound occupied blocks. The Draft
 A6/A2 continuation keeps table generation/identity, native forward, full proof
 consumers and model fidelity open; no task or production control is completed.
+
+Q26 rotary continuation: the [integer-certified coefficient study](../../research/cqis-checkpoint/ROPE.md)
+defines base/linear/llama3 frequencies and exact Q14 rounding, with canonical
+candidate descriptors and full finite-table checks against independent Arb
+intervals. A narrow scaling transition exercises refinement; a counterexample
+rejects rounding frequencies before position multiplication. Draft RFC-0004 A7
+records the missing contract. Native registry/public MLEs, complete forward,
+remaining variants, proof consumers and fidelity remain open; no task is completed.
