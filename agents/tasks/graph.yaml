@@ -683,9 +683,9 @@ tasks:
   - RFC-0022 §§2-6
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E5-03a-static-records
+  branch: task/E5-03a-static-completion
   acceptance:
   - exact static derivation from separate checked parameters, with no supplied schema or field authority
   - full canonical bytes and all column fields match independent Python on 10000 configurations per schema
