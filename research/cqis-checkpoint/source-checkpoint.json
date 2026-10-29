@@ -1,0 +1,15 @@
+{
+  "artifact_bytes": 128373,
+  "bytes": 453864,
+  "digest_cqis": "975dfd2770095751165d3b66080d06ca5bb5e57a0cc46cf38f367f4c349abd85",
+  "digest_hf": "8111d5afb0715dbf5a31396d31432cb56370ba23f6650a035ea0fc8a20b4e500",
+  "evidence": "Complete parameter preparation under candidate precisions; no forward pass/fidelity/proof",
+  "file": "model.safetensors",
+  "ignored": 0,
+  "parameters": 111968,
+  "quantiser_id": "e7eab6b9dfb8cb8a829da552c996d75d88b8eea0e5ceac28fa91e18dfbcf667a",
+  "repository": "hf-internal-testing/tiny-random-gpt2",
+  "revision": "71034c5d8bde858ff824298bdedc65515b97d2b9",
+  "source_preparation_id": "db983ec825c1cc5c5cc70b0c9f3f0fb786c1d2c8a21dcd4e28e8556bcd4a4c62",
+  "tensors": 64
+}

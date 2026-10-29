@@ -1,0 +1,34 @@
+{
+  "dtypes": [
+    "BOOL",
+    "F4",
+    "F6_E2M3",
+    "F6_E3M2",
+    "U8",
+    "I8",
+    "F8_E5M2",
+    "F8_E4M3",
+    "F8_E8M0",
+    "I16",
+    "U16",
+    "F16",
+    "BF16",
+    "I32",
+    "U32",
+    "F32",
+    "F64",
+    "I64",
+    "U64"
+  ],
+  "evidence": "Research file adaptation; no publisher authentication or commitment/source proof",
+  "example": {
+    "digest_cqis": "d52363ae73320f59c03ee5df90a3f211a586158b802c7e4e24c4f8de485cbeb4",
+    "digest_hf": "77bf99dd3bc7e8ce1440e1441ff1b8c798ecc85d064748cf008bb42d58b56ada",
+    "file": "36000000000000007b2277223a7b226474797065223a22463136222c227368617065223a5b315d2c22646174615f6f666673657473223a5b302c325d7d7d003c",
+    "source_preparation_id": "9c97db801f33af27856377a6df5a90da6a489007f6d6a95ded7982c012e7fc78"
+  },
+  "files": 10000,
+  "question": "Q26",
+  "sha256": "fd417ae2a329002b1acd8050a46a8e3c0c7bbcde3d36d4fc8ef6160ea3663c63",
+  "upstream": "0.6.2"
+}

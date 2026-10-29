@@ -443,3 +443,11 @@ preparation identity and a distinct content digest. Independent outer encoding
 checks 10,000 mixed artifacts and exact order/count/metadata rejection. Actual source
 container/shard/alias resolution, full CQIS operation plans, static certificate
 schemas and production consumers remain open; no artifact/profile is admitted.
+
+Q26 source continuation: the [safetensors study](../../research/cqis-checkpoint/SOURCE.md)
+checks actual file hashes, complete buffer metadata and explicit selected/ignored
+source tensors before quantisation. Ten thousand files match a pinned upstream
+reader; source hashes preserve original header bytes rather than reserialization.
+The research source-preparation descriptor still needs inclusion in the complete
+Accepted quantiser/passport identity. Shards, source/plan authority, certificates
+and real commitment consumers remain open; no source proof or profile is admitted.
