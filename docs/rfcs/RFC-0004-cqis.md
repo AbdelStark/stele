@@ -545,3 +545,44 @@ rotation, source scales, head views and positions need their own range/identity
 consumers, canonical bytes and controls. No challenge or Accepted behavior changes.
 The proposed numerical contract does not resolve table generation, model-specific
 scale selection, complete proof lowering, native forward or fidelity.
+
+### A7 — Exact rotary frequency functions and Q14 coefficients
+
+Status: Draft. Question Q26. Evidence and candidate bytes:
+[certified rotary study](../../research/cqis-checkpoint/ROPE.md).
+Review: [same-author skill passes](../../agents/reviews/certified-rope-draft.md).
+Motivation: §5.4 / RFC-0017 name rotation tables without selecting frequencies,
+scaling, rounding or identity. Supplied coefficients cannot establish the model.
+
+Proposed exact replacement for §5.4's coefficient-generation parenthesis:
+
+> For even rotary width r in [2,16384], configured position length L in [1,2^20],
+> pair j in [0,r/2) and absolute position t in [0,L), let f_j=theta^(-2*j/r).
+> theta is an exact rational in [1,2^32]. Select one explicit version-1 family:
+> base uses lambda_j=f_j; linear uses lambda_j=f_j/a; llama3 uses
+> g=clamp((L0*f_j/(2*pi)-lo)/(hi-lo),0,1) and
+> lambda_j=f_j*(1/a+(1-1/a)*g). Here a is rational in [1,2^32]; llama3 additionally
+> requires 0<lo<hi<=2^32 and integer L0 in [1,2^20]. Base fixes a=1; base/linear
+> fix lo=hi=L0=0. Rational numerators and positive denominators fit u64 and are
+> in lowest terms. All trigonometric arguments are in radians, with exact pi.
+> Define C(t,j)=R(2^14*cos(t*lambda_j)), S(t,j)=R(2^14*sin(t*lambda_j)), where R
+> is signed nearest with ties away. Never quantise a frequency or angle first.
+> Use A6's explicit adjacent/split pairing, partial width and application rounding.
+> Identity must cover family/version, theta, r, L, layout and every active scale
+> parameter; reject noncanonical rationals and nonzero inactive fields. A zero
+> rotary width denotes absence of this operation, not a descriptor of width zero.
+> Unsupported families (including unspecified NTK/YaRN rules) reject explicitly.
+
+The research descriptor and fixed interleaved little-endian (C,S) table bytes are
+candidates, not native FunctionId/passport registration. Full config/registry and
+public MLE definitions, native generation and Rust/oracle parity remain required.
+The bounded generator refines exact enclosures and rejects unresolved rounding;
+its materialization cap does not limit the mathematical position domain or prove
+that every supported model table can be generated within the implementation cap.
+
+No challenge, ledger line, new cut or weight-pass change. Preparation/storage
+scale with L*r; verifier public-MLE/table-authentication costs remain unresolved.
+Charge actual rotation/range work to c_a/T_misc; no measured constant changes.
+NC-0106, source/table identity controls, native parity and full-model fidelity are
+mandatory before admission. A6's score/scale work remains separate. E5-03/04,
+E7-04 and E13-01 remain blocked, with every original acceptance criterion retained.

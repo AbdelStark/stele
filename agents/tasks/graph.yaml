@@ -666,11 +666,12 @@ tasks:
   - RFC-0011 A3
   - RFC-0004 A6
   - RFC-0009 A2
+  - RFC-0004 A7
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6)
+  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7)
   agent: codex-root
-  branch: task/E5-03-projected-attention
+  branch: task/E5-03-certified-rope
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
@@ -705,9 +706,10 @@ tasks:
   - RFC-0021 §§2-5
   - RFC-0004 A6
   - RFC-0009 A2
+  - RFC-0004 A7
   skill: cqis-numerics
   crate: stele-cqis+harness
-  status: blocked(RFC-0004 A6; RFC-0009 A2)
+  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7)
   acceptance:
   - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
   - decode == single causal pass test
@@ -834,9 +836,10 @@ tasks:
   - E7-01
   rfc:
   - RFC-0004 §5.4
+  - RFC-0004 A7
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: blocked(RFC-0004 A7)
   acceptance:
   - NC-0106
   - variants parametrised
@@ -1345,9 +1348,10 @@ tasks:
   - E7-06
   rfc:
   - RFC-0017 §1-3,§6-7
+  - RFC-0004 A7
   skill: gkr-reduction-author
   crate: stele-reductions+stele-ir
-  status: ready
+  status: blocked(RFC-0004 A7)
   acceptance:
   - W7 proof
   - controls per feature
