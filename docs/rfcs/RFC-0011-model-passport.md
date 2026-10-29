@@ -68,6 +68,7 @@ E4-06, E10 passport/inference and E12 privacy/certificate consumers.
 Status: Draft. Companion RFC-0021/RFC-0004 A4 and RFC-0008 A4. Review: pending.
 Motivation: a table id names a definition, while an arbitrary supplied root can
 commit to different data. The function set also omits operation/source mapping.
+Executable evidence: [canonical table matrices and roots](../../formal/cqis-table-bindings.md).
 
 Addition to §1 items 1,3: the passport authenticates the exact RFC-0021 function
 manifest, and each operation in its canonical model/plan identifies its expected
