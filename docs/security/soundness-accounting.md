@@ -220,3 +220,13 @@ now retain scoped native records for every measured public tree/selected-product
 operation in both fields. Preparation, complete original consumption and native
 process peaks are charged. These measurements change no random loss, label,
 source/PCS/FS hypothesis or profile admission; exact-head CI and merges remain due.
+
+Q20's [private selection study](../../research/stacked-gkr/PRIVATE-SELECTION.md)
+adds research-only conditional A1 records: with a row bits and M the least power
+of two >=max(1,k category bits), one SC(a,2) and M-1 SC(a,3) records contribute
+`a*(3M-1)/|K|`. There are a*M existing-kind Sumcheck draws, no extra RLC draw,
+and two candidate Evaluation/Originals absorbs. All child/original obligations
+remain; even zero-coefficient originals are checked by the reference consumer.
+This is not production registry/profile admission, source/bit/range/PCS binding,
+FS/H accounting or ZK. Those additional consumers require their own losses;
+the unmasked prototype and public oracle fixture do not discharge them.

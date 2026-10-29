@@ -541,6 +541,14 @@ public consumers in both fields. Its actual public table bytes precede challenge
 Wrong-layer/coordinate/source-final and stale-continuation examples reject for
 named reasons, but provide no production NC, private-source or inference credit.
 
+The [private selection study](../../research/stacked-gkr/PRIVATE-SELECTION.md)
+identifies a separate privacy requirement: authenticating an entire index vector
+by exposing it cannot implement a private coefficient source. Its conditional
+degree-three product-tree reduction exports every original index-bit claim,
+without a dense category table. Actual source/bit/range/PCS consumers and masked
+composition remain required; this unmasked reference study grants no ZK credit.
+A4 remains Draft and must distinguish public resolution from private obligations.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
