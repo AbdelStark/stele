@@ -214,3 +214,9 @@ regenerates the corpus and checks every decision; regressions reject a missing
 case or Fold accounting omission. This adds no soundness loss or full lookup,
 PCS, private consumer, ZK, FS or benchmark admission. E3-07a primitive runtime
 and memory ledgers remain required.
+
+The [E3-07a primitive ledgers](../../bench/README.md#conditional-fraction-primitives-e3-07a)
+now retain scoped native records for every measured public tree/selected-product
+operation in both fields. Preparation, complete original consumption and native
+process peaks are charged. These measurements change no random loss, label,
+source/PCS/FS hypothesis or profile admission; exact-head CI and merges remain due.
