@@ -56,6 +56,7 @@ jobs:
       - run: uv run --locked --script research/cqis-tables/check_native_tanh_gelu.py
       - run: uv run --locked --script research/cqis-tables/check_native_exact_gelu.py
       - run: python3 research/cqis-bounds/check_bounds.py
+      - run: uv run --locked --script research/cqis-bounds/check_limbs.py
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py

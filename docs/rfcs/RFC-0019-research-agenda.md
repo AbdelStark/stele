@@ -458,3 +458,11 @@ an explicit typed bundle identity. Ten thousand bundles and four repartitions of
 the complete pinned checkpoint preserve artifact bytes. RFC-0011 A3 remains Draft;
 full outer identity, source/plan authority, static certificates, native streaming
 and actual source/commitment consumers are still required.
+
+Q26 limb continuation: [static column bounds](../../research/cqis-bounds/LIMBS.md)
+account for incoming carries, both equality sides and zero boundary carries.
+Ten thousand static configurations and ten thousand exact/NumPy input cases
+support the nonnegative lemma; a whole-input range counterexample prevents
+digit caps from standing in for source bounds. Signed and biased arithmetic,
+complete norm identities, closed schemas and native consumers remain open.
+No NC-0109, full certificate contract or end-to-end inference credit follows.
