@@ -791,3 +791,22 @@ required. Sampled decoding is outside this schema. Review:
 Accepted RFC-0022 schemas, challenge/ledger lines, cuts and proof weight passes
 are unchanged. E5-03/04 and E7-08 retain original criteria; full certificate sets,
 native parity, fidelity and NC-0107/0108/0109 remain open. No measured cost claim.
+
+### A3/A6 evidence continuation — Signed attention accumulation
+
+Status: Draft research evidence; A3/A6 and companion RFC-0009 A2 remain Draft.
+Question Q26. The [signed sum study](../../research/cqis-bounds/ATTENTION-SUM.md)
+derives candidate static probability/restored-value sum records. Capacity-based
+nibble columns preserve full configured bounds while storing only actual keys;
+this separate research domain does not reinterpret RFC-0022 exact-arity records.
+Signed reconstruction and positive zero exclude coherent whole-sum M31 aliases.
+
+Independent exact/NumPy controls, mixed model roles and pinned checkpoint replay
+provide conditional arithmetic evidence. Absolute positions preserve block
+membership, including gaps; block rounding, rounded-block summation and signed
+normalization remain separate obligations. Actual probability/function/max,
+mask, value/scale, source/position/GQA and range/digit consumers are still required.
+Review: [same-author passes](../../agents/reviews/attention-sum-bounds-draft.md).
+No Accepted behavior, challenge, ledger line, cut, proof weight pass or measured
+cost changes. E5-03/04 and E7-06/07 retain all original criteria; complete schemas,
+native parity, fidelity and NC-0109/0500..0506 remain open.
