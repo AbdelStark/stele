@@ -1,5 +1,5 @@
 //! RFC-0021 §§2.2-2.3,4: range/rsqrt generation and complete integer-data checking.
-use super::{exp, Descriptor, Error, Kind, Reader};
+use super::{activation, exp, Descriptor, Error, Kind, Reader};
 use alloc::vec::Vec;
 use core::mem::size_of;
 
@@ -59,8 +59,8 @@ fn rsqrt(m: u32) -> Result<i32, Error> {
 
 /// Immutable definition-generated integer rows with canonical zero padding.
 ///
-/// Constructors cover range, rsqrt and exponential components. E5-02 retains
-/// activation generators, function bytes and public MLE delivery.
+/// Constructors cover range, rsqrt, exponential, sigmoid, SiLU and softcap
+/// components. E5-02 retains GeLU, function bytes and public MLE delivery.
 /// No raw-row constructor, table-truth callback or configuration authority exists.
 /// ```compile_fail
 /// use stele_cqis::tables::Table;
@@ -74,6 +74,27 @@ pub struct Table {
 }
 
 impl Table {
+    /// Generate every signed-int16 input for sigmoid, SiLU or softcap.
+    /// Any uncertified or overflowing entry rejects the entire table.
+    pub fn activation(descriptor: Descriptor) -> Result<Self, Error> {
+        if !matches!(descriptor.kind, Kind::Sigmoid | Kind::Silu | Kind::Softcap) {
+            return Err(Error::Parameters);
+        }
+        let mut entries = zero_entries(&descriptor)?;
+        for (i, row) in entries.chunks_exact_mut(2).enumerate() {
+            let t = i32::try_from(i)
+                .map_err(|_| Error::Capacity)?
+                .checked_sub(32768)
+                .ok_or(Error::Interval)?;
+            row[0] = t;
+            row[1] = activation::certify(&descriptor, t)?;
+        }
+        Ok(Self {
+            descriptor,
+            entries,
+        })
+    }
+
     /// Generate a complete high, low, direct or correction exponential component.
     pub fn exponential(descriptor: Descriptor) -> Result<Self, Error> {
         let kind = descriptor.kind;

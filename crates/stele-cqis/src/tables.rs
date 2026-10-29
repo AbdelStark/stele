@@ -4,6 +4,7 @@
 //! their complete integer encodings; neither API authenticates model configuration,
 //! enforces membership or accepts a proof.
 
+mod activation;
 mod exp;
 mod fixed;
 mod natural;
@@ -41,6 +42,8 @@ pub enum Error {
     Interval,
     /// The fixed precision/series schedule cannot certify a unique integer.
     Precision,
+    /// One generated activation output is outside signed int16.
+    Overflow,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

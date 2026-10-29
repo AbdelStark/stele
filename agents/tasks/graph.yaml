@@ -642,7 +642,7 @@ tasks:
   crate: stele-cqis
   status: in_progress
   agent: codex-root
-  branch: task/E5-02-native-exp
+  branch: task/E5-02-native-activations
   acceptance:
   - table ids stable
   - max abs error documented

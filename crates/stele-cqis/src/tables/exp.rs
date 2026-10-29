@@ -6,20 +6,29 @@ fn enclosure(n: u64, f: u8, bits: usize) -> Result<(Natural, Natural, usize), Er
     if n > 1 << 31 || f > 30 {
         return Err(Error::Parameters);
     }
+    enclosure_ratio(&Natural::from_u64(n)?, &Natural::from_u64(1u64 << f)?, bits)
+}
+
+pub(super) fn enclosure_ratio(
+    n: &Natural,
+    d: &Natural,
+    bits: usize,
+) -> Result<(Natural, Natural, usize), Error> {
+    if d.is_zero() {
+        return Err(Error::Interval);
+    }
     if !matches!(bits, 32 | 64 | 128 | 256) {
         return Err(Error::Precision);
     }
     let one = Natural::from_u64(1)?;
-    let mut denominator = 1u64 << f;
-    if n >= (bits as u64 + 1)
-        .checked_mul(denominator)
-        .ok_or(Error::Interval)?
-    {
+    let mut denominator = d.try_clone()?;
+    if n.cmp(&d.mul_u64(bits as u64 + 1)?) != Ordering::Less {
         return Ok((Natural::zero(), one, bits + 1));
     }
     let mut squarings = 0usize;
-    while n.checked_mul(2).ok_or(Error::Interval)? > denominator {
-        denominator = denominator.checked_mul(2).ok_or(Error::Interval)?;
+    let twice = n.shl(1)?;
+    while twice.cmp(&denominator) == Ordering::Greater {
+        denominator = denominator.shl(1)?;
         squarings = squarings.checked_add(1).ok_or(Error::Interval)?;
     }
     let precision = bits
@@ -27,16 +36,16 @@ fn enclosure(n: u64, f: u8, bits: usize) -> Result<(Natural, Natural, usize), Er
         .and_then(|b| b.checked_add(4))
         .ok_or(Error::Interval)?;
     let unit = one.shl(precision)?;
-    if n == 0 {
+    if n.is_zero() {
         return Ok((unit.try_clone()?, unit, precision));
     }
     let (mut partial, mut divisor, mut power) =
         (one.try_clone()?, one.try_clone()?, one.try_clone()?);
     for step in 1..=512u64 {
-        let factor = denominator.checked_mul(step).ok_or(Error::Interval)?;
-        let next_divisor = divisor.mul_u64(factor)?;
-        power = power.mul_u64(n)?;
-        let scaled = partial.mul_u64(factor)?;
+        let factor = denominator.mul_u64(step)?;
+        let next_divisor = divisor.mul(&factor)?;
+        power = power.mul(n)?;
+        let scaled = partial.mul(&factor)?;
         let next = if step % 2 == 1 {
             scaled.sub(&power)?
         } else {
