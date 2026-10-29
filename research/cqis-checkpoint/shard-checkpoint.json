@@ -1,0 +1,29 @@
+{
+  "evidence": "Locally repartitioned pinned checkpoint; no published sharded-source claim",
+  "ignored": 0,
+  "original_digest_hf": "8111d5afb0715dbf5a31396d31432cb56370ba23f6650a035ea0fc8a20b4e500",
+  "question": "Q26",
+  "repartitions": [
+    {
+      "digest_cqis": "975dfd2770095751165d3b66080d06ca5bb5e57a0cc46cf38f367f4c349abd85",
+      "shards": 2,
+      "source_bundle_id": "3b235fbeebf1b8a4b5663660cb12d498e15f0d7b1b5b1c8243f20f4cba9625df"
+    },
+    {
+      "digest_cqis": "975dfd2770095751165d3b66080d06ca5bb5e57a0cc46cf38f367f4c349abd85",
+      "shards": 3,
+      "source_bundle_id": "1a877c3e6e93946e42cc29c0ef84080a06696bd6cdb0c5524c8c112404cb63ac"
+    },
+    {
+      "digest_cqis": "975dfd2770095751165d3b66080d06ca5bb5e57a0cc46cf38f367f4c349abd85",
+      "shards": 7,
+      "source_bundle_id": "a8df5f41b632ec40d9675dde520526d478fdef5690c11dbba1829254347a54e3"
+    },
+    {
+      "digest_cqis": "975dfd2770095751165d3b66080d06ca5bb5e57a0cc46cf38f367f4c349abd85",
+      "shards": 64,
+      "source_bundle_id": "a2a22ddf7dee3428f62a07c36957be1b4784d4f756e4f713916e5bf30e3c3f16"
+    }
+  ],
+  "tensors": 64
+}

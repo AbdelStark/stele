@@ -36,7 +36,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A3, A4); A1, A2 Draft |
 | 0009 | Attention protocol | Accepted (A1) |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2, A4, A5); A1, A3, A6, A7 Draft |
-| 0011 | Model passport and checkpoint binding | Accepted (A2); A1 Draft |
+| 0011 | Model passport and checkpoint binding | Accepted (A2); A1, A3 Draft |
 | 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A9); A6, A7, A8 Draft |
 | 0013 | Zero-knowledge | Accepted; A1 Draft |
 | 0014 | GPU prover architecture | Accepted (A1) |

@@ -118,3 +118,35 @@ One-time table generation/encoding/hash work is explicit T_misc/commitment work;
 no measured constant, additional inference weight pass or intermediate cut.
 E12-05 retains its complete outer bytes, registration, checkpoint, profile, fidelity
 and proof gates; none is waived by this deterministic table subrecord.
+
+### A3 — Typed checkpoint source identity for indexed shards
+
+Status: Draft. Question Q26. Evidence: [indexed source study](../../research/cqis-checkpoint/SHARDS.md).
+Motivation: §1 item 5 names SHA-256 of safetensors without distinguishing one
+file from a checkpoint consisting of an index and several files. A digest of
+framed file hashes is not SHA-256 of any single safetensors file.
+
+Proposed addition to §1 item 5, pending the complete outer contract/consumers:
+
+> Source identity is typed. Single-file sources retain the original file's exact
+> SHA-256. Indexed sources authenticate the complete original index and exact set
+> of original shard files through a versioned canonical manifest, preserving each
+> file's name, length and SHA-256. Record its distinct bundle digest and source
+> kind; never relabel this value as a single-file digest_hf. Check exact tensor
+> locations, absence of duplicate/unindexed tensors, complete container coverage
+> and the declared physical payload total before source conversion. Source and
+> preparation identities bind explicit selection/ignored policy and complete
+> offline conversion metadata under the final quantiser/passport encoding.
+>
+> Expected source/configuration authority comes from the authenticated statement
+> and passport, not the supplied files. Reproducible conversion does not replace
+> the required commitment-to-artifact hash binding, wrapper, privacy or fidelity.
+
+The study fixes executable candidate manifest/tag bytes, file/index validation
+and partition-invariant numerical output. Acceptance still requires canonical
+outer passport/quantiser fields, source/role/tie semantics, native streaming and
+resource admission, and actual wrong-source/index/shard/selection consumer controls.
+RFC-0004 A3/static certificates, Q12/Q29, all original tasks and existing controls
+remain required. No challenge, production loss, new commitment or profile is
+introduced; source/hash preparation is T_misc, without a measured constant or
+inference weight-pass change. E5-03, E10 and E12-05 are affected but not completed.

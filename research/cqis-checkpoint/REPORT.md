@@ -131,3 +131,12 @@ upstream reader and reproduce artifacts from retained source arrays. Different
 header encodings of the same tensor data retain different source hashes. Complete
 sharded/source/plan identity, static certificates, native streaming and actual
 commitment/passport consumers remain required; E5-03 stays blocked.
+
+## Indexed source continuation
+
+The [shard study](SHARDS.md) validates exact index/file/tensor membership and
+original hashes, and distinguishes a typed bundle identity from single-file
+SHA-256. Ten thousand bundles match unsharded preparation; locally repartitioning
+the pinned checkpoint into 2/3/7/64 files preserves its complete parameter artifact.
+RFC-0011 A3 records the Draft source-identity extension. Full authenticated outer
+configuration, static certificates, native streaming and real consumers remain open.
