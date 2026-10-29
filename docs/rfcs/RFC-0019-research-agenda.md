@@ -548,3 +548,11 @@ intervals. A narrow scaling transition exercises refinement; a counterexample
 rejects rounding frequencies before position multiplication. Draft RFC-0004 A7
 records the missing contract. Native registry/public MLEs, complete forward,
 remaining variants, proof consumers and fidelity remain open; no task is completed.
+
+Q26 block continuation: the [complete dense-block candidate](../../research/cqis-checkpoint/DECODER-BLOCK.md)
+composes norms, all seven projections, generated rotations, attention, exact
+SwiGLU and residuals with independent arithmetic and full/cache comparisons.
+Its int32 gated product requires wider scale/numerator bounds than int16-row
+conversion. Draft RFC-0004 A8 / RFC-0003 A3 record this gap. Configuration/source
+binding, native model forward, static schemas, proof consumers and fidelity remain
+open; numerical block execution is not an inference proof or E5-04 completion.

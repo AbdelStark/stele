@@ -586,3 +586,42 @@ Charge actual rotation/range work to c_a/T_misc; no measured constant changes.
 NC-0106, source/table identity controls, native parity and full-model fidelity are
 mandatory before admission. A6's score/scale work remains separate. E5-03/04,
 E7-04 and E13-01 remain blocked, with every original acceptance criterion retained.
+
+### A8 — Exact gated-product units and complete block composition
+
+Status: Draft. Question Q26. Evidence: [complete block study](../../research/cqis-checkpoint/DECODER-BLOCK.md).
+Review: [same-author passes](../../agents/reviews/decoder-block-draft.md).
+Motivation: §3 multiplies two wide int16 values, but the int16 activation-scale
+domain cannot represent every resulting int32 product. RFC-0003 §4 instead names
+int16 times int8. These are different functions and need a coordinated decision.
+
+Proposed exact replacement for §3's H definition, conditional on A3/A6/A7:
+
+> U has units 2^-fu, fu in [0,30]. The selected RFC-0021 silu_q function fixes
+> gate input units 2^-F and output units 2^-E. For each channel compute the exact
+> signed int32 product P_c=U_c*silu_q(G_c), with units 2^-(fu+E). Do not insert
+> an int16 requant, saturation or clamp between this product and row conversion.
+> Apply the selected conversion to the complete FFN row. Dynamic mode uses
+> M=max_c |P_c|, s=ceil(M/127) and H_c=R(P_c/s); if M=0 use s=0 and H=0.
+> Static mode uses an explicitly selected s in [1,65535]; out-of-range codes
+> reject, with no automatic fallback. Require symmetric codes in [-127,127].
+> R is signed nearest with ties away. Here |P_c|<=2^30, hence dynamic
+> s<=ceil(2^30/127)=8454661 and fu+E<=44. Neither bound is the int16-row bound.
+> For down-projection output channel j, with selected weight m_j*2^ew, form
+> A_j=sum_c H_c*w_cj exactly and Y_j=R(A_j*m_j*s*2^(ew-fu-E+fd)). Require
+> int16 Y_j in units 2^-fd before the configured one-round residual alignment.
+> The complete product, scale, sign, range, maximum, source and unit associations
+> require static schemas and actual consumers; integer fit is not field faithfulness.
+
+The research block composes two RFC-0021 norms, seven output-channel-major weight
+matrices, A6 projected attention, this gated product and both residual additions.
+For its d<=16384 inner dimensions, |A|<2^28 and |A*m*s|<2^68; widened exact
+arithmetic is necessary. This does not expand Accepted A1's scalar int32 contract.
+Other dimension domains still need their complete chunk/carry contract.
+
+No new challenge, cut, weight pass or admitted claim-graph binding. This changes
+the proposed c_a/T_witness arithmetic and scale widths; no measured constant.
+E5-03/04 and E7-05 retain all original criteria. Canonical configuration and
+source-role bytes, static records, native Rust/NumPy parity, authenticated cache,
+full GPT-2/Llama inference and fidelity remain required. A8 supplies no NC credit;
+new gate-scale/unit controls must be catalogued with their actual proof consumers.

@@ -66,6 +66,7 @@ jobs:
       - run: uv run --locked --script research/cqis-checkpoint/check_attention.py
       - run: uv run --locked --script research/cqis-checkpoint/check_projected_attention.py
       - run: uv run --locked --script research/cqis-checkpoint/check_rope.py
+      - run: uv run --locked --script research/cqis-checkpoint/check_decoder_block.py
       - run: uv run --locked --script research/cqis-checkpoint/check_records.py
       - run: uv run --locked --script research/cqis-checkpoint/check_artifact.py
       - run: uv run --locked --script research/cqis-checkpoint/check_source.py
