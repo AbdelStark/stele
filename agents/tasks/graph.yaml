@@ -640,9 +640,9 @@ tasks:
   - RFC-0021 §§2-6
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E5-02-native-rmsnorm
+  branch: task/E5-02-native-completion
   acceptance:
   - table ids stable
   - max abs error documented
