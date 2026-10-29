@@ -754,3 +754,22 @@ records are correctness evidence only. Review:
 Accepted RFC-0022 schemas, challenge/ledger lines, cuts and proof weight passes
 are unchanged. E5-03/04 retain their original criteria; complete certificate sets,
 native parity, fidelity and NC-0106/0109 remain open. No measured cost claim.
+
+### A3/A8 evidence continuation — One-round residual alignment
+
+Status: Draft research evidence; A3/A8/A9 remain Draft. Question Q26.
+The [residual study](../../research/cqis-bounds/RESIDUAL.md) closes candidate
+integer alignment, addition and single-rounding relations for two int16 rows
+in distinct configured units. Seven byte-column roles bind the aligned source
+offset, canonical sign/magnitude, biased division and output. The direct M31
+alias 2^30-1 versus -2^30 would change output 1 to -1; rebuilt forged columns
+reject. Separately rounding inputs also fails the one-round contract.
+
+The 10000-case corpus, mixed residual model roles and pinned checkpoint records
+are correctness evidence only. Actual source/unit/range/digit consumers and
+complete certificate sets remain required. Native graduation needs an explicit
+RFC-0022 amendment; Accepted schemas and semantics are unchanged. Review:
+[same-author passes](../../agents/reviews/residual-bounds-draft.md).
+No challenge, ledger line, cut, proof weight pass or measured cost changes.
+E5-03/04 retain original criteria; full schemas, native parity, fidelity and
+NC-0109 remain open. Plaintext relation checks do not verify an inference proof.

@@ -9,6 +9,7 @@ import model_config as c
 import model_scaled_bounds
 import model_row_bounds
 import model_rotary_bounds
+import model_residual_bounds
 import source
 import rope
 
@@ -71,6 +72,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     info.update(model_scaled_bounds.evidence(model))
     info.update(model_row_bounds.evidence(model))
     info.update(model_rotary_bounds.evidence(model))
+    info.update(model_residual_bounds.evidence(model))
     actual = m.full(model,sequence); expected = reference(model,sequence)
     assert {k:actual[k] for k in expected}==expected
     cache = None
