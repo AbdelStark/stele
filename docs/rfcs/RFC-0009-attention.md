@@ -49,7 +49,7 @@ mismatch by one; NC-0504 GQA broadcast to wrong group; NC-0505 block sum carries
 
 ### A1 — Explicit exponential function, scale and representation
 
-Status: Draft. Companion RFC-0021/RFC-0004 A4. Review: pending.
+Status: Accepted. Companion RFC-0021/RFC-0004 A4. Review: [coordinated skill sign-off](../../agents/reviews/cqis-functions-contract-accepted.md).
 Motivation: the old exp lookup sketch does not distinguish the inclusive domain,
 split-dependent product, correctly rounded alternative or multiple small tables.
 

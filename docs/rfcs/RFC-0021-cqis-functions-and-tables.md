@@ -1,6 +1,8 @@
 # RFC-0021 — Canonical nonlinear functions, tables and representations
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0003, RFC-0004, RFC-0008, RFC-0012
+Status: Accepted · Version: 0.1.0 · Depends: RFC-0003, RFC-0004, RFC-0008, RFC-0012
+
+Review: [coordinated skill sign-off](../../agents/reviews/cqis-functions-contract-accepted.md).
 
 ## 1. Statement and authority
 
@@ -284,15 +286,16 @@ retain Q12 and all lookup/PCS/privacy gates; neither profile is admitted here.
 
 ## 6. Controls and native delivery
 
-Reserve NC-0412 for a changed configured FunctionId/semantic parameter,
-NC-0413 for a changed selected representation/component role, and NC-0414 for
-one altered table-data entry under the correct descriptor. Existing NC-0404,
+Reserve NC-0412 for a changed configured FunctionId/semantic parameter
+(`FunctionMismatch`), NC-0413 for a changed selected representation/component
+role (`RepresentationMismatch`), and NC-0414 for one altered table-data entry
+under the correct descriptor (`TableDataMismatch`). Existing NC-0404,
 NC-0405, NC-0104/0105 and NC-0701 retain table/passport, recombination, domain,
 norm and commitment bindings. Proof controls require their real consumers.
 Research assertions and primitive identifier sensitivity earn no such credit.
 
 E5-02 native delivery requires all of the following, without marking E3-08,
-E5-03/E5-04/E5-05 or E10 complete:
+E5-03/E5-04/E5-05, E9/E10 or E12-05 complete:
 1. Every component/function/representation schema, exact generator and canonical
    byte validator, with sealed expected authority, whole-table failure and
    checked no_std consumption. Generation may use alloc exact big integers;
@@ -328,7 +331,8 @@ proof/plan/passport binding is implemented, with its honest real baseline.
 Q25's numerical/table/function contract is addressed here; native delivery and
 consumer integration remain tasks. Q26 covers quantisation, scale selection and
 static certificate schemas. Full canonical operation/source plans and passport
-proofs remain E6/E10; a missing accepted contract there still blocks those tasks.
+proofs remain E6/E12-05; E9/E10 retain full CPU/GPU inference delivery. A missing
+accepted consumer contract still blocks its task.
 Q12, Q29 and Q31 retain full FS, privacy and lookup obligations. RoPE variants
 remain public tensors under RFC-0017 and need their own E5-04 parameter contract;
 they are not silently admitted as lookup components by this closed registry.

@@ -65,7 +65,7 @@ E4-06, E10 passport/inference and E12 privacy/certificate consumers.
 
 ### A2 — Canonical function manifest and table commitment binding
 
-Status: Draft. Companion RFC-0021/RFC-0004 A4 and RFC-0008 A4. Review: pending.
+Status: Accepted. Companion RFC-0021/RFC-0004 A4 and RFC-0008 A4. Review: [coordinated skill sign-off](../../agents/reviews/cqis-functions-contract-accepted.md).
 Motivation: a table id names a definition, while an arbitrary supplied root can
 commit to different data. The function set also omits operation/source mapping.
 Executable evidence: [canonical table matrices and roots](../../formal/cqis-table-bindings.md).
@@ -116,5 +116,5 @@ configured function/representation/data edges when implemented. All controls
 remain real-consumer obligations, with no primitive/research catalog credit.
 One-time table generation/encoding/hash work is explicit T_misc/commitment work;
 no measured constant, additional inference weight pass or intermediate cut.
-E10 retains its complete outer bytes, registration, checkpoint, profile, fidelity
+E12-05 retains its complete outer bytes, registration, checkpoint, profile, fidelity
 and proof gates; none is waived by this deterministic table subrecord.

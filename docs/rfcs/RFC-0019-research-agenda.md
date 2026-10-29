@@ -286,6 +286,15 @@ Before acceptance, complete coordinated review and executable table-root framing
 and mutation evidence; native generators follow acceptance, with all delivery
 criteria. E5-02 remains blocked while this contract is Draft.
 
+Q25 contract accepted: RFC-0021 and coordinated RFC-0004 A4, RFC-0005 A1,
+RFC-0008 A4, RFC-0009 A1 and RFC-0011 A2 supersede the incomplete A2 proposal.
+Exact table-matrix/code/root evidence distinguishes membership from definition
+binding and rejects field-congruent integer aliases. ADR-034 and the coordinated
+review record preserve all remaining obligations. E5-02 is now in progress for
+native generation, canonical validation and the complete parity gates. E3-08,
+Q26's certificates, full reference/fidelity, E6 plan bytes, E9/E10 inference and
+E12-05 passport delivery remain uncompleted; no profile or native coverage credit.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.

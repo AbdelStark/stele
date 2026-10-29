@@ -371,13 +371,13 @@ remain. E5-01 scalar arithmetic and RFC-0003 A1 field recovery are unchanged.
 
 ### A4 — Complete nonlinear function and representation contract
 
-Status: Draft. Question Q25. Companion RFC-0021 and RFC-0005 A1, RFC-0008 A4,
-RFC-0009 A1, RFC-0011 A2. Review: pending coordinated skill review.
+Status: Accepted. Question Q25. Companion RFC-0021 and RFC-0005 A1, RFC-0008 A4,
+RFC-0009 A1, RFC-0011 A2. Review: [coordinated skill sign-off](../../agents/reviews/cqis-functions-contract-accepted.md).
 
 Motivation: A2 identified missing numerical definitions, inclusive endpoints,
 total normalization and authenticated table parameters. The complete candidate
 studies now supply exact functions, error arguments and reproducible bytes.
-This amendment supersedes A2's incomplete proposal on acceptance; A1 and the
+This amendment supersedes A2's incomplete proposal; A1 and the
 separate quantiser/certificate work in A3 remain in force/unresolved respectively.
 
 Exact replacement for §4: use RFC-0021 §§2–4 for all lookup component tables,
@@ -401,6 +401,10 @@ does not complete quantisation, full forward inference, fidelity, registry
 lowering, reductions or passport verification. Their original gates remain;
 fidelity is required for model/passport delivery, not before writing the exact
 integer generator. No table value or identity alone proves membership or INV-5.
+
+E7-03 retains its chunked-dimension criterion beyond 2^14. It remains blocked
+on A3's complete norm/chunk certificate contract and a corresponding function
+extension; RFC-0021's bounded d domain does not satisfy or remove that criterion.
 
 Soundness: no challenge or ledger line here; actual consumers retain all
 SC/RLC/LU/PCS/H/FS terms. RFC-0021 §6 reserves the new function/representation/
