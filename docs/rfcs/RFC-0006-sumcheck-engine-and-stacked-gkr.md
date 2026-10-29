@@ -564,6 +564,13 @@ Both original tensor and bit consumers run in the public oracle fixture. This
 does not close authenticated private consumers, global plan identities, joint
 ZK or the sparse production cost contract; A4 remains Draft.
 
+The [typed source study](../../research/stacked-gkr/SELECTION-SOURCE.md) supplies
+actual Booleanity, padding and range reductions for a candidate bit-plane index
+representation. Selection claims become direct evaluations of the same source
+tensor. Its public original consumer does not authenticate a private commitment;
+source-storage expansion, packing, complete plan identity and joint privacy still
+require resolution before any format or A4 acceptance.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,

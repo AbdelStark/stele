@@ -247,3 +247,11 @@ m*delta+a*(3M-1) over |K| and no new RLC draw. Stage/selection records stay scop
 aligned 65-id blocks separate their actual instance ids, with pre-absorb overflow
 checks. Full plan/tensor identity validation, source/bit/range/PCS, FS/H and joint ZK remain
 unresolved. This research wrapper adds no accepted registry or profile bound.
+
+Q20's [bit-source candidate](../../research/stacked-gkr/SELECTION-SOURCE.md) uses
+two no-skip A3 relations of degrees 3 and 2 over D variables; all phase records
+give numerator 7D. For C<2^k it adds a degree-2 A3 relation over a source variables
+and k degree-3 A1 nodes: 3a(k+1). Draw counts are 4D, plus a(k+2) for that branch;
+there is no extra RLC/skip draw. Source precedes all ZeroWeight draws. Every
+original F/bit claim still requires its actual opening; stage/selection, PCS or
+opening batching, FS/H and joint ZK are additional. This admits no format/profile.

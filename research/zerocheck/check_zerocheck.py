@@ -113,9 +113,8 @@ def prove(t, i, tables):
     return {'skip': initial, 'rounds': rounds, 'final': final}
 
 
-def verify(t, i, proof, tables):
+def verify_reduction(t, i, proof):
     describe(i, t.degree)
-    shape(i, tables, t.degree)
     d, s, j, delta = t.degree, 2**i['k'], i['m']-i['k'], sc.degree(i)
     count = (delta-1)*(s-1) if i['k'] else 0
     require(len(proof['skip']) == count and len(proof['rounds']) == j, 'ProofShape')
@@ -137,15 +136,24 @@ def verify(t, i, proof, tables):
     before_final = copy.deepcopy(t)
     t.absorb(FINAL, final_bytes(i, proof['final']))
     claims = []
-    for identity, table, values in zip(i['ids'], tables, proof['final']):
+    for identity, values in zip(i['ids'], proof['final']):
         for prefix, value in zip(boolean(i['k'], d), values):
             full = [*prefix, *point]
-            require(evaluated(table, full, d) == value, 'ClaimMismatch')
             claims.append((identity, full, value))
     records = [(j, 1, j), (int(i['k'] > 0), delta*(s-1), delta*(s-1)), (j, delta, j*delta)]
     return {'alpha': alpha, 'u': u, 'point': point, 'claims': claims,
             'sc': [{'id': i['id'], 'phase': phase, 'm': m, 'degree': degree, 'field_degree': d, 'numerator': numerator}
                    for phase, (m, degree, numerator) in enumerate(records)]}, before_final
+
+
+def verify(t, i, proof, tables):
+    describe(i, t.degree)
+    shape(i, tables, t.degree)
+    receipt, before_final = verify_reduction(t, i, proof)
+    originals = dict(zip(i['ids'], tables))
+    for identity, point, value in receipt['claims']:
+        require(evaluated(originals[identity], point, t.degree) == value, 'ClaimMismatch')
+    return receipt, before_final
 
 
 def instance(d, m, k, delta):

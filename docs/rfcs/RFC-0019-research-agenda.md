@@ -511,3 +511,10 @@ metadata-only framing and a shared transcript. Both-field original consumers,
 wrong-coordinate/unused-final mutations and chained missing-frame checks pass.
 Public oracle data and unmasked messages do not supply private authentication or
 ZK; global ids, private consumers, proof bytes and sparse costs still block A4.
+
+Q20 source continuation: the [typed bit-source study](../../research/stacked-gkr/SELECTION-SOURCE.md)
+proves Booleanity, padding and index range through actual A3/A1 reductions, then
+maps selection claims to that same original tensor. Both-field consumers reject
+false source data and field-congruent integer substitution. Its bit representation
+has material message expansion; private PCS, joint masking, compact alternatives
+and complete format/plan admission remain open. No commitment format is accepted.
