@@ -4,6 +4,8 @@ use crate::tables;
 
 mod representation;
 pub use representation::Representation;
+mod manifest;
+pub use manifest::Manifest;
 
 const FUNCTION: &[u8] = b"stele/v0.1/function/identity";
 const REPRESENTATION: &[u8] = b"stele/v0.1/function/representation";
@@ -27,6 +29,14 @@ pub enum Error {
     Identity,
     /// Invalid or unexpected mode, parameters, component roles, order or identity.
     Representation,
+    /// A function identity appears twice, including different selected modes.
+    DuplicateFunction,
+    /// Distinct component descriptors have the same identity.
+    IdentityCollision,
+    /// Supplied manifest bytes differ from the complete expected record.
+    Manifest,
+    /// Mandatory component generation or canonical data encoding failed.
+    Table(tables::Error),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
