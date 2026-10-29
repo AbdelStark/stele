@@ -290,3 +290,19 @@ fidelity, complete lookup, private PCS, full outer bytes and ZK. No challenge,
 fitted constant, weight-pass count or committed intermediate changes. Same-author
 coordinated skill sign-off is not independent audit or native task completion.
 Status: Accepted.
+
+## ADR-035 — Closed static arithmetic records with separate expected authority
+
+Context: E5-03 / Q26, RFC-0022 and RFC-0004 A5. Decision: adopt exact static
+column derivation and fixed canonical records for the existing scalar Requant
+and RMSNorm operations. Expected parameters remain separate from supplied bytes;
+all values are rederived. Whole source bounds, canonical digits, both zero carries,
+signs, table membership and branch/output relations remain actual proof obligations.
+Static norm bounds cover every allowed exponent and retain values wider than u128.
+
+Implement native derivation and byte validation under RFC-0022 §6. No new catalog
+coverage, challenge, fitted constant, weight pass or cut follows. Preserve E5-03's
+complete quantiser/schema/set/plan contract and NC-0109, all other inference and
+fidelity tasks, and full private PCS/ZK/lookup delivery. This is coordinated
+same-author skill approval, not independent audit or native/proof completion.
+Status: Accepted.
