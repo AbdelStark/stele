@@ -67,6 +67,12 @@ jobs:
       - run: uv run --locked --script research/cqis-checkpoint/check_projected_attention.py
       - run: uv run --locked --script research/cqis-checkpoint/check_rope.py
       - run: uv run --locked --script research/cqis-checkpoint/check_decoder_block.py
+      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py
+      - name: Pinned causal model numerical replay
+        run: |
+          curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o "$RUNNER_TEMP/causal-config.json"
+          curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/model.safetensors -o "$RUNNER_TEMP/causal-model.safetensors"
+          uv run --locked --script research/cqis-checkpoint/check_causal_model.py --checkpoint "$RUNNER_TEMP/causal"
       - run: uv run --locked --script research/cqis-checkpoint/check_records.py
       - run: uv run --locked --script research/cqis-checkpoint/check_artifact.py
       - run: uv run --locked --script research/cqis-checkpoint/check_source.py
