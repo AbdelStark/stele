@@ -171,6 +171,8 @@ def check_variant(model,tokens):
         row,state=model_bounds.m.step(model,t,state)
         assert row==dict(cuts=[c[j] for c in expected['cuts']],head=expected['heads'][j])
     assert state==actual['cache']; model_rows(model,expected,list(range(len(tokens))))
+    from check_gated_product_bounds import model_rows as gated_rows
+    gated_rows(model,expected,list(range(len(tokens))))
     return dict(model_bounds.evidence(model),drops=[b.attention.attention.drop for b in model.blocks],tokens=list(tokens),
                 logits_sha256=hashlib.sha256(b''.join(struct.pack('<h',v) for h in expected['heads'] for v in h['logits'])).hexdigest())
 

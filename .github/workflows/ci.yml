@@ -79,6 +79,7 @@ jobs:
       - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-blocks
       - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-score
       - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-max
+      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --gated-product
       - name: Pinned causal model numerical replay
         run: |
           curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o "$RUNNER_TEMP/causal-config.json"

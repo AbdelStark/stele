@@ -882,3 +882,20 @@ set. Actual source/mask/position/index/range/function consumers, query-padding
 semantics, native parity and fidelity remain mandatory. No new challenge, cut,
 weight pass, measured constant or Accepted RFC-0022 change. E5-03/04 and E7-06/07
 retain all original criteria and NC-0100/0101/0109/0500..0506.
+
+### A3/A8 evidence continuation — Exact gated-product source relation
+
+Status: Draft research evidence; A3/A8 remain Draft. Question Q26.
+The [gated-product study](../../research/cqis-bounds/GATED-PRODUCT.md) binds
+both signed-int16 factors to their exact product before gated row conversion.
+Fixed offsets express the product through three byte-column roles; canonical
+integer comparisons reject output/intermediate aliases separated by p. The
+record retains fu and SiLU E separately and derives product units fu+E.
+
+Independent integer/NumPy/column checks, maximum actual width and model replay
+compose verified products with gated row conversion and scaled down projection.
+Both pinned baseline and separate block-mode replay retain all previous fields.
+This is conditional arithmetic; actual factor/function/range/source consumers,
+complete bound/registry sets, native parity and fidelity remain mandatory.
+No Accepted RFC-0022 field, challenge, loss, cut, weight pass or measured constant
+changes. E5-03/04 and E7-05 retain all original acceptance criteria and controls.
