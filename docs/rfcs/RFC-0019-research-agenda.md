@@ -652,3 +652,13 @@ normalization arithmetic while preserving all previous fixture fields. Draft
 A3/A6 and RFC-0009 A2, original tasks and controls remain unchanged. Complete
 schemas, masked maximum/deltas, actual consumers, native parity and fidelity
 remain mandatory; this is not an inference proof or performance result.
+
+Q26 attention-maximum continuation: the [masked maximum study](../../research/cqis-bounds/ATTENTION-MAX.md)
+adds byte-faithful attainment, differences and first-allowed-tie records. The
+10000-configuration corpus has 5874 valid rows and 4126 expected domain
+rejections; rebuilt p-separated attainment/difference/prefix aliases reject.
+Model and pinned checks compose checked scores/deltas with probability and
+attention sum/block/normalization arithmetic, preserving prior fixture fields.
+Draft A3/A6 and RFC-0009 A2, original tasks and controls remain unchanged.
+Complete set/source contracts, actual consumers, native parity and fidelity
+remain mandatory; no inference proof or performance result is asserted.
