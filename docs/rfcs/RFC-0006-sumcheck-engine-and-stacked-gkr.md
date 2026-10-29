@@ -549,6 +549,14 @@ without a dense category table. Actual source/bit/range/PCS consumers and masked
 composition remain required; this unmasked reference study grants no ZK credit.
 A4 remains Draft and must distinguish public resolution from private obligations.
 
+The [weighted private study](../../research/stacked-gkr/WEIGHTED-PRIVATE-SELECTION.md)
+extends that conditional relation to ordered multi-axis source grids, arbitrary
+category placement, selected axes and broadcasting. It multiplies Boolean-entry
+weights before extension, handles internal padding holes and retains every
+original under zero weights. Its scoped descriptor and unchanged A1 loss are
+research evidence; actual stacked-final consumption, authenticated source/view,
+bit/range/PCS consumers and joint masking remain unresolved.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
