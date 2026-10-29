@@ -100,6 +100,7 @@ jobs:
       - run: cargo test -p stele-sumcheck --features std --example streaming_bench --locked --offline
       - run: cargo check -p stele-sumcheck --no-default-features --locked --offline
       - run: cargo check -p stele-lookup --no-default-features --locked --offline
+      - run: cargo check -p stele-cqis --no-default-features --locked --offline
       - run: cargo clippy -p stele-sumcheck --all-targets --all-features --locked --offline -- -D warnings
       - run: cargo clippy -p stele-hash --all-targets --all-features --locked --offline -- -D warnings
       - run: scripts/gates/digest.sh
