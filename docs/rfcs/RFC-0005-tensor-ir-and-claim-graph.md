@@ -30,3 +30,28 @@ recompute share one kernel implementation; a digest of every virtual tensor is c
 ## 5. Determinism
 Lowering, padding, stacking order, head order, chunking decisions and table ids are functions of `cqis_id` only.
 `stele-ir` prints a canonical plan (`plan.json`); the verifier derives the identical plan.
+
+## 6. Amendment log
+
+### A1 — Function and representation references in the plan
+
+Status: Draft. Companion RFC-0021 and RFC-0004 A4. Review: pending.
+Motivation: a component table identity cannot bind a complete exp composition or
+RMSNorm's dimension/scales/epsilon, and a function set cannot bind operation order.
+
+Addition to §§1,3,5: each nonlinear operation names its RFC-0021 FunctionId and
+selected RepresentationId, with the complete checked descriptors available in
+the authenticated function manifest. Its input/output tensor identities, shape,
+scale/gain sources and call position remain explicit plan data. The verifier
+derives/checks the exact component closure and all integer relations; a Table op
+after lowering names an actual component TableId. No proof-supplied alternative
+representation or standalone manifest may choose the plan. Unknown/unbound
+operations, identities, source references or dimensions reject before proof use.
+
+This fixes the semantic references, not the entire plan's canonical byte codec.
+E6 still requires that complete contract and verifier derivation before plan
+admission. Existing private/virtual source, range, selector and claim-consumer
+obligations remain. NC-0412/0413 cover real configured-function/representation
+substitution when those consumers exist; research/primitive tests earn no credit.
+No challenge, loss line, cut, weight pass or measured constant is introduced;
+lowering/validation costs remain T_misc and actual reductions retain c_a/c_lu.

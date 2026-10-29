@@ -44,3 +44,34 @@ needs no DPA. Memory for the exp phase is one tile `(T_i × T_j)` at a time.
 ## 7. Negative controls
 NC-0500 masked entry with nonzero `P̂`; NC-0501 `m_i` below max (index out of domain); NC-0502 `m_i` above max; NC-0503 `Z`
 mismatch by one; NC-0504 GQA broadcast to wrong group; NC-0505 block sum carries dropped; NC-0506 `j*` pointing at a masked entry.
+
+## 8. Amendment log
+
+### A1 — Explicit exponential function, scale and representation
+
+Status: Draft. Companion RFC-0021/RFC-0004 A4. Review: pending.
+Motivation: the old exp lookup sketch does not distinguish the inclusive domain,
+split-dependent product, correctly rounded alternative or multiple small tables.
+
+Replacement for §2 step 4: for each configured attention instance, authenticate
+the exact exponential FunctionId/RepresentationId and B,F,E (and k where selected).
+The integer argument is t=S(i,j)-m_i; the real reference exponent is t/2^F.
+No implicit score scaling, clamping or tail replacement is permitted. Enforce
+the complete -2^B<=t<=0 domain and the selected RFC-0021 decomposition, every
+component membership, product/remainder relation and integer range. At u=2^B,
+the final high index requires low index zero. Large signed/index relations need
+their actual limb consumers and static bounds, not modular aliases.
+
+Keep selector M and (1-M)*P_hat=0 for masked/padded entries. Every real query row
+must have an allowed key; m_i is attained at an unmasked real j*. P_hat(0)=2^E
+for both exponential functions, hence that row's Z is positive. Padded query
+rows are excluded and retain the plan's canonical zeros. This does not alter
+the output division, score matmul, source claims or original NC-0500..0506.
+
+Step 4 costs one membership for direct exp, two for product, three for corrected
+exp, plus all index/recombination/range work. Charge these in c_lu/c_a/T_misc;
+the old single-membership estimate is not the cost of a decomposed function.
+Attained-max and all lookup/source/PCS/FS errors require their actual schedules
+and ledger entries. No full attention protocol or profile is admitted by a
+function descriptor. E5/E7/E10 delivery retains all original gates; no measured
+constant, new committed tensor or weight-pass change is asserted.

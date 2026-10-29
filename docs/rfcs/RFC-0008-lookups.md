@@ -242,3 +242,34 @@ earn no coverage. E3-07 retains NC-0400..0403, committed multiplicities, private
 integration and measured c_lu. Cost terms: c_lu/c_sc, T_misc and owned source,
 tree, proof and coefficient storage. Use linear-size equality construction and
 charge all retained levels/copies. No fitted constant or weight-pass count changes.
+
+### A4 — Canonical public table registry and function closure
+
+Status: Draft. Companion RFC-0021/RFC-0004 A4. Review: pending.
+Motivation: §4's concatenation lacks field boundaries and conflates complete
+functions with small lookup components. A table name/id alone also cannot
+authenticate arbitrary supplied rows or a changed decomposition.
+
+Exact replacement for §4: RFC-0021 defines the closed component TableId schemas,
+canonical integer data, FunctionId, RepresentationId and exact function manifest.
+Each registered lookup component has at most 2^16 padded rows. Large exponential
+functions use the selected explicit composition; the verifier derives its complete
+integer relations, input domains and component identities from authenticated
+configuration. Unknown roles, swapped components, parameter aliases, missing/
+additional components and a representation different from the plan reject.
+RoPE is a public tensor under RFC-0017, not an entry in this closed lookup registry.
+
+Before direct MLE use, validate the complete component definition/data and lift
+integers canonically as RFC-0021 §4 specifies. Wrapper openings instead reference
+the exact RFC-0011 A2 table matrix/root, plus the complete Accepted opening
+protocol; mere inclusion under a supplied root is insufficient. The same padded
+row order and valid-row selector apply in both paths. Range discipline and all
+original-source/multiplicity consumers remain mandatory; a generated table is
+not an authenticated source or a verified lookup.
+
+No A2 lookup mode, private consumer, transcript label or profile is admitted.
+E3-07's existing block and all original E3-08 controls remain. NC-0412/0413/0414
+are reserved for actual function/representation/data binding consumers; no research
+credit. Costs are O(Lc) public evaluation plus the actual per-component c_lu and
+recombination/range c_a; table generation is T_misc. No measured constant, new
+commitment category or weight-pass change. All actual losses retain ledger lines.

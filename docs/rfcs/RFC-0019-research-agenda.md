@@ -277,6 +277,15 @@ data digest from the definition. Independent frame/manifest checks and actual
 direct/corrected output agreement support the candidate. Full operation/source
 and passport code-root binding, normative review and native delivery remain.
 
+Q25 contract continuation: Draft RFC-0021 and companions RFC-0004 A4,
+RFC-0005 A1, RFC-0008 A4, RFC-0009 A1 and RFC-0011 A2 consolidate the exact
+functions, certificate algorithms, identity bytes, plan references and table
+matrix/code/root record. The full outer plan/passport and real consumers remain
+their original tasks; this does not admit opaque configuration blobs or profiles.
+Before acceptance, complete coordinated review and executable table-root framing
+and mutation evidence; native generators follow acceptance, with all delivery
+criteria. E5-02 remains blocked while this contract is Draft.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.

@@ -368,3 +368,43 @@ affects c_a and memory. No benchmark constant or weight-pass count changes here.
 Affected tasks: E5-03 (blocked on this complete contract), E5-04, E6 lowering,
 E7 reductions and E10 checkpoint/passport work. Original acceptance criteria
 remain. E5-01 scalar arithmetic and RFC-0003 A1 field recovery are unchanged.
+
+### A4 — Complete nonlinear function and representation contract
+
+Status: Draft. Question Q25. Companion RFC-0021 and RFC-0005 A1, RFC-0008 A4,
+RFC-0009 A1, RFC-0011 A2. Review: pending coordinated skill review.
+
+Motivation: A2 identified missing numerical definitions, inclusive endpoints,
+total normalization and authenticated table parameters. The complete candidate
+studies now supply exact functions, error arguments and reproducible bytes.
+This amendment supersedes A2's incomplete proposal on acceptance; A1 and the
+separate quantiser/certificate work in A3 remain in force/unresolved respectively.
+
+Exact replacement for §4: use RFC-0021 §§2–4 for all lookup component tables,
+function/representation identities, parameter bounds, whole-table generation
+failure, canonical rows/padding and public MLE evaluation. A large exp product
+is a function composition, never a registered table larger than 2^16 rows.
+The selected direct/product/corrected function and representation must be explicit;
+the product does not silently become correctly rounded or monotone.
+
+Exact replacement for §5.3: use RFC-0021 §2.3, including dimension, positive
+rational epsilon, gain/input/output scales, even exponent, retained remainder,
+certified rsqrt, wide product and signed final rounding. Its int16 output feeds
+the separate int8 conversion in §3. Unsupported dimensions/formats and overflow
+reject; no existing int32 Requant operation is reinterpreted as the wide norm.
+For §2's norm/attention/probability rows, use those explicit parameter domains.
+B=14,E=12 may be resolved defaults, but F/epsilon and the selected function/
+representation have no implicit choice. Every resolved parameter is encoded.
+
+Native E5-02 generation/identity/public-MLE delivery follows RFC-0021 §6. It
+does not complete quantisation, full forward inference, fidelity, registry
+lowering, reductions or passport verification. Their original gates remain;
+fidelity is required for model/passport delivery, not before writing the exact
+integer generator. No table value or identity alone proves membership or INV-5.
+
+Soundness: no challenge or ledger line here; actual consumers retain all
+SC/RLC/LU/PCS/H/FS terms. RFC-0021 §6 reserves the new function/representation/
+data controls and retains existing domain/recombination/norm/passport controls.
+Cost: explicit table/limb counts in c_lu/c_a/T_misc; no measured constant,
+weight-pass change or committed intermediate. Full inference/profile admission
+still requires every downstream protocol and consumer; Q12 is unchanged.
