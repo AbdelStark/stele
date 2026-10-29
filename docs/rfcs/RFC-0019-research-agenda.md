@@ -571,3 +571,11 @@ The pinned checkpoint retains identical logits and tokens through this loader.
 Draft RFC-0004 A10 records the boundary; complete certificate/registry sets, native
 full-model parity, authenticated registration, fidelity and private proof consumers
 remain required. A numerical instance identity does not establish a passport.
+
+Q26 scaled-linear continuation: the [closed arithmetic study](../../research/cqis-bounds/SCALED-LINEAR.md)
+derives static matrix-output and embedding records from formats, shapes and unit
+policies, including gated scales and extreme exponents. Exact integer/NumPy
+controls and pinned model role records exercise signed and byte-limb relations.
+Draft A3/A8/A9 remain unaccepted; no RFC-0022 schema extension or NC-0109 credit.
+Other reduction schemas, the complete certificate set, native parity and actual
+source/range/lookup/PCS consumers remain required.

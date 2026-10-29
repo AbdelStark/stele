@@ -113,7 +113,10 @@ def check():
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] in (['--configuration'],['--configuration-controls']):
+    if sys.argv[1:] in (['--scaled-bounds'],['--scaled-controls']):
+        from check_scaled_bounds import check, controls
+        check() if sys.argv[1]=='--scaled-bounds' else controls()
+    elif sys.argv[1:] in (['--configuration'],['--configuration-controls']):
         from check_model_config import check, controls
         if sys.argv[1]=='--configuration': check()
         controls()

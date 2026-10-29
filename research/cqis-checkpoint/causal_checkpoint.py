@@ -6,6 +6,7 @@ from pathlib import Path
 import struct
 import causal_model as m
 import model_config as c
+import model_scaled_bounds
 import source
 import rope
 
@@ -65,6 +66,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     reject('ConfigDigest',lambda: prepare(config+b' ',raw))
     reject('SourceDigest',lambda: prepare(config,raw[:-1]+bytes([raw[-1]^1])))
     model,info = prepare(config,raw); sequence = [0,42,1337,31999]
+    info.update(model_scaled_bounds.evidence(model))
     actual = m.full(model,sequence); expected = reference(model,sequence)
     assert {k:actual[k] for k in expected}==expected
     cache = None
