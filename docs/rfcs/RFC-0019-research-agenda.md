@@ -234,6 +234,13 @@ table and lookup cost. All example entries and error enclosures are checked.
 This selects no model scale, representation or canonical identity. Remaining
 activation/normalization/registry/fidelity obligations keep A2 and E5-02 open.
 
+Q25 activation continuation: formal/cqis-activations.md defines scaled sigmoid,
+SiLU and softcap research candidates. Strict rational intervals preserve the
+side of a half-unit boundary where replacing an exponential tail by zero fails.
+Full signed-int16 tables and seeded scale/cap cases match an independent exact
+oracle; overflow and altered certificates reject. GeLU variants, total RMSNorm,
+canonical identities and production consumers remain open; A2 stays Draft.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.

@@ -236,6 +236,16 @@ A2 contract: remaining activations, total RMSNorm, canonical registry/passport
 bytes, scale alignment, representation selection, production controls and model
 fidelity remain required. A2 and E5-02 stay Draft/blocked.
 
+[Strict activation candidates](../../formal/cqis-activations.md) now give exact
+scaled sigmoid, SiLU and softcap definitions with signed half-away and overflow
+rejection. Strict rational endpoints resolve cases where rounding an asymptotic
+limit gives the wrong integer. Independent reciprocal-series checks cover three
+complete signed-int16 tables and varied-scale inputs; each certified entry has
+at most one-half output-unit error. Direct rows, cap parameters and all costs
+remain explicit. This is further numerical evidence, not acceptance: GeLU
+variants, total RMSNorm/rsqrt, authenticated registry bytes, complete model-scale
+alignment, native controls/parity and fidelity remain required under A2.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).
