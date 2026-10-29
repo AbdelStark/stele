@@ -126,3 +126,21 @@ need chunking; its virtual sums/carries and c_a cost need the full contract.
 Affected tasks: E5-03, E6 plan checks, E7 reductions and future DPA work.
 Acceptance requires the linked skill reviews and coordinated A3 contract;
 this Draft does not authorize a silent production fallback.
+
+### A3 — Gated-product source widths and function range
+
+Status: Draft. Question Q26; companion RFC-0004 A8.
+Evidence: [complete block study](../../research/cqis-checkpoint/DECODER-BLOCK.md).
+Proposed replacement for §4's int16-times-int8 gated-product bullet:
+
+> RFC-0004 A8's U and silu_q(G) are both int16. The bare format bound 2^30 fails
+> the centered M31 criterion; the old 2^23 bullet is inapplicable. A complete
+> RFC-0021 SiLU table has outputs in [-2^E,32767], E<=14, so actual table
+> membership supports the static product bound 32768*32767. Twice that bound is
+> strictly below p. Enforce both source ranges, SiLU membership and the product
+> result range before using this tighter single-field identity. It does not
+> cover the down-projection scale numerator, which needs wider limb/carry schemas.
+
+No soundness loss, profile, cost constant or production behavior is admitted.
+The required wider product/scale arithmetic contributes to c_a/T_witness.
+Affected tasks E5-03/04 and E7-05 remain incomplete; existing A2 is unchanged.

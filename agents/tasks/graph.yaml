@@ -667,9 +667,11 @@ tasks:
   - RFC-0004 A6
   - RFC-0009 A2
   - RFC-0004 A7
+  - RFC-0004 A8
+  - RFC-0003 A3
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7)
+  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8)
   agent: codex-root
   branch: task/E5-03-certified-rope
   acceptance:
@@ -707,9 +709,13 @@ tasks:
   - RFC-0004 A6
   - RFC-0009 A2
   - RFC-0004 A7
+  - RFC-0004 A8
+  - RFC-0003 A3
   skill: cqis-numerics
   crate: stele-cqis+harness
-  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7)
+  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7; RFC-0004 A8)
+  agent: codex-root
+  branch: task/E5-04-decoder-block
   acceptance:
   - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
   - decode == single causal pass test
@@ -852,9 +858,11 @@ tasks:
   rfc:
   - RFC-0004 §3
   - RFC-0021 §2.2
+  - RFC-0004 A8
+  - RFC-0003 A3
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: blocked(RFC-0004 A8; RFC-0003 A3)
   acceptance:
   - controls for table id and product
 - id: E7-06
