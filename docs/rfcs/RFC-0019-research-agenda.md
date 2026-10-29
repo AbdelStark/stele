@@ -319,6 +319,14 @@ minimality/error bounds and static overflow rejection. These are research choice
 not Accepted scale/quantiser bytes, native parity or static certificate consumers;
 E5-03 and full inference remain uncompleted.
 
+Q26 alignment continuation: the [scale/tied-storage study](../../research/cqis-checkpoint/ALIGNMENT.md)
+checks combined mantissas beyond scalar Requant's parameter range, one-round
+residual scale alignment and one shared quantised embedding/LM-head tensor.
+Exact/NumPy integer parity and concrete double-rounding/transpose counterexamples
+make the numerical choices explicit. Artifact/plan/source-role bytes, gain and
+attention conversion, static certificate consumers and complete inference remain
+open; RFC-0004 A3 is still Draft and E5-03 stays blocked.
+
 Q22 resolution: RFC-0006 A6 and RFC-0014 A1 Accepted with the linked same-author
 skill reviews, deterministic equivalence argument and sequential-source evidence.
 The contract fixes explicit schedules, bounded record preparation, preallocated

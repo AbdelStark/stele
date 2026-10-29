@@ -90,3 +90,14 @@ zero rows preserve scale zero and static overflow rejects. Reproduce with
 `python3 research/cqis-checkpoint/check_quantiser.py`. These remain candidate
 choices; complete configuration/identity, alignment, native parity, static
 certificates and real consumers are still required before E5-03 acceptance.
+
+## Alignment and tied-storage continuation
+
+The [alignment study](ALIGNMENT.md) defines candidate combined matmul scales,
+one-round residual alignment and one vocabulary-major quantised tensor shared
+by embedding/LM-head roles. Exact rational and NumPy integer checks cover 20,000
+scale decisions, 10,000 residual decisions and 10,000 tied-role cases, including
+overflow rejection. Concrete witnesses distinguish separate rounding and separate
+transpose quantisation from the proposed semantics. Continue Q26 with explicit
+artifact/plan/source-role bytes and static certificates; native inference and
+production control obligations are unchanged.
