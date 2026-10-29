@@ -101,3 +101,13 @@ overflow rejection. Concrete witnesses distinguish separate rounding and separat
 transpose quantisation from the proposed semantics. Continue Q26 with explicit
 artifact/plan/source-role bytes and static certificates; native inference and
 production control obligations are unchanged.
+
+## Physical-record and gain-conversion continuation
+
+The [record study](RECORDS.md) fixes candidate source dtype/shape/channel metadata,
+physical int4/int8/int16 bytes and exact wide gain conversion. Independent encoding
+and rational/NumPy decisions check 30,000 tensors, including whole-tensor overflow
+rejection and canonical final-nibble padding. A valid one-value mutation demonstrates
+that parsing is separate from source authentication. Complete multi-tensor artifact,
+quantiser identity, source/plan bindings, certificates and native/full inference
+remain open; the candidate is research-only and E5-03 stays blocked.
