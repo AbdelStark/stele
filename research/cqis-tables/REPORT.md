@@ -286,3 +286,29 @@ is a function set, not operation order, source binding, a full model configurati
 or a passport. Actual code-root derivation, operation-to-function mapping and
 native lookup/range/normalization consumers remain mandatory. Native E5 table
 delivery should not be credited with those later integration obligations.
+
+## Canonical table-root binding investigation (Q25 contract validation)
+
+Question: does the Draft RFC-0011 A2 record bind the exact integer table through
+the prescribed M31 matrix, selected code and Merkle context, while retaining
+manifest/parameter authority? Kill criterion: a root for wrong rows is accepted,
+a field-congruent integer alias escapes canonical data validation, a supplied
+record chooses code/shape/context, or membership alone becomes table admission.
+All generation/coding/hashing costs remain T_misc/one-time commitment work.
+This uses the existing exact encoder/Merkle studies and earns no native NC,
+lookup, private PCS, wrapper, passport-root or profile credit.
+
+The [matrix/root evidence](../../formal/cqis-table-bindings.md) uses the exact
+closed code factory and Merkle contexts, retaining every tuple column and padded
+row. `check_table_bindings.py` independently parses the record, verifies actual
+column openings, and rejects all changed authority fields. Cases include Circle,
+v2 expander, a two-row high table and the maximum padded rsqrt table.
+
+One altered correction value produces a valid wrong-table Merkle root whose
+membership proof succeeds; substituting only that root rejects under expected
+definition binding. A field-congruent integer alias leaves the root unchanged
+but fails canonical data validation. The
+[artifact](table-binding-candidates.json) retains complete records and roots.
+Configuration shape/closure/context failures reject before encoding. This
+supports coordinated contract review; native E5-02 and all actual passport,
+lookup, wrapper and profile consumers remain separate required deliveries.
