@@ -587,3 +587,12 @@ rejection of gated M31 aliases. Mixed model roles and pinned replay supply
 correctness evidence only. Draft A3/A8, E5-03/04 and all original criteria remain
 open; actual source/selection/range consumers and complete certificate sets
 are still required before inference-proof admission.
+
+Q26 rotary-bound continuation: the [application envelope study](../../research/cqis-bounds/ROTARY.md)
+derives the fixed Q14 coefficient absolute-sum limit 23171 and closes int16
+rotation/rounding relations in M31 without limbs. Exact/NumPy controls reject
+source, pairing, position and passthrough substitutions, including invalid
+component-bounded pairs on zero inputs. Model role records and pinned replay
+are correctness evidence, not canonical coefficient/source authentication.
+Draft A3/A7, full schemas, actual consumers, native parity, fidelity and all
+original E5-03/04 criteria remain open; no production NC or performance credit.
