@@ -533,3 +533,10 @@ RFC-0009 A2 propose explicit units, fixed absolute blocks and signed division.
 Exact/NumPy decisions and prefix comparisons supply numerical evidence only;
 full score/RoPE/config semantics, native forward, proof consumers and fidelity
 remain required. E5-03/04 and E7-06/07 retain their original criteria.
+
+Q26 composition continuation: the [projected attention study](../../research/cqis-checkpoint/PROJECTED-ATTENTION.md)
+composes integer rotation, whole-row Q/K/V scales, explicit score conversion,
+GQA, wide head assembly and absolute-position cache eviction. Exact/NumPy checks
+also expose why cache row count alone cannot bound occupied blocks. The Draft
+A6/A2 continuation keeps table generation/identity, native forward, full proof
+consumers and model fidelity open; no task or production control is completed.
