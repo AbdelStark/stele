@@ -10,12 +10,37 @@ from math import gcd
 from pathlib import Path
 from random import Random
 import struct
+import subprocess
 import sys
+import tempfile
 import encoding as e
 import limbs
 import requant as q
 import norm_bounds as n
 from check_limbs import oracle, rejects
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def native_records(specs):
+    """Compare complete native output, with file-backed input and streamed rows."""
+    subprocess.run(['cargo','build','-p','stele-cqis','--example','static_records','--locked','--offline'],cwd=ROOT,check=True)
+    metadata = subprocess.check_output(['cargo','metadata','--no-deps','--format-version','1','--offline'],cwd=ROOT,text=True)
+    binary = Path(json.loads(metadata)['target_directory'])/'debug/examples/static_records'
+    with tempfile.TemporaryFile(mode='w+t') as source:
+        for p in specs:
+            tag,params,*_ = expected(p)
+            source.write(f'{tag} {params.hex()}\n')
+        source.seek(0)
+        with subprocess.Popen([str(binary)],stdin=source,stdout=subprocess.PIPE,text=True,cwd=ROOT) as child:
+            try:
+                for p in specs:
+                    assert child.stdout.readline(16386)==e.encode(p).hex()+'\n',p
+                assert child.stdout.read(1)==''
+                assert child.wait()==0
+            finally:
+                if child.poll() is None:
+                    child.terminate();child.wait()
 
 
 def expected(p):
@@ -109,6 +134,7 @@ def rejects_changed_record(p,raw):
 
 def report():
     rng,checksum = Random(2612),hashlib.sha256()
+    native_specs = []
     sizes = {1:[8192,0],2:[8192,0]}
     goldens = [q.Spec(1,0,8),q.Spec(65535,62,16),q.Spec(3,2,8),
                n.Spec(1,0,0,14,1,2**32-1),n.Spec(16384,30,30,14,2**32-1,2**32-2),
@@ -134,6 +160,8 @@ def report():
             assert e.validate(p,raw) is None
             sizes[kind] = [min(sizes[kind][0],len(raw)),max(sizes[kind][1],len(raw))]
             checksum.update(struct.pack('<I',len(raw))+raw)
+            native_specs.append(p)
+    native_records(goldens+native_specs)
     assert 22+4+1+2+13+4+1+1+12*20+1+2*2+1+11*372==4386<8192
     return dict(cases=20000,seed=2612,capacity=8192,length_bounds=sizes,sha256=checksum.hexdigest(),
                 goldens=[dict(schema=expected(p)[0],parameters=expected(p)[1].hex(),bytes=e.encode(p).hex()) for p in goldens])
