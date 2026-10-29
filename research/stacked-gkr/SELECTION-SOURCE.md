@@ -99,7 +99,8 @@ additional; no conditional algebraic bound is promoted to a certified profile.
 Raw-index conversion costs O(M*N+n*(s+k)) for n real rows and s source axes.
 The folded no-skip zerocheck uses linear table folding and agrees byte-for-byte
 with the existing exhaustive A3 oracle. Source proving costs
-O((M+k)*N+n*s+k*s); conditional verification costs O(D+s+k*(D+s+1)), excluding
+O((M+k)*N+n*s+k*(D+s+1)), including emitted point/metadata work;
+conditional verification costs O(D+s+k*(D+s+1)), excluding
 actual openings. Direct reference consumption of q source claims costs
 O(q*M*N*(D+1)); q is 2 or 2+k here, plus k selection claims when composed.
 

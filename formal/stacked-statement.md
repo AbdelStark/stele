@@ -80,6 +80,12 @@ reductions. It changes no admitted commitment format: the reference uses fixed
 public source bytes, and its material message expansion requires comparison with
 compact authenticated representations before adoption.
 
+The [two-bit candidate](../research/stacked-gkr/PAIRED-SOURCE.md) makes that
+comparison through derived-bit Booleanity and actual bit-extraction reductions. Its
+virtual bit tensor has no commitment; every bit MLE reduces to the same original
+symbol tensor. Message savings do not imply smaller working memory or a private
+PCS/ZK construction, and do not accept this candidate format.
+
 ## 2. Byte grammar
 
 Integers are unsigned little-endian with their stated widths. K elements are d

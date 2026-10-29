@@ -518,3 +518,10 @@ maps selection claims to that same original tensor. Both-field consumers reject
 false source data and field-congruent integer substitution. Its bit representation
 has material message expansion; private PCS, joint masking, compact alternatives
 and complete format/plan admission remain open. No commitment format is accepted.
+
+Q20 compact-source continuation: the [two-bit candidate](../../research/stacked-gkr/PAIRED-SOURCE.md)
+halves the bit-source message for k>=2 while resolving every virtual bit claim
+through actual degree-four A1 to its original symbol tensor. Tests reject direct
+polynomial-at-MLE substitution and enforce membership, spare bits, padding and
+range. Single-plane consumers preserve linear table work; added proofs, live
+working memory, private PCS and joint masking remain explicit costs/obligations.

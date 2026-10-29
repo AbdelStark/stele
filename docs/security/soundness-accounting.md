@@ -255,3 +255,14 @@ and k degree-3 A1 nodes: 3a(k+1). Draw counts are 4D, plus a(k+2) for that branc
 there is no extra RLC/skip draw. Source precedes all ZeroWeight draws. Every
 original F/bit claim still requires its actual opening; stage/selection, PCS or
 opening batching, FS/H and joint ZK are additional. This admits no format/profile.
+
+Q20's [two-bit source](../../research/stacked-gkr/PAIRED-SOURCE.md) retains that
+bit-core numerator with D=Db, adds 3a when k<2 for the unused low bit,
+and 4*sum(m_i) for actual source resolvers. There is no separate membership
+proof: the bit core and P=2H+L establish it through the actual resolvers.
+Here m_i is the derived general/plane-view dimension, at most Dp; each range
+or selection bit resolver has m_i=a. Draws are the bit core's draws plus
+2a when k<2, and sum(m_i). The PairedSource frame precedes all of them; no RLC
+or new challenge kind is used. Stage selection resolvers add 4ak and ak draws.
+All original symbol finals require actual openings. PCS/batching, FS/H and joint
+ZK losses remain additional; payload reduction is no proof/profile admission.
