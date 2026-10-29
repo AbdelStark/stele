@@ -60,7 +60,7 @@ def fraction_reductions(root):
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
                'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs',
                'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl',
-               'src/selected.rs', 'tests/selected.rs', 'examples/fraction_corpus.rs'}
+               'src/selected.rs', 'tests/selected.rs', 'examples/fraction_corpus.rs', 'examples/fraction_bench.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
                '//! Tree and selected-product arithmetic return conditional claims; full lookup is absent.\n'
@@ -105,6 +105,11 @@ def fraction_reductions(root):
     if result.returncode or any(f'fraction_transcript::{name} ... ok' not in result.stdout for name in names):
         raise ValueError(f'fraction transcript controls failed: {result.stdout} {result.stderr}')
     fraction_corpus(root)
+    result = subprocess.run(['cargo','test','-p','stele-lookup','--example','fraction_bench','--locked','--offline'],
+                            cwd=root,text=True,capture_output=True)
+    names = ('accepts_fraction_benchmark_original_consumers','rejects_fraction_benchmark_shapes')
+    if result.returncode or any(f'tests::{name} ... ok' not in result.stdout for name in names):
+        raise ValueError(f'fraction benchmark pipeline failed: {result.stdout} {result.stderr}')
     print('gate fraction reductions: tree/selected-product proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
 
 
