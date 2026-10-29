@@ -1,5 +1,5 @@
 //! Scalar CQIS arithmetic, RFC-0004 §2, §5.2 and A1.
-//! Canonical component metadata and fixed tables follow RFC-0021 §§2,4.
+//! Canonical functions, representations, manifests and tables follow RFC-0021 §§2,4.
 //! These integer operations do not enforce a field proof or a bound certificate.
 #![forbid(unsafe_code)]
 #![no_std]

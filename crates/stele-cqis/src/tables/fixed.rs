@@ -74,6 +74,23 @@ pub struct Table {
 }
 
 impl Table {
+    /// Generate a complete registered component from checked metadata.
+    /// This always evaluates the definition; no supplied rows or digest are trusted.
+    pub fn generate(descriptor: Descriptor) -> Result<Self, Error> {
+        match descriptor.kind {
+            Kind::High | Kind::Low | Kind::Direct | Kind::Correction => {
+                Self::exponential(descriptor)
+            }
+            Kind::Sigmoid | Kind::Silu | Kind::Softcap | Kind::Gelu | Kind::GeluTanh => {
+                Self::activation(descriptor)
+            }
+            Kind::Rsqrt => Self::rsqrt(),
+            Kind::Range8 => Self::range(8),
+            Kind::Range12 => Self::range(12),
+            Kind::Range16 => Self::range(16),
+        }
+    }
+
     /// Generate every signed-int16 input for any registered activation component.
     /// Any uncertified or overflowing entry rejects the entire table.
     pub fn activation(descriptor: Descriptor) -> Result<Self, Error> {
