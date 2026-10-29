@@ -96,8 +96,8 @@ def chain(v, j, value, d):
 
 
 def zero_prove(t, i, tables):
-    """Linear folded A3 path for the candidate's two-input, no-skip relations."""
-    need(i['k'] == 0 and len(i['ids']) == 2)
+    """Linear folded A3 path for one/two-input, no-skip relations."""
+    need(i['k'] == 0 and 1 <= len(i['ids']) <= 2)
     zc.describe(i, t.degree); zc.shape(i, tables, t.degree)
     alpha, state, rounds, point = zc.start(t, i), [list(row) for row in tables], [], []
     for h in range(i['m']):
@@ -113,6 +113,10 @@ def zero_prove(t, i, tables):
 
 
 def prove(t, v, fields):
+    return prove_with_claims(t, v, fields)[0]
+
+
+def prove_with_claims(t, v, fields):
     raw, spec, _, dimension = derive(v, t.degree); capacity(spec)
     need(len(fields) == 1 << dimension, 'PublicShape')
     for value in fields:
@@ -124,8 +128,9 @@ def prove(t, v, fields):
             valid[j*n+padded] = sc.scalar(1, d)
     instructions = descriptors(v, d)
     t.absorb(SOURCE, raw)
-    bits, _ = zero_prove(t, instructions[0], [fields, valid])
-    padding, _ = zero_prove(t, instructions[1], [fields, valid])
+    bits, bit_point = zero_prove(t, instructions[0], [fields, valid])
+    padding, pad_point = zero_prove(t, instructions[1], [fields, valid])
+    claims = [(v['source_id'], bit_point, bits['final'][0][0]), (v['source_id'], pad_point, padding['final'][0][0])]
     bounded = None
     if spec.categories != 1 << k:
         planes = [fields[j*n:(j+1)*n] for j in range(k)]
@@ -141,8 +146,11 @@ def prove(t, v, fields):
         for j in range(k):
             node, point = sc.prove(t, chain(v, j, value, d), [ps.weights(point, d), planes[j], suffix[j+1]])
             nodes.append(node); value = node['final'][2]
+            plane_bits = (max(1, k)-1).bit_length()
+            prefix = [sc.scalar(j >> (plane_bits-b-1) & 1, d) for b in range(plane_bits)]
+            claims.append((v['source_id'], prefix+point, node['final'][1]))
         bounded = dict(root=root, nodes=nodes)
-    return dict(bits=bits, padding=padding, range=bounded)
+    return dict(bits=bits, padding=padding, range=bounded), claims
 
 
 def verify_reduction(t, v, proof):

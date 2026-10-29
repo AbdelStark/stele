@@ -571,6 +571,13 @@ tensor. Its public original consumer does not authenticate a private commitment;
 source-storage expansion, packing, complete plan identity and joint privacy still
 require resolution before any format or A4 acceptance.
 
+The [two-bit source candidate](../../research/stacked-gkr/PAIRED-SOURCE.md)
+halves that message payload for k>=2, with actual cubic bit-extraction consumers
+inside degree-four A1. The bit core enforces symbol membership through both
+Boolean bits and P=2H+L; k<2 has an explicit absent-bit constraint. Single-plane
+claims use derived plane views; all finals reach the same original source. This adds proof and
+working-memory costs, and supplies no private PCS, joint ZK or format admission.
+
 Open requirements before acceptance (all part of Q20):
 
 1. Specify complete bytes and validation for the consumed claim, tensor ids,
