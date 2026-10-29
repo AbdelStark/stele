@@ -74,6 +74,12 @@ original data are fixed public fixture bytes; aligned instance-id blocks separat
 the stage and child nodes. Production authentication, full plan/tensor identity
 validation and joint ZK remain open.
 
+The [typed bit-source baseline](../research/stacked-gkr/SELECTION-SOURCE.md)
+connects those bit claims to one original tensor, with actual Boolean/padding/range
+reductions. It changes no admitted commitment format: the reference uses fixed
+public source bytes, and its material message expansion requires comparison with
+compact authenticated representations before adoption.
+
 ## 2. Byte grammar
 
 Integers are unsigned little-endian with their stated widths. K elements are d

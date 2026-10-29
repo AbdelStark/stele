@@ -88,6 +88,7 @@ jobs:
       - run: uv run --locked --script research/stacked-gkr/check_private_selection.py
       - run: uv run --locked --script research/stacked-gkr/check_weighted_private_selection.py
       - run: uv run --locked --script research/stacked-gkr/check_private_stage.py
+      - run: uv run --locked --script research/stacked-gkr/check_selection_source.py
       - run: python3 research/small-value/check_grid.py
       - run: uv run --locked --script research/small-value/check_small_value.py
       - run: uv run --locked --script research/streaming/check_windows.py
