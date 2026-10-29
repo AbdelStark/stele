@@ -397,7 +397,7 @@ tasks:
   crate: stele-gkr
   status: blocked(RFC-0006 A4)
   agent: codex-root
-  branch: task/E3-06-stacked-public-study
+  branch: task/E3-06-private-selection
   acceptance:
   - prover/verifier MLE agreement 1e4 points per kind
   - NC-0203
