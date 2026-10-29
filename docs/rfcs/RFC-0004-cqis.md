@@ -715,3 +715,22 @@ Review: [same-author passes](../../agents/reviews/scaled-linear-draft.md).
 No challenge, ledger line, cut, proof weight pass or measured cost changes.
 E5-03/04 retain all original criteria; full schemas, native parity, actual
 consumers, architecture coverage and fidelity remain required.
+
+### A3 evidence continuation — Row conversion and attained magnitude
+
+Status: Draft research evidence; A3/A8 remain Draft. Question Q26.
+The [closed row study](../../research/cqis-bounds/ROW.md) supplies candidate static
+records for dynamic/static wide and gated conversion, attained maximum absolute
+value, exact ceiling scale and symmetric int8 rounding. Canonical source-offset
+limbs distinguish gated inputs that alias in M31. Bounded nonzero/predecessor,
+quotient and remainder constraints cover zero scales without a free output.
+Static mode retains its explicitly configured positive scale, including zero rows.
+
+The 10000-case corpus, mixed model roles and pinned replay are plaintext research,
+not authenticated source/selection/range consumers. The signed softmax maximum
+and greedy first-argmax have different contracts. Native graduation requires an
+RFC-0022 amendment; Accepted schemas and A1 semantics are unchanged.
+Review: [same-author passes](../../agents/reviews/row-bounds-draft.md).
+No challenge, ledger line, cut, proof weight pass or measured cost changes.
+E5-03/04 retain their original criteria. Full schemas, canonical certificate sets,
+native parity, actual consumers, fidelity and NC-0109 remain required.

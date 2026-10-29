@@ -579,3 +579,11 @@ controls and pinned model role records exercise signed and byte-limb relations.
 Draft A3/A8/A9 remain unaccepted; no RFC-0022 schema extension or NC-0109 credit.
 Other reduction schemas, the complete certificate set, native parity and actual
 source/range/lookup/PCS consumers remain required.
+
+Q26 row continuation: the [row conversion study](../../research/cqis-bounds/ROW.md)
+closes candidate static relations for source magnitudes, attained absolute maximum,
+ceiling scale and rounding, including a constrained zero-scale path and limb
+rejection of gated M31 aliases. Mixed model roles and pinned replay supply
+correctness evidence only. Draft A3/A8, E5-03/04 and all original criteria remain
+open; actual source/selection/range consumers and complete certificate sets
+are still required before inference-proof admission.
