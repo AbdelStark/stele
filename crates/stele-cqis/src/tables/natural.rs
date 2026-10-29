@@ -4,9 +4,10 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 // The fixed schedule bounds scratch independently of any supplied byte length.
-// Current exp denominators use at most 512*(39+9) bits, plus at most 269 bits
-// when scaled for interval rounding. The fixed cap is a resource limit, not a
-// field bound. Further generators must establish their own scratch bounds.
+// Exp and sigmoid/SiLU/softcap arguments have <= 48-bit denominators after
+// halving; Taylor denominators need <= 512*(48+9) bits plus <= 269 scaling
+// bits. The cap is a resource limit, not a field bound. Further generators
+// must establish their own scratch bounds.
 const MAX_BITS: usize = 1 << 18;
 const MAX_WORDS: usize = MAX_BITS / 32;
 
