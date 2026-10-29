@@ -38,6 +38,9 @@
     "model.layers.1.self_attn.rotary_emb.inv_freq"
   ],
   "logits_sha256": "c1f3f16b6677414652eb150d59e79d901c77635530ae7f53b1055cde04cc427e",
+  "model_config_bytes": 2575,
+  "model_config_id": "1d22d4d41a69081111c7ac582172c67cfec640b7a8893a9849063168bf5f921b",
+  "model_instance_id": "a59017256c77ba3cadb05ae1ff0a2860c7b856301826a278adc77bab18c72dd4",
   "parameters": 1032272,
   "prompt": [
     0,

@@ -662,3 +662,36 @@ constant. Canonical outer/config/source-role bytes, static certificate schemas,
 actual selection/range/PCS consumers, NC-0107/0108, sampled decoding, native full
 GPT-2/Llama parity and fidelity remain mandatory. E5-03/04 and E7-08 retain all
 original criteria and stay blocked. Full numerical replay is not a ZK verifier.
+
+### A10 — Complete causal configuration and physical tensor roles
+
+Status: Draft. Question Q26. Candidate framing and loader:
+[model configuration study](../../research/cqis-checkpoint/MODEL-CONFIG.md).
+Review: [same-author passes](../../agents/reviews/model-config-draft.md).
+Motivation: the offline quantiser's Spec set does not bind ordered operation
+roles, runtime units/policies, tied references or selected function representations.
+
+Proposed addition to §§1–3, conditional on A3/A6–A9 and the full plan contract:
+
+> An authenticated model configuration must select every operation's source
+> roles, shape, integer units, conversion policy, function/representation and
+> public rotation definition before evaluation. The sequential dense candidate
+> uses the study's versioned binary descriptor, with ordered Q/K/V/O/up/gate/down
+> slots, exact physical Specs and explicit final norm/head boundaries. A tied
+> head references the identical embedding record; duplicate physical names reject.
+> Cross-layer units, gain precision, projection dimensions and context lengths
+> are checked from configuration. No supplied weight labels, inferred defaults
+> or unbound operation parameters may choose the computation. Distinct selected
+> representations remain distinguishable even when their numerical outputs agree.
+> Expected configuration and artifact identities are separate authenticated
+> inputs; matching a self-selected hash does not establish model/source identity.
+> A complete cqis_id additionally needs its canonical static certificate set,
+> registry/data commitments and full plan contract. The research instance digest
+> is not that identity, a passport or a commitment-to-checkpoint proof.
+
+No Accepted semantics, challenge, ledger line, cut or weight pass changes.
+Metadata validation/preparation contributes to T_misc/T_witness without a measured
+constant. Real config/role/representation/source consumers need catalogued
+negative controls when admitted; research mutation tests earn no NC credit.
+E5-03/04 and E6-01 retain all original criteria. Native parity, complete static
+schemas, supported architecture coverage, fidelity and private PCS/ZK remain open.

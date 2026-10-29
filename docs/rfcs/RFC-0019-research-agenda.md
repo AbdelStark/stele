@@ -563,3 +563,11 @@ full/cache and independent integer comparisons. A pinned public tiny checkpoint
 exercises actual prepared tensors through logits and continuation. Draft RFC-0004
 A9 records missing boundary semantics. Native GPT-2/Llama forward, fidelity,
 canonical config/source roles, static schemas and private proof consumers remain open.
+
+Q26 configuration continuation: the [canonical causal descriptor](../../research/cqis-checkpoint/MODEL-CONFIG.md)
+binds ordered physical roles, every runtime unit/policy and function/representation,
+then reconstructs a model from separately expected configuration/artifact hashes.
+The pinned checkpoint retains identical logits and tokens through this loader.
+Draft RFC-0004 A10 records the boundary; complete certificate/registry sets, native
+full-model parity, authenticated registration, fidelity and private proof consumers
+remain required. A numerical instance identity does not establish a passport.

@@ -113,7 +113,11 @@ def check():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) in (3,4) and sys.argv[1]=='--checkpoint':
+    if sys.argv[1:] in (['--configuration'],['--configuration-controls']):
+        from check_model_config import check, controls
+        if sys.argv[1]=='--configuration': check()
+        controls()
+    elif len(sys.argv) in (3,4) and sys.argv[1]=='--checkpoint':
         from causal_checkpoint import check_checkpoint
         assert len(sys.argv)==3 or sys.argv[3]=='--write'
         print(json.dumps(check_checkpoint(sys.argv[2],reference,write=len(sys.argv)==4),sort_keys=True))
