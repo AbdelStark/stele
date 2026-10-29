@@ -60,7 +60,7 @@ def fraction_reductions(root):
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
                'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs',
                'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl',
-               'src/selected.rs', 'tests/selected.rs'}
+               'src/selected.rs', 'tests/selected.rs', 'examples/fraction_corpus.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
                '//! Tree and selected-product arithmetic return conditional claims; full lookup is absent.\n'
@@ -104,7 +104,49 @@ def fraction_reductions(root):
     names = ('rejects_fraction_challenge_order_tampers','rejects_fraction_missing_final_continuations')
     if result.returncode or any(f'fraction_transcript::{name} ... ok' not in result.stdout for name in names):
         raise ValueError(f'fraction transcript controls failed: {result.stdout} {result.stderr}')
+    fraction_corpus(root)
     print('gate fraction reductions: tree/selected-product proofs, original consumers, scoped SC/RLC and continuation match Python; no full lookup/profile credit')
+
+
+def fraction_corpus(root):
+    """Regenerate declared decisions; compare complete independent native/reference output."""
+    script = 'research/logup-characteristic/corpus.py'
+    path = 'research/logup-characteristic/corpus.jsonl'
+    result = subprocess.run(['uv','run','--locked','--script',script,'--check'],
+                            cwd=root,text=True,capture_output=True)
+    if result.returncode or '162 fraction corpus cases regenerated' not in result.stdout:
+        raise ValueError(f'fraction corpus regeneration mismatch: {result.stdout} {result.stderr}')
+    outputs = []
+    for command in [
+        ['cargo','run','-q','-p','stele-lookup','--example','fraction_corpus','--locked','--offline','--',path],
+        ['uv','run','--locked','--script',script,path],
+    ]:
+        result = subprocess.run(command,cwd=root,text=True,capture_output=True)
+        if result.returncode:
+            raise ValueError(f'fraction corpus producer failed: {result.stdout} {result.stderr}')
+        outputs.append([json.loads(line) for line in result.stdout.splitlines()])
+    cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
+    if len(cases) != 162 or len(outputs[0]) != len(cases) or outputs[0] != outputs[1]:
+        raise ValueError('fraction corpus decisions/claims/accounting/continuation mismatch')
+    for c, result in zip(cases,outputs[0]):
+        if result['name'] != c['name'] or result.get('error','accept') != c['expected']:
+            raise ValueError('fraction corpus expected rejection mismatch')
+        if c['expected'] != 'accept':
+            if set(result) != {'name','error'}:
+                raise ValueError('fraction corpus rejected attempt exported partial result')
+            continue
+        s, d = c['descriptor'], c['degree']
+        m = s['m']
+        record = lambda i,k: dict(id=i,m=k,degree=3,field_degree=d,numerator=3*k)
+        expected = dict(tree_id=s['id'],field_degree=d,gamma=m,fold=m,layers=[record(k,k) for k in range(m)])
+        if (result['tree']['accounting'] != expected
+                or result['tree']['numerator'] != 3*m*(m-1)//2+2*m
+                or [i for i,_ in result['tree']['claims']] != s['leaves']):
+            raise ValueError('fraction corpus tree accounting/claim scope mismatch')
+        if 'leaf' in c and (result['leaf']['tree_id'] != s['id'] or result['leaf']['sc'] != record(s['id'],m)
+                           or [i for i,_ in result['leaf']['claims']] != c['leaf']['sources']):
+            raise ValueError('fraction corpus selected-product accounting/claim scope mismatch')
+    print('gate fraction corpus: 162 both-field decisions, original claims, scoped records and continuation agree')
 
 
 def public_coefficients(root):

@@ -142,6 +142,15 @@ class GateTests(unittest.TestCase):
         source.write_text(original.replace('if actual != *expected {', 'if false {'))
         result = self.run_gate('negative-controls')
         self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction corpus decisions/claims/accounting/continuation mismatch',
+                      result.stdout + result.stderr)
+        # The corpus now detects this mutation before the gate reaches catalog
+        # controls. Still exercise the real controls and require their reason.
+        result = subprocess.run(['cargo','run','-q','-p','stele-negative-controls',
+                                 '--bin','stele-controls','--locked','--offline','--','--coverage'],
+                                cwd=self.root,text=True,capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('NC-0410', result.stdout + result.stderr)
         self.assertIn('TamperAccepted', result.stdout + result.stderr)
 
     def test_rejects_fraction_transcript_control_omission(self):
@@ -153,6 +162,22 @@ class GateTests(unittest.TestCase):
         result = self.run_gate('soundness-accounting')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('fraction transcript controls failed', result.stderr)
+
+    def test_rejects_fraction_corpus_drift_and_accounting_omission(self):
+        corpus = self.root / 'research/logup-characteristic/corpus.jsonl'
+        original = corpus.read_text()
+        corpus.write_text('\n'.join(original.splitlines()[:-1])+'\n')
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction corpus regeneration mismatch', result.stderr)
+        corpus.write_text(original)
+        adapter = self.root / 'crates/stele-lookup/examples/fraction_corpus.rs'
+        source = adapter.read_text()
+        self.assertIn('"fold":a.fold', source)
+        adapter.write_text(source.replace('"fold":a.fold', '"fold":0'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('fraction corpus decisions/claims/accounting/continuation mismatch', result.stderr)
 
     def test_rejects_external_field_seal_removal(self):
         source = self.root / 'crates/stele-code/src/encoder.rs'
