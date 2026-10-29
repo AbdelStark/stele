@@ -10,6 +10,7 @@ import model_scaled_bounds
 import model_row_bounds
 import model_rotary_bounds
 import model_residual_bounds
+import model_greedy_bounds
 import source
 import rope
 
@@ -73,6 +74,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     info.update(model_row_bounds.evidence(model))
     info.update(model_rotary_bounds.evidence(model))
     info.update(model_residual_bounds.evidence(model))
+    info.update(model_greedy_bounds.evidence(model))
     actual = m.full(model,sequence); expected = reference(model,sequence)
     assert {k:actual[k] for k in expected}==expected
     cache = None
@@ -86,6 +88,9 @@ def check_checkpoint(prefix, reference, *, write=False):
     for i,t in enumerate(generated['tokens'][len(sequence):],len(sequence)):
         logits = replay['heads'][i-1]['logits']; maximum = max(logits)
         assert t==next(j for j,v in enumerate(logits) if v==maximum)
+    greedy_rows=tuple(tuple(replay['heads'][i-1]['logits']) for i in range(len(sequence),len(generated['tokens'])))
+    assert model_greedy_bounds.check_generation(model,tuple(sequence),2,1,tuple(generated['tokens']),
+                                               generated['stop'],greedy_rows)==tuple(generated['tokens'])
     info.update(prompt=sequence,generated=generated['tokens'][len(sequence):],stop=generated['stop'],
                 logits_sha256=hashlib.sha256(b''.join(struct.pack('<h',v) for r in actual['heads'] for v in r['logits'])).hexdigest())
     path = Path(__file__).with_name('causal-checkpoint.json')

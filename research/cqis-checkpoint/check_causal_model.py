@@ -113,7 +113,10 @@ def check():
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] in (['--residual-bounds'],['--residual-controls']):
+    if sys.argv[1:] in (['--greedy-bounds'],['--greedy-controls']):
+        from check_greedy_bounds import check, controls
+        check() if sys.argv[1]=='--greedy-bounds' else controls()
+    elif sys.argv[1:] in (['--residual-bounds'],['--residual-controls']):
         from check_residual_bounds import check, controls
         check() if sys.argv[1]=='--residual-bounds' else controls()
     elif sys.argv[1:] in (['--rotary-bounds'],['--rotary-controls']):

@@ -773,3 +773,21 @@ RFC-0022 amendment; Accepted schemas and semantics are unchanged. Review:
 No challenge, ledger line, cut, proof weight pass or measured cost changes.
 E5-03/04 retain original criteria; full schemas, native parity, fidelity and
 NC-0109 remain open. Plaintext relation checks do not verify an inference proof.
+
+### A3/A9 evidence continuation — First maximum and greedy boundary
+
+Status: Draft research evidence; A3/A9 remain Draft. Question Q26.
+The [greedy study](../../research/cqis-bounds/GREEDY.md) derives candidate static
+records and small M31 relations for selected int16 attainment and lowest-index
+tie breaking. The selected entry has zero self difference; competing earlier
+indices require positive differences, and later indices permit ties. Public
+prompt, generated EOS, limit and preceding-position conditions are explicit.
+
+The 10000-row/generation corpus, model prefix replay and pinned checkpoint
+checks are conditional plaintext arithmetic. Matching selected tokens does not
+authenticate logit rows; actual LM-head/source/selection/range consumers remain
+required. Sampled decoding is outside this schema. Review:
+[same-author passes](../../agents/reviews/greedy-bounds-draft.md).
+Accepted RFC-0022 schemas, challenge/ledger lines, cuts and proof weight passes
+are unchanged. E5-03/04 and E7-08 retain original criteria; full certificate sets,
+native parity, fidelity and NC-0107/0108/0109 remain open. No measured cost claim.
