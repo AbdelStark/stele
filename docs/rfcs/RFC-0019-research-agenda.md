@@ -451,3 +451,10 @@ reader; source hashes preserve original header bytes rather than reserialization
 The research source-preparation descriptor still needs inclusion in the complete
 Accepted quantiser/passport identity. Shards, source/plan authority, certificates
 and real commitment consumers remain open; no source proof or profile is admitted.
+
+Q26 indexed-source continuation: the [shard study](../../research/cqis-checkpoint/SHARDS.md)
+checks exact file/name/location coverage, original hashes and payload totals with
+an explicit typed bundle identity. Ten thousand bundles and four repartitions of
+the complete pinned checkpoint preserve artifact bytes. RFC-0011 A3 remains Draft;
+full outer identity, source/plan authority, static certificates, native streaming
+and actual source/commitment consumers are still required.

@@ -62,10 +62,12 @@ jobs:
       - run: uv run --locked --script research/cqis-checkpoint/check_records.py
       - run: uv run --locked --script research/cqis-checkpoint/check_artifact.py
       - run: uv run --locked --script research/cqis-checkpoint/check_source.py
+      - run: uv run --locked --script research/cqis-checkpoint/check_shards.py
       - name: Pinned checkpoint source preparation
         run: |
           curl -fsSL --retry 3 --max-time 60 https://huggingface.co/hf-internal-testing/tiny-random-gpt2/resolve/71034c5d8bde858ff824298bdedc65515b97d2b9/model.safetensors -o "$RUNNER_TEMP/cqis-source.safetensors"
           uv run --locked --script research/cqis-checkpoint/check_source.py --checkpoint "$RUNNER_TEMP/cqis-source.safetensors"
+          uv run --locked --script research/cqis-checkpoint/check_shards.py --checkpoint "$RUNNER_TEMP/cqis-source.safetensors"
       - run: uv run --locked --script harness/cqis/check_arithmetic.py
       - run: python3 research/poseidon2/check_poseidon2.py
       - run: uv run --locked --script research/transcript/check_transcript.py

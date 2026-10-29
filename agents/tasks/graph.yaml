@@ -659,9 +659,10 @@ tasks:
   - RFC-0004 A3
   - RFC-0004 A4
   - RFC-0021 §2.3
+  - RFC-0011 A3
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0003 A2; RFC-0004 A3)
+  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3)
   agent: codex-root
   branch: task/E5-03-checkpoint-shards
   acceptance:
