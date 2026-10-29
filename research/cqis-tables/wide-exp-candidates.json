@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "scope": "research; explicit split, no attention/profile/native admission",
+  "cases": [
+    {
+      "parameters": [
+        22,
+        10,
+        12,
+        7
+      ],
+      "high": 32769,
+      "low": 128,
+      "virtual_entries": 4194305,
+      "samples": 9994,
+      "sha256": "4fba826eef55bb78456049c36f27951a960a7cee3ba152a229daf5c572180ba0"
+    },
+    {
+      "parameters": [
+        22,
+        10,
+        12,
+        11
+      ],
+      "high": 2049,
+      "low": 2048,
+      "virtual_entries": 4194305,
+      "samples": 9992,
+      "sha256": "170a6bf23f146e3befc093b7c0f62fb0b7702cf1388c1837ac4c8e4d193980de"
+    },
+    {
+      "parameters": [
+        23,
+        10,
+        12,
+        12
+      ],
+      "high": 2049,
+      "low": 4096,
+      "virtual_entries": 8388609,
+      "samples": 10000,
+      "sha256": "3c86ae84b4455d482218bd9962796696a28ae1cbe9d636ad1e2b84dc38c346b8"
+    },
+    {
+      "parameters": [
+        30,
+        30,
+        14,
+        15
+      ],
+      "high": 32769,
+      "low": 32768,
+      "virtual_entries": 1073741825,
+      "samples": 10007,
+      "sha256": "249949e261aca65df5588df49bcd876d3d33dbf905bdbc1b77a407ca7e67a707"
+    },
+    {
+      "parameters": [
+        31,
+        0,
+        0,
+        16
+      ],
+      "high": 32769,
+      "low": 65536,
+      "virtual_entries": 2147483649,
+      "samples": 10007,
+      "sha256": "8a5c1cff79cf2d56f5ac81a20380921229ab9066132a634473bb5c2126df7b32"
+    },
+    {
+      "parameters": [
+        31,
+        30,
+        14,
+        16
+      ],
+      "high": 32769,
+      "low": 65536,
+      "virtual_entries": 2147483649,
+      "samples": 10007,
+      "sha256": "5373c5280ab10ec4c4759069b763e479e73790d48686331233b311eeb6b81273"
+    }
+  ],
+  "independent_subtable_checks": 305286,
+  "absolute_error_strict_upper": 2,
+  "split_witness": {
+    "parameters": [
+      14,
+      10,
+      12
+    ],
+    "splits": [
+      7,
+      6
+    ],
+    "input": -9152,
+    "outputs": [
+      0,
+      1
+    ],
+    "different_entries": 1239
+  }
+}

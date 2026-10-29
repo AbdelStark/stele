@@ -13,7 +13,9 @@ for a rounded table entry.
 
 ## 1. Endpoint-safe decomposition and candidate definitions
 
-Study parameters are integers 7<=B<=15, 0<=F<=30, 0<=E<=14. Set Q=2^E.
+The initial grid uses integers 7<=B<=15, 0<=F<=30, 0<=E<=14 and split=7.
+The [wider-domain continuation](cqis-wide-exp.md) generalizes the explicit split
+and product domain, preserving every output below. Set Q=2^E.
 For -2^B<=t<=0, set u=-t=128h+l, 0<=l<128. Thus 0<=h<=2^(B-7), and the last
 high index is legal only with l=0. The complete domain has 2^B+1 entries.
 Parameter/domain/type errors reject; Boolean values are not integer encodings.
@@ -38,7 +40,9 @@ the H/L-only representation under D's identity.
 
 ## 2. Certified rounding
 
-For x>=0, repeatedly halve x until y=x/2^s<=1/2. Adjacent odd/even alternating
+For x>=b+1, exp(1)>2 gives the strict enclosure (0,2^-(b+1)); the continuation
+uses it without treating the real tail as zero. Otherwise repeatedly halve x
+until y=x/2^s<=1/2. Adjacent odd/even alternating
 Taylor partial sums bracket exp(-y), since term magnitudes decrease. Set the
 dyadic precision p=b+s+4 for requested interval width 2^-b. Continue until the
 rational interval width is at most 2^-p, then round its lower/upper endpoints
@@ -48,8 +52,9 @@ Square each interval s times, flooring the lower squared numerator and ceiling
 the upper. Endpoints remain in [0,1]. If the current width is w, the next width
 is at most 2w+2*2^-p. Hence the final width is less than
 5*2^s*2^-p=(5/16)*2^-b, strictly below 2^-b. At x=0 the exact singleton is used.
-For x<=32768, s<=16. The implemented 512-term cap suffices for the inner Taylor
-width at all b<=256: already its last term is smaller than 2^-512, while p<=276.
+The Taylor branch has x<b+1<=257, hence s<=10. The implemented 512-term cap
+suffices for the inner width at all b<=256: its last term is smaller than
+2^-512, while p<=270. The original x<=32768 path also met this cap with s<=16.
 
 Multiply the enclosure by Q and apply exact R to both endpoints. Equal results
 certify the integer entry. Otherwise repeat at b=32,64,128,256; unresolved rounding
@@ -100,7 +105,9 @@ static bounds must enter actual RFC-0004 §6 certificates; this note is not thei
 production verifier. No challenge or lookup error term is silently waived.
 
 Corrected decomposition requires 2^B+1 correction entries in addition to the
-high/low tables and three lookup consumers plus the product relation. Direct D
+high/low tables and three lookup consumers plus the product relation. The
+research API rejects corrected construction/evaluation for B>15 before allocation;
+the wider product has no such full table. Direct D
 requires 2^B+1 entries and one lookup consumer. For B<=15 each full table pads to
 at most 2^16 rows. The correction's four values do not eliminate its input-index
 binding or turn it into a four-row table. This is not an O(256)-storage repair.

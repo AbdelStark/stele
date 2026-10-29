@@ -46,7 +46,7 @@ def report():
         scale = 1 << e
         assert 2*max(scale*scale+2*scale-1,2*scale) < (1 << 31)-1
     rejects('Precision',lambda: exp.enclosure(Q(1),33))
-    for x in [Q(-1),Q(32769),0.5]:
+    for x in [Q(-1),Q((1 << 31)+1),0.5]:
         rejects('Argument',lambda: exp.enclosure(x,64))
     # Equal numeric values of different types must not bypass validation on hits.
     exp.enclosure(Q(1,2),64)
@@ -93,7 +93,7 @@ def report():
     zero = exp.generate(exp.Parameters(7,0,0))
     zero['parameters'][1] = False
     rejects('Parameters',lambda: exp.verify(exp.Parameters(7,0,0),zero))
-    for args in [(6,10,12),(16,10,12),(14,-1,12),(14,31,12),(14,10,-1),(14,10,15),(True,10,12)]:
+    for args in [(6,10,12),(32,10,12),(14,-1,12),(14,31,12),(14,10,-1),(14,10,15),(True,10,12)]:
         rejects('Parameters',lambda: exp.Parameters(*args))
     for t in [-(1 << 14)-1,1,True]:
         rejects('Domain',lambda: exp.evaluate(p,table,t))

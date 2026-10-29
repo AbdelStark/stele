@@ -266,6 +266,16 @@ real RMSNorm or an invocation of the existing int32 Requant API. Canonical
 registry/passport bytes, complete static consumer schemas, scale selection,
 native controls/parity and model fidelity remain; A2 stays Draft.
 
+[Larger exponential domains](../../formal/cqis-wide-exp.md) extend the candidate
+product to B<=31 using an explicit split k and sub-tables of at most 2^16 rows.
+Changing k changes rounded outputs, so it must be part of the function identity.
+The inclusive endpoint, complete u bound and strict two-unit error remain;
+large inputs need limb/range certificates, not a single M31 index equality.
+The full indexed correction is resource-limited to B<=15 in the research API;
+the larger product does not use or claim that correction. Canonical identity,
+attention-domain/scale alignment and all native consumers remain required.
+This numerical extension does not change Accepted attention defaults or A2 status.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).
