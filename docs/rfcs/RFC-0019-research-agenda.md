@@ -226,6 +226,14 @@ size conflict and valid sum-of-squares inputs without the stated normalized
 representation. E5-02 is blocked on A2; research checks establish no generated
 table, max-error bound, production lookup control or complete forward pass.
 
+Q25 continuation: formal/cqis-exp.md gives exact alternating-series/dyadic
+certificates and an independent positive-series reciprocal oracle for an
+endpoint-safe exp candidate. Two rounded short tables have nonmonotonic steps;
+a bounded indexed correction restores correctly rounded exp, at explicit full
+table and lookup cost. All example entries and error enclosures are checked.
+This selects no model scale, representation or canonical identity. Remaining
+activation/normalization/registry/fidelity obligations keep A2 and E5-02 open.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.

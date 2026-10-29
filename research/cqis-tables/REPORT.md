@@ -59,3 +59,26 @@ lookup controls and model fidelity, not substitutes for those gates.
 No core arithmetic, challenge, claim, commitment, proof byte, benchmark or
 cost-model constant changes. No research assertion earns NC-0104/0105 or
 NC-0404/0405 credit. E5-01 signed scalar arithmetic remains valid independently.
+
+## Certified exponential continuation
+
+The [candidate argument](../../formal/cqis-exp.md) and
+[exact artifact](exp-candidate.json) develop the exp portion of the complete
+A2 contract. Run `python3 research/cqis-tables/check_exp.py` to regenerate all
+evidence and compare the checked artifact. Positive-series reciprocal intervals
+independently check 6,948 component entries and every one of the 16,385 corrected
+example entries. Alternating-series/dyadic certificates prove rounding without
+host floating point; all original domain endpoints are retained.
+
+The two-table product is not necessarily monotone: for B=14,F=10,E=12, the
+candidate drops from 1 to 0 between t=-9216 and t=-9215. It has 29 such decreases
+and a strict absolute-error bound of two output units. The correctly rounded
+candidate has error at most half an output unit and is monotone. Decomposed
+evaluation requires a correction indexed by the full original domain, with
+values in {-1,0,1,2}; it changes 5,517 example entries. This is an additional
+lookup/table cost, not an implicit precision fix or a four-entry lookup.
+
+F=10 is an example only. The study does not select a model's score scale,
+authorize either representation, define canonical table/passport bytes or prove
+model fidelity. A2's other activations, total RMSNorm and registry requirements
+remain. Certificate/index/parameter mutations are research controls only.
