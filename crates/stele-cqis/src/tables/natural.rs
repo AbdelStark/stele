@@ -8,6 +8,9 @@ use core::cmp::Ordering;
 // halving; Taylor denominators need <= 512*(48+9) bits plus <= 269 scaling
 // bits. The cap is a resource limit, not a field bound. Further generators
 // must establish their own scratch bounds.
+// Tanh-GeLU's exponent denominators after halving are < 2^384, so its Taylor
+// scratch uses <= 512*(384+9)+269 bits. Machin arctangent denominators use
+// <= 8+512*(16+11) bits each; cross-products and root scaling stay below the cap.
 const MAX_BITS: usize = 1 << 18;
 const MAX_WORDS: usize = MAX_BITS / 32;
 

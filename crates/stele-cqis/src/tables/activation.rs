@@ -4,14 +4,14 @@ use core::cmp::Ordering;
 
 // An endpoint is an exact signed rational. A negative zero has the same rounded
 // value as zero; it cannot be a half-integer. All owned arithmetic is fallible.
-struct Endpoint {
-    negative: bool,
-    numerator: Natural,
-    denominator: Natural,
+pub(super) struct Endpoint {
+    pub(super) negative: bool,
+    pub(super) numerator: Natural,
+    pub(super) denominator: Natural,
 }
 
 impl Endpoint {
-    fn rounded(&self, side: i8) -> Result<i32, Error> {
+    pub(super) fn rounded(&self, side: i8) -> Result<i32, Error> {
         if !matches!(side, -1..=1) {
             return Err(Error::Interval);
         }
@@ -37,7 +37,11 @@ impl Endpoint {
     }
 }
 
-fn strict_exp(n: &Natural, d: &Natural, bits: usize) -> Result<(Natural, Natural, usize), Error> {
+pub(super) fn strict_exp(
+    n: &Natural,
+    d: &Natural,
+    bits: usize,
+) -> Result<(Natural, Natural, usize), Error> {
     if !matches!(bits, 32 | 64 | 128 | 256) {
         return Err(Error::Precision);
     }
