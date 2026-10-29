@@ -488,3 +488,12 @@ Twenty thousand static configurations and full-byte mutation/truncation checks
 support [RFC-0022](RFC-0022-static-arithmetic-records.md). Native derivation,
 the other operation schemas, authenticated parameter/source and certificate-set
 identity, every actual consumer and NC-0109 remain required under E5-03.
+
+Q20 private-source continuation: the [selection study](../../research/stacked-gkr/PRIVATE-SELECTION.md)
+distinguishes authenticated public indices from private witness indices. A
+conditional product-tree reduction checks a onehot MLE through original bit-plane
+claims, with bounded-degree A1 instances and no category-domain materialization.
+Both fields agree with explicit tables and reject changed originals, padding,
+public coefficients and stale continuation. Its source oracle is a public test
+fixture and its messages are unmasked; no private PCS, range/packing consumer,
+ZK construction, production control or E3-06 completion is claimed. A4 stays Draft.

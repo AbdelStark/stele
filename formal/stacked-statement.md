@@ -54,6 +54,13 @@ production source-resolution interface and its actual consumer tests remain an
 A4 acceptance gate; this byte codec supplies neither. Source failures abort the
 whole attempt, with no fallback to treating supplied values as public.
 
+This public resolver is limited to source values the statement permits to be
+public. It cannot satisfy a private selection source by exposing the entire
+vector. The [private selection study](../research/stacked-gkr/PRIVATE-SELECTION.md)
+proposes a separate conditional index-bit consumer. Actual source/view binding,
+range/packing proofs, full selected-axis composition and joint masking remain
+prerequisites; the unmasked study is not a private resolver or a ZK construction.
+
 ## 2. Byte grammar
 
 Integers are unsigned little-endian with their stated widths. K elements are d
