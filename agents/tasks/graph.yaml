@@ -663,7 +663,7 @@ tasks:
   crate: stele-cqis
   status: blocked(RFC-0003 A2; RFC-0004 A3)
   agent: codex-root
-  branch: task/E5-03-quantiser-scales
+  branch: task/E5-03-scale-alignment
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
