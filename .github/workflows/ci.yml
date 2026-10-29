@@ -63,6 +63,7 @@ jobs:
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py
+      - run: uv run --locked --script research/cqis-checkpoint/check_attention.py
       - run: uv run --locked --script research/cqis-checkpoint/check_records.py
       - run: uv run --locked --script research/cqis-checkpoint/check_artifact.py
       - run: uv run --locked --script research/cqis-checkpoint/check_source.py

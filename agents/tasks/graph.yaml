@@ -664,11 +664,13 @@ tasks:
   - RFC-0004 A5
   - RFC-0022 §§2-6
   - RFC-0011 A3
+  - RFC-0004 A6
+  - RFC-0009 A2
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3)
+  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6)
   agent: codex-root
-  branch: task/E5-03-bound-encoding
+  branch: task/E5-03-attention-units
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
@@ -701,9 +703,11 @@ tasks:
   - RFC-0004 §3,§5,§7,§9
   - RFC-0004 A4
   - RFC-0021 §§2-5
+  - RFC-0004 A6
+  - RFC-0009 A2
   skill: cqis-numerics
   crate: stele-cqis+harness
-  status: ready
+  status: blocked(RFC-0004 A6; RFC-0009 A2)
   acceptance:
   - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
   - decode == single causal pass test
@@ -860,9 +864,11 @@ tasks:
   - RFC-0009 §2
   - RFC-0009 A1
   - RFC-0021 §2.1
+  - RFC-0004 A6
+  - RFC-0009 A2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: blocked(RFC-0004 A6; RFC-0009 A2)
   acceptance:
   - NC-0500..0506
   - n² never resident (memory test)
@@ -875,9 +881,11 @@ tasks:
   rfc:
   - RFC-0004 §5.7
   - RFC-0009 §6
+  - RFC-0004 A6
+  - RFC-0009 A2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: blocked(RFC-0004 A6; RFC-0009 A2)
   acceptance:
   - NC-0505
   - certificate for n up to 2^20

@@ -525,3 +525,11 @@ through actual degree-four A1 to its original symbol tensor. Tests reject direct
 polynomial-at-MLE substitution and enforce membership, spare bits, padding and
 range. Single-plane consumers preserve linear table work; added proofs, live
 working memory, private PCS and joint masking remain explicit costs/obligations.
+
+Q26 attention continuation: the [exact row study](../../research/cqis-checkpoint/ATTENTION.md)
+exhibits ignored value scales, ceiling-versus-nearest division, lost block units
+and length-selected mode breaking cached-prefix equality. Draft RFC-0004 A6 /
+RFC-0009 A2 propose explicit units, fixed absolute blocks and signed division.
+Exact/NumPy decisions and prefix comparisons supply numerical evidence only;
+full score/RoPE/config semantics, native forward, proof consumers and fidelity
+remain required. E5-03/04 and E7-06/07 retain their original criteria.

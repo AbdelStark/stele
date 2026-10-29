@@ -457,3 +457,56 @@ NC-0109 and the original property tests are unchanged. Cost: bounded integer
 derivation/encoding in T_misc; actual arithmetic and range work remains c_a/c_lu.
 No measured constant, weight pass or cut changes. Affected tasks: E5-03, E6
 plan derivation and E7 reductions; none is completed or unblocked by this amendment.
+
+### A6 — Attention value units and signed output normalization
+
+Status: Draft. Question Q26. Evidence: [attention study](../../research/cqis-checkpoint/ATTENTION.md).
+Companion RFC-0009 A2. Review: [same-author passes](../../agents/reviews/attention-units-draft.md).
+Motivation: §5.6 defines ceiling division; §5.7 drops units without restoring
+its shift, and §9 omits the scales needed to interpret cached value codes.
+These choices affect inference and require explicit semantic approval.
+
+Proposed exact replacement for §5.6 (value preparation remains A3):
+
+> Let R be signed nearest rounding with ties away from zero. A value row has
+> symmetric int8 codes v_jc and its authenticated integer scale s_j, in common
+> source units 2^-fv. Per-position conversion covers the complete configured V
+> projection row; head/group views inherit that row's scale. Use D_jc=s_j*v_jc
+> in the weighted sum. The plan fixes fv,fo in [0,30], the value/output conversion
+> policies and the accumulation mode before either full or cached evaluation.
+> For exact mode, T_c=sum_j P_hat_j*D_jc and c=0. With positive Z=sum_j P_hat_j,
+> define wide_c=R(T_c*2^(fo-fv+c)/Z), require signed int16, then apply the selected
+> A3 int8 conversion once over the configured output row. No saturation, clamp
+> or fallback is allowed; an out-of-range result rejects the operation.
+> For e=fo-fv+c use U=abs(T_c)*2^max(e,0), D=Z*2^max(-e,0),
+> U=q*D+r, 0<=r<D; wide_c=sign(T_c)*(q+[2*r>=D]), with positive sign at zero.
+> Every sign, product, range, comparison, divisor and source relation requires
+> its actual consumers and static integer/limb bounds under §6.
+
+Proposed exact replacement for §5.7:
+
+> The plan selects exact or block1024 mode independently of actual sequence
+> length. Block b contains absolute key positions 1024*b through 1024*b+1023;
+> masked/padded keys contribute zero and are never compacted. In block mode,
+> B_bc=R(sum_{j in block b} P_hat_j*D_jc / 2^c) and T_c=sum_b B_bc.
+> The public c in [0,62] must statically guarantee signed int16 B_bc. Use this c
+> in §5.6 to restore units. For candidate int16-to-int8 A3 policies, S=127*259
+> bounds dynamic restored values; static scale s uses
+> S=s*min(127,floor((65536+s)/(2*s))). Require R(1024*2^E*S/2^c)<=32767.
+> Accumulators and normalization use exact widened integers with static limb
+> consumers; int32 or one-field equality does not follow from block rounding.
+
+Addition to §9: cached V includes the corresponding scales, conversion scope
+and source unit, retaining absolute key positions even if cache entries are evicted.
+Full and cached executions use identical configured modes,
+absolute block positions, masks and conversions. Complete QK/RoPE units, GQA
+views, output head assembly and canonical config bytes remain approval blockers.
+
+Accounting/cost: no challenge or admitted claim-graph edge is added by this
+research. Native lowering must account for scale multiplication, signed variable
+division, block requants and all source/range consumers in c_a/c_x/T_misc; no
+benchmark constant, weight-pass or cut change is claimed. Existing NC-0100/0101,
+NC-0109 and NC-0500..0506 remain mandatory; source/scale association needs a new
+catalogued control when its binding is admitted. E5-03/04 and E7-06/07 remain
+blocked; no original criterion is weakened. Acceptance also requires complete
+static schemas, native parity, canonical identity and the §8 fidelity protocol.
