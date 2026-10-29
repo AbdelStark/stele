@@ -4,7 +4,9 @@
 //! their complete integer encodings; neither API authenticates model configuration,
 //! enforces membership or accepts a proof.
 
+mod exp;
 mod fixed;
+mod natural;
 pub use fixed::Table;
 
 const PREFIX: &[u8] = b"stele/v0.1/table/identity";
@@ -35,6 +37,10 @@ pub enum Error {
     Entry,
     /// A padded entry is not zero.
     Padding,
+    /// Exact certificate arithmetic violates an interval or magnitude invariant.
+    Interval,
+    /// The fixed precision/series schedule cannot certify a unique integer.
+    Precision,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

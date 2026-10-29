@@ -1,5 +1,5 @@
 //! RFC-0021 §§2.2-2.3,4: range/rsqrt generation and complete integer-data checking.
-use super::{Descriptor, Error, Reader};
+use super::{exp, Descriptor, Error, Kind, Reader};
 use alloc::vec::Vec;
 use core::mem::size_of;
 
@@ -59,8 +59,8 @@ fn rsqrt(m: u32) -> Result<i32, Error> {
 
 /// Immutable definition-generated integer rows with canonical zero padding.
 ///
-/// Constructors currently cover the parameter-free range and rsqrt components.
-/// E5-02 retains all other generators, function bytes and public MLE delivery.
+/// Constructors cover range, rsqrt and exponential components. E5-02 retains
+/// activation generators, function bytes and public MLE delivery.
 /// No raw-row constructor, table-truth callback or configuration authority exists.
 /// ```compile_fail
 /// use stele_cqis::tables::Table;
@@ -74,6 +74,77 @@ pub struct Table {
 }
 
 impl Table {
+    /// Generate a complete high, low, direct or correction exponential component.
+    pub fn exponential(descriptor: Descriptor) -> Result<Self, Error> {
+        let kind = descriptor.kind;
+        if !matches!(
+            kind,
+            Kind::High | Kind::Low | Kind::Direct | Kind::Correction
+        ) {
+            return Err(Error::Parameters);
+        }
+        let p = descriptor.parameters();
+        // Correction depends on exactly these two complete components; recursion
+        // ends at high/low and cannot be selected by a callback or supplied graph.
+        let base = if kind == Kind::Correction {
+            Some((
+                Self::exponential(Descriptor::new("exp_q/hi", 1, p)?)?,
+                Self::exponential(Descriptor::new("exp_q/lo", 1, p)?)?,
+            ))
+        } else {
+            None
+        };
+        let mut entries = zero_entries(&descriptor)?;
+        let rows = usize::try_from(descriptor.shape().rows()).map_err(|_| Error::Capacity)?;
+        for (i, row) in entries.chunks_exact_mut(2).take(rows).enumerate() {
+            let i = u64::try_from(i).map_err(|_| Error::Capacity)?;
+            let n = match kind {
+                Kind::High => i.checked_shl(u32::from(p[3])).ok_or(Error::Parameters)?,
+                Kind::Low => i,
+                _ => (1u64 << p[0]).checked_sub(i).ok_or(Error::Parameters)?,
+            };
+            row[0] = if matches!(kind, Kind::Direct | Kind::Correction) {
+                i32::try_from(n)
+                    .map_err(|_| Error::Parameters)?
+                    .checked_neg()
+                    .ok_or(Error::Parameters)?
+            } else {
+                i32::try_from(i).map_err(|_| Error::Parameters)?
+            };
+            let direct = exp::certify(n, p[1], p[2])?;
+            row[1] = if let Some((high, low)) = &base {
+                let a = i64::from(high.output(n >> p[3])?);
+                let b = i64::from(low.output(n % (1u64 << p[3]))?);
+                let product = a.checked_mul(b).ok_or(Error::Interval)? / (1i64 << p[2]);
+                let correction = i64::from(direct)
+                    .checked_sub(product)
+                    .ok_or(Error::Interval)?;
+                if !(-1..=2).contains(&correction) {
+                    return Err(Error::Interval);
+                }
+                i32::try_from(correction).map_err(|_| Error::Interval)?
+            } else {
+                direct
+            };
+        }
+        Ok(Self {
+            descriptor,
+            entries,
+        })
+    }
+
+    fn output(&self, row: u64) -> Result<i32, Error> {
+        if row >= u64::from(self.descriptor.shape().rows()) {
+            return Err(Error::Interval);
+        }
+        let index = usize::try_from(row)
+            .map_err(|_| Error::Capacity)?
+            .checked_mul(2)
+            .and_then(|i| i.checked_add(1))
+            .ok_or(Error::Capacity)?;
+        self.entries.get(index).copied().ok_or(Error::Interval)
+    }
+
     /// Generate every value of a registered range_8, range_12 or range_16 table.
     pub fn range(bits: u8) -> Result<Self, Error> {
         let name = match bits {
