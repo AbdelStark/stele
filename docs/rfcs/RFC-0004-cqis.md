@@ -286,6 +286,16 @@ Function compositions, RMSNorm/configuration identities, passport root derivatio
 and native consumers/parity still require the complete coordinated contract.
 This supplies component evidence only; A2 remains Draft.
 
+[Function and representation identities](../../formal/cqis-function-identity.md)
+now bind semantic parameters, selected evaluation modes and their exact component
+closure. Product splits change FunctionId; direct/corrected nearest exp share
+FunctionId but have distinct, configuration-bound representations. RMSNorm binds
+dimension, all scales and rational epsilon independently of its fixed rsqrt table.
+Canonical manifests contain the unique function set and regenerated component
+data digests. They do not bind operation order/sources or replace full CQIS and
+passport commitments. The coordinated normative contract and native delivery
+remain required; this evidence does not accept A2.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).
