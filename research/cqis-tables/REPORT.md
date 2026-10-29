@@ -144,3 +144,41 @@ Recommendation: continue Q25 with total RMSNorm/rsqrt and canonical registry
 and passport bytes, then complete scale alignment, review and native delivery.
 This is numerical evidence only, not production lookup/identity controls,
 static certificates, Rust/NumPy inference parity or model-fidelity acceptance.
+
+## Total normalization investigation (Q25 continuation)
+
+Question: can a total positive-rational RMS statistic, unique even exponent and
+bounded mantissa remainder support a certified int16 rsqrt table and explicit
+signed output rounding, including the zero row? Kill criterion: an unrepresented
+valid statistic, discarded remainder, guessed epsilon/dimension, wrapped output
+or dynamic field-fit argument. The security property is exact integer semantics;
+normalization/table/limb work concerns c_a/c_lu/T_misc. The candidate is
+checked against independent rational normalization and integer-root bisection.
+This study does not admit a native norm or complete A2/E5-02.
+
+The [candidate and argument](../../formal/cqis-rmsnorm.md) define epsilon as an
+explicit positive reduced rational, include the feature dimension, and retain
+the normalization remainder. The mantissa interval spans both exponent parities;
+all original zero/nondivisible counterexamples now normalize. An int16 rsqrt
+mantissa and signed derived shift define the checked wide output. Negative
+shifts and products exceeding int32 are not passed to the existing scalar API.
+
+`check_rmsnorm.py` independently checks all 49,152 rsqrt entries, all 32 exponent
+transitions and 10,000 row cases. The [artifact](rmsnorm-candidate.json) retains
+uniform squared inverse-error bounds, exact example remainders and output
+differences: 8,357 rows fit, while 1,643 reject overflow; 1,257 accepted output
+elements differ from correctly rounded exact real RMSNorm, by at most two units
+in this sample. The analytical error bound, not the sample, governs all inputs.
+Zero input remains zero; no clipped or wrapped result is published.
+
+Static magnitudes derive from parameters. The base-256 multiplication study
+checks both sides below M31's centered half-bound, with fixed byte/carry ranges
+and boundary carries. Altered remainders, exponents, entries, outputs, bounds,
+limbs and carries reject for stated reasons. Native sign/addition/comparison/
+shift/range consumers and bound schemas remain required under A3; these checks
+are not production NC or INV-5 certificate credit.
+
+Recommendation: integrate the candidate with canonical registry/passport bytes
+and complete A2/A3 review, then deliver native generators/reductions and fidelity
+evidence. No default epsilon, scale, architecture, benchmark constant, extra
+weight pass or committed intermediate is selected by this research.

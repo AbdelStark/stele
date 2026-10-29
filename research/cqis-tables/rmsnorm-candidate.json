@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "scope": "research only; no native norm/range/identity admission",
+  "exponent_transitions": 32,
+  "table": {
+    "entries": 49152,
+    "minimum": 8192,
+    "maximum": 16384,
+    "sha256": "fb85f80d1194d2b2ad0be21b61024bb1fc4ddc2a9799362494dbfd6c26ed54c0"
+  },
+  "inverse_relative_squared": {
+    "lower": [
+      1099377722025,
+      1099511627776
+    ],
+    "strict_upper": [
+      4398650441721,
+      4398046511104
+    ],
+    "delta": [
+      49153,
+      536870912
+    ]
+  },
+  "limb_bounds": {
+    "input_bytes": 20,
+    "output_bytes": 40,
+    "carry_bits": 13,
+    "left": 1308691,
+    "right": 2097151
+  },
+  "rows": {
+    "accepted": 8357,
+    "overflow_rejected": 1643,
+    "changed_output_elements": 1257,
+    "largest_integer_output_difference": 2
+  },
+  "examples": [
+    {
+      "statistic": 0,
+      "a": -16,
+      "M": 42949,
+      "remainder": 4410310656,
+      "first_output": 0
+    },
+    {
+      "statistic": 1,
+      "a": -15,
+      "M": 27121,
+      "remainder": 2740977664,
+      "first_output": 199
+    },
+    {
+      "statistic": 65536,
+      "a": -7,
+      "M": 16384,
+      "remainder": 1073741824,
+      "first_output": 256
+    },
+    {
+      "statistic": 131073,
+      "a": -8,
+      "M": 43691,
+      "remainder": 12884901888,
+      "first_output": 314
+    },
+    {
+      "statistic": 17592186044416,
+      "a": 0,
+      "M": 16384,
+      "remainder": 1073741824,
+      "first_output": -256
+    }
+  ]
+}

@@ -248,6 +248,14 @@ example tables and varied-scale cases. Exact/tanh integer outputs differ at
 108 example entries. Normalization, canonical identities, scale selection and
 native/fidelity evidence remain required; no production admission is claimed.
 
+Q25 normalization continuation: formal/cqis-rmsnorm.md defines a total positive
+rational statistic and canonical even exponent/mantissa/remainder, including
+zero input. All 49,152 rsqrt entries and 32 exponent transitions are checked;
+independent roots and 10,000 rows validate exact candidate behavior, explicit
+overflow rejection and approximation bounds. Static wide-arithmetic magnitudes
+and base-256 multiplication identities are retained. Canonical identities,
+complete native consumers and model evidence remain open under A2/A3.
+
 Q26: which canonical quantiser, zero-scale rule, checkpoint/certificate bytes
 and static per-reduction bound schemas complete E5-03? Draft RFC-0003 A2 and
 RFC-0004 A3 record the strict field-bound correction and missing contract.

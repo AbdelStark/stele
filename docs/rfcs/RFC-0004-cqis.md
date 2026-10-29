@@ -255,6 +255,17 @@ real function, not an implied approximation guarantee between variants.
 Total RMSNorm/rsqrt, canonical registry/passport bytes, scale alignment, native
 delivery and model fidelity remain required; this evidence does not accept A2.
 
+[Total RMSNorm candidate](../../formal/cqis-rmsnorm.md) now supplies explicit
+dimension, positive rational epsilon, gain/input/output scales, a unique even
+exponent with a bounded remainder, and a certified int16 rsqrt mantissa table.
+All 32 exponent transitions and every table entry are checked; normalization,
+table and final-rounding errors are separately bounded. Wide products and
+negative output shifts are explicit, with static magnitude and multiplication
+limb evidence. Overflow rejects. This candidate is not correctly rounded exact
+real RMSNorm or an invocation of the existing int32 Requant API. Canonical
+registry/passport bytes, complete static consumer schemas, scale selection,
+native controls/parity and model fidelity remain; A2 stays Draft.
+
 ### A3 — Canonical quantiser and static certificate contract
 
 Status: Draft. Question Q26. Evidence: [quantiser/bound study](../../research/cqis-bounds/REPORT.md).
