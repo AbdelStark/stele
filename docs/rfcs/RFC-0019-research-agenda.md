@@ -556,3 +556,10 @@ Its int32 gated product requires wider scale/numerator bounds than int16-row
 conversion. Draft RFC-0004 A8 / RFC-0003 A3 record this gap. Configuration/source
 binding, native model forward, static schemas, proof consumers and fidelity remain
 open; numerical block execution is not an inference proof or E5-04 completion.
+
+Q26 model continuation: the [complete causal candidate](../../research/cqis-checkpoint/CAUSAL-MODEL.md)
+connects embedding, stacked blocks, final norm/head and greedy stopping, with
+full/cache and independent integer comparisons. A pinned public tiny checkpoint
+exercises actual prepared tensors through logits and continuation. Draft RFC-0004
+A9 records missing boundary semantics. Native GPT-2/Llama forward, fidelity,
+canonical config/source roles, static schemas and private proof consumers remain open.

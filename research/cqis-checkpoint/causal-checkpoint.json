@@ -1,0 +1,55 @@
+{
+  "artifact_bytes": 1164135,
+  "choices": {
+    "accumulation": "exact",
+    "epsilon": [
+      1,
+      1000000
+    ],
+    "exp": [
+      15,
+      7,
+      12
+    ],
+    "gain_fraction": 14,
+    "rope": [
+      4,
+      2048,
+      10000,
+      "split"
+    ],
+    "row_mode": "dynamic",
+    "score": [
+      1,
+      -1
+    ],
+    "tied": false,
+    "weight_bits": 8,
+    "wide_fraction": 12
+  },
+  "config_sha256": "3305bd985f960e7d680f4710ffd2830a55a5f149e8d8d2d18ff0b3fc508cc97f",
+  "digest_cqis": "8ceeb32fcd713cd61ba0c5e1aff8e8756bfd599d8835077f5ee518989f3ca8b1",
+  "generated": [
+    27247,
+    12888
+  ],
+  "ignored_tensors": [
+    "model.layers.0.self_attn.rotary_emb.inv_freq",
+    "model.layers.1.self_attn.rotary_emb.inv_freq"
+  ],
+  "logits_sha256": "c1f3f16b6677414652eb150d59e79d901c77635530ae7f53b1055cde04cc427e",
+  "parameters": 1032272,
+  "prompt": [
+    0,
+    42,
+    1337,
+    31999
+  ],
+  "quantiser_id": "eb796c9700977c232e1f05aeb7b5cc8660d789f77e6c5a7c00c34338e676fa66",
+  "repository": "trl-internal-testing/tiny-random-LlamaForCausalLM",
+  "revision": "2c542e4731d42d3bb68324c4eca16df9f93b8b33",
+  "selected_tensors": 21,
+  "source_preparation_id": "2baa2de32dd8e10720b93a26f56edef9503f2c478712cc8275c426109387c15c",
+  "source_sha256": "aaa2c22c920d4e9c0943dc1f9d73fd4c687c2aa9c1ebcb878281c234075cec50",
+  "stop": "limit"
+}

@@ -625,3 +625,40 @@ E5-03/04 and E7-05 retain all original criteria. Canonical configuration and
 source-role bytes, static records, native Rust/NumPy parity, authenticated cache,
 full GPT-2/Llama inference and fidelity remain required. A8 supplies no NC credit;
 new gate-scale/unit controls must be catalogued with their actual proof consumers.
+
+### A9 — Model boundaries and complete causal evaluation
+
+Status: Draft. Question Q26. Evidence: [causal model study](../../research/cqis-checkpoint/CAUSAL-MODEL.md).
+Review: [same-author passes](../../agents/reviews/causal-model-draft.md).
+Motivation: §2 requires int8 matmul inputs while §3's final norm line names
+int16; embedding/head units, cross-layer units and stopping need exact composition.
+
+Proposed replacement for §3's R_0/logits definitions and additions to §9:
+
+> Vocabulary-major embedding row t has codes e_tk and channel scale m_t*2^ee.
+> Set R_0,k=R(e_tk*m_t*2^(ee+f0)) in int16, in the first norm's units 2^-f0.
+> Consecutive blocks' output/input residual units must agree; reject mismatch,
+> with no implicit conversion between layers. The last block's units must equal
+> the final RFC-0021 norm's input units. Apply that norm, then the configured
+> whole-row dynamic/static int8 conversion, retaining scale s and output fraction E.
+> For vocabulary row j, A_j=sum_k q_k*w_jk and logits_j=R(A_j*m_j*s*2^(ew-E+fl)),
+> in common units 2^-fl, fl in [0,30]. Require int16 logits; no saturation.
+> A tied head uses the identical vocabulary-major embedding codes and scales;
+> never quantise a transposed copy. Untied head parameters are explicit.
+> Tokens are integer ids in [0,V); real positions are 0 through n-1. Complete
+> model scope covers embeddings, every block, final norm/head and all unit policies.
+
+Proposed clarification of greedy §7: a nonempty prompt is followed by at most
+the explicitly configured maximum_new tokens. Select the lowest vocabulary id
+among maximal logits of the previous position. Include a generated EOS in the
+sequence and stop; otherwise produce exactly maximum_new tokens. Prompt EOS does
+not itself stop generation. At maximum_new=0 return the prompt with limit reason.
+The candidate requires prompt length plus maximum_new within the position domain
+and evaluates every returned token, including EOS, for complete full/cache parity.
+
+No challenge, proof admission, new cut or proof weight pass. Embedding, final
+norm/head and greedy replay add explicit T_witness/c_a/T_misc work; no measured
+constant. Canonical outer/config/source-role bytes, static certificate schemas,
+actual selection/range/PCS consumers, NC-0107/0108, sampled decoding, native full
+GPT-2/Llama parity and fidelity remain mandatory. E5-03/04 and E7-08 retain all
+original criteria and stay blocked. Full numerical replay is not a ZK verifier.
