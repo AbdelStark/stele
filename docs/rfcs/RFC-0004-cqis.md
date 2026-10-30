@@ -1437,3 +1437,17 @@ no native record is changed. Same-root alignment composition and coherent
 negative-zero/whole-alias controls remain required. This16384-row revealing
 adapter leaves residual rounding, original2^20 capacity and all native/model/
 private inference and fidelity obligations open. A3/A8 remain Draft.
+
+### A3/A8 evidence continuation — Exact residual magnitude rounding
+
+Draft research: [residual rounding](../../research/cqis-bounds/RESIDUAL-ROUNDING.md)
+consumes the same numerator magnitude through complete whole M/q/r and signed
+carry ranges. Expected units determine B and h, and actual quotient bytes
+supply q*B through dyadic shifts. Exact byte columns and terminal carry enforce
+M+h=q*B+r with strict r<B, including B=1. Every original public/source/carry
+view remains consumed. Coherent r=B, omitted bias, range-valid field aliases
+and actual sign-source substitutions require rejection evidence. This unsigned
+quotient role permits32768; complete signed output must still enforce its
+sign-dependent limit. Full residual composition, original2^20 domain and all
+native/model/private inference, fidelity and scale obligations remain open.
+A3/A8 and original task criteria remain unchanged; no Accepted cut is added.

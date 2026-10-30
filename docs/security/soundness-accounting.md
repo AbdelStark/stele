@@ -925,3 +925,23 @@ column faithfulness with sides<=1534<p/2. Canonical zero uses actual byte sum
 <=2040 and g+s<=2041, never a wide M31 residue or runtime fit. Binding, FS/H,
 physical/model/private composition and full inference remain additional;
 no production profile or native control credit is admitted.
+
+### Draft A3/A8 residual magnitude rounding (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-ROUNDING.md). Five complete
+ranges M,q,r,c0,c1 retain lookup dimensions a+b_m+1,a+2,a+b_r+1,a+3,a+3,
+where N=2^a and actual M/r range byte widths are2^b_m and2^b_r. Each identity
+is ((2^m+255)/|K|)^rpt with separate unsquared reduction
+rpt*(f(m)+f(8)+3m)/|K|, f(m)=3m(m-1)/2+2m. Complete range/A3 numerator is
+49a+7(b_m+b_r)+49. Parent terminal and column A3s have degree1 and dimensions
+a,a+3; their three-phase numerators total4a+6. All eight original claims
+retain their actual-point consumers. Expected schema/roles, three external
+roots, five auxiliary roots and five verified child states precede weights
+and Instance/Round/Final messages. Parent draws per ZeroWeight/Sumcheck label
+are2a+3; full nonlookup totals are22a+22+3(b_m+b_r), with lookup schedules
+accounted separately. Natural carry[-129,2], encoded by adding129, has complete
+range[0,131] and exact endpoints. Column sides<=66431<p/2 make M+h=q*B+r
+integer-faithful. Expected fractions determine B and h; whole r<B, q<=32768
+and M<=H remain actual range consumers. Binding, FS/H, native/model/private
+composition and physical source ownership remain additional. No profile is
+admitted and no production control or complete residual credit is claimed.
