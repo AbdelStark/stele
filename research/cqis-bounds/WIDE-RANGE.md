@@ -144,6 +144,16 @@ private or succinct commitment design, performance measurement or memory claim.
 The c_a/c_lu/T_misc terms gain these symbolic costs; no fitted constant, actual
 model tensor, checkpoint output, native crate or inference weight pass changes.
 
+The final cost audit replaced the shared folded producer's per-row equality
+evaluation with MSB-first table expansion. For a suffix of length k, expansion
+uses 2*(2^k-1) field multiplications and k subtractions, including k=0 and
+zero/one coordinates, with no inverses. Summed across m tail rounds this is
+O(2^m) instead of O(m*2^m) equality work; relation/folding work remains linear
+for these fixed degrees. This changes symbolic c_a/T_misc work only, with no
+measured speed claim. A tests-first comparison checks 3066 exact values against
+the independent per-point equation in both fields, dimensions 0..8 and zero/one
+and random extension coordinates. Scalar and wide proof states remain frozen.
+
 Recommendation: continue Q26/Q31 with actual source-to-numerical-operand consumers,
 including signed offsets, byte/nibble layout links and the multiplication columns.
 The original root here names an unsigned byte word; it is not automatically the

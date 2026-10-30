@@ -33,12 +33,16 @@ Evidence: [exact word study](../../research/cqis-bounds/WIDE-RANGE.md).
 - Determinism: fixed ids, canonical cap bytes, plane order and A3 schedule.
   Witness and final-state checksums are frozen. Folded proof objects match the
   naive A3 reference on scalar/one-dimensional cases in both challenge fields.
+  Shared equality-table expansion additionally matches 3066 direct per-point
+  values, including zero/one coordinates; unchanged scalar/wide states are gated.
 - Parity: research Python only; no native inference or GPU parity claim. Shared
   field/table/lookup engines are explicit. Native/GPU code is untouched.
 - Costs: O(BN) dense A3 field work and per-claim consumption, plus complete Q31,
   hashing/metadata/transcript work. Full reveals duplicate source bytes. These
   are symbolic c_a/c_lu/T_misc costs, not benchmark or fitted constant changes;
   there is no new inference weight pass or production cut.
+  Equality table expansion removes O(m*2^m) repeated per-point work in favor
+  of O(2^m) work without inverses; no measured speedup is asserted.
 - Verifier: production no_std untouched. Expected capacities precede vector
   work; exact shapes and canonical field values precede arithmetic. This Python
   object proof is not a native bounded wire parser. There is no verifier scan

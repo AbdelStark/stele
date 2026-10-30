@@ -18,6 +18,19 @@ def rejects(reason,call):
     else: raise AssertionError('accepted '+reason)
 
 
+def weights():
+    rng=random.Random(2680); points=0
+    for d in (4,8):
+        for m in range(9):
+            for point in ([r.sc.scalar(0,d)]*m,[r.sc.scalar(1,d)]*m,
+                          [tuple(rng.randrange(r.sc.P) for _ in range(d)) for _ in range(m)]):
+                expected=[r.zc.eq(point,z,d) for z in r.zc.boolean(m,d)]
+                assert r.scalar.eq_weights(point,d)==expected
+                assert r.zc.total(expected,d)==r.sc.scalar(1,d); points+=len(expected)
+    assert points==3066
+    print('equality weights: 3066 exact reference values passed',flush=True)
+
+
 def corpus():
     rng=random.Random(2668); digest=hashlib.sha256(); cells=0
     for case in range(10000):
@@ -153,7 +166,7 @@ def controls():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--honest':honest,'--controls':controls}
+    modes={'--weights':weights,'--corpus':corpus,'--honest':honest,'--controls':controls}
     selected=sys.argv[1:]
     if selected:
         assert all(x in modes for x in selected)
