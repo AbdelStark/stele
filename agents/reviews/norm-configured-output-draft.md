@@ -3,7 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope and evidence](../../research/cqis-bounds/NORM-CONFIGURED-OUTPUT.md).
-Control execution, complete matrices, maxima and gates remain pending;
+All root, substitution and zero-product controls passed. Complete matrices,
+maxima and gates remain pending;
 this checklist is not a completed sign-off.
 
 - Public items: revealing Draft RFC-0004 A3 composition for RFC-0022 §2.3.
@@ -19,7 +20,7 @@ this checklist is not a completed sign-off.
 - Bindings: all fifteen root mutations, changed right total, supplied selectors,
   alternate branch payloads and valid substituted xy/q children rejected at
   their named consumers. Zero-product J/B/h/L substitutions and both unused
-  left-root controls remain under validation.
+  left-root controls also rejected at their named consumers.
 - Ledger: sum all four complete accounts and concatenate lookup identities
   in child order. Preserve the factor-only selection reduction, product
   identity and product reduction fields explicitly. Independent child-account
@@ -50,7 +51,7 @@ this checklist is not a completed sign-off.
 - Glossary/history: append-only Draft/accounting evidence. Full normalization
   must still bind the same X statistic, numerator, normalized interval and
   configured rsqrt. Native/model/private inference, fidelity and original
-  task criteria remain open. Remaining controls, matrices, maxima and gates
+  task criteria remain open. Matrices, maxima and gates
   are still required before this review can be completed.
 
 I tried to break it by substituting a valid signed-output proof with a changed

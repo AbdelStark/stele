@@ -65,6 +65,6 @@ passed. Frozen corpus hash:
 `d2ef8a356c060d6a8f7b23a1d0f9189600b1f5675ffb562a26f623e5d42c41aa`.
 All fifteen-root controls, the changed biased-total root, exact branch shape
 and valid substituted xy/q proofs rejected at their named consumers. Zero
-products still retain explicit J/B/h/L and unused-root controls, now running
-before the proof matrix. All three full-row proofs have started in sequence;
+products passed the explicit J/B/h/L and both unused-root controls. The
+28-case proof matrix is running. All three full-row proofs have started in sequence;
 queued local gates and hosted checks remain required.
