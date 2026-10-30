@@ -21,7 +21,8 @@ raw U and magnitude M from independently expected roots. Use actual wide-word
 ranges U<=2^bits-1 and M<=H on real rows; padded rows have cap zero. A third
 one-byte range proves a combined vector [sign S, high-seven-bit V], caps 1/127
 on real rows and zero on padding. An auxiliary carry root fixes C1..CB with
-public C0=0. N<=2048 keeps the combined range within its 4096-row capacity.
+public C0=0. N<=16384 keeps all three ranges within the shared byte-cell cap;
+the [capacity continuation](RANGE-CAPACITY.md) records its validation.
 
 Consume six A3 identities in this order:
 
@@ -54,7 +55,7 @@ parity and joint private/FS security remain separate required work.
 
 Spec is (identity, source, magnitude, bits, count, repetitions), with identity
 in [0,2^53), distinct u64 source/magnitude ids >=2, bits in {8,16,32}, count
-in [1,2048], repetitions 1/2, and field degree 4/8. Reserve base=2^63+512*identity
+in [1,16384], repetitions 1/2, and field degree 4/8. Reserve base=2^63+512*identity
 through base+511, excluding external ids. Derive capacities before payloads.
 The three wide-range ids are 8*identity+1/+2/+3, with sources source, magnitude,
 base. Carry source is base+1. Raw/magnitude bytes are plane-major then row;

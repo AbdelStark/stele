@@ -24,7 +24,9 @@ The unchanged conditional range argument still supplies bytes, Boolean carries,
 cap addition, initial zero and terminal zero. A3 loss is9a+7b and each label
 has4a+3b draws. The exact lookup identity/reduction stays parameterized by m;
 its repetitions are unchanged. Metadata may have more cap records, bounded by
-65536*20 bytes; this explicit increase must not be hidden by the byte-work cap.
+65536*20 bytes. The terminal A3 view can also grow from4096 to65536 entries.
+Charge these increases in T_misc/c_sc; the word-byte cap does not bound them
+to their old maxima.
 
 Raise signed-source count to16384, covering every supported8/16/32-bit width.
 Its raw/magnitude and combined sign/high7 ranges all fit the cell bound. Remove
@@ -45,3 +47,21 @@ this capacity change can be published.
 Recommendation: continue Q26/Q31 with the full-row consumed product. The fixed
 maximum lookup domain is preserved; native stacking and physical source
 ownership remain separate. Original task status and acceptance criteria remain.
+
+
+## Current evidence
+
+The tests-first shape run failed at the original4096-row Capacity guard.
+After adding the separate padded byte-cell bound, all18 geometry/witness cases
+passed across byte-plane counts1,2,4,8,16,32 and count/padding boundaries.
+All source/complement byte arithmetic and terminal carries matched independent
+integer encoding; oversized metadata rejected before missing payload access.
+Frozen shape SHA-256:
+`4151eb7c6dee3a07237457f1b324255930df6baacff7829b78efd7d4374a03f5`.
+
+Reproduce with `uv run --locked --script research/cqis-bounds/check_range_capacity.py`.
+The full wide-range, signed32 and16384-element xy proofs remain running, as do
+the affected legacy regressions. CI runs geometry in gates and the three full
+proofs in separate mandatory matrix jobs; every mode retains its full verifier.
+Required local gates and final same-author evidence remain pending. No maximum
+proof success, independent audit or native/private inference is claimed yet.

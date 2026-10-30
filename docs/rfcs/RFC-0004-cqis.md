@@ -1265,3 +1265,17 @@ is limited to1024 elements by the existing carry-range capacity; the original
 16384-element domain, xy*J, canonical product sign and output branches remain
 required. Native stacking, physical/model ownership, private PCS/ZK/FS and
 fidelity stay open. No Accepted contract, range capacity or cut changes here.
+
+### A3 evidence continuation — Range capacity for full RMSNorm rows
+
+The [capacity study](../../research/cqis-bounds/RANGE-CAPACITY.md) replaces the
+wide-range4096-word ceiling with65536 expected caps and a separate padded
+N*B<=131072 bound. Thus the maximum262144 selected bytes and lookup dimension18
+remain unchanged, while narrow words can occupy more rows. Signed-source count
+extends to16384 and xy admits RFC-0021's full row domain. Other adapters keep
+their explicit capacity guards. Original encodings and proof transcripts are
+unchanged on the old domain; all claims, ranges and zero boundaries remain.
+Expected cap metadata grows to at most65536 twenty-byte records. Full maximum
+proofs, unchanged legacy digests and geometry controls are required evidence.
+Native stacking, remaining norm roles, physical/model ownership, private proof
+and fidelity remain open; no Accepted domain, cut or protocol label changes.

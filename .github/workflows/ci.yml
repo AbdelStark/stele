@@ -83,6 +83,7 @@ jobs:
       - run: uv run --locked --script research/cqis-bounds/check_norm_rsqrt.py
       - run: uv run --locked --script research/cqis-bounds/check_norm_output_factors.py
       - run: uv run --locked --script research/cqis-bounds/check_norm_xy.py
+      - run: uv run --locked --script research/cqis-bounds/check_range_capacity.py --shapes
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py
@@ -190,6 +191,24 @@ jobs:
       - run: scripts/gates/rfc-status.sh
       - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
+  range-capacity:
+    name: range-capacity-${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [wide, signed, normxy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: false
+      - run: uv run --locked --script research/cqis-bounds/check_range_capacity.py --${{ matrix.mode }}
   poseidon2-reference:
     runs-on: ubuntu-latest
     steps:

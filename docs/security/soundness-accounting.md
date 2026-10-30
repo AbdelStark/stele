@@ -675,3 +675,19 @@ Closed outgoing carry caps254,255,64,0 and whole source/output bounds make both
 column sides at most65535 with2*65535<p. Binding/FS, actual xy*J, canonical
 product sign, output branches and native/physical/model/private composition
 remain additional. This1024-element revealing adapter adds no profile or cut.
+
+The [range capacity continuation](../../research/cqis-bounds/RANGE-CAPACITY.md)
+admits at most65536 caps with padded N*B<=131072. It preserves2BN<=262144<p
+and m=a+b+1<=18, so the existing exact lookup identity/reduction formulas and
+characteristic-safe unit remain. With a<=16,b<=5,a+b<=17, wide-range A3 loss
+9a+7b is at most151/|K| and each nonlookup label has at most67 draws. These
+replace the old domain maxima143 and63; actual per-instance accounting remains
+exact. Old-domain encodings/challenges are unchanged. Signed count<=16384 gives
+maximum signed32 A3 numerator663 with lookup dimensions17,17,16. Full-row xy
+has a=14, A3 numerator1606, six dimension16 and two dimension17 lookups, and674
+draws of each nonlookup label. Repetitions apply only to each lookup identity
+and its separately linear reduction. Every original/public claim and carry
+boundary remains consumed. Expected cap metadata can grow to1310720 bytes
+and the terminal A3 view to65536 entries; the word-byte bound does not conceal
+these increases. Binding/FS, other norm
+roles and native/physical/model/private inference remain additional.

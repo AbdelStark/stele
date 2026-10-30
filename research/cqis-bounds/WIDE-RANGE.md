@@ -18,7 +18,9 @@ claim lacks an actual consumer; or if the complete draw/phase accounting differs
 from the descriptors. Do not use a verifier plaintext whole-word range scan.
 
 Candidate: verifier-owned caps determine a power-of-two byte-plane count B<=32
-and padded row count N<=4096. An expected source root binds B*N canonical M31
+and padded row count N<=65536, subject to B*N<=131072. The
+[capacity continuation](RANGE-CAPACITY.md) records the expanded narrow-word
+domain and its validation. An expected source root binds B*N canonical M31
 entries, interpreted as byte planes only after equality to the range-proven
 lookup source. The lookup covers both the word and its nonnegative complement,
 2*B*N selected bytes, strictly fewer than p. Four k=0 A3 relations enforce
@@ -48,7 +50,8 @@ Binding, FS/H, private source composition and joint ZK remain additional.
 The verifier supplies Spec(identity,source,caps,repetitions), field degree 4 or 8,
 and an independently expected original source root. Identity is an integer in
 [0,2^56), source is a u64 >=2, repetitions is 1 or 2, and caps is a nonempty
-tuple of at most 4096 integers in [0,2^160). No proof field selects these values.
+tuple of at most65536 integers in [0,2^160), with padded B*N<=131072.
+No proof field selects these values.
 Let N=nextpow2(len(caps)); let B=nextpow2(max(1,ceil(bitlength(max(caps))/8))).
 Both are at least one. The byte-plane count B is fixed by caps, never the witness.
 Pad caps with zeros to N. Even a 160-bit cap uses 32 byte planes, with all twelve
