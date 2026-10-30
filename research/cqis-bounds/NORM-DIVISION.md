@@ -86,8 +86,10 @@ Full geometry and namespace checks passed. All core adversarial and boundary
 controls passed, including r=B with equality intact. All75 split-bound
 transitions passed, and an r+p/gap-p forgery preserving strict remainder
 rejected at equality. Actual B/h from one verified factor source composed;
-a valid divisor substitution rejected even at zero quotient. The16-proof
-matrix is running, with initial exact accounting checks passed.
+a valid divisor substitution rejected even at zero quotient. All16 proofs
+passed across both fields/repetition counts and dimensions1,3,16,65, including
+exact child/parent accounting. Frozen matrix SHA-256:
+`73f9d46b9eab59475258efa04699038da74df1738539f94ea3ef4131b515bfb8`.
 The full maximum is running. All required local repository gates passed,
 including fmt/clippy/workspace tests, no_std CQIS, digest, negative controls
 and soundness accounting. Hosted CI remains pending.
