@@ -1154,3 +1154,17 @@ verified range states precede parent challenges. Signed-column sides<=1534
 and magnitude-byte sum<=2040 establish static integer faithfulness. Actual
 receipts, source composition, Binding/FS/H, PCS/ZK and native lowering remain
 required. No production profile or control credit is admitted.
+
+### Draft Q26/Q31 attention block-rounding consumer
+
+Pre-implementation accounting: five independently repeated wide lookup identities
+at dimensions a+bm+1,a+bq+1,a+br+1,a+3,a+3. Each keeps identity loss
+((2^m+255)/|K|)^r and unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Complete range/A3 numerator49a+7(bm+bq+br)+42 includes
+the parent4a+6. Parent draws2a+3 of each ZeroWeight/Sumcheck label; total
+nonlookup draws22a+19+3(bm+bq+br) each. Eight parent originals and all source
+roots retain actual consumers. Expected schema/block ids/roles, external and
+internal roots and verified child states precede the parent transcript. Static
+sides<=66431<p/2 and whole bounds Hmax+h,qmax*D<2^64 prevent aliases and
+high-product loss. No new label or A1. Binding/FS/H and complete upstream
+composition remain additional; exact runtime receipts are required evidence.

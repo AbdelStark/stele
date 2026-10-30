@@ -1591,3 +1591,14 @@ parent originals remain consumed, including the actual H broadcast and a
 zero-hidden sign. Test aliases, compensation, source joins and carry boundaries
 before implementation. Block rounding, normalization, native/private inference
 and source ownership remain required; no Accepted cut or profile changes.
+
+### A3/A6 research plan — Consumed attention block rounding
+
+Draft plan: [block rounding](../../research/cqis-bounds/ATTENTION-BLOCK-ROUNDING.md)
+retains one actual magnitude root per absolute block while batching dense byte
+columns. Complete M/q/r/carry ranges enforce the configured half-away rounding,
+including shifts through62 and compact zero quotients. Static whole-side bounds
+exclude discarded high products; strict r<D and all eight originals remain
+required. Test source joins, aliases, missing bias and metadata replay before
+implementation. Signed block totals and restored normalization units remain
+separate obligations. No Accepted role, cut, profile or production credit changes.

@@ -953,3 +953,9 @@ bind magnitude/sign to actual weighted-offset and scalar-base sources while
 excluding negative zero and modular aliases? Require all original-point,
 broadcast, range/carry and complete source-composition controls. Continue with
 block rounding and normalization; original inference criteria remain open.
+
+Q26/Q31 continuation: [consumed attention block rounding](../../research/cqis-bounds/ATTENTION-BLOCK-ROUNDING.md)
+asks whether separately bound absolute-block magnitude sources can retain all
+original-point obligations through one dense rounding proof, including c=62.
+Test coherent remainder overflow, bias removal and high-product truncation.
+Signed block aggregation and normalization remain required before inference.
