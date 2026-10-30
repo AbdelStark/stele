@@ -941,3 +941,9 @@ actual original-point consumers? Test M31 aliases, compensating channel errors,
 zero factors and maximum carry geometry before implementation. Keep separate
 polynomial-identity and A1 errors. Signed sums, source ownership, normalization
 and native/private inference remain required; no original criterion is waived.
+
+Q26/Q31 offset-base continuation: can [complete scalar product consumption](../../research/cqis-bounds/ATTENTION-BASE.md)
+bind H=S*Z to the actual probability-sum root and configured restored-value
+bound, including Z=0? Require source-join, whole-product alias and full-root
+controls before signed O-H composition. No original criterion or native/private
+inference obligation is waived.

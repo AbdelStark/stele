@@ -1569,3 +1569,14 @@ probability range root separately. An all-masked range can use one byte even
 when the configured probability representation has two; exact zero extension
 must precede the external-root comparison. The independent corpus caught this
 case. The expected root geometry must not depend on whether any key is allowed.
+
+### A3/A6 research plan — Consumed attention offset base
+
+Draft plan: [offset base H=S*Z](../../research/cqis-bounds/ATTENTION-BASE.md)
+joins the actual four-byte probability sum to a complete scalar range and
+existing limb-product verifier. Its paired input must equal verified Z bytes
+and exact configured S bytes, even at Z=0. The product's actual output extends
+to an eight-byte H root. No parent challenge or whole-field product substitutes
+for complete consumption. Tests must cover valid changed sources, a changed
+zero-hidden S and H+p aliases. Signed O-H, normalization, full ownership and
+all native/private criteria remain open; no Accepted role or cut changes.

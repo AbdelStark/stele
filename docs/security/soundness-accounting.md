@@ -1124,3 +1124,18 @@ Do not square these reductions or merge the polynomial identity with A1.
 Initial/final and unused carries, padded channels and full external byte roots
 remain mandatory. Runtime receipt checks, actual source composition, Binding,
 FS/H, PCS/ZK and native inference are additional; no profile is admitted.
+
+### Planned attention offset-base consumer (Q26/Q31; Draft A3/A6)
+
+[Pre-implementation scope](../../research/cqis-bounds/ATTENTION-BASE.md).
+One complete Z range and one complete one-term radix256 limb-product retain
+lookup dimensions bz+1,b+2,g+3,g+3. Each has its own identity
+((2^m+255)/|Kfield|)^r and unsquared r*(F(m)+F(8)+3*m)/|Kfield|,
+F(m)=3*m*(m-1)/2+2*m. Planned range/A3 numerator is7*bz+9*b+18*g+31;
+product identity K-1 and product reduction4*b remain separate. Draw totals
+are3*bz+4*b+8*g+13 ZeroWeight and3*bz+6*b+8*g+14 Sumcheck. The parent
+wrapper adds no challenges, joins exact input bytes before full product
+verification, and binds all external/compact/input roots and verified states.
+The Z cap is derived from expected key count, and S from the fixed schema;
+no runtime fit or omitted zero-factor source is permitted. Actual receipts,
+source composition, Binding/FS/H, PCS/ZK and native inference remain required.
