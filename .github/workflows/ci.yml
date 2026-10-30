@@ -72,6 +72,7 @@ jobs:
       - run: uv run --locked --script research/cqis-bounds/check_static_row_code.py
       - run: uv run --locked --script research/cqis-bounds/check_gated_consumer.py
       - run: uv run --locked --script research/cqis-bounds/check_silu_consumer.py
+      - run: uv run --locked --script research/cqis-bounds/check_norm_statistic.py
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py

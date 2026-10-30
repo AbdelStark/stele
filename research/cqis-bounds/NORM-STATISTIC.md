@@ -1,6 +1,6 @@
 # Consumed RMSNorm statistic — Q26 / Q31
 
-Status: preimplementation research under Draft RFC-0004 A3. RFC-0021 §2.3
+Status: revealing research under Draft RFC-0004 A3. RFC-0021 §2.3
 defines S=sum_i X_i^2; RFC-0022 §§2.1,2.3,5 supply its static bounds.
 Original E5-03 and inference criteria remain blocked/open. This is not a full
 norm proof, native/private source consumer, production cut or independent audit.
@@ -71,7 +71,53 @@ raw/magnitude/sign source, result/carry, original final, padding and expected
 root. Check strict metadata, canonical fields, output high zeros and maximum
 namespace/capacity boundaries. No new analytic public-MLE kind is introduced.
 
-Recommendation pending prototype: continue Q26/Q31 with numerator, bounded
+Recommendation: continue Q26/Q31 with numerator, bounded
 normalization exponent, strict remainder, actual rsqrt membership, output
 products/branches and model-owned routing. This statistic consumes only the
 first RMSNorm arithmetic role and must not claim the remaining obligations.
+
+## Actual sources and integer argument
+
+The signed child verifies the raw source, canonical magnitude/sign and padding
+before any product-source view is formed. For each of the two byte planes, the
+wrapper concatenates that exact plane twice. The product input must equal this
+derived vector, then its full limb-source, whole range, carry/result ranges,
+polynomial and all three A1 consumers run. A valid proof for a substituted
+factor cannot establish the original statistic, even if a zero factor leaves
+the numerical answer unchanged. Expected roots are separate caller inputs.
+
+The static column certificate is exactly the closed statistic role. Product
+integer faithfulness follows from all actual range and carry endpoints before
+S<=d*2^30 is concluded. The eight output slots retain their high zero constraints
+even where the polynomial target only reads C result columns. The parent adds
+no algebraic test; its final state binds all four roots and both verified child
+states. Complete expected norm function bytes include epsilon and all units,
+without claiming that the remaining normalization roles were proved.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_statistic.py`.
+Tests first failed with the missing implementation module. Seed2684 covers10000
+exact/NumPy int64 sums,477500 duplicated source cells, all signed endpoints,
+varied norm metadata and the result-column transitions1023/1024. Full endpoint
+witnesses cover2048 rows and the maximum namespace. Frozen corpus SHA-256:
+`e80946b5f83e32d5307e37e6ff7a058d5d835a18a533417955e3bae64ea668c5`.
+
+Controls passed for raw/magnitude/sign/output/carry roots, both duplicated roles,
+malformed fields/metadata/shapes and padding. Independently valid proofs of
+0*1 and1*0 reject Product:SourceJoin against the original zero magnitude.
+Two INT_MIN sources have statistic2^31; a produced false output1 passes its
+own ranges but rejects Product:Product:RoundSumMismatch. An ignored high
+output slot set to1 leaves the product target unchanged but its actual range
+rejects Product:Output:Reconstruction:RoundSumMismatch. Changes to either power
+final preserve zero multiplication but reject the corresponding PowerClaimMismatch.
+All16 complete proofs passed across both fields and repetition counts, with
+scalar zero/endpoints, ragged rows, C4/C5 result widths, all six lookup terms,
+full A3/A1 losses and every actual draw. Frozen proof-state SHA-256:
+`244008775e9ce204f15139af98e3301c74d8117de43c88d36edefac7d6881d05`.
+Required local repository gates remain pending here.
+
+All work is batched; duplicated views cost O(N), plus the complete inherited
+signed/range/product/hash consumers. No measured constant, benchmark, extra
+weight pass, native control credit or independent audit is claimed. Research
+canonical-u32 byte roots do not establish physical/model source ownership.

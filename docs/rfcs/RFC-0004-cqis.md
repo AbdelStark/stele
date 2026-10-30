@@ -1127,3 +1127,15 @@ remain consumed even for zero inputs. This2048-element revealing adapter adds
 no parent challenge or new cut. Physical/model ownership, native stacking,
 private PCS/ZK and larger shapes remain open; Draft status and original task
 criteria are unchanged.
+
+### A3 evidence continuation — Consumed RMSNorm statistic
+
+The [RMSNorm statistic study](../../research/cqis-bounds/NORM-STATISTIC.md) binds
+one actual signed16 row to an independently expected unsigned statistic root.
+Both sum-of-products operands derive from the same verified magnitude byte
+planes; actual source joins remain even when a zero factor hides substitution
+algebraically. Complete range/carry/polynomial consumers reject S and S+p
+aliases, and retain high output padding. No per-element proof loop, intermediate
+square tensor or parent challenge is introduced. The2048-element revealing
+adapter consumes only the statistic role; other norm roles, model ownership,
+native/private lowering and original E5-03 criteria remain open.

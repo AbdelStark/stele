@@ -480,3 +480,21 @@ a matching id or only queried rows cannot authorize supplied data. E>F rejects
 the whole configuration even for a zero query. N<=2048 is a research capacity.
 Binding, FS/H, physical/model ownership, native stacking and private composition
 remain additional; no admitted profile, production cut or native control credit.
+
+Q26/Q31's [RMSNorm statistic consumer](../../research/cqis-bounds/NORM-STATISTIC.md)
+joins the same actual signed16 magnitude into both operand roles of one complete
+sum-of-products consumer. With Nrows=2^a, signed A3 contributes43a+35; product
+input whole-range/packing11a+20, and two dimension3 capped ranges74, for total
+54a+129. Six lookup dimensions are a+2,a+2,a+2,a+3,6,6. Retain each separate
+[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|. Product polynomial identity adds
+(C-1)/|K| for C result columns; its three A1s add(2a+4)/|K|. Neither term is
+squared or multiplied by lookup repetitions. C=4,5,6 for dimensions1..3,
+4..1023,1024..2048 respectively. Full ZeroWeight draws23a+55, Sumcheck24a+58,
+excluding lookup schedules; the latter includes rho and all three A1s. Parent
+draws none; its seed binds complete expected norm function bytes, four roots
+and two verified child states. Both original operand/power claims retain their
+actual consumers even at zero factors. Exact duplication adds no algebraic loss
+conditional on binding. Enforced whole inputs/carries/boundaries give faithful
+integer columns and derive S<=d*2^30 afterward; digit caps alone do not. All
+high output padding remains ranged. Binding, FS/H, remaining norm roles, model
+ownership and private composition remain additional; no native/profile credit.

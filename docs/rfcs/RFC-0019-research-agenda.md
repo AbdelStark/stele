@@ -809,3 +809,12 @@ The revealing prototype retains every original claim, selector and multiplicity
 consumer. Continue with physical/model-owned routing, native stacking/lowering,
 private PCS/ZK/FS and independent review. Capacity limits and canonical-u32
 research roots change no original criteria or production control obligations.
+
+Q26/Q31 RMSNorm continuation: the [statistic consumer](../../research/cqis-bounds/NORM-STATISTIC.md)
+duplicates actual signed-source magnitude bytes into both roles of one batched
+sum-of-products proof. Original consumers reject changes even at zero factors,
+and the byte/product relation rejects a whole-word M31 alias. The independently
+expected statistic root preserves enforced high padding. Continue with numerator,
+normalization exponent/remainder, actual rsqrt membership, final products/branches,
+model ownership and private proof composition. This2048-element revealing
+adapter changes no original criteria or production control requirements.
