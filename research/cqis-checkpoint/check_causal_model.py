@@ -113,7 +113,10 @@ def check():
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] in (['--attention-score'],['--attention-score-controls']):
+    if sys.argv[1:] in (['--attention-max'],['--attention-max-controls']):
+        from check_attention_max_bounds import check, controls
+        check() if sys.argv[1]=='--attention-max' else controls()
+    elif sys.argv[1:] in (['--attention-score'],['--attention-score-controls']):
         from check_attention_score_bounds import check, controls
         check() if sys.argv[1]=='--attention-score' else controls()
     elif sys.argv[1:] in (['--attention-blocks'],['--attention-block-controls']):

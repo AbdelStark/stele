@@ -15,6 +15,7 @@ import model_attention_sum_bounds
 import model_attention_normalization_bounds
 import model_attention_block_bounds
 import model_attention_score_bounds
+import model_attention_max_bounds
 import source
 import rope
 
@@ -83,6 +84,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     info.update(model_attention_normalization_bounds.evidence(model))
     info.update(model_attention_block_bounds.evidence(model))
     info.update(model_attention_score_bounds.evidence(model))
+    info.update(model_attention_max_bounds.evidence(model))
     actual = m.full(model,sequence); expected = reference(model,sequence)
     assert {k:actual[k] for k in expected}==expected
     cache = None

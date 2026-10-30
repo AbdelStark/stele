@@ -21,6 +21,9 @@
       12888
     ]
   },
+  "attention_max_bytes": 676,
+  "attention_max_records": 2,
+  "attention_max_sha256": "ad6a99e9f516f63b72b6f48bbf2dbe5e68f49d34f1d80b62f20aeeeb6a192fed",
   "attention_normalization_bytes": 3770,
   "attention_normalization_records": 2,
   "attention_normalization_sha256": "c90fad661fdd32d6b689b2f4f8cb75fa78e1f1ffdad208ee2c7f307e8891d4e9",

@@ -864,3 +864,21 @@ attained maximum/delta schemas, actual source/range/mask/function consumers,
 native full-model parity and fidelity remain required. No new challenge, cut,
 weight pass, measured constant or Accepted RFC-0022 change. E5-03/04 and E7-06/07
 retain all original criteria and NC-0100/0101/0109/0500..0506.
+
+### A3/A6 evidence continuation — Masked attained maximum and differences
+
+Status: Draft research evidence; A3/A6 and RFC-0009 A2 remain Draft. Question Q26.
+The [masked maximum study](../../research/cqis-bounds/ATTENTION-MAX.md) derives
+static records from the expected score policy and function domain. Byte
+relations enforce an attained allowed maximum, exact nonnegative differences,
+the inclusive exponential domain and the Draft reference's first allowed tie.
+Masked scores remain range checked; their delta/gap values are canonical zero.
+Coherent p-alias attacks on attainment, differences and strict ties reject.
+
+Checked score/max/difference values compose with numerical probability, sum,
+block and normalization checks, preserving all prior pinned fixture fields.
+This is conditional arithmetic, not an attention proof or complete certificate
+set. Actual source/mask/position/index/range/function consumers, query-padding
+semantics, native parity and fidelity remain mandatory. No new challenge, cut,
+weight pass, measured constant or Accepted RFC-0022 change. E5-03/04 and E7-06/07
+retain all original criteria and NC-0100/0101/0109/0500..0506.
