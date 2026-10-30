@@ -1101,3 +1101,16 @@ of the byte bounds used for that lift. This revealing adapter supports2048 wide
 elements with two planes, otherwise1024. Physical/model-source ownership, native
 stacking/lowering and private PCS/ZK remain open; Draft status, original task
 criteria and production cut/control requirements are unchanged.
+
+### A3/A8 evidence continuation — Consumed signed gated products
+
+The [gated-product consumer](../../research/cqis-bounds/GATED-CONSUMER.md) binds
+actual signed16 factors to signed32 output through batched byte convolution,
+actual byte carries, terminal boundary and cubic XOR sign. Original magnitude
+ranges give high-byte bounds independently of product correctness; integer
+columns imply the gated output domain afterward. Fractional field carries can
+hide -1*1=-2^31 in M31 while every parent relation holds; their actual source
+consumer rejects. Both row-code consumers accept the verified product root
+and reject substitutions. SiLU membership, physical/model ownership, native
+stacking/lowering, private PCS/ZK and larger shapes remain open. This1024-element
+revealing adapter changes no Draft status, original criterion or production cut.

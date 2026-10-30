@@ -1,6 +1,6 @@
 # Consumed signed gated products — Q26 / Q31
 
-Status: preimplementation research for RFC-0004 §3 / Draft A3/A8. E5-03 and
+Status: research for RFC-0004 §3 / Draft A3/A8. E5-03 and
 original acceptance criteria remain blocked/open. Same-author skill review is
 not independent audit; revealing research roots are not production cuts.
 
@@ -22,10 +22,10 @@ that |output|<=2^30. SiLU membership and model/physical-source ownership remain
 separate, mandatory consumers.
 
 For two-byte magnitudes U=(u0,u1), V=(v0,v1), form four-plane views
-A=(u0,u0,u1,0), B=(v0,v1,v1,0), D=(0,u1,0,0), E=(0,v0,0,0).
+A=(u0,u0,u1,0), B=(v0,v1,v1,0), D=(0,u1,0,0), F=(0,v0,0,0).
 Output magnitude has four actual byte planes Z. Consume three k=0 A3 relations:
 
-1. ProductColumns: A*B+D*E+Cin-Z-256*Cout=0, dimension a+2, degree2.
+1. ProductColumns: A*B+D*F+Cin-Z-256*Cout=0, dimension a+2, degree2.
 2. TerminalCarry: C4=0, dimension a, degree1; C0=0 is public.
 3. SignTransfer: (Sleft+Sright-2*Sleft*Sright-Sout)*Z=0,
    dimension a+2, degree3, with signs broadcast across all four byte planes.
@@ -68,3 +68,65 @@ Preimplementation bound refinement: signed magnitude ranges imply high bytes
 254,255,64,0 from coefficients65025,65280,16384,0. Thus a uniform actual
 byte cap255 suffices; no packed two-byte carry is needed. This replaces the
 initial conservative510 proposal before the prototype or tests are written.
+
+## Actual consumers and integer argument
+
+The four children are signed left16, right16, output32 and carry range, in
+fixed order. The parent verifies every child against its expected raw or derived
+magnitude/carry roots before its first challenge. Signed sources own canonical
+zero and signs; no Boolean sign is accepted solely from a parent polynomial.
+The four product views rearrange actual input bytes and insert exact zero planes.
+The output magnitude is an actual four-plane source, including its high byte;
+carry incoming/terminal views retain the same checked values. Every final uses
+the actual MLE at its emitted point, including factors multiplied by zero.
+
+The signed ranges establish each magnitude<=32768 independently of product
+correctness. Hence the cross-column coefficient is<=2*255*128; adding actual
+carry<=255 gives65535. The low/high/terminal columns have smaller static bounds.
+The result side is<=255+256*255=65535. Thus every field equality lifts uniquely
+to an integer equality. Telescoping with C0=C4=0 proves U*V=Z; the original
+whole ranges then give Z<=2^30. Output sign follows from the cubic XOR relation
+on each byte. At nonzero Z at least one byte is nonzero, so the sign is forced;
+at zero the signed-source proof permits only canonical zero. This order avoids
+using the derived product bound to justify its own field lift.
+
+Exactly three batched A3 invocations cover all elements, with no per-element
+proof loop. Context encodes version/field/repetitions, identity and three source
+ids as little-endian u64, dimension as u32, then fu/E bytes. Expected dimensions
+and fractions come from closed metadata; neither proof nor payload selects them.
+All namespace/capacity checks precede payload access. New views use fully
+revealed authenticated arrays; no new analytic public-MLE kind is introduced.
+
+## Reproduction and limits
+
+Run `uv run --locked --script research/cqis-bounds/check_gated_consumer.py`.
+Tests first failed with the missing implementation module. Seed2678 covers10000
+rows,261400 byte cells, every pair from{-32768,-32767,-1,0,1,32767}, and all
+allowed fractions. Python integer and NumPy int64 multiplication agree; independent
+NumPy convolution checks every column. An exhaustive32769-magnitude check confirms
+the high-byte bound, and a complete1024-element endpoint witness checks capacity.
+The largest observed carry is254, a correctness observation rather than a bound.
+Corpus SHA-256:
+`09304ad8f8a13e24a195620d4d7cc6c8f71a80e4d3277f2a0c7bdb771e8e5aa1`.
+The16-case full-proof matrix checks both fields/repetitions, scalar/zero/ragged
+endpoints, all ten lookup terms, full A3 losses/draws and twelve parent claims.
+Frozen16-proof state SHA-256:
+`8c555126eb17eb0bb7fd9f3e0c16c85f83c103d7be4202439193fb35e29864cb`.
+
+Controls reject the isolated field-carry alias at Carry:SourceCopy:RoundSumMismatch,
+the in-domain signed alias at ProductColumns:RoundSumMismatch, and an otherwise
+exact product with opposite sign at SignTransfer:RoundSumMismatch. All parent
+equations hold in the first attack. One-value raw/magnitude/sign/carry mutations,
+genuine wrong-source proofs, equation-preserving final changes, zero factors,
+malformed fields/roots/shapes and metadata/capacity errors also reject. Small
+naive/folded A3 proofs agree exactly. Both row-code consumers accept the verified
+product root and reject an independently valid proof of a substituted product.
+These composition fixtures derive gated-row units as fu+E from expected metadata.
+
+Witness/views/folded parent work is O(N), plus all nested range/lookup/hash
+consumers in c_a/c_sc/c_lu/T_misc. No measured constant, benchmark, inference
+weight-pass change, production NC credit or independent audit is claimed.
+Recommendation: continue Q26/Q31 with actual SiLU membership, physical/model-owned
+sources, native stacking/lowering, private PCS/ZK/FS and independent review.
+The original16384-element schema and full inference criteria remain unchanged;
+canonical-u32 research roots are not physical packed roots or production cuts.
