@@ -85,5 +85,10 @@ with32 internal output slots, an external32-slot MD with16 source planes and
 16-slot R with32 source planes. Each high-slot or excess-plane tamper rejects
 at its actual root/padding consumer. Exact accounts/draws pass. Frozen states:
 `ec01b18abd84f118573b253429bd305b1e6eb25b002abaae9b4a1b8537dbdce8`.
-The main field/repetition matrix and required local gates remain pending.
+All16 main proofs passed in both fields/repetitions, including actual140-bit
+results with nonzero byte17 and exact accounts/draws. Together the24 proofs
+cover ten distinct source/internal/external width combinations. Frozen main
+proof-state SHA-256:
+`02600f4248ded8d34287268e07594b5cce8c4058b7c9a8eb6a926fdba771c456`.
+Required local gates remain pending.
 No measured performance, native control credit or independent audit is claimed.

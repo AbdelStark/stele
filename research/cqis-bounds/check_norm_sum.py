@@ -75,6 +75,7 @@ def honest():
                 if length==16384: assert (md+rem).bit_length()==140 and proof['sum']['output']['words'][17]>0
                 digest.update(state);count+=1;print('honest',count,d,reps,length,f,maximum,flush=True)
     assert {x[0] for x in widths}=={3,4,5} and {x[1] for x in widths}=={8,16,32}
+    assert count==16 and digest.hexdigest()=='02600f4248ded8d34287268e07594b5cce8c4058b7c9a8eb6a926fdba771c456'
     print(json.dumps(dict(proofs=count,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
