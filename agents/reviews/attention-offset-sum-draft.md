@@ -4,8 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md). Primary controls and
 both zero-hidden originals passed. All10000 independent corpus cases passed.
-Boundary/composition, matrix, three full geometries and repository gates remain
-required.
+Boundary and both actual source compositions also passed. The matrix, three
+full geometries and repository gates remain required.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2 establish unsigned
   O_c=sum_j P_j*U_jc. Signed O-S*Z and normalization remain separate.
@@ -18,8 +18,9 @@ required.
   other factor is zero rejected at WeightedSum:ClaimMismatch.
 - Bindings: all external-root mutations, valid substituted sources and fresh
   bounded false output proofs rejected. Compensating channel errors and a
-  whole-output M31 alias rejected at WeightedSum:RoundSumMismatch. Remaining
-  boundary and actual source-composition controls are running.
+  whole-output M31 alias rejected at WeightedSum:RoundSumMismatch. Boundary
+  controls passed, as did actual probability/restored-value composition for
+  both policies, including valid alternate-value rejection.
 - Ledger: separate K-1+ac polynomial-identity and2*ar A1 numerators. Preserve
   every range lookup identity, unsquared reduction and A3 account. The parent
   draws1+ac+ar Sumcheck challenges. The initial complete proof/account check
