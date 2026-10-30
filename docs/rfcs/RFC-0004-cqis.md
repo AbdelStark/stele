@@ -1381,3 +1381,18 @@ Rounding must join the same q root through the selected left/division branch.
 Complete proof/control evidence, configured branch selection, full normalization,
 native/model/private inference, fidelity and original task criteria remain
 required. No Accepted role, profile or cut is added.
+
+### A3 evidence continuation — Configured RMSNorm output composition
+
+The [configured-output study](../../research/cqis-bounds/NORM-CONFIGURED-OUTPUT.md)
+retains the complete same-exponent factor consumer, canonical signed output,
+reciprocal product and selected whole left/division consumer. The actual
+verified factor bundle determines the branch and exact B/h/L byte slices.
+Every reused source shares its root; the left branch enforces canonical
+zero qd/r roots. The right branch consumes its biased-total auxiliary root.
+Exact proof keys prohibit a supplied selector or ignored alternate proof.
+The wrapper adds no challenge and preserves every child error term. Full
+normalization must still join N to the same X statistic, A/D to the normalized
+interval and J to configured rsqrt. Proof/control evidence, native/model/private
+inference, fidelity and original task criteria remain required. No Accepted
+role, profile or cut is added.

@@ -847,3 +847,22 @@ only the equality of output/product signs becomes vacuous as rounding requires.
 No child is gated by the output. Runtime receipts, binding/FS, same-magnitude
 rounding composition, selected branches and native/model/private inference
 remain additional.
+
+The [configured-output wrapper](../../research/cqis-bounds/NORM-CONFIGURED-OUTPUT.md)
+adds no random challenge. Sum the four complete child accounts in order:
+configured factors, signed output, reciprocal product and selected left/division.
+Keep each lookup identity and reduction separate. The first child retains
+selection reduction6/|K|, product identity(k-1)/|K|, product reduction4b/|K|
+and A3 numerator199+9b+18g for its static limb layout. Signed output adds
+177a+183 and reciprocal product39a+85 to the A3 numerator, for N=2^a;
+add the selected branch's complete A3/range/lookup account. No reduction is
+squared with lookup repetitions. The wrapper preserves the factor-only
+selection/product terms explicitly rather than dropping them during aggregation.
+Complete expected function bytes, role ids, fifteen external roots, verified
+branch, right-branch total root if present and all four verified states seed
+the final transcript. Its draw map is empty. Exact source-root joins add no
+algebraic loss conditional on binding. The verified factor bundle alone selects
+the branch; every original consumer remains mandatory at zero products. The
+left branch checks both unused qd/r roots against16N canonical zero slots.
+Binding, FS/H, full normalized-interval/statistic/rsqrt joins, private composition
+and model ownership remain additional. No profile or production cut is admitted.
