@@ -827,3 +827,22 @@ required. Review: [same-author passes](../../agents/reviews/attention-normalizat
 Accepted RFC-0022, challenge/ledger lines, cuts and proof weight passes are
 unchanged. E5-03/04 and E7-06/07 retain all original criteria; native parity,
 fidelity and NC-0100/0101/0109/0500..0506 remain open. No measured cost claim.
+
+### A3/A6 evidence continuation — Absolute block rounding and aggregation
+
+Status: Draft research evidence; A3/A6 and RFC-0009 A2 remain Draft. Question Q26.
+The [block study](../../research/cqis-bounds/ATTENTION-BLOCKS.md) derives static
+byte-column source/rounding records and capacity-based probability aggregation.
+Rounded block totals have a direct centered M31 bound. Absolute expected block
+IDs retain sparse and masked rows; neither observed magnitudes nor a short row
+relax the full-block drop requirement. Coherent source and rounding aliases reject.
+
+Exact/NumPy controls and model checks compose raw sums, block rounding/aggregation
+and normalization. The pinned checkpoint has a separate explicit block-mode
+numerical variant, without reusing its baseline identity or claiming that the
+fixed replay tokens are that variant's generated continuation. Review:
+[same-author passes](../../agents/reviews/attention-block-bounds-draft.md).
+Actual source/mask/position/range/function consumers, score/max schemas, complete
+certificate sets, native parity and fidelity remain required. No Accepted
+behavior, challenge/ledger line, cut, proof weight pass or measured cost changes.
+E5-03/04 and E7-06/07 retain original criteria and NC-0100/0101/0109/0500..0506.

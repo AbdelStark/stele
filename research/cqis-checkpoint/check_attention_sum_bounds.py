@@ -152,7 +152,7 @@ def model_row(p,position,q,positions,keys,values,allowed,expected):
     # Convert the whole K/V/Q projections before slicing head/group views.
     ks=[convert(rotation(p,j,k,p.groups),p.k_mode,p.k_scale) for j,k in zip(positions,keys)]
     vs=[convert(v,p.attention.value_mode,p.attention.value_scale) for v in values]
-    qs,qc=convert(rotation(p,position,q,p.heads),p.q_mode,p.q_scale); spec=model_bounds.spec(p)
+    qs,qc=convert(rotation(p,position,q,p.heads),p.q_mode,p.q_scale); spec=model_bounds.spec(p); results=[]
     for head in range(p.heads):
         group=head//(p.heads//p.groups); lo=group*p.width; hi=lo+p.width
         scores=[rounded(Q(sum(x*y for x,y in zip(qc[head*p.width:(head+1)*p.width],k[lo:hi]))*qs*s*p.score_m)*
@@ -161,14 +161,17 @@ def model_row(p,position,q,positions,keys,values,allowed,expected):
         weights=[probability(p,maximum-v) if bit else 0 for v,bit in zip(scores,allowed)]
         groups={}
         for i,j in enumerate(positions): groups.setdefault(j//1024 if p.attention.accumulation=='block1024' else 0,[]).append(i)
-        total=[0]*p.width; z=0
+        total=[0]*p.width; z=0; partials=[]
         for block,indices in groups.items():
             args=(tuple(positions[i] for i in indices),block,tuple(weights[i] for i in indices),
                   tuple(tuple(vs[i][1][lo:hi]) for i in indices),tuple(vs[i][0] for i in indices),tuple(allowed[i] for i in indices))
             answer=r.check_relations(spec,r.derive(spec),*args,r.witness(spec,*args)); z+=answer[0]
             assert answer==reference(args[2],args[3],args[4])
+            partials.append((block,answer))
             total=[x+rounded(Q(v,1<<p.attention.drop)) for x,v in zip(total,answer[1])]
         assert (z,total)==(expected['heads'][head]['z'],expected['heads'][head]['total'])
+        results.append(tuple(partials))
+    return tuple(results)
 
 
 def models():

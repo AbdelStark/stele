@@ -13,6 +13,7 @@ import model_residual_bounds
 import model_greedy_bounds
 import model_attention_sum_bounds
 import model_attention_normalization_bounds
+import model_attention_block_bounds
 import source
 import rope
 
@@ -79,6 +80,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     info.update(model_greedy_bounds.evidence(model))
     info.update(model_attention_sum_bounds.evidence(model))
     info.update(model_attention_normalization_bounds.evidence(model))
+    info.update(model_attention_block_bounds.evidence(model))
     actual = m.full(model,sequence); expected = reference(model,sequence)
     assert {k:actual[k] for k in expected}==expected
     cache = None
@@ -92,6 +94,8 @@ def check_checkpoint(prefix, reference, *, write=False):
     model_rows(model,replay,list(range(len(generated['tokens']))))
     from check_attention_normalization_bounds import model_rows as normalization_rows
     normalization_rows(model,replay,list(range(len(generated['tokens']))))
+    from check_attention_block_bounds import check_variant
+    info['attention_block_variant']=check_variant(model,generated['tokens'])
     assert generated['cache']==m.full(model,generated['tokens'])['cache']
     for i,t in enumerate(generated['tokens'][len(sequence):],len(sequence)):
         logits = replay['heads'][i-1]['logits']; maximum = max(logits)

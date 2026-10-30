@@ -633,3 +633,12 @@ corpora and model/checkpoint replay provide evidence; Draft A3/A6 and RFC-0009 A
 remain unaccepted. Block rounding/summation, score/max schemas, complete
 certificate sets, actual consumers, native parity, fidelity and private inference
 remain open. Original E5-03/04 and E7-06/07 criteria and production NCs are unchanged.
+
+Q26 attention-block continuation: the [rounding and aggregation study](../../research/cqis-bounds/ATTENTION-BLOCKS.md)
+closes conditional raw-to-rounded block sums with static byte columns, absolute
+block IDs and small centered rounded totals. Numerical composition consumes the
+raw-sum checker's results and feeds normalization; canonical source and rounding
+aliases reject. A distinct pinned block-mode variant preserves baseline evidence.
+Draft A3/A6 and RFC-0009 A2 remain unaccepted. Score/max schemas, complete
+certificate sets, actual consumers, native parity, fidelity and private inference
+remain required; original task criteria and production NCs are unchanged.

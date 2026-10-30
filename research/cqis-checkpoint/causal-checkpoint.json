@@ -1,5 +1,26 @@
 {
   "artifact_bytes": 1164135,
+  "attention_block_bytes": 0,
+  "attention_block_records": 0,
+  "attention_block_sha256": "1b7a53778b22b59072e31ecd192321270f920d8b016c9c8f922eba3a7b666f89",
+  "attention_block_variant": {
+    "attention_block_bytes": 2740,
+    "attention_block_records": 2,
+    "attention_block_sha256": "da0b3f30e43e4de6c176bea03b612edf73806d4fa9b0c3ad0a6eb4dda628adbb",
+    "drops": [
+      23,
+      23
+    ],
+    "logits_sha256": "b28d55706da75542feafa7a6bd6d184fef8dee324dbdfd4f9eb8d49f1ebbb3e0",
+    "tokens": [
+      0,
+      42,
+      1337,
+      31999,
+      27247,
+      12888
+    ]
+  },
   "attention_normalization_bytes": 3770,
   "attention_normalization_records": 2,
   "attention_normalization_sha256": "c90fad661fdd32d6b689b2f4f8cb75fa78e1f1ffdad208ee2c7f307e8891d4e9",
