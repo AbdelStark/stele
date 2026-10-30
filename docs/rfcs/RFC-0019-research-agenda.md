@@ -818,3 +818,11 @@ expected statistic root preserves enforced high padding. Continue with numerator
 normalization exponent/remainder, actual rsqrt membership, final products/branches,
 model ownership and private proof composition. This2048-element revealing
 adapter changes no original criteria or production control requirements.
+
+Q26/Q31 numerator continuation: the [RMSNorm numerator consumer](../../research/cqis-bounds/NORM-NUMERATOR.md)
+binds the full statistic byte root, its actual whole-value bound and all
+configuration-derived factors before exact sum-of-products verification.
+A larger generic product bound cannot admit Smax+1, and a valid output range
+cannot hide an N+p alias. Actual statistic/numerator roots compose. Continue
+with normalization exponent/remainder, rsqrt membership, final branches and
+physical/model/private source ownership. Original inference criteria stay open.

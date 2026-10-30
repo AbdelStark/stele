@@ -498,3 +498,21 @@ conditional on binding. Enforced whole inputs/carries/boundaries give faithful
 integer columns and derive S<=d*2^30 afterward; digit caps alone do not. All
 high output padding remains ranged. Binding, FS/H, remaining norm roles, model
 ownership and private composition remain additional; no native/profile credit.
+
+Q26/Q31's [RMSNorm numerator consumer](../../research/cqis-bounds/NORM-NUMERATOR.md)
+uses statistic bytes B_s=2^b_s, product planes B=2^b and output slots2^g.
+The statistic range adds A3 7b_s; product input range/packing22+9b and output/
+carry ranges18g+20, totaling7b_s+9b+18g+42. Four lookup dimensions are
+b_s+1,b+3,g+3,g+3; retain each separate[(2^m+255)/|K|]^r and
+r[F(m)+F(8)+3m]/|K|. Product identity adds(C-1)/|K| for C result columns,
+and its three A1s add(2+4b)/|K|. These product losses are not squared or
+repeated with lookup r. Full ZeroWeight draws3b_s+4b+8g+18 and Sumcheck
+3b_s+6b+8g+20 exclude lookup schedules and include product rho/A1s. Parent
+draws none; its final seed binds complete expected norm bytes, four roots and
+two verified child states. The full eight-slot S root retains high zero padding
+even with a four-byte range child. Actual S<=Smax precedes the exact configured
+(S,U)/(ed,en) source join; all original/public product claims remain consumed,
+including zero factors. Static integer columns establish N and its closed bound
+afterward; generic result digit caps do not. Exact joins add no algebraic loss
+conditional on binding. FS/H, remaining norm roles, physical/model ownership and
+private composition remain additional; no admitted native/profile/cut credit.

@@ -135,5 +135,8 @@
   ],
   "cqis-norm-statistic": [
     "uv run --locked --script research/cqis-bounds/check_norm_statistic.py"
+  ],
+  "cqis-norm-numerator": [
+    "uv run --locked --script research/cqis-bounds/check_norm_numerator.py"
   ]
 }

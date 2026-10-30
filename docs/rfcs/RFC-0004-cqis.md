@@ -1139,3 +1139,15 @@ aliases, and retain high output padding. No per-element proof loop, intermediate
 square tensor or parent challenge is introduced. The2048-element revealing
 adapter consumes only the statistic role; other norm roles, model ownership,
 native/private lowering and original E5-03 criteria remain open.
+
+### A3 evidence continuation — Consumed RMSNorm numerator
+
+The [numerator study](../../research/cqis-bounds/NORM-NUMERATOR.md) consumes the
+full eight-slot statistic root and its actual S<=d*2^30 range. Every numerator
+operand byte derives from that source or expected U/ed/en; zero factors do not
+remove original consumers. Complete byte/product relations reject an N+p alias,
+and the strict statistic range rejects Smax+1 even when the generic product
+domain permits it. Exact zero extension preserves high source padding. This
+revealing scalar consumer retains the full norm metadata domain, but proves
+only the numerator role; normalization, rsqrt, outputs, native/private/model
+ownership and original E5-03/inference criteria remain open.
