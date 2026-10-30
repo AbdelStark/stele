@@ -21,7 +21,8 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   rejected at their actual cap consumers.
 - Ledger: total A3 numerator107a+108; six lookup dimensions a+2 and two a+3
   retain separate identities/reductions. Full nonlookup draws45a+44 of each
-  label; seven parent claims. Exact runtime account assertions are running.
+  label; seven parent claims. All17 complete proofs passed their exact runtime
+  account assertions. Required local gates remain running.
 - Bounds: only the closed expected xy role derives carry caps(0,254,255,64,0).
   Full signed magnitudes<=32768 and xy<=2^30 imply high-byte caps. Both column
   sides<=65535,2*65535<p. Exact terminal zero is enforced by the carry range.
@@ -31,8 +32,8 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Determinism: fixed role, child, column and row order; full norm bytes and
   exact integer arithmetic.10000 NumPy cases passed with a frozen digest.
 - Parity: native CPU/SIMD/CUDA unchanged. Revealing field/repetition and full
-  capacity1024 proof passed. The remaining field/repetition matrix is running;
-  no native/private inference admission.
+  capacity1024 proof and all16 field/repetition cases passed with frozen states.
+  No native/private inference admission.
 - Costs: O(N) witness/views/folded A3 producer plus complete inherited ranges
   and full-opening consumers in c_a/c_lu/c_sc/T_misc. No measured constant,
   benchmark, scalar proof loop per element or extra model weight pass.

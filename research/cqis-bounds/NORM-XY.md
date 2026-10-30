@@ -84,5 +84,8 @@ each failed their actual CapRelation:RoundSumMismatch consumer. The complete
 1024-element QM31/r1 proof passed, including exact accounts and every actual
 source/range/carry/original consumer. Its frozen state SHA-256 is
 `3ebe58ec21e52b8c5446f982ad9e9ae9be0250e357a3328eaafc8f6d22968f41`.
-The remaining field/repetition matrix and required repository gates are pending. No benchmark, native
+All16 other proofs passed across both fields/repetitions and counts1,3,16,65,
+with exact accounts and all padded positions. Frozen matrix SHA-256:
+`4c3206c708d544df3e02f6b6a38e20680ad829263a6b5ff75eb0131ed7b46048`.
+Required repository gates remain running. No benchmark, native
 control credit or independent audit is claimed.

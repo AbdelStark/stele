@@ -69,6 +69,7 @@ def honest(maximum=False):
             proof,state=c.prove(p,xs,ys,d);out=c.verify(p,c.expected_roots(p,xs,ys,[abs(x*y) for x,y in zip(xs,ys)]),proof,d)
             assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest',count,d,reps,size,flush=True)
     if maximum:assert digest.hexdigest()=='3ebe58ec21e52b8c5446f982ad9e9ae9be0250e357a3328eaafc8f6d22968f41'
+    else:assert digest.hexdigest()=='4c3206c708d544df3e02f6b6a38e20680ad829263a6b5ff75eb0131ed7b46048'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
