@@ -77,6 +77,7 @@ No verifier change was needed. Composition-preserving output/carry finals
 and an original hidden by a zero multiplicand rejected ClaimMismatch.
 Actual same-X composition with the statistic proof passed; a valid source
 sign substitution preserving magnitudes/statistic/product rejected the pinned
-raw root. Separate padding/terminal controls, full field/repetition/capacity
-matrices and required repository gates remain pending. No benchmark, native
+raw root. Separate real terminal carry, padded carry and padded output controls
+each failed their actual CapRelation:RoundSumMismatch consumer. Full field/
+repetition/capacity matrices and required repository gates remain pending. No benchmark, native
 control credit or independent audit is claimed.

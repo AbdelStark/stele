@@ -17,7 +17,8 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   keeps expected metadata and supplies false-cap witness bytes, exercising the
   actual cap relation directly; both strict carry and output alias reject at
   CapRelation:RoundSumMismatch. All controls and same-X statistic composition
-  passed. Separate terminal-real/padded-carry/output controls are running.
+  passed. Separate real terminal, padded carry and padded output controls each
+  rejected at their actual cap consumers.
 - Ledger: total A3 numerator107a+108; six lookup dimensions a+2 and two a+3
   retain separate identities/reductions. Full nonlookup draws45a+44 of each
   label; seven parent claims. Exact runtime account assertions are running.

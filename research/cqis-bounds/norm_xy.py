@@ -36,6 +36,8 @@ def derive(p,d):
     left=ss.Spec(512*p.identity+1,p.left,base+1,16,count,p.repetitions)
     right=ss.Spec(512*p.identity+2,p.right,base+2,16,count,p.repetitions)
     output=r.Spec(4096*p.identity+65,p.output,(1<<30,)*count,p.repetitions)
+    # RFC-0022 §2.1: outgoing C1..C4, including the terminal zero.
+    # Zero-cap padding stays in the same actual range proof as real carries.
     caps=tuple(cap if i<count else 0 for cap in cert['carry_caps'][1:] for i in range(n))
     carry=r.Spec(4096*p.identity+66,base+4,caps,p.repetitions)
     for child in (left,right):ss.derive(child,d)
@@ -71,6 +73,8 @@ def expected_roots(p,xs,ys,output):
 def parts(p,proof,d):
     v=derive(p,d);n,base=v['n'],v['base'];left,right=[proof[name]['ranges'][1]['words'] for name in NAMES[:2]];z=proof['output']['words'];carry=proof['carry']['words']
     for xs,size in zip((left,right,z,carry),(2*n,2*n,4*n,4*n)):r.vector(xs,size)
+    # RFC-0022 xy columns: X0*H0; X0*H1+X1*H0; X1*H1; zero.
+    # Plane coordinates precede row coordinates. C0 is fixed public zero.
     zero=[0]*n;rows=[left[:n]*2+left[n:]+zero,right[:n]+right[n:]*2+zero,zero+left[n:]+zero*2,zero+right[:n]+zero*2,zero+carry[:-n],z,carry]
     i=dict(id=16384*p.identity+512,m=v['a']+2,k=0,ids=list(range(base+16,base+21))+[p.output,base+21],
         terms=[(r.sc.scalar(x,d),factors) for x,factors in ((1,[0,1]),(1,[2,3]),(1,[4]),(-1,[5]),(-256,[6]))])
@@ -113,6 +117,8 @@ def verify(p,expected,proof,d):
     need(type(part) is dict and set(part)=={'skip','rounds','final'} and type(part['skip']) is list and not part['skip'] and type(part['rounds']) is list and len(part['rounds'])==i['m']
         and all(type(xs) is list and len(xs)==3 for xs in part['rounds']) and type(part['final']) is list and len(part['final'])==7 and all(type(xs) is list and len(xs)==1 for xs in part['final']),'ProofShape')
     t=transcript(v,expected+[proof['roots'][name] for name in AUX],[child['state'] for child in children],d)
+    # Every view comes from the fully verified children above. The reference
+    # consumer checks all originals even if an operand hides one algebraically.
     try:receipt,_=r.zc.verify(t,i,part,tables)
     except ValueError as error:raise ValueError('ProductColumns:'+str(error)) from None
     accounts=[child['account'] for child in children]
