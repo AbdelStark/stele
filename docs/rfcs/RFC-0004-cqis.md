@@ -1048,3 +1048,17 @@ the static quotient cap is zero. Full nested losses and final sign A3 remain
 separate in accounting. This scalar full-reveal composition does not admit model
 source ownership, physical packed roots, production stacking, native lowering,
 private PCS/ZK or the original NC-0100/0101/0109 criteria. A3 remains Draft.
+
+### A3/A8 evidence continuation — Consumed attained magnitude
+
+The [attained-magnitude study](../../research/cqis-bounds/ATTAINED-MAGNITUDE.md)
+connects an actual signed row to its independently expected maximum root.
+Bounded byte gaps prove the integer upper bound; an actual bit range, sum1 and
+zero selected gap prove existential attainment. Masking the maximum broadcast
+on padded rows and proving the padded indicator zero are essential. Nonbit
+carries can hide a gated whole-word difference of p despite all other relations;
+the consumed carry Booleanity rejects that case. This full-reveal research
+wrapper is limited to 2048 elements and does not bind a separately committed
+index or implement private selection. Dynamic scale/code consumers, physical
+model roots, native stacking and private PCS/ZK remain open. A3/A8 remain Draft;
+no production cut, task completion or native control credit is admitted.

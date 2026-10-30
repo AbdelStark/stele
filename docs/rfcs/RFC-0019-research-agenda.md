@@ -758,3 +758,11 @@ shared words have actual consumers; the zero quotient permits canonical output
 zero without erasing its sign claim. Continue with model-owned source routes,
 production stacking/native plan, private PCS/ZK/FS and independent review.
 Revealing scalar proofs do not complete inference or grant native control credit.
+
+Q26/Q31 maximum continuation: the [attained-magnitude consumer](../../research/cqis-bounds/ATTAINED-MAGNITUDE.md)
+proves an integer upper bound and real-row attainment through actual signed,
+maximum, gap and indicator ranges. Padding and nonbit-carry controls isolate
+otherwise valid false statements. Continue with dynamic scale and code consumers,
+committed-index/model ownership, native lowering and private PCS/ZK/FS. The
+revealing existential wrapper does not replace private selection or satisfy
+the original inference tasks and production negative controls.
