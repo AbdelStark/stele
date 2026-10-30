@@ -79,6 +79,14 @@ against a one-cell-corrupted public grid satisfies every Boolean relation but
 fails Factors:ClaimMismatch at the actual public consumer. Altered original/
 public finals preserving the composition reject there too. A valid different
 negative exponent retains identical N,A,D at N=0 but fails the pinned offset
-root. No verifier or expected-reason repair was needed. The main20-proof and
-two10000-point public matrices, and required local gates, remain pending.
+root. No verifier or expected-reason repair was needed. All20 complete proofs
+passed across both fields/repetitions, with exact accounts/draws, e=-16/-1/0/1/90
+and the91-bit B=2^90 endpoint. Frozen matrix SHA-256:
+`0966edb60acb2c5743604516c813110b0deb0fabe8ee191fd8772ec8cc603a6a`.
+Required local repository gates passed. Both public matrices completed all
+10000 points with exact independent equality-basis agreement. Frozen hashes:
+
+- QM31: `4747b394c7d37c037eb11a1aea196d6ae6ee9461538daf6ae340e38db725fd65`.
+- OM31: `5b5ea9a6ee1ada254cf6240b8384f99c93f5bbf49876ef2f84a5c68834150bf8`.
+
 No benchmark, native control credit or independent audit is claimed.
