@@ -909,3 +909,12 @@ no source claim is removed for an observed zero quotient. Continue with actual
 same-exponent factor/signed-output composition, bias and division equality,
 strict remainder and the selected output branch. Original native/physical/model/
 private inference, fidelity and negative-control requirements remain open.
+
+Q26/Q31 exponential continuation: [complete canonical output consumers](../../research/cqis-bounds/ATTENTION-EXP.md)
+join actual difference/index bytes to every valid component row and bounded
+outputs for direct nearest, product and corrected nearest. Product uses floor;
+corrected output consumes the full input-indexed correction. File padding
+cannot authorize membership. Complete maximum-source composition and all
+field/full-row/attack evidence remain required. Continue with probability
+sums, value products and complete attention; native/private/model ownership,
+fidelity and original task/control criteria remain open.

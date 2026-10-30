@@ -1026,3 +1026,36 @@ the actual verified maximum difference root without new draws and retains
 that child's entire independent account. Binding, FS/H, private sources,
 physical/model ownership and canonical table membership remain additional.
 No production profile or native NC-0500..0506 credit is admitted.
+
+### Draft A3/A6 canonical exponential output consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-EXP.md). For N=2^a,
+retain all index/range lookup identities separately at their actual dimensions
+m: ((2^m+255)/|K|)^rpt, plus unsquared rpt*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Every complete canonical two-column lookup with T valid
+rows adds ((N+2T-1)/|K|)^rpt and unsquared
+rpt*(F(a)+F(ceil(log2 T))+3a)/|K|. File padding is excluded; fraction-tree
+neutral padding stays internal. Direct/product/corrected paths have3/10/13
+independent lookup units. The input-indexed correction is a full domain table.
+
+Let bu,bh,bl be actual input/index byte exponents, bp the output/value exponent,
+and br the remainder exponent. Total range/A3 numerators are18a+7*(bu+bp),
+77a+22+7*(bu+bh+bl)+21bp+7br, and97a+22+7*(bu+bh+bl)+28bp+7br respectively.
+Their parent numerators are0,3a,5a, retaining0/4/8 actual original consumers.
+Complete nonlookup ZeroWeight/Sumcheck draws per label are8a+3*(bu+bp),
+34a+10+3*(bu+bh+bl)+9bp+3br, and43a+10+3*(bu+bh+bl)+12bp+3br; parent
+counts are0,a,2a. Each canonical lookup draws rpt Beta/Alpha, rpt*(a+t)
+Gamma/Fold and rpt*(a*(a-1)/2+t*(t-1)/2+a) Sumcheck, t=ceil(log2 T).
+Multiplicity commitments precede all challenge pairs. No unit challenge is
+needed because b=m=a; no reduction term is squared by lookup repetition.
+
+Expected maximum metadata/function/representation, external/auxiliary/tuple
+roots and all verified child states precede parent weights and A3 messages.
+Tuple columns equal actual verified byte views, including masked zeros.
+Static Q<=16384 bounds product sides by Q^2+Q-1<p/2 and correction sides by
+Q+3<p/2. Strict remainder r<Q proves floor; correction offset in[0,3] and
+expected mask reconstruct signed C. Direct/correction inputs satisfy u<=2^15,
+so their signed field lifts are injective. Actual maximum composition retains
+its entire independent account without extra join draws. Binding, FS/H,
+physical/model ownership, native/private lowering remain additional. No
+production profile or native NC-0500..0506 credit is admitted.

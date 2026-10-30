@@ -60,13 +60,14 @@ def corpus():
         for name,plan in v['lookups'].items():
             desc=c.fn.dependencies(p.representation)[list(v['lookups']).index(name)];assert len(plan['table'])==c.fn.table.shape(desc)[0]
             if name!='correction':assert (0,0) not in plan['table']
-    assert modes=={0,1,2} and widths=={0,1} and {-1,0,1}<=corrections,(modes,widths,corrections)
+    assert modes=={0,1,2} and widths=={0,1} and corrections=={-1,0,1,2},(modes,widths,corrections)
     p=replace(spec(16384,1,31,0,14,16,(1<<31)-1),identity=(1<<42)-1);v=c.derive(p,8);assert v['base']+(1<<20)==(1<<63)+(1<<62)
     spans=sorted([(r.derive(child,8)[4],64) for child in v['ranges'].values()]+[(c.index.derive(v['index'],8)['base'],4096)])
     assert all(v['base']+40<lo and lo+size<=v['base']+(1<<20) for lo,size in spans) and all(lo+size<=nxt for (lo,size),(nxt,_) in zip(spans,spans[1:]))
     for bad in (replace(p,identity=1<<42),replace(p,output=p.row.source),replace(p,output=v['base']),replace(p,identity=p.row.identity//64),replace(p,row=replace(p.row,repetitions=True))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Capacity',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True));rejects('FunctionScope',lambda:c.derive(replace(p,row=replace(p.row,schema=replace(p.row.schema,fraction=1))),4))
     for us in ([False]*3,[-1,0,0],[0,0,1],[129,0,0],[0],(0,0,0)):rejects('Input',lambda:c.witness(spec(),us))
+    assert digest.hexdigest()=='23c13d63d90b88d9756f41249301b4ea55e302b5c04f1cb4446ab34d91cc26c9'
     print(json.dumps(dict(seed=2732,cases=10000,corrections=sorted(corrections),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -130,11 +131,11 @@ def originals():
 
 
 def boundaries():
-    p=spec(mode=1,identity=3750);d=4;us=[0,9,0];v=c.derive(p,d);w=c.witness(p,us);pairs=c.prepare(p,us,d)
+    p=spec(mode=1,E=7,identity=3750);d=4;us=[0,9,0];v=c.derive(p,d);w=c.witness(p,us);pairs=c.prepare(p,us,d)
     for name,pos,value in (('output',2,1),('high_value',2,1),('low_value',3,1)):
         child=v['ranges'][name];values=w[name]+([0] if pos==3 else []);values[pos]=value;caps=list(child.caps)+([0] if pos==3 else []);caps[pos]=value;changed=r.assemble(child,*r.witness(replace(child,caps=tuple(caps)),values),d)
         badpairs=dict(pairs,ranges=dict(pairs['ranges'],**{name:changed}));bad,_=c.assemble(p,badpairs,d);rejects(name.title()+':CapRelation:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
-    child=v['ranges']['remainder'];values=w['remainder'].copy();values[0]=1<<8;caps=list(child.caps);caps[0]=1<<8;badpairs=dict(pairs,ranges=dict(pairs['ranges'],output=r.prove(v['ranges']['output'],[255,w['output'][1],0],d),remainder=r.assemble(child,*r.witness(replace(child,caps=tuple(caps)),values),d)))
+    child=v['ranges']['remainder'];values=w['remainder'].copy();values[0]=1<<7;caps=list(child.caps);caps[0]=1<<7;badpairs=dict(pairs,ranges=dict(pairs['ranges'],output=r.prove(v['ranges']['output'],[127,w['output'][1],0],d),remainder=r.assemble(child,*r.witness(replace(child,caps=tuple(caps)),values),d)))
     bad,_=c.assemble(p,badpairs,d);rejects('Remainder:CapRelation:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     p=spec(identity=3751);v=c.derive(p,d);pairs=c.prepare(p,us,d);w=c.witness(p,us);values=w['correction'].copy();values[1]=(values[1]+1)%4;changed=r.prove(v['ranges']['correction'],values,d);bad,_=c.assemble(p,dict(pairs,ranges=dict(pairs['ranges'],correction=changed)),d);rejects('CorrectionLookup:SourceJoin',lambda:c.verify(p,c.roots(p,bad),bad,d))
     print('strict remainder, masked/padded outputs and correction-source substitutions reject',flush=True)
@@ -151,6 +152,22 @@ def tables():
     print('genuine corrupted full table, invalid padding tuple and partial-table proofs reject',flush=True)
 
 
+
+def branches():
+    p=spec(mode=0,identity=3765);d=4;us=[1,9,0];v=c.derive(p,d);pairs=c.prepare(p,us,d);proof,state=c.assemble(p,pairs,d);roots=c.expected_roots(p,us);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,proof,out,d)
+    for j,name in enumerate(('Difference','Output')):
+        wrong=roots.copy();wrong[j]=bytes(32);rejects(name+':CommitmentMismatch',lambda:c.verify(p,wrong,proof,d))
+    bad=copy.deepcopy(proof);fs=bad['lookups']['direct']['rounds'][0]['leaf']['final'];fs[2]=r.sc.add(fs[2],out['lookups'][0]['pairs'][0][0]);fs[3]=r.sc.add(fs[3],r.sc.scalar(-1,d));rejects('DirectLookup:OpeningMismatch',lambda:c.verify(p,roots,bad,d))
+    values=c.witness(p,us)['output'];values[0]-=1;changed=r.prove(v['ranges']['output'],values,d);bad,_=c.assemble(p,dict(pairs,ranges=dict(pairs['ranges'],output=changed)),d);rejects('DirectLookup:SourceJoin',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    p=spec(E=0,F=0,identity=3766);proof,state=c.prove(p,[0,9,0],d);roots=c.expected_roots(p,[0,9,0]);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,proof,out,d)
+    for kind in ('ranges','lookups'):
+        for name in proof[kind]:
+            bad=copy.deepcopy(proof);del bad[kind][name];rejects('ProofShape',lambda:c.verify(p,roots,bad,d))
+    bad=copy.deepcopy(proof);del bad['index'];rejects('ProofShape',lambda:c.verify(p,roots,bad,d))
+    bad=copy.deepcopy(proof);bad['zero'].pop();rejects('ProofShape',lambda:c.verify(p,roots,bad,d))
+    print('direct nearest roots/finals/substitution and E=0 corrected mandatory-child controls passed',flush=True)
+
+
 def composition():
     p=spec(identity=3770);d=4;xs=[0,-9,100];source,state=c.index.attained.prove(p.row,xs,d);expected=c.index.attained.expected_roots(p.row,xs);assert c.index.attained.verify(p.row,expected,source,d)['state']==state
     us=c.index.attained.witness(p.row,xs)['difference'];assert us==[0,9,0];proof,state=c.prove(p,us,d);roots=c.roots(p,proof);assert roots[0]==expected[3];assert c.verify(p,[expected[3],roots[1]],proof,d)['state']==state
@@ -160,9 +177,9 @@ def composition():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--originals':originals,'--boundaries':boundaries,'--tables':tables,'--composition':composition,'--honest':honest,'--maximum':lambda:honest(1),'--full-direct':lambda:honest(0),'--full-corrected':lambda:honest(2)}
+    modes={'--corpus':corpus,'--controls':controls,'--originals':originals,'--boundaries':boundaries,'--tables':tables,'--branches':branches,'--composition':composition,'--honest':honest,'--maximum':lambda:honest(1),'--full-direct':lambda:honest(0),'--full-corrected':lambda:honest(2)}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
     else:
-        for mode in list(modes)[:7]:modes[mode]()
+        for mode in list(modes)[:8]:modes[mode]()

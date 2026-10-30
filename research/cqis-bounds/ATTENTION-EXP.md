@@ -80,3 +80,23 @@ Continue Q26/Q31 with sums, value products and complete attention composition.
 Native/private lowering, physical/model source ownership, full inference,
 fidelity and original task/control criteria remain open. No benchmark, extra
 weight pass, new cut, profile or production control credit is claimed.
+
+The10000-case independent positive-Taylor/reciprocal and NumPy corpus passed
+(seed2732), including all correction values{-1,0,1,2}, all representations,
+E=0/7/8/14, inclusive B=31 product and B=15 nearest endpoints, masked/padded
+zeros and namespace boundaries. Frozen SHA-256:
+`23c13d63d90b88d9756f41249301b4ea55e302b5c04f1cb4446ab34d91cc26c9`.
+Primary root/lookup-final/multiplicity/authority/metadata controls passed.
+Remaining original/boundary/table/source-composition suites, full matrix,
+three full-row paths and required local gates remain pending.
+
+All eight parent-original controls also passed. The first strict-remainder
+fixture at E=8 grew from one byte to two and failed construction with
+OpeningShape; this was not a verifier rejection. The repaired E=7 fixture
+keeps one byte and targets r=Q with quotient reduced by one, preserving the
+product equality. The first log remains retained. No verifier change or repeat
+of passed primary/original suites was needed.
+
+The repaired strict-remainder control passed, as did masked/padded output and
+correction-source substitutions. The complete canonical-table attack and
+remaining direct/zero/composition/matrix suites are still running.

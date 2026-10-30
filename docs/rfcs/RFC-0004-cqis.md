@@ -1511,3 +1511,18 @@ remains required for source composition. Canonical component membership,
 product/remainder, direct nearest lookup and probability masking remain
 separate obligations. No native/private inference, Accepted cut, production
 control or profile is admitted; original task criteria remain unchanged.
+
+### A3/A6 evidence continuation — Consumed canonical exponential outputs
+
+Draft research: the [exponential consumer](../../research/cqis-bounds/ATTENTION-EXP.md)
+retains direct nearest, product and corrected nearest RFC-0021 §2.1 semantics.
+Actual ranged bytes feed complete canonical component lookups, excluding file
+padding from membership. Split modes consume the complete index child and
+prove the floor product/remainder; corrected mode additionally consumes the
+input-indexed correction and its exact output relation. All masked/padded
+outputs and auxiliaries are zero under complete ranges, including E=0.
+Every child state and actual original-point consumer remains mandatory.
+Actual maximum-source composition, complete numerical/attack/field/full-row
+evidence and gates remain required. Native/private lowering, physical/model
+source ownership, probability sums, value products and full attention remain
+open. No Accepted cut, production control or profile is admitted.
