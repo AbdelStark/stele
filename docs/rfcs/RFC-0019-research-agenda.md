@@ -878,3 +878,10 @@ the strict relation. Paired A/D, bounded M/MD and the decomposition now compose
 with the same R/D roots in revealing research. Continue with the complete
 canonical rsqrt membership and wide signed output branches; retain all original
 native/model/private, physical-layout, fidelity and control obligations.
+
+Q26/Q31 reciprocal continuation: the [full canonical lookup consumer](../../research/cqis-bounds/NORM-RSQRT.md)
+binds actual one-field M/J roots to all49152 valid tuples and excludes all
+canonical padding rows from membership. The complete generator/encoding and
+all source/multiplicity/public claims remain mandatory. Continue with same-root
+J and same-exponent wide signed outputs, retaining every original native,
+physical/model/private, fidelity and control requirement.

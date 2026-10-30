@@ -1228,3 +1228,15 @@ whole-field comparison and supplied dynamic caps confer no acceptance. Same-root
 composition with paired A/D, bounded M/MD and A=MD+R supplies the normalized
 interval. Complete reciprocal lookup, wide outputs, native/private/physical/model
 ownership and fidelity remain open. No Accepted role or production cut is added.
+
+### A3 evidence continuation — Consumed RMSNorm reciprocal membership
+
+The [reciprocal study](../../research/cqis-bounds/NORM-RSQRT.md) consumes the
+actual full49152 valid tuples for rsqrt_q, derived from the complete canonical
+definition including its16384 zero padding rows. Padding is excluded from
+membership; fraction-tree padding remains neutral. One canonical-field M/J
+source pair retains all original, multiplicity and public denominator consumers.
+The generation formula does not substitute for lookup acceptance. The parent
+binds full expected norm metadata and mode3 representation without new challenges.
+Same-root normalized-interval and wide output composition, native/private/model
+ownership and fidelity remain open; no production cut or profile is admitted.

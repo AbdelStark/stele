@@ -628,3 +628,18 @@ justify the integer lift after range and Boolean acceptance. Fixed c0=1 and
 c16=0 then give R+G+1=D, including strictness and positive D. Binding/FS and
 upstream same-root composition remain separate; the four composed arithmetic
 consumers still do not admit reciprocal/output or physical/model/private proof.
+
+Q26/Q31's [RMSNorm reciprocal lookup](../../research/cqis-bounds/NORM-RSQRT.md)
+has m=b=0, tuple arity2 and T=49152 valid rows. Its identity numerator is
+1+2*T-1=98304, giving(98304/|K|)^r. Table-tree dimension16 contributes the
+separate reduction392r/|K|; no A3 term or parent challenge is added. Every
+repetition draws one beta and alpha,16 fraction gamma,16 fraction fold and120
+Sumcheck challenges; no unit challenges. All multiplicities bind before every
+beta/alpha; full expected table and actual source roots precede them. All3r
+source/multiplicity claims and public table denominators retain their complete
+consumers. Canonical65536-row generation preserves the16384 zero padding rows,
+but only49152 distinct valid tuples enter membership. Fraction-tree padding is
+neutral(0,1), not an admitted source tuple. Parent final state binds complete
+expected norm function/representation bytes, canonical table identity, two roots
+and verified lookup state. Binding/FS, upstream same-root normalized interval,
+wide outputs and native/physical/model/private proof remain additional.
