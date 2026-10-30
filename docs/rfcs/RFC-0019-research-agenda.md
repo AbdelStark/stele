@@ -774,3 +774,11 @@ alias assumptions; the actual slack range excludes false zero-row scale1.
 Continue with row-code and zero-scale consumers, model-owned routes, native
 stacking and private PCS/ZK/FS. Revealing row-scale evidence does not satisfy
 the original inference tasks or grant production negative-control credit.
+
+Q26/Q31 row-code continuation: the [dynamic row-code consumer](../../research/cqis-bounds/ROW-CODE.md)
+connects actual row scales and signed sources to symmetric signed int8 codes,
+including zero scale, ties-away and negative rounding to canonical zero. Actual
+strict remainder and zero-code consumers reject false statements whose byte
+division alone holds. Continue with static mode, model-owned routing, native
+stacking/lowering, private PCS/ZK/FS and independent review. The revealing
+capacity-limited adapter earns no production control or original task completion.
