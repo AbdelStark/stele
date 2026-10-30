@@ -106,7 +106,7 @@ independent corpus caught an all-masked probability encoding error: the compact
 range needs one byte, while E>=8 requires two external planes. Bind its compact
 root separately and zero-extend to the configured external width. This preserves
 the fixed probability source representation even when every cap is zero. No
-complete matrix has passed yet. The initial complete proof and account passed.
+checks are bypassed. The initial complete proof and account passed.
 All external roots, valid substituted sources, bounded false sums, compensating
 channel errors and M31 aliases rejected. Both zero-hidden original factors
 rejected at their actual consumers. Seed2735 passed all10000 independent
@@ -115,8 +115,11 @@ hash: `e1ae0608e74c877ac2e15a0b543bbb527cfd8a0dd85da3c07445aa69164340bb`.
 Masked/padded source, output, carry boundary/tail and zero-extension controls
 passed, including all-masked zero contributions. Actual probability-sum and
 restored-value proofs composed for both value policies; a valid alternate value
-source rejected. The field/shape matrix continues; three full geometries and
-required local gates are queued.
+source rejected. All 16 field/repetition matrix cases passed with exact accounts
+and draws. Their frozen SHA-256 is
+`af59d706a12db64456d9a1e489c539839578ae65a04cbf5860494677bbd7c59c`.
+The mixed 128x128 full proof is running; the two extreme full geometries follow
+in the same queued runner. Required local repository gates remain queued.
 Continue Q26/Q31 with signed weighted sums and output normalization. Full
 projection-row/GQA/cache ownership, sequence completeness, native/private
 PCS/ZK/FS, fidelity, GPU/scale and original task criteria remain open.
