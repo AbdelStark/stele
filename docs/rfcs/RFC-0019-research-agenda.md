@@ -726,3 +726,11 @@ copy, per-column integer faithfulness and zero carry endpoints remain explicit.
 Continue with the actual source-to-numerical-operand consumers, signed/nibble
 representations, multiplication relations and joint private masking. Revealing
 roots remain research evidence, with no production control or profile credit.
+
+Q26/Q31 limb-source continuation: the [input consumer study](../../research/cqis-bounds/LIMB-SOURCE.md)
+connects exact whole-input maxima to original byte/nibble operand vectors with
+actual range and packing consumers. Canonical digits, padding and high planes
+are explicit; a valid packed byte cannot replace the nibble bound. Continue
+with multiplication/result/carry consumers, signed/model source relationships,
+complete native lowering and private PCS/ZK. Revealing roots and research
+controls do not admit an inference protocol or satisfy production NC criteria.

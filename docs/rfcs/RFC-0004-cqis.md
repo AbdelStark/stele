@@ -996,3 +996,16 @@ add (9a+7b)/|K| under the separate research accounting. Full reveals are not
 an admitted private commitment or cut. Signed interpretation, source-to-operand
 binding, nibble packing, multiplication relations, range dominance and private
 PCS/ZK remain required. Draft A3 and original task criteria are unchanged.
+
+### A3 evidence continuation — Actual limb input source ranges
+
+The [limb source study](../../research/cqis-bounds/LIMB-SOURCE.md) connects the
+existing unsigned limb operand layout to the exact whole-word range consumer.
+Expected left/right maxima, digit widths and row padding derive from limbs.Spec;
+the original digit root is supplied independently. Consumed A3 enforces byte
+equality or low+16*high packing, with a separate actual cap15 proof for nibbles.
+All high planes and padded rows remain consumed. A valid byte alone does not
+prove canonical nibble inputs. This closes an input-range research obligation,
+not multiplication, result/carry, signed/model source or private commitment
+admission. Conditional composition is recorded separately; original E5-03
+criteria and Draft status remain, with no native NC credit or new production cut.

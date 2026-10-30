@@ -297,3 +297,14 @@ the lookup's first half by consumed A3 claims. Complement/carry relations then
 enforce the exact cap. Conditional identity and reduction errors stay separate.
 This admits no private auxiliary root, production plan, range dominance rule,
 profile or label; full A2 and E3-07 obligations remain.
+
+### A2 evidence continuation — Limb digit and whole-word consumers
+
+Status: Draft. The [limb source study](../../research/cqis-bounds/LIMB-SOURCE.md)
+retains the complete range_8 lookup schedule and actual original consumers in
+each nested wide-word proof. A one-byte cap15 consumer proves canonical nibble
+digits without inventing a new range table. Original digit views and the bound
+whole-word bytes meet at an additional consumed A3 packing relation. Separate
+lookup identities/reductions and A3 errors are added under their existing
+conditional hypotheses. Native range dominance, complete source/plan consumers,
+private PCS/ZK and all E3-07 criteria remain required; no profile or label changes.

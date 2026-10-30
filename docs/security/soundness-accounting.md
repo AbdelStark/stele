@@ -298,3 +298,22 @@ No wide integer is embedded in the field: only byte columns use integer
 faithfulness, followed by integer telescoping. Exact full-vector consumption
 adds no algebraic loss conditional on binding. Hash binding, FS/H, private
 source composition and joint ZK remain additional. No profile or label is added.
+
+Q26/Q31's [limb input source consumer](../../research/cqis-bounds/LIMB-SOURCE.md)
+derives N=2^a input rows per side and B=2^b byte planes from the expected limb
+schema. Whole-word rows are 2N, so that nested wide consumer contributes
+9(a+1)+7b in A3 numerator and uses Q31 dimension m_w=a+b+2. Nibbles additionally
+have an exact cap15 consumer over 4BN original digits, contributing 9(a+b+2)
+in A3 numerator and using Q31 dimension m_n=a+b+3. The byte/nibble packing
+relation is degree1, k=0, dimension a+b+1, adding 2(a+b+1). Total A3 loss is
+(11a+11+9b)/|K| for bytes or (20a+18b+29)/|K| for nibbles. For each used
+lookup independently retain [(2^m+255)/|K|]^r and r*[F(m)+F(8)+3m]/|K|;
+add these terms, never square the other reductions. All static selected counts
+remain below p, and no Unit draws occur. Total ZeroWeight and Sumcheck draws
+are each 5a+4b+5 for bytes or 9a+8b+13 for nibbles. Packing emits two/three
+actual claims; each nested wide proof consumes nine A3 and 2r lookup claims.
+Expected schema/source, source/word roots and completed nested states precede
+packing challenges; every final is absorbed. Nibble ranges precede integer
+packing faithfulness, not vice versa. Exact full-vector consumers add no algebraic
+loss conditional on binding. Hash binding, FS/H, model source composition and
+joint ZK remain separate. No production profile, commitment category or label.
