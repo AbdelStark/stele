@@ -1035,3 +1035,16 @@ inactive-branch final remains consumed. The total A3 numerator is 43a+26b+9,
 with all nested lookup terms separate. These revealing canonical-u32 byte slots
 are not physical checkpoint/model roots, native signed reductions or private
 PCS/ZK admission. Original task criteria and Draft status remain unchanged.
+
+### A3 evidence continuation — Composed scalar Requant consumers
+
+The [Requant consumer study](../../research/cqis-bounds/REQUANT-CONSUMER.md)
+connects actual signed raw input/output roots, four unsigned product consumers,
+an exact remainder range and source relationships to the A1 scalar statement.
+Public mantissa, bias, divisor and unit factors reach derived original roots;
+wide results meet through exact byte equality. A consumed sign relation permits
+negative rounding to canonical zero. High quotient bytes remain live even when
+the static quotient cap is zero. Full nested losses and final sign A3 remain
+separate in accounting. This scalar full-reveal composition does not admit model
+source ownership, physical packed roots, production stacking, native lowering,
+private PCS/ZK or the original NC-0100/0101/0109 criteria. A3 remains Draft.

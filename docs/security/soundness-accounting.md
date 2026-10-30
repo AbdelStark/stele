@@ -353,3 +353,21 @@ are consumed against their actual originals or deterministic views, including
 inactive branches. Static per-byte sides <=511 make integer telescoping faithful;
 top-bit/sign ranges make the representation unique. Full-vector binding, FS/H,
 private model-source routing and joint ZK remain separate. No new label or profile.
+
+Q26/Q31's [scalar Requant consumer](../../research/cqis-bounds/REQUANT-CONSUMER.md)
+retains two actual signed sources, one wide remainder range and four byte product
+consumers. There are 19 separately repeated lookup identities. Their dimensions,
+in order, are 3,3,2 for input; bo+1,bo+1,2 for output; br+1 for remainder; and
+aj+bj+2,gj+3,gj+3 for each product j. Here bo=log2(output bytes), br=log2(remainder
+byte planes), aj=0,1,0,1, bj=log2(product input byte planes), gj=log2(result/carry
+size). Retain every [(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K| separately. Product
+identity losses sum to sum_j(Kj-1)/|K| and their A1 losses to sum_j(2aj+4bj)/|K|.
+All fresh rho and nested range/A3/A1 draws remain. Final sign A3 has degree2,
+dimension bo, k=0 and adds 3bo/|K|, with bo draws each of ZeroWeight/Sumcheck.
+Total A3 numerator, including sign and all nested ranges, is
+216+29bo+7br+sum_j(9bj+18gj). Thirteen expected/derived roots and seven completed
+verified states precede final sign A3; all three finals have actual consumers,
+including zero quotient. Exact source-root and full-byte equality consumers
+introduce no algebraic loss conditional on binding. No reduction loss is squared
+by lookup repetition. Hash binding, FS/H, native/model ownership, stacking and
+joint private PCS/ZK remain separate; no new label or profile is admitted.
