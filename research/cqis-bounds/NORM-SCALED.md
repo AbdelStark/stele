@@ -96,5 +96,7 @@ and original/public claim counts. Frozen main and maximum proof-state hashes:
 `39e88124a4a0456dfbafa7750d122e092aff973cc6474eafd79f2a75fd7c1db3` and
 `02d8d2063ee66b31c030491c4e9a3d23ede86d9ce36b0de01022f4ac0d3d15d5`.
 The maximum role-bound case need not normalize N/P; that interval is a separate
-remaining obligation. Local gates are pending. No measured performance,
-native credit or independent audit is claimed.
+remaining obligation. All required local gates passed: fmt/Clippy/workspace,
+no_std, dependency/Rust policy, digest, controls, accounting, ledger,
+RFC/docs/glossary and CI scope. No measured performance, native credit or
+independent audit is claimed.
