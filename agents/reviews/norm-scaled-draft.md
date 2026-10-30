@@ -21,7 +21,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: total A3 133+9b+18g, exponent A1 6, product identity C-1 and A1 4b
   separate. Lookups7,b+2,g+3,g+3 retain individual identity/reduction losses.
   Nonlookup draws53+4b+8g ZeroWeight,60+6b+8g Sumcheck. All20 complete
-  proofs check exact losses/draws; accounting gate remains pending.
+  proofs check exact losses/draws; accounting and all required local gates passed.
 - Bounds: static closed role left bound is exactly Nmax. Its actual whole
   range/packing supplies the needed range; canonical fields alone do not.
   Product carries/zero boundaries imply integer A afterward. No dynamic bound,
