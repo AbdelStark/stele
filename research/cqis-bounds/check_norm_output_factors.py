@@ -91,6 +91,7 @@ def honest():
                 out=c.verify(p,c.expected_roots(p,n,a,A,D,words),proof,d);assert out['state']==state;account(p,out,d)
                 if length==16384:assert words[13]==4 and int.from_bytes(bytes(words[2:18]),'little').bit_length()==91
                 digest.update(state);count+=1;print('honest',count,d,reps,p.schema.F+p.schema.G+21+a-p.schema.E,flush=True)
+    assert digest.hexdigest()=='0966edb60acb2c5743604516c813110b0deb0fabe8ee191fd8772ec8cc603a6a'
     print(json.dumps(dict(proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
