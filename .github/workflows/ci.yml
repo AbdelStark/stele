@@ -67,6 +67,7 @@ jobs:
       - run: uv run --locked --script research/cqis-bounds/check_signed_source.py
       - run: uv run --locked --script research/cqis-bounds/check_requant_consumer.py
       - run: uv run --locked --script research/cqis-bounds/check_attained_magnitude.py
+      - run: uv run --locked --script research/cqis-bounds/check_dynamic_scale.py
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py

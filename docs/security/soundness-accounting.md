@@ -388,3 +388,21 @@ all Finals are absorbed. Byte sides <=511 and N<=2048 make integer columns
 and the bit sum faithful. Padding has cap zero and a masked maximum broadcast.
 Binding, FS/H, committed index/model ownership, stacking and joint private PCS/ZK
 remain additional; no production commitment category, label or profile is admitted.
+
+Q26/Q31's [dynamic-scale consumer](../../research/cqis-bounds/DYNAMIC-SCALE.md)
+retains the complete attained-magnitude account. With N=2^a and B=2^b, it adds
+three wide ranges of (word dimension,byte dimension) (0,b), (0,0), (b,0),
+contributing 7b,0,9b in A3 numerator. Their lookup dimensions are b+1,1,b+1;
+retain each [(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K| separately alongside
+the six inherited identities. Two degree1 k=0 A3 invocations have dimensions
+b and0, adding 2b/|K| and b draws each of ZeroWeight/Sumcheck. The terminal
+dimension0 invocation retains its Instance, Final and actual claim. Total A3
+numerator is71a+66b+9, with the inherited A1 numerator a separate. Total A3/A1
+draws, excluding lookup schedules, are30a+27b+4 ZeroWeight and31a+27b+4 Sumcheck.
+Five roots and four verified child states precede parent challenges. Six parent
+final claims and every nested claim have actual consumers; all Finals are absorbed.
+Biased carries T=C+1 lie in[0,127]; faithful byte sides are bounded by32893,
+with public T0=TB=1. Exact slack<=126 makes the ceiling unique, including zero.
+No reduction loss is squared and no new label/profile is admitted. Binding,
+FS/H, committed-index/model ownership, native stacking and private composition
+remain additional.
