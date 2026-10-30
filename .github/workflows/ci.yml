@@ -4,16 +4,29 @@ on:
     branches: [main]
   pull_request:
 jobs:
-  gates:
+  plan:
     runs-on: ubuntu-latest
     outputs:
       gpu: ${{ steps.scope.outputs.gpu }}
+      research: ${{ steps.research.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - id: scope
         run: python3 scripts/ci_scope.py >> "$GITHUB_OUTPUT"
+      - id: research
+        run: python3 scripts/research_ci.py --matrix >> "$GITHUB_OUTPUT"
+  native:
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90.0
@@ -36,132 +49,6 @@ jobs:
       - run: cargo fetch --locked
       - run: cargo deny --offline check bans
       - run: python3 -m unittest discover -s scripts/tests -v
-      - run: python3 research/r-octic/check_modulus.py
-      - run: python3 research/cqis-rounding/check_rounding.py
-      - run: python3 research/cqis-tables/check_tables.py
-      - run: python3 research/cqis-tables/check_exp.py
-      - run: python3 research/cqis-tables/check_activations.py
-      - run: python3 research/cqis-tables/check_gelu.py
-      - run: python3 research/cqis-tables/check_rmsnorm.py
-      - run: python3 research/cqis-tables/check_wide_exp.py
-      - run: uv run --locked --script research/cqis-tables/check_identity.py
-      - run: uv run --locked --script research/cqis-tables/check_functions.py
-      - run: uv run --locked --script research/cqis-tables/check_table_bindings.py
-      - run: python3 research/cqis-tables/check_native_arithmetic.py
-      - run: python3 research/cqis-tables/check_native_exp.py
-      - run: uv run --locked --script research/cqis-tables/check_native_exp_functions.py
-      - run: uv run --locked --script research/cqis-tables/check_native_fixed_gathers.py
-      - run: uv run --locked --script research/cqis-tables/check_native_rmsnorm.py
-      - run: uv run --locked --script research/cqis-tables/check_native_activations.py
-      - run: uv run --locked --script research/cqis-tables/check_native_tanh_gelu.py
-      - run: uv run --locked --script research/cqis-tables/check_native_exact_gelu.py
-      - run: python3 research/cqis-bounds/check_bounds.py
-      - run: uv run --locked --script research/cqis-bounds/check_limbs.py
-      - run: uv run --locked --script research/cqis-bounds/check_requant.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_bounds.py
-      - run: uv run --locked --script research/cqis-bounds/check_encoding.py
-      - run: uv run --locked --script research/cqis-bounds/check_capped_range.py
-      - run: uv run --locked --script research/cqis-bounds/check_wide_range.py
-      - run: uv run --locked --script research/cqis-bounds/check_limb_source.py
-      - run: uv run --locked --script research/cqis-bounds/check_limb_product.py
-      - run: uv run --locked --script research/cqis-bounds/check_signed_source.py
-      - run: uv run --locked --script research/cqis-bounds/check_requant_consumer.py
-      - run: uv run --locked --script research/cqis-bounds/check_attained_magnitude.py
-      - run: uv run --locked --script research/cqis-bounds/check_dynamic_scale.py
-      - run: uv run --locked --script research/cqis-bounds/check_row_code.py
-      - run: uv run --locked --script research/cqis-bounds/check_static_row_code.py
-      - run: uv run --locked --script research/cqis-bounds/check_gated_consumer.py
-      - run: uv run --locked --script research/cqis-bounds/check_silu_consumer.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_statistic.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_numerator.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_exponent.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_scaled.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_divisor.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_mantissa_product.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_sum.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_remainder.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_rsqrt.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_output_factors.py
-      - run: uv run --locked --script research/cqis-bounds/check_norm_xy.py
-      - run: uv run --locked --script research/cqis-bounds/check_range_capacity.py --shapes
-      - run: python3 research/cqis-checkpoint/check_scalars.py
-      - run: python3 research/cqis-checkpoint/check_quantiser.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_attention.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_projected_attention.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_rope.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_decoder_block.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --configuration
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --scaled-bounds
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --row-bounds
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --rotary-bounds
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --residual-bounds
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --greedy-bounds
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-sum
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-normalization
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-blocks
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-score
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-max
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --gated-product
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-norm
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --bound-set
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-functions
-      - run: uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-flow
-      - name: Pinned causal model numerical replay
-        run: |
-          curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o "$RUNNER_TEMP/causal-config.json"
-          curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/model.safetensors -o "$RUNNER_TEMP/causal-model.safetensors"
-          uv run --locked --script research/cqis-checkpoint/check_causal_model.py --checkpoint "$RUNNER_TEMP/causal"
-      - run: uv run --locked --script research/cqis-checkpoint/check_records.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_artifact.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_source.py
-      - run: uv run --locked --script research/cqis-checkpoint/check_shards.py
-      - name: Pinned checkpoint source preparation
-        run: |
-          curl -fsSL --retry 3 --max-time 60 https://huggingface.co/hf-internal-testing/tiny-random-gpt2/resolve/71034c5d8bde858ff824298bdedc65515b97d2b9/model.safetensors -o "$RUNNER_TEMP/cqis-source.safetensors"
-          uv run --locked --script research/cqis-checkpoint/check_source.py --checkpoint "$RUNNER_TEMP/cqis-source.safetensors"
-          uv run --locked --script research/cqis-checkpoint/check_shards.py --checkpoint "$RUNNER_TEMP/cqis-source.safetensors"
-      - run: uv run --locked --script harness/cqis/check_arithmetic.py
-      - run: python3 research/poseidon2/check_poseidon2.py
-      - run: uv run --locked --script research/transcript/check_transcript.py
-      - run: uv run --locked --script research/merkle/check_merkle.py
-      - run: uv run --locked --script research/sumcheck/check_sumcheck.py
-      - run: uv run --locked --script research/batching/check_batching.py
-      - run: uv run --locked --script research/zerocheck/check_zerocheck.py
-      - run: python3 research/stacked-gkr/check_stacking.py
-      - run: python3 research/stacked-gkr/check_public_mle.py
-      - run: python3 research/stacked-gkr/check_ownership.py
-      - run: python3 research/stacked-gkr/check_statement.py
-      - run: uv run --locked --script research/stacked-gkr/check_weighted_mle.py
-      - run: uv run --locked --script research/stacked-gkr/check_stage.py
-      - run: uv run --locked --script research/stacked-gkr/check_private_selection.py
-      - run: uv run --locked --script research/stacked-gkr/check_weighted_private_selection.py
-      - run: uv run --locked --script research/stacked-gkr/check_private_stage.py
-      - run: uv run --locked --script research/stacked-gkr/check_selection_source.py
-      - run: uv run --locked --script research/stacked-gkr/check_paired_source.py
-      - run: python3 research/small-value/check_grid.py
-      - run: uv run --locked --script research/small-value/check_small_value.py
-      - run: uv run --locked --script research/streaming/check_windows.py
-      - run: uv run --locked --script research/streaming/check_source.py
-      - run: python3 research/code-provenance/check_code.py
-      - run: python3 research/code-provenance/check_expander.py
-      - run: uv run --locked --script research/code-provenance/check_recursive.py
-      - run: uv run --locked --script research/code-provenance/check_sampler.py
-      - run: uv run --locked --script research/code-provenance/check_identity.py
-      - run: uv run --locked --script research/code-provenance/check_proximity.py
-      - run: uv run --locked --script research/code-provenance/check_certified.py
-      - run: python3 research/packing/check_packing.py
-      - run: uv run --locked --script research/packing/check_fused.py
-      - run: python3 research/commitment-privacy/check_privacy.py
-      - run: python3 research/private-verifier/check_boundary.py
-      - run: python3 research/logup-characteristic/check_characteristic.py
-      - run: uv run --locked --script research/logup-characteristic/check_units.py
-      - run: uv run --locked --script research/logup-characteristic/check_fraction.py
-      - run: uv run --locked --script research/logup-characteristic/check_lookup.py
-      - run: uv run --locked --script research/code-provenance/check_bounded.py
-      - run: uv run --locked --script research/code-provenance/check_measurement.py
-      - run: python3 research/circle-code/check_circle.py
       - run: scripts/gates/rust-policy.sh
       - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check
@@ -191,6 +78,49 @@ jobs:
       - run: scripts/gates/rfc-status.sh
       - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
+  research:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.research) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+          components: rustfmt, clippy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: false
+      - run: cargo fetch --locked
+      - run: python3 scripts/research_ci.py --group "${{ matrix.group }}"
+  gates:
+    needs: [plan, native, research, range-capacity]
+    if: always()
+    runs-on: ubuntu-latest
+    outputs:
+      gpu: ${{ needs.plan.outputs.gpu }}
+    steps:
+      - name: Require complete native and research checks
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+          RESEARCH_RESULT: ${{ needs.research.result }}
+          CAPACITY_RESULT: ${{ needs.range-capacity.result }}
+        run: |
+          test "$PLAN_RESULT" = success
+          test "$NATIVE_RESULT" = success
+          test "$RESEARCH_RESULT" = success
+          test "$CAPACITY_RESULT" = success
   range-capacity:
     name: range-capacity-${{ matrix.mode }}
     runs-on: ubuntu-latest
