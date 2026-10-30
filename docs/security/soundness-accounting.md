@@ -766,3 +766,24 @@ zero carry endpoints yield qd<=Zmax afterward. Maximum column side98047 is
 below p/2. Original source/range consumers retain zero quotients and padding.
 Runtime receipts, binding/FS, actual factor/branch authentication, remaining
 output roles and native/model/private composition stay additional.
+
+The [biased-sum consumer](../../research/cqis-bounds/NORM-BIAS.md) has
+N=2^a rows and P=2^c padded columns. Let bh/bl/bu be byte-width exponents
+for scalar bias and low/high result ranges, H indicate an active high range,
+and g count active four-plane Boolean carry families. With
+X=3+bh+bl+H*bu, total A3 loss is[(20+9H+9g)*a+7X+18g+2c]/|K|;
+each nonlookup label has(9+4H+4g)*a+3X+8g+c draws. Lookup dimensions are
+a+4, bh+1, a+bl+1, optional a+bu+1 and g instances of a+3. Each retains
+its own identity ((2^m+255)/|K|)^r and reduction
+r*[F(m)+F(8)+3m]/|K|, F(m)=3m(m-1)/2+2m. A3 is not squared with r.
+At full a14/c4, bh4/bl3/bu2, H1/g3 and X12, A3 is930/|K| and each
+nonlookup label has414 draws; lookup dimensions are18,5,18,17,17,17,17.
+Complete expected metadata, three external roots, all auxiliary roots and
+verified range states precede parent weights/rounds/finals. All five original
+views have independent consumers at emitted points. Scalar reconstruction
+and the expected real-row mask add no challenge. Whole t/h ranges, faithful
+addition and zero endpoints establish U's whole bound; split ranges alone
+do not. Closed column sides are at most511, below p/2. Padded rows and high
+extensions stay zero. Runtime receipts, binding/FS, actual factor/branch
+authentication, remaining output roles and native/model/private composition
+remain additional.

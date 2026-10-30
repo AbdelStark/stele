@@ -71,3 +71,12 @@ both repetition counts and width transitions. Compose actual product and
 verified factor sources. A complete full-row maximum proof is required before
 publication. Native/model/private inference, fidelity and original task/control
 criteria stay open. No performance number or production cut is claimed.
+
+The seed2719 corpus passed10000 cases and6767440 byte-column cells. Its
+frozen SHA-256 is
+`647ceb1175f24fb6d2ebb0b895f602a950c231919c4b3f03f80761b6f03975e3`.
+The corpus includes all75 metadata shift maxima from16 through90, the full
+row geometry and namespace limit, exact wide sums and independent NumPy
+byte addition. Proof matrices, adversarial controls, source composition,
+maximum proof, repository gates and CI remain pending. Continue Q26/Q31;
+this corpus does not graduate the research consumer.

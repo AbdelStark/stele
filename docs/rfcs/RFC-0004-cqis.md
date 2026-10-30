@@ -1329,3 +1329,16 @@ views, every endpoint and high padding remain consumed. Actual same-exponent
 factor composition, selected branches, rounding, strict remainder, signed
 output and full proof/control evidence remain required. Native/model/private
 inference and original task criteria stay open; no Accepted cut is added.
+
+### A3 evidence continuation — Full-row RMSNorm biased sum
+
+The [biased-sum study](../../research/cqis-bounds/NORM-BIAS.md) consumes
+U=t+h over up to16384 rows with whole product/bias ranges and statically
+selected carry families. The scalar bias view is masked by the expected
+real-row count, keeping padded sources/results/carries zero. Split result
+ranges supply digit bounds; faithful addition establishes the whole sum.
+All five original views, carry endpoints and high zero extensions remain
+consumed. Actual configured-factor authentication, division equality,
+strict remainder, signed output and full proof/control evidence remain
+required. This is revealing Draft research; native/model/private inference,
+fidelity and original task criteria remain open. No Accepted cut is added.
