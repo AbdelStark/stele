@@ -73,4 +73,8 @@ source permutation with the same Z rejected the expected source root.
 All 16 matrix proofs passed across both fields and repetition counts at sizes
 1,3,16,65 and exponents 0,7,8,14, with exact account checks. Frozen state hash:
 `40df43b8920021351df039e0d64e7c022c2f8d09a00030e885b04732a385a009`.
-The complete 16384-row proof has started. Required local gates remain queued.
+The complete 16384-row QM31/r1 proof passed with every probability equal to
+2^14 and Z=2^28, including both ranges, the A1 original consumer and exact
+receipts. Frozen state hash:
+`e3a37afca88577249e716b20f8f4f2cf03dccbcfa5b55ebddb13d2a3276f6d19`.
+Required local gates remain queued.

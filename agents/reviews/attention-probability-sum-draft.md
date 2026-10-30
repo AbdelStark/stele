@@ -32,7 +32,8 @@ independent audit. [Scope](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.
   integer arithmetic. No table cache, float, challenge retry or timing choice.
 - Parity: native CPU/SIMD/CUDA unchanged. The10000-case independent NumPy sum/
   byte corpus passed, including1157 zero sums and all byte widths. All 16 proofs across
-  both fields/repetitions passed; the full 16384-row proof remains running.
+  both fields/repetitions passed. The complete 16384-row QM31/r1 proof also
+  passed at Z=2^28 with exact receipts; its state hash is frozen.
 - Cost: O(N) byte views, two complete ranges/lookups and one A1 charge
   c_x/c_sc/c_lu/T_misc. No measured constant, benchmark or weight-pass change.
 - Verifier: expected dimensions and strict proof keys/field encodings govern
