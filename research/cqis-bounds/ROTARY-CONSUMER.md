@@ -66,3 +66,11 @@ verifier. No new cut, benchmark, weight pass or NC-0106/0109 credit is admitted.
 Native generation/lowering, function/passport registration, model/private
 inference, other required variants and fidelity remain open. Original task
 criteria and A3/A6/A7 Draft statuses are preserved.
+
+Tests-first rejected the missing module. Primary controls then rejected all
+six external and two auxiliary root mutations, independently valid source and
+opposite-sign output substitutions, and changed magnitude/predecessor/remainder
+values. A forged r=16384 with a reduced q retained the exact whole division;
+the actual remainder cap consumer rejected it. Initial receipt/account checks
+passed. Corpus, public/original/boundary controls, matrices, maximum and gates
+remain under validation.

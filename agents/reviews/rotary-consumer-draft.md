@@ -3,7 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ROTARY-CONSUMER.md). Tests-first rejected
-the missing module. Corpus, controls, matrices, maximum and gates are pending;
+the missing module. Primary root/source/arithmetic controls passed. Corpus,
+public/original/boundary controls, matrices, maximum and gates are pending;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6/A7. Expected descriptor and absolute
@@ -19,6 +20,8 @@ this is not a completed sign-off.
 - Bindings: tests-first covers six external/two auxiliary roots, valid source
   and output substitutions, coherent r=16384, canonical negative zero, whole
   bounds, M31 aliases, padding, position/layout/units and all original finals.
+  Primary roots, valid source/output replacements and coherent r=16384
+  rejected at their named consumers; the remaining controls are pending.
 - Ledger: ten separate lookup identities and unsquared reductions remain.
   Parent phase losses total10a; full range/A3 loss132a+105 and nonlookup draw
   totals56a+43 per label are in accounting. Receipt checks and the accounting
@@ -31,8 +34,8 @@ this is not a completed sign-off.
   views use only actual signed inputs; signed/range children retain padded-zero
   obligations. Passthrough uses public(16384,0) and skips no child or original.
 - Determinism: exact integer-certified coefficient generation and fixed pairing,
-  child and plane order. A16-entry immutable cache keys exact descriptor bytes
-  and validated integer position. Unsupported or unresolved generation rejects.
+  child and plane order. The immutable cache retains at most16 rows, keyed by
+  exact descriptor bytes and validated integer position. Unsupported or unresolved generation rejects.
 - Parity: no native CPU/SIMD/CUDA change. Independent Arb coefficient checks,
   NumPy/Fraction row calculations, both fields/repetitions and16384 rows await
   validation. These references do not establish native/GPU parity.
@@ -46,4 +49,6 @@ this is not a completed sign-off.
   registry/passport admission, model/private inference, other required variants,
   fidelity and original task criteria remain open. Independent review is required.
 
-The Workflow03 attack-result sentence awaits an observed rejecting control.
+I tried to break it by setting r=16384 and reducing q while retaining the exact
+whole division and a valid signed output source, and the control
+Remainder:CapRelation:RoundSumMismatch rejected it.
