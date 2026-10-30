@@ -742,3 +742,11 @@ digit-pair grid. Wrong products/carries, coherent wrong-source arithmetic and
 row-pair substitutions reject through actual consumers. Continue with signed and
 model-derived relations, native lowering/codec and private PCS/ZK/FS; full reveals
 and research controls remain insufficient for inference or production NC credit.
+
+Q26/Q31 signed-source continuation: the [signed byte study](../../research/cqis-bounds/SIGNED-SOURCE.md)
+consumes actual source/magnitude roots, exact high-bit/sign ranges and byte
+carry identities, including INT_MIN, zero and inactive-branch claims. A real
+range consumer rejects a false positive INT_MIN whose signed equations all hold.
+Continue with signed-operation composition, physical/model-source ownership,
+native lowering and private PCS/ZK/FS. Full reveals admit no production cut or
+profile and do not complete the original tasks or their native controls.

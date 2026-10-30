@@ -336,3 +336,20 @@ points, preserving the same row point on both sides. No random-expression
 inverse or fixed-radix substitution is used. Add these losses, do not square
 them with lookup repetitions. Hash binding, FS/H, private source composition
 and joint ZK remain separate; no native profile or commitment format is admitted.
+
+Q26/Q31's [signed byte-source consumer](../../research/cqis-bounds/SIGNED-SOURCE.md)
+has N=2^a rows and B=2^b bytes, B in {1,2,4}. TopBit and Terminal each use
+degree1 A3 of dimension a; Positive, Negative, CarryBoolean and CarryInactive
+each use degree2 A3 of dimension a+b. Their added loss is (16a+12b)/|K|,
+with 6a+4b draws each of ZeroWeight and Sumcheck, all Finals absorbed. The two
+raw/magnitude wide ranges add 2(9a+7b); the sign/high7 range adds 9(a+1).
+Total A3 is (43a+26b+9)/|K|, and total A3 draws of each label are 18a+10b+4.
+The three Q31 dimensions are a+b+1, a+b+1, a+2. For each separately add
+[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|. No reduction term is squared.
+Static selected counts 2BN<=16384 and 4N<=8192 are below p; no Unit draws.
+Four roots and three completed range states precede the six new A3 invocations.
+All 16 signed claims, nine A3 claims per range and 2r lookup claims per range
+are consumed against their actual originals or deterministic views, including
+inactive branches. Static per-byte sides <=511 make integer telescoping faithful;
+top-bit/sign ranges make the representation unique. Full-vector binding, FS/H,
+private model-source routing and joint ZK remain separate. No new label or profile.

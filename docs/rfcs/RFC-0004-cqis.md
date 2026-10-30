@@ -1022,3 +1022,16 @@ field size, separately from all range/lookup terms. The producer uses supplied
 result/carry witnesses; the verifier does not recompute integer multiplication.
 This unsigned revealing study admits no signed/model source, private PCS/ZK,
 native plan, new cut or original task completion; Draft status and criteria remain.
+
+### A3 evidence continuation — Consumed signed byte sources
+
+The [signed-source study](../../research/cqis-bounds/SIGNED-SOURCE.md) connects
+two's-complement 8/16/32-bit byte-word sources to exact magnitude and canonical
+sign with actual raw/magnitude/sign ranges and six consumed A3 relations.
+The high-bit consumer excludes positive INT_MIN and negative zero; byte carry
+telescoping avoids full int32 field embedding. A false high7 range can satisfy
+every signed equation, and is rejected by its actual range terminal. Every
+inactive-branch final remains consumed. The total A3 numerator is 43a+26b+9,
+with all nested lookup terms separate. These revealing canonical-u32 byte slots
+are not physical checkpoint/model roots, native signed reductions or private
+PCS/ZK admission. Original task criteria and Draft status remain unchanged.

@@ -82,7 +82,8 @@ def evaluated(table, point, d):
 
 
 def field(value, d):
-    return len(value) == d and all(0 <= limb < sc.P for limb in value)
+    # RFC-0006 A2/A3: host booleans/floats are not canonical integer limbs.
+    return isinstance(value, (list, tuple)) and len(value) == d and all(type(limb) is int and 0 <= limb < sc.P for limb in value)
 
 
 def describe(b, d):
