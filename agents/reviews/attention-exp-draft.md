@@ -18,7 +18,7 @@ This is not an independent audit. [Scope](../../research/cqis-bounds/ATTENTION-E
   All primary and eight parent-original controls passed. Genuine corrupted/
   partial/padded-table proofs, direct-nearest and E=0 controls, and actual
   maximum-source composition also passed. Four genuine bounded false output/
-  remainder proofs additionally rejected at the product/correction equations. The first strict-remainder fixture changed byte width at E=8;
+  remainder proofs rejected at the product/correction equations. The first strict-remainder fixture changed byte width at E=8;
   construction rejected before verification. The E=7 fixture keeps one byte
   and tests the strict cap without changing the verifier.
 - Ledger: the append-only account keeps all3/10/13 independent lookup units,
