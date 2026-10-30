@@ -13,8 +13,8 @@ not an independent audit. [Scope](../../research/cqis-bounds/ATTENTION-EXP-INDEX
   bytes come only from the verified source; absent high bytes are public zero.
   Full source/vector consumers remain mandatory for masked/padded positions.
 - Bindings: primary controls passed three external/one carry root mutations,
-  all arithmetic substitutions and u=M31+1 versus1. Original/boundary and
-  complete maximum-composition suites are running. A split replay rejected at
+  all arithmetic substitutions and u=M31+1 versus1. All original/boundary and
+  complete maximum-composition suites also passed after the diagnostic repair. A split replay rejected at
   High:CapRelation:ClaimMismatch; the first test expected the wrong diagnostic.
   Only that expectation changed, with the first failed run retained.
 - Ledger: four independent lookup identities and unsquared reductions remain.
@@ -33,7 +33,8 @@ not an independent audit. [Scope](../../research/cqis-bounds/ATTENTION-EXP-INDEX
 - Parity: native CPU/SIMD/CUDA unchanged. The10000-case independent NumPy
   divmod/prefix-sum corpus passed all235 B/k pairs, both represented function
   families, all byte widths and namespace endpoints. Both proof fields and
-  repetition counts still require their complete matrix.
+  repetition counts still require their complete matrix; the actual maximum
+  source composition passed at delta=2^31.
 - Cost: O(N) byte views, four complete ranges/lookups and one A3 charge
   c_x/c_sc/c_lu/T_misc. No benchmark, fitted constant or weight-pass change.
 - Verifier: expected metadata controls sizes, identities and split. Strict

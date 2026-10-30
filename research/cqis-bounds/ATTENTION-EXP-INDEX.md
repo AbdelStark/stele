@@ -82,3 +82,12 @@ row, with maximum observed carry127. Frozen correctness SHA-256:
 `7c266b61aa41fc8bec8bc14e99b6653b506426a217e6c936703e5979da3b68ca`.
 This is correctness evidence, not a performance measurement. The remaining
 control suites, proof matrices, full-row proof and required gates are pending.
+
+The repaired original suite passed all five actual-point consumers, shifted
+public zeros and expected mask/position/function/split replay controls. Whole
+caps, masked/padded indices, a nonzero terminal carry and the last high index
+with low1 all rejected at the required consumers. Complete source composition
+verified an attained maximum with delta=2^31, then verified its index split.
+A separately valid maximum proof with a different delta root could not replace
+that source. The16-case proof matrix is running; the full16384-key proof and
+required local gates are queued behind their prerequisites.
