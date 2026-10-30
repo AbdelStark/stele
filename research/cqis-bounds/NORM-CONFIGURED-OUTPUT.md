@@ -65,6 +65,9 @@ passed. Frozen corpus hash:
 `d2ef8a356c060d6a8f7b23a1d0f9189600b1f5675ffb562a26f623e5d42c41aa`.
 All fifteen-root controls, the changed biased-total root, exact branch shape
 and valid substituted xy/q proofs rejected at their named consumers. Zero
-products passed the explicit J/B/h/L and both unused-root controls. The
-28-case proof matrix is running. All three full-row proofs have started in sequence;
-queued local gates and hosted checks remain required.
+products passed the explicit J/B/h/L and both unused-root controls. All 28 matrix proofs passed across both fields and repetition counts, including
+both configured branches, zero products and negative products rounding to zero.
+Every proof passed the independent account checks. Frozen matrix state hash:
+`827c93780c82b8a7f694ba1fd8a8da4ede990ddf929e45738af70f19a62d89b9`.
+The three full-row proofs remain in their original sequential run. Required
+local gates are running; hosted checks remain pending.
