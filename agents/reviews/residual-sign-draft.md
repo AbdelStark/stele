@@ -4,7 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-SIGN.md). Tests-first rejected the
 missing module. The10000-case corpus, all controls and actual alignment
-composition passed. Matrices, maximum and gates remain under validation; this is not a completed sign-off.
+composition and all16 matrix proofs passed. Maximum and gates remain under
+validation; this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research. Expected fractions determine
   aligned offset and magnitude caps; only canonical numerator sign is proved.
@@ -23,7 +24,7 @@ composition passed. Matrices, maximum and gates remain under validation; this is
   range consumers.
 - Ledger: six separately repeated lookup identities and unsquared reductions.
   Closed range/A3 and draw totals are in the appended accounting entry; the
-  twelve original claims, exact losses and draws need matrix evidence.
+  twelve original claims, exact losses and draws passed every matrix case.
 - Bounds: natural carry stays in[-2,2] by the static byte envelope; shifted
   carry is ranged0..4. Exact endpoints and column sides<=1534 give integer
   equality. Byte sum<=2040 and predecessor-plus-sign<=2041 establish canonical
@@ -34,8 +35,8 @@ composition passed. Matrices, maximum and gates remain under validation; this is
 - Determinism: fixed roles and range/A3 order, exact integer metadata, static
   disjoint namespace spans. No timing-dependent choice or challenge retry.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent NumPy signed values and
-  carry grids passed10000 cases. Both fields/repetitions and the full16384-row
-  proof remain under validation.
+  carry grids passed10000 cases. All16 proofs passed both fields/repetitions;
+  the full16384-row proof remains under validation.
 - Costs: O(N) views, three batched A3s and six complete range/hash consumers
   in c_a/c_sc/c_lu/T_misc. Static counts are not benchmarks; no extra weight pass.
 - Verifier: native no_std unchanged. Strict metadata, roots, proof shapes and

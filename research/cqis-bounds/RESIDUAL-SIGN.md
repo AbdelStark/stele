@@ -70,5 +70,8 @@ The primary controls rejected all external roots and range words, range-valid
 M+p, coherent negative zero, actual carries and every parent original claim.
 Whole-bound, nonboolean-sign, predecessor, padded-carry and high-plane controls
 also passed. A complete aligned proof composed on the same O root; its valid
-replacement rejected. Complete matrices remain under validation; the maximum
-and required local gates are queued once. No completed review or CI claim.
+replacement rejected. All16 complete matrix cases passed across both fields
+and repetition counts, including exact account and draw totals. Matrix SHA-256:
+`e0460faaa4f89e6f928734c52105e63e1f18de8f9c318154dbbe5d15bddc08d0`.
+The complete16384-row proof is running; required local gates remain queued
+once. No completed review or CI claim.
