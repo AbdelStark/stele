@@ -85,5 +85,11 @@ Changing both original/public finals while preserving their composition fails
 the original consumer. A padded selection with wrapped slack satisfies every
 parent relation and sum1 but rejects Indicator:TerminalCarry:RoundSumMismatch.
 The nonbit selection also rejects its actual bound. No verifier bypass or
-expected-rejection repair was needed. Public-point checks and local gates are
-pending; no measured performance or independent audit is claimed.
+expected-rejection repair was needed. All required local gates passed: fmt,
+Clippy, workspace/no_std, dependency/Rust policy, digest, controls, accounting,
+ledger, RFC/docs/glossary and CI scope. Independent sparse equality-basis
+evaluation matches the full index/grid MLE at10000 points per extension field,
+including Boolean, zero, one and minus-one points. Frozen QM31/OM31 hashes:
+`dde4880266299dd792d1a9e62f9a01be53be2b7b4521d9eb082f7563d45338bb` and
+`87aa315fb32e6b8c31436486b2c42f7f180fcb49178601b5d40ee00139a76d09`.
+No measured performance or independent audit is claimed.

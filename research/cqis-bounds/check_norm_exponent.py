@@ -73,6 +73,8 @@ def public(d):
         assert r.zc.folded(fields[0],point[4:])==index and r.zc.folded(fields[1],point)==value
         digest.update(r.sc.encode(index)+r.sc.encode(value))
         if case%1000==999: print('public',d,case+1,flush=True)
+    assert digest.hexdigest()=={4:'dde4880266299dd792d1a9e62f9a01be53be2b7b4521d9eb082f7563d45338bb',
+                                8:'87aa315fb32e6b8c31436486b2c42f7f180fcb49178601b5d40ee00139a76d09'}[d]
     print(json.dumps(dict(field=d,public_points=10000,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
