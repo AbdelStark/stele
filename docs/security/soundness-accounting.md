@@ -787,3 +787,26 @@ do not. Closed column sides are at most511, below p/2. Padded rows and high
 extensions stay zero. Runtime receipts, binding/FS, actual factor/branch
 authentication, remaining output roles and native/model/private composition
 remain additional.
+
+The [output-division consumer](../../research/cqis-bounds/NORM-DIVISION.md)
+inherits both complete quotient-product and biased-sum accounts. For N=2^a,
+let bl/bh be byte-width exponents of the remainder/gap halves, H indicate
+an active high half, and g count all active equality/strict carry families.
+Additional A3 loss is[(22+18H+9g)*a+14*(bl+H*bh)+18g+16]/|K|.
+Each additional nonlookup label has(10+8H+4g)*a+6*(bl+H*bh)+8g+8 draws.
+Additional lookup dimensions are a+bl+1 twice, optional a+bh+1 twice and
+g instances of a+3. Each retains its separate identity
+((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. A3 terms are not squared with repetitions.
+At full a14/bl3/bh2/H1/g7, additional A3 is1654/|K| with738 draws per
+nonlookup label. Including both children gives3690/|K| and1636 draws per
+label across26 lookup units. Complete expected metadata, seven external
+roots, every auxiliary root and every verified child state precede parent
+challenges. Both degree-one dimension a+4 relations consume their five
+original views independently. Actual B and the initial strict one are masked
+by expected real rows; these deterministic views add no challenge. Range
+halves give exact whole r/gap<=Bmax-1. Byte bounds<=255 and Boolean carries
+give sides<=511<p/2. Zero endpoints yield faithful equality and strict
+remainder, retaining all inherited claims and high zeros. Runtime receipts,
+binding/FS, same configured factors, selected branches, signed output and
+native/model/private composition remain additional.

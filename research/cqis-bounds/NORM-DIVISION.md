@@ -78,3 +78,10 @@ shape checks and actual factor composition. Require a full16384-row proof
 before publication. Continue Q26/Q31; selected left/right branches, signed
 output, native/model/private inference, fidelity and original task criteria
 remain open. No new Accepted cut, control credit or benchmark is claimed.
+
+The tests-first run rejected the missing module. Seed2720 then passed10000
+cases and13534880 independent NumPy byte-column cells. Frozen corpus hash:
+`3edca88f2b7d996e38f91dddb1bcfc89ea62883d549c23c3ec41795e68e1f291`.
+Full geometry and namespace checks passed. Adversarial controls, composition
+and the16-proof matrix are running; maximum, local gates and CI remain
+pending. These results do not grant native or private inference admission.

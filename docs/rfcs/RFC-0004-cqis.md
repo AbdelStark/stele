@@ -1342,3 +1342,17 @@ consumed. Actual configured-factor authentication, division equality,
 strict remainder, signed output and full proof/control evidence remain
 required. This is revealing Draft research; native/model/private inference,
 fidelity and original task criteria remain open. No Accepted cut is added.
+
+### A3 evidence continuation — RMSNorm output division and strict remainder
+
+The [output-division study](../../research/cqis-bounds/NORM-DIVISION.md)
+retains complete quotient-product and biased-sum consumers. Two byte-column
+relations bind qd+r=U and r+gap+1=B using actual verified child bytes. Exact
+whole remainder/gap bounds follow from split power-of-two-minus-one caps.
+Expected row masks keep scalar B and the initial one out of padded rows.
+All ten parent original claims and all inherited claims remain consumed;
+local byte/carry bounds supply integer lifting without asserting unconsumed
+last-digit bounds. Complete proof/control evidence, same configured B/h,
+selected branches and signed output remain required. Native/model/private
+inference, fidelity and original task criteria remain open; no Accepted cut
+or profile is added.
