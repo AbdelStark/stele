@@ -70,4 +70,5 @@ both configured branches, zero products and negative products rounding to zero.
 Every proof passed the independent account checks. Frozen matrix state hash:
 `827c93780c82b8a7f694ba1fd8a8da4ede990ddf929e45738af70f19a62d89b9`.
 The three full-row proofs remain in their original sequential run. Required
-local gates are running; hosted checks remain pending.
+local gates passed, including workspace tests, reference digests, negative
+controls and soundness accounting. Hosted checks remain pending.
