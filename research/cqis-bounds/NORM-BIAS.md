@@ -78,6 +78,8 @@ frozen SHA-256 is
 The corpus includes all75 metadata shift maxima from16 through90, the full
 row geometry and namespace limit, exact wide sums and independent NumPy
 byte addition. All adversarial controls, padding/boundary checks and actual
-product/factor composition passed. The16-proof matrix and full16384-row
-maximum are running. Repository gates are queued; CI integration remains
+product/factor composition passed. All16 proofs passed with exact receipts;
+the frozen matrix hash is
+`614febc9676f079ecf4b9181feda2bcf9d0c2bee971607e621512a1327727806`.
+The full16384-row maximum is running. Repository gates are queued; CI integration remains
 pending. Continue Q26/Q31; this evidence does not graduate the consumer.
