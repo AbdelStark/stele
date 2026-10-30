@@ -1481,3 +1481,19 @@ evidence remain required. Public generation and MLE evaluation are revealing
 reference costs. Native function/passport registration, private/model inference,
 other required variants and fidelity remain open; no Accepted cut or profile
 is added, and original task criteria remain unchanged.
+
+### A3/A6 evidence continuation — Consumed masked attention maximum
+
+Draft research: the [maximum consumer](../../research/cqis-bounds/ATTENTION-MAXIMUM-CONSUMER.md)
+binds actual signed32 score bytes, scalar maximum, selected absolute ID and
+exact differences through eight complete ranges and five bytewise A3s.
+Expected query/key positions, sequence block and causal/window parameters
+supply the mask; no prover mask replaces it. Static offsets enforce every
+score bound, including masked scores. Bytewise differences exclude field
+aliases; allowed attainment and a nonnegative prefix gap enforce the Draft
+first-tie rule. The selected index is fully opened against its expected root.
+Corpus, source/mask/alias controls, both fields/repetition counts and full-row
+evidence remain required. Native/private selection, physical/model ownership,
+key-set completeness, exponential membership and full attention composition
+remain open. No Accepted cut, production control or profile is added; original
+task criteria and Draft amendment statuses remain unchanged.

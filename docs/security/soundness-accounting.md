@@ -984,3 +984,25 @@ M+8192<=759275520, g+s<=759267329 and q*16384+r<=536887295 stay below p/2.
 Complete signed/range consumers remain mandatory at zero and in passthrough.
 Binding, FS/H, physical/model ownership, native lowering and private composition
 remain additional. No profile or NC-0106/0109 credit is admitted.
+
+### Draft A3/A6 masked attention maximum consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-MAXIMUM-CONSUMER.md).
+For N=2^a and offset/difference widths2^bo/2^bd, eight complete ranges retain
+separate lookup identities at dimensions a+3,3,a+bo+1,a+bd+1,a+bd+1 and three
+a+3. Each contributes ((2^m+255)/|K|)^rpt with unsquared reduction
+rpt*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Five parent A3s use dimensions
+a+2,a+2,a+2,a,2 and degrees1,2,1,1,1. Parent numerator9a+18 and all20 original
+consumers remain; total range/A3 numerator is72a+100+7bo+14bd. Parent draws
+are4a+8 of each ZeroWeight/Sumcheck label; complete nonlookup totals are
+32a+44+3bo+6bd each. Expected schema/positions/block/window, nine roots and
+eight verified states precede weights and Instance/Round/Final messages.
+The selected absolute ID has a checked complete opening against its expected
+root and is required to be an allowed key. Its derived prefix and source
+views retain their actual-point consumers. Public masks come from expected
+metadata. All byte sides are bounded by511<p/2. The source translation
+permits a final Boolean wrap at2^32; static S<2^31 and O<=2S establish signed
+range faithfulness. Difference/prefix terminal carries must both be zero;
+their sum<=2 cannot alias. Binding, FS/H, private selection, physical/model
+ownership and key-set completeness remain additional. No production profile
+or native NC-0500..0506 credit is admitted.

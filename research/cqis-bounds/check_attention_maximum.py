@@ -35,10 +35,9 @@ def oracle(p,xs):
 
 
 def carries(left,right,n):
-    result=[];incoming=[0]*n
-    for j in range(4):
-        incoming=[((x>>(8*j)&255)+(y>>(8*j)&255)+z)//256 for x,y,z in zip(left,right,incoming)];result.extend(incoming)
-    return result
+    assert len(left)==len(right)==n
+    # Independent prefix sums avoid the producer's recursive carry algorithm.
+    return [((x&((1<<(8*k))-1))+(y&((1<<(8*k))-1)))>>(8*k) for k in range(1,5) for x,y in zip(left,right)]
 
 
 def forged_pairs(p,xs,selected,deltas,gaps,d=4):
@@ -126,7 +125,7 @@ def originals():
         rejects(('SourceOffset','Difference','FirstMaximum','Terminal','Attainment')[index]+':ClaimMismatch',lambda:c.verify(p,roots,bad,d))
     assert touched=={(i,j) for i,size in enumerate((5,6,5,2,2)) for j in range(size)}
     for changed in (replace(p,window=32),replace(p,position=32),replace(p,start=1,position=31),replace(p,schema=replace(p.schema,fraction=13)),replace(p,positions=(0,31,63))):
-        reason='Selection' if changed.start else 'SourceOffset:ClaimMismatch';rejects(reason,lambda:c.verify(changed,roots,proof,d))
+        reason='Selection' if changed.start else 'Difference:ClaimMismatch';rejects(reason,lambda:c.verify(changed,roots,proof,d))
     t=c.transcript(v,roots+[proof['roots'][name] for name in c.AUXILIARY],[pairs[name][1] for name in c.CHILDREN],d);parts=[]
     for index,(_,i,tables) in enumerate(c.parts(p,proof,d)):
         if index==1:tables[1][-1]=one
@@ -138,7 +137,7 @@ def originals():
 def boundaries():
     p=spec(identity=3450);d=4;v=c.derive(p,d);xs=[7,7,p.schema.score_max];pairs=c.prepare(p,xs,d)
     bad,_=c.assemble(p,dict(pairs,maximum=r.prove(v['ranges']['maximum'],[7+r.sc.P],d)),0,d);rejects('Attainment:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
-    values=[0,7+p.schema.score_max,2*p.schema.score_max];bad,_=c.assemble(p,dict(pairs,offset=r.prove(v['ranges']['offset'],values,d)),0,d);rejects('SourceOffset:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    values=[7,7+p.schema.score_max,2*p.schema.score_max];bad,_=c.assemble(p,dict(pairs,offset=r.prove(v['ranges']['offset'],values,d)),0,d);rejects('SourceOffset:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     pairs=forged_pairs(p,[7,7,p.schema.score_max],31,[0,0,0],[r.sc.P-1,0,0]);bad,_=c.assemble(p,pairs,31,d);assert (r.sc.P-1+1)%r.sc.P==0;rejects('FirstMaximum:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     S=p.schema.score_max;xs=[S,-S,0];rejects('Domain',lambda:c.witness(p,xs));delta=2*S-r.sc.P;assert 0<=delta<=1<<31 and (2*S-delta)%r.sc.P==0
     pairs=forged_pairs(p,xs,0,[0,delta,0],[0,delta,0]);bad,_=c.assemble(p,pairs,0,d);rejects('Difference:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
