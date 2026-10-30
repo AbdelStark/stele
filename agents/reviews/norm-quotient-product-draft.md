@@ -23,8 +23,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   (9+4h+4g)*a+3X+8g+c. Separate lookup dimensions are a+2, bd+1,
   a+bl+1, optional a+bh+1, and a+bg+3 per active carry family. Initial honest
   proofs, the full16-proof matrix and all four P8 proofs passed exact receipts;
-  both matrix hashes are frozen. The maximum and accounting gate remain
-  pending; no native profile is certified by these formulas.
+  both matrix hashes are frozen. The accounting gate and all required local
+  gates passed. The maximum remains pending; no native profile is certified.
 - Bounds: expected closed quotient_product caps only. Actual whole q<=32768
   and offset B-1<=Bmax-1 give positive bounded B. Split result ranges supply
   canonical digit caps; faithful columns and zero endpoints then imply qd=qB
@@ -52,7 +52,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   bytes and derives views; it never recomputes whole q*B to grant acceptance.
 - Glossary/history: append-only Draft/accounting evidence. Selected branches,
   bias/division equality, strict remainder, signed output and full native/model/
-  private inference remain open. CI integration and repository gates pending.
+  private inference remain open. Required local gates passed; CI integration
+  and the full-row proof remain pending.
 
 I tried to break it by encoding Zmax+1 with independently valid low/high
 range proofs, and the control ProductColumns:RoundSumMismatch rejected it
