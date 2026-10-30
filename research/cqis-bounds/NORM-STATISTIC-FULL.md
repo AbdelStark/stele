@@ -86,6 +86,10 @@ sizes1,3,16,65, with exact accounts and all original consumers. Frozen matrix:
 `41217dad36fd6fe7dae2df92a9e275b87052e67c9eafe090c30de674d55eae2e`.
 The full16384-element QM31/r1 proof passed, including exact receipts:
 `c661c634bbb864ebce743a280b0bcca99fed02a3dbf03b8736e105a920bac705`.
-Required repository gates are running; CI integration remains pending.
+All required local repository gates passed: formatting, clippy, workspace
+tests, CQIS no_std, dependency/Rust policy, reference digests, production
+negative-control catalog, soundness accounting, ledger/schema/docs/glossary
+checks and CI-scope tests. Production coverage remains4/21 bindings and
+20/81 controls plus one configuration control. CI integration remains pending.
 The same-author review records the completed controls and remaining obligations.
 Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py`.
