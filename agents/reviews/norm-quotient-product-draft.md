@@ -22,8 +22,9 @@ soundness-auditor. This is a same-author review, not independent audit.
   (21+9h+9g)*a+7X+18g+3c; each nonlookup count is
   (9+4h+4g)*a+3X+8g+c. Separate lookup dimensions are a+2, bd+1,
   a+bl+1, optional a+bh+1, and a+bg+3 per active carry family. Initial honest
-  proofs passed exact receipts. Full matrices, maximum and accounting gate
-  remain pending; no native profile is certified by these formulas.
+  proofs and all four P8 proofs passed exact receipts; the P8 hash is frozen.
+  The main matrix, maximum and accounting gate remain pending; no native
+  profile is certified by these formulas.
 - Bounds: expected closed quotient_product caps only. Actual whole q<=32768
   and offset B-1<=Bmax-1 give positive bounded B. Split result ranges supply
   canonical digit caps; faithful columns and zero endpoints then imply qd=qB

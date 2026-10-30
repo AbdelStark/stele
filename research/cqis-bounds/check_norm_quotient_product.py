@@ -136,6 +136,7 @@ def middle():
         assert c.derive(p,d)['columns']==8
         proof,state=c.prove(p,qs,b,d);out=c.verify(p,c.expected_roots(p,qs,b,[q*b for q in qs]),proof,d)
         assert out['state']==state;account(p,out,d);digest.update(state);print('middle passed',d,reps,flush=True)
+    assert digest.hexdigest()=='0f25391dda41f88afcbbaaaf1be5e24bde6a9ff624cc2288c3bba80863ae5b5a'
     print(json.dumps(dict(middle_proofs=4,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

@@ -83,8 +83,10 @@ corpus SHA-256:
 All source/product/carry controls passed, including an output beyond Zmax
 whose separate halves had valid range proofs. Padding, endpoint and offset
 controls also passed. Actual signed-Y magnitude and verified factor bytes
-composed, while a substituted divisor rejected. The main16-proof matrix and
-an additional four-proof P8 matrix are running with exact accounting checks.
+composed, while a substituted divisor rejected. All four P8 proofs passed
+across both fields/repetition counts with exact accounting. Frozen hash:
+`0f25391dda41f88afcbbaaaf1be5e24bde6a9ff624cc2288c3bba80863ae5b5a`.
+The main16-proof matrix is running with exact accounting checks.
 The full16384-row/90-bit-divisor proof is running. Required CI integration,
 repository gates and final evidence remain pending. The same-author review
 records these completed controls and remaining obligations. Reproduce with
