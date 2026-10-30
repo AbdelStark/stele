@@ -34,7 +34,7 @@ def oracle(p,flags,qs):
 
 
 def corpus():
-    rng=random.Random(2739);digest=hashlib.sha256();cells=zeros=negative_zero=0;shifts=set();qwidths=set();owidths=set()
+    rng=random.Random(2739);digest=hashlib.sha256();cells=zeros=negative_raw_zero=0;shifts=set();qwidths=set();owidths=set()
     for case in range(10000):
         length=rng.choice((1,1024,1025,2049,1<<20));bmax=(length+1023)//1024;blocks=min(1+case%5,bmax);width=1+case%17;ids=tuple(sorted(rng.sample(range(bmax),blocks)));mode='dynamic' if case%2 else 'static';scale=0 if mode=='dynamic' else rng.choice((1,2,259,65535));E=case%15
         if case<61:mode='static';scale=1;E=0
@@ -42,7 +42,7 @@ def corpus():
         p=replace(spec(blocks,width,case,1+case%2),schema=c.bounds.Spec(length,width,case%31,E,mode,scale,drop),blocks=ids);v=c.derive(p,4);flags=[rng.randrange(2) for _ in range(v['count'])];qs=[rng.randrange(v['constants']['rounded_max']+1) for _ in flags];qs[0]=0;flags[0]=1
         outputs,roots=oracle(p,flags,qs);w=c.witness(p,flags,qs);assert w==dict(sign=flags,quotient=qs,output=outputs) and c.expected_roots(p,flags,qs)==roots
         assert 8*v['G']<r.sc.P and v['G']<1<<25 and all(0<=x<=cap for name in w for x,cap in zip(w[name],v['ranges'][name].caps))
-        digest.update(v['raw']+b''.join(roots));cells+=len(flags);zeros+=not any(qs);negative_zero+=sum(b and not q for b,q in zip(flags,qs));shifts.add(drop);qwidths.add(r.derive(v['ranges']['quotient'],4)[3]);owidths.add(r.derive(v['ranges']['output'],4)[3])
+        digest.update(v['raw']+b''.join(roots));cells+=len(flags);zeros+=not any(qs);negative_raw_zero+=sum(b and not q for b,q in zip(flags,qs));shifts.add(drop);qwidths.add(r.derive(v['ranges']['quotient'],4)[3]);owidths.add(r.derive(v['ranges']['output'],4)[3])
     for blocks,width in ((128,128),(1024,16),(1,16384)):
         p=spec(blocks,width,(1<<48)-1,2);v=c.derive(p,8);assert v['base']+(1<<14)==(1<<63)+(1<<62)
         spans=sorted((r.derive(child,8)[4],64) for child in v['ranges'].values());assert all(v['base']+17<lo and lo+size<=v['base']+(1<<14) for lo,size in spans) and all(lo+size<=nxt for (lo,size),(nxt,_) in zip(spans,spans[1:]))
@@ -50,8 +50,9 @@ def corpus():
     for bad in (replace(p,identity=1<<48),replace(p,repetitions=True),replace(p,blocks=()),replace(p,blocks=(2,0)),replace(p,blocks=(0,0)),replace(p,blocks=(0,1024)),replace(p,sign_sources=(p.quotient,2102)),replace(p,sign_sources=(v['base'],2102)),replace(p,sign_sources=(2101,)),replace(p,schema=replace(p.schema,drop=True))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Capacity',lambda:c.derive(spec(2,16384),4));rejects('Spec',lambda:c.derive(p,True))
     for flags,qs in (([False]*6,[0]*6),([2]*6,[0]*6),([0]*6,[-1]*6),([0]*6,[v['constants']['rounded_max']+1]*6),([0],[0]*6)):rejects('Input',lambda:c.witness(p,flags,qs))
-    assert zeros>1000 and negative_zero>=10000 and shifts==set(range(2,63)) and qwidths=={1,2} and owidths=={1,2,4}
-    print(json.dumps(dict(seed=2739,cases=10000,cells=cells,zero_quotient_cases=zeros,negative_zero_entries=negative_zero,sha256=digest.hexdigest()),sort_keys=True),flush=True)
+    assert zeros>1000 and negative_raw_zero>=10000 and shifts==set(range(2,63)) and qwidths=={1,2} and owidths=={1,2,4}
+    assert (cells,zeros,negative_raw_zero,digest.hexdigest())==(165678,6835,64010,'aa02e228b2512898004c4f1261746a7fab48f7513408c81bb542d58bd101fa00')
+    print(json.dumps(dict(seed=2739,cases=10000,cells=cells,zero_quotient_cases=zeros,negative_raw_sign_zero_quotient_entries=negative_raw_zero,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
 def account(p,out,d):

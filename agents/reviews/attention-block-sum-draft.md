@@ -3,9 +3,10 @@
 Codex-root applies cqis-numerics, gkr-reduction-author and soundness-auditor.
 This is a same-author review, not an independent audit. The
 [scope](../../research/cqis-bounds/ATTENTION-BLOCK-SUM.md) preceded tests and
-code. Tests first rejected the missing module. Corpus, controls, actual source
-composition, matrix and full geometries are running or queued in their original
-processes. Required repository gates are queued once. No completed sign-off.
+code. Tests first rejected the missing module. All10000 corpus cases and
+primary/boundary controls passed. Actual source composition, matrix and full
+geometries continue in the original process. Required repository gates remain
+queued once. This is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2. The expected block schema
   and absolute ids determine caps and source roles. This consumer binds an
@@ -21,7 +22,8 @@ processes. Required repository gates are queued once. No completed sign-off.
 - Bindings: tests mutate every block/output root and range, bounded totals,
   compensating channels, output+p with a relaxed-cap witness, metadata and valid
   source substitutes. Both final claims are changed while preserving the final
-  polynomial; a negative raw sign at q=0 remains a binding. Execution is pending.
+  polynomial and rejected; a negative raw sign at q=0 remains a binding.
+  Primary and boundary controls passed.
 - Ledger: three independently repeated lookup identities and unsquared
   reductions. Range/A3 numerator18a+9ac+7(bq+bo), channel identity ac and A1
   reduction2a are separate. Tests compare all receipts and draw counts across
@@ -36,7 +38,7 @@ processes. Required repository gates are queued once. No completed sign-off.
   retain two/eight planes even when compact caps vanish.
 - Determinism: fixed range/root order, sorted unique expected blocks, exact
   schema bytes and static namespaces. No floating point or challenge retry.
-  Corpus and proof digests will be frozen after the original runs complete.
+  The corpus digest is frozen; matrix and full proof validation continue.
 - Parity: native CPU/SIMD/CUDA are unchanged. Independent NumPy signed sums and
   byte roots cover zero quotients and short/partial/full lengths. All three
   supported full geometries remain required evidence.
@@ -52,4 +54,6 @@ processes. Required repository gates are queued once. No completed sign-off.
   restored normalization units, complete source/model ownership, native/private
   inference, fidelity and independent audit remain required.
 
-The observed-attack sentence remains pending until an actual control rejects.
+I tried to break it by changing the sign final while every quotient was zero,
+and BlockSum:ClaimMismatch rejected it. Compensating errors in two output
+channels rejected at BlockSum:RoundSumMismatch.

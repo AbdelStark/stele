@@ -64,3 +64,19 @@ This establishes an unsigned offset for signed rounded totals. Canonical total
 sign/magnitude, the actual global probability sum, restored normalization units,
 complete absolute-key/block/model ownership, native/private inference, fidelity
 and every original production criterion remain required.
+
+The tests-first run rejected the missing module. Seed 2739 passed10000
+independent cases and165678 entries, including6835 all-zero quotient cases
+and64010 negative raw signs paired with rounded zero. These are valid raw
+signs, not a noncanonical sign encoding of zero magnitude. Short, partial and
+full lengths, sparse blocks, all admissible shifts and compact byte widths
+were covered. Frozen corpus SHA-256:
+`aa02e228b2512898004c4f1261746a7fab48f7513408c81bb542d58bd101fa00`.
+
+Primary and boundary controls passed. False bounded totals, compensating
+channels, output+p, metadata replay and valid source substitutions rejected.
+Both original consumers rejected compensated final values; negative raw signs
+at q=0 remained consumed. Boolean bounds, whole bounds, dense/per-block padding
+and full high planes rejected. Initial receipts and draw totals matched.
+Actual source composition, matrix and three full geometries continue in the
+original runner; required repository gates remain queued.
