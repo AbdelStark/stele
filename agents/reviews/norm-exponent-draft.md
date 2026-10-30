@@ -20,7 +20,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: A3 total102, separate A1 loss6; range lookup identity383 power r
   and reduction198r. Full nonlookup draws40 ZeroWeight/46 Sumcheck, lookup
   r beta/alpha,15r gamma/fold,56r Sumcheck. All16 proof cases check exact
-  losses and draws; the accounting gate remains pending.
+  losses and draws; accounting and all required local gates passed.
 - Bounds: actual indicator caps imply Boolean real rows and zero pads. The
   static64<p bound makes sum1 exact, selecting one valid index. The two A3s
   then force bounded offset and each canonical byte, including powers exceeding
@@ -30,7 +30,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Determinism: fixed row/plane and invocation order, exact integer public
   tables, canonical function bytes and frozen independent corpora. No floats.
 - Parity: native CPU/SIMD/CUDA unchanged; these tests provide research evidence
-  only. Full field/repetition cases passed; public-point checks are pending.
+  only. Full field/repetition cases and10000 public points per field passed.
 - Costs: fixed-size public/source views and complete c_a/c_sc/c_lu/T_misc
   consumers. No measured constant, benchmark claim or weight-pass change.
 - Verifier: native no_std unchanged. Expected schema and namespace validate
