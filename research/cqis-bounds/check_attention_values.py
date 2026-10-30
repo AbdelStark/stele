@@ -70,6 +70,7 @@ def honest(mode=None):
         for rows,width,policy,scale in cases:
             p=spec(rows,width,policy,scale,4110+done,reps);v=c.derive(p,d);scales=[(0,259,1)[j%3] if policy=='dynamic' else scale for j in range(rows)];codes=[(-v['cap'],0,v['cap'],1)[j%4] if scales[j//width] else 0 for j in range(rows*width)]
             print('honest start',done+1,d,reps,rows,width,policy,flush=True);proof,state=c.prove(p,codes,scales,d);out=c.verify(p,oracle(p,codes,scales)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,rows,width,policy,flush=True)
+    if mode is None:assert digest.hexdigest()=='fa90ed30a01a39392a3e8844dec842a997677d3eed737ece6a194e0a6372af7f'
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
