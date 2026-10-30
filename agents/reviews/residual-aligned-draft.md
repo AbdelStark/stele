@@ -3,8 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-ALIGNED.md). Tests-first failed at
-the missing module. Corpus, actual controls, matrices, maximum and gates remain
-under validation; this is not a completed sign-off.
+the missing module. The10000-case corpus and primary adversarial controls passed.
+Boundary controls, matrices, maximum and gates remain under validation; this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research only. Expected residual schema
   fixes fractions and source roles. Only the aligned offset is proved.
@@ -17,7 +17,8 @@ under validation; this is not a completed sign-off.
   by verification, and no zero source suppresses a child consumer.
 - Bindings: controls cover every external root, valid same-magnitude signed
   substitutions, in-range O+p, actual carries, padding and compensated finals.
-  Their exact rejection evidence remains pending.
+  Primary controls rejected at the named source, column and original consumers.
+  Terminal/padding controls remain under validation.
 - Ledger: six signed lookup units plus output and nonzero carry groups;
   every repeated identity and unsquared reduction is retained. Parent degree
   is one over8N. Closed total and draw formulas are in the appended accounting
@@ -31,7 +32,7 @@ under validation; this is not a completed sign-off.
 - Determinism: fixed role, range and column order; explicit metadata bytes,
   expected capacity and disjoint child spans. No timing-dependent selection.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent NumPy int64 alignment and
-  byte/carry grids provide research differential checks. Both proof fields and
+  byte/carry grids passed10000 cases and3383720 cells; the digest is frozen. Both proof fields and
   repetition counts, including a full16384-row case, remain under validation.
 - Costs: O(N) byte views and one batched A3 plus all complete child range/hash
   consumers in c_a/c_sc/c_lu/T_misc. No measured constant or extra weight pass.
@@ -40,5 +41,9 @@ under validation; this is not a completed sign-off.
   grants acceptance. The research capacity is explicit, with no weakened task.
 - Glossary/history: append-only Draft/accounting evidence. Canonical numerator
   sign, one-round residual output, the original2^20 domain, native/model/private
-  inference and fidelity remain required. The attack-result sentence awaits
-  observed controls; production control coverage is unchanged.
+  inference and fidelity remain required. The remaining validation
+  stays required; production control coverage is unchanged.
+
+I tried to break it by substituting an independently ranged O+p while retaining
+the original signed sources and carries, and the control
+AlignedColumns:RoundSumMismatch rejected it.
