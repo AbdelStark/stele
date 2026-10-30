@@ -79,5 +79,8 @@ controls passed. The verifier and expected rejection reasons were unchanged.
 
 All required local repository gates passed, including fmt/clippy/workspace
 tests, no_std CQIS, digest, negative controls and soundness accounting. The
-full-row proof is running. Required CI integration and final maximum evidence
-remain pending; complete native/private inference is not claimed.
+complete16384-row proof also passed with all five ranges, seven original
+consumers and exact accounts. Its SHA-256 is
+`08980bab12a6b2304256caadf59e9b5ff5686a06878227b405100fbaec3ade00`.
+Required CI integration remains pending; complete native/private inference
+is not claimed.
