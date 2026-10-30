@@ -22,7 +22,8 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: added A3 loss30 and10 draws of each parent label; total A3
   163+9b+18g, full nonlookup draws63+4b+8g and70+6b+8g. All inherited lookup,
   exponent A1 and product identity/A1 losses remain separate. All16 proofs
-  check exact accounts/draws; accounting gate is pending, no profile certified.
+  check exact accounts/draws; accounting and required local gates passed.
+  No production profile is certified.
 - Bounds: static Dmax<2^124 derives from expected norm parameters. Unique
   valid indicator plus equality of canonical field elements to public bytes
   supplies each byte's range. No whole D field lift, supplied power or observed
@@ -34,7 +35,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   canonical complete norm bytes. NumPy integer and independent public-MLE
   checks cover source construction without timing-dependent order or floats.
 - Parity: native CPU/SIMD/CUDA unchanged; this is revealing research evidence.
-  Full fields/repetitions passed; public-point agreement remains pending.
+  Full fields/repetitions and10000 public points per field passed.
 - Costs: one fixed1024-cell A3 and public/source views plus every inherited
   c_a/c_sc/c_lu/T_misc consumer. No measured constant or extra weight pass.
 - Verifier: native no_std unchanged. Expected schema/namespace precede bounded

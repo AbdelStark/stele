@@ -94,5 +94,9 @@ zero and positive exponents, including actual124-bit maximum divisors with
 nonzero byte15. Every proof checks exact losses, draws and parent claims.
 Frozen proof-state SHA-256:
 `b888f31a2ab75071db6053258bf61224da1682b3270ae1e75f8e768eb762ce5e`.
-Public-point matrices and local gates remain pending; no measured performance,
-native control credit or independent audit is claimed.
+Independent equality-basis evaluations passed at10000 points per field, with
+varied configured P and degenerate/Boolean points. Frozen public SHA-256s:
+QM31 `11ef1acd733e033f81d984356bae5d90514bc6f1d3ff1c44bc0562e5251e5fd9`;
+OM31 `9e68cf408d67a90c22faf8b21529c88b41cfa86b47cade83aa9c038ea30f3d5f`.
+All required local gates passed. No measured performance, native control credit
+or independent audit is claimed.

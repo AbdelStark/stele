@@ -69,6 +69,7 @@ def public(d):
         assert r.zc.folded([r.sc.scalar(x,d) for x in grid],point)==answer
         digest.update(r.sc.encode(answer))
         if case%1000==999: print('public',d,case+1,flush=True)
+    assert digest.hexdigest()=={4:'11ef1acd733e033f81d984356bae5d90514bc6f1d3ff1c44bc0562e5251e5fd9',8:'9e68cf408d67a90c22faf8b21529c88b41cfa86b47cade83aa9c038ea30f3d5f'}[d]
     print(json.dumps(dict(field=d,public_points=10000,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
