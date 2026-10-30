@@ -74,6 +74,8 @@ def corpus():
     for bad in (replace(p,window=True),replace(p,window=-1),replace(p,start=p.position+1),replace(p,stop=p.position)):rejects('Mask',lambda:c.derive(bad,4))
     rejects('EmptyRow',lambda:c.derive(replace(spec(),position=0,positions=(1,2,3)),4))
     for xs in ([False]*3,[1<<31]*3,[-(1<<31)]*3,[0],(0,0,0)):rejects('Input',lambda:c.witness(spec(),xs))
+    assert (accepted,domain,masked,ties)==(8218,1782,8008,1178)
+    assert digest.hexdigest()=='087e62b41088768faa8dc95a77805fb72b7dd5736d571c3c84c652fa0bf6f84d'
     print(json.dumps(dict(seed=2730,cases=10000,accepted=accepted,domain=domain,masked=masked,ties=ties,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

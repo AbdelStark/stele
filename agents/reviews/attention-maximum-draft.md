@@ -15,8 +15,8 @@ It is not an independent audit or production soundness sign-off.
   Mask and prefix derive from expected metadata and the checked selected ID.
 - Bindings: primary controls passed all four external/five auxiliary root
   changes, arithmetic-role mutations, valid source substitutions and masked/
-  invalid selection. All-original, metadata and alias controls are running;
-  their future success is not assumed here.
+  invalid selection. All20 original-final and metadata/public-mask controls also passed.
+  Boundary/alias controls and proof matrices remain under validation.
 - Ledger: eight independent lookup identities and unsquared reductions are
   retained. Parent9a+18 and total72a+100+7bo+14bd, plus draw totals, matched
   the first verified proof. The append-only accounting line names all terms;
@@ -31,8 +31,8 @@ It is not an independent audit or production soundness sign-off.
 - Determinism: fixed range/A3/root order, canonical integer bytes and expected
   absolute positions. There is no timing-dependent state or floating point.
 - Parity: no CPU/SIMD/CUDA implementation changes or parity credit. Independent
-  NumPy selection/differences cover10000 rows; the strengthened prefix-sum carry
-  oracle run is pending. Both proof fields/repetition counts remain required.
+  NumPy selection/differences cover10000 rows; the independent prefix-sum carry
+  oracle passed all10000 rows with the same frozen checksum. Both proof fields/repetition counts remain required.
 - Cost: O(N) byte views and eight full range/lookup children charge c_x/c_sc/
   c_lu/T_misc. No measured constant, bench claim or weight-pass change.
 - Verifier: this Python full-opening reference is outside native admission.

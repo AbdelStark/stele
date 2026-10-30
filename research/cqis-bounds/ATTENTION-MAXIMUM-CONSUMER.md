@@ -73,3 +73,20 @@ Continue Q26/Q31. Native lowering/parity, private selection, physical/model
 source ownership, exponential membership, full attention composition, fidelity
 and original task/control criteria remain open. This changes no benchmark,
 weight pass, cut, Accepted schema or production binding/control coverage.
+
+Tests-first rejected the missing module. Both corpus runs passed all10000
+seed2730 cases:8218 valid rows and1782 expected domain rejections, with8008
+masked rows and1178 ties. The second run checks carries with independent
+prefix sums rather than the producer's recursive carry algorithm. Both runs
+have the same frozen SHA-256:
+`087e62b41088768faa8dc95a77805fb72b7dd5736d571c3c84c652fa0bf6f84d`.
+NumPy selection/differences, scalar maximum, every source root, mask policies,
+all byte widths, namespace endpoints and malformed metadata passed.
+
+Primary controls passed all four external/five auxiliary root mutations,
+arithmetic-role mutations, valid source substitutions, masked/invalid selection
+and supplied receipt/certificate/mask rejection. All20 original-final controls
+passed, including public masks under zero multiplication. Expected window,
+query/block/keys/unit replays and a forged padded public mask were rejected.
+Boundary/alias controls, proof matrices, maximum and local gates remain under
+validation; no native/control/profile credit follows from these observations.
