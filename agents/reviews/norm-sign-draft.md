@@ -20,7 +20,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   Six lookup dimensions are a+2 and four are a+3; each identity/reduction
   remains separate. All16 honest proofs passed exact runtime account checks
   across both fields/repetitions and sizes1,5,16,65; the state hash is frozen.
-  The full-row proof remains pending.
+  The complete 16384-element QM31/r1 proof also passed exact receipts; its
+  state hash is frozen in the evidence note.
 - Bounds: whole m<=32768, k<=32767 and Boolean n/s are enforced by actual
   consumers. Predicate sides are at most 65536; sign sides at most 2 and 3.
   Expected metadata supplies every bound. No whole wide value aliases in M31.
@@ -45,7 +46,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   configured output branches, native/private inference and fidelity remain open.
   All required local gates passed, including soundness accounting. Production
   coverage remains4/21 bindings and20/81 controls plus one configuration
-  control. Required CI integration and the maximum proof remain pending.
+  control. Required normal/full-row CI is integrated and all 11 targeted
+  tests passed. Hosted validation remains pending.
 
 I tried to break it by declaring a nonzero magnitude zero while adjusting its
 predecessor to preserve reconstruction, and the control
