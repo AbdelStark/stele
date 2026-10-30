@@ -766,3 +766,11 @@ otherwise valid false statements. Continue with dynamic scale and code consumers
 committed-index/model ownership, native lowering and private PCS/ZK/FS. The
 revealing existential wrapper does not replace private selection or satisfy
 the original inference tasks and production negative controls.
+
+Q26/Q31 dynamic-scale continuation: the [scale consumer](../../research/cqis-bounds/DYNAMIC-SCALE.md)
+proves exact ceiling from an actual attained maximum and independently expected
+scale. The bounded carry offset handles a genuine negative carry without field
+alias assumptions; the actual slack range excludes false zero-row scale1.
+Continue with row-code and zero-scale consumers, model-owned routes, native
+stacking and private PCS/ZK/FS. Revealing row-scale evidence does not satisfy
+the original inference tasks or grant production negative-control credit.

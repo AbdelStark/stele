@@ -1062,3 +1062,16 @@ wrapper is limited to 2048 elements and does not bind a separately committed
 index or implement private selection. Dynamic scale/code consumers, physical
 model roots, native stacking and private PCS/ZK remain open. A3/A8 remain Draft;
 no production cut, task completion or native control credit is admitted.
+
+### A3/A8 evidence continuation — Consumed dynamic row scale
+
+The [dynamic-scale consumer](../../research/cqis-bounds/DYNAMIC-SCALE.md) joins
+the actual attained maximum to an independently expected scale through exact
+byte columns for 127*S=M+slack with slack<=126. Carries use a bounded offset
+representation because valid ceiling columns can require carry -1; public
+initial/terminal boundaries are retained. The all-zero row admits only scale0.
+A false scale1/slack127 zero-row proof satisfies the parent equations and is
+rejected by the actual slack range. This full-reveal research does not establish
+row output codes, a separately committed nonzero flag/index, physical model
+roots, native lowering or private PCS/ZK. Original criteria and Draft status
+remain unchanged; no production cut or negative-control credit is admitted.
