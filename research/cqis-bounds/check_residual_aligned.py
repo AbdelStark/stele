@@ -98,6 +98,7 @@ def no_carry():
             for index,delta in changes:bad['zero']['final'][index][0]=r.sc.add(bad['zero']['final'][index][0],r.sc.scalar(delta,d))
             rejects('AlignedColumns:ClaimMismatch',lambda:c.verify(p,c.roots(p,proof),bad,d))
         rejects('ProofShape',lambda:c.verify(p,c.roots(p,proof),dict(proof,carry_0={}),d));print('no-carry passed',d,reps,flush=True)
+    assert digest.hexdigest()=='4cc81f210855e035e9e45decd56aba66192e2161475db1185de686319ee794b1'
     print(json.dumps(dict(mode='no-carry',proofs=4,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
