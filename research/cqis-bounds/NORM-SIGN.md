@@ -87,6 +87,10 @@ verifier nor expected rejection reasons changed.
 
 An actual reciprocal-product proof composed on the same xy root. Changing a
 raw input sign while preserving xy and canonical product sign rejected the
-pinned source. The honest matrix and full 16384-element proof are running.
-Required CI integration, local gates and final evidence remain pending.
+pinned source. All16 honest proofs passed across both fields, both repetition
+counts and row sizes1,5,16,65, including exact accounts and every original
+consumer. Frozen matrix state hash:
+`4b2053fd44d284cbbc128d7e90c894e38832fe95fe205437f8a566244c5caee9`.
+The full16384-element proof is running. Required CI integration, local gates
+and final maximum evidence remain pending.
 Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_sign.py`.
