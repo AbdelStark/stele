@@ -21,7 +21,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: A3 total9b+18g+38, four lookup dimensions2,b+2,g+3,g+3, separate
   product identity C-1 and A1 reduction4b. Nonlookup draws16+4b+8g ZeroWeight,
   17+6b+8g Sumcheck. All20 main/intermediate-width proofs passed with exact
-  accounts/draws. Accounting gate remains pending; no production profile certified.
+  accounts/draws. Accounting and required local gates passed; no production profile certified.
 - Bounds: actual offset<=49151 gives16384<=M<=65535 with static2*65535<p.
   Its canonical field output is checked before encoding; this guard supplements
   the actual range, not its proof. Product whole D bound is exactly Dmax;
