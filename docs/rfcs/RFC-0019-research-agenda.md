@@ -934,3 +934,10 @@ The proposed offset relation retains every original claim, including at
 zero scale. Implement tests first, then verify the planned account with
 actual receipts. Complete source ownership and subsequent weighted-sum/
 normalization consumers remain required; no native or private claim follows.
+
+Q26/Q31 weighted-offset continuation: can [one batched column identity](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md)
+prove every O_c=sum_j P_j*U_jc using complete source/output/carry ranges and
+actual original-point consumers? Test M31 aliases, compensating channel errors,
+zero factors and maximum carry geometry before implementation. Keep separate
+polynomial-identity and A1 errors. Signed sums, source ownership, normalization
+and native/private inference remain required; no original criterion is waived.

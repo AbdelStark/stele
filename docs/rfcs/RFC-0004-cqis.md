@@ -1551,3 +1551,15 @@ from the configured scale. This is a pre-implementation plan: every actual
 consumer, attack, account receipt and full-domain proof remains to be tested.
 Prepared projection-row ownership, GQA/cache views, weighted sums, native/
 private inference and original criteria are not admitted by these bounds.
+
+### A3/A6 research plan — Consumed weighted offset sums
+
+Draft plan: [weighted offsets](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md)
+uses complete probability/value/output/carry ranges and the existing full-capacity
+radix-16 certificate. One polynomial identity batches columns and channels;
+one degree-two A1 consumes both actual projected sources even at zero factors.
+All roots and verified child states precede the accounted challenges. Expected
+absolute positions, block and mask remain bound. The16384-entry research cap
+preserves the original full-sequence requirement. Signed O-S*Z, block rounding,
+normalization, actual source ownership and all native/private criteria remain
+open. No Accepted semantics, cut, profile or production control credit changes.

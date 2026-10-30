@@ -1103,3 +1103,24 @@ These formulas are not runtime evidence. Tests must verify each receipt
 and challenge count before acceptance. Actual prepared-row source ownership,
 Binding/H/FS, PCS/ZK, weighted-sum composition and native inference remain
 additional obligations. No production profile or NC credit is granted.
+
+### Planned weighted-offset consumer (Q26/Q31; Draft RFC-0004 A3/A6)
+
+[Pre-implementation scope](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md).
+For K<=13 radix-16 result columns, padded channel dimension ac and key dimension
+ar, bind all expected metadata/roots and verified whole-range states before
+sampling rho and ac channel coordinates with the Sumcheck label. The resulting
+nonzero column/channel polynomial has total degree at most K-1+ac. Static
+integer side bounds make each false column nonzero in M31. Schwartz-Zippel
+contributes(K-1+ac)/|Kfield|; the separate degree-two A1 contributes2*ar/|Kfield|.
+Both projected original claims retain actual consumers, including at zero.
+The parent draws1+ac+ar Sumcheck challenges and no ZeroWeight challenges.
+
+For every probability/value/output/carry range i, retain separate lookup
+dimension m_i=a_i+b_i+1, identity((2^m_i+255)/|Kfield|)^r and unsquared
+reduction r*(F(m_i)+F(8)+3*m_i)/|Kfield|, F(m)=3*m*(m-1)/2+2*m.
+Sum range/A3 numerators9*a_i+7*b_i and draws4*a_i+3*b_i per nonlookup label.
+Do not square these reductions or merge the polynomial identity with A1.
+Initial/final and unused carries, padded channels and full external byte roots
+remain mandatory. Runtime receipt checks, actual source composition, Binding,
+FS/H, PCS/ZK and native inference are additional; no profile is admitted.
