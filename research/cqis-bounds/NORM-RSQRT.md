@@ -59,3 +59,28 @@ supplied tables and changed repetitions must reject. No timing claim is made.
 Recommendation: continue Q26/Q31 with actual J and same-a wide signed output
 branches, then full native/physical/model/private lowering and fidelity. The
 original task status and acceptance criteria remain open.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_rsqrt.py`.
+Tests first failed with the missing module. Every49152 valid row passed
+independent NumPy int64 rounding inequalities and exact mantissa order/ranges.
+The complete canonical encoding and all16384 zero padding rows were checked;
+changed valid data or padding rejected. Seed2706 passed10000 NumPy gathers
+with frozen SHA-256:
+`16c228bea17668aeb196385fbf8b014792a95d3e61cbe93c7c83d99eeaef5e23`.
+Complete table-data SHA-256:
+`f0eaa630008fca89f36722acc8bdc7e737cfe2f6a6da396ddd66acc975a767a8`.
+
+A genuine one-tuple zero-table proof fails Lookup:TreeShape under the full
+expected plan. A genuine complete-table proof with one changed J, and a genuine
+49153-row table admitting one padding tuple(0,0), both fail
+Lookup:RoundSumMismatch. All three attacks retain the actual lookup machinery.
+The first honest full proof and compression-preserving altered original finals
+passed their checks. Two scalar coefficient/selector controls initially expected
+later constant errors; actual dimension0 verification rejects the false final
+composition first as Lookup:FinalEvaluationMismatch. Only expected reasons were
+corrected; no verifier change. Saved synthetic fixtures permit verification
+continuation without repeating completed proof generation. The full matrix,
+remaining controls/composition and required local gates remain pending. No
+measured performance, native control credit or independent audit is claimed.

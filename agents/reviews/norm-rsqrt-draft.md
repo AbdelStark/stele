@@ -14,7 +14,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   supplies M/J bounds; formula-based witness generation confers no acceptance.
 - Bindings: partial-table proof rejected at complete expected tree shape.
   First full proof and compression-preserving source-final attack passed;
-  corrupted complete-table proof rejected. Two scalar coefficient/selector
+  corrupted and padding-admitting complete-table proofs rejected. Two scalar coefficient/selector
   controls rejected at FinalEvaluationMismatch before their constant consumers;
   only expected reasons were corrected. Remaining full checks stay running.
 - Ledger: identity numerator98304 raised to r; separate reduction392r. Each
