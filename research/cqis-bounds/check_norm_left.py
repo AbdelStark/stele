@@ -108,8 +108,8 @@ def boundaries():
     small=spec(1,2541,1,8);sv=c.derive(small,d);child=sv['ranges']['offset']
     # An overflow that changes the child byte width is rejected as shape, before
     # it can be mistaken for an allowed factor reconstruction.
-    rejects('Shape',lambda:r.assemble(child,*r.witness(replace(child,caps=(256,)),[256]),d))
-    child=v['ranges']['offset'];rejects('Shape',lambda:r.assemble(child,*r.witness(replace(child,caps=(65536,)),[65536]),d))
+    rejects('OpeningShape',lambda:r.assemble(child,*r.witness(replace(child,caps=(256,)),[256]),d))
+    child=v['ranges']['offset'];rejects('OpeningShape',lambda:r.assemble(child,*r.witness(replace(child,caps=(65536,)),[65536]),d))
     small=spec(1,2542,1,0);bad,_=c.prove(small,[32768],1,[32768],d);expect=c.expected_roots(small,[32768],1,[32768]);expect[1]=r.root(small.factor,[1]+[0]*6+[1]);rejects('Factor:CommitmentMismatch',lambda:c.verify(small,expect,bad,d))
     sv=c.derive(small,d);parts=c.prepare(small,[0],1,[0],d);child=sv['ranges']['offset'];badpair=r.assemble(child,*r.witness(replace(child,caps=(1,)),[1]),d);bad,_=c.assemble(small,dict(parts,offset=badpair),d)
     rejects('Offset:CapRelation:RoundSumMismatch',lambda:c.verify(small,c.roots(small,bad),bad,d))
