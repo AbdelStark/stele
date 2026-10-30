@@ -3,8 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-SIGN.md). Tests-first rejected the
-missing module. The10000-case corpus and primary controls passed. Boundary/
-composition checks, matrices, maximum and gates remain under validation; this is not a completed sign-off.
+missing module. The10000-case corpus, all controls and actual alignment
+composition passed. Matrices, maximum and gates remain under validation; this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research. Expected fractions determine
   aligned offset and magnitude caps; only canonical numerator sign is proved.
@@ -18,7 +18,9 @@ composition checks, matrices, maximum and gates remain under validation; this is
 - Bindings: tests cover all roots/ranges, independently ranged M+p, negative
   zero preserving the wide equality, both carry families and exact endpoints.
   Compensated finals preserve each algebraic equality while changing originals.
-  Actual aligned-source composition and its valid replacement are required.
+  Actual aligned-source composition passed; its valid replacement rejected
+  the pinned offset root. Whole bounds and padding rejected at their actual
+  range consumers.
 - Ledger: six separately repeated lookup identities and unsquared reductions.
   Closed range/A3 and draw totals are in the appended accounting entry; the
   twelve original claims, exact losses and draws need matrix evidence.
@@ -32,7 +34,8 @@ composition checks, matrices, maximum and gates remain under validation; this is
 - Determinism: fixed roles and range/A3 order, exact integer metadata, static
   disjoint namespace spans. No timing-dependent choice or challenge retry.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent NumPy signed values and
-  carry grids, both fields/repetitions and full16384-row proofs are required.
+  carry grids passed10000 cases. Both fields/repetitions and the full16384-row
+  proof remain under validation.
 - Costs: O(N) views, three batched A3s and six complete range/hash consumers
   in c_a/c_sc/c_lu/T_misc. Static counts are not benchmarks; no extra weight pass.
 - Verifier: native no_std unchanged. Strict metadata, roots, proof shapes and

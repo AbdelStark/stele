@@ -68,5 +68,7 @@ O/M widths(4,4)/(8,4)/(8,8) and maximum namespace bounds. Frozen digest:
 `d88ee6a794487bbbc38d742252bd016d82c7ca29b4cfff8916dcca7ef4ca5c19`.
 The primary controls rejected all external roots and range words, range-valid
 M+p, coherent negative zero, actual carries and every parent original claim.
-Boundary/composition and complete matrices remain under validation; the maximum
+Whole-bound, nonboolean-sign, predecessor, padded-carry and high-plane controls
+also passed. A complete aligned proof composed on the same O root; its valid
+replacement rejected. Complete matrices remain under validation; the maximum
 and required local gates are queued once. No completed review or CI claim.
