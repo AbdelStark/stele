@@ -92,3 +92,9 @@ The full16384-row/90-bit-divisor proof is running. Required CI integration,
 repository gates and final evidence remain pending. The same-author review
 records these completed controls and remaining obligations. Reproduce with
 `uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py`.
+
+All required local repository gates passed: fmt, Clippy, workspace and
+no_std checks, dependency/rust policy, digest, negative controls, soundness
+accounting, ledger, RFC/docs/glossary and CI-scope checks. The original gate
+queue advanced to the biased-sum worktree. The maximum proof remains running;
+CI integration and hosted checks remain required.
