@@ -77,6 +77,7 @@ frozen SHA-256 is
 `647ceb1175f24fb6d2ebb0b895f602a950c231919c4b3f03f80761b6f03975e3`.
 The corpus includes all75 metadata shift maxima from16 through90, the full
 row geometry and namespace limit, exact wide sums and independent NumPy
-byte addition. Proof matrices, adversarial controls, source composition,
-maximum proof, repository gates and CI remain pending. Continue Q26/Q31;
-this corpus does not graduate the research consumer.
+byte addition. All adversarial controls, padding/boundary checks and actual
+product/factor composition passed. The16-proof matrix and full16384-row
+maximum are running. Repository gates are queued; CI integration remains
+pending. Continue Q26/Q31; this evidence does not graduate the consumer.
