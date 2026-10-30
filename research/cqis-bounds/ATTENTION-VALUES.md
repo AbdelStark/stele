@@ -79,7 +79,23 @@ hidden by zeros. Retain masked real sources and all padding. Compose actual
 dynamic and static row-code proofs, including a valid different row source.
 Require complete 16384-entry dynamic and static proofs and repository gates.
 
-Implementation and proof evidence are pending. Continue Q26/Q31 with weighted
+The consumer is implemented; complete proof evidence remains pending.
+Continue Q26/Q31 with weighted
 restored sums and normalization. Complete projection-row preparation, sequence
 assembly, physical/model ownership, native/private PCS/ZK/FS, fidelity and
 original task/control criteria remain open. No benchmark or profile is claimed.
+
+The tests-first run rejected the missing module. Seed2734 passed10000
+independent NumPy cases over226948 value cells, including2153 zero scales
+and all compact output widths. Frozen corpus hash:
+`e9b2d757efa88648081269849d7886ddc78ed44119c2930b1c5fc932a85a53fb`.
+Primary source/root/offset/predicate controls passed, including valid source
+children carrying nonzero codes at zero scale. Zero-hidden scale/raw/sign
+finals and a false real-row mask rejected their actual original consumers.
+Symmetric code caps, padding, static scale and full output extension controls
+also passed. The M31 offset-alias, tighter static cap and remaining parent
+original controls passed. Complete dynamic and static prepared-row proofs
+composed on the same code/scale roots; valid alternate prepared sources
+rejected. The field/shape proof matrix is running with initial dynamic and
+static receipts checked. Two full 16384-entry proofs and all required local
+gates remain required.

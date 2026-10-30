@@ -50,6 +50,7 @@ def corpus():
     p=spec();v=c.derive(p,4)
     for bad in (replace(p,identity=1<<44),replace(p,repetitions=True),replace(p,source=v['base']),replace(p,output=p.source),replace(p,positions=(31,0)),replace(p,positions=(0,0)),replace(p,positions=(True,))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Capacity',lambda:c.derive(spec(2,16384),4));rejects('Input',lambda:c.witness(p,[1,0,0,0],[0,1]))
+    assert digest.hexdigest()=='e9b2d757efa88648081269849d7886ddc78ed44119c2930b1c5fc932a85a53fb'
     print(json.dumps(dict(seed=2734,cases=10000,cells=cells,zero_scales=zeros,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -112,6 +113,18 @@ def boundaries():
     print('symmetric code cap, padded output/predicates, static scale and full output extension reject',flush=True)
 
 
+def edge_controls():
+    d=4;p=spec(3,1,identity=4190);v=c.derive(p,d);pairs=c.prepare(p,[0]*3,[0]*3,d);values=[v['S']+r.sc.P,v['S'],v['S']];child=v['ranges']['output'];caps=(values[0],)+child.caps[1:]
+    false=r.assemble(child,*r.witness(replace(child,caps=caps),values),d);bad,_=c.assemble(p,dict(pairs,output=false),d);rejects('Output:CapRelation:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    p=spec(3,1,'static',65535,4191);v=c.derive(p,d);pairs=c.prepare(p,[0]*3,[65535]*3,d);child=v['ranges']['magnitude'];false=r.assemble(child,*r.witness(replace(child,caps=(2,1,1)),[2,0,0]),d)
+    bad,_=c.assemble(p,dict(pairs,source=c.ss.prove(v['signed'],[2,0,0],d),magnitude=false),d);rejects('Magnitude:CapRelation:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    p=spec(1,1,identity=4192);proof,_=c.prove(p,[0],[0],d);roots=oracle(p,[0],[0])[1]
+    for part,index,name in ((0,0,'Restoration:FinalEvaluationMismatch'),(1,0,'ScalePredicates:FinalEvaluationMismatch'),(1,1,'ScalePredicates:FinalEvaluationMismatch'),(1,2,'ScalePredicates:FinalEvaluationMismatch'),(1,3,'ScalePredicates:ClaimMismatch'),(2,1,'ZeroScaleCodes:ClaimMismatch')):
+        bad=copy.deepcopy(proof);old=bad['zero'][part]['final'][index][0];bad['zero'][part]['final'][index][0]=r.sc.add(old,r.sc.scalar(1,d));rejects(name,lambda:c.verify(p,roots,bad,d))
+    proof,_=c.prove(p,[0],[1],d);proof['zero'][2]['final'][0][0]=r.sc.scalar(1,d);rejects('ZeroScaleCodes:ClaimMismatch',lambda:c.verify(p,oracle(p,[0],[1])[1],proof,d))
+    print('M31 offset alias, tighter static cap and all remaining parent originals reject',flush=True)
+
+
 def composition():
     import row_code as dynamic
     import static_row_code as static
@@ -124,7 +137,7 @@ def composition():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--originals':originals,'--boundaries':boundaries,'--composition':composition,'--honest':honest,'--maximum':lambda:honest('maximum'),'--full-static':lambda:honest('static')}
+    modes={'--corpus':corpus,'--controls':controls,'--originals':originals,'--boundaries':boundaries,'--edge-controls':edge_controls,'--composition':composition,'--honest':honest,'--maximum':lambda:honest('maximum'),'--full-static':lambda:honest('static')}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
