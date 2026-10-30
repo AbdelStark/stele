@@ -86,4 +86,6 @@ All16 honest matrix proofs passed in both fields/repetition counts, including
 all four factor/carry geometries. Runtime accounts and draw maps matched
 the closed formulas. Frozen proof-state digest:
 `c80e8554fa030d0a4d98634faf0d35f0e856041d48c1c32d308d7eeb581a7b18`.
-Both full-row proofs and queued local gates remain pending.
+Both full-row proofs remain pending. All required local repository gates
+passed, including fmt/clippy/workspace tests, no_std CQIS, digest, negative
+controls and soundness accounting. Hosted CI remains pending.
