@@ -90,5 +90,5 @@ results with nonzero byte17 and exact accounts/draws. Together the24 proofs
 cover ten distinct source/internal/external width combinations. Frozen main
 proof-state SHA-256:
 `02600f4248ded8d34287268e07594b5cce8c4058b7c9a8eb6a926fdba771c456`.
-Required local gates remain pending.
+All required local gates passed.
 No measured performance, native control credit or independent audit is claimed.
