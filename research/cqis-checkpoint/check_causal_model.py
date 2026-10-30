@@ -113,7 +113,10 @@ def check():
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] in (['--attention-sum'],['--attention-sum-controls']):
+    if sys.argv[1:] in (['--attention-normalization'],['--attention-normalization-controls']):
+        from check_attention_normalization_bounds import check, controls
+        check() if sys.argv[1]=='--attention-normalization' else controls()
+    elif sys.argv[1:] in (['--attention-sum'],['--attention-sum-controls']):
         from check_attention_sum_bounds import check, controls
         check() if sys.argv[1]=='--attention-sum' else controls()
     elif sys.argv[1:] in (['--greedy-bounds'],['--greedy-controls']):

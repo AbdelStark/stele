@@ -624,3 +624,12 @@ Draft A3/A6 and RFC-0009 A2 remain unaccepted; block rounding, normalization,
 score/max schemas, complete certificate sets and actual consumers remain open.
 All original E5-03/04 and E7-06/07 criteria, native parity, fidelity and private
 inference-proof obligations remain; no production NC or performance credit.
+
+Q26 attention-normalization continuation: the [variable division study](../../research/cqis-bounds/ATTENTION-NORMALIZATION.md)
+closes conditional signed nearest normalization with static byte-column caps
+and an explicit strict remainder-gap relation. Coherent source/divisor/quotient/
+comparison aliases reject after rebuilding every local witness. Exact/NumPy
+corpora and model/checkpoint replay provide evidence; Draft A3/A6 and RFC-0009 A2
+remain unaccepted. Block rounding/summation, score/max schemas, complete
+certificate sets, actual consumers, native parity, fidelity and private inference
+remain open. Original E5-03/04 and E7-06/07 criteria and production NCs are unchanged.

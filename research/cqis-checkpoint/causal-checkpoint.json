@@ -1,5 +1,8 @@
 {
   "artifact_bytes": 1164135,
+  "attention_normalization_bytes": 3770,
+  "attention_normalization_records": 2,
+  "attention_normalization_sha256": "c90fad661fdd32d6b689b2f4f8cb75fa78e1f1ffdad208ee2c7f307e8891d4e9",
   "attention_sum_bytes": 3146,
   "attention_sum_records": 2,
   "attention_sum_sha256": "c2b7e11cebfbdd44df99ee03c251257cbde08f5ce27709c5385b53c73a2800e9",
