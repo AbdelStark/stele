@@ -55,6 +55,8 @@ def corpus():
     rejects('Capacity',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True))
     for values in ([False]*3,[-1]*3,[v['constants']['numerator_max']+1]*3,[0]):rejects('Input',lambda:c.witness(spec(),values))
     assert accepted+overflow==10000 and accepted>0 and overflow>0 and shifts==set(range(31)) and widths=={(4,1),(4,2),(4,4),(8,1),(8,2),(8,4)} and min(seen_carries)<0<max(seen_carries)
+    assert (accepted,overflow,cells,min(seen_carries),max(seen_carries))==(8418,1582,1406072,-127,1)
+    assert digest.hexdigest()=='5cb49625c6585357714ea2fc67564e95b255a8ba590c2594ac9ff67ede992482'
     print(json.dumps(dict(seed=2727,cases=10000,accepted=accepted,overflow=overflow,column_cells=cells,carry_min=min(seen_carries),carry_max=max(seen_carries),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

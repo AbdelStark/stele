@@ -3,7 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-ROUNDING.md). Tests-first rejected
-the missing module. Corpus, controls, matrices, maximum and gates are pending;
+the missing module. All10000 corpus cases passed. Controls, matrices, maximum
+and gates are pending;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research. Expected residual units fix
@@ -30,7 +31,8 @@ this is not a completed sign-off.
 - Determinism: fixed roles, range/A3 order, exact integer metadata and disjoint
   namespace spans. No challenge retry or timing-dependent choice.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent Fraction/NumPy rounding
-  and carry grids, both fields/repetitions and16384 rows await validation.
+  and carry grids passed10000 cases. Both fields/repetitions and16384 rows
+  await validation.
 - Costs: O(N) views, two batched A3s and five complete range/hash consumers
   in c_a/c_sc/c_lu/T_misc. Static counts are not benchmarks; no weight pass added.
 - Verifier: native no_std unchanged. Strict metadata, roots, proof shape and

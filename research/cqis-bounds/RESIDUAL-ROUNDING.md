@@ -61,3 +61,12 @@ reject a valid replacement. Require both fields/repetitions and a complete
 Continue Q26/Q31. Full residual composition and signed output, native lowering,
 physical/model/private inference, fidelity and original task criteria remain
 open. No new Accepted cut, benchmark or additional weight pass is claimed.
+
+Observed corpus evidence: all10000 cases passed under seed2727, with8418
+representable cases and1582 expected quotient overflows. Independent Fraction
+and NumPy oracles covered all31 shifts, all six M/r width combinations and
+1406072 byte-column cells. Observed natural carries ranged from-127 to1;
+these observations do not replace the static[-129,2] certificate.
+Corpus SHA-256 is
+`5cb49625c6585357714ea2fc67564e95b255a8ba590c2594ac9ff67ede992482`.
+Controls, composition, matrices, maximum and gates remain under validation.
