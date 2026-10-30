@@ -63,6 +63,7 @@ shifts, whole output widths4/8 and maximum namespace bounds. Frozen corpus:
 `aa7a6fa5bcb9a5011b9efeb4c3ad021f3d1dd6f39f9daf24b23b0ecb584edbb9`.
 All three-root controls, valid same-magnitude source substitutions, in-range
 O+p, both carry families and compensated original finals rejected at the
-specified consumers. Padding/terminal controls and complete proof matrices
+specified consumers. Terminal/padded carries, offset padding and high output
+planes also rejected at their required consumers. Complete proof matrices
 remain running. The separate no-carry matrix and full-row proof are queued
 after success; required repository gates are queued once.

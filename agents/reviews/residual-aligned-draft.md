@@ -4,7 +4,7 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-ALIGNED.md). Tests-first failed at
 the missing module. The10000-case corpus and primary adversarial controls passed.
-Boundary controls, matrices, maximum and gates remain under validation; this is not a completed sign-off.
+Boundary controls passed; matrices, maximum and gates remain under validation; this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research only. Expected residual schema
   fixes fractions and source roles. Only the aligned offset is proved.
@@ -18,7 +18,9 @@ Boundary controls, matrices, maximum and gates remain under validation; this is 
 - Bindings: controls cover every external root, valid same-magnitude signed
   substitutions, in-range O+p, actual carries, padding and compensated finals.
   Primary controls rejected at the named source, column and original consumers.
-  Terminal/padding controls remain under validation.
+  Terminal/padding controls also rejected at the actual cap consumers.
+  The no-carry matrix additionally tests compensated finals for both public
+  zero carry views and output, preserving the final algebraic equality.
 - Ledger: six signed lookup units plus output and nonzero carry groups;
   every repeated identity and unsquared reduction is retained. Parent degree
   is one over8N. Closed total and draw formulas are in the appended accounting
