@@ -3,8 +3,9 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md). Primary controls and
-both zero-hidden originals passed. Complete corpus, boundary/composition,
-matrix, three full geometries and repository gates remain required.
+both zero-hidden originals passed. All10000 independent corpus cases passed.
+Boundary/composition, matrix, three full geometries and repository gates remain
+required.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2 establish unsigned
   O_c=sum_j P_j*U_jc. Signed O-S*Z and normalization remain separate.
@@ -36,7 +37,7 @@ matrix, three full geometries and repository gates remain required.
   dimensions; MSB-first equality weights. No float, challenge retry, supplied
   dictionary order or cached verification receipt affects the result.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent NumPy sums, byte planes
-  and prefix-convolution carries are under validation. The three complete
+  and prefix-convolution carries passed all10000 cases and are frozen. The three complete
   16384-entry geometries exercise maximum keys, channels and mixed dimensions.
 - Costs: one A1 for every channel, with linear source projections plus complete
   range/hash/original consumers in c_a/c_x/c_sc/c_lu/T_misc. At most eight carry

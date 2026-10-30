@@ -60,6 +60,7 @@ def corpus():
         rejects('Spec',lambda:c.derive(bad,4))
     rejects('Capacity',lambda:c.derive(spec(2,16384),4));rejects('Input',lambda:c.witness(replace(p,allowed=(False,True)),[1,0],[0]*6))
     assert zeros>1000
+    assert digest.hexdigest()=='e1ae0608e74c877ac2e15a0b543bbb527cfd8a0dd85da3c07445aa69164340bb'
     print(json.dumps(dict(seed=2735,cases=10000,cells=cells,zero_outputs=zeros,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

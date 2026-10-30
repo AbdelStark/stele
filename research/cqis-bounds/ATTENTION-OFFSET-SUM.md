@@ -109,8 +109,11 @@ the fixed probability source representation even when every cap is zero. No
 complete matrix has passed yet. The initial complete proof and account passed.
 All external roots, valid substituted sources, bounded false sums, compensating
 channel errors and M31 aliases rejected. Both zero-hidden original factors
-rejected at their actual consumers. Boundary/composition, corpus and matrix
-runs continue; three full geometries and required local gates are queued.
+rejected at their actual consumers. Seed2735 passed all10000 independent
+cases over226920 value cells, including2838 zero-output cases. Frozen corpus
+hash: `e1ae0608e74c877ac2e15a0b543bbb527cfd8a0dd85da3c07445aa69164340bb`.
+Boundary/composition and matrix runs continue; three full geometries and
+required local gates are queued.
 Continue Q26/Q31 with signed weighted sums and output normalization. Full
 projection-row/GQA/cache ownership, sequence completeness, native/private
 PCS/ZK/FS, fidelity, GPU/scale and original task criteria remain open.
