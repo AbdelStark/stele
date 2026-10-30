@@ -23,7 +23,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   Lookup dimensions are a+4, a+2, bl+1 and a+bg+3 per active family;
   each keeps its separate identity and reduction. Initial honest proofs
   passed exact receipts, including no carries and one/two-byte carries.
-  The complete matrix, both full-row proofs and accounting gate remain pending.
+  All16 matrix proofs passed and their combined digest is frozen. Both
+  full-row proofs and the accounting gate remain pending.
 - Bounds: whole t<=2^44, q<=32768 and offset L-1<=Lmax-1 are consumed.
   Closed left-role caps give maximum side130815<p/2. Whole positive L
   and zero carry endpoints justify integer lifting. All17 static Lmax
