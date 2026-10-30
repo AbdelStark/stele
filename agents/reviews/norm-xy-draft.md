@@ -22,7 +22,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: total A3 numerator107a+108; six lookup dimensions a+2 and two a+3
   retain separate identities/reductions. Full nonlookup draws45a+44 of each
   label; seven parent claims. All17 complete proofs passed their exact runtime
-  account assertions. Required local gates remain running.
+  account assertions. All required local repository gates passed.
 - Bounds: only the closed expected xy role derives carry caps(0,254,255,64,0).
   Full signed magnitudes<=32768 and xy<=2^30 imply high-byte caps. Both column
   sides<=65535,2*65535<p. Exact terminal zero is enforced by the carry range.

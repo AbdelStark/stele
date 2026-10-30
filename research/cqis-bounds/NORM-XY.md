@@ -85,5 +85,5 @@ source/range/carry/original consumer. Its frozen state SHA-256 is
 All16 other proofs passed across both fields/repetitions and counts1,3,16,65,
 with exact accounts and all padded positions. Frozen matrix SHA-256:
 `4c3206c708d544df3e02f6b6a38e20680ad829263a6b5ff75eb0131ed7b46048`.
-Required repository gates remain running. No benchmark, native
+All required local repository gates passed. No benchmark, native
 control credit or independent audit is claimed.
