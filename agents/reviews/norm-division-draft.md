@@ -23,7 +23,7 @@ soundness-auditor. This is a same-author review, not independent audit.
   (22+18H+9g)*a+14*(bl+H*bh)+18g+16; each new nonlookup count is
   (10+8H+4g)*a+6*(bl+H*bh)+8g+8. Each remainder/gap half and carry family
   retains its separate lookup identity and reduction. The proof matrix,
-  maximum and accounting gate remain pending; initial honest proofs passed
+  maximum remain pending; the accounting gate passed. Initial honest proofs passed
   exact counts, and the complete matrix remains required.
 - Bounds: exact whole r/gap<=Bmax-1 follows from the power-of-two-minus-one
   split caps. All75 shift transitions passed. Equality carry caps derive
@@ -55,7 +55,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   the witness/test oracle; acceptance uses complete children and byte proofs.
 - Glossary/history: append-only Draft/accounting evidence. Configured
   branches, left shift, signed output, native/model/private inference and
-  original task criteria remain open. Gates and CI integration are pending.
+  original task criteria remain open. All required local repository gates
+  passed, including soundness accounting; CI integration remains pending.
 
 I tried to break it by setting r=B while preserving qd+r=t+h, and the
 control StrictRemainder:RoundSumMismatch rejected it at the independent

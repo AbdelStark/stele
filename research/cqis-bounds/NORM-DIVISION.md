@@ -88,7 +88,9 @@ transitions passed, and an r+p/gap-p forgery preserving strict remainder
 rejected at equality. Actual B/h from one verified factor source composed;
 a valid divisor substitution rejected even at zero quotient. The16-proof
 matrix is running, with initial exact accounting checks passed.
-The full maximum is running; local gates are queued and CI remains pending.
+The full maximum is running. All required local repository gates passed,
+including fmt/clippy/workspace tests, no_std CQIS, digest, negative controls
+and soundness accounting. Hosted CI remains pending.
 These results do not grant native or private inference admission. Reproduce
 the separate alias/transition controls with `--aliases` in addition to the
 normal corpus/control/boundary/composition/honest modes.
