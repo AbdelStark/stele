@@ -113,7 +113,8 @@ def boundaries():
     child=v['ranges']['offset'];rejects('OpeningShape',lambda:r.assemble(child,*r.witness(replace(child,caps=(65536,)),[65536]),d))
     small=spec(1,2542,1,0);bad,_=c.prove(small,[32768],1,[32768],d);expect=c.expected_roots(small,[32768],1,[32768]);expect[1]=r.root(small.factor,[1]+[0]*6+[1]);rejects('Factor:CommitmentMismatch',lambda:c.verify(small,expect,bad,d))
     sv=c.derive(small,d);parts=c.prepare(small,[0],1,[0],d);child=sv['ranges']['offset'];badpair=r.assemble(child,*r.witness(replace(child,caps=(1,)),[1]),d);bad,_=c.assemble(small,dict(parts,offset=badpair),d)
-    rejects('Offset:CapRelation:RoundSumMismatch',lambda:c.verify(small,c.roots(small,bad),bad,d))
+    # One scalar byte has dimension zero: no round exists before the final check.
+    rejects('Offset:CapRelation:FinalEvaluationMismatch',lambda:c.verify(small,c.roots(small,bad),bad,d))
     print('ragged sources, carry endpoints, q overflow, offset widths and factor extensions checked',flush=True)
 
 
