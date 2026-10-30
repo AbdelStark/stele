@@ -45,7 +45,7 @@ def corpus():
     rng=random.Random(2729);digest=hashlib.sha256();cache={};accepted=overflow=0;families=set();layouts=set();modes=set();negative_zero=False
     for case in range(10000):
         heads=1+case%4;width=(1,2,3,5,8,9,16)[case%7];rotary=0 if case%5==0 else 2*(width//2) if case%3 else 2*((width//2)//2)
-        p=spec(heads,width,rotary,('adjacent','split')[case%2],('base','linear','llama3')[case%3],(0,1,7,31)[case%4],case,1+case%2);p=replace(p,schema=replace(p.schema,fraction=case%31));v=c.derive(p,4);count=heads*width
+        p=spec(heads,width,rotary,('adjacent','split')[case%2],('base','linear','llama3')[case%3],(0,1,7,31)[(case//4)%4],case,1+case%2);p=replace(p,schema=replace(p.schema,fraction=case%31));v=c.derive(p,4);count=heads*width
         key=(c.rope.encode(p.rotation) if p.rotation else b'',p.position)
         if key not in cache:cache[key]=tuple(tuple(z[0] for z in coefficient_oracle(p.rotation,p.position,j)) for j in range(rotary//2))
         coeff=cache[key];assert c.coefficients(p)==coeff
@@ -58,7 +58,7 @@ def corpus():
         for name,values,width in zip(c.ROLES,rows,(2,2,4,1,2,2)):
             words=[x>>(8*k)&255 for k in range(width) for x in values+[0]*(v['n']-count)];manual.append(r.root(getattr(p,name),words))
         assert roots==manual;digest.update(b''.join(roots));negative_zero|=any(num<0 and z==0 for num,z in zip(w['numerator'],w['output']))
-    assert accepted+overflow==10000 and accepted>0 and overflow>0 and families=={'none','base','linear','llama3'} and layouts=={'adjacent','split'} and modes=={'none','partial','full'} and negative_zero
+    assert accepted+overflow==10000 and accepted>0 and overflow>0 and families=={'none','base','linear','llama3'} and layouts=={'adjacent','split'} and modes=={'none','partial','full'} and negative_zero,(accepted,overflow,families,layouts,modes,negative_zero)
     p=spec(128,128,128,'split','llama3',31,(1<<48)-1,2);v=c.derive(p,8);assert v['count']==16384 and v['base']+(1<<14)==(1<<63)+(1<<62)
     spans=sorted([(c.signed.derive(v[name],8)['base'],512) for name in ('input','output')]+[(r.derive(child,8)[4],64) for child in v['ranges'].values()]);assert all(v['base']+31<lo and lo+size<=v['base']+(1<<14) for lo,size in spans) and all(lo+size<=nxt for (lo,size),(nxt,_) in zip(spans,spans[1:]))
     for bad in (replace(p,identity=1<<48),replace(p,repetitions=True),replace(p,source=p.output),replace(p,remainder=v['base']),replace(p,rotation=None),replace(p,schema=replace(p.schema,fraction=True)),replace(spec(),rotation=c.rope.Parameters(4,64,Q(10000)))):rejects('Spec',lambda:c.derive(bad,4))

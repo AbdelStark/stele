@@ -74,3 +74,11 @@ values. A forged r=16384 with a reduced q retained the exact whole division;
 the actual remainder cap consumer rejected it. Initial receipt/account checks
 passed. Corpus, public/original/boundary controls, matrices, maximum and gates
 remain under validation.
+
+The first corpus run reached its coverage assertion with overflow cases
+unexercised: the unscaled sampling quarter coincided with position zero,
+whose rotation is the identity. The position schedule now varies independently
+of that quarter. Keep overflow coverage mandatory and rerun only the affected
+corpus; no verifier or rejection reason changed. All sixteen original-final
+controls, public padded coefficients, negative zero and expected position/
+layout/unit replay controls passed in the independent proof run.
