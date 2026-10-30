@@ -73,6 +73,7 @@ def honest(maximum=False):
         for size,fl,fr,fo in (((16384,0,30,0),) if maximum else cases):
             p=replace(spec(size,3110+count,reps),schema=c.residual.Spec(size,fl,fr,fo));v=c.derive(p,d);B=v['divisor'];h=v['bias'];limit=min(v['constants']['numerator_max'],32769*B-h-1);pattern=[min(x,limit) for x in (0,h,B-1,B,limit)];ms=(pattern*((size+4)//5))[:size];w=c.witness(p,ms)
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,ms,d);out=c.verify(p,c.expected_roots(p,ms,w['quotient'],w['remainder']),proof,d);assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
+    if not maximum:assert count==16 and digest.hexdigest()=='4501e21440d58161700872dfe1b07d9ab106588d6b6930940262a441be235135'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
