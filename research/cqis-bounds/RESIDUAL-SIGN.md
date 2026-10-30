@@ -28,7 +28,7 @@ condition without claiming a native record change. No inverse or runtime bound
 is required. Rounding can still produce zero from a negative nonzero numerator.
 
 Six complete ranges remain in order O,M,s,g,carry_0,carry_1. Parent A3s are
-SignColumns (degree2,m=a+3,seven originals), TerminalCarry (degree1,m=a,two
+TerminalCarry (degree1,m=a,two originals), SignColumns (degree2,m=a+3,seven
 originals), CanonicalZero (degree1,m=a,three originals), N=2^a. Every original
 has its actual point consumer, including zero-hidden signs and public views.
 Expected schema/role bytes, external and auxiliary roots and all six verified
