@@ -22,7 +22,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: inherited7bD+14bR plus parent20 A3 numerator; separate lookup
   dimensions bD+1,bR+1,bR+1 and their repeated identities/reductions. Full
   nonlookup draws3bD+6bR+8 per label. Main matrix checks exact accounts/draws;
-  all20 proofs passed. Accounting gate remains pending; no profile certified.
+  all20 proofs passed. Accounting and required local gates passed; no profile certified.
 - Bounds: Dmax is static from complete expected parameters. Each scalar width
   is derived separately, preserving power-of256 transitions. Actual bytes and
   Boolean carries bound both column sides by511;2*511<p. Integer summation

@@ -87,5 +87,5 @@ Stale gap/source words, high external slots, malformed fields/lengths and
 supplied caps also reject. No verifier or expected-reason repair was needed.
 Actual paired A=65536,D=3, bounded M=21845,MD=65535 and A=MD+R proofs
 compose with the same R=1,D=3 roots and the strict proof. Valid changed R or D
-proofs fail the pinned source roots. Required local gates remain pending; no
+proofs fail the pinned source roots. All required local gates passed; no
 measured performance, native control credit or independent audit is claimed.
