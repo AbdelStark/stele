@@ -3,8 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ROTARY-CONSUMER.md). Tests-first rejected
-the missing module. Primary root/source/arithmetic controls passed. Corpus,
-public/original/boundary controls, matrices, maximum and gates are pending;
+the missing module. All primary/public/original/boundary controls passed.
+The corrected corpus, matrices, maximum and gates remain under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6/A7. Expected descriptor and absolute
@@ -21,7 +21,9 @@ this is not a completed sign-off.
   and output substitutions, coherent r=16384, canonical negative zero, whole
   bounds, M31 aliases, padding, position/layout/units and all original finals.
   Primary roots, valid source/output replacements and coherent r=16384
-  rejected at their named consumers; the remaining controls are pending.
+  rejected at their named consumers. All original finals, public coefficient
+  padding, metadata replays, whole bounds, aliases and signed overflow also
+  rejected. Full passthrough retained its actual rounding consumer.
 - Ledger: ten separate lookup identities and unsquared reductions remain.
   Parent phase losses total10a; full range/A3 loss132a+105 and nonlookup draw
   totals56a+43 per label are in accounting. Receipt checks and the accounting
@@ -38,7 +40,9 @@ this is not a completed sign-off.
   exact descriptor bytes and validated integer position. Unsupported or unresolved generation rejects.
 - Parity: no native CPU/SIMD/CUDA change. Independent Arb coefficient checks,
   NumPy/Fraction row calculations, both fields/repetitions and16384 rows await
-  validation. These references do not establish native/GPU parity.
+  validation. The first corpus coverage assertion exposed a sampling quarter
+  coupled to identity rotation; the corrected independent position schedule
+  is running. These references do not establish native/GPU parity.
 - Costs: O(heads*width) views/ranges and four A3s in c_a/c_sc/c_lu; canonical
   generation and full public MLE evaluation remain T_misc reference costs.
   No measured constant, new cut or additional weight pass is claimed.

@@ -72,8 +72,10 @@ six external and two auxiliary root mutations, independently valid source and
 opposite-sign output substitutions, and changed magnitude/predecessor/remainder
 values. A forged r=16384 with a reduced q retained the exact whole division;
 the actual remainder cap consumer rejected it. Initial receipt/account checks
-passed. Corpus, public/original/boundary controls, matrices, maximum and gates
-remain under validation.
+passed. All public/original/boundary controls also passed: whole-value bounds,
+M31 aliases, positive32768, output padding and full-passthrough substitutions
+rejected at their named consumers. The corrected corpus, matrices, maximum
+and gates remain under validation.
 
 The first corpus run reached its coverage assertion with overflow cases
 unexercised: the unscaled sampling quarter coincided with position zero,
