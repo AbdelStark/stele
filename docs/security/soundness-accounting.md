@@ -516,3 +516,22 @@ including zero factors. Static integer columns establish N and its closed bound
 afterward; generic result digit caps do not. Exact joins add no algebraic loss
 conditional on binding. FS/H, remaining norm roles, physical/model ownership and
 private composition remain additional; no admitted native/profile/cut credit.
+
+Q26/Q31's [RMSNorm exponent consumer](../../research/cqis-bounds/NORM-EXPONENT.md)
+uses a dimension6 one-byte range with fixed caps1 on33 indices and0 on31 pads.
+Its A3 numerator is54. The dimension7 range lookup retains identity(383/|K|)^r
+and reduction198r/|K|, using F(7)+F(8)+21=198. Parent degree2 A3s of
+dimensions6,10 add18+30, so the total A3 numerator is102. One degree1 A1 of
+dimension6 enforces sum1 and adds6/|K| separately, neither squared nor repeated
+with lookup r. Parent ZeroWeight draws16 and Sumcheck22; full nonlookup draws
+are40 and46. Lookup beta/alpha each draw r, gamma/fold each15r, Sumcheck56r;
+there are no Unit draws. The parent seed binds complete expected norm bytes,
+offset/factor/indicator roots and the verified range state before Exponent,
+Factors, OneHot instances in order; each final remains absorbed. All six A3
+original/public claims and the A1 original claim retain their actual points
+and full-table consumers. Canonical fields, actual indicator caps and static
+sum bound64<p establish a unique allowed index; the A3s then force offset and
+every factor byte, including inactive/high slots. Public tables are derived
+from the entire fixed index domain, never a supplied factor. Binding and FS/H
+remain additional, as do scaled numerator/divisor, strict remainder, rsqrt,
+outputs and physical/model/private ownership. No admitted profile or cut credit.

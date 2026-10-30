@@ -49,8 +49,8 @@ and lookup dimension7. Its identity loss is(383/|K|)^r and reduction198r/|K|,
 using F(m)=3m(m-1)/2+2m. Parent degree2 A3s add3*6+3*10=48; total A3 is102.
 The one-hot degree1 A1 adds6/|K| separately, unsquared and unrepeated by r.
 Parent ZeroWeight draws16 and Sumcheck22; full nonlookup draws40 and46.
-The range lookup retains r beta/alpha and15r gamma/fold draws, plus55r Sumcheck
-draws (7*6/2+8*7/2+7); no Unit draws. FS/H and binding remain additional.
+The range lookup retains r beta/alpha and15r gamma/fold draws, plus56r Sumcheck
+draws (7*6/2+8*7/2+7=56); no Unit draws. FS/H and binding remain additional.
 
 Tests first: all33 exponents and10000 independent NumPy integer byte cases;
 both fields/repetitions with endpoints, zero and both signs; exact draws/losses.
@@ -66,3 +66,24 @@ Recommendation: continue Q26/Q31 with the actual scaled numerator/divisor,
 mantissa/strict remainder, complete rsqrt lookup, and output branches. Bind the
 same offset and factor roots there; this receipt alone does not prove exponent
 normalization or ownership of any upstream statistic/model tensor.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_exponent.py`.
+Tests first failed with the missing implementation module. All33 public rows
+match exact integer powers and byte encodings; seed2686 covers10000 NumPy
+integer cases and complete expected metadata. Frozen corpus SHA-256:
+`cb0a9948a89b6da7522709e62144c297f404742067906c41dab2ee42363aed20`.
+All16 complete proofs passed for a=-23,-1,0,9 in both fields/repetitions,
+including exact accounts, draws and all original/public claim counts. States:
+`9f539bcceead4396722ec3e4e295af53d5a910de423d9ed37f84aad9a8faf650`.
+
+All planned controls passed. Genuine ranged empty/two-bit selections reject;
+one-value changes to every external slot fail root binding. Fresh parent
+proofs with changed high/low factor bytes or exponent fail actual relations.
+Changing both original/public finals while preserving their composition fails
+the original consumer. A padded selection with wrapped slack satisfies every
+parent relation and sum1 but rejects Indicator:TerminalCarry:RoundSumMismatch.
+The nonbit selection also rejects its actual bound. No verifier bypass or
+expected-rejection repair was needed. Public-point checks and local gates are
+pending; no measured performance or independent audit is claimed.
