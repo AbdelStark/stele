@@ -124,7 +124,9 @@ even while a complete product proof fits its broader domain. A false N+p in
 valid output ranges collides at fixed rho=256 but fails the actual transcript's
 Product:Product:RoundSumMismatch. High S slots, strict fields, metadata and roots
 also reject. Actual signed-statistic-to-numerator composition passes and rejects
-a valid numerator proof with a substituted statistic. Local gates are pending.
+a valid numerator proof with a substituted statistic. All required local gates
+passed: formatting, Clippy, workspace tests, no_std CQIS, dependency/Rust policy,
+digests, controls, accounting, ledger, RFC/docs/glossary and CI scope.
 
 Source views cost O(B), plus all inherited range/product/hash consumers in the
 named cost terms. No measured constant, benchmark, weight-pass change, native

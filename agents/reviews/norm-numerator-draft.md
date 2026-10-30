@@ -23,7 +23,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   b_s+1,b+3,g+3,g+3. Product identity C-1 and A1 numerator2+4b remain separate,
   unsquared and unrepeated by lookup r. Draw totals3b_s+4b+8g+18 ZeroWeight,
   3b_s+6b+8g+20 Sumcheck exclude lookup schedules. All20 proofs check accounts;
-  the accounting gate is required before reporting local gates complete.
+  accounting and all required local gates passed.
 - Bounds: actual S<=Smax precedes configured operand construction. Generic
   product whole bounds do not imply that tighter statistic bound. Static
   column sides, actual carries and both zero endpoints give integer equality;
