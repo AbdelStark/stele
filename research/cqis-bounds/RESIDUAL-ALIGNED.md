@@ -70,5 +70,7 @@ planes also rejected at their required consumers. All16 main proof cases
 passed across both fields and repetition counts, including exact account/draw
 checks. Matrix SHA-256 is
 `255254bd0f9be1fb7dc6c7813cce742f06268dc2b2aeeb2c30ac4079cd791b3c`.
-The separate no-carry matrix is running; the full-row proof follows its success.
-Required repository gates remain queued once.
+All four no-carry proofs and their compensated-original controls passed, with
+SHA-256 `4cc81f210855e035e9e45decd56aba66192e2161475db1185de686319ee794b1`.
+The complete16384-row proof is running. Required repository gates remain queued
+once.
