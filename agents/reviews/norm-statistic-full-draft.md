@@ -25,7 +25,7 @@ soundness-auditor. This is a same-author review, not independent audit.
   21a+26+3(bs+bc) Sumcheck. All16 honest proofs passed exact receipts across
   both fields/repetitions and sizes1,3,16,65; the matrix hash is frozen.
   The full16384-element QM31/r1 proof also passed exact receipts, with its
-  frozen hash recorded in the evidence note. The accounting gate remains pending.
+  frozen hash recorded in the evidence note. The accounting gate also passed.
 - Bounds: RFC-0022 closed statistic derivation uses expected shape/caps only.
   Full-row maximum side1073709311 has twice its value below p. Whole source/S
   ranges, every carry bound and both zero endpoints are actual consumers.
@@ -50,7 +50,9 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Glossary/history: append-only Draft/accounting evidence; no new analytic
   public-MLE kind, Accepted role, production cut or NC credit. Remaining norm,
   native/model/private inference and fidelity criteria stay open. Required
-  CI integration and repository gates are pending.
+  All required local repository gates passed. Production coverage remains4/21
+  bindings and20/81 controls plus one configuration control. CI integration
+  remains pending.
 
 I tried to break it by replacing the statistic2^31 with field-congruent1
 under valid scalar ranges, and the control Column0:RoundSumMismatch rejected
