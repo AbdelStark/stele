@@ -701,3 +701,12 @@ Role deduplication, substituted representations and changed data digests reject.
 Pinned fixture fields remain preserved. Actual range/lookup/source selectors,
 complete plan/table roots, native inference and fidelity remain open. Draft
 A3/A10 and all original criteria remain unchanged; no proof/performance claim.
+
+Q26 execution continuation: the [explicit dependency study](../../research/cqis-checkpoint/MODEL-FLOW.md)
+checks physical source routing and numerical execution with all existing bound
+and function roles retained. Rebuilt graph substitutions reject under the expected
+configuration; learned values require the separately expected artifact digest.
+Attention and row containers remain composites, not admitted stacked tensor views.
+Continue with their expansion and actual source/range/branch/index/claim consumers;
+full native parity, fidelity and private PCS/ZK/FS remain mandatory. This changes
+no original task criteria or production control coverage.

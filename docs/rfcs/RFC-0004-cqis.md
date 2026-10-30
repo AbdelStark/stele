@@ -952,3 +952,18 @@ functions required by actual reduction lowering and does not bind table codes,
 tree ids, roots or witness membership. Full plan/source consumers, native
 inference and fidelity remain mandatory. No challenge, loss, cut, inference
 weight pass, measured constant or original acceptance criterion changes.
+
+### A3/A10 evidence continuation — Explicit numerical execution dependencies
+
+The [model execution study](../../research/cqis-checkpoint/MODEL-FLOW.md) derives
+physical weight/gain sources and ordered operation dependencies from the expected
+configuration. It associates all existing arithmetic-template and function roles,
+executes those numerical dependencies from separately expected artifact bytes and
+compares all residual cuts and final outputs with the full-model oracle. Same-shape
+source, edge, function and template substitutions reject before execution.
+Projected attention and row bundles remain composites; this is not canonical
+Tensor IR, padding/range/selector enforcement, private source resolution or proof
+admission. The tied head consumes the original embedding source. Research counts,
+encoding checksums and public replay earn no production NC credit. No Accepted
+text, original acceptance criterion, soundness line, cut or weight pass changes.
+Full plan/claim consumers, native inference, fidelity and private PCS/ZK remain open.
