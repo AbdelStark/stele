@@ -4,8 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ROTARY-CONSUMER.md). Tests-first rejected
 the missing module. All primary/public/original/boundary controls passed.
-The corrected10000-case corpus passed. Matrices, maximum and gates remain
-under validation;
+The corrected10000-case corpus and all16 matrix proofs passed. Maximum
+and gates remain under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6/A7. Expected descriptor and absolute
@@ -27,8 +27,8 @@ this is not a completed sign-off.
   rejected. Full passthrough retained its actual rounding consumer.
 - Ledger: ten separate lookup identities and unsquared reductions remain.
   Parent phase losses total10a; full range/A3 loss132a+105 and nonlookup draw
-  totals56a+43 per label are in accounting. Receipt checks and the accounting
-  gate require successful execution.
+  totals56a+43 per label are in accounting. Exact receipts/draw counts passed all16 matrix proofs. The accounting
+  gate remains pending.
 - Bounds: the fixed coefficient envelope23171 gives |N|<=759267328. Complete
   M/g ranges, signed sources and strict remainder put all equation sides below
   p/2. No bound is derived from observed coefficient or input extrema. There
@@ -43,8 +43,8 @@ this is not a completed sign-off.
   NumPy/Fraction row calculations passed10000 cases, including239 expected
   overflows. All92 canonical coefficient rows matched Arb. The first coverage
   assertion exposed a sampling quarter coupled to identity rotation; the
-  corrected independent position schedule passed. Both fields/repetitions
-  and16384 rows remain under validation. No native/GPU parity is claimed.
+  corrected independent position schedule passed. Both fields/repetitions passed all four matrix geometries;
+  the16384-element proof remains under validation. No native/GPU parity is claimed.
 - Costs: O(heads*width) views/ranges and four A3s in c_a/c_sc/c_lu; canonical
   generation and full public MLE evaluation remain T_misc reference costs.
   No measured constant, new cut or additional weight pass is claimed.
