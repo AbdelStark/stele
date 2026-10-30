@@ -44,5 +44,6 @@ update the tested count and digest. Keep fixture downloads with their consumers.
 Split heavy groups when necessary; every resulting group remains mandatory.
 
 All nine targeted CI tests and the seven real algebra commands passed.
-Required local gates, the full scripts test suite and hosted validation are pending. Full proving,
+All required local repository gates passed. The full scripts test suite is
+still running; hosted validation remains pending. Full proving,
 native/private inference and the original E5-03 acceptance criteria remain open.
