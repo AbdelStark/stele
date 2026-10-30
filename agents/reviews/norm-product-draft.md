@@ -43,7 +43,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   are checked. The full row stays within 131072 word-byte cells per range.
 - Glossary/history: append-only Draft/accounting evidence; original task
   status, sign/zero predicates, output branches, physical ownership, privacy
-  and fidelity requirements remain open. Required local gates are pending.
+  and fidelity requirements remain open. All required local repository gates
+  passed, including soundness accounting, digests and negative controls.
 
 I tried to break it by supplying an offset of 8193 under the expected cap
 8192, and the control Offset:CapRelation:RoundSumMismatch rejected it at the
