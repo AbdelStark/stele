@@ -3,8 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-ROUNDING.md). Tests-first rejected
-the missing module. All10000 corpus cases and primary/boundary controls passed. Composition,
-matrices, maximum and gates remain under validation;
+the missing module. All10000 corpus cases, primary/boundary controls and actual sign-source
+composition passed. Matrices, maximum and gates remain under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research. Expected residual units fix
@@ -19,7 +19,7 @@ this is not a completed sign-off.
 - Bindings: tests-first covers each external/range root, range-valid M+p,
   coherent r=B with compensating q, omitted bias, terminal/padded carries,
   and compensated final originals. These controls passed. Actual sign-source
-  composition is required.
+  composition passed; a valid alternate source rejected the pinned M root.
 - Ledger: five separately repeated lookup identities and unsquared reductions.
   Appended accounting gives all range/A3 and draw totals; matrix assertions
   and soundness-accounting.sh still need successful execution.

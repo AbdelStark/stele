@@ -71,5 +71,6 @@ Corpus SHA-256 is
 `5cb49625c6585357714ea2fc67564e95b255a8ba590c2594ac9ff67ede992482`.
 Primary/boundary controls also passed: coherent r=B, omitted bias, range-valid
 M+p, whole bounds, carry endpoints/padding and all eight final originals
-rejected at their named consumers. Composition, matrices, maximum and gates
-remain under validation.
+rejected at their named consumers. Actual canonical-sign magnitude composition
+also passed; a valid alternate sign source rejected the pinned M root. Matrices,
+maximum and gates remain under validation.
