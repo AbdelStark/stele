@@ -862,3 +862,11 @@ Continue with A=MD+R and strict0<=R<D using these same roots, then actual
 rsqrt membership and output branches. This standalone role permits D=0;
 configured positive D requires upstream composition. Original criteria and
 native/private/model proof obligations stay open.
+
+Q26/Q31 decomposition continuation: the [consumed normal_sum role](../../research/cqis-bounds/NORM-SUM.md)
+binds actual MD,R,A roots with fixed unit factors and full high-slot retention.
+A genuine different-MD sum with the same result cannot replace its pinned
+upstream product. R=D intentionally remains valid for this isolated equality;
+continue with strict0<=R<D before claiming the unique normalized interval,
+then consume actual reciprocal membership and wide output branches. All
+original task, native control and private/model requirements remain open.

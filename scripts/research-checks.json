@@ -150,5 +150,8 @@
   ],
   "cqis-norm-mantissa-product": [
     "uv run --locked --script research/cqis-bounds/check_norm_mantissa_product.py"
+  ],
+  "cqis-norm-sum": [
+    "uv run --locked --script research/cqis-bounds/check_norm_sum.py"
   ]
 }

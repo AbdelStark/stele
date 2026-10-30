@@ -594,3 +594,20 @@ at D=0. Faithful integer product acceptance gives MD<=65535*Dmax afterward;
 digit caps alone do not. Exact joins add no algebraic loss conditional on
 binding. Positive/configured D, FS/H, A=MD+R, strict remainder, rsqrt/output
 and model/private composition remain additional; no admitted profile/cut credit.
+
+Q26/Q31's [RMSNorm decomposition consumer](../../research/cqis-bounds/NORM-SUM.md)
+uses the count2 closed normal_sum role. For planes2^b, output slots2^g and
+C result columns, complete inherited A3 numerator is9b+18g+42. Three separate
+lookup dimensions b+3,g+3,g+3 retain each identity[(2^m+255)/|K|]^r and
+reduction r[F(m)+F(8)+3m]/|K|. Product identity(C-1)/|K| and A1 reduction
+(2+4b)/|K| remain separate and unrepeated by lookup r. Nonlookup draws are
+18+4b+8g ZeroWeight and20+6b+8g Sumcheck, including rho and all three A1s.
+The parent draws none; complete norm bytes, five roots and the verified child
+state seed its final state. Actual left planes reconstruct the full external
+MD/R roots; every right plane equals the fixed unit view. Actual output slots
+reconstruct full A, with excess internal slots zero and exact zero extension.
+All complete whole-input/packing/output/carry/polynomial and original/public
+consumers stay. Integer A=MD+R follows after acceptance; generic MDmax bounds
+do not supply strict R<D or upstream origins. Exact joins add no algebraic
+loss conditional on binding. FS/H, strict comparison, reciprocal/output and
+physical/model/private composition remain additional; no native profile credit.
