@@ -317,3 +317,22 @@ packing challenges; every final is absorbed. Nibble ranges precede integer
 packing faithfulness, not vice versa. Exact full-vector consumers add no algebraic
 loss conditional on binding. Hash binding, FS/H, model source composition and
 joint ZK remain separate. No production profile, commitment category or label.
+
+Q26/Q31's [consumed limb product](../../research/cqis-bounds/LIMB-PRODUCT.md)
+retains the complete limb-source and two capped-scalar range accounts. Write
+N=2^a rows per side, P=2^h digit planes, K real result columns and S=2^g>=K+1.
+The two scalar consumers each add 9g+10 in A3 numerator and one Q31 lookup
+with m=g+3. All their lookup identities/reductions remain separate from the input
+consumer's terms. After those roots/range states, one fresh Sumcheck draw rho
+compresses the integer-column residual polynomial. Its degree is at most K-1,
+conditional on the actual range statements: excess source/output/carry planes
+vanish and each real coefficient is faithful under the recomputed certificate.
+Add (K-1)/|Kfield|, including zero when K=1; retain the draw in that case.
+Three degree2 A1 invocations have dimensions a,h,h and add (2a+4h)/|Kfield|.
+Their additional draws total 1+a+2h, with no ZeroWeight or new label. Every A1
+Final is absorbed. Two main virtual claims reach the digit sumchecks; their
+two public and two actual original-source claims are consumed at the derived
+points, preserving the same row point on both sides. No random-expression
+inverse or fixed-radix substitution is used. Add these losses, do not square
+them with lookup repetitions. Hash binding, FS/H, private source composition
+and joint ZK remain separate; no native profile or commitment format is admitted.

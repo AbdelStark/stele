@@ -63,6 +63,7 @@ jobs:
       - run: uv run --locked --script research/cqis-bounds/check_capped_range.py
       - run: uv run --locked --script research/cqis-bounds/check_wide_range.py
       - run: uv run --locked --script research/cqis-bounds/check_limb_source.py
+      - run: uv run --locked --script research/cqis-bounds/check_limb_product.py
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py

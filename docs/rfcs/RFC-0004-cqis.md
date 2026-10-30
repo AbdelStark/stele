@@ -1009,3 +1009,16 @@ prove canonical nibble inputs. This closes an input-range research obligation,
 not multiplication, result/carry, signed/model source or private commitment
 admission. Conditional composition is recorded separately; original E5-03
 criteria and Draft status remain, with no native NC credit or new production cut.
+
+### A3 evidence continuation — Consumed unsigned limb products
+
+The [product study](../../research/cqis-bounds/LIMB-PRODUCT.md) combines actual
+limb input ranges with output-digit/carry ranges and consumed multiplication
+claims. A fresh transcript evaluation compresses the statically faithful column
+identities; three A1 sumchecks resolve its two virtual values to the same original
+operand rows. Fixing that evaluation to the radix would hide carry errors and
+is explicitly excluded. Conditional losses add K-1 and 2a+4h over the challenge
+field size, separately from all range/lookup terms. The producer uses supplied
+result/carry witnesses; the verifier does not recompute integer multiplication.
+This unsigned revealing study admits no signed/model source, private PCS/ZK,
+native plan, new cut or original task completion; Draft status and criteria remain.

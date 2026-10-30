@@ -734,3 +734,11 @@ are explicit; a valid packed byte cannot replace the nibble bound. Continue
 with multiplication/result/carry consumers, signed/model source relationships,
 complete native lowering and private PCS/ZK. Revealing roots and research
 controls do not admit an inference protocol or satisfy production NC criteria.
+
+Q26/Q31 product continuation: the [consumed product study](../../research/cqis-bounds/LIMB-PRODUCT.md)
+connects actual unsigned operands, result digits and carries through fresh-point
+polynomial identity and three consumed A1 sumchecks. The core avoids a replicated
+digit-pair grid. Wrong products/carries, coherent wrong-source arithmetic and
+row-pair substitutions reject through actual consumers. Continue with signed and
+model-derived relations, native lowering/codec and private PCS/ZK/FS; full reveals
+and research controls remain insufficient for inference or production NC credit.
