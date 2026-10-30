@@ -61,3 +61,29 @@ roots; show equality accepts R=D in isolation so it cannot claim strictness.
 Recommendation: continue Q26/Q31 with strict0<=R<D and same-root composition,
 then the complete reciprocal lookup and output branches. Original task status,
 acceptance criteria and native/private/model obligations remain open.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_sum.py`.
+Tests first failed with the missing module. Seed2698 passed10000 independent
+NumPy object-integer sums and int64 byte convolutions over727680 source cells.
+Frozen corpus SHA-256:
+`366f19a64949544aa45574cc47b53dc3807e4b74bb0bafe072650fb069d9389f`.
+
+All source/unit/high-slot/field-alias controls and actual upstream composition
+passed. A genuine dropped-unit sum-of-products proof fails Sum:SourceJoin.
+Valid-range A=p collides with a zero sum at fixed rho256 but fails the actual
+Sum:Product:RoundSumMismatch. One malformed-length test initially expected
+SourceShape; the verifier already rejected as Scaled:OpeningShape. Correcting
+only that expectation made the complete controls pass; no verifier change.
+Actual paired A=65536,D=3 and M=21845,MD=65535 proofs compose with R=1.
+A valid MD=65534,R=2 sum keeps A but fails the pinned upstream product root.
+An isolated R=D equality intentionally accepts, leaving strictness explicit.
+
+Eight additional width-boundary proofs passed, including an external16-slot A
+with32 internal output slots, an external32-slot MD with16 source planes and
+16-slot R with32 source planes. Each high-slot or excess-plane tamper rejects
+at its actual root/padding consumer. Exact accounts/draws pass. Frozen states:
+`ec01b18abd84f118573b253429bd305b1e6eb25b002abaae9b4a1b8537dbdce8`.
+The main field/repetition matrix and required local gates remain pending.
+No measured performance, native control credit or independent audit is claimed.

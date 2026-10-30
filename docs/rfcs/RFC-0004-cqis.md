@@ -1204,3 +1204,15 @@ divisor slots are preserved even when the product has fewer planes. This
 revealing relation adds no parent challenge, Accepted role or production cut.
 A=MD+R, strict0<=R<D, normalized interval, rsqrt, outputs and physical/model/
 private composition remain required before claiming complete RMSNorm/inference.
+
+### A3 evidence continuation — Consumed RMSNorm decomposition
+
+The [decomposition study](../../research/cqis-bounds/NORM-SUM.md) feeds actual
+MD and remainder byte views into the existing closed normal_sum role, with
+both right factors exactly1. It preserves full external MD/R/A roots across
+different source/output widths, requiring zero in excess internal slots and
+retaining every high external slot. Complete whole-input, packing, carry,
+range, product and original/public consumers establish A=MD+R. The generic
+left bound and16-slot remainder do not establish R<D; strict comparison and
+same-root upstream composition remain mandatory. No parent challenge, Accepted
+role, production cut or private/physical/model admission is added.
