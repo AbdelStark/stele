@@ -77,6 +77,14 @@ syntax error in column selection was fixed before execution. Seed2717 passed
 10000 NumPy int64 dot/convolution cases and 638449 source cells, with endpoint,
 full-domain and namespace checks. Frozen corpus SHA-256:
 `f1d72d68f017689c6fac69d9f2094f372ff79dd2de5167555010e4eecd68b528`.
-Proof controls, composition and the honest matrix are running. Full-row proof,
-required CI integration, repository gates and final review remain pending.
+All source/arithmetic/padding controls passed, including valid range proofs
+with false high S bytes or a tail carry: the dimension-zero columns rejected
+them. The actual old statistic and numerator composed on the same raw/S roots;
+a raw sign substitution preserving S rejected its expected source root.
+All16 complete proofs passed across both fields/repetition counts and row
+sizes1,3,16,65, with exact accounts and all original consumers. Frozen matrix:
+`41217dad36fd6fe7dae2df92a9e275b87052e67c9eafe090c30de674d55eae2e`.
+The full16384-element proof and required repository gates are running.
+Required CI integration and final maximum evidence remain pending. The
+same-author review records the completed controls and remaining obligations.
 Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py`.

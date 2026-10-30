@@ -22,8 +22,9 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Ledger: A3 numerator43a+62+7(bs+bc), parent A1 separately6a. Five lookup
   identities/reductions remain separate, at dimensions a+2 three times,
   bs+1 and bc+4. Nonlookup counts18a+26+3(bs+bc) ZeroWeight and
-  21a+26+3(bs+bc) Sumcheck. Initial honest proofs passed exact receipts.
-  Complete matrix, full-row proof and accounting gate remain pending.
+  21a+26+3(bs+bc) Sumcheck. All16 honest proofs passed exact receipts across
+  both fields/repetitions and sizes1,3,16,65; the matrix hash is frozen.
+  Full-row proof and accounting gate remain pending.
 - Bounds: RFC-0022 closed statistic derivation uses expected shape/caps only.
   Full-row maximum side1073709311 has twice its value below p. Whole source/S
   ranges, every carry bound and both zero endpoints are actual consumers.
@@ -31,7 +32,8 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Padding: signed padding is zero. Carry words pad to eight with zero caps;
   S bytes extend exactly to eight slots. Both endpoints, padded carry/source
   and high output controls passed. Five dimension-zero A1s retain all tails;
-  focused false high S/tail-carry controls are running.
+  fresh valid range proofs with false high S/tail carries rejected at those
+  dimension-zero columns, including Column3/4:FinalEvaluationMismatch.
 - Determinism: fixed child, byte and column order; canonical function bytes,
   exact integer arithmetic and no retries. The10000-case NumPy corpus passed
   with frozen hash. The first syntax error was fixed before any proof ran.
