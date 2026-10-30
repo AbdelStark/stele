@@ -21,8 +21,9 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Ledger: inherited A3 numerator131a+148 plus43a+35 and parent3a gives
   177a+183. Each nonlookup label has74a+75 draws. Ordered lookup dimensions
   are six(a+2), four(a+3), three(a+2), each retaining its separate identity
-  and unsquared reduction. Initial matrix receipts agree. The full matrix,
-  maximum proof and accounting gate remain pending.
+  and unsquared reduction. All16 complete matrix receipts and draw counts
+  agree; their digest is frozen. The maximum proof and accounting gate remain
+  pending.
 - Bounds: verified q<=32768 and Boolean s/sy bound each nonnegative parent
   side by32768<p/2. Actual two-byte magnitude and verified flag planes
   determine every view. No observed bound or supplied certificate is used.
