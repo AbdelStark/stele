@@ -100,3 +100,17 @@ of passed primary/original suites was needed.
 The repaired strict-remainder control passed, as did masked/padded output and
 correction-source substitutions. The complete canonical-table attack and
 remaining direct/zero/composition/matrix suites are still running.
+
+The genuinely corrupted complete high table rejected at
+HighLookup:FinalEvaluationMismatch. Its two-row fraction tree reaches a
+zero-variable sumcheck, whose changed transcript fails the final equation.
+The first test expected RoundSumMismatch; only that exact diagnostic changed.
+The failed log and successful boundary sentinel are retained.
+
+All three genuine table attacks passed after correcting that diagnostic.
+Direct-nearest source roots, compressed finals and output substitutions reject.
+Corrected E=0 retains every mandatory range, index, lookup and parent A3.
+An actual attained-maximum proof composes through the exact difference root,
+indices and canonical exponentials; another valid maximum proof with a changed
+difference cannot substitute. The16-case field/repetition matrix is running;
+three full-row proofs and required local gates are queued once.

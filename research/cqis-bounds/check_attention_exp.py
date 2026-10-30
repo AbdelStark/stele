@@ -148,7 +148,7 @@ def tables():
         elif attack=='padded':rows.append((0,0))
         else:rows=rows[:1]
         plan['table']=tuple(rows);changed=r.lu.prove(plan,[[0],ys],d);newranges=dict(pairs['ranges'],high_value=r.prove(v['ranges']['high_value'],ys,d),output=r.prove(v['ranges']['output'],ys,d));bad,_=c.assemble(p,dict(pairs,ranges=newranges,lookups=dict(pairs['lookups'],high=(changed[0],changed[1]['state']))),d)
-        rejects('HighLookup:'+('TreeShape' if attack in ('padded','partial') else 'RoundSumMismatch'),lambda:c.verify(p,c.roots(p,bad),bad,d))
+        rejects('HighLookup:'+('TreeShape' if attack in ('padded','partial') else 'FinalEvaluationMismatch'),lambda:c.verify(p,c.roots(p,bad),bad,d))
     print('genuine corrupted full table, invalid padding tuple and partial-table proofs reject',flush=True)
 
 

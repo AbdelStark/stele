@@ -16,14 +16,15 @@ This is not an independent audit. [Scope](../../research/cqis-bounds/ATTENTION-E
 - Bindings: tests-first controls target every external/auxiliary root, tuple
   column, compression-preserving final, multiplicity and all parent originals.
   All primary and eight parent-original controls passed. Genuine corrupted/
-  partial/padded-table proofs and actual maximum source composition remain
-  pending. The first strict-remainder fixture changed byte width at E=8;
+  partial/padded-table proofs, direct-nearest and E=0 controls, and actual
+  maximum-source composition also passed. The first strict-remainder fixture changed byte width at E=8;
   construction rejected before verification. The E=7 fixture keeps one byte
   and tests the strict cap without changing the verifier.
 - Ledger: the append-only account keeps all3/10/13 independent lookup units,
   unsquared reductions, actual range widths and parent0/3a/5a numerators.
   Runtime assertions check complete totals and every challenge label. The
-  accounting gate and complete matrix remain pending.
+  primary and first two matrix proofs matched exact accounts; accounting gate
+  and complete matrix remain pending.
 - Bounds: actual ranges give H,L,q,output<=Q<=16384 and r<Q. Product sides
   are at most Q^2+Q-1<p/2. Correction offset<=3 yields sides<=Q+3<p/2.
   Direct/correction u<=32768 gives an injective signed lift. Bounds depend
