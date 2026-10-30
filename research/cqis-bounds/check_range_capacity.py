@@ -64,6 +64,7 @@ def wide():
     words=r.witness(p,values)[0];root=r.source_root(p,words);print('wide maximum start',flush=True)
     proof,state=r.prove(p,values,d);print('wide maximum produced',flush=True);out=r.verify(p,root,proof,d)
     assert out['state']==state;range_account(p,out,d);assert r.derive(p,d)[:4]==(16,1,65536,2)
+    assert state.hex()=='82c9f6a03a90db11a243a4d21c4ae6ffaa7ec6c07adb75089cbe0349ebda77f7'
     bad=copy.deepcopy(proof);bad['words'][65535]=1;rejects('CommitmentMismatch',lambda:r.verify(p,root,bad,d))
     print(json.dumps(dict(kind='wide',field=d,repetitions=2,real_count=65535,word_bytes=len(words),state=state.hex()),sort_keys=True),flush=True)
 

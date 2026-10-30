@@ -70,8 +70,14 @@ the xy composition and boundary checks. The old proof hashes are unchanged:
 - Norm xy,16 proofs:
   `4c3206c708d544df3e02f6b6a38e20680ad829263a6b5ff75eb0131ed7b46048`.
 
-All required local repository gates passed. The full wide-range, signed32 and
-16384-element xy proofs remain running. CI runs geometry in gates and the three
-full proofs in separate mandatory matrix jobs; every mode retains its full
-verifier. Final maximum-proof evidence remains pending. No maximum proof
-success, independent audit or native/private inference is claimed yet.
+All required local repository gates passed. The complete maximum wide-range
+proof passed with QM31, two lookup repetitions, 65535 real words, 65536 padded
+words and 131072 word-byte cells. Exact accounts and all consumers passed;
+changing the padded source slot rejected at CommitmentMismatch. Frozen state:
+`82c9f6a03a90db11a243a4d21c4ae6ffaa7ec6c07adb75089cbe0349ebda77f7`.
+
+The maximum signed32 and 16384-element xy proofs remain pending in the same
+live sequence. CI runs geometry in gates and the three full proofs in separate
+mandatory matrix jobs; every mode retains its full verifier. Final maximum-proof
+evidence remains pending. No independent audit or native/private inference is
+claimed.
