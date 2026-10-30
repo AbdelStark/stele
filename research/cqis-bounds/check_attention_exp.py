@@ -168,6 +168,17 @@ def branches():
     print('direct nearest roots/finals/substitution and E=0 corrected mandatory-child controls passed',flush=True)
 
 
+
+def arithmetic():
+    for mode in (1,2):
+        p=spec(mode=mode,identity=3767+mode);d=4;us=[0,9,0];v=c.derive(p,d);w=c.witness(p,us);pairs=c.prepare(p,us,d)
+        for name,delta,reason in (('output',-1,'Product' if mode==1 else 'Correction'),('remainder',1,'Product')):
+            values=w[name].copy();values[0]+=delta;changed=r.prove(v['ranges'][name],values,d)
+            bad,_=c.assemble(p,dict(pairs,ranges=dict(pairs['ranges'],**{name:changed})),d)
+            rejects(reason+':RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    print('genuine bounded false output/remainder proofs reject at product and correction equations',flush=True)
+
+
 def composition():
     p=spec(identity=3770);d=4;xs=[0,-9,100];source,state=c.index.attained.prove(p.row,xs,d);expected=c.index.attained.expected_roots(p.row,xs);assert c.index.attained.verify(p.row,expected,source,d)['state']==state
     us=c.index.attained.witness(p.row,xs)['difference'];assert us==[0,9,0];proof,state=c.prove(p,us,d);roots=c.roots(p,proof);assert roots[0]==expected[3];assert c.verify(p,[expected[3],roots[1]],proof,d)['state']==state
@@ -177,9 +188,9 @@ def composition():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--originals':originals,'--boundaries':boundaries,'--tables':tables,'--branches':branches,'--composition':composition,'--honest':honest,'--maximum':lambda:honest(1),'--full-direct':lambda:honest(0),'--full-corrected':lambda:honest(2)}
+    modes={'--corpus':corpus,'--controls':controls,'--originals':originals,'--boundaries':boundaries,'--tables':tables,'--branches':branches,'--arithmetic':arithmetic,'--composition':composition,'--honest':honest,'--maximum':lambda:honest(1),'--full-direct':lambda:honest(0),'--full-corrected':lambda:honest(2)}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
     else:
-        for mode in list(modes)[:8]:modes[mode]()
+        for mode in list(modes)[:9]:modes[mode]()

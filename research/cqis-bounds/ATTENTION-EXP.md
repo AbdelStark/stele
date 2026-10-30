@@ -114,3 +114,9 @@ An actual attained-maximum proof composes through the exact difference root,
 indices and canonical exponentials; another valid maximum proof with a changed
 difference cannot substitute. The16-case field/repetition matrix is running;
 three full-row proofs and required local gates are queued once.
+
+Additional review controls use genuinely valid range and lookup children with
+false bounded outputs or remainders. Product and corrected branches rejected
+all four at Product:RoundSumMismatch or Correction:RoundSumMismatch. This
+checks the arithmetic bindings directly, in addition to the original-claim
+and root controls. The verifier and completed corpus/matrix states are unchanged.
