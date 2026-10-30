@@ -1240,3 +1240,15 @@ The generation formula does not substitute for lookup acceptance. The parent
 binds full expected norm metadata and mode3 representation without new challenges.
 Same-root normalized-interval and wide output composition, native/private/model
 ownership and fidelity remain open; no production cut or profile is admitted.
+
+### A3 evidence continuation — Same-exponent RMSNorm output factors
+
+The [output-factor study](../../research/cqis-bounds/NORM-OUTPUT-FACTORS.md)
+wraps the complete paired A/D consumer and reuses its same verified exponent
+indicator to bind branch flags, rounding divisor, rounding bias and negative-
+shift factor. All64 output slots, including inactive factors and zero padding,
+match a full expected-parameter public grid through one dimension12 A3. Every
+original/public claim remains consumed. Shifts-16..90 retain the wide output
+semantics; the int32 Requant contract is not substituted. Normalized interval,
+actual J and signed X/H products, output branches, native/private/model/physical
+ownership and fidelity remain required. No Accepted role or cut is added.

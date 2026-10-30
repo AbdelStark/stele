@@ -63,3 +63,22 @@ Recommendation: continue Q26/Q31 with actual signed X/H magnitudes, xy and
 xy*J products, then both wide output branches using these same factor roots.
 Original task, native control, stacking, physical/model/private and fidelity
 requirements remain open. No Accepted role or production cut is added.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_output_factors.py`.
+Tests first failed with the missing module. Seed2710 passed10000 independent
+NumPy integer products for factors/branches, all33 a values, full grid padding
+and metadata boundaries. Separate endpoint checks cover e=-16 and90. Frozen
+corpus SHA-256:
+`e2e63680d4653ee01222e07b0eda9dc0409527e0475271116bf13643e1b2f1df`.
+
+All source/flag/factor/high-padding/alias controls passed. Fresh false records
+and B+p represented as bytes fail Factors:RoundSumMismatch. A genuine A3
+against a one-cell-corrupted public grid satisfies every Boolean relation but
+fails Factors:ClaimMismatch at the actual public consumer. Altered original/
+public finals preserving the composition reject there too. A valid different
+negative exponent retains identical N,A,D at N=0 but fails the pinned offset
+root. No verifier or expected-reason repair was needed. The main20-proof and
+two10000-point public matrices, and required local gates, remain pending.
+No benchmark, native control credit or independent audit is claimed.
