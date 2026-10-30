@@ -66,8 +66,9 @@ independent cases and66186 paired source cells; the frozen corpus hash is
 External-root, valid source-substitution and zero-hidden configured-factor
 controls passed. A bounded H+p, actual Z-cap violation and high external
 planes rejected at their required consumers. The initial complete receipt
-and draw account matched. Composition, both-field matrix, maximum scalar
-proof and repository gates remain required.
+and draw account matched. Actual probability-sum proofs composed for1,3 and65
+keys, including valid alternate-sum rejection. Both-field matrix, maximum
+scalar proof and repository gates remain required.
 
 Continue Q26/Q31 with canonical sign and
 magnitude of O-H, block rounding and normalization. Full source/model ownership,

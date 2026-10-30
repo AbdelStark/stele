@@ -3,8 +3,9 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ATTENTION-BASE.md). The10000-case corpus and
-primary/boundary controls passed. Composition, matrix, maximum scalar proof
-and repository gates remain required.
+primary/boundary controls passed. All three actual probability-sum
+compositions passed. Matrix, maximum scalar proof and repository gates remain
+required.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2 bind H=S*Z to actual
   scalar Z bytes and the configured restored-value bound. Signed O-H remains
@@ -18,7 +19,8 @@ and repository gates remain required.
 - Bindings: both external roots, valid changed Z/product children and a valid
   altered-S product at Z=0 rejected. A bounded H+p with unchanged sources and
   carries rejected at the actual product relation. Complete Z-cap and external
-  high-byte controls passed. Actual probability-sum compositions are running.
+  high-byte controls passed. Actual probability-sum compositions passed for
+  all three geometries, including valid changed-sum rejection.
 - Ledger: four separate lookup identities and unsquared reductions remain.
   Planned A3 numerator7*bz+9*b+18*g+31, product identity K-1 and reduction4*b
   are kept separate. The initial complete receipt and draw totals matched;
