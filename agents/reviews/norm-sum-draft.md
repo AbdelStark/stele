@@ -19,7 +19,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: A3 numerator9b+18g+42, three lookup dimensions b+3,g+3,g+3,
   separate product identity C-1 and A1 loss2+4b. Nonlookup draws18+4b+8g
   ZeroWeight and20+6b+8g Sumcheck. Exact assertions cover all proof cases;
-  full proof matrix and accounting gate remain pending. No profile certified.
+  all24 main/width proofs passed. Accounting gate pending; no profile certified.
 - Bounds: complete expected norm parameters derive the closed role and widths.
   Actual whole bounds and integer product/carry acceptance establish the sum;
   each left operand's MDmax cap does not replace the subsequent strict bound.
@@ -30,7 +30,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   order; exact integer operations. Independent NumPy sums/convolutions passed
   10000 cases. No hash-map traversal, floating point or timing-dependent order.
 - Parity: native CPU/SIMD/CUDA unchanged. Full revealing field/repetition and
-  width matrices remain in progress; no native/private inference credit.
+  width matrices passed; no native/private inference credit.
 - Costs: O(B) source/zero-extension views plus all inherited c_a/c_sc/c_lu/
   T_misc work. No measured constant, benchmark claim or additional weight pass.
 - Verifier: native no_std unchanged. Expected metadata and bounded shapes
