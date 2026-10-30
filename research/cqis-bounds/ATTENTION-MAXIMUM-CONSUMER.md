@@ -98,3 +98,9 @@ and a later tied key with gap=M31-1 rejected at FirstMaximum. The exact
 inclusive delta=2^31 row verified. Actual offset/domain/masked caps and source
 padding rejected at their range consumers. Both fields/repetition counts,
 the full16384-key proof and local gates remain pending.
+
+All16 complete proofs passed across both fields/repetition counts, with exact
+accounts, draw counts and every original consumer. Frozen proof-state SHA-256:
+`e96860a9139e74686c61b5a16e1bce54ca231165236a2fda220b854ceaadbd1b`.
+The full16384-row proof has started; required local gates remain queued.
+Corpus and all negative controls were already passed and were not repeated.
