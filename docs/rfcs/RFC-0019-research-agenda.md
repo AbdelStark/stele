@@ -853,3 +853,12 @@ Continue with M in[16384,65535], actual MD=M*D, A=MD+R and strict0<=R<D
 before claiming a normalized interval; complete rsqrt membership and output
 branches remain required. Original criteria, native controls and physical/model/
 private ownership obligations are unchanged.
+
+Q26/Q31 mantissa-product continuation: the [actual bounded source consumer](../../research/cqis-bounds/NORM-MANTISSA-PRODUCT.md)
+binds M in[16384,65535] from a complete offset range and consumes the same M
+and full divisor source in the closed MD product. A valid bare product below
+the mantissa minimum or with changed M at D=0 cannot bypass the parent join.
+Continue with A=MD+R and strict0<=R<D using these same roots, then actual
+rsqrt membership and output branches. This standalone role permits D=0;
+configured positive D requires upstream composition. Original criteria and
+native/private/model proof obligations stay open.

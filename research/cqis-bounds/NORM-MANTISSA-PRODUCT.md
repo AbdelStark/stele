@@ -71,3 +71,35 @@ Recommendation: continue Q26/Q31 with A=MD+R and strict0<=R<D, retaining
 these same M/D/MD roots and the paired scaled A root. Then consume the entire
 rsqrt table and final output branches. Original blocked criteria, native controls
 and private/model inference obligations remain open.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_mantissa_product.py`.
+Tests first failed with the missing module. Seed2694 then passed10000 varied
+NumPy object-integer products and int64 byte convolutions over305392 source
+cells, including both endpoints and zero divisors. Frozen corpus SHA-256:
+`be8aa319006f98f8b825a2b886b32df0f4302d13192f9c5c93282ba6ff84ca47`.
+
+Same-author review identified an affine helper accepting canonical inputs whose
+derived one-field result was noncanonical. A focused failing control reproduced
+that encoding gap; an explicit canonical-result check now rejects it before
+root encoding. Actual verifier range-first ordering already bounds valid M by
+65535 and is unchanged. The focused regression and full corpus passed on the
+guarded code with the same digest; no valid source or transcript state changed.
+
+All16 main and4 intermediate-width proofs passed across both fields/repetitions,
+with exact loss/draw checks. They cover4/8/16 source planes and8/16/32 output
+slots, including actual140-bit MD with nonzero byte17. Frozen proof-state hashes:
+main `b509898977efa6706180a20733d691f8f07a324f4787da7f470808c873b73eb5`;
+intermediate `97529418aaddcb487717ddf01794a508ec941fb9794b6ae086a5c00940238547`.
+
+All controls and actual configured-divisor composition passed. Independently
+verified products using M=16383 or another M at D=0 fail Product:SourceJoin;
+wrapped offset slack fails Mantissa:TerminalCarry:FinalEvaluationMismatch.
+Full D16 high-byte substitutions fail Divisor:CommitmentMismatch with4 or8
+planes. Valid-range MD=p collides with the false zero product at fixed rho256
+but fails Product:Product:FinalEvaluationMismatch at the actual challenge.
+An actual D=3 upstream proof composes with M=21845,MD=65535; a genuinely valid
+D=4 product under the pinned D=3 root rejects. No expected-reason repair was
+needed. Required local gates remain pending; no benchmark, native control
+credit, independent audit or full normalization admission is claimed.
