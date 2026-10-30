@@ -1006,3 +1006,23 @@ range faithfulness. Difference/prefix terminal carries must both be zero;
 their sum<=2 cannot alias. Binding, FS/H, private selection, physical/model
 ownership and key-set completeness remain additional. No production profile
 or native NC-0500..0506 credit is admitted.
+
+### Draft A3/A6 exponential index split consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-EXP-INDEX.md). For N=2^a
+and actual byte widths2^bu/2^bh/2^bl, four independent lookup identities use
+dimensions a+bu+1,a+bh+1,a+bl+1,a+3. Each contributes
+((2^m+255)/|K|)^rpt and an unsquared reduction rpt*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. One degree-one parent A3 at a+2 adds2a+4; total range/A3
+numerator is38a+22+7*(bu+bh+bl). Parent draws are a+2 per ZeroWeight/Sumcheck
+label, and complete nonlookup counts are17a+10+3*(bu+bh+bl) each. All five
+original views have actual-point consumers, including shifted high zeros.
+Expected maximum-instance metadata, exact function/representation, four roots
+and four verified range states precede parent weights and Instance/Round/Final
+messages. Four byte columns reconstruct u=2^k*h+l, with c=2^(k mod8)<=128,
+carry<=c and zero initial/final carries; each side<=33023<p/2. Whole u/domain
+and strict low-index caps enforce the inclusive endpoint. Composition joins
+the actual verified maximum difference root without new draws and retains
+that child's entire independent account. Binding, FS/H, private sources,
+physical/model ownership and canonical table membership remain additional.
+No production profile or native NC-0500..0506 credit is admitted.

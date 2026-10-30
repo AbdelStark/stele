@@ -1497,3 +1497,17 @@ evidence remain required. Native/private selection, physical/model ownership,
 key-set completeness, exponential membership and full attention composition
 remain open. No Accepted cut, production control or profile is added; original
 task criteria and Draft amendment statuses remain unchanged.
+
+### A3/A6 evidence continuation — Consumed exponential index split
+
+Draft research: [bytewise exponential indices](../../research/cqis-bounds/ATTENTION-EXP-INDEX.md)
+consume the actual attention difference and high/low index sources under the
+expected RFC-0021 §2.1 product or corrected representation. Full supported
+B/k bounds retain the inclusive endpoint. Four complete ranges and one A3
+bind all four byte columns, strict low-index range and zero terminal carry;
+a whole M31 congruence cannot replace reconstruction. Mask and source scope
+come from the separately expected maximum instance, whose complete proof
+remains required for source composition. Canonical component membership,
+product/remainder, direct nearest lookup and probability masking remain
+separate obligations. No native/private inference, Accepted cut, production
+control or profile is admitted; original task criteria remain unchanged.

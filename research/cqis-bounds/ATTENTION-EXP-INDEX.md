@@ -65,3 +65,20 @@ This arithmetic split does not establish exponential values or full attention.
 Native/private inference, physical/model ownership, fidelity and original
 task/control requirements remain open. No benchmark, weight pass, new cut,
 production control or profile credit is claimed.
+
+Tests-first rejected the missing module. Primary root/arithmetic/field-alias
+controls passed. The first original-view suite stopped because the split replay
+expected a round-sum error, but the verifier rejected the changed public cap
+at its original claim. A linear relation that vanishes on the original rows
+has zero round messages; the changed cap is rejected when its claimed value
+is consumed. The test now requires that exact ClaimMismatch diagnostic. No
+verifier code, accepted relation or rejection condition changed. The affected
+suite is rerun separately; successful primary controls are retained.
+
+The seed2731 corpus passed all10000 cases, covering all235 supported B/k pairs,
+both represented function families, all source byte widths and maximum namespace
+geometry. Independent NumPy divmod and prefix-sum byte equations matched every
+row, with maximum observed carry127. Frozen correctness SHA-256:
+`7c266b61aa41fc8bec8bc14e99b6653b506426a217e6c936703e5979da3b68ca`.
+This is correctness evidence, not a performance measurement. The remaining
+control suites, proof matrices, full-row proof and required gates are pending.

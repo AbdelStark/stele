@@ -53,6 +53,8 @@ def corpus():
     direct=c.fn.Representation(c.fn.Function('exp_q/nearest',1,bytes([7,12,14])),0,b'');rejects('Representation',lambda:c.derive(replace(spec(B=7,k=7),representation=direct),4))
     rejects('FunctionScope',lambda:c.derive(replace(spec(),row=replace(spec().row,schema=replace(spec().row.schema,fraction=13))),4))
     for us in ([False]*3,[-1,0,0],[0,0,1],[0,(1<<31)+1,0],[0],(0,0,0)):rejects('Input',lambda:c.witness(spec(),us))
+    assert (len(pairs),cmax)==(235,127)
+    assert digest.hexdigest()=='7c266b61aa41fc8bec8bc14e99b6653b506426a217e6c936703e5979da3b68ca'
     print(json.dumps(dict(seed=2731,cases=10000,parameter_pairs=len(pairs),carry_max=cmax,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -91,7 +93,7 @@ def originals():
     for index,coefficient in ((0,v['coefficient']),(1,1),(2,1),(4,-256)):
         bad=copy.deepcopy(proof);bad['zero']['final'][index][0]=r.sc.add(bad['zero']['final'][index][0],r.sc.scalar(1,d));bad['zero']['final'][3][0]=r.sc.add(bad['zero']['final'][3][0],r.sc.scalar(coefficient,d));rejects('Index:ClaimMismatch',lambda:c.verify(p,roots,bad,d))
     for changed in (replace(p,row=replace(p.row,window=32)),replace(p,row=replace(p.row,position=32)),replace(p,representation=replace(p.representation,function=replace(p.representation.function,params=bytes([22,12,13,7]))))):rejects('Index:ClaimMismatch',lambda:c.verify(changed,roots,proof,d))
-    changed=replace(p,representation=replace(p.representation,function=replace(p.representation.function,params=bytes([22,12,14,8]))));rejects('High:CapRelation:RoundSumMismatch',lambda:c.verify(changed,roots,proof,d))
+    changed=replace(p,representation=replace(p.representation,function=replace(p.representation.function,params=bytes([22,12,14,8]))));rejects('High:CapRelation:ClaimMismatch',lambda:c.verify(changed,roots,proof,d))
     i,tables=c.part(p,proof,d);tables[0][-1]=r.sc.scalar(1,d);tables[3][-1]=r.sc.scalar(v['coefficient'],d);t=c.transcript(v,roots+[proof['carry_root']],[pairs[name][1] for name in c.CHILDREN],d);bad=dict(proof,zero=r.zero_prove(t,i,tables));rejects('Index:ClaimMismatch',lambda:c.verify(p,roots,bad,d))
     print('all five originals, shifted public zeros and expected mask/position/function/split replays reject',flush=True)
 
