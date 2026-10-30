@@ -273,3 +273,15 @@ are reserved for actual function/representation/data binding consumers; no resea
 credit. Costs are O(Lc) public evaluation plus the actual per-component c_lu and
 recombination/range c_a; table generation is T_misc. No measured constant, new
 commitment category or weight-pass change. All actual losses retain ledger lines.
+
+### A2 evidence continuation — Byte membership in capped scalar relations
+
+Status: Draft. Q26/Q31 [range consumer evidence](../../research/cqis-bounds/CAPPED-RANGE.md)
+uses the exact range_8 table and all-one selectors over eight byte planes per
+padded scalar row. Its complete Q31 lookup terminates at actual revealing source
+and multiplicity consumers. Four subsequent A3 relations consume the same bound
+bytes, a canonical scalar source and a carry vector. Invalid selected byte values
+fail the lookup equation even when their field-valued column arithmetic is valid.
+This accepts no private auxiliary commitment, native plan, source/PCS interface,
+profile or new label. Full original A2/E3-07 and model range-discipline obligations
+remain; conditional composition is recorded in the soundness-accounting document.

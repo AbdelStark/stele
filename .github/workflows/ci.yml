@@ -60,6 +60,7 @@ jobs:
       - run: uv run --locked --script research/cqis-bounds/check_requant.py
       - run: uv run --locked --script research/cqis-bounds/check_norm_bounds.py
       - run: uv run --locked --script research/cqis-bounds/check_encoding.py
+      - run: uv run --locked --script research/cqis-bounds/check_capped_range.py
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py

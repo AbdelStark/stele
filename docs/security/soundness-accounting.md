@@ -266,3 +266,18 @@ or selection bit resolver has m_i=a. Draws are the bit core's draws plus
 or new challenge kind is used. Stage selection resolvers add 4ak and ak draws.
 All original symbol finals require actual openings. PCS/batching, FS/H and joint
 ZK losses remain additional; payload reduction is no proof/profile admission.
+
+Q26/Q31's [capped scalar range consumer](../../research/cqis-bounds/CAPPED-RANGE.md)
+uses the unchanged revealing Q31 lookup with m=b=a+3, c=1, t=256 and r in
+{1,2}. The static selected count 2^(a+3)<=32768<p permits one ordinary unit and
+no preliminary Unit draws. Its identity numerator is 2^(a+3)+255, raised to r after division by
+|K| under the existing conditional theorem. Its separate reduction numerator is
+r*[F(a+3)+F(8)+3(a+3)], F(n)=3n(n-1)/2+2n. It then invokes four k=0 A3 relations
+with (m,delta)=(a,1),(a+2,1),(a+2,2),(a,1). Their ordered phase records sum to
+9a+10, with 4a+4 ZeroWeight and 4a+4 Sumcheck draws and no skip draw. This A3
+loss is added, not squared. The expected caps/source/table, all original/auxiliary
+roots and completed lookup state precede these draws; every final is absorbed.
+Twelve A3 and 2r lookup claims reach actual full-vector consumers. Tests compare
+all records, draw counts and final states. Exact consumption adds no algebraic
+loss conditional on the bound originals. Merkle binding, FS/H, private source
+composition and joint ZK remain separate; no production profile or label is added.
