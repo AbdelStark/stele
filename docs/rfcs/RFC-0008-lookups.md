@@ -285,3 +285,15 @@ fail the lookup equation even when their field-valued column arithmetic is valid
 This accepts no private auxiliary commitment, native plan, source/PCS interface,
 profile or new label. Full original A2/E3-07 and model range-discipline obligations
 remain; conditional composition is recorded in the soundness-accounting document.
+
+### A2 evidence continuation — Exact wide-word byte membership
+
+Status: Draft. The [wide range study](../../research/cqis-bounds/WIDE-RANGE.md)
+uses one ordinary Q31 unit over 2BN source/complement bytes, with N<=4096
+and B<=32 derived from expected unsigned caps. Its static selected count is
+below p; every byte, including padding and high planes, remains selected.
+The original byte-word source is independently root-bound and connected to
+the lookup's first half by consumed A3 claims. Complement/carry relations then
+enforce the exact cap. Conditional identity and reduction errors stay separate.
+This admits no private auxiliary root, production plan, range dominance rule,
+profile or label; full A2 and E3-07 obligations remain.

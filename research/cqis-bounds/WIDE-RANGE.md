@@ -42,3 +42,112 @@ have (dimension,degree) (a+b,1),(a+b,1),(a+b,2),(a,1), adding
 (9a+7b)/|K|, not squared. They draw 4a+3b weights and 4a+3b tails, with
 no skip draw. Nine A3 claims and 2r lookup claims must be consumed.
 Binding, FS/H, private source composition and joint ZK remain additional.
+
+## Statement, layouts and actual consumers
+
+The verifier supplies Spec(identity,source,caps,repetitions), field degree 4 or 8,
+and an independently expected original source root. Identity is an integer in
+[0,2^56), source is a u64 >=2, repetitions is 1 or 2, and caps is a nonempty
+tuple of at most 4096 integers in [0,2^160). No proof field selects these values.
+Let N=nextpow2(len(caps)); let B=nextpow2(max(1,ceil(bitlength(max(caps))/8))).
+Both are at least one. The byte-plane count B is fixed by caps, never the witness.
+Pad caps with zeros to N. Even a 160-bit cap uses 32 byte planes, with all twelve
+extra high planes checked. These are deliberate zero extensions, not free cells.
+
+Reserve base=2^63+64*identity through base+63; source must be outside that span.
+Original, lookup and carry trees have ids source, base, base+1, counts BN,2BN,BN,
+kind zero and width four, with canonical little-endian u32 field entries. Q31
+multiplicity trees use base+2+j and its unchanged extension-field format. Source
+bytes use plane-major order, least significant byte first, N rows per plane.
+The lookup vector concatenates all B source planes then B complement planes.
+Carry planes are C1..CB; C0 is the zero public view. The verifier checks only
+canonical field encodings before arithmetic, not that supplied bytes/bits are in
+range. The real range_8 lookup and CarryBoolean establish those memberships.
+
+Regenerate the exact RFC-0021 range_8 table and TableId. Select every one of the
+2BN entries, including padded rows. This closed standalone research statement
+proves zero padding instead of applying an assumed model validity selector.
+The unchanged Q31 verifier checks both fraction trees, nonzero roots, the lookup
+identity and all source/multiplicity claims against complete Merkle openings.
+There is no verifier membership scan, challenge retry or weakened lookup mode.
+
+The A3 public context is the exact domain `stele/research/q26/wide-range/v1\0`,
+u8 version=1, u8 degree, u8 repetitions, u64 identity, u64 source, u32 real cap
+count, each ordered cap in 20 bytes, and the exact TableId. Integers are little
+endian. Append the expected source root, lookup-byte root, carry root and complete
+lookup transcript state, all 32 bytes. This distinct research context is not a
+registered production label, plan encoding or proof format.
+
+Four A3 invocations run with ids 4*identity+j, j=0..3, always k=0:
+
+| Relation | Dimension | Inputs and polynomial |
+|---|---|---|
+| SourceCopy | a+b | Original byte-word X and lookup first-half A: X-A |
+| CapRelation | a+b | A+B+Cin-256 Cout-capdigit |
+| CarryBoolean | a+b | C(C-1) |
+| TerminalCarry | a | CB |
+
+The input ids are (source,base+8), (base+8,base+17,base+18,base+1,base+19),
+(base+1), (base+21), in that order. Derived ids denote exact slices, shifted
+carry or cap-digit views of authenticated originals/public data, not commitments.
+Their shapes and source slices are rebuilt from Spec. Every final value is
+absorbed and every one of the nine claims is evaluated at the exact returned
+point against those vectors. Even B=N=1 retains all four zero-dimensional
+relations and all twelve phase records, with no random draws or algebraic loss.
+
+The proof is conditional on the range_8 and A3 relations holding and original
+binding. SourceCopy identifies each original field entry with its byte-valued
+lookup counterpart, hence fixes the integer byte representation. With byte and
+bit membership, both sides of each addition column lie in [0,511]. Their field
+equality is therefore an integer equality. Multiplying column j by 256^j and
+summing cancels all interior carries; C0=CB=0 leaves W+S=cap. Nonnegative S
+implies W<=cap, and zero caps also force padded word/complement bytes to zero.
+The argument remains valid for W above p and for high zero-extension planes.
+It never treats the whole-word equality as faithful in one base-field element.
+
+## Evidence, costs and next obligations
+
+Run `uv run --locked --script research/cqis-bounds/check_wide_range.py`.
+The control script first failed because wide_range did not exist. Seed2668
+checks 10000 configurations across 0..160-bit caps, 971914 byte cells, with
+independent exact reconstruction and column equations. Frozen witness checksum:
+`c3b0e63ec3fd2ae6d773636f7f60d4afa225e3a6ecb0d75ba1fa39c2ed3c205d`.
+The 4096-row, 32-plane boundary is a metadata/witness test, not a maximum proof.
+Twenty full proofs cover both fields/repetition counts, zero/255/257 caps,
+ragged rows, multi-byte and 160-bit caps. All nine A3 and 2r lookup claims,
+ordered phase records, loss numerators and challenge counts are checked.
+Frozen final-state checksum:
+`5899ef889669e2af476aaf025b21f8fa46fbda65121a5b8ab45b665f2b9c3eba`.
+Folded A3 proof objects equal the naive reference on zero/one-dimensional cases
+in both fields and repetition counts. Shared lookup, Merkle and field engines
+are disclosed; these are not independently implemented private-prover tests.
+
+Controls cover the 511-under-257 counterexample and a nonzero byte above the
+160-bit cap width. Wrapped complements satisfy all column and bit relations
+but fail TerminalCarry. Field-valued nonbit carries can hide a multiple of p
+with endpoint zero, but fail CarryBoolean. Wrong original bytes fail SourceCopy;
+coordinated finals that preserve its equation fail actual ClaimMismatch. Changed
+expected caps also fail the real public consumer. One-value original/carry/lookup
+opening mutations fail CommitmentMismatch. A root-bound selected byte p-1 has
+valid field column arithmetic but fails the actual lookup RootMismatch. Padded
+row corruption, malformed proof lengths, noncanonical fields, invalid expected
+specifications, id collision and capacity boundaries have separate controls.
+No research control earns native NC credit.
+
+The dense folded reductions and exact per-claim MLE consumers cost O(BN) field
+work for these fixed degrees/input counts, plus Q31 table/multiplicity/tree work,
+metadata, hashing and transcript operations. Full reveals include BN original
+fields, 2BN lookup fields and BN carry fields, plus multiplicities/messages.
+This deliberately duplicates original bytes in the lookup representation to
+make the source equality an explicit consumed relation. It is not a proposed
+private or succinct commitment design, performance measurement or memory claim.
+The c_a/c_lu/T_misc terms gain these symbolic costs; no fitted constant, actual
+model tensor, checkpoint output, native crate or inference weight pass changes.
+
+Recommendation: continue Q26/Q31 with actual source-to-numerical-operand consumers,
+including signed offsets, byte/nibble layout links and the multiplication columns.
+The original root here names an unsigned byte word; it is not automatically the
+same object as a scalar, signed operand, packed checkpoint or arbitrary limb
+vector. Full model range dominance, canonical plan/codec, native parity, complete
+private PCS/ZK/FS and fidelity remain required. Draft evidence cannot admit a
+production auxiliary root or complete E5-03/E3-07 by itself.

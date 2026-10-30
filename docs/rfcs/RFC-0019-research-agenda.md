@@ -718,3 +718,11 @@ field-alias, nonbit and out-of-table attacks reject at distinct real consumers.
 Continue with model-derived static caps, signed/wide source representations,
 private producing reductions/PCS, range dominance and joint masking. Full-vector
 reveals are research evidence, not an inference proof or privacy result.
+
+Q26/Q31 wide-range continuation: the [exact word study](../../research/cqis-bounds/WIDE-RANGE.md)
+closes the gap between coordinate-wise limb caps and an arbitrary unsigned
+whole-word maximum through actual range_8 and consumed A3 relations. Source
+copy, per-column integer faithfulness and zero carry endpoints remain explicit.
+Continue with the actual source-to-numerical-operand consumers, signed/nibble
+representations, multiplication relations and joint private masking. Revealing
+roots remain research evidence, with no production control or profile credit.

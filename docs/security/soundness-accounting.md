@@ -281,3 +281,20 @@ Twelve A3 and 2r lookup claims reach actual full-vector consumers. Tests compare
 all records, draw counts and final states. Exact consumption adds no algebraic
 loss conditional on the bound originals. Merkle binding, FS/H, private source
 composition and joint ZK remain separate; no production profile or label is added.
+
+Q26/Q31's [exact wide-word range consumer](../../research/cqis-bounds/WIDE-RANGE.md)
+uses the same Q31 lookup with a=log2(N), b=log2(B), m=a+b+1, one ordinary unit,
+c=1, t=256 and r in {1,2}. Expected caps below 2^160 determine B<=32 and
+N<=4096, so the static count 2BN<=262144<p needs no preliminary Unit draws.
+The conditional identity term is [(2BN+255)/|K|]^r; the separate lookup reduction
+is r*[F(m)+F(8)+3m]/|K|, F(n)=3n(n-1)/2+2n. SourceCopy, CapRelation,
+CarryBoolean and TerminalCarry invoke k=0 A3 with (dimension,degree)
+(a+b,1),(a+b,1),(a+b,2),(a,1). Their twelve ordered records add (9a+7b)/|K|,
+with 4a+3b ZeroWeight and 4a+3b Sumcheck draws, no skip draw. This term is
+added, not squared. Nine A3 claims and 2r lookup claims reach actual revealing
+original/public/view consumers. Expected caps/source/table, source/byte/carry
+roots and completed lookup state precede A3 draws; all finals are absorbed.
+No wide integer is embedded in the field: only byte columns use integer
+faithfulness, followed by integer telescoping. Exact full-vector consumption
+adds no algebraic loss conditional on binding. Hash binding, FS/H, private
+source composition and joint ZK remain additional. No profile or label is added.
