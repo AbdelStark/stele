@@ -129,5 +129,8 @@
     "uv run --locked --script research/logup-characteristic/check_units.py",
     "uv run --locked --script research/logup-characteristic/check_fraction.py",
     "uv run --locked --script research/logup-characteristic/check_lookup.py"
+  ],
+  "cqis-silu": [
+    "uv run --locked --script research/cqis-bounds/check_silu_consumer.py"
   ]
 }
