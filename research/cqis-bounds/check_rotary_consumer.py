@@ -66,6 +66,8 @@ def corpus():
     zero=spec(1,3,0);rejects('Spec',lambda:c.derive(replace(zero,rotation=spec().rotation),4))
     for xs in ([False]*3,[-32769]*3,[32768]*3,[0],(0,0,0)):rejects('Input',lambda:c.witness(spec(),xs))
     envelope=replace(spec(1,4,4),rotation=c.rope.Parameters(4,64,Q(16213,10000)));assert c.coefficients(envelope)[1]==(11586,11585) and sum(map(abs,c.coefficients(envelope)[1]))==23171
+    assert (accepted,overflow,len(cache))==(9761,239,92)
+    assert digest.hexdigest()=='4ad1539b58816165cdc208d8569eed530c36d123d26705bbc8c0a9997db6a04d'
     print(json.dumps(dict(seed=2729,cases=10000,accepted=accepted,overflow=overflow,canonical_rows=len(cache),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

@@ -4,7 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/ROTARY-CONSUMER.md). Tests-first rejected
 the missing module. All primary/public/original/boundary controls passed.
-The corrected corpus, matrices, maximum and gates remain under validation;
+The corrected10000-case corpus passed. Matrices, maximum and gates remain
+under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6/A7. Expected descriptor and absolute
@@ -39,10 +40,11 @@ this is not a completed sign-off.
   child and plane order. The immutable cache retains at most16 rows, keyed by
   exact descriptor bytes and validated integer position. Unsupported or unresolved generation rejects.
 - Parity: no native CPU/SIMD/CUDA change. Independent Arb coefficient checks,
-  NumPy/Fraction row calculations, both fields/repetitions and16384 rows await
-  validation. The first corpus coverage assertion exposed a sampling quarter
-  coupled to identity rotation; the corrected independent position schedule
-  is running. These references do not establish native/GPU parity.
+  NumPy/Fraction row calculations passed10000 cases, including239 expected
+  overflows. All92 canonical coefficient rows matched Arb. The first coverage
+  assertion exposed a sampling quarter coupled to identity rotation; the
+  corrected independent position schedule passed. Both fields/repetitions
+  and16384 rows remain under validation. No native/GPU parity is claimed.
 - Costs: O(heads*width) views/ranges and four A3s in c_a/c_sc/c_lu; canonical
   generation and full public MLE evaluation remain T_misc reference costs.
   No measured constant, new cut or additional weight pass is claimed.

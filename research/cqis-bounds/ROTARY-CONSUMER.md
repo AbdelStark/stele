@@ -74,8 +74,8 @@ values. A forged r=16384 with a reduced q retained the exact whole division;
 the actual remainder cap consumer rejected it. Initial receipt/account checks
 passed. All public/original/boundary controls also passed: whole-value bounds,
 M31 aliases, positive32768, output padding and full-passthrough substitutions
-rejected at their named consumers. The corrected corpus, matrices, maximum
-and gates remain under validation.
+rejected at their named consumers. Matrices, maximum and gates remain
+under validation.
 
 The first corpus run reached its coverage assertion with overflow cases
 unexercised: the unscaled sampling quarter coincided with position zero,
@@ -84,3 +84,13 @@ of that quarter. Keep overflow coverage mandatory and rerun only the affected
 corpus; no verifier or rejection reason changed. All sixteen original-final
 controls, public padded coefficients, negative zero and expected position/
 layout/unit replay controls passed in the independent proof run.
+
+The corrected seed2729 corpus passed all10000 cases:9761 representable outputs
+and239 expected output overflows. All92 distinct canonical coefficient rows
+matched the independent Arb oracle; NumPy integer rotation and Fraction rounding
+matched every row. Both layouts, all three frequency families, partial/full/
+zero rotation, negative numerators rounding to zero and full namespace checks
+passed. Frozen SHA-256:
+`4ad1539b58816165cdc208d8569eed530c36d123d26705bbc8c0a9997db6a04d`.
+The first failed coverage run is retained as evidence of the sampling repair;
+no verifier, bound, rejection reason or proof-matrix input changed.
