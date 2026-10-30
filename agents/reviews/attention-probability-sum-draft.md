@@ -18,9 +18,9 @@ independent audit. [Scope](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.
   Actual maximum/exp/sum composition passed for all three representations;
   a separately valid exponential permutation with unchanged Z cannot substitute.
 - Ledger: two lookup identities and unsquared reductions remain separate.
-  Range/A3 numerator9a+7bp+7bz and sum A1 numerator a match the first matrix
-  proofs. Draws are4a+3bp+3bz ZeroWeight and5a+3bp+3bz Sumcheck. The full
-  matrix and repository accounting gate remain pending.
+  Range/A3 numerator9a+7bp+7bz and sum A1 numerator a match all 16 matrix
+  proofs. Draws are4a+3bp+3bz ZeroWeight and5a+3bp+3bz Sumcheck. The repository
+  accounting gate remains queued; the matrix hash is frozen.
 - Bounds: expected K and E give both sides<=K*2^E<=2^28<p/2. Complete ranges
   precede whole-field lifts. The scalar bound rejects modular aliases even
   when they preserve the sumcheck statement. Bounds never use observed data.
@@ -31,8 +31,8 @@ independent audit. [Scope](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.
 - Determinism: fixed source/byte/child order, canonical expected metadata and
   integer arithmetic. No table cache, float, challenge retry or timing choice.
 - Parity: native CPU/SIMD/CUDA unchanged. The10000-case independent NumPy sum/
-  byte corpus passed, including1157 zero sums and all byte widths. Both proof
-  fields/repetitions and the full16384-row proof still require completion.
+  byte corpus passed, including1157 zero sums and all byte widths. All 16 proofs across
+  both fields/repetitions passed; the full 16384-row proof remains running.
 - Cost: O(N) byte views, two complete ranges/lookups and one A1 charge
   c_x/c_sc/c_lu/T_misc. No measured constant, benchmark or weight-pass change.
 - Verifier: expected dimensions and strict proof keys/field encodings govern

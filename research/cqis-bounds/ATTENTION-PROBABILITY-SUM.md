@@ -70,4 +70,7 @@ range metadata changed its transcript. Only that diagnostic was corrected,
 with the first log retained and no verifier change. Actual maximum/exp/sum
 composition passed all three representations; a genuinely valid exponential
 source permutation with the same Z rejected the expected source root.
-The16-case matrix is running; full-row proof and required gates remain pending.
+All 16 matrix proofs passed across both fields and repetition counts at sizes
+1,3,16,65 and exponents 0,7,8,14, with exact account checks. Frozen state hash:
+`40df43b8920021351df039e0d64e7c022c2f8d09a00030e885b04732a385a009`.
+The complete 16384-row proof has started. Required local gates remain queued.

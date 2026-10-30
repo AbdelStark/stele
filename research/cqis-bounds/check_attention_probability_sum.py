@@ -68,6 +68,7 @@ def honest(maximum=False):
             if maximum:p=replace(p,row=replace(p.row,position=p.row.positions[-1]))
             v=c.derive(p,d);xs=[(v['Q'] if maximum or done%4==1 else (0,v['Q'],v['Q']-1,1)[j%4])*int(bit) for j,bit in enumerate(v['allowed'])]
             print('honest start',done+1,d,reps,count,E,flush=True);proof,state=c.prove(p,xs,d);out=c.verify(p,c.expected_roots(p,xs),proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,count,E,flush=True)
+    if not maximum:assert digest.hexdigest()=='40df43b8920021351df039e0d64e7c022c2f8d09a00030e885b04732a385a009'
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
