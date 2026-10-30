@@ -800,3 +800,12 @@ consumers with expected units fu+E. Continue with SiLU membership, physical/mode
 source routes, native stacking/lowering, private PCS/ZK/FS and independent review.
 Revealing capacity-limited proofs do not complete original inference tasks or
 earn production control credit.
+
+Q26/Q31 SiLU continuation: the [full-table consumer](../../research/cqis-bounds/SILU-CONSUMER.md)
+derives all65536 canonical rows from expected function/representation metadata
+and joins both lookup columns to actual signed16 sources. The totality bound
+rejects E>F globally; E<=F still requires the complete certified generator.
+The revealing prototype retains every original claim, selector and multiplicity
+consumer. Continue with physical/model-owned routing, native stacking/lowering,
+private PCS/ZK/FS and independent review. Capacity limits and canonical-u32
+research roots change no original criteria or production control obligations.

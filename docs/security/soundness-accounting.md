@@ -461,3 +461,22 @@ actual signs close multiplication and canonical zero. N<=1024 keeps lookup
 counts below p; no Unit draws. Binding, FS/H, SiLU membership, physical/model
 ownership, native stacking and private composition remain separate. No admitted
 production cut, label, profile or original control credit.
+
+Q26/Q31's [SiLU consumer](../../research/cqis-bounds/SILU-CONSUMER.md) has N=2^a
+rows and the complete two-column table T=65536. Two signed16 children add
+A3 numerator86a+70, and36a+28 draws of each A3 label, excluding lookup schedules.
+Six range lookups each contribute[(2^(a+2)+255)/|K|]^r and
+r[F(a+2)+F(8)+3(a+2)]/|K|. Functional membership adds
+[(2^a+131071)/|K|]^r and r[F(a)+F(16)+3a]/|K|, F(m)=3m(m-1)/2+2m,
+F(16)=392. No reduction is squared. Functional beta/alpha draws each r,
+gamma/fold each r(a+16), Sumcheck r[a(a-1)/2+120+a]; no Unit draws.
+All multiplicity roots precede every beta/alpha. Every original input, output
+and multiplicity claim is consumed at its emitted point, including zero rows.
+Exact joins derive field columns from verified raw byte planes and sign bits;
+they add no algebraic loss conditional on binding. The parent adds no challenge.
+Its final transcript seed binds expected function/representation bytes, six roots
+and three verified child states. Whole canonical table generation remains required;
+a matching id or only queried rows cannot authorize supplied data. E>F rejects
+the whole configuration even for a zero query. N<=2048 is a research capacity.
+Binding, FS/H, physical/model ownership, native stacking and private composition
+remain additional; no admitted profile, production cut or native control credit.

@@ -1,6 +1,6 @@
 # Consumed SiLU membership — Q26 / Q31
 
-Status: preimplementation research using RFC-0021 §§2.2–4 and RFC-0008 A4,
+Status: revealing research using RFC-0021 §§2.2–4 and RFC-0008 A4,
 under Draft RFC-0004 A3/A8 and RFC-0008 A2. Original tasks remain blocked/open;
 no production cut, private proof, native control credit or independent audit.
 
@@ -22,7 +22,7 @@ Regenerate the complete canonical component from the expected descriptor; lift
 each signed integer as v mod p. Preserve all65536 input/output pairs and their
 canonical input order. Immutable definition caches are not proof authority.
 
-Static totality lemma, to check before implementation: E<=F guarantees output
+Static totality lemma, checked before implementation: E<=F guarantees output
 int16 representability for every input. Positive scaled values are<32767 and
 negative magnitudes<16384 (zero exact). If E>F, then F<=13 and t=32767 gives
 x>1, exp(x)>2 and scaled output>2*32767*(2/3)>32767.5, so the whole table
@@ -74,3 +74,70 @@ proof under a one-entry-corrupted table and verify it under the expected table.
 Compose a genuine SiLU output root into the gated consumer and reject a valid
 product proof using a substituted factor. Native/private/model ownership and
 original larger-shape criteria remain independent obligations.
+
+## Actual source and table consumers
+
+The implementation derives all canonical integer rows before processing a
+witness, and lifts their signed coordinates into M31 without changing their
+order. The input coordinate is injective in M31, so all65536 tuple rows remain
+distinct. The two signed proofs first authenticate raw bytes, magnitudes and
+signs, including canonical zero and padding. Only then does verification derive
+each field view and require exact equality to the lookup's revealed sources.
+Lookup source roots are recomputed from those views. Every table denominator,
+selector, coefficient, original source and multiplicity MLE retains its existing
+consumer; no compressed final can replace either original column.
+
+No parent polynomial or signed whole-word field equality is needed: the actual
+byte/sign definitions determine an injective lift of signed16 values. The six
+range lookups, signed A3s and complete functional fraction tree remain. The
+metadata precheck examines only static parameters. For valid representability
+pairs, failure of any canonical row or its precision schedule still rejects
+the whole configuration. Caches contain immutable rows derived solely from the
+expected definition; they never import a proof-supplied table or digest.
+
+The final wrapper transcript has no draws. Its seed contains fixed complete
+metadata, raw input/output roots, two magnitude roots, two derived field roots,
+and the fully verified signed-input, signed-output and lookup states. Consumers
+outside this adapter must supply authenticated model configuration and source
+ownership. A revealed root alone does not establish that model association.
+
+## Reproduction and current evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_silu_consumer.py`.
+The tests-first run failed with the missing implementation module. Seed2679
+checks all65536 signed lifts against independent NumPy little-endian int16
+decoding,10000 varied metadata contexts, and all465 F/E pairs. The360 E<=F
+pairs satisfy the static representability bound; all105 E>F endpoint calls
+reject Overflow. This is not a claim that all360 complete tables were generated.
+Frozen corpus SHA-256:
+`06ead64872b0749f414678a17f3a4a9443e29002f1fe4d4b6d67a637131c3f3a`.
+
+The full proof matrix uses (field,repetitions,F,E)=(4,1,0,0),(4,2,8,8),
+(8,1,14,14),(8,2,30,14), retaining the complete table in every case. It includes
+zero, nonlinear values, negative endpoints and ragged padding. Each case checks
+2500 NumPy integer gathers, all loss terms, actual draws and original claims.
+The entire F0/E0 table has the independent ReLU oracle; F30/E14 is identically
+zero. Synthetic JSON fixtures save produced proofs before checks and can resume
+verification with all consumers enabled. They are never protocol authority.
+Both QM31 cases passed complete verification and exact accounting. The zero
+case rejected one-value raw/magnitude/sign changes, either derived source,
+noncanonical fields and missing repetitions. Changing original leaf claims by
+(+beta,-1) preserved tuple compression but failed Lookup:OpeningMismatch.
+Zero coefficient and selector claims failed their named consumers, and a
+changed actual multiplicity failed Lookup:CommitmentMismatch. A genuine proof
+under the complete table with only (0,0) changed to (0,1) failed
+Lookup:RoundSumMismatch under the expected canonical definition. A proof under
+the one-row queried subset failed Lookup:TreeShape; supplied table/function-id
+fields and changed independently expected roots also rejected.
+
+The nonlinear QM31 case passed actual SiLU-to-gated-product-to-dynamic-row
+composition. A genuinely valid product proof with a substituted SiLU factor
+failed Right:Raw:CommitmentMismatch. Expected units compose as fu+E. OM31
+matrix cases and required local repository gates are still pending here.
+
+Field-view work is O(N); complete canonical generation and all inherited
+full-table fraction, MLE, range and hash consumers remain in c_a/c_lu/c_sc/T_misc.
+No measured constant, benchmark, weight-pass change, production control credit
+or independent audit is claimed. Recommendation: continue Q26/Q31 with
+physical/model-owned routing, native stacking/lowering, private PCS/ZK/FS and
+independent review; preserve the original model and larger-shape criteria.

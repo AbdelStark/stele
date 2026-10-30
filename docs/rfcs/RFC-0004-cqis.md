@@ -1114,3 +1114,16 @@ consumer rejects. Both row-code consumers accept the verified product root
 and reject substitutions. SiLU membership, physical/model ownership, native
 stacking/lowering, private PCS/ZK and larger shapes remain open. This1024-element
 revealing adapter changes no Draft status, original criterion or production cut.
+
+### A3/A8 evidence continuation — Consumed complete SiLU tables
+
+The [SiLU study](../../research/cqis-bounds/SILU-CONSUMER.md) joins two actual
+signed16 sources to the complete canonical table selected by expected function
+and representation bytes. Raw byte planes and verified signs determine both
+field columns; supplied ids or tables cannot authorize themselves. Static
+totality rejects E>F before payload access; E<=F still runs every canonical row
+and its precision schedule. Original tuple, selector and multiplicity claims
+remain consumed even for zero inputs. This2048-element revealing adapter adds
+no parent challenge or new cut. Physical/model ownership, native stacking,
+private PCS/ZK and larger shapes remain open; Draft status and original task
+criteria are unchanged.
