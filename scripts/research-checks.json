@@ -144,5 +144,8 @@
   ],
   "cqis-norm-scaled": [
     "uv run --locked --script research/cqis-bounds/check_norm_scaled.py"
+  ],
+  "cqis-norm-divisor": [
+    "uv run --locked --script research/cqis-bounds/check_norm_divisor.py"
   ]
 }

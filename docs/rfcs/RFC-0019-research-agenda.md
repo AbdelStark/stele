@@ -844,3 +844,12 @@ the full153-bit static envelope. Continue with the configured divisor relation,
 mantissa and strict remainder, actual rsqrt membership and final output branches.
 This reveals sources and proves one composed role, not unique normalization,
 private/model ownership or complete inference; original criteria stay open.
+
+Q26/Q31 divisor continuation: the [configured divisor consumer](../../research/cqis-bounds/NORM-DIVISOR.md)
+reuses the scaled consumer's actual exponent selection, fully consuming all
+16 divisor bytes against the expected-parameter public grid. The same source
+proof now binds A and D, including configurations whose divisor has124 bits.
+Continue with M in[16384,65535], actual MD=M*D, A=MD+R and strict0<=R<D
+before claiming a normalized interval; complete rsqrt membership and output
+branches remain required. Original criteria, native controls and physical/model/
+private ownership obligations are unchanged.

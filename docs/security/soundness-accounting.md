@@ -555,3 +555,23 @@ columns and zero carry boundaries establish A, retaining all16/32 output slots.
 Exact source joins add no algebraic loss conditional on binding. FS/H, divisor,
 normalized interval, strict remainder, rsqrt and model/private composition remain
 additional; no admitted profile, native control or production cut credit.
+
+Q26/Q31's [configured RMSNorm divisor consumer](../../research/cqis-bounds/NORM-DIVISOR.md)
+retains one complete scaled child and adds a dimension10 degree2 A3. Its three
+actual originals are the same verified indicator repeated across16 byte planes,
+the independently bound divisor repeated across64 indices, and the full expected
+P-derived public grid, with zero padding after33 valid indices. All three
+emitted MLE claims retain their actual points and full-table consumers. This
+adds30/|K|,10 ZeroWeight and10 Sumcheck draws, not a new lookup or product loss.
+Total A3 numerator is163+9b+18g; full nonlookup draws63+4b+8g ZeroWeight and
+70+6b+8g Sumcheck. Preserve separate lookup dimensions7,b+2,g+3,g+3 with each
+[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|, exponent A1 loss6/|K|,
+product identity(C-1)/|K| and product A1 loss4b/|K|. Only the lookup identity
+has its specified power r; no whole reduction loss is squared. Complete norm
+bytes, all four expected roots and the verified child state seed the parent
+before its A3 instance/weights/rounds/final. Exactly one allowed indicator and
+canonical field equality force each divisor byte to its expected public value;
+static Dmax<2^124 then holds without a whole-field integer lift. No independent
+indicator/public table is accepted. Binding, FS/H, mantissa/strict remainder,
+rsqrt/output and physical/model/private composition remain additional; no
+admitted profile, production cut or native control credit.
