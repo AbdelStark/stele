@@ -959,3 +959,8 @@ asks whether separately bound absolute-block magnitude sources can retain all
 original-point obligations through one dense rounding proof, including c=62.
 Test coherent remainder overflow, bias removal and high-product truncation.
 Signed block aggregation and normalization remain required before inference.
+
+Q26/Q31 continuation: [signed attention block totals](../../research/cqis-bounds/ATTENTION-BLOCK-SUM.md)
+asks whether actual signs and rounded quotients retain all original consumers
+through channel batching, including q=0 and sparse absolute block ids. Require
+complete source joins and reject compensating channel errors before inference.

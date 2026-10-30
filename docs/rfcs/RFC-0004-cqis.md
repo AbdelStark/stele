@@ -1602,3 +1602,14 @@ exclude discarded high products; strict r<D and all eight originals remain
 required. Test source joins, aliases, missing bias and metadata replay before
 implementation. Signed block totals and restored normalization units remain
 separate obligations. No Accepted role, cut, profile or production credit changes.
+
+### A3/A6 research plan — Consumed signed block totals
+
+Draft plan: [signed block totals](../../research/cqis-bounds/ATTENTION-BLOCK-SUM.md)
+consumes each actual block-sign root and the dense rounded-quotient root before
+one degree-two A1 with channel batching. Static G=Bmax*qmax bounds the output
+offset and excludes whole-field aliases. Both original sources remain consumed
+when q=0, including a negative raw sign. Tests must reject channel compensation,
+source substitutions and metadata replay. Total sign, global probability sum,
+restored normalization units and full ownership remain separate requirements.
+No Accepted cut, profile or production criterion changes.

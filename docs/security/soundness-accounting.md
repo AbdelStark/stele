@@ -1168,3 +1168,17 @@ internal roots and verified child states precede the parent transcript. Static
 sides<=66431<p/2 and whole bounds Hmax+h,qmax*D<2^64 prevent aliases and
 high-product loss. No new label or A1. Binding/FS/H and complete upstream
 composition remain additional; exact runtime receipts are required evidence.
+
+### Draft Q26/Q31 signed attention block totals
+
+Pre-implementation account: independent lookup dimensions a+1,a+bq+1,ac+bo+1,
+each identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator18a+9ac+7(bq+bo).
+Channel identity ac and A1 reduction2a are separate error events. Parent draws
+ac+a Sumcheck; total nonlookup draws8a+4ac+3(bq+bo) ZeroWeight and
+9a+5ac+3(bq+bo) Sumcheck. Both actual originals are consumed, even when q=0.
+Expected schema, roles and block ids, all external/internal roots and verified
+range states precede channel coordinates and the A1 transcript. Static8G<p,
+G=ceil(L/1024)*qmax, makes each integer channel equality faithful. No new label.
+Binding/FS/H and upstream composition remain additional; actual receipts must
+confirm the formulas before evidence is claimed.
