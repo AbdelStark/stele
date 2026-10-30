@@ -1,0 +1,190 @@
+{
+  "algebra": [
+    "python3 research/r-octic/check_modulus.py",
+    "python3 research/poseidon2/check_poseidon2.py",
+    "uv run --locked --script research/transcript/check_transcript.py",
+    "uv run --locked --script research/merkle/check_merkle.py",
+    "uv run --locked --script research/sumcheck/check_sumcheck.py",
+    "uv run --locked --script research/batching/check_batching.py",
+    "uv run --locked --script research/zerocheck/check_zerocheck.py"
+  ],
+  "cqis-definitions": [
+    "python3 research/cqis-rounding/check_rounding.py",
+    "python3 research/cqis-tables/check_tables.py",
+    "python3 research/cqis-tables/check_exp.py",
+    "python3 research/cqis-tables/check_activations.py",
+    "python3 research/cqis-tables/check_gelu.py",
+    "python3 research/cqis-tables/check_rmsnorm.py",
+    "python3 research/cqis-tables/check_wide_exp.py",
+    "uv run --locked --script research/cqis-tables/check_identity.py",
+    "uv run --locked --script research/cqis-tables/check_functions.py",
+    "uv run --locked --script research/cqis-tables/check_table_bindings.py",
+    "uv run --locked --script harness/cqis/check_arithmetic.py"
+  ],
+  "cqis-native": [
+    "python3 research/cqis-tables/check_native_arithmetic.py",
+    "python3 research/cqis-tables/check_native_exp.py",
+    "uv run --locked --script research/cqis-tables/check_native_exp_functions.py",
+    "uv run --locked --script research/cqis-tables/check_native_fixed_gathers.py",
+    "uv run --locked --script research/cqis-tables/check_native_rmsnorm.py",
+    "uv run --locked --script research/cqis-tables/check_native_activations.py",
+    "uv run --locked --script research/cqis-tables/check_native_tanh_gelu.py",
+    "uv run --locked --script research/cqis-tables/check_native_exact_gelu.py"
+  ],
+  "cqis-bounds": [
+    "python3 research/cqis-bounds/check_bounds.py",
+    "uv run --locked --script research/cqis-bounds/check_limbs.py",
+    "uv run --locked --script research/cqis-bounds/check_requant.py",
+    "uv run --locked --script research/cqis-bounds/check_norm_bounds.py",
+    "uv run --locked --script research/cqis-bounds/check_encoding.py",
+    "uv run --locked --script research/cqis-bounds/check_capped_range.py",
+    "uv run --locked --script research/cqis-bounds/check_wide_range.py",
+    "uv run --locked --script research/cqis-bounds/check_limb_source.py",
+    "uv run --locked --script research/cqis-bounds/check_limb_product.py",
+    "uv run --locked --script research/cqis-bounds/check_signed_source.py",
+    "uv run --locked --script research/cqis-bounds/check_requant_consumer.py"
+  ],
+  "cqis-rows": [
+    "uv run --locked --script research/cqis-bounds/check_attained_magnitude.py",
+    "uv run --locked --script research/cqis-bounds/check_dynamic_scale.py",
+    "uv run --locked --script research/cqis-bounds/check_row_code.py",
+    "uv run --locked --script research/cqis-bounds/check_static_row_code.py",
+    "uv run --locked --script research/cqis-bounds/check_gated_consumer.py"
+  ],
+  "checkpoint-data": [
+    "python3 research/cqis-checkpoint/check_scalars.py",
+    "python3 research/cqis-checkpoint/check_quantiser.py",
+    "uv run --locked --script research/cqis-checkpoint/check_records.py",
+    "uv run --locked --script research/cqis-checkpoint/check_artifact.py",
+    "uv run --locked --script research/cqis-checkpoint/check_source.py",
+    "uv run --locked --script research/cqis-checkpoint/check_shards.py",
+    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/hf-internal-testing/tiny-random-gpt2/resolve/71034c5d8bde858ff824298bdedc65515b97d2b9/model.safetensors -o \"$RUNNER_TEMP/cqis-source.safetensors\"",
+    "uv run --locked --script research/cqis-checkpoint/check_source.py --checkpoint \"$RUNNER_TEMP/cqis-source.safetensors\"",
+    "uv run --locked --script research/cqis-checkpoint/check_shards.py --checkpoint \"$RUNNER_TEMP/cqis-source.safetensors\""
+  ],
+  "checkpoint-model": [
+    "uv run --locked --script research/cqis-checkpoint/check_alignment.py",
+    "uv run --locked --script research/cqis-checkpoint/check_attention.py",
+    "uv run --locked --script research/cqis-checkpoint/check_projected_attention.py",
+    "uv run --locked --script research/cqis-checkpoint/check_rope.py",
+    "uv run --locked --script research/cqis-checkpoint/check_decoder_block.py",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --configuration",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --scaled-bounds",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --row-bounds",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --rotary-bounds",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --residual-bounds",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --greedy-bounds",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-sum",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-normalization",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-blocks",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-score",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-max",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --gated-product",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-norm",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --bound-set",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-functions",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-flow",
+    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o \"$RUNNER_TEMP/causal-config.json\"",
+    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/model.safetensors -o \"$RUNNER_TEMP/causal-model.safetensors\"",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --checkpoint \"$RUNNER_TEMP/causal\""
+  ],
+  "stacked-gkr": [
+    "python3 research/stacked-gkr/check_stacking.py",
+    "python3 research/stacked-gkr/check_public_mle.py",
+    "python3 research/stacked-gkr/check_ownership.py",
+    "python3 research/stacked-gkr/check_statement.py",
+    "uv run --locked --script research/stacked-gkr/check_weighted_mle.py",
+    "uv run --locked --script research/stacked-gkr/check_stage.py",
+    "uv run --locked --script research/stacked-gkr/check_private_selection.py",
+    "uv run --locked --script research/stacked-gkr/check_weighted_private_selection.py",
+    "uv run --locked --script research/stacked-gkr/check_private_stage.py",
+    "uv run --locked --script research/stacked-gkr/check_selection_source.py",
+    "uv run --locked --script research/stacked-gkr/check_paired_source.py"
+  ],
+  "streaming": [
+    "python3 research/small-value/check_grid.py",
+    "uv run --locked --script research/small-value/check_small_value.py",
+    "uv run --locked --script research/streaming/check_windows.py",
+    "uv run --locked --script research/streaming/check_source.py"
+  ],
+  "code": [
+    "python3 research/code-provenance/check_code.py",
+    "python3 research/code-provenance/check_expander.py",
+    "uv run --locked --script research/code-provenance/check_recursive.py",
+    "uv run --locked --script research/code-provenance/check_sampler.py",
+    "uv run --locked --script research/code-provenance/check_identity.py",
+    "uv run --locked --script research/code-provenance/check_proximity.py",
+    "uv run --locked --script research/code-provenance/check_certified.py",
+    "uv run --locked --script research/code-provenance/check_bounded.py",
+    "uv run --locked --script research/code-provenance/check_measurement.py",
+    "python3 research/circle-code/check_circle.py"
+  ],
+  "lookup-privacy": [
+    "python3 research/packing/check_packing.py",
+    "uv run --locked --script research/packing/check_fused.py",
+    "python3 research/commitment-privacy/check_privacy.py",
+    "python3 research/private-verifier/check_boundary.py",
+    "python3 research/logup-characteristic/check_characteristic.py",
+    "uv run --locked --script research/logup-characteristic/check_units.py",
+    "uv run --locked --script research/logup-characteristic/check_fraction.py",
+    "uv run --locked --script research/logup-characteristic/check_lookup.py"
+  ],
+  "cqis-silu": [
+    "uv run --locked --script research/cqis-bounds/check_silu_consumer.py"
+  ],
+  "cqis-norm-statistic": [
+    "uv run --locked --script research/cqis-bounds/check_norm_statistic.py"
+  ],
+  "cqis-norm-numerator": [
+    "uv run --locked --script research/cqis-bounds/check_norm_numerator.py"
+  ],
+  "cqis-norm-exponent": [
+    "uv run --locked --script research/cqis-bounds/check_norm_exponent.py"
+  ],
+  "cqis-norm-scaled": [
+    "uv run --locked --script research/cqis-bounds/check_norm_scaled.py"
+  ],
+  "cqis-norm-divisor": [
+    "uv run --locked --script research/cqis-bounds/check_norm_divisor.py"
+  ],
+  "cqis-norm-mantissa-product": [
+    "uv run --locked --script research/cqis-bounds/check_norm_mantissa_product.py"
+  ],
+  "cqis-norm-sum": [
+    "uv run --locked --script research/cqis-bounds/check_norm_sum.py"
+  ],
+  "cqis-norm-remainder": [
+    "uv run --locked --script research/cqis-bounds/check_norm_remainder.py"
+  ],
+  "cqis-norm-rsqrt": [
+    "uv run --locked --script research/cqis-bounds/check_norm_rsqrt.py"
+  ],
+  "cqis-norm-output-factors": [
+    "uv run --locked --script research/cqis-bounds/check_norm_output_factors.py"
+  ],
+  "cqis-norm-xy": [
+    "uv run --locked --script research/cqis-bounds/check_norm_xy.py"
+  ],
+  "cqis-range-capacity": [
+    "uv run --locked --script research/cqis-bounds/check_range_capacity.py --shapes"
+  ],
+  "cqis-norm-product": [
+    "uv run --locked --script research/cqis-bounds/check_norm_product.py --corpus --honest --controls --boundaries --composition --offset-bound"
+  ],
+  "cqis-norm-sign": [
+    "uv run --locked --script research/cqis-bounds/check_norm_sign.py --corpus --honest --controls --boundaries --composition"
+  ],
+  "cqis-norm-statistic-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py --corpus --honest --controls --boundaries --composition --tails"
+  ],
+  "cqis-norm-quotient-product": [
+    "uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py --corpus --honest --controls --boundaries --composition --middle"
+  ],
+  "cqis-norm-bias": [
+    "uv run --locked --script research/cqis-bounds/check_norm_bias.py --corpus --honest --controls --boundaries --composition"
+  ],
+  "cqis-norm-division": [
+    "uv run --locked --script research/cqis-bounds/check_norm_division.py --corpus --honest --controls --boundaries --composition --aliases"
+  ]
+}
