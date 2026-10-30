@@ -3,8 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md). Tests-first rejected
-the missing module. All10000 corpus cases and primary/zero-output controls
-passed. Boundaries, matrices, maximum and gates remain under validation;
+the missing module. All10000 corpus cases and primary/zero-output/boundary
+controls passed. Matrices, maximum and gates remain under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research joins complete aligned inputs,
@@ -19,7 +19,9 @@ this is not a completed sign-off.
   by genuine negative32768 bytes, separate input rounding and zero-hidden
   original claims must reject at their actual consumers. Primary substitutions,
   wrong output sign and all zero-hidden originals rejected as specified;
-  signed-overflow, separate-rounding and padding controls remain pending.
+  signed-overflow, separate-rounding and padding controls also passed. All
+  four children of the forged positive32768 output verified independently;
+  the actual parent sign relation rejected it.
 - Ledger: all21+g independent lookup identities and unsquared reductions
   remain. Closed range/A3 and draw totals are appended to accounting; matrix
   receipt assertions and soundness-accounting.sh still require execution.

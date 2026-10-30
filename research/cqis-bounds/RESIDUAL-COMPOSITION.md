@@ -63,4 +63,8 @@ Corpus SHA-256 is
 All eight root mutations and four independently valid replacement children
 rejected at their intended consumers. Wrong signed output and compensated
 original finals rejected; at q=0 all three original views remained consumed.
-Boundary controls, matrix, maximum and repository gates remain under validation.
+Boundary controls also passed. All four genuine child proofs for a positive
+32768 numerator with negative32768 output bytes verified individually, then
+the signed-output parent rejected the composition. Separately rounded inputs
+and nonzero output padding rejected at their actual rounding/range consumers.
+The matrix, maximum and repository gates remain under validation.
