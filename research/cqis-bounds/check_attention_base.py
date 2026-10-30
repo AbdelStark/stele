@@ -65,6 +65,7 @@ def honest(maximum=False):
     for d,reps in (((4,1),) if maximum else ((4,1),(4,2),(8,1),(8,2))):
         for count,E,mode,scale,z in cases:
             p=spec(count,E,mode,scale,4710+done,reps);h,roots=oracle(p,z);print('honest start',done+1,d,reps,count,E,flush=True);proof,state=c.prove(p,z,d);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,count,E,flush=True)
+    assert (done,digest.hexdigest())==((1,'5e222abd79ef0680c10068f5d19a1eeed808f7212f39934987651b32dfc1f223') if maximum else (16,'7b5e6bd9488d8e13cf6f50ee9488d66aa4c6c1d83550b67c9f247680c646eae7'))
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
