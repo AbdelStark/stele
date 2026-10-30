@@ -86,6 +86,7 @@ def honest(maximum=False):
             p=spec(*args,identity=3310+count,repetitions=reps);size=p.schema.heads*p.schema.width;xs=([-16384,0,16383,-1,255,-255,12,-12]*((size+7)//8))[:size]
             if size==1:xs=[-32768]
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,xs,d);out=c.verify(p,c.expected_roots(p,xs),proof,d);assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
+    if not maximum:assert digest.hexdigest()=='8a17be4adf403464d103c4dc68dba389fcb34d1a1b1c2f50218ffbdda135d6bf'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
