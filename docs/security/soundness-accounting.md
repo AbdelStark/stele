@@ -708,3 +708,20 @@ output planes. Closed carry caps 0,254,318,318,128,16,0 and whole xy/J/t ranges
 give maximum column side 81663, with 2*81663<p. Runtime receipt checks remain
 required. Binding/FS, full rsqrt membership, canonical sign/zero predicates,
 output branches and native/physical/model/private composition are additional.
+
+The [norm canonical-sign study](../../research/cqis-bounds/NORM-SIGN.md) retains
+the complete xy consumer and adds two ranges, each with lookup dimension a+3,
+for Boolean flags and bounded predecessors. Their A3 numerators are 9a+18 and
+9a+16; parent predicate/sign A3 numerators are 3a+6 and 3a. Total A3 is
+(131a+148)/|K|, with 55a+61 draws of each nonlookup label. Six lookup
+dimensions are a+2 and four are a+3, each retaining its separate identity
+((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|. At a=14, A3 is
+1982/|K| and each nonlookup label has 831 draws. No challenge is added by
+the exact sign-root reconstruction from the actual verified flag plane.
+Expected norm bytes, four external roots, two auxiliary roots and all three
+verified child states precede parent weights/rounds/finals. All nine parent
+original claims are consumed. Whole m<=32768, k<=32767 and Boolean flags
+bound predicate sides by 65536; sign sides are at most 2 and 3. All are
+strictly below p/2. Expected zero caps retain padded flags/predecessors; there
+is no quotient/output selector. Runtime receipts, binding/FS, configured
+output branches and native/physical/model/private composition remain additional.

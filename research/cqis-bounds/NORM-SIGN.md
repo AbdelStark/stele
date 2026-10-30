@@ -35,6 +35,13 @@ lookups have dimension a+3 and at most 131072 selected bytes. Reconstruct the
 external canonical-u32 sign root from the verified third flag plane, including
 its padded zeros. It must match the expected root before parent verification.
 
+Namespace: identity<2^42 and base=2^63+2^20*identity. The xy child identity
+is 4*identity+1, occupying the second quarter of the parent span. Flag and
+predecessor range identities are 16384*identity+1,+2; their sources are
+base+1,+2. Parent A3 ids are 65536*identity+512,+513. Views use base+16..23.
+Four distinct external ids stay outside the entire parent span. These choices
+separate all inherited range/A3 invocations and internal tensor ids.
+
 Combine the two predicate equations in one degree-two A3 over four N-element
 planes using fixed zero views. A separate degree-two A3 over N rows checks
 the canonical sign. All nine original claims are consumed at their emitted

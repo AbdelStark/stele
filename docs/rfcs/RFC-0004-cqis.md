@@ -1292,3 +1292,16 @@ All seven original views remain consumed. This is revealing Draft research;
 complete proof/control evidence, same-source composition, configured output
 branches, zero predicates, canonical sign, native/physical/model/private
 inference and fidelity remain required. No Accepted role or cut is added.
+
+### A3 evidence continuation — Canonical RMSNorm product sign
+
+The [canonical-sign study](../../research/cqis-bounds/NORM-SIGN.md) retains
+one complete xy consumer and binds both magnitude nonzero predicates through
+bounded predecessors: m=k+n and m*(1-n)=0, with Boolean n and k<=32767.
+The canonical signed sources then support s=sx*ny+sy*nx-2*sx*sy, with Boolean
+s. This is XOR for two nonzero magnitudes and zero otherwise, regardless of
+the rounded output. Two complete ranges and two parent A3 consumers retain
+all original views, whole bounds and padded zeros over the full norm domain.
+Complete proof/control evidence, configured output branches and signed output
+remain required. Native/physical/model/private inference, fidelity and original
+task criteria remain open. No Accepted semantics, role or cut is changed.
