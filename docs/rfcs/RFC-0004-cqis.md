@@ -1279,3 +1279,16 @@ Expected cap metadata grows to at most65536 twenty-byte records. Full maximum
 proofs, unchanged legacy digests and geometry controls are required evidence.
 Native stacking, remaining norm roles, physical/model ownership, private proof
 and fidelity remain open; no Accepted domain, cut or protocol label changes.
+
+### A3 evidence continuation — Consumed RMSNorm reciprocal product
+
+The [reciprocal-product study](../../research/cqis-bounds/NORM-PRODUCT.md)
+proposes one vectorized byte-column consumer for t=xy*J over the full norm row.
+Five complete ranges bind xy, J-8192, t and two carry groups. Verified offset
+bytes reconstruct the same scalar J root used by the full rsqrt membership;
+this source join does not replace that lookup. Exact closed-role caps, fixed
+zero endpoint carries and retained high output planes supply integer bounds.
+All seven original views remain consumed. This is revealing Draft research;
+complete proof/control evidence, same-source composition, configured output
+branches, zero predicates, canonical sign, native/physical/model/private
+inference and fidelity remain required. No Accepted role or cut is added.

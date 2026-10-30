@@ -691,3 +691,20 @@ boundary remains consumed. Expected cap metadata can grow to1310720 bytes
 and the terminal A3 view to65536 entries; the word-byte bound does not conceal
 these increases. Binding/FS, other norm
 roles and native/physical/model/private inference remain additional.
+
+The [norm reciprocal-product study](../../research/cqis-bounds/NORM-PRODUCT.md)
+uses N=2^a padded rows and five complete ranges with lookup dimensions
+a+3,2,a+4,a+4,a+2. Each retains its own identity ((2^m+255)/|K|)^r and
+reduction r*[F(m)+F(8)+3m]/|K|, F(m)=3m(m-1)/2+2m. Range A3 numerators
+sum to 36a+76; the degree-two dimension a+3 parent adds 3a+9, giving
+(39a+85)/|K|. Full nonlookup draws are 17a+36 of each A3 label. At a=14,
+these are numerator 631, 274 draws per label and lookup dimensions 17,2,18,18,16.
+No scalar-join challenge is added: actual verified J-8192 bytes reconstruct J
+and its canonical-u32 root is compared with the expected rsqrt output root.
+The parent absorbs expected norm bytes, three external roots, three auxiliary
+roots and five verified child states before weights/rounds/finals. All seven
+original views are consumed, including zero-hidden operands and both high
+output planes. Closed carry caps 0,254,318,318,128,16,0 and whole xy/J/t ranges
+give maximum column side 81663, with 2*81663<p. Runtime receipt checks remain
+required. Binding/FS, full rsqrt membership, canonical sign/zero predicates,
+output branches and native/physical/model/private composition are additional.
