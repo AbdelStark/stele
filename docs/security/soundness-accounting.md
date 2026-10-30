@@ -744,3 +744,25 @@ have independent consumers at emitted points. Whole bounds, zero endpoints
 and closed column sides enforce integer lifting: maximum1073709311<p/2.
 Exact S-root zero extension adds no challenge. Runtime receipts, binding/FS,
 native/model/private composition and all remaining norm roles stay additional.
+
+The [quotient-product consumer](../../research/cqis-bounds/NORM-QUOTIENT-PRODUCT.md)
+has N=2^a rows and P=2^c padded columns. Let bd/bl/bh be byte-width exponents
+for offset B-1 and low/high result ranges, h indicate an active high range,
+and g count active four-plane carry families with exponents bg. All activity
+comes from the closed expected certificate. Set X=1+bd+bl+h*bh+sum(bg).
+Total A3 loss is[(21+9h+9g)*a+7X+18g+3c]/|K|; each nonlookup label has
+(9+4h+4g)*a+3X+8g+c draws. Lookup dimensions are a+2, bd+1, a+bl+1,
+a+bh+1 when h=1, and a+bg+3 for each active family. Each keeps its separate
+identity ((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. No A3 term is squared with lookup repetitions.
+At full a14/c4, bd4/bl3/bh3, h1/g4 and sum(bg)=3, A3 is1106/|K| and
+each nonlookup label has484 draws; lookup dimensions are16,5,18,18,18,18,18,17.
+Complete metadata, three external roots, all auxiliary roots and verified
+range states precede parent weights/rounds/finals. All seven original views
+have independent consumers at emitted points. Actual bounded offset bytes
+reconstruct positive B and its expected16-slot root without a challenge.
+Split result bounds imply digit caps only; whole q/B, faithful columns and
+zero carry endpoints yield qd<=Zmax afterward. Maximum column side98047 is
+below p/2. Original source/range consumers retain zero quotients and padding.
+Runtime receipts, binding/FS, actual factor/branch authentication, remaining
+output roles and native/model/private composition stay additional.

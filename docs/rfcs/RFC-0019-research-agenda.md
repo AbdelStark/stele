@@ -901,3 +901,11 @@ raw/statistic root layouts and every original claim over the full norm domain.
 Continue with complete proof/control evidence and actual numerator composition;
 configured output branches, native/physical/model/private ownership, fidelity
 and original end-to-end acceptance remain open.
+
+Q26/Q31 quotient-product continuation: the [full-row adapter](../../research/cqis-bounds/NORM-QUOTIENT-PRODUCT.md)
+uses one batched byte-column relation for qd=q*B, split actual result ranges
+and closed carry families. Only statically zero families become public zeros;
+no source claim is removed for an observed zero quotient. Continue with actual
+same-exponent factor/signed-output composition, bias and division equality,
+strict remainder and the selected output branch. Original native/physical/model/
+private inference, fidelity and negative-control requirements remain open.

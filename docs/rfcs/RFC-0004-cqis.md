@@ -1317,3 +1317,15 @@ the existing eight-slot external root with exact zero extension. The old
 statistic adapter/encoding remains unchanged. Complete proof/control evidence,
 native/model ownership, private PCS/ZK/FS, remaining norm roles and original
 inference criteria remain required; no Accepted cut or profile is added.
+
+### A3 evidence continuation — Full-row RMSNorm quotient product
+
+The [quotient-product study](../../research/cqis-bounds/NORM-QUOTIENT-PRODUCT.md)
+consumes qd=q*B with whole q<=32768 and positive B<=Bmax. Two bounded result
+halves and statically selected carry families preserve the existing maximum
+lookup domain for16384 rows and90-bit B. They supply digit bounds; the actual
+faithful byte-column proof establishes the whole product bound. Seven original
+views, every endpoint and high padding remain consumed. Actual same-exponent
+factor composition, selected branches, rounding, strict remainder, signed
+output and full proof/control evidence remain required. Native/model/private
+inference and original task criteria stay open; no Accepted cut is added.

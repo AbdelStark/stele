@@ -72,3 +72,15 @@ padded rows and endpoints must reject. Compose actual signed-Y magnitude and
 verified output-factor bytes; reject valid substituted factors. A full16384-row
 proof with90-bit B must pass before publication. No native/physical/model/private
 admission, new production cut, NC credit or measured performance is claimed.
+
+## Current evidence
+
+The tests-first run rejected the missing module. Seed2718 passed10000
+independent NumPy convolutions and exact wide products, covering6767440
+byte-column entries, metadata boundaries and full-domain geometry. Frozen
+corpus SHA-256:
+`9070ddcc675628bc070b46e26f5c548aa7a2b9c554682066ab9c04557bb2197b`.
+Controls, composition and the honest field/repetition matrix are running.
+Full-row proof, required CI integration, repository gates and final review
+remain pending. Reproduce with
+`uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py`.
