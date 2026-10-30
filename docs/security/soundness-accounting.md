@@ -886,3 +886,22 @@ on binding. N=ed*S+en*unit with positive expected epsilon and the same X source,
 A=MD+R with bounded M and strict R<D, and complete (M,J) membership remain actual
 consumers even at zero output. Binding, FS/H, physical/model ownership, native
 lowering and private composition losses remain additional; no profile is admitted.
+
+### Draft A3/A8 residual alignment consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-ALIGNED.md). With padded
+N=2^a, output range width2^b and g statically nonzero four-column carry families,
+retain six signed16 lookup identities at m=a+2, one output identity at a+b+1
+and g carry identities at a+3. Each contributes ((2^m+255)/|K|)^r separately,
+with unsquared reduction r*(f(m)+f(8)+3m)/|K|, f(m)=3m(m-1)/2+2m.
+Complete range/A3 numerator is (97+9g)*a+76+7b+18g. This includes the parent's
+degree-one A3 over8N, whose three phase losses are a+3,0,a+3. Its five original
+views are independently consumed at their emitted points. Fixed expected role
+and schema bytes, three external roots, auxiliary roots and verified child
+states precede ZeroWeight and the Instance/Round/Final schedule. Parent draws
+are a+3 per ZeroWeight/Sumcheck label; including signed/range children, totals
+are (41+4g)*a+31+3b+8g for each label, excluding separate lookup schedules.
+Carry caps are static, at most255; both byte-column sides are at most65535<p/2.
+No runtime maximum establishes integer faithfulness. Binding, FS/H, private
+composition and physical/model ownership remain additional. No production
+profile, native control or complete residual/inference claim is admitted.

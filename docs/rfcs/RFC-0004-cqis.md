@@ -1411,3 +1411,16 @@ Corpus, complete controls/matrices and full-row proof evidence remain required.
 This closes no native/model/private inference criterion without that delivery;
 physical source ownership, PCS/ZK/FS, fidelity and scale remain open. No Accepted
 role, profile or cut is added.
+
+### A3/A8 evidence continuation — Consumed residual aligned sources
+
+Draft research: [residual alignment](../../research/cqis-bounds/RESIDUAL-ALIGNED.md)
+consumes both actual signed16 roots and their complete range/sign proofs before
+one batched byte-column A3 binds O=(X+32768)*A+(Y+32768)*B. Expected fractions
+fix positive power-of-two A,B; no input is rounded first. Exact source-byte
+shifts retain real-row masking, bounded carry families and every original view.
+The whole O range and all eight output planes remain consumed. In-range M31
+aliases and same-magnitude signed substitutions require adversarial checks.
+This revealing16384-row adapter does not complete the static2^20 domain,
+canonical numerator sign, one-round output or native/model/private inference.
+A3/A8 and all original task criteria remain unchanged; no Accepted cut is added.
