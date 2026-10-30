@@ -31,7 +31,8 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Determinism: fixed role, child, column and row order; full norm bytes and
   exact integer arithmetic.10000 NumPy cases passed with a frozen digest.
 - Parity: native CPU/SIMD/CUDA unchanged. Revealing field/repetition and full
-  capacity matrices remain running; no native/private inference admission.
+  capacity1024 proof passed. The remaining field/repetition matrix is running;
+  no native/private inference admission.
 - Costs: O(N) witness/views/folded A3 producer plus complete inherited ranges
   and full-opening consumers in c_a/c_lu/c_sc/T_misc. No measured constant,
   benchmark, scalar proof loop per element or extra model weight pass.

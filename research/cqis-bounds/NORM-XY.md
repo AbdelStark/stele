@@ -78,6 +78,9 @@ and an original hidden by a zero multiplicand rejected ClaimMismatch.
 Actual same-X composition with the statistic proof passed; a valid source
 sign substitution preserving magnitudes/statistic/product rejected the pinned
 raw root. Separate real terminal carry, padded carry and padded output controls
-each failed their actual CapRelation:RoundSumMismatch consumer. Full field/
-repetition/capacity matrices and required repository gates remain pending. No benchmark, native
+each failed their actual CapRelation:RoundSumMismatch consumer. The complete
+1024-element QM31/r1 proof passed, including exact accounts and every actual
+source/range/carry/original consumer. Its frozen state SHA-256 is
+`3ebe58ec21e52b8c5446f982ad9e9ae9be0250e357a3328eaafc8f6d22968f41`.
+The remaining field/repetition matrix and required repository gates are pending. No benchmark, native
 control credit or independent audit is claimed.
