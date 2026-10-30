@@ -77,6 +77,7 @@ counts 1,3,16,65, with exact accounts and all consumers. Frozen matrix hash:
 All source, product, carry, p-alias, original-final, padded-value and high-plane
 controls passed. The verifier and expected rejection reasons were unchanged.
 
-The full-row proof is running. No completed full-row proof, final review or
-native/private inference is claimed. Required CI integration and local gates
-remain pending.
+All required local repository gates passed, including fmt/clippy/workspace
+tests, no_std CQIS, digest, negative controls and soundness accounting. The
+full-row proof is running. Required CI integration and final maximum evidence
+remain pending; complete native/private inference is not claimed.
