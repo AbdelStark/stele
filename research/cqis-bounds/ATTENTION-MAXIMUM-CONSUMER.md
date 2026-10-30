@@ -90,3 +90,11 @@ passed, including public masks under zero multiplication. Expected window,
 query/block/keys/unit replays and a forged padded public mask were rejected.
 Boundary/alias controls, proof matrices, maximum and local gates remain under
 validation; no native/control/profile credit follows from these observations.
+
+All boundary controls passed. Separately valid raw maximum bytes differing
+by M31 rejected at Attainment; an offset differing by M31 rejected at
+SourceOffset. A false difference shortened by M31 rejected at Difference,
+and a later tied key with gap=M31-1 rejected at FirstMaximum. The exact
+inclusive delta=2^31 row verified. Actual offset/domain/masked caps and source
+padding rejected at their range consumers. Both fields/repetition counts,
+the full16384-key proof and local gates remain pending.

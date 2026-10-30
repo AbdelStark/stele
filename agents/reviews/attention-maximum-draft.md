@@ -16,7 +16,8 @@ It is not an independent audit or production soundness sign-off.
 - Bindings: primary controls passed all four external/five auxiliary root
   changes, arithmetic-role mutations, valid source substitutions and masked/
   invalid selection. All20 original-final and metadata/public-mask controls also passed.
-  Boundary/alias controls and proof matrices remain under validation.
+  All boundary/alias controls also passed; proof matrices remain under
+  validation.
 - Ledger: eight independent lookup identities and unsquared reductions are
   retained. Parent9a+18 and total72a+100+7bo+14bd, plus draw totals, matched
   the first verified proof. The append-only accounting line names all terms;
@@ -46,5 +47,5 @@ while retaining the old differences, and the control
 Difference:RoundSumMismatch rejected it.
 
 Key-set completeness, physical/model ownership, exponential membership,
-private PCS/ZK/FS, full attention composition, fidelity, full-row evidence,
+private PCS/ZK/FS, full attention composition, fidelity, matrix/full-row evidence,
 required gates and independent review remain open.
