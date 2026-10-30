@@ -141,5 +141,8 @@
   ],
   "cqis-norm-exponent": [
     "uv run --locked --script research/cqis-bounds/check_norm_exponent.py"
+  ],
+  "cqis-norm-scaled": [
+    "uv run --locked --script research/cqis-bounds/check_norm_scaled.py"
   ]
 }

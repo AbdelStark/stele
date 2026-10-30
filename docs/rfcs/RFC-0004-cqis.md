@@ -1165,3 +1165,16 @@ the bounded exponent/factor relation only: the normalized interval still
 requires scaled numerator/divisor, mantissa and strict remainder consumers.
 Actual rsqrt membership, output branches, native/private/model ownership and
 original task criteria remain open; no production cut or public-MLE kind is added.
+
+### A3 evidence continuation — Consumed RMSNorm scaled numerator
+
+The [scaled numerator study](../../research/cqis-bounds/NORM-SCALED.md) joins
+the full actual numerator root and a fully consumed bounded exponent/factor
+proof into the closed scaled limb-product role. The product's exact Nmax
+whole-input bound supplies the numerator range; every high source slot survives
+the external root join, including when its vector is longer than the product
+planes. The negative factor comes only from verified exponent bytes, including
+when N=0. Complete original/public/range/carry/product consumers remain; A+p
+cannot replace integer A. This revealing scalar relation adds no parent draw
+or production cut. Divisor, normalized interval, mantissa/remainder, rsqrt,
+outputs and native/private/model ownership remain original open obligations.

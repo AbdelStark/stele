@@ -535,3 +535,23 @@ every factor byte, including inactive/high slots. Public tables are derived
 from the entire fixed index domain, never a supplied factor. Binding and FS/H
 remain additional, as do scaled numerator/divisor, strict remainder, rsqrt,
 outputs and physical/model/private ownership. No admitted profile or cut credit.
+
+Q26/Q31's [RMSNorm scaled numerator consumer](../../research/cqis-bounds/NORM-SCALED.md)
+uses one complete exponent child and the closed scaled limb product. With
+product planes2^b and output slots2^g, exponent A3 contributes102 and product
+input whole-range/packing9b+11 plus output/carry18g+20, totaling133+9b+18g.
+Four separate lookup dimensions are7,b+2,g+3,g+3; retain each
+[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|. Exponent selection A1 adds6/|K|;
+product identity(C-1)/|K| and product A1s4b/|K| remain separate, unsquared and
+unrepeated with lookup r. Full nonlookup ZeroWeight draws53+4b+8g and Sumcheck
+60+6b+8g include product rho and both plane A1s. Parent draws none; its final
+seed binds complete expected norm bytes, five roots and two verified states.
+All exponent originals/public claims and both original/product power claims
+retain actual consumers, even at N=0. The entire8/16-slot numerator root is
+reconstructed from actual product bytes and exact zero extension; excess product
+bytes must be zero. Product input ranges enforce the exact Nmax bound, so no
+redundant numerator range or whole-field lift is introduced. Static faithful
+columns and zero carry boundaries establish A, retaining all16/32 output slots.
+Exact source joins add no algebraic loss conditional on binding. FS/H, divisor,
+normalized interval, strict remainder, rsqrt and model/private composition remain
+additional; no admitted profile, native control or production cut credit.
