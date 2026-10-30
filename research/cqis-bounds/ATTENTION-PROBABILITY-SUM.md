@@ -59,3 +59,15 @@ proof and every local gate before publication. Native/private inference,
 restored value products, output normalization, full attention, fidelity and
 original task/control criteria remain open. Continue Q26/Q31; no benchmark,
 weight-pass change, production control or profile credit is claimed.
+
+The10000-case independent NumPy/byte corpus passed (seed2733), including1157
+zero sums and all source/scalar byte widths. Frozen SHA-256:
+`4142a2c7dcefd98d2d4fea0110a70bf9f55d09735dc342428e6317aef00c206f`.
+Primary, original, metadata, mask/padding, M31-alias and dimension-zero controls
+passed. The first exponent-replay expectation named CapRelation:ClaimMismatch;
+verification rejected earlier at SourceCopy:ClaimMismatch because the changed
+range metadata changed its transcript. Only that diagnostic was corrected,
+with the first log retained and no verifier change. Actual maximum/exp/sum
+composition passed all three representations; a genuinely valid exponential
+source permutation with the same Z rejected the expected source root.
+The16-case matrix is running; full-row proof and required gates remain pending.

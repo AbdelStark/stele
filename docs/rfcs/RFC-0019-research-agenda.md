@@ -918,3 +918,11 @@ cannot authorize membership. Complete maximum-source composition and all
 field/full-row/attack evidence remain required. Continue with probability
 sums, value products and complete attention; native/private/model ownership,
 fidelity and original task/control criteria remain open.
+
+Q26/Q31 probability-sum continuation: [actual masked source aggregation](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.md)
+consumes complete source/scalar ranges and the A1 source claim, retaining the
+full four-byte Z root. Zero block contributions remain valid; whole-row Z>0
+comes from actual attained maximum and canonical exponential composition.
+Continue with restored value products and output normalization on these exact
+roots. Full-sequence key completeness, physical/model ownership, fidelity and
+native/private inference remain open; no original criterion or control is waived.

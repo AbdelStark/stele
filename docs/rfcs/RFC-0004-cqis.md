@@ -1526,3 +1526,16 @@ Actual maximum-source composition, complete numerical/attack/field/full-row
 evidence and gates remain required. Native/private lowering, physical/model
 source ownership, probability sums, value products and full attention remain
 open. No Accepted cut, production control or profile is admitted.
+
+### A3/A6 evidence continuation — Consumed probability row sum
+
+Draft research: the [probability sum consumer](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.md)
+fully ranges the actual masked P_hat bytes and scalar Z, then consumes the
+original source claim from one degree-one A1 sum. Static K*2^E<=2^28<p/2
+makes the field sum faithful to the integer sum. The expected output root
+always binds four byte leaves, including zero high bytes. Standalone zero
+sums remain valid for block contributions; actual whole-row maximum/exp/sum
+composition establishes Z>=2^E from attainment. This adds no new cut or
+probability normalization rule. Full-row/gate evidence, restored values,
+normalization, physical/model ownership and native/private inference remain
+required; original task/control criteria remain unchanged.

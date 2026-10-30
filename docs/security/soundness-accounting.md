@@ -1059,3 +1059,24 @@ so their signed field lifts are injective. Actual maximum composition retains
 its entire independent account without extra join draws. Binding, FS/H,
 physical/model ownership, native/private lowering remain additional. No
 production profile or native NC-0500..0506 credit is admitted.
+
+### Draft A3/A6 consumed probability row sum (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.md).
+For source dimension a and source/scalar byte exponents bp/bz, two complete
+range lookup units use dimensions a+bp+1 and bz+1. Each independently retains
+((2^m+255)/|K|)^rpt and unsquared rpt*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is9a+7bp+7bz; the separate degree-one
+sum A1 adds a/|K|. Its one original claim has an independent full-hypercube
+consumer at the exact emitted point. Full nonlookup draws are4a+3bp+3bz
+ZeroWeight and5a+3bp+3bz Sumcheck; the parent draws a Sumcheck challenges.
+Expected complete row/mask/E metadata, two external roots, compact scalar root
+and both verified range states precede parent Instance/Round/Final messages.
+Static K*2^E<=2^28<p/2 bounds both sides; no M31 alias can satisfy the actual
+scalar range. Full output binding retains four canonical byte leaves even when
+the compact range uses one or two. Standalone zero sums do not skip any child
+or the dimension-zero final equation. Whole-row positivity requires the actual
+attained maximum and complete exponential proofs on the same source roots;
+all their independent accounts remain additional, with no extra join draws.
+Binding, FS/H, physical/model ownership and native/private lowering remain
+additional. No production profile or native NC-0503 credit is admitted.

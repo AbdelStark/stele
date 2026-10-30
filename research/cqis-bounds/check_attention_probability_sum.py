@@ -48,6 +48,7 @@ def corpus():
     for bad in (replace(p,identity=1<<48),replace(p,identity=p.row.identity),replace(p,source=p.output),replace(p,source=p.row.difference),replace(p,output=v['base']),replace(p,exponent=True),replace(p,exponent=15),replace(p,row=replace(p.row,repetitions=True))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Capacity',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True))
     for xs in ([False]*3,[-1,0,0],[257,0,0],[0,0,1],[0],(0,0,0)):rejects('Input',lambda:c.witness(spec(),xs))
+    assert digest.hexdigest()=='4142a2c7dcefd98d2d4fea0110a70bf9f55d09735dc342428e6317aef00c206f'
     print(json.dumps(dict(seed=2733,cases=10000,zeros=zeros,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -88,7 +89,7 @@ def originals():
     p=spec(identity=3840);d=4;xs=[1,2,0];v=c.derive(p,d);pairs=c.prepare(p,xs,d);proof,_=c.assemble(p,pairs,d);roots=c.expected_roots(p,xs);i,tables=c.part(p,proof,d);tables[0][0],tables[0][1]=tables[0][1],tables[0][0]
     t=c.transcript(v,roots+[r.source_root(v['ranges']['output'],proof['output']['words'])],[pairs[name][1] for name in c.CHILDREN],d);bad=dict(proof,sum=r.sc.prove(t,i,tables)[0]);rejects('Sum:ClaimMismatch',lambda:c.verify(p,roots,bad,d))
     changed=replace(p,row=replace(p.row,window=32));rejects('Sum:RoundSumMismatch',lambda:c.verify(changed,roots,proof,d))
-    changed=replace(p,exponent=9);rejects('Source:CapRelation:ClaimMismatch',lambda:c.verify(changed,roots,proof,d))
+    changed=replace(p,exponent=9);rejects('Source:SourceCopy:ClaimMismatch',lambda:c.verify(changed,roots,proof,d))
     bad=copy.deepcopy(proof);bad['output']['words'] += [0,0];rejects('Output:OpeningShape',lambda:c.verify(p,roots,bad,d))
     print('equal-sum false original, expected mask/exponent replays and extended scalar source reject',flush=True)
 
