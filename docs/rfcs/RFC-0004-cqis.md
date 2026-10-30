@@ -1466,3 +1466,18 @@ This revealing arithmetic adapter leaves native/model/private inference,
 physical ownership, fidelity, original2^20 capacity and independent audit open.
 No Accepted role or cut is added; A3/A8 and original task criteria remain Draft
 or blocked as recorded in the task graph.
+
+### A3/A6/A7 evidence continuation — Consumed canonical rotary rows
+
+Draft research: [rotary consumer](../../research/cqis-bounds/ROTARY-CONSUMER.md)
+regenerates the expected A7 coefficient row at the absolute position and binds
+actual signed input/output sources through numerator sign, canonical zero,
+strict-remainder rounding and signed output relations. Both layouts, partial
+rotation and complete passthrough preserve every original consumer. The fixed
+coefficient envelope keeps all whole relations field-faithful; no numerator
+commitment or supplied coefficient certificate replaces these obligations.
+Corpus, source/function/position controls, both proof fields and complete-row
+evidence remain required. Public generation and MLE evaluation are revealing
+reference costs. Native function/passport registration, private/model inference,
+other required variants and fidelity remain open; no Accepted cut or profile
+is added, and original task criteria remain unchanged.

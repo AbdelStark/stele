@@ -964,3 +964,23 @@ establish integer faithfulness; no child is omitted at q=0. Exact shared-root
 joins add no algebraic error conditional on binding. Binding, FS/H, physical
 source/model ownership, native lowering and private composition remain
 additional. No production profile or native control credit is admitted.
+
+### Draft A3/A6/A7 canonical rotary row consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ROTARY-CONSUMER.md). Two complete
+signed16 sources and four whole ranges retain ten lookup identities: six at
+dimension a+2, then a+3,a+1,a+3,a+2, for padded row size N=2^a. Each contributes
+((2^m+255)/|K|)^rpt independently, with unsquared reduction
+rpt*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Four parent A3s at dimension a
+have degrees2,1,1,2; phase numerators total10a. Complete range/A3 numerator is
+132a+105. Parent draws are4a per ZeroWeight/Sumcheck label; complete nonlookup
+totals are56a+43 each. All sixteen original claims retain actual-point consumers.
+Expected schema, units, canonical A7 descriptor, absolute position, eight roots
+and six verified child states precede parent weights and Instance/Round/Final
+messages. Public coefficients are regenerated from that definition, including
+their expected pairing and padding; no supplied coefficient row authorizes
+acceptance. The fixed23171 envelope bounds the signed numerator by759267328;
+M+8192<=759275520, g+s<=759267329 and q*16384+r<=536887295 stay below p/2.
+Complete signed/range consumers remain mandatory at zero and in passthrough.
+Binding, FS/H, physical/model ownership, native lowering and private composition
+remain additional. No profile or NC-0106/0109 credit is admitted.
