@@ -101,5 +101,5 @@ planes. Valid-range MD=p collides with the false zero product at fixed rho256
 but fails Product:Product:FinalEvaluationMismatch at the actual challenge.
 An actual D=3 upstream proof composes with M=21845,MD=65535; a genuinely valid
 D=4 product under the pinned D=3 root rejects. No expected-reason repair was
-needed. Required local gates remain pending; no benchmark, native control
+needed. All required local gates passed; no benchmark, native control
 credit, independent audit or full normalization admission is claimed.
