@@ -60,3 +60,7 @@ soundness-auditor. This is a same-author review, not independent audit.
 I tried to break it by changing a factor-byte final while t=q=0 preserved
 the product, and the control LeftColumns:ClaimMismatch rejected it at
 the original factor consumer.
+
+All required local repository gates passed, including soundness accounting,
+digest and negative controls. Full-row proofs and hosted CI remain pending;
+no native/private inference or independent-audit credit follows.
