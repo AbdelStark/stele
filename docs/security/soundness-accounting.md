@@ -575,3 +575,22 @@ static Dmax<2^124 then holds without a whole-field integer lift. No independent
 indicator/public table is accepted. Binding, FS/H, mantissa/strict remainder,
 rsqrt/output and physical/model/private composition remain additional; no
 admitted profile, production cut or native control credit.
+
+Q26/Q31's [RMSNorm mantissa product consumer](../../research/cqis-bounds/NORM-MANTISSA-PRODUCT.md)
+uses a scalar two-byte offset range with cap49151, contributing A3 numerator7.
+The closed normal_product role with planes2^b and output slots2^g adds
+9b+18g+31; total A3 numerator9b+18g+38. Four separate lookup dimensions
+2,b+2,g+3,g+3 retain each[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|.
+Product identity(C-1)/|K| and product A1 reduction4b/|K| remain separate,
+unsquared and unrepeated by lookup r. Full nonlookup draws16+4b+8g ZeroWeight
+and17+6b+8g Sumcheck include product rho and both plane A1s. Parent draws none;
+its final seed binds complete expected norm bytes, five roots and two verified
+states. Actual offset range precedes the exact affine M=16384+lo+256*hi view,
+with static2*65535<p and canonical one-field encoding checked before hashing.
+The full16-slot divisor root is reconstructed from actual right planes and
+exact zero extension, and left planes derive only from verified M. Complete
+whole-input/range/carry/polynomial and original/public consumers remain even
+at D=0. Faithful integer product acceptance gives MD<=65535*Dmax afterward;
+digit caps alone do not. Exact joins add no algebraic loss conditional on
+binding. Positive/configured D, FS/H, A=MD+R, strict remainder, rsqrt/output
+and model/private composition remain additional; no admitted profile/cut credit.

@@ -1191,3 +1191,16 @@ high bytes and zero padding. No supplied public grid or whole-field D identity
 is authority. This paired revealing relation adds no Accepted arithmetic role,
 production cut or native public-MLE kind. Mantissa/strict remainder, normalized
 interval, actual rsqrt membership and final/native/private/model work remain open.
+
+### A3 evidence continuation — Consumed RMSNorm mantissa product
+
+The [mantissa product study](../../research/cqis-bounds/NORM-MANTISSA-PRODUCT.md)
+fully ranges M-16384 before deriving and binding the canonical one-field M root.
+The same verified M bytes and the entire independently expected16-slot divisor
+root feed the closed normal_product role. Its generic upper bound cannot replace
+the actual mantissa lower bound, and zero D cannot remove the source join.
+Every input/output/carry and original/public product consumer remains; high
+divisor slots are preserved even when the product has fewer planes. This
+revealing relation adds no parent challenge, Accepted role or production cut.
+A=MD+R, strict0<=R<D, normalized interval, rsqrt, outputs and physical/model/
+private composition remain required before claiming complete RMSNorm/inference.

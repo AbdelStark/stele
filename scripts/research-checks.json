@@ -147,5 +147,8 @@
   ],
   "cqis-norm-divisor": [
     "uv run --locked --script research/cqis-bounds/check_norm_divisor.py"
+  ],
+  "cqis-norm-mantissa-product": [
+    "uv run --locked --script research/cqis-bounds/check_norm_mantissa_product.py"
   ]
 }
