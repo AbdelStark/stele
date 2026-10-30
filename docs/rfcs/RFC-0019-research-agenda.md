@@ -750,3 +750,11 @@ range consumer rejects a false positive INT_MIN whose signed equations all hold.
 Continue with signed-operation composition, physical/model-source ownership,
 native lowering and private PCS/ZK/FS. Full reveals admit no production cut or
 profile and do not complete the original tasks or their native controls.
+
+Q26/Q31 Requant continuation: the [scalar consumer study](../../research/cqis-bounds/REQUANT-CONSUMER.md)
+joins actual signed sources, unsigned products, bounded remainder and exact
+source-byte routing into the A1 rounding statement. All public constants and
+shared words have actual consumers; the zero quotient permits canonical output
+zero without erasing its sign claim. Continue with model-owned source routes,
+production stacking/native plan, private PCS/ZK/FS and independent review.
+Revealing scalar proofs do not complete inference or grant native control credit.
