@@ -3,8 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-SIGN.md). Tests-first rejected the
-missing module. Corpus, controls, composition, matrices, maximum and gates
-remain under validation; this is not a completed sign-off.
+missing module. The10000-case corpus and primary controls passed. Boundary/
+composition checks, matrices, maximum and gates remain under validation; this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research. Expected fractions determine
   aligned offset and magnitude caps; only canonical numerator sign is proved.
@@ -41,4 +41,8 @@ remain under validation; this is not a completed sign-off.
 - Glossary/history: append-only Draft/accounting evidence. Digit predecessor
   does not claim the whole sign_gap record. Exact rounding, signed residual
   output, original2^20 domain and native/model/private inference remain open.
-  An attack-result sentence requires observed rejection evidence.
+  Remaining validation and independent review are still required.
+
+I tried to break it by setting the sign of zero magnitude to1 while retaining
+valid ranges, wide columns and terminal carries, and the control
+CanonicalZero:RoundSumMismatch rejected it.

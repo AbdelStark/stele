@@ -61,3 +61,12 @@ Continue Q26/Q31. This proves numerator sign and magnitude only; exact one-round
 quotient/remainder and signed residual output remain required. Native lowering,
 physical/model/private inference, fidelity, independent review and all original
 task criteria remain open. No new Accepted cut, benchmark or weight pass.
+
+Tests-first rejected the missing module. Seed2726 passed10000 independent
+signed-value and byte-carry cases covering3383720 column cells, all31 shifts,
+O/M widths(4,4)/(8,4)/(8,8) and maximum namespace bounds. Frozen digest:
+`d88ee6a794487bbbc38d742252bd016d82c7ca29b4cfff8916dcca7ef4ca5c19`.
+The primary controls rejected all external roots and range words, range-valid
+M+p, coherent negative zero, actual carries and every parent original claim.
+Boundary/composition and complete matrices remain under validation; the maximum
+and required local gates are queued once. No completed review or CI claim.
