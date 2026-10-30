@@ -826,3 +826,12 @@ A larger generic product bound cannot admit Smax+1, and a valid output range
 cannot hide an N+p alias. Actual statistic/numerator roots compose. Continue
 with normalization exponent/remainder, rsqrt membership, final branches and
 physical/model/private source ownership. Original inference criteria stay open.
+
+Q26/Q31 exponent continuation: the [RMSNorm factor consumer](../../research/cqis-bounds/NORM-EXPONENT.md)
+uses a fully ranged one-hot selector, two consumed A3 relations and an actual
+sum1 A1 to bind the bounded exponent and both exact factor byte vectors.
+Zero-cap padded indices and empty selection cannot authorize arbitrary factors;
+all original and public final claims remain consumed. Continue with the same
+roots in scaled numerator/divisor, strict mantissa/remainder and actual rsqrt
+consumers. This relation alone does not prove normalization or private/model
+ownership; original inference criteria and production controls are unchanged.

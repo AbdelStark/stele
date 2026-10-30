@@ -1151,3 +1151,17 @@ domain permits it. Exact zero extension preserves high source padding. This
 revealing scalar consumer retains the full norm metadata domain, but proves
 only the numerator role; normalization, rsqrt, outputs, native/private/model
 ownership and original E5-03/inference criteria remain open.
+
+### A3 evidence continuation — Consumed RMSNorm exponent factors
+
+The [exponent study](../../research/cqis-bounds/NORM-EXPONENT.md) consumes an
+actual one-hot range with33 valid indices and31 zero-cap padded indices.
+Complete A3/A1 consumers bind offset=a+23 and both eight-byte powers of four,
+including every high zero and the factor1 in each inactive branch. The fixed
+public index and byte tables are verifier-derived; altered original/public
+finals remain rejected even when their final composition is unchanged. No
+supplied power or observed bound is authority. This revealing research proves
+the bounded exponent/factor relation only: the normalized interval still
+requires scaled numerator/divisor, mantissa and strict remainder consumers.
+Actual rsqrt membership, output branches, native/private/model ownership and
+original task criteria remain open; no production cut or public-MLE kind is added.

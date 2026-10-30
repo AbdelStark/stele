@@ -138,5 +138,8 @@
   ],
   "cqis-norm-numerator": [
     "uv run --locked --script research/cqis-bounds/check_norm_numerator.py"
+  ],
+  "cqis-norm-exponent": [
+    "uv run --locked --script research/cqis-bounds/check_norm_exponent.py"
   ]
 }
