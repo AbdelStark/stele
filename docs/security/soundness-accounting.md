@@ -444,3 +444,20 @@ T=C+3 in[0,258] with T0=TP=3 yield faithful integer division; actual Q<=127
 and R<=2*S-1 imply the closed gated domain afterward. NP<=4096 keeps counts
 below p; no Unit draws. Binding, FS/H, physical/model ownership, native stacking
 and private composition remain additional; no production label/profile/cut.
+
+Q26/Q31's [gated-product consumer](../../research/cqis-bounds/GATED-CONSUMER.md)
+has N=2^a elements. Three parent k=0 A3 invocations have (dimension,degree)
+(a+2,2),(a,1),(a+2,3), adding(9a+14)/|K| and3a+4 draws each of
+ZeroWeight/Sumcheck with12 actual finals. Three signed-source children and
+the carry range give total A3 numerator147a+163, full label counts61a+64 each,
+excluding lookup schedules. No A1. Ten lookup dimensions are a+2,a+2,a+2
+twice, then a+3,a+3,a+2, then a+3. Each separately contributes
+[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|; no reduction is squared. Seven
+roots and four verified child states precede parent challenges; all Finals and
+actual consumers remain, including zero factors. Actual signed16 magnitudes
+give high bytes<=128; actual C<=255 yields static column sides<=65535. Integer
+product then implies output magnitude<=2^30; no circular bound. C0=C4=0 and
+actual signs close multiplication and canonical zero. N<=1024 keeps lookup
+counts below p; no Unit draws. Binding, FS/H, SiLU membership, physical/model
+ownership, native stacking and private composition remain separate. No admitted
+production cut, label, profile or original control credit.

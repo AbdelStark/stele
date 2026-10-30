@@ -791,3 +791,12 @@ static domain lemma avoids a redundant gated range after faithful byte division.
 Continue with physical/model-owned source routes, native stacking/lowering,
 private PCS/ZK/FS and independent review. Revealing research roots and capacity
 limits do not satisfy the original tasks or earn production control credit.
+
+Q26/Q31 gated-product continuation: the [actual consumer](../../research/cqis-bounds/GATED-CONSUMER.md)
+joins signed factor proofs, bounded byte convolution and output sign before
+row conversion. Actual carry sources reject a signed M31 alias satisfying all
+parent field relations. The same product root feeds static and dynamic code
+consumers with expected units fu+E. Continue with SiLU membership, physical/model
+source routes, native stacking/lowering, private PCS/ZK/FS and independent review.
+Revealing capacity-limited proofs do not complete original inference tasks or
+earn production control credit.
