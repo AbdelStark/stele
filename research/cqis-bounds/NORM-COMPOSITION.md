@@ -56,7 +56,7 @@ whole reciprocal table, including rounded zeros and nonzero left output.
 Require full16384-row wide/rounded-zero, nonzero left and nonzero right proofs.
 No cached receipt, queried-row table or per-row proof loop is permitted.
 
-Configured-output controls and its matrix are still running in the parent
+Configured-output controls passed; its matrix is still running in the parent
 worktree. Any parent fix must flow here by ordinary merge before publication.
 Continue Q26/Q31. This is revealing arithmetic research, not private or model
 inference. Native lowering, authenticated model/configuration/source ownership,
@@ -70,6 +70,9 @@ NumPy rounding agreed. Both branches, normalization endpoints-23/9, seven
 observed N/A/MD width combinations and maximum namespace bounds passed.
 All reused root representations agreed. Frozen corpus digest:
 `8967eef993ac88486ed91b502a61844d02a6b409979071a61f65837dbaf1ca45`.
-Complete proof/control matrices are running. The additional zero-exponent
-attack and three full-row proofs are queued after that sequence; required
+All nineteen root controls, same-statistic source substitution, coherent
+changed-N factors and a genuinely valid alternate full-table reciprocal proof
+rejected at their named consumers. Complete proof matrices are running. The
+additional zero-exponent attack and three full-row proofs are queued after
+that sequence; required
 local gates are queued separately. No completed review or CI success is claimed.

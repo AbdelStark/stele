@@ -2,8 +2,8 @@
 
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
-[Scope](../../research/cqis-bounds/NORM-COMPOSITION.md). Complete control,
-matrix, maximum and gate evidence is pending; this is not a sign-off.
+[Scope](../../research/cqis-bounds/NORM-COMPOSITION.md). Primary controls passed;
+zero-input exponent controls, matrices, maxima and gates remain pending; this is not a sign-off.
 
 - Public items: revealing Draft RFC-0004 A3 composition for RFC-0022 §2.3
   and canonical RFC-0021 §2.3 arithmetic. Seven complete children join the
@@ -18,9 +18,9 @@ matrix, maximum and gate evidence is pending; this is not a sign-off.
   and output remainders remain distinct roles with independent consumers.
 - Bindings: controls mutate every external root and substitute a valid
   same-statistic X proof, coherent changed-N factors and genuine alternate
-  full-table reciprocal proof. Additional zero-X attacks remove epsilon or
-  keep a wrong exponent and true sum while violating strict R<D. These
-  control runs remain under validation; exact rejection evidence is required.
+  full-table reciprocal proof; all rejected at their named consumers. The
+  additional zero-X attacks remove epsilon or keep a wrong exponent and true
+  sum while violating strict R<D. Those controls remain queued.
 - Ledger: concatenate all range identities and the separate reciprocal
   identity(98304/|K|)^r. Sum their unsquared reductions, including392r/|K|.
   Retain range/A3, statistic A1, selection6 and four independent product
@@ -53,4 +53,8 @@ matrix, maximum and gate evidence is pending; this is not a sign-off.
 - Glossary/history: append-only Draft/accounting evidence. This is revealing
   arithmetic research. Native lowering, model/configuration/source ownership,
   private PCS/ZK/FS, fidelity and original task criteria remain open. The
-  mandatory attack-result sentence awaits observed control outcomes.
+  zero-input exponent controls and complete proof/gate evidence remain required.
+
+I tried to break it by substituting an independently verified complete
+reciprocal lookup with a different mantissa, and the control
+Reciprocal:Lookup:CommitmentMismatch rejected it.
