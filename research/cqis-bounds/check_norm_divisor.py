@@ -96,6 +96,7 @@ def honest():
                 out=c.verify(p,c.expected_roots(p,n,a,n*4**max(-a,0),answer),proof,d); assert out['state']==state; account(p,out,d)
                 if length==16384 and a==9: assert answer.bit_length()==124 and proof['divisor'][15]>0
                 digest.update(state); count+=1; print('honest',count,d,reps,length,f,a,flush=True)
+    assert count==16 and digest.hexdigest()=='b888f31a2ab75071db6053258bf61224da1682b3270ae1e75f8e768eb762ce5e'
     print(json.dumps(dict(proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

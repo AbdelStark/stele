@@ -89,5 +89,10 @@ at the actual public consumer. Composition-preserving final alterations also
 reject there. Fresh zero D, D+p and high-byte proofs fail the actual relation.
 A valid different negative exponent retains identical N,A,D at N=0 but fails
 the independently expected offset root. No verifier or expected-error change
-was needed. Complete proof/public matrices and local gates remain pending;
-no measured performance, native control credit or independent audit is claimed.
+was needed. All16 complete proofs passed in both fields/repetitions, negative,
+zero and positive exponents, including actual124-bit maximum divisors with
+nonzero byte15. Every proof checks exact losses, draws and parent claims.
+Frozen proof-state SHA-256:
+`b888f31a2ab75071db6053258bf61224da1682b3270ae1e75f8e768eb762ce5e`.
+Public-point matrices and local gates remain pending; no measured performance,
+native control credit or independent audit is claimed.
