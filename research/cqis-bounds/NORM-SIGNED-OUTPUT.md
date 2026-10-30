@@ -72,3 +72,9 @@ passed in both fields/repetitions, including exact losses and transcript draws.
 Frozen proof-state digest:
 `728d00f9932462247186efdd0d4c319be5aa4a2fbe7a289c55b214716e78394c`.
 The full-row maximum remains running; gates and hosted CI remain required.
+
+All required local repository gates passed: formatting, Clippy, workspace
+tests, CQIS no_std, dependency/Rust policy, reference digests, production
+negative controls, soundness accounting, ledger, RFC/docs/glossary checks and
+CI-scope tests. The full-row proof remains running; hosted CI remains required.
+Completed implementation checks were not repeated for this evidence freeze.
