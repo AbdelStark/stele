@@ -1,5 +1,8 @@
 {
   "artifact_bytes": 1164135,
+  "attention_sum_bytes": 3146,
+  "attention_sum_records": 2,
+  "attention_sum_sha256": "c2b7e11cebfbdd44df99ee03c251257cbde08f5ce27709c5385b53c73a2800e9",
   "choices": {
     "accumulation": "exact",
     "epsilon": [

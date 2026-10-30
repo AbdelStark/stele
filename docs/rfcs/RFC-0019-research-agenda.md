@@ -614,3 +614,13 @@ alternative rows expose the separate model/source authentication obligation.
 Draft A3/A9, attention/score schemas, complete certificate sets, actual consumers,
 sampled decoding, native parity and fidelity remain open. All original E5-03/04
 and E7-08 criteria remain; no production NC or measured performance credit.
+
+Q26 attention-sum continuation: the [signed accumulation study](../../research/cqis-bounds/ATTENTION-SUM.md)
+closes conditional raw exact/block sums with static nibble caps, actual-source
+arity, restored-value scales and canonical sign. Coherent whole-sum M31 aliases
+reject even when all auxiliary column witnesses are rebuilt. Absolute block
+positions, independent exact/NumPy rows and pinned model replay supply evidence.
+Draft A3/A6 and RFC-0009 A2 remain unaccepted; block rounding, normalization,
+score/max schemas, complete certificate sets and actual consumers remain open.
+All original E5-03/04 and E7-06/07 criteria, native parity, fidelity and private
+inference-proof obligations remain; no production NC or performance credit.
