@@ -76,6 +76,7 @@ def honest(maximum=False,nonzero=False):
             p=spec(size,2510+count,reps,exponent);limit=32768//factor;ts=([limit,0,min(limit,1),max(0,limit-1),min(limit,255)]*((size+4)//5))[:size];qs=[t*factor for t in ts]
             print('honest start',count+1,d,reps,size,factor,flush=True);proof,state=c.prove(p,ts,factor,qs,d);out=c.verify(p,c.expected_roots(p,ts,factor,qs),proof,d)
             assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,factor,flush=True)
+    if not maximum:assert digest.hexdigest()=='c80e8554fa030d0a4d98634faf0d35f0e856041d48c1c32d308d7eeb581a7b18'
     print(json.dumps(dict(maximum=maximum,nonzero=nonzero,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
