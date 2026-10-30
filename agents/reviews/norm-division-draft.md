@@ -23,7 +23,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   (22+18H+9g)*a+14*(bl+H*bh)+18g+16; each new nonlookup count is
   (10+8H+4g)*a+6*(bl+H*bh)+8g+8. Each remainder/gap half and carry family
   retains its separate lookup identity and reduction. The proof matrix,
-  maximum and accounting gate remain pending; runtime counts are required.
+  maximum and accounting gate remain pending; initial honest proofs passed
+  exact counts, and the complete matrix remains required.
 - Bounds: exact whole r/gap<=Bmax-1 follows from the power-of-two-minus-one
   split caps. All75 shift transitions passed. Equality carry caps derive
   from the expected closed division role; strict carry caps start at one
@@ -41,7 +42,8 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Parity: native CPU/SIMD/CUDA unchanged. NumPy byte addition and exact wide
   division provide independent research witness checks. The actual B/h
   composition test verifies one complete factor bundle before using either
-  slice; that test is running. Normalized-interval and physical model
+  slice; it passed, including zero-quotient divisor substitution rejection.
+  Normalized-interval and physical model
   ownership remain separate obligations.
 - Costs: O(16N) producer/views plus both complete children and new ranges,
   hash and independent MLE consumers in c_a/c_sc/c_lu/T_misc. Every range

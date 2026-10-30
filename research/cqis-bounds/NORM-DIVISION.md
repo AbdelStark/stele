@@ -85,7 +85,9 @@ cases and13534880 independent NumPy byte-column cells. Frozen corpus hash:
 Full geometry and namespace checks passed. All core adversarial and boundary
 controls passed, including r=B with equality intact. All75 split-bound
 transitions passed, and an r+p/gap-p forgery preserving strict remainder
-rejected at equality. Composition and the16-proof matrix are running.
+rejected at equality. Actual B/h from one verified factor source composed;
+a valid divisor substitution rejected even at zero quotient. The16-proof
+matrix is running, with initial exact accounting checks passed.
 The full maximum is running; local gates are queued and CI remains pending.
 These results do not grant native or private inference admission. Reproduce
 the separate alias/transition controls with `--aliases` in addition to the
