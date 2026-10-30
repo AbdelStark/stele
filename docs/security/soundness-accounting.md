@@ -427,3 +427,20 @@ column sides<=66813. Remainder/zero/flag identities have static bounds below p/2
 actual ranges make strict division and zero semantics faithful. All Finals are
 absorbed. Binding, FS/H, physical/model ownership, native stacking and joint
 private composition remain additional; no production label/profile/cut is admitted.
+
+Q26/Q31's [static row-code consumer](../../research/cqis-bounds/STATIC-ROW-CODE.md)
+uses Nrows=2^a, input bytes B=2^b, remainder bytes Br=2^br and P=2^c=max(B,Br).
+Three parent k=0 A3 invocations have (dimension,degree) (a+c,2),(a,1),(a,2),
+adding(8a+3c)/|K| and3a+c draws each of ZeroWeight/Sumcheck, with10 actual
+finals. Total A3 numerator is121a+26b+7br+12c+25; there is no A1. Full A3
+draws of each label, excluding lookup schedules, are51a+10b+3br+5c+11. Nine
+lookup dimensions are a+b+1,a+b+1,a+2; a+1,a+1,a+2; a+1; a+br+1; a+c+2.
+Each separately contributes[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|; no
+reduction is squared. Public scale-root equality adds no algebraic loss. Seven
+roots and five verified child states precede parent challenges. Every final
+has an actual source/public/view consumer at its emitted point, even for zero
+factors. All Finals remain absorbed. Static byte sides<=66813 and actual
+T=C+3 in[0,258] with T0=TP=3 yield faithful integer division; actual Q<=127
+and R<=2*S-1 imply the closed gated domain afterward. NP<=4096 keeps counts
+below p; no Unit draws. Binding, FS/H, physical/model ownership, native stacking
+and private composition remain additional; no production label/profile/cut.

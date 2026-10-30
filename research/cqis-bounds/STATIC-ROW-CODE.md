@@ -1,6 +1,6 @@
 # Consumed static row codes — Q26 / Q31
 
-Status: preimplementation research for RFC-0004 §5.5 / Draft A3/A8. E5-03 and
+Status: research for RFC-0004 §5.5 / Draft A3/A8. E5-03 and
 downstream original criteria remain blocked/open; no production cut or private
 proof is admitted. Same-author skill review is not independent audit.
 
@@ -41,7 +41,7 @@ the actual signed output fixes canonical zero. Honest C stays in[-3,255].
 Padding uses source0, masked S0 and carry3. Static out-of-range codes reject;
 there is no automatic dynamic fallback and no scale0 branch.
 
-Static domain lemma to verify before implementation: accepted Q<=127 and
+Static domain lemma: accepted Q<=127 and
 R<=2*S-1 imply Mag<=floor((255*S-1)/2). For every configured S<=65535 this is
 at most8355712, strictly below gated H=2^30. Wide signed16 already bounds Mag
 by32768. Thus min(signed_type_max,floor((255*S-1)/2))<=H follows from expected
@@ -57,13 +57,13 @@ a+br+1; a+c+2. No reduction is squared. Seven roots and five verified child
 states precede parent challenges. Binding, FS/H and private composition remain
 additional; no new label/profile is admitted.
 
-Candidate namespace: identity<2^44 reserves base=2^63+2^18*identity. Expected
+Namespace: identity<2^44 reserves base=2^63+2^18*identity. Expected
 raw/scale/output ids are distinct u64>=2 outside that span. Input/output magnitude,
 R and T roots use base+1..4. Input/output signed ids are512*identity+1/+2;
 Q/R/T wide ids4096*identity+65/+66/+67. Parent invocation ids16384*identity+
 512..514; views use base+16..24. Metadata/capacities precede payloads.
 
-Tests first: exhaustive public-scale domain lemma; independent rounding corpus
+Preimplementation test plan: exhaustive public-scale domain lemma; independent rounding corpus
 with explicit Input/OutputRange rejections; complete field/repetition matrix;
 S1/S65535, half ties, negative zero and wide asymmetric endpoints; actual
 source/final controls and naive A3 parity. At S1, input/output -128 with Q128
@@ -76,3 +76,79 @@ Also test the M31 alias S1, Mag=2^30-1, Q0, R0: its whole-word difference is p.
 Fractional field carries can satisfy parent arithmetic; an actual carry range
 or original-byte consumer must reject. No native control credit or performance
 measurement is claimed. Static/private/model/native completeness remain separate.
+
+## Integer soundness and source consumption
+
+The five children are signed input, signed output, quotient, remainder and carry,
+in that order. Input/output magnitude and sign views come from those actual signed
+proofs. Q binds the exact output magnitude root. R and T have actual wide-range
+proofs; no supplied scalar or view can override their byte planes. The expected
+scale root is checked against public configured bytes before any child proof.
+All seven roots and five fully verified child states seed the parent transcript.
+Each final is consumed by the reference A3 evaluator at its emitted point,
+including public S, zero factors, broadcasts, byte extension and carry endpoints.
+
+With actual ranges, the column's left side is at most66048 and its right side
+at most66813, both statically below p/2. Field equality therefore gives integer
+equality. Multiply column j by256^j and sum; initial and terminal C0=CP=0 cancel
+all carry terms, giving2*S*Q+R=2*Mag+S. P covers every operand byte, even when
+both sides overflow256^P. Since0<=R<2*S, Q is the unique nearest quotient with
+ties away. Sign transfer plus the actual signed output gives canonical signed
+codes, including negative inputs rounded to zero. The separate actual Q<=127
+range excludes the otherwise valid signed int8 value -128.
+
+The derived static domain lemma follows only after this faithful integer lift;
+it is not used to bound a byte column. It excludes signed32 inputs outside the
+closed gated domain without a redundant magnitude range. The normal producer
+checks that closed domain before division and explicitly rejects OutputRange.
+The verifier never recomputes plaintext division or trusts a runtime bound.
+For honest C in[-3,255], the next numerator lies in[-768,65280]; divisibility
+by256 keeps C in that interval. Padding uses original zero, masked S0 and T3,
+with all high planes and the terminal relation retained.
+
+The prefix `stele/research/q26/static-row-code/v1` plus NUL precedes
+version/field/repetitions, four little-endian u64 ids, kind byte, u32 dimension,
+fraction byte and configured u16 S. Identity
+spaces and resource dimensions derive before payload inspection; no iteration
+order or timing influences proof bytes. Each lookup identity/reduction remains
+separate; all Finals are absorbed, including dimension0. There is no Unit draw,
+retry, challenge inverse, new label or conjectural profile bound.
+
+## Reproduction and limits
+
+Run `uv run --locked --script research/cqis-bounds/check_static_row_code.py`.
+The tests-first run failed with the missing module. The exhaustive65535-scale
+lemma has maximum8355712 and SHA-256
+`5900b09f8bc81f5a8af723e124b90d88892a0a7807a5878f7c3af433bac5a2bc`.
+Seed2676 covers10000 configurations,8487 accepted rows,1513 explicit overflows,
+184694 byte cells and9983 negative-carry cells. Independent integer division
+plus a half-tie comparison checks every code; direct columns include padding.
+Corpus SHA-256:
+`bbb252e817d51066c21c0020b0ea0fc567445967d33004d36969d347528742d1`.
+The complete matrix covers both fields, repetitions, kinds and scales1/65535;
+it checks nine lookup terms, total A3 losses/draws and all ten parent claims.
+The public S-byte/mask table is also checked at10000 extension-field points
+against direct multilinear evaluation and a separately factored evaluation.
+Frozen16-proof state SHA-256:
+`535ff1769b4281d624688a29732c7a16f3540522747107ea9576e01dc3963344`.
+Seed2677 public-MLE SHA-256:
+`3a2bbba246d3628bbaca79b9d07755728578d7cdd9cfc02071ce534dd450ea56`.
+
+Complete controls reject the three isolated attacks in the preimplementation
+plan: Quotient:TerminalCarry:FinalEvaluationMismatch, the corresponding
+Remainder failure, and Carry:SourceCopy:RoundSumMismatch for the M31 alias.
+All parent Boolean-row equations hold in those false proofs. One-value source
+changes, wrong public scale, valid inconsistent quotient, wrong sign, malformed
+length/root/field limbs, id collisions and capacity excess also reject. All ten
+finals are checked, including coordinated equation-preserving changes and zero
+factors. Separate full proofs cover signed half ties, canonical zero and the
+two-plane65791 boundary; a small naive A3 oracle agrees byte for byte.
+
+Witness/views/folded parent production are O(Nrows*P), plus every child range,
+lookup and hash consumer in c_a/c_sc/c_lu/T_misc. Reference full openings and
+shared kernels are not an independent audit, succinctness or performance claim.
+No measured constant, ledger number or inference weight-pass count changes.
+Recommendation: continue Q26/Q31 with physical/model-owned source routes,
+native stacking/lowering, private PCS/ZK/FS and independent review. Canonical-u32
+byte-slot roots are not physical packed model roots or production cuts. The
+original larger-shape tasks, native controls and all Draft criteria remain open.
