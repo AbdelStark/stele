@@ -121,8 +121,16 @@ def composition():
     print('actual xy and complete rsqrt roots compose; reciprocal substitution rejects',flush=True)
 
 
+def offset_bound():
+    p=spec(1,1955);d=4;v=c.derive(p,d);pairs=c.prepare(p,[1],16384,d)
+    child=v['offset'];loose=replace(child,caps=(8193,))
+    false=r.assemble(child,*r.witness(loose,[8193]),d);bad,_=c.assemble(p,dict(pairs,offset=false),d)
+    rejects('Offset:CapRelation:RoundSumMismatch',lambda:c.verify(p,c.expected_roots(p,[1],16384,[16384]),bad,d))
+    print('reciprocal offset one above8192 rejects at the actual cap relation',flush=True)
+
+
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition}
+    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition,'--offset-bound':offset_bound}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()

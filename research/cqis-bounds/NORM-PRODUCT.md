@@ -66,6 +66,11 @@ The tests-first run rejected the missing module. After implementation, seed
 `8edffed9ff302d9c132750ec6b5a201e6c8a610ba2063285299648586baa214f`.
 
 Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_product.py`.
-The complete matrix, controls, actual xy/rsqrt composition and full-row proof
-are running. No completed full-row proof, final review or native/private
-inference is claimed. Required CI integration and local gates remain pending.
+The actual xy proof and complete rsqrt lookup composed on their unchanged
+source roots. A valid different reciprocal rejected the pinned J root. A
+separate offset of 8193 rejected at Offset:CapRelation:RoundSumMismatch under
+the expected cap 8192, using a real false-cap proof.
+
+The complete matrix, remaining controls and full-row proof are running.
+No completed full-row proof, final review or native/private inference is
+claimed. Required CI integration and local gates remain pending.

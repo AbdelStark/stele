@@ -32,8 +32,9 @@ soundness-auditor. This is a same-author review, not independent audit.
   expected function bytes. The 10000-case NumPy int64 corpus passed and its
   hash is frozen. Complete-proof hashes remain pending.
 - Parity: no native CPU/SIMD/CUDA change. This revealing prototype still
-  requires full rsqrt membership and actual xy proof composition. Neither a
-  reciprocal range nor the plaintext product alone earns composition credit.
+  retains full rsqrt membership and actual xy proof composition. Both actual
+  source joins passed, and a different reciprocal rejected its pinned root.
+  Neither a reciprocal range nor a plaintext product earns that credit.
 - Costs: O(N) source/range/view/A3 work in c_a/c_lu/c_sc/T_misc, including the
   padded carry plane. No per-element proof loop, extra weight pass or benchmark.
 - Verifier: native no_std unchanged. Expected metadata and resource limits
@@ -43,4 +44,6 @@ soundness-auditor. This is a same-author review, not independent audit.
   status, sign/zero predicates, output branches, physical ownership, privacy
   and fidelity requirements remain open. Required local gates are pending.
 
-The adversarial-run conclusion remains pending until the controls finish.
+I tried to break it by supplying an offset of 8193 under the expected cap
+8192, and the control Offset:CapRelation:RoundSumMismatch rejected it at the
+actual cap consumer. The remaining controls and full-row proof are pending.
