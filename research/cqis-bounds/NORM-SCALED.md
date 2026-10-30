@@ -69,3 +69,32 @@ Recommendation: continue Q26/Q31 with the configured divisor's actual byte
 relation, mantissa/strict remainder, complete rsqrt membership and output
 branches, always sharing the verified exponent/source roots. This relation
 alone does not establish the unique normalization exponent or complete RMSNorm.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_scaled.py`.
+Tests first failed with the missing module. Seed2688 covers10000 independent
+NumPy object-integer products, int64 byte convolutions and319248 actual source
+cells, including the full static153-bit envelope. Frozen corpus SHA-256:
+`ad1cbf9a4f72f12b4cbb519c2a069d5db59a00ca4756bca2e3255d54446a55b2`.
+
+All source/factor controls passed. A genuinely valid changed right factor at
+N=0 keeps A=0 but rejects Product:SourceJoin. A false A+p fits actual output
+ranges and collides at fixed rho256, yet rejects the actual product final.
+All high numerator slots remain bound even when the external vector has16
+slots and the product only8 planes. Actual numerator-to-scaled composition
+passes and rejects an independently valid substituted numerator.
+
+Changing a factor root with a stale exponent proof rejects its earlier
+Exponent:Exponent:RoundSumMismatch. This observed transcript rejection corrected
+the initial test's predicted later claim error; the verifier was unchanged.
+All16 main proofs passed across both fields/repetitions, including zero N,
+both plane widths and expected source/output padding. All four additional
+maximum-bound proofs produced and verified an actual153-bit A with nonzero
+byte19, covering every field/repetition pair. All20 check exact losses, draws
+and original/public claim counts. Frozen main and maximum proof-state hashes:
+`39e88124a4a0456dfbafa7750d122e092aff973cc6474eafd79f2a75fd7c1db3` and
+`02d8d2063ee66b31c030491c4e9a3d23ede86d9ce36b0de01022f4ac0d3d15d5`.
+The maximum role-bound case need not normalize N/P; that interval is a separate
+remaining obligation. Local gates are pending. No measured performance,
+native credit or independent audit is claimed.

@@ -835,3 +835,12 @@ all original and public final claims remain consumed. Continue with the same
 roots in scaled numerator/divisor, strict mantissa/remainder and actual rsqrt
 consumers. This relation alone does not prove normalization or private/model
 ownership; original inference criteria and production controls are unchanged.
+
+Q26/Q31 scaled continuation: the [RMSNorm scaled numerator consumer](../../research/cqis-bounds/NORM-SCALED.md)
+preserves the actual full numerator root while consuming its exact whole bound
+inside the closed scaled role. Verified exponent bytes supply its only right
+factor, including zero-product cases. The output retains every high slot and
+the full153-bit static envelope. Continue with the configured divisor relation,
+mantissa and strict remainder, actual rsqrt membership and final output branches.
+This reveals sources and proves one composed role, not unique normalization,
+private/model ownership or complete inference; original criteria stay open.

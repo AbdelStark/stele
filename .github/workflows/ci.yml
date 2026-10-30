@@ -75,6 +75,7 @@ jobs:
       - run: uv run --locked --script research/cqis-bounds/check_norm_statistic.py
       - run: uv run --locked --script research/cqis-bounds/check_norm_numerator.py
       - run: uv run --locked --script research/cqis-bounds/check_norm_exponent.py
+      - run: uv run --locked --script research/cqis-bounds/check_norm_scaled.py
       - run: python3 research/cqis-checkpoint/check_scalars.py
       - run: python3 research/cqis-checkpoint/check_quantiser.py
       - run: uv run --locked --script research/cqis-checkpoint/check_alignment.py
