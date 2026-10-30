@@ -20,12 +20,13 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   proofs are genuinely produced under an altered complete table. The observed
   rejection is Lookup:RoundSumMismatch. Partial-table proofs reject TreeShape;
   a valid substituted-factor proof rejects Right:Raw:CommitmentMismatch in the
-  actual SiLU/product/row composition. Pending matrix/gates stay explicit.
+  actual SiLU/product/row composition. All four complete-table matrix cases
+  and required local gates passed, with frozen states/gathers.
 - Ledger: six separate range identities at dimension a+2 plus the two-column
   functional identity numerator2^a+131071, each with power r. Reductions remain
   separate and unsquared; total A3 numerator86a+70, full A3 label counts36a+28.
-  The wrapper has no draws. Full-matrix assertions and the accounting gate are
-  required before reporting completion. Binding/FS/private losses remain extra.
+  The wrapper has no draws. Full-matrix assertions and the accounting gate
+  passed. Binding/FS/private losses remain extra.
 - Bounds: byte/sign ranges establish an injective signed16 field view. E<=F
   guarantees representability only; full certified generation still runs.
   E>F overflows at the positive endpoint and rejects even for a zero query.
