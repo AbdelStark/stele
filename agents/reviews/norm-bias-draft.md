@@ -21,7 +21,7 @@ soundness-auditor. This is a same-author review, not independent audit.
   (9+4H+4g)*a+3X+8g+c. Lookup dimensions are a+4, bh+1, a+bl+1,
   optional a+bu+1 and g copies of a+3, each retaining its separate identity
   and reduction. All16 honest proofs passed exact receipts, with their matrix
-  hash frozen. The maximum and accounting gate remain pending.
+  hash frozen. The accounting gate passed; the maximum remains running.
 - Bounds: whole t<=2^44 and h<=hmax are consumed. The expected closed bias
   certificate supplies Boolean carry caps and sides<=511<p/2. Faithful
   addition then establishes the whole U bound. No observed maxima are used.
@@ -48,7 +48,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   never recomputes whole t+h to grant acceptance.
 - Glossary/history: append-only Draft/accounting evidence. Division equality,
   strict remainder, configured branches, signed output and native/model/private
-  inference remain open. CI integration and repository gates are pending.
+  inference remain open. All required local repository gates passed; CI
+  integration remains pending.
 
 I tried to break it by encoding Zmax+1 with independently valid low/high
 range proofs, and the control SumColumns:RoundSumMismatch rejected it
