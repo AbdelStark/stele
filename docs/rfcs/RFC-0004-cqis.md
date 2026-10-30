@@ -1368,3 +1368,16 @@ slice34:42. Complete proof/control evidence and both full-row zero/nonzero
 cases remain required. Selected branches, unused qd/r zeros, signed output,
 native/model/private inference, fidelity and original task criteria remain
 open. This is revealing Draft research; no Accepted role or cut is added.
+
+### A3 evidence continuation — RMSNorm signed output after rounding
+
+The [signed-output study](../../research/cqis-bounds/NORM-SIGNED-OUTPUT.md)
+retains complete canonical product-sign and signed-Y consumers. A degree-two
+relation q*s=q*sy binds the actual Y magnitude to the product sign whenever
+q is nonzero. Negative products may round to canonical zero; both original
+zero predicates and canonical product sign still verify independently of q.
+All three parent original views and all inherited claims remain consumed.
+Rounding must join the same q root through the selected left/division branch.
+Complete proof/control evidence, configured branch selection, full normalization,
+native/model/private inference, fidelity and original task criteria remain
+required. No Accepted role, profile or cut is added.

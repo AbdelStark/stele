@@ -59,3 +59,12 @@ Continue Q26/Q31. Configured branch selection and magnitude rounding remain
 separate obligations, as do full normalization, native/model/private inference,
 fidelity and original task criteria. No Accepted cut, native control credit,
 benchmark number or additional weight pass is claimed.
+
+The tests-first run rejected the missing module. Seed2722 passed10000
+NumPy cases and2545743 view cells, including signed endpoints and negative
+products rounded to zero. Frozen corpus hash:
+`1b8c73debc78bcb8f1e30525b558ced4008d42f96490569fb8f294ab4a3c28a3`.
+All six external-root controls, wrong output signs, q=0 canonical-sign/
+predicate forgeries and signed-source reconstruction controls passed.
+Preserving finals and all three zero-hidden originals rejected. Boundary,
+composition and matrix checks are running. Maximum, gates and CI remain pending.

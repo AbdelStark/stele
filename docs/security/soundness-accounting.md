@@ -829,3 +829,21 @@ closed carry caps and zero endpoints supply integer lifting; maximum side
 is130815<p/2. All padded rows and six high quotient planes stay zero.
 Runtime receipts, binding/FS, actual same-exponent factors, selected branches,
 signed output and native/model/private composition remain additional.
+
+The [signed-output consumer](../../research/cqis-bounds/NORM-SIGNED-OUTPUT.md)
+retains complete canonical product-sign A3 numerator131a+148 and signed-Y
+numerator43a+35 for N=2^a. Its degree-two parent adds3a, giving total
+(177a+183)/|K|. Each nonlookup label has74a+75 draws. Preserve the ordered
+lookup dimensions: six a+2, four a+3, then three a+2. Each retains its own
+identity ((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. At full a14, total A3 is2661/|K| and each nonlookup
+label has1111 draws across13 lookup units. A3 losses are not squared with r.
+Complete expected metadata, six external roots and both verified child states
+precede parent challenges. Actual verified byte/flag planes supply all three
+original views, independently consumed at emitted points. Whole q<=32768
+and Boolean s/sy bound each nonnegative side by32768<p/2. At q=0, canonical
+product sign and both zero predicates remain enforced by the complete child;
+only the equality of output/product signs becomes vacuous as rounding requires.
+No child is gated by the output. Runtime receipts, binding/FS, same-magnitude
+rounding composition, selected branches and native/model/private inference
+remain additional.
