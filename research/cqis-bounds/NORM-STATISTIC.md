@@ -115,7 +115,7 @@ All16 complete proofs passed across both fields and repetition counts, with
 scalar zero/endpoints, ragged rows, C4/C5 result widths, all six lookup terms,
 full A3/A1 losses and every actual draw. Frozen proof-state SHA-256:
 `244008775e9ce204f15139af98e3301c74d8117de43c88d36edefac7d6881d05`.
-Required local repository gates remain pending here.
+All required local repository gates passed, including soundness accounting.
 
 All work is batched; duplicated views cost O(N), plus the complete inherited
 signed/range/product/hash consumers. No measured constant, benchmark, extra
