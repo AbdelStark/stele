@@ -81,3 +81,9 @@ full-row cases are running sequentially: `--maximum` checks L65536 with
 t=q=0; `--full-nonzero` checks L511 with nonzero rows under the same maximum
 static metadata. Each needs its own mandatory CI job. Repository gates are
 queued; CI integration remains pending.
+
+All16 honest matrix proofs passed in both fields/repetition counts, including
+all four factor/carry geometries. Runtime accounts and draw maps matched
+the closed formulas. Frozen proof-state digest:
+`c80e8554fa030d0a4d98634faf0d35f0e856041d48c1c32d308d7eeb581a7b18`.
+Both full-row proofs and queued local gates remain pending.
