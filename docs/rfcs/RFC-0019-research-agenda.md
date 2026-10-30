@@ -671,3 +671,13 @@ actual width and model composition through gated conversion/down projection.
 Pinned baseline and block-variant fields are preserved. Draft A3/A8 and original
 acceptance/control criteria remain unchanged; complete sets, actual consumers,
 native parity and fidelity are mandatory, with no inference or performance claim.
+
+Q26 model-norm continuation: the [RMSNorm association study](../../research/cqis-checkpoint/MODEL-NORM.md)
+reuses Accepted RFC-0022 bytes for every layer norm and final norm, preserving
+all roles when records coincide. Native byte checks cover 10000 parameter sets
+and 150 model records; numerical composition and 354 valid native arithmetic
+rows cover varied model units/policies, with explicit overflow rejection.
+Pinned baseline and separate block-mode fields are preserved. Draft A3/A8/A9,
+original acceptance criteria and controls remain unchanged. Complete scoped
+bound/registry/source contracts, actual consumers, native full-model parity
+and fidelity remain required; no inference proof or performance result.

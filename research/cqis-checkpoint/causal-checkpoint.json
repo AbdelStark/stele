@@ -80,6 +80,9 @@
   "model_config_bytes": 2575,
   "model_config_id": "1d22d4d41a69081111c7ac582172c67cfec640b7a8893a9849063168bf5f921b",
   "model_instance_id": "a59017256c77ba3cadb05ae1ff0a2860c7b856301826a278adc77bab18c72dd4",
+  "norm_bound_bytes": 11400,
+  "norm_bound_records": 5,
+  "norm_bound_sha256": "8e482df9e64cda45e5853c339c0f398dc1a0c430d69d6e150b786b1a38edd5ca",
   "parameters": 1032272,
   "prompt": [
     0,
