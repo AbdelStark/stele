@@ -100,6 +100,12 @@ def saved_constants():
 
 
 CASES=((4,1,16384),(4,2,65535),(8,1,21845),(8,2,32767))
+STATES=(
+    '33568ff079775615fa61024258195f498b9bf50ae08dc2911a8bf61959571dc1',
+    '4152e51f6e11f298c0217dd633d1178b6b507589a9810ea346e8eb6bafb78ae4',
+    'd1f24806428f480203bb5d6408cc63491992a9173b6a0aae4c7f466be9d85711',
+    'd4c03e1324045cfedd364bd7c85501e04694a51d8ee0381bc09454d4acd1a21f',
+)
 
 
 def full(index,resume=False):
@@ -108,6 +114,7 @@ def full(index,resume=False):
     if resume:proof,state=codec(json.loads(fixture.read_text()),True)
     else:proof,state=c.prove(p,m,d);fixture.write_text(json.dumps(codec((proof,state))));print('full table produced',index,flush=True)
     expected=c.expected_roots(p,m,c.witness(p,m));out=c.verify(p,expected,proof,d);assert out['state']==state;account(p,proof,out,d)
+    assert state.hex()==STATES[index]
     print(json.dumps(dict(case=index,state=state.hex()),sort_keys=True),flush=True)
     if index==0:controls(p,proof,expected,out,d);constants(p,proof,expected,d)
     if index==2:
