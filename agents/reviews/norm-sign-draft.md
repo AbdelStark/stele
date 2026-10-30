@@ -18,8 +18,9 @@ soundness-auditor. This is a same-author review, not independent audit.
   and a final hidden by a zero operand reject their actual original consumers.
 - Ledger: total A3 numerator 131a+148; each nonlookup label has 55a+61 draws.
   Six lookup dimensions are a+2 and four are a+3; each identity/reduction
-  remains separate. Runtime account checks are in every honest proof; the
-  complete matrix and full-row evidence remain pending.
+  remains separate. All16 honest proofs passed exact runtime account checks
+  across both fields/repetitions and sizes1,5,16,65; the state hash is frozen.
+  The full-row proof remains pending.
 - Bounds: whole m<=32768, k<=32767 and Boolean n/s are enforced by actual
   consumers. Predicate sides are at most 65536; sign sides at most 2 and 3.
   Expected metadata supplies every bound. No whole wide value aliases in M31.
