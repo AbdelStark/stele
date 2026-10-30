@@ -16,7 +16,7 @@ Original dimension1..16384, fu0..30 and E0..14 remain unchanged; units are
 exactly fu+E. This revealing adapter has N=2^a padded elements and N<=1024,
 because its actual wide carry range has4N words and a4096-word capacity.
 Expected roots are raw signed left16, right16 and output32. Three actual signed
-source proofs own their raw/magnitude/sign arrays; one wide range owns C<=510.
+source proofs own their raw/magnitude/sign arrays; one wide range owns C<=255.
 No output magnitude cap is assumed: after integer multiplication it follows
 that |output|<=2^30. SiLU membership and model/physical-source ownership remain
 separate, mandatory consumers.
@@ -30,7 +30,8 @@ Output magnitude has four actual byte planes Z. Consume three k=0 A3 relations:
 3. SignTransfer: (Sleft+Sright-2*Sleft*Sright-Sout)*Z=0,
    dimension a+2, degree3, with signs broadcast across all four byte planes.
 
-Actual bytes and C<=510 give sides<=130815<p/2. Every column therefore lifts
+Actual input magnitude<=32768 gives top byte<=128. Together with C<=255,
+column sides are<=65535<p/2. Every column therefore lifts
 to integers; summing times256^j with C0=C4=0 yields U*V=|output|. The signs
 are actual bits. Nonzero output has a nonzero byte, forcing XOR sign; zero has
 the unique signed-source representation. No wide signed field equality or
@@ -38,8 +39,8 @@ plaintext product recomputation belongs in verification. Original padding is
 zero and carries are forced zero by initial boundary and product columns.
 
 Parent A3 numerator is9a+14 with3a+4 draws of each label and12 actual finals.
-Full A3 numerator is147a+170, full draws each61a+67, with no A1. Ten lookup
-dimensions are a+2,a+2,a+2 twice, then a+3,a+3,a+2, then a+4. Preserve each
+Full A3 numerator is147a+163, full draws each61a+64, with no A1. Ten lookup
+dimensions are a+2,a+2,a+2 twice, then a+3,a+3,a+2, then a+3. Preserve each
 [(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K| independently. Seven roots and four
 verified child states precede all parent challenges. Binding, FS/H and private
 composition remain additional; no new label/profile is admitted.
@@ -61,3 +62,9 @@ false output=-2^30+1, and a wrong sign with otherwise exact unsigned product.
 Test source/root/capacity/schema/field/shape errors and naive A3 parity. Compose
 one actual product root into each static/dynamic gated row-code consumer with
 matching units; no weaker independent expected product may replace that root.
+
+Preimplementation bound refinement: signed magnitude ranges imply high bytes
+<=128 independently of product correctness. Successive honest carry bounds are
+254,255,64,0 from coefficients65025,65280,16384,0. Thus a uniform actual
+byte cap255 suffices; no packed two-byte carry is needed. This replaces the
+initial conservative510 proposal before the prototype or tests are written.
