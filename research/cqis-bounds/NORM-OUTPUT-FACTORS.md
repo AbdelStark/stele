@@ -83,6 +83,10 @@ root. No verifier or expected-reason repair was needed. All20 complete proofs
 passed across both fields/repetitions, with exact accounts/draws, e=-16/-1/0/1/90
 and the91-bit B=2^90 endpoint. Frozen matrix SHA-256:
 `0966edb60acb2c5743604516c813110b0deb0fabe8ee191fd8772ec8cc603a6a`.
-Required local repository gates passed. The two-field public matrix remains
-running; QM31 completed all10000 points.
+Required local repository gates passed. Both public matrices completed all
+10000 points with exact independent equality-basis agreement. Frozen hashes:
+
+- QM31: `4747b394c7d37c037eb11a1aea196d6ae6ee9461538daf6ae340e38db725fd65`.
+- OM31: `5b5ea9a6ee1ada254cf6240b8384f99c93f5bbf49876ef2f84a5c68834150bf8`.
+
 No benchmark, native control credit or independent audit is claimed.

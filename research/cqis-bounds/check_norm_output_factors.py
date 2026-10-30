@@ -68,6 +68,7 @@ def public(d):
             row=reference(p,i-23);term=tuple(sum(byte*w[k] for byte,w in zip(row,jw))%r.sc.P for k in range(d));answer=r.sc.add(answer,r.sc.mul(term,iw[i]))
         assert r.zc.folded([r.sc.scalar(x,d) for x in grid],point)==answer;digest.update(r.sc.encode(answer))
         if case%1000==999:print('public',d,case+1,flush=True)
+    assert digest.hexdigest()=={4:'4747b394c7d37c037eb11a1aea196d6ae6ee9461538daf6ae340e38db725fd65',8:'5b5ea9a6ee1ada254cf6240b8384f99c93f5bbf49876ef2f84a5c68834150bf8'}[d]
     print(json.dumps(dict(field=d,public_points=10000,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
