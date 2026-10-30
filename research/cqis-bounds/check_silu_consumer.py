@@ -107,6 +107,11 @@ def controls(p,proof,expected,out,d):
 
 
 CASES=((4,1,0,0,[0]),(4,2,8,8,[-256,0,256]),(8,1,14,14,[-32768,-1,32767]),(8,2,30,14,[-32768,0,32767]))
+FROZEN=(
+    ('234abef075c61e745bce7166413ec69549d3a34aa4c4be1010487f3bcc53fbee','f21479e2120a9deee147a25883de00bdd154ecdab2060dcb970fd41691a3fcb2'),
+    ('e0d02f69f341b6eb4fff1257425b1957c884b080bff99018acf1af3bc0b26bf5','9708b7a6419b1752dbca15bcbb86faba0369f588d0a35bca2eab3c76ed12a394'),
+    ('9d950feece1d865f13300ab596e80ce738db7974424937121da33d93198a37a7','3f2f376c334c10f36bc9439a52cd1b3707690f3f4ba6c27cf26583b3fac2448d'),
+    ('374be3a84cda454e74f01ceb3d8b8155e3b8f9a2978f986d41681192dd553a71','b070d4abfb37f60500c4fa854693f498b19d214d12101d330dc72a23518370b0'))
 
 
 def full(index,resume=False):
@@ -122,6 +127,7 @@ def full(index,resume=False):
     else:
         proof,state=c.prove(p,xs,d); fixture.write_text(json.dumps(codec((proof,state)))); print('full-table produced',index,flush=True)
     expected=c.expected_roots(p,xs,c.witness(p,xs)); out=c.verify(p,expected,proof,d); assert out['state']==state
+    assert (state.hex(),digest.hexdigest())==FROZEN[index]
     check_account(p,proof,out,d); print(json.dumps(dict(case=index,state=state.hex(),gathers=2500,gather_sha256=digest.hexdigest()),sort_keys=True),flush=True)
     if index==0: controls(p,proof,expected,out,d)
     else:
