@@ -73,3 +73,21 @@ Recommendation: continue Q26/Q31 with M in[16384,65535], actual MD=M*D,
 A=MD+R and strict0<=R<D, then the complete rsqrt lookup and output branches.
 Only those consumers establish the unique normalization interval. Original
 task status/criteria, production controls and private proof obligations remain.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_divisor.py`.
+Tests first failed with the missing module. All33 exponents and10000 varied
+NumPy object-integer divisor cases passed, including the124-bit bound and
+every zero-pad index. Seed2690 frozen corpus SHA-256:
+`04185115f4347a30084ce0cee2e441d557b54336bbc52cd5ca28d342b16ea4ac`.
+
+Every source/public/alias control and actual upstream numerator composition
+passed. A false D proved against a one-cell-corrupted public grid satisfies
+all Boolean equations and the final composition but rejects Divisor:ClaimMismatch
+at the actual public consumer. Composition-preserving final alterations also
+reject there. Fresh zero D, D+p and high-byte proofs fail the actual relation.
+A valid different negative exponent retains identical N,A,D at N=0 but fails
+the independently expected offset root. No verifier or expected-error change
+was needed. Complete proof/public matrices and local gates remain pending;
+no measured performance, native control credit or independent audit is claimed.

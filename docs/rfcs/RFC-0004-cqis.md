@@ -1178,3 +1178,16 @@ when N=0. Complete original/public/range/carry/product consumers remain; A+p
 cannot replace integer A. This revealing scalar relation adds no parent draw
 or production cut. Divisor, normalized interval, mantissa/remainder, rsqrt,
 outputs and native/private/model ownership remain original open obligations.
+
+### A3 evidence continuation — Consumed RMSNorm configured divisor
+
+The [divisor study](../../research/cqis-bounds/NORM-DIVISOR.md) consumes one
+complete scaled numerator and the same actual exponent indicator. A fixed
+public grid derived from expected P=ed*d*2^(2F) binds every divisor byte with
+one dimension10 A3. Both scaled numerator and divisor therefore refer to the
+same bounded exponent; negative exponents with equal D=P cannot substitute
+their offset root. All actual original/public MLE consumers remain, including
+high bytes and zero padding. No supplied public grid or whole-field D identity
+is authority. This paired revealing relation adds no Accepted arithmetic role,
+production cut or native public-MLE kind. Mantissa/strict remainder, normalized
+interval, actual rsqrt membership and final/native/private/model work remain open.
