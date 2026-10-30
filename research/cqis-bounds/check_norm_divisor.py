@@ -69,6 +69,7 @@ def public(d):
         assert r.zc.folded([r.sc.scalar(x,d) for x in grid],point)==answer
         digest.update(r.sc.encode(answer))
         if case%1000==999: print('public',d,case+1,flush=True)
+    assert digest.hexdigest()=={4:'11ef1acd733e033f81d984356bae5d90514bc6f1d3ff1c44bc0562e5251e5fd9',8:'9e68cf408d67a90c22faf8b21529c88b41cfa86b47cade83aa9c038ea30f3d5f'}[d]
     print(json.dumps(dict(field=d,public_points=10000,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -96,6 +97,7 @@ def honest():
                 out=c.verify(p,c.expected_roots(p,n,a,n*4**max(-a,0),answer),proof,d); assert out['state']==state; account(p,out,d)
                 if length==16384 and a==9: assert answer.bit_length()==124 and proof['divisor'][15]>0
                 digest.update(state); count+=1; print('honest',count,d,reps,length,f,a,flush=True)
+    assert count==16 and digest.hexdigest()=='b888f31a2ab75071db6053258bf61224da1682b3270ae1e75f8e768eb762ce5e'
     print(json.dumps(dict(proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
