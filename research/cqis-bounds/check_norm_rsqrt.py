@@ -76,7 +76,8 @@ def controls(p,proof,expected,out,d):
     beta=out['lookup']['pairs'][0][0];assert beta!=r.sc.scalar(0,d)
     bad=copy.deepcopy(proof);final=bad['lookup']['rounds'][0]['leaf']['final'];final[2]=r.sc.add(final[2],beta);final[3]=r.sc.add(final[3],r.sc.scalar(-1,d))
     rejects('Lookup:OpeningMismatch',lambda:c.verify(p,expected,bad,d))
-    for index,reason in ((0,'CoefficientMismatch'),(1,'SelectorMismatch')):
+    # At scalar dimension0 the final composition rejects before constant consumers.
+    for index,reason in ((0,'FinalEvaluationMismatch'),(1,'FinalEvaluationMismatch')):
         bad=copy.deepcopy(proof);bad['lookup']['rounds'][0]['leaf']['final'][index]=r.sc.scalar(0,d);rejects('Lookup:'+reason,lambda:c.verify(p,expected,bad,d))
     bad=copy.deepcopy(proof);bad['lookup']['mus'][0][0]=r.sc.add(bad['lookup']['mus'][0][0],r.sc.scalar(1,d));rejects('Lookup:CommitmentMismatch',lambda:c.verify(p,expected,bad,d))
     rejects('ProofShape',lambda:c.verify(p,expected,dict(proof,table=()),d));rejects('Root',lambda:c.verify(p,[False]*2,proof,d))

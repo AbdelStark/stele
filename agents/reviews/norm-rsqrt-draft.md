@@ -13,8 +13,10 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   denominator are consumed at their actual emitted points. The complete lookup
   supplies M/J bounds; formula-based witness generation confers no acceptance.
 - Bindings: partial-table proof rejected at complete expected tree shape.
-  Full-table original/final/multiplicity, corrupted valid tuple, padded tuple
-  admission and actual upstream M composition checks remain running.
+  First full proof and compression-preserving source-final attack passed;
+  corrupted complete-table proof rejected. Two scalar coefficient/selector
+  controls rejected at FinalEvaluationMismatch before their constant consumers;
+  only expected reasons were corrected. Remaining full checks stay running.
 - Ledger: identity numerator98304 raised to r; separate reduction392r. Each
   repetition draws beta/alpha once, gamma/fold16 times and Sumcheck120 times.
   All3r claims and49152 multiplicities remain; full proof/accounting checks
