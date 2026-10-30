@@ -108,8 +108,19 @@ def controls():
     bad,_=c.assemble(p,dict(pairs,reciprocal=other),roots,d);rejects('Reciprocal:Lookup:CommitmentMismatch',lambda:c.verify(p,roots,bad,d));print('genuine complete-table lookup with substituted M rejects',flush=True)
 
 
+def zero_exponent():
+    p=replace(spec(1,2850),schema=c.norm.Spec(1,0,0,14,1,3));d=4;xs=[0];hs=[1];v=c.derive(p,d);w=c.witness(p,xs,hs);roots=c.expected_roots(p,xs,hs)
+    print('zero exponent baseline start',flush=True);pairs=c.prepare(p,xs,hs,d);proof,state=c.assemble(p,pairs,roots,d);assert c.verify(p,roots,proof,d)['state']==state and w['N']==1 and w['a']==-8
+    changed=dict(pairs,configured=c.configured.prove(v['configured'],0,w['a'],xs,hs,w['J'],d));br=roots.copy();br[:15]=c.configured.roots(v['configured'],changed['configured'][0]);bad,_=c.assemble(p,changed,br,d)
+    rejects('Numerator:Product:Output:CommitmentMismatch',lambda:c.verify(p,br,bad,d));print('zero X cannot erase positive epsilon from N',flush=True)
+    a=w['a']-1;A=w['N']*4**(-a);rem=A-w['MD'];rv=c.remainder.derive(v['normal_remainder'],d);assert rem>=w['D'] and rem<rv['cert']['D_max']
+    rp={name:r.prove(rv['ranges'][name],[value],d) for name,value in (('divisor',w['D']),('remainder',rem),('gap',0))};false_remainder=c.remainder.assemble(v['normal_remainder'],rp,c.remainder.carries(rem,0),d)
+    changed=dict(pairs,configured=c.configured.prove(v['configured'],w['N'],a,xs,hs,w['J'],d),normal_sum=c.summation.prove(v['normal_sum'],w['MD'],rem,d),normal_remainder=false_remainder);br=roots.copy();br[:15]=c.configured.roots(v['configured'],changed['configured'][0]);br[18]=c.remainder.expected_roots(v['normal_remainder'],w['D'],rem)[1];bad,_=c.assemble(p,changed,br,d)
+    rejects('NormalRemainder:StrictColumns:RoundSumMismatch',lambda:c.verify(p,br,bad,d));print('coherent wrong exponent at zero X satisfies sum but fails strict normalized remainder',flush=True)
+
+
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,**{'--honest'+str(d)+'r'+str(reps):(lambda d=d,reps=reps:honest(d,reps)) for d in (4,8) for reps in (1,2)},'--maximum':lambda:honest(maximum='wide'),'--full-left':lambda:honest(maximum='left'),'--full-right':lambda:honest(maximum='right')}
+    modes={'--corpus':corpus,'--controls':controls,'--zero-exponent':zero_exponent,**{'--honest'+str(d)+'r'+str(reps):(lambda d=d,reps=reps:honest(d,reps)) for d in (4,8) for reps in (1,2)},'--maximum':lambda:honest(maximum='wide'),'--full-left':lambda:honest(maximum='left'),'--full-right':lambda:honest(maximum='right')}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()

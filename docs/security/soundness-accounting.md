@@ -866,3 +866,23 @@ the branch; every original consumer remains mandatory at zero products. The
 left branch checks both unused qd/r roots against16N canonical zero slots.
 Binding, FS/H, full normalized-interval/statistic/rsqrt joins, private composition
 and model ownership remain additional. No profile or production cut is admitted.
+
+The [complete RMSNorm arithmetic wrapper](../../research/cqis-bounds/NORM-COMPOSITION.md)
+adds no random challenge. It retains seven complete child accounts in fixed order:
+configured output, full statistic, numerator, mantissa product, normalization sum,
+strict normalization remainder and reciprocal lookup. Concatenate the first six
+children's ordered range-lookup identities, then the actual reciprocal identity
+(98304/|K|)^r. Add its392r/|K| reduction to the six lookup-reduction totals.
+Sum the inherited range/A3 numerators and retain the statistic A1 numerator
+separately. Keep the factor selection reduction6/|K|. Four independent limb
+product identity numerators remain in order (configured factors, numerator,
+mantissa product, normalization sum); their sum over|K| is a union bound, not
+one repeated identity. Add their four product-reduction numerators over|K|.
+No reduction is squared with lookup repetitions. Full child receipts retain
+every original/public claim and challenge event. The parent draw map is empty.
+Its final seed binds complete expected function/role bytes, all nineteen roots
+and seven verified states. Exact root joins add no algebraic loss conditional
+on binding. N=ed*S+en*unit with positive expected epsilon and the same X source,
+A=MD+R with bounded M and strict R<D, and complete (M,J) membership remain actual
+consumers even at zero output. Binding, FS/H, physical/model ownership, native
+lowering and private composition losses remain additional; no profile is admitted.

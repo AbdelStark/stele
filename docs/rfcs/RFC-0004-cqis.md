@@ -1396,3 +1396,18 @@ normalization must still join N to the same X statistic, A/D to the normalized
 interval and J to configured rsqrt. Proof/control evidence, native/model/private
 inference, fidelity and original task criteria remain required. No Accepted
 role, profile or cut is added.
+
+### A3 evidence continuation — Complete RMSNorm arithmetic composition
+
+The [arithmetic composition](../../research/cqis-bounds/NORM-COMPOSITION.md)
+retains seven complete consumers: configured output, full statistic, numerator,
+mantissa product, normalization sum, strict normalization remainder and actual
+complete reciprocal lookup. Nineteen shared roots connect the same signed X/H/Y
+to S,N,a,A,D,M,MD,R,J and the selected output relation. Positive expected epsilon
+keeps N positive at zero X; the actual normalized interval determines a. No
+formula or supplied child receipt replaces lookup or arithmetic verification.
+The parent adds no random challenge and preserves every independent child loss.
+Corpus, complete controls/matrices and full-row proof evidence remain required.
+This closes no native/model/private inference criterion without that delivery;
+physical source ownership, PCS/ZK/FS, fidelity and scale remain open. No Accepted
+role, profile or cut is added.
