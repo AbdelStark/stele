@@ -113,7 +113,10 @@ def check():
 
 
 if __name__ == '__main__':
-    if sys.argv[1:] in (['--bound-set'],['--bound-set-controls']):
+    if sys.argv[1:] in (['--model-functions'],['--model-function-controls']):
+        from check_model_functions import check, controls
+        check() if sys.argv[1]=='--model-functions' else controls()
+    elif sys.argv[1:] in (['--bound-set'],['--bound-set-controls']):
         from check_model_bound_set import check, controls
         check() if sys.argv[1]=='--bound-set' else controls()
     elif sys.argv[1:] in (['--model-norm'],['--model-norm-controls']):

@@ -19,6 +19,7 @@ import model_attention_max_bounds
 import model_gated_product_bounds
 import model_norm_bounds
 import model_bound_set
+import model_functions
 import source
 import rope
 
@@ -28,7 +29,7 @@ CONFIG = '3305bd985f960e7d680f4710ffd2830a55a5f149e8d8d2d18ff0b3fc508cc97f'
 WEIGHTS = 'aaa2c22c920d4e9c0943dc1f9d73fd4c687c2aa9c1ebcb878281c234075cec50'
 
 
-def prepare(config_bytes, raw):
+def prepare_configuration(config_bytes, raw):
     m.require(hashlib.sha256(config_bytes).hexdigest()==CONFIG,'ConfigDigest')
     config = json.loads(config_bytes,parse_float=Q,parse_constant=source.no_number,object_pairs_hook=source.unique)
     d,h,layers,vocab,ff = [config[key] for key in ('hidden_size','num_attention_heads','num_hidden_layers','vocab_size','intermediate_size')]
@@ -70,6 +71,12 @@ def prepare(config_bytes, raw):
                              exp=[15,7,12],score=[1,-1],rope=[4,2048,10000,'split'],
                              row_mode='dynamic',accumulation='exact',tied=False))
     info.update(model_bound_set.evidence(config_id,config_bytes,prepared['digest_cqis'],prepared['artifact']))
+    info.update(model_functions.evidence(config_id,config_bytes))
+    return model,info,configuration
+
+
+def prepare(config_bytes,raw):
+    model,info,_=prepare_configuration(config_bytes,raw)
     return model,info
 
 
@@ -78,7 +85,9 @@ def check_checkpoint(prefix, reference, *, write=False):
     from check_attention import reject
     reject('ConfigDigest',lambda: prepare(config+b' ',raw))
     reject('SourceDigest',lambda: prepare(config,raw[:-1]+bytes([raw[-1]^1])))
-    model,info = prepare(config,raw); sequence = [0,42,1337,31999]
+    model,info,configuration = prepare_configuration(config,raw); sequence = [0,42,1337,31999]
+    from check_model_functions import full as functions, native as native_functions
+    _,_,selected,_,manifest,_=functions(configuration); native_functions([(selected,manifest.hex())])
     info.update(model_scaled_bounds.evidence(model))
     info.update(model_row_bounds.evidence(model))
     info.update(model_rotary_bounds.evidence(model))

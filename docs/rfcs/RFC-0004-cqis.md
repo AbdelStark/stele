@@ -934,3 +934,21 @@ scopes. Prior pinned fixture fields remain intact. This is a static-template
 collection, not the full proof plan, function/component registry, cqis_id or
 source/range/branch/table consumer. Original criteria and controls remain
 required; no challenge, loss, cut, inference weight pass or constant changes.
+
+### A3/A10 evidence continuation — Model function roles and manifest
+
+Status: Draft model association; Accepted RFC-0021 §4 bytes unchanged. Q26.
+The [model function study](../../research/cqis-checkpoint/MODEL-FUNCTIONS.md)
+retains norm1/attention-exp/norm2/SiLU per layer and the final norm, then derives
+the exact selected function/representation set and component-data manifest.
+All 4L+1 operation roles remain even when functions coincide; supplied metadata
+or data digests cannot select their own expected authority.
+
+Checks cover 10000 configurations, maximum role/function/component counts,
+complete native manifest bytes for all exponential representation modes, source/
+representation substitution and mutated component digests. The pinned replay
+preserves every previous field. This neural-function set excludes range/selector
+functions required by actual reduction lowering and does not bind table codes,
+tree ids, roots or witness membership. Full plan/source consumers, native
+inference and fidelity remain mandatory. No challenge, loss, cut, inference
+weight pass, measured constant or original acceptance criterion changes.
