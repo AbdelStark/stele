@@ -46,8 +46,11 @@ soundness-auditor. This is a same-author review, not independent audit.
   it verifies the complete children and their actual derived source views.
 - Glossary/history: append-only Draft/accounting evidence; original blocked
   criteria remain. Configured rounding, normalization, native/model/private
-  inference and fidelity remain open. Gates and CI are pending.
+  inference and fidelity remain open. Required local gates passed; hosted CI remains pending.
 
 I tried to break it by changing the canonical product sign when a negative
 product rounded to zero, and the control ProductSign:Sign:RoundSumMismatch
 rejected it before the zero output could hide the false sign.
+
+Required local repository gates, including the accounting gate, passed.
+Full-row proof evidence and hosted validation remain pending.
