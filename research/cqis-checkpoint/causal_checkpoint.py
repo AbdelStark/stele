@@ -20,6 +20,7 @@ import model_gated_product_bounds
 import model_norm_bounds
 import model_bound_set
 import model_functions
+import model_flow
 import source
 import rope
 
@@ -29,7 +30,7 @@ CONFIG = '3305bd985f960e7d680f4710ffd2830a55a5f149e8d8d2d18ff0b3fc508cc97f'
 WEIGHTS = 'aaa2c22c920d4e9c0943dc1f9d73fd4c687c2aa9c1ebcb878281c234075cec50'
 
 
-def prepare_configuration(config_bytes, raw):
+def prepare_artifact(config_bytes, raw):
     m.require(hashlib.sha256(config_bytes).hexdigest()==CONFIG,'ConfigDigest')
     config = json.loads(config_bytes,parse_float=Q,parse_constant=source.no_number,object_pairs_hook=source.unique)
     d,h,layers,vocab,ff = [config[key] for key in ('hidden_size','num_attention_heads','num_hidden_layers','vocab_size','intermediate_size')]
@@ -72,6 +73,12 @@ def prepare_configuration(config_bytes, raw):
                              row_mode='dynamic',accumulation='exact',tied=False))
     info.update(model_bound_set.evidence(config_id,config_bytes,prepared['digest_cqis'],prepared['artifact']))
     info.update(model_functions.evidence(config_id,config_bytes))
+    info.update(model_flow.evidence(config_id,config_bytes))
+    return model,info,configuration,prepared['artifact']
+
+
+def prepare_configuration(config_bytes,raw):
+    model,info,configuration,_=prepare_artifact(config_bytes,raw)
     return model,info,configuration
 
 
@@ -85,7 +92,7 @@ def check_checkpoint(prefix, reference, *, write=False):
     from check_attention import reject
     reject('ConfigDigest',lambda: prepare(config+b' ',raw))
     reject('SourceDigest',lambda: prepare(config,raw[:-1]+bytes([raw[-1]^1])))
-    model,info,configuration = prepare_configuration(config,raw); sequence = [0,42,1337,31999]
+    model,info,configuration,artifact = prepare_artifact(config,raw); sequence = [0,42,1337,31999]
     from check_model_functions import full as functions, native as native_functions
     _,_,selected,_,manifest,_=functions(configuration); native_functions([(selected,manifest.hex())])
     info.update(model_scaled_bounds.evidence(model))
@@ -109,6 +116,11 @@ def check_checkpoint(prefix, reference, *, write=False):
     assert cache==actual['cache']
     generated = m.generate(model,sequence,2,1)
     replay = reference(model,generated['tokens'])
+    config_id,config_bytes=c.identity(configuration),c.encode(configuration)
+    routed=model_flow.execute(config_id,config_bytes,bytes.fromhex(info['digest_cqis']),artifact,
+                              generated['tokens'],supplied=model_flow.encode(config_id,config_bytes))
+    assert {k:routed[k] for k in replay}==replay
+    assert routed['selected']==[m.choose(h['logits']) for h in replay['heads']]
     from check_model_norm_bounds import model_rows as norm_rows, native_rows, native_records
     native=[]; norm_rows(model,replay,list(range(len(generated['tokens']))),native)
     native_records([s for _,s,_ in model_norm_bounds.records(model)]); native_rows(native)
