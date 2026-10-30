@@ -116,6 +116,21 @@ def boundaries():
     print('ragged wide remainder, masked scalar/one, padded and terminal carries, and high roots checked',flush=True)
 
 
+def aliases():
+    for shift in range(16,91):
+        f,g,e=(0,0,30-shift) if shift<30 else (min(30,shift-30),max(0,shift-60),0)
+        p=replace(spec(),schema=c.norm.Spec(3,f,g,e,1,3));v=c.derive(p,4)
+        for prefix in ('remainder','gap'):
+            low=v['ranges'][prefix+'_low'].caps[0];high=v['ranges'][prefix+'_high'].caps[0] if prefix+'_high' in v['ranges'] else 0
+            assert low+(high<<64)==(1<<shift)-1 and bool(high)==(shift>64)
+        assert v['equal_caps'][-1]==v['strict_caps'][-1]==0
+    p=spec(3,2445);d=4;ts=[0,1,255];h=1<<89;b=1<<90;qs=[0]*3;rs=[t+h for t in ts];v=c.derive(p,d);w=c.witness(p,ts,h,qs,b,rs);pairs=c.prepare(p,ts,h,qs,b,rs,d)
+    for name,delta in (('remainder_low',r.sc.P),('gap_low',-r.sc.P)):
+        values=w[name].copy();values[0]+=delta;pairs[name]=r.prove(v['ranges'][name],values,d)
+    bad,_=c.assemble(p,pairs,d);rejects('Equality:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    print('all75 split-bound transitions and strict-preserving remainder+p forgery checked',flush=True)
+
+
 def composition():
     import norm_output_factors as factors
     p=spec(3,2450);d=4;ts=[0,255,1<<44];h=1<<89;b=1<<90;qs=[0]*3;rs=[t+h for t in ts];proof,state=c.prove(p,ts,h,qs,b,rs,d);roots=c.expected_roots(p,ts,h,qs,b,rs)
@@ -126,7 +141,7 @@ def composition():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition}
+    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition,'--aliases':aliases}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
