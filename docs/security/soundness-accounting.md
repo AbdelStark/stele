@@ -658,3 +658,20 @@ B<=2^90,h<=2^89,L<=2^16 follow without whole-factor field lifts. All original
 and public MLE consumers, inactive factors and high zero slots remain. Binding,
 FS/H, normalized interval, actual J/signed products, output branches and native/
 physical/model/private composition remain additional; no profile/cut credit.
+
+Q26/Q31's [RMSNorm magnitude product](../../research/cqis-bounds/NORM-XY.md)
+uses N=2^a padded elements, two complete signed16 sources and two whole ranges.
+The signed children contribute A3 numerator86a+70, output9a+14 and carry9a+18.
+One dimension a+2 degree2 parent A3 contributes3a+6, totaling107a+108 over|K|.
+Six signed-range lookups retain dimension a+2 and output/carry dimension a+3.
+For each separately retain identity((2^m+255)/|K|)^r and reduction
+r*[F(m)+F(8)+3m]/|K| with F(m)=3m(m-1)/2+2m; reductions are not squared.
+All lookup multiplicities bind before beta/alpha, and complete fraction/source/
+public consumers remain. Full nonlookup draws are45a+44 of each A3 label;
+the parent draws a+2 each and consumes all seven actual original views.
+Complete expected norm bytes, three external roots, three auxiliary roots and
+four verified child states seed the parent before its weights/rounds/finals.
+Closed outgoing carry caps254,255,64,0 and whole source/output bounds make both
+column sides at most65535 with2*65535<p. Binding/FS, actual xy*J, canonical
+product sign, output branches and native/physical/model/private composition
+remain additional. This1024-element revealing adapter adds no profile or cut.

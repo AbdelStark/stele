@@ -1252,3 +1252,16 @@ original/public claim remains consumed. Shifts-16..90 retain the wide output
 semantics; the int32 Requant contract is not substituted. Normalized interval,
 actual J and signed X/H products, output branches, native/private/model/physical
 ownership and fidelity remain required. No Accepted role or cut is added.
+
+### A3 evidence continuation — Consumed RMSNorm magnitude product
+
+The [magnitude-product study](../../research/cqis-bounds/NORM-XY.md) consumes
+two actual signed16 sources and one unsigned xy<=2^30 source through four
+vectorized byte columns. Complete whole-value ranges and the closed xy role's
+exact carry caps supply integer faithfulness and both zero boundaries. Every
+original remains consumed, including when a zero operand hides a substitution
+algebraically. Full norm metadata retains F,G through30. This revealing adapter
+is limited to1024 elements by the existing carry-range capacity; the original
+16384-element domain, xy*J, canonical product sign and output branches remain
+required. Native stacking, physical/model ownership, private PCS/ZK/FS and
+fidelity stay open. No Accepted contract, range capacity or cut changes here.

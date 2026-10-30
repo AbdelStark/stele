@@ -56,3 +56,27 @@ canonical product sign. RFC-0022 explicitly requires zero predicates and sign
 zero when either input magnitude is zero; final output sign alone cannot erase
 that obligation. Native stacking, physical/model ownership, private PCS/ZK/FS,
 full capacity and original inference/fidelity criteria remain open.
+
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_xy.py`.
+Tests first failed with the missing module. Seed2714 passed10000 independent
+NumPy int64 product/convolution cases covering3394324 padded column cells,
+strict expected metadata and capacity boundaries. Frozen corpus SHA-256:
+`f873271b7a0ecfacad1ccbef6c15966414806db0e4958a99aaa44a2039df17a4`.
+
+Stale raw/magnitude/output/carry roots rejected; fresh bounded false output
+and carry proofs failed ProductColumns:RoundSumMismatch. The first loose-cap
+attack rejected earlier at Carry:SourceCopy:ClaimMismatch because changing
+expected cap metadata changes the range transcript. The focused control was
+strengthened to retain original expected metadata while producing actual
+false-cap byte/column proofs. Carry overflow and output+p then rejected at
+Carry:CapRelation:RoundSumMismatch and Output:CapRelation:RoundSumMismatch.
+No verifier change was needed. Composition-preserving output/carry finals
+and an original hidden by a zero multiplicand rejected ClaimMismatch.
+Actual same-X composition with the statistic proof passed; a valid source
+sign substitution preserving magnitudes/statistic/product rejected the pinned
+raw root. Separate padding/terminal controls, full field/repetition/capacity
+matrices and required repository gates remain pending. No benchmark, native
+control credit or independent audit is claimed.
