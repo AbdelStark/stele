@@ -71,6 +71,12 @@ source roots. A valid different reciprocal rejected the pinned J root. A
 separate offset of 8193 rejected at Offset:CapRelation:RoundSumMismatch under
 the expected cap 8192, using a real false-cap proof.
 
-The complete matrix, remaining controls and full-row proof are running.
-No completed full-row proof, final review or native/private inference is
-claimed. Required CI integration and local gates remain pending.
+All 16 complete proofs passed across both fields, both repetition counts and
+counts 1,3,16,65, with exact accounts and all consumers. Frozen matrix hash:
+`3ef9e1b99949c3ff074517e0ea1806d31acfc620b58ea688e2ac8c840867e5ff`.
+All source, product, carry, p-alias, original-final, padded-value and high-plane
+controls passed. The verifier and expected rejection reasons were unchanged.
+
+The full-row proof is running. No completed full-row proof, final review or
+native/private inference is claimed. Required CI integration and local gates
+remain pending.
