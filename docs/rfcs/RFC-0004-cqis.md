@@ -1424,3 +1424,16 @@ aliases and same-magnitude signed substitutions require adversarial checks.
 This revealing16384-row adapter does not complete the static2^20 domain,
 canonical numerator sign, one-round output or native/model/private inference.
 A3/A8 and all original task criteria remain unchanged; no Accepted cut is added.
+
+### A3/A8 evidence continuation — Canonical residual numerator sign
+
+Draft research: [residual sign](../../research/cqis-bounds/RESIDUAL-SIGN.md)
+consumes the aligned offset O with complete magnitude/sign ranges. Exact byte
+columns prove O+2sM=H+M using statically bounded signed carries encoded by an
+offset; both endpoints and every original view remain consumed. A bounded
+predecessor of the sum of actual magnitude bytes excludes negative zero with
+a small faithful identity. This auxiliary is not the static whole sign_gap;
+no native record is changed. Same-root alignment composition and coherent
+negative-zero/whole-alias controls remain required. This16384-row revealing
+adapter leaves residual rounding, original2^20 capacity and all native/model/
+private inference and fidelity obligations open. A3/A8 remain Draft.

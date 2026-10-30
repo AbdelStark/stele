@@ -905,3 +905,23 @@ Carry caps are static, at most255; both byte-column sides are at most65535<p/2.
 No runtime maximum establishes integer faithfulness. Binding, FS/H, private
 composition and physical/model ownership remain additional. No production
 profile, native control or complete residual/inference claim is admitted.
+
+### Draft A3/A8 canonical residual numerator sign (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-SIGN.md). Six complete
+ranges O,M,s,g,c0,c1 retain lookup dimensions a+b_o+1,a+b_m+1,a+1,a+2,a+3,a+3,
+where N=2^a and actual O/M range byte widths are2^b_o and2^b_m. Each separate
+identity is ((2^m+255)/|K|)^r; its unsquared reduction is
+r*(f(m)+f(8)+3m)/|K|, f(m)=3m(m-1)/2+2m. Range/A3 numerator totals
+61a+7(b_o+b_m)+52. Parent A3s run in fixed order: terminal degree1 at a,
+signed columns degree2 at a+3, canonical zero degree1 at a. Their phase
+numerators sum to7a+9; all twelve original claims retain their consumers.
+Expected schema/roles, three external roots, six auxiliary roots and verified
+child states precede parent weights and Instance/Round/Final messages.
+Parent draws per ZeroWeight/Sumcheck label are3a+3; full nonlookup totals
+are27a+22+3(b_o+b_m), with lookup schedules accounted separately.
+Natural carry bounds[-2,2], shifted to[0,4], and exact endpoints yield integer
+column faithfulness with sides<=1534<p/2. Canonical zero uses actual byte sum
+<=2040 and g+s<=2041, never a wide M31 residue or runtime fit. Binding, FS/H,
+physical/model/private composition and full inference remain additional;
+no production profile or native control credit is admitted.

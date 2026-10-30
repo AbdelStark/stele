@@ -86,7 +86,7 @@ def controls():
         values=w[name].copy();values[index]+=1;bad,_=c.assemble(p,dict(pairs,**{name:r.prove(v['ranges'][name],values,d)}),d);rejects(reason,lambda:c.verify(p,roots,bad,d))
     print('roots, all range words, range-valid M+p, coherent negative zero and actual carries reject',flush=True)
     zero=c.prepare(p,[H]*3,d);zp,zs=c.assemble(p,zero,d);zr=c.roots(p,zp);assert c.verify(p,zr,zp,d)['state']==zs
-    attacks=((0,((0,1),(1,1))),(1,((0,1),(5,1))),(1,((3,1),(4,-1))),(1,((0,256),(6,1))),(1,((0,1),(2,1))),(1,((1,1),)),(2,((0,1),(1,1))))
+    attacks=((0,((0,1),(1,1))),(1,((0,1),(5,1))),(1,((3,1),(4,-1))),(1,((0,256),(6,1))),(1,((0,1),(2,1))),(1,((1,1),)),(2,((0,1),(1,1))),(2,((1,1),(2,-1))))
     for index,changes in attacks:
         bad=copy.deepcopy(zp)
         for column,delta in changes:bad['zero'][index]['final'][column][0]=r.sc.add(bad['zero'][index]['final'][column][0],r.sc.scalar(delta,d))
@@ -102,7 +102,7 @@ def boundaries():
         child=v['ranges'][name];values=w[name].copy();caps=list(child.caps);values[index]=caps[index]=value;badpair=r.assemble(child,*r.witness(replace(child,caps=tuple(caps)),values),d);bad,_=c.assemble(p,dict(pairs,**{name:badpair}),d);rejects(name.title()+':CapRelation:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     small=replace(spec(1,3041),schema=c.residual.Spec(1,0,0,0));sv=c.derive(small,d);H=sv['constants']['numerator_max'];proof,_=c.prove(small,[H],d)
     for index in (0,1):
-        br=c.expected_roots(small,[H],[0],[0]);br[index]=r.root((small.offset,small.magnitude)[index],[0]*7+[1]);rejects(('Offset','Magnitude')[index]+':CommitmentMismatch',lambda:c.verify(small,br,proof,d))
+        br=c.expected_roots(small,[H],[0],[0]);words=list(H.to_bytes(8,'little')) if index==0 else [0]*8;words[-1]=1;br[index]=r.root((small.offset,small.magnitude)[index],words);rejects(('Offset','Magnitude')[index]+':CommitmentMismatch',lambda:c.verify(small,br,proof,d))
     print('whole bounds, nonboolean sign, predecessor overflow, padded carries and high planes reject',flush=True)
 
 
