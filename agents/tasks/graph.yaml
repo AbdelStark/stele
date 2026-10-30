@@ -675,7 +675,7 @@ tasks:
   crate: stele-cqis
   status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
   agent: codex-root
-  branch: task/E5-03-attention-probability-sum
+  branch: task/E5-03-attention-values
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109

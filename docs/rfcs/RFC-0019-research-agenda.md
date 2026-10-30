@@ -926,3 +926,11 @@ comes from actual attained maximum and canonical exponential composition.
 Continue with restored value products and output normalization on these exact
 roots. Full-sequence key completeness, physical/model ownership, fidelity and
 native/private inference remain open; no original criterion or control is waived.
+
+Q26/Q31 restored-value continuation: can [actual code/scale consumers](../../research/cqis-bounds/ATTENTION-VALUES.md)
+bind D=s*V for all entries while preserving prepared-row two's-complement
+code roots, per-position scale association and dynamic zero-scale rules?
+The proposed offset relation retains every original claim, including at
+zero scale. Implement tests first, then verify the planned account with
+actual receipts. Complete source ownership and subsequent weighted-sum/
+normalization consumers remain required; no native or private claim follows.

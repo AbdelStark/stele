@@ -1539,3 +1539,15 @@ composition establishes Z>=2^E from attainment. This adds no new cut or
 probability normalization rule. Full-row/gate evidence, restored values,
 normalization, physical/model ownership and native/private inference remain
 required; original task/control criteria remain unchanged.
+
+### A3/A6 research plan — Restored attention value sources
+
+Draft plan: [restored value sources](../../research/cqis-bounds/ATTENTION-VALUES.md)
+will join complete signed8 code sources to per-position scale sources and
+bounded offsets U=S+s*V. Two's-complement raw bytes and actual sign views
+feed the restoration relation. Dynamic zero-scale predicates remain required,
+including when outputs vanish. Static policy derives its tighter code cap
+from the configured scale. This is a pre-implementation plan: every actual
+consumer, attack, account receipt and full-domain proof remains to be tested.
+Prepared projection-row ownership, GQA/cache views, weighted sums, native/
+private inference and original criteria are not admitted by these bounds.

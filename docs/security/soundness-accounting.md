@@ -1080,3 +1080,26 @@ attained maximum and complete exponential proofs on the same source roots;
 all their independent accounts remain additional, with no extra join draws.
 Binding, FS/H, physical/model ownership and native/private lowering remain
 additional. No production profile or native NC-0503 credit is admitted.
+
+### Planned restored-value consumer (Q26/Q31; Draft RFC-0004 A3/A6)
+
+Before implementation, let a=log2(padded value entries), ar=log2(padded key
+positions), and bo=log2(compact output byte width). Retain the complete
+signed8 source account. Static restoration adds two complete wide ranges
+and one degree-two A3, for total numerator 64a+9+7bo and 27a+4+3bo draws
+per nonlookup label. Ordered lookup dimensions are a+1,a+1,a+2,a+1,a+bo+1.
+Dynamic restoration also consumes scale, Boolean nonzero and predecessor
+ranges on positions, one degree-two A3 over 2R predicate entries, and one
+over N value entries for zero-scale codes. Its total A3 numerator is
+67a+30ar+26+7bo and each nonlookup label has 28a+13ar+11+3bo draws. Append
+lookup dimensions ar+2,ar+1,ar+2. Each unit retains its separate identity
+((2^m+255)/|K|)^r and unsquared reduction r*(F(m)+F(8)+3m)/|K|, where
+F(m)=3m(m-1)/2+2m. Complete expected metadata, external/auxiliary roots
+and all verified child states precede parent weights, rounds and finals.
+The planned restoration relation has five actual original-point consumers;
+dynamic predicates and zero-scale codes add four and two respectively.
+
+These formulas are not runtime evidence. Tests must verify each receipt
+and challenge count before acceptance. Actual prepared-row source ownership,
+Binding/H/FS, PCS/ZK, weighted-sum composition and native inference remain
+additional obligations. No production profile or NC credit is granted.
