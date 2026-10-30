@@ -68,3 +68,25 @@ Continue Q26/Q31 with the configured norm output branches and signed output.
 Native stacking, physical/model ownership, private PCS/ZK/FS, fidelity and the
 original end-to-end acceptance criteria remain required. No new cut, production
 NC coverage, fitted cost or benchmark is claimed.
+
+## Current evidence
+
+The tests-first run rejected the missing module. Seed 2716 then passed 10000
+independent NumPy int64 cases covering 4242905 padded word slots and full-domain
+metadata boundaries. Frozen corpus hash:
+`1c00d0c60f7029c8c6ecec8e28e08c19ffb2dcef550f53d884a31220d68a9913`.
+
+All predicate/sign/source controls and padding/cap controls passed. Changing a
+nonzero predicate to zero while adjusting k to preserve m=k+n still rejects
+the second predicate equation. Fresh false Boolean signs reject even at zero
+products; nonboolean signs and padded values reject their actual cap relations.
+Composition-preserving finals and originals hidden by zero operands reject.
+The first control run stopped at a test-only call to an unavailable field
+subtraction helper. Addition and negation repaired that helper; neither the
+verifier nor expected rejection reasons changed.
+
+An actual reciprocal-product proof composed on the same xy root. Changing a
+raw input sign while preserving xy and canonical product sign rejected the
+pinned source. The honest matrix and full 16384-element proof are running.
+Required CI integration, local gates and final evidence remain pending.
+Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_sign.py`.
