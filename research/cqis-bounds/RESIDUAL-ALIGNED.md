@@ -11,6 +11,8 @@ For expected fractions Fl,Fr,Fo in0..30, set f=max(Fl,Fr,Fo), A=2^(f-Fl)
 and B=2^(f-Fr). Consume two complete signed-source proofs, then enforce
 O=(X+32768)*A+(Y+32768)*B as an exact nonnegative integer in each real row.
 Signed source roots retain the existing two-byte plane representation.
+Leaves are canonical-u32 research values; packed model-source authentication
+remains separate.
 Flip the verified high byte's sign bit to obtain X+32768 and Y+32768;
 apply that map only to real rows. Padding remains zero, not the offset32768.
 The O root has eight byte planes, including required high zero planes.
