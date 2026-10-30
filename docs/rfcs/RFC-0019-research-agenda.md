@@ -596,3 +596,12 @@ component-bounded pairs on zero inputs. Model role records and pinned replay
 are correctness evidence, not canonical coefficient/source authentication.
 Draft A3/A7, full schemas, actual consumers, native parity, fidelity and all
 original E5-03/04 criteria remain open; no production NC or performance credit.
+
+Q26 residual-bound continuation: the [one-round alignment study](../../research/cqis-bounds/RESIDUAL.md)
+closes static byte-column relations for distinct input/output fractions, exact
+addition and signed rounding. A coherent M31 alias changes the correct output
+from 1 to -1 under field-only checking; canonical digit relations reject it.
+Mixed model roles and pinned replay preserve the earlier numerical fixture.
+Draft A3/A8, attention/decoding schemas, complete certificate sets, authenticated
+source/range consumers, native parity and fidelity remain open. No original
+E5-03/04 criterion, production NC or measured performance claim is completed.
