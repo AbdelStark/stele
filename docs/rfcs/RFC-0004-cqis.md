@@ -1580,3 +1580,14 @@ to an eight-byte H root. No parent challenge or whole-field product substitutes
 for complete consumption. Tests must cover valid changed sources, a changed
 zero-hidden S and H+p aliases. Signed O-H, normalization, full ownership and
 all native/private criteria remain open; no Accepted role or cut changes.
+
+### A3/A6 research plan — Canonical signed attention sums
+
+Draft plan: [actual signed O-H](../../research/cqis-bounds/ATTENTION-SIGN.md)
+consumes the weighted-offset and scalar-base roots with complete magnitude,
+sign, predecessor and signed-carry ranges. Eight bounded byte columns bind
+the difference; an actual magnitude-byte sum excludes negative zero. All12
+parent originals remain consumed, including the actual H broadcast and a
+zero-hidden sign. Test aliases, compensation, source joins and carry boundaries
+before implementation. Block rounding, normalization, native/private inference
+and source ownership remain required; no Accepted cut or profile changes.

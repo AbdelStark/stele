@@ -1139,3 +1139,18 @@ verification, and binds all external/compact/input roots and verified states.
 The Z cap is derived from expected key count, and S from the fixed schema;
 no runtime fit or omitted zero-factor source is permitted. Actual receipts,
 source composition, Binding/FS/H, PCS/ZK and native inference remain required.
+
+### Planned canonical attention sign (Q26/Q31; Draft A3/A6)
+
+[Pre-implementation scope](../../research/cqis-bounds/ATTENTION-SIGN.md).
+For channel dimension a and compact offset/base/magnitude exponents bo,bh,bm,
+seven ordered lookup dimensions are a+bo+1,bh+1,a+bm+1,a+1,a+2,a+3,a+3.
+Retain each identity((2^m+255)/|Kfield|)^r and unsquared
+r*(F(m)+F(8)+3*m)/|Kfield|, F(m)=3*m*(m-1)/2+2*m. Planned total range/A3
+numerator is61*a+7*(bo+bh+bm)+52. Three parent A3s contribute7*a+9 and12
+independent original claims. Parent draws3*a+3 per nonlookup label; full draws
+are27*a+22+3*(bo+bh+bm) per label. All metadata, external/auxiliary roots and
+verified range states precede parent challenges. Signed-column sides<=1534
+and magnitude-byte sum<=2040 establish static integer faithfulness. Actual
+receipts, source composition, Binding/FS/H, PCS/ZK and native lowering remain
+required. No production profile or control credit is admitted.

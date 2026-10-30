@@ -947,3 +947,9 @@ bind H=S*Z to the actual probability-sum root and configured restored-value
 bound, including Z=0? Require source-join, whole-product alias and full-root
 controls before signed O-H composition. No original criterion or native/private
 inference obligation is waived.
+
+Q26/Q31 signed-attention continuation: can [canonical O-H consumers](../../research/cqis-bounds/ATTENTION-SIGN.md)
+bind magnitude/sign to actual weighted-offset and scalar-base sources while
+excluding negative zero and modular aliases? Require all original-point,
+broadcast, range/carry and complete source-composition controls. Continue with
+block rounding and normalization; original inference criteria remain open.
