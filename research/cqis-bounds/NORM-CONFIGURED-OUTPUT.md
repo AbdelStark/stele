@@ -63,5 +63,8 @@ independent NumPy cases with actual source-root joins, both branches and
 shifts from-16 through90. Maximum identity and disjoint child-span checks
 passed. Frozen corpus hash:
 `d2ef8a356c060d6a8f7b23a1d0f9189600b1f5675ffb562a26f623e5d42c41aa`.
-Complete controls and proof matrices are running. All three full-row proofs,
+All fifteen-root controls, the changed biased-total root, exact branch shape
+and valid substituted xy/q proofs rejected at their named consumers. Zero
+products still retain explicit J/B/h/L and unused-root controls, now running
+before the proof matrix. All three full-row proofs have started in sequence;
 queued local gates and hosted checks remain required.

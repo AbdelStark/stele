@@ -16,10 +16,10 @@ this checklist is not a completed sign-off.
 - Claims: no new algebraic claim. Shared roots join the actual signed q/xy
   to product and rounding; actual B/h/L byte slices determine scalar roots.
   Every inherited original consumer remains mandatory, including at zeros.
-- Bindings: controls cover all fifteen roots, right total, supplied selectors,
-  alternate branch payloads and valid substituted xy/q children. Zero-product
-  controls replace J/B/h/L independently and mutate both unused left roots.
-  These controls are running; their named rejection evidence is still required.
+- Bindings: all fifteen root mutations, changed right total, supplied selectors,
+  alternate branch payloads and valid substituted xy/q children rejected at
+  their named consumers. Zero-product J/B/h/L substitutions and both unused
+  left-root controls remain under validation.
 - Ledger: sum all four complete accounts and concatenate lookup identities
   in child order. Preserve the factor-only selection reduction, product
   identity and product reduction fields explicitly. Independent child-account
@@ -50,5 +50,9 @@ this checklist is not a completed sign-off.
 - Glossary/history: append-only Draft/accounting evidence. Full normalization
   must still bind the same X statistic, numerator, normalized interval and
   configured rsqrt. Native/model/private inference, fidelity and original
-  task criteria remain open. The mandatory attack-result sentence awaits the
-  actual control outcome.
+  task criteria remain open. Remaining controls, matrices, maxima and gates
+  are still required before this review can be completed.
+
+I tried to break it by substituting a valid signed-output proof with a changed
+magnitude while retaining the original division proof, and the control
+Division:QuotientProduct:Quotient:CommitmentMismatch rejected it.
