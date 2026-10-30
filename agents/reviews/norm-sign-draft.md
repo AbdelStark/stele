@@ -43,7 +43,9 @@ soundness-auditor. This is a same-author review, not independent audit.
   checked. The external sign root uses the actual verified third flag plane.
 - Glossary/history: append-only Draft/accounting evidence. Original task,
   configured output branches, native/private inference and fidelity remain open.
-  Required CI integration and local gates are pending.
+  All required local gates passed, including soundness accounting. Production
+  coverage remains4/21 bindings and20/81 controls plus one configuration
+  control. Required CI integration and the maximum proof remain pending.
 
 I tried to break it by declaring a nonzero magnitude zero while adjusting its
 predecessor to preserve reconstruction, and the control

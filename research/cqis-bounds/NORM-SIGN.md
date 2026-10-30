@@ -91,6 +91,14 @@ pinned source. All16 honest proofs passed across both fields, both repetition
 counts and row sizes1,5,16,65, including exact accounts and every original
 consumer. Frozen matrix state hash:
 `4b2053fd44d284cbbc128d7e90c894e38832fe95fe205437f8a566244c5caee9`.
-The full16384-element proof is running. Required CI integration, local gates
-and final maximum evidence remain pending.
+The full16384-element proof is running. Required CI integration and final
+maximum evidence remain pending; all required local gates passed below.
 Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_sign.py`.
+# Repository gates
+
+All required local gates passed: workspace formatting, clippy, tests,
+CQIS no_std, dependency and Rust policy, reference digests, production
+negative-control catalog, soundness accounting, ledger/schema/docs/glossary
+checks and CI-scope tests. Production coverage remains4/21 bindings and
+20/81 controls plus one configuration control. The full-row maximum and
+hosted CI remain required; these gate results do not grant native admission.
