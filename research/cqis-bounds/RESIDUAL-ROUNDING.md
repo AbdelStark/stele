@@ -72,5 +72,8 @@ Corpus SHA-256 is
 Primary/boundary controls also passed: coherent r=B, omitted bias, range-valid
 M+p, whole bounds, carry endpoints/padding and all eight final originals
 rejected at their named consumers. Actual canonical-sign magnitude composition
-also passed; a valid alternate sign source rejected the pinned M root. Matrices,
-maximum and gates remain under validation.
+also passed; a valid alternate sign source rejected the pinned M root. All16
+matrix proofs passed both fields/repetitions with exact account/draw totals.
+Matrix SHA-256 is
+`4501e21440d58161700872dfe1b07d9ab106588d6b6930940262a441be235135`.
+The complete16384-row proof is running; repository gates remain queued once.
