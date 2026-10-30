@@ -74,8 +74,8 @@ consumers; it does not establish Fiat-Shamir security or a private PCS.
 
 Before implementation reserve identity<2^44 and base=2^63+2^18*identity.
 Wide range ids4096*identity+1..11 cover probability, value, output and up to
-eight carry groups. Probability is external; compact value/output roots use
-base+1/+2 and carry roots base+3..10. Parent views use base+16/+17 and A1 id
+eight carry groups. Compact value/output roots use base+1/+2, carry roots
+base+3..10 and the compact probability root uses base+11. Parent views use base+16/+17 and A1 id
 16384*identity+512, above all descendant range invocations. All three distinct
 external ids stay outside the entire span. Expected metadata retains fixed
 roles, configured capacity, absolute positions, mask and block.
@@ -101,7 +101,16 @@ Compose actual restored-value and probability-sum proofs on the same roots.
 Require full16384-entry proofs with128x128,16384x1 and1x16384 geometry and all
 repository gates. The two extreme geometries exercise different capacity limits.
 
-This is a pre-implementation plan. No new proof or runtime account has passed.
+The tests-first run rejected the missing module. During implementation, the
+independent corpus caught an all-masked probability encoding error: the compact
+range needs one byte, while E>=8 requires two external planes. Bind its compact
+root separately and zero-extend to the configured external width. This preserves
+the fixed probability source representation even when every cap is zero. No
+complete matrix has passed yet. The initial complete proof and account passed.
+All external roots, valid substituted sources, bounded false sums, compensating
+channel errors and M31 aliases rejected. Both zero-hidden original factors
+rejected at their actual consumers. Boundary/composition, corpus and matrix
+runs continue; three full geometries and required local gates are queued.
 Continue Q26/Q31 with signed weighted sums and output normalization. Full
 projection-row/GQA/cache ownership, sequence completeness, native/private
 PCS/ZK/FS, fidelity, GPU/scale and original task criteria remain open.

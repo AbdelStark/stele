@@ -1563,3 +1563,9 @@ absolute positions, block and mask remain bound. The16384-entry research cap
 preserves the original full-sequence requirement. Signed O-S*Z, block rounding,
 normalization, actual source ownership and all native/private criteria remain
 open. No Accepted semantics, cut, profile or production control credit changes.
+
+Weighted-offset implementation correction, still Draft: bind the compact
+probability range root separately. An all-masked range can use one byte even
+when the configured probability representation has two; exact zero extension
+must precede the external-root comparison. The independent corpus caught this
+case. The expected root geometry must not depend on whether any key is allowed.
