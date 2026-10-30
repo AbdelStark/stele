@@ -80,6 +80,7 @@ def honest(mode='matrix'):
             pattern=([0] if a==-23 else [-1,0,1] if a<6 else [-32768,-1,0,32767,1]);xs=(pattern*((size+len(pattern)-1)//len(pattern)))[:size];hs=[1]*size;j=8192
             print('honest start',count+1,d,reps,size,a,wide,flush=True);proof,state=c.prove(p,1,a,xs,hs,j,d);roots=c.expected_roots(p,1,a,xs,hs,j);out=c.verify(p,roots,proof,d)
             assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,a,wide,flush=True)
+    if mode=='matrix':assert digest.hexdigest()=='827c93780c82b8a7f694ba1fd8a8da4ede990ddf929e45738af70f19a62d89b9'
     print(json.dumps(dict(mode=mode,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
