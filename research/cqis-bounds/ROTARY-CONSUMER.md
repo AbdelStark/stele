@@ -94,3 +94,10 @@ passed. Frozen SHA-256:
 `4ad1539b58816165cdc208d8569eed530c36d123d26705bbc8c0a9997db6a04d`.
 The first failed coverage run is retained as evidence of the sampling repair;
 no verifier, bound, rejection reason or proof-matrix input changed.
+
+All16 matrix proofs passed across both fields/repetition counts and row
+sizes1,3,16,65. Full passthrough, partial/full rotation, both layouts and all
+three frequency families retained their exact range/A3 accounts and draw
+counts. Frozen matrix SHA-256:
+`8a17be4adf403464d103c4dc68dba389fcb34d1a1b1c2f50218ffbdda135d6bf`.
+The full16384-element proof and required local gates remain pending.
