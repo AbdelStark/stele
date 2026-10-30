@@ -60,8 +60,18 @@ Frozen shape SHA-256:
 `4151eb7c6dee3a07237457f1b324255930df6baacff7829b78efd7d4374a03f5`.
 
 Reproduce with `uv run --locked --script research/cqis-bounds/check_range_capacity.py`.
-The full wide-range, signed32 and16384-element xy proofs remain running, as do
-the affected legacy regressions. CI runs geometry in gates and the three full
-proofs in separate mandatory matrix jobs; every mode retains its full verifier.
-Required local gates and final same-author evidence remain pending. No maximum
-proof success, independent audit or native/private inference is claimed yet.
+The affected legacy regressions passed in full, including their controls and
+the xy composition and boundary checks. The old proof hashes are unchanged:
+
+- Wide range,20 proofs:
+  `5899ef889669e2af476aaf025b21f8fa46fbda65121a5b8ab45b665f2b9c3eba`.
+- Signed source,24 proofs:
+  `1f13dcf0ecc3e56a4ecd7331f871a96f1cf3bde92d14840c2aac5076549e1bb2`.
+- Norm xy,16 proofs:
+  `4c3206c708d544df3e02f6b6a38e20680ad829263a6b5ff75eb0131ed7b46048`.
+
+All required local repository gates passed. The full wide-range, signed32 and
+16384-element xy proofs remain running. CI runs geometry in gates and the three
+full proofs in separate mandatory matrix jobs; every mode retains its full
+verifier. Final maximum-proof evidence remains pending. No maximum proof
+success, independent audit or native/private inference is claimed yet.

@@ -15,7 +15,7 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Bindings: the tests-first larger shape rejected at the old Capacity guard.
   All18 new geometry/witness cases passed. Oversized counts, padded byte-cell
   overflow and invalid norm dimensions reject before supplied payload use.
-  Legacy controls and full maximum proofs are running.
+  All legacy controls passed; full maximum proofs are running.
 - Ledger: exact formulas remain9a+7b and4a+3b per range; new maxima151 and67.
   Signed32 maximum663; xy maximum1606 and674 draws per label. Lookup losses
   remain separate, with m<=18 and2BN<=262144<p. Runtime checks are pending.
@@ -26,7 +26,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   Whole rows, high byte planes and carry endpoints stay in the actual proofs;
   zero caps remain explicit. No selector removes a required boundary.
 - Determinism: fixed tuple/row/plane order, exact integer bounds and identical
-  encodings on the old domain. Legacy frozen digests are being rechecked.
+  encodings on the old domain. The20 wide,24 signed and16 xy proofs retain
+  their frozen digests. Required local repository gates passed.
 - Parity: native CPU/SIMD/CUDA unchanged. Full large range, signed32 and normxy
   reference proofs are running; no native or private inference claim.
 - Costs: maximum word-byte/lookup work unchanged; more narrow words increase
