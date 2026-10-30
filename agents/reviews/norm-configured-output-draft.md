@@ -3,9 +3,9 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope and evidence](../../research/cqis-bounds/NORM-CONFIGURED-OUTPUT.md).
-All root, substitution and zero-product controls passed. Complete matrices,
-maxima and gates remain pending;
-this checklist is not a completed sign-off.
+All root, substitution and zero-product controls passed, along with all 28
+matrix proofs. Maxima and gates remain pending; this checklist is not a
+completed sign-off.
 
 - Public items: revealing Draft RFC-0004 A3 composition for RFC-0022 §2.3.
   Four complete children bind configured factors, signed sources, reciprocal
@@ -24,8 +24,8 @@ this checklist is not a completed sign-off.
 - Ledger: sum all four complete accounts and concatenate lookup identities
   in child order. Preserve the factor-only selection reduction, product
   identity and product reduction fields explicitly. Independent child-account
-  helpers check these terms and all draws. No reduction is squared. Matrix
-  receipts and the accounting gate remain pending.
+  helpers check these terms and all draws. No reduction is squared. All 28 matrix
+  receipts passed; the accounting gate remains pending.
 - Bounds: all schemas derive from expected norm parameters; no observed
   maximum changes a child cap. The complete children retain whole signed
   ranges, integer column bounds, positive factors and strict remainders.
@@ -40,7 +40,8 @@ this checklist is not a completed sign-off.
   source/output cases passed, including shifts-16 and90; the digest is frozen.
 - Parity: native CPU/SIMD/CUDA unchanged. NumPy uses int64 for bounded products
   and Python integers through object arrays for wide division; no float path.
-  Complete proofs in both fields/repetitions remain under validation.
+  All 28 proofs across both fields/repetitions passed; full-row proofs remain
+  under validation.
 - Costs: O(N) exact source joins plus all four complete range/hash/algebraic
   consumers in c_a/c_sc/c_lu/T_misc. No new parent A3, benchmark, measured
   constant, per-row proof loop or additional weight pass.
@@ -51,8 +52,8 @@ this checklist is not a completed sign-off.
 - Glossary/history: append-only Draft/accounting evidence. Full normalization
   must still bind the same X statistic, numerator, normalized interval and
   configured rsqrt. Native/model/private inference, fidelity and original
-  task criteria remain open. Matrices, maxima and gates
-  are still required before this review can be completed.
+  task criteria remain open. Maxima and gates are still required before
+  this review can be completed.
 
 I tried to break it by substituting a valid signed-output proof with a changed
 magnitude while retaining the original division proof, and the control
