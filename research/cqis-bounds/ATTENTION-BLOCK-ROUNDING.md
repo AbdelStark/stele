@@ -67,3 +67,19 @@ negative when the rounded quotient is zero; downstream signed output must
 handle that case correctly. Signed block outputs, aggregate totals, restored
 normalization units, actual block/key/source ownership, native/private proof,
 fidelity and every original production criterion remain required.
+
+The tests-first run rejected the missing module. Seed 2738 passed 10000
+independent cases: 7524 accepted configurations, 2476 expected static-bound
+rejections and 200396 accepted entries. All admissible shifts 2 through 62
+were covered. The frozen corpus SHA-256 is
+`1850340c4ffdd3789ae47ee3facd3b917ffbd287708d7c626c5f8f9fb71b8f06`.
+Separate checks passed for short, partial and full absolute-block domains.
+Observed carries ranged from -127 to 1; the static envelope remains [-129,2].
+
+Primary and boundary controls passed, including bounded M+p, coherent r=D,
+omitted bias, every original, metadata replay and valid source substitution.
+Shift 62 retained its zero quotient, actual original consumer and full external
+planes. Complete canonical-sign proofs from two blocks composed through ragged
+source joins; a valid replacement rejected its pinned block root. Initial
+receipts and draw totals matched. The matrix and three full geometries continue
+in their original runner; required repository gates remain queued.

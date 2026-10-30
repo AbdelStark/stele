@@ -3,9 +3,10 @@
 Codex-root applies cqis-numerics, gkr-reduction-author and soundness-auditor.
 This is a same-author review, not an independent audit. The
 [scope](../../research/cqis-bounds/ATTENTION-BLOCK-ROUNDING.md) preceded tests
-and code. Tests first rejected the missing module. Corpus, controls, source
-composition, matrix and three full geometries are running or queued in their
-original processes. Repository gates are queued once. No completed sign-off.
+and code. Tests first rejected the missing module. All 10000 corpus cases,
+controls and actual source composition passed. Matrix and three full geometries
+continue in their original process. Repository gates are queued once. This is
+not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2. Expected block schema
   fixes magnitude cap, shift, bias and quotient/remainder caps. Absolute block
@@ -20,8 +21,8 @@ original processes. Repository gates are queued once. No completed sign-off.
 - Bindings: tests attack each block/output root and range, bounded M+p,
   coherent r=D, omitted bias, changed carries and compensated originals.
   Metadata replay, valid block substitution, high bytes and malformed shapes
-  must reject. Complete canonical-sign proofs test ragged per-block joins;
-  execution evidence is pending.
+  rejected. Complete canonical-sign proofs passed ragged per-block joins; a
+  valid replacement rejected its pinned source root.
 - Ledger: five independently repeated lookup identities and unsquared
   reductions remain. Total range/A3 loss is49a+7(bm+bq+br)+42 over the field;
   the parent contributes4a+6. The test compares actual receipts and draws for
@@ -36,7 +37,7 @@ original processes. Repository gates are queued once. No completed sign-off.
   roots retain two/eight planes, including q with a one-byte zero-cap range.
 - Determinism: sorted unique expected blocks, fixed root/range/A3 order and
   static namespaces. No floating point, retry or payload-dependent order.
-  Corpus and proof digests will be frozen after the original runs complete.
+  The corpus digest is frozen; proof matrix and full-domain runs continue.
 - Parity: native CPU/SIMD/CUDA are unchanged. Fraction and NumPy oracles test
   exact rounding, external byte layouts and independent prefix carries.
   Full 128x128, 1024x16 and 1x16384 geometries remain required evidence.
@@ -52,4 +53,6 @@ original processes. Repository gates are queued once. No completed sign-off.
   restored normalization units, complete source ownership, native/private
   proof, fidelity and independent audit remain required.
 
-The observed-attack sentence remains pending until an actual control rejects.
+I tried to break it by setting r=D while reducing q so every byte column
+remained equal, and Remainder:CapRelation:RoundSumMismatch rejected it.
+Compensating each original final also rejected at its ClaimMismatch consumer.

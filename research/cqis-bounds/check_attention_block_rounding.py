@@ -34,6 +34,14 @@ def oracle(p,ms):
     roots.extend((r.root(p.quotient,planes(qs,n,'<u2')),r.root(p.remainder,planes(rs,n,'<u8'))));return qs,rs,roots
 
 
+def block_domains():
+    encodings=set()
+    for length,blocks in ((1,(0,)),(1024,(0,)),(1025,(0,1)),(2049,(0,2)),(1<<20,(0,1023))):
+        p=spec(len(blocks));p=replace(p,schema=replace(p.schema,length=length),blocks=blocks);v=c.derive(p,4);encodings.add(v['raw']);assert v['constants']['block_count_max']==(length+1023)//1024
+        bad=replace(p,blocks=((length+1023)//1024,),sources=(p.sources[0],));rejects('Spec',lambda:c.derive(bad,4))
+    assert len(encodings)==5
+
+
 def corpus():
     rng=random.Random(2738);digest=hashlib.sha256();accepted=rejected=cells=0;shifts=set();widths=set();seen=set()
     for case in range(10000):
@@ -59,6 +67,8 @@ def corpus():
     rejects('Capacity',lambda:c.derive(spec(2,16384),4));rejects('Spec',lambda:c.derive(p,True))
     for values in ([False]*6,[-1]*6,[v['constants']['raw_max']+1]*6,[0]):rejects('Input',lambda:c.witness(p,values))
     assert accepted+rejected==10000 and accepted>0 and rejected>0 and shifts==set(range(2,63)) and widths=={1,2,4,8} and min(seen)<0
+    assert (accepted,rejected,cells,min(seen),max(seen),digest.hexdigest())==(7524,2476,200396,-127,1,'1850340c4ffdd3789ae47ee3facd3b917ffbd287708d7c626c5f8f9fb71b8f06')
+    block_domains()
     print(json.dumps(dict(seed=2738,cases=10000,accepted=accepted,rejected=rejected,cells=cells,carry_min=min(seen),carry_max=max(seen),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
