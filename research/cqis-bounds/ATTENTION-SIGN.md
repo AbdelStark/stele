@@ -66,7 +66,24 @@ Compose complete weighted-offset, probability-sum and offset-base proofs on
 shared sources; valid different children must reject their pinned joins.
 Require a complete16384-channel proof and every repository gate.
 
-This is a pre-implementation plan. Continue Q26/Q31 with signed block rounding,
+Continue Q26/Q31 with signed block rounding,
 normalized output and complete source composition. The conditional range cap
 does not admit a complete sequence or prove upstream ownership. Native/private
 PCS/ZK/FS, fidelity, GPU/scale and all original criteria remain open.
+
+The tests-first run rejected the missing module. Seed 2737 passed all 10000
+independent cases: 282594 accepted channel cells and 1429 expected magnitude
+overflows. NumPy differences/signs/byte roots and independently derived prefix
+carries agreed across both policies, exact/block accumulation and compact byte
+widths 1/2/4/8. The frozen corpus SHA-256 is
+`6fb9b680c7173c88644474378ab806c1a8afa938e865dcaef4c53bd5afe9169b`.
+
+All primary controls passed: every external root and range, bounded M+p,
+negative zero, carry endpoints and compensated O/H source substitutions.
+All twelve originals rejected compensated final values, including the actual
+scalar H broadcast and a sign hidden by zero magnitude. Whole bounds, Boolean
+sign, predecessor overflow, padded carries and external high planes rejected.
+Complete weighted-offset, probability-sum and base proofs composed on the same
+roots; valid alternate children rejected their pinned joins. The initial
+complete account matched. Both-field/repetition matrix and the complete
+16384-channel proof are running; required repository gates remain queued.

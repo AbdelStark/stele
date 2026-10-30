@@ -60,6 +60,7 @@ def corpus():
     p=spec();v=c.derive(p,4)
     for values,H in (([False]*3,0),([-1]*3,0),([v['constants']['offset_sum_max']+1]*3,0),([0],0),([0]*3,True),([0]*3,-1),([0]*3,v['constants']['base_max']+1)):rejects('Input',lambda:c.witness(p,values,H))
     assert overflows>1000 and policies=={('dynamic','exact'),('static','exact'),('dynamic','block1024'),('static','block1024')} and widths=={1,2,4,8}
+    assert (cells,overflows,digest.hexdigest())==(282594,1429,'6fb9b680c7173c88644474378ab806c1a8afa938e865dcaef4c53bd5afe9169b')
     print(json.dumps(dict(seed=2737,cases=10000,cells=cells,overflows=overflows,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
