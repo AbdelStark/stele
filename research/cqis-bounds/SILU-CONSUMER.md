@@ -132,8 +132,12 @@ fields and changed independently expected roots also rejected.
 
 The nonlinear QM31 case passed actual SiLU-to-gated-product-to-dynamic-row
 composition. A genuinely valid product proof with a substituted SiLU factor
-failed Right:Raw:CommitmentMismatch. Expected units compose as fu+E. OM31
-matrix cases and required local repository gates are still pending here.
+failed Right:Raw:CommitmentMismatch. Expected units compose as fu+E. Both
+OM31 cases and all required local repository gates passed. Every case checks
+its frozen transcript-state and gather checksum; all10000 gathers are verified.
+The paired OM31 case retains all65536 rows despite its all-zero output column.
+The four proof states have aggregate SHA-256:
+`a4bad5069f860f583fbb35490921faf515bd01b9b23d817600797da001f47c94`.
 
 Field-view work is O(N); complete canonical generation and all inherited
 full-table fraction, MLE, range and hash consumers remain in c_a/c_lu/c_sc/T_misc.
