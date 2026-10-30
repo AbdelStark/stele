@@ -3,7 +3,8 @@
 Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md). Tests-first rejected
-the missing module. Corpus, controls, matrices, maximum and gates are pending;
+the missing module. All10000 corpus cases and primary/zero-output controls
+passed. Boundaries, matrices, maximum and gates remain under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research joins complete aligned inputs,
@@ -16,7 +17,9 @@ this is not a completed sign-off.
 - Bindings: tests-first covers every external root and independently valid
   replacement children. Coherent wrong output sign, positive32768 represented
   by genuine negative32768 bytes, separate input rounding and zero-hidden
-  original claims must reject at their actual consumers.
+  original claims must reject at their actual consumers. Primary substitutions,
+  wrong output sign and all zero-hidden originals rejected as specified;
+  signed-overflow, separate-rounding and padding controls remain pending.
 - Ledger: all21+g independent lookup identities and unsquared reductions
   remain. Closed range/A3 and draw totals are appended to accounting; matrix
   receipt assertions and soundness-accounting.sh still require execution.
@@ -29,7 +32,8 @@ this is not a completed sign-off.
 - Determinism: fixed roles, routes, child order and namespace intervals.
   No unordered reduction, challenge retry or timing-dependent choice.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent Fraction/NumPy cases,
-  both fields/repetitions and the complete16384-row proof await validation.
+  all10000 cases passed. Both fields/repetitions and the complete16384-row
+  proof await validation.
 - Costs: O(N) joins/views and one degree-two A3, retaining four complete child
   consumers in c_a/c_sc/c_lu/T_misc. No extra weight pass or measured claim.
 - Verifier: native no_std unchanged. Strict expected metadata, roots, child
@@ -39,4 +43,6 @@ this is not a completed sign-off.
   does not establish physical/model/private inference, fidelity, native lowering
   or original2^20 capacity. Independent review remains required.
 
-The Workflow03 attack-result sentence awaits an observed rejecting control.
+I tried to break it by substituting a valid signed output with the opposite
+sign and unchanged magnitude root, and the control
+SignedOutput:RoundSumMismatch rejected it.

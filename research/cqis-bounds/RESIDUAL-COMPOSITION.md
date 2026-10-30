@@ -53,3 +53,14 @@ Continue Q26/Q31. This composes revealing residual arithmetic only. Native
 lowering, physical source/model ownership, PCS/ZK/FS, full inference, fidelity,
 original task criteria and independent audit remain open. No Accepted cut,
 production control credit or measured performance claim is added.
+
+Observed corpus evidence: seed2728 passed all10000 cases, with8552 representable
+outputs and1448 expected signed-output overflows. Independent Fraction and
+NumPy calculations covered all31 shifts, all three carry-family counts, seven
+actual O/M/r width combinations and negative numerators rounding to zero.
+Corpus SHA-256 is
+`867f8ea8bdf678c51b9c8ef984f6d5eaffecaa3077c75b5d4d9f3b2fb8e2295a`.
+All eight root mutations and four independently valid replacement children
+rejected at their intended consumers. Wrong signed output and compensated
+original finals rejected; at q=0 all three original views remained consumed.
+Boundary controls, matrix, maximum and repository gates remain under validation.

@@ -59,6 +59,8 @@ def corpus():
     for xs,ys in (([False]*3,[0]*3),([32768]*3,[0]*3),([0],[0]*3),((0,0,0),[0]*3)):rejects('Input',lambda:c.witness(spec(),xs,ys))
     for xs,ys in (([32767]*3,[1]*3),([-32768]*3,[-1]*3)):
         p=replace(spec(),schema=c.residual.Spec(3,0,0,0));rejects('OutputRange',lambda:c.witness(p,xs,ys))
+    assert (accepted,overflow)==(8552,1448) and widths=={(4,4,1),(4,4,2),(4,4,4),(8,4,1),(8,8,1),(8,8,2),(8,8,4)}
+    assert digest.hexdigest()=='867f8ea8bdf678c51b9c8ef984f6d5eaffecaa3077c75b5d4d9f3b2fb8e2295a'
     print(json.dumps(dict(seed=2728,cases=10000,accepted=accepted,overflow=overflow,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
