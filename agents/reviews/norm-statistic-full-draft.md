@@ -24,7 +24,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   bs+1 and bc+4. Nonlookup counts18a+26+3(bs+bc) ZeroWeight and
   21a+26+3(bs+bc) Sumcheck. All16 honest proofs passed exact receipts across
   both fields/repetitions and sizes1,3,16,65; the matrix hash is frozen.
-  Full-row proof and accounting gate remain pending.
+  The full16384-element QM31/r1 proof also passed exact receipts, with its
+  frozen hash recorded in the evidence note. The accounting gate remains pending.
 - Bounds: RFC-0022 closed statistic derivation uses expected shape/caps only.
   Full-row maximum side1073709311 has twice its value below p. Whole source/S
   ranges, every carry bound and both zero endpoints are actual consumers.

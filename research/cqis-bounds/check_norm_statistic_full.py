@@ -74,7 +74,8 @@ def honest(maximum=False):
             p=spec(size,2110+count,reps);xs=([-32768,0,32767,-1,255,256,1]*((size+6)//7))[:size]
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,xs,d);out=c.verify(p,expected(p,xs),proof,d)
             assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
-    if not maximum:assert digest.hexdigest()=='41217dad36fd6fe7dae2df92a9e275b87052e67c9eafe090c30de674d55eae2e'
+    expected='c661c634bbb864ebce743a280b0bcca99fed02a3dbf03b8736e105a920bac705' if maximum else '41217dad36fd6fe7dae2df92a9e275b87052e67c9eafe090c30de674d55eae2e'
+    assert digest.hexdigest()==expected
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
