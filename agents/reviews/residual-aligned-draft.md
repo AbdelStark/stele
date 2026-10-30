@@ -4,7 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-ALIGNED.md). Tests-first failed at
 the missing module. The10000-case corpus and primary adversarial controls passed.
-Boundary controls passed; matrices, maximum and gates remain under validation; this is not a completed sign-off.
+Boundary controls and all16 main proof cases passed. The no-carry matrix,
+maximum and gates remain under validation; this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research only. Expected residual schema
   fixes fractions and source roles. Only the aligned offset is proved.
@@ -24,7 +25,8 @@ Boundary controls passed; matrices, maximum and gates remain under validation; t
 - Ledger: six signed lookup units plus output and nonzero carry groups;
   every repeated identity and unsquared reduction is retained. Parent degree
   is one over8N. Closed total and draw formulas are in the appended accounting
-  entry; independent matrix checks and the accounting gate remain required.
+  entry. Main matrix receipts matched the closed loss/draw totals; the
+  no-carry matrix and accounting gate remain required.
 - Bounds: whole output cap65535*(A+B) and every carry cap come solely from
   expected fractions and static byte limits. Each column side is at most65535.
   Closed carry bounds, including terminal zero, give exact integer equality.
@@ -34,8 +36,9 @@ Boundary controls passed; matrices, maximum and gates remain under validation; t
 - Determinism: fixed role, range and column order; explicit metadata bytes,
   expected capacity and disjoint child spans. No timing-dependent selection.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent NumPy int64 alignment and
-  byte/carry grids passed10000 cases and3383720 cells; the digest is frozen. Both proof fields and
-  repetition counts, including a full16384-row case, remain under validation.
+  byte/carry grids passed10000 cases and3383720 cells; the digest is frozen.
+  All16 main cases passed both fields and repetition counts. The no-carry
+  matrix and complete16384-row proof remain under validation.
 - Costs: O(N) byte views and one batched A3 plus all complete child range/hash
   consumers in c_a/c_sc/c_lu/T_misc. No measured constant or extra weight pass.
 - Verifier: native no_std unchanged. Exact proof keys, separately expected

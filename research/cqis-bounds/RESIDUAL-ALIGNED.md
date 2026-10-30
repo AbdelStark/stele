@@ -66,6 +66,9 @@ shifts, whole output widths4/8 and maximum namespace bounds. Frozen corpus:
 All three-root controls, valid same-magnitude source substitutions, in-range
 O+p, both carry families and compensated original finals rejected at the
 specified consumers. Terminal/padded carries, offset padding and high output
-planes also rejected at their required consumers. Complete proof matrices
-remain running. The separate no-carry matrix and full-row proof are queued
-after success; required repository gates are queued once.
+planes also rejected at their required consumers. All16 main proof cases
+passed across both fields and repetition counts, including exact account/draw
+checks. Matrix SHA-256 is
+`255254bd0f9be1fb7dc6c7813cce742f06268dc2b2aeeb2c30ac4079cd791b3c`.
+The separate no-carry matrix is running; the full-row proof follows its success.
+Required repository gates remain queued once.
