@@ -20,8 +20,8 @@ soundness-auditor. This is a same-author review, not independent audit.
   (20+9H+9g)*a+7X+18g+2c and each nonlookup count is
   (9+4H+4g)*a+3X+8g+c. Lookup dimensions are a+4, bh+1, a+bl+1,
   optional a+bu+1 and g copies of a+3, each retaining its separate identity
-  and reduction. Initial honest proofs passed exact receipts. The complete
-  matrix, maximum and accounting gate remain pending.
+  and reduction. All16 honest proofs passed exact receipts, with their matrix
+  hash frozen. The maximum and accounting gate remain pending.
 - Bounds: whole t<=2^44 and h<=hmax are consumed. The expected closed bias
   certificate supplies Boolean carry caps and sides<=511<p/2. Faithful
   addition then establishes the whole U bound. No observed maxima are used.
