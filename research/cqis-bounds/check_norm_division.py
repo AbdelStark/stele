@@ -76,6 +76,7 @@ def honest(maximum=False):
             p=replace(spec(size,2410+count,reps),schema=c.norm.Spec(size,f,g,e,1,3));h=b//2;limit=min(1<<44,32768*b-h);ts=([limit,0,min(limit,255),min(limit,b-h),min(limit,b-h-1)]*((size+4)//5))[:size];qs=[(t+h)//b for t in ts];rs=[(t+h)%b for t in ts]
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,ts,h,qs,b,rs,d);out=c.verify(p,c.expected_roots(p,ts,h,qs,b,rs),proof,d)
             assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
+    if not maximum:assert digest.hexdigest()=='73f9d46b9eab59475258efa04699038da74df1738539f94ea3ef4131b515bfb8'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
