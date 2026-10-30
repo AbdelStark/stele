@@ -611,3 +611,20 @@ consumers stay. Integer A=MD+R follows after acceptance; generic MDmax bounds
 do not supply strict R<D or upstream origins. Exact joins add no algebraic
 loss conditional on binding. FS/H, strict comparison, reciprocal/output and
 physical/model/private composition remain additional; no native profile credit.
+
+Q26/Q31's [strict RMSNorm remainder](../../research/cqis-bounds/NORM-REMAINDER.md)
+fully verifies scalar ranges with caps Dmax,Dmax-1,Dmax-1. Their widths are
+derived independently:2^bD for D and2^bR for R/G. Inherited A3 numerator is
+7bD+14bR; parent dimension4 degree2 carry Boolean contributes12, dimension0
+terminal contributes0, and dimension4 degree1 columns contribute8. Total A3
+numerator7bD+14bR+20. Three lookup dimensions bD+1,bR+1,bR+1 keep separate
+identities[(2^m+255)/|K|]^r and reductions r[F(m)+F(8)+3m]/|K|; reductions
+are not squared. Parent draws8 ZeroWeight and8 Sumcheck; full nonlookup counts
+are3bD+6bR+8 of each. Complete expected norm bytes, two external roots, three
+actual internal source roots, actual carry root and three verified range states
+precede parent instances/weights/rounds/finals. All byte/shift/carry originals
+retain actual emitted-point consumers. Static side bounds511 with2*511<p
+justify the integer lift after range and Boolean acceptance. Fixed c0=1 and
+c16=0 then give R+G+1=D, including strictness and positive D. Binding/FS and
+upstream same-root composition remain separate; the four composed arithmetic
+consumers still do not admit reciprocal/output or physical/model/private proof.

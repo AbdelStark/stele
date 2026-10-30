@@ -153,5 +153,8 @@
   ],
   "cqis-norm-sum": [
     "uv run --locked --script research/cqis-bounds/check_norm_sum.py"
+  ],
+  "cqis-norm-remainder": [
+    "uv run --locked --script research/cqis-bounds/check_norm_remainder.py"
   ]
 }

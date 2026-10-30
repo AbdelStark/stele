@@ -1216,3 +1216,15 @@ range, product and original/public consumers establish A=MD+R. The generic
 left bound and16-slot remainder do not establish R<D; strict comparison and
 same-root upstream composition remain mandatory. No parent challenge, Accepted
 role, production cut or private/physical/model admission is added.
+
+### A3 evidence continuation — Consumed strict RMSNorm remainder
+
+The [strict remainder study](../../research/cqis-bounds/NORM-REMAINDER.md)
+fully ranges D,R and nonnegative gap G under static expected norm bounds,
+retaining full16-slot external D/R roots even when their internal widths
+differ. Actual Boolean carries, fixed initial1, terminal0 and16 byte columns
+establish R+G+1=D and hence0<=R<D and D>0. Every original final is consumed;
+whole-field comparison and supplied dynamic caps confer no acceptance. Same-root
+composition with paired A/D, bounded M/MD and A=MD+R supplies the normalized
+interval. Complete reciprocal lookup, wide outputs, native/private/physical/model
+ownership and fidelity remain open. No Accepted role or production cut is added.
