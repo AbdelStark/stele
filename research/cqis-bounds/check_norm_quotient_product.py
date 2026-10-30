@@ -129,8 +129,18 @@ def composition():
     print('actual signed-Y magnitude and verified factor bytes compose; substituted divisor rejects',flush=True)
 
 
+def middle():
+    digest=hashlib.sha256()
+    for index,(d,reps) in enumerate(((4,1),(4,2),(8,1),(8,2))):
+        p=replace(spec(5,2260+index,reps),schema=c.norm.Spec(5,10,0,14,1,3));qs=[32768,0,255,1,32767];b=(1<<26)-1
+        assert c.derive(p,d)['columns']==8
+        proof,state=c.prove(p,qs,b,d);out=c.verify(p,c.expected_roots(p,qs,b,[q*b for q in qs]),proof,d)
+        assert out['state']==state;account(p,out,d);digest.update(state);print('middle passed',d,reps,flush=True)
+    print(json.dumps(dict(middle_proofs=4,sha256=digest.hexdigest()),sort_keys=True),flush=True)
+
+
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition}
+    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition,'--middle':middle}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()

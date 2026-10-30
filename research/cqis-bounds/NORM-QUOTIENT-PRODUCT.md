@@ -80,7 +80,12 @@ independent NumPy convolutions and exact wide products, covering6767440
 byte-column entries, metadata boundaries and full-domain geometry. Frozen
 corpus SHA-256:
 `9070ddcc675628bc070b46e26f5c548aa7a2b9c554682066ab9c04557bb2197b`.
-Controls, composition and the honest field/repetition matrix are running.
-Full-row proof, required CI integration, repository gates and final review
-remain pending. Reproduce with
+All source/product/carry controls passed, including an output beyond Zmax
+whose separate halves had valid range proofs. Padding, endpoint and offset
+controls also passed. Actual signed-Y magnitude and verified factor bytes
+composed, while a substituted divisor rejected. The main16-proof matrix and
+an additional four-proof P8 matrix are running with exact accounting checks.
+The full16384-row/90-bit-divisor proof is running. Required CI integration,
+repository gates and final evidence remain pending. The same-author review
+records these completed controls and remaining obligations. Reproduce with
 `uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py`.
