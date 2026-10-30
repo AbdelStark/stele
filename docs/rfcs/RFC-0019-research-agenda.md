@@ -710,3 +710,11 @@ Attention and row containers remain composites, not admitted stacked tensor view
 Continue with their expansion and actual source/range/branch/index/claim consumers;
 full native parity, fidelity and private PCS/ZK/FS remain mandatory. This changes
 no original task criteria or production control coverage.
+
+Q26/Q31 range continuation: the [capped scalar consumer](../../research/cqis-bounds/CAPPED-RANGE.md)
+connects actual byte membership to source reconstruction, column addition,
+Boolean carries and a zero terminal carry through consumed A3 claims. Coherent
+field-alias, nonbit and out-of-table attacks reject at distinct real consumers.
+Continue with model-derived static caps, signed/wide source representations,
+private producing reductions/PCS, range dominance and joint masking. Full-vector
+reveals are research evidence, not an inference proof or privacy result.

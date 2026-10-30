@@ -967,3 +967,18 @@ admission. The tied head consumes the original embedding source. Research counts
 encoding checksums and public replay earn no production NC credit. No Accepted
 text, original acceptance criterion, soundness line, cut or weight pass changes.
 Full plan/claim consumers, native inference, fidelity and private PCS/ZK remain open.
+
+### A3 evidence continuation — Capped scalar range consumers
+
+The [range consumer study](../../research/cqis-bounds/CAPPED-RANGE.md) replaces
+plaintext range assumptions for a bounded canonical M31 scalar vector with a
+real range_8 lookup and four consumed no-skip zerochecks. Static caps are below p;
+byte/complement addition, Boolean carries and a zero endpoint exclude x+p aliases.
+The column sides are at most 511 after range/bit enforcement. Source reconstruction
+is a field embedding, followed by canonical representative uniqueness. This does
+not admit arbitrary wide or signed sources. Actual Merkle full-vector openings
+close every research claim; these revealing auxiliary roots are not an approved
+inference commitment format or private PCS/ZK construction. The separate research
+accounting adds 9a+10 to the unchanged Q31 reduction numerator, not its squared
+identity term. Native range dominance, model-derived caps/source consumers and
+joint privacy remain required. Original task criteria and Accepted text remain.
