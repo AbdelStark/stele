@@ -46,7 +46,9 @@ Tests first:10000 independent NumPy int64 aligned sums and byte/carry grids;
 all31 shifts on either source; signed endpoints; every root and carry family;
 valid alternate sources, an in-range O+p, compensated original finals,
 padded offsets and terminal carries. Require both fields/repetitions and a
-full16384-row proof with both carry families. Exact outputs and source roots
+full16384-row proof with both carry families. A separate four-proof matrix
+uses disjoint byte shifts, where every carry family is statically zero. Exact
+outputs and source roots
 must compose with the existing signed consumer. No per-row proof loop.
 
 This adapter supports16384 rows, preserving the static schema's original

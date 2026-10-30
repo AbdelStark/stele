@@ -86,6 +86,15 @@ def honest(maximum=False):
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
+def no_carry():
+    digest=hashlib.sha256()
+    for d,reps in ((4,1),(4,2),(8,1),(8,2)):
+        p=replace(spec(3,2930,reps),schema=c.residual.Spec(3,0,24,0));v=c.derive(p,d);assert list(v['ranges'])==['output'] and not any(v['carry_caps'])
+        xs=[-32768,32767,-1];ys=[32767,-32768,0];proof,state=c.prove(p,xs,ys,d);out=c.verify(p,c.expected_roots(p,xs,ys,oracle(p,xs,ys)),proof,d);assert out['state']==state;account(p,out,d);digest.update(state)
+        rejects('ProofShape',lambda:c.verify(p,c.roots(p,proof),dict(proof,carry_0={}),d));print('no-carry passed',d,reps,flush=True)
+    print(json.dumps(dict(mode='no-carry',proofs=4,sha256=digest.hexdigest()),sort_keys=True),flush=True)
+
+
 def controls():
     p=spec();d=4;xs=[1,0,-1];ys=[-1,0,1];v=c.derive(p,d);w=c.witness(p,xs,ys);pairs=c.prepare(p,xs,ys,d);proof,state=c.assemble(p,pairs,d);roots=c.expected_roots(p,xs,ys,w['output']);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d)
     for index,reason in enumerate(('Left:Raw:CommitmentMismatch','Right:Raw:CommitmentMismatch','Output:CommitmentMismatch')):
@@ -119,7 +128,7 @@ def boundaries():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--honest':honest,'--maximum':lambda:honest(True)}
+    modes={'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--honest':honest,'--maximum':lambda:honest(True),'--no-carry':no_carry}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
