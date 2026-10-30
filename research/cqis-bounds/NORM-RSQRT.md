@@ -85,6 +85,10 @@ the selected constant and halve both original finals, preserving the scalar
 composition; they reject at Lookup:CoefficientMismatch and Lookup:SelectorMismatch
 respectively. These focused controls passed on the saved valid proof.
 Saved synthetic fixtures permit verification
-continuation without repeating completed proof generation. The full matrix,
-remaining controls/composition and required local gates remain pending. No
-measured performance, native control credit or independent audit is claimed.
+continuation without repeating completed proof generation. All four full-table
+proofs passed across QM31/OM31 and repetitions1/2, with exact accounts/draws
+and frozen individual states. Their concatenated state SHA-256 is
+`a983f3fa8a5ec9f5b9bc3e273f1155fc350c8e71f7aa6bab70ff10402bdfd73b`.
+Actual same-root M composition with the bounded MD consumer passed and rejected
+a valid substituted-M product. All required local repository gates passed.
+No measured performance, native control credit or independent audit is claimed.
