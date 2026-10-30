@@ -67,8 +67,12 @@ External-root, valid source-substitution and zero-hidden configured-factor
 controls passed. A bounded H+p, actual Z-cap violation and high external
 planes rejected at their required consumers. The initial complete receipt
 and draw account matched. Actual probability-sum proofs composed for1,3 and65
-keys, including valid alternate-sum rejection. Both-field matrix, maximum
-scalar proof and repository gates remain required.
+keys, including valid alternate-sum rejection. All 16 matrix proofs passed both fields/repetitions with exact receipt and draw
+accounts; their frozen SHA-256 is
+`7b5e6bd9488d8e13cf6f50ee9488d66aa4c6c1d83550b67c9f247680c646eae7`.
+The maximum scalar proof also passed with Z=2^28 and S=65535, hash
+`5e222abd79ef0680c10068f5d19a1eeed808f7212f39934987651b32dfc1f223`.
+Required repository gates remain queued.
 
 Continue Q26/Q31 with canonical sign and
 magnitude of O-H, block rounding and normalization. Full source/model ownership,
