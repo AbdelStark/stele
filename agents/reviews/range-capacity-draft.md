@@ -15,10 +15,12 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Bindings: the tests-first larger shape rejected at the old Capacity guard.
   All18 new geometry/witness cases passed. Oversized counts, padded byte-cell
   overflow and invalid norm dimensions reject before supplied payload use.
-  All legacy controls passed; full maximum proofs are running.
+  All legacy controls passed. The maximum wide-range proof and padded-source
+  control passed; the maximum signed32 and xy proofs remain pending.
 - Ledger: exact formulas remain9a+7b and4a+3b per range; new maxima151 and67.
   Signed32 maximum663; xy maximum1606 and674 draws per label. Lookup losses
-  remain separate, with m<=18 and2BN<=262144<p. Runtime checks are pending.
+  remain separate, with m<=18 and2BN<=262144<p. Maximum wide-range runtime
+  accounts passed at m=18, A3 numerator151 and67 draws per nonlookup label.
 - Bounds: count<=65536 and padded N*B<=131072 are both required. Dropping
   either guard would admit a different resource domain. Byte-column side511
   and xy side65535 remain unchanged, each strictly below p/2.
@@ -28,8 +30,8 @@ soundness-auditor. This is a same-author review, not independent audit.
 - Determinism: fixed tuple/row/plane order, exact integer bounds and identical
   encodings on the old domain. The20 wide,24 signed and16 xy proofs retain
   their frozen digests. Required local repository gates passed.
-- Parity: native CPU/SIMD/CUDA unchanged. Full large range, signed32 and normxy
-  reference proofs are running; no native or private inference claim.
+- Parity: native CPU/SIMD/CUDA unchanged. The full large-range reference proof
+  passed; signed32 and normxy remain pending. No native/private inference claim.
 - Costs: maximum word-byte/lookup work unchanged; more narrow words increase
   cap metadata from at most81920 to1310720 bytes and terminal A3 entries
   from4096 to65536. Charge these changes in T_misc/c_sc.
