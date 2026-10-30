@@ -371,3 +371,20 @@ including zero quotient. Exact source-root and full-byte equality consumers
 introduce no algebraic loss conditional on binding. No reduction loss is squared
 by lookup repetition. Hash binding, FS/H, native/model ownership, stacking and
 joint private PCS/ZK remain separate; no new label or profile is admitted.
+
+Q26/Q31's [attained-magnitude consumer](../../research/cqis-bounds/ATTAINED-MAGNITUDE.md)
+has N=2^a padded elements and B=2^b signed bytes, B in {2,4}. Four parent k=0
+A3 invocations have (dimension,degree) (a+b,1), (a+b,2), (a,1), (a+b,2).
+They add (10a+8b)/|K| and draw 4a+3b each of ZeroWeight/Sumcheck. Degree1 A1
+sum E=1 adds a/|K| and a Sumcheck draws separately. Including signed source and
+maximum/gap/indicator ranges, total A3 numerator is 71a+48b+9; total A3/A1
+draws are 30a+19b+4 ZeroWeight and 31a+19b+4 Sumcheck. Six lookup dimensions
+are a+b+1, a+b+1, a+2, b+1, a+b+1, a+1. For each retain
+[(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K| separately; no reduction loss is
+squared. Static selected counts are below p; no Unit draws. Six roots and four
+verified child states precede the parent challenges. Nine parent A3 claims and
+one A1 claim have actual full-vector/view consumers, including inactive factors;
+all Finals are absorbed. Byte sides <=511 and N<=2048 make integer columns
+and the bit sum faithful. Padding has cap zero and a masked maximum broadcast.
+Binding, FS/H, committed index/model ownership, stacking and joint private PCS/ZK
+remain additional; no production commitment category, label or profile is admitted.
