@@ -86,7 +86,8 @@ controls also passed. Actual signed-Y magnitude and verified factor bytes
 composed, while a substituted divisor rejected. All four P8 proofs passed
 across both fields/repetition counts with exact accounting. Frozen hash:
 `0f25391dda41f88afcbbaaaf1be5e24bde6a9ff624cc2288c3bba80863ae5b5a`.
-The main16-proof matrix is running with exact accounting checks.
+The main16-proof matrix passed with exact accounting checks. Frozen hash:
+`c507f4ea5239da572b51f41088b64144776dad9944bbf51e5d63f569e2eb6a77`.
 The full16384-row/90-bit-divisor proof is running. Required CI integration,
 repository gates and final evidence remain pending. The same-author review
 records these completed controls and remaining obligations. Reproduce with
