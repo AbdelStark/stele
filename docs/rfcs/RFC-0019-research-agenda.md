@@ -681,3 +681,13 @@ Pinned baseline and separate block-mode fields are preserved. Draft A3/A8/A9,
 original acceptance criteria and controls remain unchanged. Complete scoped
 bound/registry/source contracts, actual consumers, native full-model parity
 and fidelity remain required; no inference proof or performance result.
+
+Q26 bound-set continuation: the [scoped collection study](../../research/cqis-checkpoint/BOUND-SET.md)
+frames all twelve existing arithmetic-template families under independently
+expected configuration/artifact identities. Its count is 25L+B+5, with no
+role deduplication. Checks cover 256 models, 14310 records, maximum 3333-entry
+shape, malformed collections and numerically equal models with distinct source
+or representation scopes. All prior pinned fixture fields are preserved.
+Draft A3/A10 and original criteria remain unchanged. Full plan/source consumers,
+function/component data binding, native inference and fidelity remain required;
+this is neither a proof receipt nor a performance result.

@@ -18,6 +18,7 @@ import model_attention_score_bounds
 import model_attention_max_bounds
 import model_gated_product_bounds
 import model_norm_bounds
+import model_bound_set
 import source
 import rope
 
@@ -68,6 +69,7 @@ def prepare(config_bytes, raw):
                 choices=dict(weight_bits=8,wide_fraction=12,gain_fraction=14,epsilon=[1,1000000],
                              exp=[15,7,12],score=[1,-1],rope=[4,2048,10000,'split'],
                              row_mode='dynamic',accumulation='exact',tied=False))
+    info.update(model_bound_set.evidence(config_id,config_bytes,prepared['digest_cqis'],prepared['artifact']))
     return model,info
 
 
