@@ -62,6 +62,9 @@
   },
   "config_sha256": "3305bd985f960e7d680f4710ffd2830a55a5f149e8d8d2d18ff0b3fc508cc97f",
   "digest_cqis": "8ceeb32fcd713cd61ba0c5e1aff8e8756bfd599d8835077f5ee518989f3ca8b1",
+  "gated_product_bytes": 908,
+  "gated_product_records": 2,
+  "gated_product_sha256": "31624336a98cb3bea846aeddda66b150a4b4c710ae2af7b3e446d102ba72d2a8",
   "generated": [
     27247,
     12888

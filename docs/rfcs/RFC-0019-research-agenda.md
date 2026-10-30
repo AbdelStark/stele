@@ -662,3 +662,12 @@ attention sum/block/normalization arithmetic, preserving prior fixture fields.
 Draft A3/A6 and RFC-0009 A2, original tasks and controls remain unchanged.
 Complete set/source contracts, actual consumers, native parity and fidelity
 remain mandatory; no inference proof or performance result is asserted.
+
+Q26 gated-product continuation: the [exact product study](../../research/cqis-bounds/GATED-PRODUCT.md)
+adds the source multiplication absent from the existing gated row schema.
+Three byte roles reject p-separated output and intermediate aliases. Checks
+cover 10000 random factor rows, 10000 independent static dimensions, maximum
+actual width and model composition through gated conversion/down projection.
+Pinned baseline and block-variant fields are preserved. Draft A3/A8 and original
+acceptance/control criteria remain unchanged; complete sets, actual consumers,
+native parity and fidelity are mandatory, with no inference or performance claim.
