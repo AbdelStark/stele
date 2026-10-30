@@ -35,7 +35,8 @@ this checklist is not a completed sign-off.
   64-slot bundle. No whole scalar is substituted for the byte representation.
 - Determinism: fixed child/role order and explicit branch byte; expected
   schema determines all dimensions and namespaces. The maximum identity
-  corpus checks every child span for overlap. The independent corpus is running.
+  corpus checked every child span for overlap. All10000 independent NumPy
+  source/output cases passed, including shifts-16 and90; the digest is frozen.
 - Parity: native CPU/SIMD/CUDA unchanged. NumPy uses int64 for bounded products
   and Python integers through object arrays for wide division; no float path.
   Complete proofs in both fields/repetitions remain under validation.

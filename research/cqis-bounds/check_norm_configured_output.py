@@ -57,6 +57,7 @@ def corpus():
     for bad in (replace(p,identity=1<<28),replace(p,repetitions=True),replace(p,left=p.right),replace(p,source=v['base']),replace(p,schema=replace(p.schema,F=True))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Spec',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True))
     assert branches=={'left','division'} and -16 in shifts and 90 in shifts
+    assert digest.hexdigest()=='d2ef8a356c060d6a8f7b23a1d0f9189600b1f5675ffb562a26f623e5d42c41aa'
     print(json.dumps(dict(seed=2723,cases=10000,shift_min=min(shifts),shift_max=max(shifts),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
