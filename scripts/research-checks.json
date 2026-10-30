@@ -132,5 +132,8 @@
   ],
   "cqis-silu": [
     "uv run --locked --script research/cqis-bounds/check_silu_consumer.py"
+  ],
+  "cqis-norm-statistic": [
+    "uv run --locked --script research/cqis-bounds/check_norm_statistic.py"
   ]
 }
