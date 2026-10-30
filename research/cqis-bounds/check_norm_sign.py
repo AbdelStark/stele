@@ -93,7 +93,7 @@ def controls():
     rejects('Predicates:RoundSumMismatch',lambda:c.verify(p,roots,bad,d))
     pred=w['predecessor'].copy();pred[1]-=1;bad,_=c.assemble(p,dict(pairs,predecessor=r.prove(v['predecessor'],pred,d)),d)
     rejects('Predicates:RoundSumMismatch',lambda:c.verify(p,roots,bad,d))
-    bad=copy.deepcopy(proof);final=bad['zero'][1]['final'];delta=r.sc.sub(final[3][0],r.sc.mul(r.sc.scalar(2,d),final[1][0]));final[0][0]=r.sc.add(final[0][0],r.sc.scalar(1,d));final[4][0]=r.sc.add(final[4][0],delta)
+    bad=copy.deepcopy(proof);final=bad['zero'][1]['final'];delta=r.sc.add(final[3][0],r.sc.neg(r.sc.mul(r.sc.scalar(2,d),final[1][0])));final[0][0]=r.sc.add(final[0][0],r.sc.scalar(1,d));final[4][0]=r.sc.add(final[4][0],delta)
     rejects('Sign:ClaimMismatch',lambda:c.verify(p,roots,bad,d))
     zero=spec(1,2030);bad,_=c.prove(zero,[0],[-7],d);bad['zero'][1]['final'][3][0]=r.sc.scalar(2,d)
     rejects('Sign:ClaimMismatch',lambda:c.verify(zero,expected(zero,[0],[-7]),bad,d))
