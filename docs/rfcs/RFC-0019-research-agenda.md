@@ -691,3 +691,13 @@ or representation scopes. All prior pinned fixture fields are preserved.
 Draft A3/A10 and original criteria remain unchanged. Full plan/source consumers,
 function/component data binding, native inference and fidelity remain required;
 this is neither a proof receipt nor a performance result.
+
+Q26 model-function continuation: the [function association study](../../research/cqis-checkpoint/MODEL-FUNCTIONS.md)
+derives every ordered operation FunctionId/RepresentationId and the unchanged
+Accepted canonical manifest from the expected model configuration. Metadata
+checks cover 10000 models and 89996 references; complete frames and native
+manifest bytes cover direct/corrected/product/max-domain exponential choices.
+Role deduplication, substituted representations and changed data digests reject.
+Pinned fixture fields remain preserved. Actual range/lookup/source selectors,
+complete plan/table roots, native inference and fidelity remain open. Draft
+A3/A10 and all original criteria remain unchanged; no proof/performance claim.
