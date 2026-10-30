@@ -66,5 +66,9 @@ products rounded to zero. Frozen corpus hash:
 `1b8c73debc78bcb8f1e30525b558ced4008d42f96490569fb8f294ab4a3c28a3`.
 All six external-root controls, wrong output signs, q=0 canonical-sign/
 predicate forgeries and signed-source reconstruction controls passed.
-Preserving finals and all three zero-hidden originals rejected. Boundary,
-composition and matrix checks are running. Maximum, gates and CI remain pending.
+Preserving finals and all three zero-hidden originals rejected. Boundary and
+actual left/division composition checks passed. All16 complete proof cases
+passed in both fields/repetitions, including exact losses and transcript draws.
+Frozen proof-state digest:
+`728d00f9932462247186efdd0d4c319be5aa4a2fbe7a289c55b214716e78394c`.
+The full-row maximum remains running; gates and hosted CI remain required.
