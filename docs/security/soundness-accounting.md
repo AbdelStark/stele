@@ -810,3 +810,22 @@ give sides<=511<p/2. Zero endpoints yield faithful equality and strict
 remainder, retaining all inherited claims and high zeros. Runtime receipts,
 binding/FS, same configured factors, selected branches, signed output and
 native/model/private composition remain additional.
+
+The [left-factor consumer](../../research/cqis-bounds/NORM-LEFT.md) has
+N=2^a rows and eight byte columns. Let bl be the offset L-1 byte-width
+exponent, g count active carry families and bg their byte-width exponents.
+Total A3 loss is[(21+9g)*a+37+7bl+18g+7*sum(bg)]/|K|. Each nonlookup
+label has(9+4g)*a+15+3bl+8g+3*sum(bg) draws. Lookup dimensions are
+a+4, a+2, bl+1 and a+bg+3 for each family. Each retains its separate
+identity ((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. No A3 term is squared with lookup repetitions.
+At full a14/bl1/g2/bg1,1, A3 is640/|K| and each nonlookup label has278
+draws; lookup dimensions are18,16,2,18,18. Complete expected metadata,
+three external roots, every auxiliary root and verified range state precede
+parent challenges. All nine original views are independently consumed,
+including the three factor-byte views at zero product. Reconstructing
+positive L from actual offset bytes adds no challenge. Whole input ranges,
+closed carry caps and zero endpoints supply integer lifting; maximum side
+is130815<p/2. All padded rows and six high quotient planes stay zero.
+Runtime receipts, binding/FS, actual same-exponent factors, selected branches,
+signed output and native/model/private composition remain additional.

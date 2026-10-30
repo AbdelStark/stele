@@ -1356,3 +1356,15 @@ last-digit bounds. Complete proof/control evidence, same configured B/h,
 selected branches and signed output remain required. Native/model/private
 inference, fidelity and original task criteria remain open; no Accepted cut
 or profile is added.
+
+### A3 evidence continuation — Full-row RMSNorm left-factor product
+
+The [left-factor study](../../research/cqis-bounds/NORM-LEFT.md) consumes
+q=t*L with whole product/quotient ranges, a positive offset-bound factor,
+and closed carry families. Nine original views retain all three scalar
+factor bytes and all high quotient zeros, including at zero products.
+The actual eight-slot factor root matches the verified factor bundle's
+slice34:42. Complete proof/control evidence and both full-row zero/nonzero
+cases remain required. Selected branches, unused qd/r zeros, signed output,
+native/model/private inference, fidelity and original task criteria remain
+open. This is revealing Draft research; no Accepted role or cut is added.

@@ -67,3 +67,12 @@ Continue Q26/Q31. Selecting e<0, forcing unused qd/r to zero, the right
 branch and signed output remain wrapper obligations. Native/model/private
 inference, fidelity and original task criteria remain open. No Accepted
 cut, native control credit or performance measurement is claimed.
+
+The tests-first run rejected the missing module. Seed2721 passed10000
+NumPy products/convolutions and3383720 byte-column cells. Frozen corpus:
+`9857f6eaa1196e14d0e2dd30d2427cdd427ef315188d057d13a86425a50cb6dc`.
+Full-domain geometry passed for all17 Lmax exponents. Adversarial controls,
+source composition and the16-proof matrix are running. Both full-row cases
+remain required: `--maximum` checks L65536 with t=q=0; `--full-nonzero`
+checks L511 with nonzero rows under the same maximum static metadata. Each
+needs its own mandatory CI job. Repository gates and CI remain pending.
