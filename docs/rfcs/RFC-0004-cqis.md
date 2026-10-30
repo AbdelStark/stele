@@ -1305,3 +1305,15 @@ all original views, whole bounds and padded zeros over the full norm domain.
 Complete proof/control evidence, configured output branches and signed output
 remain required. Native/physical/model/private inference, fidelity and original
 task criteria remain open. No Accepted semantics, role or cut is changed.
+
+### A3 evidence continuation — Full-row RMSNorm statistic
+
+The [full-row statistic study](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
+retains one complete signed16 source and uses three direct byte-column A1
+sums over up to 16384 elements. Whole S and closed carry ranges retain both
+zero endpoints and every high byte. Four original claims have independent
+consumers, including zero-hidden factors. Actual verified S bytes reconstruct
+the existing eight-slot external root with exact zero extension. The old
+statistic adapter/encoding remains unchanged. Complete proof/control evidence,
+native/model ownership, private PCS/ZK/FS, remaining norm roles and original
+inference criteria remain required; no Accepted cut or profile is added.

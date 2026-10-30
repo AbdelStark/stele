@@ -21,7 +21,7 @@ Every carry beyond the closed vector is zero; all output padding is retained.
 
 All four original byte-view claims have independent full hypercube consumers
 at their emitted points. Zero operands do not remove these obligations. The
-three child states, four roots and complete expected norm metadata precede
+three child states, five roots and complete expected norm metadata precede
 the parent instances. Each initial sum is absorbed in its A1 instance before
 round challenges; finals precede the next instance. There is no polynomial
 compression challenge, random column combination or per-row proof loop.
@@ -69,3 +69,14 @@ substitutions preserving products must reject. Compare actual old/new roots
 and compose the old proof on small inputs. A complete 16384-element proof is
 required before publication. Native/model/private lowering, remaining output
 roles, fidelity and original task criteria remain open.
+
+## Current evidence
+
+The tests-first run rejected the missing module. An initial implementation
+syntax error in column selection was fixed before execution. Seed2717 passed
+10000 NumPy int64 dot/convolution cases and 638449 source cells, with endpoint,
+full-domain and namespace checks. Frozen corpus SHA-256:
+`f1d72d68f017689c6fac69d9f2094f372ff79dd2de5167555010e4eecd68b528`.
+Proof controls, composition and the honest matrix are running. Full-row proof,
+required CI integration, repository gates and final review remain pending.
+Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py`.

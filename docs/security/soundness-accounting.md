@@ -725,3 +725,22 @@ bound predicate sides by 65536; sign sides are at most 2 and 3. All are
 strictly below p/2. Expected zero caps retain padded flags/predecessors; there
 is no quotient/output selector. Runtime receipts, binding/FS, configured
 output branches and native/physical/model/private composition remain additional.
+
+The [full-row statistic consumer](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
+has signed-source A3 numerator43a+35 for N=2^a. The scalar S range has byte
+width2^bs (bs2or3), and its carry vector pads to eight words of byte width2^bc
+(bc0..2). Their A3 contribution is27+7(bs+bc), giving total
+(43a+62+7(bs+bc))/|K|. Three degree-two A1 column sums add6a/|K| separately;
+five dimension-zero tail instances add no draw or algebraic loss. Lookup
+dimensions are a+2 three times, bs+1 and bc+4. Each retains its own identity
+((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. A1/A3 losses are not squared with lookup repetitions.
+Nonlookup draws are18a+26+3(bs+bc) ZeroWeight and21a+26+3(bs+bc) Sumcheck.
+At full a14/bs3/bc2, A3=699, A1=84, ZeroWeight=293 and Sumcheck=335.
+Five roots, three verified child states and complete expected norm bytes
+precede parent instances. Each initial sum is derived from actual verified
+S/carry bytes and absorbed before challenges; all four original byte claims
+have independent consumers at emitted points. Whole bounds, zero endpoints
+and closed column sides enforce integer lifting: maximum1073709311<p/2.
+Exact S-root zero extension adds no challenge. Runtime receipts, binding/FS,
+native/model/private composition and all remaining norm roles stay additional.

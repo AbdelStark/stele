@@ -893,3 +893,11 @@ all originals, including inactive factors and high zero slots. Continue with
 actual signed X/H magnitudes and xy*J, then the two wide signed output branches
 using these same roots. Original task, native/stacking/physical/model/private,
 fidelity and control obligations remain open.
+
+Q26/Q31 full statistic continuation: the [full-row consumer](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
+uses three byte-column sums from the same verified signed16 row, closed carry
+ranges and deterministic zero-input tail columns. It retains the existing
+raw/statistic root layouts and every original claim over the full norm domain.
+Continue with complete proof/control evidence and actual numerator composition;
+configured output branches, native/physical/model/private ownership, fidelity
+and original end-to-end acceptance remain open.

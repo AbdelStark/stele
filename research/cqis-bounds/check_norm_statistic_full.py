@@ -54,6 +54,7 @@ def corpus():
     for bad in (replace(p,identity=1<<44),replace(p,repetitions=True),replace(p,source=p.output),replace(p,source=v['base']),replace(p,schema=replace(p.schema,G=True))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Spec',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True))
     for xs in ([False]*3,[32768]*3,[0]):rejects('Input',lambda:c.witness(p,xs))
+    assert digest.hexdigest()=='f1d72d68f017689c6fac69d9f2094f372ff79dd2de5167555010e4eecd68b528'
     print(json.dumps(dict(seed=2717,cases=10000,source_cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
