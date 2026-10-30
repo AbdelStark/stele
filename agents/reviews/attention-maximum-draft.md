@@ -47,5 +47,8 @@ while retaining the old differences, and the control
 Difference:RoundSumMismatch rejected it.
 
 Key-set completeness, physical/model ownership, exponential membership,
-private PCS/ZK/FS, full attention composition, fidelity, matrix/full-row evidence,
+private PCS/ZK/FS, full attention composition, fidelity, full-row evidence,
 required gates and independent review remain open.
+
+The complete16-case field/repetition matrix passed with exact accounting and
+every original consumer. Full-row proof and repository gates remain pending.
