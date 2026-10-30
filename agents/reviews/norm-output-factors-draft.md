@@ -21,7 +21,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Ledger: added A3 numerator36, total199+9b+18g; selection6, product C-1
   and A1 loss4b remain separate. Four inherited lookup identities/reductions
   stay. Full nonlookup draws75+4b+8g and82+6b+8g; exact assertions run in
-  the proof matrix. Full matrix/public checks and accounting gate pending.
+  all20 complete proofs. Accounting and every required local gate passed.
 - Bounds: complete expected parameters derive e in[-16,90]. Unique valid
   indicator and equality to public bytes force both branch flags and B/h/L,
   with static2^90/2^89/2^16 bounds. No whole-factor M31 equality substitutes.
@@ -30,7 +30,8 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Determinism: fixed plane/index/child order and canonical norm bytes. Exact
   integer generation and10000 NumPy product cases passed; no floating point.
 - Parity: native CPU/SIMD/CUDA unchanged. Revealing full fields/repetitions
-  and10000 public points per field remain running; no native/private admission.
+  matrix passed; all10000 public points per field passed and have frozen hashes.
+  No native/private admission.
 - Costs: one fixed4096-cell A3 plus one complete paired consumer and public/
   source views in c_a/c_sc/c_lu/T_misc. No measured constant, benchmark or
   extra weight pass. A whole-norm composer can use this paired child once.

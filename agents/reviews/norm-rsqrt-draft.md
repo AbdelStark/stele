@@ -18,11 +18,12 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   controls rejected at FinalEvaluationMismatch before their constant consumers;
   only expected reasons were corrected. Additional composition-preserving
   controls isolate and pass the actual coefficient/selector consumers.
-  Remaining full checks stay running.
+  All four full proofs passed. Actual same-root M/MD composition passed and
+  rejected a valid substituted-M product.
 - Ledger: identity numerator98304 raised to r; separate reduction392r. Each
   repetition draws beta/alpha once, gamma/fold16 times and Sumcheck120 times.
-  All3r claims and49152 multiplicities remain; full proof/accounting checks
-  pending. No production profile or conjectural replacement bound is admitted.
+  All3r claims and49152 multiplicities remain; every proof/account assertion
+  and required local gate passed. No production profile is admitted.
 - Bounds: canonical complete tuples supply16384<=M<=65535,8192<=J<=16384.
   Every valid row passed independent integer rounding inequalities. Lookup unit
   size1 is characteristic-safe; no whole-field integer reinterpretation occurs.
@@ -32,7 +33,7 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
 - Determinism: immutable expected-definition cache, fixed canonical table order,
   exact integer generation and frozen complete-data/10000-gather hashes. No floats.
 - Parity: native CPU/SIMD/CUDA unchanged. Full revealing field/repetition matrix
-  remains running; no native/private inference credit is claimed.
+  passed with frozen states; no native/private inference credit is claimed.
 - Costs: complete table/multiplicity/fraction work in c_lu/c_sc/T_misc. No
   measured constant, benchmark result or added model weight pass.
 - Verifier: native no_std unchanged. Canonical expected schema, fixed table
