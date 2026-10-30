@@ -782,3 +782,12 @@ strict remainder and zero-code consumers reject false statements whose byte
 division alone holds. Continue with static mode, model-owned routing, native
 stacking/lowering, private PCS/ZK/FS and independent review. The revealing
 capacity-limited adapter earns no production control or original task completion.
+
+Q26/Q31 static-mode continuation: the [static row-code consumer](../../research/cqis-bounds/STATIC-ROW-CODE.md)
+uses the expected configured scale root and five fully consumed children to
+prove signed ties-away codes. Actual bounds reject symmetric-output, strict
+remainder and field-alias attacks even when parent field equations hold. A
+static domain lemma avoids a redundant gated range after faithful byte division.
+Continue with physical/model-owned source routes, native stacking/lowering,
+private PCS/ZK/FS and independent review. Revealing research roots and capacity
+limits do not satisfy the original tasks or earn production control credit.

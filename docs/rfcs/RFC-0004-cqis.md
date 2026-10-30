@@ -1088,3 +1088,16 @@ free outputs satisfy the division equation but fail their actual consumers.
 This full-reveal adapter is limited to1024 real elements. Static mode, physical
 model roots, native stacking/lowering, separately committed flags/index and
 private PCS/ZK remain open. Original criteria and Draft status remain unchanged.
+
+### A3/A8 evidence continuation — Consumed static row codes
+
+The [static row-code study](../../research/cqis-bounds/STATIC-ROW-CODE.md) binds
+configured positive scale bytes and actual signed input/output through bounded
+byte division. Actual Q<=127 and R<2*S close symmetric output and strict rounding;
+actual carry bytes reject an M31 alias satisfying every parent field equation.
+Operand-width planes suffice even when both integer sides overflow that width.
+The static gated-domain lemma follows after integer faithfulness, independently
+of the byte bounds used for that lift. This revealing adapter supports2048 wide
+elements with two planes, otherwise1024. Physical/model-source ownership, native
+stacking/lowering and private PCS/ZK remain open; Draft status, original task
+criteria and production cut/control requirements are unchanged.
