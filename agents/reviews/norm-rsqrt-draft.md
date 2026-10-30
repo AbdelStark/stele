@@ -16,7 +16,9 @@ soundness-auditor. This is not independent audit. [Evidence](../../research/cqis
   First full proof and compression-preserving source-final attack passed;
   corrupted and padding-admitting complete-table proofs rejected. Two scalar coefficient/selector
   controls rejected at FinalEvaluationMismatch before their constant consumers;
-  only expected reasons were corrected. Remaining full checks stay running.
+  only expected reasons were corrected. Additional composition-preserving
+  controls isolate and pass the actual coefficient/selector consumers.
+  Remaining full checks stay running.
 - Ledger: identity numerator98304 raised to r; separate reduction392r. Each
   repetition draws beta/alpha once, gamma/fold16 times and Sumcheck120 times.
   All3r claims and49152 multiplicities remain; full proof/accounting checks

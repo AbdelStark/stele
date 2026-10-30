@@ -80,7 +80,11 @@ The first honest full proof and compression-preserving altered original finals
 passed their checks. Two scalar coefficient/selector controls initially expected
 later constant errors; actual dimension0 verification rejects the false final
 composition first as Lookup:FinalEvaluationMismatch. Only expected reasons were
-corrected; no verifier change. Saved synthetic fixtures permit verification
+corrected; no verifier change. Additional coefficient/selector controls double
+the selected constant and halve both original finals, preserving the scalar
+composition; they reject at Lookup:CoefficientMismatch and Lookup:SelectorMismatch
+respectively. These focused controls passed on the saved valid proof.
+Saved synthetic fixtures permit verification
 continuation without repeating completed proof generation. The full matrix,
 remaining controls/composition and required local gates remain pending. No
 measured performance, native control credit or independent audit is claimed.

@@ -84,6 +84,21 @@ def controls(p,proof,expected,out,d):
     print('actual reciprocal originals, compression-preserving finals and multiplicity controls passed',flush=True)
 
 
+def constants(p,proof,expected,d):
+    # Preserve the scalar final composition while isolating each constant consumer.
+    half=r.sc.scalar((r.sc.P+1)//2,d)
+    for index,reason in ((0,'CoefficientMismatch'),(1,'SelectorMismatch')):
+        bad=copy.deepcopy(proof);final=bad['lookup']['rounds'][0]['leaf']['final'];final[index]=r.sc.scalar(2,d)
+        final[2]=r.sc.mul(final[2],half);final[3]=r.sc.mul(final[3],half)
+        rejects('Lookup:'+reason,lambda:c.verify(p,expected,bad,d))
+    print('composition-preserving scalar coefficient and selector controls rejected by their own consumers',flush=True)
+
+
+def saved_constants():
+    proof,_=codec(json.loads(Path('/tmp/stele-norm-rsqrt-case-0.json').read_text()),True);p=spec(1501,1)
+    constants(p,proof,c.expected_roots(p,16384,c.witness(p,16384)),4)
+
+
 CASES=((4,1,16384),(4,2,65535),(8,1,21845),(8,2,32767))
 
 
@@ -94,7 +109,7 @@ def full(index,resume=False):
     else:proof,state=c.prove(p,m,d);fixture.write_text(json.dumps(codec((proof,state))));print('full table produced',index,flush=True)
     expected=c.expected_roots(p,m,c.witness(p,m));out=c.verify(p,expected,proof,d);assert out['state']==state;account(p,proof,out,d)
     print(json.dumps(dict(case=index,state=state.hex()),sort_keys=True),flush=True)
-    if index==0:controls(p,proof,expected,out,d)
+    if index==0:controls(p,proof,expected,out,d);constants(p,proof,expected,d)
     if index==2:
         import norm_mantissa_product as mp
         pp=mp.Spec(p.schema,1510,p.mantissa,97,103,reps);product,ps=mp.prove(pp,m,3,d);roots=mp.expected_roots(pp,m,3,m*3);roots[0]=expected[0]
@@ -121,7 +136,7 @@ def partial():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--partial':partial,'--corrupted':lambda:alternate('corrupted'),'--padding':lambda:alternate('padding')}
+    modes={'--corpus':corpus,'--partial':partial,'--constants':saved_constants,'--corrupted':lambda:alternate('corrupted'),'--padding':lambda:alternate('padding')}
     modes.update({'--full'+str(i):lambda i=i:full(i) for i in range(4)})
     modes.update({'--resume'+str(i):lambda i=i:full(i,True) for i in range(4)})
     modes.update({'--resume-corrupted':lambda:alternate('corrupted',True),'--resume-padding':lambda:alternate('padding',True)})
