@@ -36,8 +36,10 @@ matrix, maximum and gate evidence is pending; this is not a sign-off.
   compares source widths and actual roots across every reused role. The
   full statistic retains all three nonzero column families and five tails.
 - Determinism: fixed child/role order, exact integer metadata and static
-  disjoint namespace spans. The independent corpus uses Fraction interval
-  enumeration, integer bisection and NumPy rounding; no float arithmetic.
+  disjoint namespace spans. All10000 independent cases passed Fraction
+  interval enumeration, integer bisection and NumPy rounding:8722 outputs
+  and1278 overflow rejections. The digest and seven observed width combinations
+  are frozen. Maximum namespace bounds passed; no float arithmetic is used.
 - Parity: native CPU/SIMD/CUDA unchanged. Both research fields/repetitions
   must pass with the whole reciprocal table. Full-row proof modes retain
   all seven children for wide, nonzero left and nonzero right cases.

@@ -62,3 +62,14 @@ Continue Q26/Q31. This is revealing arithmetic research, not private or model
 inference. Native lowering, authenticated model/configuration/source ownership,
 PCS/ZK/FS, fidelity, GPU/scale and original task criteria remain open. No new
 Accepted cut, benchmark result or extra weight pass is claimed.
+
+The tests-first run rejected the missing module. Seed2724 passed10000
+independent cases:8722 representable outputs and1278 expected overflow
+rejections. Fraction interval enumeration, integer reciprocal bisection and
+NumPy rounding agreed. Both branches, normalization endpoints-23/9, seven
+observed N/A/MD width combinations and maximum namespace bounds passed.
+All reused root representations agreed. Frozen corpus digest:
+`8967eef993ac88486ed91b502a61844d02a6b409979071a61f65837dbaf1ca45`.
+Complete proof/control matrices are running. The additional zero-exponent
+attack and three full-row proofs are queued after that sequence; required
+local gates are queued separately. No completed review or CI success is claimed.

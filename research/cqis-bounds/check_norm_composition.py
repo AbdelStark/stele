@@ -62,6 +62,7 @@ def corpus():
     for bad in (replace(p,identity=1<<24),replace(p,repetitions=True),replace(p,statistic=p.source),replace(p,mantissa=v['base']),replace(p,schema=replace(p.schema,en=0))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Spec',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True))
     assert accepted+rejected==10000 and accepted>0 and rejected>0 and branches=={False,True} and {-23,9}<=exponents
+    assert (accepted,rejected)==(8722,1278) and digest.hexdigest()=='8967eef993ac88486ed91b502a61844d02a6b409979071a61f65837dbaf1ca45'
     print(json.dumps(dict(seed=2724,cases=10000,accepted=accepted,overflow=rejected,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
