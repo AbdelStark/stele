@@ -81,5 +81,6 @@ byte addition. All adversarial controls, padding/boundary checks and actual
 product/factor composition passed. All16 proofs passed with exact receipts;
 the frozen matrix hash is
 `614febc9676f079ecf4b9181feda2bcf9d0c2bee971607e621512a1327727806`.
-The full16384-row maximum is running. Repository gates are queued; CI integration remains
-pending. Continue Q26/Q31; this evidence does not graduate the consumer.
+The full16384-row maximum is running. All required local repository gates
+passed, including accounting, digest and negative controls. CI integration
+remains pending. Continue Q26/Q31; this evidence does not graduate the consumer.
