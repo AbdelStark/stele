@@ -96,6 +96,8 @@ Symmetric code caps, padding, static scale and full output extension controls
 also passed. The M31 offset-alias, tighter static cap and remaining parent
 original controls passed. Complete dynamic and static prepared-row proofs
 composed on the same code/scale roots; valid alternate prepared sources
-rejected. The field/shape proof matrix is running with initial dynamic and
-static receipts checked. Two full 16384-entry proofs and all required local
-gates remain required.
+rejected. All20 field/shape proofs passed across both fields and repetition
+counts, including exact lookup, A3 and draw accounts. Frozen matrix hash:
+`fa90ed30a01a39392a3e8844dec842a997677d3eed737ece6a194e0a6372af7f`.
+The two full16384-entry proofs continue in their original sequential driver;
+all required local gates remain queued.
