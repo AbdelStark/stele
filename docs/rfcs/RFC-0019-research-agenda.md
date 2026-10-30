@@ -870,3 +870,11 @@ upstream product. R=D intentionally remains valid for this isolated equality;
 continue with strict0<=R<D before claiming the unique normalized interval,
 then consume actual reciprocal membership and wide output branches. All
 original task, native control and private/model requirements remain open.
+
+Q26/Q31 strict-remainder continuation: the [actual byte/carry consumer](../../research/cqis-bounds/NORM-REMAINDER.md)
+proves R+G+1=D from three full ranges, Boolean carries, fixed endpoints and
+actual byte columns. Genuine ranged R=D, zero D and whole-field aliases fail
+the strict relation. Paired A/D, bounded M/MD and the decomposition now compose
+with the same R/D roots in revealing research. Continue with the complete
+canonical rsqrt membership and wide signed output branches; retain all original
+native/model/private, physical-layout, fidelity and control obligations.

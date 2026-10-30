@@ -63,3 +63,29 @@ actual paired A/D, bounded M/MD and sum proofs with the same R/D roots.
 Recommendation: continue Q26/Q31 with actual normalized-interval composition,
 complete rsqrt lookup and wide output branches. Original task status/criteria,
 native controls, physical/private/model ownership and fidelity remain open.
+
+## Reproduction and evidence
+
+Run `uv run --locked --script research/cqis-bounds/check_norm_remainder.py`.
+Tests first failed with the missing module. Seed2702 passed10000 independent
+NumPy object-integer gap identities and int64 byte-column additions, with
+canonical source reconstruction and complete metadata-domain checks. Frozen
+corpus SHA-256:
+`198097e6694b80c34214660bcde4f0d29607dabc3842c980610eb151155df1d2`.
+
+All20 complete proofs passed across both fields/repetitions, including D=1,
+R=0, maximum R=D-1 and an actual124-bit divisor. Twelve proofs exercise
+unequal divisor/remainder range widths at Dmax=2^32 or2^64. Every proof checks
+exact losses, challenge draws and all seven original final claims. Frozen states:
+`a949dd85b7745908ed56a42a83f0a48e3e7a2da887a3f3757f0a2795d0c1ea51`.
+
+Genuine range proofs for R=D, D=0, R>D and R=p,D=1 all reject
+StrictColumns:RoundSumMismatch; the latter aliases in a whole M31 equation.
+Non-Boolean carry and terminal1 reject their named consumers. Altered R/G final
+claims preserve the last composition but fail StrictColumns:ClaimMismatch.
+Stale gap/source words, high external slots, malformed fields/lengths and
+supplied caps also reject. No verifier or expected-reason repair was needed.
+Actual paired A=65536,D=3, bounded M=21845,MD=65535 and A=MD+R proofs
+compose with the same R=1,D=3 roots and the strict proof. Valid changed R or D
+proofs fail the pinned source roots. Required local gates remain pending; no
+measured performance, native control credit or independent audit is claimed.
