@@ -126,12 +126,21 @@ def transcript(p,expected,proof,d,lookup_state):
     return Transcript(raw+expected+proof['byte_root']+proof['carry_root']+lookup_state,d)
 
 
+def eq_weights(point,d):
+    """RFC-0006 A3 MSB-first equality table, O(2^m) without inverses."""
+    one=sc.scalar(1,d); values=[one]
+    for x in point:
+        pair=(sc.add(one,sc.neg(x)),x)
+        values=[sc.mul(value,weight) for value in values for weight in pair]
+    return values
+
+
 def zero_prove(t,i,tables):
     """RFC-0006 A3 k=0 folded strategy; byte-identical to the naive oracle."""
     zc.describe(i,t.degree); zc.shape(i,tables,t.degree); need(i['k']==0,'InvalidZerocheck')
     d=t.degree; alpha=zc.start(t,i); state=[list(xs) for xs in tables]; rounds=[]
     for h in range(i['m']):
-        weights=[zc.eq(alpha[h+1:],z,d) for z in zc.boolean(i['m']-h-1,d)]; row=[]
+        weights=eq_weights(alpha[h+1:],d); row=[]
         for x in range(sc.degree(i)+1):
             folded=[sc.fold(xs,sc.scalar(x,d)) for xs in state]
             row.append(zc.total((sc.mul(w,sc.compose(i['terms'],values,d)) for w,values in zip(weights,zip(*folded))),d))

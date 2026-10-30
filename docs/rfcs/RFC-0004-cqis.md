@@ -982,3 +982,17 @@ inference commitment format or private PCS/ZK construction. The separate researc
 accounting adds 9a+10 to the unchanged Q31 reduction numerator, not its squared
 identity term. Native range dominance, model-derived caps/source consumers and
 joint privacy remain required. Original task criteria and Accepted text remain.
+
+### A3 evidence continuation — Exact wide-word range consumers
+
+The [wide range study](../../research/cqis-bounds/WIDE-RANGE.md) enforces exact
+unsigned caps below 2^160 on an original byte-word source. Per-coordinate caps
+alone do not suffice: (255,1) permits 511 when the whole-word cap is 257.
+Actual range_8 membership, source equality, byte-column addition, carry bits
+and a zero endpoint establish the exact integer inequality. Each column has
+both sides at most 511; the wide word is never embedded as one field scalar.
+All high planes and zero-cap padded rows remain checked. Consumed A3 claims
+add (9a+7b)/|K| under the separate research accounting. Full reveals are not
+an admitted private commitment or cut. Signed interpretation, source-to-operand
+binding, nibble packing, multiplication relations, range dominance and private
+PCS/ZK remain required. Draft A3 and original task criteria are unchanged.
