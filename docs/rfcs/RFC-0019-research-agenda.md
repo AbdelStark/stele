@@ -605,3 +605,12 @@ Mixed model roles and pinned replay preserve the earlier numerical fixture.
 Draft A3/A8, attention/decoding schemas, complete certificate sets, authenticated
 source/range consumers, native parity and fidelity remain open. No original
 E5-03/04 criterion, production NC or measured performance claim is completed.
+
+Q26 greedy-bound continuation: the [first-maximum study](../../research/cqis-bounds/GREEDY.md)
+closes static int16 attainment/difference/tie relations and explicit greedy
+prefix, EOS, length and preceding-position conditions. Exact/NumPy controls,
+model prefix replay and pinned decisions supply numerical evidence; same-choice
+alternative rows expose the separate model/source authentication obligation.
+Draft A3/A9, attention/score schemas, complete certificate sets, actual consumers,
+sampled decoding, native parity and fidelity remain open. All original E5-03/04
+and E7-08 criteria remain; no production NC or measured performance credit.

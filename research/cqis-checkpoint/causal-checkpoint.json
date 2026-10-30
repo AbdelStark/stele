@@ -33,6 +33,9 @@
     27247,
     12888
   ],
+  "greedy_bound_bytes": 86,
+  "greedy_bound_records": 1,
+  "greedy_bound_sha256": "da66d6f167c496b54d388d4d8e502572fba738b356b7053f9ebf6a3ba8d688e5",
   "ignored_tensors": [
     "model.layers.0.self_attn.rotary_emb.inv_freq",
     "model.layers.1.self_attn.rotary_emb.inv_freq"
