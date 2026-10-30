@@ -1451,3 +1451,18 @@ quotient role permits32768; complete signed output must still enforce its
 sign-dependent limit. Full residual composition, original2^20 domain and all
 native/model/private inference, fidelity and scale obligations remain open.
 A3/A8 and original task criteria remain unchanged; no Accepted cut is added.
+
+### A3/A8 evidence continuation — Complete residual arithmetic composition
+
+Draft research: [residual composition](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md)
+joins actual signed inputs to aligned offset, canonical numerator magnitude
+and sign, exact biased quotient/remainder and signed output. Four complete
+children share eight roots. One degree-two A3 equates numerator/output signs
+when the rounded magnitude is nonzero; all original views and both canonical
+sign consumers remain mandatory at zero. Positive32768 must reject despite
+the unsigned quotient permitting32768. Every source substitution, premature
+input rounding and wrong signed-output control requires rejection evidence.
+This revealing arithmetic adapter leaves native/model/private inference,
+physical ownership, fidelity, original2^20 capacity and independent audit open.
+No Accepted role or cut is added; A3/A8 and original task criteria remain Draft
+or blocked as recorded in the task graph.

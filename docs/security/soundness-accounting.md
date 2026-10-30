@@ -945,3 +945,22 @@ integer-faithful. Expected fractions determine B and h; whole r<B, q<=32768
 and M<=H remain actual range consumers. Binding, FS/H, native/model/private
 composition and physical source ownership remain additional. No profile is
 admitted and no production control or complete residual credit is claimed.
+
+### Draft A3/A8 complete residual arithmetic composition (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md). Four complete
+children retain aligned inputs, canonical numerator sign, magnitude rounding
+and signed output. For N=2^a, actual O/M/r byte widths2^bo/2^bm/2^br and g
+nonzero alignment carry families, retain all21+g independent lookup identities
+and their original unsquared reductions. Complete range/A3 numerator is
+(253+9g)*a+212+14*(bo+bm)+7*br+18g. The parent degree-two A3 q*(s-sZ)=0
+contributes3a across its phases and retains all three original consumers.
+Expected schema/roles, eight external roots and four verified child states
+precede parent ZeroWeight and Instance/Round/Final messages. Parent draws are
+a per ZeroWeight/Sumcheck label; full nonlookup totals are
+(109+4g)*a+89+6*(bo+bm)+3*br+8g. Complete receipts preserve all lookup schedules.
+The static parent product bound32768<p/2 and inherited static byte certificates
+establish integer faithfulness; no child is omitted at q=0. Exact shared-root
+joins add no algebraic error conditional on binding. Binding, FS/H, physical
+source/model ownership, native lowering and private composition remain
+additional. No production profile or native control credit is admitted.
