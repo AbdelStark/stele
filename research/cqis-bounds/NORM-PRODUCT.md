@@ -57,3 +57,15 @@ RFC-0022 requires zero predicates and a Boolean sign that is zero when either
 input magnitude is zero; output rounding to zero does not discharge those
 requirements. Native stacking, physical model ownership, private PCS/ZK/FS,
 fidelity and the original end-to-end acceptance criteria remain open.
+
+## Current evidence
+
+The tests-first run rejected the missing module. After implementation, seed
+2715 passed 10000 independent NumPy int64 product/convolution cases covering
+6788648 padded column cells and full-domain metadata boundaries. Frozen hash:
+`8edffed9ff302d9c132750ec6b5a201e6c8a610ba2063285299648586baa214f`.
+
+Reproduce with `uv run --locked --script research/cqis-bounds/check_norm_product.py`.
+The complete matrix, controls, actual xy/rsqrt composition and full-row proof
+are running. No completed full-row proof, final review or native/private
+inference is claimed. Required CI integration and local gates remain pending.
