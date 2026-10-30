@@ -1075,3 +1075,16 @@ rejected by the actual slack range. This full-reveal research does not establish
 row output codes, a separately committed nonzero flag/index, physical model
 roots, native lowering or private PCS/ZK. Original criteria and Draft status
 remain unchanged; no production cut or negative-control credit is admitted.
+
+### A3/A8 evidence continuation — Consumed dynamic row codes
+
+The [row-code study](../../research/cqis-bounds/ROW-CODE.md) joins the actual
+dynamic-scale proof to independently expected signed int8 outputs. Actual
+quotient, remainder, gap, flag, predecessor and carry ranges support consumed
+byte division, strict remainder, zero-scale and sign relations. Four statically
+derived byte planes suffice for both wide/gated kinds; no whole gated rounding
+identity is assumed faithful in M31. Excessive half-tie remainders and zero-scale
+free outputs satisfy the division equation but fail their actual consumers.
+This full-reveal adapter is limited to1024 real elements. Static mode, physical
+model roots, native stacking/lowering, separately committed flags/index and
+private PCS/ZK remain open. Original criteria and Draft status remain unchanged.

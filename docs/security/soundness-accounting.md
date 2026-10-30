@@ -406,3 +406,24 @@ with public T0=TB=1. Exact slack<=126 makes the ceiling unique, including zero.
 No reduction loss is squared and no new label/profile is admitted. Binding,
 FS/H, committed-index/model ownership, native stacking and private composition
 remain additional.
+
+Q26/Q31's [dynamic row-code consumer](../../research/cqis-bounds/ROW-CODE.md)
+retains the complete dynamic-scale account. Let Nrows=2^a, B=2^b original bytes
+and P=2^c division planes; the closed schema derives c=2 for both kinds. Seven
+parent k=0 A3 invocations have (dimension,degree) (0,2),(0,2),(a,1),(a,1),
+(a+c,2),(a,1),(a,2). They add (12a+3c)/|K| and 5a+c draws of each label,
+with22 actual finals; zero dimensions retain their records and Finals. Including
+all children, A3 numerator is171a+87b+12c+25 and inherited A1 numerator a is
+separate. Total A3/A1 draws excluding lookup schedules are73a+36b+5c+11
+ZeroWeight and74a+36b+5c+11 Sumcheck. Preserve19 lookup identities: dynamic
+scale's nine, signed output dimensions a+1,a+1,a+2, then quotient/remainder/gap/
+zero-gap/nonzero/predecessor/carry dimensions a+1,a+b+1,a+b+1,a+1,1,b+1,a+c+2.
+Each separately contributes [(2^m+255)/|K|]^r and r[F(m)+F(8)+3m]/|K|; no
+reduction is squared. Static selected counts stay below p; no Unit draws.
+Ten roots and nine fully verified states precede parent challenges. Actual source
+packing/broadcast/masking views consume every final at its emitted point, even
+for zero coefficients. Biased carries T=C+3 in[0,258] and T0=TP=3 give integer
+column sides<=66813. Remainder/zero/flag identities have static bounds below p/2;
+actual ranges make strict division and zero semantics faithful. All Finals are
+absorbed. Binding, FS/H, physical/model ownership, native stacking and joint
+private composition remain additional; no production label/profile/cut is admitted.
