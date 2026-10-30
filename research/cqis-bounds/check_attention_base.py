@@ -46,6 +46,7 @@ def corpus():
     for bad in (replace(p,identity=1<<44),replace(p,repetitions=True),replace(p,source=p.output),replace(p,source=v['base']),replace(p,count=False),replace(p,count=0),replace(p,schema=replace(p.schema,accumulation='block1024'))):rejects('Spec',lambda:c.derive(bad,4))
     rejects('Capacity',lambda:c.derive(replace(p,count=16385),4));rejects('WeightSum',lambda:c.witness(p,True));rejects('WeightSum',lambda:c.witness(p,v['zmax']+1))
     assert {a for a,b,g in widths}=={0,1,2} and {g for a,b,g in widths}=={1,2,3}
+    assert digest.hexdigest()=='ce46ecda5b6958819169b8f74fbb7c43d594ef21138313f492b889e892bdfa88'
     print(json.dumps(dict(seed=2736,cases=10000,source_cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

@@ -60,6 +60,15 @@ including valid different probability sums. Require the maximum supported
 Z=16384*2^14, S=65535 scalar product and all repository gates. This is a scalar
 binding; it does not claim a new full-row reduction or increased key capacity.
 
-This is a pre-implementation plan. Continue Q26/Q31 with canonical sign and
+The tests-first run rejected the missing module. Seed2736 passed all10000
+independent cases and66186 paired source cells; the frozen corpus hash is
+`ce46ecda5b6958819169b8f74fbb7c43d594ef21138313f492b889e892bdfa88`.
+External-root, valid source-substitution and zero-hidden configured-factor
+controls passed. A bounded H+p, actual Z-cap violation and high external
+planes rejected at their required consumers. The initial complete receipt
+and draw account matched. Composition, both-field matrix, maximum scalar
+proof and repository gates remain required.
+
+Continue Q26/Q31 with canonical sign and
 magnitude of O-H, block rounding and normalization. Full source/model ownership,
 native/private PCS/ZK/FS, fidelity, GPU/scale and original criteria remain open.
