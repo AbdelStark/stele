@@ -83,6 +83,7 @@ def honest(mode=None):
             v=c.derive(p,d);S=v['constants']['restored_max'];weights=[(0,1<<E,1)[j%3] for j in range(rows)];values=[(0,2*S,S,1)[j%4] for j in range(rows*width)]
             if rows==1:weights=[1<<E]
             print('honest start',done+1,d,reps,rows,width,flush=True);proof,state=c.prove(p,weights,values,d);out=c.verify(p,oracle(p,weights,values)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,rows,width,flush=True)
+    if mode is None:assert done==16 and digest.hexdigest()=='af59d706a12db64456d9a1e489c539839578ae65a04cbf5860494677bbd7c59c'
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
