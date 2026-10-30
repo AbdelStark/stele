@@ -128,8 +128,19 @@ def composition():
     print('old statistic and numerator compose on actual roots; equal-S raw substitution rejects',flush=True)
 
 
+def tails():
+    p=spec(4,2160);d=4;xs=[0]*4;v=c.derive(p,d);pairs=c.prepare(p,xs,d);roots=expected(p,xs)
+    for value,k in ((1<<24,3),(1<<32,4)):
+        bad,_=c.assemble(p,dict(pairs,output=r.prove(v['output'],[value],d)),d)
+        rejects('Column'+str(k)+':FinalEvaluationMismatch',lambda:c.verify(p,expected(p,xs,value),bad,d))
+    carry=c.witness(p,xs)['carry'];carry[4]=1
+    bad,_=c.assemble(p,dict(pairs,carry=r.prove(v['carry'],carry,d)),d)
+    rejects('Column3:FinalEvaluationMismatch',lambda:c.verify(p,roots,bad,d))
+    print('valid range proofs with false high S or tail carry reject at dimension-zero columns',flush=True)
+
+
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition}
+    modes={'--corpus':corpus,'--honest':honest,'--maximum':lambda:honest(True),'--controls':controls,'--boundaries':boundaries,'--composition':composition,'--tails':tails}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
