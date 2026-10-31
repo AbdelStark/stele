@@ -17,6 +17,7 @@ class ReadinessTests(unittest.TestCase):
                                     self.text.split('jobs:\n', 1)[1], re.M | re.S))
 
     def test_requires_full_run_when_pr_becomes_ready(self):
+        self.assertIn('  push:\n    branches: [main]\n', self.text)
         events = re.search(r'^  pull_request:\n    types: \[([^]]+)\]', self.text, re.M)
         self.assertIsNotNone(events)
         self.assertEqual(set(events[1].split(', ')),
