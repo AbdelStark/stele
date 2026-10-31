@@ -7,13 +7,13 @@ actual negative-control catalogue, soundness accounting, and repository checks.
 validators once. Each standalone gate remains complete.
 
 Table parity runs when field, polynomial, SIMD or CQIS code changes, including
-its test oracle. Tooling, dependency and workflow changes also select it.
+its test oracle. Dependency and CI routing changes also select it.
 The full RFC-0021 corpus is partitioned into 28 case/field jobs, each retaining
 its original seed and 10,000 points. No-argument local execution still runs all
 280,000 points. A failed or missing shard fails the aggregate.
 
 Research, harness and formal changes select every normal research group in
-`scripts/research-checks.json`. Tooling and dependency changes do so as well.
+`scripts/research-checks.json`. Research runner, inventory, workflow and dependency changes do so as well.
 Downloads stay ordered with their consumers. Each command retains shell error
 and pipeline failure propagation. Native-only changes use their independent
 reference checks in the native gates; review must add any affected research

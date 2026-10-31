@@ -57,6 +57,8 @@ class ScopeTests(unittest.TestCase):
                 ('research/sumcheck/check_sumcheck.py', ('false', 'true')),
                 ('Cargo.lock', ('true', 'true')),
                 ('.github/workflows/ci.yml', ('true', 'true')),
+                ('scripts/gates/check.py', ('false', 'false')),
+                ('scripts/research-checks.json', ('false', 'true')),
             ]:
                 before = git('rev-parse', 'HEAD')
                 file = root / path

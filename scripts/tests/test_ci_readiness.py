@@ -45,7 +45,10 @@ class ReadinessTests(unittest.TestCase):
         self.assertIn('run: python3 scripts/ci_result.py', text)
         shards = re.search(r'^        shard: \[([^]]+)\]', text, re.M)
         self.assertIsNotNone(shards)
-        self.assertEqual([int(x) for x in shards[1].split(',')], list(range(28)))
+        oracle = (ROOT / 'crates/stele-cqis/tests/support/table_mle.rs').read_text()
+        count = re.search(r'pub const CASES: [^\n]*;\s*(\d+)\]', oracle)
+        self.assertIsNotNone(count)
+        self.assertEqual([int(x) for x in shards[1].split(',')], list(range(2 * int(count[1]))))
         self.assertNotIn('continue-on-error', text)
 
 

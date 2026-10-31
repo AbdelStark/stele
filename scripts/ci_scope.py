@@ -31,18 +31,24 @@ def changed_paths(event):
 
 
 def scopes(paths):
-    # Changes to tooling/dependencies invalidate every scoped campaign.
-    shared = any(path.startswith((b'.github/', b'scripts/', b'.cargo/', b'Cargo.',
+    # Shared dependencies invalidate both campaigns; native gate edits do not
+    # alter Python research proofs or the independent table arithmetic oracle.
+    shared = any(path.startswith((b'.github/actions/', b'.cargo/', b'Cargo.',
                                   b'rust-toolchain', b'uv.lock', b'pyproject.toml'))
                  for path in paths)
+    routing = any(path in (b'.github/workflows/ci.yml', b'scripts/ci_scope.py',
+                          b'scripts/ci_result.py') for path in paths)
     return {
         'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/'))
                    for path in paths),
-        'tables': shared or any(path.startswith((b'crates/stele-field/', b'crates/stele-poly/',
+        'tables': shared or routing or any(path.startswith((b'crates/stele-field/', b'crates/stele-poly/',
                                                 b'crates/stele-simd/', b'crates/stele-cqis/'))
                                 for path in paths),
-        'research': shared or any(path.startswith((b'research/', b'harness/', b'formal/'))
-                                  for path in paths),
+        'research': shared or routing or any(
+            path.startswith((b'research/', b'harness/', b'formal/')) or path in (
+                b'.github/workflows/exhaustive.yml', b'scripts/research_ci.py',
+                b'scripts/research-checks.json', b'scripts/research-full-checks.json')
+            for path in paths),
     }
 
 
