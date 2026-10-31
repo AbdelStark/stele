@@ -77,7 +77,7 @@ def controls():
         bad=roots.copy();bad[index]=bytes(32);rejects(name+':CommitmentMismatch',lambda:c.verify(p,bad,proof,d))
     for factor in (0,1):
         w=c.lp.limbs.witness(v['double'].schema,(0,),(factor,));child=c.lp.prove(v['double'],w,d);bad,_=c.assemble(p,child,d);rejects('Double:Factor',lambda:c.verify(p,c.roots(p,bad),bad,d))
-    bad=copy.deepcopy(proof);bad['double']['input']['digits'][0]=1;rejects('Double:Input:LimbPacking:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
+    bad=copy.deepcopy(proof);bad['double']['input']['digits'][0]=1;rejects('Double:Input:LimbPacking:ClaimMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     for left,right,reason in (((1,),(2,),'LeftSource'),((0,),(1,),'RightSource')):
         w=c.lp.limbs.witness(v['double'].schema,left,right);digits,zs,cs=c.lp.witness(v['double'],w);layout=v['layout'];children=[(proof['double']['input'],out['double']['input']['state']),c.lp.cr.prove(layout['output'],zs,d),c.lp.cr.prove(layout['carry'],cs,d)];product,_=c.lp.assemble(v['double'],children,d);bound=c.lp.roots(v['double'],product['input']['digits'],zs,cs);product['core'],st=c.lp.core_prove(v['double'],bound,[part[1] for part in children],digits,zs,cs,d);bad,_=c.assemble(p,(product,st),d);rejects('Double:'+reason+':SourceClaimMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     for side in ('left','right'):

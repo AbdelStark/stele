@@ -51,3 +51,10 @@ and proof suites are running; this is not a completed sign-off.
 
 The observed-attack conclusion remains pending the controls. Required
 repository gates and independent review must also complete.
+
+The initial run passed receipt, external-root and zero-hidden factor controls.
+An altered input digit rejected at Double:Input:LimbPacking:ClaimMismatch: the
+replayed linear proof still had zero rounds, but its original source claim
+no longer matched. The test expected a round failure. Only that expected
+diagnostic changed; the original log is retained and verifier behavior is
+unchanged. The failed control suite must complete.
