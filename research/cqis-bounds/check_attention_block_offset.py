@@ -67,6 +67,7 @@ def corpus():
             assert c.value_root(p,v,spool)==roots[1]
         assert not any(carry[k*v['nc']+j] for k in range(16) for j in range(width,v['nc']))
         cells+=len(values);zeros+=not any(output);digest.update(v['raw']+b''.join(roots))
+    assert (cells,zeros,digest.hexdigest())==(225862,2759,'789b0fb45e25c38ac6fd686fde1f5e08f8167aff56140b90b092ac62a4660013')
     print(json.dumps(dict(seed=2759,cases=10000,cells=cells,zero_outputs=zeros,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -92,6 +93,31 @@ def account(p,out,d):
     assert out['account']==dict(identities=[((1<<m)+255,p.repetitions) for m in dims],lookup_reduction_numerator=sum(p.repetitions*(f(m)+f(8)+3*m) for m in dims),range_reduction_numerator=sum(9*a+7*b for a,b,*_ in layouts),weighted_identity_numerator=v['ac']+v['k']-1,weighted_reduction_numerator=2*v['ar'],denominator=r.sc.P**d)
     assert out['draws']=={r.zc.tr.CHALLENGE:1+v['ac']+v['ar']} and len(out['claims'])==2
     child=sum(4*a+3*b for a,b,*_ in layouts);assert out['child_draws']=={r.zc.WEIGHT:child,r.zc.tr.CHALLENGE:child}
+
+
+def projections():
+    # Arithmetic unit checks only; these synthetic states are never admitted by verify.
+    for d in (4,8):
+        p=spec(3,10923);v=c.derive(p,d);weights=[0,16384,1];values=[(i*17+3)%131071 for i in range(v['count'])];output,expected=oracle(p,weights,values);partial=c.columns(v)
+        for g,xs in enumerate(groups(v,values)):c.accumulate(v,partial,weights[g*v['group_rows']:g*v['group_rows']+len(xs)//v['width']],xs)
+        actual,carry=c.finish_columns(v,partial);assert actual==output;local=dict(probability=weights+[0],output=output+[0]*(v['nc']-v['width']),carry=carry)
+        ranges=[weights,*list(groups(v,values)),output]+[carry[g*v['carry_group']*v['nc']:(g+1)*v['carry_group']*v['nc']] for g in range(v['carry_groups'])];roots=[]
+        for index,xs in enumerate(ranges):
+            plan=c.range_spec(p,v,index);a,b,n,w,*_=r.derive(plan,d);roots.append(r.source_root(plan,c.planes(xs,n,w)))
+        states=[bytes(32)]*v['children'];t=r.scalar.Transcript(v['raw']+b''.join(expected+roots+states),d);rho=r.sc.challenge(t);point=[r.sc.challenge(t) for _ in range(v['ac'])];lambdas=r.scalar.eq_weights(point,d);powers=[r.sc.scalar(1,d)]
+        for _ in range(1,v['k']):powers.append(r.sc.mul(powers[-1],rho))
+        right=[]
+        for row in range(v['rows']):
+            value=r.sc.scalar(0,d)
+            for l in range(v['lb']):
+                coefficient=tuple(sum((values[row*v['width']+j]>>(4*l)&15)*lambdas[j][k] for j in range(v['width']))%r.sc.P for k in range(d));value=r.sc.add(value,r.sc.mul(powers[l],coefficient))
+            right.append(value)
+        with tempfile.TemporaryFile() as spool:
+            spool.write(struct.pack('<'+'I'*len(values),*values));assert c.value_root(p,v,spool)==expected[1]
+            actual_t,instance,tables=c.parent(p,v,expected,roots,states,local,spool,d);assert actual_t.state==t.state and tables[1]==right+[r.sc.scalar(0,d)]
+            assert r.zc.total((r.sc.mul(a,b) for a,b in zip(*tables)),d)==instance['sum']
+            spool.seek(0);spool.write(struct.pack('<I',values[0]+1));rejects('Value:0:CommitmentMismatch',lambda:c.parent(p,v,expected,roots,states,local,spool,d))
+        print('ragged group projection and reauthentication arithmetic passed',d,v['sizes'],flush=True)
 
 
 def run(p,weights,values,d):
@@ -139,7 +165,8 @@ def boundaries():
     for i,at in ((0,1),(0,3),(1,9),(index,3),(index+1,0),(v['children']-1,-1)):
         plan=c.range_spec(p,v,i);caps=list(plan.caps);xs=c.unpack(plan,pairs[i][0]['words'])[:len(caps)]
         if at==len(caps):caps.append(0);xs.append(0)
-        caps[at]+=1;xs[at]=caps[at];changed=pairs.copy();changed[i]=r.assemble(plan,*r.witness(replace(plan,caps=tuple(caps)),xs),d);bad,roots=assemble(changed);rejects('Range:'+str(i)+':CapRelation:RoundSumMismatch',lambda:c.verify(p,roots,iter(bad),d))
+        caps[at]+=1;xs[at]=caps[at];child,_=r.assemble(plan,*r.witness(replace(plan,caps=tuple(caps)),xs),d);bad=proof.copy();bad[i]=dict(range=i,proof=child)
+        rejects('Range:'+str(i)+':CapRelation:RoundSumMismatch',lambda:c.verify(p,expected,iter(bad),d))
     wrong=np.pad(np.array(values,dtype=np.uint32).reshape(3,3),((0,1),(0,1))).reshape(-1).tolist();bad=expected.copy();bad[1]=r.root(p.value_source,c.planes(wrong,v['n'],4));rejects('Value:CommitmentMismatch',lambda:c.verify(p,bad,iter(proof),d))
     for index,identity,size,width,xs in ((1,p.value_source,v['n'],4,values),(2,p.output,v['nc'],8,output)):
         words=c.planes(xs,size,width);words[-1]=1;bad=expected.copy();bad[index]=r.root(identity,words);rejects(('Value' if index==1 else 'Output')+':CommitmentMismatch',lambda:c.verify(p,bad,iter(proof),d))
@@ -160,6 +187,7 @@ def composition():
 def maximum(mode):
     rows,width={'maximum':(1024,16384),'full-ragged':(1023,16383),'full-tail':(1,16384)}[mode];p=spec(rows,width,8290);p=replace(p,schema=replace(p.schema,length=1023*1024+rows),block=1023);v=c.derive(p,4);S=v['constants']['restored_max'];weights=[(0,16384,1,16383)[j%4] for j in range(rows)]
     if rows==1:weights=[16384]
+    print('full block offset start',mode,rows,width,v['groups'],flush=True)
     def sources():
         at=0
         for size in v['sizes']:
@@ -175,10 +203,15 @@ def maximum(mode):
     merkle=r.lu.merkle;uroot=merkle.root(merkle.Tree(0,p.value_source,4*v['n'],4),payloads())
     planes=lambda xs,n,b:[x>>(8*k)&255 for k in range(b) for x in xs+[0]*(n-len(xs))]
     roots=[r.root(p.probability,planes(weights,v['nr'],2)),uroot,r.root(p.output,planes(output.tolist(),v['nc'],8))]
-    print('full block offset start',mode,rows,width,v['groups'],flush=True);source=Capture(c.prove(p,weights,sources(),4));out=c.verify(p,roots,source,4);assert out['state']==source.state;account(p,out,4);print('full block offset passed',mode,out['state'].hex(),flush=True)
+    source=Capture(c.prove(p,weights,sources(),4))
+    def observed():
+        for record in source:
+            yield record
+            if 'range' in record and (record['range']%32==0 or record['range']==v['children']-1):print('full block ranges verified',mode,record['range']+1,v['children'],flush=True)
+    out=c.verify(p,roots,observed(),4);assert out['state']==source.state;account(p,out,4);print('full block offset passed',mode,out['state'].hex(),flush=True)
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--shapes':shapes,'--controls':controls,'--boundaries':boundaries,'--composition':composition,'--honest':honest,'--maximum':lambda:maximum('maximum'),'--full-ragged':lambda:maximum('full-ragged'),'--full-tail':lambda:maximum('full-tail')}
+    modes={'--corpus':corpus,'--shapes':shapes,'--projections':projections,'--controls':controls,'--boundaries':boundaries,'--composition':composition,'--honest':honest,'--maximum':lambda:maximum('maximum'),'--full-ragged':lambda:maximum('full-ragged'),'--full-tail':lambda:maximum('full-tail')}
     assert all(mode in modes for mode in sys.argv[1:])
     for mode in sys.argv[1:] or modes:modes[mode]()

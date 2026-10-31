@@ -14,6 +14,8 @@ block is mandatory in both accumulation modes. The mask has exactly C bits.
 This fixes the local roster; query/mask/GQA/model ownership remains upstream.
 Keep original consumers unchanged. A new stream format admits C*w<=2^24
 actual entries, with no proof loop over channels and no sparse-row substitute.
+The older plaintext witness helper keeps its own entry-capacity guard; this
+stream derives its domain from C and w under its separate versioned context.
 
 Consume P_j in 0..Q*allowed_j, Q=2^E, every U_jc in 0..2S, and every O_c in
 0..2*C*Q*S. The probability root retains one/two configured byte planes. The
@@ -79,3 +81,19 @@ The validated root builder from commit 3078b87 and field arithmetic from
 8840c258 are prerequisites, imported with their frozen parity tests. Their
 joint checks run before this consumer. No benchmark result is transferred to
 this larger workload. Original task status/criteria and all live runs remain.
+
+Prerequisite checks passed together: 40409 field products, four complete
+range artifacts and four complete lookup artifacts retained their frozen
+digests. The tests-first consumer run rejected the missing module. Seed 2759
+then passed all 10000 independent integer cases over 225862 value cells,
+including 2759 zero outputs. Counts and SHA-256 are asserted in the checker:
+`789b0fb45e25c38ac6fd686fde1f5e08f8167aff56140b90b092ac62a4660013`.
+All ten full-shape/namespace cases passed. Primary source/root, strict roster
+and zero-hidden-original controls passed, including all-masked contributions.
+
+The first boundary runner stopped while constructing a forged padded source:
+the producer's replay reauthentication correctly rejected its changed compact
+root. The corrected fixture submits that invalid child directly to the
+verifier, targeting its range check; verifier code is unchanged. Corrected
+boundaries, complete source composition, the matrix and full-size proofs
+remain in validation. No independent audit or native coverage is claimed.
