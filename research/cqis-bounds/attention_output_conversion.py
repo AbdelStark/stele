@@ -51,7 +51,7 @@ def derive(p,d):
 
 def witness(p,zs,totals):
     v=derive(p,4);need(type(zs) is list and type(totals) is list and len(zs)==len(totals)==p.heads,'Input')
-    heads=[norm.witness(child,z,ts) for child,z,ts in zip(v['head_specs'],zs,totals)];wide=sum((x['output'] for x in heads),[])
+    heads=[norm.witness(child,z,ts) for child,z,ts in zip(v['head_specs'],zs,totals)];wide=[value for head in heads for value in head['output']]
     row=v['module'].witness(v['conversion'],wide)
     return dict(heads=heads,wide=wide,scale=row['scale'] if v['module'] is dynamic else p.output_scale,codes=row['codes'])
 
@@ -86,7 +86,7 @@ def roots(p,proof):
 def flatten(v,expected):
     need(type(expected) is dict and set(expected)=={'heads','scale','output'} and type(expected['heads']) is list and len(expected['heads'])==len(v['head_specs']),'Root')
     need(all(type(xs) is list and len(xs)==len(v['roles']) for xs in expected['heads']),'Root')
-    values=sum(expected['heads'],[])+[expected['scale'],expected['output']];need(all(type(x) is bytes and len(x)==32 for x in values),'Root');return values
+    values=[root for head in expected['heads'] for root in head]+[expected['scale'],expected['output']];need(all(type(x) is bytes and len(x)==32 for x in values),'Root');return values
 
 
 def transcript(v,expected,assembled,states,d):
@@ -118,4 +118,4 @@ def verify(p,expected,proof,d):
     try:row=v['module'].verify(v['conversion'],[assembled,expected['scale'],expected['output']],proof['conversion'],d)
     except ValueError as error:raise ValueError('Conversion:'+str(error)) from None
     t=transcript(v,expected,assembled,[child['state'] for child in heads]+[row['state']],d);hc=[child['account'] for child in heads];rc=row['account'];accounts=hc+[rc]
-    return dict(state=t.state,heads=heads,conversion=row,draws=dict(t.draws),account=dict(identities=sum((x['identities'] for x in accounts),[]),lookup_reduction_numerator=sum(x['lookup_reduction_numerator'] for x in accounts),range_reduction_numerator=sum(x['range_reduction_numerator'] for x in accounts),product_identity_numerators=sum((x['product_identity_numerators'] for x in hc),[]),product_reduction_numerator=sum(x['product_reduction_numerator'] for x in hc),selection_reduction_numerator=rc.get('selection_reduction_numerator',0),denominator=r.sc.P**d))
+    return dict(state=t.state,heads=heads,conversion=row,draws=dict(t.draws),account=dict(identities=[identity for x in accounts for identity in x['identities']],lookup_reduction_numerator=sum(x['lookup_reduction_numerator'] for x in accounts),range_reduction_numerator=sum(x['range_reduction_numerator'] for x in accounts),product_identity_numerators=[loss for x in hc for loss in x['product_identity_numerators']],product_reduction_numerator=sum(x['product_reduction_numerator'] for x in hc),selection_reduction_numerator=rc.get('selection_reduction_numerator',0),denominator=r.sc.P**d))
