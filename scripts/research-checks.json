@@ -159,5 +159,8 @@
   ],
   "cqis-norm-rsqrt": [
     "uv run --locked --script research/cqis-bounds/check_norm_rsqrt.py"
+  ],
+  "cqis-norm-output-factors": [
+    "uv run --locked --script research/cqis-bounds/check_norm_output_factors.py"
   ]
 }

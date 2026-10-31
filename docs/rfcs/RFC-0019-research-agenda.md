@@ -885,3 +885,11 @@ canonical padding rows from membership. The complete generator/encoding and
 all source/multiplicity/public claims remain mandatory. Continue with same-root
 J and same-exponent wide signed outputs, retaining every original native,
 physical/model/private, fidelity and control requirement.
+
+Q26/Q31 output-factor continuation: the [same-exponent public-grid consumer](../../research/cqis-bounds/NORM-OUTPUT-FACTORS.md)
+binds every rounding/left-shift factor byte and branch flag using the actual
+indicator already verified for paired A,D. It preserves the whole child and
+all originals, including inactive factors and high zero slots. Continue with
+actual signed X/H magnitudes and xy*J, then the two wide signed output branches
+using these same roots. Original task, native/stacking/physical/model/private,
+fidelity and control obligations remain open.

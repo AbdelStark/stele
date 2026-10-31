@@ -643,3 +643,18 @@ neutral(0,1), not an admitted source tuple. Parent final state binds complete
 expected norm function/representation bytes, canonical table identity, two roots
 and verified lookup state. Binding/FS, upstream same-root normalized interval,
 wide outputs and native/physical/model/private proof remain additional.
+
+Q26/Q31's [same-exponent output factors](../../research/cqis-bounds/NORM-OUTPUT-FACTORS.md)
+retain one complete paired A/D consumer and add a dimension12 degree2 A3,
+contributing36/|K| and12 draws of each parent label. Total A3 numerator is
+199+9b+18g. Inherited selection A1 loss6, product identity C-1 and product
+A1 loss4b remain separate, as do the four lookup dimensions7,b+2,g+3,g+3
+and their independently repeated identities/reductions. Full nonlookup draws
+are75+4b+8g ZeroWeight and82+6b+8g Sumcheck, including product rho/A1s.
+Complete expected norm bytes, five roots and fully verified paired state seed
+the parent before weights/rounds/finals. The same actual one-hot indicator
+forces every flag/byte to the complete expected-parameter public grid; bounds
+B<=2^90,h<=2^89,L<=2^16 follow without whole-factor field lifts. All original
+and public MLE consumers, inactive factors and high zero slots remain. Binding,
+FS/H, normalized interval, actual J/signed products, output branches and native/
+physical/model/private composition remain additional; no profile/cut credit.
