@@ -141,7 +141,7 @@ tasks:
   - RFC-0020 §4-5
   skill: rfc-author
   crate: ci
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E0-06-ci-ready
   acceptance:
@@ -566,7 +566,9 @@ tasks:
   - RFC-0020 A5
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E4-03a-opening-closure
   acceptance:
   - both-field native/Python certificate and opening byte parity
   - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation
