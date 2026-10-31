@@ -99,3 +99,9 @@ cases, covering 378879 channels and 144695 nonzero high carry bytes. Both
 Actual positive-denominator compositions passed in exact and block modes;
 valid source replacements rejected. The original matrix continues, with
 full proofs and repository gates queued once.
+
+All 16 matrix proofs subsequently passed with exact child accounts, draw
+totals and all seven actual originals. The original runner completed
+successfully. Frozen SHA-256:
+`7a800845a194a1d8a35f11ddef32eadebeef199c92b8a675edd1b42159e468e2`.
+Both full-width group-family proofs and repository gates remain queued.
