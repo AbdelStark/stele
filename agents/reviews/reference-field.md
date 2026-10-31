@@ -1,7 +1,7 @@
 # Reference field arithmetic review
 
-Same-author soundness-auditor pass, not independent audit. Repository gates
-remain required; this record does not approve full inference.
+Same-author soundness-auditor pass, not independent audit. All required local
+repository gates passed; this record does not approve full inference.
 
 1. Public contract: RFC-0003 §2/A1 fixes i²=-1, u²=2+i, v²=u and the basis.
    The research multiplier uses the same fixed maps and Karatsuba identity
@@ -15,7 +15,7 @@ remain required; this record does not approve full inference.
    controls passed; no supplied receipt or disabled check is used.
 5. Accounting: no labels, draws, degrees or losses change. Complete receipt
    artifacts and explicit range/lookup account formulas match. The full
-   accounting gate remains required.
+   accounting gate passed on the original measured branch.
 6. Bounds: the canonical base modulus and tower basis are unchanged.
    Fixed maps and scalar products reduce every coefficient modulo p.
    No runtime magnitude tightens an integer-faithfulness certificate.
@@ -25,7 +25,7 @@ remain required; this record does not approve full inference.
    The original recursive oracle independently checks 40409 products;
    it calls neither the candidate nor its fixed maps.
 9. Parity: native/SIMD/GPU code is unchanged. Frozen A1/A3 artifacts and
-   complete research proofs match; native digest gates remain required.
+   complete research proofs match; the native digest gate passed.
 10. Cost: the [report](../../research/sumcheck/REFERENCE-FIELD.md) links
     both-field before/after complete-operation ledgers. Only Python
     reference c_sc/T_misc work is measured. No fitted native constant,

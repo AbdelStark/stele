@@ -98,6 +98,12 @@ uv run --python 3.12 --locked --script bench/reference_field.py QM31 /tmp/new-qm
 uv run --python 3.12 --locked --script bench/reference_field.py OM31 /tmp/new-om31-ledger.json
 ```
 
-Recommendation: retain this reference arithmetic change after repository
-gates pass. Full-size inference, native/GPU performance and independent
-audit remain open. Original validation processes were not restarted.
+All required local gates passed at measured-branch head
+`51fb88bb232e511d910b97016d00966d859dba74`: formatting, Clippy, workspace
+tests, no_std CQIS, dependency bans, Rust policy, digests, negative controls,
+soundness accounting, ledgers, RFC references, documentation/glossary and CI
+scope. The original process completed successfully; it was not restarted.
+
+Recommendation: retain this reference arithmetic change after fresh hosted
+CI and review. Full-size inference, native/GPU performance and independent
+audit remain open.
