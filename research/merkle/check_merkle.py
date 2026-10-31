@@ -57,6 +57,26 @@ def build(tree, leaves):
     return levels
 
 
+def root(tree, leaves):
+    """RFC-0012 A3 root only: one input pass, at most height+1 frontier digests."""
+    height = tree.height()
+    leaves = iter(leaves)
+    end = object()
+    frontier = []
+    for index in range(1 << height):
+        payload = next(leaves, end) if index < tree.count else b""
+        require(payload is not end, "InvalidLeaf")
+        value = tree.leaf(index, payload)
+        level, node = 0, index
+        # An odd node completes the right subtree of this exact A3 parent.
+        while node & 1:
+            value = tree.node(level + 1, node >> 1, frontier.pop(), value)
+            level, node = level + 1, node >> 1
+        frontier.append(value)
+    require(next(leaves, end) is end, "InvalidLeaf")
+    return frontier[0]
+
+
 def path(levels, index):
     return [level[(index >> depth) ^ 1] for depth, level in enumerate(levels[:-1])]
 

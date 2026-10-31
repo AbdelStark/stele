@@ -1067,3 +1067,10 @@ global H=S*Z and zero-hidden source changes?
 precede namespace checks, tests and implementation. Full-width composition
 and every inherited original consumer remain required; conditional arithmetic
 does not establish upstream attention-row ownership.
+
+Q26/Q31 source-capacity continuation: can a [streamed Merkle root builder](../../research/merkle/STREAMING.md)
+preserve Accepted RFC-0012 A3 bytes and complete revealing lookup proofs while
+retaining only a logarithmic digest frontier? Scope and kill criteria precede
+tests and code. This reduces temporary root-construction storage; it does not
+enlarge an inference consumer or admit a new cut. Complete source ranges,
+weighted attention ownership and all original task criteria remain required.

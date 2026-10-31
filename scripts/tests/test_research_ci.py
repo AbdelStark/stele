@@ -27,9 +27,9 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_command_inventory(self):
         commands = [command for group in ci.load_groups().values() for command in group]
         # Independent snapshot: inventory through attention normalization.
-        self.assertEqual(len(commands), 165)
+        self.assertEqual(len(commands), 166)
         digest = hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest()
-        self.assertEqual(digest, '6f9aff113b75c8559af390976d63dc5db55c0b5f84cfe7e09e39db8abff4a648')
+        self.assertEqual(digest, '05d886cd5bcca1e77a67f2f6f82dad4d9cb4843281296ca895e03948d0b178ea')
         for command in commands:
             argv = shlex.split(command)
             if argv[0] == 'curl':
