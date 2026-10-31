@@ -4,7 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author, rfc-author and
 soundness-auditor. This is a same-author review, not independent audit.
 [Scope](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md). Tests-first rejected
 the missing module. All10000 corpus cases and primary/zero-output/boundary
-controls passed. Matrices, maximum and gates remain under validation;
+controls passed. All16 matrix proofs and their exact accounts passed.
+The maximum and gates remain under validation;
 this is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A8 research joins complete aligned inputs,
@@ -24,7 +25,8 @@ this is not a completed sign-off.
   the actual parent sign relation rejected it.
 - Ledger: all21+g independent lookup identities and unsquared reductions
   remain. Closed range/A3 and draw totals are appended to accounting; matrix
-  receipt assertions and soundness-accounting.sh still require execution.
+  receipt assertions passed across both fields/repetitions. The repository
+  soundness-accounting.sh gate remains pending.
 - Bounds: inherited static byte/carry certificates remain. Parent q<=32768
   and Boolean signs imply product bounds32768<p/2. No dynamic maximum or wide
   field residue establishes integer faithfulness. Shared q links signed range
@@ -34,8 +36,8 @@ this is not a completed sign-off.
 - Determinism: fixed roles, routes, child order and namespace intervals.
   No unordered reduction, challenge retry or timing-dependent choice.
 - Parity: native CPU/SIMD/CUDA unchanged. Independent Fraction/NumPy cases,
-  all10000 cases passed. Both fields/repetitions and the complete16384-row
-  proof await validation.
+  all10000 cases passed. All16 proofs across both fields/repetitions passed;
+  the complete16384-row proof awaits validation.
 - Costs: O(N) joins/views and one degree-two A3, retaining four complete child
   consumers in c_a/c_sc/c_lu/T_misc. No extra weight pass or measured claim.
 - Verifier: native no_std unchanged. Strict expected metadata, roots, child
