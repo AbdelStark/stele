@@ -78,3 +78,8 @@ The focused capacity checks subsequently passed for 8193 and 16384 channels.
 All boundary controls and both actual canonical-magnitude source compositions
 passed. Valid changed sources rejected at Magnitude:CommitmentMismatch.
 Matrix, corrected corpus, full-width proofs and repository gates remain pending.
+
+The corrected 10000-case corpus and both capacity cases passed over 354302
+channels, including 3352 zero-bound cases and all shifts 0..92. Its digest
+is frozen. The original ragged-capacity failure remains recorded. Matrix,
+full-width proofs, repository gates and independent review remain pending.
