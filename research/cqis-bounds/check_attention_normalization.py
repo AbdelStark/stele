@@ -118,11 +118,14 @@ def controls():
 def boundaries():
     namespaces()
     for mode in ('exact','block1024'):
-        p=replace(spec(mode,1,8250+(mode=='block1024')),schema=c.bounds.Spec(1<<20,1,0,0,0,'static',65535,mode,0 if mode=='exact' else 12));z=1<<20;unit=1 if mode=='exact' else 4096;t=-(32768*z//unit);proof,state=c.prove(p,z,[t],4);values,roots=oracle(p,z,[t]);assert values['output']==[-32768] and c.verify(p,roots,proof,4)['state']==state;rejects('OutputRange',lambda:c.witness(p,z,[-t]));rejects('Divisor',lambda:c.witness(p,0,[0]))
-        positive,ps=c.prove(p,z,[0],4);pr=oracle(p,z,[0])[1];assert c.verify(p,pr,positive,4)['state']==ps
-        bad=dict(proof,output=positive['output']);rejects('SignedOutput:Sign:CommitmentMismatch',lambda:c.verify(p,roots,bad,4))
-        assert c.transcript(c.derive(p,4),roots,[bytes(32)]*len(proof),4).state!=state
-    print('int16 negative endpoint accepts, positive endpoint and zero divisor reject; every child state binds the final context',flush=True)
+        p=replace(spec(mode,3,8250+(mode=='block1024')),schema=c.bounds.Spec(1<<20,3,0,0,0,'static',65535,mode,0 if mode=='exact' else 12));z=1<<20;unit=1 if mode=='exact' else 4096;t=-(32768*z//unit);pairs=c.prepare(p,z,[t,0,0],4);proof,state=c.assemble(p,pairs,4);values,roots=oracle(p,z,[t,0,0]);assert values['output']==[-32768,0,0] and c.verify(p,roots,proof,4)['state']==state;rejects('OutputRange',lambda:c.witness(p,z,[-t,0,0]));rejects('Divisor',lambda:c.witness(p,0,[0,0,0]))
+        v=c.derive(p,4);changed=pairs.copy();H=z*65535 if mode=='exact' else constants(p)[2]
+        for name,module,child,routes,label in v['children']:
+            if name=='sign':changed[name]=module.prove(child,*(([H-t,H,H],H) if mode=='exact' else ([H-t,H,H],)),4)
+            if name=='output':changed[name]=module.prove(child,[0,0,0],[-32768,0,0],4)
+        bad,_=c.assemble(p,changed,4);rejects('SignedOutput:SignedOutput:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,4))
+        assert c.transcript(v,roots,[bytes(32)]*len(proof),4).state!=state
+    print('int16 negative endpoint accepts; fresh positive-source q32768 with negative int16 output and zero divisor reject; every child state binds the final context',flush=True)
 
 
 def composition():
