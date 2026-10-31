@@ -58,7 +58,8 @@ def account(p,out,d):
     v=c.derive(p,d);a=v['a'];bo=r.derive(v['ranges']['offset'],d)[1];bm=r.derive(v['ranges']['magnitude'],d)[1];dims=[a+bo+1,a+bm+1,a+1,a+bm+1];f=lambda m:3*m*(m-1)//2+2*m
     assert out['account']==dict(identities=[((1<<m)+255,p.repetitions) for m in dims],lookup_reduction_numerator=sum(p.repetitions*(f(m)+f(8)+3*m) for m in dims),range_reduction_numerator=41*a+7*(bo+2*bm),denominator=r.sc.P**d)
     assert len(out['claims'])==7 and out['draws']==({r.zc.WEIGHT:2*a,r.zc.tr.CHALLENGE:2*a} if a else {})
-    assert [row['numerator'] for row in out['sc']]==[3*a,2*a]
+    assert [row['numerator'] for row in out['sc']]==[a,0,2*a,a,0,a]
+    assert [claim[0] for claim in out['claims']]==[v['base']+j for j in (16,17,18,19,18,20,17)]
     for label in (r.zc.WEIGHT,r.zc.tr.CHALLENGE):assert sum(x['draws'].get(label,0) for x in [out]+out['children'])==18*a+3*(bo+2*bm)
 
 
