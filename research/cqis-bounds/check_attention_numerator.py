@@ -87,6 +87,7 @@ def honest(mode='matrix'):
             print('honest start',done+1,d,reps,width,v['groups'],v['shift'],flush=True);proof,state=c.prove(p,ms,d);roots=oracle(p,ms)[1];out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,width,v['groups'],v['shift'],flush=True)
             if mode=='maximum':
                 assert v['groups']==2;words=c.output_words(v,proof);wrong=[x for g in range(2) for k in range(16) for x in words[k*v['n']+g*v['group_n']:k*v['n']+(g+1)*v['group_n']]];assert wrong!=words;rejects('Numerator:CommitmentMismatch',lambda:c.verify(p,[roots[0],r.root(p.output,wrong)],proof,d));print('full group-major output substitution rejects the plane-major external root',flush=True)
+    if mode=='matrix':assert (done,digest.hexdigest())==(16,'d578a52ab2d44b8d3c0996326c8a4172febeba8335347da95b243ff08b4327ff')
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
