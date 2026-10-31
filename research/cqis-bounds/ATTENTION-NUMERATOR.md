@@ -76,3 +76,13 @@ also rejected at that original consumer; the first test expected a round
 failure and was corrected without changing the verifier. The failed log is
 retained. Corpus, boundaries, source compositions, matrix and full-size proofs
 remain under validation, with repository gates queued once.
+
+Ragged-group refinement: for G=2, each output range must contain exactly N/2
+caps, with Umax on real channels and zero on unused channels. Giving the
+second child only its actual count lets wide_range pad an 8193-channel row's
+second group to one entry; the fixed half-domain check correctly rejected
+that configuration. A focused regression reproduced Capacity before the fix.
+Explicit zero caps and zero witness values preserve the declared dimensions,
+full output join and unchanged account. G=1 and fully occupied G=2 layouts
+are unchanged. The original corpus run is retained; corrected corpus and
+focused capacity checks must pass before freezing evidence.

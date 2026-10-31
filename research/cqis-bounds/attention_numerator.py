@@ -30,7 +30,8 @@ def derive(p,d):
     need(T<1<<64 and U==T<<shift and U<1<<128,'Capacity');need(2*(256*c-1)<r.sc.P,'FieldBound')
     bu=(max(1,(U.bit_length()+7)//8)-1).bit_length();groups=1 if n*(1<<bu)<=131072 else 2;group_n=n//groups
     caps={'source':(T,)*p.schema.width}
-    for j in range(groups):caps['output_'+str(j)]=(U,)*min(group_n,p.schema.width-j*group_n)
+    for j in range(groups):
+        real=min(group_n,p.schema.width-j*group_n);caps['output_'+str(j)]=(U,)*real+(0,)*(group_n-real if groups==2 else 0)
     for j in range(4):caps['carry_'+str(j)]=tuple(c-1 if i<p.schema.width and 4*j+k<15 else 0 for k in range(4) for i in range(n))
     ranges={name:r.Spec(256*p.identity+index,base+index,cap,p.repetitions) for index,(name,cap) in enumerate(caps.items(),1)}
     layouts={name:r.derive(child,d) for name,child in ranges.items()};bm=layouts['source'][1]
@@ -42,7 +43,8 @@ def derive(p,d):
 def witness(p,ms):
     v=derive(p,4);need(type(ms) is list and len(ms)==p.schema.width and all(type(x) is int and 0<=x<=v['constants']['total_max'] for x in ms),'Input')
     us=[x<<v['shift'] for x in ms];w={'source':ms.copy()};size=v['group_n'];n=v['n'];padded=ms+[0]*(n-len(ms));carry=[0]*n;cs=[]
-    for j in range(v['groups']):w['output_'+str(j)]=us[j*size:(j+1)*size]
+    for j in range(v['groups']):
+        values=us[j*size:(j+1)*size];w['output_'+str(j)]=values+[0]*(size-len(values) if v['groups']==2 else 0)
     for k in range(16):
         carry=[(v['c']*(x>>(8*(k-v['q']))&255 if 0<=k-v['q']<8 else 0)+carry[i])//256 for i,x in enumerate(padded)];cs.extend(carry)
     for j in range(4):w['carry_'+str(j)]=cs[4*j*n:4*(j+1)*n]

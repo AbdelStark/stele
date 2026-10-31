@@ -40,7 +40,7 @@ def corpus():
     def check(p,ms):
         nonlocal cells,zeros
         v=c.derive(p,4);w=c.witness(p,ms);us,roots=oracle(p,ms);n=v['n'];q,rem=divmod(v['shift'],8);assert c.expected_roots(p,ms)==roots and w['source']==ms
-        assert [x for j in range(v['groups']) for x in w['output_'+str(j)]]==us
+        actual=[x for j in range(v['groups']) for x in w['output_'+str(j)]];assert actual[:p.schema.width]==us and not any(actual[p.schema.width:])
         m=ms+[0]*(n-len(ms));u=us+[0]*(n-len(us));carry=np.array([0]*n,dtype=np.int64);cs=[]
         for k in range(16):
             source=np.array([x>>(8*(k-q))&255 if 0<=k-q<8 else 0 for x in m],dtype=np.int64);total=(1<<rem)*source+carry;byte=total%256;carry=total//256

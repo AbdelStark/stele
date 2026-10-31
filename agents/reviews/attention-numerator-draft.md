@@ -65,3 +65,11 @@ compensating another to preserve the column equation; Shift:ClaimMismatch
 rejected all four attacks. Complete changed source/output/carry children also
 rejected at the parent equation. Corpus, boundary/composition suites, matrix,
 full-width proofs and required repository gates remain pending.
+
+Static review found the ragged G=2 padding error before the corpus reached
+its capacity cases. The 8193-channel focused regression rejected at Capacity
+because the second child had only one cap. Both half-domains now carry explicit
+zero caps and zero values on unused channels. This restores the intended
+supported domain and preserves the stated account; no limit is raised.
+Existing G=1 proof inputs and fully occupied G=2 layouts are unchanged.
+The focused capacity checks and corrected corpus remain under validation.
