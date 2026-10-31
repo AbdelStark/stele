@@ -73,3 +73,8 @@ zero caps and zero values on unused channels. This restores the intended
 supported domain and preserves the stated account; no limit is raised.
 Existing G=1 proof inputs and fully occupied G=2 layouts are unchanged.
 The focused capacity checks and corrected corpus remain under validation.
+
+The focused capacity checks subsequently passed for 8193 and 16384 channels.
+All boundary controls and both actual canonical-magnitude source compositions
+passed. Valid changed sources rejected at Magnitude:CommitmentMismatch.
+Matrix, corrected corpus, full-width proofs and repository gates remain pending.

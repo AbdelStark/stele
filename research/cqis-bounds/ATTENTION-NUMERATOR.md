@@ -86,3 +86,10 @@ Explicit zero caps and zero witness values preserve the declared dimensions,
 full output join and unchanged account. G=1 and fully occupied G=2 layouts
 are unchanged. The original corpus run is retained; corrected corpus and
 focused capacity checks must pass before freezing evidence.
+
+Focused 8193/16384-channel checks passed complete external roots and explicit
+group padding. Boundary controls also passed, including genuine ranged U-p,
+all carry endpoints and zero-bound shift 92. Both complete raw and block
+canonical magnitude sources composed; separately valid changed magnitudes
+rejected their pinned source roots. The matrix continues in the original
+runner, while the corrected corpus and full-width proofs remain queued.
