@@ -98,3 +98,10 @@ exact D=2^64 and block D=2^48. Their combined frozen SHA-256 is
 The original runner completed successfully. These scalar proofs establish
 the divisor boundary; upstream key/channel ownership and repository gates
 remain separate obligations.
+
+CI now requires all five normal modes and both full-metadata scalar proofs.
+All 11 inventory/CLI/aggregate checks passed. Every inherited job and all
+33 native steps are preserved: 154 commands, 56 research groups, 45 full-size
+jobs and 108 hosted jobs. Hosted evidence must paginate. The original local
+gate queue remains active; scalar boundary evidence does not establish full
+key/channel ownership.

@@ -108,3 +108,9 @@ all actual original consumers matched. Frozen SHA-256:
 `d578a52ab2d44b8d3c0996326c8a4172febeba8335347da95b243ff08b4327ff`.
 The original corrected proof runner completed successfully. Both full-width
 proofs and repository gates remain queued behind their existing prerequisites.
+
+CI now requires all five normal modes and both full-width group-family proofs.
+All 11 inventory/CLI/aggregate tests passed. Every inherited job and all
+33 native steps are preserved: 155 commands, 57 research groups, 47 full-size
+jobs and 111 hosted jobs. Hosted evidence must paginate. The original local
+full-proof and gate queues remain active; no run was restarted.
