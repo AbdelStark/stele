@@ -77,3 +77,10 @@ aggregate rejected the pinned U root. At rounded zero, a changed upstream
 sign rejected its upstream root while the unchanged aggregate remained valid.
 The proof matrix and full 16384-channel proof continue in the original runner;
 required repository gates remain queued once.
+
+All 16 matrix proofs passed across both fields/repetition counts, including
+the zero static bound and mixed compact widths. Every original, receipt and
+draw total matched. Frozen SHA-256:
+`6ad91d56e515a63ac2ccab994cd9f5b5c6cca5ef517f6a70d0c328392b4ac595`.
+The full 16384-channel proof continues in the original runner. Required
+repository gates remain queued.
