@@ -70,6 +70,7 @@ def honest(mode=None):
             p=replace(spec(blocks,width,5310+done,reps),schema=c.bounds.Spec(1<<20,width,7,E,policy,scale,drop));v=c.derive(p,d);qmax=v['constants']['rounded_max'];flags=[j%2 for j in range(v['count'])];qs=[(0,qmax,qmax//2)[j%3] for j in range(v['count'])]
             print('honest start',done+1,d,reps,blocks,width,drop,flush=True);proof,state=c.prove(p,flags,qs,d);out=c.verify(p,oracle(p,flags,qs)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,blocks,width,drop,flush=True)
     if mode is None:assert (done,digest.hexdigest())==(16,'701f68e006fa0f2b22c62703ecfadb4ce7c23a649d91406dc2ab5f98718aa14d')
+    elif mode in ('maximum','blocks'):assert (done,digest.hexdigest())==(1,{'maximum':'303cb9b7aeb08f9ada0d8fbddecf11c4c900900eb52d1de966803beda60ec6c7','blocks':'220948758af0af4fbe8cca46aafba5e7699ecbe64f1e1448a459452a70788b1e'}[mode])
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

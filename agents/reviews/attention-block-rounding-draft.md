@@ -60,3 +60,10 @@ Compensating each original final also rejected at its ClaimMismatch consumer.
 All 16 matrix proofs passed with exact receipts and draw counts. Their
 transcript digest is frozen. The original three full geometries and gate
 queue remain active; this evidence does not complete the review.
+
+CI integration retains all 149 inherited commands and native jobs. The normal
+group covers corpus, controls, boundaries, actual source joins and matrix.
+Three unconditional full-size jobs cover 128x128, 1024x16 and 1x16384, with
+fail-fast disabled and every result required by the aggregate gate. All 11
+CI inventory tests passed. Original full proofs and local gates continue;
+hosted checks remain pending.

@@ -104,3 +104,10 @@ accounts, draw counts and every original consumer. Frozen proof-state SHA-256:
 `e96860a9139e74686c61b5a16e1bce54ca231165236a2fda220b854ceaadbd1b`.
 The full16384-row proof has started; required local gates remain queued.
 Corpus and all negative controls were already passed and were not repeated.
+
+CI retains all 141 inherited commands and adds this consumer's five normal
+modes as command 142. A separate full-size job is a required aggregate
+dependency. All 11 inventory tests passed, including rejection when any
+required result fails, is cancelled, is skipped or is absent. The original
+full 16384-key proof and repository gate queue remain pending and are not
+restarted by this integration.

@@ -84,3 +84,9 @@ Their frozen SHA-256 is
 `2758052402ad4141907729ea627081c126b15269e18c9d2bac702afcb40d51a0`.
 The corrected proof runner completed successfully. The full-width proof and
 repository gates remain queued behind their existing prerequisites.
+
+CI preserves all 159 inherited commands and adds the five normal signed-
+output modes as command 160. The complete 16384-channel proof is mandatory
+in its own job. All 11 inventory/CLI/aggregate tests passed, covering every
+supported mode and rejecting unsuccessful required results. Original full
+proof and local gate queues remain intact.

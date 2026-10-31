@@ -105,3 +105,9 @@ passed the complete output byte ranges and rejected at the actual sum
 equation. The original runner completed successfully. Frozen full-proof
 SHA-256: `36436d08dfd62ede5837591d8d39ccb1cfcbb4787b747dd794aeb6d5fa084b16`.
 Repository gates, global attainment and full source ownership remain required.
+
+CI now requires all five normal modes and the complete 1024-block maximum
+proof. All 11 inventory/CLI/aggregate checks passed. The inherited jobs and
+33 native steps are preserved: 153 commands, 55 research groups, 44 full-size
+jobs and 106 total hosted jobs. Hosted evidence must paginate beyond 100 jobs.
+The existing local gate queue remains authoritative and has not been restarted.
