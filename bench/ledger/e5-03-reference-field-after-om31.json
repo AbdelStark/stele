@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/reference-field-wide-range",
+  "commit": "8840c258cd49c9efb37caba6b73ffa40eb5e18ef",
+  "toolchain": "3.12.12 (main, Feb 12 2026, 00:42:34) [Clang 21.1.4 ]",
+  "device": "arm64 Apple M1 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "complete public wide-range research proof",
+      "field": "OM31",
+      "samples": 3,
+      "caps": [
+        0,
+        257,
+        2147483649
+      ],
+      "values": [
+        0,
+        256,
+        2147483649
+      ],
+      "repetitions": 1,
+      "identity": 2757,
+      "source": 29,
+      "warmup": 1,
+      "profile_calls": 1,
+      "profile_top_functions": 20,
+      "table_rows": 256,
+      "lookup_rows": 32,
+      "timed": "witness/root, prove, actual public verify, encoding and state/account checks",
+      "controls": "two rejection controls separately timed on the warmup proof",
+      "encoding": "lossless tagged JSON research artifact; not the production proof wire format",
+      "memory": "process high-water RSS includes imports, warmup, samples, controls and profiler",
+      "contention": "other original validation processes remain running; CPU time also recorded"
+    },
+    "os": "macOS-15.6.1-arm64-arm-64bit",
+    "samples": [
+      {
+        "stages_ns": {
+          "witness": 179250,
+          "prove": 2367549500,
+          "verify": 1168342209,
+          "encode_and_check": 6053166
+        },
+        "process_cpu_ns": 1485963000
+      },
+      {
+        "stages_ns": {
+          "witness": 186958,
+          "prove": 2253239750,
+          "verify": 1102477834,
+          "encode_and_check": 20388041
+        },
+        "process_cpu_ns": 1479228000
+      },
+      {
+        "stages_ns": {
+          "witness": 158000,
+          "prove": 2267888834,
+          "verify": 1155696125,
+          "encode_and_check": 8115666
+        },
+        "process_cpu_ns": 1477608000
+      }
+    ],
+    "peak_process_rss_bytes": 26804224,
+    "profiled_complete_operation_calls": [
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 23,
+        "function": "<genexpr>",
+        "primitive_calls": 1833300,
+        "total_calls": 1833300
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 30,
+        "function": "mul",
+        "primitive_calls": 36008,
+        "total_calls": 662777
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 22,
+        "function": "add",
+        "primitive_calls": 659045,
+        "total_calls": 659045
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 50,
+        "function": "<genexpr>",
+        "primitive_calls": 514272,
+        "total_calls": 514272
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 35,
+        "function": "<genexpr>",
+        "primitive_calls": 159579,
+        "total_calls": 159579
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 27,
+        "function": "<genexpr>",
+        "primitive_calls": 137223,
+        "total_calls": 137223
+      },
+      {
+        "file": "research/logup-characteristic/fraction.py",
+        "line": 42,
+        "function": "<genexpr>",
+        "primitive_calls": 40356,
+        "total_calls": 40356
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 37,
+        "function": "<genexpr>",
+        "primitive_calls": 19854,
+        "total_calls": 19854
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 26,
+        "function": "neg",
+        "primitive_calls": 15247,
+        "total_calls": 15247
+      },
+      {
+        "file": "research/merkle/check_merkle.py",
+        "line": 16,
+        "function": "require",
+        "primitive_calls": 14177,
+        "total_calls": 14177
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 18,
+        "function": "scalar",
+        "primitive_calls": 13269,
+        "total_calls": 13269
+      },
+      {
+        "file": "research/sumcheck/check_field.py",
+        "line": 60,
+        "function": "canonical",
+        "primitive_calls": 2,
+        "total_calls": 11038
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 53,
+        "function": "encode",
+        "primitive_calls": 5988,
+        "total_calls": 5988
+      },
+      {
+        "file": "research/logup-characteristic/weighted.py",
+        "line": 5,
+        "function": "require",
+        "primitive_calls": 5283,
+        "total_calls": 5283
+      },
+      {
+        "file": "research/logup-characteristic/fraction.py",
+        "line": 41,
+        "function": "field",
+        "primitive_calls": 4484,
+        "total_calls": 4484
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 85,
+        "function": "<genexpr>",
+        "primitive_calls": 3204,
+        "total_calls": 3204
+      },
+      {
+        "file": "research/merkle/check_merkle.py",
+        "line": 28,
+        "function": "header",
+        "primitive_calls": 3037,
+        "total_calls": 3037
+      },
+      {
+        "file": "research/batching/check_batching.py",
+        "line": 86,
+        "function": "<genexpr>",
+        "primitive_calls": 2745,
+        "total_calls": 2745
+      },
+      {
+        "file": "research/logup-characteristic/weighted.py",
+        "line": 105,
+        "function": "<genexpr>",
+        "primitive_calls": 2304,
+        "total_calls": 2304
+      },
+      {
+        "file": "research/sumcheck/check_sumcheck.py",
+        "line": 153,
+        "function": "<genexpr>",
+        "primitive_calls": 2160,
+        "total_calls": 2160
+      }
+    ],
+    "control_time_ns": 1043082792,
+    "artifact_sha256": "5c6fd11400ff14c2bea5a4b72727005bbcab4ead075821deddf96de49a41734b",
+    "research_proof_json_bytes": 33857,
+    "research_consumer_ns": 3426516168,
+    "research_controls": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "plan_digest": "28e33d81ac03a5891ea2746cfffc116961a658e5394b4b4e7f9c62bf5abad552",
+  "profile": "treaty",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 10350275333,
+  "witness_recompute_ns": 524208,
+  "stage_times_ns": {
+    "witness": 524208,
+    "prove": 6888678084,
+    "verify": 3426516168,
+    "encode_and_check": 34556873
+  },
+  "kernel_counters": {
+    "measured_complete_proofs": 3,
+    "range_words": 12,
+    "range_byte_cells": 48,
+    "lookup_table_rows": 768
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Complete public research range operation with original-source and lookup consumers enabled. Total includes witness/root preparation, prove, actual verify and encoding/state/account checks; warmup, separate controls and instrumented profile are excluded. CPU time includes operation call overhead. RSS includes the entire process and allocator retention. Three samples are observations under concurrent validation load, not a fitted constant. JSON proof size is not production wire size. Profile selects field only; no native inference, GPU, ZK, PCS, FS or profile certification claim."
+}
