@@ -67,3 +67,12 @@ groups, preserving every inherited group and the workflow byte for byte.
 Inventory SHA-256:
 `0969b478719fa0ca99c4e34e8e454f86f901fd363041d297a5d198ddaef6c361`.
 Hosted CI remains required; no multiplier change is in this review unit.
+
+The original [QM31 baseline](../../bench/ledger/e5-03-reference-field-before-qm31.json)
+and [OM31 baseline](../../bench/ledger/e5-03-reference-field-before-om31.json)
+are retained byte for byte from the measured branch. Both identify source
+commit `b77e9c9971559e6b8a8647a5a34b394f3ba29267`; use that hash for reproduction.
+The original source history is available on `task/E5-03-reference-field`.
+These are three-sample complete public research operations under concurrent
+validation load, with witness/root preparation separated. They establish no
+native constant, full-inference throughput or profile certification.
