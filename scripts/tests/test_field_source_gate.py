@@ -1,4 +1,4 @@
-"""RFC-0010 A9: a wire parser cannot silently become an accepting PCS API."""
+"""RFC-0010 A9: certificate authority is private; unwired accepting APIs reject."""
 import importlib.util
 from pathlib import Path
 import shutil
@@ -34,6 +34,10 @@ class FieldSourceGateTests(unittest.TestCase):
                                 ('src/producer.rs', '\npub fn verify_certificate() -> bool { true }\n'),
                                 ('src/producer.rs', '\nimpl From<CertificateFailure> for bool { '
                                  'fn from(_: CertificateFailure) -> bool { true } }\n'),
+                                ('src/certificate.rs', '\nimpl<K: ChallengeField> VerifiedCertificate<K> { '
+                                 'pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n'),
+                                ('src/certificate.rs', '\nimpl<K: ChallengeField> From<VerifiedCertificate<K>> for bool { '
+                                 'fn from(_: VerifiedCertificate<K>) -> bool { true } }\n'),
                                 ('Cargo.toml', '\n[features]\nunwired = []\n')]:
                 path = crate / name
                 original = path.read_text()
@@ -43,7 +47,7 @@ class FieldSourceGateTests(unittest.TestCase):
                         gate.field_source_codec(root)
                     run.assert_not_called()
                 path.write_text(original)
-            (crate / 'src/certificate.rs').write_text('pub fn verify() -> bool { true }')
+            (crate / 'src/opening.rs').write_text('pub fn verify() -> bool { true }')
             with self.assertRaisesRegex(ValueError, 'not wired'):
                 gate.field_source_codec(root)
 
@@ -64,7 +68,9 @@ class FieldSourceGateTests(unittest.TestCase):
                      'rejects_preparation_shape_and_hash_overflow',
                      'producer::tests::matches_reference_qm31_certificate_production',
                      'producer::tests::matches_reference_om31_certificate_production',
-                     'crates/stele-pcs/src/lib.rs', 'crates/stele-pcs/src/source.rs',
+                     'certificate::tests::matches_reference_qm31_certificates',
+                     'certificate::tests::matches_reference_om31_certificates',
+                     'crates/stele-pcs/src/certificate.rs', 'crates/stele-pcs/src/source.rs',
                      'crates/stele-pcs/src/preparation.rs'):
             self.assertIn(name, actual.stdout)
             output = '\n'.join(line for line in actual.stdout.splitlines() if name not in line)

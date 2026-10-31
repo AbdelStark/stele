@@ -100,3 +100,12 @@ The hash gate requires capped-sampler threshold, attempt-64, exhaustion,
 invalid-domain, failed-attempt and full-ratchet checks. The PCS validator still
 rejects accepting APIs or trait conversions in every admitted producer module.
 These tests confer no native verification or negative-control coverage.
+
+The certificate verifier validator requires both-field complete-wire/ID and
+continuation parity, canonical and authentication-order rejections, and bounded
+malformed-wire mutation/truncation sweeps. The private-handle compile-fail check
+replaces the former absent-verifier check. Closed API inventories reject digest
+constructors, authority-bearing public fields and extra trait conversions;
+these inventories complement actual verification tests and code review.
+Six native certificate controls run through the existing control harness. No
+opening or inference acceptance is admitted by these validators.

@@ -55,19 +55,20 @@ def bootstrap_guard(root, gate):
 
 
 def field_source_codec(root):
-    """A9 certificate production and parsing; accepting PCS APIs still need validators."""
+    """A9 production and full certificate verification; openings remain guarded."""
     crate = root / 'crates/stele-pcs'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs',
-               'src/producer.rs', 'src/producer_tests.rs', 'tests/fixtures/certificate-continuation.txt',
+               'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
+               'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
-    library = ('//! Conditional field source preparation and unverified wire shapes, RFC-0010 A9.\n'
-               '//!\n//! No certificate verifier or profile admission exists in this layer.\n'
-               '//! ```compile_fail\n//! use stele_pcs::verify_certificate;\n//! ```\n'
+    library = ('//! Conditional Circle field sources and certificates, RFC-0010 A9.\n'
+               '//!\n//! Certificate verification is conditional; functional openings and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod preparation;\nmod producer;\nmod source;\n'
+               'extern crate alloc;\nmod certificate;\nmod preparation;\nmod producer;\nmod source;\n'
+               'pub use certificate::{verify_certificate, CertificateRecord, Failure, Usage, VerifiedCertificate};\n'
                'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
                'pub use producer::CertificateFailure;\n'
                'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
@@ -81,10 +82,10 @@ def field_source_codec(root):
     expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('struct', 'Source'),
-        ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code'), ('fn', 'path_height'),
+        ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code'), ('fn', 'root'), ('fn', 'path_height'),
         ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'),
         ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'responses')]
+        ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'response_bytes'), ('fn', 'responses')]
     compact = lambda text: re.sub(r'\s+', '', text)
     impls = [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', code)]
     derives = [compact(text) for text in re.findall(r'#\[[^\]]*\]', code)]
@@ -99,7 +100,7 @@ def field_source_codec(root):
         and imports == ['usecore::marker::PhantomData;', 'usestele_code::Circle;',
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
-                       'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),Capacity,'),
+                       'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
@@ -135,13 +136,31 @@ def field_source_codec(root):
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', producer)] == [
             '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[path="producer_tests.rs"]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', producer))
+    certificate = re.sub(r'//[^\n]*', '', (crate / 'src/certificate.rs').read_text())
+    certificate_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', certificate)
+    certificate_closed = (certificate_declarations == [
+        ('struct', 'Usage'), ('', 'transcript'), ('', 'non_transcript'),
+        ('struct', 'Failure'), ('', 'cause'), ('', 'usage'), ('struct', 'CertificateRecord'),
+        ('fn', 'source'), ('fn', 'id'), ('fn', 'parameters'), ('fn', 'ell'), ('fn', 'degree'),
+        ('fn', 'kind'), ('struct', 'VerifiedCertificate'), ('fn', 'record'), ('fn', 'verify_certificate')]
+        and len(certificate_declarations) == len(re.findall(r'\bpub\b', certificate))
+        and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', certificate)] == [
+            'impl<K:ChallengeField>CertificateRecord<K>{', 'impl<K:ChallengeField>VerifiedCertificate<K>{']
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', certificate)] == [
+            'usecrate::{Error,Parameters,ProofKind,Source,Wire};', 'usealloc::vec::Vec;',
+            'usestele_code::{CodeField,Encoder};', 'usestele_field::{Serialize,M31};',
+            'usestele_hash::{certificate_id,merkle,AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript,};']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', certificate)] == [
+            '#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]',
+            '#[cfg(test)]', '#[path="certificate_tests.rs"]']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', certificate))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
-            or not closed_surface or not prepared_closed or not producer_closed
+            or not closed_surface or not prepared_closed or not producer_closed or not certificate_closed
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('PCS verifier not wired; only A9 source/certificate production and parsing admitted (E4-03a)')
+        raise ValueError('PCS API not wired; only reviewed A9 source/production/certificate APIs admitted (E4-03a)')
     checks = [
         (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
          ['test matches_reference_qm31_source_and_wire ... ok',
@@ -153,7 +172,9 @@ def field_source_codec(root):
           'test matches_reference_om31_prepared_columns ... ok',
           'test rejects_preparation_shape_and_hash_overflow ... ok',
           'test producer::tests::matches_reference_qm31_certificate_production ... ok',
-          'test producer::tests::matches_reference_om31_certificate_production ... ok']),
+          'test producer::tests::matches_reference_om31_certificate_production ... ok',
+          'test certificate::tests::matches_reference_qm31_certificates ... ok',
+          'test certificate::tests::matches_reference_om31_certificates ... ok']),
         (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
          ['59 native query pairs match exact independently checked minima']),
         (['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'],
@@ -165,9 +186,9 @@ def field_source_codec(root):
             raise ValueError(f'field source codec checks failed: {result.stdout} {result.stderr}')
         if command[0] == 'cargo' and sorted(re.findall(
                 r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
-                result.stdout, re.MULTILINE)) != ['lib.rs', 'preparation.rs', 'source.rs']:
+                result.stdout, re.MULTILINE)) != ['certificate.rs', 'preparation.rs', 'source.rs']:
             raise ValueError('field source codec checks failed: missing compile-fail boundary')
-    print('gate PCS: certificate production/continuation and all59 policies; no verification or NC credit')
+    print('gate PCS: native certificates/continuation and all59 policies; no opening or profile credit')
 
 
 def fraction_reductions(root):
@@ -315,7 +336,8 @@ def transcript_registry(root):
                 'usage_tests::rejects_sampling_exhaustion_with_usage',
                 'usage_tests::rejects_merkle_overflow_with_usage',
                 'pcs::tests::rejects_column_thresholds_exhaustion_and_invalid_domains',
-                'pcs::tests::matches_reference_full_field_column_ratchets')
+                'pcs::tests::matches_reference_full_field_column_ratchets',
+                'pcs::tests::rejects_certificate_id_hash_overflow')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
         raise ValueError(f'transcript primitive tests failed: {result.stdout}\n{result.stderr}')
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
@@ -595,7 +617,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

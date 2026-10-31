@@ -34,7 +34,7 @@ not verification receipts. They count evaluations rather than distinct oracle
 queries and cannot establish adversarial query caps, grinding limits or Q12.
 The wrapper permutation is outside these BLAKE3 counters. The native certificate
 [producer sampler](CERTIFICATE-PRODUCTION.md) now records every outer attempt.
-Certificate-ID hashing remains pending with its full verifier consumer under A10.
+The native certificate verifier now counts its completed-proof ID hash under A10.
 
 Both-field transcript KATs check every state and challenge byte plus counters.
 All ten Merkle fixtures retain their roots and paths. Controls cover counter

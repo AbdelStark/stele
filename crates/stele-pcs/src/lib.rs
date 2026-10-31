@@ -1,4 +1,4 @@
-//! Conditional field source preparation and unverified wire shapes, RFC-0010 A9.
+//! Conditional Circle field sources and certificates, RFC-0010 A9.
 //!
 //! Certificate verification is conditional; functional openings and profiles remain separate.
 #![forbid(unsafe_code)]

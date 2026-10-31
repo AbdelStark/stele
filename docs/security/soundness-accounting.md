@@ -723,4 +723,14 @@ returns full wire bytes and hash-only observations, preserving failed-attempt
 usage after transcript construction. It neither computes a certificate ID nor
 constructs a verified handle. Preparation hashing is reported separately; it
 is not charged again while copying individual paths. Full certificate resource
-reports, native verification and the original E4-03a acceptance remain open.
+reports and the original E4-03a acceptance remain open.
+
+[Native certificate verification](../../research/merkle-oracle/CERTIFICATE-VERIFICATION.md)
+now constructs the conditional certificate record only after all q_c paths,
+canonical column limbs, encoded-row equations, final absorption and ID hashing
+succeed. The record retains source, ID, ell, N,D,e,q_c and field degree; replay
+retains the same obligation. Local H work includes q_c*(1+log2(N)) Merkle hashes
+and one exact-frame certificate-ID hash. Rejected attempts retain actual work.
+The Usage record is hash-only: full encoder/buffer accounting remains open.
+NC-0600/0601/0606/0607/0608 and NC-0803 execute this consumer in both fields.
+No opening, A1 closure, complete lifetime budget, Q12, ZK or profile follows.
