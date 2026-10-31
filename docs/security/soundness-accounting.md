@@ -1405,3 +1405,21 @@ and consumed at the derived A1 point; no producer projection or receipt is
 accepted. Full EOF, high planes and zero padding remain checked. Binding,
 FS/H, native linear-view claims and actual upstream ownership are additional.
 Require exact runtime receipts and full original consumption before evidence.
+
+### Draft Q26/Q31 global attention sources through configured output
+
+Pre-implementation account: the composition adds no challenge, identity or
+reduction. Verify every complete global-offset, global-probability and
+output-conversion child, retaining all independent lookup identities and
+unsquared reductions. Sum complete range/A3 losses. Keep each head's global
+offset projection identity a+3 separately and sum block A1 numerators bb.
+Retain one global-probability product identity per head alongside four exact
+or three block normalization product identities per head. Sum all inherited
+product A1 reductions and retain the complete row's selection term. Every
+O/Z join passes the same expected root independently to both consumers.
+The full ordered block roster is mandatory. Expected metadata, all roots and
+verified child states bind the final context; wrapper draws remain empty.
+The exact-mode probability adapter's minimum legal auxiliary shift is fixed
+from expected metadata and changes no L/Q cap or exact arithmetic. Binding,
+FS/H and actual upstream/model ownership remain additional. Require child
+and aggregate receipt equality and complete substitution controls.

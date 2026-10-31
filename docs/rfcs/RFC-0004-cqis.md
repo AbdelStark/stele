@@ -1759,3 +1759,13 @@ losses and consume actual reauthenticated source projections. Canonical
 stream records and EOF bound retained parent data without narrowing the
 configured domain. Full-size proofs, resource evidence and upstream source
 joins remain required. Accepted semantics and production cuts are unchanged.
+
+### A3/A6/A8 research plan — Global attention sources through configured output
+
+The [global composition scope](../../research/cqis-bounds/ATTENTION-GLOBAL-COMPOSITION.md)
+requires all configured block offset/probability sources per head, complete
+global aggregation and the existing complete head-normalization/output-row
+consumer on identical O/Z roots. Canonical stream order and both child and
+outer EOF remain mandatory. No wrapper challenge or loss is introduced;
+every child account and original source consumer remains. Actual per-block
+and model ownership remain open. Accepted semantics and cuts are unchanged.
