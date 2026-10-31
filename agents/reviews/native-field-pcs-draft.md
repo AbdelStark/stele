@@ -34,8 +34,11 @@ This is internal agent review, with no independent audit claim.
   authentication and retained buffers are charged. No measured constant or
   weight-pass improvement is claimed.
 - Verifier: checked size arithmetic and fallible allocation are required.
-  Review requested an explicit all-error abort rule; it now forbids retries,
-  rollback and usable partial receipts after any error.
+  The all-error abort rule forbids retries, rollback and usable partial receipts.
+  Owner review also requires complete A1 preflight, single-path verification
+  of repeated draws, explicit shape/domain/exhaustion errors and observable
+  local usage on failure. Conditional records retain certificate obligations;
+  external composition owns deterministic lifetime/adversary caps.
 - Glossary/history: append-only Draft amendments; exact dependency changes
   are proposed without modifying Cargo. GKR gains no authentication callback.
 

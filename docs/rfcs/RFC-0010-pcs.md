@@ -556,10 +556,22 @@ Proposed conditional implementation scope:
 > cache identity; it grants no unchecked deserialization or receipt path.
 >
 > The stele-reductions adapter binds the complete ordered expected source bundle
-> before invoking the actual A1 verifier and consumes every returned original
+> before invoking the actual RFC-0006 A1 verifier and consumes every returned original
 > point/value through its matching PCS opening. Original tables and arbitrary
 > authentication callbacks are absent from its verifier interface. Every error
 > aborts the enclosing attempt with no usable accounting or certificate handle.
+
+A9 adopts only the following conditional mathematics from the Draft studies:
+for the fixed oracle justified by A8, tensor-opening.md §§1-3 and
+certified-functional-opening.md §§1-2 establish the certificate's far-oracle
+bound `2*ell*(e+1)/|K| + ((N-e-1)/N)^q_c`, uniqueness of a near message, and
+the individual-opening bound `((N-D+e)/N)^q_o`. Their adaptive individual-opening
+argument charges the certificate once plus every opening term over the bounded
+lifetime; fresh certificate attempts retain separate obligations. The precise
+hypotheses and proofs in those sections are normative for this scope only.
+The general batching/grouping optimization and every broader A3 acceptance
+criterion remain Draft. A9 authorizes this conditional field primitive without
+claiming completion of E4-03 or accepting A3 wholesale.
 
 The independent policy checker verifies all 59 least-count pairs by exact
 integer powers, 12 small uniform index distributions and every M31 threshold
@@ -571,8 +583,8 @@ General multi-functional batching and the original A1/A3/A6/A7 obligations stay.
 
 Implementation must supply native/Python byte parity, actual source controls
 NC-0600/0601/0606..0609 and query-schedule control NC-0803, malformed-proof
-testing, exact records and repository gates. Draft proposed IDs are registered
-with implementation; this amendment adds no coverage. The original task
+testing, exact records and repository gates. Reserve proposed IDs as todo on acceptance and implement their binaries
+with the corresponding bindings; this amendment adds no coverage. The original task
 criteria remain intact. Cost terms include complete registration, source rows,
 encoding, queries, paths, coefficient storage and proof buffers in c_c/T_misc.
 No measured constant, native benchmark or extra model weight pass is supplied.

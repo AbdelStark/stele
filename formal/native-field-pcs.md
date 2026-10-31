@@ -3,7 +3,7 @@
 Status: Draft proposal for RFC-0010 A9. This contract closes a general field
 functional against the unique near-message interpretation of a certified
 Circle commitment. A separate adapter closes every original claim returned
-by native A1. It does not admit an inference proof or either profile.
+by native RFC-0006 A1. It does not admit an inference proof or either profile.
 
 Every verifier error aborts the enclosing proof attempt and returns no usable
 accounting result or certificate handle. A partially advanced transcript cannot
@@ -69,17 +69,20 @@ The fixed table entries are:
 For each requested index, set T=floor(p/N)*N=p-(N-1). Make at most 64 calls
 to the dedicated registered PCS column challenge label. Each successful
 `Transcript::challenge` returns a full K value. Read its first canonical
-M31 limb x; accept x mod N only when x<T. Every rejected attempt has already
+M31 limb x; accept x mod N only when x<T. Invalid N outside powers of two in [2,2^30] returns InvalidColumnDomain
+before a challenge. Outer exhaustion returns ColumnSamplingExhausted; inner
+SamplingExhausted propagates unchanged. Every rejected attempt has already
 advanced the transcript using all K limbs. Discard the other limbs for index
 selection; never recycle them. An inner sampling error or 64 failed outer
 attempts aborts the whole operation. No rollback, fallback or hidden retry.
 
 Each index has exactly T/N accepted preimages. In the ideal interactive
 model the completed draws are independent and uniform with replacement.
-Outer exhaustion is below 2^-64 per requested index. With the Accepted A1
-inner-decoder bound, total abort probability is at most
+Outer exhaustion is below 2^-64 per requested index. With the Accepted RFC-0012 A1
+inner-decoder bound, PCS-only abort probability is at most
 `q_total*2^-64 + (ell_total+64*q_total)*2^-1703`.
-This is an availability bound, not false-acceptance loss. Every attempted
+This is an availability bound, not false-acceptance loss. The complete adapter
+also counts every RFC-0006 A1 and other non-PCS draw. Every attempted
 draw, XOF evaluation, state update and abandoned attempt still counts in
 the actual FS/H resource model. Unused K limbs do not enlarge the column
 sample space beyond N.
@@ -89,18 +92,19 @@ sample space beyond N.
 Construct a fresh Transcript from the nonempty public bytes
 `ASCII(stele/v0.1/pcs-certificate/public) || source_bytes`.
 This binds purpose, expected root/context and policy before row randomness.
-Draw ell K values under the dedicated certificate-row label. Construct a
+Draw ell K values using challenge(CertificateWeight). Construct a
 using the native MSB-first eq table. For R=1 use a=(1) with no row draw.
 
-The prover sends t in K^C. Absorb its complete canonical bytes under the
-certificate-row-message label before drawing q_c column indices. Send one
+The prover sends t in K^C. Absorb its complete canonical bytes using
+absorb(CertificateRow) before drawing q_c column indices under CertificateColumn. Send one
 response per draw, in draw order, even when indices repeat. A response is
 exactly `4R` payload bytes followed by `log2(N)` 32-byte siblings in
 bottom-up order. No response contains a proof-supplied index.
 
+Invoke the single-path Merkle verifier for each draw, preserving duplicates.
 Authenticate each response at its derived index, decode every field limb,
 and check `Enc(t)[c]=sum_i a_i*column[i]`. Check all q_c responses. Then
-absorb the entire response block under the certificate-columns label.
+absorb the entire response block using absorb(CertificateColumns).
 
 The certificate wire is `u8(1) || t_bytes || response_block` with lengths
 derived from the expected context. Reject truncation, trailing bytes,
@@ -131,19 +135,20 @@ The handle alone does not accept a functional claim or inference statement.
 The verifier owns opening id, the verified certificate and complete expected
 `a in K^R, b in K^C, v in K`. Validate their lengths and field before use.
 Absorb `u64le(opening_id) || source_bytes || certificate_id || a_bytes ||
-b_bytes || v_bytes` under the opening-instance label. All lengths are fixed
+b_bytes || v_bytes` using absorb(Opening). All lengths are fixed
 by that context; proof metadata cannot override them.
 
-The prover sends u in K^C. Absorb the complete u under opening-row-message,
-check dot(u,b)=v, then derive q_o fresh indices. Responses have the same
+The prover sends u in K^C. Absorb the complete u using absorb(OpeningRow),
+check dot(u,b)=v, then derive q_o fresh indices under OpeningColumn. Responses have the same
 fixed format as certificate responses and retain duplicates. Authenticate
 each response, canonically decode it and check each equation
-`Enc(u)[c]=sum_i a_i*column[i]`. Absorb the entire response block under
-opening-columns before any continuation challenge.
+`Enc(u)[c]=sum_i a_i*column[i]`. Absorb the entire response block using
+absorb(OpeningColumns) before any continuation challenge.
 
 Opening wire is `u8(1) || u_bytes || response_block`; reject any short,
 extra or malformed data. The initial implementation uses full individual
-paths and every draw response. It performs no proof-selected deduplication.
+paths and every draw response. It performs no proof-selected deduplication. The sorted unique-index Merkle
+batch API cannot consume this ordered repeated-query schedule.
 Multiple openings are separate executions with separate query terms. The
 general batched/grouped optimization in A3 retains its own implementation
 obligations; no multi-claim error is silently charged as one opening.
@@ -153,21 +158,23 @@ The point has exactly ell+m coordinates, split at ell. Zero coefficients
 do not exempt a source or a column equation. Actual fused u=B ownership
 remains RFC-0010 A6/RFC-0007 A1 work; this contract supplies no fused receipt.
 
-## 5. Closed A1 consumer
+## 5. Closed RFC-0006 A1 consumer
 
 Place the field-source adapter in stele-reductions. It receives the
-verifier-owned A1 instance and expected ordered certified sources, plus
+verifier-owned RFC-0006 A1 instance and expected ordered certified sources, plus
 the A1 proof and one opening proof per original input. Its verifier API
 receives no original source tables or authentication callback.
 
 The source roster must exactly equal Instance.inputs, including order and
 count, with distinct tensor IDs and matching ell+m=Instance.num_vars.
+Preflight the complete source/opening roster, all wire lengths and the A1
+instance/proof shape before any absorb, sharing A1 validation with its verifier.
 Before calling sumcheck::verify, absorb the complete ordered bundle:
 `u64le(instance_id) || u32le(source_count) || (source_bytes || certificate_id)*`
-under the field-sources label. The source bytes have fixed context lengths.
+using absorb(FieldSources). The source bytes have fixed context lengths.
 An empty input roster requires an empty source/opening list.
 
-Call the actual A1 verifier. For every returned claim, use its returned
+Call the actual RFC-0006 A1 verifier. For every returned claim, use its returned
 point and value and the matching expected source. Derive row/column weights
 and run the actual PCS opening verifier in original input order. Use the
 tensor ID as the opening id within this instance's already-bound segment.
@@ -235,7 +242,8 @@ tests without a production randomness-injection path.
 
 ## 8. Errors and proposed native controls
 
-Use UnsupportedSource for rejected context/code/layout/policy values,
+Use FunctionalShape for wrong coefficient or standalone point lengths,
+UnsupportedSource for rejected context/code/layout/policy values,
 ProofShape for wire length/version errors, NoncanonicalField for invalid
 limbs, ValueMismatch for the scalar functional, ColumnMismatch for a failed
 encoded-column equation, CertificateContext for a mismatched verified handle,
@@ -244,11 +252,44 @@ Capacity and transcript sampling errors as their stated causes. Structural
 length checks precede transcript changes. Authenticate a response before its
 field decoding and column equation. All failures obey the abort rule above.
 
-The implementing change must register actual controls for these bindings.
-Draft proposed additions are NC-0606 (certificate/context substitution),
+Reserve these controls as todo at acceptance; the implementing change must
+supply their actual binaries. Proposed additions are NC-0606 (certificate/context substitution),
 NC-0607 (canonical field interpretation at an authenticated leaf), NC-0608
 (certificate identity/reuse) and NC-0609 (complete A1 original-source roster).
 NC-0600 checks encoded-column consistency; NC-0601 and NC-0803 exercise actual
 query scheduling. NC-0602 retains its existing path controls. These proposed
 IDs confer no coverage before their real binaries run. Packing, blinding
 and fused NC-0603..0605 remain unfulfilled by this field-only contract.
+
+## 9. Conditional records and lifetime ownership
+
+Successful certificate verification constructs an immutable CertificateRecord
+inside the opaque handle: full source context, certificate ID, ell,N,D,e,q_c,
+field degree and Certificate operation kind, all verifier-derived. A successful
+opening returns OpeningRecord with its expected opening ID, q_o, Opening kind
+and a reference to that original CertificateRecord. The closed adapter returns
+the actual ScRecord and ordered opening records with certificate references.
+These are conditional proof obligations, not evaluated probabilities, boolean
+receipts, admission decisions or profile totals. Reuse never erases a certificate
+loss or represents it as a new zero-loss certificate.
+
+Root/context identifies A8's first frozen oracle. Root/context/certificate ID
+identifies certificate replay. A new certificate for that same root cannot
+re-freeze it. The external composition layer owns deterministic registration,
+fresh-certificate-attempt and hash-query caps fixed before execution, including
+failed and abandoned attempts. Local work counts cannot establish adversarial
+query caps. No full composition or budget validator is supplied by this primitive.
+
+A separate non-authorizing usage record counts ordinary hash evaluations, XOF
+requests and output bytes, transcript state updates, inner candidate words
+consumed and outer column attempts. Count discarded attempts too. Transcript
+keeps checked counters and exposes immutable snapshots, including A1 draws.
+Merkle verification and certificate-ID hashing report their work explicitly.
+Failure returns no proof record or handle, but its local usage remains observable;
+these observations authorize no continuation of the failed attempt. Counter
+overflow aborts before unrecorded work. Local evaluations are not distinct
+adversarial random-oracle queries.
+
+Resource reports include full encoder scratch/twiddles, encoded words, selected
+outputs, transposed columns, leaf-reference arrays and Merkle nodes. Calling
+Circle::eval_row still performs complete encoding; no sublinear cost is inferred.
