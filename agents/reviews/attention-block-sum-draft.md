@@ -63,3 +63,13 @@ The complete 16-proof matrix passed, including both fields and repetition
 counts. Its transcript digest is frozen in the test and scope note. All
 receipt formulas and draw totals matched. Full geometries and gates remain
 pending; this evidence does not complete the review.
+
+The original full-geometry runner passed 128x128 and 1024x16, retaining all
+receipts and original consumers. Their observed digests are frozen. The
+1x16384 proof and queued repository gates remain pending.
+
+CI now requires all five normal modes and three separate full-geometry jobs.
+The full matrix disables fail-fast, and every non-success prerequisite makes
+the aggregate gate fail. All inherited jobs and 33 native steps are preserved.
+All 11 CI inventory/coverage tests passed. Hosted CI remains pending; no local
+proof or gate process was restarted for this integration.

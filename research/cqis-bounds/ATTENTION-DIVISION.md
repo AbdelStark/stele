@@ -97,3 +97,9 @@ The original boundary suite passed, including genuine ranged R+p, R=2D,
 zero D, strict initial one and carry/padding endpoints. Complete scaled-
 numerator and positive-denominator proofs composed in both modes; valid
 source replacements rejected. Matrix, full proofs and gates remain pending.
+
+CI preserves all 158 inherited commands and adds the five normal division
+modes as command 159. Both full-width modes are mandatory matrix jobs with
+fail-fast disabled. All 11 inventory/CLI/aggregate tests passed, covering
+every supported mode and rejecting unsuccessful required results. The
+original proof matrix, full-size runners and gate queue are preserved.
