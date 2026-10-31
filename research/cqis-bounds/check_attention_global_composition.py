@@ -175,6 +175,7 @@ def honest(mode='matrix'):
             if not full:inputs[0][1][-1][0]+=sum(inputs[0][0]) if acc=='exact' else 1
             roots=full_roots(p) if full else oracle(p,inputs)[2]
             print('global composition start',mode,done+1,d,reps,acc,policy,flush=True);out=c.verify(p,roots,offset_check.capture(c.prove(p,full_inputs(p) if full else iter(inputs),d),states),d);assert states==[out['state']];account(p,out,d);digest.update(out['state']);done+=1;print('global composition passed',mode,done,d,reps,acc,policy,flush=True)
+    if mode=='matrix':assert done==16 and digest.hexdigest()=='0aa3ce0205e993437cb97d3bfe6508816e7a1d8cadb9b986fb627ceb2aab6c7c'
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

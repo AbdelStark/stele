@@ -19,7 +19,8 @@ matrices and full-size proofs must pass before approval.
    Genuine changed aggregates preserve totals; a genuine changed output
    proof preserves final codes. Zero-offset and zero-probability substitutions
    test the positive normalization join. Both primary suites and all four
-   field/mode edge cases passed; the original matrix remains in progress.
+   field/mode edge cases passed. All sixteen original matrix cases passed
+   with exact challenge and aggregate-account checks.
 5. Ledger: sum independent lookup identities and unsquared reductions;
    preserve range/A3 losses, each offset projection identity, offset A1 sums,
    every probability/normalization product identity and the row selection
@@ -53,6 +54,6 @@ matrices and full-size proofs must pass before approval.
 I tried to break it by replacing complete children with genuine proofs that
 preserve totals or final codes, and the control for each changed shared
 source rejected it. Genuine zero-probability aggregates also rejected at
-the positive normalization join in both fields/modes. The original matrix,
-full-size proofs, repository gates and complete resource evidence remain
+the positive normalization join in both fields/modes. Full-size proofs,
+repository gates and complete resource evidence remain
 required; this is not approval or independent audit.

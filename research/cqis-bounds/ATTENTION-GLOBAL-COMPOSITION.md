@@ -122,3 +122,10 @@ consumed in both accumulation modes and fields. A genuinely valid zero
 probability aggregate cannot replace the positive normalization source,
 including when its output root is changed consistently at the join.
 The original proof matrix, full-size proofs and local gates remain pending.
+
+The original complete proof matrix passed all sixteen field/repetition and
+accumulation/quantizer combinations. Its final-state SHA-256 is frozen as
+`0aa3ce0205e993437cb97d3bfe6508816e7a1d8cadb9b986fb627ceb2aab6c7c`.
+Every case checked exact challenge counts, loss accounts and source joins.
+Full-size proofs and repository gates remain in their original queues;
+this result does not establish native, private or full-model inference.
