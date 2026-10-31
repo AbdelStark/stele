@@ -88,3 +88,12 @@ ten compensated original-final attacks rejected at Equality:ClaimMismatch
 or StrictRemainder:ClaimMismatch. The initial complete receipt matched the
 static account. Corpus, remaining boundaries, source compositions, matrix,
 full proofs and repository gates remain pending.
+
+Seed 2747 passed all 10000 independent cases and four capacity cases,
+covering 378879 channels, 7844 zero remainders and 92247 maximal remainders.
+The observed counts and SHA-256 are frozen in the checker:
+`390669772c84ae3667822f7417690d395e2b76389df305bbe9b654a37bb196b7`.
+The original boundary suite passed, including genuine ranged R+p, R=2D,
+zero D, strict initial one and carry/padding endpoints. Complete scaled-
+numerator and positive-denominator proofs composed in both modes; valid
+source replacements rejected. Matrix, full proofs and gates remain pending.
