@@ -53,3 +53,17 @@ change with its result ledgers. Retain the original measured commit hashes;
 verify the frozen complete artifacts on this base before applying the
 multiplier. No native, accepted-RFC, accounting or source-domain change is
 part of this integration.
+
+The independent main-based check passed all 40409 products and all four
+frozen complete proof artifacts with the original multiplier. Each artifact
+includes actual source/lookup consumption, exact receipt/state values and
+the wrong-root/noncanonical-field controls. This preserves the original
+fixture rather than recapturing it on the new branch.
+
+The required `reference-field` CI group runs both `--vectors` and `--proofs`;
+fixture-authoring `--capture` is excluded. Tests first rejected its missing
+group. All ten inventory/aggregate tests then passed: 119 commands in 21
+groups, preserving every inherited group and the workflow byte for byte.
+Inventory SHA-256:
+`0969b478719fa0ca99c4e34e8e454f86f901fd363041d297a5d198ddaef6c361`.
+Hosted CI remains required; no multiplier change is in this review unit.
