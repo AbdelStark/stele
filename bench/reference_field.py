@@ -48,7 +48,7 @@ def main():
     d = 4 if field == 'QM31' else 8
     plan = dict(operation='complete public wide-range research proof', field=field, samples=3,
         caps=[0,257,(1<<31)+1], values=[0,256,(1<<31)+1], repetitions=1, identity=2757, source=29,
-        warmup=1, profile_calls=1, table_rows=256, lookup_rows=32,
+        warmup=1, profile_calls=1, profile_top_functions=20, table_rows=256, lookup_rows=32,
         timed='witness/root, prove, actual public verify, encoding and state/account checks',
         controls='two rejection controls separately timed on the warmup proof',
         encoding='lossless tagged JSON research artifact; not the production proof wire format',
@@ -86,7 +86,8 @@ def main():
         toolchain=sys.version, device=platform.machine()+' '+run('sysctl','-n','machdep.cpu.brand_string'),
         driver='not-applicable', model_config=dict(plan=plan, os=platform.platform(), samples=samples,
             peak_process_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-            profiled_complete_operation_calls=calls, control_time_ns=control_ns, artifact_sha256=expected),
+            profiled_complete_operation_calls=calls[:plan['profile_top_functions']],
+            control_time_ns=control_ns, artifact_sha256=expected),
         plan_digest=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
         profile='standard' if d==4 else 'treaty', bindings_all_on=True, batch_size=1,
         prompt_tokens=0, generated_tokens=0, prover_time_ns=total,

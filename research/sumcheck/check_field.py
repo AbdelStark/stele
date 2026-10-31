@@ -53,6 +53,7 @@ def vectors():
             for scalar in (0, 1, 2, sc.P-1):
                 assert sc.mul(sc.scalar(scalar, d), a) == tuple(scalar*x % sc.P for x in a)
         print('field vectors passed', d, len(pairs), flush=True)
+    assert count == 40409 and digest.hexdigest() == 'a31db4088c27b9132d01bdac99b76e1c2b08c045c30ee7cae0a90e1eb48a794c'
     print(json.dumps(dict(seed=2757, products=count, sha256=digest.hexdigest()), sort_keys=True), flush=True)
 
 

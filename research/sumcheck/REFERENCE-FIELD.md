@@ -39,3 +39,10 @@ Continue Q26/Q31 only after differential tests, frozen artifact parity,
 ledger validation and repository gates pass. Native/private full inference,
 PCS/ZK/FS, GPU parity, full-size evidence and independent review remain
 required. E3-06, E4-01 and E5-03 retain their original status and criteria.
+
+Before the arithmetic change, 40409 products passed against the independent
+schoolbook oracle. All four complete wide-range proofs passed, including
+the actual source/lookup consumers and exact noncanonical/root rejections.
+`field-proof-digests.json` freezes each complete proof, receipt and state
+under a lossless tagged JSON encoding. The original A1/A3 fixtures remain
+the authority for their byte encodings and continuation challenges.
