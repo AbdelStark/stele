@@ -51,6 +51,7 @@ def corpus():
     rejects('Spec',lambda:c.derive(p,True))
     for bs,ys in (([False]*3,[0]*3),([2]*3,[0]*3),([0],[0]*3),([0]*3,[False]*3),([0]*3,[32768]*3),([1]*3,[-32769]*3)):rejects('Input',lambda:c.inputs(p,bs,ys))
     assert zeros>0 and minimum>0 and policies=={('dynamic','exact'),('dynamic','block1024'),('static','exact'),('static','block1024')}
+    assert (cells,zeros,minimum,digest.hexdigest())==(354302,15918,15922,'f86ee6ba0e1a35451d21d4fd76bdbc5ce6c6e22d188e3c50b714d9906111add8')
     print(json.dumps(dict(seed=2748,cases=10000,capacity_cases=2,cells=cells,negative_input_zeros=zeros,int16_minima=minimum,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

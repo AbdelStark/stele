@@ -60,3 +60,12 @@ Full key/block/model ownership, global attainment, native/private inference,
 PCS/ZK/FS, GPU parity/scale, fidelity and independent audit remain required.
 No benchmark, new cut, capacity increase or extra weight pass is claimed.
 Draft amendments remain unaccepted; original task criteria remain unchanged.
+
+The seed-2748 independent corpus passed all 10000 cases and both capacity
+cases, covering 354302 channels, 15918 negative-input zeros and 15922 int16
+minima. The checker now requires the observed digest:
+`f86ee6ba0e1a35451d21d4fd76bdbc5ce6c6e22d188e3c50b714d9906111add8`.
+The initial proof run rejected metadata replay at RoundSumMismatch rather
+than the test's expected ClaimMismatch. Only that diagnostic expectation
+changed; the verifier is unchanged and the corrected proof suite is running.
+Full proof and repository gates remain queued.

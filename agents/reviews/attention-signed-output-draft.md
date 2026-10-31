@@ -48,3 +48,10 @@ proof suites are running. This is not a completed sign-off.
 
 The observed-attack conclusion is pending actual controls. Full proof and
 required repository gates must also complete.
+
+The independent corpus passed all 10000 cases and two capacity cases. Its
+observed digest and counts are now asserted by the checker. A metadata replay
+was rejected earlier than the initial test expected, at RoundSumMismatch;
+the diagnostic expectation was corrected without changing verification.
+The original corpus result is retained, and the corrected proof suite runs
+separately. Full proof and repository gates remain pending.
