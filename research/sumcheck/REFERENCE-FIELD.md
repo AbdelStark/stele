@@ -53,3 +53,51 @@ fields for inference. Research evidence now lives under `model_config`.
 Both new scripts pin Python 3.12 for comparable measurements. The rejected
 record and its Python 3.15 log are retained outside the repository; they
 support no performance claim. The arithmetic remains unchanged.
+
+The candidate now uses scalar coefficient products, the fixed nonresidue
+maps and Karatsuba at each tower level. For a quadratic generator z with
+z²=n, the result is `(ac+n*bd) + ((a+b)*(c+d)-ac-bd)*z`.
+The maps for -1, 2+i and u are the same maps used by native `stele-field`.
+Every output coefficient is reduced modulo p. No consumer or transcript
+code changed; the scalar branch is data dependent, with no constant-time
+claim for this Python reference.
+
+All 40409 differential products and four frozen complete artifacts passed
+after the change. A1's 196-case corpus and byte vectors passed. A3's 130
+byte vectors and 314-case shared corpus passed, including continuation
+challenges and 174 exact rejections. Existing wide-range controls passed.
+The independent oracle retains the original recursion and never calls the
+candidate. These checks establish finite evidence, not a new theorem.
+
+The following totals cover three complete proofs per field on the recorded
+Apple M4 Max/Python 3.12 environment. Each proof retains its three supplied
+words, four padded words, sixteen source byte cells, thirty-two lookup
+source rows and complete 256-row table. Witness/root preparation, proving,
+actual public verification and encoding/state/account checks are included.
+Warmup, separate rejection controls and the instrumented profile are excluded.
+
+| Field and ledgers | Before wall ns | After wall ns | Before CPU ns | After CPU ns |
+|---|---:|---:|---:|---:|
+| QM31 ([before](../../bench/ledger/e5-03-reference-field-before-qm31.json), [after](../../bench/ledger/e5-03-reference-field-after-qm31.json)) | 7858656874 | 3804318917 | 2717042000 | 1539570000 |
+| OM31 ([before](../../bench/ledger/e5-03-reference-field-before-om31.json), [after](../../bench/ledger/e5-03-reference-field-after-om31.json)) | 36932167043 | 10350275333 | 12822273000 | 4442799000 |
+
+Plans, toolchain, hardware and complete artifact digests match between each
+pair. Both profiles execute 36008 externally invoked multiplications per
+instrumented complete operation; recursive calls fall from 1116248 to
+228860 for QM31 and from 5617248 to 662777 for OM31. All four ledgers passed
+schema validation. Other original validation processes kept running, so
+these observations support no fitted c_sc constant or production target.
+RSS includes imports, warmup, all proofs, controls, profiling and allocator
+retention; it is not isolated scratch space.
+
+Reproduce from each ledger's clean source commit:
+
+```sh
+uv run --python 3.12 --locked --script research/sumcheck/check_field.py
+uv run --python 3.12 --locked --script bench/reference_field.py QM31 /tmp/new-qm31-ledger.json
+uv run --python 3.12 --locked --script bench/reference_field.py OM31 /tmp/new-om31-ledger.json
+```
+
+Recommendation: retain this reference arithmetic change after repository
+gates pass. Full-size inference, native/GPU performance and independent
+audit remain open. Original validation processes were not restarted.
