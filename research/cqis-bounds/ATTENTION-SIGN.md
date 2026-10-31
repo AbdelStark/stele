@@ -87,3 +87,9 @@ Complete weighted-offset, probability-sum and base proofs composed on the same
 roots; valid alternate children rejected their pinned joins. The initial
 complete account matched. Both-field/repetition matrix and the complete
 16384-channel proof are running; required repository gates remain queued.
+
+All 16 matrix proofs passed across QM31/OM31 and both repetition counts.
+Every receipt, original count and draw total matched. Frozen SHA-256:
+`23a04a1bdd5f29015ef7651056b8edc232735b154f44013e22b1f459b7c980b5`.
+The full 16384-channel proof continues in the original runner. Required
+repository gates remain queued; this does not complete the review.
