@@ -1,6 +1,6 @@
 # Conditional native Circle field openings
 
-Status: Draft proposal for RFC-0010 A9. This contract closes a general field
+Status: Review under RFC-0010 A9. This contract closes a general field
 functional against the unique near-message interpretation of a certified
 Circle commitment. A separate adapter closes every original claim returned
 by native RFC-0006 A1. It does not admit an inference proof or either profile.

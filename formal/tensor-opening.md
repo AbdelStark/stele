@@ -4,6 +4,9 @@ Status: Draft. This is a finite interactive consistency/proximity lemma with exa
 parameter arithmetic. It is not an implemented PCS, a knowledge extractor, an
 arbitrary-functional opening theorem or a Fiat-Shamir/profile certificate.
 
+RFC-0010 A9 incorporates only §§1-3 for its conditional field primitive.
+The broader scope and outstanding obligations in this study remain Draft.
+
 ## 1. Imported theorem and its hypotheses
 
 [Diamond and Posen, Theorem 2](https://cic.iacr.org/p/1/1/2/pdf) applies to any

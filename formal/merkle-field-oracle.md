@@ -1,6 +1,6 @@
 # Fixed field oracles from partial Merkle trees
 
-Status: Draft, RFC-0010 A8 and question Q27. This is a classical ideal-hash
+Status: Review, RFC-0010 A8 and question Q27. This is a classical ideal-hash
 argument for the authentication premise of [certified openings](certified-functional-opening.md).
 It does not instantiate BLAKE3, Fiat-Shamir, quantum queries or a profile.
 

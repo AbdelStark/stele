@@ -21,5 +21,8 @@
 - **parity gate** — CI check that CUDA and CPU produce identical bytes.
 - **plan** — `plan.json`, the canonical lowering of a model config to stages, derived identically by prover and verifier.
 - **M31/CM31/QM31/OM31** — base field and its degree-2/4/8 extensions. **K** — the challenge field in force.
+- **source context** — the verifier-owned field, code, dimensions, layout, policy, identity and root of RFC-0010 A9.
+- **registration certificate** — the full proximity proof verified for one source context.
+- **verified certificate** — an opaque handle created only by complete registration-certificate verification; it retains the original conditional loss record.
 Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is traced), "gadget", "constraint system",
 "prover-side randomness".

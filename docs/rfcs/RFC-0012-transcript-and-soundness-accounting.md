@@ -556,7 +556,7 @@ Affected tasks: E3-07a, E3-07, E8-05.
 
 ### A10: Conditional field PCS schedule and column indices
 
-Status: Draft. Companion RFC-0010 A9. The exact nine registry entries, kind
+Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9. The exact nine registry entries, kind
 and PCS tensor/query ownership are specified in
 [native-field-pcs.md §7](../../formal/native-field-pcs.md#7-exact-registry-additions).
 The RFC-0012 A1 hash-chain framing, canonical K sampling and state updates stay intact.
@@ -576,7 +576,7 @@ Every attempted field draw and associated hash work remains in FS/H resource
 accounting. The PCS query term has N possible coordinates, not |K| outcomes.
 
 After full standalone certificate verification, a dedicated hash helper may
-compute its ID from the exact purpose/context/length/proof frame in A9 §3.
+compute its ID from the exact purpose/context/length/proof frame in [the native contract §3](../../formal/native-field-pcs.md#3-standalone-registration-certificate).
 Use the full 32-byte ordinary unkeyed BLAKE3 output, with checked u64 byte
 lengths. This helper authenticates no proof by itself and is not a challenge.
 The completed-proof ID never enters its own certificate transcript. Later
@@ -584,7 +584,9 @@ source bundles and opening statements bind that verified ID and full context.
 
 Each native label and helper must land with its first actual consumer,
 byte parity and relevant threshold/exhaustion or continuation controls.
-A9 §9 requires explicit usage reporting, including failed attempts; §8 names
+[The native contract §9](../../formal/native-field-pcs.md#9-conditional-records-and-lifetime-ownership)
+requires explicit usage reporting, including failed attempts;
+[§8](../../formal/native-field-pcs.md#8-errors-and-proposed-native-controls) names
 FunctionalShape, InvalidColumnDomain and ColumnSamplingExhausted errors. No production
 registry or ledger changes occur in this Draft. Existing Q12 FS/H and quantum
 obligations remain; neither profile is enabled. Affected tasks are E4-03,

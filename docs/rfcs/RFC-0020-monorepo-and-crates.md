@@ -106,13 +106,13 @@ no binding/profile credit. No measured constant changes. Affected task: E3-07a.
 
 ### A5: Conditional field-source primitive dependencies
 
-Status: Draft. Companion RFC-0010 A9 and RFC-0012 A10.
+Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9 and RFC-0012 A10.
 For the exact field PCS contract, stele-pcs may directly depend on stele-field
 and stele-poly in addition to code/hash. Canonical field decoding and the
 existing MSB equality table must be shared with the native arithmetic.
 For the closed A1 field-source adapter, stele-reductions may additionally
 depend on stele-field, stele-hash and stele-sumcheck. It invokes the actual
-A1 verifier and each required PCS consumer in the fixed source order.
+RFC-0006 A1 verifier and each required PCS consumer in the fixed source order.
 
 No PCS dependency or authentication callback enters GKR. stele-prover still
 cannot import stele-verifier. This scope changes no full-verifier dependency

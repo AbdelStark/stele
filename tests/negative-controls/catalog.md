@@ -34,6 +34,10 @@
 | NC-0600–0601 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
+| NC-0606 | PCS | 0010 A9 | replace the expected root of an otherwise valid registration certificate | `RootMismatch` | todo |
+| NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus as one field limb | `NoncanonicalField` | todo |
+| NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | todo |
+| NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |

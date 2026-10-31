@@ -915,3 +915,10 @@ checks complete certificate/opening bytes and the reference RFC-0006 A1 source
 consumer in both challenge fields. Its unused-original control reaches the
 terminal opening after the reduction accepts. Native parity, actual controls,
 resource accounting and all broader PCS/profile obligations remain required.
+
+Q27 scoped acceptance review: RFC-0010 A8/A9, RFC-0012 A10 and RFC-0020 A5
+separate conditional Circle field-source implementation E4-03a from the broader
+blocked E4-03 criteria. Only the fixed-oracle, certificate, individual-opening
+and bounded adaptive-reuse arguments are adopted. Packing, fused B, batching
+optimization, extraction, privacy and all original source/profile obligations
+remain. Q12's concrete FS/QROM composition is unchanged and unresolved.

@@ -676,9 +676,9 @@ column sides at most65535 with2*65535<p. Binding/FS, actual xy*J, canonical
 product sign, output branches and native/physical/model/private composition
 remain additional. This1024-element revealing adapter adds no profile or cut.
 
-Q27's [fixed field-oracle study](../../formal/merkle-field-oracle.md), Draft
+Q27's [fixed field-oracle lemma](../../formal/merkle-field-oracle.md), Review
 RFC-0010 A8, adds no production challenge or admitted ledger entry. In the
-classical ideal-hash model its proposed lifetime authentication loss is
+classical ideal-hash model its conditional lifetime authentication loss is
 `[choose(Q_total,2)+sum_(r=1..R_max)(1+2*Q_pre,r)*Q_after,r]/2^lambda`, capped
 at one. R_max bounds registrations deterministically before execution; the sum
 covers every permitted slot. All Q values are deterministic caps on distinct full-input queries, including
@@ -691,7 +691,7 @@ opening retains its query/RLC terms. Composition uses unconditional event
 containment, not randomness conditioned on future absence of hash events.
 This does not instantiate BLAKE3, QROM, FS/H, privacy or either profile.
 
-Q27's [native field-source proposal](../../formal/native-field-pcs.md), Draft
+Q27's [native field-source contract](../../formal/native-field-pcs.md), Review
 RFC-0010 A9/RFC-0012 A10, retains the certificate tensor term
 `2*ell*(e+1)/p^d`, certificate miss `((N-e-1)/N)^q_c`, and each opening miss
 `((N-D+e)/N)^q_o`, with Circle setup loss zero. The closed A1 adapter retains
@@ -699,10 +699,10 @@ its SC record and consumes every original, including unused inputs. A8's
 global collision and bounded registration-lifetime frontier terms remain;
 certificate digest identity also relies on that global hash accounting.
 
-The proposed sampler draws full K challenges and uses only the first limb
-for a rejection-sampled index. With at most 64 attempts per index, abort
+The specified sampler draws full K challenges and uses only the first limb
+for a rejection-sampled index. With at most 64 attempts per index, PCS-only abort
 is bounded by `q_total*2^-64+(ell_total+64*q_total)*2^-1703`. This is
 availability loss; failed attempts never become acceptance or omitted hash
 work. Dedicated PCS tensor/query labels require registration and actual
-consumer/gate integration before native use. These research entries change
+consumer/gate integration before native use. These conditional specifications change
 no admitted configuration, production ledger, proven flag, FS/H or profile.

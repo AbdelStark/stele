@@ -502,7 +502,7 @@ account for source reads, code dimensions/rates, entropy, state and native costs
 
 ### A8: Fixed field oracle from a partially defined Merkle tree
 
-Status: Draft. Question Q27. Evidence: [frozen-oracle argument](../../formal/merkle-field-oracle.md)
+Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Evidence: [frozen-oracle argument](../../formal/merkle-field-oracle.md)
 and [executable controls](../../research/merkle-oracle/REPORT.md).
 Motivation: A3's complete field oracle does not follow from byte authentication
 alone. A malicious root may contain unresolved digests or malformed field leaves.
@@ -536,7 +536,7 @@ the mathematical query-log completion is not charged as native verifier work.
 
 ### A9: Conditional native Circle field-source consumer
 
-Status: Draft. Question Q27. Proposed exact contract:
+Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Proposed exact contract:
 [native field PCS](../../formal/native-field-pcs.md). Companion RFC-0012 A10
 and RFC-0020 A5. Motivation: A3/A8 need actual source/context, certificate,
 opening and original-claim consumers before native arithmetic can terminate
@@ -566,7 +566,8 @@ for the fixed oracle justified by A8, tensor-opening.md §§1-3 and
 certified-functional-opening.md §§1-2 establish the certificate's far-oracle
 bound `2*ell*(e+1)/|K| + ((N-e-1)/N)^q_c`, uniqueness of a near message, and
 the individual-opening bound `((N-D+e)/N)^q_o`. Their adaptive individual-opening
-argument charges the certificate once plus every opening term over the bounded
+argument (certified-functional-opening.md §3, final paragraph only) charges
+the certificate once plus every opening term over the bounded
 lifetime; fresh certificate attempts retain separate obligations. The precise
 hypotheses and proofs in those sections are normative for this scope only.
 The general batching/grouping optimization and every broader A3 acceptance

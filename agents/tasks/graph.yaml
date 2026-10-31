@@ -517,6 +517,7 @@ tasks:
   title: 'Interleaved-code PCS: commit, functional opening a⊗b, column spot checks, packing int8/int16'
   depends:
   - E4-01
+  - E4-03a
   - E2-02
   rfc:
   - RFC-0010 §1-2,§4,§8
@@ -531,6 +532,29 @@ tasks:
   - NC-0600..0603
   - ledger PCS line
   - proof size regression test
+- id: E4-03a
+  epic: E4
+  title: Conditional Circle field-source PCS and closed RFC-0006 A1 adapter
+  depends:
+  - E4-02
+  - E2-02
+  - E3-01
+  rfc:
+  - RFC-0010 A8
+  - RFC-0010 A9
+  - RFC-0012 A10
+  - RFC-0020 A5
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: todo
+  acceptance:
+  - both-field native/Python certificate and opening byte parity
+  - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation
+  - actual NC-0600/0601/0606/0607/0608/0609 and NC-0803 consumers
+  - source substitution, unused A1 finals, stale queries and response-continuation controls
+  - conditional records retain certificate, opening and actual SC obligations
+  - failed-attempt usage observable; no profile or adversarial-cap inference
+  - complete registration/opening runtime, memory and proof-size ledger evidence
 - id: E4-04
   epic: E4
   title: Fused opening API (takes sumcheck B as u)
