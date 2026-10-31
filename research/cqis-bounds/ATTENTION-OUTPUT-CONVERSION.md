@@ -75,3 +75,10 @@ h=1,w=16384. Every complete child derives; their reserved spans are disjoint
 and contained, with the assembled source outside them. Tests first then
 rejected the missing output-conversion module. No proof admission follows
 from those namespace checks; complete controls and proof suites remain required.
+
+The complete consumer is implemented. The verifier checks all head proofs,
+gathers their actual int16 bytes with complete-row padding and verifies the
+configured row conversion on that derived root. Producer joins and child
+states do not substitute for verification. Corpus, boundary/context controls
+and complete proof suites are running; full-size proofs and repository gates
+must wait for their existing prerequisites. No completion claim is made yet.
