@@ -156,5 +156,8 @@
   ],
   "cqis-norm-remainder": [
     "uv run --locked --script research/cqis-bounds/check_norm_remainder.py"
+  ],
+  "cqis-norm-rsqrt": [
+    "uv run --locked --script research/cqis-bounds/check_norm_rsqrt.py"
   ]
 }

@@ -25,10 +25,10 @@ SPEC.loader.exec_module(ci)
 class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_command_inventory(self):
         commands = [command for group in ci.load_groups().values() for command in group]
-        # Independent snapshot: serial inventory through remainder consumer.
-        self.assertEqual(len(commands), 118)
+        # Independent snapshot: serial inventory through rsqrt consumer.
+        self.assertEqual(len(commands), 119)
         digest = hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest()
-        self.assertEqual(digest, 'b3ecb0b5ec330215f6a5bd8ce0049e5382b5dbb02873d6a378359d4886f0d2f7')
+        self.assertEqual(digest, '48c886d10e965d6ad17d6a6ae148988ea18752e65f553d58f542679aa418694b')
         for command in commands:
             argv = shlex.split(command)
             if argv[0] == 'curl':
