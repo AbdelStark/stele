@@ -1,7 +1,7 @@
 # Conditional stacked runtime (RFC-0006 A4)
 
-Status: Review for coordinated A4/A6/A2 acceptance. No production code is authorized
-by this revision until the amendments are Accepted.
+Status: Accepted under RFC-0006 A4, RFC-0012 A6 and RFC-0020 A2.
+Native implementation and its delivery gates remain required.
 
 ## 1. Statement and source authority
 
@@ -273,6 +273,7 @@ wrong restored point must reach real consumers, not a fixture self-comparison.
 | NC-0802 extension | Omit Stack or StackSources only in an adversarial transcript and change one successor A1 final produced from it; actual continuation rejects FinalEvaluationMismatch. |
 
 Fixtures must make old/new evaluations distinct and retain both-field checks.
+NC-0212 requires separate actual onehot and exact-table variants.
 For NC-0213 retain an opening row for an all-zero original, so its scalar check
 passes before the old authenticated path encounters the substituted root. The
 substituted certificate must pass its actual independent registration verification.

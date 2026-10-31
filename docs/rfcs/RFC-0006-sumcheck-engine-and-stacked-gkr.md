@@ -469,7 +469,14 @@ Affected tasks: E3-03..E3-06, E8-04/E8-05, E12-09. No acceptance criterion remov
 
 ### A4 — Stacked public coefficients and canonical claim coordinates
 
-Status: Review. Question Q20. Evidence: [stacking study](../../research/stacked-gkr/REPORT.md).
+Status: Accepted. Review: [coordinated skill passes](../../agents/reviews/stacked-runtime-a4.md). Question Q20. Evidence: [stacking study](../../research/stacked-gkr/REPORT.md).
+The normative contract is [conditional stacked runtime](../../formal/stacked-runtime.md)
+and the Accepted implementation boundary at the end of this amendment. The
+intervening candidate material records the prior Draft and its research evidence;
+its broader adoption preconditions do not override that explicit boundary.
+
+#### Historical candidate material
+
 Motivation: §§3,6 do not fix public-MLE descriptor bytes, their padding and
 axis semantics, the consumed/output claim encoding, or the ownership changes
 required when a layer coordinate is folded. Implementing these choices implicitly
@@ -612,9 +619,9 @@ redistribution. No measured constant, weight-pass count or performance result
 changes here. Affected tasks: E3-06 and downstream GKR/lookup/reduction/distribution
 work; all original acceptance criteria remain required.
 
-#### A4 reviewed implementation boundary
+#### Accepted implementation boundary
 
-Proposed normative replacement for §§3,6: [conditional stacked runtime](../../formal/stacked-runtime.md).
+Exact normative replacement for §§3,6: [conditional stacked runtime](../../formal/stacked-runtime.md).
 This complete contract supersedes the candidate source/byte/adoption conditions
 above for the public-coefficient field runtime only. It fixes statement bytes,
 source fixation, actual A1 reuse, original-point restoration, round ownership,

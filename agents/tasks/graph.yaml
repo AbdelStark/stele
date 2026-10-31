@@ -419,7 +419,7 @@ tasks:
   - RFC-0020 A2
   skill: gkr-reduction-author
   crate: stele-gkr
-  status: blocked(RFC-0006 A4)
+  status: ready
   agent: codex-root
   branch: task/E3-06-stacked-contract
   acceptance:

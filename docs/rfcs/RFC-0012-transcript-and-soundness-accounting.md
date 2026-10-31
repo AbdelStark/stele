@@ -412,7 +412,7 @@ No measured constant or weight pass moves. Q12 still blocks profile certificatio
 
 ### A6 — Stacked statement and original sources
 
-Status: Review. Question Q20. Companion to RFC-0006 A4.
+Status: Accepted. Review: [coordinated skill passes](../../agents/reviews/stacked-runtime-a4.md). Question Q20. Companion to RFC-0006 A4.
 Motivation: fix the expected public coefficient and complete original-source
 roster before the nested A1 challenges, without committing the coefficient or
 passing draw-order points to original consumers. Exact bytes, errors, costs and
@@ -443,7 +443,8 @@ On implementation update the registry, canonical inventory and actual gates
 with NC-0203/0211..0213 and the two missing-frame NC-0802 continuations. Until
 then no new label or control is implemented. Descriptor/source absorption costs
 T_misc; no measured constant or weight-pass change. Affected task: E3-06 and
-its operation/source consumers. Required reviews remain pending.
+its operation/source consumers. The coordinated review approves this specification;
+native implementation and controls remain required.
 
 ### A7 — Separate setup failure over the complete seed universe
 

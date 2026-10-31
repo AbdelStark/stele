@@ -1117,3 +1117,12 @@ E3-06; requiring its completion first would create a dependency cycle. Private
 sources/views, integer padding/range, actual CQIS table authority and joint
 privacy retain their original integration requirements. No task, native control
 or profile is completed by this review proposal.
+
+Q20 conditional runtime acceptance: A4/A6/A2 now admit the complete scoped
+[stacked field contract](../../formal/stacked-runtime.md), following the
+[coordinated review](../../agents/reviews/stacked-runtime-a4.md). This supersedes
+the earlier blanket A4 blocking statements for the public-coefficient runtime.
+E3-06 is ready for implementation, with all original criteria and the added
+actual source-closure/resource gates intact. Private coefficient formats/views,
+zero-padding/range consumers, CQIS table authority, joint ZK and profile admission
+remain unresolved. No source study, control or runtime is declared complete.

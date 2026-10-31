@@ -73,7 +73,7 @@ implementation is delivered; the amendment alone adds no Cargo dependency.
 
 ### A2 — Direct stacked-runtime primitive dependencies
 
-Status: Review. Question Q20. Companion to RFC-0006 A4 and RFC-0012 A6.
+Status: Accepted. Review: [coordinated skill passes](../../agents/reviews/stacked-runtime-a4.md). Question Q20. Companion to RFC-0006 A4 and RFC-0012 A6.
 For the [conditional stacked runtime](../../formal/stacked-runtime.md),
 `stele-gkr` dependencies are exactly `[field, poly, hash, sumcheck]` for public
 coefficient arithmetic, direct public originals, canonical framing and A1 reuse.
@@ -87,7 +87,7 @@ stacked producers/consumers; update exact dependency bans and rejection tests.
 The amendment alone changes no Cargo manifest, production gate, challenge,
 soundness record, measured constant or weight pass. Affected task: E3-06.
 Private coefficient/source and inference admission remain outside this contract;
-required coordinated reviews are pending.
+the coordinated review approves these exact edges for implementation.
 
 ### A3 — Public coefficient field dependency
 
