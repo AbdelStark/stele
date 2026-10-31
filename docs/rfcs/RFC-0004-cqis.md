@@ -1644,3 +1644,13 @@ unit factor. Exact mode reaches D=2^64, requiring a sixteen-byte external
 denominator representation. No whole-field sum equality or wrapper challenge
 is introduced. Shared global attainment, numerator scaling, signed rounding,
 source ownership and all original inference criteria remain required.
+
+### A3/A6 research plan — Scaled attention numerator
+
+Draft scope: [scaled numerator](../../research/cqis-bounds/ATTENTION-NUMERATOR.md).
+Complete source/output ranges and sixteen faithful byte columns prove the
+configured power-of-two shift. Two fixed channel groups preserve the full
+16384-channel domain when compact outputs require sixteen bytes. Four carry
+ranges and all four actual originals remain consumed, including zero bounds
+and shifts up to 92. No range capacity, Accepted cut or profile changes.
+Signed division, source ownership and all original criteria remain required.

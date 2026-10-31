@@ -1227,3 +1227,19 @@ composition state. Complete gap/column consumers establish Q<=Z<=LQ and
 D=Z*F without whole-field global equalities. Binding/FS/H, upstream sources
 and global attainment remain additional. Actual receipts must confirm the
 formulas; no production admission follows.
+
+### Draft Q26/Q31 scaled attention numerator
+
+Pre-implementation account: source/output/carry wide ranges retain independent
+lookup dimensions a+bm+1, G copies of a-log2(G)+bu+1 and four copies of a+3.
+Each identity is ((2^m+255)/|K|)^r; unsquared reduction is
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator is
+56a+7(bm+bu)+80 for G=1 or 65a+7bm+14bu+62 for G=2, including parent2(a+4).
+Parent draws a+4 per ZeroWeight/Sumcheck label. Full nonlookup totals per
+label are 25a+36+3(bm+bu) or 29a+28+3bm+6bu respectively. No A1/new label.
+Expected schema, all roots and verified child states precede the parent; all
+four actual original views remain consumed at their emitted points. Static
+Tmax<<shift<2^128 and byte-column sides<=32767<p/2 exclude integer aliases.
+Complete whole ranges, initial/final carry bounds and channel-group joins
+remain mandatory. Binding/FS/H and upstream composition remain additional;
+actual receipts must confirm formulas before evidence or admission is claimed.

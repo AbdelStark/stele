@@ -981,3 +981,9 @@ a positive, correctly scaled attention denominator across exact/block modes,
 including D=2^64? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DENOMINATOR.md)
 precede tests/code. Actual upstream roots, global attainment, numerator
 scaling, private lowering and original criteria remain required.
+
+Q26/Q31 continuation: can complete byte-column consumers scale all actual
+attention magnitudes without truncating sixteen-byte outputs or reducing the
+channel domain? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-NUMERATOR.md)
+precede tests/code. Fixed channel groups preserve existing range capacities;
+actual magnitude sources and all signed-normalization consumers remain required.
