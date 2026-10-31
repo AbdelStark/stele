@@ -1,7 +1,7 @@
 # Reference field arithmetic review
 
-Same-author soundness-auditor pass, not independent audit. Repository gates
-remain required; this record does not approve full inference.
+Same-author soundness-auditor pass, not independent audit. Original measured-
+branch local gates passed; fresh hosted checks remain required for this base.
 
 1. Public contract: RFC-0003 §2/A1 fixes i²=-1, u²=2+i, v²=u and the basis.
    The research multiplier uses the same fixed maps and Karatsuba identity
@@ -15,7 +15,7 @@ remain required; this record does not approve full inference.
    controls passed; no supplied receipt or disabled check is used.
 5. Accounting: no labels, draws, degrees or losses change. Complete receipt
    artifacts and explicit range/lookup account formulas match. The full
-   accounting gate remains required.
+   accounting gate passed on the original measured branch.
 6. Bounds: the canonical base modulus and tower basis are unchanged.
    Fixed maps and scalar products reduce every coefficient modulo p.
    No runtime magnitude tightens an integer-faithfulness certificate.
@@ -25,7 +25,7 @@ remain required; this record does not approve full inference.
    The original recursive oracle independently checks 40409 products;
    it calls neither the candidate nor its fixed maps.
 9. Parity: native/SIMD/GPU code is unchanged. Frozen A1/A3 artifacts and
-   complete research proofs match; native digest gates remain required.
+   complete research proofs match; the original native digest gate passed.
 10. Cost: the [report](../../research/sumcheck/REFERENCE-FIELD.md) links
     both-field before/after complete-operation ledgers. Only Python
     reference c_sc/T_misc work is measured. No fitted native constant,
@@ -46,5 +46,8 @@ The independent main-based integration retains the measured arithmetic file
 byte for byte and leaves main's range-capacity guards unchanged. All frozen
 artifacts passed before applying the multiplier. The candidate has also
 passed those artifacts, A1/A3 byte checks, all 314 shared A3 decisions and
-existing wide-range controls on this base. Original local gates retain their
-measured-branch provenance, and fresh hosted CI remains required.
+existing wide-range controls on this base. All original local gates passed
+at measured-branch head `51fb88bb232e511d910b97016d00966d859dba74`.
+The native sources, gate scripts and arithmetic file remain byte-identical;
+fresh hosted CI is still required for this base. The original gate process
+completed successfully without restart.

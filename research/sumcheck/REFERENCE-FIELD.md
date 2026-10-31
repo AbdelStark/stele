@@ -82,7 +82,7 @@ commits, whose full hashes remain in the ledgers. The isolated arithmetic
 file is byte-identical to that candidate. Fresh main-based checks passed all
 40409 products, four complete artifacts, A1/A3 byte vectors and shared
 corpora, and the existing wide-range controls. Their results remain separate
-from the original local gate run, which is still active.
+from the original local gate run, which has now passed.
 
 The candidate now uses scalar coefficient products, the fixed nonresidue
 maps and Karatsuba at each tower level. For a quadratic generator z with
@@ -128,6 +128,14 @@ uv run --python 3.12 --locked --script bench/reference_field.py QM31 /tmp/new-qm
 uv run --python 3.12 --locked --script bench/reference_field.py OM31 /tmp/new-om31-ledger.json
 ```
 
-Recommendation: retain this reference arithmetic change after repository
-gates pass. Full-size inference, native/GPU performance and independent
-audit remain open. Original validation processes were not restarted.
+All required local gates passed at measured-branch head
+`51fb88bb232e511d910b97016d00966d859dba74`: formatting, Clippy, workspace
+tests, no_std CQIS, dependency bans, Rust policy, digests, negative controls,
+soundness accounting, ledgers, RFC references, documentation/glossary and CI
+scope. Native sources, gate scripts and arithmetic match this integration.
+The result retains its original branch provenance; fresh hosted checks are
+required for this base. The original process completed without restart.
+
+Recommendation: retain this reference arithmetic change after fresh hosted
+CI and review. Full-size inference, native/GPU performance and independent
+audit remain open.
