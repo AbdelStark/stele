@@ -1728,3 +1728,13 @@ The wrapper adds no challenge or loss and preserves each child's account.
 Negative controls must replace valid children while preserving zero outputs.
 Full source ownership and configured output conversion remain separate.
 Accepted semantics, cuts and original task criteria remain unchanged.
+
+### A3/A6/A8 research plan — Complete configured row capacity
+
+The [row-capacity scope](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
+raises only adapter guards to admit 16384 complete row entries. Existing
+signed-source and range limits already contain every nested byte domain.
+All maximum/scale/rounding consumers, transcripts and dimension-dependent
+accounts remain unchanged; legacy digests and full-size proofs are required.
+Head assembly and one conversion over the complete attention output row
+remain separate obligations. Accepted semantics and production cuts do not change.

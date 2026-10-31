@@ -1351,3 +1351,20 @@ ordered expected roots and all verified child states bind the final context.
 Every shared root is passed independently to each complete child verifier.
 Binding/FS/H and upstream ownership remain additional. Check every child
 receipt, aggregate and empty wrapper draw set before evidence or admission.
+
+### Draft Q26/Q31 complete configured row capacity
+
+Pre-implementation account: only adapter capacity guards change. Existing
+range limits remain N*B<=131072 and lookup dimension m<=18. Dynamic row
+lookup dimensions are a+b+1,a+b+1,a+2,b+1,a+b+1,a+1,b+1,1,b+1,
+a+1,a+1,a+2,a+1,a+b+1,a+b+1,a+1,1,b+1,a+c+2. Static dimensions
+are a+b+1,a+b+1,a+2,a+1,a+1,a+2,a+1,a+br+1,a+c+2. Each retains
+identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Dynamic range/A3 numerator
+is 171a+87b+12c+25 with separate selection a; static is
+121a+26b+7br+12c+25. Nonlookup dynamic draws are 73a+36b+5c+11
+ZeroWeight and 74a+36b+5c+11 Sumcheck; static draws per label are
+51a+10b+3br+5c+11. Here a<=14,b<=2,c<=2,br<=2; all child accounts
+and actual originals remain mandatory. No new challenge or label. Binding/FS/H
+and actual inference provenance remain additional. Require unchanged legacy
+digests and full-size receipts before evidence or admission.

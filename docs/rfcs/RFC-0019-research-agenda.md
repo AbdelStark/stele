@@ -1032,3 +1032,9 @@ global H=S*Z and zero-hidden source changes?
 precede namespace checks, tests and implementation. Full-width composition
 and every inherited original consumer remain required; conditional arithmetic
 does not establish upstream attention-row ownership.
+
+Q26/Q31 continuation: can complete dynamic/static row conversion admit 16384
+entries within existing range lookup domains and preserve every legacy proof?
+[Scope and kill criteria](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
+precede tests and adapter changes. Complete head assembly and full-row
+conversion source ownership remain required after this capacity prerequisite.
