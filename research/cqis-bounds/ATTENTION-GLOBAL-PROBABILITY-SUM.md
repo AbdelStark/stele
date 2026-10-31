@@ -63,3 +63,17 @@ composition here proves arithmetic sums, not that global attainment or full
 key ownership. Positive Z, restored normalization units, native/private model
 inference, fidelity and all original criteria remain required. No production
 admission, benchmark result, new cut or weight pass is claimed.
+
+Seed 2741 passed all 10000 independent cases over 79504 source blocks,
+including 1552 zero totals. NumPy sums, complete source/output roots and
+independent byte-column carries matched. All admissible shifts, exponent and
+compact-width families, short/partial/full lengths and namespace limits were
+covered. Frozen corpus SHA-256:
+`8038fb212d844cc75ea49c5540ba58248b85b28a19caf5415c47eaed41ea23ee`.
+
+The initial proof run passed receipt checks and every external root control.
+An altered source word rejected at Source:SourceCopy:ClaimMismatch, rather
+than the test's expected commitment mismatch: the internal source root is
+recomputed, and the complete copy consumer catches the inconsistency. The
+test now names that actual consumer; no verifier behavior changed. Remaining
+controls, matrix, maximum and required gates are still pending.

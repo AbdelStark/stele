@@ -53,6 +53,7 @@ def corpus():
     rejects('Spec',lambda:c.derive(p,True))
     for values in ([False]*3,[-1]*3,[v['caps'][0]+1]*3,[0]):rejects('Input',lambda:c.witness(p,values))
     assert zeros>1000 and shifts==set(range(2,63)) and {b for b,g in widths}=={0,1,2} and {g for b,g in widths}=={1,2,3}
+    assert (cells,zeros,digest.hexdigest())==(79504,1552,'8038fb212d844cc75ea49c5540ba58248b85b28a19caf5415c47eaed41ea23ee')
     print(json.dumps(dict(seed=2741,cases=10000,source_cells=cells,zero_totals=zeros,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -82,7 +83,7 @@ def controls():
     p=spec();d=4;v=c.derive(p,d);zs=[0]*3;pairs=c.prepare(p,zs,d);proof,state=c.assemble(p,pairs,d);roots=oracle(p,zs)[1];out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d)
     for index,name in enumerate(['Block:'+str(b) for b in p.blocks]+['Output']):
         bad=roots.copy();bad[index]=bytes(32);rejects(name+':CommitmentMismatch',lambda:c.verify(p,bad,proof,d))
-    bad=copy.deepcopy(proof);bad['source']['words'][0]=1;rejects('Source:CommitmentMismatch',lambda:c.verify(p,roots,bad,d))
+    bad=copy.deepcopy(proof);bad['source']['words'][0]=1;rejects('Source:SourceCopy:ClaimMismatch',lambda:c.verify(p,roots,bad,d))
     for left,right in (((1,0,0),(1,1,1)),((0,0,0),(0,1,1))):
         w=c.lp.limbs.witness(v['sum'].schema,left,right);pair=c.lp.prove(v['sum'],w,d);ds,os,cs=c.lp.witness(v['sum'],w);assert c.lp.verify(v['sum'],c.lp.roots(v['sum'],ds,os,cs)[:2],pair[0],d)['state']==pair[1];bad,_=c.assemble(p,dict(pairs,sum=pair),d);rejects('Sum:SourceJoin',lambda:c.verify(p,c.roots(p,bad),bad,d))
     bad,_=c.assemble(p,dict(pairs,source=r.prove(v['source'],[1,0,0],d)),d);rejects('Sum:SourceJoin',lambda:c.verify(p,c.roots(p,bad),bad,d))
