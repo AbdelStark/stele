@@ -70,3 +70,9 @@ The genuinely output-ranged 2D-p value rejected at Double:Product:FinalEvaluatio
 Both valid changed and standalone zero source substitutions rejected.
 All 16 matrix cases matched exact receipts, draws and original claims; their
 digest is frozen. Full-metadata boundaries and repository gates remain pending.
+
+Both full-metadata scalar boundaries subsequently passed, reaching exact
+2D=2^65 and block 2D=2^49 at length 1048576 and width 16384. Exact receipts
+and all original consumers matched; the digest is frozen and the original
+runner completed successfully. Repository gates and independent review remain
+pending. These scalar proofs do not establish upstream ownership.

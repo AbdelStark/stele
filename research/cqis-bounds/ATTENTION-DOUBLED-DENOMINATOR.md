@@ -72,3 +72,10 @@ All 16 matrix proofs passed across both fields/repetition counts with exact
 receipts and all original consumers. Frozen SHA-256:
 `4e1b11841e44afb486319288865815ad8ddf56359ed810ea4ec5e3bf15f4b0d5`.
 Full-metadata boundaries and repository gates remain under validation.
+
+Both full-metadata scalar proofs passed at length 1048576 and width 16384,
+preserving exact 2D=2^65 and block 2D=2^49 with all complete consumers.
+Their combined frozen SHA-256 is
+`f9ef9e44c50b52bdcfb3ac2ca4950be1d6603bd6868d8c21925f094fc95318ca`.
+The original runner completed successfully. Repository gates, independent
+review and upstream ownership remain required.

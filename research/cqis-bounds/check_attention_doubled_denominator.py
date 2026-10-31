@@ -70,6 +70,7 @@ def honest(maximum=False):
             if maximum:assert answer==(1<<65 if mode=='exact' else 1<<49)
             digest.update(state);done+=1;print('honest passed',done,d,reps,length,mode,drop,flush=True)
     if not maximum:assert (done,digest.hexdigest())==(16,'4e1b11841e44afb486319288865815ad8ddf56359ed810ea4ec5e3bf15f4b0d5')
+    else:assert (done,digest.hexdigest())==(2,'f9ef9e44c50b52bdcfb3ac2ca4950be1d6603bd6868d8c21925f094fc95318ca')
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
