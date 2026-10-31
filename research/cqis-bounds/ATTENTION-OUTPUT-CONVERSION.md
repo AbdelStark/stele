@@ -91,3 +91,9 @@ Future boundary runs include that broader context check. Linear list
 flattening preserves independent witness roots and context byte order without
 repeatedly copying earlier heads. Complete admission suites remain running;
 context-only checks do not establish proof acceptance.
+
+The first control run rejected a reordered exact-mode head at its nested
+product source commitment, before the external probability-root check. The
+test expected the later diagnostic. Only that assertion was corrected;
+verifier behavior is unchanged. The failed log remains recorded, the original
+corpus continues, and a corrected proof run is required.

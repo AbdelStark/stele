@@ -89,7 +89,7 @@ def controls():
             bad=dict(roots);bad[role]=bytes(32);rejects('Conversion:'+reason,lambda:c.verify(p,bad,proof,d))
         for heads in (proof['heads'][:-1],proof['heads']+proof['heads'][:1]):rejects('ProofShape',lambda:c.verify(p,roots,dict(proof,heads=heads),d))
         rejects('ProofShape',lambda:c.verify(p,roots,dict(proof,extra=proof['conversion']),d))
-        swapped=dict(proof,heads=list(reversed(proof['heads'])));rejects('Head0:'+('GlobalBase:WeightSum:CommitmentMismatch' if mode=='exact' else 'Sign:Offset:CommitmentMismatch'),lambda:c.verify(p,roots,swapped,d))
+        swapped=dict(proof,heads=list(reversed(proof['heads'])));rejects('Head0:'+('GlobalBase:Product:Input:WholeWord:CommitmentMismatch' if mode=='exact' else 'Sign:Offset:CommitmentMismatch'),lambda:c.verify(p,roots,swapped,d))
         bad=copy.deepcopy(proof);bad['heads'][0]['output']['output']['ranges'][0]['words'][p.schema.width]=1
         rejects('Head0:SignedOutput:Output:Raw:CommitmentMismatch',lambda:c.verify(p,roots,bad,d))
         changed=totals[0].copy();changed[0]=0;other,_=c.norm.prove(v['head_specs'][0],zs[0],changed,d);bad=dict(proof,heads=[other,proof['heads'][1]])
