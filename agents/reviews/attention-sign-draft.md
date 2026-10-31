@@ -55,3 +55,7 @@ I tried to break it by setting the sign of zero magnitude to one while
 retaining valid ranges and signed columns, and CanonicalZero:RoundSumMismatch
 rejected it. Compensating the actual H and O final claims also rejected at
 SignColumns:ClaimMismatch.
+
+The complete 16-proof matrix passed in both fields and repetition counts.
+Its transcript digest is frozen, and all receipts/draw totals matched. The
+original full-size proof and gate queue continue without a restart.
