@@ -4,6 +4,7 @@
     "python3 research/poseidon2/check_poseidon2.py",
     "uv run --locked --script research/transcript/check_transcript.py",
     "uv run --locked --script research/merkle/check_merkle.py",
+    "uv run --locked --script research/merkle-oracle/check_lifting.py",
     "uv run --locked --script research/sumcheck/check_sumcheck.py",
     "uv run --locked --script research/batching/check_batching.py",
     "uv run --locked --script research/zerocheck/check_zerocheck.py"

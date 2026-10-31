@@ -675,3 +675,18 @@ Closed outgoing carry caps254,255,64,0 and whole source/output bounds make both
 column sides at most65535 with2*65535<p. Binding/FS, actual xy*J, canonical
 product sign, output branches and native/physical/model/private composition
 remain additional. This1024-element revealing adapter adds no profile or cut.
+
+Q27's [fixed field-oracle study](../../formal/merkle-field-oracle.md), Draft
+RFC-0010 A8, adds no production challenge or admitted ledger entry. In the
+classical ideal-hash model its proposed lifetime authentication loss is
+`[choose(Q_total,2)+sum_(r=1..R_max)(1+2*Q_pre,r)*Q_after,r]/2^lambda`, capped
+at one. R_max bounds registrations deterministically before execution; the sum
+covers every permitted slot. All Q values are deterministic caps on distinct full-input queries, including
+adversary, preprocessing and verifier calls across every shared hash domain.
+The first term is one global collision event; an enclosing analysis may
+reuse that charge but cannot omit the separate frozen-target preimage term.
+Each root/context is frozen once, including certificate replays. Fresh
+certificate attempts retain their own proximity loss, and every later
+opening retains its query/RLC terms. Composition uses unconditional event
+containment, not randomness conditioned on future absence of hash events.
+This does not instantiate BLAKE3, QROM, FS/H, privacy or either profile.

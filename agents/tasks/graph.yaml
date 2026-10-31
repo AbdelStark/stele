@@ -490,7 +490,7 @@ tasks:
   crate: stele-code
   status: blocked(RFC-0010 A1)
   agent: codex-root
-  branch: task/E4-01-bounded-encoder
+  branch: task/E4-01-merkle-oracle-contract
   acceptance:
   - linearity tests
   - distance estimate script

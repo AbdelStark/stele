@@ -893,3 +893,11 @@ all originals, including inactive factors and high zero slots. Continue with
 actual signed X/H magnitudes and xy*J, then the two wide signed output branches
 using these same roots. Original task, native/stacking/physical/model/private,
 fidelity and control obligations remain open.
+
+Q27 continuation: Draft RFC-0010 A8 and formal/merkle-field-oracle.md supply
+a classical ideal-hash lift from partial Merkle trees to one fixed field
+oracle. Collisions and later preimages of frozen unresolved digests have
+separate lifetime terms. Exact framing/canonical-decoding controls and
+tiny-output counterexamples exercise this boundary. Native wire, query
+sampling, certificate reuse, source consumers and Q12 remain open; no
+profile, quantum security, extractor or production control is supplied.
