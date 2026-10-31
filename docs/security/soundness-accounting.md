@@ -1257,3 +1257,20 @@ bind the returned composition state. Static whole/column bounds and exact
 coefficient-two joins exclude aliases without lifting D into M31. Binding/FS/H
 and the positive upstream source proof remain additional. Confirm runtime
 receipts before evidence or admission; no Accepted profile or cut changes.
+
+### Draft Q26/Q31 biased attention numerator
+
+Pre-implementation account: GU source and GW output groups retain independent
+lookup dimensions a-log2(GU)+bu+1 and a-log2(GW)+bw+1 respectively; the scalar
+denominator adds bd+1 and four carry groups add four dimensions a+3. Each
+identity is ((2^m+255)/|K|)^r with unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator is
+(9(GU+GW)+38)*a+7(GU*bu+GW*bw+bd)+80-9(GU*log2(GU)+GW*log2(GW)),
+including parent2(a+4). Full nonlookup draws per ZeroWeight/Sumcheck label are
+(4(GU+GW)+17)*a+3(GU*bu+GW*bw+bd)+36-4(GU*log2(GU)+GW*log2(GW));
+parent draws a+4 each. No A1/new label. Full schema, all roots and verified
+child states precede the parent. Five actual originals retain their consumers.
+Static Wmax<2^128 and byte-column sides<=767<p/2 exclude integer aliases.
+Complete whole ranges, broadcast joins and carry endpoints remain mandatory.
+Binding/FS/H and upstream positivity/magnitude proofs remain additional;
+confirm runtime receipts before evidence or admission.

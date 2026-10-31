@@ -1663,3 +1663,13 @@ exact coefficient two. Full output planes preserve 2D=2^65; all original
 operand and public power claims remain consumed. No wrapper challenge is
 added. Positivity requires the actual positive-denominator source proof.
 Strict remainder, signed division, ownership and original criteria remain.
+
+### A3/A6 research plan — Biased attention numerator
+
+Draft scope: [biased numerator](../../research/cqis-bounds/ATTENTION-BIASED-NUMERATOR.md).
+Complete whole ranges and sixteen faithful byte columns bind W=2U+D to
+actual scaled magnitudes and the shared denominator. Fixed channel groups
+preserve all 16384 channels, with explicit zero caps in ragged half-domains.
+Five actual originals consume the source/output, denominator broadcast and
+carry views. Positivity and scaled-magnitude provenance require their complete
+source proofs. Strict remainder, signed output and original criteria remain.

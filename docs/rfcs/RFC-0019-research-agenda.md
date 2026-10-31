@@ -993,3 +993,9 @@ Q26/Q31 continuation: can the complete sixteen-byte denominator source bind
 original consumer? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DOUBLED-DENOMINATOR.md)
 precede tests/code. Strict remainder and signed-normalization composition
 remain required; a standalone zero product does not establish positivity.
+
+Q26/Q31 continuation: can full-width W=2U+D bind actual scaled magnitudes
+and a shared denominator without weakening range capacity or source joins?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BIASED-NUMERATOR.md)
+precede tests/code. All three group families, ragged padding and five actual
+original consumers remain required before signed-normalization composition.
