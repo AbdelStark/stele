@@ -88,3 +88,11 @@ context-encoding controls passed for each child state, expected schema and
 role across both modes/fields/repetition counts. The independent corpus and
 complete proof suites are running. Both full-width proofs and repository
 gates are queued behind the existing prerequisite processes.
+
+The independent corpus completed successfully: 10000 random cases, four
+capacity cases and one tie case. It accepted 7440 cases and rejected 2565
+int16 overflows, checking 197531 output channels, 25275 negative inputs
+rounded to zero and 1045 ties. NumPy integer arithmetic and complete byte
+roots matched. Frozen SHA-256:
+`a71a09a1eb6b5a66087ef5a4abe6d511fc07a6206e956ea951dad10f8fa6ff3b`.
+The corrected complete proof suite and queued full-size/gate runs continue.
