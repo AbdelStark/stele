@@ -3,8 +3,9 @@
 Codex-root applies cqis-numerics, gkr-reduction-author and soundness-auditor.
 This is a same-author review, not an independent audit. The
 [scope](../../research/cqis-bounds/ATTENTION-GLOBAL-PROBABILITY-SUM.md) preceded
-tests and implementation. Tests first rejected the missing module. Corpus,
-controls, matrix and full-size validation are running. Repository gates are
+tests and implementation. Tests first rejected the missing module. All 10000
+corpus cases, primary/boundary controls and both source compositions passed.
+Matrix and full-size validation continue. Repository gates are
 queued once behind canonical total signs. This is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2. The consumer proves the
@@ -28,7 +29,7 @@ queued once behind canonical total signs. This is not a completed sign-off.
   identities and unsquared reductions. Range/A3 numerator is 20a+16b+18g+31,
   product identity k-1 and A1 reduction 2a+4b. Nonlookup draws are
   9a+7b+8g+13 ZeroWeight and 10a+9b+8g+14 Sumcheck. Tests compare exact
-  inherited receipts; the repository accounting gate remains pending.
+  inherited receipts; initial checks passed. The repository accounting gate remains pending.
 - Bounds: per-block caps use min(1024,L-1024*b)*2^E, including a short final
   block. Their sum is at most 2^34. The existing static limb certificate makes
   every byte-column equality faithful. No whole global field lift or observed
@@ -39,7 +40,7 @@ queued once behind canonical total signs. This is not a completed sign-off.
   source/output roots preserve four/eight bytes regardless of compact widths.
 - Determinism: fixed block order, source roles, namespace and byte encoding.
   No float, challenge retry or witness-dependent configuration. Independent
-  corpus and both-field transcript digests are pending.
+  corpus digest is frozen; both-field transcript validation continues.
 - Parity: native CPU/SIMD/CUDA are unchanged. NumPy verifies sums and byte
   roots; independent column sums verify all integer carries. The complete
   1024-block proof must reach 2^34 without reducing the configured length.
@@ -54,3 +55,16 @@ queued once behind canonical total signs. This is not a completed sign-off.
   statuses and criteria remain blocked. Shared global maximum, positive Z,
   normalization units, source ownership, native/private inference, fidelity
   and independent audit remain required.
+
+The first proof run caught the altered source word at its actual copy claim,
+not the commitment diagnostic expected by the test. The expected reason was
+corrected without changing verifier behavior. Both source and arithmetic
+consumers remain mandatory.
+
+I tried to break it by changing a coefficient from one to zero while every
+source was zero, and the control Sum:SourceJoin rejected it. Forged left and
+right original views rejected at their SourceClaimMismatch consumers; both
+compensated public powers rejected at PowerClaimMismatch. Complete per-block
+probability sums composed for nonzero and zero totals, and a valid changed
+source rejected at its pinned block root. The matrix, maximum modulus-alias
+control and repository gates remain pending.

@@ -77,3 +77,12 @@ than the test's expected commitment mismatch: the internal source root is
 recomputed, and the complete copy consumer catches the inconsistency. The
 test now names that actual consumer; no verifier behavior changed. Remaining
 controls, matrix, maximum and required gates are still pending.
+
+All primary and boundary controls subsequently passed. Actual byte joins,
+zero-hidden coefficient one, false totals/carries, both actual originals and
+both public powers retained their consumers. Short-block overflow, source
+aliases, dense padding, carry endpoints, output padding and full external
+high planes rejected. Complete per-block probability sums composed for
+nonzero and zero totals; valid replacements rejected their pinned roots.
+The both-field matrix and full-size sum/alias control continue in the original
+runner. Required repository gates remain queued once.
