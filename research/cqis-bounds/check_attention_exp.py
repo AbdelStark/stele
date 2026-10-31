@@ -97,6 +97,7 @@ def honest(full=None):
         for size,mode,B,F,E,k in cases:
             p=spec(size,mode,B,F,E,k,(1<<31)-1,3710+done,reps);v=c.derive(p,d);vals=(0,v['cap'],min(9,v['cap']),min(17,v['cap']));us=[vals[j%4] if bit else 0 for j,bit in enumerate(v['allowed'])]
             print('honest start',done+1,d,reps,size,mode,flush=True);proof,state=c.prove(p,us,d);out=c.verify(p,c.expected_roots(p,us),proof,d);assert out['state']==state;account(p,proof,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,size,mode,flush=True)
+    if full is None:assert done==16 and digest.hexdigest()=='10934fcf02f1472736502323d2b105309a5416443d561912a8befd736daac3e7'
     print(json.dumps(dict(full=full,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
