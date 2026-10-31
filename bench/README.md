@@ -587,3 +587,35 @@ follows. The separate root-equation predicate is outside this public reduction
 operation. Inference proof/verifier/control fields stay zero; actual primitive
 consumption and control coverage are recorded in model_config. No additional
 weight pass or planning-constant change follows.
+
+## Conditional field PCS resources (E4-03a)
+
+From a clean committed checkout on arm64 macOS, run
+`uv run --no-project --python 3.12 bench/field_pcs.py /tmp/new-field-pcs-ledger.json`.
+The controller builds the native release worker and retains every raw receipt,
+exit status and `time -l` report beside the new ledger. Existing output paths
+reject. Source identity is checked before and after each sequential worker.
+
+The declared matrix covers scalar, asymmetric, row-heavy and column-heavy PCS
+operations in both fields and both supported rates. Each registration is followed
+by two distinct openings against its genuine certificate. A separate bounded A1
+case uses three original sources: one used, one unused and one with coefficient
+zero. It runs the actual adapter once and retains all original obligations.
+The point-acquisition replay is part of the measured producer work.
+
+Native total time includes fixture construction, complete producers/consumers,
+receipt hashes, validation and protocol-buffer cleanup. Named stages are disjoint;
+the remainder retains other measured work. Launch, argument parsing and receipt
+JSON serialization are outside that timer. Fresh-worker peak RSS includes those
+operations, encoder scratch/twiddles, every retained source/proof, runtime, stack
+and allocator retention. It is whole-pipeline memory, not isolated verifier RSS.
+PreparationWork and input/proof capacities have their narrower reported scopes;
+they do not establish a complete PCS or A1 owned-vector peak.
+
+The example belongs to the unpublished control harness and imports production
+APIs. Receipt hashes grant no protocol authority. Component proof sizes, actual
+SC/certificate/opening records and cumulative usage snapshots live in
+`model_config`; inference fields retain their schema-v1 micro values. Existing
+independent byte parity, finite-policy and negative-control gates still apply.
+These measurements do not establish profile admission, a fitted constant or an
+inference/weight-pass result.

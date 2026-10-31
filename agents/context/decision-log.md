@@ -358,3 +358,19 @@ all 75 groups. The inherited 176-command union is unchanged. Keep native, table
 and aggregate checks mandatory under their existing rules, and remove the table
 matrix concurrency cap. No performance number, proof sample count, binding,
 protocol or cost-model constant changes. Status: Accepted.
+
+## ADR-039: Measure complete conditional field PCS operations in the harness
+
+Context: E4-03a requires registration/opening runtime, memory and proof sizes,
+including the actual closed A1 consumer. Decision: use one native release example
+in the unpublished control harness and a sequential fresh-process controller.
+Keep its equality-table, JSON and receipt-hash dependencies dev-only, enforced
+by the exact manifest/layout gate. No production dependency or API changes.
+
+Include real certificate verification, both sequential functional consumers,
+and a bounded three-original A1 case with actual point replay and all-original
+closure. Charge setup, validation and cleanup in inclusive native time. Report
+whole-pipeline RSS and existing preparation capacities with separate scopes;
+do not infer a complete owned-vector peak from partial observations. Preserve
+all samples and failed-run artifacts with clean source provenance. No profile,
+privacy, fitted constant or weight-pass claim. Status: Accepted.

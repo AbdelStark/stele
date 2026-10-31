@@ -682,7 +682,18 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
+    example = {'name':'field_pcs_bench','path':'examples/field_pcs_bench.rs'}
+    dev = {'stele-poly':{'path':'../../crates/stele-poly'}, 'serde_json':'=1.0.154',
+           'blake3':{'version':'=1.8.7','default-features':False}}
+    dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
+                    for n in ('reductions','pcs','lookup','sumcheck','field','hash')}
+    dependencies['stele-sumcheck']['features'] = ['std']
+    if (manifest.get('example') != [example] or manifest.get('dev-dependencies') != dev
+            or manifest.get('dependencies') != dependencies
+            or any(k in manifest for k in ('build-dependencies','target'))):
+        raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
     allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed.add(example['path'])
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
