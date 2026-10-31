@@ -76,3 +76,11 @@ original claims, compensated signs and metadata replay retain consumers.
 Actual signed-source paths accept -32768 and negative-input zero, while
 positive 32768, q=32769, nonboolean flags, padding and high planes reject.
 Source compositions, matrix, full proof and repository gates remain pending.
+
+Complete canonical-sign, scaled-magnitude, positive-denominator and strict-
+division proofs composed in both modes; valid replacements rejected. All 16
+matrix proofs passed with exact receipts, draws and original consumers.
+Their frozen SHA-256 is
+`2758052402ad4141907729ea627081c126b15269e18c9d2bac702afcb40d51a0`.
+The corrected proof runner completed successfully. The full-width proof and
+repository gates remain queued behind their existing prerequisites.

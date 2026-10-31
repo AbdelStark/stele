@@ -62,3 +62,9 @@ SignedOutput:RoundSumMismatch rejected it. The -32768 and negative-input-zero
 cases accepted; all three zero-hidden originals and compensated signs
 rejected at ClaimMismatch. Complete source compositions, matrix, full proof
 and repository gates remain pending.
+
+Both actual source-chain compositions and all 16 matrix proofs subsequently
+passed. Valid replacement sources rejected, and every receipt, draw total
+and original count matched. The observed matrix digest is frozen; the
+corrected proof runner completed successfully. The full-width proof,
+repository gates and independent audit remain required.
