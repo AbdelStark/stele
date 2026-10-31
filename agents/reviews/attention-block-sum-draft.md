@@ -58,3 +58,8 @@ queued once. This is not a completed sign-off.
 I tried to break it by changing the sign final while every quotient was zero,
 and BlockSum:ClaimMismatch rejected it. Compensating errors in two output
 channels rejected at BlockSum:RoundSumMismatch.
+
+The complete 16-proof matrix passed, including both fields and repetition
+counts. Its transcript digest is frozen in the test and scope note. All
+receipt formulas and draw totals matched. Full geometries and gates remain
+pending; this evidence does not complete the review.

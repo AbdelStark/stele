@@ -69,6 +69,7 @@ def honest(mode=None):
         for blocks,width,E,policy,scale,drop in cases:
             p=replace(spec(blocks,width,5310+done,reps),schema=c.bounds.Spec(1<<20,width,7,E,policy,scale,drop));v=c.derive(p,d);qmax=v['constants']['rounded_max'];flags=[j%2 for j in range(v['count'])];qs=[(0,qmax,qmax//2)[j%3] for j in range(v['count'])]
             print('honest start',done+1,d,reps,blocks,width,drop,flush=True);proof,state=c.prove(p,flags,qs,d);out=c.verify(p,oracle(p,flags,qs)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,blocks,width,drop,flush=True)
+    if mode is None:assert (done,digest.hexdigest())==(16,'701f68e006fa0f2b22c62703ecfadb4ce7c23a649d91406dc2ab5f98718aa14d')
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

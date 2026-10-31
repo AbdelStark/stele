@@ -82,3 +82,9 @@ Complete canonical-sign and block-rounding proofs composed for shifts26 and62,
 including negative raw signs at rounded zero. Valid replacement sign and
 quotient sources rejected their pinned roots. The matrix and three full
 geometries continue in the original runner; repository gates remain queued.
+
+All 16 matrix proofs passed across QM31/OM31 and both repetition counts.
+Every receipt, original count and draw total matched. Frozen SHA-256:
+`701f68e006fa0f2b22c62703ecfadb4ce7c23a649d91406dc2ab5f98718aa14d`.
+The three full geometries continue in the original process; their completion
+and the queued repository gates are still required.
