@@ -58,3 +58,10 @@ changed transcript point was caught by the actual original consumer. The
 test had expected RoundSumMismatch. Only the expected diagnostic changed.
 All preceding root, false-value and compensated-original controls passed.
 The original failed-run log is retained; the failed suite must complete.
+
+The corrected primary suite passed, including malformed field and authority
+controls. I tried to break it by changing each original final claim while
+compensating another to preserve the column equation; Shift:ClaimMismatch
+rejected all four attacks. Complete changed source/output/carry children also
+rejected at the parent equation. Corpus, boundary/composition suites, matrix,
+full-width proofs and required repository gates remain pending.

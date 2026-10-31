@@ -67,3 +67,12 @@ compose on their actual roots. Global attainment, full key/block/model
 ownership, native/private inference, fidelity and independent audit remain
 required. No benchmark, new cut, weight-pass change or production admission
 is claimed. Continue Q26/Q31; Draft amendments remain unaccepted.
+
+Primary controls passed. Both external roots, every internal root and complete
+child retained their checks. Genuinely ranged changed source/output/carry
+values rejected at Shift:RoundSumMismatch. All four compensated original
+claims rejected at Shift:ClaimMismatch. Metadata with unchanged arithmetic
+also rejected at that original consumer; the first test expected a round
+failure and was corrected without changing the verifier. The failed log is
+retained. Corpus, boundaries, source compositions, matrix and full-size proofs
+remain under validation, with repository gates queued once.
