@@ -92,7 +92,7 @@ def controls():
         bad=copy.deepcopy(zero);bad['zero']['final'][index][0]=r.sc.add(bad['zero']['final'][index][0],r.sc.scalar(1,d));rejects('SignedOutput:ClaimMismatch',lambda:c.verify(p,zr,bad,d))
     bad=copy.deepcopy(proof)
     for index in (1,2):bad['zero']['final'][index][0]=r.sc.add(bad['zero']['final'][index][0],r.sc.scalar(1,d))
-    rejects('SignedOutput:ClaimMismatch',lambda:c.verify(p,roots,bad,d));other=replace(p,schema=replace(p.schema,fraction=8,output_fraction=8));rejects('SignedOutput:ClaimMismatch',lambda:c.verify(other,roots,proof,d))
+    rejects('SignedOutput:ClaimMismatch',lambda:c.verify(p,roots,bad,d));other=replace(p,schema=replace(p.schema,fraction=8,output_fraction=8));rejects('SignedOutput:RoundSumMismatch',lambda:c.verify(other,roots,proof,d))
     bad=copy.deepcopy(proof);bad['zero']['rounds'][0][0]=(False,0,0,0);rejects('NoncanonicalField',lambda:c.verify(p,roots,bad,d))
     for key in ('receipt','certificate','point','branch'):rejects('ProofShape',lambda:c.verify(p,roots,dict(proof,**{key:{}}),d))
     print('all roots, fresh wrong signs, actual quotient pinning, metadata and all three zero-hidden or compensated originals reject',flush=True)
