@@ -103,3 +103,8 @@ and four capacity cases. Frozen SHA-256:
 A separate 10000-case signed coefficient projection check matched independent
 integer dot products. Complete proof validation and resource evidence remain
 required; neither check establishes full-size proof acceptance.
+
+Each external source contains 8N byte values. Its root retains the existing
+canonical four-byte field-word encoding per value; only the private spool
+stores each verified value in one byte. Replay reconstructs that same root
+encoding before projection. This introduces no alternate commitment format.
