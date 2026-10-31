@@ -84,6 +84,7 @@ def shapes():
         c,p=spec('dynamic',kind,16384);w=c.witness(p,[0]*16384)
         assert w['scale']==0 and w['codes']==[0]*16384 and w['carry']==[3]*65536
         rejects('Capacity',lambda:c.ds.witness(replace(c.derive(p,4)['scale'],schema=replace(p.schema,dimension=16385)),None))
+    assert cases==40 and cells==1548288 and digest.hexdigest()=='9e7621992ac1de560d6a5e2d7477ec0b23ec8c1666f4c50aee279a39bdb907dc'
     print(json.dumps(dict(shape_cases=cases,zero_cases=2,column_cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

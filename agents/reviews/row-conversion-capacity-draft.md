@@ -39,3 +39,9 @@ validation is running. This is not a completed sign-off.
 - Glossary/history: scope and accounts are append-only. Accepted text and
   original task criteria remain unchanged. Head assembly, full inference
   provenance, native/private proofs, fidelity and independent audit remain.
+
+The 40 geometry/witness cases and two full-size zero rows passed. Every
+nested domain fits the existing limits at both fields; 1548288 independent
+byte-column checks matched and 16385 entries rejected before malformed
+payload processing. The geometry digest is frozen. Actual proof, legacy
+regression, full-size and repository gate validation is still running or queued.

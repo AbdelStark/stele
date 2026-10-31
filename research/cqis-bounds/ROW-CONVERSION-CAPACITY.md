@@ -50,3 +50,12 @@ shared probability/key/mask/value provenance, model/cache/decode ownership,
 native/private PCS/ZK/FS, GPU parity, fidelity and independent audit remain
 required. No production coverage, benchmark, new cut or weight pass is
 claimed. Draft status and original task acceptance criteria stay unchanged.
+
+All 40 geometry/witness cases passed across both source kinds and policies,
+including static scale endpoints and 16384 entries. Both challenge fields
+derive every nested range within the unchanged byte and lookup limits.
+Independent rounding and 1548288 carry-column cells matched; two full-size
+dynamic zero rows and over-capacity rejection also passed. Frozen SHA-256:
+`9e7621992ac1de560d6a5e2d7477ec0b23ec8c1666f4c50aee279a39bdb907dc`.
+Complete proof matrices and legacy regressions are running. Four full-size
+proofs and repository gates are queued once behind their prerequisites.
