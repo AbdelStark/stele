@@ -40,6 +40,7 @@ def honest():
             p=weighted.spec(3,3,8810+count);p=replace(p,schema=replace(p.schema,scale=scale));S=weighted.c.derive(p,d)['constants']['restored_max'];out=weighted.run(p,[1,2,0],[0,S,2*S]*3,d);digest.update(out['state']);count+=1
             p=restored.spec(3,3,'static',scale,8820+count);out=restored.run(p,[-127,0,127]*3,[scale]*3,d);digest.update(out['state']);count+=1
             print('complete compact spool pair passed',d,scale,flush=True)
+    assert (count,digest.hexdigest())==(8,'38526eed30c515e6d8f215fd95341d37ce5065fdf977dfa5b74d7fcc43575e0c')
     print(json.dumps(dict(proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

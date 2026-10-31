@@ -27,3 +27,13 @@ Keep all original full-size processes and logs. Their current maximum
 configurations use all four compact bytes; do not restart them. Required
 gates for this correction follow the existing gate queue. Production
 coverage and original task criteria remain unchanged.
+
+The first control reproduced the weighted replay omission. A separate
+restoration check reproduced acceptance of a changed unused byte and a
+changed projected target. Neither check called external verifier admission.
+Eight complete honest proofs passed before the correction, across both
+fields and compact widths; their final-state digest is frozen in the checker:
+`38526eed30c515e6d8f215fd95341d37ce5065fdf977dfa5b74d7fcc43575e0c`.
+Both replay paths now require the uint32 value to fit the authenticated byte
+width before re-encoding. All twenty unused-high-byte controls passed after
+the change. Complete proof-state parity and repository gates remain pending.

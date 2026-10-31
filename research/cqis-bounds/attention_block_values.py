@@ -120,7 +120,8 @@ def parent(p,v,t,roots,local,spool,d):
     sc=r.sc;point=[sc.challenge(t) for _ in range(v['a'])];eta=sc.challenge(t) if v['dynamic'] else None;projector=EqProjector(point,d);B=[];M=[];target=sc.scalar(0,d);spool.seek(0)
     for g,size in enumerate(v['sizes']):
         data=spool.read(5*size);need(len(data)==5*size,'SpoolShape');pairs=list(struct.iter_unpack('<BI',data));raw=[x for x,_ in pairs];output=[y for _,y in pairs];magnitude=[x if x<128 else 256-x for x in raw];signed,mag,up=group_specs(p,v,g);n=1<<(size-1).bit_length();width=r.derive(up,d)[3];at=v['common']+4*g
-        need([r.root(signed.source,planes(raw,n,1)),r.root(mag.source,planes(magnitude,n,1)),r.source_root(up,planes(output,n,width))]==[roots[at],roots[at+1],roots[at+3]],'Replay:'+str(g)+':CommitmentMismatch')
+        # Check public-zero high bytes before compact re-encoding can discard them.
+        need(all(x<1<<(8*width) for x in output) and [r.root(signed.source,planes(raw,n,1)),r.root(mag.source,planes(magnitude,n,1)),r.source_root(up,planes(output,n,width))]==[roots[at],roots[at+1],roots[at+3]],'Replay:'+str(g)+':CommitmentMismatch')
         for start in range(0,size,v['width']):
             stop=start+v['width'];b,m,u=projector.row([[256*(x>>7)-x for x in raw[start:stop]],magnitude[start:stop],[v['S']-x for x in output[start:stop]]]);B.append(b);M.append(m);target=sc.add(target,u)
     need(spool.read(1)==b'' and projector.at==v['count'],'SpoolShape');padding=[sc.scalar(0,d)]*(v['nr']-v['rows']);tables=[[sc.scalar(x,d) for x in local['scale']],B+padding];terms=[(sc.scalar(1,d),[0,1])]

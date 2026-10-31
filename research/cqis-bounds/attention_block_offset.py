@@ -116,7 +116,8 @@ def parent(p,v,expected,roots,states,local,spool,d):
     actual_weights=nmod_mat(v['width'],d,[x for weight in weights[:v['width']] for x in weight],sc.P)
     for g,size in enumerate(v['sizes']):
         values=read_group(spool,size);plan=range_spec(p,v,g+1);_,_,n,width,_,_=r.derive(plan,d)
-        need(r.source_root(plan,planes(values,n,width))==roots[g+1],'Value:'+str(g)+':CommitmentMismatch')
+        # Compact roots authenticate the full uint32 only when unused bytes are zero.
+        need(all(x<1<<(8*width) for x in values) and r.source_root(plan,planes(values,n,width))==roots[g+1],'Value:'+str(g)+':CommitmentMismatch')
         rows=size//v['width'];projected=[sc.scalar(0,d)]*rows
         for l in range(v['lb']):
             matrix=nmod_mat(rows,v['width'],[x>>(4*l)&15 for x in values],sc.P)*actual_weights
