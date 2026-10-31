@@ -54,3 +54,7 @@ proofs passed; three full geometries and repository gates remain required.
 
 I tried to break it by adding p to a bounded output while retaining the original
 sources and carry proofs, and WeightedSum:RoundSumMismatch rejected the alias.
+
+The complete 128x128 proof passed with all exact receipt, draw and original
+checks; its digest is frozen. Full 16384x1 and 1x16384 geometries continue in
+the original runner. Repository gates and independent review remain pending.
