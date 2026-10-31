@@ -86,3 +86,10 @@ high planes rejected. Complete per-block probability sums composed for
 nonzero and zero totals; valid replacements rejected their pinned roots.
 The both-field matrix and full-size sum/alias control continue in the original
 runner. Required repository gates remain queued once.
+
+Normalization width check: the existing normalization schema permits exact
+mode with L=2^20, E=14, source fraction 30, output fraction 0 and drop 0.
+Then Zmax=2^34 and Dmax=Zmax*2^30=2^64, requiring nine significant bytes.
+The global Z root remains eight bytes; a shared denominator representation
+for exact and block modes must preserve this case with sixteen bytes.
+Its positivity and scaling consumers are still required.
