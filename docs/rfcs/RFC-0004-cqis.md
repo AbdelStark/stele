@@ -1717,3 +1717,14 @@ at Z=0. Both external roots preserve high bytes through Z=2^34 and H<2^50.
 No wrapper challenge is introduced. Complete global probability, positive
 denominator and raw-sign joins precede normalization composition. Accepted
 semantics, production cuts and original criteria remain unchanged.
+
+### A3/A6 research plan — Complete conditional attention normalization
+
+The [normalization scope](../../research/cqis-bounds/ATTENTION-NORMALIZATION-CONSUMER.md)
+requires six complete children in exact mode and five in block mode. Every
+shared source uses the same expected root; exact global H=S*Z joins the Z
+used by the positive denominator and the H used by canonical raw sign.
+The wrapper adds no challenge or loss and preserves each child's account.
+Negative controls must replace valid children while preserving zero outputs.
+Full source ownership and configured output conversion remain separate.
+Accepted semantics, cuts and original task criteria remain unchanged.

@@ -1024,3 +1024,11 @@ eight-byte global Z consumed by the positive denominator?
 precede tests/code. All actual/public product consumers, exact factor bytes
 at zero and complete global-sum/positive-denominator/raw-sign joins remain
 required before normalization composition.
+
+Q26/Q31 continuation: can all complete normalization children consume the
+same expected shared roots in one exact/block verifier, including exact
+global H=S*Z and zero-hidden source changes?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-NORMALIZATION-CONSUMER.md)
+precede namespace checks, tests and implementation. Full-width composition
+and every inherited original consumer remain required; conditional arithmetic
+does not establish upstream attention-row ownership.

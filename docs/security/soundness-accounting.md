@@ -1335,3 +1335,19 @@ bind the composition state. Static whole/column bounds and every exact S
 byte exclude aliases without lifting global Z/H into M31. Binding/FS/H,
 positive Z and actual upstream ownership remain additional. Confirm runtime
 receipts and all source joins before evidence or admission.
+
+### Draft Q26/Q31 complete conditional attention normalization
+
+Pre-implementation account: the wrapper draws no challenge and adds no
+identity or reduction loss. Sum complete canonical-sign, scaled-numerator,
+positive-denominator, strict-division and signed-output accounts unchanged;
+exact mode additionally includes the global-base account. Retain every
+independent lookup identity and unsquared lookup reduction. Sum range/A3 and
+A1 reductions, keeping four distinct polynomial identity numerators in exact
+mode and three in block mode. Two belong to positive denominator, one to
+division's doubled denominator and the exact-only one to global base. No
+supplied receipt replaces proof verification. Full expected schema/roles,
+ordered expected roots and all verified child states bind the final context.
+Every shared root is passed independently to each complete child verifier.
+Binding/FS/H and upstream ownership remain additional. Check every child
+receipt, aggregate and empty wrapper draw set before evidence or admission.
