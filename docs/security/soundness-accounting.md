@@ -1274,3 +1274,19 @@ Static Wmax<2^128 and byte-column sides<=767<p/2 exclude integer aliases.
 Complete whole ranges, broadcast joins and carry endpoints remain mandatory.
 Binding/FS/H and upstream positivity/magnitude proofs remain additional;
 confirm runtime receipts before evidence or admission.
+
+### Draft Q26/Q31 attention quotient product
+
+Pre-implementation account: independent lookup dimensions a+2, G copies of
+a-log2(G)+bp+1, bd+1 and four copies of a+4. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|, where
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is 57a+7bp+7bd+119 for G=1,
+or 66a+14bp+7bd+101 for G=2, including parent3(a+4). Full nonlookup
+draws per ZeroWeight/Sumcheck label are 25a+3bp+3bd+51 or
+29a+6bp+3bd+43 respectively; parent draws a+4 each. No A1/new label.
+Full schema, all roots and verified child states precede the degree-two
+parent; all seven actual originals retain their consumers. Complete whole
+ranges bound q<=32768, D<=Dmax and Qp<=32768Dmax<2^128. Carry words<=510
+use both verified bytes; independent column sides are bounded by 130815<p/2.
+Binding/FS/H, positive source provenance and the strict division relation
+remain additional. Confirm runtime receipts before evidence or admission.

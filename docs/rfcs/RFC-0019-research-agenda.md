@@ -999,3 +999,9 @@ and a shared denominator without weakening range capacity or source joins?
 [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BIASED-NUMERATOR.md)
 precede tests/code. All three group families, ragged padding and five actual
 original consumers remain required before signed-normalization composition.
+
+Q26/Q31 continuation: can all bounded quotients consume the actual shared
+denominator through full sixteen-byte products and two-byte carry groups?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-QUOTIENT-PRODUCT.md)
+precede tests/code. Seven actual originals, high carry bytes, both full group
+families and the strict division relation remain required.

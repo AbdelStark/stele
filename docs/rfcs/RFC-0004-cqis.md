@@ -1673,3 +1673,13 @@ preserve all 16384 channels, with explicit zero caps in ragged half-domains.
 Five actual originals consume the source/output, denominator broadcast and
 carry views. Positivity and scaled-magnitude provenance require their complete
 source proofs. Strict remainder, signed output and original criteria remain.
+
+### A3/A6 research plan — Attention quotient product
+
+Draft scope: [quotient product](../../research/cqis-bounds/ATTENTION-QUOTIENT-PRODUCT.md).
+Complete q/D/product ranges and sixteen byte columns bind Qp=q*D. Both
+carry bytes and seven actual originals remain consumed. Fixed output groups
+preserve every channel count through 16384; the maximum product reaches
+2^79. Static independent column sides are bounded by 130815<p/2. The
+actual positive denominator and strict division/remainder relations remain
+required; bounded q alone does not prove correct rounding or ownership.
