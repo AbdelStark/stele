@@ -1634,3 +1634,13 @@ reach 2^34. No whole-field global equality or new challenge is introduced.
 Returned metadata-bound composition states do not establish key membership.
 Shared global attainment, positive Z, normalization units, native/private
 source ownership and all original inference criteria remain required.
+
+### A3/A6 research plan — Positive scaled attention denominator
+
+Draft scope: [positive denominator](../../research/cqis-bounds/ATTENTION-DENOMINATOR.md).
+A complete ranged gap and limb sum prove Q<=Z<=LQ on the actual eight-byte
+probability root. A second complete limb product binds D=Z times the expected
+unit factor. Exact mode reaches D=2^64, requiring a sixteen-byte external
+denominator representation. No whole-field sum equality or wrapper challenge
+is introduced. Shared global attainment, numerator scaling, signed rounding,
+source ownership and all original inference criteria remain required.

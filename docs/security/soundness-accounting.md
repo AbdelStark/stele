@@ -1211,3 +1211,19 @@ or upstream membership follows. Complete per-block caps and byte-column
 certificates exclude integer aliases without lifting the global sum to M31.
 Binding/FS/H, global attainment and upstream composition remain additional;
 actual receipts must confirm these formulas before evidence is claimed.
+
+### Draft Q26/Q31 positive scaled attention denominator
+
+Pre-implementation account: no wrapper challenge. Gap range and two complete
+limb products retain seven independent lookup dimensions
+bg+1,bp+3,gp+3,gp+3,bd+2,gd+3,gd+3, with identity ((2^m+255)/|K|)^r and
+unsquared reduction r*(F0(m)+F0(8)+3m)/|K|, F0(m)=3m(m-1)/2+2m. Range/A3
+numerator 7bg+9(bp+bd)+18(gp+gd)+73, separate product identities kp-1/kd-1
+and total A1 reduction 2+4(bp+bd) remain. Nonlookup draws are
+3bg+4(bp+bd)+8(gp+gd)+31 ZeroWeight and 3bg+6(bp+bd)+8(gp+gd)+34 Sumcheck.
+Every actual operand and public power consumer is retained. Expected schema,
+roles, external/internal roots and verified child states bind the returned
+composition state. Complete gap/column consumers establish Q<=Z<=LQ and
+D=Z*F without whole-field global equalities. Binding/FS/H, upstream sources
+and global attainment remain additional. Actual receipts must confirm the
+formulas; no production admission follows.

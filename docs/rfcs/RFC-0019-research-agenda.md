@@ -975,3 +975,9 @@ one faithful eight-byte total up to 2^34 using the existing limb product?
 [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-PROBABILITY-SUM.md)
 precede tests/code. One shared globally attained maximum and complete source
 ownership remain required; independent block normalization is invalid.
+
+Q26/Q31 continuation: can complete range and limb-product consumers prove
+a positive, correctly scaled attention denominator across exact/block modes,
+including D=2^64? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DENOMINATOR.md)
+precede tests/code. Actual upstream roots, global attainment, numerator
+scaling, private lowering and original criteria remain required.
