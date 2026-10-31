@@ -47,3 +47,21 @@ All nine targeted CI tests and the seven real algebra commands passed.
 All required local repository gates passed. The full scripts test suite is
 still running; hosted validation remains pending. Full proving,
 native/private inference and the original E5-03 acceptance criteria remain open.
+
+Draft PRs now defer expensive jobs. The plan job runs for ready PRs and main
+pushes; independent full-size jobs and the upstream reference job depend on
+that plan. Native and research jobs already have this dependency. No command,
+matrix mode or required success assertion is removed.
+
+The aggregate still runs with `always()` and fails when any prerequisite is
+skipped, including a draft's skipped plan. A draft run is not merge evidence.
+Both `ready_for_review` and `converted_to_draft` trigger a run, alongside the
+original opened/synchronize/reopened events. Ready PRs run the full inventory.
+Readiness transitions do not themselves cancel older runs; reconciliation
+must compare actual head/base/event before accepting or retiring evidence.
+
+Tests first reproduced the missing readiness event and independent-job
+dependency. The corrected workflow tests reject a draft's skipped results
+and each incomplete prerequisite; existing inventory and aggregate tests
+remain mandatory. This schedules validation and does not grant acceptance
+to unvalidated work.
