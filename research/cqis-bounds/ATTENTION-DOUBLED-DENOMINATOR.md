@@ -56,3 +56,11 @@ output and final conversion must compose on their actual roots. Native/private
 inference, complete ownership, global attainment, fidelity, independent audit
 and all original task criteria remain required. No benchmark, new cut or
 additional weight pass is claimed; Draft amendments remain unaccepted.
+
+Seed 2744 passed all 10000 independent cases and 28651 column cells,
+including 3358 zero sources. Both modes, legal shifts, unit directions and
+all compact-width families passed. Frozen corpus SHA-256:
+`e07ddd1c2b56c031b3583849c0804d2114c6bbe7c9c7c4ef5f984f7429c87975`.
+Primary controls passed, including both actual operand originals, both public
+powers and the coefficient two hidden by zero. Boundary, composition, matrix
+and full-metadata proofs remain under validation; repository gates are queued.

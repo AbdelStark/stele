@@ -48,6 +48,7 @@ def corpus():
     rejects('Spec',lambda:c.derive(p,True))
     for D in (False,-1,(1<<64)+1):rejects('Denominator',lambda:c.witness(p,D))
     assert modes=={'exact','block1024'} and shifts=={0}|set(range(2,63)) and directions=={-1,0,1} and zeros>3000 and (4,4) in widths
+    assert (cells,zeros,digest.hexdigest())==(28651,3358,'e07ddd1c2b56c031b3583849c0804d2114c6bbe7c9c7c4ef5f984f7429c87975')
     print(json.dumps(dict(seed=2744,cases=10000,column_cells=cells,zero_sources=zeros,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

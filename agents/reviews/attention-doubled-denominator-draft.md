@@ -58,3 +58,9 @@ replayed linear proof still had zero rounds, but its original source claim
 no longer matched. The test expected a round failure. Only that expected
 diagnostic changed; the original log is retained and verifier behavior is
 unchanged. The failed control suite must complete.
+
+The corrected primary suite passed. I tried to break it by changing the
+coefficient two to zero while D was zero, and Double:Factor rejected it.
+Both forged actual operand views rejected at SourceClaimMismatch; compensated
+public powers rejected at PowerClaimMismatch. The complete independent corpus
+passed and its digest is frozen. Remaining proof suites and gates are pending.
