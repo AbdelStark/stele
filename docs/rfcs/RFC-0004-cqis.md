@@ -1683,3 +1683,14 @@ preserve every channel count through 16384; the maximum product reaches
 2^79. Static independent column sides are bounded by 130815<p/2. The
 actual positive denominator and strict division/remainder relations remain
 required; bounded q alone does not prove correct rounding or ownership.
+
+### A3/A6 research plan — Strict attention normalization division
+
+The [division scope](../../research/cqis-bounds/ATTENTION-DIVISION.md)
+composes complete Qp=qD, W=2U+D and D2=2D children on the same D root.
+Complete remainder/gap ranges and two faithful byte-column A3s bind
+W=2Qp+R and R+g+1=D2 across all channels. All ten actual originals and
+inherited consumers remain mandatory. Static sides are bounded by 767/511;
+full roots, namespaces and exact losses precede code. Signed output, actual
+source ownership and native/private inference remain required. Accepted
+semantics, production cuts and original task criteria are unchanged.

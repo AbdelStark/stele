@@ -1005,3 +1005,9 @@ denominator through full sixteen-byte products and two-byte carry groups?
 [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-QUOTIENT-PRODUCT.md)
 precede tests/code. Seven actual originals, high carry bytes, both full group
 families and the strict division relation remain required.
+
+Q26/Q31 continuation: can complete quotient-product, biased-numerator and
+doubled-denominator proofs bind strict rounded division on the same D root?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DIVISION.md)
+precede tests/code. Remainder endpoints, all ten originals, full channel
+capacity and actual source composition remain required.

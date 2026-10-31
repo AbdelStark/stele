@@ -1290,3 +1290,20 @@ ranges bound q<=32768, D<=Dmax and Qp<=32768Dmax<2^128. Carry words<=510
 use both verified bytes; independent column sides are bounded by 130815<p/2.
 Binding/FS/H, positive source provenance and the strict division relation
 remain additional. Confirm runtime receipts before evidence or admission.
+
+### Draft Q26/Q31 strict attention normalization division
+
+Pre-implementation account: add 2G independent lookup dimensions
+a-log2(G)+br+1 and eight dimensions a+3. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. New range/A3 numerator is 94a+14br+160 for G=1
+or 112a+28br+124 for G=2, including parent4(a+4). New full nonlookup
+draws per ZeroWeight/Sumcheck label are 42a+6br+72 or 50a+12br+56;
+parent draws 2(a+4) each. Complete quotient-product, biased-numerator and
+doubled-denominator accounts are additional, unchanged, including the latter's
+separate K-1 identity and 4b A1 reduction. No new label or A1. Expected
+schema, all roots and verified child states precede both parent A3s. Ten
+actual originals, static sides<=767/511<p/2, complete whole ranges and
+zero final carries preserve faithful equality and strict remainder. Binding/
+FS/H and upstream source provenance remain additional. Confirm runtime
+receipts and source joins before evidence or admission.
