@@ -67,3 +67,10 @@ can be exercised. No verifier behavior changed. The failed log is retained;
 only the waiting full-proof driver was stopped before any full proof started.
 The independent corpus and gate queue continue without a restart. The corrected
 proof suite must pass before an observed-attack conclusion.
+
+The independent corpus subsequently passed all 10000 random cases plus four
+capacity and one tie case. All 197531 checked channels matched NumPy integer
+normalization and full external byte roots; overflow rejection and signed
+zero behavior matched. Its digest is frozen. The corrected proof suite has
+passed the exact-mode substitution controls and is still running; complete
+block-mode, matrix, full-size and repository gate evidence remains pending.

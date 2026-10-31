@@ -65,6 +65,8 @@ def corpus():
             p=replace(spec(mode,width,10000+width),schema=c.bounds.Spec(1<<20,width,30 if mode=='exact' else 0,0,14 if mode=='exact' else 0,'static',65535,mode,0 if mode=='exact' else 12));z=(1<<34) if mode=='exact' else 1<<20;totals=([0,-1,1] if mode=='exact' else [-(1<<23),0,(32767<<8)])*((width+2)//3);check(p,z,totals[:width])
     p=replace(spec('exact',3),schema=c.bounds.Spec(2,3,0,0,0,'static',65535,'exact',0));check(p,2,[-1,1,-65536]);rejects('OutputRange',lambda:c.witness(p,2,[65536,0,0]))
     assert accepted>1000 and rejected>1000 and zeros>1000 and ties>0 and modes=={'exact','block1024'} and directions=={-1,0,1} and exponents==set(range(15))
+    assert (accepted,rejected,cells,zeros,ties)==(7440,2565,197531,25275,1045)
+    assert digest.hexdigest()=='a71a09a1eb6b5a66087ef5a4abe6d511fc07a6206e956ea951dad10f8fa6ff3b'
     print(json.dumps(dict(seed=2750,cases=10000,capacity_cases=4,tie_cases=1,accepted=accepted,rejected=rejected,cells=cells,negative_input_zero=zeros,ties=ties,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
