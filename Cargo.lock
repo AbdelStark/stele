@@ -263,7 +263,9 @@ dependencies = [
 name = "stele-pcs"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "stele-code",
+ "stele-field",
  "stele-hash",
 ]
 

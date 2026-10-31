@@ -161,4 +161,6 @@ if __name__ == '__main__':
             output.write(raw)
     else:
         assert not sys.argv[1:] and target.read_bytes() == raw
+    core = Path(__file__).resolve().parents[2] / 'crates/stele-pcs/tests/fixtures/field-wire.jsonl'
+    assert core.read_bytes() == raw, 'native field-wire fixture drift'
     print('6 certificate/opening cases; reference A1 unused-original controls;', sha256(raw).hexdigest())

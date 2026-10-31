@@ -2,6 +2,9 @@
 from collections import Counter
 import hashlib
 import json
+from pathlib import Path
+import subprocess
+import sys
 from native_policy import counts, decode_index
 
 
@@ -65,4 +68,19 @@ if __name__ == '__main__':
     rows = check_counts()
     check_sampling()
     digest = hashlib.sha256(json.dumps(rows, separators=(',', ':')).encode()).hexdigest()
+    if sys.argv[1:] == ['--native']:
+        result = subprocess.run(['cargo', 'run', '-q', '-p', 'stele-pcs', '--example',
+                                 'field_policy', '--locked', '--offline'],
+                                cwd=Path(__file__).resolve().parents[2], check=True,
+                                capture_output=True, text=True)
+        native = [[int(value) for value in line.split()] for line in result.stdout.splitlines()]
+        expected = []
+        for m, blowup, cert, opening in rows:
+            n = (1 << m) << blowup
+            distance = n if m == 0 else n-(1 << m)
+            expected.append([m, blowup, n, distance, (distance-1)//3, cert, opening])
+        assert native == expected, 'native geometry/query policy differs from exact checked values'
+        print('59 native query pairs match exact independently checked minima')
+    else:
+        assert not sys.argv[1:], 'unknown arguments'
     print('59 minimal query pairs; 12 exact toy distributions; 30 M31 thresholds;', digest)

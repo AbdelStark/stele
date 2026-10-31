@@ -1,9 +1,12 @@
-//! stele-pcs — governed by RFC-0010. No behaviour exists here that is not specified there (INV-1).
+//! Conditional field source bytes and unverified wire shapes, RFC-0010 A9.
+//!
+//! No certificate verifier or profile admission exists in this layer.
+//! ```compile_fail
+//! use stele_pcs::verify_certificate;
+//! ```
 #![forbid(unsafe_code)]
+#![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn skeleton_compiles() {}
-}
+mod source;
+pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};

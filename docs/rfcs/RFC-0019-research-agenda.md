@@ -922,3 +922,9 @@ blocked E4-03 criteria. Only the fixed-oracle, certificate, individual-opening
 and bounded adaptive-reuse arguments are adopted. Packing, fused B, batching
 optimization, extraction, privacy and all original source/profile obligations
 remain. Q12's concrete FS/QROM composition is unchanged and unresolved.
+
+Q27 native source continuation: [field-source parsing](../../research/merkle-oracle/NATIVE-SOURCE.md)
+implements canonical context, finite policy and borrowed unverified wire shapes.
+Both-field fixture parity and all 59 native parameter tuples are checked.
+No accepting PCS API, certificate handle, new control coverage or profile follows;
+continue E4-03a with actual registration and opening consumers.

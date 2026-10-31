@@ -30,6 +30,9 @@ class ScaffoldTests(unittest.TestCase):
                         self.assertIn('#![no_std]', source)
             verifier = tomllib.loads((root / 'crates/stele-verifier/Cargo.toml').read_text())
             self.assertEqual(set(verifier['dependencies']), {'stele-field', 'stele-hash'})
+            pcs = tomllib.loads((root / 'crates/stele-pcs/Cargo.toml').read_text())
+            self.assertEqual(set(pcs['dependencies']), {'stele-code', 'stele-field', 'stele-hash'})
+            self.assertIn('#![no_std]', (root / 'crates/stele-pcs/src/lib.rs').read_text())
             source = root / 'crates/stele-field/src/lib.rs'
             source.write_text(source.read_text() + '\n// preserved implementation\n')
             before = source.read_bytes()
@@ -55,6 +58,8 @@ class ScaffoldTests(unittest.TestCase):
                 ('stele-gkr', 'stele-hash', 'dependencies'),
                 ('stele-gkr', 'stele-pcs', 'dependencies'),
                 ('stele-lookup', 'stele-pcs', 'dependencies'),
+                ('stele-pcs', 'stele-sumcheck', 'dependencies'),
+                ('stele-pcs', 'stele-verifier', 'dependencies'),
                 ('stele-lookup', 'stele-verifier', 'dev-dependencies'),
                 ('stele-prover', 'stele-verifier', 'dependencies'),
                 ('stele-verifier', 'stele-proof', 'dependencies'),

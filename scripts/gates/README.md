@@ -76,3 +76,9 @@ file inventory, exact arithmetic-only module entry and field-only dependency
 manifest continue to reject unwired GKR stage/source/transcript additions.
 This earns no NC-0203, source authentication or stage accounting coverage. The
 bootstrap snapshot is not refreshed; E3-06 still requires its full producer.
+
+RFC-0010 A9 source parsing replaces only the PCS empty-crate guard with actual
+native/Python codec and policy checks. Its closed public declaration inventory
+rejects new accepting methods and trait conversions inside the existing module;
+new consumers need their real validators and controls. Parsed wire bytes carry
+no authentication or PCS coverage. Verifier/reductions and other guards remain.

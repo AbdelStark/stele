@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
     'digest': ('prover', 'proof'),
-    'negative-controls': ('pcs', 'verifier', 'reductions'),
-    'soundness-accounting': ('pcs', 'verifier'),
+    'negative-controls': ('verifier', 'reductions'),
+    'soundness-accounting': ('verifier',),
     'parity': ('gpu', 'kernels'),
 }
 OWNERS = {
@@ -52,6 +52,74 @@ def bootstrap_guard(root, gate):
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
+
+
+def field_source_codec(root):
+    """A9 source/wire parsing only; accepting PCS APIs require their actual validators."""
+    crate = root / 'crates/stele-pcs'
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs',
+               'tests/field_source.rs', 'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
+    actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
+    library = ('//! Conditional field source bytes and unverified wire shapes, RFC-0010 A9.\n'
+               '//!\n//! No certificate verifier or profile admission exists in this layer.\n'
+               '//! ```compile_fail\n//! use stele_pcs::verify_certificate;\n//! ```\n'
+               '#![forbid(unsafe_code)]\n#![no_std]\n'
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+               'mod source;\npub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash')}
+    source = (crate / 'src/source.rs').read_text()
+    # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
+    code = re.sub(r'//[^\n]*', '', source)
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    surface = [(kind or 'field', name) for kind, name in declarations]
+    expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
+        ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
+        ('field', 'certificate_queries'), ('field', 'opening_queries'), ('struct', 'Source'),
+        ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'path_height'),
+        ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'),
+        ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
+        ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'responses')]
+    compact = lambda text: re.sub(r'\s+', '', text)
+    impls = [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', code)]
+    derives = [compact(text) for text in re.findall(r'#\[[^\]]*\]', code)]
+    imports = [compact(text) for text in re.findall(r'\buse\s+[^;]+;', code)]
+    enums = [(name, compact(body)) for name, body in re.findall(r'pub enum (\w+)\s*\{([^}]*)\}', code)]
+    closed_surface = (surface == expected_surface
+        and len(declarations) == len(re.findall(r'\bpub\b', code))
+        and impls == ['impl<K:ChallengeField>Source<K>{', "impl<'a>Wire<'a>{",
+                      "implExactSizeIterator<Item=Response<'a>>+'_{"]
+        and derives == ['#[derive(Clone,Copy,Debug,Eq,PartialEq)]']*3
+            + ['#[derive(Clone,Copy,Debug)]']*3
+        and imports == ['usecore::marker::PhantomData;', 'usestele_code::Circle;',
+            'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
+        and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,Capacity,'),
+                      ('ProofKind', 'Certificate,Opening,')]
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
+    if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
+            or not closed_surface
+            or manifest.get('dependencies') != dependencies
+            or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
+            or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
+            or 'build' in manifest.get('package', {})):
+        raise ValueError('PCS verifier not wired; only A9 source/wire parsing admitted (E4-03a)')
+    checks = [
+        (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
+         ['test matches_reference_qm31_source_and_wire ... ok',
+          'test matches_reference_om31_source_and_wire ... ok',
+          'test rejects_unsupported_sources_without_allocation ... ok',
+          'test accepts_maximum_source_shape_without_domain_allocation ... ok',
+          '2 passed; 0 failed']),
+        (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
+         ['59 native query pairs match exact independently checked minima']),
+        (['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'],
+         ['4e5327828a8fe47f4b44537278f550e6231da0415022474110b56d6113a8b7ed']),
+    ]
+    for command, expected in checks:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or any(text not in result.stdout for text in expected):
+            raise ValueError(f'field source codec checks failed: {result.stdout} {result.stderr}')
+    print('gate PCS: canonical source/wire parsing and all59 policies; no certificate or NC credit')
 
 
 def fraction_reductions(root):
@@ -540,6 +608,8 @@ def main():
         else:
             if args.gate == 'negative-controls':
                 controls_layout(ROOT)
+            if args.gate in ('negative-controls', 'soundness-accounting'):
+                field_source_codec(ROOT)
             bootstrap_guard(ROOT, args.gate)
             if args.gate == 'digest':
                 native_encoder(ROOT)
