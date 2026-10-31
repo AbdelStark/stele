@@ -42,9 +42,15 @@ bench/                    ← benchmark protocol and result ledger format
 
 ## Status
 
-`v0.1.0` — workspace bootstrap and CI guards implemented. Crates are skeletons; inference proving, verification,
-zero-knowledge, and GPU execution are not implemented. The task graph (`agents/tasks/graph.yaml`)
-is the single source of truth for what to build next. There are no human timelines in this repository by design.
+`v0.1.0`: native field, transcript, Merkle, sumcheck, coding and CQIS primitives
+are implemented. Complete inference proving, verification, zero-knowledge and
+GPU execution are not implemented. The prover, verifier, proof format, PCS,
+model IR and CLI still have scaffold guards.
+
+The [first-inference plan](agents/context/first-inference-plan.md) identifies
+the missing source consumers and integration requirements. The task graph
+(`agents/tasks/graph.yaml`) remains the source of truth for dependencies and
+acceptance criteria. Research proofs do not count as production coverage.
 
 ## Bootstrap checks
 

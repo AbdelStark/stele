@@ -976,8 +976,13 @@ tasks:
   epic: E8
   title: Prover orchestrator (stage runner, claim graph executor) and proof container v1
   depends:
-  - E7-10
+  - E6-03
+  - E7-03
+  - E7-04
+  - E7-05
   - E7-08
+  - E7-09
+  - E7-10
   rfc:
   - RFC-0007 §4
   - RFC-0016 §1
@@ -1046,7 +1051,7 @@ tasks:
   epic: E8
   title: Digest gate with recorded W8 digests
   depends:
-  - E8-01
+  - E8-02
   rfc:
   - RFC-0020 §5
   skill: benchmark-runner
@@ -1059,6 +1064,7 @@ tasks:
   title: Llama-3.1-8B end to end on CPU (W1), memory planner, 64-core run
   depends:
   - E8-06
+  - E8-05
   - E5-05
   - E6-03
   rfc:
