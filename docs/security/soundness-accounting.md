@@ -1368,3 +1368,20 @@ ZeroWeight and 74a+36b+5c+11 Sumcheck; static draws per label are
 and actual originals remain mandatory. No new challenge or label. Binding/FS/H
 and actual inference provenance remain additional. Require unchanged legacy
 digests and full-size receipts before evidence or admission.
+
+### Draft Q26/Q31 head assembly and complete output conversion
+
+Pre-implementation account: no wrapper challenge, identity or reduction.
+Verify every complete head normalization account unchanged, then add the
+complete dynamic/static row-code account at a=log2(next_power_of_two(h*w)).
+Retain four independent product identity numerators per exact head or three
+per block head, plus all inherited A1 reductions. Sum range/A3 and unsquared
+lookup reductions, keeping every repeated lookup identity. Dynamic output
+selection contributes a; static selection contributes zero. Every original
+source/range/normalization/maximum/rounding consumer remains mandatory.
+The verifier hashes only actual verified head-output bytes, in expected
+head/plane order with complete-row padding, to derive the conversion source.
+Full expected metadata, ordered external roots, that assembled root and all
+verified child states bind the final context. Binding/FS/H and actual
+upstream/model provenance remain additional. Require exact child/aggregate
+receipts, empty wrapper draws and full-source substitution rejection.

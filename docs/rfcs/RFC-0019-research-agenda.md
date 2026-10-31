@@ -1038,3 +1038,10 @@ entries within existing range lookup domains and preserve every legacy proof?
 [Scope and kill criteria](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
 precede tests and adapter changes. Complete head assembly and full-row
 conversion source ownership remain required after this capacity prerequisite.
+
+Q26/Q31 continuation: can complete per-head normalization proofs bind one
+configured output-row conversion on the actual ordered int16 source bytes?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-OUTPUT-CONVERSION.md)
+precede namespace checks, tests and code. Full h=128,w=128 composition and
+valid replacement/source-order controls remain required. Conditional head
+arithmetic does not establish actual GQA/key/value/model ownership.

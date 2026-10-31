@@ -1738,3 +1738,13 @@ All maximum/scale/rounding consumers, transcripts and dimension-dependent
 accounts remain unchanged; legacy digests and full-size proofs are required.
 Head assembly and one conversion over the complete attention output row
 remain separate obligations. Accepted semantics and production cuts do not change.
+
+### A3/A6/A8 research plan — Head assembly and complete output conversion
+
+The [output conversion scope](../../research/cqis-bounds/ATTENTION-OUTPUT-CONVERSION.md)
+requires every complete head normalization proof, then gathers actual int16
+output bytes in head order into one complete configured row. Its derived
+source root feeds the existing complete dynamic/static row-code consumer.
+The wrapper adds no challenge and retains all child losses and originals.
+Actual key/value/GQA/model ownership and O-projection remain separate;
+Accepted semantics, cuts and original task criteria do not change.
