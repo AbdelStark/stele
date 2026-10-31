@@ -40,3 +40,12 @@ four-plane root and one degree-two sumcheck over all key rows, with every
 actual source claim consumed. Full attention composition, native/private
 PCS/ZK/FS, GPU parity, fidelity and independent audit remain required. Original
 task status and acceptance criteria stay blocked.
+
+Before implementation, the corrected test harness failed because `root` did
+not exist. The initial harness import error was fixed first. The four complete
+lookup proofs then passed against the unchanged stored-tree implementation at
+base `ff0f005e87d283d4d2fb8fbce172216b0eda5322`; their proof/root/receipt
+digests are frozen in `streaming-proof-digests.json`. A wrong expected root
+rejected at FinalEvaluationMismatch; the test's original expected diagnostic
+was corrected before capture. Actual source mutations rejected at
+CommitmentMismatch. No verifier code changed during baseline capture.
