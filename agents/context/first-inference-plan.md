@@ -69,6 +69,18 @@ A smaller committed-matmul integration can test R3/R4,
 but is not W8 or project completion. Do not add another isolated arithmetic
 study unless it resolves a named missing condition in this DAG.
 
+The next R2 review package is a native committed-field source consumer.
+Use the existing conditional proofs in `formal/certified-functional-opening.md`
+and `formal/stacked-statement.md` to specify expected root/layout/code binding,
+canonical certificate/opening bytes, unbiased queries and certificate reuse.
+First resolve how actual Merkle commitments, including missing or partial
+leaves, instantiate the complete field-valued oracle assumed by the proof.
+Then terminate existing A1 original claims in Circle/Merkle opening checks;
+the verifier receives expected roots rather than the original input tables.
+Keep every separate row/group equation and consume zero-coefficient originals.
+This package needs RFC review before native code. Packing, CQIS integer
+ownership, ZK and Q12 remain separate obligations, not implied achievements.
+
 ## Evidence required at the integration boundary
 
 The independent verifier derives the complete plan and certificates from
