@@ -19,7 +19,13 @@ fn accepts_repository_catalog_without_crediting_stub() {
     assert!(coverage.contains("4/21 bindings; 20/85 controls"));
     assert_eq!(coverage.matches("MISSING").count(), 65);
     for id in 606..=609 {
-        assert!(!catalog.iter().find(|entry| entry.id == id).unwrap().done);
+        assert!(
+            !catalog
+                .iter()
+                .find(|entry| entry.id == id)
+                .expect("reserved PCS control")
+                .done
+        );
     }
     let streaming = catalog
         .iter()
