@@ -1307,3 +1307,17 @@ actual originals, static sides<=767/511<p/2, complete whole ranges and
 zero final carries preserve faithful equality and strict remainder. Binding/
 FS/H and upstream source provenance remain additional. Confirm runtime
 receipts and source joins before evidence or admission.
+
+### Draft Q26/Q31 signed attention normalization output
+
+Pre-implementation account: independent lookup dimensions a+1 and three
+copies of a+2 retain identities ((2^m+255)/|K|)^r and unsquared reductions
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Full range/A3 numerator is
+55a+35, including parent3a and the complete signed-source43a+35. Full
+nonlookup draws per ZeroWeight/Sumcheck label are 23a+14; parent draws a
+each. No A1/new label. Full expected schema, all external roots and verified
+child states precede the parent. All three actual parent originals and every
+inherited source/public claim remain mandatory, including at q=0. Static
+sides<=32768<p/2 and complete int16 source relations preserve faithful signed
+output. Binding/FS/H and actual canonical-sign/magnitude/division provenance
+remain additional. Confirm runtime receipts and source joins before admission.

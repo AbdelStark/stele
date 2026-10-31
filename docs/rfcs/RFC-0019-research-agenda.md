@@ -1011,3 +1011,9 @@ doubled-denominator proofs bind strict rounded division on the same D root?
 [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DIVISION.md)
 precede tests/code. Remainder endpoints, all ten originals, full channel
 capacity and actual source composition remain required.
+
+Q26/Q31 continuation: can the actual rounded magnitude and input sign bind
+canonical int16 attention outputs, including negative inputs rounded to zero?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-SIGNED-OUTPUT.md)
+precede tests/code. Complete exact/block sign-to-magnitude-to-division joins,
+all originals and full capacity remain required.

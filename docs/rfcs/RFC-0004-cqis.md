@@ -1694,3 +1694,15 @@ inherited consumers remain mandatory. Static sides are bounded by 767/511;
 full roots, namespaces and exact losses precede code. Signed output, actual
 source ownership and native/private inference remain required. Accepted
 semantics, production cuts and original task criteria are unchanged.
+
+### A3/A6 research plan — Signed attention normalization output
+
+The [signed output scope](../../research/cqis-bounds/ATTENTION-SIGNED-OUTPUT.md)
+reuses complete int16 signed-source proofs with the actual rounded-magnitude
+root and a complete Boolean input-sign range. One faithful degree-two A3
+consumes q, input sign and canonical output sign, including all zero-hidden
+originals. Negative inputs may round to zero; positive 32768 must reject.
+Canonical sign, scaled-numerator and strict-division source chains must join
+on the same roots in both accumulation modes. Configured conversion and
+complete upstream/native/private ownership remain open; Accepted text and
+production cuts are unchanged.
