@@ -50,3 +50,11 @@ missing module; the complete evidence and repository gates remain required.
 
 The observed-attack conclusion is pending actual controls. This review does
 not grant production coverage or approve an RFC amendment.
+
+Focused context-encoding controls passed for both modes, fields and repetition
+counts: changing any one opaque child state, the schema or an output role
+changes the final context; missing states and extra roots reject. These tests
+ran separately because the original proof runner was already loaded. Future
+boundary runs include them. Actual proof-substitution controls and the corpus
+continue in their original processes; no admission result is inferred from
+the context test alone.

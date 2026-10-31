@@ -69,6 +69,7 @@ def corpus():
 
 
 def namespaces():
+    context()
     for mode in ('exact','block1024'):
         p=replace(spec(mode,16384,(1<<32)-1,2),schema=c.bounds.Spec(1<<20,16384,30 if mode=='exact' else 0,0,14 if mode=='exact' else 0,'static',65535,mode,0 if mode=='exact' else 12))
         for d in (4,8):
@@ -80,6 +81,18 @@ def namespaces():
             spans.sort();assert all(lo+size<=nxt for (lo,size),(nxt,_) in zip(spans,spans[1:]))
         for bad in (replace(p,identity=1<<32),replace(p,repetitions=True),replace(p,output=p.sign),replace(p,probability=v['base']),replace(p,base_source=0 if mode=='exact' else 11002)):rejects('Spec',lambda:c.derive(bad,4))
     print('full-width maximum-identity child namespaces, mode roles and fixed block membership metadata pass',flush=True)
+
+
+def context():
+    for mode in ('exact','block1024'):
+        for d,reps in ((4,1),(4,2),(8,1),(8,2)):
+            p=spec(mode,3,8450,reps);v=c.derive(p,d);roots=[hashlib.sha256(role.encode()).digest() for role in v['roles']];states=[hashlib.sha256(name.encode()).digest() for name,module,child,routes,label in v['children']];t=c.transcript(v,roots,states,d);assert not t.draws
+            for index in range(len(states)):
+                changed=states.copy();changed[index]=bytes([states[index][0]^1])+states[index][1:];assert c.transcript(v,roots,changed,d).state!=t.state
+            for other in (replace(p,schema=replace(p.schema,fraction=1,output_fraction=1)),replace(p,output=11213)):
+                assert c.transcript(c.derive(other,d),roots,states,d).state!=t.state
+            rejects('Root',lambda:c.transcript(v,roots,states[:-1],d));rejects('Root',lambda:c.transcript(v,roots+[bytes(32)],states,d))
+    print('each child state, schema and role binds the normalization context without a wrapper draw',flush=True)
 
 
 def account(p,out,d):

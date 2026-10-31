@@ -81,3 +81,10 @@ Equivalent arithmetic metadata may permit valid child proof reuse. The
 returned context state must change with expected schema/roles; a caller
 must bind that state. Controls must reject replay as the original context,
 without requiring rejection of a mathematically valid alternate statement.
+
+The tests-first run rejected the missing module. The complete consumer is
+implemented with no wrapper challenge or plaintext verifier division. Focused
+context-encoding controls passed for each child state, expected schema and
+role across both modes/fields/repetition counts. The independent corpus and
+complete proof suites are running. Both full-width proofs and repository
+gates are queued behind the existing prerequisite processes.
