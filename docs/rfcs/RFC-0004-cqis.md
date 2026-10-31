@@ -1748,3 +1748,14 @@ source root feeds the existing complete dynamic/static row-code consumer.
 The wrapper adds no challenge and retains all child losses and originals.
 Actual key/value/GQA/model ownership and O-projection remain separate;
 Accepted semantics, cuts and original task criteria do not change.
+
+### A3/A6 research plan — Complete global attention offset aggregation
+
+The [global offset scope](../../research/cqis-bounds/ATTENTION-GLOBAL-OFFSET.md)
+retains every configured block through L=1048576,w=16384 in both modes.
+Complete block/output/carry ranges feed faithful byte-column equations.
+A fixed byte/channel projection and small block-domain A1 preserve separate
+losses and consume actual reauthenticated source projections. Canonical
+stream records and EOF bound retained parent data without narrowing the
+configured domain. Full-size proofs, resource evidence and upstream source
+joins remain required. Accepted semantics and production cuts are unchanged.

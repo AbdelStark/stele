@@ -1385,3 +1385,23 @@ Full expected metadata, ordered external roots, that assembled root and all
 verified child states bind the final context. Binding/FS/H and actual
 upstream/model provenance remain additional. Require exact child/aggregate
 receipts, empty wrapper draws and full-source substitution rejection.
+
+### Draft Q26/Q31 complete global attention offset aggregation
+
+Pre-implementation account: a=log2(N), bb=ceil(log2(B)); source compact-byte
+exponents bs_b<=3, output bo<=3, carry-group bc0/bc1<=1. Independent lookup
+dimensions are a+bs_b+1 for each block, a+bo+1 for output and a+bc_g+3 for
+each carry group. Each retains identity ((2^m+255)/|K|)^r and unsquared
+reduction r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Sum all children:
+range/A3 numerator 9a*(B+3)+36+7*(sum bs_b+bo+bc0+bc1); nonlookup draws
+per label 4a*(B+3)+16+3*(sum bs_b+bo+bc0+bc1). The parent projection
+identity has numerator a+3 and the degree-one A1 reduction has numerator bb;
+neither is squared or folded into a lookup identity. Parent draws only
+Sumcheck, a+3+bb times. Full ZeroWeight draws equal child draws, full
+Sumcheck draws add a+3+bb. All roots and child states precede projection.
+Faithful byte columns have sides<=256B-1<p/2 and statically zero final carry.
+Actual projected blocks are recomputed from reauthenticated verified bytes
+and consumed at the derived A1 point; no producer projection or receipt is
+accepted. Full EOF, high planes and zero padding remain checked. Binding,
+FS/H, native linear-view claims and actual upstream ownership are additional.
+Require exact runtime receipts and full original consumption before evidence.
