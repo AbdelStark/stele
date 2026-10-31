@@ -77,6 +77,7 @@ def honest(maximum=False):
         for size,length,E,policy,scale in (((16384,1<<20,14,'static',65535),) if maximum else cases):
             p=replace(spec(size,4910+count,reps),schema=c.bounds.Spec(length,size,7,E,policy,scale,'exact'));v=c.derive(p,d);H=0 if size==1 else v['constants']['base_max'];offsets=([0,H,2*H,max(0,H-1),H+int(H>0)]*((size+4)//5))[:size]
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,offsets,H,d);out=c.verify(p,oracle(p,offsets,H)[2],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
+    if not maximum:assert (count,digest.hexdigest())==(16,'23a04a1bdd5f29015ef7651056b8edc232735b154f44013e22b1f459b7c980b5')
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
