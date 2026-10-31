@@ -50,7 +50,8 @@ are forbidden at workspace level, so source-level lint allowances cannot weaken 
 This is a source policy check, not a proof about macro expansions or third-party API return
 types; new macros and dependencies still require review under the existing guardrails.
 
-CI runs on pull requests and pushes to main, avoiding duplicate branch/PR builds.
+Required CI runs on pull requests, avoiding duplicate branch/PR and post-merge builds.
+Implementation reaches main only through a validated PR with its tested base/tree checked.
 The parity job uses the actual Git diff. Push events compare before/after commits;
 PR events compare the merge base to the PR head. Rename detection is disabled so
 moving a file out of a GPU crate still triggers parity. Initial pushes compare to the

@@ -50,6 +50,7 @@ class ReadinessTests(unittest.TestCase):
         self.assertIsNotNone(count)
         self.assertEqual([int(x) for x in shards[1].split(',')], list(range(2 * int(count[1]))))
         self.assertNotIn('continue-on-error', text)
+        self.assertNotIn('\n  push:', text)
 
 
 if __name__ == '__main__':

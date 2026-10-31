@@ -340,3 +340,9 @@ full-size experiments, copied-source gate mutations, upstream regeneration and
 throughput measurements in an explicit manual workflow. Full-size Draft
 acceptance claims still require their own evidence. No protocol, challenge,
 sample-count, cost-model constant or weight-pass change. Status: Accepted.
+
+
+ADR-037 execution note: required CI runs on PR events only. Verify the tested
+merge tree against current main before each sequential merge; direct
+implementation pushes to main are forbidden. This avoids repeating the same
+research and native work after merge. No new evidence cache is introduced.

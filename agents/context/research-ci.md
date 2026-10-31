@@ -1,6 +1,13 @@
 # CI execution policy
 
-Required PR checks focus on implemented native behavior. A ready PR runs format,
+Required PR checks focus on implemented native behavior. CI runs on PR events,
+including readiness transitions, and does not repeat the same checks after merge.
+Before merging, compare the tested PR merge tree with the current main base;
+update and revalidate if that base changed. Direct implementation pushes to main
+are forbidden by the repository workflow. This is currently a procedural rule;
+GitHub branch protection is not configured.
+
+ A ready PR runs format,
 Clippy, workspace and example tests, dependency policy, independent digests, the
 actual negative-control catalogue, soundness accounting, and repository checks.
 `scripts/gates/native.sh` executes the union of digest/control/accounting

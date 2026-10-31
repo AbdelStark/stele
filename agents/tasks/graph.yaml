@@ -143,7 +143,7 @@ tasks:
   crate: ci
   status: in_progress
   agent: codex-root
-  branch: task/E0-06-ci-consolidation
+  branch: task/E0-06-ci-ready
   acceptance:
   - all existing published work reconciled in one PR with source history preserved
   - required native controls, independent digests and accounting pass on the consolidated tree
@@ -566,9 +566,7 @@ tasks:
   - RFC-0020 A5
   skill: pcs-engineer
   crate: stele-pcs
-  status: in_progress
-  agent: codex-root
-  branch: task/E4-03a-certificate-verifier
+  status: ready
   acceptance:
   - both-field native/Python certificate and opening byte parity
   - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation

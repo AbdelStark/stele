@@ -47,6 +47,8 @@ legibility are co‑equal. A fast prover that admits one false statement is wort
 4. Implement one task at a time. Validate and merge its PR before starting the next task.
    Keep new changes under ~800 lines where practical; split sequentially, never into parallel PR stacks.
    The owner-directed E0-06 consolidation is the one-time exception for existing pending work.
+   Send implementation changes to main through the validated PR; never push them directly.
+   Before merging, verify that the passing PR run covers the current main base and intended merge tree.
 5. Run the gates: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --workspace`,
    `scripts/gates/digest.sh` (reference digests), `scripts/gates/negative-controls.sh`, `scripts/gates/parity.sh` (if GPU touched),
    `scripts/gates/soundness-accounting.sh` (if any challenge/transcript change).

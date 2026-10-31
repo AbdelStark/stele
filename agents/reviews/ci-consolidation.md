@@ -28,3 +28,8 @@ open wherever full-size, native, private-source or model evidence is missing.
 The owner requested this single consolidation despite its size. Subsequent
 implementation tasks must validate and merge sequentially. CI scheduling
 changes add no soundness claim and reduce no native parity corpus.
+
+
+E4-03a is queued as ready while E0-06 is active. Its delivered certificate
+pieces remain integrated; its original opening/adapter criteria are unchanged.
+The preserved opening work resumes only after this integration merges.
