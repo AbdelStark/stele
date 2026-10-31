@@ -533,3 +533,46 @@ No native API, challenge label, parameter flag or production ledger changes.
 E4-01/E4-03 retain their original blocked criteria; A1/A3/A6/A7 and Q12 stay open.
 Cost terms are authentication, decoding, encoding and cache work in T_misc/c_c;
 the mathematical query-log completion is not charged as native verifier work.
+
+### A9: Conditional native Circle field-source consumer
+
+Status: Draft. Question Q27. Proposed exact contract:
+[native field PCS](../../formal/native-field-pcs.md). Companion RFC-0012 A10
+and RFC-0020 A5. Motivation: A3/A8 need actual source/context, certificate,
+opening and original-claim consumers before native arithmetic can terminate
+at expected roots without receiving original tables.
+
+Proposed conditional implementation scope:
+
+> Implement the version-1 field-source bytes, fixed Circle query policy,
+> standalone registration certificate and general functional opening exactly
+> as specified in formal/native-field-pcs.md. The verifier derives all shapes,
+> column indices and counts from expected context. Canonical M31 columns are
+> authenticated at their actual queried indices. Complete row messages bind
+> before column sampling; complete response blocks bind before continuation.
+> An opaque verified certificate is constructed only by full verification.
+> Its identity includes expected context, policy, K and the framed canonical
+> certificate digest, with collision accounting. This refines A8's exact-byte
+> cache identity; it grants no unchecked deserialization or receipt path.
+>
+> The stele-reductions adapter binds the complete ordered expected source bundle
+> before invoking the actual A1 verifier and consumes every returned original
+> point/value through its matching PCS opening. Original tables and arbitrary
+> authentication callbacks are absent from its verifier interface. Every error
+> aborts the enclosing attempt with no usable accounting or certificate handle.
+
+The independent policy checker verifies all 59 least-count pairs by exact
+integer powers, 12 small uniform index distributions and every M31 threshold
+exponent. This evidence does not implement the native consumer or its controls.
+The conditional losses retain the certificate tensor/query terms, each opening
+query term, A8's complete lifetime hash events and all A1 SC terms. No profile,
+proven flag, packed/CQIS ownership, fused B, privacy or extraction is admitted.
+General multi-functional batching and the original A1/A3/A6/A7 obligations stay.
+
+Implementation must supply native/Python byte parity, actual source controls
+NC-0600/0601/0606..0609 and query-schedule control NC-0803, malformed-proof
+testing, exact records and repository gates. Draft proposed IDs are registered
+with implementation; this amendment adds no coverage. The original task
+criteria remain intact. Cost terms include complete registration, source rows,
+encoding, queries, paths, coefficient storage and proof buffers in c_c/T_misc.
+No measured constant, native benchmark or extra model weight pass is supplied.

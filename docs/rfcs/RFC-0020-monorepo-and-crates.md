@@ -103,3 +103,20 @@ proof implementation is authorized. Test-only serde_json may read the shared
 byte corpus. Update dependency policy and native gates at implementation;
 preserve guards for unimplemented lookup/PCS/verifier work. Codec tests earn
 no binding/profile credit. No measured constant changes. Affected task: E3-07a.
+
+### A5: Conditional field-source primitive dependencies
+
+Status: Draft. Companion RFC-0010 A9 and RFC-0012 A10.
+For the exact field PCS contract, stele-pcs may directly depend on stele-field
+and stele-poly in addition to code/hash. Canonical field decoding and the
+existing MSB equality table must be shared with the native arithmetic.
+For the closed A1 field-source adapter, stele-reductions may additionally
+depend on stele-field, stele-hash and stele-sumcheck. It invokes the actual
+A1 verifier and each required PCS consumer in the fixed source order.
+
+No PCS dependency or authentication callback enters GKR. stele-prover still
+cannot import stele-verifier. This scope changes no full-verifier dependency
+exception and introduces no proof-system dependency. Update the exact native
+dependency policy and rejection tests only with accepted implementation.
+Original stacked, inference, private-source and profile requirements remain.
+No Cargo edge or runtime behavior is introduced by this Draft.

@@ -690,3 +690,19 @@ certificate attempts retain their own proximity loss, and every later
 opening retains its query/RLC terms. Composition uses unconditional event
 containment, not randomness conditioned on future absence of hash events.
 This does not instantiate BLAKE3, QROM, FS/H, privacy or either profile.
+
+Q27's [native field-source proposal](../../formal/native-field-pcs.md), Draft
+RFC-0010 A9/RFC-0012 A10, retains the certificate tensor term
+`2*ell*(e+1)/p^d`, certificate miss `((N-e-1)/N)^q_c`, and each opening miss
+`((N-D+e)/N)^q_o`, with Circle setup loss zero. The closed A1 adapter retains
+its SC record and consumes every original, including unused inputs. A8's
+global collision and bounded registration-lifetime frontier terms remain;
+certificate digest identity also relies on that global hash accounting.
+
+The proposed sampler draws full K challenges and uses only the first limb
+for a rejection-sampled index. With at most 64 attempts per index, abort
+is bounded by `q_total*2^-64+(ell_total+64*q_total)*2^-1703`. This is
+availability loss; failed attempts never become acceptance or omitted hash
+work. Dedicated PCS tensor/query labels require registration and actual
+consumer/gate integration before native use. These research entries change
+no admitted configuration, production ledger, proven flag, FS/H or profile.

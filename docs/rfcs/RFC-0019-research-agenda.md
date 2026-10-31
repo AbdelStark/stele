@@ -901,3 +901,11 @@ separate lifetime terms. Exact framing/canonical-decoding controls and
 tiny-output counterexamples exercise this boundary. Native wire, query
 sampling, certificate reuse, source consumers and Q12 remain open; no
 profile, quantum security, extractor or production control is supplied.
+
+Q27 continuation: Draft RFC-0010 A9, RFC-0012 A10 and RFC-0020 A5 specify
+formal/native-field-pcs.md: canonical field-source bytes, standalone certificate,
+framed certificate identity, general opening and complete native A1 source
+closure. Exact policy checks cover all 59 Circle identities and unbiased
+index thresholds. Native consumers, two-field byte parity, actual controls
+and resource evidence remain required. This does not complete packed/fused
+source ownership, privacy, extraction, Q12 or either profile.
