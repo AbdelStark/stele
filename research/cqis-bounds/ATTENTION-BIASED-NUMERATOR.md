@@ -92,3 +92,9 @@ cases, covering 403456 channels and 3333 zero-bound cases. Both 8193 and
 Both exact and block-mode scaled-numerator/positive-denominator compositions
 also passed, including valid source replacement rejection. The original
 matrix continues; full proofs and repository gates remain queued.
+
+All 16 matrix proofs subsequently passed with exact receipts, draw totals
+and every actual original consumer. The original runner completed successfully.
+Frozen matrix SHA-256:
+`04832e09c6f8f76f08c853dd675bfa718ef51489af6acbd52f504c577da23d37`.
+Three full-width group-family proofs and repository gates remain queued.

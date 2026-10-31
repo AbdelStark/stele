@@ -68,3 +68,8 @@ independent cases and six ragged/full capacity cases preserve byte roots,
 carry columns and all three group families; the digest is frozen in the
 scope. Separately valid replacements of either source reject in both exact
 and block modes. Matrix, full proofs and repository gates remain pending.
+
+The 16-proof field/repetition matrix subsequently completed successfully.
+Exact receipts, draw totals and all five parent originals matched. Its
+digest is frozen; the three full-width proofs, repository gates and
+independent audit remain pending.
