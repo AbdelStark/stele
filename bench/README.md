@@ -619,3 +619,36 @@ SC/certificate/opening records and cumulative usage snapshots live in
 independent byte parity, finite-policy and negative-control gates still apply.
 These measurements do not establish profile admission, a fitted constant or an
 inference/weight-pass result.
+
+The [complete CPU ledger](ledger/e4-03a-field-pcs.json) records 60 samples from
+clean producer commit `a4c4d628bc4aaf91c67f7110f4d3b7f60515ff0e` on Apple M1 Max.
+The table shows mean inclusive time and maximum process RSS over three samples
+per cell. Certificate/opening bytes are totals across the named operation:
+one certificate and two openings for `primitive`, three of each for `a1`.
+A1 message bytes exclude its separately recorded public bundle/instance framing.
+Every JSON value is unchanged from the validated output; sample rows and large
+maps are compacted for review. Original research workers remained active, so
+these are bounded observations under shared host load, not speed comparisons.
+
+| Mode | ell,m | Field | Rate | Complete ms | Peak RSS MiB | Certificate bytes | Opening bytes | A1 message bytes |
+|---|---|---|---|---:|---:|---:|---:|---:|
+| primitive | 0,0 | QM31 | 1/2 | 0.948 | 1.578 | 4697 | 106 | 0 |
+| primitive | 0,0 | OM31 | 1/2 | 0.950 | 1.578 | 4713 | 138 | 0 |
+| primitive | 0,0 | QM31 | 1/4 | 1.865 | 1.594 | 8857 | 8874 | 0 |
+| primitive | 0,0 | OM31 | 1/4 | 1.942 | 1.594 | 8873 | 8906 | 0 |
+| primitive | 2,1 | QM31 | 1/2 | 4.085 | 1.781 | 25153 | 20866 | 0 |
+| primitive | 2,1 | OM31 | 1/2 | 4.138 | 1.734 | 25185 | 20930 | 0 |
+| primitive | 2,1 | QM31 | 1/4 | 4.042 | 1.813 | 35201 | 20674 | 0 |
+| primitive | 2,1 | OM31 | 1/4 | 4.324 | 1.781 | 35233 | 20738 | 0 |
+| primitive | 4,12 | QM31 | 1/2 | 67.753 | 4.391 | 302657 | 345154 | 0 |
+| primitive | 4,12 | OM31 | 1/2 | 129.709 | 4.766 | 368193 | 476226 | 0 |
+| primitive | 4,12 | QM31 | 1/4 | 89.411 | 5.922 | 226305 | 264194 | 0 |
+| primitive | 4,12 | OM31 | 1/4 | 170.243 | 7.375 | 291841 | 395266 | 0 |
+| primitive | 12,4 | QM31 | 1/2 | 265.253 | 16.563 | 7180353 | 7081346 | 0 |
+| primitive | 12,4 | OM31 | 1/2 | 668.585 | 17.141 | 7180609 | 7081858 | 0 |
+| primitive | 12,4 | QM31 | 1/4 | 197.329 | 12.250 | 5205121 | 4144514 | 0 |
+| primitive | 12,4 | OM31 | 1/4 | 458.913 | 12.719 | 5205377 | 4145026 | 0 |
+| a1 | 2,1 | QM31 | 1/2 | 8.175 | 1.891 | 75459 | 31299 | 192 |
+| a1 | 2,1 | OM31 | 1/2 | 9.139 | 2.000 | 75555 | 31395 | 336 |
+| a1 | 2,1 | QM31 | 1/4 | 8.122 | 1.859 | 105603 | 31011 | 192 |
+| a1 | 2,1 | OM31 | 1/4 | 10.003 | 2.188 | 105699 | 31107 | 336 |

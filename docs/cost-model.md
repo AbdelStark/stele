@@ -112,3 +112,13 @@ consumption and cleanup. Native whole-operation RSS includes allocator retention
 named source/encoding capacities have a narrower scope. These observations do
 not fit c_lu, change planning constants or add a weight pass. Full lookup, private
 source authentication, PCS, ZK, FS and inference remain separate obligations.
+
+## 11. Conditional field PCS observations
+
+The [E4-03a ledger and table](../bench/README.md#conditional-field-pcs-resources-e4-03a)
+measure complete native registration, repeated functional openings and actual
+three-original A1 closure under RFC-0010 A9. The c_c/c_sc/T_misc observations
+include full encoding, every consumer, producer point replay, validation and
+cleanup. Process RSS covers the complete pipeline; preparation and caller
+capacities retain their partial scopes. No fitted constant, additional weight
+pass, private-source composition, Q12 or inference/profile admission follows.
