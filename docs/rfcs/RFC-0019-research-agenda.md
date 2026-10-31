@@ -1052,3 +1052,10 @@ probability/value sources through 1024x16384 with one weighted-sum proof?
 precede tests and code. Stream complete ranges, preserve the flat source root
 and retain independent consumers even at zero probability. Actual restored-
 value preparation and complete upstream/model ownership remain required.
+
+Q26/Q31 continuation: can full canonical blocks bind restored values and the
+zero-scale rule with one degree-two parent proof and complete signed sources?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BLOCK-VALUES.md)
+precede tests and code. A bounded-memory flat projection must preserve all
+1024x16384 entries, authenticated group padding and each original consumer.
+Actual prepared projection rows and model ownership remain additional.

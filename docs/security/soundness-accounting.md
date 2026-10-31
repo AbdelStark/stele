@@ -1440,3 +1440,22 @@ each compact group and preserves the flat four-plane external source root.
 Static count C<=1024 bounds column sides below p/2. Streaming adds no
 challenge. Exact roster/EOF, padding and all carry slots remain mandatory.
 Binding, FS/H and actual upstream/model ownership remain additional.
+
+### Draft Q26/Q31 complete restored attention block
+
+Pre-implementation account: group exponent ag and compact output byte exponent
+bg give independent lookup dimensions (ag+1,ag+1,ag+2,ag+1,ag+bg+1). Complete
+signed8, tighter magnitude and output ranges contribute A3 numerator
+61ag+9+7bg and 26ag+4+3bg draws of each nonlookup label. Dynamic common
+scale/nonzero/predecessor ranges have dimensions (ar+2,ar+1,ar+2); together
+with the scale-predicate A3 their numerator is 30ar+17 and draw count is
+13ar+7 per nonlookup label. Retain each independent lookup identity
+((2^m+255)/|K|)^r and unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. After all source roots, verified child states and scale
+predicates, draw a flat equality coordinates and independent eta in dynamic
+mode. Projection identity loss is (a+dynamic)/|K|; the separate degree-two
+A1 over ar row coordinates adds 2ar/|K|. Parent Sumcheck draws add
+a+dynamic+ar. Consume all two/four original tables at their emitted point.
+Streaming and equality-weight caching add no challenge. Exact roster, EOF,
+local/global padding and static field certificates remain mandatory. Binding,
+FS/H, prepared projection-row and actual model ownership remain additional.
