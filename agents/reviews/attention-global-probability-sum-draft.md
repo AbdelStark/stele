@@ -68,3 +68,7 @@ compensated public powers rejected at PowerClaimMismatch. Complete per-block
 probability sums composed for nonzero and zero totals, and a valid changed
 source rejected at its pinned block root. The matrix, maximum modulus-alias
 control and repository gates remain pending.
+
+The complete 16-proof matrix subsequently passed with every receipt, draw
+total and original-claim check. Its transcript digest is frozen. The full
+1024-block proof, total-minus-p control and repository gates remain pending.

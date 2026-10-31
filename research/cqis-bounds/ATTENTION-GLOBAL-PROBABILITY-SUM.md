@@ -93,3 +93,9 @@ Then Zmax=2^34 and Dmax=Zmax*2^30=2^64, requiring nine significant bytes.
 The global Z root remains eight bytes; a shared denominator representation
 for exact and block modes must preserve this case with sixteen bytes.
 Its positivity and scaling consumers are still required.
+
+All 16 matrix proofs passed across both fields and repetition counts. Exact
+receipts, draw totals and both operand/public originals matched. Frozen
+SHA-256: `7459d9bdd7da9dbc27fb6a1109534b241f7836429fa2b368dbf2495f97e09d9d`.
+The complete 1024-block proof and its genuinely output-ranged total-minus-p
+control continue in the original runner. Repository gates remain queued.
