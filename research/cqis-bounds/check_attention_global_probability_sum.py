@@ -77,6 +77,7 @@ def honest(maximum=False):
                 assert sum(zs)==1<<34;product=copy.deepcopy(proof['sum']);layout=v['layout'];words=list((sum(zs)-r.sc.P).to_bytes(layout['s'],'little'));assert all(x<=cap for x,cap in zip(words,layout['output'].caps))
                 children=[(product[name],out['sum'][name]['state']) for name in ('input','output','carry')];children[1]=c.lp.cr.prove(layout['output'],words,d);bad,_=c.assemble(p,dict(pairs,sum=c.lp.assemble(v['sum'],children,d)),d);rejects('Sum:Product:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d));print('full total-minus-p alias passes output byte ranges and rejects the actual sum',flush=True)
     if not maximum:assert digest.hexdigest()=='7459d9bdd7da9dbc27fb6a1109534b241f7836429fa2b368dbf2495f97e09d9d'
+    else:assert (done,digest.hexdigest())==(1,'36436d08dfd62ede5837591d8d39ccb1cfcbb4787b747dd794aeb6d5fa084b16')
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
