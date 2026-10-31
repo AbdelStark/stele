@@ -83,3 +83,8 @@ The corrected 10000-case corpus and both capacity cases passed over 354302
 channels, including 3352 zero-bound cases and all shifts 0..92. Its digest
 is frozen. The original ragged-capacity failure remains recorded. Matrix,
 full-width proofs, repository gates and independent review remain pending.
+
+The original corrected proof runner completed all 16 matrix proofs with exact
+receipts, draws and original claims across both fields/repetition counts.
+Its observed digest is frozen. Full-width proofs, repository gates and
+independent review remain pending; no completed work was restarted.
