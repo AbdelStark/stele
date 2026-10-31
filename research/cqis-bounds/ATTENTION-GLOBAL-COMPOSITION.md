@@ -109,3 +109,10 @@ fifteen probability exponents and four value quantizers. Each uses the
 canonical minimum auxiliary shift while preserving its original L/Q caps.
 Future boundary runs include these checks. Complete zero-offset and
 zero-probability substitution proofs are also running separately.
+
+The independent corpus passed all 10000 cases at seed 2756: 5698 accepted,
+4302 rejected and 32034 accepted source cells. Its SHA-256 is frozen as
+`198089949cd75620fc52d65cf1e3e1dfa344b29a6fda2c9d858e09fa2aea7fe1`.
+Both primary source/join/stream substitution suites passed. The original
+proof matrix, remaining zero-bound edge cases, full-size proofs and local
+gates remain pending.

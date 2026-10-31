@@ -72,7 +72,8 @@ def corpus():
         except ValueError:
             rejects('OutputRange',lambda:c.out.witness(p.row,expected_z,expected_t));rejected+=1;digest.update(b'reject'+c.derive(p,4)['raw']);continue
         assert c.out.witness(p.row,expected_z,expected_t)==w;digest.update(b''.join(c.flatten(c.derive(p,4),roots)));accepted+=1;cells+=B*p.row.heads*s.width
-    assert accepted>1000 and rejected>100
+    assert (accepted,rejected,cells)==(5698,4302,32034)
+    assert digest.hexdigest()=='198089949cd75620fc52d65cf1e3e1dfa344b29a6fda2c9d858e09fa2aea7fe1'
     print(json.dumps(dict(seed=2756,cases=10000,accepted=accepted,rejected=rejected,source_cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
