@@ -54,3 +54,9 @@ and the control suite rejected it. The projection attack first passed
 standalone A1 reduction, then failed the actual original claim. This records
 observed rejection; full matrix, edge and maximum proofs and independent
 review remain required.
+
+The sixteen-proof matrix and both-field zero-bound edge suite subsequently
+passed. Every account, draw total and actual parent original matched. The
+original runner completed successfully and its matrix digest is frozen.
+Full-size proofs, resource evidence, repository gates and independent audit
+remain open.

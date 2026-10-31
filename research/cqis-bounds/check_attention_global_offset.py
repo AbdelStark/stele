@@ -168,6 +168,7 @@ def honest(mode='matrix'):
                 print('global offset start',mode,done+1,d,reps,acc,L,w,flush=True)
                 out=c.verify(p,roots,capture(c.prove(p,blocks(),d),states),d);assert states==[out['state']];account(p,out,d);digest.update(out['state']);done+=1
                 print('global offset passed',mode,done,d,reps,acc,L,w,flush=True)
+    if mode=='matrix':assert (done,digest.hexdigest())==(16,'01ab144edc53b15e7cbf61ccdd8de5a02c12e68d776b6aab39d0dfef67fefd2c')
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

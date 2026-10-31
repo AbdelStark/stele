@@ -108,3 +108,11 @@ Each external source contains 8N byte values. Its root retains the existing
 canonical four-byte field-word encoding per value; only the private spool
 stores each verified value in one byte. Replay reconstructs that same root
 encoding before projection. This introduces no alternate commitment format.
+
+All sixteen field/repetition matrix proofs passed with complete actual
+original consumption and exact accounts. The corrected original runner
+completed successfully. Frozen SHA-256:
+`01ab144edc53b15e7cbf61ccdd8de5a02c12e68d776b6aab39d0dfef67fefd2c`.
+Both-field zero-bound edge proofs also passed, retaining carry/output roots,
+strict tails and expected metadata contexts. Full-size proofs, resource
+evidence, repository gates and independent review remain required.
