@@ -81,6 +81,7 @@ def honest(maximum=False):
             p=replace(spec(6210+done,reps),schema=c.bounds.Spec(length,16384 if maximum else 3,fv,fo,E,policy,scale,mode,drop));z=length*(1<<E);print('honest start',done+1,d,reps,length,mode,drop,flush=True);proof,state=c.prove(p,z,d);D,roots=oracle(p,z);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d)
             if maximum:assert D==(1<<64 if mode=='exact' else 1<<48)
             digest.update(state);done+=1;print('honest passed',done,d,reps,length,mode,drop,flush=True)
+    assert (done,digest.hexdigest())==((2,'6219b6f737469a0ee7ea8e0d1f2d8b08296c4c8534a89b8ec00bba4f4cd2dfbd') if maximum else (16,'2520ceaff93a6febade2446752866ccc783348fe26dd2a11a363387e9427f134'))
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

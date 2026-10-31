@@ -88,3 +88,13 @@ A complete global probability-sum proof composed on its actual source root;
 valid changed and zero sums could not replace that admitted divisor source.
 The matrix and two full-metadata boundary proofs continue in the original
 runner. Required repository gates remain queued.
+
+All 16 matrix proofs passed across both fields and repetition counts with
+exact child receipts, draw totals and all original consumers. Frozen SHA-256:
+`2520ceaff93a6febade2446752866ccc783348fe26dd2a11a363387e9427f134`.
+Both full-metadata scalar proofs passed at length 1048576 and width 16384:
+exact D=2^64 and block D=2^48. Their combined frozen SHA-256 is
+`6219b6f737469a0ee7ea8e0d1f2d8b08296c4c8534a89b8ec00bba4f4cd2dfbd`.
+The original runner completed successfully. These scalar proofs establish
+the divisor boundary; upstream key/channel ownership and repository gates
+remain separate obligations.
