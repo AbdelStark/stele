@@ -1182,3 +1182,16 @@ range states precede channel coordinates and the A1 transcript. Static8G<p,
 G=ceil(L/1024)*qmax, makes each integer channel equality faithful. No new label.
 Binding/FS/H and upstream composition remain additional; actual receipts must
 confirm the formulas before evidence is claimed.
+
+### Draft Q26/Q31 canonical accumulated block sign
+
+Pre-implementation account: independent lookup dimensions a+bo+1,a+bm+1,a+1,
+a+bm+1, each identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Full range/A3 numerator41a+7(bo+2bm)
+includes parent5a. Parent draws2a per ZeroWeight/Sumcheck label; full totals
+18a+3(bo+2bm) each. Seven actual original claims remain consumed at their
+emitted points. Full expected metadata, external/internal roots and verified
+child states precede the parent transcript. Static2*max(4G,G+1)<p with
+G=ceil(L/1024)*qmax excludes aliases, including G=0. No new label or A1.
+Binding/FS/H and actual upstream composition remain additional; runtime
+receipts must confirm these formulas before evidence is claimed.

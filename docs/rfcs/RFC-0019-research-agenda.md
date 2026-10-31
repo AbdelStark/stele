@@ -964,3 +964,8 @@ Q26/Q31 continuation: [signed attention block totals](../../research/cqis-bounds
 asks whether actual signs and rounded quotients retain all original consumers
 through channel batching, including q=0 and sparse absolute block ids. Require
 complete source joins and reject compensating channel errors before inference.
+
+Q26/Q31 continuation: [canonical accumulated block sign](../../research/cqis-bounds/ATTENTION-BLOCK-TOTAL-SIGN.md)
+uses the static small total bound to test complete sign/magnitude consumption
+without a wide carry grid. G=0 and negative raw signs rounding to zero must
+retain all upstream consumers while the final total sign remains canonical.

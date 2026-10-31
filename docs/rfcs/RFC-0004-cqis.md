@@ -1613,3 +1613,13 @@ when q=0, including a negative raw sign. Tests must reject channel compensation,
 source substitutions and metadata replay. Total sign, global probability sum,
 restored normalization units and full ownership remain separate requirements.
 No Accepted cut, profile or production criterion changes.
+
+### A3/A6 research plan — Canonical accumulated block sign
+
+Draft plan: [accumulated block sign](../../research/cqis-bounds/ATTENTION-BLOCK-TOTAL-SIGN.md)
+consumes the actual U=T+G root with complete U/M/b/g ranges. Static G<2^25
+permits faithful small-field sign and canonical-zero A3s, including G=0.
+All seven originals and full external byte planes remain bound. Tests must
+reject negative zero, relaxed-cap aliases and valid total substitutions.
+Global probability sum, normalization units and complete ownership remain
+required. No Accepted role, cut, profile or original criterion changes.
