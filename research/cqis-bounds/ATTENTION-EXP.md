@@ -127,3 +127,9 @@ corrected representations with fail-fast disabled. All 11 CI inventory tests
 passed, including exact coverage of all twelve CLI modes and rejection of
 every unsuccessful required result. The original matrix/full-size runners
 and local gate queue continue without a restart.
+
+The original sixteen-proof matrix passed in both fields and repetition
+counts. Its transcript-state SHA-256 is frozen as
+`10934fcf02f1472736502323d2b105309a5416443d561912a8befd736daac3e7`.
+The queued full-size product proof has started. The full-size direct and
+corrected proofs and required local gates remain pending.
