@@ -33,25 +33,29 @@ def changed_paths(event):
 def scopes(paths):
     # Shared dependencies invalidate both campaigns; native gate edits do not
     # alter Python research proofs or the independent table arithmetic oracle.
-    shared = any(path.startswith((b'.github/actions/', b'.cargo/', b'Cargo.',
-                                  b'rust-toolchain', b'uv.lock', b'pyproject.toml'))
-                 for path in paths)
+    shared = [path for path in paths if path.startswith((
+        b'.github/actions/', b'.cargo/', b'Cargo.', b'rust-toolchain', b'uv.lock', b'pyproject.toml'))]
     routing = any(path in (b'.github/workflows/ci.yml', b'scripts/ci_scope.py',
                           b'scripts/ci_result.py') for path in paths)
+    broad = any(path != b'Cargo.lock' for path in shared) or routing or any(
+        (path.startswith((b'research/', b'harness/', b'formal/')) and path not in (
+            # The mandatory native gate executes this exact locked oracle.
+            b'research/merkle-oracle/check_field_wire.py',
+            b'research/merkle-oracle/check_field_wire.py.lock')) or path in (
+            b'.github/workflows/exhaustive.yml', b'scripts/research_ci.py',
+            b'scripts/research-checks.json', b'scripts/research-full-checks.json')
+        for path in paths)
+    native = any(path == b'Cargo.lock' or path.startswith((b'crates/stele-cqis/', b'crates/stele-field/'))
+                 for path in paths)
+    selection = 'all' if broad else 'native' if native else 'none'
     return {
         'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/'))
                    for path in paths),
-        'tables': shared or routing or any(path.startswith((b'crates/stele-field/', b'crates/stele-poly/',
+        'tables': bool(shared) or routing or any(path.startswith((b'crates/stele-field/', b'crates/stele-poly/',
                                                 b'crates/stele-simd/', b'crates/stele-cqis/'))
                                 for path in paths),
-        'research': shared or routing or any(
-            (path.startswith((b'research/', b'harness/', b'formal/')) and path not in (
-                # The mandatory native gate executes this exact locked oracle.
-                b'research/merkle-oracle/check_field_wire.py',
-                b'research/merkle-oracle/check_field_wire.py.lock')) or path in (
-                b'.github/workflows/exhaustive.yml', b'scripts/research_ci.py',
-                b'scripts/research-checks.json', b'scripts/research-full-checks.json')
-            for path in paths),
+        'research': selection != 'none',
+        'research_selection': selection,
     }
 
 

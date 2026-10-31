@@ -22,8 +22,7 @@
     "python3 research/cqis-tables/check_wide_exp.py",
     "uv run --locked --script research/cqis-tables/check_identity.py",
     "uv run --locked --script research/cqis-tables/check_functions.py",
-    "uv run --locked --script research/cqis-tables/check_table_bindings.py",
-    "uv run --locked --script harness/cqis/check_arithmetic.py"
+    "uv run --locked --script research/cqis-tables/check_table_bindings.py"
   ],
   "cqis-native": [
     "python3 research/cqis-tables/check_native_arithmetic.py",
@@ -38,9 +37,6 @@
   "cqis-bounds": [
     "python3 research/cqis-bounds/check_bounds.py",
     "uv run --locked --script research/cqis-bounds/check_limbs.py",
-    "uv run --locked --script research/cqis-bounds/check_requant.py",
-    "uv run --locked --script research/cqis-bounds/check_norm_bounds.py",
-    "uv run --locked --script research/cqis-bounds/check_encoding.py",
     "uv run --locked --script research/cqis-bounds/check_capped_range.py",
     "uv run --locked --script research/cqis-bounds/check_wide_range.py",
     "uv run --locked --script research/cqis-bounds/check_limb_source.py",
@@ -85,13 +81,8 @@
     "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-score",
     "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --attention-max",
     "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --gated-product",
-    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-norm",
     "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --bound-set",
-    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-functions",
-    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-flow",
-    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o \"$RUNNER_TEMP/causal-config.json\"",
-    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/model.safetensors -o \"$RUNNER_TEMP/causal-model.safetensors\"",
-    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --checkpoint \"$RUNNER_TEMP/causal\""
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-flow"
   ],
   "stacked-gkr": [
     "python3 research/stacked-gkr/check_stacking.py",
@@ -322,5 +313,16 @@
   ],
   "cqis-attention-value-projection": [
     "uv run --locked --script research/cqis-bounds/check_attention_value_projection.py --corpus"
+  ],
+  "native-comparisons": [
+    "uv run --locked --script harness/cqis/check_arithmetic.py",
+    "uv run --locked --script research/cqis-bounds/check_requant.py",
+    "uv run --locked --script research/cqis-bounds/check_norm_bounds.py",
+    "uv run --locked --script research/cqis-bounds/check_encoding.py",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-norm",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --model-functions",
+    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o \"$RUNNER_TEMP/causal-config.json\"",
+    "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/model.safetensors -o \"$RUNNER_TEMP/causal-model.safetensors\"",
+    "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --checkpoint \"$RUNNER_TEMP/causal\""
   ]
 }
