@@ -45,7 +45,7 @@ def corpus():
         for role,values in (('remainder',rs),('gap',[2*D-1-x for x in rs])):
             actual=sum((w[role+'_'+str(j)] for j in range(v['groups'])),[]);assert actual[:p.schema.width]==values and not any(actual[p.schema.width:])
         for prefix,left,right,factor,initial,target in (('equal',[q*D for q in qs],rs,2,0,[2*u+D for u in us]),('strict',rs,[2*D-1-x for x in rs],1,1,[2*D]*len(us))):
-            left+=([0]*(n-len(left)));right+=([0]*(n-len(right)));target+=([0]*(n-len(target)));carry=np.array([initial]*len(us)+[0]*(n-len(us)),dtype=np.int64);cs=[]
+            left=left+[0]*(n-len(left));right=right+[0]*(n-len(right));target=target+[0]*(n-len(target));carry=np.array([initial]*len(us)+[0]*(n-len(us)),dtype=np.int64);cs=[]
             for k in range(16):
                 total=factor*np.array([x>>(8*k)&255 for x in left],dtype=np.int64)+np.array([x>>(8*k)&255 for x in right],dtype=np.int64)+carry;byte=total%256;carry=total//256;assert byte.tolist()==[x>>(8*k)&255 for x in target];cs.extend(carry.tolist())
             assert cs==sum((w[prefix+'_'+str(j)] for j in range(4)),[]) and cs[-n:]==[0]*n
