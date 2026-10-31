@@ -83,3 +83,9 @@ planes. Complete canonical-sign proofs from two blocks composed through ragged
 source joins; a valid replacement rejected its pinned block root. Initial
 receipts and draw totals matched. The matrix and three full geometries continue
 in their original runner; required repository gates remain queued.
+
+All 16 matrix proofs passed in both fields/repetition counts. Every receipt,
+original count and draw total matched. Frozen SHA-256:
+`bf7336eb47a775cb6e1386fda3d8a93cc4c264510d9605fa36759c250f12e566`.
+The original runner continues the three full geometries; those proofs and
+required repository gates remain pending.

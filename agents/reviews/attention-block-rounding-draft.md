@@ -56,3 +56,7 @@ not a completed sign-off.
 I tried to break it by setting r=D while reducing q so every byte column
 remained equal, and Remainder:CapRelation:RoundSumMismatch rejected it.
 Compensating each original final also rejected at its ClaimMismatch consumer.
+
+All 16 matrix proofs passed with exact receipts and draw counts. Their
+transcript digest is frozen. The original three full geometries and gate
+queue remain active; this evidence does not complete the review.
