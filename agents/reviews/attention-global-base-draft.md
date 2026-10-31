@@ -51,3 +51,11 @@ and repository gates must complete before any sign-off.
 
 The observed-attack conclusion is pending the controls. This review does not
 grant native coverage or approve an RFC amendment.
+
+The independent corpus, primary controls and boundary suite passed. I tried
+to break it by changing S to zero while Z was zero, and Product:Factor rejected
+it. Both actual operand substitutions rejected at SourceClaimMismatch; both
+compensated public powers rejected at PowerClaimMismatch. Genuine output-ranged
+H-p and H+p values rejected at Product:Product:FinalEvaluationMismatch.
+The corpus digest is frozen. Composition, matrix, full-metadata proofs and
+repository gates remain pending; independent review is still required.

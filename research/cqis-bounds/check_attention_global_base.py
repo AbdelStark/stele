@@ -49,6 +49,7 @@ def corpus():
     rejects('Spec',lambda:c.derive(p,True))
     for z in (False,-1,(1<<34)+1):rejects('WeightSum',lambda:c.witness(p,z))
     assert exponents==set(range(15)) and directions=={-1,0,1} and policies=={'dynamic','static'} and zeros>3000 and (3,3) in widths
+    assert (cells,zeros,digest.hexdigest())==(41070,3360,'06aa9af52d3ca315e16b7c18e152073d8d5457eb87a6c217ff2932a55b604d4f')
     print(json.dumps(dict(seed=2749,cases=10000,column_cells=cells,zero_sources=zeros,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

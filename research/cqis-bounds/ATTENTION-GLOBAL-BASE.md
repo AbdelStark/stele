@@ -56,3 +56,12 @@ configured output conversion, native/private PCS/ZK/FS, GPU parity, fidelity
 and independent audit remain required. No benchmark, additional weight pass,
 Accepted cut or production coverage is claimed. Original task criteria stay
 blocked; Draft amendments remain unaccepted.
+
+Seed 2749 passed all 10000 independent cases and 41070 column cells,
+including 3360 zero sources. Both value policies, all probability exponents,
+unit directions and compact-width families passed. Frozen corpus SHA-256:
+`06aa9af52d3ca315e16b7c18e152073d8d5457eb87a6c217ff2932a55b604d4f`.
+Primary and boundary controls passed. Both genuinely output-ranged H-p/H+p
+values rejected at the product equation; exact zero-hidden factor checks,
+both actual operand claims and both public powers retained their consumers.
+Composition, matrix, full-metadata proofs and repository gates remain pending.
