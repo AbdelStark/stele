@@ -51,3 +51,9 @@ corpus and proof suites are running. This is not a completed sign-off.
 
 The observed-attack conclusion is pending actual control results. All full
 proofs and required repository gates must also complete.
+
+The primary controls passed. I tried to break it by changing a carry high
+byte through a separately valid complete range proof, and the control
+Product:RoundSumMismatch rejected it. All seven original-final attacks also
+rejected at Product:ClaimMismatch, including both factors hidden by zeros.
+Other proof suites, the corpus, full proofs and repository gates remain open.

@@ -78,3 +78,10 @@ ownership, native/private inference, fidelity, independent audit and all
 original task criteria remain required. No benchmark, new cut, capacity
 increase or additional weight pass is claimed. Draft amendments remain
 unaccepted.
+
+Primary controls passed. Every root and complete child retained its consumer.
+Fresh false q, D, product and carry values rejected at Product:RoundSumMismatch,
+including the valid carry change +256 that leaves its low byte unchanged.
+All seven compensated or zero-hidden original-final attacks rejected at
+Product:ClaimMismatch. Corpus, boundaries, source compositions, matrix and
+full proofs remain under validation; repository gates are queued once.
