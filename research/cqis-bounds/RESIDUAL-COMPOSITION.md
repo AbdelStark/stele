@@ -67,4 +67,7 @@ Boundary controls also passed. All four genuine child proofs for a positive
 32768 numerator with negative32768 output bytes verified individually, then
 the signed-output parent rejected the composition. Separately rounded inputs
 and nonzero output padding rejected at their actual rounding/range consumers.
-The matrix, maximum and repository gates remain under validation.
+All16 matrix proofs passed across both fields and repetition counts, with
+exact lookup, A3 and challenge-draw accounts. Frozen matrix state hash:
+`23986aa5daa8b4df1bcb9c21a31dd9189838505a2b5beb80ac0a0ee0d749dace`.
+The maximum proof and repository gates remain under validation.

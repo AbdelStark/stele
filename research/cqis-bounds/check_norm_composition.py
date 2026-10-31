@@ -121,7 +121,7 @@ def zero_exponent():
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--zero-exponent':zero_exponent,**{'--honest'+str(d)+'r'+str(reps):(lambda d=d,reps=reps:honest(d,reps)) for d in (4,8) for reps in (1,2)},'--maximum':lambda:honest(maximum='wide'),'--full-left':lambda:honest(maximum='left'),'--full-right':lambda:honest(maximum='right')}
+    modes={'--corpus':corpus,'--controls':controls,'--zero-exponent':zero_exponent,'--honest4r1':lambda:honest(4,1),'--honest4r2':lambda:honest(4,2),'--honest8r1':lambda:honest(8,1),'--honest8r2':lambda:honest(8,2),'--maximum':lambda:honest(maximum='wide'),'--full-left':lambda:honest(maximum='left'),'--full-right':lambda:honest(maximum='right')}
     if sys.argv[1:]:
         assert all(mode in modes for mode in sys.argv[1:])
         for mode in sys.argv[1:]:modes[mode]()
