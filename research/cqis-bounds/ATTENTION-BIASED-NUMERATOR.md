@@ -72,3 +72,10 @@ key/block/model ownership, global attainment, fidelity, independent audit and
 all original task criteria remain required. No benchmark, new cut, range
 capacity increase or additional weight pass is claimed. Draft amendments
 remain unaccepted.
+
+Primary controls passed. Every external/internal root, complete child and
+false source/output/carry value retained its consumer. All five compensated
+original-final attacks rejected at Bias:ClaimMismatch, including the shared
+denominator view. Equivalent arithmetic metadata rejected at that consumer
+as well. Corpus, boundary/composition suites, matrix and full-size proofs
+remain under validation, with repository gates queued once.

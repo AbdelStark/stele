@@ -50,3 +50,9 @@ proof suites are running; this is not a completed sign-off.
 
 The observed-attack conclusion remains pending the controls. All full-width
 proofs and required repository gates must also complete.
+
+The primary suite passed. I tried to break it by changing each original final
+claim while compensating another to preserve the column equation, and
+Bias:ClaimMismatch rejected all five attacks. Complete changed input/output
+and carry children rejected at the parent equation. Corpus, boundary/source
+composition suites, matrix and full-width proofs remain pending.
