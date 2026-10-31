@@ -1,0 +1,420 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/expander-code",
+  "commit": "88340649f35d35da3ed2fb97d1929ce29940a999",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M1 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "operation": "native expander setup, full encode, ordered query and full integer validation",
+      "cases": [
+        [
+          3,
+          1,
+          0
+        ],
+        [
+          3,
+          1,
+          1
+        ],
+        [
+          3,
+          1,
+          2
+        ],
+        [
+          3,
+          4,
+          0
+        ],
+        [
+          3,
+          4,
+          1
+        ],
+        [
+          3,
+          4,
+          2
+        ],
+        [
+          3,
+          8,
+          0
+        ],
+        [
+          3,
+          8,
+          1
+        ],
+        [
+          3,
+          8,
+          2
+        ],
+        [
+          6,
+          1,
+          0
+        ],
+        [
+          6,
+          1,
+          1
+        ],
+        [
+          6,
+          1,
+          2
+        ],
+        [
+          6,
+          4,
+          0
+        ],
+        [
+          6,
+          4,
+          1
+        ],
+        [
+          6,
+          4,
+          2
+        ],
+        [
+          6,
+          8,
+          0
+        ],
+        [
+          6,
+          8,
+          1
+        ],
+        [
+          6,
+          8,
+          2
+        ],
+        [
+          9,
+          1,
+          0
+        ],
+        [
+          9,
+          1,
+          1
+        ],
+        [
+          9,
+          1,
+          2
+        ],
+        [
+          9,
+          4,
+          0
+        ],
+        [
+          9,
+          4,
+          1
+        ],
+        [
+          9,
+          4,
+          2
+        ],
+        [
+          9,
+          8,
+          0
+        ],
+        [
+          9,
+          8,
+          1
+        ],
+        [
+          9,
+          8,
+          2
+        ]
+      ],
+      "build": "release",
+      "parallel_workers": 1,
+      "samples_per_case": 3,
+      "fixture": "limb k of input i = (37*i+17*k+9) mod p; fixed zero setup seed",
+      "fixture_scope": "nonzero structured full-field inputs; value-independent encoding loops",
+      "amortized_setup": false,
+      "query_columns": "[2*n-1,0,n,0]; nonempty eval_row re-encodes the whole row",
+      "validation": "separate integer sparse evaluator, independently derived dense Circle base; shares fixed hash block primitive already checked against Python",
+      "timing": "includes input allocation, setup regeneration, encoding, query allocation/full re-encoding and every-symbol validation; excludes build, process launch, argument parsing, final drops and stdout",
+      "heap": "actual native live heap capacities, including graph, recursive overlap, base transforms, retained caller input/output/id and query result; excludes validator, stack, runtime and allocator metadata",
+      "process_memory": "separate worker peak RSS includes all native and integer validation buffers/runtime; controller excluded",
+      "counters": "sparse K additions and K-by-base products counted from exact loop geometry; base transforms add 1280 K additions and 704 K multiplications per encode; base twiddle construction/inversion work is timed but not included in those arithmetic counters",
+      "warmup": "release tests, independent oracle checks and j=3 field=1 receipt smoke in separate processes",
+      "scope": "CPU encoder microbenchmark only, no proof/profile/GPU claim or cost-model fit"
+    },
+    "os": "macOS-15.6.1-arm64-arm-64bit",
+    "samples": [
+      {"j":3,"d":1,"input_symbols":64,"checked_symbols":128,"input_ns":1333,"setup_ns":375,"encode_ns":9209,"query_ns":6000,"validation_ns":11000,"total_ns":30125,"graph_capacity_bytes":0,"input_capacity_bytes":256,"output_capacity_bytes":512,"query_capacity_bytes":16,"encode_owned_peak_bytes":1188,"query_owned_peak_bytes":1204,"id_capacity_bytes":88,"native_live_peak_bytes":2060,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":6381500137242275720,"sample":0,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   4  involuntary context switches\n            13739923  instructions retired\n             5031643  cycles elapsed\n             1098496  peak memory footprint\n"},
+      {"j":3,"d":1,"input_symbols":64,"checked_symbols":128,"input_ns":1583,"setup_ns":125,"encode_ns":11583,"query_ns":7583,"validation_ns":13625,"total_ns":36333,"graph_capacity_bytes":0,"input_capacity_bytes":256,"output_capacity_bytes":512,"query_capacity_bytes":16,"encode_owned_peak_bytes":1188,"query_owned_peak_bytes":1204,"id_capacity_bytes":88,"native_live_peak_bytes":2060,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":6381500137242275720,"sample":1,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   4  involuntary context switches\n            13746503  instructions retired\n             4640942  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":3,"d":1,"input_symbols":64,"checked_symbols":128,"input_ns":1542,"setup_ns":166,"encode_ns":9500,"query_ns":6333,"validation_ns":11333,"total_ns":35500,"graph_capacity_bytes":0,"input_capacity_bytes":256,"output_capacity_bytes":512,"query_capacity_bytes":16,"encode_owned_peak_bytes":1188,"query_owned_peak_bytes":1204,"id_capacity_bytes":88,"native_live_peak_bytes":2060,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":6381500137242275720,"sample":2,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   4  involuntary context switches\n            13736897  instructions retired\n             4999834  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":3,"d":4,"input_symbols":64,"checked_symbols":128,"input_ns":291,"setup_ns":42,"encode_ns":22541,"query_ns":17792,"validation_ns":29958,"total_ns":75084,"graph_capacity_bytes":0,"input_capacity_bytes":1024,"output_capacity_bytes":2048,"query_capacity_bytes":64,"encode_owned_peak_bytes":2724,"query_owned_peak_bytes":2788,"id_capacity_bytes":88,"native_live_peak_bytes":5948,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":9162290243820672384,"sample":0,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   4  involuntary context switches\n            14363867  instructions retired\n             4840704  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":3,"d":4,"input_symbols":64,"checked_symbols":128,"input_ns":292,"setup_ns":166,"encode_ns":21750,"query_ns":16792,"validation_ns":28667,"total_ns":69250,"graph_capacity_bytes":0,"input_capacity_bytes":1024,"output_capacity_bytes":2048,"query_capacity_bytes":64,"encode_owned_peak_bytes":2724,"query_owned_peak_bytes":2788,"id_capacity_bytes":88,"native_live_peak_bytes":5948,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":9162290243820672384,"sample":1,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   4  involuntary context switches\n            14362876  instructions retired\n             5257477  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":3,"d":4,"input_symbols":64,"checked_symbols":128,"input_ns":250,"setup_ns":291,"encode_ns":23042,"query_ns":17666,"validation_ns":30292,"total_ns":73709,"graph_capacity_bytes":0,"input_capacity_bytes":1024,"output_capacity_bytes":2048,"query_capacity_bytes":64,"encode_owned_peak_bytes":2724,"query_owned_peak_bytes":2788,"id_capacity_bytes":88,"native_live_peak_bytes":5948,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":9162290243820672384,"sample":2,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   4  involuntary context switches\n            14358892  instructions retired\n             4797858  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":3,"d":8,"input_symbols":64,"checked_symbols":128,"input_ns":458,"setup_ns":208,"encode_ns":49041,"query_ns":44375,"validation_ns":55083,"total_ns":151000,"graph_capacity_bytes":0,"input_capacity_bytes":2048,"output_capacity_bytes":4096,"query_capacity_bytes":128,"encode_owned_peak_bytes":4772,"query_owned_peak_bytes":4900,"id_capacity_bytes":88,"native_live_peak_bytes":11132,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":10389684849319915520,"sample":0,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   5  involuntary context switches\n            15585006  instructions retired\n             5130902  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":3,"d":8,"input_symbols":64,"checked_symbols":128,"input_ns":458,"setup_ns":83,"encode_ns":47292,"query_ns":42375,"validation_ns":52875,"total_ns":145083,"graph_capacity_bytes":0,"input_capacity_bytes":2048,"output_capacity_bytes":4096,"query_capacity_bytes":128,"encode_owned_peak_bytes":4772,"query_owned_peak_bytes":4900,"id_capacity_bytes":88,"native_live_peak_bytes":11132,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":10389684849319915520,"sample":1,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   7  involuntary context switches\n            15606000  instructions retired\n             6050026  cycles elapsed\n             1098496  peak memory footprint\n"},
+      {"j":3,"d":8,"input_symbols":64,"checked_symbols":128,"input_ns":500,"setup_ns":42,"encode_ns":46417,"query_ns":41041,"validation_ns":71125,"total_ns":161042,"graph_capacity_bytes":0,"input_capacity_bytes":2048,"output_capacity_bytes":4096,"query_capacity_bytes":128,"encode_owned_peak_bytes":4772,"query_owned_peak_bytes":4900,"id_capacity_bytes":88,"native_live_peak_bytes":11132,"setup_blocks":0,"sparse_adds_per_encode":0,"sparse_base_products_per_encode":0,"checksum":10389684849319915520,"sample":2,"peak_rss_bytes":1458176,"native_time_resource_report":"        0.00 real         0.00 user         0.00 sys\n             1458176  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 288  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   5  involuntary context switches\n            15591723  instructions retired\n             5409545  cycles elapsed\n             1082048  peak memory footprint\n"},
+      {"j":6,"d":1,"input_symbols":4096,"checked_symbols":8192,"input_ns":7458,"setup_ns":10911458,"encode_ns":341625,"query_ns":315708,"validation_ns":14008083,"total_ns":25588416,"graph_capacity_bytes":1253376,"input_capacity_bytes":16384,"output_capacity_bytes":32768,"query_capacity_bytes":16,"encode_owned_peak_bytes":1294336,"query_owned_peak_bytes":1294352,"id_capacity_bytes":88,"native_live_peak_bytes":1343592,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":124639603174228896,"sample":0,"peak_rss_bytes":3997696,"native_time_resource_report":"        0.02 real         0.02 user         0.00 sys\n             3997696  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 443  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  13  involuntary context switches\n           383196034  instructions retired\n            86117905  cycles elapsed\n             3736704  peak memory footprint\n"},
+      {"j":6,"d":1,"input_symbols":4096,"checked_symbols":8192,"input_ns":3750,"setup_ns":11061625,"encode_ns":360541,"query_ns":351458,"validation_ns":14207833,"total_ns":25987375,"graph_capacity_bytes":1253376,"input_capacity_bytes":16384,"output_capacity_bytes":32768,"query_capacity_bytes":16,"encode_owned_peak_bytes":1294336,"query_owned_peak_bytes":1294352,"id_capacity_bytes":88,"native_live_peak_bytes":1343592,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":124639603174228896,"sample":1,"peak_rss_bytes":4014080,"native_time_resource_report":"        0.02 real         0.02 user         0.00 sys\n             4014080  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 446  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  16  involuntary context switches\n           382604370  instructions retired\n            86554202  cycles elapsed\n             3687296  peak memory footprint\n"},
+      {"j":6,"d":1,"input_symbols":4096,"checked_symbols":8192,"input_ns":3542,"setup_ns":11008750,"encode_ns":324333,"query_ns":315417,"validation_ns":13880459,"total_ns":25534541,"graph_capacity_bytes":1253376,"input_capacity_bytes":16384,"output_capacity_bytes":32768,"query_capacity_bytes":16,"encode_owned_peak_bytes":1294336,"query_owned_peak_bytes":1294352,"id_capacity_bytes":88,"native_live_peak_bytes":1343592,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":124639603174228896,"sample":2,"peak_rss_bytes":3604480,"native_time_resource_report":"        0.02 real         0.02 user         0.00 sys\n             3604480  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 419  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                   6  involuntary context switches\n           383275433  instructions retired\n            85813946  cycles elapsed\n             3261248  peak memory footprint\n"},
+      {"j":6,"d":4,"input_symbols":4096,"checked_symbols":8192,"input_ns":21250,"setup_ns":11143958,"encode_ns":2614541,"query_ns":2593709,"validation_ns":14262208,"total_ns":30638000,"graph_capacity_bytes":1253376,"input_capacity_bytes":65536,"output_capacity_bytes":131072,"query_capacity_bytes":64,"encode_owned_peak_bytes":1417216,"query_owned_peak_bytes":1417280,"id_capacity_bytes":88,"native_live_peak_bytes":1613976,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":2365415243809925944,"sample":0,"peak_rss_bytes":4063232,"native_time_resource_report":"        0.03 real         0.03 user         0.00 sys\n             4063232  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 447  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  12  involuntary context switches\n           457779702  instructions retired\n           102329202  cycles elapsed\n             3785792  peak memory footprint\n"},
+      {"j":6,"d":4,"input_symbols":4096,"checked_symbols":8192,"input_ns":17583,"setup_ns":11125125,"encode_ns":2648208,"query_ns":2590000,"validation_ns":14595917,"total_ns":30979208,"graph_capacity_bytes":1253376,"input_capacity_bytes":65536,"output_capacity_bytes":131072,"query_capacity_bytes":64,"encode_owned_peak_bytes":1417216,"query_owned_peak_bytes":1417280,"id_capacity_bytes":88,"native_live_peak_bytes":1613976,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":2365415243809925944,"sample":1,"peak_rss_bytes":4014080,"native_time_resource_report":"        0.03 real         0.03 user         0.00 sys\n             4014080  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 444  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  11  involuntary context switches\n           457820624  instructions retired\n           102082170  cycles elapsed\n             3736640  peak memory footprint\n"},
+      {"j":6,"d":4,"input_symbols":4096,"checked_symbols":8192,"input_ns":20708,"setup_ns":11121125,"encode_ns":2633250,"query_ns":2681584,"validation_ns":14583167,"total_ns":31042292,"graph_capacity_bytes":1253376,"input_capacity_bytes":65536,"output_capacity_bytes":131072,"query_capacity_bytes":64,"encode_owned_peak_bytes":1417216,"query_owned_peak_bytes":1417280,"id_capacity_bytes":88,"native_live_peak_bytes":1613976,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":2365415243809925944,"sample":2,"peak_rss_bytes":3899392,"native_time_resource_report":"        0.03 real         0.03 user         0.00 sys\n             3899392  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 437  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  15  involuntary context switches\n           457833312  instructions retired\n           102081716  cycles elapsed\n             3572608  peak memory footprint\n"},
+      {"j":6,"d":8,"input_symbols":4096,"checked_symbols":8192,"input_ns":33459,"setup_ns":11027542,"encode_ns":8002833,"query_ns":8014208,"validation_ns":15178291,"total_ns":42258583,"graph_capacity_bytes":1253376,"input_capacity_bytes":131072,"output_capacity_bytes":262144,"query_capacity_bytes":128,"encode_owned_peak_bytes":1581056,"query_owned_peak_bytes":1581184,"id_capacity_bytes":88,"native_live_peak_bytes":1974488,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":3153349095107374685,"sample":0,"peak_rss_bytes":4521984,"native_time_resource_report":"        0.04 real         0.04 user         0.00 sys\n             4521984  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 475  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  18  involuntary context switches\n           647918383  instructions retired\n           138104541  cycles elapsed\n             4244544  peak memory footprint\n"},
+      {"j":6,"d":8,"input_symbols":4096,"checked_symbols":8192,"input_ns":32459,"setup_ns":11093042,"encode_ns":7960083,"query_ns":8112417,"validation_ns":15330250,"total_ns":42532292,"graph_capacity_bytes":1253376,"input_capacity_bytes":131072,"output_capacity_bytes":262144,"query_capacity_bytes":128,"encode_owned_peak_bytes":1581056,"query_owned_peak_bytes":1581184,"id_capacity_bytes":88,"native_live_peak_bytes":1974488,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":3153349095107374685,"sample":1,"peak_rss_bytes":4964352,"native_time_resource_report":"        0.04 real         0.04 user         0.00 sys\n             4964352  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 501  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  27  involuntary context switches\n           647820251  instructions retired\n           138409089  cycles elapsed\n             4703360  peak memory footprint\n"},
+      {"j":6,"d":8,"input_symbols":4096,"checked_symbols":8192,"input_ns":35583,"setup_ns":11200375,"encode_ns":8141500,"query_ns":8123792,"validation_ns":15001041,"total_ns":42505750,"graph_capacity_bytes":1253376,"input_capacity_bytes":131072,"output_capacity_bytes":262144,"query_capacity_bytes":128,"encode_owned_peak_bytes":1581056,"query_owned_peak_bytes":1581184,"id_capacity_bytes":88,"native_live_peak_bytes":1974488,"setup_blocks":49258,"sparse_adds_per_encode":156672,"sparse_base_products_per_encode":156672,"checksum":3153349095107374685,"sample":2,"peak_rss_bytes":4898816,"native_time_resource_report":"        0.04 real         0.04 user         0.00 sys\n             4898816  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 498  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  21  involuntary context switches\n           648137122  instructions retired\n           138181172  cycles elapsed\n             4637824  peak memory footprint\n"},
+      {"j":9,"d":1,"input_symbols":262144,"checked_symbols":524288,"input_ns":262875,"setup_ns":703615667,"encode_ns":19097917,"query_ns":19634958,"validation_ns":976651583,"total_ns":1719265334,"graph_capacity_bytes":75702272,"input_capacity_bytes":1048576,"output_capacity_bytes":2097152,"query_capacity_bytes":16,"encode_owned_peak_bytes":78323712,"query_owned_peak_bytes":78323728,"id_capacity_bytes":88,"native_live_peak_bytes":81469544,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":12109520540779334127,"sample":0,"peak_rss_bytes":121847808,"native_time_resource_report":"        1.72 real         1.68 user         0.02 sys\n           121847808  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                7636  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 539  involuntary context switches\n         23456000858  instructions retired\n          5422746508  cycles elapsed\n           117327232  peak memory footprint\n"},
+      {"j":9,"d":1,"input_symbols":262144,"checked_symbols":524288,"input_ns":214375,"setup_ns":705539875,"encode_ns":19159792,"query_ns":19417416,"validation_ns":983869959,"total_ns":1728206083,"graph_capacity_bytes":75702272,"input_capacity_bytes":1048576,"output_capacity_bytes":2097152,"query_capacity_bytes":16,"encode_owned_peak_bytes":78323712,"query_owned_peak_bytes":78323728,"id_capacity_bytes":88,"native_live_peak_bytes":81469544,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":12109520540779334127,"sample":1,"peak_rss_bytes":124600320,"native_time_resource_report":"        1.73 real         1.69 user         0.02 sys\n           124600320  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                7804  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 586  involuntary context switches\n         23476335017  instructions retired\n          5450748607  cycles elapsed\n           122340992  peak memory footprint\n"},
+      {"j":9,"d":1,"input_symbols":262144,"checked_symbols":524288,"input_ns":254750,"setup_ns":708928500,"encode_ns":19567167,"query_ns":19604041,"validation_ns":955722875,"total_ns":1704082208,"graph_capacity_bytes":75702272,"input_capacity_bytes":1048576,"output_capacity_bytes":2097152,"query_capacity_bytes":16,"encode_owned_peak_bytes":78323712,"query_owned_peak_bytes":78323728,"id_capacity_bytes":88,"native_live_peak_bytes":81469544,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":12109520540779334127,"sample":2,"peak_rss_bytes":123256832,"native_time_resource_report":"        1.71 real         1.67 user         0.02 sys\n           123256832  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                7722  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 598  involuntary context switches\n         23468332170  instructions retired\n          5345177595  cycles elapsed\n           118817984  peak memory footprint\n"},
+      {"j":9,"d":4,"input_symbols":262144,"checked_symbols":524288,"input_ns":1054792,"setup_ns":707891709,"encode_ns":161309292,"query_ns":161354250,"validation_ns":977849833,"total_ns":2009462042,"graph_capacity_bytes":75702272,"input_capacity_bytes":4194304,"output_capacity_bytes":8388608,"query_capacity_bytes":64,"encode_owned_peak_bytes":86188032,"query_owned_peak_bytes":86188096,"id_capacity_bytes":88,"native_live_peak_bytes":98771096,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":15110421655365145,"sample":0,"peak_rss_bytes":145211392,"native_time_resource_report":"        2.01 real         1.96 user         0.03 sys\n           145211392  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                9066  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 663  involuntary context switches\n         27961323292  instructions retired\n          6313070733  cycles elapsed\n           129844480  peak memory footprint\n"},
+      {"j":9,"d":4,"input_symbols":262144,"checked_symbols":524288,"input_ns":919875,"setup_ns":709014417,"encode_ns":161008208,"query_ns":161371458,"validation_ns":995135833,"total_ns":2027452000,"graph_capacity_bytes":75702272,"input_capacity_bytes":4194304,"output_capacity_bytes":8388608,"query_capacity_bytes":64,"encode_owned_peak_bytes":86188032,"query_owned_peak_bytes":86188096,"id_capacity_bytes":88,"native_live_peak_bytes":98771096,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":15110421655365145,"sample":1,"peak_rss_bytes":142016512,"native_time_resource_report":"        2.03 real         1.98 user         0.03 sys\n           142016512  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                8867  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 618  involuntary context switches\n         27943344451  instructions retired\n          6381028356  cycles elapsed\n           128484608  peak memory footprint\n"},
+      {"j":9,"d":4,"input_symbols":262144,"checked_symbols":524288,"input_ns":889208,"setup_ns":707446750,"encode_ns":160079167,"query_ns":162622291,"validation_ns":978617500,"total_ns":2009657417,"graph_capacity_bytes":75702272,"input_capacity_bytes":4194304,"output_capacity_bytes":8388608,"query_capacity_bytes":64,"encode_owned_peak_bytes":86188032,"query_owned_peak_bytes":86188096,"id_capacity_bytes":88,"native_live_peak_bytes":98771096,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":15110421655365145,"sample":2,"peak_rss_bytes":141213696,"native_time_resource_report":"        2.01 real         1.96 user         0.03 sys\n           141213696  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                8818  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 558  involuntary context switches\n         27955626486  instructions retired\n          6328904822  cycles elapsed\n           128255424  peak memory footprint\n"},
+      {"j":9,"d":8,"input_symbols":262144,"checked_symbols":524288,"input_ns":1849125,"setup_ns":706876709,"encode_ns":515960667,"query_ns":518617250,"validation_ns":1038589208,"total_ns":2781895500,"graph_capacity_bytes":75702272,"input_capacity_bytes":8388608,"output_capacity_bytes":16777216,"query_capacity_bytes":128,"encode_owned_peak_bytes":96673792,"query_owned_peak_bytes":96673920,"id_capacity_bytes":88,"native_live_peak_bytes":121839832,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":14850227044066395142,"sample":0,"peak_rss_bytes":151076864,"native_time_resource_report":"        2.78 real         2.72 user         0.04 sys\n           151076864  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                9420  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 818  involuntary context switches\n         39354133812  instructions retired\n          8762686214  cycles elapsed\n           139986240  peak memory footprint\n"},
+      {"j":9,"d":8,"input_symbols":262144,"checked_symbols":524288,"input_ns":1804917,"setup_ns":706957209,"encode_ns":505791000,"query_ns":510661208,"validation_ns":1011799416,"total_ns":2737015917,"graph_capacity_bytes":75702272,"input_capacity_bytes":8388608,"output_capacity_bytes":16777216,"query_capacity_bytes":128,"encode_owned_peak_bytes":96673792,"query_owned_peak_bytes":96673920,"id_capacity_bytes":88,"native_live_peak_bytes":121839832,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":14850227044066395142,"sample":1,"peak_rss_bytes":156991488,"native_time_resource_report":"        2.74 real         2.69 user         0.03 sys\n           156991488  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                9781  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 753  involuntary context switches\n         39338382862  instructions retired\n          8615531582  cycles elapsed\n           144180608  peak memory footprint\n"},
+      {"j":9,"d":8,"input_symbols":262144,"checked_symbols":524288,"input_ns":1766041,"setup_ns":705071333,"encode_ns":522390000,"query_ns":516386833,"validation_ns":1032620166,"total_ns":2778236542,"graph_capacity_bytes":75702272,"input_capacity_bytes":8388608,"output_capacity_bytes":16777216,"query_capacity_bytes":128,"encode_owned_peak_bytes":96673792,"query_owned_peak_bytes":96673920,"id_capacity_bytes":88,"native_live_peak_bytes":121839832,"setup_blocks":3145834,"sparse_adds_per_encode":9462784,"sparse_base_products_per_encode":9462784,"checksum":14850227044066395142,"sample":2,"peak_rss_bytes":156303360,"native_time_resource_report":"        2.78 real         2.72 user         0.04 sys\n           156303360  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                9739  page reclaims\n                   0  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                 723  involuntary context switches\n         39355646192  instructions retired\n          8764259640  cycles elapsed\n           142575104  peak memory footprint\n"}
+    ],
+    "distance_estimates": {
+      "records": [
+        {
+          "distance_upper_bound": 128,
+          "j": 3,
+          "samples": 159,
+          "seed": 0,
+          "witness_index": 0,
+          "witness_kind": 0
+        },
+        {
+          "distance_upper_bound": 128,
+          "j": 3,
+          "samples": 159,
+          "seed": 1,
+          "witness_index": 0,
+          "witness_kind": 0
+        },
+        {
+          "distance_upper_bound": 257,
+          "j": 4,
+          "samples": 543,
+          "seed": 0,
+          "witness_index": 0,
+          "witness_kind": 0
+        },
+        {
+          "distance_upper_bound": 257,
+          "j": 4,
+          "samples": 543,
+          "seed": 1,
+          "witness_index": 0,
+          "witness_kind": 0
+        }
+      ],
+      "scope": "Sampled upper bounds, not distance certificates or profile parameters"
+    },
+    "operations_per_input": [
+      {
+        "j": 3,
+        "denominator": 64,
+        "k_additions_numerator": 1280,
+        "sparse_k_base_products_numerator": 0,
+        "circle_transform_k_multiplications_numerator": 704
+      },
+      {
+        "j": 6,
+        "denominator": 4096,
+        "k_additions_numerator": 157952,
+        "sparse_k_base_products_numerator": 156672,
+        "circle_transform_k_multiplications_numerator": 704
+      },
+      {
+        "j": 9,
+        "denominator": 262144,
+        "k_additions_numerator": 9464064,
+        "sparse_k_base_products_numerator": 9462784,
+        "circle_transform_k_multiplications_numerator": 704
+      }
+    ]
+  },
+  "plan_digest": "f7a32ef7592330ebabf1c38370630b7042879dd043a8a4162d396782dee1cb34",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 19793116626,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "j3/d1/sample0/input": 1333,
+    "j3/d1/sample0/setup": 375,
+    "j3/d1/sample0/encode": 9209,
+    "j3/d1/sample0/query": 6000,
+    "j3/d1/sample0/validation": 11000,
+    "j3/d1/sample1/input": 1583,
+    "j3/d1/sample1/setup": 125,
+    "j3/d1/sample1/encode": 11583,
+    "j3/d1/sample1/query": 7583,
+    "j3/d1/sample1/validation": 13625,
+    "j3/d1/sample2/input": 1542,
+    "j3/d1/sample2/setup": 166,
+    "j3/d1/sample2/encode": 9500,
+    "j3/d1/sample2/query": 6333,
+    "j3/d1/sample2/validation": 11333,
+    "j3/d4/sample0/input": 291,
+    "j3/d4/sample0/setup": 42,
+    "j3/d4/sample0/encode": 22541,
+    "j3/d4/sample0/query": 17792,
+    "j3/d4/sample0/validation": 29958,
+    "j3/d4/sample1/input": 292,
+    "j3/d4/sample1/setup": 166,
+    "j3/d4/sample1/encode": 21750,
+    "j3/d4/sample1/query": 16792,
+    "j3/d4/sample1/validation": 28667,
+    "j3/d4/sample2/input": 250,
+    "j3/d4/sample2/setup": 291,
+    "j3/d4/sample2/encode": 23042,
+    "j3/d4/sample2/query": 17666,
+    "j3/d4/sample2/validation": 30292,
+    "j3/d8/sample0/input": 458,
+    "j3/d8/sample0/setup": 208,
+    "j3/d8/sample0/encode": 49041,
+    "j3/d8/sample0/query": 44375,
+    "j3/d8/sample0/validation": 55083,
+    "j3/d8/sample1/input": 458,
+    "j3/d8/sample1/setup": 83,
+    "j3/d8/sample1/encode": 47292,
+    "j3/d8/sample1/query": 42375,
+    "j3/d8/sample1/validation": 52875,
+    "j3/d8/sample2/input": 500,
+    "j3/d8/sample2/setup": 42,
+    "j3/d8/sample2/encode": 46417,
+    "j3/d8/sample2/query": 41041,
+    "j3/d8/sample2/validation": 71125,
+    "j6/d1/sample0/input": 7458,
+    "j6/d1/sample0/setup": 10911458,
+    "j6/d1/sample0/encode": 341625,
+    "j6/d1/sample0/query": 315708,
+    "j6/d1/sample0/validation": 14008083,
+    "j6/d1/sample1/input": 3750,
+    "j6/d1/sample1/setup": 11061625,
+    "j6/d1/sample1/encode": 360541,
+    "j6/d1/sample1/query": 351458,
+    "j6/d1/sample1/validation": 14207833,
+    "j6/d1/sample2/input": 3542,
+    "j6/d1/sample2/setup": 11008750,
+    "j6/d1/sample2/encode": 324333,
+    "j6/d1/sample2/query": 315417,
+    "j6/d1/sample2/validation": 13880459,
+    "j6/d4/sample0/input": 21250,
+    "j6/d4/sample0/setup": 11143958,
+    "j6/d4/sample0/encode": 2614541,
+    "j6/d4/sample0/query": 2593709,
+    "j6/d4/sample0/validation": 14262208,
+    "j6/d4/sample1/input": 17583,
+    "j6/d4/sample1/setup": 11125125,
+    "j6/d4/sample1/encode": 2648208,
+    "j6/d4/sample1/query": 2590000,
+    "j6/d4/sample1/validation": 14595917,
+    "j6/d4/sample2/input": 20708,
+    "j6/d4/sample2/setup": 11121125,
+    "j6/d4/sample2/encode": 2633250,
+    "j6/d4/sample2/query": 2681584,
+    "j6/d4/sample2/validation": 14583167,
+    "j6/d8/sample0/input": 33459,
+    "j6/d8/sample0/setup": 11027542,
+    "j6/d8/sample0/encode": 8002833,
+    "j6/d8/sample0/query": 8014208,
+    "j6/d8/sample0/validation": 15178291,
+    "j6/d8/sample1/input": 32459,
+    "j6/d8/sample1/setup": 11093042,
+    "j6/d8/sample1/encode": 7960083,
+    "j6/d8/sample1/query": 8112417,
+    "j6/d8/sample1/validation": 15330250,
+    "j6/d8/sample2/input": 35583,
+    "j6/d8/sample2/setup": 11200375,
+    "j6/d8/sample2/encode": 8141500,
+    "j6/d8/sample2/query": 8123792,
+    "j6/d8/sample2/validation": 15001041,
+    "j9/d1/sample0/input": 262875,
+    "j9/d1/sample0/setup": 703615667,
+    "j9/d1/sample0/encode": 19097917,
+    "j9/d1/sample0/query": 19634958,
+    "j9/d1/sample0/validation": 976651583,
+    "j9/d1/sample1/input": 214375,
+    "j9/d1/sample1/setup": 705539875,
+    "j9/d1/sample1/encode": 19159792,
+    "j9/d1/sample1/query": 19417416,
+    "j9/d1/sample1/validation": 983869959,
+    "j9/d1/sample2/input": 254750,
+    "j9/d1/sample2/setup": 708928500,
+    "j9/d1/sample2/encode": 19567167,
+    "j9/d1/sample2/query": 19604041,
+    "j9/d1/sample2/validation": 955722875,
+    "j9/d4/sample0/input": 1054792,
+    "j9/d4/sample0/setup": 707891709,
+    "j9/d4/sample0/encode": 161309292,
+    "j9/d4/sample0/query": 161354250,
+    "j9/d4/sample0/validation": 977849833,
+    "j9/d4/sample1/input": 919875,
+    "j9/d4/sample1/setup": 709014417,
+    "j9/d4/sample1/encode": 161008208,
+    "j9/d4/sample1/query": 161371458,
+    "j9/d4/sample1/validation": 995135833,
+    "j9/d4/sample2/input": 889208,
+    "j9/d4/sample2/setup": 707446750,
+    "j9/d4/sample2/encode": 160079167,
+    "j9/d4/sample2/query": 162622291,
+    "j9/d4/sample2/validation": 978617500,
+    "j9/d8/sample0/input": 1849125,
+    "j9/d8/sample0/setup": 706876709,
+    "j9/d8/sample0/encode": 515960667,
+    "j9/d8/sample0/query": 518617250,
+    "j9/d8/sample0/validation": 1038589208,
+    "j9/d8/sample1/input": 1804917,
+    "j9/d8/sample1/setup": 706957209,
+    "j9/d8/sample1/encode": 505791000,
+    "j9/d8/sample1/query": 510661208,
+    "j9/d8/sample1/validation": 1011799416,
+    "j9/d8/sample2/input": 1766041,
+    "j9/d8/sample2/setup": 705071333,
+    "j9/d8/sample2/encode": 522390000,
+    "j9/d8/sample2/query": 516386833,
+    "j9/d8/sample2/validation": 1032620166
+  },
+  "kernel_counters": {
+    "input_symbols": 2396736,
+    "checked_symbols": 4793472,
+    "setup_hash_blocks": 28755828,
+    "sparse_k_additions": 173150208,
+    "sparse_k_base_products": 173150208,
+    "circle_transform_k_additions": 69120,
+    "circle_transform_k_multiplications": 38016
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Full native encoding and query with actual setup regeneration for every sample, all outputs checked by a separate integer evaluator. All three fields and all repetitions retained. Native heap capacities and whole-process peaks have different stated scopes. Setup hashing, full query re-encoding and complete validation are included, not amortized. Arithmetic counters distinguish sparse/transform K work and exclude timed twiddle preparation. Distance witnesses are sampled upper observations only. Standard is a schema tag, no profile or inference evidence, performance comparison or fitted constant."
+}
