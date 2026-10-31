@@ -65,3 +65,11 @@ rejected at their original-point ClaimMismatch consumers. Fresh false range
 values and complete child substitutions also rejected; the initial complete
 receipt matched the account. Remaining validation continues in the original
 processes without a restart.
+
+The independent corpus subsequently passed all 10000 cases plus four capacity
+cases; its observed counts and digest are frozen. Original boundary controls
+and both exact/block source compositions also passed. A genuine ranged R+p
+value, the strict endpoint R=2D and a zero denominator could not pass both
+faithful byte relations. Complete scaled-numerator and positive-denominator
+sources retained their shared roots. Matrix, full proofs, repository gates
+and independent audit remain required.
