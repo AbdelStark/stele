@@ -1,5 +1,6 @@
 """RFC-0020 §5: preserve the research inventory and reject incomplete CI runs."""
 from contextlib import redirect_stderr, redirect_stdout
+import hashlib
 import importlib.util
 import io
 import json
@@ -96,6 +97,16 @@ class ResearchCiTests(unittest.TestCase):
             sequence = [command for command in matches[0] if f'$RUNNER_TEMP/{prefix}' in command]
             self.assertEqual([command.split()[0] for command in sequence],
                              ['curl', 'curl', 'uv'] if prefix == 'causal' else ['curl', 'uv', 'uv'])
+
+    def test_matches_reference_consolidated_inventories(self):
+        # Migration snapshots include group names and ordered command sequences.
+        for manifest, expected in (
+            (ci.MANIFEST, '7cc37f62fe2bf9271aeb32e857a2a1ef5ff3bf58cc825e8287e860e6219c8594'),
+            (ci.FULL_MANIFEST, '3e83c7bad42261c951687446c2c1e446acd45256e3715601c17222557df56702'),
+        ):
+            groups = ci.load_groups(manifest)
+            digest = hashlib.sha256(json.dumps(groups, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            self.assertEqual(digest, expected, manifest.name)
 
     def test_accepts_full_inventory_and_existing_scripts(self):
         groups = ci.load_groups(ci.FULL_MANIFEST)

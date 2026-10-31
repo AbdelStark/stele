@@ -53,18 +53,20 @@ fn check<K: TestField>(table: &Table, field: &str, seed: u64) {
     );
 }
 
-fn main() {
+fn main() -> Result<(), &'static str> {
     // A shard is one complete case/field pair with the original seed and
     // 10000 points. CI schedules all 28; no arguments still runs all pairs.
     let args: Vec<String> = std::env::args().skip(1).collect();
     let shard = match args.as_slice() {
         [] => None,
         [flag, value] if flag == "--shard" => {
-            let index: usize = value.parse().expect("integer shard index");
-            assert!(index < 2 * oracle::CASES.len(), "shard index out of range");
+            let index: usize = value.parse().map_err(|_| "integer shard index required")?;
+            if index >= 2 * oracle::CASES.len() {
+                return Err("shard index out of range");
+            }
             Some(index)
         }
-        _ => panic!("usage: table_mle_parity [--shard 0..27]"),
+        _ => return Err("usage: table_mle_parity [--shard 0..27]"),
     };
     for (index, case) in oracle::CASES.into_iter().enumerate() {
         if shard.is_some_and(|part| part / 2 != index) {
@@ -83,4 +85,5 @@ fn main() {
     } else {
         println!("PASS: 280000 full-extension points; all thirteen kinds plus two-row high, in both fields");
     }
+    Ok(())
 }
