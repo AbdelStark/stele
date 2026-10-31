@@ -103,3 +103,9 @@ roots used by each complete normalized head, followed by whole-row output
 conversion. Full source-roster, namespace and context checks passed. The
 original corpus and complete proof suites are running; full-size proofs,
 repository gates and independent review remain required.
+
+All 120 exact-mode probability adapter configurations passed: both fields,
+fifteen probability exponents and four value quantizers. Each uses the
+canonical minimum auxiliary shift while preserving its original L/Q caps.
+Future boundary runs include these checks. Complete zero-offset and
+zero-probability substitution proofs are also running separately.

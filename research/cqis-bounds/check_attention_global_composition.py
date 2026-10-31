@@ -136,6 +136,17 @@ def controls():
         print('all global source families, O/Z joins, strict streams and valid same-total/same-code substitutions reject',mode,flush=True)
 
 
+def edges():
+    for mode in ('exact','block1024'):
+        for d in (4,8):
+            p=spec(mode,'static',1,1,1,2959);p=replace(p,row=replace(p.row,schema=replace(p.row.schema,scale=1,drop=0 if mode=='exact' else 62)));v=c.derive(p,d);inputs=[([1],[[0]])];proof,state=make(p,inputs,d);_,w,roots=oracle(p,inputs);out=c.verify(p,roots,iter(proof),d);assert out['state']==state and w['codes']==[0];account(p,out,d)
+            child,st=c.prob.prove(v['probability'][0],[0],d);rr=c.prob.expected_roots(v['probability'][0],[0]);assert c.prob.verify(v['probability'][0],rr,child,d)['state']==st
+            bad=proof.copy();bad[0]=dict(head=0,probability=child);changed=copy.deepcopy(roots);changed['probabilities'][0]=rr[:-1];rejects('Head0:Probability:Output:CommitmentMismatch',lambda:c.verify(p,changed,iter(bad),d))
+            changed['output']['heads'][0][v['row']['roles'].index('probability')]=rr[-1]
+            rejects('Output:Head0:'+('GlobalBase' if mode=='exact' else 'Denominator')+':WeightSum:CommitmentMismatch',lambda:c.verify(p,changed,iter(bad),d))
+            print('zero offsets retain complete sources and a valid zero aggregate cannot replace positive normalization',mode,d,flush=True)
+
+
 def full_inputs(p):
     s=p.row.schema;B=(s.length+1023)//1024;S=65535;R=16384
     for j in range(p.row.heads):
@@ -167,6 +178,6 @@ def honest(mode='matrix'):
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--honest':honest,'--maximum':lambda:honest('maximum'),'--full-block':lambda:honest('full-block'),'--full-wide-exact':lambda:honest('full-wide-exact'),'--full-wide-block':lambda:honest('full-wide-block')}
-    selected=sys.argv[1:] or ['--corpus','--controls','--boundaries','--honest'];assert all(mode in modes for mode in selected)
+    modes={'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--edges':edges,'--honest':honest,'--maximum':lambda:honest('maximum'),'--full-block':lambda:honest('full-block'),'--full-wide-exact':lambda:honest('full-wide-exact'),'--full-wide-block':lambda:honest('full-wide-block')}
+    selected=sys.argv[1:] or ['--corpus','--controls','--boundaries','--edges','--honest'];assert all(mode in modes for mode in selected)
     for mode in selected:modes[mode]()
