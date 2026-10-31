@@ -132,6 +132,20 @@ def boundaries():
     # Complete zero-D children cannot make R+gap+1=0 over faithful columns.
     p=spec(identity=7842);v=c.derive(p,d);qs,rs,roots=oracle(p,[0]*3,1);pairs=c.prepare(p,[0]*3,1,qs,rs,d);pairs.update(quotient_product=c.qp.prove(v['quotient_product'],[0]*3,0,d),bias=c.bias.prove(v['bias'],[0]*3,0,d),double=c.double.prove(v['double'],0,d),remainder_0=r.prove(v['ranges']['remainder_0'],[0]*3,d),gap_0=r.prove(v['ranges']['gap_0'],[0]*3,d));bad,_=c.assemble(p,pairs,d);rejects('StrictRemainder:RoundSumMismatch',lambda:c.verify(p,c.roots(p,bad),bad,d))
     print('whole caps, padding, carry endpoints, strict initial one, ranged R=2D, genuine ranged R+p and zero denominator reject',flush=True)
+    joins()
+
+
+def joins():
+    p=spec(identity=7843);d=4;v=c.derive(p,d);us=[0]*3;D=3;qs,rs,roots=oracle(p,us,D);pairs=c.prepare(p,us,D,qs,rs,d);proof,state=c.assemble(p,pairs,d);assert c.verify(p,roots,proof,d)['state']==state
+    other=replace(p,schema=replace(p.schema,fraction=4,output_fraction=9));rejects('QuotientProduct:Product:ClaimMismatch',lambda:c.verify(other,roots,proof,d))
+    words=c.full(v,proof,'remainder');words[-1]=1;bad=roots.copy();bad[-1]=r.root(p.remainder,words);rejects('Remainder:CommitmentMismatch',lambda:c.verify(p,bad,proof,d))
+    for name,module,values,label in (('quotient_product',c.qp,qs,'QuotientProduct'),('bias',c.bias,us,'Bias')):
+        changed,st=module.prove(v[name],values,D+1,d);rr=module.expected_roots(v[name],values,D+1);assert module.verify(v[name],rr,changed,d)['state']==st;bad=copy.deepcopy(proof);bad[name]=changed;rejects(label+':Denominator:CommitmentMismatch',lambda:c.verify(p,roots,bad,d))
+    bad=copy.deepcopy(proof);t=c.transcript(v,roots+[proof['roots'][name] for name in v['ranges']],[pairs[name][1] for name in ('quotient_product','bias','double')]+[pairs[name][1] for name in v['ranges']],d);bad['zero']=[]
+    for j,(_,i,tables) in enumerate(c.parts(p,proof,d)):
+        if j:tables[3]=[r.sc.scalar(2*D>>(8*k)&255,d) for k in range(16) for _ in range(v['n'])]
+        bad['zero'].append(r.zero_prove(t,i,tables))
+    rejects('StrictRemainder:RoundSumMismatch',lambda:c.verify(p,roots,bad,d));print('metadata replay, full remainder planes, shared denominator substitutions at zero q and unmasked scalar broadcast reject',flush=True)
 
 
 def composition():
