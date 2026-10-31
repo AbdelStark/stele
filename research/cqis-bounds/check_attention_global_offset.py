@@ -138,6 +138,20 @@ def controls():
         print('all streamed roots/order/padding, valid replacements, spool attacks, forged originals and fresh false ranges reject',mode,flush=True)
 
 
+def edges():
+    for d in (4,8):
+        p=spec('block1024',1025,3,2919,2);p=replace(p,schema=replace(p.schema,drop=62));v=c.derive(p,d);assert v['caps']==[0,0] and v['carry_caps']==[0]*8
+        blocks=[[0]*3 for _ in p.sources];proof,state=make(p,blocks,d);roots=oracle(p,blocks)[2];out=c.verify(p,roots,iter(proof),d);assert out['state']==state;account(p,out,d)
+        for g in range(2):
+            bad=copy.deepcopy(proof);bad[-1]['carry'][g]['byte_root']=bytes(32);rejects('Carry:'+str(g)+':Range:CommitmentMismatch',lambda:c.verify(p,roots,iter(bad),d))
+        bad=copy.deepcopy(proof);bad[-1]['output']['carry_root']=bytes(32);rejects('Output:Range:CommitmentMismatch',lambda:c.verify(p,roots,iter(bad),d))
+        for bad in (dict(proof[-1],ignored=True),dict(proof[-1],carry=proof[-1]['carry'][:1])):rejects('StreamShape',lambda:c.verify(p,roots,iter(proof[:-1]+[bad]),d))
+        internal=[hashlib.sha256(str(j).encode()).digest() for j in range(v['B']+3)];states=internal.copy();t=c.transcript(v,roots,internal,states,d)
+        for other in (replace(p,output=36001),replace(p,schema=replace(p.schema,fraction=1,output_fraction=1)),replace(p,sources=(40001,)+p.sources[1:])):
+            assert c.transcript(c.derive(other,d),roots,internal,states,d).state!=t.state
+    print('complete zero-cap sources and carry/output bindings, strict tails and metadata contexts passed',flush=True)
+
+
 def honest(mode='matrix'):
     digest=hashlib.sha256();done=0
     for d,reps in (((4,1),) if mode!='matrix' else ((4,1),(4,2),(8,1),(8,2))):
@@ -158,6 +172,6 @@ def honest(mode='matrix'):
 
 
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--honest':honest,'--maximum':lambda:honest('maximum'),'--full-block':lambda:honest('full-block')}
-    selected=sys.argv[1:] or ['--corpus','--controls','--boundaries','--honest'];assert all(mode in modes for mode in selected)
+    modes={'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--edges':edges,'--honest':honest,'--maximum':lambda:honest('maximum'),'--full-block':lambda:honest('full-block')}
+    selected=sys.argv[1:] or ['--corpus','--controls','--boundaries','--edges','--honest'];assert all(mode in modes for mode in selected)
     for mode in selected:modes[mode]()

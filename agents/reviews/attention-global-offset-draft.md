@@ -1,4 +1,4 @@
-# Global attention offset review — Draft research
+# Global attention offset review: Draft research
 
 Same-author review, not independent audit. Full source ownership, native
 integration and original task acceptance remain open.
@@ -17,7 +17,7 @@ integration and original task acceptance remain open.
 4. Bindings: controls cover every block/output root, record order/count/type,
    padded source words, valid changed blocks preserving their total, spool
    mutation/truncation/extension, substituted projections, fresh wrong carries
-   and a freshly ranged output alias. Full control execution remains pending.
+   and a freshly ranged output alias. The original two-mode control suites passed; additional edge checks run separately.
 5. Ledger: the appended account keeps B+3 independent lookup identities,
    unsquared lookup reductions and all range losses. Projection a+3 and A1 bb
    are separate. Runtime receipt checks and the repository gate are required.
@@ -44,5 +44,13 @@ integration and original task acceptance remain open.
 
 The original 10000-case integer corpus passed over 52244 source cells, plus
 four capacity cases. The 10000 signed coefficient projections matched an
-independent integer dot product. Complete proof controls/matrices, maximum
-proofs and repository gates remain running or queued; approval is pending.
+independent integer dot product. Proof matrices, additional edge checks, maximum proofs and repository
+gates remain running or queued; approval is pending.
+
+Both accumulation-mode control suites passed. I tried to break it by
+substituting projected originals while preserving their sum, changing
+reauthenticated spool bytes and supplying fresh false output/carry ranges,
+and the control suite rejected it. The projection attack first passed
+standalone A1 reduction, then failed the actual original claim. This records
+observed rejection; full matrix, edge and maximum proofs and independent
+review remain required.
