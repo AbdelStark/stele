@@ -83,6 +83,7 @@ def honest(mode='matrix'):
         for width,length,fv,fo,E,acc,drop,scale in cases:
             p=replace(spec(width,7410+done,reps),schema=c.bounds.Spec(length,width,fv,fo,E,'static',scale,acc,drop));v=c.derive(p,d);cap=v['constants']['numerator_max'];D=0 if width==1 else v['constants']['denominator_max'];us=[(0,cap,max(0,cap-1),1 if cap else 0)[i%4] for i in range(width)]
             print('honest start',done+1,d,reps,width,tuple(v['groups'].values()),flush=True);proof,state=c.prove(p,us,D,d);out=c.verify(p,oracle(p,us,D)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,width,tuple(v['groups'].values()),flush=True)
+    if mode=='matrix':assert done==16 and digest.hexdigest()=='04832e09c6f8f76f08c853dd675bfa718ef51489af6acbd52f504c577da23d37'
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
