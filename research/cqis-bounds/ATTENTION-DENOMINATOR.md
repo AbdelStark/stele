@@ -80,3 +80,11 @@ join retained their consumers. All four actual operand views and four public
 powers rejected forged claims. Equivalent arithmetic metadata changed the
 returned state. Boundary, composition, matrix and full-metadata proofs remain
 under validation, with required repository gates queued once.
+
+Boundary controls passed: genuine output-ranged Z-p and D-p aliases rejected
+at the positive-sum and denominator product equations. Zero and below-Q sums,
+gap overflow, high external planes and zero-cap overflow also rejected.
+A complete global probability-sum proof composed on its actual source root;
+valid changed and zero sums could not replace that admitted divisor source.
+The matrix and two full-metadata boundary proofs continue in the original
+runner. Required repository gates remain queued.

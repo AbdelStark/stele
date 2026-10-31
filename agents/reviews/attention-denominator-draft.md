@@ -60,3 +60,10 @@ and the control Positive:SourceJoin rejected it. Each product's forged
 left/right view rejected at SourceClaimMismatch, and compensated public
 powers rejected at PowerClaimMismatch. The independent corpus digest is
 frozen; remaining boundary/composition proofs and gates are still pending.
+
+Boundary and source-composition suites subsequently passed. I tried to break
+it with fully output-ranged Z-p and D-p values; the controls rejected at
+Positive:Product:RoundSumMismatch and Denominator:Product:FinalEvaluationMismatch.
+A complete global probability sum composed on its actual root. Valid changed
+and zero source sums could not replace the admitted divisor. The matrix,
+full-metadata boundary proofs and repository gates remain pending.
