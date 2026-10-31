@@ -502,12 +502,12 @@ account for source reads, code dimensions/rates, entropy, state and native costs
 
 ### A8: Fixed field oracle from a partially defined Merkle tree
 
-Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Evidence: [frozen-oracle argument](../../formal/merkle-field-oracle.md)
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Evidence: [frozen-oracle argument](../../formal/merkle-field-oracle.md)
 and [executable controls](../../research/merkle-oracle/REPORT.md).
 Motivation: A3's complete field oracle does not follow from byte authentication
 alone. A malicious root may contain unresolved digests or malformed field leaves.
 
-Candidate addition to A3's authentication premise, pending native contracts:
+Conditional authentication premise adopted for A9's field-source contract:
 
 > In the classical ideal-hash model, freeze the query log when the complete
 > expected root/context is first fixed. Exact RFC-0012 A3 frames and canonical
@@ -536,13 +536,13 @@ the mathematical query-log completion is not charged as native verifier work.
 
 ### A9: Conditional native Circle field-source consumer
 
-Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Proposed exact contract:
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Exact conditional contract:
 [native field PCS](../../formal/native-field-pcs.md). Companion RFC-0012 A10
 and RFC-0020 A5. Motivation: A3/A8 need actual source/context, certificate,
 opening and original-claim consumers before native arithmetic can terminate
 at expected roots without receiving original tables.
 
-Proposed conditional implementation scope:
+Conditional implementation scope:
 
 > Implement the version-1 field-source bytes, fixed Circle query policy,
 > standalone registration certificate and general functional opening exactly
@@ -584,8 +584,8 @@ General multi-functional batching and the original A1/A3/A6/A7 obligations stay.
 
 Implementation must supply native/Python byte parity, actual source controls
 NC-0600/0601/0606..0609 and query-schedule control NC-0803, malformed-proof
-testing, exact records and repository gates. Reserve proposed IDs as todo on acceptance and implement their binaries
-with the corresponding bindings; this amendment adds no coverage. The original task
+testing, exact records and repository gates. NC-0606..0609 are reserved as todo; implement their binaries with the
+corresponding bindings. This amendment adds no coverage. The original task
 criteria remain intact. Cost terms include complete registration, source rows,
 encoding, queries, paths, coefficient storage and proof buffers in c_c/T_misc.
 No measured constant, native benchmark or extra model weight pass is supplied.

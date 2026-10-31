@@ -106,7 +106,7 @@ no binding/profile credit. No measured constant changes. Affected task: E3-07a.
 
 ### A5: Conditional field-source primitive dependencies
 
-Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9 and RFC-0012 A10.
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9 and RFC-0012 A10.
 For the exact field PCS contract, stele-pcs may directly depend on stele-field
 and stele-poly in addition to code/hash. Canonical field decoding and the
 existing MSB equality table must be shared with the native arithmetic.
@@ -119,4 +119,4 @@ cannot import stele-verifier. This scope changes no full-verifier dependency
 exception and introduces no proof-system dependency. Update the exact native
 dependency policy and rejection tests only with accepted implementation.
 Original stacked, inference, private-source and profile requirements remain.
-No Cargo edge or runtime behavior is introduced by this Draft.
+Specification acceptance alone introduces no Cargo edge or runtime behavior.

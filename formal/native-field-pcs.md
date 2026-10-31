@@ -1,6 +1,6 @@
 # Conditional native Circle field openings
 
-Status: Review under RFC-0010 A9. This contract closes a general field
+Status: Accepted under RFC-0010 A9. This contract closes a general field
 functional against the unique near-message interpretation of a certified
 Circle commitment. A separate adapter closes every original claim returned
 by native RFC-0006 A1. It does not admit an inference proof or either profile.
@@ -240,7 +240,7 @@ or OpeningColumn; arbitrary challenge labels and external generators are
 not its API. Pure candidate decoding supports forced threshold/exhaustion
 tests without a production randomness-injection path.
 
-## 8. Errors and proposed native controls
+## 8. Errors and reserved native controls
 
 Use FunctionalShape for wrong coefficient or standalone point lengths,
 UnsupportedSource for rejected context/code/layout/policy values,
@@ -252,12 +252,12 @@ Capacity and transcript sampling errors as their stated causes. Structural
 length checks precede transcript changes. Authenticate a response before its
 field decoding and column equation. All failures obey the abort rule above.
 
-Reserve these controls as todo at acceptance; the implementing change must
-supply their actual binaries. Proposed additions are NC-0606 (certificate/context substitution),
+These controls are reserved as todo; the implementing change must
+supply their actual binaries. The additions are NC-0606 (certificate/context substitution),
 NC-0607 (canonical field interpretation at an authenticated leaf), NC-0608
 (certificate identity/reuse) and NC-0609 (complete A1 original-source roster).
 NC-0600 checks encoded-column consistency; NC-0601 and NC-0803 exercise actual
-query scheduling. NC-0602 retains its existing path controls. These proposed
+query scheduling. NC-0602 retains its existing path controls. These reserved
 IDs confer no coverage before their real binaries run. Packing, blinding
 and fused NC-0603..0605 remain unfulfilled by this field-only contract.
 

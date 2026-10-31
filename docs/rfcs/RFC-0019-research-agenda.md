@@ -894,7 +894,7 @@ actual signed X/H magnitudes and xy*J, then the two wide signed output branches
 using these same roots. Original task, native/stacking/physical/model/private,
 fidelity and control obligations remain open.
 
-Q27 continuation: Draft RFC-0010 A8 and formal/merkle-field-oracle.md supply
+Q27 continuation: Accepted RFC-0010 A8 and formal/merkle-field-oracle.md supply
 a classical ideal-hash lift from partial Merkle trees to one fixed field
 oracle. Collisions and later preimages of frozen unresolved digests have
 separate lifetime terms. Exact framing/canonical-decoding controls and
@@ -902,7 +902,7 @@ tiny-output counterexamples exercise this boundary. Native wire, query
 sampling, certificate reuse, source consumers and Q12 remain open; no
 profile, quantum security, extractor or production control is supplied.
 
-Q27 continuation: Draft RFC-0010 A9, RFC-0012 A10 and RFC-0020 A5 specify
+Q27 continuation: Accepted RFC-0010 A9, RFC-0012 A10 and RFC-0020 A5 specify
 formal/native-field-pcs.md: canonical field-source bytes, standalone certificate,
 framed certificate identity, general opening and complete native A1 source
 closure. Exact policy checks cover all 59 Circle identities and unbiased
@@ -916,7 +916,7 @@ consumer in both challenge fields. Its unused-original control reaches the
 terminal opening after the reduction accepts. Native parity, actual controls,
 resource accounting and all broader PCS/profile obligations remain required.
 
-Q27 scoped acceptance review: RFC-0010 A8/A9, RFC-0012 A10 and RFC-0020 A5
+Q27 scoped acceptance: RFC-0010 A8/A9, RFC-0012 A10 and RFC-0020 A5
 separate conditional Circle field-source implementation E4-03a from the broader
 blocked E4-03 criteria. Only the fixed-oracle, certificate, individual-opening
 and bounded adaptive-reuse arguments are adopted. Packing, fused B, batching

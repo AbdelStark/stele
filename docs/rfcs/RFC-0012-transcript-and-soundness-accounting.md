@@ -556,12 +556,12 @@ Affected tasks: E3-07a, E3-07, E8-05.
 
 ### A10: Conditional field PCS schedule and column indices
 
-Status: Review. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9. The exact nine registry entries, kind
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9. The exact nine registry entries, kind
 and PCS tensor/query ownership are specified in
 [native-field-pcs.md §7](../../formal/native-field-pcs.md#7-exact-registry-additions).
 The RFC-0012 A1 hash-chain framing, canonical K sampling and state updates stay intact.
 
-Proposed API addition: a checked column sampler on Transcript accepts only
+API addition: a checked column sampler on Transcript accepts only
 the closed certificate/opening column kind and N=2^h, 1<=h<=30. Each outer
 attempt draws a full K value with its registered label. Read the first
 canonical limb x; accept x mod N only for x<floor(p/N)*N. Reject at most
@@ -586,8 +586,8 @@ Each native label and helper must land with its first actual consumer,
 byte parity and relevant threshold/exhaustion or continuation controls.
 [The native contract §9](../../formal/native-field-pcs.md#9-conditional-records-and-lifetime-ownership)
 requires explicit usage reporting, including failed attempts;
-[§8](../../formal/native-field-pcs.md#8-errors-and-proposed-native-controls) names
-FunctionalShape, InvalidColumnDomain and ColumnSamplingExhausted errors. No production
-registry or ledger changes occur in this Draft. Existing Q12 FS/H and quantum
+[§8](../../formal/native-field-pcs.md#8-errors-and-reserved-native-controls) names
+FunctionalShape, InvalidColumnDomain and ColumnSamplingExhausted errors. Specification acceptance alone changes no production
+registry or ledger. Existing Q12 FS/H and quantum
 obligations remain; neither profile is enabled. Affected tasks are E4-03,
 E3-06's terminal source work and E8-05, without completion of their criteria.

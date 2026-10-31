@@ -1,13 +1,13 @@
 # Fixed field oracles from partial Merkle trees
 
-Status: Review, RFC-0010 A8 and question Q27. This is a classical ideal-hash
+Status: Accepted, RFC-0010 A8 and question Q27. This is a classical ideal-hash
 argument for the authentication premise of [certified openings](certified-functional-opening.md).
 It does not instantiate BLAKE3, Fiat-Shamir, quantum queries or a profile.
 
 ## 1. Model and fixed context
 
 Let H map arbitrary finite byte strings to independent uniform lambda-bit
-outputs, with lambda=256 for the proposed transport. Count every distinct
+outputs, with lambda=256 for the specified transport. Count every distinct
 full-input call by the adversary and verifier, across all domains sharing H.
 Repeated input calls return the same value. Hash evaluation has no hidden
 unlogged channel. These are classical random-oracle hypotheses, stronger

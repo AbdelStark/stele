@@ -1,7 +1,7 @@
 # Conditional field PCS acceptance review
 
-Decision: approve the corrected conditional specification for Review, followed
-by acceptance with its index, ADR, task, glossary and control reservations.
+Decision: accept the corrected conditional specification after the recorded
+Review, with its index, ADR, task, glossary and control reservations.
 This is coordinated internal agent review, not an independent cryptographic
 audit. Native implementation and its delivery gates remain unfinished.
 
@@ -28,7 +28,8 @@ and observable non-authorizing failed-attempt usage.
 
 The review checklist is answered as follows.
 
-- Public items implement RFC-0010 A9, RFC-0012 A10 and RFC-0020 A5. A8 supplies
+- The specification authorizes RFC-0010 A9, RFC-0012 A10 and RFC-0020 A5's
+  conditional implementation. A8 supplies
   only the bounded authentication lemma. Broader A3 protocols stay Draft.
 - Source context precedes CertificateWeight; complete rows precede column
   challenges; full response blocks precede continuation. Typed labels are exact.

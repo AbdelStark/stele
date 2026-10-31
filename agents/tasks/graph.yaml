@@ -546,7 +546,7 @@ tasks:
   - RFC-0020 A5
   skill: pcs-engineer
   crate: stele-pcs
-  status: todo
+  status: ready
   acceptance:
   - both-field native/Python certificate and opening byte parity
   - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation

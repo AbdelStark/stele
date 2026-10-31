@@ -306,3 +306,20 @@ complete quantiser/schema/set/plan contract and NC-0109, all other inference and
 fidelity tasks, and full private PCS/ZK/lookup delivery. This is coordinated
 same-author skill approval, not independent audit or native/proof completion.
 Status: Accepted.
+
+## ADR-036: Conditional Circle field-source closure
+
+Context: Q27 and E4-03a. Decision: adopt RFC-0010 A8/A9, RFC-0012 A10
+and RFC-0020 A5 for a field-only consistency primitive and its closed RFC-0006
+A1 source consumer. The scoped tensor/certificate/individual-opening lemmas
+are normative; broad A3 batching and its remaining acceptance gates stay Draft.
+
+Root/context identifies the original fixed oracle; certificate identity records
+replay separately. Every returned original remains an opening obligation.
+Conditional records retain losses, while observable local usage supplies no
+adversarial-cap estimate or profile decision. Every error aborts its attempt.
+Reserve NC-0606..0609 as todo and add E4-03a without weakening parent criteria.
+Native parity, controls, resource evidence, packing, fused B, privacy, extraction,
+Q12 and inference remain unfinished. No measured constant, cut or weight-pass
+change. Review: agents/reviews/field-pcs-acceptance.md records internal agent
+skill and owner sign-offs; independent audit is not claimed. Status: Accepted.
