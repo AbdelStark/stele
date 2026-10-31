@@ -69,6 +69,7 @@ def honest(maximum=False):
             print('honest start',done+1,d,reps,length,mode,drop,flush=True);proof,state=c.prove(p,D,d);answer,roots=oracle(p,D);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d)
             if maximum:assert answer==(1<<65 if mode=='exact' else 1<<49)
             digest.update(state);done+=1;print('honest passed',done,d,reps,length,mode,drop,flush=True)
+    if not maximum:assert (done,digest.hexdigest())==(16,'4e1b11841e44afb486319288865815ad8ddf56359ed810ea4ec5e3bf15f4b0d5')
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

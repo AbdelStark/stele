@@ -64,3 +64,9 @@ coefficient two to zero while D was zero, and Double:Factor rejected it.
 Both forged actual operand views rejected at SourceClaimMismatch; compensated
 public powers rejected at PowerClaimMismatch. The complete independent corpus
 passed and its digest is frozen. Remaining proof suites and gates are pending.
+
+Boundary and actual positive-source composition suites subsequently passed.
+The genuinely output-ranged 2D-p value rejected at Double:Product:FinalEvaluationMismatch.
+Both valid changed and standalone zero source substitutions rejected.
+All 16 matrix cases matched exact receipts, draws and original claims; their
+digest is frozen. Full-metadata boundaries and repository gates remain pending.
