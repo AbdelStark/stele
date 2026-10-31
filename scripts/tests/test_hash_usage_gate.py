@@ -26,7 +26,9 @@ class HashUsageGateTests(unittest.TestCase):
                  'usage_tests::matches_reference_transcript_usage',
                  'usage_tests::rejects_usage_overflow_before_unrecorded_work',
                  'usage_tests::rejects_sampling_exhaustion_with_usage',
-                 'usage_tests::rejects_merkle_overflow_with_usage')
+                 'usage_tests::rejects_merkle_overflow_with_usage',
+                 'pcs::tests::rejects_column_thresholds_exhaustion_and_invalid_domains',
+                 'pcs::tests::matches_reference_full_field_column_ratchets')
         for omitted in (*names, None):
             output = '\n'.join(f'test {name} ... ok' for name in names if name != omitted)
             result = subprocess.CompletedProcess([], int(omitted is None), output, '')

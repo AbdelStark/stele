@@ -704,12 +704,23 @@ The specified sampler draws full K challenges and uses only the first limb
 for a rejection-sampled index. With at most 64 attempts per index, PCS-only abort
 is bounded by `q_total*2^-64+(ell_total+64*q_total)*2^-1703`. This is
 availability loss; failed attempts never become acceptance or omitted hash
-work. Dedicated PCS tensor/query labels require registration and actual
-consumer/gate integration before native use. These conditional specifications change
-no admitted configuration, production ledger, proven flag, FS/H or profile.
+work. The native certificate producer now consumes the four certificate labels:
+CertificateWeight owns PCS_TENSOR (`2*ell*(e+1)/p^d`); CertificateColumn owns
+PCS_QUERY (`((N-e-1)/N)^q_c`). CertificateRow precedes all column draws and
+CertificateColumns binds every ordered response before continuation. The sampler
+retains full K ratchets and counts all rejected attempts. Opening and FieldSources
+labels remain absent until their actual consumers land. These producer bytes and observations
+supply no accepting verifier, evaluated loss, proven flag, FS/H or profile.
 
 The [native hash-work counters](../../research/merkle-oracle/HASH-USAGE.md)
 retain local evaluations, XOF output and transcript updates across errors.
 They are observations only: they do not bound adversarial queries or fresh
 certificate attempts, and they supply no evaluated FS/H loss. Native PCS
 consumers must retain their own failed-attempt observations when they land.
+
+[Native certificate production](../../research/merkle-oracle/CERTIFICATE-PRODUCTION.md)
+returns full wire bytes and hash-only observations, preserving failed-attempt
+usage after transcript construction. It neither computes a certificate ID nor
+constructs a verified handle. Preparation hashing is reported separately; it
+is not charged again while copying individual paths. Full certificate resource
+reports, native verification and the original E4-03a acceptance remain open.

@@ -267,6 +267,7 @@ dependencies = [
  "stele-code",
  "stele-field",
  "stele-hash",
+ "stele-poly",
 ]
 
 [[package]]

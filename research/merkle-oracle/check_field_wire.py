@@ -54,6 +54,21 @@ def exercise():
     return vectors
 
 
+def certificate_continuations(vectors):
+    # Replay actual independent verification helpers, then draw a real continuation.
+    result = []
+    for v in vectors:
+        source = wire.Source(v['degree'], 41, v['ell'], v['m'], v['blowup'], bytes.fromhex(v['source'])[-32:])
+        count = wire.counts(v['m'], v['blowup'])[0]
+        t, block = wire.parse(source, bytes.fromhex(v['certificate']), count)
+        transcript, a = wire.certificate_transcript(source)
+        transcript.absorb(wire.CERT_ROW, field_bytes(t))
+        wire.verify_responses(transcript, source, a, t, block, wire.CERT_COLUMN, count)
+        transcript.absorb(wire.CERT_COLUMNS, block)
+        result.append(transcript.challenge()[0].hex())
+    return ''.join(value+'\n' for value in result).encode()
+
+
 def rejects_authenticated_bad_fields_and_rows():
     for degree in (4, 8):
         matrix = [[2, 3], [5, 7]]
@@ -163,4 +178,6 @@ if __name__ == '__main__':
         assert not sys.argv[1:] and target.read_bytes() == raw
     core = Path(__file__).resolve().parents[2] / 'crates/stele-pcs/tests/fixtures/field-wire.jsonl'
     assert core.read_bytes() == raw, 'native field-wire fixture drift'
+    continuation = certificate_continuations(vectors)
+    assert core.with_name('certificate-continuation.txt').read_bytes() == continuation
     print('6 certificate/opening cases; reference A1 unused-original controls;', sha256(raw).hexdigest())

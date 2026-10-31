@@ -12,7 +12,7 @@ stele-sumcheck|RFC-0006|stele-poly stele-hash|no
 stele-gkr|RFC-0006 §3,§6|stele-sumcheck|no
 stele-lookup|RFC-0008|stele-gkr|no
 stele-code|RFC-0010 §3|stele-field stele-simd|no
-stele-pcs|RFC-0010|stele-code stele-field stele-hash|no
+stele-pcs|RFC-0010|stele-code stele-field stele-hash stele-poly|no
 stele-cqis|RFC-0004|stele-field|no
 stele-ir|RFC-0005|stele-cqis|no
 stele-reductions|RFC-0007 RFC-0008 RFC-0009 RFC-0017|stele-gkr stele-lookup stele-pcs stele-ir|no

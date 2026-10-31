@@ -55,9 +55,10 @@ def bootstrap_guard(root, gate):
 
 
 def field_source_codec(root):
-    """A9 producer preparation and parsing; accepting PCS APIs still need validators."""
+    """A9 certificate production and parsing; accepting PCS APIs still need validators."""
     crate = root / 'crates/stele-pcs'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs',
+               'src/producer.rs', 'src/producer_tests.rs', 'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
@@ -66,11 +67,12 @@ def field_source_codec(root):
                '//! ```compile_fail\n//! use stele_pcs::verify_certificate;\n//! ```\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod preparation;\nmod source;\n'
+               'extern crate alloc;\nmod preparation;\nmod producer;\nmod source;\n'
                'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
+               'pub use producer::CertificateFailure;\n'
                'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
-    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash')}
+    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
     source = (crate / 'src/source.rs').read_text()
     # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
     code = re.sub(r'//[^\n]*', '', source)
@@ -97,7 +99,7 @@ def field_source_codec(root):
         and imports == ['usecore::marker::PhantomData;', 'usestele_code::Circle;',
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
-                       'Encoder(stele_code::Error),Merkle(merkle::Error),Capacity,'),
+                       'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
@@ -120,13 +122,26 @@ def field_source_codec(root):
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
+    producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
+    producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
+    producer_closed = (producer_declarations == [('struct', 'CertificateFailure'),
+        ('', 'cause'), ('', 'usage'), ('fn', 'certificate')]
+        and len(producer_declarations) == len(re.findall(r'\bpub\b', producer))
+        and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', producer)]
+            == ["impl<K:ChallengeField>PreparedSource<'_,K>{"]
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', producer)] == [
+            'usecrate::{Error,PreparedSource,ProofKind,Source};', 'usealloc::vec::Vec;',
+            'usestele_hash::{AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript};']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', producer)] == [
+            '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[path="producer_tests.rs"]']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', producer))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
-            or not closed_surface or not prepared_closed
+            or not closed_surface or not prepared_closed or not producer_closed
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('PCS verifier not wired; only A9 source preparation/parsing admitted (E4-03a)')
+        raise ValueError('PCS verifier not wired; only A9 source/certificate production and parsing admitted (E4-03a)')
     checks = [
         (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
          ['test matches_reference_qm31_source_and_wire ... ok',
@@ -136,7 +151,9 @@ def field_source_codec(root):
           'test preparation::tests::rejects_preparation_allocation_sizes ... ok',
           'test matches_reference_qm31_prepared_columns ... ok',
           'test matches_reference_om31_prepared_columns ... ok',
-          'test rejects_preparation_shape_and_hash_overflow ... ok']),
+          'test rejects_preparation_shape_and_hash_overflow ... ok',
+          'test producer::tests::matches_reference_qm31_certificate_production ... ok',
+          'test producer::tests::matches_reference_om31_certificate_production ... ok']),
         (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
          ['59 native query pairs match exact independently checked minima']),
         (['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'],
@@ -150,7 +167,7 @@ def field_source_codec(root):
                 r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
                 result.stdout, re.MULTILINE)) != ['lib.rs', 'preparation.rs', 'source.rs']:
             raise ValueError('field source codec checks failed: missing compile-fail boundary')
-    print('gate PCS: canonical preparation/parsing and all59 policies; no certificate or NC credit')
+    print('gate PCS: certificate production/continuation and all59 policies; no verification or NC credit')
 
 
 def fraction_reductions(root):
@@ -296,7 +313,9 @@ def transcript_registry(root):
                 'usage_tests::matches_reference_transcript_usage',
                 'usage_tests::rejects_usage_overflow_before_unrecorded_work',
                 'usage_tests::rejects_sampling_exhaustion_with_usage',
-                'usage_tests::rejects_merkle_overflow_with_usage')
+                'usage_tests::rejects_merkle_overflow_with_usage',
+                'pcs::tests::rejects_column_thresholds_exhaustion_and_invalid_domains',
+                'pcs::tests::matches_reference_full_field_column_ratchets')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
         raise ValueError(f'transcript primitive tests failed: {result.stdout}\n{result.stderr}')
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')

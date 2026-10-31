@@ -4,13 +4,15 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 17);
-    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 5);
+    assert_eq!(entries.len(), 21);
+    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 7);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
     assert_eq!(entries[9].loss, Some(LossLine::Sc));
     assert_eq!(entries[14].loss, Some(LossLine::Rlc));
     assert_eq!(entries[15].loss, Some(LossLine::Rlc));
+    assert_eq!(entries[17].loss, Some(LossLine::PcsTensor));
+    assert_eq!(entries[19].loss, Some(LossLine::PcsQuery));
 }
 #[test]
 fn rejects_duplicate_labels_across_every_kind() {

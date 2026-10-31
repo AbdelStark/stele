@@ -37,6 +37,8 @@ pub enum Error {
     Encoder(stele_code::Error),
     /// Merkle construction/path failed; preserve its cause and work observation.
     Merkle(merkle::Error),
+    /// Transcript validation, sampling or local accounting failed.
+    Transcript(stele_hash::Error),
     /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }

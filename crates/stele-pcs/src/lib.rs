@@ -10,6 +10,8 @@
 
 extern crate alloc;
 mod preparation;
+mod producer;
 mod source;
 pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};
+pub use producer::CertificateFailure;
 pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};

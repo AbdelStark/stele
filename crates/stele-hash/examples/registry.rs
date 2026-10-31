@@ -11,6 +11,8 @@ fn main() -> Result<(), String> {
             None => "-",
             Some(LossLine::Sc) => "SC",
             Some(LossLine::Rlc) => "RLC",
+            Some(LossLine::PcsTensor) => "PCS_TENSOR",
+            Some(LossLine::PcsQuery) => "PCS_QUERY",
         };
         println!("{kind}\t{}\t{loss}", entry.label);
     }
