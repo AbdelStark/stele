@@ -68,3 +68,10 @@ GQA association, model/checkpoint/cache/decode ownership and O-projection
 weights remain separate requirements. No native/private PCS/ZK/FS, GPU,
 fidelity, benchmark, production coverage, cut or extra weight pass is claimed.
 All original task criteria stay blocked; Draft semantics remain unaccepted.
+
+All 16 maximum-parent namespace derivations passed before implementation:
+both fields, accumulation modes and output policies at h=128,w=128 and
+h=1,w=16384. Every complete child derives; their reserved spans are disjoint
+and contained, with the assembled source outside them. Tests first then
+rejected the missing output-conversion module. No proof admission follows
+from those namespace checks; complete controls and proof suites remain required.
