@@ -65,3 +65,17 @@ Primary and boundary controls passed. Both genuinely output-ranged H-p/H+p
 values rejected at the product equation; exact zero-hidden factor checks,
 both actual operand claims and both public powers retained their consumers.
 Composition, matrix, full-metadata proofs and repository gates remain pending.
+
+Complete global probability, positive denominator and canonical raw-sign
+proofs composed on the same Z/H roots. Separately valid changed Z/H proofs
+and a standalone zero product could not replace those sources. All 16 matrix
+proofs passed with exact receipts, draws and actual/public claims. Their
+frozen SHA-256 is
+`5f413bbd5013ba70720c522af90f7e5201bfa268839af65a96ce577c48cb58bb`.
+
+Both full-metadata scalar proofs passed at length 1048576 and width 16384,
+with Z=2^34 and S=65535 or S=127*259. All eight external bytes and complete
+consumers remained present. Their combined frozen SHA-256 is
+`6367a962df4890477a8e18d1d71be8585ccc5a2ffe9ddf7f1ddd4fe0efe52437`.
+The original proof runner completed successfully. Repository gates remain
+queued; independent review and full upstream ownership are still required.

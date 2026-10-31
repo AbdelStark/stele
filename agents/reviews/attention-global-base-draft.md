@@ -59,3 +59,12 @@ compensated public powers rejected at PowerClaimMismatch. Genuine output-ranged
 H-p and H+p values rejected at Product:Product:FinalEvaluationMismatch.
 The corpus digest is frozen. Composition, matrix, full-metadata proofs and
 repository gates remain pending; independent review is still required.
+
+All actual global-sum/positive-denominator/raw-sign joins passed, including
+separately valid changed sources and standalone zero rejection. The complete
+16-proof matrix and both full-metadata scalar proofs then passed, with every
+receipt, draw total and actual/public original consumer checked. Both digests
+are frozen and the original runner completed successfully. These scalar
+proofs preserve Z=2^34 and both maximal value policies; they do not establish
+full-row ownership or performance. Repository gates remain queued and the
+same-author review does not replace independent audit.
