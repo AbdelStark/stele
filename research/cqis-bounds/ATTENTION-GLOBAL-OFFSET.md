@@ -83,3 +83,9 @@ linear-view reductions/PCS/ZK/FS, GPU parity, fidelity and independent audit
 remain required. No production binding/control credit, new cut, benchmark
 or extra weight pass is claimed. Original tasks remain blocked; Accepted
 semantics are unchanged.
+
+Twelve pre-implementation namespace checks passed at maximum parent identity,
+covering both fields/modes and singleton, ragged and full configured domains.
+All complete child ranges fit unchanged limits; final carry caps are zero.
+The test-first control invocation then failed on the missing implementation
+module, as expected. Neither check establishes proof admission.
