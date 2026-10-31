@@ -69,3 +69,10 @@ The initial proof run rejected metadata replay at RoundSumMismatch rather
 than the test's expected ClaimMismatch. Only that diagnostic expectation
 changed; the verifier is unchanged and the corrected proof suite is running.
 Full proof and repository gates remain queued.
+
+The corrected primary and boundary suites passed. Complete source proofs
+reject fresh wrong signs and changed quotient roots. All three zero-hidden
+original claims, compensated signs and metadata replay retain consumers.
+Actual signed-source paths accept -32768 and negative-input zero, while
+positive 32768, q=32769, nonboolean flags, padding and high planes reject.
+Source compositions, matrix, full proof and repository gates remain pending.

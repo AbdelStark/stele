@@ -55,3 +55,10 @@ was rejected earlier than the initial test expected, at RoundSumMismatch;
 the diagnostic expectation was corrected without changing verification.
 The original corpus result is retained, and the corrected proof suite runs
 separately. Full proof and repository gates remain pending.
+
+Primary and boundary controls passed. I tried to break it by attaching a
+positive input sign to a valid signed-source proof of -32768, and the control
+SignedOutput:RoundSumMismatch rejected it. The -32768 and negative-input-zero
+cases accepted; all three zero-hidden originals and compensated signs
+rejected at ClaimMismatch. Complete source compositions, matrix, full proof
+and repository gates remain pending.
