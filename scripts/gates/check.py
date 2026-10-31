@@ -55,17 +55,20 @@ def bootstrap_guard(root, gate):
 
 
 def field_source_codec(root):
-    """A9 source/wire parsing only; accepting PCS APIs require their actual validators."""
+    """A9 producer preparation and parsing; accepting PCS APIs still need validators."""
     crate = root / 'crates/stele-pcs'
-    allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs',
-               'tests/field_source.rs', 'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs',
+               'tests/field_source.rs', 'tests/preparation.rs',
+               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
-    library = ('//! Conditional field source bytes and unverified wire shapes, RFC-0010 A9.\n'
+    library = ('//! Conditional field source preparation and unverified wire shapes, RFC-0010 A9.\n'
                '//!\n//! No certificate verifier or profile admission exists in this layer.\n'
                '//! ```compile_fail\n//! use stele_pcs::verify_certificate;\n//! ```\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'mod source;\npub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
+               'extern crate alloc;\nmod preparation;\nmod source;\n'
+               'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
+               'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash')}
     source = (crate / 'src/source.rs').read_text()
@@ -76,7 +79,7 @@ def field_source_codec(root):
     expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('struct', 'Source'),
-        ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'path_height'),
+        ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code'), ('fn', 'path_height'),
         ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'),
         ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'responses')]
@@ -93,23 +96,47 @@ def field_source_codec(root):
             + ['#[derive(Clone,Copy,Debug)]']*3
         and imports == ['usecore::marker::PhantomData;', 'usestele_code::Circle;',
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
-        and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,Capacity,'),
+        and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
+                       'Encoder(stele_code::Error),Merkle(merkle::Error),Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
+    prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
+    prepared_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', prepared)
+    prepared_surface = [(kind or 'field', name) for kind, name in prepared_declarations]
+    prepared_closed = (prepared_surface == [
+        ('struct', 'PreparationWork'), ('field', 'borrowed_message_bytes'),
+        ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
+        ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
+        ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'source'), ('fn', 'message'),
+        ('fn', 'response'), ('fn', 'work')]
+        and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
+        and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
+            == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
+            'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
+            'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
+            'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
+            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
-            or not closed_surface
+            or not closed_surface or not prepared_closed
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('PCS verifier not wired; only A9 source/wire parsing admitted (E4-03a)')
+        raise ValueError('PCS verifier not wired; only A9 source preparation/parsing admitted (E4-03a)')
     checks = [
         (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
          ['test matches_reference_qm31_source_and_wire ... ok',
           'test matches_reference_om31_source_and_wire ... ok',
           'test rejects_unsupported_sources_without_allocation ... ok',
           'test accepts_maximum_source_shape_without_domain_allocation ... ok',
-          '2 passed; 0 failed']),
+          'test preparation::tests::rejects_preparation_allocation_sizes ... ok',
+          'test matches_reference_qm31_prepared_columns ... ok',
+          'test matches_reference_om31_prepared_columns ... ok',
+          'test rejects_preparation_shape_and_hash_overflow ... ok']),
         (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
          ['59 native query pairs match exact independently checked minima']),
         (['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'],
@@ -119,7 +146,11 @@ def field_source_codec(root):
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
         if result.returncode or any(text not in result.stdout for text in expected):
             raise ValueError(f'field source codec checks failed: {result.stdout} {result.stderr}')
-    print('gate PCS: canonical source/wire parsing and all59 policies; no certificate or NC credit')
+        if command[0] == 'cargo' and sorted(re.findall(
+                r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
+                result.stdout, re.MULTILINE)) != ['lib.rs', 'preparation.rs', 'source.rs']:
+            raise ValueError('field source codec checks failed: missing compile-fail boundary')
+    print('gate PCS: canonical preparation/parsing and all59 policies; no certificate or NC credit')
 
 
 def fraction_reductions(root):

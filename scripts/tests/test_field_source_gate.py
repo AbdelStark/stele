@@ -27,6 +27,10 @@ class FieldSourceGateTests(unittest.TestCase):
                                  'pub fn verify_certificate(&self) -> bool { true } }\n'),
                                 ('src/source.rs', '\nimpl<K: ChallengeField> From<Source<K>> for bool { '
                                  'fn from(_: Source<K>) -> bool { true } }\n'),
+                                ('src/preparation.rs', '\nimpl<K: ChallengeField> PreparedSource<\'_, K> { '
+                                 'pub fn verify_certificate(&self) -> bool { true } }\n'),
+                                ('src/preparation.rs', '\nimpl<K: ChallengeField> From<PreparedSource<\'_, K>> for bool { '
+                                 'fn from(_: PreparedSource<\'_, K>) -> bool { true } }\n'),
                                 ('Cargo.toml', '\n[features]\nunwired = []\n')]:
                 path = crate / name
                 original = path.read_text()
@@ -46,6 +50,24 @@ class FieldSourceGateTests(unittest.TestCase):
             with mock.patch.object(gate.subprocess, 'run', return_value=result):
                 with self.assertRaisesRegex(ValueError, 'checks failed'):
                     gate.field_source_codec(ROOT)
+
+    def test_rejects_missing_preparation_and_compile_fail_producers(self):
+        actual = subprocess.run(['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
+                                cwd=ROOT, text=True, capture_output=True)
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        for name in ('preparation::tests::rejects_preparation_allocation_sizes',
+                     'matches_reference_qm31_prepared_columns',
+                     'matches_reference_om31_prepared_columns',
+                     'rejects_preparation_shape_and_hash_overflow',
+                     'crates/stele-pcs/src/lib.rs', 'crates/stele-pcs/src/source.rs',
+                     'crates/stele-pcs/src/preparation.rs'):
+            self.assertIn(name, actual.stdout)
+            output = '\n'.join(line for line in actual.stdout.splitlines() if name not in line)
+            result = subprocess.CompletedProcess([], 0, output, '')
+            with mock.patch.object(gate.subprocess, 'run', return_value=result) as run:
+                with self.assertRaisesRegex(ValueError, 'checks failed'):
+                    gate.field_source_codec(ROOT)
+                self.assertEqual(run.call_count, 1)
 
 
 if __name__ == '__main__':

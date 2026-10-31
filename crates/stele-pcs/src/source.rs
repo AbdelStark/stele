@@ -31,7 +31,13 @@ pub enum Error {
     ProofShape,
     /// A field limb is at least the M31 modulus.
     NoncanonicalField,
-    /// A size cannot be represented on this platform.
+    /// The producer's row-major matrix does not have exactly R*C elements.
+    MessageShape,
+    /// Canonical encoding failed; preserve the encoder's cause.
+    Encoder(stele_code::Error),
+    /// Merkle construction/path failed; preserve its cause and work observation.
+    Merkle(merkle::Error),
+    /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }
 
@@ -122,6 +128,11 @@ impl<K: ChallengeField> Source<K> {
     /// Number of message columns, distinct from encoded leaf count.
     pub fn columns(&self) -> usize {
         self.code.message_len()
+    }
+
+    /// The validated canonical Circle map, without any proximity or profile credit.
+    pub fn code(&self) -> Circle {
+        self.code
     }
 
     /// Number of bottom-up siblings in each individual response.

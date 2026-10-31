@@ -255,6 +255,11 @@ impl Tree {
     pub fn root(&self) -> Digest {
         self.nodes[self.nodes.len() - 1]
     }
+    /// Actual owned digest-vector capacity in bytes (A10 resource observations).
+    /// Excludes borrowed payloads, the Tree value, allocator metadata and process memory.
+    pub fn owned_bytes(&self) -> usize {
+        self.nodes.capacity() * core::mem::size_of::<Digest>()
+    }
     /// Produce the exact sibling path for a real leaf; padding cannot be opened.
     pub fn path(&self, index: u64) -> Result<Vec<Digest>, Error> {
         if index >= self.spec.count {

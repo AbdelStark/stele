@@ -87,3 +87,9 @@ RFC-0012 A10 adds local hash-work observations, including failures. The transcri
 and Merkle validators require the actual usage, overflow and byte-vector tests;
 successful execution with those tests omitted fails. These counters do not
 establish adversarial query caps, PCS correctness or a complete FS/H budget.
+
+The A9 producer validator also executes native source preparation against all
+six independent full-wire fixtures. It requires the preparation controls and
+each compile-fail API boundary explicitly. Adding an accepting method or trait
+conversion to the preparation module still rejects before execution. Preparation
+and byte authentication do not supply a verified registration certificate.
