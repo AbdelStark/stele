@@ -702,3 +702,911 @@ tasks:
   status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
   agent: codex-root
   branch: task/E5-03-attention-normalization-consumer
+  acceptance:
+  - certificates property-tested on random shapes
+  - NC-0109
+- id: E5-03a
+  epic: E5
+  title: Native closed Requant and RMSNorm static records (no proof admission)
+  depends:
+  - E5-01
+  - E5-02
+  rfc:
+  - RFC-0004 A5
+  - RFC-0022 §§2-6
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: done
+  agent: codex-root
+  branch: task/E5-03a-static-completion
+  acceptance:
+  - exact static derivation from separate checked parameters, with no supplied schema or field authority
+  - full canonical bytes and all column fields match independent Python on 10000 configurations per schema
+  - every boundary vector, mutation, malformed length, alias, capacity and arithmetic rejection in RFC-0022 §6
+  - checked no_std implementation and all required repository gates; no NC-0109 or full E5-03 credit
+- id: E5-04
+  epic: E5
+  title: Bit-exact CQIS reference forward pass (Rust + NumPy) incl. attention blockwise, RMSNorm limbs, RoPE tables, decoding
+  depends:
+  - E5-02
+  - E5-03
+  rfc:
+  - RFC-0004 §3,§5,§7,§9
+  - RFC-0004 A4
+  - RFC-0021 §§2-5
+  - RFC-0004 A6
+  - RFC-0009 A2
+  - RFC-0004 A7
+  - RFC-0004 A8
+  - RFC-0003 A3
+  - RFC-0004 A9
+  - RFC-0004 A10
+  skill: cqis-numerics
+  crate: stele-cqis+harness
+  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
+  agent: codex-root
+  branch: task/E5-04-causal-model
+  acceptance:
+  - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
+  - decode == single causal pass test
+- id: E5-05
+  epic: E5
+  title: Fidelity harness (perplexity, GPQA-D, MMLU-Pro, IFEval; paired SE) and first report on Llama-3.1-8B
+  depends:
+  - E5-04
+  rfc:
+  - RFC-0004 §8
+  skill: cqis-numerics
+  crate: harness
+  status: ready
+  acceptance:
+  - report published
+  - PRD G7 pass or ADR with knob change
+- id: E5-06
+  epic: E5
+  title: CQIS serving kernels (int8 GEMM exact accumulate, table gathers) with GPU/CPU bit reproducibility
+  depends:
+  - E5-04
+  rfc:
+  - RFC-0014 §2 recompute_layer_int8
+  skill: cuda-kernel-author
+  crate: stele-kernels
+  status: ready
+  acceptance:
+  - digest equality CPU/GPU on 8B layer
+  - throughput ledger
+- id: E6-01
+  epic: E6
+  title: Tensor IR + lowering from HF config/safetensors (Llama/Qwen/Gemma dense)
+  depends:
+  - E5-03
+  rfc:
+  - RFC-0005 §1
+  - RFC-0017
+  - RFC-0005 A1
+  - RFC-0021 §4
+  - RFC-0004 A10
+  skill: gkr-reduction-author
+  crate: stele-ir
+  status: blocked(RFC-0004 A10)
+  acceptance:
+  - plan.json canonical and deterministic
+  - unsupported ops fail with RFC-0017 ids
+- id: E6-02
+  epic: E6
+  title: Stacking + padding + range-discipline checker
+  depends:
+  - E6-01
+  rfc:
+  - RFC-0005 §2
+  - RFC-0008 §5
+  - RFC-0008 A4
+  skill: gkr-reduction-author
+  crate: stele-ir
+  status: ready
+  acceptance:
+  - checker rejects plan with unchecked committed element
+- id: E6-03
+  epic: E6
+  title: Witness capture (cuts, scales, indices, multiplicities, limbs) and recompute-from-cuts engine
+  depends:
+  - E6-02
+  - E5-04
+  rfc:
+  - RFC-0005 §4
+  - RFC-0014 §4
+  skill: gkr-reduction-author
+  crate: stele-prover
+  status: ready
+  acceptance:
+  - recompute digests == capture digests per layer
+  - memory = one layer window
+- id: E7-01
+  epic: E7
+  title: Matmul reduction (single instance) + requant zerocheck + range lookups
+  depends:
+  - E3-07
+  - E6-02
+  rfc:
+  - RFC-0007 §1
+  - RFC-0004 §5.1
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - NC-0300/0302/0303
+  - NC-0100/0101
+- id: E7-02
+  epic: E7
+  title: Stacked weight phase (ℓ,k sumcheck, bucketed B, fused opening)
+  depends:
+  - E7-01
+  - E4-04
+  rfc:
+  - RFC-0007 §2,§5
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - exactly one pass counter
+  - NC-0301/0304/0305
+- id: E7-03
+  epic: E7
+  title: RMSNorm reduction (limb split, bit-length witness, rsqrt lookup, requant)
+  depends:
+  - E7-01
+  rfc:
+  - RFC-0004 §5.3
+  - RFC-0004 A3
+  - RFC-0004 A4
+  - RFC-0021 §2.3
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0004 A3)
+  acceptance:
+  - NC-0105
+  - certificate for d up to 2^14 and chunked beyond
+- id: E7-04
+  epic: E7
+  title: RoPE zerocheck with public rotation tables + requant
+  depends:
+  - E7-01
+  rfc:
+  - RFC-0004 §5.4
+  - RFC-0004 A7
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0004 A7)
+  acceptance:
+  - NC-0106
+  - variants parametrised
+- id: E7-05
+  epic: E7
+  title: SiLU·gate reduction (silu_q lookups, product zerocheck, requant8)
+  depends:
+  - E7-01
+  - E3-08
+  rfc:
+  - RFC-0004 §3
+  - RFC-0021 §2.2
+  - RFC-0004 A8
+  - RFC-0003 A3
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0004 A8; RFC-0003 A3)
+  acceptance:
+  - controls for table id and product
+- id: E7-06
+  epic: E7
+  title: Attention chain (output normalisation, P̂V, Z, exp lookups with mask selector, attained max, QKᵀ, GQA broadcast)
+  depends:
+  - E7-01
+  - E3-06
+  rfc:
+  - RFC-0009 §2
+  - RFC-0009 A1
+  - RFC-0021 §2.1
+  - RFC-0004 A6
+  - RFC-0009 A2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0004 A6; RFC-0009 A2)
+  acceptance:
+  - NC-0500..0506
+  - n² never resident (memory test)
+  - c_x measured
+- id: E7-07
+  epic: E7
+  title: Blockwise attention accumulation for long context
+  depends:
+  - E7-06
+  rfc:
+  - RFC-0004 §5.7
+  - RFC-0009 §6
+  - RFC-0004 A6
+  - RFC-0009 A2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0004 A6; RFC-0009 A2)
+  acceptance:
+  - NC-0505
+  - certificate for n up to 2^20
+- id: E7-08
+  epic: E7
+  title: Embedding gather (one-hot sparse matmul) and LM head + argmax + sampling
+  depends:
+  - E7-02
+  rfc:
+  - RFC-0004 §5.8,§7
+  - RFC-0004 A9
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0004 A9)
+  acceptance:
+  - NC-0107/0108
+  - one pass over E
+- id: E7-09
+  epic: E7
+  title: Dynamic per-token scale attainment gadget
+  depends:
+  - E7-06
+  rfc:
+  - RFC-0004 §5.5
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - NC-0102
+- id: E7-10
+  epic: E7
+  title: Residual split/RLC glue and R_stack functional batching
+  depends:
+  - E7-01
+  - E4-03
+  rfc:
+  - RFC-0007 §4 rows 0,1,8,9
+  - RFC-0010 §2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - NC-0002
+  - single R_stack opening counter
+- id: E8-01
+  epic: E8
+  title: Prover orchestrator (stage runner, claim graph executor) and proof container v1
+  depends:
+  - E6-03
+  - E7-03
+  - E7-04
+  - E7-05
+  - E7-08
+  - E7-09
+  - E7-10
+  rfc:
+  - RFC-0007 §4
+  - RFC-0016 §1
+  skill: gkr-reduction-author
+  crate: stele-prover+stele-proof
+  status: ready
+  acceptance:
+  - W8 proof produced
+  - size matches plan
+- id: E8-02
+  epic: E8
+  title: no_std verifier (plan derivation, ledger, graph replay)
+  depends:
+  - E8-01
+  rfc:
+  - RFC-0016 §2-3
+  - RFC-0012 §4
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: ready
+  acceptance:
+  - W8 verifies
+  - NC-1200/1201/1202
+  - no panics under fuzz 1h
+  - LoC budget
+- id: E8-03
+  epic: E8
+  title: Python differential verifier
+  depends:
+  - E8-02
+  rfc:
+  - RFC-0002 S10
+  skill: soundness-auditor
+  crate: harness/verifier
+  status: ready
+  acceptance:
+  - agrees on 1e3 proofs
+  - rejects all controls
+- id: E8-04
+  epic: E8
+  title: Negative-control corpus v1 (all NC ids defined so far) + coverage 100%
+  depends:
+  - E8-02
+  rfc:
+  - RFC-0002 §7
+  skill: negative-control-author
+  crate: tests
+  status: ready
+  acceptance:
+  - coverage report 100%
+  - CI gate green
+- id: E8-05
+  epic: E8
+  title: Soundness ledger generator + accounting gate; first ledger for W8 both profiles
+  depends:
+  - E8-02
+  rfc:
+  - RFC-0012 §4-5
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: ready
+  acceptance:
+  - NC-0804/0805
+  - totals within profile or config rejected
+- id: E8-06
+  epic: E8
+  title: Digest gate with recorded W8 digests
+  depends:
+  - E8-02
+  rfc:
+  - RFC-0020 §5
+  skill: benchmark-runner
+  crate: ci
+  status: ready
+  acceptance:
+  - digest change requires PR note
+- id: E9-01
+  epic: E9
+  title: Llama-3.1-8B end to end on CPU (W1), memory planner, 64-core run
+  depends:
+  - E8-06
+  - E8-05
+  - E5-05
+  - E6-03
+  rfc:
+  - RFC-0007
+  - RFC-0014 §4
+  skill: gkr-reduction-author
+  crate: stele-prover
+  status: ready
+  acceptance:
+  - W1 <= 2 h on 64 cores
+  - ledger
+  - all controls
+- id: E9-02
+  epic: E9
+  title: Batch of sequences (block-diagonal masks) and generated positions
+  depends:
+  - E9-01
+  rfc:
+  - RFC-0017 §14
+  - RFC-0004 §9
+  skill: gkr-reduction-author
+  crate: stele-prover
+  status: ready
+  acceptance:
+  - W2 ledger
+  - weight pass count unchanged
+- id: E9-03
+  epic: E9
+  title: Fit cost-model constants from CPU ledgers; regenerate docs/cost-model.md
+  depends:
+  - E9-01
+  rfc:
+  - RFC-0018 §4
+  skill: benchmark-runner
+  crate: stele-bench
+  status: ready
+  acceptance:
+  - constants with CIs committed
+- id: E10-01
+  epic: E10
+  title: ops.toml + codegen for CPU reference and CUDA mirrors; parity harness
+  depends:
+  - E9-01
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-kernels+stele-gpu
+  status: ready
+  acceptance:
+  - parity gate on all ops
+- id: E10-02
+  epic: E10
+  title: Weight-pass kernel (bucketed, bandwidth-bound) + NVMe prefetch
+  depends:
+  - E10-01
+  rfc:
+  - RFC-0014 §3
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - '>= 70% of HBM bandwidth on 8B weights'
+  - parity
+- id: E10-03
+  epic: E10
+  title: Sumcheck round + fold kernels (deg 2-4, eq-trick, small-value)
+  depends:
+  - E10-01
+  rfc:
+  - RFC-0014 §2
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - c_sc GPU ledger
+  - parity
+- id: E10-04
+  epic: E10
+  title: LogUp tree kernels (fused level build + round data)
+  depends:
+  - E10-03
+  rfc:
+  - RFC-0014 §2
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - c_lu GPU ledger
+  - parity
+- id: E10-05
+  epic: E10
+  title: Attention tile kernel (S, P̂, Z, partial evals) and recompute pipeline
+  depends:
+  - E10-04
+  - E5-06
+  rfc:
+  - RFC-0014 §2,§4
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - no n² residency
+  - c_x GPU ledger
+- id: E10-06
+  epic: E10
+  title: RAA encoder + Blake3 Merkle kernels for cuts
+  depends:
+  - E10-01
+  rfc:
+  - RFC-0014 §2
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - c_c GPU ledger
+  - parity
+- id: E10-07
+  epic: E10
+  title: W1 on one H100 end to end
+  depends:
+  - E10-02
+  - E10-05
+  - E10-06
+  rfc:
+  - RFC-0018 §3
+  skill: benchmark-runner
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - W1 <= 10 s prover
+  - <= 10 s native verify
+  - parity digest
+  - fitted constants
+- id: E11-01
+  epic: E11
+  title: Multi-GPU runtime (layer shards, deterministic per-round all-reduce, checkpoints)
+  depends:
+  - E10-07
+  - E4-07
+  rfc:
+  - RFC-0015 §1,§4
+  skill: distributed-systems-engineer
+  crate: stele-dist
+  status: ready
+  acceptance:
+  - digest identical 1 vs 8 GPUs on W1
+  - efficiency ledger
+- id: E11-02
+  epic: E11
+  title: Sharded weight pass and fused opening across devices
+  depends:
+  - E11-01
+  rfc:
+  - RFC-0015 §2
+  skill: distributed-systems-engineer
+  crate: stele-dist
+  status: ready
+  acceptance:
+  - one pass per weight element across cluster
+- id: E11-03
+  epic: E11
+  title: W3 (70B) and W4 (405B) on 8xH100
+  depends:
+  - E11-02
+  rfc:
+  - RFC-0018 §3
+  skill: benchmark-runner
+  crate: stele-dist
+  status: ready
+  acceptance:
+  - W4 <= 3 min
+  - efficiency >= 0.85
+  - controls on W3
+- id: E11-04
+  epic: E11
+  title: Multi-node (NVMe-resident weights, MPI)
+  depends:
+  - E11-03
+  rfc:
+  - RFC-0015 §5
+  skill: distributed-systems-engineer
+  crate: stele-dist
+  status: ready
+  acceptance:
+  - 32-GPU run
+  - efficiency >= 0.7
+- id: E11-05
+  epic: E11
+  title: 16k context (W6) with tiled exp phase
+  depends:
+  - E10-07
+  - E7-07
+  rfc:
+  - RFC-0009 §6
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: ready
+  acceptance:
+  - W6 ledger
+  - memory bound verified
+- id: E12-01
+  epic: E12
+  title: Masked sumchecks (BlindFold-style) + blinded commitments; ZK on by default in treaty
+  depends:
+  - E8-02
+  - E4-05
+  rfc:
+  - RFC-0013
+  - RFC-0013 A1
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck+stele-pcs
+  status: blocked(RFC-0013 A1)
+  acceptance:
+  - NC-0900/0901
+  - overhead <= 5%
+- id: E12-02
+  epic: E12
+  title: Double-challenge LogUp in treaty profile
+  depends:
+  - E3-07
+  rfc:
+  - RFC-0008 §6
+  skill: gkr-reduction-author
+  crate: stele-lookup
+  status: ready
+  acceptance:
+  - ledger LU squared
+  - NC-0403
+- id: E12-03
+  epic: E12
+  title: Decide treaty challenge field (OM31 vs double transcripts) by bench; amend RFC-0012 D10
+  depends:
+  - E12-02
+  - E10-07
+  rfc:
+  - RFC-0012 §5
+  - RFC-0019 R-OCTIC
+  skill: soundness-auditor
+  crate: stele-sumcheck
+  status: ready
+  acceptance:
+  - ledger <= 2^-128 on W1 treaty
+  - time <= 1.5x standard
+- id: E12-04
+  epic: E12
+  title: Proven-only PCS parameters (codes.toml treaty block) with theorem citations
+  depends:
+  - E4-05
+  rfc:
+  - RFC-0010 §6
+  skill: pcs-engineer
+  crate: stele-code
+  status: ready
+  acceptance:
+  - treaty refuses proven:false
+  - query counts documented
+- id: E12-05
+  epic: E12
+  title: Passport pipeline (quantise→commit→certify→evaluate→publish)
+  depends:
+  - E4-02
+  - E5-05
+  rfc:
+  - RFC-0011 §1-2
+  - RFC-0011 A2
+  - RFC-0021 §4
+  skill: pcs-engineer
+  crate: stele-passport
+  status: ready
+  acceptance:
+  - 8B passport produced
+  - NC-0700..0703
+- id: E12-06
+  epic: E12
+  title: Proximity certificate generation and verification
+  depends:
+  - E12-05
+  rfc:
+  - RFC-0011 §1.4
+  - RFC-0010 §5
+  skill: pcs-engineer
+  crate: stele-passport
+  status: ready
+  acceptance:
+  - certificate verified by stele-verifier
+- id: E12-07
+  epic: E12
+  title: 'Security review workflow run #1 (fuzz, differential, coverage, forbidden grep)'
+  depends:
+  - E12-01
+  - E12-04
+  rfc:
+  - RFC-0002
+  skill: soundness-auditor
+  crate: all
+  status: ready
+  acceptance:
+  - docs/security/review-0.1.md with zero open critical findings
+- id: E12-08
+  epic: E12
+  title: Reproducible verifier build + SBOM + signed releases
+  depends:
+  - E8-02
+  rfc:
+  - RFC-0002 S9
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: ready
+  acceptance:
+  - two-machine digest match
+- id: E12-09
+  epic: E12
+  title: Binding specification document (what an inference proof must bind) as a public good
+  depends:
+  - E8-04
+  rfc:
+  - RFC-0019 R-FORMAL
+  skill: rfc-author
+  crate: docs
+  status: ready
+  acceptance:
+  - docs/security/binding-spec.md lists every edge with its control id
+- id: E13-01
+  epic: E13
+  title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
+  depends:
+  - E7-06
+  rfc:
+  - RFC-0017 §1-3,§6-7
+  - RFC-0004 A7
+  skill: gkr-reduction-author
+  crate: stele-reductions+stele-ir
+  status: blocked(RFC-0004 A7)
+  acceptance:
+  - W7 proof
+  - controls per feature
+- id: E13-02
+  epic: E13
+  title: MoE routing proof (top-k attained, routing matrices, per-expert stacked phases)
+  depends:
+  - E7-02
+  rfc:
+  - RFC-0017 §4
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Qwen3-30B-A3B proof
+  - one pass over touched experts
+- id: E13-03
+  epic: E13
+  title: MLA (DeepSeek) latent KV reductions
+  depends:
+  - E13-02
+  rfc:
+  - RFC-0017 §5
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - W5 proof on 8xH100 <= 2 min
+- id: E13-04
+  epic: E13
+  title: Sampling with committed seed (temperature/top-p/top-k) and EOS/stop rules
+  depends:
+  - E7-08
+  rfc:
+  - RFC-0004 §7
+  - RFC-0017 §15
+  skill: cqis-numerics
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - NC-0108
+  - policy in public input
+- id: E13-05
+  epic: E13
+  title: Multi-turn chaining via session_id and io_digest
+  depends:
+  - E8-01
+  rfc:
+  - RFC-0017 §9
+  - RFC-0011 §5
+  skill: rfc-author
+  crate: stele-proof
+  status: ready
+  acceptance:
+  - chained proofs verify
+  - NC for broken chain
+- id: E13-06
+  epic: E13
+  title: Parallel-block architectures and tied embeddings
+  depends:
+  - E7-08
+  rfc:
+  - RFC-0017 §10,§12
+  skill: gkr-reduction-author
+  crate: stele-ir
+  status: ready
+  acceptance:
+  - plan variants tested
+- id: E14-01
+  epic: E14
+  title: Wrapper circuit for the Stele verifier (Blake3 Merkle + K arithmetic) in an M31-native STARK
+  depends:
+  - E8-02
+  - E4-06
+  - E2-03
+  rfc:
+  - RFC-0016 §5
+  - RFC-0016 A1
+  skill: pcs-engineer
+  crate: stele-wrapper
+  status: blocked (RFC-0016 A1)
+  agent: codex-root
+  branch: task/E14-01-private-verifier-study
+  acceptance:
+  - W8 certificate <= 500 KB verified <= 200 ms
+  - NC-1203
+  - Q14 resolved by Accepted wrapper mode and separate soundness accounting before Poseidon2 use
+- id: E14-02
+  epic: E14
+  title: Checkpoint-binding one-time proof (hash of committed plaintext == digest_cqis)
+  depends:
+  - E14-01
+  - E12-05
+  rfc:
+  - RFC-0011 §1.5
+  - RFC-0016 §6
+  skill: pcs-engineer
+  crate: stele-wrapper
+  status: ready
+  acceptance:
+  - 8B binding proof produced and verified
+- id: E14-03
+  epic: E14
+  title: Table MLE openings from passport in wrapper mode
+  depends:
+  - E14-01
+  rfc:
+  - RFC-0016 §4
+  skill: pcs-engineer
+  crate: stele-wrapper
+  status: ready
+  acceptance:
+  - wrapper verifies W1 certificate
+- id: E15-01
+  epic: E15
+  title: R-DPA spike (extraction argument + RMSNorm prototype)
+  depends:
+  - E1-03
+  - E7-03
+  rfc:
+  - RFC-0019 R-DPA
+  skill: soundness-auditor
+  crate: research
+  status: ready
+  acceptance:
+  - REPORT.md with recommendation
+- id: E15-02
+  epic: E15
+  title: R-EPOCH protocol spike
+  depends:
+  - E7-02
+  rfc:
+  - RFC-0019 R-EPOCH
+  skill: rfc-author
+  crate: research
+  status: ready
+  acceptance:
+  - REPORT.md
+  - beacon trust model
+- id: E15-03
+  epic: E15
+  title: R-LIGERITO parameter study over M31 + RAA
+  depends:
+  - E4-06
+  rfc:
+  - RFC-0019 R-LIGERITO
+  skill: pcs-engineer
+  crate: research
+  status: ready
+  acceptance:
+  - codes.toml proposal
+- id: E15-04
+  epic: E15
+  title: R-BF16 exact-serving-arithmetic cost study
+  depends:
+  - E5-04
+  rfc:
+  - RFC-0019 R-BF16
+  skill: cqis-numerics
+  crate: research
+  status: ready
+  acceptance:
+  - cost number and recommendation
+- id: E15-05
+  epic: E15
+  title: R-FORMAL Lean statements L-1..L-6
+  depends:
+  - E8-02
+  rfc:
+  - RFC-0019 R-FORMAL
+  skill: soundness-auditor
+  crate: formal
+  status: ready
+  acceptance:
+  - statements type-check
+  - assumptions listed
+- id: E15-06
+  epic: E15
+  title: R-SUBSAMPLE sampled-stage protocol with commit-before-draw bound
+  depends:
+  - E9-01
+  rfc:
+  - RFC-0019 R-SUBSAMPLE
+  skill: rfc-author
+  crate: research
+  status: ready
+  acceptance:
+  - REPORT.md with bound
+- id: E15-07
+  epic: E15
+  title: R-TABLES structured tables for exp_q/rsqrt_q
+  depends:
+  - E3-08
+  rfc:
+  - RFC-0019 R-TABLES
+  skill: cqis-numerics
+  crate: research
+  status: ready
+  acceptance:
+  - fidelity + verifier cost report
+- id: E15-08
+  epic: E15
+  title: R-SERVE CQIS serving kernels competitive with vLLM
+  depends:
+  - E5-06
+  rfc:
+  - RFC-0019 R-SERVE
+  skill: cuda-kernel-author
+  crate: research
+  status: ready
+  acceptance:
+  - throughput ledger vs vLLM on 8B

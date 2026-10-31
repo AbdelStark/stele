@@ -1728,3 +1728,54 @@ The wrapper adds no challenge or loss and preserves each child's account.
 Negative controls must replace valid children while preserving zero outputs.
 Full source ownership and configured output conversion remain separate.
 Accepted semantics, cuts and original task criteria remain unchanged.
+
+### A3/A6/A8 research plan — Complete configured row capacity
+
+The [row-capacity scope](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
+raises only adapter guards to admit 16384 complete row entries. Existing
+signed-source and range limits already contain every nested byte domain.
+All maximum/scale/rounding consumers, transcripts and dimension-dependent
+accounts remain unchanged; legacy digests and full-size proofs are required.
+Head assembly and one conversion over the complete attention output row
+remain separate obligations. Accepted semantics and production cuts do not change.
+
+### A3/A6/A8 research plan — Head assembly and complete output conversion
+
+The [output conversion scope](../../research/cqis-bounds/ATTENTION-OUTPUT-CONVERSION.md)
+requires every complete head normalization proof, then gathers actual int16
+output bytes in head order into one complete configured row. Its derived
+source root feeds the existing complete dynamic/static row-code consumer.
+The wrapper adds no challenge and retains all child losses and originals.
+Actual key/value/GQA/model ownership and O-projection remain separate;
+Accepted semantics, cuts and original task criteria do not change.
+
+### A3/A6 research plan — Complete global attention offset aggregation
+
+The [global offset scope](../../research/cqis-bounds/ATTENTION-GLOBAL-OFFSET.md)
+retains every configured block through L=1048576,w=16384 in both modes.
+Complete block/output/carry ranges feed faithful byte-column equations.
+A fixed byte/channel projection and small block-domain A1 preserve separate
+losses and consume actual reauthenticated source projections. Canonical
+stream records and EOF bound retained parent data without narrowing the
+configured domain. Full-size proofs, resource evidence and upstream source
+joins remain required. Accepted semantics and production cuts are unchanged.
+
+### A3/A6/A8 research plan — Global attention sources through configured output
+
+The [global composition scope](../../research/cqis-bounds/ATTENTION-GLOBAL-COMPOSITION.md)
+requires all configured block offset/probability sources per head, complete
+global aggregation and the existing complete head-normalization/output-row
+consumer on identical O/Z roots. Canonical stream order and both child and
+outer EOF remain mandatory. No wrapper challenge or loss is introduced;
+every child account and original source consumer remains. Actual per-block
+and model ownership remain open. Accepted semantics and cuts are unchanged.
+
+### A3/A6 research plan — Complete weighted attention block sources
+
+The [block-offset scope](../../research/cqis-bounds/ATTENTION-BLOCK-OFFSET.md)
+requires every canonical block row and all channels through 1024x16384.
+Complete streamed source ranges reconstruct the same flat four-plane value
+root. One degree-two A1 consumes both actual source projections after all
+roots and child states; every carry plane remains ranged. This is revealing
+research, with actual value/probability preparation and full composition still
+required. Accepted cuts, semantics and original task criteria are unchanged.

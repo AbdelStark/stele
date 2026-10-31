@@ -1410,3 +1410,126 @@ ordered expected roots and all verified child states bind the final context.
 Every shared root is passed independently to each complete child verifier.
 Binding/FS/H and upstream ownership remain additional. Check every child
 receipt, aggregate and empty wrapper draw set before evidence or admission.
+
+### Draft Q26/Q31 complete configured row capacity
+
+Pre-implementation account: only adapter capacity guards change. Existing
+range limits remain N*B<=131072 and lookup dimension m<=18. Dynamic row
+lookup dimensions are a+b+1,a+b+1,a+2,b+1,a+b+1,a+1,b+1,1,b+1,
+a+1,a+1,a+2,a+1,a+b+1,a+b+1,a+1,1,b+1,a+c+2. Static dimensions
+are a+b+1,a+b+1,a+2,a+1,a+1,a+2,a+1,a+br+1,a+c+2. Each retains
+identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Dynamic range/A3 numerator
+is 171a+87b+12c+25 with separate selection a; static is
+121a+26b+7br+12c+25. Nonlookup dynamic draws are 73a+36b+5c+11
+ZeroWeight and 74a+36b+5c+11 Sumcheck; static draws per label are
+51a+10b+3br+5c+11. Here a<=14,b<=2,c<=2,br<=2; all child accounts
+and actual originals remain mandatory. No new challenge or label. Binding/FS/H
+and actual inference provenance remain additional. Require unchanged legacy
+digests and full-size receipts before evidence or admission.
+
+### Draft Q26/Q31 head assembly and complete output conversion
+
+Pre-implementation account: no wrapper challenge, identity or reduction.
+Verify every complete head normalization account unchanged, then add the
+complete dynamic/static row-code account at a=log2(next_power_of_two(h*w)).
+Retain four independent product identity numerators per exact head or three
+per block head, plus all inherited A1 reductions. Sum range/A3 and unsquared
+lookup reductions, keeping every repeated lookup identity. Dynamic output
+selection contributes a; static selection contributes zero. Every original
+source/range/normalization/maximum/rounding consumer remains mandatory.
+The verifier hashes only actual verified head-output bytes, in expected
+head/plane order with complete-row padding, to derive the conversion source.
+Full expected metadata, ordered external roots, that assembled root and all
+verified child states bind the final context. Binding/FS/H and actual
+upstream/model provenance remain additional. Require exact child/aggregate
+receipts, empty wrapper draws and full-source substitution rejection.
+
+### Draft Q26/Q31 complete global attention offset aggregation
+
+Pre-implementation account: a=log2(N), bb=ceil(log2(B)); source compact-byte
+exponents bs_b<=3, output bo<=3, carry-group bc0/bc1<=1. Independent lookup
+dimensions are a+bs_b+1 for each block, a+bo+1 for output and a+bc_g+3 for
+each carry group. Each retains identity ((2^m+255)/|K|)^r and unsquared
+reduction r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Sum all children:
+range/A3 numerator 9a*(B+3)+36+7*(sum bs_b+bo+bc0+bc1); nonlookup draws
+per label 4a*(B+3)+16+3*(sum bs_b+bo+bc0+bc1). The parent projection
+identity has numerator a+3 and the degree-one A1 reduction has numerator bb;
+neither is squared or folded into a lookup identity. Parent draws only
+Sumcheck, a+3+bb times. Full ZeroWeight draws equal child draws, full
+Sumcheck draws add a+3+bb. All roots and child states precede projection.
+Faithful byte columns have sides<=256B-1<p/2 and statically zero final carry.
+Actual projected blocks are recomputed from reauthenticated verified bytes
+and consumed at the derived A1 point; no producer projection or receipt is
+accepted. Full EOF, high planes and zero padding remain checked. Binding,
+FS/H, native linear-view claims and actual upstream ownership are additional.
+Require exact runtime receipts and full original consumption before evidence.
+
+### Draft Q26/Q31 global attention sources through configured output
+
+Pre-implementation account: the composition adds no challenge, identity or
+reduction. Verify every complete global-offset, global-probability and
+output-conversion child, retaining all independent lookup identities and
+unsquared reductions. Sum complete range/A3 losses. Keep each head's global
+offset projection identity a+3 separately and sum block A1 numerators bb.
+Retain one global-probability product identity per head alongside four exact
+or three block normalization product identities per head. Sum all inherited
+product A1 reductions and retain the complete row's selection term. Every
+O/Z join passes the same expected root independently to both consumers.
+The full ordered block roster is mandatory. Expected metadata, all roots and
+verified child states bind the final context; wrapper draws remain empty.
+The exact-mode probability adapter's minimum legal auxiliary shift is fixed
+from expected metadata and changes no L/Q cap or exact arithmetic. Binding,
+FS/H and actual upstream/model ownership remain additional. Require child
+and aggregate receipt equality and complete substitution controls.
+
+### Draft Q26/Q31 complete weighted attention block
+
+Pre-implementation account: each probability/value/output/carry range keeps
+independent lookup identity ((2^m+255)/|K|)^r, m=a_i+b_i+1, and unsquared
+reduction r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator
+is sum_i(9a_i+7b_i). Child nonlookup draws per label are sum_i(4a_i+3b_i).
+After every expected root and verified child state, draw rho and ac channel
+coordinates. The column/channel identity contributes (K-1+ac)/|K|. One
+degree-two A1 over all ar padded key coordinates contributes 2ar/|K| and
+ar further draws; total parent Sumcheck draws are 1+ac+ar. Keep those terms
+separate and consume both actual projected tables at the emitted point.
+Complete U ranges cover every canonical block row; replay reauthenticates
+each compact group and preserves the flat four-plane external source root.
+Static count C<=1024 bounds column sides below p/2. Streaming adds no
+challenge. Exact roster/EOF, padding and all carry slots remain mandatory.
+Binding, FS/H and actual upstream/model ownership remain additional.
+
+### Draft Q26/Q31 complete restored attention block
+
+Pre-implementation account: group exponent ag and compact output byte exponent
+bg give independent lookup dimensions (ag+1,ag+1,ag+2,ag+1,ag+bg+1). Complete
+signed8, tighter magnitude and output ranges contribute A3 numerator
+61ag+9+7bg and 26ag+4+3bg draws of each nonlookup label. Dynamic common
+scale/nonzero/predecessor ranges have dimensions (ar+2,ar+1,ar+2); together
+with the scale-predicate A3 their numerator is 30ar+17 and draw count is
+13ar+7 per nonlookup label. Retain each independent lookup identity
+((2^m+255)/|K|)^r and unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. After all source roots, verified child states and scale
+predicates, draw a flat equality coordinates and independent eta in dynamic
+mode. Projection identity loss is (a+dynamic)/|K|; the separate degree-two
+A1 over ar row coordinates adds 2ar/|K|. Parent Sumcheck draws add
+a+dynamic+ar. Consume all two/four original tables at their emitted point.
+Streaming and equality-weight caching add no challenge. Exact roster, EOF,
+local/global padding and static field certificates remain mandatory. Binding,
+FS/H, prepared projection-row and actual model ownership remain additional.
+
+### Draft Q26/Q31 complete global maximum
+
+Pre-implementation account: retain each complete range's independent lookup
+identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, m=ai+bi+1, F(m)=3m(m-1)/2+2m. Range/A3 loss
+is sum_i(9ai+7bi); each child nonlookup label has sum_i(4ai+3bi) draws.
+All roots and verified child states precede a entry coordinates, beta and
+gamma. The projected residual has degree at most a+5: beta^2*gamma^3 is
+the largest mixed term; the terminal term has beta^3 and gamma^0. Keep
+this identity loss separate from the degree-two, two-round A1 loss 4/|K|.
+Parent Sumcheck draws total a+4. All sixteen original tables are independently
+consumed. Exact selected-byte attainment adds no challenge or algebraic loss.
+Streaming must reauthenticate all stored bytes, including public-zero high
+bytes outside compact ranges. Binding, FS/H and model provenance are additional.

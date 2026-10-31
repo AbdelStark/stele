@@ -1074,3 +1074,37 @@ retaining only a logarithmic digest frontier? Scope and kill criteria precede
 tests and code. This reduces temporary root-construction storage; it does not
 enlarge an inference consumer or admit a new cut. Complete source ranges,
 weighted attention ownership and all original task criteria remain required.
+
+Q26/Q31 continuation: can complete dynamic/static row conversion admit 16384
+entries within existing range lookup domains and preserve every legacy proof?
+[Scope and kill criteria](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
+precede tests and adapter changes. Complete head assembly and full-row
+conversion source ownership remain required after this capacity prerequisite.
+
+Q26/Q31 continuation: can complete per-head normalization proofs bind one
+configured output-row conversion on the actual ordered int16 source bytes?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-OUTPUT-CONVERSION.md)
+precede namespace checks, tests and code. Full h=128,w=128 composition and
+valid replacement/source-order controls remain required. Conditional head
+arithmetic does not establish actual GQA/key/value/model ownership.
+
+Q26/Q31 continuation: can every canonical attention block consume all actual
+probability/value sources through 1024x16384 with one weighted-sum proof?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BLOCK-OFFSET.md)
+precede tests and code. Stream complete ranges, preserve the flat source root
+and retain independent consumers even at zero probability. Actual restored-
+value preparation and complete upstream/model ownership remain required.
+
+Q26/Q31 continuation: can full canonical blocks bind restored values and the
+zero-scale rule with one degree-two parent proof and complete signed sources?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BLOCK-VALUES.md)
+precede tests and code. A bounded-memory flat projection must preserve all
+1024x16384 entries, authenticated group padding and each original consumer.
+Actual prepared projection rows and model ownership remain additional.
+
+Q26/Q31 continuation: can one full-row maximum consumer cover every key
+through L=2^20, including masked scores, first-tie selection and all shared
+exponential differences? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-MAXIMUM.md)
+precede code. Group complete byte ranges while retaining one projected
+parent proof, exact selected-byte attainment and static field certificates.
+Full model provenance and native/private admission remain separate.
