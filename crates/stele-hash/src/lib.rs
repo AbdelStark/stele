@@ -16,6 +16,8 @@ extern crate alloc;
 
 /// Canonical Merkle authentication (RFC-0012 A3).
 pub mod merkle;
+mod pcs;
+pub use pcs::certificate_id;
 
 mod usage;
 pub use usage::HashUsage;
@@ -39,6 +41,10 @@ pub enum Error {
     SamplingExhausted,
     /// A local work counter would overflow; abort before unrecorded work.
     UsageOverflow,
+    /// Column domains must be powers of two in [2, 2^30].
+    InvalidColumnDomain,
+    /// All 64 outer column candidates were rejected; abort the attempt.
+    ColumnSamplingExhausted,
 }
 /// Operation class of a registered label (RFC-0012 A1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,6 +63,10 @@ pub enum LossLine {
     Sc,
     /// One ordered batching coefficient (RFC-0012 A4).
     Rlc,
+    /// Certificate row-weight error, conditional on RFC-0010 A8/A9 hypotheses.
+    PcsTensor,
+    /// Certificate/opening column miss term, separate from FS/H (RFC-0012 A10).
+    PcsQuery,
 }
 /// Registered label metadata; validation does not authorize a caller-supplied registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -68,7 +78,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 17] = [
+const REGISTRY: [RegistryEntry<'static>; 21] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -154,6 +164,26 @@ const REGISTRY: [RegistryEntry<'static>; 17] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/certificate-weight",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::PcsTensor),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/certificate-row",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/certificate-column",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::PcsQuery),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/certificate-columns",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -181,7 +211,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 17], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 21], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -244,6 +274,10 @@ pub enum AbsorbLabel {
     FractionLayer,
     /// Selected-product descriptor, sources and incoming claims (A9).
     FractionLeaf,
+    /// Complete canonical certificate row before query sampling (A10).
+    CertificateRow,
+    /// Complete verified response block before continuation (A10).
+    CertificateColumns,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -259,6 +293,8 @@ impl AbsorbLabel {
             Self::Fraction => 12,
             Self::FractionLayer => 13,
             Self::FractionLeaf => 16,
+            Self::CertificateRow => 18,
+            Self::CertificateColumns => 20,
         }]
     }
 }
@@ -275,6 +311,10 @@ pub enum ChallengeLabel {
     FractionGamma,
     /// Child interpolation after all A1 finals (A9), RLC.
     FractionFold,
+    /// Source-bound certificate row coordinate, PCS tensor term (A10).
+    CertificateWeight,
+    /// Full K draw for a certificate column attempt, PCS query term (A10).
+    CertificateColumn,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -284,6 +324,8 @@ impl ChallengeLabel {
             Self::ZeroWeight => 9,
             Self::FractionGamma => 14,
             Self::FractionFold => 15,
+            Self::CertificateWeight => 17,
+            Self::CertificateColumn => 19,
         }]
     }
 }

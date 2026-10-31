@@ -6,6 +6,7 @@ license = "Apache-2.0"
 description = "Stele — stele-pcs (see RFC-0010)"
 
 [dependencies]
+stele-poly = { path = "../stele-poly" }
 stele-code = { path = "../stele-code" }
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }

@@ -37,6 +37,10 @@ pub enum Error {
     Encoder(stele_code::Error),
     /// Merkle construction/path failed; preserve its cause and work observation.
     Merkle(merkle::Error),
+    /// Transcript validation, sampling or local accounting failed.
+    Transcript(stele_hash::Error),
+    /// An authenticated column fails its encoded-row equation.
+    ColumnMismatch,
     /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }
@@ -133,6 +137,11 @@ impl<K: ChallengeField> Source<K> {
     /// The validated canonical Circle map, without any proximity or profile credit.
     pub fn code(&self) -> Circle {
         self.code
+    }
+
+    /// Expected full column-tree root from this caller-owned context.
+    pub fn root(&self) -> merkle::Digest {
+        self.root
     }
 
     /// Number of bottom-up siblings in each individual response.
@@ -248,6 +257,10 @@ impl<'a> Wire<'a> {
     /// Full canonical K row, in source column order.
     pub fn row_bytes(&self) -> &'a [u8] {
         self.row
+    }
+    /// Complete ordered response block for the final transcript absorb.
+    pub fn response_bytes(&self) -> &'a [u8] {
+        self.block
     }
 
     /// All individual responses, with no proof-supplied indices or deduplication.
