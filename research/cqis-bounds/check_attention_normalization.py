@@ -112,7 +112,7 @@ def account(p,out,d):
 
 def controls():
     for mode in ('exact','block1024'):
-        p=spec(mode,3,8200+(mode=='block1024'));d=4;z=65;totals=[0,0,0];proof,state=c.prove(p,z,totals,d);values,roots=oracle(p,z,totals);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d);v=c.derive(p,d)
+        p=spec(mode,3,8200+(mode=='block1024'));d=4;z=33;totals=[0,0,0];proof,state=c.prove(p,z,totals,d);values,roots=oracle(p,z,totals);out=c.verify(p,roots,proof,d);assert out['state']==state;account(p,out,d);v=c.derive(p,d)
         reasons={'offset':'Sign:Offset:CommitmentMismatch','base_source':'GlobalBase:Base:CommitmentMismatch','probability':('GlobalBase' if mode=='exact' else 'Denominator')+':WeightSum:CommitmentMismatch','magnitude':'Sign:Magnitude:CommitmentMismatch','sign':'Sign:Sign:CommitmentMismatch','numerator':'Numerator:Numerator:CommitmentMismatch','denominator':'Denominator:Denominator:CommitmentMismatch','quotient':'Division:QuotientProduct:Quotient:CommitmentMismatch','product':'Division:QuotientProduct:Product:CommitmentMismatch','biased':'Division:Bias:Biased:CommitmentMismatch','doubled':'Division:Double:Doubled:CommitmentMismatch','remainder':'Division:Remainder:CommitmentMismatch','output':'SignedOutput:Output:Raw:CommitmentMismatch'}
         for index,role in enumerate(v['roles']):
             bad=roots.copy();bad[index]=bytes(32);rejects(reasons[role],lambda:c.verify(p,bad,proof,d))

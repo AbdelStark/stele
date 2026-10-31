@@ -58,3 +58,12 @@ ran separately because the original proof runner was already loaded. Future
 boundary runs include them. Actual proof-substitution controls and the corpus
 continue in their original processes; no admission result is inferred from
 the context test alone.
+
+The first proof suite reached a test-fixture failure: its valid replacement
+control used Z=66 under the static maximum 65. The producer correctly rejected
+Divisor before that proposed alternate proof existed. The baseline fixture now
+uses Z=33, so both Z and Z+1 are admissible and the intended verifier binding
+can be exercised. No verifier behavior changed. The failed log is retained;
+only the waiting full-proof driver was stopped before any full proof started.
+The independent corpus and gate queue continue without a restart. The corrected
+proof suite must pass before an observed-attack conclusion.
