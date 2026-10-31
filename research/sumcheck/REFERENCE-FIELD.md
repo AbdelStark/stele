@@ -71,7 +71,7 @@ candidate. These checks establish finite evidence, not a new theorem.
 
 The following totals cover three complete proofs per field on the recorded
 Apple M4 Max/Python 3.12 environment. Each proof retains its three supplied
-words, four padded words, sixteen source byte cells, thirty-two lookup
+words padded to four, sixteen source byte cells, thirty-two lookup
 source rows and complete 256-row table. Witness/root preparation, proving,
 actual public verification and encoding/state/account checks are included.
 Warmup, separate rejection controls and the instrumented profile are excluded.
@@ -82,8 +82,8 @@ Warmup, separate rejection controls and the instrumented profile are excluded.
 | OM31 ([before](../../bench/ledger/e5-03-reference-field-before-om31.json), [after](../../bench/ledger/e5-03-reference-field-after-om31.json)) | 36932167043 | 10350275333 | 12822273000 | 4442799000 |
 
 Plans, toolchain, hardware and complete artifact digests match between each
-pair. Both profiles execute 36008 externally invoked multiplications per
-instrumented complete operation; recursive calls fall from 1116248 to
+pair. Both field measurements execute 36008 externally invoked multiplications
+per instrumented complete operation; total calls including recursion fall from 1116248 to
 228860 for QM31 and from 5617248 to 662777 for OM31. All four ledgers passed
 schema validation. Other original validation processes kept running, so
 these observations support no fitted c_sc constant or production target.
