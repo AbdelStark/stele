@@ -56,3 +56,9 @@ claim while compensating another to preserve the column equation, and
 Bias:ClaimMismatch rejected all five attacks. Complete changed input/output
 and carry children rejected at the parent equation. Corpus, boundary/source
 composition suites, matrix and full-width proofs remain pending.
+
+Boundary controls subsequently passed, including the genuine ranged W-p
+alias and denominator broadcast on padded channels. Both rejected at
+Bias:RoundSumMismatch; whole caps, endpoints and external high planes also
+retained their consumers. Remaining source proofs, corpus, matrix and
+full-width validation are pending.

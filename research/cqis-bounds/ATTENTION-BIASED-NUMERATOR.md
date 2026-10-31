@@ -79,3 +79,8 @@ original-final attacks rejected at Bias:ClaimMismatch, including the shared
 denominator view. Equivalent arithmetic metadata rejected at that consumer
 as well. Corpus, boundary/composition suites, matrix and full-size proofs
 remain under validation, with repository gates queued once.
+
+Boundary controls passed. Whole caps, dense padding, all carry endpoints,
+the genuine output-ranged W-p alias, an incorrectly unmasked D broadcast and
+all external high planes rejected at their stated consumers. Source
+composition, corpus, matrix and full-width proofs remain under validation.
