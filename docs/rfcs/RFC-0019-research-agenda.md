@@ -1059,3 +1059,10 @@ zero-scale rule with one degree-two parent proof and complete signed sources?
 precede tests and code. A bounded-memory flat projection must preserve all
 1024x16384 entries, authenticated group padding and each original consumer.
 Actual prepared projection rows and model ownership remain additional.
+
+Q26/Q31 continuation: can one full-row maximum consumer cover every key
+through L=2^20, including masked scores, first-tie selection and all shared
+exponential differences? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-MAXIMUM.md)
+precede code. Group complete byte ranges while retaining one projected
+parent proof, exact selected-byte attainment and static field certificates.
+Full model provenance and native/private admission remain separate.

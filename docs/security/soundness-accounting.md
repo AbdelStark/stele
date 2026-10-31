@@ -1459,3 +1459,18 @@ a+dynamic+ar. Consume all two/four original tables at their emitted point.
 Streaming and equality-weight caching add no challenge. Exact roster, EOF,
 local/global padding and static field certificates remain mandatory. Binding,
 FS/H, prepared projection-row and actual model ownership remain additional.
+
+### Draft Q26/Q31 complete global maximum
+
+Pre-implementation account: retain each complete range's independent lookup
+identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, m=ai+bi+1, F(m)=3m(m-1)/2+2m. Range/A3 loss
+is sum_i(9ai+7bi); each child nonlookup label has sum_i(4ai+3bi) draws.
+All roots and verified child states precede a entry coordinates, beta and
+gamma. The projected residual has degree at most a+5: beta^2*gamma^3 is
+the largest mixed term; the terminal term has beta^3 and gamma^0. Keep
+this identity loss separate from the degree-two, two-round A1 loss 4/|K|.
+Parent Sumcheck draws total a+4. All sixteen original tables are independently
+consumed. Exact selected-byte attainment adds no challenge or algebraic loss.
+Streaming must reauthenticate all stored bytes, including public-zero high
+bytes outside compact ranges. Binding, FS/H and model provenance are additional.
