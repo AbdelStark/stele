@@ -259,7 +259,14 @@ def transcript_registry(root):
         raise ValueError('transcript registry mapping mismatch against soundness inventory')
     result = subprocess.run(['cargo', 'test', '-p', 'stele-hash', '--lib', '--all-features', '--locked', '--offline'],
                             cwd=root, text=True, capture_output=True)
-    if result.returncode:
+    required = ('transcript_tests::matches_reference_transcript_vectors',
+                'transcript_tests::rejects_empty_public_input',
+                'usage_tests::rejects_unrepresentable_frame_lengths',
+                'usage_tests::matches_reference_transcript_usage',
+                'usage_tests::rejects_usage_overflow_before_unrecorded_work',
+                'usage_tests::rejects_sampling_exhaustion_with_usage',
+                'usage_tests::rejects_merkle_overflow_with_usage')
+    if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
         raise ValueError(f'transcript primitive tests failed: {result.stdout}\n{result.stderr}')
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
 
@@ -520,12 +527,16 @@ def zero_corpus(root):
 
 def merkle_vectors(root):
     """Execute actual authentication/KATs and check the independent candidate oracle."""
-    for command in [
-        ['cargo', 'test', '-p', 'stele-hash', '--test', 'merkle', '--locked', '--offline'],
-        ['uv', 'run', '--locked', '--script', 'research/merkle/check_merkle.py'],
+    for command, required in [
+        (['cargo', 'test', '-p', 'stele-hash', '--test', 'merkle', '--locked', '--offline'],
+         ('matches_reference_roots_paths_and_rejections',
+          'rejects_descriptor_aliasing_and_invalid_shapes',
+          'accepts_authenticated_child_root_and_rejects_wrong_child',
+          'rejects_merkle_failures_with_usage')),
+        (['uv', 'run', '--locked', '--script', 'research/merkle/check_merkle.py'], ()),
     ]:
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
-        if result.returncode:
+        if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
             raise ValueError(f'Merkle authentication/vector checks failed: {result.stdout} {result.stderr}')
     print('gate Merkle: actual roots, paths, batches and byte vectors checked; no PCS/profile certification')
 

@@ -17,6 +17,9 @@ extern crate alloc;
 /// Canonical Merkle authentication (RFC-0012 A3).
 pub mod merkle;
 
+mod usage;
+pub use usage::HashUsage;
+
 use stele_field::{M31, OM31, QM31};
 
 /// A transcript or registry validation failure.
@@ -34,6 +37,8 @@ pub enum Error {
     LengthOverflow,
     /// Fewer than d canonical coefficients were found in 64 words; abort the proof.
     SamplingExhausted,
+    /// A local work counter would overflow; abort before unrecorded work.
+    UsageOverflow,
 }
 /// Operation class of a registered label (RFC-0012 A1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -288,6 +293,7 @@ impl ChallengeLabel {
 /// No state import, alternate registry or external random-byte source is accepted.
 pub struct Transcript<K: ChallengeField> {
     state: [u8; 32],
+    usage: HashUsage,
     field: core::marker::PhantomData<K>,
 }
 impl<K: ChallengeField> Transcript<K> {
@@ -297,17 +303,28 @@ impl<K: ChallengeField> Transcript<K> {
         if public.is_empty() {
             return Err(Error::EmptyPublicInput);
         }
+        // A10: constructor errors have no transcript from which to observe work.
+        // Preflight all frame lengths before the first hash; fresh counters fit.
+        frame_lengths(REGISTRY[0].label.len(), public.len())?;
+        let mut usage = HashUsage::default();
+        usage.hashes(1)?;
         let initial = *blake3::hash(b"stele/v0.1/transcript/init").as_bytes();
         Ok(Self {
-            state: *frame(&initial, 0, REGISTRY[0].label, public)?
+            state: *frame(&initial, 0, REGISTRY[0].label, public, &mut usage)?
                 .finalize()
                 .as_bytes(),
+            usage,
             field: core::marker::PhantomData,
         })
     }
+    /// Snapshot of this attempt's work, including work before an error.
+    /// Observation does not authorize retry, continuation or a soundness budget.
+    pub fn usage(&self) -> HashUsage {
+        self.usage
+    }
     /// Absorb a registered message; encoding/schedule checks belong to its consumer.
     pub fn absorb(&mut self, label: AbsorbLabel, bytes: &[u8]) -> Result<(), Error> {
-        self.state = *frame(&self.state, 0, label.entry().label, bytes)?
+        self.state = *frame(&self.state, 0, label.entry().label, bytes, &mut self.usage)?
             .finalize()
             .as_bytes();
         Ok(())
@@ -317,22 +334,29 @@ impl<K: ChallengeField> Transcript<K> {
     pub fn challenge(&mut self, label: ChallengeLabel) -> Result<K, Error> {
         let degree = K::DEGREE as u8;
         let mut raw = [0; 256];
-        frame(&self.state, 1, label.entry().label, &[degree])?
-            .finalize_xof()
-            .fill(&mut raw);
-        let (limbs, consumed) = sample::<K>(&raw)?;
+        frame(
+            &self.state,
+            1,
+            label.entry().label,
+            &[degree],
+            &mut self.usage,
+        )?
+        .finalize_xof()
+        .fill(&mut raw);
+        let (limbs, consumed) = sample::<K>(&raw, &mut self.usage)?;
         let value = K::from_limbs(limbs);
         let canonical = value.to_le_bytes();
         let mut payload = [0; 37];
         payload[0] = degree;
         payload[1..5].copy_from_slice(&consumed.to_le_bytes());
         payload[5..5 + 4 * K::DEGREE].copy_from_slice(canonical.as_ref());
-        // RFC-0012 A1: all fallible work precedes the sole state assignment.
+        // RFC-0012 A1/A10: errors preserve state, but not the work observations.
         self.state = *frame(
             &self.state,
             2,
             label.entry().label,
             &payload[..5 + 4 * K::DEGREE],
+            &mut self.usage,
         )?
         .finalize()
         .as_bytes();
@@ -340,9 +364,27 @@ impl<K: ChallengeField> Transcript<K> {
     }
 }
 
-fn frame(state: &[u8; 32], tag: u8, label: &str, payload: &[u8]) -> Result<blake3::Hasher, Error> {
-    let label_length = u32::try_from(label.len()).map_err(|_| Error::LengthOverflow)?;
-    let payload_length = u64::try_from(payload.len()).map_err(|_| Error::LengthOverflow)?;
+fn frame(
+    state: &[u8; 32],
+    tag: u8,
+    label: &str,
+    payload: &[u8],
+    usage: &mut HashUsage,
+) -> Result<blake3::Hasher, Error> {
+    let (label_length, payload_length) = frame_lengths(label.len(), payload.len())?;
+    usage.add(if tag == 1 {
+        HashUsage {
+            xof_requests: 1,
+            xof_bytes: 256,
+            ..HashUsage::default()
+        }
+    } else {
+        HashUsage {
+            hash_evaluations: 1,
+            state_updates: 1,
+            ..HashUsage::default()
+        }
+    })?;
     let mut h = blake3::Hasher::new();
     for part in [
         state.as_slice(),
@@ -357,11 +399,25 @@ fn frame(state: &[u8; 32], tag: u8, label: &str, payload: &[u8]) -> Result<blake
     Ok(h)
 }
 
+fn frame_lengths(label: usize, payload: usize) -> Result<(u32, u64), Error> {
+    Ok((
+        u32::try_from(label).map_err(|_| Error::LengthOverflow)?,
+        u64::try_from(payload).map_err(|_| Error::LengthOverflow)?,
+    ))
+}
+
 // RFC-0012 A1: pure decoder for forced-rejection tests, never an injectable RNG.
-fn sample<K: ChallengeField>(raw: &[u8; 256]) -> Result<([M31; 8], u32), Error> {
+fn sample<K: ChallengeField>(
+    raw: &[u8; 256],
+    usage: &mut HashUsage,
+) -> Result<([M31; 8], u32), Error> {
     let mut limbs = [M31::ZERO; 8];
     let mut accepted = 0;
     for (index, word) in raw.chunks_exact(4).enumerate() {
+        usage.add(HashUsage {
+            candidate_words: 1,
+            ..HashUsage::default()
+        })?;
         let candidate = u32::from_le_bytes([word[0], word[1], word[2], word[3]]) & 0x7fff_ffff;
         if let Some(limb) = M31::from_canonical(candidate) {
             limbs[accepted] = limb;
@@ -381,6 +437,9 @@ mod tests;
 
 #[cfg(test)]
 mod transcript_tests;
+
+#[cfg(test)]
+mod usage_tests;
 
 #[cfg(feature = "wrapper")]
 pub mod poseidon2;

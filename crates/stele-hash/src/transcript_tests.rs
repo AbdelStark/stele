@@ -15,7 +15,15 @@ fn vector<K: ChallengeField>(record: &Value) {
     let events = record["events"].as_array().expect("events");
     let mut t = Transcript::<K>::new(&bytes(&events[0]["public_hex"])).expect("valid public input");
     assert_eq!(t.state.as_slice(), bytes(&events[0]["state_hex"]));
+    let mut usage = HashUsage {
+        hash_evaluations: 2,
+        state_updates: 1,
+        ..HashUsage::default()
+    };
+    assert_eq!(t.usage(), usage);
     for event in &events[1..] {
+        usage.hash_evaluations += 1;
+        usage.state_updates += 1;
         if event.get("label").is_some() {
             let label = [
                 AbsorbLabel::Instance,
@@ -32,8 +40,12 @@ fn vector<K: ChallengeField>(record: &Value) {
                 .challenge(ChallengeLabel::Sumcheck)
                 .expect("sampling succeeds");
             assert_eq!(value.to_le_bytes().as_ref(), bytes(&event["challenge_hex"]));
+            usage.xof_requests += 1;
+            usage.xof_bytes += 256;
+            usage.candidate_words += event["consumed_words"].as_u64().expect("consumed words");
         }
         assert_eq!(t.state.as_slice(), bytes(&event["state_hex"]));
+        assert_eq!(t.usage(), usage);
     }
 }
 #[test]
@@ -59,7 +71,8 @@ fn rejects_noncanonical_candidates_and_exhaustion() {
     let p = M31::MODULUS;
     let mut words = [5; 64];
     words[..10].copy_from_slice(&[p, u32::MAX, 0, 0x80000000, p - 1, 0xfffffffe, 1, 2, 3, 4]);
-    let (limbs, consumed) = sample::<OM31>(&raw(&words)).expect("enough canonical candidates");
+    let (limbs, consumed) = sample::<OM31>(&raw(&words), &mut HashUsage::default())
+        .expect("enough canonical candidates");
     assert_eq!(consumed, 10);
     assert_eq!(
         limbs.map(|v| v.to_i64_signed()),
@@ -75,17 +88,30 @@ fn rejects_noncanonical_candidates_and_exhaustion() {
         ]
     );
     let mut words = [p; 64];
-    assert_eq!(sample::<OM31>(&raw(&words)), Err(Error::SamplingExhausted));
-    assert_eq!(sample::<QM31>(&raw(&words)), Err(Error::SamplingExhausted));
+    assert_eq!(
+        sample::<OM31>(&raw(&words), &mut HashUsage::default()),
+        Err(Error::SamplingExhausted)
+    );
+    assert_eq!(
+        sample::<QM31>(&raw(&words), &mut HashUsage::default()),
+        Err(Error::SamplingExhausted)
+    );
     words[56..].copy_from_slice(&[0, 1, 2, 3, 4, 5, 6, 7]);
     assert_eq!(
-        sample::<OM31>(&raw(&words)).expect("last allowed word").1,
+        sample::<OM31>(&raw(&words), &mut HashUsage::default())
+            .expect("last allowed word")
+            .1,
         64
     );
     words[56] = p;
-    assert_eq!(sample::<OM31>(&raw(&words)), Err(Error::SamplingExhausted));
     assert_eq!(
-        sample::<QM31>(&raw(&words)).expect("four coefficients").1,
+        sample::<OM31>(&raw(&words), &mut HashUsage::default()),
+        Err(Error::SamplingExhausted)
+    );
+    assert_eq!(
+        sample::<QM31>(&raw(&words), &mut HashUsage::default())
+            .expect("four coefficients")
+            .1,
         61
     );
 }

@@ -707,3 +707,9 @@ availability loss; failed attempts never become acceptance or omitted hash
 work. Dedicated PCS tensor/query labels require registration and actual
 consumer/gate integration before native use. These conditional specifications change
 no admitted configuration, production ledger, proven flag, FS/H or profile.
+
+The [native hash-work counters](../../research/merkle-oracle/HASH-USAGE.md)
+retain local evaluations, XOF output and transcript updates across errors.
+They are observations only: they do not bound adversarial queries or fresh
+certificate attempts, and they supply no evaluated FS/H loss. Native PCS
+consumers must retain their own failed-attempt observations when they land.

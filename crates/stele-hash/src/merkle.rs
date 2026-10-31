@@ -1,4 +1,5 @@
 //! RFC-0012 A3 — byte-column and child-root authentication, not PCS validity.
+use crate::HashUsage;
 use alloc::vec::Vec;
 
 /// Full BLAKE3-256 output; truncated roots/siblings are not representable.
@@ -41,6 +42,8 @@ pub enum Error {
     RootMismatch,
     /// Construction/path storage cannot be represented or allocated.
     Capacity,
+    /// A local work counter would overflow; abort before unrecorded hashing.
+    UsageOverflow,
 }
 /// Borrowed payload and exact bottom-up sibling path; no proof-supplied index.
 #[derive(Clone, Copy, Debug)]
@@ -107,7 +110,12 @@ impl Descriptor {
         root: &Digest,
         mut index: u64,
         opening: Opening<'_>,
+        usage: &mut HashUsage,
     ) -> Result<(), Error> {
+        // A3: validated paths have at most 63 siblings; authentication hashes all.
+        usage
+            .hashes(1 + opening.siblings.len() as u64)
+            .map_err(|_| Error::UsageOverflow)?;
         let mut current = self.leaf(index, opening.payload);
         for (depth, sibling) in opening.siblings.iter().enumerate() {
             let (left, right) = if index & 1 == 0 {
@@ -134,9 +142,20 @@ pub fn verify(
     index: u64,
     opening: Opening<'_>,
 ) -> Result<(), Error> {
+    verify_with_usage(spec, root, index, opening, &mut HashUsage::default())
+}
+/// Authenticate one path and retain actual local hash work on success or failure (A10).
+/// The observation is not a proof record or a bound on adversarial queries.
+pub fn verify_with_usage(
+    spec: Descriptor,
+    root: &Digest,
+    index: u64,
+    opening: Opening<'_>,
+    usage: &mut HashUsage,
+) -> Result<(), Error> {
     let height = spec.height()?;
     spec.shape(index, opening, height)?;
-    spec.authenticate(root, index, opening)
+    spec.authenticate(root, index, opening, usage)
 }
 /// Authenticate all requested leaves, in strict increasing index order, or fail.
 /// The caller must separately establish the PCS query schedule and child-root use.
@@ -145,6 +164,17 @@ pub fn verify_batch(
     root: &Digest,
     indices: &[u64],
     openings: &[Opening<'_>],
+) -> Result<(), Error> {
+    verify_batch_with_usage(spec, root, indices, openings, &mut HashUsage::default())
+}
+/// Authenticate a sorted unique batch, retaining work before any failure (A10).
+/// PCS repeated-query schedules must instead use individual paths in draw order.
+pub fn verify_batch_with_usage(
+    spec: Descriptor,
+    root: &Digest,
+    indices: &[u64],
+    openings: &[Opening<'_>],
+    usage: &mut HashUsage,
 ) -> Result<(), Error> {
     let height = spec.height()?;
     if indices.is_empty()
@@ -158,7 +188,7 @@ pub fn verify_batch(
         spec.shape(index, opening, height)?;
     }
     for (&index, &opening) in indices.iter().zip(openings) {
-        spec.authenticate(root, index, opening)?;
+        spec.authenticate(root, index, opening, usage)?;
     }
     Ok(())
 }
@@ -172,6 +202,15 @@ pub struct Tree {
 impl Tree {
     /// Hash exactly the descriptor's real payloads and canonical absent padding.
     pub fn new(spec: Descriptor, leaves: &[&[u8]]) -> Result<Self, Error> {
+        Self::new_with_usage(spec, leaves, &mut HashUsage::default())
+    }
+    /// Construct a tree, reporting every real/padding leaf and node hash (A10).
+    /// Descriptor, allocation and count checks precede all hashing.
+    pub fn new_with_usage(
+        spec: Descriptor,
+        leaves: &[&[u8]],
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
         let height = spec.height()?;
         if u64::try_from(leaves.len()).ok() != Some(spec.count)
             || leaves
@@ -182,20 +221,23 @@ impl Tree {
         }
         let padded = 1usize.checked_shl(height).ok_or(Error::Capacity)?;
         let total = padded.checked_add(padded - 1).ok_or(Error::Capacity)?;
+        let hashes = u64::try_from(total).map_err(|_| Error::Capacity)?;
         let mut nodes = Vec::new();
         nodes
             .try_reserve_exact(total)
             .map_err(|_| Error::Capacity)?;
+        usage.hashes(hashes).map_err(|_| Error::UsageOverflow)?;
+        // All indices are below total, already checked to fit u64; no fallible work remains.
         for index in 0..padded {
             let payload = leaves.get(index).copied().unwrap_or(&[]);
-            nodes.push(spec.leaf(u64::try_from(index).map_err(|_| Error::Capacity)?, payload));
+            nodes.push(spec.leaf(index as u64, payload));
         }
         let (mut offset, mut width) = (0, padded);
         for level in 1..=height {
             for index in 0..width / 2 {
                 nodes.push(spec.node(
                     level,
-                    u64::try_from(index).map_err(|_| Error::Capacity)?,
+                    index as u64,
                     &nodes[offset + 2 * index],
                     &nodes[offset + 2 * index + 1],
                 ));

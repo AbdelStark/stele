@@ -82,3 +82,8 @@ native/Python codec and policy checks. Its closed public declaration inventory
 rejects new accepting methods and trait conversions inside the existing module;
 new consumers need their real validators and controls. Parsed wire bytes carry
 no authentication or PCS coverage. Verifier/reductions and other guards remain.
+
+RFC-0012 A10 adds local hash-work observations, including failures. The transcript
+and Merkle validators require the actual usage, overflow and byte-vector tests;
+successful execution with those tests omitted fails. These counters do not
+establish adversarial query caps, PCS correctness or a complete FS/H budget.
