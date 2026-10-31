@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RFC-0020 §5: run the complete, grouped research CI inventory."""
+"""RFC-0020 §5: execute the selected research inventory with failure propagation."""
 import argparse
 import json
 import os
@@ -10,6 +10,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'scripts/research-checks.json'
+FULL_MANIFEST = ROOT / 'scripts/research-full-checks.json'
 
 
 def unique_object(pairs):
@@ -54,12 +55,15 @@ def run_group(name, groups):
 
 def main(argv=None):
     try:
-        groups = load_groups()
         parser = argparse.ArgumentParser(description=__doc__)
+        parser.add_argument('--full', action='store_true', help='exhaustive scheduled/manual inventory')
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument('--matrix', action='store_true')
-        mode.add_argument('--group', choices=groups)
+        mode.add_argument('--group')
         args = parser.parse_args(argv)
+        groups = load_groups(FULL_MANIFEST if args.full else MANIFEST)
+        if args.group is not None and args.group not in groups:
+            parser.error('unknown research group: ' + args.group)
         if args.matrix:
             print('matrix=' + json.dumps({'group': list(groups)}, separators=(',', ':')))
         else:

@@ -9,6 +9,8 @@ pub mod fraction;
 #[doc(hidden)]
 pub mod fraction_transcript;
 #[doc(hidden)]
+pub mod pcs;
+#[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
 pub mod streaming;
@@ -25,6 +27,42 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 601,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || pcs::run(601),
+    },
+    catalog::RegisteredControl {
+        id: 803,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || pcs::run(803),
+    },
+    catalog::RegisteredControl {
+        id: 600,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ColumnMismatch",
+        run: || pcs::run(600),
+    },
+    catalog::RegisteredControl {
+        id: 606,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || pcs::run(606),
+    },
+    catalog::RegisteredControl {
+        id: 607,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "NoncanonicalField",
+        run: || pcs::run(607),
+    },
+    catalog::RegisteredControl {
+        id: 608,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || pcs::run(608),
+    },
     catalog::RegisteredControl {
         id: 411,
         kind: catalog::ControlKind::Proof,

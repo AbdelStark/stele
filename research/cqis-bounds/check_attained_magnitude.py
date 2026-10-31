@@ -134,7 +134,7 @@ def controls():
         bad=copy.deepcopy(proof); mutate(bad); rejects(reason,lambda:m.verify(p,expected,bad,d))
     for bad in (replace(p,identity=1<<46),replace(p,source=v['base']),replace(p,maximum=p.source),replace(p,repetitions=True),
                 replace(p,schema=replace(p.schema,mode='static',scale=1))): rejects('Spec',lambda:m.derive(bad,d))
-    rejects('Capacity',lambda:m.witness(replace(p,schema=schema('wide',2049)),None))
+    rejects('Capacity',lambda:m.witness(replace(p,schema=schema('wide',16385)),None))
     print('attained-magnitude controls passed',flush=True)
 
 

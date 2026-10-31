@@ -499,3 +499,93 @@ E4-05 is blocked on A7/RFC-0013 A1; its NC-0604 and proven-parameter criteria
 remain. E4-03/E4-04/E4-06 retain their source, packing and fused requirements.
 No ledger line or measured constant changes; any eventual randomization must
 account for source reads, code dimensions/rates, entropy, state and native costs.
+
+### A8: Fixed field oracle from a partially defined Merkle tree
+
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Evidence: [frozen-oracle argument](../../formal/merkle-field-oracle.md)
+and [executable controls](../../research/merkle-oracle/REPORT.md).
+Motivation: A3's complete field oracle does not follow from byte authentication
+alone. A malicious root may contain unresolved digests or malformed field leaves.
+
+Conditional authentication premise adopted for A9's field-source contract:
+
+> In the classical ideal-hash model, freeze the query log when the complete
+> expected root/context is first fixed. Exact RFC-0012 A3 frames and canonical
+> M31 decoding define known columns. Complete unknown or malformed subtrees
+> with zero columns only in the proof argument. The actual verifier rejects
+> every missing, malformed or unauthenticated column. Real accepted equations
+> refer to that fixed oracle unless a collision occurs or a later new hash
+> query hits a frozen unresolved digest. Charge both events explicitly.
+
+For lambda-bit hash output, a conservative lifetime bound is
+`[choose(Q_total,2)+sum_(r=1..R_max)(1+2*Q_pre,r)*Q_after,r]/2^lambda`, capped
+at one, with deterministic registration/query caps fixed before execution.
+The sum covers every permitted slot. The query caps cover all adversary
+and verifier calls to the modeled hash. Each distinct registration r fixes a completion
+once. Replaying its certificate cannot erase its loss or re-freeze its tree.
+Fresh certificate attempts retain separate proximity/query terms.
+
+This conditional lemma neither assumes a source extractor nor supplies one.
+It does not establish quantum/Fiat-Shamir security, model ownership, canonical
+unqueried absent padding, private openings or profile admission. A3's native
+wire, sampling, parameter, cache and actual claim-consumer requirements remain.
+No native API, challenge label, parameter flag or production ledger changes.
+E4-01/E4-03 retain their original blocked criteria; A1/A3/A6/A7 and Q12 stay open.
+Cost terms are authentication, decoding, encoding and cache work in T_misc/c_c;
+the mathematical query-log completion is not charged as native verifier work.
+
+### A9: Conditional native Circle field-source consumer
+
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Question Q27. Exact conditional contract:
+[native field PCS](../../formal/native-field-pcs.md). Companion RFC-0012 A10
+and RFC-0020 A5. Motivation: A3/A8 need actual source/context, certificate,
+opening and original-claim consumers before native arithmetic can terminate
+at expected roots without receiving original tables.
+
+Conditional implementation scope:
+
+> Implement the version-1 field-source bytes, fixed Circle query policy,
+> standalone registration certificate and general functional opening exactly
+> as specified in formal/native-field-pcs.md. The verifier derives all shapes,
+> column indices and counts from expected context. Canonical M31 columns are
+> authenticated at their actual queried indices. Complete row messages bind
+> before column sampling; complete response blocks bind before continuation.
+> An opaque verified certificate is constructed only by full verification.
+> Its identity includes expected context, policy, K and the framed canonical
+> certificate digest, with collision accounting. This refines A8's exact-byte
+> cache identity; it grants no unchecked deserialization or receipt path.
+>
+> The stele-reductions adapter binds the complete ordered expected source bundle
+> before invoking the actual RFC-0006 A1 verifier and consumes every returned original
+> point/value through its matching PCS opening. Original tables and arbitrary
+> authentication callbacks are absent from its verifier interface. Every error
+> aborts the enclosing attempt with no usable accounting or certificate handle.
+
+A9 adopts only the following conditional mathematics from the Draft studies:
+for the fixed oracle justified by A8, tensor-opening.md §§1-3 and
+certified-functional-opening.md §§1-2 establish the certificate's far-oracle
+bound `2*ell*(e+1)/|K| + ((N-e-1)/N)^q_c`, uniqueness of a near message, and
+the individual-opening bound `((N-D+e)/N)^q_o`. Their adaptive individual-opening
+argument (certified-functional-opening.md §3, final paragraph only) charges
+the certificate once plus every opening term over the bounded
+lifetime; fresh certificate attempts retain separate obligations. The precise
+hypotheses and proofs in those sections are normative for this scope only.
+The general batching/grouping optimization and every broader A3 acceptance
+criterion remain Draft. A9 authorizes this conditional field primitive without
+claiming completion of E4-03 or accepting A3 wholesale.
+
+The independent policy checker verifies all 59 least-count pairs by exact
+integer powers, 12 small uniform index distributions and every M31 threshold
+exponent. This evidence does not implement the native consumer or its controls.
+The conditional losses retain the certificate tensor/query terms, each opening
+query term, A8's complete lifetime hash events and all A1 SC terms. No profile,
+proven flag, packed/CQIS ownership, fused B, privacy or extraction is admitted.
+General multi-functional batching and the original A1/A3/A6/A7 obligations stay.
+
+Implementation must supply native/Python byte parity, actual source controls
+NC-0600/0601/0606..0609 and query-schedule control NC-0803, malformed-proof
+testing, exact records and repository gates. NC-0606..0609 are reserved as todo; implement their binaries with the
+corresponding bindings. This amendment adds no coverage. The original task
+criteria remain intact. Cost terms include complete registration, source rows,
+encoding, queries, paths, coefficient storage and proof buffers in c_c/T_misc.
+No measured constant, native benchmark or extra model weight pass is supplied.

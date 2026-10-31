@@ -15,5 +15,9 @@
   ["absorb", "stele/v0.1/lookup/layer", "-"],
   ["challenge", "stele/v0.1/lookup/gamma", "RLC"],
   ["challenge", "stele/v0.1/lookup/fold", "RLC"],
-  ["absorb", "stele/v0.1/lookup/leaf", "-"]
+  ["absorb", "stele/v0.1/lookup/leaf", "-"],
+  ["challenge", "stele/v0.1/pcs/certificate-weight", "PCS_TENSOR"],
+  ["absorb", "stele/v0.1/pcs/certificate-row", "-"],
+  ["challenge", "stele/v0.1/pcs/certificate-column", "PCS_QUERY"],
+  ["absorb", "stele/v0.1/pcs/certificate-columns", "-"]
 ]

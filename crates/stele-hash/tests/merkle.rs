@@ -1,6 +1,7 @@
 //! RFC-0012 A3: canonical roots/paths and adversarial authentication boundaries.
 use serde_json::Value;
 use stele_hash::merkle::{verify, verify_batch, Descriptor, Error, Kind, Opening, Tree};
+use stele_hash::{merkle, HashUsage};
 
 fn bytes(v: &Value) -> Vec<u8> {
     let s = v.as_str().expect("valid fixture");
@@ -44,7 +45,17 @@ fn matches_reference_roots_paths_and_rejections() {
             .iter()
             .map(bytes)
             .collect();
-        let tree = build(spec, &leaves).expect("valid fixture");
+        let mut usage = HashUsage::default();
+        let tree = Tree::new_with_usage(
+            spec,
+            &leaves.iter().map(Vec::as_slice).collect::<Vec<_>>(),
+            &mut usage,
+        )
+        .expect("valid fixture");
+        assert_eq!(
+            usage.hash_evaluations,
+            2 * spec.count.next_power_of_two() - 1
+        );
         let root: [u8; 32] = bytes(&v["root"]).try_into().expect("valid fixture");
         assert_eq!(tree.root(), root);
         let paths: Vec<Vec<[u8; 32]>> = v["paths"]
@@ -187,6 +198,67 @@ fn matches_reference_roots_paths_and_rejections() {
         cases += 1;
     }
     assert_eq!(cases, 10);
+}
+
+#[test]
+fn rejects_merkle_failures_with_usage() {
+    let spec = descriptor(Kind::Columns, 3, 1);
+    let tree = build(spec, &[[3], [5], [7]]).expect("tree");
+    let path = tree.path(0).expect("path");
+    let opening = Opening {
+        payload: &[3],
+        siblings: &path,
+    };
+    let mut usage = HashUsage::default();
+    assert_eq!(
+        merkle::verify_with_usage(spec, &tree.root(), 0, opening, &mut usage),
+        Ok(())
+    );
+    assert_eq!(usage.hash_evaluations, 3);
+    // Every invocation counts; equal queries are not deduplicated or cached.
+    assert_eq!(
+        merkle::verify_with_usage(spec, &tree.root(), 0, opening, &mut usage),
+        Ok(())
+    );
+    assert_eq!(usage.hash_evaluations, 6);
+    let before = usage;
+    assert_eq!(
+        merkle::verify_with_usage(spec, &tree.root(), 3, opening, &mut usage),
+        Err(Error::InvalidIndex)
+    );
+    assert!(matches!(
+        Tree::new_with_usage(spec, &[], &mut usage),
+        Err(Error::InvalidLeaf)
+    ));
+    assert_eq!(usage, before);
+    assert_eq!(
+        merkle::verify_with_usage(spec, &[0; 32], 0, opening, &mut usage),
+        Err(Error::RootMismatch)
+    );
+    assert_eq!(usage.hash_evaluations, 9);
+    let next_path = tree.path(1).expect("path");
+    let wrong = Opening {
+        payload: &[6],
+        siblings: &next_path,
+    };
+    assert_eq!(
+        merkle::verify_batch_with_usage(spec, &tree.root(), &[0, 1], &[opening, wrong], &mut usage),
+        Err(Error::RootMismatch)
+    );
+    assert_eq!(usage.hash_evaluations, 15);
+    let before = usage;
+    assert_eq!(
+        merkle::verify_batch_with_usage(spec, &tree.root(), &[0, 0], &[opening; 2], &mut usage),
+        Err(Error::InvalidBatch)
+    );
+    assert_eq!(usage, before);
+    assert_eq!(
+        usage,
+        HashUsage {
+            hash_evaluations: 15,
+            ..HashUsage::default()
+        }
+    );
 }
 #[test]
 fn rejects_descriptor_aliasing_and_invalid_shapes() {

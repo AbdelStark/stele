@@ -137,8 +137,8 @@ def controls():
     rejects('ScaleNonzero:NoncanonicalField',lambda:c.verify(zero,zroots,bad,d))
     for bad in (replace(p,identity=1<<36),replace(p,source=c.derive(p,d)['base']),replace(p,scale=p.output),replace(p,repetitions=True)):
         rejects('Spec',lambda:c.derive(bad,d))
-    rejects('Capacity',lambda:c.witness(spec('gated',1025),None))
-    edge=c.derive(spec('gated',1024,(1<<36)-1,2),8); assert edge['base']+(1<<26)==(1<<63)+(1<<62) and edge['planes']==4
+    rejects('Capacity',lambda:c.witness(spec('gated',16385),None))
+    edge=c.derive(spec('gated',16384,(1<<36)-1,2),8); assert edge['base']+(1<<26)==(1<<63)+(1<<62) and edge['planes']==4
     print('row-code controls passed',flush=True)
 
 

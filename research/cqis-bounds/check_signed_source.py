@@ -172,7 +172,7 @@ def controls():
     for q in (replace(p,identity=1<<53),replace(p,source=v['base']),replace(p,magnitude=p.source),
               replace(p,bits=24),replace(p,repetitions=True),replace(p,count=0),replace(p,count=True)):
         rejects('Spec',lambda:s.derive(q,d))
-    rejects('Capacity',lambda:s.witness(replace(p,count=2049),None))
+    rejects('Capacity',lambda:s.witness(replace(p,count=16385),None))
     for xs in ([32768],[-32769],[True],[],(0,)):
         rejects('Input',lambda:s.witness(p,xs))
     print('signed-source controls passed',flush=True)

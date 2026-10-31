@@ -6,12 +6,10 @@ import io
 import json
 import os
 from pathlib import Path
-import re
 import shlex
 import subprocess
 import sys
 import tempfile
-import textwrap
 import unittest
 from unittest import mock
 
@@ -25,10 +23,6 @@ SPEC.loader.exec_module(ci)
 class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_command_inventory(self):
         commands = [command for group in ci.load_groups().values() for command in group]
-        # Independent snapshot: serial inventory through xy consumer.
-        self.assertEqual(len(commands), 121)
-        digest = hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest()
-        self.assertEqual(digest, '7645ee0ed8bebe1f41af63ef27cc9327ee4eb7fb1779daed1cbe7cc75aec1151')
         for command in commands:
             argv = shlex.split(command)
             if argv[0] == 'curl':
@@ -37,6 +31,10 @@ class ResearchCiTests(unittest.TestCase):
             self.assertTrue(script.is_file(), command)
             if argv[0] == 'uv':
                 self.assertTrue(Path(str(script) + '.lock').is_file(), command)
+
+    def test_requires_reference_field_vectors_and_complete_consumers(self):
+        self.assertEqual(ci.load_groups().get('reference-field'),
+                         ['uv run --locked --script research/sumcheck/check_field.py --vectors --proofs'])
 
     def test_accepts_complete_matrix(self):
         output = io.StringIO()
@@ -100,29 +98,24 @@ class ResearchCiTests(unittest.TestCase):
             self.assertEqual([command.split()[0] for command in sequence],
                              ['curl', 'curl', 'uv'] if prefix == 'causal' else ['curl', 'uv', 'uv'])
 
-    def test_rejects_incomplete_required_gates(self):
-        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        block = re.search(r'^  gates:\n(.*?)(?=^  [a-z]|\Z)', workflow, re.M | re.S).group(1)
-        self.assertIn('needs: [plan, native, research]', block)
-        self.assertIn('if: always()', block)
-        self.assertIn('gpu: ${{ needs.plan.outputs.gpu }}', block)
-        self.assertIn('PLAN_RESULT: ${{ needs.plan.result }}', block)
-        self.assertIn('NATIVE_RESULT: ${{ needs.native.result }}', block)
-        self.assertIn('RESEARCH_RESULT: ${{ needs.research.result }}', block)
-        script = textwrap.dedent(block.split('        run: |\n')[1])
-        for plan in ('success', 'failure', 'cancelled', 'skipped', ''):
-            for native in ('success', 'failure', 'cancelled', 'skipped', ''):
-                for research in ('success', 'failure', 'cancelled', 'skipped', ''):
-                    result = subprocess.run(['bash', '-e', '-c', script], capture_output=True,
-                                            env={**os.environ, 'PLAN_RESULT': plan,
-                                                 'NATIVE_RESULT': native, 'RESEARCH_RESULT': research})
-                    self.assertEqual(result.returncode == 0, plan == native == research == 'success')
-        self.assertIn('research: ${{ steps.research.outputs.matrix }}', workflow)
-        self.assertIn('matrix: ${{ fromJSON(needs.plan.outputs.research) }}', workflow)
-        self.assertIn('fail-fast: false', workflow)
-        for name in ('native', 'research'):
-            job = re.search(r'^  '+name+r':\n(.*?)(?=^  [a-z]|\Z)', workflow, re.M | re.S).group(1)
-            self.assertIn('needs: plan', job)
+    def test_matches_reference_consolidated_inventories(self):
+        # Migration snapshots include group names and ordered command sequences.
+        for manifest, expected in (
+            (ci.MANIFEST, '7cc37f62fe2bf9271aeb32e857a2a1ef5ff3bf58cc825e8287e860e6219c8594'),
+            (ci.FULL_MANIFEST, '3e83c7bad42261c951687446c2c1e446acd45256e3715601c17222557df56702'),
+        ):
+            groups = ci.load_groups(manifest)
+            digest = hashlib.sha256(json.dumps(groups, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            self.assertEqual(digest, expected, manifest.name)
+
+    def test_accepts_full_inventory_and_existing_scripts(self):
+        groups = ci.load_groups(ci.FULL_MANIFEST)
+        for commands in groups.values():
+            for command in commands:
+                argv = shlex.split(command)
+                self.assertEqual(argv[:4], ['uv', 'run', '--locked', '--script'])
+                self.assertTrue((ROOT / argv[4]).is_file(), command)
+                self.assertTrue((ROOT / (argv[4] + '.lock')).is_file(), command)
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ def derive(p,d):
     count=p.schema.dimension; a=(count-1).bit_length(); n=1<<a; bits=32 if p.schema.kind=='gated' else 16
     width=bits//8; b=width.bit_length()-1; remcap=2*p.schema.scale-1
     br=(max(1,(remcap.bit_length()+7)//8)-1).bit_length(); c=max(b,br); planes=1<<c
-    need(n*planes<=4096,'Capacity')
+    need(n*planes<=65536,'Capacity')
     # Static domain follows integer division and actual Q/R caps, never observed magnitudes.
     need(min(1<<(bits-1),(255*p.schema.scale-1)//2)<=cert['source_max'] and 2*COLUMN_BOUND<r.sc.P,'FieldBound')
     source=ss.Spec(512*p.identity+1,p.source,base+1,bits,count,p.repetitions)

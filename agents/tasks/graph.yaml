@@ -130,6 +130,26 @@ tasks:
   acceptance:
   - schema documented
   - validator rejects ledgers with bindings_all_on false
+- id: E0-06
+  epic: E0
+  title: Consolidate pending work and shorten required CI
+  depends:
+  - E0-02
+  - E0-04
+  - E0-05
+  rfc:
+  - RFC-0020 §4-5
+  skill: rfc-author
+  crate: ci
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-06-ci-ready
+  acceptance:
+  - all existing published work reconciled in one PR with source history preserved
+  - required native controls, independent digests and accounting pass on the consolidated tree
+  - duplicate validation removed and exhaustive research campaigns retain explicit runnable inventories
+  - path selection fails closed and never treats skipped required work as success
+  - one implementation task proceeds through validation and merge before the next starts
 - id: E1-01
   epic: E1
   title: M31 with lazy reduction + canonicalisation
@@ -490,7 +510,7 @@ tasks:
   crate: stele-code
   status: blocked(RFC-0010 A1)
   agent: codex-root
-  branch: task/E4-01-bounded-encoder
+  branch: task/E4-01-merkle-oracle-contract
   acceptance:
   - linearity tests
   - distance estimate script
@@ -517,6 +537,7 @@ tasks:
   title: 'Interleaved-code PCS: commit, functional opening a⊗b, column spot checks, packing int8/int16'
   depends:
   - E4-01
+  - E4-03a
   - E2-02
   rfc:
   - RFC-0010 §1-2,§4,§8
@@ -526,11 +547,34 @@ tasks:
   crate: stele-pcs
   status: blocked(RFC-0010 A3; RFC-0010 A6)
   agent: codex-root
-  branch: task/E4-03-packing-contract-study
+  branch: task/E4-03-field-wire-oracle
   acceptance:
   - NC-0600..0603
   - ledger PCS line
   - proof size regression test
+- id: E4-03a
+  epic: E4
+  title: Conditional Circle field-source PCS and closed RFC-0006 A1 adapter
+  depends:
+  - E4-02
+  - E2-02
+  - E3-01
+  rfc:
+  - RFC-0010 A8
+  - RFC-0010 A9
+  - RFC-0012 A10
+  - RFC-0020 A5
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: ready
+  acceptance:
+  - both-field native/Python certificate and opening byte parity
+  - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation
+  - actual NC-0600/0601/0606/0607/0608/0609 and NC-0803 consumers
+  - source substitution, unused A1 finals, stale queries and response-continuation controls
+  - conditional records retain certificate, opening and actual SC obligations
+  - failed-attempt usage observable; no profile or adversarial-cap inference
+  - complete registration/opening runtime, memory and proof-size ledger evidence
 - id: E4-04
   epic: E4
   title: Fused opening API (takes sumcheck B as u)
@@ -675,7 +719,7 @@ tasks:
   crate: stele-cqis
   status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
   agent: codex-root
-  branch: task/E5-03-norm-xy
+  branch: task/E5-03-attention-normalization-consumer
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
@@ -950,8 +994,13 @@ tasks:
   epic: E8
   title: Prover orchestrator (stage runner, claim graph executor) and proof container v1
   depends:
-  - E7-10
+  - E6-03
+  - E7-03
+  - E7-04
+  - E7-05
   - E7-08
+  - E7-09
+  - E7-10
   rfc:
   - RFC-0007 §4
   - RFC-0016 §1
@@ -1020,7 +1069,7 @@ tasks:
   epic: E8
   title: Digest gate with recorded W8 digests
   depends:
-  - E8-01
+  - E8-02
   rfc:
   - RFC-0020 §5
   skill: benchmark-runner
@@ -1033,6 +1082,7 @@ tasks:
   title: Llama-3.1-8B end to end on CPU (W1), memory planner, 64-core run
   depends:
   - E8-06
+  - E8-05
   - E5-05
   - E6-03
   rfc:

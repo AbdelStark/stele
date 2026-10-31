@@ -24,7 +24,7 @@ def derive(p,d):
     need(type(p) is Spec and type(d) is int and d in (4,8),'Spec')
     need(type(p.identity) is int and 0<=p.identity<1<<53 and type(p.repetitions) is int and p.repetitions in (1,2),'Spec')
     need(type(p.bits) is int and p.bits in (8,16,32) and type(p.count) is int and p.count>=1,'Spec')
-    need(p.count<=2048,'Capacity')
+    need(p.count<=16384,'Capacity')
     a=(p.count-1).bit_length(); n=1<<a; width=p.bits//8; b=width.bit_length()-1
     base=(1<<63)+512*p.identity
     need(all(type(x) is int and 2<=x<1<<64 and not base<=x<base+512 for x in (p.source,p.magnitude)) and p.source!=p.magnitude,'Spec')

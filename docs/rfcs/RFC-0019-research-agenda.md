@@ -893,3 +893,218 @@ all originals, including inactive factors and high zero slots. Continue with
 actual signed X/H magnitudes and xy*J, then the two wide signed output branches
 using these same roots. Original task, native/stacking/physical/model/private,
 fidelity and control obligations remain open.
+
+Q27 continuation: Accepted RFC-0010 A8 and formal/merkle-field-oracle.md supply
+a classical ideal-hash lift from partial Merkle trees to one fixed field
+oracle. Collisions and later preimages of frozen unresolved digests have
+separate lifetime terms. Exact framing/canonical-decoding controls and
+tiny-output counterexamples exercise this boundary. Native wire, query
+sampling, certificate reuse, source consumers and Q12 remain open; no
+profile, quantum security, extractor or production control is supplied.
+
+Q27 continuation: Accepted RFC-0010 A9, RFC-0012 A10 and RFC-0020 A5 specify
+formal/native-field-pcs.md: canonical field-source bytes, standalone certificate,
+framed certificate identity, general opening and complete native A1 source
+closure. Exact policy checks cover all 59 Circle identities and unbiased
+index thresholds. Native consumers, two-field byte parity, actual controls
+and resource evidence remain required. This does not complete packed/fused
+source ownership, privacy, extraction, Q12 or either profile.
+
+Q27 byte continuation: the [field-wire oracle](../../research/merkle-oracle/FIELD-WIRE.md)
+checks complete certificate/opening bytes and the reference RFC-0006 A1 source
+consumer in both challenge fields. Its unused-original control reaches the
+terminal opening after the reduction accepts. Native parity, actual controls,
+resource accounting and all broader PCS/profile obligations remain required.
+
+Q27 scoped acceptance: RFC-0010 A8/A9, RFC-0012 A10 and RFC-0020 A5
+separate conditional Circle field-source implementation E4-03a from the broader
+blocked E4-03 criteria. Only the fixed-oracle, certificate, individual-opening
+and bounded adaptive-reuse arguments are adopted. Packing, fused B, batching
+optimization, extraction, privacy and all original source/profile obligations
+remain. Q12's concrete FS/QROM composition is unchanged and unresolved.
+
+Q27 native source continuation: [field-source parsing](../../research/merkle-oracle/NATIVE-SOURCE.md)
+implements canonical context, finite policy and borrowed unverified wire shapes.
+Both-field fixture parity and all 59 native parameter tuples are checked.
+No accepting PCS API, certificate handle, new control coverage or profile follows;
+continue E4-03a with actual registration and opening consumers.
+
+Q26/Q31 full statistic continuation: the [full-row consumer](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
+uses three byte-column sums from the same verified signed16 row, closed carry
+ranges and deterministic zero-input tail columns. It retains the existing
+raw/statistic root layouts and every original claim over the full norm domain.
+Continue with complete proof/control evidence and actual numerator composition;
+configured output branches, native/physical/model/private ownership, fidelity
+and original end-to-end acceptance remain open.
+
+Q26/Q31 quotient-product continuation: the [full-row adapter](../../research/cqis-bounds/NORM-QUOTIENT-PRODUCT.md)
+uses one batched byte-column relation for qd=q*B, split actual result ranges
+and closed carry families. Only statically zero families become public zeros;
+no source claim is removed for an observed zero quotient. Continue with actual
+same-exponent factor/signed-output composition, bias and division equality,
+strict remainder and the selected output branch. Original native/physical/model/
+private inference, fidelity and negative-control requirements remain open.
+
+Q26/Q31 exponential continuation: [complete canonical output consumers](../../research/cqis-bounds/ATTENTION-EXP.md)
+join actual difference/index bytes to every valid component row and bounded
+outputs for direct nearest, product and corrected nearest. Product uses floor;
+corrected output consumes the full input-indexed correction. File padding
+cannot authorize membership. Complete maximum-source composition and all
+field/full-row/attack evidence remain required. Continue with probability
+sums, value products and complete attention; native/private/model ownership,
+fidelity and original task/control criteria remain open.
+
+Q26/Q31 probability-sum continuation: [actual masked source aggregation](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.md)
+consumes complete source/scalar ranges and the A1 source claim, retaining the
+full four-byte Z root. Zero block contributions remain valid; whole-row Z>0
+comes from actual attained maximum and canonical exponential composition.
+Continue with restored value products and output normalization on these exact
+roots. Full-sequence key completeness, physical/model ownership, fidelity and
+native/private inference remain open; no original criterion or control is waived.
+
+Q26/Q31 restored-value continuation: can [actual code/scale consumers](../../research/cqis-bounds/ATTENTION-VALUES.md)
+bind D=s*V for all entries while preserving prepared-row two's-complement
+code roots, per-position scale association and dynamic zero-scale rules?
+The proposed offset relation retains every original claim, including at
+zero scale. Implement tests first, then verify the planned account with
+actual receipts. Complete source ownership and subsequent weighted-sum/
+normalization consumers remain required; no native or private claim follows.
+
+Q26/Q31 weighted-offset continuation: can [one batched column identity](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md)
+prove every O_c=sum_j P_j*U_jc using complete source/output/carry ranges and
+actual original-point consumers? Test M31 aliases, compensating channel errors,
+zero factors and maximum carry geometry before implementation. Keep separate
+polynomial-identity and A1 errors. Signed sums, source ownership, normalization
+and native/private inference remain required; no original criterion is waived.
+
+Q26/Q31 offset-base continuation: can [complete scalar product consumption](../../research/cqis-bounds/ATTENTION-BASE.md)
+bind H=S*Z to the actual probability-sum root and configured restored-value
+bound, including Z=0? Require source-join, whole-product alias and full-root
+controls before signed O-H composition. No original criterion or native/private
+inference obligation is waived.
+
+Q26/Q31 signed-attention continuation: can [canonical O-H consumers](../../research/cqis-bounds/ATTENTION-SIGN.md)
+bind magnitude/sign to actual weighted-offset and scalar-base sources while
+excluding negative zero and modular aliases? Require all original-point,
+broadcast, range/carry and complete source-composition controls. Continue with
+block rounding and normalization; original inference criteria remain open.
+
+Q26/Q31 continuation: [consumed attention block rounding](../../research/cqis-bounds/ATTENTION-BLOCK-ROUNDING.md)
+asks whether separately bound absolute-block magnitude sources can retain all
+original-point obligations through one dense rounding proof, including c=62.
+Test coherent remainder overflow, bias removal and high-product truncation.
+Signed block aggregation and normalization remain required before inference.
+
+Q26/Q31 continuation: [signed attention block totals](../../research/cqis-bounds/ATTENTION-BLOCK-SUM.md)
+asks whether actual signs and rounded quotients retain all original consumers
+through channel batching, including q=0 and sparse absolute block ids. Require
+complete source joins and reject compensating channel errors before inference.
+
+Q26/Q31 continuation: [canonical accumulated block sign](../../research/cqis-bounds/ATTENTION-BLOCK-TOTAL-SIGN.md)
+uses the static small total bound to test complete sign/magnitude consumption
+without a wide carry grid. G=0 and negative raw signs rounding to zero must
+retain all upstream consumers while the final total sign remains canonical.
+
+Q26/Q31 continuation: can complete per-block probability sums compose into
+one faithful eight-byte total up to 2^34 using the existing limb product?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-PROBABILITY-SUM.md)
+precede tests/code. One shared globally attained maximum and complete source
+ownership remain required; independent block normalization is invalid.
+
+Q26/Q31 continuation: can complete range and limb-product consumers prove
+a positive, correctly scaled attention denominator across exact/block modes,
+including D=2^64? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DENOMINATOR.md)
+precede tests/code. Actual upstream roots, global attainment, numerator
+scaling, private lowering and original criteria remain required.
+
+Q26/Q31 continuation: can complete byte-column consumers scale all actual
+attention magnitudes without truncating sixteen-byte outputs or reducing the
+channel domain? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-NUMERATOR.md)
+precede tests/code. Fixed channel groups preserve existing range capacities;
+actual magnitude sources and all signed-normalization consumers remain required.
+
+Q26/Q31 continuation: can the complete sixteen-byte denominator source bind
+2D through the existing limb product, including the 2^65 boundary and every
+original consumer? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DOUBLED-DENOMINATOR.md)
+precede tests/code. Strict remainder and signed-normalization composition
+remain required; a standalone zero product does not establish positivity.
+
+Q26/Q31 continuation: can full-width W=2U+D bind actual scaled magnitudes
+and a shared denominator without weakening range capacity or source joins?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BIASED-NUMERATOR.md)
+precede tests/code. All three group families, ragged padding and five actual
+original consumers remain required before signed-normalization composition.
+
+Q26/Q31 continuation: can all bounded quotients consume the actual shared
+denominator through full sixteen-byte products and two-byte carry groups?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-QUOTIENT-PRODUCT.md)
+precede tests/code. Seven actual originals, high carry bytes, both full group
+families and the strict division relation remain required.
+
+Q26/Q31 continuation: can complete quotient-product, biased-numerator and
+doubled-denominator proofs bind strict rounded division on the same D root?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DIVISION.md)
+precede tests/code. Remainder endpoints, all ten originals, full channel
+capacity and actual source composition remain required.
+
+Q26/Q31 continuation: can the actual rounded magnitude and input sign bind
+canonical int16 attention outputs, including negative inputs rounded to zero?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-SIGNED-OUTPUT.md)
+precede tests/code. Complete exact/block sign-to-magnitude-to-division joins,
+all originals and full capacity remain required.
+
+Q26/Q31 continuation: can exact normalization bind H=S*Z on the same full
+eight-byte global Z consumed by the positive denominator?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-BASE.md)
+precede tests/code. All actual/public product consumers, exact factor bytes
+at zero and complete global-sum/positive-denominator/raw-sign joins remain
+required before normalization composition.
+
+Q26/Q31 continuation: can all complete normalization children consume the
+same expected shared roots in one exact/block verifier, including exact
+global H=S*Z and zero-hidden source changes?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-NORMALIZATION-CONSUMER.md)
+precede namespace checks, tests and implementation. Full-width composition
+and every inherited original consumer remain required; conditional arithmetic
+does not establish upstream attention-row ownership.
+
+Q26/Q31 source-capacity continuation: can a [streamed Merkle root builder](../../research/merkle/STREAMING.md)
+preserve Accepted RFC-0012 A3 bytes and complete revealing lookup proofs while
+retaining only a logarithmic digest frontier? Scope and kill criteria precede
+tests and code. This reduces temporary root-construction storage; it does not
+enlarge an inference consumer or admit a new cut. Complete source ranges,
+weighted attention ownership and all original task criteria remain required.
+
+Q26/Q31 continuation: can complete dynamic/static row conversion admit 16384
+entries within existing range lookup domains and preserve every legacy proof?
+[Scope and kill criteria](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
+precede tests and adapter changes. Complete head assembly and full-row
+conversion source ownership remain required after this capacity prerequisite.
+
+Q26/Q31 continuation: can complete per-head normalization proofs bind one
+configured output-row conversion on the actual ordered int16 source bytes?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-OUTPUT-CONVERSION.md)
+precede namespace checks, tests and code. Full h=128,w=128 composition and
+valid replacement/source-order controls remain required. Conditional head
+arithmetic does not establish actual GQA/key/value/model ownership.
+
+Q26/Q31 continuation: can every canonical attention block consume all actual
+probability/value sources through 1024x16384 with one weighted-sum proof?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BLOCK-OFFSET.md)
+precede tests and code. Stream complete ranges, preserve the flat source root
+and retain independent consumers even at zero probability. Actual restored-
+value preparation and complete upstream/model ownership remain required.
+
+Q26/Q31 continuation: can full canonical blocks bind restored values and the
+zero-scale rule with one degree-two parent proof and complete signed sources?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BLOCK-VALUES.md)
+precede tests and code. A bounded-memory flat projection must preserve all
+1024x16384 entries, authenticated group padding and each original consumer.
+Actual prepared projection rows and model ownership remain additional.
+
+Q26/Q31 continuation: can one full-row maximum consumer cover every key
+through L=2^20, including masked scores, first-tie selection and all shared
+exponential differences? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-MAXIMUM.md)
+precede code. Group complete byte ranges while retaining one projected
+parent proof, exact selected-byte attainment and static field certificates.
+Full model provenance and native/private admission remain separate.

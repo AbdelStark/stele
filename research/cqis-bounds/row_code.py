@@ -35,7 +35,7 @@ def derive(p,d):
     scale=ds.Spec(p.schema,16*p.identity+1,p.source,p.scale,p.repetitions); sv=ds.derive(scale,d); cert=sv['cert']
     count=p.schema.dimension; a=(count-1).bit_length(); n=1<<a; width=sv['width']; b=sv['b']; smax=cert['scale_max']
     digits=(max(2*cert['source_max']+smax,256*smax-1).bit_length()+7)//8; c=(digits-1).bit_length(); planes=1<<c
-    need(n*planes<=4096,'Capacity')
+    need(n*planes<=65536,'Capacity')
     output=ss.Spec(131072*p.identity+32768,p.output,base+1,8,count,p.repetitions); ss.derive(output,d)
     caps=((127,)*count,(2*smax-1,)*count,(2*smax-1,)*count,(127,)*count,(1,),(smax-1,),(258,)*(n*planes))
     ranges={name:r.Spec(1048576*p.identity+524288+j,base+1+j,cap,p.repetitions) for j,(name,cap) in enumerate(zip(RANGES,caps))}

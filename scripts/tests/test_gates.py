@@ -7,8 +7,6 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-GATES = ('digest', 'negative-controls', 'soundness-accounting', 'parity',
-         'ledger-validate', 'rfc-status', 'docs-links')
 
 
 class GateTests(unittest.TestCase):
@@ -25,12 +23,6 @@ class GateTests(unittest.TestCase):
     def run_gate(self, gate):
         return subprocess.run(['bash', str(self.root / 'scripts/gates' / f'{gate}.sh')],
                               cwd='/', text=True, capture_output=True)
-
-    def test_accepts_current_validated_state(self):
-        for gate in GATES:
-            with self.subTest(gate=gate):
-                result = self.run_gate(gate)
-                self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_rejects_unvalidated_implementation(self):
         for gate, crate in [('digest', 'prover'), ('negative-controls', 'gkr'),

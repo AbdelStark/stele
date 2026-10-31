@@ -176,9 +176,9 @@ def controls():
     for bad in (replace(p,identity=1<<44),replace(p,source=c.derive(p,d)['base']),replace(p,scale=p.output),replace(p,repetitions=True),
                 replace(p,schema=replace(p.schema,scale=0)),replace(p,schema=replace(p.schema,mode='dynamic',scale=0))):
         rejects('Spec',lambda:c.derive(bad,d))
-    for kind,count,scale in (('gated',1025,1),('wide',2049,1),('wide',1025,65535)):
+    for kind,count,scale in (('gated',16385,1),('wide',16385,1),('wide',16385,65535)):
         rejects('Capacity',lambda:c.witness(spec(kind,count,scale),None))
-    for kind,count,scale in (('gated',1024,1),('wide',2048,1),('wide',1024,65535)):
+    for kind,count,scale in (('gated',16384,1),('wide',16384,1),('wide',16384,65535)):
         edge=c.derive(spec(kind,count,scale,(1<<44)-1,2),8); assert edge['base']+(1<<18)==(1<<63)+(1<<62)
     for kind,x in (('wide',32768),('wide',-32769),('gated',(1<<30)+1),('gated',-(1<<30)-1),('wide',True)):
         rejects('Input',lambda:c.witness(spec(kind,1,1),[x]))

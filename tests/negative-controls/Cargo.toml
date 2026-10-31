@@ -25,6 +25,7 @@ name = "configuration"
 path = "harness/configuration.rs"
 
 [dependencies]
+stele-pcs = { path = "../../crates/stele-pcs" }
 stele-lookup = { path = "../../crates/stele-lookup" }
 stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }
 stele-field = { path = "../../crates/stele-field" }
@@ -89,3 +90,27 @@ path = "sumcheck/nc_0204.rs"
 [[test]]
 name = "nc-0210"
 path = "sumcheck/nc_0210.rs"
+
+[[test]]
+name = "nc-0600"
+path = "pcs/nc_0600.rs"
+
+[[test]]
+name = "nc-0606"
+path = "pcs/nc_0606.rs"
+
+[[test]]
+name = "nc-0607"
+path = "pcs/nc_0607.rs"
+
+[[test]]
+name = "nc-0608"
+path = "pcs/nc_0608.rs"
+
+[[test]]
+name = "nc-0601"
+path = "pcs/nc_0601.rs"
+
+[[test]]
+name = "nc-0803"
+path = "pcs/nc_0803.rs"

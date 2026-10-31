@@ -26,7 +26,7 @@ def derive(p,d):
     need(type(p) is Spec and type(p.schema) is row.Spec and type(d) is int and d in (4,8),'Spec')
     cert=row.derive(p.schema); need(p.schema.mode=='dynamic','Spec')
     need(type(p.identity) is int and 0<=p.identity<1<<46 and type(p.repetitions) is int and p.repetitions in (1,2),'Spec')
-    count=p.schema.dimension; need(count<=2048,'Capacity')
+    count=p.schema.dimension; need(count<=16384,'Capacity')
     a=(count-1).bit_length(); n=1<<a; bits=16 if p.schema.kind=='wide' else 32; width=bits//8; b=width.bit_length()-1
     base=(1<<63)+65536*p.identity
     need(all(type(x) is int and 2<=x<1<<64 and not base<=x<base+65536 for x in (p.source,p.maximum)) and p.source!=p.maximum,'Spec')

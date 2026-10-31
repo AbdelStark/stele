@@ -9,6 +9,9 @@ invalidates the argument, or a required weight reread is omitted from the cost.
 This is an ideal interactive consistency argument, not a production PCS,
 knowledge extractor, zero-knowledge protocol or Fiat–Shamir/profile certificate.
 
+RFC-0010 A9 incorporates only §§1-2 and §3's final adaptive-reuse paragraph
+for individual openings. The batching/grouping protocols remain Draft.
+
 ## 1. One fixed oracle and its certificate
 
 Let Enc be a fixed injective K-linear [N,C,D] code, where D is a proved distance

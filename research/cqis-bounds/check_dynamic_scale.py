@@ -111,8 +111,8 @@ def controls():
     rejects('TerminalCarry:NoncanonicalField',lambda:s.verify(p,expected,bad,d))
     for bad in (replace(p,identity=1<<40),replace(p,source=v['base']),replace(p,output=p.source),replace(p,repetitions=True)):
         rejects('Spec',lambda:s.derive(bad,d))
-    rejects('Capacity',lambda:s.witness(spec('gated',2049),None))
-    edge=s.derive(spec('gated',2048,(1<<40)-1,2),8); assert edge['base']+(1<<22)==(1<<63)+(1<<62)
+    rejects('Capacity',lambda:s.witness(spec('gated',16385),None))
+    edge=s.derive(spec('gated',16384,(1<<40)-1,2),8); assert edge['base']+(1<<22)==(1<<63)+(1<<62)
     print('dynamic-scale controls passed',flush=True)
 
 

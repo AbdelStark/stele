@@ -1,14 +1,21 @@
 name: ci
 on:
-  push:
-    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
 jobs:
   plan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       gpu: ${{ steps.scope.outputs.gpu }}
-      research: ${{ steps.research.outputs.matrix }}
+      tables: ${{ steps.scope.outputs.tables }}
+      research: ${{ steps.scope.outputs.research }}
+      matrix: ${{ steps.research.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,8 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90.0
@@ -38,7 +43,15 @@ jobs:
         with:
           version: "0.13.4"
           checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: native-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: native-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-
       - uses: actions/cache@v4
         id: cargo-deny
         with:
@@ -47,52 +60,67 @@ jobs:
       - if: steps.cargo-deny.outputs.cache-hit != 'true'
         run: cargo install cargo-deny --version 0.20.2 --locked
       - run: cargo fetch --locked
-      - run: cargo deny --offline check bans
-      - run: python3 -m unittest discover -s scripts/tests -v
-      - run: scripts/gates/rust-policy.sh
-      - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets --locked --offline -- -D warnings
-      # shortcut: hosted AVX-512 varies; use a dedicated runner for mandatory per-head coverage.
+      - run: cargo deny --offline check bans
+      - run: scripts/gates/rust-policy.sh
+      - run: python3 scripts/ci_tests.py
+      - run: cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
+      - run: cargo test --workspace --all-features --locked --offline
+      - run: cargo test --workspace --examples --all-features --locked --offline
+      - run: cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis --no-default-features --locked --offline
+      # shortcut: hosted AVX-512 varies; use a dedicated runner for mandatory coverage.
       - name: Native x86 SIMD parity
         env:
           STELE_REQUIRE_SIMD: avx2
         run: cargo test -p stele-simd --release --locked --offline -- --nocapture
-      - run: cargo test --workspace --locked --offline
-      - name: Native CQIS public-table MLE parity
-        run: cargo run -p stele-cqis --example table_mle_parity --release --locked --offline
-      - run: cargo test -p stele-sumcheck --example batching --locked --offline
-      - run: cargo test -p stele-sumcheck --example zerocheck --locked --offline
-      - run: cargo test -p stele-sumcheck --example small_bench --locked --offline
-      - run: cargo test -p stele-code --example circle_bench --locked --offline
-      - run: cargo test -p stele-sumcheck --features std --example streaming_bench --locked --offline
-      - run: cargo check -p stele-sumcheck --no-default-features --locked --offline
-      - run: cargo check -p stele-lookup --no-default-features --locked --offline
-      - run: cargo check -p stele-cqis --no-default-features --locked --offline
-      - run: cargo clippy -p stele-sumcheck --all-targets --all-features --locked --offline -- -D warnings
-      - run: cargo clippy -p stele-hash --all-targets --all-features --locked --offline -- -D warnings
-      - run: scripts/gates/digest.sh
-      - run: scripts/gates/negative-controls.sh
-      - run: scripts/gates/soundness-accounting.sh
+      - run: scripts/gates/native.sh
       - run: scripts/gates/ledger-validate.sh
       - run: scripts/gates/rfc-status.sh
       - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
+  table-build:
+    needs: plan
+    if: needs.plan.outputs.tables == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - run: cargo build -p stele-cqis --example table_mle_parity --release --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: table-parity-binary
+          path: target/release/examples/table_mle_parity
+          if-no-files-found: error
+  table-parity:
+    needs: [plan, table-build]
+    if: needs.plan.outputs.tables == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: table-parity-binary
+      - run: chmod +x table_mle_parity
+      - run: ./table_mle_parity --shard ${{ matrix.shard }}
   research:
     needs: plan
+    if: needs.plan.outputs.research == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix: ${{ fromJSON(needs.plan.outputs.research) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90.0
-          components: rustfmt, clippy
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -100,69 +128,26 @@ jobs:
         with:
           version: "0.13.4"
           checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
+          enable-cache: true
       - run: cargo fetch --locked
       - run: python3 scripts/research_ci.py --group "${{ matrix.group }}"
-  gates:
-    needs: [plan, native, research]
-    if: always()
-    runs-on: ubuntu-latest
-    outputs:
-      gpu: ${{ needs.plan.outputs.gpu }}
-    steps:
-      - name: Require complete native and research checks
-        env:
-          PLAN_RESULT: ${{ needs.plan.result }}
-          NATIVE_RESULT: ${{ needs.native.result }}
-          RESEARCH_RESULT: ${{ needs.research.result }}
-        run: |
-          test "$PLAN_RESULT" = success
-          test "$NATIVE_RESULT" = success
-          test "$RESEARCH_RESULT" = success
-  poseidon2-reference:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.95.0
-      - name: Regenerate pinned upstream Poseidon2 vectors
-        run: |
-          cargo +1.95.0 run --manifest-path vendor-ref/poseidon2-m31/Cargo.toml --example vectors --locked > "$RUNNER_TEMP/poseidon2.jsonl"
-          cmp research/poseidon2/reference.jsonl "$RUNNER_TEMP/poseidon2.jsonl"
-  simd-throughput:
-    needs: gates
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.90.0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: cargo fetch --locked
-      - name: Native parity and throughput ledger
-        env:
-          STELE_REQUIRE_SIMD: avx2
-        run: python3 bench/simd_ops.py "$RUNNER_TEMP/simd-ops.json"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: simd-throughput
-          path: ${{ runner.temp }}/simd-ops.json
-          if-no-files-found: error
   gpu-parity:
-    needs: gates
-    if: needs.gates.outputs.gpu == 'true'
+    needs: plan
+    if: needs.plan.outputs.gpu == 'true'
     runs-on: [self-hosted, gpu]
     steps:
       - uses: actions/checkout@v4
       - run: scripts/gates/parity.sh
-  nightly-w1:
-    if: github.event_name == 'schedule'
-    runs-on: [self-hosted, gpu]
+  gates:
+    needs: [plan, native, table-parity, research, gpu-parity]
+    if: always()
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo run -p stele-cli --release --features cuda -- bench --workload W1 --profile treaty --ledger bench/ledger/nightly-${{ github.sha }}.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require every selected check
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_result.py
