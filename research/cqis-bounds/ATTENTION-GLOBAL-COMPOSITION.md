@@ -116,3 +116,9 @@ The independent corpus passed all 10000 cases at seed 2756: 5698 accepted,
 Both primary source/join/stream substitution suites passed. The original
 proof matrix, remaining zero-bound edge cases, full-size proofs and local
 gates remain pending.
+
+All four complete zero-bound edge cases passed: zero offsets remain fully
+consumed in both accumulation modes and fields. A genuinely valid zero
+probability aggregate cannot replace the positive normalization source,
+including when its output root is changed consistently at the join.
+The original proof matrix, full-size proofs and local gates remain pending.

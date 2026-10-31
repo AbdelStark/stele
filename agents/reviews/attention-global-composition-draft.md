@@ -18,7 +18,8 @@ matrices and full-size proofs must pass before approval.
    head/block order, missing/extra records, Boolean indices and ignored tails.
    Genuine changed aggregates preserve totals; a genuine changed output
    proof preserves final codes. Zero-offset and zero-probability substitutions
-   test the positive normalization join. Execution remains in progress.
+   test the positive normalization join. Both primary suites and all four
+   field/mode edge cases passed; the original matrix remains in progress.
 5. Ledger: sum independent lookup identities and unsquared reductions;
    preserve range/A3 losses, each offset projection identity, offset A1 sums,
    every probability/normalization product identity and the row selection
@@ -49,5 +50,9 @@ matrices and full-size proofs must pass before approval.
     were checked unchanged. Full per-block/model ownership, O-projection,
     native/private proofs, fidelity and independent audit remain open.
 
-The observed-attack conclusion remains pending the running suites. Full-size
-proofs, repository gates and complete resource evidence remain required.
+I tried to break it by replacing complete children with genuine proofs that
+preserve totals or final codes, and the control for each changed shared
+source rejected it. Genuine zero-probability aggregates also rejected at
+the positive normalization join in both fields/modes. The original matrix,
+full-size proofs, repository gates and complete resource evidence remain
+required; this is not approval or independent audit.
