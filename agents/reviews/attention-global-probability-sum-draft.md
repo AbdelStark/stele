@@ -72,3 +72,10 @@ control and repository gates remain pending.
 The complete 16-proof matrix subsequently passed with every receipt, draw
 total and original-claim check. Its transcript digest is frozen. The full
 1024-block proof, total-minus-p control and repository gates remain pending.
+
+The full 1024-block proof subsequently passed at Z=2^34. I tried to break
+it with a total-minus-p value admitted by the output byte ranges, and
+Sum:Product:RoundSumMismatch rejected the false sum. The full digest is frozen
+and the original runner completed successfully. Repository gates and
+independent review remain pending; global attainment and source ownership
+still require their complete consumers.
