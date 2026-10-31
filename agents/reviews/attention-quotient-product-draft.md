@@ -63,3 +63,9 @@ carries, full external byte planes and the genuine ranged Qp-p alias retain
 their consumers. A forged initial carry with a compensating product byte
 rejected at Product:ClaimMismatch. Source compositions, corpus, matrix, full
 proofs and repository gates remain pending.
+
+The independent corpus and both actual positive-denominator compositions
+subsequently passed. All 10000 cases and four ragged/full capacity cases
+retain complete byte roots and carries, including 144695 carries above 255.
+The corpus digest is frozen in the scope. Matrix, full proofs and repository
+gates remain pending.

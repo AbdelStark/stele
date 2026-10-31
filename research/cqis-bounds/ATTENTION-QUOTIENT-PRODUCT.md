@@ -91,3 +91,11 @@ carries, full external byte planes and the genuine ranged Qp-p alias retain
 their consumers. A forged initial carry with a compensating product byte
 rejected at Product:ClaimMismatch. Source compositions, corpus, matrix, full
 proofs and repository gates remain pending.
+
+The seed-2746 independent corpus passed all 10000 cases and four capacity
+cases, covering 378879 channels and 144695 nonzero high carry bytes. Both
+8193 and 16384 channels retained the two group families. Frozen digest:
+`8c0964444f9c910f421aab2f609d92f17d2c3ba51f5166aec3073da2cfdc15e4`.
+Actual positive-denominator compositions passed in exact and block modes;
+valid source replacements rejected. The original matrix continues, with
+full proofs and repository gates queued once.
