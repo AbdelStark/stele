@@ -41,6 +41,12 @@ pub enum Error {
     Transcript(stele_hash::Error),
     /// An authenticated column fails its encoded-row equation.
     ColumnMismatch,
+    /// Coefficient lengths disagree with the expected source.
+    FunctionalShape,
+    /// The scalar functional does not equal the expected value.
+    ValueMismatch,
+    /// Prepared material belongs to a different verified source/context.
+    CertificateContext,
     /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }

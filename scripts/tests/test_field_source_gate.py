@@ -1,4 +1,4 @@
-"""RFC-0010 A9: certificate authority is private; unwired accepting APIs reject."""
+"""RFC-0010 A9: certificate/opening authority is private; unwired APIs reject."""
 import importlib.util
 from pathlib import Path
 import shutil
@@ -38,6 +38,10 @@ class FieldSourceGateTests(unittest.TestCase):
                                  'pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n'),
                                 ('src/certificate.rs', '\nimpl<K: ChallengeField> From<VerifiedCertificate<K>> for bool { '
                                  'fn from(_: VerifiedCertificate<K>) -> bool { true } }\n'),
+                                ('src/opening.rs', '\nimpl<K: ChallengeField> OpeningRecord<\'_, K> { '
+                                 'pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n'),
+                                ('src/opening.rs', '\nimpl<K: ChallengeField> From<OpeningRecord<\'_, K>> for bool { '
+                                 'fn from(_: OpeningRecord<\'_, K>) -> bool { true } }\n'),
                                 ('Cargo.toml', '\n[features]\nunwired = []\n')]:
                 path = crate / name
                 original = path.read_text()
@@ -70,6 +74,7 @@ class FieldSourceGateTests(unittest.TestCase):
                      'producer::tests::matches_reference_om31_certificate_production',
                      'certificate::tests::matches_reference_qm31_certificates',
                      'certificate::tests::matches_reference_om31_certificates',
+                     'matches_reference_qm31_openings', 'matches_reference_om31_openings',
                      'crates/stele-pcs/src/certificate.rs', 'crates/stele-pcs/src/source.rs',
                      'crates/stele-pcs/src/preparation.rs'):
             self.assertIn(name, actual.stdout)
@@ -79,6 +84,23 @@ class FieldSourceGateTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'checks failed'):
                     gate.field_source_codec(ROOT)
                 self.assertEqual(run.call_count, 1)
+        opening_docs = [line for line in actual.stdout.splitlines()
+                        if line.startswith('test crates/stele-pcs/src/opening.rs') and 'compile fail' in line]
+        self.assertEqual(len(opening_docs), 2)
+        for line in opening_docs:
+            result = subprocess.CompletedProcess([], 0, actual.stdout.replace(line, '', 1), '')
+            with mock.patch.object(gate.subprocess, 'run', return_value=result):
+                with self.assertRaisesRegex(ValueError, 'missing compile-fail boundary'):
+                    gate.field_source_codec(ROOT)
+        # The scoped oracle still runs in native and fails closed on failure/missing output.
+        policy = subprocess.CompletedProcess([], 0, '59 native query pairs match exact independently checked minima', '')
+        for code, output in [(1, 'failure'), (0, ''), (2, 'missing checker')]:
+            result = subprocess.CompletedProcess([], code, output, '')
+            with mock.patch.object(gate.subprocess, 'run', side_effect=[actual, policy, result]) as run:
+                with self.assertRaisesRegex(ValueError, 'checks failed'):
+                    gate.field_source_codec(ROOT)
+                self.assertEqual(run.call_args.args[0],
+                                 ['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'])
 
 
 if __name__ == '__main__':

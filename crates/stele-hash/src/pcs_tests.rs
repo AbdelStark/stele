@@ -28,6 +28,7 @@ fn rejects_column_thresholds_exhaustion_and_invalid_domains() {
     let state = t.state;
     for n in [0, 1, 3, 1 << 31, u64::MAX] {
         assert_eq!(t.certificate_column(n), Err(Error::InvalidColumnDomain));
+        assert_eq!(t.opening_column(n), Err(Error::InvalidColumnDomain));
         assert_eq!(t.usage(), before);
         assert_eq!(t.state, state);
     }
@@ -44,21 +45,23 @@ fn rejects_column_thresholds_exhaustion_and_invalid_domains() {
 }
 #[test]
 fn matches_reference_full_field_column_ratchets() {
-    fn check<K: ChallengeField>() {
+    fn check<K: ChallengeField>(label: ChallengeLabel) {
         let mut actual = Transcript::<K>::new(b"columns").expect("public");
         let mut expected = Transcript::<K>::new(b"columns").expect("public");
         for _ in 0..16 {
             let index = loop {
-                let value = expected
-                    .challenge(ChallengeLabel::CertificateColumn)
-                    .expect("draw")
-                    .to_le_bytes();
+                let value = expected.challenge(label).expect("draw").to_le_bytes();
                 let first = u32::from_le_bytes(value.as_ref()[..4].try_into().expect("limb"));
                 if first < 1 << 30 {
                     break u64::from(first);
                 }
             };
-            assert_eq!(actual.certificate_column(1 << 30), Ok(index));
+            let sampled = match label {
+                ChallengeLabel::CertificateColumn => actual.certificate_column(1 << 30),
+                ChallengeLabel::OpeningColumn => actual.opening_column(1 << 30),
+                _ => unreachable!(),
+            };
+            assert_eq!(sampled, Ok(index));
             assert_eq!(actual.state, expected.state);
         }
         assert!(actual.usage().column_attempts > 16);
@@ -66,8 +69,13 @@ fn matches_reference_full_field_column_ratchets() {
         expected_usage.column_attempts = expected_usage.xof_requests;
         assert_eq!(actual.usage(), expected_usage);
     }
-    check::<QM31>();
-    check::<OM31>();
+    for label in [
+        ChallengeLabel::CertificateColumn,
+        ChallengeLabel::OpeningColumn,
+    ] {
+        check::<QM31>(label);
+        check::<OM31>(label);
+    }
 }
 
 #[test]

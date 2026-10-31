@@ -3,4 +3,6 @@
 fn rejects_nc_0607() {
     stele_negative_controls::pcs::run(607)
         .expect("native certificate must reject the stated tamper");
+    stele_negative_controls::pcs_opening_field::run()
+        .expect("native opening must reject authenticated noncanonical field bytes");
 }

@@ -78,7 +78,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 21] = [
+const REGISTRY: [RegistryEntry<'static>; 25] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -184,6 +184,26 @@ const REGISTRY: [RegistryEntry<'static>; 21] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/opening",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/opening-row",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/opening-column",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::PcsQuery),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/opening-columns",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -211,7 +231,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 21], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 25], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -278,6 +298,12 @@ pub enum AbsorbLabel {
     CertificateRow,
     /// Complete ordered response block before continuation (A10).
     CertificateColumns,
+    /// Complete expected functional and verified certificate identity (A10).
+    Opening,
+    /// Complete canonical opening row before its scalar check/queries (A10).
+    OpeningRow,
+    /// Complete ordered opening responses before continuation (A10).
+    OpeningColumns,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -295,6 +321,9 @@ impl AbsorbLabel {
             Self::FractionLeaf => 16,
             Self::CertificateRow => 18,
             Self::CertificateColumns => 20,
+            Self::Opening => 21,
+            Self::OpeningRow => 22,
+            Self::OpeningColumns => 24,
         }]
     }
 }
@@ -315,6 +344,8 @@ pub enum ChallengeLabel {
     CertificateWeight,
     /// Full K draw for a certificate column attempt, PCS query term (A10).
     CertificateColumn,
+    /// Full K draw for an opening column attempt, PCS query term (A10).
+    OpeningColumn,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -326,6 +357,7 @@ impl ChallengeLabel {
             Self::FractionFold => 15,
             Self::CertificateWeight => 17,
             Self::CertificateColumn => 19,
+            Self::OpeningColumn => 23,
         }]
     }
 }

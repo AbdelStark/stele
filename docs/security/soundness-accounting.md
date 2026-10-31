@@ -708,8 +708,8 @@ work. The native certificate producer now consumes the four certificate labels:
 CertificateWeight owns PCS_TENSOR (`2*ell*(e+1)/p^d`); CertificateColumn owns
 PCS_QUERY (`((N-e-1)/N)^q_c`). CertificateRow precedes all column draws and
 CertificateColumns binds every ordered response before continuation. The sampler
-retains full K ratchets and counts all rejected attempts. Opening and FieldSources
-labels remain absent until their actual consumers land. These producer bytes and observations
+retains full K ratchets and counts all rejected attempts. FieldSources
+remains absent until its actual consumer lands. These producer bytes and observations
 supply no accepting verifier, evaluated loss, proven flag, FS/H or profile.
 
 The [native hash-work counters](../../research/merkle-oracle/HASH-USAGE.md)
@@ -733,7 +733,19 @@ retains the same obligation. Local H work includes q_c*(1+log2(N)) Merkle hashes
 and one exact-frame certificate-ID hash. Rejected attempts retain actual work.
 The Usage record is hash-only: full encoder/buffer accounting remains open.
 NC-0600/0601/0606/0607/0608 and NC-0803 execute this consumer in both fields.
-No opening, A1 closure, complete lifetime budget, Q12, ZK or profile follows.
+No A1 closure, complete lifetime budget, Q12, ZK or profile follows.
+
+Native functional openings now bind the full expected statement with Opening,
+then the canonical row with OpeningRow before scalar checking and OpeningColumn
+draws. OpeningColumn owns PCS_QUERY (`((N-D+e)/N)^q_o`); each execution retains
+its own term and a reference to the original CertificateRecord. OpeningColumns
+binds all ordered responses before continuation. Native/Python bytes and following
+challenges match in both fields. NC-0802 also rejects a real following A1 final
+derived after omitting OpeningColumns, with the opening unchanged. NC-0600/0601/0606/0607/0610 and NC-0803 exercise
+the actual opening consumer. Authentication precedes canonical field decoding even
+with zero weights. Failure reports cumulative transcript usage and local Merkle
+work without an opening record; shared transcript snapshots must not be summed.
+Complete resource ledgers and the A1 source adapter remain E4-03a obligations.
 
 The [range capacity continuation](../../research/cqis-bounds/RANGE-CAPACITY.md)
 admits at most65536 caps with padded N*B<=131072. It preserves2BN<=262144<p

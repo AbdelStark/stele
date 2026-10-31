@@ -69,6 +69,19 @@ def certificate_continuations(vectors):
     return ''.join(value+'\n' for value in result).encode()
 
 
+def opening_continuations(vectors):
+    result = []
+    for v in vectors:
+        d = v['degree']
+        source = wire.Source(d, 41, v['ell'], v['m'], v['blowup'], bytes.fromhex(v['source'])[-32:])
+        certificate = verify_certificate(source, bytes.fromhex(v['certificate']))
+        transcript = Transcript(b'field wire oracle', d)
+        a, b, value = (wire.fields(bytes.fromhex(v[key]), d) for key in ('a', 'b', 'value'))
+        verify_opening(transcript, 12, certificate, a, b, value[0], bytes.fromhex(v['opening']))
+        result.append(transcript.challenge()[0].hex())
+    return ''.join(value+'\n' for value in result).encode()
+
+
 def rejects_authenticated_bad_fields_and_rows():
     for degree in (4, 8):
         matrix = [[2, 3], [5, 7]]
@@ -180,4 +193,5 @@ if __name__ == '__main__':
     assert core.read_bytes() == raw, 'native field-wire fixture drift'
     continuation = certificate_continuations(vectors)
     assert core.with_name('certificate-continuation.txt').read_bytes() == continuation
+    assert core.with_name('opening-continuation.txt').read_bytes() == opening_continuations(vectors)
     print('6 certificate/opening cases; reference A1 unused-original controls;', sha256(raw).hexdigest())

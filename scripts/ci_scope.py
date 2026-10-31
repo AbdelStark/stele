@@ -45,7 +45,10 @@ def scopes(paths):
                                                 b'crates/stele-simd/', b'crates/stele-cqis/'))
                                 for path in paths),
         'research': shared or routing or any(
-            path.startswith((b'research/', b'harness/', b'formal/')) or path in (
+            (path.startswith((b'research/', b'harness/', b'formal/')) and path not in (
+                # The mandatory native gate executes this exact locked oracle.
+                b'research/merkle-oracle/check_field_wire.py',
+                b'research/merkle-oracle/check_field_wire.py.lock')) or path in (
                 b'.github/workflows/exhaustive.yml', b'scripts/research_ci.py',
                 b'scripts/research-checks.json', b'scripts/research-full-checks.json')
             for path in paths),

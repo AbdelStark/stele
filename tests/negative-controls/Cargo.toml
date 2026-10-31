@@ -114,3 +114,7 @@ path = "pcs/nc_0601.rs"
 [[test]]
 name = "nc-0803"
 path = "pcs/nc_0803.rs"
+
+[[test]]
+name = "nc-0610"
+path = "pcs/nc_0610.rs"
