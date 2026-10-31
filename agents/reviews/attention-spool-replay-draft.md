@@ -14,7 +14,7 @@ contract nevertheless requires authentication of every retained byte.
    high byte. A separate restoration reproduction changed its projected
    target. All twenty high-byte controls now reject in both fields.
 5. No challenge, algebraic loss or lookup account changes. Complete proof
-   receipt and state parity is being checked against the captured baseline.
+   receipts and all eight proof states matched the captured baseline.
 6. Range widths and caps are fixed by expected metadata. The new check uses
    that width before compact re-encoding; no witness selects a bound.
 7. Local/global padding and every carry check remain. The correction adds
@@ -33,5 +33,5 @@ I tried to break it by changing each unused high byte of the spooled values,
 and the control for each rejected it after the correction.
 
 The original full-size processes and logs remain intact. Their current
-maximum fixtures use all four compact bytes. Complete honest parity and
-required gates remain pending; the wider inference goal is still open.
+maximum fixtures use all four compact bytes. Complete honest parity passed;
+required gates remain queued and the wider inference goal is still open.

@@ -36,4 +36,9 @@ fields and compact widths; their final-state digest is frozen in the checker:
 `38526eed30c515e6d8f215fd95341d37ce5065fdf977dfa5b74d7fcc43575e0c`.
 Both replay paths now require the uint32 value to fit the authenticated byte
 width before re-encoding. All twenty unused-high-byte controls passed after
-the change. Complete proof-state parity and repository gates remain pending.
+the change. All eight complete honest proofs then matched the captured
+final-state digest, with exact accounts and original claims checked by their
+existing complete consumers. Required repository gates remain queued.
+The regression command is
+`uv run --locked --script research/cqis-bounds/check_attention_spool_replay.py --controls --honest`.
+Retain it when these consumer branches receive their mandatory CI inventory.
