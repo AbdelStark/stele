@@ -16,23 +16,20 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("4/21 bindings; 27/86 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 59);
-    assert!(
-        !catalog
-            .iter()
-            .find(|entry| entry.id == 609)
-            .expect("reserved A1 source control")
-            .done
-    );
-    let streaming = catalog
-        .iter()
-        .find(|entry| entry.id == 210)
-        .expect("source control");
-    assert!(streaming.done);
-    assert!(coverage
-        .lines()
-        .any(|line| line.starts_with("NC-0210 |") && line.ends_with("passed")));
+    assert!(coverage.contains("4/21 bindings; 28/86 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 58);
+    for id in [210, 609] {
+        assert!(
+            catalog
+                .iter()
+                .find(|entry| entry.id == id)
+                .expect("implemented source control")
+                .done
+        );
+        assert!(coverage.lines().any(|line| {
+            line.starts_with(&format!("NC-{id:04} |")) && line.ends_with("passed")
+        }));
+    }
     assert!(coverage.contains("Configuration controls: 1 (not proof-statement coverage)"));
 }
 

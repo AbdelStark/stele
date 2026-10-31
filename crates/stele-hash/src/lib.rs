@@ -78,7 +78,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 25] = [
+const REGISTRY: [RegistryEntry<'static>; 26] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -204,6 +204,11 @@ const REGISTRY: [RegistryEntry<'static>; 25] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/pcs/sources",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -231,7 +236,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 25], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 26], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -304,6 +309,8 @@ pub enum AbsorbLabel {
     OpeningRow,
     /// Complete ordered opening responses before continuation (A10).
     OpeningColumns,
+    /// Complete ordered original-source bundle before A1 (A10).
+    FieldSources,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -324,6 +331,7 @@ impl AbsorbLabel {
             Self::Opening => 21,
             Self::OpeningRow => 22,
             Self::OpeningColumns => 24,
+            Self::FieldSources => 25,
         }]
     }
 }

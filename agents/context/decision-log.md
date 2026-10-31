@@ -346,3 +346,15 @@ ADR-037 execution note: required CI runs on PR events only. Verify the tested
 merge tree against current main before each sequential merge; direct
 implementation pushes to main are forbidden. This avoids repeating the same
 research and native work after merge. No new evidence cache is introduced.
+
+## ADR-038: Preserve native comparisons without rerunning unrelated research
+
+Context: lockfile changes selected the complete research inventory, while isolated
+field/CQIS edits omitted seven research commands that actually build and compare
+native Rust outputs. Decision: move those seven commands and their two ordered
+checkpoint downloads into one native-comparisons group. Exact Cargo.lock and
+field/CQIS paths select it; existing broad triggers take precedence and select
+all 75 groups. The inherited 176-command union is unchanged. Keep native, table
+and aggregate checks mandatory under their existing rules, and remove the table
+matrix concurrency cap. No performance number, proof sample count, binding,
+protocol or cost-model constant changes. Status: Accepted.

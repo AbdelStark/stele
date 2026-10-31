@@ -13,6 +13,10 @@ path = "src/main.rs"
 name = "harness"
 path = "harness/nc_stub.rs"
 
+[[test]]
+name = "nc-0609"
+path = "pcs/nc_0609.rs"
+
 [lints]
 workspace = true
 
@@ -25,6 +29,7 @@ name = "configuration"
 path = "harness/configuration.rs"
 
 [dependencies]
+stele-reductions = { path = "../../crates/stele-reductions" }
 stele-pcs = { path = "../../crates/stele-pcs" }
 stele-lookup = { path = "../../crates/stele-lookup" }
 stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }

@@ -248,6 +248,7 @@ dependencies = [
  "stele-hash",
  "stele-lookup",
  "stele-pcs",
+ "stele-reductions",
  "stele-sumcheck",
 ]
 
@@ -306,10 +307,13 @@ dependencies = [
 name = "stele-reductions"
 version = "0.1.0"
 dependencies = [
+ "stele-field",
  "stele-gkr",
+ "stele-hash",
  "stele-ir",
  "stele-lookup",
  "stele-pcs",
+ "stele-sumcheck",
 ]
 
 [[package]]

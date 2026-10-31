@@ -25,13 +25,7 @@ impl<K: ChallengeField> Functional<'_, K> {
         if self.a.len() != source.rows() || self.b.len() != source.columns() {
             return Err(Error::FunctionalShape);
         }
-        self.a
-            .len()
-            .checked_add(self.b.len())
-            .and_then(|n| n.checked_add(1))
-            .and_then(|n| n.checked_mul(4 * K::DEGREE))
-            .and_then(|n| n.checked_add(8 + 105 + 32))
-            .ok_or(Error::Capacity)
+        source.opening_frame_size()
     }
     fn frame(&self, certificate: &CertificateRecord<K>, size: usize) -> Result<Vec<u8>, Error> {
         let mut bytes = Vec::new();
@@ -49,6 +43,51 @@ impl<K: ChallengeField> Functional<'_, K> {
         }
         Ok(bytes)
     }
+}
+/// Derive MSB-first point weights and invoke the actual functional verifier (A9 §4).
+/// Any error aborts the enclosing attempt; no caller-supplied coefficients intervene.
+pub fn verify_point<'cert, K: ChallengeField + CodeField>(
+    t: &mut Transcript<K>,
+    certificate: &'cert VerifiedCertificate<K>,
+    id: u64,
+    point: &[K],
+    value: K,
+    proof: &[u8],
+) -> Result<(OpeningRecord<'cert, K>, Usage), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let weights = (|| {
+        let source = certificate.record().source();
+        let ell = source.rows().trailing_zeros() as usize;
+        let m = source.columns().trailing_zeros() as usize;
+        if point.len() != ell + m {
+            return Err(Error::FunctionalShape);
+        }
+        source.opening_frame_size()?;
+        source.parse(ProofKind::Opening, proof)?;
+        let a = stele_poly::eq_table(&point[..ell]).map_err(|_| Error::Capacity)?;
+        let b = stele_poly::eq_table(&point[ell..]).map_err(|_| Error::Capacity)?;
+        Ok((a, b))
+    })();
+    let (a, b) = weights.map_err(|cause| Failure {
+        cause,
+        usage: Usage {
+            transcript: t.usage(),
+            non_transcript: HashUsage::default(),
+        },
+    })?;
+    verify_opening(
+        t,
+        certificate,
+        Functional {
+            id,
+            a: &a,
+            b: &b,
+            value,
+        },
+        proof,
+    )
 }
 /// One conditional opening obligation, borrowing the original certificate loss.
 /// It cannot outlive that certificate or be imported from a digest:

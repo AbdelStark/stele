@@ -57,11 +57,21 @@ def main(argv=None):
     try:
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument('--full', action='store_true', help='exhaustive scheduled/manual inventory')
+        parser.add_argument('--selection', choices=('all', 'native', 'none'), default='all',
+                            help='normal matrix selection; defaults to the complete inventory')
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument('--matrix', action='store_true')
         mode.add_argument('--group')
         args = parser.parse_args(argv)
         groups = load_groups(FULL_MANIFEST if args.full else MANIFEST)
+        if args.selection != 'all' and (args.full or not args.matrix):
+            parser.error('selection applies only to the normal matrix')
+        if args.selection == 'native':
+            if not groups.get('native-comparisons'):
+                raise ValueError('missing native-comparisons research group')
+            groups = {'native-comparisons': groups['native-comparisons']}
+        elif args.selection == 'none':
+            groups = {}
         if args.group is not None and args.group not in groups:
             parser.error('unknown research group: ' + args.group)
         if args.matrix:

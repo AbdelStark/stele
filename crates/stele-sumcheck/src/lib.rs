@@ -310,19 +310,28 @@ pub fn prove<K: ChallengeField + Eq>(
         final_values,
     })
 }
+/// Validate the complete A1 shape and message sizes without absorbing or verifying.
+/// RFC-0010 A9 §5 uses this before binding its complete source roster.
+pub fn preflight<K: ChallengeField>(i: &Instance<K>, proof: &Proof<K>) -> Result<usize, Error> {
+    let degree = i.validate()?;
+    if proof.rounds.len() != usize::try_from(i.num_vars).map_err(|_| Error::Capacity)?
+        || proof.final_values.len() != i.inputs.len()
+        || proof.rounds.iter().any(|r| r.len() != degree + 1)
+    {
+        return Err(Error::ProofShape);
+    }
+    i.encoded_len()?;
+    message_size::<K>(degree + 1)?;
+    message_size::<K>(proof.final_values.len())?;
+    Ok(degree)
+}
 /// Verify a reduction only; its returned input evaluations remain obligations.
 pub fn verify<K: ChallengeField + Eq>(
     i: &Instance<K>,
     proof: &Proof<K>,
     transcript: &mut Transcript<K>,
 ) -> Result<Reduction<K>, Error> {
-    let degree = i.validate()?;
-    if proof.rounds.len() != i.num_vars as usize
-        || proof.final_values.len() != i.inputs.len()
-        || proof.rounds.iter().any(|r| r.len() != degree + 1)
-    {
-        return Err(Error::ProofShape);
-    }
+    let degree = preflight(i, proof)?;
     let mut point = Vec::new();
     reserve(&mut point, i.num_vars as usize)?;
     let mut claims = Vec::new();
