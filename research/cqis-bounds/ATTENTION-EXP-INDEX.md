@@ -98,3 +98,9 @@ draw counts. Frozen proof-state SHA-256:
 All original/boundary/source-composition controls passed; the earlier primary
 controls remain valid. Full16384-row proof and required local gates remain
 pending. No completed check was repeated to freeze this evidence.
+
+CI preserves all 142 inherited commands and adds the six normal modes as
+command 143. A separate mandatory full-size job covers the seventh CLI mode.
+All 11 inventory tests passed, including exact mode coverage and rejection
+of any unsuccessful required job. The original full-size proof and local
+gate queue continue; this integration does not restart them.

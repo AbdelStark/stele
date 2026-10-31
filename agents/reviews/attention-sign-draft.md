@@ -59,3 +59,9 @@ SignColumns:ClaimMismatch.
 The complete 16-proof matrix passed in both fields and repetition counts.
 Its transcript digest is frozen, and all receipts/draw totals matched. The
 original full-size proof and gate queue continue without a restart.
+
+CI integration retains all 148 inherited commands and native jobs. A new
+normal group covers the corpus, controls, boundaries, source composition
+and matrix. An unconditional full-channel job is required by the aggregate
+gate. All 11 CI inventory tests passed. The original full proof and local
+gate queue continue; hosted checks remain pending.
