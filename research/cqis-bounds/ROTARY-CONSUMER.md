@@ -101,3 +101,11 @@ three frequency families retained their exact range/A3 accounts and draw
 counts. Frozen matrix SHA-256:
 `8a17be4adf403464d103c4dc68dba389fcb34d1a1b1c2f50218ffbdda135d6bf`.
 The full16384-element proof and required local gates remain pending.
+
+CI integration retains all 140 inherited commands and adds this consumer's
+five normal modes as command 141. The dedicated rotary full-size job is a
+required aggregate dependency; failure, cancellation, omission and skipping
+reject the aggregate gate. All 11 CI inventory tests passed. Mode coverage
+reads the script entrypoint, so a local corpus variable named modes cannot
+hide a missing CLI mode. Local full-size evidence and repository gates remain
+pending in their original runners; this change does not restart either.
