@@ -1706,3 +1706,14 @@ Canonical sign, scaled-numerator and strict-division source chains must join
 on the same roots in both accumulation modes. Configured conversion and
 complete upstream/native/private ownership remain open; Accepted text and
 production cuts are unchanged.
+
+### A3/A6 research plan — Global attention offset base
+
+The [global base scope](../../research/cqis-bounds/ATTENTION-GLOBAL-BASE.md)
+binds H=S*Z on the full eight-byte Z used by exact normalization. One complete
+scalar limb product retains all whole ranges, packing, carry/output ranges
+and actual/public claims. Every configured factor byte is checked, including
+at Z=0. Both external roots preserve high bytes through Z=2^34 and H<2^50.
+No wrapper challenge is introduced. Complete global probability, positive
+denominator and raw-sign joins precede normalization composition. Accepted
+semantics, production cuts and original criteria remain unchanged.

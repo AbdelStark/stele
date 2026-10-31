@@ -1321,3 +1321,17 @@ inherited source/public claim remain mandatory, including at q=0. Static
 sides<=32768<p/2 and complete int16 source relations preserve faithful signed
 output. Binding/FS/H and actual canonical-sign/magnitude/division provenance
 remain additional. Confirm runtime receipts and source joins before admission.
+
+### Draft Q26/Q31 global attention offset base
+
+Pre-implementation account: no wrapper challenge. One complete scalar limb
+product retains independent lookup dimensions b+2,g+3,g+3. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is 9b+18g+31; product identity k-1
+and A1 reduction 4b remain separate. Nonlookup draws are 4b+8g+13 ZeroWeight
+and 6b+8g+14 Sumcheck. All actual operands and public powers remain consumed.
+Expected schema, roles, external/internal roots and verified product state
+bind the composition state. Static whole/column bounds and every exact S
+byte exclude aliases without lifting global Z/H into M31. Binding/FS/H,
+positive Z and actual upstream ownership remain additional. Confirm runtime
+receipts and all source joins before evidence or admission.

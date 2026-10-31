@@ -1017,3 +1017,10 @@ canonical int16 attention outputs, including negative inputs rounded to zero?
 [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-SIGNED-OUTPUT.md)
 precede tests/code. Complete exact/block sign-to-magnitude-to-division joins,
 all originals and full capacity remain required.
+
+Q26/Q31 continuation: can exact normalization bind H=S*Z on the same full
+eight-byte global Z consumed by the positive denominator?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-BASE.md)
+precede tests/code. All actual/public product consumers, exact factor bytes
+at zero and complete global-sum/positive-denominator/raw-sign joins remain
+required before normalization composition.
