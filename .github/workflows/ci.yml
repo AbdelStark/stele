@@ -3,8 +3,10 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 jobs:
   plan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       gpu: ${{ steps.scope.outputs.gpu }}
@@ -152,6 +154,7 @@ jobs:
           test "$STATISTIC_RESULT" = success
           test "$QUOTIENT_RESULT" = success
   range-capacity:
+    needs: plan
     name: range-capacity-${{ matrix.mode }}
     runs-on: ubuntu-latest
     strategy:
@@ -170,6 +173,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_range_capacity.py --${{ matrix.mode }}
   norm-product-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -183,6 +187,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_product.py --maximum
   norm-sign-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -196,6 +201,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_sign.py --maximum
   norm-statistic-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -209,6 +215,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py --maximum
   norm-quotient-product-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -222,6 +229,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py --maximum
   norm-bias-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -235,6 +243,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_bias.py --maximum
   norm-division-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -248,6 +257,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_division.py --maximum
   norm-left-full:
+    needs: plan
     name: norm-left-${{ matrix.mode }}
     runs-on: ubuntu-latest
     strategy:
@@ -266,6 +276,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_left.py --${{ matrix.mode }}
   norm-signed-output-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -279,6 +290,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_signed_output.py --maximum
   norm-configured-output-full:
+    needs: plan
     name: norm-configured-output-${{ matrix.mode }}
     runs-on: ubuntu-latest
     strategy:
@@ -297,6 +309,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_configured_output.py --${{ matrix.mode }}
   norm-composition-full:
+    needs: plan
     name: norm-composition-${{ matrix.mode }}
     strategy:
       fail-fast: false
@@ -315,6 +328,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_norm_composition.py --${{ matrix.mode }}
   residual-aligned-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -328,6 +342,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_residual_aligned.py --maximum
   residual-sign-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -341,6 +356,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_residual_sign.py --maximum
   residual-rounding-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -354,6 +370,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_residual_rounding.py --maximum
   residual-composition-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -367,6 +384,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_residual_composition.py --maximum
   rotary-consumer-full:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -380,6 +398,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_rotary_consumer.py --maximum
   poseidon2-reference:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
