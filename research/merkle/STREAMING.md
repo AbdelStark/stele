@@ -49,3 +49,14 @@ digests are frozen in `streaming-proof-digests.json`. A wrong expected root
 rejected at FinalEvaluationMismatch; the test's original expected diagnostic
 was corrected before capture. Actual source mutations rejected at
 CommitmentMismatch. No verifier code changed during baseline capture.
+
+The candidate passed all 10012 cases over 2478160 real leaves, including all
+twelve large boundary cases and malformed-stream controls. Seed 2758 and
+the corpus SHA-256 are asserted in the checker:
+`3825ffbe517f7956214fec8d629028f07ecc39b86897e82e6234bfeb760f6e22`.
+All four complete proof/root/receipt digests matched the baseline, with all
+sixteen source/root substitutions rejected. The existing Merkle suite passed
+38 paths and 498 rejection cases; all 96 complete lookup cases and controls
+passed. All nine CI inventory/aggregate tests passed; the new corpus/proof
+command is mandatory in the existing algebra group. Required repository
+gates and hosted CI remain pending. No measured performance claim is made.

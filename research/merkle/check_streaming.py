@@ -83,6 +83,7 @@ def matches_reference_corpus():
         leaves_checked += count
         if (case+1) % 1000 == 0 or case >= 10000:
             print('root parity passed', case+1, count, flush=True)
+    assert (len(cases), leaves_checked, digest.hexdigest()) == (10012, 2478160, '3825ffbe517f7956214fec8d629028f07ecc39b86897e82e6234bfeb760f6e22')
     print(json.dumps(dict(seed=2758, cases=len(cases), leaves=leaves_checked, sha256=digest.hexdigest()), sort_keys=True), flush=True)
 
 
