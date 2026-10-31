@@ -88,3 +88,8 @@ The original corrected proof runner completed all 16 matrix proofs with exact
 receipts, draws and original claims across both fields/repetition counts.
 Its observed digest is frozen. Full-width proofs, repository gates and
 independent review remain pending; no completed work was restarted.
+
+CI integration passed all 11 inventory/CLI/aggregate tests. Five normal
+modes and both full-width group-family proofs are mandatory; inherited jobs
+and native steps are preserved. Hosted results and original local gate/full
+proof queues remain pending. This does not replace independent review.

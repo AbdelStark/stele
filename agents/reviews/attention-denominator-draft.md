@@ -74,3 +74,8 @@ frozen. The exact proof preserves D=2^64; the block proof preserves D=2^48.
 Both retain length 1048576 and width 16384 metadata. The original runner
 completed successfully. Repository gates and independent review remain pending;
 this evidence does not claim upstream key/channel ownership.
+
+All 11 CI inventory/CLI/aggregate tests passed, preserving inherited jobs
+and all native steps. Five normal modes and both scalar boundary proofs
+are mandatory. Hosted results, local repository gates and independent
+review remain pending.

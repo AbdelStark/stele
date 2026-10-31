@@ -68,3 +68,8 @@ passed. Valid replacement sources rejected, and every receipt, draw total
 and original count matched. The observed matrix digest is frozen; the
 corrected proof runner completed successfully. The full-width proof,
 repository gates and independent audit remain required.
+
+The CI continuation retains all inherited jobs and 33 native steps. Five
+normal modes and the complete full-width proof are mandatory. All 11
+inventory/CLI/aggregate tests passed. The original full proof and local
+gate queues remain live; hosted validation and independent audit are open.
