@@ -76,7 +76,19 @@ def corpus():
     print(json.dumps(dict(seed=2756,cases=10000,accepted=accepted,rejected=rejected,source_cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
+def adapters():
+    checks=0
+    for E in range(15):
+        for vm,scale in (('dynamic',0),('static',1),('static',259),('static',65535)):
+            p=spec('exact','static',1,1,1);p=replace(p,row=replace(p.row,schema=replace(p.row.schema,exponent=E,value_mode=vm,scale=scale)))
+            S=127*259 if vm=='dynamic' else scale*min(127,(65536+scale)//(2*scale));raw=1024*(1<<E)*S;k=next(j for j in range(63) if (raw+(1<<j)//2)//(1<<j)<=32767)
+            for d in (4,8):
+                v=c.derive(p,d);zp=v['probability'][0];assert zp.schema.drop==k and c.prob.derive(zp,d)['caps']==(1<<E,) and c.prob.derive(zp,d)['zmax']==1<<E;checks+=1
+    assert checks==120;print('all 120 exact probability adapter configurations preserve canonical shifts and L/Q caps',flush=True)
+
+
 def boundaries():
+    adapters()
     for mode in ('exact','block1024'):
         for policy in ('dynamic','static'):
             for h,w in ((128,128),(1,16384)):

@@ -96,3 +96,10 @@ Every complete output child and global pair derives within disjoint spans;
 the exact-mode probability adapter preserves the expected Z bound. The
 global-offset child matrix and zero-bound edge evidence are now frozen.
 Tests first and complete composition implementation remain required.
+
+Tests first rejected the missing implementation module. The complete
+consumer is now implemented: it verifies all global children on the O/Z
+roots used by each complete normalized head, followed by whole-row output
+conversion. Full source-roster, namespace and context checks passed. The
+original corpus and complete proof suites are running; full-size proofs,
+repository gates and independent review remain required.
