@@ -1,62 +1,52 @@
-"""RFC-0020 §5: draft scheduling cannot produce a successful merge gate."""
-import os
+"""RFC-0020 §5: required checks cannot pass through missing/skipped results."""
+import copy
+import importlib.util
+import itertools
 from pathlib import Path
 import re
-import subprocess
-import textwrap
 import unittest
 
-
-WORKFLOW = Path(__file__).resolve().parents[2] / '.github/workflows/ci.yml'
+ROOT = Path(__file__).resolve().parents[2]
+SPEC = importlib.util.spec_from_file_location('ci_result', ROOT / 'scripts/ci_result.py')
+result = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(result)
 
 
 class ReadinessTests(unittest.TestCase):
-    def setUp(self):
-        self.text = WORKFLOW.read_text()
-        self.jobs = dict(re.findall(r'^  ([a-z][a-z0-9-]*):\n(.*?)(?=^  [a-z]|\Z)',
-                                    self.text.split('jobs:\n', 1)[1], re.M | re.S))
+    def test_rejects_each_incomplete_required_check(self):
+        for flags in itertools.product(('true', 'false'), repeat=3):
+            scope = dict(zip(('tables', 'research', 'gpu'), flags))
+            needs = {'plan': {'result': 'success', 'outputs': scope},
+                     'native': {'result': 'success'}}
+            for job, name in (('table-parity', 'tables'), ('research', 'research'), ('gpu-parity', 'gpu')):
+                needs[job] = {'result': 'success' if scope[name] == 'true' else 'skipped'}
+            self.assertTrue(result.accepts(needs))
+            for job in needs:
+                for value in ('success', 'failure', 'cancelled', 'skipped', ''):
+                    bad = copy.deepcopy(needs)
+                    bad[job]['result'] = value
+                    self.assertEqual(result.accepts(bad), value == needs[job]['result'], (flags, job, value))
+                bad = copy.deepcopy(needs)
+                del bad[job]
+                self.assertFalse(result.accepts(bad))
+            for name in scope:
+                for value in ('', 'maybe', None):
+                    bad = copy.deepcopy(needs)
+                    bad['plan']['outputs'][name] = value
+                    self.assertFalse(result.accepts(bad))
+        self.assertFalse(result.accepts({}))
 
-    def test_requires_full_run_when_pr_becomes_ready(self):
-        self.assertIn('  push:\n    branches: [main]\n', self.text)
-        events = re.search(r'^  pull_request:\n    types: \[([^]]+)\]', self.text, re.M)
-        self.assertIsNotNone(events)
-        self.assertEqual(set(events[1].split(', ')),
-                         {'opened', 'synchronize', 'reopened', 'ready_for_review', 'converted_to_draft'})
-        self.assertIn("    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false\n",
-                      self.jobs['plan'])
-
-    def test_requires_plan_before_expensive_checks(self):
-        for name, job in self.jobs.items():
-            with self.subTest(job=name):
-                if name in {'plan', 'gates'}:
-                    continue
-                if name in {'simd-throughput', 'gpu-parity'}:
-                    self.assertIn('    needs: gates\n', job)
-                elif name == 'nightly-w1':
-                    self.assertIn("    if: github.event_name == 'schedule'\n", job)
-                else:
-                    self.assertIn('    needs: plan\n', job)
-
-    def test_rejects_draft_and_each_incomplete_prerequisite(self):
-        gate = self.jobs['gates']
-        self.assertIn('    if: always()\n', gate)
-        names = re.findall(r'^          ([A-Z_]+_RESULT):', gate, re.M)
-        self.assertTrue(names)
-        script = textwrap.dedent(gate.split('        run: |\n', 1)[1])
-
-        def accepts(values):
-            result = subprocess.run(['bash', '-e', '-c', script], capture_output=True,
-                                    env={**os.environ, **dict(zip(names, values))})
-            return result.returncode == 0
-
-        self.assertTrue(accepts(['success'] * len(names)))
-        self.assertFalse(accepts(['skipped'] * len(names)))
-        for index in range(len(names)):
-            for failure in ('failure', 'cancelled', 'skipped', ''):
-                values = ['success'] * len(names)
-                values[index] = failure
-                with self.subTest(prerequisite=names[index], result=failure):
-                    self.assertFalse(accepts(values))
+    def test_requires_readiness_and_complete_table_partition(self):
+        text = (ROOT / '.github/workflows/ci.yml').read_text()
+        self.assertIn('ready_for_review, converted_to_draft', text)
+        self.assertIn("if: github.event_name != 'pull_request' || github.event.pull_request.draft == false", text)
+        self.assertIn('needs: [plan, native, table-parity, research, gpu-parity]', text)
+        self.assertIn('NEEDS: ${{ toJSON(needs) }}', text)
+        self.assertIn('run: python3 scripts/ci_result.py', text)
+        shards = re.search(r'^        shard: \[([^]]+)\]', text, re.M)
+        self.assertIsNotNone(shards)
+        self.assertEqual([int(x) for x in shards[1].split(',')], list(range(28)))
+        self.assertNotIn('continue-on-error', text)
 
 
 if __name__ == '__main__':

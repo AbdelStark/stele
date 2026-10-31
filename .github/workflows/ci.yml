@@ -4,13 +4,20 @@ on:
     branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
 jobs:
   plan:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       gpu: ${{ steps.scope.outputs.gpu }}
-      research: ${{ steps.research.outputs.matrix }}
+      tables: ${{ steps.scope.outputs.tables }}
+      research: ${{ steps.scope.outputs.research }}
+      matrix: ${{ steps.research.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,8 +34,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90.0
@@ -40,7 +45,15 @@ jobs:
         with:
           version: "0.13.4"
           checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: native-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: native-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-
       - uses: actions/cache@v4
         id: cargo-deny
         with:
@@ -49,52 +62,67 @@ jobs:
       - if: steps.cargo-deny.outputs.cache-hit != 'true'
         run: cargo install cargo-deny --version 0.20.2 --locked
       - run: cargo fetch --locked
-      - run: cargo deny --offline check bans
-      - run: python3 -m unittest discover -s scripts/tests -v
-      - run: scripts/gates/rust-policy.sh
-      - run: cargo build --workspace --locked --offline
       - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-targets --locked --offline -- -D warnings
-      # shortcut: hosted AVX-512 varies; use a dedicated runner for mandatory per-head coverage.
+      - run: cargo deny --offline check bans
+      - run: scripts/gates/rust-policy.sh
+      - run: python3 scripts/ci_tests.py
+      - run: cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
+      - run: cargo test --workspace --all-features --locked --offline
+      - run: cargo test --workspace --examples --all-features --locked --offline
+      - run: cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis --no-default-features --locked --offline
+      # shortcut: hosted AVX-512 varies; use a dedicated runner for mandatory coverage.
       - name: Native x86 SIMD parity
         env:
           STELE_REQUIRE_SIMD: avx2
         run: cargo test -p stele-simd --release --locked --offline -- --nocapture
-      - run: cargo test --workspace --locked --offline
-      - name: Native CQIS public-table MLE parity
-        run: cargo run -p stele-cqis --example table_mle_parity --release --locked --offline
-      - run: cargo test -p stele-sumcheck --example batching --locked --offline
-      - run: cargo test -p stele-sumcheck --example zerocheck --locked --offline
-      - run: cargo test -p stele-sumcheck --example small_bench --locked --offline
-      - run: cargo test -p stele-code --example circle_bench --locked --offline
-      - run: cargo test -p stele-sumcheck --features std --example streaming_bench --locked --offline
-      - run: cargo check -p stele-sumcheck --no-default-features --locked --offline
-      - run: cargo check -p stele-lookup --no-default-features --locked --offline
-      - run: cargo check -p stele-cqis --no-default-features --locked --offline
-      - run: cargo clippy -p stele-sumcheck --all-targets --all-features --locked --offline -- -D warnings
-      - run: cargo clippy -p stele-hash --all-targets --all-features --locked --offline -- -D warnings
-      - run: scripts/gates/digest.sh
-      - run: scripts/gates/negative-controls.sh
-      - run: scripts/gates/soundness-accounting.sh
+      - run: scripts/gates/native.sh
       - run: scripts/gates/ledger-validate.sh
       - run: scripts/gates/rfc-status.sh
       - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
+  table-build:
+    needs: plan
+    if: needs.plan.outputs.tables == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - run: cargo build -p stele-cqis --example table_mle_parity --release --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: table-parity-binary
+          path: target/release/examples/table_mle_parity
+          if-no-files-found: error
+  table-parity:
+    needs: [plan, table-build]
+    if: needs.plan.outputs.tables == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: table-parity-binary
+      - run: chmod +x table_mle_parity
+      - run: ./table_mle_parity --shard ${{ matrix.shard }}
   research:
     needs: plan
+    if: needs.plan.outputs.research == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix: ${{ fromJSON(needs.plan.outputs.research) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90.0
-          components: rustfmt, clippy
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -102,752 +130,26 @@ jobs:
         with:
           version: "0.13.4"
           checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
+          enable-cache: true
       - run: cargo fetch --locked
       - run: python3 scripts/research_ci.py --group "${{ matrix.group }}"
-  gates:
-    needs: [plan, native, research, range-capacity, norm-product-full, norm-sign-full, norm-statistic-full, norm-quotient-product-full, norm-bias-full, norm-division-full, norm-left-full, norm-signed-output-full, norm-configured-output-full, norm-composition-full, residual-aligned-full, residual-sign-full, residual-rounding-full, residual-composition-full, rotary-consumer-full, attention-maximum-full, attention-index-full, attention-exp-full, attention-probability-sum-full, attention-values-full, attention-offset-sum-full, attention-base-full, attention-sign-full, attention-block-rounding-full, attention-block-sum-full, attention-block-total-sign-full, attention-global-probability-sum-full, attention-denominator-full, attention-numerator-full, attention-doubled-denominator-full, attention-biased-numerator-full, attention-quotient-product-full, attention-division-full, attention-signed-output-full, attention-global-base-full, attention-normalization-full, row-conversion-capacity-full]
-    if: always()
-    runs-on: ubuntu-latest
-    outputs:
-      gpu: ${{ needs.plan.outputs.gpu }}
-    steps:
-      - name: Require complete native and research checks
-        env:
-          PLAN_RESULT: ${{ needs.plan.result }}
-          NATIVE_RESULT: ${{ needs.native.result }}
-          RESEARCH_RESULT: ${{ needs.research.result }}
-          CAPACITY_RESULT: ${{ needs.range-capacity.result }}
-          PRODUCT_RESULT: ${{ needs.norm-product-full.result }}
-          SIGN_RESULT: ${{ needs.norm-sign-full.result }}
-          ROW_CONVERSION_RESULT: ${{ needs.row-conversion-capacity-full.result }}
-          ATTN_NORMALIZATION_RESULT: ${{ needs.attention-normalization-full.result }}
-          ATTN_GLOBAL_BASE_RESULT: ${{ needs.attention-global-base-full.result }}
-          ATTN_SIGNED_OUTPUT_RESULT: ${{ needs.attention-signed-output-full.result }}
-          ATTNDIV_RESULT: ${{ needs.attention-division-full.result }}
-          ATTENTION_QUOTIENT_PRODUCT_RESULT: ${{ needs.attention-quotient-product-full.result }}
-          ATTENTION_BIASED_NUMERATOR_RESULT: ${{ needs.attention-biased-numerator-full.result }}
-          ATTENTION_DOUBLED_DENOMINATOR_RESULT: ${{ needs.attention-doubled-denominator-full.result }}
-          NUMERATOR_RESULT: ${{ needs.attention-numerator-full.result }}
-          DENOMINATOR_RESULT: ${{ needs.attention-denominator-full.result }}
-          GLOBAL_PROBABILITY_SUM_RESULT: ${{ needs.attention-global-probability-sum-full.result }}
-          ATTN_BLOCK_TOTAL_SIGN_RESULT: ${{ needs.attention-block-total-sign-full.result }}
-          ATTN_BLOCK_SUM_RESULT: ${{ needs.attention-block-sum-full.result }}
-          ATTENTION_BLOCK_ROUNDING_RESULT: ${{ needs.attention-block-rounding-full.result }}
-          ATTENTION_SIGN_RESULT: ${{ needs.attention-sign-full.result }}
-          ATTENTION_BASE_RESULT: ${{ needs.attention-base-full.result }}
-          ATTENTION_OFFSET_SUM_RESULT: ${{ needs.attention-offset-sum-full.result }}
-          ATTENTION_VALUES_RESULT: ${{ needs.attention-values-full.result }}
-          PROBABILITY_SUM_RESULT: ${{ needs.attention-probability-sum-full.result }}
-          ATTENTION_EXP_RESULT: ${{ needs.attention-exp-full.result }}
-          ATTENTION_INDEX_RESULT: ${{ needs.attention-index-full.result }}
-          ATTENTION_MAXIMUM_RESULT: ${{ needs.attention-maximum-full.result }}
-          ROTARY_CONSUMER_RESULT: ${{ needs.rotary-consumer-full.result }}
-          RESIDUAL_COMPOSITION_RESULT: ${{ needs.residual-composition-full.result }}
-          RESIDUAL_ROUNDING_RESULT: ${{ needs.residual-rounding-full.result }}
-          RESIDUAL_SIGN_RESULT: ${{ needs.residual-sign-full.result }}
-          RESIDUAL_ALIGNED_RESULT: ${{ needs.residual-aligned-full.result }}
-          COMPOSITION_RESULT: ${{ needs.norm-composition-full.result }}
-          CONFIGURED_OUTPUT_RESULT: ${{ needs.norm-configured-output-full.result }}
-          SIGNED_OUTPUT_RESULT: ${{ needs.norm-signed-output-full.result }}
-          LEFT_RESULT: ${{ needs.norm-left-full.result }}
-          DIVISION_RESULT: ${{ needs.norm-division-full.result }}
-          BIAS_RESULT: ${{ needs.norm-bias-full.result }}
-          STATISTIC_RESULT: ${{ needs.norm-statistic-full.result }}
-          QUOTIENT_RESULT: ${{ needs.norm-quotient-product-full.result }}
-        run: |
-          test "$PLAN_RESULT" = success
-          test "$NATIVE_RESULT" = success
-          test "$RESEARCH_RESULT" = success
-          test "$CAPACITY_RESULT" = success
-          test "$PRODUCT_RESULT" = success
-          test "$SIGN_RESULT" = success
-          test "$ROW_CONVERSION_RESULT" = success
-          test "$ATTN_NORMALIZATION_RESULT" = success
-          test "$ATTN_GLOBAL_BASE_RESULT" = success
-          test "$ATTN_SIGNED_OUTPUT_RESULT" = success
-          test "$ATTNDIV_RESULT" = success
-          test "$ATTENTION_QUOTIENT_PRODUCT_RESULT" = success
-          test "$ATTENTION_BIASED_NUMERATOR_RESULT" = success
-          test "$ATTENTION_DOUBLED_DENOMINATOR_RESULT" = success
-          test "$NUMERATOR_RESULT" = success
-          test "$DENOMINATOR_RESULT" = success
-          test "$GLOBAL_PROBABILITY_SUM_RESULT" = success
-          test "$ATTN_BLOCK_TOTAL_SIGN_RESULT" = success
-          test "$ATTN_BLOCK_SUM_RESULT" = success
-          test "$ATTENTION_BLOCK_ROUNDING_RESULT" = success
-          test "$ATTENTION_SIGN_RESULT" = success
-          test "$ATTENTION_BASE_RESULT" = success
-          test "$ATTENTION_OFFSET_SUM_RESULT" = success
-          test "$ATTENTION_VALUES_RESULT" = success
-          test "$PROBABILITY_SUM_RESULT" = success
-          test "$ATTENTION_EXP_RESULT" = success
-          test "$ATTENTION_INDEX_RESULT" = success
-          test "$ATTENTION_MAXIMUM_RESULT" = success
-          test "$ROTARY_CONSUMER_RESULT" = success
-          test "$RESIDUAL_COMPOSITION_RESULT" = success
-          test "$RESIDUAL_ROUNDING_RESULT" = success
-          test "$RESIDUAL_SIGN_RESULT" = success
-          test "$RESIDUAL_ALIGNED_RESULT" = success
-          test "$COMPOSITION_RESULT" = success
-          test "$CONFIGURED_OUTPUT_RESULT" = success
-          test "$SIGNED_OUTPUT_RESULT" = success
-          test "$LEFT_RESULT" = success
-          test "$DIVISION_RESULT" = success
-          test "$BIAS_RESULT" = success
-          test "$STATISTIC_RESULT" = success
-          test "$QUOTIENT_RESULT" = success
-  range-capacity:
-    needs: plan
-    name: range-capacity-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [wide, signed, normxy]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_range_capacity.py --${{ matrix.mode }}
-  norm-product-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_product.py --maximum
-  norm-sign-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_sign.py --maximum
-  norm-statistic-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py --maximum
-  norm-quotient-product-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py --maximum
-  norm-bias-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_bias.py --maximum
-  norm-division-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_division.py --maximum
-  norm-left-full:
-    needs: plan
-    name: norm-left-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-nonzero]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_left.py --${{ matrix.mode }}
-  norm-signed-output-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_signed_output.py --maximum
-  norm-configured-output-full:
-    needs: plan
-    name: norm-configured-output-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-left, full-right]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_configured_output.py --${{ matrix.mode }}
-  norm-composition-full:
-    needs: plan
-    name: norm-composition-${{ matrix.mode }}
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-left, full-right]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_norm_composition.py --${{ matrix.mode }}
-  residual-aligned-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_residual_aligned.py --maximum
-  residual-sign-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_residual_sign.py --maximum
-  residual-rounding-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_residual_rounding.py --maximum
-  residual-composition-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_residual_composition.py --maximum
-  rotary-consumer-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_rotary_consumer.py --maximum
-  attention-maximum-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_maximum.py --maximum
-  attention-index-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_exp_index.py --maximum
-  attention-exp-full:
-    needs: plan
-    name: attention-exp-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-direct, full-corrected]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_exp.py --${{ matrix.mode }}
-  attention-probability-sum-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_probability_sum.py --maximum
-  attention-values-full:
-    needs: plan
-    name: attention-values-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-static]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_values.py --${{ matrix.mode }}
-  attention-offset-sum-full:
-    needs: plan
-    name: attention-offset-sum-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-keys, full-wide]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_offset_sum.py --${{ matrix.mode }}
-  attention-base-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_base.py --maximum
-  attention-sign-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_sign.py --maximum
-  attention-block-rounding-full:
-    needs: plan
-    name: attention-block-rounding-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-blocks, full-wide]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_block_rounding.py --${{ matrix.mode }}
-  attention-block-sum-full:
-    needs: plan
-    name: attention-block-sum-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-blocks, full-wide]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_block_sum.py --${{ matrix.mode }}
-  attention-block-total-sign-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_block_total_sign.py --maximum
-  attention-global-probability-sum-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_global_probability_sum.py --maximum
-  attention-denominator-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_denominator.py --maximum
-  attention-numerator-full:
-    needs: plan
-    name: attention-numerator-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-identity]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_numerator.py --${{ matrix.mode }}
-  attention-doubled-denominator-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_doubled_denominator.py --maximum
-  attention-biased-numerator-full:
-    needs: plan
-    name: attention-biased-numerator-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-denominator, full-small]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_biased_numerator.py --${{ matrix.mode }}
-  attention-quotient-product-full:
-    needs: plan
-    name: attention-quotient-product-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-carry]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_quotient_product.py --${{ matrix.mode }}
-  attention-division-full:
-    needs: plan
-    name: attention-division-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-quotient]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_division.py --${{ matrix.mode }}
-  attention-signed-output-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_signed_output.py --maximum
-  attention-global-base-full:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_global_base.py --maximum
-  attention-normalization-full:
-    needs: plan
-    name: attention-normalization-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-block]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_attention_normalization.py --${{ matrix.mode }}
-  row-conversion-capacity-full:
-    name: row-conversion-capacity-${{ matrix.mode }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [maximum, full-static, full-gated, full-static-gated]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
-        with:
-          version: "0.13.4"
-          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
-          enable-cache: false
-      - run: uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --${{ matrix.mode }}
-  poseidon2-reference:
-    needs: plan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.95.0
-      - name: Regenerate pinned upstream Poseidon2 vectors
-        run: |
-          cargo +1.95.0 run --manifest-path vendor-ref/poseidon2-m31/Cargo.toml --example vectors --locked > "$RUNNER_TEMP/poseidon2.jsonl"
-          cmp research/poseidon2/reference.jsonl "$RUNNER_TEMP/poseidon2.jsonl"
-  simd-throughput:
-    needs: gates
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.90.0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: cargo fetch --locked
-      - name: Native parity and throughput ledger
-        env:
-          STELE_REQUIRE_SIMD: avx2
-        run: python3 bench/simd_ops.py "$RUNNER_TEMP/simd-ops.json"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: simd-throughput
-          path: ${{ runner.temp }}/simd-ops.json
-          if-no-files-found: error
   gpu-parity:
-    needs: gates
-    if: needs.gates.outputs.gpu == 'true'
+    needs: plan
+    if: needs.plan.outputs.gpu == 'true'
     runs-on: [self-hosted, gpu]
     steps:
       - uses: actions/checkout@v4
       - run: scripts/gates/parity.sh
-  nightly-w1:
-    if: github.event_name == 'schedule'
-    runs-on: [self-hosted, gpu]
+  gates:
+    needs: [plan, native, table-parity, research, gpu-parity]
+    if: always()
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cargo run -p stele-cli --release --features cuda -- bench --workload W1 --profile treaty --ledger bench/ledger/nightly-${{ github.sha }}.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require every selected check
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_result.py

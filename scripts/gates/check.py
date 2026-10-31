@@ -681,7 +681,7 @@ def docs_links(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('gate', choices=(*OWNERS, 'rfc-status', 'docs-links'))
+    parser.add_argument('gate', choices=(*OWNERS, 'native', 'rfc-status', 'docs-links'))
     args = parser.parse_args()
     try:
         if args.gate == 'rfc-status':
@@ -689,14 +689,19 @@ def main():
         elif args.gate == 'docs-links':
             docs_links(ROOT)
         else:
-            if args.gate == 'negative-controls':
+            # The native job needs this union once. Standalone entry points
+            # remain complete and do not consume cached success receipts.
+            combined = args.gate == 'native'
+            if combined or args.gate == 'negative-controls':
                 controls_layout(ROOT)
-            if args.gate in ('negative-controls', 'soundness-accounting'):
+            if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 field_source_codec(ROOT)
-            bootstrap_guard(ROOT, args.gate)
-            if args.gate == 'digest':
+            for gate in (('digest', 'negative-controls', 'soundness-accounting')
+                         if combined else (args.gate,)):
+                bootstrap_guard(ROOT, gate)
+            if combined or args.gate == 'digest':
                 native_encoder(ROOT)
-            if args.gate in ('negative-controls', 'soundness-accounting'):
+            if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
@@ -712,7 +717,7 @@ def main():
                 streaming_strategy(ROOT)
                 file_source(ROOT)
                 streaming_corpus(ROOT)
-                if args.gate == 'negative-controls':
+                if combined or args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
         print(f'gate {args.gate}: {error}', file=sys.stderr)

@@ -32,25 +32,43 @@ class ScopeTests(unittest.TestCase):
             git('add', 'crates')
             git('commit', '-m', 'initial')
             base = git('rev-parse', 'HEAD')
-            self.assertEqual(run({'before': '0' * 40, 'after': base}).stdout, 'gpu=true\n')
+            self.assertEqual(run({'before': '0' * 40, 'after': base}).stdout, 'gpu=true\ntables=false\nresearch=false\n')
             (root / 'README.md').write_text('docs\n')
             git('add', 'README.md')
             git('commit', '-m', 'docs')
             head = git('rev-parse', 'HEAD')
-            self.assertEqual(run({'before': base, 'after': head}).stdout, 'gpu=false\n')
+            self.assertEqual(run({'before': base, 'after': head}).stdout, 'gpu=false\ntables=false\nresearch=false\n')
             git('mv', 'crates/stele-gpu/src/lib.rs', 'moved.rs')
             git('commit', '-m', 'move GPU source out of crate')
             renamed = git('rev-parse', 'HEAD')
             event = {'pull_request': {'base': {'sha': head}, 'head': {'sha': renamed}}}
-            self.assertEqual(run(event).stdout, 'gpu=true\n')
+            self.assertEqual(run(event).stdout, 'gpu=true\ntables=false\nresearch=false\n')
             git('switch', '-c', 'base-ahead', head)
             source.write_text('// base-only change\n')
             git('add', 'crates')
             git('commit', '-m', 'base advances')
             advanced = git('rev-parse', 'HEAD')
             event = {'pull_request': {'base': {'sha': advanced}, 'head': {'sha': head}}}
-            self.assertEqual(run(event).stdout, 'gpu=false\n')
+            self.assertEqual(run(event).stdout, 'gpu=false\ntables=false\nresearch=false\n')
             self.assertNotEqual(run({'before': '--help', 'after': head}).returncode, 0)
+            for path, expected in [
+                ('crates/stele-field/src/lib.rs', ('true', 'false')),
+                ('crates/stele-cqis/tests/support/oracle.rs', ('true', 'false')),
+                ('research/sumcheck/check_sumcheck.py', ('false', 'true')),
+                ('Cargo.lock', ('true', 'true')),
+                ('.github/workflows/ci.yml', ('true', 'true')),
+            ]:
+                before = git('rev-parse', 'HEAD')
+                file = root / path
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text('changed\n')
+                git('add', path)
+                git('commit', '-m', 'scope fixture')
+                result = run({'before': before, 'after': git('rev-parse', 'HEAD')})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                outputs = dict(line.split('=') for line in result.stdout.splitlines())
+                self.assertEqual((outputs['tables'], outputs['research']), expected)
+
 
 
 if __name__ == '__main__':

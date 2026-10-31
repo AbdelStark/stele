@@ -298,5 +298,29 @@
   ],
   "cqis-row-conversion-capacity": [
     "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --shapes --honest"
+  ],
+  "cqis-attention-global-composition": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_composition.py --corpus --controls --boundaries --edges --honest"
+  ],
+  "cqis-attention-global-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --corpus --shapes --controls --boundaries --honest --projections --replay --composition --domain"
+  ],
+  "cqis-attention-global-offset": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_offset.py --corpus --controls --boundaries --edges --honest"
+  ],
+  "cqis-attention-output-conversion": [
+    "uv run --locked --script research/cqis-bounds/check_attention_output_conversion.py --corpus --controls --boundaries --honest"
+  ],
+  "cqis-attention-block-offset": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_offset.py --corpus --shapes --projections --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-block-values": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_values.py --shapes --corpus --controls --boundaries --honest --originals --predicates --zero-predicate --projections --composition"
+  ],
+  "cqis-attention-spool-replay": [
+    "uv run --locked --script research/cqis-bounds/check_attention_spool_replay.py --controls --honest"
+  ],
+  "cqis-attention-value-projection": [
+    "uv run --locked --script research/cqis-bounds/check_attention_value_projection.py --corpus"
   ]
 }

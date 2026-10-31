@@ -57,7 +57,10 @@ moving a file out of a GPU crate still triggers parity. Initial pushes compare t
 empty tree. Invalid commit metadata fails CI. GPU jobs require a configured self-hosted
 GPU runner; this scaffold does not substitute CPU execution for hardware evidence.
 
-Run gate regression tests with:
+The required native job uses `scripts/gates/native.sh` for the digest, control and
+accounting union. All actual validators run once; standalone gates stay self-contained.
+Quick tooling tests use `python3 scripts/ci_tests.py`. The manual `exhaustive` workflow
+partitions copied-source mutation tests into independent jobs. Run all tooling tests locally with:
 
 ```sh
 python3 -m unittest discover -s scripts/tests -v

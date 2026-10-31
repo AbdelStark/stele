@@ -1,0 +1,254 @@
+{
+  "attention-base-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_base.py --maximum"
+  ],
+  "attention-biased-numerator-full-denominator": [
+    "uv run --locked --script research/cqis-bounds/check_attention_biased_numerator.py --full-denominator"
+  ],
+  "attention-biased-numerator-full-small": [
+    "uv run --locked --script research/cqis-bounds/check_attention_biased_numerator.py --full-small"
+  ],
+  "attention-biased-numerator-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_biased_numerator.py --maximum"
+  ],
+  "attention-block-rounding-full-blocks": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_rounding.py --full-blocks"
+  ],
+  "attention-block-rounding-full-wide": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_rounding.py --full-wide"
+  ],
+  "attention-block-rounding-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_rounding.py --maximum"
+  ],
+  "attention-block-sum-full-blocks": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_sum.py --full-blocks"
+  ],
+  "attention-block-sum-full-wide": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_sum.py --full-wide"
+  ],
+  "attention-block-sum-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_sum.py --maximum"
+  ],
+  "attention-block-total-sign-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_total_sign.py --maximum"
+  ],
+  "attention-denominator-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_denominator.py --maximum"
+  ],
+  "attention-division-full-quotient": [
+    "uv run --locked --script research/cqis-bounds/check_attention_division.py --full-quotient"
+  ],
+  "attention-division-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_division.py --maximum"
+  ],
+  "attention-doubled-denominator-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_doubled_denominator.py --maximum"
+  ],
+  "attention-exp-full-corrected": [
+    "uv run --locked --script research/cqis-bounds/check_attention_exp.py --full-corrected"
+  ],
+  "attention-exp-full-direct": [
+    "uv run --locked --script research/cqis-bounds/check_attention_exp.py --full-direct"
+  ],
+  "attention-exp-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_exp.py --maximum"
+  ],
+  "attention-global-base-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_base.py --maximum"
+  ],
+  "attention-global-probability-sum-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_probability_sum.py --maximum"
+  ],
+  "attention-index-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_exp_index.py --maximum"
+  ],
+  "attention-maximum-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_maximum.py --maximum"
+  ],
+  "attention-normalization-full-block": [
+    "uv run --locked --script research/cqis-bounds/check_attention_normalization.py --full-block"
+  ],
+  "attention-normalization-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_normalization.py --maximum"
+  ],
+  "attention-numerator-full-identity": [
+    "uv run --locked --script research/cqis-bounds/check_attention_numerator.py --full-identity"
+  ],
+  "attention-numerator-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_numerator.py --maximum"
+  ],
+  "attention-offset-sum-full-keys": [
+    "uv run --locked --script research/cqis-bounds/check_attention_offset_sum.py --full-keys"
+  ],
+  "attention-offset-sum-full-wide": [
+    "uv run --locked --script research/cqis-bounds/check_attention_offset_sum.py --full-wide"
+  ],
+  "attention-offset-sum-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_offset_sum.py --maximum"
+  ],
+  "attention-probability-sum-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_probability_sum.py --maximum"
+  ],
+  "attention-quotient-product-full-carry": [
+    "uv run --locked --script research/cqis-bounds/check_attention_quotient_product.py --full-carry"
+  ],
+  "attention-quotient-product-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_quotient_product.py --maximum"
+  ],
+  "attention-sign-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_sign.py --maximum"
+  ],
+  "attention-signed-output-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_signed_output.py --maximum"
+  ],
+  "attention-values-full-static": [
+    "uv run --locked --script research/cqis-bounds/check_attention_values.py --full-static"
+  ],
+  "attention-values-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_values.py --maximum"
+  ],
+  "norm-bias-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_bias.py --maximum"
+  ],
+  "norm-composition-full-left": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --full-left"
+  ],
+  "norm-composition-full-right": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --full-right"
+  ],
+  "norm-composition-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --maximum"
+  ],
+  "norm-configured-output-full-left": [
+    "uv run --locked --script research/cqis-bounds/check_norm_configured_output.py --full-left"
+  ],
+  "norm-configured-output-full-right": [
+    "uv run --locked --script research/cqis-bounds/check_norm_configured_output.py --full-right"
+  ],
+  "norm-configured-output-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_norm_configured_output.py --maximum"
+  ],
+  "norm-division-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_division.py --maximum"
+  ],
+  "norm-left-full-nonzero": [
+    "uv run --locked --script research/cqis-bounds/check_norm_left.py --full-nonzero"
+  ],
+  "norm-left-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_norm_left.py --maximum"
+  ],
+  "norm-product-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_product.py --maximum"
+  ],
+  "norm-quotient-product-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py --maximum"
+  ],
+  "norm-sign-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_sign.py --maximum"
+  ],
+  "norm-signed-output-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_signed_output.py --maximum"
+  ],
+  "norm-statistic-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py --maximum"
+  ],
+  "range-capacity-normxy": [
+    "uv run --locked --script research/cqis-bounds/check_range_capacity.py --normxy"
+  ],
+  "range-capacity-signed": [
+    "uv run --locked --script research/cqis-bounds/check_range_capacity.py --signed"
+  ],
+  "range-capacity-wide": [
+    "uv run --locked --script research/cqis-bounds/check_range_capacity.py --wide"
+  ],
+  "residual-aligned-full": [
+    "uv run --locked --script research/cqis-bounds/check_residual_aligned.py --maximum"
+  ],
+  "residual-composition-full": [
+    "uv run --locked --script research/cqis-bounds/check_residual_composition.py --maximum"
+  ],
+  "residual-rounding-full": [
+    "uv run --locked --script research/cqis-bounds/check_residual_rounding.py --maximum"
+  ],
+  "residual-sign-full": [
+    "uv run --locked --script research/cqis-bounds/check_residual_sign.py --maximum"
+  ],
+  "rotary-consumer-full": [
+    "uv run --locked --script research/cqis-bounds/check_rotary_consumer.py --maximum"
+  ],
+  "row-conversion-capacity-full-gated": [
+    "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --full-gated"
+  ],
+  "row-conversion-capacity-full-static": [
+    "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --full-static"
+  ],
+  "row-conversion-capacity-full-static-gated": [
+    "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --full-static-gated"
+  ],
+  "row-conversion-capacity-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --maximum"
+  ],
+  "attention-block-offset-full-ragged": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_offset.py --full-ragged"
+  ],
+  "attention-block-offset-full-tail": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_offset.py --full-tail"
+  ],
+  "attention-block-offset-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_offset.py --maximum"
+  ],
+  "attention-block-values-full-ragged": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_values.py --full-ragged"
+  ],
+  "attention-block-values-full-static": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_values.py --full-static"
+  ],
+  "attention-block-values-full-tail": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_values.py --full-tail"
+  ],
+  "attention-block-values-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_values.py --maximum"
+  ],
+  "attention-global-composition-full-block": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_composition.py --full-block"
+  ],
+  "attention-global-composition-full-wide-block": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_composition.py --full-wide-block"
+  ],
+  "attention-global-composition-full-wide-exact": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_composition.py --full-wide-exact"
+  ],
+  "attention-global-composition-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_composition.py --maximum"
+  ],
+  "attention-global-maximum-cross-tie": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --cross-tie"
+  ],
+  "attention-global-maximum-full-ragged": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --full-ragged"
+  ],
+  "attention-global-maximum-full-tail": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --full-tail"
+  ],
+  "attention-global-maximum-full-window": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --full-window"
+  ],
+  "attention-global-maximum-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --maximum"
+  ],
+  "attention-global-offset-full-block": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_offset.py --full-block"
+  ],
+  "attention-global-offset-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_offset.py --maximum"
+  ],
+  "attention-output-conversion-full-block": [
+    "uv run --locked --script research/cqis-bounds/check_attention_output_conversion.py --full-block"
+  ],
+  "attention-output-conversion-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_output_conversion.py --maximum"
+  ],
+  "attention-value-projection-full": [
+    "uv run --locked --script research/cqis-bounds/check_attention_value_projection.py --full"
+  ]
+}

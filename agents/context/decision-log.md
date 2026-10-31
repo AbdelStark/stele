@@ -323,3 +323,20 @@ Native parity, controls, resource evidence, packing, fused B, privacy, extractio
 Q12 and inference remain unfinished. No measured constant, cut or weight-pass
 change. Review: agents/reviews/field-pcs-acceptance.md records internal agent
 skill and owner sign-offs; independent audit is not claimed. Status: Accepted.
+
+
+## ADR-037: Consolidated delivery and scoped CI
+
+Context: E0-06 and the owner's instruction to consolidate existing work and
+finish one task through merge before starting the next. Decision: integrate
+published and committed research histories through one existing PR, then use
+one active implementation task and one PR. Read-only review remains parallel.
+
+Run the actual native controls, independent reference checks and accounting on
+every ready PR. Deduplicate their common validators in one invocation. Partition
+the unchanged table corpus and select it from its dependency paths. Require the
+normal research inventory when research or shared tooling changes; retain
+full-size experiments, copied-source gate mutations, upstream regeneration and
+throughput measurements in an explicit manual workflow. Full-size Draft
+acceptance claims still require their own evidence. No protocol, challenge,
+sample-count, cost-model constant or weight-pass change. Status: Accepted.
