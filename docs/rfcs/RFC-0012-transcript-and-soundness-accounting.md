@@ -559,7 +559,7 @@ Affected tasks: E3-07a, E3-07, E8-05.
 Status: Draft. Companion RFC-0010 A9. The exact nine registry entries, kind
 and PCS tensor/query ownership are specified in
 [native-field-pcs.md §7](../../formal/native-field-pcs.md#7-exact-registry-additions).
-The A1 hash-chain framing, canonical K sampling and state updates stay intact.
+The RFC-0012 A1 hash-chain framing, canonical K sampling and state updates stay intact.
 
 Proposed API addition: a checked column sampler on Transcript accepts only
 the closed certificate/opening column kind and N=2^h, 1<=h<=30. Each outer
@@ -570,7 +570,7 @@ every state advance, and propagate inner exhaustion. There is no external
 random source, arbitrary label, rollback or failure fallback.
 
 Each successful index is uniform under the independent interactive model.
-The total availability bound is
+The PCS-only availability bound is
 `q_total*2^-64+(ell_total+64*q_total)*2^-1703`; it is not an acceptance loss.
 Every attempted field draw and associated hash work remains in FS/H resource
 accounting. The PCS query term has N possible coordinates, not |K| outcomes.
@@ -582,8 +582,10 @@ lengths. This helper authenticates no proof by itself and is not a challenge.
 The completed-proof ID never enters its own certificate transcript. Later
 source bundles and opening statements bind that verified ID and full context.
 
-Native labels, sampler, ID helper and actual consumers must land together
-with byte parity, threshold/exhaustion and continuation controls. No production
+Each native label and helper must land with its first actual consumer,
+byte parity and relevant threshold/exhaustion or continuation controls.
+A9 §9 requires explicit usage reporting, including failed attempts; §8 names
+FunctionalShape, InvalidColumnDomain and ColumnSamplingExhausted errors. No production
 registry or ledger changes occur in this Draft. Existing Q12 FS/H and quantum
 obligations remain; neither profile is enabled. Affected tasks are E4-03,
 E3-06's terminal source work and E8-05, without completion of their criteria.

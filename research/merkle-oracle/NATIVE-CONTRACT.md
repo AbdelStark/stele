@@ -29,7 +29,9 @@ the native proposal uses immutable tables and requires no big integers.
 
 Read-only review checked certificate circularity, source authority, byte
 order, continuation absorption and complete original consumption. Its one
-clarification, aborting every verifier error, is now explicit. Native/Python
+clarification, aborting every verifier error, is explicit. Further acceptance
+review specified typed labels, scoped normative lemmas, conditional records,
+lifetime-cap ownership, failed-attempt usage and complete preflight. Native/Python
 proof parity, actual negative controls, malformed-proof tests and resource
 measurements remain implementation gates. No native PCS behavior, profile,
 ZK, fused B, packed source or Q12 result is supplied by this study.
