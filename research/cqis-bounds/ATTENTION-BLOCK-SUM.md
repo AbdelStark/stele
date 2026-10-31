@@ -78,5 +78,7 @@ channels, output+p, metadata replay and valid source substitutions rejected.
 Both original consumers rejected compensated final values; negative raw signs
 at q=0 remained consumed. Boolean bounds, whole bounds, dense/per-block padding
 and full high planes rejected. Initial receipts and draw totals matched.
-Actual source composition, matrix and three full geometries continue in the
-original runner; required repository gates remain queued.
+Complete canonical-sign and block-rounding proofs composed for shifts26 and62,
+including negative raw signs at rounded zero. Valid replacement sign and
+quotient sources rejected their pinned roots. The matrix and three full
+geometries continue in the original runner; repository gates remain queued.

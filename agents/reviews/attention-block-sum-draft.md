@@ -4,8 +4,8 @@ Codex-root applies cqis-numerics, gkr-reduction-author and soundness-auditor.
 This is a same-author review, not an independent audit. The
 [scope](../../research/cqis-bounds/ATTENTION-BLOCK-SUM.md) preceded tests and
 code. Tests first rejected the missing module. All10000 corpus cases and
-primary/boundary controls passed. Actual source composition, matrix and full
-geometries continue in the original process. Required repository gates remain
+primary/boundary controls and both actual source compositions passed. Matrix
+and full geometries continue in the original process. Required repository gates remain
 queued once. This is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2. The expected block schema
@@ -23,7 +23,8 @@ queued once. This is not a completed sign-off.
   compensating channels, output+p with a relaxed-cap witness, metadata and valid
   source substitutes. Both final claims are changed while preserving the final
   polynomial and rejected; a negative raw sign at q=0 remains a binding.
-  Primary and boundary controls passed.
+  Primary and boundary controls passed. Complete sign/rounding sources composed
+  for shifts26 and62; valid alternate sign and quotient roots rejected.
 - Ledger: three independently repeated lookup identities and unsquared
   reductions. Range/A3 numerator18a+9ac+7(bq+bo), channel identity ac and A1
   reduction2a are separate. Tests compare all receipts and draw counts across
