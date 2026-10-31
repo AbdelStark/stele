@@ -3,8 +3,10 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 jobs:
   plan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       gpu: ${{ steps.scope.outputs.gpu }}
@@ -122,6 +124,7 @@ jobs:
           test "$RESEARCH_RESULT" = success
           test "$CAPACITY_RESULT" = success
   range-capacity:
+    needs: plan
     name: range-capacity-${{ matrix.mode }}
     runs-on: ubuntu-latest
     strategy:
@@ -140,6 +143,7 @@ jobs:
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_range_capacity.py --${{ matrix.mode }}
   poseidon2-reference:
+    needs: plan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
