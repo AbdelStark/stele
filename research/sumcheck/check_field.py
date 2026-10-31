@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.12"
+# requires-python = "==3.12.*"
 # dependencies = ["blake3==1.0.11", "python-flint==0.9.0"]
 # ///
 """RFC-0003 §2/A1 differential arithmetic and complete public proof parity."""

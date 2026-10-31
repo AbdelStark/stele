@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.12"
+# requires-python = "==3.12.*"
 # dependencies = ["blake3==1.0.11", "python-flint==0.9.0"]
 # ///
 """RFC-0018 §1: complete Python wide-range operation with every consumer on."""
@@ -87,14 +87,16 @@ def main():
         driver='not-applicable', model_config=dict(plan=plan, os=platform.platform(), samples=samples,
             peak_process_rss_bytes=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
             profiled_complete_operation_calls=calls[:plan['profile_top_functions']],
-            control_time_ns=control_ns, artifact_sha256=expected),
+            control_time_ns=control_ns, artifact_sha256=expected,
+            research_proof_json_bytes=size, research_consumer_ns=stages['verify'],
+            research_controls=dict(total=control_count,passed=control_count,failed=0)),
         plan_digest=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
         profile='standard' if d==4 else 'treaty', bindings_all_on=True, batch_size=1,
         prompt_tokens=0, generated_tokens=0, prover_time_ns=total,
         witness_recompute_ns=stages['witness'], stage_times_ns=stages,
         kernel_counters=dict(measured_complete_proofs=3, range_words=12, range_byte_cells=48, lookup_table_rows=768),
-        proof_size_bytes=size, verifier_time_ns=dict(rust=0,python=stages['verify']),
-        controls=dict(total=control_count,passed=control_count,failed=0),
+        proof_size_bytes=0, verifier_time_ns=dict(rust=0,python=0),
+        controls=dict(total=0,passed=0,failed=0),
         note='Complete public research range operation with original-source and lookup consumers enabled. Total includes witness/root preparation, prove, actual verify and encoding/state/account checks; warmup, separate controls and instrumented profile are excluded. CPU time includes operation call overhead. RSS includes the entire process and allocator retention. Three samples are observations under concurrent validation load, not a fitted constant. JSON proof size is not production wire size. Profile selects field only; no native inference, GPU, ZK, PCS, FS or profile certification claim.')
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open('x') as stream:

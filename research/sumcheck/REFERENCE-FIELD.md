@@ -46,3 +46,10 @@ the actual source/lookup consumers and exact noncanonical/root rejections.
 `field-proof-digests.json` freezes each complete proof, receipt and state
 under a lossless tagged JSON encoding. The original A1/A3 fixtures remain
 the authority for their byte encodings and continuation challenges.
+
+The first QM31 measurement passed every proof check but failed ledger
+validation: micro records reserve top-level proof/verification/control
+fields for inference. Research evidence now lives under `model_config`.
+Both new scripts pin Python 3.12 for comparable measurements. The rejected
+record and its Python 3.15 log are retained outside the repository; they
+support no performance claim. The arithmetic remains unchanged.
