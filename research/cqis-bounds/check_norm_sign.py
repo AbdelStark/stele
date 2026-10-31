@@ -74,6 +74,7 @@ def honest(maximum=False):
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,xs,ys,d);out=c.verify(p,expected(p,xs,ys),proof,d)
             assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
     if not maximum:assert digest.hexdigest()=='4b2053fd44d284cbbc128d7e90c894e38832fe95fe205437f8a566244c5caee9'
+    else:assert digest.hexdigest()=='f72d75d6b625c9d0e1a02b92afed4fca89ee70fb37d95e46265bac5d8562a882'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
