@@ -14,6 +14,21 @@ SPEC.loader.exec_module(scope)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_matches_reference_native_tier_and_broad_precedence(self):
+        for native in (b'Cargo.lock', b'crates/stele-cqis/src/lib.rs', b'crates/stele-field/tests/field.rs'):
+            selected = scope.scopes([native, b'crates/stele-reductions/src/field_sources.rs'])
+            self.assertEqual((selected['research'], selected['tables'], selected['research_selection']),
+                             (True, True, 'native'))
+            for broad in (b'Cargo.toml', b'Cargo.lock.extra', b'.cargo/config.toml', b'rust-toolchain.toml',
+                          b'uv.lock', b'pyproject.toml', b'.github/actions/setup/action.yml',
+                          b'.github/workflows/ci.yml', b'.github/workflows/exhaustive.yml',
+                          b'scripts/ci_scope.py', b'scripts/ci_result.py', b'scripts/research_ci.py',
+                          b'scripts/research-checks.json', b'scripts/research-full-checks.json',
+                          b'research/merkle-oracle/field_wire.py', b'harness/check.py', b'formal/proof.md'):
+                with self.subTest(native=native, broad=broad):
+                    self.assertEqual(scope.scopes([native, broad])['research_selection'], 'all')
+        self.assertEqual(scope.scopes([b'crates/stele-reductions/src/field_sources.rs'])['research_selection'], 'none')
+
     def test_matches_reference_native_owned_oracle_scope(self):
         oracle = b'research/merkle-oracle/check_field_wire.py'
         lock = oracle + b'.lock'
@@ -50,28 +65,28 @@ class ScopeTests(unittest.TestCase):
             git('add', 'crates')
             git('commit', '-m', 'initial')
             base = git('rev-parse', 'HEAD')
-            self.assertEqual(run({'before': '0' * 40, 'after': base}).stdout, 'gpu=true\ntables=false\nresearch=false\n')
+            self.assertEqual(run({'before': '0' * 40, 'after': base}).stdout, 'gpu=true\ntables=false\nresearch=false\nresearch_selection=none\n')
             (root / 'README.md').write_text('docs\n')
             git('add', 'README.md')
             git('commit', '-m', 'docs')
             head = git('rev-parse', 'HEAD')
-            self.assertEqual(run({'before': base, 'after': head}).stdout, 'gpu=false\ntables=false\nresearch=false\n')
+            self.assertEqual(run({'before': base, 'after': head}).stdout, 'gpu=false\ntables=false\nresearch=false\nresearch_selection=none\n')
             git('mv', 'crates/stele-gpu/src/lib.rs', 'moved.rs')
             git('commit', '-m', 'move GPU source out of crate')
             renamed = git('rev-parse', 'HEAD')
             event = {'pull_request': {'base': {'sha': head}, 'head': {'sha': renamed}}}
-            self.assertEqual(run(event).stdout, 'gpu=true\ntables=false\nresearch=false\n')
+            self.assertEqual(run(event).stdout, 'gpu=true\ntables=false\nresearch=false\nresearch_selection=none\n')
             git('switch', '-c', 'base-ahead', head)
             source.write_text('// base-only change\n')
             git('add', 'crates')
             git('commit', '-m', 'base advances')
             advanced = git('rev-parse', 'HEAD')
             event = {'pull_request': {'base': {'sha': advanced}, 'head': {'sha': head}}}
-            self.assertEqual(run(event).stdout, 'gpu=false\ntables=false\nresearch=false\n')
+            self.assertEqual(run(event).stdout, 'gpu=false\ntables=false\nresearch=false\nresearch_selection=none\n')
             self.assertNotEqual(run({'before': '--help', 'after': head}).returncode, 0)
             for path, expected in [
-                ('crates/stele-field/src/lib.rs', ('true', 'false')),
-                ('crates/stele-cqis/tests/support/oracle.rs', ('true', 'false')),
+                ('crates/stele-field/src/lib.rs', ('true', 'true')),
+                ('crates/stele-cqis/tests/support/oracle.rs', ('true', 'true')),
                 ('research/sumcheck/check_sumcheck.py', ('false', 'true')),
                 ('Cargo.lock', ('true', 'true')),
                 ('.github/workflows/ci.yml', ('true', 'true')),
@@ -101,6 +116,20 @@ class ScopeTests(unittest.TestCase):
             git('commit', '-m', 'move shared research into native-owned path')
             result = run({'before': before, 'after': git('rev-parse', 'HEAD')})
             self.assertIn('research=true', result.stdout)
+            for path in ('Cargo.lock', 'crates/stele-cqis/tests/support/oracle.rs', 'crates/stele-field/src/lib.rs'):
+                before = git('rev-parse', 'HEAD')
+                git('mv', path, 'moved-native')
+                git('commit', '-m', 'move native input out of scope')
+                result = run({'before': before, 'after': git('rev-parse', 'HEAD')})
+                self.assertIn('research_selection=native', result.stdout)
+                self.assertIn('tables=true', result.stdout)
+                git('mv', 'moved-native', path)
+                git('commit', '-m', 'restore fixture')
+                before = git('rev-parse', 'HEAD')
+                git('rm', path)
+                git('commit', '-m', 'delete native input')
+                result = run({'before': before, 'after': git('rev-parse', 'HEAD')})
+                self.assertIn('research_selection=native', result.stdout)
 
 
 

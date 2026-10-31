@@ -43,6 +43,43 @@ class ResearchCiTests(unittest.TestCase):
         self.assertEqual(json.loads(output.getvalue().removeprefix('matrix=')),
                          {'group': list(ci.load_groups())})
 
+    def test_matches_reference_native_selection_and_command_union(self):
+        groups = ci.load_groups()
+        commands = [c for group in groups.values() for c in group]
+        self.assertEqual((len(groups), len(commands), len(set(commands))), (75, 176, 176))
+        self.assertEqual(hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest(),
+                         '2ab574efe9d83716d43ea6086adbdabe9f231eb6a8c4ceb99dfa9df8345f98eb')
+        selected = groups['native-comparisons']
+        self.assertEqual(len(selected), 9)
+        self.assertEqual([shlex.split(c)[4] for c in selected[:6]], [
+            'harness/cqis/check_arithmetic.py', 'research/cqis-bounds/check_requant.py',
+            'research/cqis-bounds/check_norm_bounds.py', 'research/cqis-bounds/check_encoding.py',
+            'research/cqis-checkpoint/check_causal_model.py', 'research/cqis-checkpoint/check_causal_model.py'])
+        self.assertTrue(selected[4].endswith('--model-norm'))
+        self.assertTrue(selected[5].endswith('--model-functions'))
+        self.assertEqual([c.split()[0] for c in selected[-3:]], ['curl', 'curl', 'uv'])
+        for arguments, expected in [
+            (['--matrix', '--selection', 'native'], ['native-comparisons']),
+            (['--matrix', '--selection', 'none'], []),
+            (['--matrix', '--selection', 'all'], list(groups)),
+            (['--full', '--matrix'], list(ci.load_groups(ci.FULL_MANIFEST))),
+        ]:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(ci.main(arguments), 0)
+            self.assertEqual(json.loads(output.getvalue().removeprefix('matrix=')), {'group': expected})
+
+    def test_rejects_invalid_or_missing_selection(self):
+        for args in (['--matrix', '--selection'], ['--matrix', '--selection', ''],
+                     ['--matrix', '--selection', 'unknown'], ['--full', '--matrix', '--selection', 'native'],
+                     ['--group', 'native-comparisons', '--selection', 'none']):
+            with self.subTest(args=args), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                ci.main(args)
+            self.assertEqual(error.exception.code, 2)
+        for groups in ({'other': ['true']}, {'native-comparisons': []}):
+            with mock.patch.object(ci, 'load_groups', return_value=groups), redirect_stderr(io.StringIO()):
+                self.assertNotEqual(ci.main(['--matrix', '--selection', 'native']), 0)
+
     def test_rejects_invalid_manifest(self):
         cases = ('{}', '[]', '{"group":[]}', '{"bad name":["true"]}',
                  '{"group":[""]}', '{"group":[1]}', '{"group":[{}]}',
@@ -101,7 +138,7 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_consolidated_inventories(self):
         # Migration snapshots include group names and ordered command sequences.
         for manifest, expected in (
-            (ci.MANIFEST, '7cc37f62fe2bf9271aeb32e857a2a1ef5ff3bf58cc825e8287e860e6219c8594'),
+            (ci.MANIFEST, '5ebd1359b8c5ed4354e68c158783c34a818e1350b5a0603a83f7df6fc36d59d5'),
             (ci.FULL_MANIFEST, '3e83c7bad42261c951687446c2c1e446acd45256e3715601c17222557df56702'),
         ):
             groups = ci.load_groups(manifest)
