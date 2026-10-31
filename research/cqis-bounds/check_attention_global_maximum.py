@@ -62,7 +62,7 @@ def forged_values(p,g,xs,selected,difference,gap):
 def corpus():
     rng=random.Random(2762);digest=hashlib.sha256();accepted=domain=ties=masked=0
     for case in range(10000):
-        size=(1,3,5,16,17,65)[case%6];S=(0,1,127,128,32767,32768,(1<<23)-1,1<<23,1<<30,(1<<31)-1)[case%10];p=spec(size,S,(7,15,31)[case%3],case,1+case%2);q=rng.randrange(size);p=replace(p,position=q,window=(0,1,7,size)[case%4],start=rng.randint(0,q),stop=rng.randint(q+1,size));v=c.derive(p,4);xs=[rng.randint(-S,S) for _ in range(size)] if case%7 else [S]*size;w=oracle(p,xs)
+        size=(1,3,5,16,17,65)[case%6];S=(0,1,127,128,32767,32768,(1<<23)-1,1<<23,1<<30,(1<<31)-1)[case%10];p=spec(size,S,(7,15,31)[case%3],case,1+case%2);q=rng.randrange(size);p=replace(p,position=q,window=(0,1,min(7,size),size)[case%4],start=rng.randint(0,q),stop=rng.randint(q+1,size));v=c.derive(p,4);xs=[rng.randint(-S,S) for _ in range(size)] if case%7 else [S]*size;w=oracle(p,xs)
         digest.update(v['raw']+json.dumps([xs,w['selected'],w['difference']],separators=(',',':')).encode());ties+=sum(bit and x==w['maximum'] for bit,x in zip(w['mask'],xs))>1;masked+=not all(w['mask'])
         with tempfile.TemporaryFile() as spool:
             selected,maximum=c.prefill(p,v,groups(v,xs),spool);assert (selected,maximum)==(w['selected'],w['maximum']%(1<<32))
@@ -138,8 +138,10 @@ def boundaries():
         changed=ps.copy();changed[index]=r.prove(c.range_spec(p,v,index),values,4);bad,rr=assemble(p,0,changed,4);rejects('Maximum:RoundSumMismatch',lambda:c.verify(p,rr,iter(bad),4))
     false,state=r.prove(c.range_spec(p,v,0),[S-r.sc.P],4);bad=baseline.copy();bad[1]=dict(range=0,proof=false);rr=roots.copy();rr[1]=r.source_root(c.range_spec(p,v,0),false['words']);rejects('Attainment',lambda:c.verify(p,rr,iter(bad),4))
     for index,at in ((1,3),(2,3),(3,3),(4,3),(5,3),(6,3),(7,3),(6,12),(7,12)):
-        plan=c.range_spec(p,v,index);values=c.unpack(plan,ps[index][0]['words']);caps=list(plan.caps)+[0]*(len(values)-len(plan.caps));caps[at]=max(caps[at],1);values[at]=1;false=r.assemble(plan,*r.witness(replace(plan,caps=tuple(caps)),values),4)[0];bad=baseline.copy();bad[index+1]=dict(range=index,proof=false)
-        rejects('Range:'+str(index)+':CapRelation:RoundSumMismatch' if at==3 else 'Maximum:RoundSumMismatch',lambda:c.verify(p,roots,iter(bad),4))
+        plan=c.range_spec(p,v,index);values=c.unpack(plan,ps[index][0]['words']);caps=list(plan.caps)+[0]*(len(values)-len(plan.caps));caps[at]=max(caps[at],1);values[at]=1;pair=r.assemble(plan,*r.witness(replace(plan,caps=tuple(caps)),values),4);bad=baseline.copy();bad[index+1]=dict(range=index,proof=pair[0]);rr=roots
+        if at!=3:
+            changed=ps.copy();changed[index]=pair;bad,rr=assemble(p,0,changed,4)
+        rejects('Range:'+str(index)+':CapRelation:RoundSumMismatch' if at==3 else 'Maximum:RoundSumMismatch',lambda:c.verify(p,rr,iter(bad),4))
     p=replace(spec(3,127,7),position=1);xs=[0,1,127];run(p,xs,4);proof=list(c.prove(p,[xs],4));roots=oracle(p,xs)['roots'];bad=proof.copy();bad[0]=dict(selected=2);rr=roots.copy();rr[2]=r.root(p.selection,[2]);rejects('Selection',lambda:c.verify(p,rr,iter(bad),4))
     print('isolated terminal wrap, later tie, signed aliases, all padding/carry roles and masked selection reject',flush=True)
 
@@ -154,6 +156,87 @@ def honest():
     print(json.dumps(dict(proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
+def projected_reference(p,v,g,data,selected,point,d):
+    """Direct absolute-index equality weights, independent of suffix caching."""
+    sc=r.sc;out=[[0]*d for _ in range(35)];one=sc.scalar(1,d);zero=sc.scalar(0,d)
+    for j in range(v['sizes'][g]):
+        at=16384*g+j;weight=one
+        for k,x in enumerate(point):
+            factor=x if at>>(v['a']-k-1)&1 else sc.add(one,sc.neg(x))
+            if factor==zero:weight=zero;break
+            weight=sc.mul(weight,factor)
+        row=list(data[28*j:28*(j+1)]);bit=int(p.start<=at<p.stop and at<=p.position and (p.window==0 or p.position-at<p.window));row+= [row[4+k]*bit for k in range(4)]+[1,bit,int(bit and at<selected)]
+        for column,value in zip(out,row):
+            for k,w in enumerate(weight):column[k]=(column[k]+value*w)%sc.P
+    return [tuple(row) for row in out]
+
+
+def projections():
+    rng=random.Random(2763);digest=hashlib.sha256();cases=0
+    for d in (4,8):
+        for case in range(10000):
+            size=1+case%8;p=spec(size,127,7);q=rng.randrange(size);p=replace(p,position=q,window=(0,1,size)[case%3],start=rng.randint(0,q),stop=rng.randint(q+1,size));v=c.derive(p,d);selected=rng.randrange(size);data=rng.randbytes(28*size);point=[tuple(rng.randrange(r.sc.P) for _ in range(d)) for _ in range(v['a'])]
+            if point and case%5==0:point[case%len(point)]=r.sc.scalar(case%2,d)
+            expected=projected_reference(p,v,0,data,selected,point,d);actual=c.project(p,v,0,data,selected,point,d,{});assert actual==expected
+            digest.update(b''.join(struct.pack('<I',x) for row in actual for x in row));cases+=1
+        print('global maximum projection cases passed',d,10000,flush=True)
+    for d in (4,8):
+        for size,g in ((16385,0),(16385,1),(32769,1),(32769,2),((1<<20)-1,63)):
+            p=replace(spec(size),window=16385);v=c.derive(p,d);data=rng.randbytes(28*v['sizes'][g]);point=[r.sc.scalar((16384*g)>>(v['a']-k-1)&1,d) for k in range(v['a'])];point[-1]=tuple(rng.randrange(r.sc.P) for _ in range(d));point[0]=tuple(rng.randrange(r.sc.P) for _ in range(d));cache={};actual=c.project(p,v,g,data,p.position,point,d,cache);assert actual==projected_reference(p,v,g,data,p.position,point,d);assert sum(1<<a for a in cache)<32768;cases+=1
+    assert cases==20010 and digest.hexdigest()=='8c77add9fe27d8dc207f62a8e729bf500f20e6b0882ddcb4edfaa9caaa51193a'
+    print(json.dumps(dict(seed=2763,cases=cases,sha256=digest.hexdigest()),sort_keys=True),flush=True)
+
+
+def replay_controls():
+    p=spec(3,127,7);v=c.derive(p,4);xs=[5,-5,10];w=oracle(p,xs);values=forged_values(p,0,xs,w['selected'],w['difference'],w['gap']);roots=[bytes(32)]+[r.source_root(c.range_spec(p,v,i+1),r.witness(c.range_spec(p,v,i+1),row)[0]) for i,row in enumerate(values)]
+    with tempfile.TemporaryFile() as spool:
+        c.write_group(v,0,values,spool);spool.seek(0);data=spool.read();c.replay(p,v,0,data,roots,4)
+    for offset in range(28):
+        changed=bytearray(data);changed[offset]^=1;rejects('Replay:0:CommitmentMismatch',lambda:c.replay(p,v,0,bytes(changed),roots,4))
+    print('all 28 retained byte positions reject replay substitutions',flush=True)
+
+
+def composition():
+    import attention_exp as exp
+    from check_attention_exp import account as exp_account
+    for d in (4,8):
+        p=replace(spec(3,127,7,8940),position=1,schema=c.maximum.Spec(3,127,7,6));xs=[-5,5,127];w=oracle(p,xs);records=list(c.prove(p,[xs],d));out=c.verify(p,w['roots'],iter(records),d);account(p,out,d);v=c.derive(p,d);words=records[4]['proof']['words'];n=v['n']
+        assert len(words)==n and r.root(p.difference,words+[0]*(3*n))==w['roots'][3]
+        row=c.local_maximum.Spec(p.schema,p.position,tuple(range(3)),p.window,p.start,p.stop,8950,p.source,p.maximum,p.selection,p.difference,p.repetitions);rep=exp.fn.Representation(exp.fn.Function('exp_q/nearest',1,bytes([7,6,8])),0,b'');ep=exp.Spec(row,rep,8960,113);proof,state=exp.prove(ep,w['difference'],d);roots=exp.expected_roots(ep,w['difference']);assert roots[0]==r.root(p.difference,words) and roots[0]!=w['roots'][3];result=exp.verify(ep,roots,proof,d);assert result['state']==state;exp_account(ep,proof,result,d)
+        # Both shapes authenticate the same complete byte source, with explicit high zeros.
+        changed=words.copy();changed[0]+=1;assert r.root(p.difference,changed+[0]*(3*n))!=w['roots'][3];bad=roots.copy();bad[0]=r.root(p.difference,changed);rejects('Difference:CommitmentMismatch',lambda:exp.verify(ep,bad,proof,d))
+        print('complete global maximum to exponential byte-root adapter passed',d,flush=True)
+
+
+def domain_control():
+    p=spec(2);v=c.derive(p,4);xs=[p.schema.score_max,-2];difference=[0,(1<<31)+1];values=forged_values(p,0,xs,0,difference,difference);pairs=[r.prove(c.range_spec(p,v,0),[xs[0]],4)]
+    for i,row in enumerate(values,1):
+        plan=c.range_spec(p,v,i)
+        if i in (3,4):pairs.append(r.assemble(plan,*r.witness(replace(plan,caps=tuple(max(cap,x) for cap,x in zip(plan.caps,row))),row),4))
+        else:pairs.append(r.prove(plan,row,4))
+    proof,roots=assemble(p,0,pairs,4);rejects('Range:3:CapRelation:RoundSumMismatch',lambda:c.verify(p,roots,iter(proof),4));print('exponential domain overflow rejects through complete range consumer',flush=True)
+
+
+def cross_tie():
+    p=replace(spec(16385,1,7),position=16384,window=2);xs=[-1]*16383+[1,1];pairs=prepared(p,xs,4,selected=16384,difference=[0]*16385,gap=[0]*16385);proof,roots=assemble(p,16384,pairs,4);rejects('Maximum:RoundSumMismatch',lambda:c.verify(p,roots,iter(proof),4));print('later maximum tie across complete group boundary rejects',flush=True)
+
+
+def full(mode):
+    size=(1<<20)-1 if mode=='ragged' else 16385 if mode=='tail' else 1<<20;p=spec(size,identity=8980);v=c.derive(p,4)
+    if mode=='window':p=replace(p,position=32769,window=16388,start=1,stop=size-1)
+    selected=16383 if mode in ('window','tail') else 0;S=p.schema.score_max
+    def scores():
+        for g,count in enumerate(v['sizes']):yield [S if g*16384+j==selected or g*16384+j==selected+1 else -1 for j in range(count)]
+    # Expected external roots use the independent NumPy oracle; caller storage is excluded.
+    xs=[x for row in scores() for x in row];expected=oracle(p,xs)['roots'];del xs;source=Capture(c.prove(p,scores(),4));done=0
+    def progress():
+        nonlocal done
+        for record in source:
+            yield record
+            if 'range' in record:done+=1;print('global maximum range verified',mode,done,v['children'],flush=True)
+    print('complete global maximum start',mode,size,flush=True);out=c.verify(p,expected,progress(),4);assert source.state==out['state'];account(p,out,4);print(json.dumps(dict(full=mode,length=size,children=done,state=out['state'].hex()),sort_keys=True),flush=True)
+
+
 if __name__=='__main__':
-    modes={'--corpus':corpus,'--shapes':shapes,'--controls':controls,'--boundaries':boundaries,'--honest':honest};assert set(sys.argv[1:])<=set(modes)
-    for mode in sys.argv[1:] or modes:modes[mode]()
+    modes={'--corpus':corpus,'--shapes':shapes,'--controls':controls,'--boundaries':boundaries,'--honest':honest,'--projections':projections,'--replay':replay_controls,'--composition':composition,'--domain':domain_control};full_modes={'--maximum':lambda:full('maximum'),'--full-window':lambda:full('window'),'--full-ragged':lambda:full('ragged'),'--full-tail':lambda:full('tail'),'--cross-tie':cross_tie};assert set(sys.argv[1:])<=set(modes)|set(full_modes)
+    for mode in sys.argv[1:] or modes:(modes|full_modes)[mode]()

@@ -110,3 +110,17 @@ The compact-replay correction is inherited before implementation. It rejected
 all twenty unused-high-byte mutations and preserved eight complete proof
 states in both fields. New group replay must likewise authenticate all
 stored bytes before projection, including zeros beyond each compact width.
+
+The implementation now consumes the complete range roster and reconstructs
+all sixteen views. Complete root, roster and original-value controls passed,
+as did terminal wrap, later-tie, signed-alias, padding/carry, masked-selection
+and domain-overflow controls. Both fields passed a complete maximum to
+exponential join with separately authenticated compact and four-plane roots.
+
+Independent projection checks passed 10000 cases per field and ten group
+boundary cases. Seed 2763 produced SHA-256
+`8c77add9fe27d8dc207f62a8e729bf500f20e6b0882ddcb4edfaa9caaa51193a`.
+All 28 temporary byte positions rejected replay substitutions. These
+projection and replay checks are arithmetic checks, not complete proofs.
+The corpus, complete proof matrix, full-size cases and repository gates
+remain in progress or queued; no resource or native inference claim follows.
