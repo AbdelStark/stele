@@ -89,3 +89,10 @@ ownership, O-projection, native linear views/PCS/ZK/FS, GPU parity, fidelity
 or independent audit. No new production cut, coverage credit, benchmark or
 weight pass is claimed. Original tasks remain blocked; Accepted semantics
 are unchanged.
+
+All sixteen pre-implementation namespace checks passed at maximum parent
+identity, both fields/modes/policies and both full head/channel layouts.
+Every complete output child and global pair derives within disjoint spans;
+the exact-mode probability adapter preserves the expected Z bound. The
+global-offset child matrix and zero-bound edge evidence are now frozen.
+Tests first and complete composition implementation remain required.
