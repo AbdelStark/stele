@@ -57,5 +57,13 @@ derive every nested range within the unchanged byte and lookup limits.
 Independent rounding and 1548288 carry-column cells matched; two full-size
 dynamic zero rows and over-capacity rejection also passed. Frozen SHA-256:
 `9e7621992ac1de560d6a5e2d7477ec0b23ec8c1666f4c50aee279a39bdb907dc`.
-Complete proof matrices and legacy regressions are running. Four full-size
-proofs and repository gates are queued once behind their prerequisites.
+All sixteen complete proof cases passed across both fields, repetitions,
+source kinds and conversion policies. Their final-state digest is
+`49bfeb69d3c8312dd2f4b3e11ccb740906bb31d9f84eec1eccdd759103dcae82`.
+The attained-magnitude, dynamic-scale, row-code and static-row-code suites
+retained their frozen hashes; gated-source composition also passed.
+Four full-size proofs and repository gates remain in their original queues.
+
+CI now requires the shape/proof checks and all four full-size modes. The
+normalization parent was merged without changing the conversion arithmetic.
+All inherited research jobs and native steps remain mandatory.

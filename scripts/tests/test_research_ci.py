@@ -27,9 +27,9 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_command_inventory(self):
         commands = [command for group in ci.load_groups().values() for command in group]
         # Independent snapshot: inventory through attention normalization.
-        self.assertEqual(len(commands), 167)
+        self.assertEqual(len(commands), 168)
         digest = hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest()
-        self.assertEqual(digest, '83ac056c99ca5abdbb13f4db14207e85d084cea0476cd74d7e865da1d25bec70')
+        self.assertEqual(digest, 'be19a904db13d0bba79b8b4c82b88e5f85cd579f61a3f3c29d8feb16678d6c20')
         for command in commands:
             argv = shlex.split(command)
             if argv[0] == 'curl':
@@ -108,7 +108,7 @@ class ResearchCiTests(unittest.TestCase):
     def test_rejects_incomplete_required_gates(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
         block = re.search(r'^  gates:\n(.*?)(?=^  [a-z]|\Z)', workflow, re.M | re.S).group(1)
-        self.assertIn('needs: [plan, native, research, range-capacity, norm-product-full, norm-sign-full, norm-statistic-full, norm-quotient-product-full, norm-bias-full, norm-division-full, norm-left-full, norm-signed-output-full, norm-configured-output-full, norm-composition-full, residual-aligned-full, residual-sign-full, residual-rounding-full, residual-composition-full, rotary-consumer-full, attention-maximum-full, attention-index-full, attention-exp-full, attention-probability-sum-full, attention-values-full, attention-offset-sum-full, attention-base-full, attention-sign-full, attention-block-rounding-full, attention-block-sum-full, attention-block-total-sign-full, attention-global-probability-sum-full, attention-denominator-full, attention-numerator-full, attention-doubled-denominator-full, attention-biased-numerator-full, attention-quotient-product-full, attention-division-full, attention-signed-output-full, attention-global-base-full, attention-normalization-full]', block)
+        self.assertIn('needs: [plan, native, research, range-capacity, norm-product-full, norm-sign-full, norm-statistic-full, norm-quotient-product-full, norm-bias-full, norm-division-full, norm-left-full, norm-signed-output-full, norm-configured-output-full, norm-composition-full, residual-aligned-full, residual-sign-full, residual-rounding-full, residual-composition-full, rotary-consumer-full, attention-maximum-full, attention-index-full, attention-exp-full, attention-probability-sum-full, attention-values-full, attention-offset-sum-full, attention-base-full, attention-sign-full, attention-block-rounding-full, attention-block-sum-full, attention-block-total-sign-full, attention-global-probability-sum-full, attention-denominator-full, attention-numerator-full, attention-doubled-denominator-full, attention-biased-numerator-full, attention-quotient-product-full, attention-division-full, attention-signed-output-full, attention-global-base-full, attention-normalization-full, row-conversion-capacity-full]', block)
         self.assertIn('if: always()', block)
         self.assertIn('gpu: ${{ needs.plan.outputs.gpu }}', block)
         self.assertIn('PLAN_RESULT: ${{ needs.plan.result }}', block)
@@ -117,6 +117,7 @@ class ResearchCiTests(unittest.TestCase):
         self.assertIn('CAPACITY_RESULT: ${{ needs.range-capacity.result }}', block)
         self.assertIn('PRODUCT_RESULT: ${{ needs.norm-product-full.result }}', block)
         self.assertIn('SIGN_RESULT: ${{ needs.norm-sign-full.result }}', block)
+        self.assertIn('ROW_CONVERSION_RESULT: ${{ needs.row-conversion-capacity-full.result }}', block)
         self.assertIn('ATTN_NORMALIZATION_RESULT: ${{ needs.attention-normalization-full.result }}', block)
         self.assertIn('ATTN_GLOBAL_BASE_RESULT: ${{ needs.attention-global-base-full.result }}', block)
         self.assertIn('ATTN_SIGNED_OUTPUT_RESULT: ${{ needs.attention-signed-output-full.result }}', block)
@@ -152,7 +153,7 @@ class ResearchCiTests(unittest.TestCase):
         self.assertIn('STATISTIC_RESULT: ${{ needs.norm-statistic-full.result }}', block)
         self.assertIn('QUOTIENT_RESULT: ${{ needs.norm-quotient-product-full.result }}', block)
         script = textwrap.dedent(block.split('        run: |\n')[1])
-        names = ('PLAN_RESULT', 'NATIVE_RESULT', 'RESEARCH_RESULT', 'CAPACITY_RESULT', 'PRODUCT_RESULT', 'SIGN_RESULT', 'STATISTIC_RESULT', 'QUOTIENT_RESULT', 'BIAS_RESULT', 'DIVISION_RESULT', 'LEFT_RESULT', 'SIGNED_OUTPUT_RESULT', 'CONFIGURED_OUTPUT_RESULT', 'COMPOSITION_RESULT', 'RESIDUAL_ALIGNED_RESULT', 'RESIDUAL_SIGN_RESULT', 'RESIDUAL_ROUNDING_RESULT', 'RESIDUAL_COMPOSITION_RESULT', 'ROTARY_CONSUMER_RESULT', 'ATTENTION_MAXIMUM_RESULT', 'ATTENTION_INDEX_RESULT', 'ATTENTION_EXP_RESULT', 'PROBABILITY_SUM_RESULT', 'ATTENTION_VALUES_RESULT', 'ATTENTION_OFFSET_SUM_RESULT', 'ATTENTION_BASE_RESULT', 'ATTENTION_SIGN_RESULT', 'ATTENTION_BLOCK_ROUNDING_RESULT', 'ATTN_BLOCK_SUM_RESULT', 'ATTN_BLOCK_TOTAL_SIGN_RESULT', 'GLOBAL_PROBABILITY_SUM_RESULT', 'DENOMINATOR_RESULT', 'NUMERATOR_RESULT', 'ATTENTION_DOUBLED_DENOMINATOR_RESULT', 'ATTENTION_BIASED_NUMERATOR_RESULT', 'ATTENTION_QUOTIENT_PRODUCT_RESULT', 'ATTNDIV_RESULT', 'ATTN_SIGNED_OUTPUT_RESULT', 'ATTN_GLOBAL_BASE_RESULT', 'ATTN_NORMALIZATION_RESULT')
+        names = ('PLAN_RESULT', 'NATIVE_RESULT', 'RESEARCH_RESULT', 'CAPACITY_RESULT', 'PRODUCT_RESULT', 'SIGN_RESULT', 'STATISTIC_RESULT', 'QUOTIENT_RESULT', 'BIAS_RESULT', 'DIVISION_RESULT', 'LEFT_RESULT', 'SIGNED_OUTPUT_RESULT', 'CONFIGURED_OUTPUT_RESULT', 'COMPOSITION_RESULT', 'RESIDUAL_ALIGNED_RESULT', 'RESIDUAL_SIGN_RESULT', 'RESIDUAL_ROUNDING_RESULT', 'RESIDUAL_COMPOSITION_RESULT', 'ROTARY_CONSUMER_RESULT', 'ATTENTION_MAXIMUM_RESULT', 'ATTENTION_INDEX_RESULT', 'ATTENTION_EXP_RESULT', 'PROBABILITY_SUM_RESULT', 'ATTENTION_VALUES_RESULT', 'ATTENTION_OFFSET_SUM_RESULT', 'ATTENTION_BASE_RESULT', 'ATTENTION_SIGN_RESULT', 'ATTENTION_BLOCK_ROUNDING_RESULT', 'ATTN_BLOCK_SUM_RESULT', 'ATTN_BLOCK_TOTAL_SIGN_RESULT', 'GLOBAL_PROBABILITY_SUM_RESULT', 'DENOMINATOR_RESULT', 'NUMERATOR_RESULT', 'ATTENTION_DOUBLED_DENOMINATOR_RESULT', 'ATTENTION_BIASED_NUMERATOR_RESULT', 'ATTENTION_QUOTIENT_PRODUCT_RESULT', 'ATTNDIV_RESULT', 'ATTN_SIGNED_OUTPUT_RESULT', 'ATTN_GLOBAL_BASE_RESULT', 'ATTN_NORMALIZATION_RESULT', 'ROW_CONVERSION_RESULT')
         outcomes = ('success', 'failure', 'cancelled', 'skipped', '')
         baseline = dict.fromkeys(names, 'success')
         cases = [dict(baseline, **{name: outcome}) for name in names for outcome in outcomes]
@@ -185,7 +186,8 @@ class ResearchCiTests(unittest.TestCase):
 
     def test_matches_reference_full_consumer_modes(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
-        matrix_modes = {'attention-normalization': ('maximum', 'full-block'),
+        matrix_modes = {'row-conversion-capacity': ('maximum', 'full-static', 'full-gated', 'full-static-gated'),
+                        'attention-normalization': ('maximum', 'full-block'),
                         'attention-division': ('maximum', 'full-quotient'),
                         'attention-quotient-product': ('maximum', 'full-carry'),
                         'attention-biased-numerator': ('maximum', 'full-denominator', 'full-small'),
@@ -233,8 +235,9 @@ class ResearchCiTests(unittest.TestCase):
                                     ('attention-division', 'division', '--corpus --controls --boundaries --composition --honest'),
                                     ('attention-signed-output', 'signed_output', '--corpus --controls --boundaries --composition --honest'),
                                     ('attention-global-base', 'global_base', '--corpus --controls --boundaries --composition --honest'),
-                                    ('attention-normalization', 'normalization', '--corpus --controls --boundaries --composition --honest')):
-            prefix = name.split('-')[0] if name.startswith(('residual-', 'rotary-', 'attention-')) else 'norm'
+                                    ('attention-normalization', 'normalization', '--corpus --controls --boundaries --composition --honest'),
+                                    ('row-conversion-capacity', 'conversion_capacity', '--shapes --honest')):
+            prefix = name.split('-')[0] if name.startswith(('residual-', 'rotary-', 'attention-', 'row-')) else 'norm'
             job = name if prefix != 'norm' else 'norm-' + name
             block = re.search(r'^  '+job+r'-full:\n(.*?)(?=^  [a-z]|\Z)', workflow, re.M | re.S).group(1)
             self.assertNotIn('if:', block)

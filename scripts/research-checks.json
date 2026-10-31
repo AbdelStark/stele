@@ -295,5 +295,8 @@
   ],
   "reference-field": [
     "uv run --locked --script research/sumcheck/check_field.py --vectors --proofs"
+  ],
+  "cqis-row-conversion-capacity": [
+    "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --shapes --honest"
   ]
 }

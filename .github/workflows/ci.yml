@@ -106,7 +106,7 @@ jobs:
       - run: cargo fetch --locked
       - run: python3 scripts/research_ci.py --group "${{ matrix.group }}"
   gates:
-    needs: [plan, native, research, range-capacity, norm-product-full, norm-sign-full, norm-statistic-full, norm-quotient-product-full, norm-bias-full, norm-division-full, norm-left-full, norm-signed-output-full, norm-configured-output-full, norm-composition-full, residual-aligned-full, residual-sign-full, residual-rounding-full, residual-composition-full, rotary-consumer-full, attention-maximum-full, attention-index-full, attention-exp-full, attention-probability-sum-full, attention-values-full, attention-offset-sum-full, attention-base-full, attention-sign-full, attention-block-rounding-full, attention-block-sum-full, attention-block-total-sign-full, attention-global-probability-sum-full, attention-denominator-full, attention-numerator-full, attention-doubled-denominator-full, attention-biased-numerator-full, attention-quotient-product-full, attention-division-full, attention-signed-output-full, attention-global-base-full, attention-normalization-full]
+    needs: [plan, native, research, range-capacity, norm-product-full, norm-sign-full, norm-statistic-full, norm-quotient-product-full, norm-bias-full, norm-division-full, norm-left-full, norm-signed-output-full, norm-configured-output-full, norm-composition-full, residual-aligned-full, residual-sign-full, residual-rounding-full, residual-composition-full, rotary-consumer-full, attention-maximum-full, attention-index-full, attention-exp-full, attention-probability-sum-full, attention-values-full, attention-offset-sum-full, attention-base-full, attention-sign-full, attention-block-rounding-full, attention-block-sum-full, attention-block-total-sign-full, attention-global-probability-sum-full, attention-denominator-full, attention-numerator-full, attention-doubled-denominator-full, attention-biased-numerator-full, attention-quotient-product-full, attention-division-full, attention-signed-output-full, attention-global-base-full, attention-normalization-full, row-conversion-capacity-full]
     if: always()
     runs-on: ubuntu-latest
     outputs:
@@ -120,6 +120,7 @@ jobs:
           CAPACITY_RESULT: ${{ needs.range-capacity.result }}
           PRODUCT_RESULT: ${{ needs.norm-product-full.result }}
           SIGN_RESULT: ${{ needs.norm-sign-full.result }}
+          ROW_CONVERSION_RESULT: ${{ needs.row-conversion-capacity-full.result }}
           ATTN_NORMALIZATION_RESULT: ${{ needs.attention-normalization-full.result }}
           ATTN_GLOBAL_BASE_RESULT: ${{ needs.attention-global-base-full.result }}
           ATTN_SIGNED_OUTPUT_RESULT: ${{ needs.attention-signed-output-full.result }}
@@ -161,6 +162,7 @@ jobs:
           test "$CAPACITY_RESULT" = success
           test "$PRODUCT_RESULT" = success
           test "$SIGN_RESULT" = success
+          test "$ROW_CONVERSION_RESULT" = success
           test "$ATTN_NORMALIZATION_RESULT" = success
           test "$ATTN_GLOBAL_BASE_RESULT" = success
           test "$ATTN_SIGNED_OUTPUT_RESULT" = success
@@ -783,6 +785,24 @@ jobs:
           checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
           enable-cache: false
       - run: uv run --locked --script research/cqis-bounds/check_attention_normalization.py --${{ matrix.mode }}
+  row-conversion-capacity-full:
+    name: row-conversion-capacity-${{ matrix.mode }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [maximum, full-static, full-gated, full-static-gated]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: false
+      - run: uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --${{ matrix.mode }}
   poseidon2-reference:
     needs: plan
     runs-on: ubuntu-latest

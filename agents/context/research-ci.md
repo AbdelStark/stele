@@ -233,3 +233,12 @@ are mandatory. All inherited jobs and 33 native steps are preserved. The
 130-job hosted inventory requires pagination. The original complete proof
 process and full/gate queues remain in place; hosted results are pending.
 All eleven inventory, command-line and aggregate-gate tests passed locally.
+
+The row-conversion capacity continuation preserves the normalization
+inventory and adds one group: 163 commands in 65 groups, SHA-256
+`6a8cec9ce70e4f86e9c1f98ec3cda610beb6128e59d03db3e884d8d16f79778d`.
+The shape/proof modes and all four full-size modes are mandatory. Every
+inherited job and all 33 native steps are preserved. All eleven CI tests
+passed, including the explicit row-family script mapping. The hosted
+inventory has 135 jobs and requires pagination. Original full-proof and
+repository-gate queues remain in place; hosted results are pending.
