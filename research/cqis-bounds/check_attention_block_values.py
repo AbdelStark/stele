@@ -99,6 +99,7 @@ def corpus():
         with tempfile.TemporaryFile() as spool:
             c.write_group(spool,[x%256 for x in codes],us);assert c.external_roots(p,v,scales,spool)==roots
         cells+=len(codes);zeros+=scales.count(0);digest.update(b''.join(roots))
+    assert (cells,zeros,digest.hexdigest())==(225569,3006,'61d3749e43e023e9f884fad0cfc1ea7e39baa2660238e81d67d26fa12822d91a')
     print(json.dumps(dict(seed=2761,cases=10000,cells=cells,zero_scales=zeros,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
@@ -162,6 +163,7 @@ def honest():
         for rows,width,mode,scale,acc in ((1,1,'dynamic',0,'exact'),(1,1,'static',1,'block1024'),(3,3,'dynamic',0,'block1024'),(3,5,'static',65535,'exact')):
             p=spec(rows,width,mode,scale,8710+done,reps);p=replace(p,schema=replace(p.schema,accumulation=acc));v=c.derive(p,d);scales=[(0,259,1)[j%3] if mode=='dynamic' else scale for j in range(rows)];codes=[(-v['cap'],0,v['cap'])[i%3] if scales[i//width] else 0 for i in range(v['count'])]
             print('block values start',done+1,d,reps,rows,width,mode,flush=True);out=run(p,codes,scales,d);digest.update(out['state']);done+=1;print('block values passed',done,d,reps,flush=True)
+    assert (done,digest.hexdigest())==(16,'6e2d37704fc19033733f80cb32ffebf92497060dd1b27ce66f491041807e9090')
     print(json.dumps(dict(proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

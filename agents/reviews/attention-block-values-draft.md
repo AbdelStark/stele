@@ -18,8 +18,8 @@ coverage, private-proof security or measured performance is claimed.
 4. Source/root substitutions, strict stream roster, false/compensated U,
    zero-scale nonzero codes, tighter magnitude, padding and every zero-hidden
    parent original passed their controls. High planes, flat layout, M31
-   aliases and scale/static original controls passed too. Remaining matrix,
-   source joins and full-size consumers are still being checked.
+   aliases and scale/static original controls passed too. Both source joins
+   and all sixteen finite proofs passed. Full-size consumers remain open.
 5. The account retains each lookup identity and unsquared reduction. Group
    A3 loss is 61ag+9+7bg; dynamic common loss is 30ar+17. Projection loss
    a+dynamic and A1 loss 2ar remain separate. Tests require exact receipts

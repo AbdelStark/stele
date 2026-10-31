@@ -86,6 +86,16 @@ not complete large source-proof coverage. Source substitutions, false U,
 compensating entries, zero-scale codes, tighter caps, padding, high planes,
 flat layout, M31 aliases and original-view controls passed. Complete small
 prepared-row to restored-block to weighted-sum joins passed for both policies.
-The full shape/corpus run, complete proof matrix and repository gates remain
-in validation. Full-size consumers and independent resource evidence remain
-required. See the [author review](../../agents/reviews/attention-block-values-draft.md).
+All ten full-shape/namespace cases and 10000 integer cases passed, with
+225569 cells and 3006 zero scales. The integer corpus SHA-256 is frozen:
+`61d3749e43e023e9f884fad0cfc1ea7e39baa2660238e81d67d26fa12822d91a`.
+All sixteen complete finite proofs passed in both fields and repetition
+counts, with exact original claims, accounts and challenge counts. Their
+frozen digest is
+`6e2d37704fc19033733f80cb32ffebf92497060dd1b27ce66f491041807e9090`.
+Valid changed scale-predicate controls and the isolated nonzero predicate
+also rejected. The original 1024x16384 dynamic run started at
+`8822868fda46cf4674c3c05cfe450f5e81fc284c`, with all 1024 source groups.
+Static, ragged and tail runs follow in the same driver. Repository gates
+remain queued. These full-size consumers and independent resource evidence
+remain required. See the [author review](../../agents/reviews/attention-block-values-draft.md).
