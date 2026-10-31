@@ -50,3 +50,7 @@ high/low index sources, and the control Index:RoundSumMismatch rejected it.
 Canonical table membership, output product/remainder, probability masking,
 complete attention, native/private inference, fidelity, full-row evidence,
 local/hosted gates and independent review remain open.
+
+All seven CLI modes are required in CI: six normal modes and the separate
+full-size job. All inherited jobs and 142 commands remain unchanged. All 11
+CI tests passed; original full-size evidence and local gates remain pending.
