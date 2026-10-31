@@ -51,3 +51,10 @@ proof suites are running; this is not a completed sign-off.
 
 The observed-attack conclusion remains pending actual controls. Full proofs
 and every required repository gate must also complete.
+
+Focused source-view controls passed. I tried to break it by replacing the
+quotient product with a separately valid changed-D proof while q=0 preserved
+the product, and QuotientProduct:Denominator:CommitmentMismatch rejected it.
+The bias-source substitution, metadata replay, remainder high plane and
+unmasked D2 broadcast also rejected. The original complete suite continues;
+these focused results do not establish the remaining controls or full proofs.

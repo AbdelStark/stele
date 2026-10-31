@@ -73,3 +73,11 @@ attainment, signed output, configured conversion, native/private inference,
 PCS/ZK/FS, GPU parity/scale, fidelity and independent audit remain required.
 No benchmark, new cut, range capacity increase or additional weight pass is
 claimed. Draft amendments remain unaccepted; original task criteria remain.
+
+Focused source-view controls passed. Equivalent arithmetic metadata replay,
+changed remainder high planes and separately valid denominator substitutions
+in either product or bias child rejected, including q=0. An unmasked D2
+broadcast on padding rejected at StrictRemainder:RoundSumMismatch. These new
+controls ran separately because the original suite was already loaded; future
+boundary runs include them. Corpus, primary/boundary suites, compositions,
+matrix, full proofs and repository gates remain pending.
