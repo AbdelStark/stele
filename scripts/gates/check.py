@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
     'digest': ('prover', 'proof'),
-    'negative-controls': ('pcs', 'verifier', 'reductions'),
-    'soundness-accounting': ('pcs', 'verifier'),
+    'negative-controls': ('verifier', 'reductions'),
+    'soundness-accounting': ('verifier',),
     'parity': ('gpu', 'kernels'),
 }
 OWNERS = {
@@ -52,6 +52,143 @@ def bootstrap_guard(root, gate):
                 raise ValueError(f'{gate}: validator not wired for {file.relative_to(root)} '
                                  f'(task {OWNERS[gate]})')
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
+
+
+def field_source_codec(root):
+    """A9 production and full certificate verification; openings remain guarded."""
+    crate = root / 'crates/stele-pcs'
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs',
+               'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
+               'tests/fixtures/certificate-continuation.txt',
+               'tests/field_source.rs', 'tests/preparation.rs',
+               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
+    actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
+    library = ('//! Conditional Circle field sources and certificates, RFC-0010 A9.\n'
+               '//!\n//! Certificate verification is conditional; functional openings and profiles remain separate.\n'
+               '#![forbid(unsafe_code)]\n#![no_std]\n'
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+               'extern crate alloc;\nmod certificate;\nmod preparation;\nmod producer;\nmod source;\n'
+               'pub use certificate::{verify_certificate, CertificateRecord, Failure, Usage, VerifiedCertificate};\n'
+               'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
+               'pub use producer::CertificateFailure;\n'
+               'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
+    source = (crate / 'src/source.rs').read_text()
+    # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
+    code = re.sub(r'//[^\n]*', '', source)
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    surface = [(kind or 'field', name) for kind, name in declarations]
+    expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
+        ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
+        ('field', 'certificate_queries'), ('field', 'opening_queries'), ('struct', 'Source'),
+        ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code'), ('fn', 'root'), ('fn', 'path_height'),
+        ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'),
+        ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
+        ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'response_bytes'), ('fn', 'responses')]
+    compact = lambda text: re.sub(r'\s+', '', text)
+    impls = [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', code)]
+    derives = [compact(text) for text in re.findall(r'#\[[^\]]*\]', code)]
+    imports = [compact(text) for text in re.findall(r'\buse\s+[^;]+;', code)]
+    enums = [(name, compact(body)) for name, body in re.findall(r'pub enum (\w+)\s*\{([^}]*)\}', code)]
+    closed_surface = (surface == expected_surface
+        and len(declarations) == len(re.findall(r'\bpub\b', code))
+        and impls == ['impl<K:ChallengeField>Source<K>{', "impl<'a>Wire<'a>{",
+                      "implExactSizeIterator<Item=Response<'a>>+'_{"]
+        and derives == ['#[derive(Clone,Copy,Debug,Eq,PartialEq)]']*3
+            + ['#[derive(Clone,Copy,Debug)]']*3
+        and imports == ['usecore::marker::PhantomData;', 'usestele_code::Circle;',
+            'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
+        and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
+                       'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,Capacity,'),
+                      ('ProofKind', 'Certificate,Opening,')]
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
+    prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
+    prepared_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', prepared)
+    prepared_surface = [(kind or 'field', name) for kind, name in prepared_declarations]
+    prepared_closed = (prepared_surface == [
+        ('struct', 'PreparationWork'), ('field', 'borrowed_message_bytes'),
+        ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
+        ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
+        ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'source'), ('fn', 'message'),
+        ('fn', 'response'), ('fn', 'work')]
+        and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
+        and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
+            == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
+            'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
+            'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
+            'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
+            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
+    producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
+    producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
+    producer_closed = (producer_declarations == [('struct', 'CertificateFailure'),
+        ('', 'cause'), ('', 'usage'), ('fn', 'certificate')]
+        and len(producer_declarations) == len(re.findall(r'\bpub\b', producer))
+        and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', producer)]
+            == ["impl<K:ChallengeField>PreparedSource<'_,K>{"]
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', producer)] == [
+            'usecrate::{Error,PreparedSource,ProofKind,Source};', 'usealloc::vec::Vec;',
+            'usestele_hash::{AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript};']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', producer)] == [
+            '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[path="producer_tests.rs"]']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', producer))
+    certificate = re.sub(r'//[^\n]*', '', (crate / 'src/certificate.rs').read_text())
+    certificate_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', certificate)
+    certificate_closed = (certificate_declarations == [
+        ('struct', 'Usage'), ('', 'transcript'), ('', 'non_transcript'),
+        ('struct', 'Failure'), ('', 'cause'), ('', 'usage'), ('struct', 'CertificateRecord'),
+        ('fn', 'source'), ('fn', 'id'), ('fn', 'parameters'), ('fn', 'ell'), ('fn', 'degree'),
+        ('fn', 'kind'), ('struct', 'VerifiedCertificate'), ('fn', 'record'), ('fn', 'verify_certificate')]
+        and len(certificate_declarations) == len(re.findall(r'\bpub\b', certificate))
+        and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', certificate)] == [
+            'impl<K:ChallengeField>CertificateRecord<K>{', 'impl<K:ChallengeField>VerifiedCertificate<K>{']
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', certificate)] == [
+            'usecrate::{Error,Parameters,ProofKind,Source,Wire};', 'usealloc::vec::Vec;',
+            'usestele_code::{CodeField,Encoder};', 'usestele_field::{Serialize,M31};',
+            'usestele_hash::{certificate_id,merkle,AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript,};']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', certificate)] == [
+            '#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]',
+            '#[cfg(test)]', '#[path="certificate_tests.rs"]']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', certificate))
+    if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
+            or not closed_surface or not prepared_closed or not producer_closed or not certificate_closed
+            or manifest.get('dependencies') != dependencies
+            or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
+            or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
+            or 'build' in manifest.get('package', {})):
+        raise ValueError('PCS API not wired; only reviewed A9 source/production/certificate APIs admitted (E4-03a)')
+    checks = [
+        (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
+         ['test matches_reference_qm31_source_and_wire ... ok',
+          'test matches_reference_om31_source_and_wire ... ok',
+          'test rejects_unsupported_sources_without_allocation ... ok',
+          'test accepts_maximum_source_shape_without_domain_allocation ... ok',
+          'test preparation::tests::rejects_preparation_allocation_sizes ... ok',
+          'test matches_reference_qm31_prepared_columns ... ok',
+          'test matches_reference_om31_prepared_columns ... ok',
+          'test rejects_preparation_shape_and_hash_overflow ... ok',
+          'test producer::tests::matches_reference_qm31_certificate_production ... ok',
+          'test producer::tests::matches_reference_om31_certificate_production ... ok',
+          'test certificate::tests::matches_reference_qm31_certificates ... ok',
+          'test certificate::tests::matches_reference_om31_certificates ... ok']),
+        (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
+         ['59 native query pairs match exact independently checked minima']),
+        (['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'],
+         ['4e5327828a8fe47f4b44537278f550e6231da0415022474110b56d6113a8b7ed']),
+    ]
+    for command, expected in checks:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or any(text not in result.stdout for text in expected):
+            raise ValueError(f'field source codec checks failed: {result.stdout} {result.stderr}')
+        if command[0] == 'cargo' and sorted(re.findall(
+                r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
+                result.stdout, re.MULTILINE)) != ['certificate.rs', 'preparation.rs', 'source.rs']:
+            raise ValueError('field source codec checks failed: missing compile-fail boundary')
+    print('gate PCS: native certificates/continuation and all59 policies; no opening or profile credit')
 
 
 def fraction_reductions(root):
@@ -191,7 +328,17 @@ def transcript_registry(root):
         raise ValueError('transcript registry mapping mismatch against soundness inventory')
     result = subprocess.run(['cargo', 'test', '-p', 'stele-hash', '--lib', '--all-features', '--locked', '--offline'],
                             cwd=root, text=True, capture_output=True)
-    if result.returncode:
+    required = ('transcript_tests::matches_reference_transcript_vectors',
+                'transcript_tests::rejects_empty_public_input',
+                'usage_tests::rejects_unrepresentable_frame_lengths',
+                'usage_tests::matches_reference_transcript_usage',
+                'usage_tests::rejects_usage_overflow_before_unrecorded_work',
+                'usage_tests::rejects_sampling_exhaustion_with_usage',
+                'usage_tests::rejects_merkle_overflow_with_usage',
+                'pcs::tests::rejects_column_thresholds_exhaustion_and_invalid_domains',
+                'pcs::tests::matches_reference_full_field_column_ratchets',
+                'pcs::tests::rejects_certificate_id_hash_overflow')
+    if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
         raise ValueError(f'transcript primitive tests failed: {result.stdout}\n{result.stderr}')
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
 
@@ -452,12 +599,16 @@ def zero_corpus(root):
 
 def merkle_vectors(root):
     """Execute actual authentication/KATs and check the independent candidate oracle."""
-    for command in [
-        ['cargo', 'test', '-p', 'stele-hash', '--test', 'merkle', '--locked', '--offline'],
-        ['uv', 'run', '--locked', '--script', 'research/merkle/check_merkle.py'],
+    for command, required in [
+        (['cargo', 'test', '-p', 'stele-hash', '--test', 'merkle', '--locked', '--offline'],
+         ('matches_reference_roots_paths_and_rejections',
+          'rejects_descriptor_aliasing_and_invalid_shapes',
+          'accepts_authenticated_child_root_and_rejects_wrong_child',
+          'rejects_merkle_failures_with_usage')),
+        (['uv', 'run', '--locked', '--script', 'research/merkle/check_merkle.py'], ()),
     ]:
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
-        if result.returncode:
+        if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
             raise ValueError(f'Merkle authentication/vector checks failed: {result.stdout} {result.stderr}')
     print('gate Merkle: actual roots, paths, batches and byte vectors checked; no PCS/profile certification')
 
@@ -466,7 +617,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -530,7 +681,7 @@ def docs_links(root):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('gate', choices=(*OWNERS, 'rfc-status', 'docs-links'))
+    parser.add_argument('gate', choices=(*OWNERS, 'native', 'rfc-status', 'docs-links'))
     args = parser.parse_args()
     try:
         if args.gate == 'rfc-status':
@@ -538,12 +689,19 @@ def main():
         elif args.gate == 'docs-links':
             docs_links(ROOT)
         else:
-            if args.gate == 'negative-controls':
+            # The native job needs this union once. Standalone entry points
+            # remain complete and do not consume cached success receipts.
+            combined = args.gate == 'native'
+            if combined or args.gate == 'negative-controls':
                 controls_layout(ROOT)
-            bootstrap_guard(ROOT, args.gate)
-            if args.gate == 'digest':
+            if combined or args.gate in ('negative-controls', 'soundness-accounting'):
+                field_source_codec(ROOT)
+            for gate in (('digest', 'negative-controls', 'soundness-accounting')
+                         if combined else (args.gate,)):
+                bootstrap_guard(ROOT, gate)
+            if combined or args.gate == 'digest':
                 native_encoder(ROOT)
-            if args.gate in ('negative-controls', 'soundness-accounting'):
+            if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 sumcheck_corpus(ROOT)
@@ -559,7 +717,7 @@ def main():
                 streaming_strategy(ROOT)
                 file_source(ROOT)
                 streaming_corpus(ROOT)
-                if args.gate == 'negative-controls':
+                if combined or args.gate == 'negative-controls':
                     merkle_vectors(ROOT)
     except (OSError, ValueError, KeyError) as error:
         print(f'gate {args.gate}: {error}', file=sys.stderr)

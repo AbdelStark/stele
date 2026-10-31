@@ -50,14 +50,18 @@ are forbidden at workspace level, so source-level lint allowances cannot weaken 
 This is a source policy check, not a proof about macro expansions or third-party API return
 types; new macros and dependencies still require review under the existing guardrails.
 
-CI runs on pull requests and pushes to main, avoiding duplicate branch/PR builds.
+Required CI runs on pull requests, avoiding duplicate branch/PR and post-merge builds.
+Implementation reaches main only through a validated PR with its tested base/tree checked.
 The parity job uses the actual Git diff. Push events compare before/after commits;
 PR events compare the merge base to the PR head. Rename detection is disabled so
 moving a file out of a GPU crate still triggers parity. Initial pushes compare to the
 empty tree. Invalid commit metadata fails CI. GPU jobs require a configured self-hosted
 GPU runner; this scaffold does not substitute CPU execution for hardware evidence.
 
-Run gate regression tests with:
+The required native job uses `scripts/gates/native.sh` for the digest, control and
+accounting union. All actual validators run once; standalone gates stay self-contained.
+Quick tooling tests use `python3 scripts/ci_tests.py`. The manual `exhaustive` workflow
+partitions copied-source mutation tests into independent jobs. Run all tooling tests locally with:
 
 ```sh
 python3 -m unittest discover -s scripts/tests -v
@@ -76,3 +80,36 @@ file inventory, exact arithmetic-only module entry and field-only dependency
 manifest continue to reject unwired GKR stage/source/transcript additions.
 This earns no NC-0203, source authentication or stage accounting coverage. The
 bootstrap snapshot is not refreshed; E3-06 still requires its full producer.
+
+RFC-0010 A9 source parsing replaces only the PCS empty-crate guard with actual
+native/Python codec and policy checks. Its closed public declaration inventory
+rejects new accepting methods and trait conversions inside the existing module;
+new consumers need their real validators and controls. Parsed wire bytes carry
+no authentication or PCS coverage. Verifier/reductions and other guards remain.
+
+RFC-0012 A10 adds local hash-work observations, including failures. The transcript
+and Merkle validators require the actual usage, overflow and byte-vector tests;
+successful execution with those tests omitted fails. These counters do not
+establish adversarial query caps, PCS correctness or a complete FS/H budget.
+
+The A9 producer validator also executes native source preparation against all
+six independent full-wire fixtures. It requires the preparation controls and
+each compile-fail API boundary explicitly. Adding an accepting method or trait
+conversion to the preparation module still rejects before execution. Preparation
+and byte authentication do not supply a verified registration certificate.
+
+The certificate producer consumes the four registered certificate labels and
+must match all six native/Python wire fixtures and actual continuation draws.
+The hash gate requires capped-sampler threshold, attempt-64, exhaustion,
+invalid-domain, failed-attempt and full-ratchet checks. The PCS validator still
+rejects accepting APIs or trait conversions in every admitted producer module.
+These tests confer no native verification or negative-control coverage.
+
+The certificate verifier validator requires both-field complete-wire/ID and
+continuation parity, canonical and authentication-order rejections, and bounded
+malformed-wire mutation/truncation sweeps. The private-handle compile-fail check
+replaces the former absent-verifier check. Closed API inventories reject digest
+constructors, authority-bearing public fields and extra trait conversions;
+these inventories complement actual verification tests and code review.
+Six native certificate controls run through the existing control harness. No
+opening or inference acceptance is admitted by these validators.

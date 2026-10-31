@@ -53,18 +53,37 @@ fn check<K: TestField>(table: &Table, field: &str, seed: u64) {
     );
 }
 
-fn main() {
-    assert_eq!(
-        std::env::args_os().len(),
-        1,
-        "this gate always runs its complete fixed corpus"
-    );
+fn main() -> Result<(), &'static str> {
+    // A shard is one complete case/field pair with the original seed and
+    // 10000 points. CI schedules all 28; no arguments still runs all pairs.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let shard = match args.as_slice() {
+        [] => None,
+        [flag, value] if flag == "--shard" => {
+            let index: usize = value.parse().map_err(|_| "integer shard index required")?;
+            if index >= 2 * oracle::CASES.len() {
+                return Err("shard index out of range");
+            }
+            Some(index)
+        }
+        _ => return Err("usage: table_mle_parity [--shard 0..27]"),
+    };
     for (index, case) in oracle::CASES.into_iter().enumerate() {
+        if shard.is_some_and(|part| part / 2 != index) {
+            continue;
+        }
         let table = oracle::generate(case);
-        check::<QM31>(&table, "QM31", 0x21c0_0001 + index as u64);
-        check::<OM31>(&table, "OM31", 0x21c0_1001 + index as u64);
+        if shard.is_none_or(|part| part % 2 == 0) {
+            check::<QM31>(&table, "QM31", 0x21c0_0001 + index as u64);
+        }
+        if shard.is_none_or(|part| part % 2 == 1) {
+            check::<OM31>(&table, "OM31", 0x21c0_1001 + index as u64);
+        }
     }
-    println!(
-        "PASS: 280000 full-extension points; all thirteen kinds plus two-row high, in both fields"
-    );
+    if let Some(part) = shard {
+        println!("PASS shard {part}: 10000 full-extension points");
+    } else {
+        println!("PASS: 280000 full-extension points; all thirteen kinds plus two-row high, in both fields");
+    }
+    Ok(())
 }

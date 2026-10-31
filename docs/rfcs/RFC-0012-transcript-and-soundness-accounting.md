@@ -553,3 +553,41 @@ and use must update inventory and actual producer/gate together; codecs alone
 add no production label or loss. No complete LU record, profile, privacy, source
 authentication or Q12 result follows. No measured constant changes.
 Affected tasks: E3-07a, E3-07, E8-05.
+
+### A10: Conditional field PCS schedule and column indices
+
+Status: Accepted. Review: [conditional field PCS skill passes](../../agents/reviews/field-pcs-acceptance.md). Companion RFC-0010 A9. The exact nine registry entries, kind
+and PCS tensor/query ownership are specified in
+[native-field-pcs.md §7](../../formal/native-field-pcs.md#7-exact-registry-additions).
+The RFC-0012 A1 hash-chain framing, canonical K sampling and state updates stay intact.
+
+API addition: a checked column sampler on Transcript accepts only
+the closed certificate/opening column kind and N=2^h, 1<=h<=30. Each outer
+attempt draws a full K value with its registered label. Read the first
+canonical limb x; accept x mod N only for x<floor(p/N)*N. Reject at most
+64 candidates, then abort. Discard unused limbs for index selection, keep
+every state advance, and propagate inner exhaustion. There is no external
+random source, arbitrary label, rollback or failure fallback.
+
+Each successful index is uniform under the independent interactive model.
+The PCS-only availability bound is
+`q_total*2^-64+(ell_total+64*q_total)*2^-1703`; it is not an acceptance loss.
+Every attempted field draw and associated hash work remains in FS/H resource
+accounting. The PCS query term has N possible coordinates, not |K| outcomes.
+
+After full standalone certificate verification, a dedicated hash helper may
+compute its ID from the exact purpose/context/length/proof frame in [the native contract §3](../../formal/native-field-pcs.md#3-standalone-registration-certificate).
+Use the full 32-byte ordinary unkeyed BLAKE3 output, with checked u64 byte
+lengths. This helper authenticates no proof by itself and is not a challenge.
+The completed-proof ID never enters its own certificate transcript. Later
+source bundles and opening statements bind that verified ID and full context.
+
+Each native label and helper must land with its first actual consumer,
+byte parity and relevant threshold/exhaustion or continuation controls.
+[The native contract §9](../../formal/native-field-pcs.md#9-conditional-records-and-lifetime-ownership)
+requires explicit usage reporting, including failed attempts;
+[§8](../../formal/native-field-pcs.md#8-errors-and-reserved-native-controls) names
+FunctionalShape, InvalidColumnDomain and ColumnSamplingExhausted errors. Specification acceptance alone changes no production
+registry or ledger. Existing Q12 FS/H and quantum
+obligations remain; neither profile is enabled. Affected tasks are E4-03,
+E3-06's terminal source work and E8-05, without completion of their criteria.

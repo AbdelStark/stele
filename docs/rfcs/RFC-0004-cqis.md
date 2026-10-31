@@ -1265,3 +1265,517 @@ is limited to1024 elements by the existing carry-range capacity; the original
 16384-element domain, xy*J, canonical product sign and output branches remain
 required. Native stacking, physical/model ownership, private PCS/ZK/FS and
 fidelity stay open. No Accepted contract, range capacity or cut changes here.
+
+### A3 evidence continuation — Range capacity for full RMSNorm rows
+
+The [capacity study](../../research/cqis-bounds/RANGE-CAPACITY.md) replaces the
+wide-range4096-word ceiling with65536 expected caps and a separate padded
+N*B<=131072 bound. Thus the maximum262144 selected bytes and lookup dimension18
+remain unchanged, while narrow words can occupy more rows. Signed-source count
+extends to16384 and xy admits RFC-0021's full row domain. Other adapters keep
+their explicit capacity guards. Original encodings and proof transcripts are
+unchanged on the old domain; all claims, ranges and zero boundaries remain.
+Expected cap metadata grows to at most65536 twenty-byte records. Full maximum
+proofs, unchanged legacy digests and geometry controls are required evidence.
+Native stacking, remaining norm roles, physical/model ownership, private proof
+and fidelity remain open; no Accepted domain, cut or protocol label changes.
+
+### A3 evidence continuation — Consumed RMSNorm reciprocal product
+
+The [reciprocal-product study](../../research/cqis-bounds/NORM-PRODUCT.md)
+proposes one vectorized byte-column consumer for t=xy*J over the full norm row.
+Five complete ranges bind xy, J-8192, t and two carry groups. Verified offset
+bytes reconstruct the same scalar J root used by the full rsqrt membership;
+this source join does not replace that lookup. Exact closed-role caps, fixed
+zero endpoint carries and retained high output planes supply integer bounds.
+All seven original views remain consumed. This is revealing Draft research;
+complete proof/control evidence, same-source composition, configured output
+branches, zero predicates, canonical sign, native/physical/model/private
+inference and fidelity remain required. No Accepted role or cut is added.
+
+### A3 evidence continuation — Canonical RMSNorm product sign
+
+The [canonical-sign study](../../research/cqis-bounds/NORM-SIGN.md) retains
+one complete xy consumer and binds both magnitude nonzero predicates through
+bounded predecessors: m=k+n and m*(1-n)=0, with Boolean n and k<=32767.
+The canonical signed sources then support s=sx*ny+sy*nx-2*sx*sy, with Boolean
+s. This is XOR for two nonzero magnitudes and zero otherwise, regardless of
+the rounded output. Two complete ranges and two parent A3 consumers retain
+all original views, whole bounds and padded zeros over the full norm domain.
+Complete proof/control evidence, configured output branches and signed output
+remain required. Native/physical/model/private inference, fidelity and original
+task criteria remain open. No Accepted semantics, role or cut is changed.
+
+### A3 evidence continuation — Full-row RMSNorm statistic
+
+The [full-row statistic study](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
+retains one complete signed16 source and uses three direct byte-column A1
+sums over up to 16384 elements. Whole S and closed carry ranges retain both
+zero endpoints and every high byte. Four original claims have independent
+consumers, including zero-hidden factors. Actual verified S bytes reconstruct
+the existing eight-slot external root with exact zero extension. The old
+statistic adapter/encoding remains unchanged. Complete proof/control evidence,
+native/model ownership, private PCS/ZK/FS, remaining norm roles and original
+inference criteria remain required; no Accepted cut or profile is added.
+
+### A3 evidence continuation — Full-row RMSNorm quotient product
+
+The [quotient-product study](../../research/cqis-bounds/NORM-QUOTIENT-PRODUCT.md)
+consumes qd=q*B with whole q<=32768 and positive B<=Bmax. Two bounded result
+halves and statically selected carry families preserve the existing maximum
+lookup domain for16384 rows and90-bit B. They supply digit bounds; the actual
+faithful byte-column proof establishes the whole product bound. Seven original
+views, every endpoint and high padding remain consumed. Actual same-exponent
+factor composition, selected branches, rounding, strict remainder, signed
+output and full proof/control evidence remain required. Native/model/private
+inference and original task criteria stay open; no Accepted cut is added.
+
+### A3 evidence continuation — Full-row RMSNorm biased sum
+
+The [biased-sum study](../../research/cqis-bounds/NORM-BIAS.md) consumes
+U=t+h over up to16384 rows with whole product/bias ranges and statically
+selected carry families. The scalar bias view is masked by the expected
+real-row count, keeping padded sources/results/carries zero. Split result
+ranges supply digit bounds; faithful addition establishes the whole sum.
+All five original views, carry endpoints and high zero extensions remain
+consumed. Actual configured-factor authentication, division equality,
+strict remainder, signed output and full proof/control evidence remain
+required. This is revealing Draft research; native/model/private inference,
+fidelity and original task criteria remain open. No Accepted cut is added.
+
+### A3 evidence continuation — RMSNorm output division and strict remainder
+
+The [output-division study](../../research/cqis-bounds/NORM-DIVISION.md)
+retains complete quotient-product and biased-sum consumers. Two byte-column
+relations bind qd+r=U and r+gap+1=B using actual verified child bytes. Exact
+whole remainder/gap bounds follow from split power-of-two-minus-one caps.
+Expected row masks keep scalar B and the initial one out of padded rows.
+All ten parent original claims and all inherited claims remain consumed;
+local byte/carry bounds supply integer lifting without asserting unconsumed
+last-digit bounds. Complete proof/control evidence, same configured B/h,
+selected branches and signed output remain required. Native/model/private
+inference, fidelity and original task criteria remain open; no Accepted cut
+or profile is added.
+
+### A3 evidence continuation — Full-row RMSNorm left-factor product
+
+The [left-factor study](../../research/cqis-bounds/NORM-LEFT.md) consumes
+q=t*L with whole product/quotient ranges, a positive offset-bound factor,
+and closed carry families. Nine original views retain all three scalar
+factor bytes and all high quotient zeros, including at zero products.
+The actual eight-slot factor root matches the verified factor bundle's
+slice34:42. Complete proof/control evidence and both full-row zero/nonzero
+cases remain required. Selected branches, unused qd/r zeros, signed output,
+native/model/private inference, fidelity and original task criteria remain
+open. This is revealing Draft research; no Accepted role or cut is added.
+
+### A3 evidence continuation — RMSNorm signed output after rounding
+
+The [signed-output study](../../research/cqis-bounds/NORM-SIGNED-OUTPUT.md)
+retains complete canonical product-sign and signed-Y consumers. A degree-two
+relation q*s=q*sy binds the actual Y magnitude to the product sign whenever
+q is nonzero. Negative products may round to canonical zero; both original
+zero predicates and canonical product sign still verify independently of q.
+All three parent original views and all inherited claims remain consumed.
+Rounding must join the same q root through the selected left/division branch.
+Complete proof/control evidence, configured branch selection, full normalization,
+native/model/private inference, fidelity and original task criteria remain
+required. No Accepted role, profile or cut is added.
+
+### A3 evidence continuation — Configured RMSNorm output composition
+
+The [configured-output study](../../research/cqis-bounds/NORM-CONFIGURED-OUTPUT.md)
+retains the complete same-exponent factor consumer, canonical signed output,
+reciprocal product and selected whole left/division consumer. The actual
+verified factor bundle determines the branch and exact B/h/L byte slices.
+Every reused source shares its root; the left branch enforces canonical
+zero qd/r roots. The right branch consumes its biased-total auxiliary root.
+Exact proof keys prohibit a supplied selector or ignored alternate proof.
+The wrapper adds no challenge and preserves every child error term. Full
+normalization must still join N to the same X statistic, A/D to the normalized
+interval and J to configured rsqrt. Proof/control evidence, native/model/private
+inference, fidelity and original task criteria remain required. No Accepted
+role, profile or cut is added.
+
+### A3 evidence continuation — Complete RMSNorm arithmetic composition
+
+The [arithmetic composition](../../research/cqis-bounds/NORM-COMPOSITION.md)
+retains seven complete consumers: configured output, full statistic, numerator,
+mantissa product, normalization sum, strict normalization remainder and actual
+complete reciprocal lookup. Nineteen shared roots connect the same signed X/H/Y
+to S,N,a,A,D,M,MD,R,J and the selected output relation. Positive expected epsilon
+keeps N positive at zero X; the actual normalized interval determines a. No
+formula or supplied child receipt replaces lookup or arithmetic verification.
+The parent adds no random challenge and preserves every independent child loss.
+Corpus, complete controls/matrices and full-row proof evidence remain required.
+This closes no native/model/private inference criterion without that delivery;
+physical source ownership, PCS/ZK/FS, fidelity and scale remain open. No Accepted
+role, profile or cut is added.
+
+### A3/A8 evidence continuation — Consumed residual aligned sources
+
+Draft research: [residual alignment](../../research/cqis-bounds/RESIDUAL-ALIGNED.md)
+consumes both actual signed16 roots and their complete range/sign proofs before
+one batched byte-column A3 binds O=(X+32768)*A+(Y+32768)*B. Expected fractions
+fix positive power-of-two A,B; no input is rounded first. Exact source-byte
+shifts retain real-row masking, bounded carry families and every original view.
+The whole O range and all eight output planes remain consumed. In-range M31
+aliases and same-magnitude signed substitutions require adversarial checks.
+This revealing16384-row adapter does not complete the static2^20 domain,
+canonical numerator sign, one-round output or native/model/private inference.
+A3/A8 and all original task criteria remain unchanged; no Accepted cut is added.
+
+### A3/A8 evidence continuation — Canonical residual numerator sign
+
+Draft research: [residual sign](../../research/cqis-bounds/RESIDUAL-SIGN.md)
+consumes the aligned offset O with complete magnitude/sign ranges. Exact byte
+columns prove O+2sM=H+M using statically bounded signed carries encoded by an
+offset; both endpoints and every original view remain consumed. A bounded
+predecessor of the sum of actual magnitude bytes excludes negative zero with
+a small faithful identity. This auxiliary is not the static whole sign_gap;
+no native record is changed. Same-root alignment composition and coherent
+negative-zero/whole-alias controls remain required. This16384-row revealing
+adapter leaves residual rounding, original2^20 capacity and all native/model/
+private inference and fidelity obligations open. A3/A8 remain Draft.
+
+### A3/A8 evidence continuation — Exact residual magnitude rounding
+
+Draft research: [residual rounding](../../research/cqis-bounds/RESIDUAL-ROUNDING.md)
+consumes the same numerator magnitude through complete whole M/q/r and signed
+carry ranges. Expected units determine B and h, and actual quotient bytes
+supply q*B through dyadic shifts. Exact byte columns and terminal carry enforce
+M+h=q*B+r with strict r<B, including B=1. Every original public/source/carry
+view remains consumed. Coherent r=B, omitted bias, range-valid field aliases
+and actual sign-source substitutions require rejection evidence. This unsigned
+quotient role permits32768; complete signed output must still enforce its
+sign-dependent limit. Full residual composition, original2^20 domain and all
+native/model/private inference, fidelity and scale obligations remain open.
+A3/A8 and original task criteria remain unchanged; no Accepted cut is added.
+
+### A3/A8 evidence continuation — Complete residual arithmetic composition
+
+Draft research: [residual composition](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md)
+joins actual signed inputs to aligned offset, canonical numerator magnitude
+and sign, exact biased quotient/remainder and signed output. Four complete
+children share eight roots. One degree-two A3 equates numerator/output signs
+when the rounded magnitude is nonzero; all original views and both canonical
+sign consumers remain mandatory at zero. Positive32768 must reject despite
+the unsigned quotient permitting32768. Every source substitution, premature
+input rounding and wrong signed-output control requires rejection evidence.
+This revealing arithmetic adapter leaves native/model/private inference,
+physical ownership, fidelity, original2^20 capacity and independent audit open.
+No Accepted role or cut is added; A3/A8 and original task criteria remain Draft
+or blocked as recorded in the task graph.
+
+### A3/A6/A7 evidence continuation — Consumed canonical rotary rows
+
+Draft research: [rotary consumer](../../research/cqis-bounds/ROTARY-CONSUMER.md)
+regenerates the expected A7 coefficient row at the absolute position and binds
+actual signed input/output sources through numerator sign, canonical zero,
+strict-remainder rounding and signed output relations. Both layouts, partial
+rotation and complete passthrough preserve every original consumer. The fixed
+coefficient envelope keeps all whole relations field-faithful; no numerator
+commitment or supplied coefficient certificate replaces these obligations.
+Corpus, source/function/position controls, both proof fields and complete-row
+evidence remain required. Public generation and MLE evaluation are revealing
+reference costs. Native function/passport registration, private/model inference,
+other required variants and fidelity remain open; no Accepted cut or profile
+is added, and original task criteria remain unchanged.
+
+### A3/A6 evidence continuation — Consumed masked attention maximum
+
+Draft research: the [maximum consumer](../../research/cqis-bounds/ATTENTION-MAXIMUM-CONSUMER.md)
+binds actual signed32 score bytes, scalar maximum, selected absolute ID and
+exact differences through eight complete ranges and five bytewise A3s.
+Expected query/key positions, sequence block and causal/window parameters
+supply the mask; no prover mask replaces it. Static offsets enforce every
+score bound, including masked scores. Bytewise differences exclude field
+aliases; allowed attainment and a nonnegative prefix gap enforce the Draft
+first-tie rule. The selected index is fully opened against its expected root.
+Corpus, source/mask/alias controls, both fields/repetition counts and full-row
+evidence remain required. Native/private selection, physical/model ownership,
+key-set completeness, exponential membership and full attention composition
+remain open. No Accepted cut, production control or profile is added; original
+task criteria and Draft amendment statuses remain unchanged.
+
+### A3/A6 evidence continuation — Consumed exponential index split
+
+Draft research: [bytewise exponential indices](../../research/cqis-bounds/ATTENTION-EXP-INDEX.md)
+consume the actual attention difference and high/low index sources under the
+expected RFC-0021 §2.1 product or corrected representation. Full supported
+B/k bounds retain the inclusive endpoint. Four complete ranges and one A3
+bind all four byte columns, strict low-index range and zero terminal carry;
+a whole M31 congruence cannot replace reconstruction. Mask and source scope
+come from the separately expected maximum instance, whose complete proof
+remains required for source composition. Canonical component membership,
+product/remainder, direct nearest lookup and probability masking remain
+separate obligations. No native/private inference, Accepted cut, production
+control or profile is admitted; original task criteria remain unchanged.
+
+### A3/A6 evidence continuation — Consumed canonical exponential outputs
+
+Draft research: the [exponential consumer](../../research/cqis-bounds/ATTENTION-EXP.md)
+retains direct nearest, product and corrected nearest RFC-0021 §2.1 semantics.
+Actual ranged bytes feed complete canonical component lookups, excluding file
+padding from membership. Split modes consume the complete index child and
+prove the floor product/remainder; corrected mode additionally consumes the
+input-indexed correction and its exact output relation. All masked/padded
+outputs and auxiliaries are zero under complete ranges, including E=0.
+Every child state and actual original-point consumer remains mandatory.
+Actual maximum-source composition, complete numerical/attack/field/full-row
+evidence and gates remain required. Native/private lowering, physical/model
+source ownership, probability sums, value products and full attention remain
+open. No Accepted cut, production control or profile is admitted.
+
+### A3/A6 evidence continuation — Consumed probability row sum
+
+Draft research: the [probability sum consumer](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.md)
+fully ranges the actual masked P_hat bytes and scalar Z, then consumes the
+original source claim from one degree-one A1 sum. Static K*2^E<=2^28<p/2
+makes the field sum faithful to the integer sum. The expected output root
+always binds four byte leaves, including zero high bytes. Standalone zero
+sums remain valid for block contributions; actual whole-row maximum/exp/sum
+composition establishes Z>=2^E from attainment. This adds no new cut or
+probability normalization rule. Full-row/gate evidence, restored values,
+normalization, physical/model ownership and native/private inference remain
+required; original task/control criteria remain unchanged.
+
+### A3/A6 research plan — Restored attention value sources
+
+Draft plan: [restored value sources](../../research/cqis-bounds/ATTENTION-VALUES.md)
+will join complete signed8 code sources to per-position scale sources and
+bounded offsets U=S+s*V. Two's-complement raw bytes and actual sign views
+feed the restoration relation. Dynamic zero-scale predicates remain required,
+including when outputs vanish. Static policy derives its tighter code cap
+from the configured scale. This is a pre-implementation plan: every actual
+consumer, attack, account receipt and full-domain proof remains to be tested.
+Prepared projection-row ownership, GQA/cache views, weighted sums, native/
+private inference and original criteria are not admitted by these bounds.
+
+### A3/A6 research plan — Consumed weighted offset sums
+
+Draft plan: [weighted offsets](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md)
+uses complete probability/value/output/carry ranges and the existing full-capacity
+radix-16 certificate. One polynomial identity batches columns and channels;
+one degree-two A1 consumes both actual projected sources even at zero factors.
+All roots and verified child states precede the accounted challenges. Expected
+absolute positions, block and mask remain bound. The16384-entry research cap
+preserves the original full-sequence requirement. Signed O-S*Z, block rounding,
+normalization, actual source ownership and all native/private criteria remain
+open. No Accepted semantics, cut, profile or production control credit changes.
+
+Weighted-offset implementation correction, still Draft: bind the compact
+probability range root separately. An all-masked range can use one byte even
+when the configured probability representation has two; exact zero extension
+must precede the external-root comparison. The independent corpus caught this
+case. The expected root geometry must not depend on whether any key is allowed.
+
+### A3/A6 research plan — Consumed attention offset base
+
+Draft plan: [offset base H=S*Z](../../research/cqis-bounds/ATTENTION-BASE.md)
+joins the actual four-byte probability sum to a complete scalar range and
+existing limb-product verifier. Its paired input must equal verified Z bytes
+and exact configured S bytes, even at Z=0. The product's actual output extends
+to an eight-byte H root. No parent challenge or whole-field product substitutes
+for complete consumption. Tests must cover valid changed sources, a changed
+zero-hidden S and H+p aliases. Signed O-H, normalization, full ownership and
+all native/private criteria remain open; no Accepted role or cut changes.
+
+### A3/A6 research plan — Canonical signed attention sums
+
+Draft plan: [actual signed O-H](../../research/cqis-bounds/ATTENTION-SIGN.md)
+consumes the weighted-offset and scalar-base roots with complete magnitude,
+sign, predecessor and signed-carry ranges. Eight bounded byte columns bind
+the difference; an actual magnitude-byte sum excludes negative zero. All12
+parent originals remain consumed, including the actual H broadcast and a
+zero-hidden sign. Test aliases, compensation, source joins and carry boundaries
+before implementation. Block rounding, normalization, native/private inference
+and source ownership remain required; no Accepted cut or profile changes.
+
+### A3/A6 research plan — Consumed attention block rounding
+
+Draft plan: [block rounding](../../research/cqis-bounds/ATTENTION-BLOCK-ROUNDING.md)
+retains one actual magnitude root per absolute block while batching dense byte
+columns. Complete M/q/r/carry ranges enforce the configured half-away rounding,
+including shifts through62 and compact zero quotients. Static whole-side bounds
+exclude discarded high products; strict r<D and all eight originals remain
+required. Test source joins, aliases, missing bias and metadata replay before
+implementation. Signed block totals and restored normalization units remain
+separate obligations. No Accepted role, cut, profile or production credit changes.
+
+### A3/A6 research plan — Consumed signed block totals
+
+Draft plan: [signed block totals](../../research/cqis-bounds/ATTENTION-BLOCK-SUM.md)
+consumes each actual block-sign root and the dense rounded-quotient root before
+one degree-two A1 with channel batching. Static G=Bmax*qmax bounds the output
+offset and excludes whole-field aliases. Both original sources remain consumed
+when q=0, including a negative raw sign. Tests must reject channel compensation,
+source substitutions and metadata replay. Total sign, global probability sum,
+restored normalization units and full ownership remain separate requirements.
+No Accepted cut, profile or production criterion changes.
+
+### A3/A6 research plan — Canonical accumulated block sign
+
+Draft plan: [accumulated block sign](../../research/cqis-bounds/ATTENTION-BLOCK-TOTAL-SIGN.md)
+consumes the actual U=T+G root with complete U/M/b/g ranges. Static G<2^25
+permits faithful small-field sign and canonical-zero A3s, including G=0.
+All seven originals and full external byte planes remain bound. Tests must
+reject negative zero, relaxed-cap aliases and valid total substitutions.
+Global probability sum, normalization units and complete ownership remain
+required. No Accepted role, cut, profile or original criterion changes.
+
+### A3/A6 research plan — Eight-byte global probability aggregation
+
+Draft scope: [global probability sum](../../research/cqis-bounds/ATTENTION-GLOBAL-PROBABILITY-SUM.md).
+Prove the sum of actual four-byte block totals with complete source ranges
+and the existing limb product with exact coefficient-one joins. Block caps
+use absolute positions and the short final length; the eight-byte result can
+reach 2^34. No whole-field global equality or new challenge is introduced.
+Returned metadata-bound composition states do not establish key membership.
+Shared global attainment, positive Z, normalization units, native/private
+source ownership and all original inference criteria remain required.
+
+### A3/A6 research plan — Positive scaled attention denominator
+
+Draft scope: [positive denominator](../../research/cqis-bounds/ATTENTION-DENOMINATOR.md).
+A complete ranged gap and limb sum prove Q<=Z<=LQ on the actual eight-byte
+probability root. A second complete limb product binds D=Z times the expected
+unit factor. Exact mode reaches D=2^64, requiring a sixteen-byte external
+denominator representation. No whole-field sum equality or wrapper challenge
+is introduced. Shared global attainment, numerator scaling, signed rounding,
+source ownership and all original inference criteria remain required.
+
+### A3/A6 research plan — Scaled attention numerator
+
+Draft scope: [scaled numerator](../../research/cqis-bounds/ATTENTION-NUMERATOR.md).
+Complete source/output ranges and sixteen faithful byte columns prove the
+configured power-of-two shift. Two fixed channel groups preserve the full
+16384-channel domain when compact outputs require sixteen bytes. Four carry
+ranges and all four actual originals remain consumed, including zero bounds
+and shifts up to 92. No range capacity, Accepted cut or profile changes.
+Signed division, source ownership and all original criteria remain required.
+
+### A3/A6 research plan — Doubled attention denominator
+
+Draft scope: [doubled denominator](../../research/cqis-bounds/ATTENTION-DOUBLED-DENOMINATOR.md).
+One complete limb product binds 2D to the actual sixteen-byte D source and
+exact coefficient two. Full output planes preserve 2D=2^65; all original
+operand and public power claims remain consumed. No wrapper challenge is
+added. Positivity requires the actual positive-denominator source proof.
+Strict remainder, signed division, ownership and original criteria remain.
+
+### A3/A6 research plan — Biased attention numerator
+
+Draft scope: [biased numerator](../../research/cqis-bounds/ATTENTION-BIASED-NUMERATOR.md).
+Complete whole ranges and sixteen faithful byte columns bind W=2U+D to
+actual scaled magnitudes and the shared denominator. Fixed channel groups
+preserve all 16384 channels, with explicit zero caps in ragged half-domains.
+Five actual originals consume the source/output, denominator broadcast and
+carry views. Positivity and scaled-magnitude provenance require their complete
+source proofs. Strict remainder, signed output and original criteria remain.
+
+### A3/A6 research plan — Attention quotient product
+
+Draft scope: [quotient product](../../research/cqis-bounds/ATTENTION-QUOTIENT-PRODUCT.md).
+Complete q/D/product ranges and sixteen byte columns bind Qp=q*D. Both
+carry bytes and seven actual originals remain consumed. Fixed output groups
+preserve every channel count through 16384; the maximum product reaches
+2^79. Static independent column sides are bounded by 130815<p/2. The
+actual positive denominator and strict division/remainder relations remain
+required; bounded q alone does not prove correct rounding or ownership.
+
+### A3/A6 research plan — Strict attention normalization division
+
+The [division scope](../../research/cqis-bounds/ATTENTION-DIVISION.md)
+composes complete Qp=qD, W=2U+D and D2=2D children on the same D root.
+Complete remainder/gap ranges and two faithful byte-column A3s bind
+W=2Qp+R and R+g+1=D2 across all channels. All ten actual originals and
+inherited consumers remain mandatory. Static sides are bounded by 767/511;
+full roots, namespaces and exact losses precede code. Signed output, actual
+source ownership and native/private inference remain required. Accepted
+semantics, production cuts and original task criteria are unchanged.
+
+### A3/A6 research plan — Signed attention normalization output
+
+The [signed output scope](../../research/cqis-bounds/ATTENTION-SIGNED-OUTPUT.md)
+reuses complete int16 signed-source proofs with the actual rounded-magnitude
+root and a complete Boolean input-sign range. One faithful degree-two A3
+consumes q, input sign and canonical output sign, including all zero-hidden
+originals. Negative inputs may round to zero; positive 32768 must reject.
+Canonical sign, scaled-numerator and strict-division source chains must join
+on the same roots in both accumulation modes. Configured conversion and
+complete upstream/native/private ownership remain open; Accepted text and
+production cuts are unchanged.
+
+### A3/A6 research plan — Global attention offset base
+
+The [global base scope](../../research/cqis-bounds/ATTENTION-GLOBAL-BASE.md)
+binds H=S*Z on the full eight-byte Z used by exact normalization. One complete
+scalar limb product retains all whole ranges, packing, carry/output ranges
+and actual/public claims. Every configured factor byte is checked, including
+at Z=0. Both external roots preserve high bytes through Z=2^34 and H<2^50.
+No wrapper challenge is introduced. Complete global probability, positive
+denominator and raw-sign joins precede normalization composition. Accepted
+semantics, production cuts and original criteria remain unchanged.
+
+### A3/A6 research plan — Complete conditional attention normalization
+
+The [normalization scope](../../research/cqis-bounds/ATTENTION-NORMALIZATION-CONSUMER.md)
+requires six complete children in exact mode and five in block mode. Every
+shared source uses the same expected root; exact global H=S*Z joins the Z
+used by the positive denominator and the H used by canonical raw sign.
+The wrapper adds no challenge or loss and preserves each child's account.
+Negative controls must replace valid children while preserving zero outputs.
+Full source ownership and configured output conversion remain separate.
+Accepted semantics, cuts and original task criteria remain unchanged.
+
+### A3/A6/A8 research plan — Complete configured row capacity
+
+The [row-capacity scope](../../research/cqis-bounds/ROW-CONVERSION-CAPACITY.md)
+raises only adapter guards to admit 16384 complete row entries. Existing
+signed-source and range limits already contain every nested byte domain.
+All maximum/scale/rounding consumers, transcripts and dimension-dependent
+accounts remain unchanged; legacy digests and full-size proofs are required.
+Head assembly and one conversion over the complete attention output row
+remain separate obligations. Accepted semantics and production cuts do not change.
+
+### A3/A6/A8 research plan — Head assembly and complete output conversion
+
+The [output conversion scope](../../research/cqis-bounds/ATTENTION-OUTPUT-CONVERSION.md)
+requires every complete head normalization proof, then gathers actual int16
+output bytes in head order into one complete configured row. Its derived
+source root feeds the existing complete dynamic/static row-code consumer.
+The wrapper adds no challenge and retains all child losses and originals.
+Actual key/value/GQA/model ownership and O-projection remain separate;
+Accepted semantics, cuts and original task criteria do not change.
+
+### A3/A6 research plan — Complete global attention offset aggregation
+
+The [global offset scope](../../research/cqis-bounds/ATTENTION-GLOBAL-OFFSET.md)
+retains every configured block through L=1048576,w=16384 in both modes.
+Complete block/output/carry ranges feed faithful byte-column equations.
+A fixed byte/channel projection and small block-domain A1 preserve separate
+losses and consume actual reauthenticated source projections. Canonical
+stream records and EOF bound retained parent data without narrowing the
+configured domain. Full-size proofs, resource evidence and upstream source
+joins remain required. Accepted semantics and production cuts are unchanged.
+
+### A3/A6/A8 research plan — Global attention sources through configured output
+
+The [global composition scope](../../research/cqis-bounds/ATTENTION-GLOBAL-COMPOSITION.md)
+requires all configured block offset/probability sources per head, complete
+global aggregation and the existing complete head-normalization/output-row
+consumer on identical O/Z roots. Canonical stream order and both child and
+outer EOF remain mandatory. No wrapper challenge or loss is introduced;
+every child account and original source consumer remains. Actual per-block
+and model ownership remain open. Accepted semantics and cuts are unchanged.
+
+### A3/A6 research plan — Complete weighted attention block sources
+
+The [block-offset scope](../../research/cqis-bounds/ATTENTION-BLOCK-OFFSET.md)
+requires every canonical block row and all channels through 1024x16384.
+Complete streamed source ranges reconstruct the same flat four-plane value
+root. One degree-two A1 consumes both actual source projections after all
+roots and child states; every carry plane remains ranged. This is revealing
+research, with actual value/probability preparation and full composition still
+required. Accepted cuts, semantics and original task criteria are unchanged.

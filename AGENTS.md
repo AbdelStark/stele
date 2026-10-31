@@ -44,10 +44,16 @@ legibility are co‑equal. A fast prover that admits one false statement is wort
 1. Claim a task: set `status: in_progress` in `graph.yaml` with your agent id and a branch name `task/<id>-<slug>`.
 2. Read the task’s `rfc` sections and `skill`. Read the acceptance criteria *before* writing code.
 3. Write the negative controls and tests first when the task touches a binding or a reduction.
-4. Implement. Keep PRs under ~800 changed lines; split otherwise.
+4. Implement one task at a time. Validate and merge its PR before starting the next task.
+   Keep new changes under ~800 lines where practical; split sequentially, never into parallel PR stacks.
+   The owner-directed E0-06 consolidation is the one-time exception for existing pending work.
+   Send implementation changes to main through the validated PR; never push them directly.
+   Before merging, verify that the passing PR run covers the current main base and intended merge tree.
 5. Run the gates: `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test --workspace`,
    `scripts/gates/digest.sh` (reference digests), `scripts/gates/negative-controls.sh`, `scripts/gates/parity.sh` (if GPU touched),
    `scripts/gates/soundness-accounting.sh` (if any challenge/transcript change).
+   CI may use `scripts/gates/native.sh` to run the digest/control/accounting union once.
+   Exhaustive research and copied-source mutation campaigns follow `agents/context/research-ci.md`.
 6. Fill the PR template (`agents/templates/pr.md`). State which cost‑model terms moved and by how much, with a bench link.
 7. Request review by the `soundness-auditor` skill for anything under `crates/stele-{sumcheck,gkr,lookup,pcs,hash,verifier}`.
 8. On merge: set `status: done`, append an ADR if a decision was made, update `docs/cost-model.md` if a constant moved.

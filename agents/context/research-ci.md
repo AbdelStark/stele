@@ -1,49 +1,52 @@
-# Research CI
+# CI execution policy
 
-RFC-0020 §5 requires the repository gates to reject failed checks. E5-03 adds
-full-table and range consumers to a serial job that already approaches the
-GitHub-hosted [six-hour job limit](https://docs.github.com/en/enterprise-cloud%40latest/actions/reference/limits).
-Splitting execution must preserve the complete check inventory and fail closed.
+Required PR checks focus on implemented native behavior. CI runs on PR events,
+including readiness transitions, and does not repeat the same checks after merge.
+Before merging, compare the tested PR merge tree with the current main base;
+update and revalidate if that base changed. Direct implementation pushes to main
+are forbidden by the repository workflow. This is currently a procedural rule;
+GitHub branch protection is not configured.
 
-Before implementation, the migration requirements are:
+ A ready PR runs format,
+Clippy, workspace and example tests, dependency policy, independent digests, the
+actual negative-control catalogue, soundness accounting, and repository checks.
+`scripts/gates/native.sh` executes the union of digest/control/accounting
+validators once. Each standalone gate remains complete.
 
-- Preserve all 109 research/harness/download commands from main at
-  `b6560ce508cae728931419433ad9662281afe233`, including every argument,
-  pinned checkpoint revision and quoted RUNNER_TEMP path.
-- Keep download/consumer sequences in one group and in their existing order.
-- Retain the native gates, exact upstream Poseidon check, SIMD throughput and
-  GPU scope logic. Pin the same Rust/Python/uv setup for research jobs.
-- Keep `gates` as the required aggregate check. It must fail for failure,
-  cancellation, skipping or missing results in planning, native or research jobs.
-- Generate the complete research matrix from the inventory, reject empty or
-  duplicate entries, and bound job concurrency without cancelling other groups
-  when one fails. A failing command stops its group and fails the aggregate.
+Table parity runs when field, polynomial, SIMD or CQIS code changes, including
+its test oracle. Dependency and CI routing changes also select it.
+The full RFC-0021 corpus is partitioned into 28 case/field jobs, each retaining
+its original seed and 10,000 points. No-argument local execution still runs all
+280,000 points. A failed or missing shard fails the aggregate.
 
-The original sorted command inventory has SHA-256
-`951c0646ac98a6267f8e8d02d2dee672c993b3857ae68607b325c02553e10eb2`.
-Tests must verify this independent migration snapshot, real shell failure and
-environment behavior, command ordering, and aggregate success/failure states.
-This changes CI orchestration only; protocol behavior, soundness terms,
-production controls and model weight passes are unchanged.
+Research, harness and formal changes select every normal research group in
+`scripts/research-checks.json`. Research runner, inventory, workflow and dependency changes do so as well.
+Downloads stay ordered with their consumers. Each command retains shell error
+and pipeline failure propagation. Native-only changes use their independent
+reference checks in the native gates; review must add any affected research
+campaign that a new native contract requires.
 
-`scripts/research-checks.json` now assigns those commands to eleven groups.
-`scripts/research_ci.py` validates the inventory, emits the matrix, and runs each
-group in order with Bash error and pipeline failure propagation. The workflow
-runs at most four research groups concurrently. The required `gates` job checks
-the results of planning, native checks and the complete research matrix.
+The manual `exhaustive` workflow retains full-size research experiments in
+`scripts/research-full-checks.json`, isolated gate mutations, upstream Poseidon2
+regeneration and SIMD throughput ledgers. Run a relevant full-size experiment
+before claiming its Draft task or resource criterion complete. Moving an
+experiment out of the required merge path supplies no evidence for it. Existing
+original proof processes and their source-qualified results remain valid only
+for their recorded source and scope.
 
-Local migration tests preserve the command digest, exercise real shell failure,
-check inherited paths containing spaces, and reject every incomplete combination
-of the three prerequisite results. A structural comparison against the original
-workflow preserves native steps, setup pins and the other jobs exactly, with
-scope detection moved to `plan`. These checks establish orchestration behavior;
-they do not measure prover performance or predict hosted execution time.
+Quick script tests use `python3 scripts/ci_tests.py`. Full local tooling tests
+remain available through `python3 -m unittest discover -s scripts/tests -v`.
+The removed positive all-gates regression duplicated the real native job;
+all copied-source rejection tests remain in the exhaustive workflow.
 
-To add a research check, add its exact command to the inventory and explicitly
-update the tested count and digest. Keep fixture downloads with their consumers.
-Split heavy groups when necessary; every resulting group remains mandatory.
+The required `gates` job rejects failed, cancelled, missing or unexpectedly
+skipped checks. A scoped check may be skipped only when a successful plan
+explicitly excludes it. Draft runs never provide merge evidence. GPU changes
+still require the actual GPU runner. Dependency/build caches store no pass
+receipts, and every selected check executes again.
 
-All nine targeted CI tests and the seven real algebra commands passed.
-All required local repository gates passed. The full scripts test suite is
-still running; hosted validation remains pending. Full proving,
-native/private inference and the original E5-03 acceptance criteria remain open.
+E0-06 replaces the former policy of making every accumulated research campaign
+mandatory on every PR. The integration retains all published source histories
+and the complete inherited command union, including local committed research.
+No protocol behavior, soundness term, cost-model constant, weight pass or native
+sample count changes with this scheduling decision.

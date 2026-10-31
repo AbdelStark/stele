@@ -64,7 +64,7 @@ def statement(p,roots,d):
 
 def commit(identity,payloads,width):
     tree = merkle.Tree(0,identity,len(payloads),width)
-    return merkle.build(tree,payloads)[-1][0]
+    return merkle.root(tree,payloads)
 
 
 def source_roots(p,xs):

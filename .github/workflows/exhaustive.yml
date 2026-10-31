@@ -1,0 +1,95 @@
+name: exhaustive
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      research: ${{ steps.research.outputs.matrix }}
+      mutants: ${{ steps.mutants.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: research
+        run: python3 scripts/research_ci.py --full --matrix >> "$GITHUB_OUTPUT"
+      - id: mutants
+        run: python3 scripts/ci_tests.py --mutant-matrix >> "$GITHUB_OUTPUT"
+  research-full:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.research) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: true
+      - run: python3 scripts/research_ci.py --full --group "${{ matrix.group }}"
+  gate-mutations:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.plan.outputs.mutants) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: true
+      - run: cargo fetch --locked
+      - run: python3 -m unittest -v "${{ matrix.test }}"
+        env:
+          PYTHONPATH: scripts/tests
+  poseidon2-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.95.0
+      - name: Regenerate pinned upstream Poseidon2 vectors
+        run: |
+          cargo +1.95.0 run --manifest-path vendor-ref/poseidon2-m31/Cargo.toml --example vectors --locked > "$RUNNER_TEMP/poseidon2.jsonl"
+          cmp research/poseidon2/reference.jsonl "$RUNNER_TEMP/poseidon2.jsonl"
+  simd-throughput:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: cargo fetch --locked
+      - name: Native parity and throughput ledger
+        env:
+          STELE_REQUIRE_SIMD: avx2
+        run: python3 bench/simd_ops.py "$RUNNER_TEMP/simd-ops.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simd-throughput
+          path: ${{ runner.temp }}/simd-ops.json
+          if-no-files-found: error

@@ -12,9 +12,11 @@ or bounds are derived from supplied values instead of expected norm metadata.
 
 Expected metadata is the complete norm Spec(d,F,G,E,en,ed). This consumer
 retains both fractional-bit domains through30, including G>14; gated-product
-scale semantics cannot replace it. The existing range adapter limits4N carry
-words to4096, so this prototype admits d<=1024. The original d<=16384 remains
-required. Neither shared range capacity nor Accepted contracts change here.
+scale semantics cannot replace it. The [capacity continuation](RANGE-CAPACITY.md)
+extends the shared range adapter to admit the full d<=16384 domain while
+retaining its maximum byte/lookup domain. Its full-row proof checks remain
+separate from the initial1024-element evidence recorded below. Accepted
+contracts are unchanged.
 
 Two complete signed16 source consumers supply canonical raw bytes, magnitudes
 and signs. One whole unsigned range bounds xy<=2^30 using four byte planes.

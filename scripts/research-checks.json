@@ -4,9 +4,13 @@
     "python3 research/poseidon2/check_poseidon2.py",
     "uv run --locked --script research/transcript/check_transcript.py",
     "uv run --locked --script research/merkle/check_merkle.py",
+    "uv run --locked --script research/merkle-oracle/check_lifting.py",
+    "python3 research/merkle-oracle/check_native_policy.py",
     "uv run --locked --script research/sumcheck/check_sumcheck.py",
     "uv run --locked --script research/batching/check_batching.py",
-    "uv run --locked --script research/zerocheck/check_zerocheck.py"
+    "uv run --locked --script research/zerocheck/check_zerocheck.py",
+    "uv run --locked --script research/merkle-oracle/check_field_wire.py",
+    "uv run --locked --script research/merkle/check_streaming.py --corpus --proofs"
   ],
   "cqis-definitions": [
     "python3 research/cqis-rounding/check_rounding.py",
@@ -165,5 +169,158 @@
   ],
   "cqis-norm-xy": [
     "uv run --locked --script research/cqis-bounds/check_norm_xy.py"
+  ],
+  "cqis-range-capacity": [
+    "uv run --locked --script research/cqis-bounds/check_range_capacity.py --shapes"
+  ],
+  "cqis-norm-product": [
+    "uv run --locked --script research/cqis-bounds/check_norm_product.py --corpus --honest --controls --boundaries --composition --offset-bound"
+  ],
+  "cqis-norm-sign": [
+    "uv run --locked --script research/cqis-bounds/check_norm_sign.py --corpus --honest --controls --boundaries --composition"
+  ],
+  "cqis-norm-statistic-full": [
+    "uv run --locked --script research/cqis-bounds/check_norm_statistic_full.py --corpus --honest --controls --boundaries --composition --tails"
+  ],
+  "cqis-norm-quotient-product": [
+    "uv run --locked --script research/cqis-bounds/check_norm_quotient_product.py --corpus --honest --controls --boundaries --composition --middle"
+  ],
+  "cqis-norm-bias": [
+    "uv run --locked --script research/cqis-bounds/check_norm_bias.py --corpus --honest --controls --boundaries --composition"
+  ],
+  "cqis-norm-division": [
+    "uv run --locked --script research/cqis-bounds/check_norm_division.py --corpus --honest --controls --boundaries --composition --aliases"
+  ],
+  "cqis-norm-left": [
+    "uv run --locked --script research/cqis-bounds/check_norm_left.py --corpus --honest --controls --boundaries --composition"
+  ],
+  "cqis-norm-signed-output": [
+    "uv run --locked --script research/cqis-bounds/check_norm_signed_output.py --corpus --honest --controls --zeros --boundaries --composition"
+  ],
+  "cqis-norm-configured-output": [
+    "uv run --locked --script research/cqis-bounds/check_norm_configured_output.py --corpus --honest --controls --zeros"
+  ],
+  "cqis-norm-composition": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --corpus --controls --zero-exponent"
+  ],
+  "cqis-norm-composition-4r1": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --honest4r1"
+  ],
+  "cqis-norm-composition-4r2": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --honest4r2"
+  ],
+  "cqis-norm-composition-8r1": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --honest8r1"
+  ],
+  "cqis-norm-composition-8r2": [
+    "uv run --locked --script research/cqis-bounds/check_norm_composition.py --honest8r2"
+  ],
+  "cqis-residual-aligned": [
+    "uv run --locked --script research/cqis-bounds/check_residual_aligned.py --corpus --controls --boundaries --honest --no-carry"
+  ],
+  "cqis-residual-sign": [
+    "uv run --locked --script research/cqis-bounds/check_residual_sign.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-residual-rounding": [
+    "uv run --locked --script research/cqis-bounds/check_residual_rounding.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-residual-composition": [
+    "uv run --locked --script research/cqis-bounds/check_residual_composition.py --corpus --controls --zeros --boundaries --honest"
+  ],
+  "cqis-rotary-consumer": [
+    "uv run --locked --script research/cqis-bounds/check_rotary_consumer.py --corpus --controls --originals --boundaries --honest"
+  ],
+  "cqis-attention-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_maximum.py --corpus --controls --originals --boundaries --honest"
+  ],
+  "cqis-attention-index": [
+    "uv run --locked --script research/cqis-bounds/check_attention_exp_index.py --corpus --controls --originals --boundaries --composition --honest"
+  ],
+  "cqis-attention-exp": [
+    "uv run --locked --script research/cqis-bounds/check_attention_exp.py --corpus --controls --originals --boundaries --tables --branches --arithmetic --composition --honest"
+  ],
+  "cqis-attention-probability-sum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_probability_sum.py --corpus --controls --originals --boundaries --composition --honest"
+  ],
+  "cqis-attention-values": [
+    "uv run --locked --script research/cqis-bounds/check_attention_values.py --corpus --controls --originals --boundaries --edge-controls --composition --honest"
+  ],
+  "cqis-attention-offset-sum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_offset_sum.py --corpus --controls --originals --boundaries --composition --honest"
+  ],
+  "cqis-attention-base": [
+    "uv run --locked --script research/cqis-bounds/check_attention_base.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-sign": [
+    "uv run --locked --script research/cqis-bounds/check_attention_sign.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-block-rounding": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_rounding.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-block-sum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_sum.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-block-total-sign": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_total_sign.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-global-probability-sum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_probability_sum.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-denominator": [
+    "uv run --locked --script research/cqis-bounds/check_attention_denominator.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-numerator": [
+    "uv run --locked --script research/cqis-bounds/check_attention_numerator.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-doubled-denominator": [
+    "uv run --locked --script research/cqis-bounds/check_attention_doubled_denominator.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-biased-numerator": [
+    "uv run --locked --script research/cqis-bounds/check_attention_biased_numerator.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-quotient-product": [
+    "uv run --locked --script research/cqis-bounds/check_attention_quotient_product.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-division": [
+    "uv run --locked --script research/cqis-bounds/check_attention_division.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-signed-output": [
+    "uv run --locked --script research/cqis-bounds/check_attention_signed_output.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-global-base": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_base.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-normalization": [
+    "uv run --locked --script research/cqis-bounds/check_attention_normalization.py --corpus --controls --boundaries --composition --honest"
+  ],
+  "reference-field": [
+    "uv run --locked --script research/sumcheck/check_field.py --vectors --proofs"
+  ],
+  "cqis-row-conversion-capacity": [
+    "uv run --locked --script research/cqis-bounds/check_row_conversion_capacity.py --shapes --honest"
+  ],
+  "cqis-attention-global-composition": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_composition.py --corpus --controls --boundaries --edges --honest"
+  ],
+  "cqis-attention-global-maximum": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_maximum.py --corpus --shapes --controls --boundaries --honest --projections --replay --composition --domain"
+  ],
+  "cqis-attention-global-offset": [
+    "uv run --locked --script research/cqis-bounds/check_attention_global_offset.py --corpus --controls --boundaries --edges --honest"
+  ],
+  "cqis-attention-output-conversion": [
+    "uv run --locked --script research/cqis-bounds/check_attention_output_conversion.py --corpus --controls --boundaries --honest"
+  ],
+  "cqis-attention-block-offset": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_offset.py --corpus --shapes --projections --controls --boundaries --composition --honest"
+  ],
+  "cqis-attention-block-values": [
+    "uv run --locked --script research/cqis-bounds/check_attention_block_values.py --shapes --corpus --controls --boundaries --honest --originals --predicates --zero-predicate --projections --composition"
+  ],
+  "cqis-attention-spool-replay": [
+    "uv run --locked --script research/cqis-bounds/check_attention_spool_replay.py --controls --honest"
+  ],
+  "cqis-attention-value-projection": [
+    "uv run --locked --script research/cqis-bounds/check_attention_value_projection.py --corpus"
   ]
 }

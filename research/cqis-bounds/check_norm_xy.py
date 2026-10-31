@@ -43,9 +43,9 @@ def corpus():
         assert all(0<=x<=cap for x,cap in zip(carry,v['carry'].caps));assert r.witness(v['output'],w['output'])[0]==out
         assert v['cert']['carry_caps']==(0,254,255,64,0) and max(v['cert']['lhs']+v['cert']['rhs'])==65535
         digest.update(v['raw']+bytes(out)+bytes(carry));cells+=4*n
-    p=spec(1024,(1<<44)-1,2);v=c.derive(p,8);assert v['base']+(1<<18)==(1<<63)+(1<<62)
+    p=spec(16384,(1<<44)-1,2);v=c.derive(p,8);assert v['base']+(1<<18)==(1<<63)+(1<<62)
     for bad in (replace(p,identity=1<<44),replace(p,repetitions=True),replace(p,left=p.output),replace(p,output=v['base']),replace(p,schema=replace(p.schema,G=True))):rejects('Spec',lambda:c.derive(bad,4))
-    rejects('Capacity',lambda:c.derive(spec(1025),4));rejects('Spec',lambda:c.derive(p,True))
+    rejects('Spec',lambda:c.derive(spec(16385),4));rejects('Spec',lambda:c.derive(p,True))
     for xs,ys in (([False]*3,[0]*3),([32768]*3,[0]*3),([0],[0]*3)):rejects('Input',lambda:c.witness(spec(),xs,ys))
     assert digest.hexdigest()=='f873271b7a0ecfacad1ccbef6c15966414806db0e4958a99aaa44a2039df17a4'
     print(json.dumps(dict(seed=2714,cases=10000,column_cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
