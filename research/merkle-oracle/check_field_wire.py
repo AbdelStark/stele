@@ -138,11 +138,13 @@ def matches_reference_transcript():
 
 
 def rejects_unused_original():
+    vectors = []
     for degree in (4, 8):
         matrices = [[[2, 3], [5, 7]], [[11, 13], [17, 19]]]
         pairs = [commit(matrix, 1, 1, 1, degree, identity)
                  for matrix, identity in zip(matrices, (41, 42))]
-        certs = [verify_certificate(s, certify(s, w)) for s, w in pairs]
+        certificate_bytes = [certify(s, w) for s, w in pairs]
+        certs = [verify_certificate(s, proof) for (s, _), proof in zip(pairs, certificate_bytes)]
         tables = [[scalar(x, degree) for r in matrix for x in r] for matrix in matrices]
         instance = {'id': 71, 'm': 2, 'ids': [41, 42],
                     'terms': [(scalar(1, degree), [0])], 'sum': scalar(17, degree)}
@@ -174,21 +176,37 @@ def rejects_unused_original():
         # Otherwise its stale query paths reject before reaching the unused original.
         first = open_functional(reduction_only, 41, certs[0], pairs[0][1], a, b, changed['final'][0])
         rejects('ValueMismatch', lambda: verify(changed, candidate_openings=[first, openings[1]]))
+        verifier = verify(proof)
+        continuation = verifier.challenge()[0]
+        assert continuation == prover.challenge()[0]
+        # Every byte is compared by native generation and actual closed verification.
+        bundle = struct.pack('<QI', instance['id'], len(certs)) + b''.join(c.source.bytes()+c.identity for c in certs)
+        fields = [bundle, *certificate_bytes, sc.instance_bytes(instance, degree),
+                  *(sc.message(instance, n, values) for n, values in enumerate(proof['rounds'])),
+                  sc.message(instance, len(certs), proof['final']), *openings, continuation]
+        vectors.append('|'.join([str(degree), *(value.hex() for value in fields)]))
+    return ('\n'.join(vectors)+'\n').encode()
 
 
 if __name__ == '__main__':
     vectors = exercise()
     rejects_authenticated_bad_fields_and_rows()
     matches_reference_transcript()
-    rejects_unused_original()
+    adapter = rejects_unused_original()
     raw = ''.join(json.dumps(v, separators=(',', ':'))+'\n' for v in vectors).encode()
     target = Path(__file__).with_name('field-wire-vectors.jsonl')
+    adapter_target = Path(__file__).resolve().parents[2] / 'tests/negative-controls/fixtures/field-sources.txt'
     import sys
     if sys.argv[1:] == ['--write-vectors']:
         with target.open('xb') as output:
             output.write(raw)
+    elif sys.argv[1:] == ['--write-adapter-vectors']:
+        with adapter_target.open('xb') as output:
+            output.write(adapter)
+        assert target.read_bytes() == raw
     else:
         assert not sys.argv[1:] and target.read_bytes() == raw
+    assert adapter_target.read_bytes() == adapter, 'native closed A1 fixture drift'
     core = Path(__file__).resolve().parents[2] / 'crates/stele-pcs/tests/fixtures/field-wire.jsonl'
     assert core.read_bytes() == raw, 'native field-wire fixture drift'
     continuation = certificate_continuations(vectors)

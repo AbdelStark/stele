@@ -568,7 +568,7 @@ tasks:
   crate: stele-pcs
   status: in_progress
   agent: codex-root
-  branch: task/E4-03a-native-ci-scope
+  branch: task/E4-03a-a1-closure
   acceptance:
   - both-field native/Python certificate and opening byte parity
   - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation

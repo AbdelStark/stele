@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # Guard only crates that can introduce the corresponding proof obligations.
 SCOPES = {
     'digest': ('prover', 'proof'),
-    'negative-controls': ('verifier', 'reductions'),
+    'negative-controls': ('verifier',),
     'soundness-accounting': ('verifier',),
     'parity': ('gpu', 'kernels'),
 }
@@ -54,8 +54,50 @@ def bootstrap_guard(root, gate):
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
 
 
+def field_sources(root):
+    """The actual closed A1 consumer replaces only the reductions scaffold guard."""
+    crate = root / 'crates/stele-reductions'
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs'}
+    actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
+                    for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir')}
+    library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
+               '#![forbid(unsafe_code)]\n#![no_std]\n'
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+               'extern crate alloc;\nmod field_sources;\n'
+               'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n')
+    code = re.sub(r'//[^\n]*', '', (crate / 'src/field_sources.rs').read_text())
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
+            or manifest.get('dependencies') != dependencies
+            or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target', 'features'))
+            or 'build' in manifest.get('package', {})
+            or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
+                                ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
+                                ('fn', 'verify_field_sources')]
+            or len(declarations) != len(re.findall(r'\bpub\b', code))):
+        raise ValueError('reductions API not wired; only the reviewed closed A1 adapter admitted')
+    checks = [
+        (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
+         [f'test pcs_a1::{n} ... ok' for n in (
+             'accepts_qm31_closed_originals', 'accepts_om31_closed_originals',
+             'rejects_qm31_later_source_and_roster', 'rejects_om31_later_source_and_roster',
+             'matches_reference_closed_a1_bytes')]),
+        (['cargo', 'test', '-p', 'stele-negative-controls', '--test', 'nc-0609'],
+         ['test rejects_unused_original_final ... ok']),
+        (['cargo', 'test', '-p', 'stele-reductions', '--doc'],
+         ['compile fail ... ok']),
+    ]
+    for command, expected in checks:
+        result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+        if result.returncode or any(text not in result.stdout for text in expected):
+            raise ValueError(f'closed A1 consumer checks failed: {result.stdout} {result.stderr}')
+    print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
+
+
 def field_source_codec(root):
-    """A9 certificate/opening consumers; A1 closure and profiles remain guarded."""
+    """A9 certificate/opening consumers; complete profiles remain guarded."""
     crate = root / 'crates/stele-pcs'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs',
                'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
@@ -70,10 +112,11 @@ def field_source_codec(root):
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                'extern crate alloc;\nmod certificate;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\n'
                'pub use certificate::{verify_certificate, CertificateRecord, Failure, Usage, VerifiedCertificate};\n'
-               'pub use opening::{verify_opening, Functional, OpeningRecord};\n'
+               'pub use opening::{verify_opening, verify_point, Functional, OpeningRecord};\n'
                'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
                'pub use producer::CertificateFailure;\n'
-               'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n')
+               'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n'
+               'pub use stele_code::CodeField;\n')
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
     source = (crate / 'src/source.rs').read_text()
@@ -85,7 +128,7 @@ def field_source_codec(root):
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('struct', 'Source'),
         ('fn', 'new'), ('fn', 'bytes'), ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code'), ('fn', 'root'), ('fn', 'path_height'),
-        ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'),
+        ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'), ('fn', 'opening_frame_size'),
         ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'response_bytes'), ('fn', 'responses')]
     compact = lambda text: re.sub(r'\s+', '', text)
@@ -160,7 +203,7 @@ def field_source_codec(root):
     opening = re.sub(r'//[^\n]*', '', (crate / 'src/opening.rs').read_text())
     opening_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', opening)
     opening_closed = (opening_declarations == [
-        ('struct', 'Functional'), ('', 'id'), ('', 'a'), ('', 'b'), ('', 'value'),
+        ('struct', 'Functional'), ('', 'id'), ('', 'a'), ('', 'b'), ('', 'value'), ('fn', 'verify_point'),
         ('struct', 'OpeningRecord'), ('fn', 'certificate'), ('fn', 'id'), ('fn', 'queries'),
         ('fn', 'kind'), ('fn', 'opening'), ('fn', 'verify_opening')]
         and len(opening_declarations) == len(re.findall(r'\bpub\b', opening))
@@ -210,7 +253,7 @@ def field_source_codec(root):
                 r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
                 result.stdout, re.MULTILINE)) != ['certificate.rs', 'opening.rs', 'opening.rs', 'preparation.rs', 'source.rs']:
             raise ValueError('field source codec checks failed: missing compile-fail boundary')
-    print('gate PCS: native certificates/openings/continuations and all59 policies; no A1 or profile credit')
+    print('gate PCS: native certificates/openings/continuations and all59 policies; A1 checked separately; no profile credit')
 
 
 def fraction_reductions(root):
@@ -639,7 +682,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':
@@ -718,6 +761,7 @@ def main():
                 controls_layout(ROOT)
             if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 field_source_codec(ROOT)
+                field_sources(ROOT)
             for gate in (('digest', 'negative-controls', 'soundness-accounting')
                          if combined else (args.gate,)):
                 bootstrap_guard(ROOT, gate)

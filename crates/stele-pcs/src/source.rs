@@ -220,6 +220,16 @@ impl<K: ChallengeField> Source<K> {
         Ok(self.sizes(kind)?.2)
     }
 
+    /// Canonical functional frame size, including all coefficients, RFC-0010 A9 §4.
+    pub fn opening_frame_size(&self) -> Result<usize, Error> {
+        self.rows()
+            .checked_add(self.columns())
+            .and_then(|n| n.checked_add(1))
+            .and_then(|n| n.checked_mul(4 * K::DEGREE))
+            .and_then(|n| n.checked_add(8 + 105 + 32))
+            .ok_or(Error::Capacity)
+    }
+
     /// Parse exact wire shape and canonical row limbs without allocation.
     /// Responses remain unauthenticated: the actual consumer must check their paths
     /// before canonical column decoding. This result grants no verification credit.

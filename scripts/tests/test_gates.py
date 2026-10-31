@@ -36,6 +36,20 @@ class GateTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('not wired', result.stderr)
 
+    def test_rejects_unvalidated_a1_adapter_and_missing_parity(self):
+        source = self.root / 'crates/stele-reductions/src/lib.rs'
+        original = source.read_text()
+        source.write_text(original + '\npub fn unvalidated() {}\n')
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('reductions API not wired', result.stderr)
+        source.write_text(original)
+        tests = self.root / 'tests/negative-controls/src/pcs_a1.rs'
+        tests.write_text(tests.read_text().replace('fn matches_reference_closed_a1_bytes()', 'fn omitted_parity()'))
+        result = self.run_gate('soundness-accounting')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('closed A1 consumer checks failed', result.stderr)
+
     def test_rejects_public_coefficient_drift_and_missing_field_check(self):
         extra = self.root / 'crates/stele-gkr/src/stage.rs'
         extra.write_text('pub fn unvalidated() {}')

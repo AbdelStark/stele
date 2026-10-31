@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 25);
+    assert_eq!(entries.len(), 26);
     assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 8);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
@@ -14,6 +14,9 @@ fn accepts_the_fixed_registry() {
     assert_eq!(entries[17].loss, Some(LossLine::PcsTensor));
     assert_eq!(entries[19].loss, Some(LossLine::PcsQuery));
     assert_eq!(entries[23].loss, Some(LossLine::PcsQuery));
+    assert_eq!(AbsorbLabel::FieldSources.entry(), &entries[25]);
+    assert_eq!(entries[25].kind, LabelKind::Absorb);
+    assert_eq!(entries[25].loss, None);
 }
 #[test]
 fn rejects_duplicate_labels_across_every_kind() {

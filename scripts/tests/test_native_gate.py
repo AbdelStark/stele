@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location('native_gate', ROOT / 'scripts/gates/check.py')
 gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
-VALIDATORS = ('controls_layout', 'field_source_codec', 'bootstrap_guard', 'native_encoder',
+VALIDATORS = ('controls_layout', 'field_source_codec', 'field_sources', 'bootstrap_guard', 'native_encoder',
               'public_coefficients', 'transcript_registry', 'sumcheck_corpus', 'fraction_reductions',
               'small_strategy', 'small_corpus', 'batch_instances', 'batch_claims', 'batch_corpus',
               'zerocheck', 'zero_corpus', 'buffered_engine', 'streaming_strategy', 'file_source',

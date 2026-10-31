@@ -708,8 +708,7 @@ work. The native certificate producer now consumes the four certificate labels:
 CertificateWeight owns PCS_TENSOR (`2*ell*(e+1)/p^d`); CertificateColumn owns
 PCS_QUERY (`((N-e-1)/N)^q_c`). CertificateRow precedes all column draws and
 CertificateColumns binds every ordered response before continuation. The sampler
-retains full K ratchets and counts all rejected attempts. FieldSources
-remains absent until its actual consumer lands. These producer bytes and observations
+retains full K ratchets and counts all rejected attempts. FieldSources is now bound by the closed A1 adapter described below. These producer bytes and observations
 supply no accepting verifier, evaluated loss, proven flag, FS/H or profile.
 
 The [native hash-work counters](../../research/merkle-oracle/HASH-USAGE.md)
@@ -745,7 +744,19 @@ derived after omitting OpeningColumns, with the opening unchanged. NC-0600/0601/
 the actual opening consumer. Authentication precedes canonical field decoding even
 with zero weights. Failure reports cumulative transcript usage and local Merkle
 work without an opening record; shared transcript snapshots must not be summed.
-Complete resource ledgers and the A1 source adapter remain E4-03a obligations.
+The closed A1 adapter now preflights every original source/opening and the A1
+shape before absorbing FieldSources. It binds the complete ordered source and
+certificate-ID bundle before the actual A1 verifier. Each returned original
+claim, including unused and zero-coefficient inputs, reaches a point opening at
+the actual returned point in input order. NC-0609 changes one unused final;
+A1 itself accepts it, while that original's terminal opening rejects ValueMismatch.
+The result retains the actual A1 SC record, each distinct opening query term,
+and references to all original certificate obligations. FieldSources adds an
+absorb, not a challenge or algebraic loss family. Transcript usage includes the
+A1 draws once; local Merkle work includes prior openings and the failing path.
+Both fields match independent full wire bytes and a real continuation challenge.
+Complete resource ledgers, lifetime caps, Q12, privacy and profile admission
+remain separate obligations.
 
 The [range capacity continuation](../../research/cqis-bounds/RANGE-CAPACITY.md)
 admits at most65536 caps with padded N*B<=131072. It preserves2BN<=262144<p

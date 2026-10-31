@@ -10,6 +10,9 @@ pub mod fraction;
 pub mod fraction_transcript;
 #[doc(hidden)]
 pub mod pcs;
+#[doc(hidden)]
+pub mod pcs_a1;
+#[doc(hidden)]
 pub mod pcs_opening;
 #[doc(hidden)]
 pub mod pcs_opening_continuation;
@@ -32,6 +35,12 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 609,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: pcs_a1::run,
+    },
     catalog::RegisteredControl {
         id: 601,
         kind: catalog::ControlKind::Proof,
