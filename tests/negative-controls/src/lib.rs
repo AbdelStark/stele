@@ -10,6 +10,11 @@ pub mod fraction;
 pub mod fraction_transcript;
 #[doc(hidden)]
 pub mod pcs;
+pub mod pcs_opening;
+#[doc(hidden)]
+pub mod pcs_opening_continuation;
+#[doc(hidden)]
+pub mod pcs_opening_field;
 #[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
@@ -31,31 +36,52 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 601,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
-        run: || pcs::run(601),
+        run: || {
+            pcs::run(601)?;
+            pcs_opening::run(601)
+        },
     },
     catalog::RegisteredControl {
         id: 803,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
-        run: || pcs::run(803),
+        run: || {
+            pcs::run(803)?;
+            pcs_opening::run(803)
+        },
+    },
+    catalog::RegisteredControl {
+        id: 610,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: || pcs_opening::run(610),
     },
     catalog::RegisteredControl {
         id: 600,
         kind: catalog::ControlKind::Proof,
         expected_error: "ColumnMismatch",
-        run: || pcs::run(600),
+        run: || {
+            pcs::run(600)?;
+            pcs_opening::run(600)
+        },
     },
     catalog::RegisteredControl {
         id: 606,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
-        run: || pcs::run(606),
+        run: || {
+            pcs::run(606)?;
+            pcs_opening::run(606)
+        },
     },
     catalog::RegisteredControl {
         id: 607,
         kind: catalog::ControlKind::Proof,
         expected_error: "NoncanonicalField",
-        run: || pcs::run(607),
+        run: || {
+            pcs::run(607)?;
+            pcs_opening_field::run()
+        },
     },
     catalog::RegisteredControl {
         id: 608,
@@ -185,7 +211,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             sumcheck::run(802)?;
             batching::run(802)?;
             zerocheck::run(802)?;
-            fraction_transcript::run_continuation()
+            fraction_transcript::run_continuation()?;
+            pcs_opening_continuation::run()
         },
     },
     catalog::RegisteredControl {

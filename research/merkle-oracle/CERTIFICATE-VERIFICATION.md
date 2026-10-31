@@ -26,5 +26,5 @@ Actual standalone controls, each executing QM31 and OM31:
 
 Usage reports actual transcript, Merkle and ID hashes, including failures. It is
 hash-only; encoder work is not yet returned. Full resource/benchmark evidence,
-functional openings, the A1 adapter, lifetime composition, Q12, privacy and
+[functional opening resource reports](FUNCTIONAL-OPENING.md), the A1 adapter, lifetime composition, Q12, privacy and
 profiles remain open. No measured cost-model constant or weight-pass claim changes.

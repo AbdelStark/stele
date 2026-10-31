@@ -37,15 +37,21 @@ impl<K: ChallengeField> Transcript<K> {
     /// Draw one certificate index with replacement; preserve every full K ratchet.
     /// Invalid domains draw nothing. Any error aborts the enclosing proof attempt.
     pub fn certificate_column(&mut self, length: u64) -> Result<u64, Error> {
+        self.column(length, ChallengeLabel::CertificateColumn)
+    }
+    /// Draw one functional-opening index with replacement under its fixed label.
+    /// Invalid domains draw nothing; all sampling failures abort the whole attempt.
+    pub fn opening_column(&mut self, length: u64) -> Result<u64, Error> {
+        self.column(length, ChallengeLabel::OpeningColumn)
+    }
+    fn column(&mut self, length: u64, label: ChallengeLabel) -> Result<u64, Error> {
         let mut decoder = ColumnDecoder::new(length)?;
         loop {
             self.usage.add(HashUsage {
                 column_attempts: 1,
                 ..HashUsage::default()
             })?;
-            let encoded = self
-                .challenge(ChallengeLabel::CertificateColumn)?
-                .to_le_bytes();
+            let encoded = self.challenge(label)?.to_le_bytes();
             let bytes = encoded.as_ref();
             let first = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
             if let Some(index) = decoder.push(first)? {

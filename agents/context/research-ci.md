@@ -21,6 +21,10 @@ its original seed and 10,000 points. No-argument local execution still runs all
 
 Research, harness and formal changes select every normal research group in
 `scripts/research-checks.json`. Research runner, inventory, workflow and dependency changes do so as well.
+The only research-path exceptions are `research/merkle-oracle/check_field_wire.py`
+and its `.lock`: the mandatory native gate runs that locked byte oracle and rejects
+failure or missing output. Shared oracle modules and all other research paths
+retain normal selection. The research matrix uses the available runner concurrency.
 Downloads stay ordered with their consumers. Each command retains shell error
 and pipeline failure propagation. Native-only changes use their independent
 reference checks in the native gates; review must add any affected research

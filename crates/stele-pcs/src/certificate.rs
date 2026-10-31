@@ -10,12 +10,13 @@ use stele_hash::{
 /// Separate local observations; not adversarial caps or evaluated soundness losses.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct Usage {
-    /// All fresh certificate-transcript work, including rejected attempts.
+    /// Cumulative transcript work, including rejected attempts; never sum shared snapshots.
     pub transcript: HashUsage,
-    /// Actual Merkle and completed-proof ID hashing.
+    /// Only this call's Merkle and completed-proof ID hashing.
     pub non_transcript: HashUsage,
 }
-/// Abort with observations only; no transcript, proof record or handle survives.
+/// Abort with observations only; no result record or handle is returned.
+/// Discard the enclosing attempt, including any caller-owned transcript.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Failure {
     /// Original failure cause.

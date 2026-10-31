@@ -31,19 +31,20 @@
 | NC-0413 | selected representation | 0021 §6, 0008 A4 | change one selected representation or component role | `RepresentationMismatch` | todo |
 | NC-0414 | table data | 0021 §6, 0011 A2 | change one canonical table-data entry under the correct descriptor | `TableDataMismatch` | todo |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
-| NC-0600 | PCS | 0010 A9 | change one constant-codeword limb and rebuild authenticated responses | `ColumnMismatch` | done |
+| NC-0600 | PCS | 0010 A9 | change one certificate codeword limb or opening row value under zero b; rebuild dependent responses | `ColumnMismatch` | done |
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
-| NC-0606 | PCS | 0010 A9 | replace the expected root of an otherwise valid registration certificate | `RootMismatch` | done |
-| NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus as one field limb | `NoncanonicalField` | done |
+| NC-0606 | PCS | 0010 A9 | replace the expected certificate root or use a separately verified certificate for one unchanged opening | `RootMismatch` | done |
+| NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | todo |
+| NC-0610 | PCS | 0010 A9 §4 | change only the expected scalar under zero b; reject before column draws | `ValueMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3, 0008 A3, 0012 A1,A4,A5,A9 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal or ZeroFinal | `FinalEvaluationMismatch` | done |
-| NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow absorption | `RootMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3, 0008 A3, 0010 A9, 0012 A1,A4,A5,A9,A10 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal or OpeningColumns | `FinalEvaluationMismatch` | done |
+| NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |

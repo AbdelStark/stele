@@ -3,4 +3,5 @@
 fn rejects_nc_0606() {
     stele_negative_controls::pcs::run(606)
         .expect("native certificate must reject the stated tamper");
+    stele_negative_controls::pcs_opening::run(606).expect("native opening must reject");
 }
