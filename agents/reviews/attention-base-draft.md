@@ -54,3 +54,9 @@ Required repository gates remain queued.
 I tried to break it by replacing the product with an independently verified
 proof using S-1 at Z=0, and Product:SourceJoin rejected the unchanged-output
 substitution.
+
+CI integration retains all 147 inherited commands and native jobs. The new
+normal group covers corpus, controls, boundaries, source compositions and
+the matrix. An unconditional maximum scalar job is required by the aggregate
+gate. All 11 CI inventory tests passed; hosted checks and queued repository
+gates remain pending. Existing proof evidence is retained without reruns.

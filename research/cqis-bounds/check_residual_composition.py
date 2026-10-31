@@ -80,6 +80,7 @@ def honest(maximum=False):
             p=replace(spec(size,3210+count,reps),schema=c.residual.Spec(size,fl,fr,fo));xs=([0,1,-1,123,-123]*((size+4)//5))[:size];ys=([-1,1,-1,32767,-32768]*((size+4)//5))[:size]
             if size==1:xs=[-32768];ys=[0]
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,xs,ys,d);out=c.verify(p,c.expected_roots(p,xs,ys),proof,d);assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
+    if not maximum:assert digest.hexdigest()=='23986aa5daa8b4df1bcb9c21a31dd9189838505a2b5beb80ac0a0ee0d749dace'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
