@@ -130,6 +130,7 @@ def honest():
         for rows,width,E,mode in ((1,1,0,'exact'),(3,3,14,'exact'),(2,5,8,'block1024'),(3,1,7,'block1024')):
             p=spec(rows,width,8210+done,reps);p=replace(p,schema=replace(p.schema,exponent=E,accumulation=mode));v=c.derive(p,d);weights=[(0,1<<E,1)[j%3] for j in range(rows)];values=[(0,2*v['constants']['restored_max'],1)[j%3] for j in range(rows*width)]
             print('block offset start',done+1,d,reps,rows,width,flush=True);out=run(p,weights,values,d);digest.update(out['state']);done+=1;print('block offset passed',done,d,reps,flush=True)
+    assert (done,digest.hexdigest())==(16,'1da1bd32f22a2b5bd2ff3416e91f0cd6bc654ebd2b1a6afd27a8e38489e5a89e')
     print(json.dumps(dict(proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

@@ -52,3 +52,13 @@ zero, and WeightedSum:ClaimMismatch rejected both changes. Independently
 valid changed probability/value proofs also rejected at the pinned external
 root. Corrected boundary controls and the remaining proof evidence must
 complete before any recommendation to adopt this Draft consumer.
+
+The corrected boundary suite passed: genuine ranged O+p and O-p, compensated
+channels and other false sums rejected at WeightedSum:RoundSumMismatch.
+All mask/padding/carry controls rejected at their specified range checks.
+Complete probability/value proofs joined on identical roots for both value
+policies. Both fields passed grouped projection arithmetic and compact-root
+replay rejection. The complete sixteen-proof matrix passed all original-claim,
+receipt and draw assertions; its digest is frozen. The original maximum
+1024x16384 proof is running without a domain reduction. Full proofs, required
+repository gates, resource evidence and independent audit remain outstanding.

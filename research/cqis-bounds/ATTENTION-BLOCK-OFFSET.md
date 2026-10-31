@@ -97,3 +97,15 @@ root. The corrected fixture submits that invalid child directly to the
 verifier, targeting its range check; verifier code is unchanged. Corrected
 boundaries, complete source composition, the matrix and full-size proofs
 remain in validation. No independent audit or native coverage is claimed.
+
+Corrected boundary controls and both complete probability/restored-value joins
+passed. Both fields also passed independent 3x10923 grouped projection
+arithmetic and replay-tamper checks; those unit checks do not claim complete
+range-proof coverage. All sixteen complete field/repetition proofs then
+passed, including exact original claims, draw counts and accounts. The matrix
+digest is frozen:
+`1da1bd32f22a2b5bd2ff3416e91f0cd6bc654ebd2b1a6afd27a8e38489e5a89e`.
+The original maximum run started at `dfcf43f3b6803d6385d702f2ebd2ab2d722fd154`
+with 1024x16384 actual values and all 512 source groups. Ragged and tail runs
+follow in the same driver; required repository gates remain queued. These
+full-size proofs and independent resource evidence are not yet complete.
