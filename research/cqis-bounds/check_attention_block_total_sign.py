@@ -71,6 +71,7 @@ def honest(maximum=False):
         for width,length,E,mode,scale,drop in cases:
             blocks=tuple(range((length+1023)//1024)) if maximum else (0,);p=replace(spec(width,5610+done,reps),schema=c.bounds.Spec(length,width,7,E,mode,scale,drop),blocks=blocks);G=c.derive(p,d)['G'];offsets=[(0,G,2*G,max(0,G-1),min(2*G,G+1))[j%5] for j in range(width)]
             print('honest start',done+1,d,reps,width,length,drop,flush=True);proof,state=c.prove(p,offsets,d);out=c.verify(p,oracle(p,offsets)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,width,length,drop,flush=True)
+    if not maximum:assert (done,digest.hexdigest())==(16,'6ad91d56e515a63ac2ccab994cd9f5b5c6cca5ef517f6a70d0c328392b4ac595')
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

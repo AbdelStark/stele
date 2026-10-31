@@ -71,3 +71,7 @@ The independent corpus passed 329725 channels and 6660 zero-bound cases.
 Both complete block-sum source compositions passed, including valid changed
 aggregate rejection and upstream sign binding at rounded zero. Matrix,
 full-size proof and repository gates remain pending.
+
+The complete 16-proof matrix passed with all exact receipt, original-id and
+draw checks. Its transcript digest is frozen. Full-size evidence and the
+repository gate queue remain pending.
