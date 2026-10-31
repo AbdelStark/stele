@@ -97,3 +97,11 @@ product source commitment, before the external probability-root check. The
 test expected the later diagnostic. Only that assertion was corrected;
 verifier behavior is unchanged. The failed log remains recorded, the original
 corpus continues, and a corrected proof run is required.
+
+The original seed-2753 corpus completed successfully: 10000 cases, four
+capacity cases and one zero case. It accepted 5862 configured conversions
+and rejected 4143 overflows, covering 111178 output entries and 15701
+negative values rounded to zero. Frozen SHA-256:
+`b5fbec3f9e22d85e71634844d77a468255be026177abbe7dc0e244366aca270b`.
+Corrected complete controls, proof matrices, full-size proofs and repository
+gates remain under validation; the corpus is not proof-admission evidence.

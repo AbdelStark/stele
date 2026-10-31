@@ -67,6 +67,7 @@ def corpus():
         p=spec(mode,policy,h,width,20000);p=replace(p,schema=replace(p.schema,length=1<<20),output_scale=0 if policy=='dynamic' else 259);zs,totals=full_inputs(p);check(p,zs,totals)
     p=spec('exact','dynamic',3,2731,20001);check(p,[4096]*3,[[0]*2731 for _ in range(3)])
     assert accepted>1000 and rejected>100 and zeros>0
+    assert digest.hexdigest()=='b5fbec3f9e22d85e71634844d77a468255be026177abbe7dc0e244366aca270b'
     print(json.dumps(dict(seed=2753,cases=10000,capacity_cases=4,zero_cases=1,accepted=accepted,rejected=rejected,cells=cells,negative_zero_codes=zeros,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
