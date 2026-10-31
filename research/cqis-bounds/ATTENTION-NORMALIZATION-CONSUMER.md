@@ -96,3 +96,9 @@ rounded to zero and 1045 ties. NumPy integer arithmetic and complete byte
 roots matched. Frozen SHA-256:
 `a71a09a1eb6b5a66087ef5a4abe6d511fc07a6206e956ea951dad10f8fa6ff3b`.
 The corrected complete proof suite and queued full-size/gate runs continue.
+
+Mandatory CI now includes the five normal modes and separate 16384-channel
+exact/block jobs. Every child verifies fully in those jobs; none admits a
+precomputed receipt. The original corrected matrix is still running, with
+eleven of sixteen cases passed at CI integration. Full runs and required
+local gates retain their original queues. Hosted evidence remains pending.

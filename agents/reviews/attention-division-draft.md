@@ -73,3 +73,8 @@ value, the strict endpoint R=2D and a zero denominator could not pass both
 faithful byte relations. Complete scaled-numerator and positive-denominator
 sources retained their shared roots. Matrix, full proofs, repository gates
 and independent audit remain required.
+
+The CI continuation preserves every inherited job and all 33 native steps.
+Five normal modes and both full-width modes are required, with no optional
+result path. All 11 inventory/CLI/aggregate tests passed. This does not
+replace the original running matrix, full proofs, local gates or hosted CI.

@@ -137,6 +137,7 @@ def honest():
             for mode in ('dynamic','static'):
                 for kind in ('wide','gated'):
                     digest.update(run(mode,kind,65,d,repetitions));cases+=1
+    assert cases==16 and digest.hexdigest()=='49bfeb69d3c8312dd2f4b3e11ccb740906bb31d9f84eec1eccdd759103dcae82'
     print(json.dumps(dict(proofs=cases,maximum=False,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

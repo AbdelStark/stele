@@ -72,5 +72,11 @@ The independent corpus subsequently passed all 10000 random cases plus four
 capacity and one tie case. All 197531 checked channels matched NumPy integer
 normalization and full external byte roots; overflow rejection and signed
 zero behavior matched. Its digest is frozen. The corrected proof suite has
-passed the exact-mode substitution controls and is still running; complete
-block-mode, matrix, full-size and repository gate evidence remains pending.
+passed both modes' root, valid-child substitution and mode/sentinel controls.
+Boundary/context checks and both complete global-Z source joins also passed.
+Eleven of sixteen matrix cases have passed; matrix, full-size and repository
+gate evidence remain incomplete. CI requires all five normal modes and both
+full-width proofs, preserving all inherited jobs and original local runs.
+
+I tried to break it by substituting separately valid children that preserve
+a zero output, and the control for each shared-source binding rejected it.

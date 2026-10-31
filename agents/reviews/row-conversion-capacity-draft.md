@@ -44,4 +44,13 @@ The 40 geometry/witness cases and two full-size zero rows passed. Every
 nested domain fits the existing limits at both fields; 1548288 independent
 byte-column checks matched and 16385 entries rejected before malformed
 payload processing. The geometry digest is frozen. Actual proof, legacy
-regression, full-size and repository gate validation is still running or queued.
+regression validation has now passed: all sixteen complete matrix cases,
+four legacy suites with unchanged hashes and gated-source composition.
+Full-size proofs and repository gates remain queued. Mandatory CI includes
+both normal modes and all four complete full-size modes; inherited jobs
+and all 33 native steps are preserved. Eleven CI inventory tests passed.
+
+I tried to break it by changing the complete source, scale and original
+claims, and the existing one-value controls rejected each substitution
+after the capacity increase. This remains a same-author review with
+full-size proof evidence and independent audit outstanding.

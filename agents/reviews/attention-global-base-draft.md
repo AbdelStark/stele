@@ -68,3 +68,10 @@ are frozen and the original runner completed successfully. These scalar
 proofs preserve Z=2^34 and both maximal value policies; they do not establish
 full-row ownership or performance. Repository gates remain queued and the
 same-author review does not replace independent audit.
+
+The mandatory CI inventory includes all five normal modes and a separate
+maximum-parameter job. All eleven inventory/CLI/aggregate tests passed,
+including rejection of skipped, cancelled or failed required results. All
+inherited jobs and 33 native steps remain intact. The local gate process is
+still queued; hosted checks must pass before merge. No proof code changed
+in this CI integration, and the completed proof runs were not restarted.

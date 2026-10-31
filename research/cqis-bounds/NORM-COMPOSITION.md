@@ -56,8 +56,9 @@ whole reciprocal table, including rounded zeros and nonzero left output.
 Require full16384-row wide/rounded-zero, nonzero left and nonzero right proofs.
 No cached receipt, queried-row table or per-row proof loop is permitted.
 
-Configured-output controls passed; its matrix is still running in the parent
-worktree. Any parent fix must flow here by ordinary merge before publication.
+Configured-output controls, all28 matrix proofs and required local gates
+passed in the parent worktree. Its evidence and required CI flow here by
+ordinary merge; its three full-row proofs continue.
 Continue Q26/Q31. This is revealing arithmetic research, not private or model
 inference. Native lowering, authenticated model/configuration/source ownership,
 PCS/ZK/FS, fidelity, GPU/scale and original task criteria remain open. No new
@@ -74,5 +75,7 @@ All nineteen root controls, same-statistic source substitution, coherent
 changed-N factors and a genuinely valid alternate full-table reciprocal proof
 rejected at their named consumers. Complete proof matrices are running. The
 additional zero-exponent attack and three full-row proofs are queued after
-that sequence; required
-local gates are queued separately. No completed review or CI success is claimed.
+that sequence. Required local gates are running separately. Eleven CI
+integration tests passed. Five required normal groups and three unconditional
+full-row jobs cover every CLI mode, while retaining the full reciprocal table
+in each proof. Hosted checks and completed review remain pending.
