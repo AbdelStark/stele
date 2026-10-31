@@ -32,9 +32,9 @@ The transcript's counters cannot be supplied or reset through its public API.
 The public copy and caller-owned Merkle records are ordinary observations,
 not verification receipts. They count evaluations rather than distinct oracle
 queries and cannot establish adversarial query caps, grinding limits or Q12.
-The wrapper permutation is outside these BLAKE3 counters. Column attempts are
-zero in this slice; the column sampler and certificate-ID hash must land with
-their actual PCS consumers under A10.
+The wrapper permutation is outside these BLAKE3 counters. The native certificate
+[producer sampler](CERTIFICATE-PRODUCTION.md) now records every outer attempt.
+Certificate-ID hashing remains pending with its full verifier consumer under A10.
 
 Both-field transcript KATs check every state and challenge byte plus counters.
 All ten Merkle fixtures retain their roots and paths. Controls cover counter

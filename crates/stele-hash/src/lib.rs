@@ -276,7 +276,7 @@ pub enum AbsorbLabel {
     FractionLeaf,
     /// Complete canonical certificate row before query sampling (A10).
     CertificateRow,
-    /// Complete verified response block before continuation (A10).
+    /// Complete ordered response block before continuation (A10).
     CertificateColumns,
 }
 impl AbsorbLabel {

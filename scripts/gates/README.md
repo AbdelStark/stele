@@ -93,3 +93,10 @@ six independent full-wire fixtures. It requires the preparation controls and
 each compile-fail API boundary explicitly. Adding an accepting method or trait
 conversion to the preparation module still rejects before execution. Preparation
 and byte authentication do not supply a verified registration certificate.
+
+The certificate producer consumes the four registered certificate labels and
+must match all six native/Python wire fixtures and actual continuation draws.
+The hash gate requires capped-sampler threshold, attempt-64, exhaustion,
+invalid-domain, failed-attempt and full-ratchet checks. The PCS validator still
+rejects accepting APIs or trait conversions in every admitted producer module.
+These tests confer no native verification or negative-control coverage.

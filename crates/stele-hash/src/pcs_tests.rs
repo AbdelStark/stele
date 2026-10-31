@@ -17,6 +17,11 @@ fn rejects_column_thresholds_exhaustion_and_invalid_domains() {
         }
         assert_eq!(decoder.push(threshold), Err(Error::ColumnSamplingExhausted));
         assert_eq!(decoder.push(0), Err(Error::ColumnSamplingExhausted));
+        let mut decoder = ColumnDecoder::new(n).expect("domain");
+        for _ in 0..63 {
+            assert_eq!(decoder.push(threshold), Ok(None));
+        }
+        assert_eq!(decoder.push(0), Ok(Some(0)));
     }
     let mut t = Transcript::<QM31>::new(b"columns").expect("public");
     let before = t.usage();
@@ -26,21 +31,16 @@ fn rejects_column_thresholds_exhaustion_and_invalid_domains() {
         assert_eq!(t.usage(), before);
         assert_eq!(t.state, state);
     }
+    // Outer reservation survives an inner failure before any XOF/state work.
+    t.usage.xof_requests = u64::MAX;
+    assert_eq!(t.certificate_column(2), Err(Error::UsageOverflow));
+    assert_eq!(t.usage().column_attempts, 1);
+    assert_eq!(t.state, state);
+    t.usage.xof_requests = 0;
     t.usage.column_attempts = u64::MAX;
     assert_eq!(t.certificate_column(2), Err(Error::UsageOverflow));
     assert_eq!(t.usage().xof_requests, 0);
     assert_eq!(t.state, state);
-    assert_eq!(
-        certificate_id(
-            b"source",
-            b"proof",
-            &mut HashUsage {
-                hash_evaluations: u64::MAX,
-                ..HashUsage::default()
-            }
-        ),
-        Err(Error::UsageOverflow)
-    );
 }
 #[test]
 fn matches_reference_full_field_column_ratchets() {
@@ -68,4 +68,19 @@ fn matches_reference_full_field_column_ratchets() {
     }
     check::<QM31>();
     check::<OM31>();
+}
+
+#[test]
+fn rejects_certificate_id_hash_overflow() {
+    assert_eq!(
+        certificate_id(
+            b"source",
+            b"proof",
+            &mut HashUsage {
+                hash_evaluations: u64::MAX,
+                ..HashUsage::default()
+            }
+        ),
+        Err(Error::UsageOverflow)
+    );
 }

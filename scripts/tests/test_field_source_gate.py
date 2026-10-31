@@ -31,6 +31,9 @@ class FieldSourceGateTests(unittest.TestCase):
                                  'pub fn verify_certificate(&self) -> bool { true } }\n'),
                                 ('src/preparation.rs', '\nimpl<K: ChallengeField> From<PreparedSource<\'_, K>> for bool { '
                                  'fn from(_: PreparedSource<\'_, K>) -> bool { true } }\n'),
+                                ('src/producer.rs', '\npub fn verify_certificate() -> bool { true }\n'),
+                                ('src/producer.rs', '\nimpl From<CertificateFailure> for bool { '
+                                 'fn from(_: CertificateFailure) -> bool { true } }\n'),
                                 ('Cargo.toml', '\n[features]\nunwired = []\n')]:
                 path = crate / name
                 original = path.read_text()
@@ -59,6 +62,8 @@ class FieldSourceGateTests(unittest.TestCase):
                      'matches_reference_qm31_prepared_columns',
                      'matches_reference_om31_prepared_columns',
                      'rejects_preparation_shape_and_hash_overflow',
+                     'producer::tests::matches_reference_qm31_certificate_production',
+                     'producer::tests::matches_reference_om31_certificate_production',
                      'crates/stele-pcs/src/lib.rs', 'crates/stele-pcs/src/source.rs',
                      'crates/stele-pcs/src/preparation.rs'):
             self.assertIn(name, actual.stdout)

@@ -16,7 +16,7 @@ pub struct HashUsage {
     pub state_updates: u64,
     /// Inner candidate words examined, including noncanonical rejected words.
     pub candidate_words: u64,
-    /// Outer column attempts; zero until a column sampler is implemented.
+    /// Outer column attempts, including rejected and internally failed draws.
     pub column_attempts: u64,
 }
 impl HashUsage {
