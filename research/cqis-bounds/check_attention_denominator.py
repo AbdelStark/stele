@@ -59,6 +59,7 @@ def corpus():
     for z in (False,-1,0,(1<<14)-1,(1<<34)+1):rejects('WeightSum',lambda:c.witness(p,z))
     rejects('Spec',lambda:c.derive(p,True));assert shifts=={0}|set(range(2,63)) and modes=={'exact','block1024'} and directions=={-1,0,1} and zeros>1000
     assert widths==[{0,1,2,3},{0,1,2,3},{1,2,3},{0,1,2,3},{1,2,3,4}]
+    assert (cells,zeros,digest.hexdigest())==(52440,3711,'de3d8ef594b88bdb8a3bf6a3fe8394b2fc7cb39b8ab7e1da76eba50977fff5bd')
     print(json.dumps(dict(seed=2742,cases=10000,column_cells=cells,zero_gaps=zeros,widths=[sorted(x) for x in widths],sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

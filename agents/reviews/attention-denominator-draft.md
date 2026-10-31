@@ -3,8 +3,9 @@
 Codex-root applies cqis-numerics, gkr-reduction-author and soundness-auditor.
 This is a same-author review, not an independent audit. The
 [scope](../../research/cqis-bounds/ATTENTION-DENOMINATOR.md) preceded tests and
-implementation. Tests first rejected the missing module. Corpus, controls,
-composition, matrix and boundary proofs are running. Required repository
+implementation. Tests first rejected the missing module. All 10000 corpus
+cases and primary controls passed. Composition, matrix and boundary proofs
+are running. Required repository
 gates are queued once. This is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2. The expected full
@@ -28,7 +29,7 @@ gates are queued once. This is not a completed sign-off.
   identity losses remain separate, with A1 reduction 2+4(bp+bd). Nonlookup
   draws are 3bg+4(bp+bd)+8(gp+gd)+31 ZeroWeight and
   3bg+6(bp+bd)+8(gp+gd)+34 Sumcheck. Exact receipts and the repository
-  accounting gate remain under validation.
+  accounting gate remain under validation; initial receipts and draws matched.
 - Bounds: complete 0<=g<=zmax-Q and faithful Z=g+Q columns establish both
   divisor bounds. The second static limb certificate proves D=Z*F without
   lifting Z or D into one M31 value. Every bound comes from expected metadata.
@@ -53,3 +54,9 @@ gates are queued once. This is not a completed sign-off.
   statuses and acceptance criteria stay blocked. Numerator scaling, signed
   division/rounding, global attainment, source ownership, native/private
   model inference, fidelity and independent review remain required.
+
+I tried to break it by replacing one with zero on the zero gap operand,
+and the control Positive:SourceJoin rejected it. Each product's forged
+left/right view rejected at SourceClaimMismatch, and compensated public
+powers rejected at PowerClaimMismatch. The independent corpus digest is
+frozen; remaining boundary/composition proofs and gates are still pending.

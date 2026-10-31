@@ -67,3 +67,16 @@ scaling, signed division/rounding, source ownership, shared global attainment,
 native/private model inference, fidelity and all original criteria remain
 required. No measured constant, benchmark, new cut or extra weight pass is
 claimed. Continue Q26/Q31; Draft amendments remain unaccepted.
+
+Seed 2742 passed all 10000 independent cases and 52440 byte-column cells,
+including 3711 zero gaps. Exact/block modes, all admissible shifts, both unit
+directions, all compact widths and the exact D=2^64 boundary were covered.
+NumPy integer products, complete roots and independent convolutions matched.
+Frozen corpus SHA-256:
+`de3d8ef594b88bdb8a3bf6a3fe8394b2fc7cb39b8ab7e1da76eba50977fff5bd`.
+
+Primary controls passed. Both external roots and every gap/Q/one/Z/factor
+join retained their consumers. All four actual operand views and four public
+powers rejected forged claims. Equivalent arithmetic metadata changed the
+returned state. Boundary, composition, matrix and full-metadata proofs remain
+under validation, with required repository gates queued once.
