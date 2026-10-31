@@ -71,6 +71,7 @@ def honest(maximum=False):
         for size,B,k,E,nearest,S in (((16384,31,16,14,False,(1<<31)-1),) if maximum else ((1,7,1,0,False,0),(3,7,7,14,True,127),(16,30,15,0,False,(1<<31)-1),(65,31,16,14,False,(1<<31)-1))):
             p=spec(size,B,k,E,nearest,S,3510+done,reps);v=c.derive(p,d);vals=(0,v['cap'],max(0,v['cap']-1),min(v['cap'],255));us=[vals[j%4] if bit else 0 for j,bit in enumerate(v['allowed'])]
             print('honest start',done+1,d,reps,size,B,k,flush=True);proof,state=c.prove(p,us,d);out=c.verify(p,c.expected_roots(p,us),proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,size,B,k,flush=True)
+    if not maximum:assert digest.hexdigest()=='68d8f1ede07f5bf975f9e76573593c66d5c3b11a77192dde4e198d0ab900220d'
     print(json.dumps(dict(maximum=maximum,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

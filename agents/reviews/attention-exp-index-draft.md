@@ -33,8 +33,8 @@ not an independent audit. [Scope](../../research/cqis-bounds/ATTENTION-EXP-INDEX
 - Parity: native CPU/SIMD/CUDA unchanged. The10000-case independent NumPy
   divmod/prefix-sum corpus passed all235 B/k pairs, both represented function
   families, all byte widths and namespace endpoints. Both proof fields and
-  repetition counts still require their complete matrix; the actual maximum
-  source composition passed at delta=2^31.
+  repetition counts passed the complete16-case matrix with exact accounting;
+  actual maximum source composition passed at delta=2^31.
 - Cost: O(N) byte views, four complete ranges/lookups and one A3 charge
   c_x/c_sc/c_lu/T_misc. No benchmark, fitted constant or weight-pass change.
 - Verifier: expected metadata controls sizes, identities and split. Strict
@@ -50,3 +50,7 @@ high/low index sources, and the control Index:RoundSumMismatch rejected it.
 Canonical table membership, output product/remainder, probability masking,
 complete attention, native/private inference, fidelity, full-row evidence,
 local/hosted gates and independent review remain open.
+
+All seven CLI modes are required in CI: six normal modes and the separate
+full-size job. All inherited jobs and 142 commands remain unchanged. All 11
+CI tests passed; original full-size evidence and local gates remain pending.

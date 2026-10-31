@@ -94,6 +94,7 @@ def honest(maximum=False):
             p=spec(size,S,identity=3410+count,repetitions=reps);xs=[min(S,(-1,0,1)[j%3]) for j in range(size)] if S else [0]*size
             if size==65:p=replace(p,window=311,start=31,stop=p.position+1)
             print('honest start',count+1,d,reps,size,flush=True);proof,state=c.prove(p,xs,d);out=c.verify(p,c.expected_roots(p,xs),proof,d);assert out['state']==state;account(p,out,d);digest.update(state);count+=1;print('honest passed',count,d,reps,size,flush=True)
+    if not maximum:assert digest.hexdigest()=='e96860a9139e74686c61b5a16e1bce54ca231165236a2fda220b854ceaadbd1b'
     print(json.dumps(dict(maximum=maximum,proofs=count,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

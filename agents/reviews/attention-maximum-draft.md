@@ -47,5 +47,13 @@ while retaining the old differences, and the control
 Difference:RoundSumMismatch rejected it.
 
 Key-set completeness, physical/model ownership, exponential membership,
-private PCS/ZK/FS, full attention composition, fidelity, matrix/full-row evidence,
+private PCS/ZK/FS, full attention composition, fidelity, full-row evidence,
 required gates and independent review remain open.
+
+The complete16-case field/repetition matrix passed with exact accounting and
+every original consumer. Full-row proof and repository gates remain pending.
+
+CI now requires all six CLI modes, with the full-size proof in a separate
+mandatory job. All 141 inherited commands and jobs remain unchanged. All 11
+CI tests passed, including exact CLI mode coverage and aggregate failure
+controls. Full-size evidence and the local gates remain pending.

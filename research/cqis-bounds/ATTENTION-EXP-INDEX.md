@@ -91,3 +91,16 @@ verified an attained maximum with delta=2^31, then verified its index split.
 A separately valid maximum proof with a different delta root could not replace
 that source. The16-case proof matrix is running; the full16384-key proof and
 required local gates are queued behind their prerequisites.
+
+The complete16-case field/repetition matrix passed with exact accounts and
+draw counts. Frozen proof-state SHA-256:
+`68d8f1ede07f5bf975f9e76573593c66d5c3b11a77192dde4e198d0ab900220d`.
+All original/boundary/source-composition controls passed; the earlier primary
+controls remain valid. Full16384-row proof and required local gates remain
+pending. No completed check was repeated to freeze this evidence.
+
+CI preserves all 142 inherited commands and adds the six normal modes as
+command 143. A separate mandatory full-size job covers the seventh CLI mode.
+All 11 inventory tests passed, including exact mode coverage and rejection
+of any unsuccessful required job. The original full-size proof and local
+gate queue continue; this integration does not restart them.
