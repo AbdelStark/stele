@@ -82,3 +82,12 @@ configured row conversion on that derived root. Producer joins and child
 states do not substitute for verification. Corpus, boundary/context controls
 and complete proof suites are running; full-size proofs and repository gates
 must wait for their existing prerequisites. No completion claim is made yet.
+
+Boundary/shape checks passed. A separate context check then covered every
+head root, child state and assembled root across both fields, repetitions,
+accumulation modes and output policies; each change altered the final state.
+Changed source-role, group, output-role and unit metadata also changed it.
+Future boundary runs include that broader context check. Linear list
+flattening preserves independent witness roots and context byte order without
+repeatedly copying earlier heads. Complete admission suites remain running;
+context-only checks do not establish proof acceptance.

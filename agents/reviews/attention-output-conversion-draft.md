@@ -41,3 +41,10 @@ module. Complete proof controls and the independent corpus are running.
 - Glossary/history: Accepted text and original criteria are unchanged.
   Actual global offset/key/probability/value/GQA/model ownership, O projection,
   native/private inference, fidelity and independent audit remain open.
+
+Boundary/shape checks passed. Separate context tests cover both fields and
+repetition counts for both accumulation and output modes. Every head root,
+child state, assembled root and tested expected metadata change alters the
+context. The independent witness/root check also passed after replacing
+repeated list concatenation with linear flattening. These are not admission
+results; complete source-substitution controls and proof matrices continue.

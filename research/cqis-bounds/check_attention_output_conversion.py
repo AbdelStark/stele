@@ -109,6 +109,7 @@ def controls():
 
 
 def boundaries():
+    context()
     for mode in ('exact','block1024'):
         for policy in ('dynamic','static'):
             for h,width in ((128,128),(1,16384)):
@@ -126,6 +127,22 @@ def boundaries():
                 rejects('Spec',lambda:c.derive(other,4))
             rejects('Capacity',lambda:c.derive(replace(spec(mode,policy,2,8193)),4))
     print('full namespaces, metadata context, canonical roles and shape limits pass',flush=True)
+
+
+def context():
+    for mode in ('exact','block1024'):
+        for policy in ('dynamic','static'):
+            for d,reps in ((4,1),(4,2),(8,1),(8,2)):
+                p=spec(mode,policy,3,1,2853,reps);v=c.derive(p,d);roots=dict(heads=[[hashlib.sha256(str((j,role)).encode()).digest() for role in v['roles']] for j in range(3)],scale=bytes(32),output=bytes([1])*32);assembled=bytes([2])*32;states=[hashlib.sha256(bytes([j])).digest() for j in range(4)];t=c.transcript(v,roots,assembled,states,d);assert not t.draws
+                for j in range(4):
+                    other=states.copy();other[j]=bytes([states[j][0]^1])+states[j][1:];assert c.transcript(v,roots,assembled,other,d).state!=t.state
+                for j in range(3):
+                    for k in range(len(v['roles'])):
+                        other=copy.deepcopy(roots);value=other['heads'][j][k];other['heads'][j][k]=bytes([value[0]^1])+value[1:];assert c.transcript(v,other,assembled,states,d).state!=t.state
+                assert c.transcript(v,roots,bytes([3])+assembled[1:],states,d).state!=t.state
+                ids=(tuple([40001]+list(p.sources[0][1:])),)+p.sources[1:]
+                for other in (replace(p,groups=3),replace(p,sources=ids),replace(p,output=25005),replace(p,schema=replace(p.schema,fraction=1,output_fraction=1))):assert c.transcript(c.derive(other,d),roots,assembled,states,d).state!=t.state
+    print('all fields/repetitions bind every head root, child state, assembled root and expected metadata',flush=True)
 
 
 def full_inputs(p):
