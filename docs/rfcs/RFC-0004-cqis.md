@@ -1654,3 +1654,12 @@ configured power-of-two shift. Two fixed channel groups preserve the full
 ranges and all four actual originals remain consumed, including zero bounds
 and shifts up to 92. No range capacity, Accepted cut or profile changes.
 Signed division, source ownership and all original criteria remain required.
+
+### A3/A6 research plan — Doubled attention denominator
+
+Draft scope: [doubled denominator](../../research/cqis-bounds/ATTENTION-DOUBLED-DENOMINATOR.md).
+One complete limb product binds 2D to the actual sixteen-byte D source and
+exact coefficient two. Full output planes preserve 2D=2^65; all original
+operand and public power claims remain consumed. No wrapper challenge is
+added. Positivity requires the actual positive-denominator source proof.
+Strict remainder, signed division, ownership and original criteria remain.

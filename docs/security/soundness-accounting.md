@@ -1243,3 +1243,17 @@ Tmax<<shift<2^128 and byte-column sides<=32767<p/2 exclude integer aliases.
 Complete whole ranges, initial/final carry bounds and channel-group joins
 remain mandatory. Binding/FS/H and upstream composition remain additional;
 actual receipts must confirm formulas before evidence or admission is claimed.
+
+### Draft Q26/Q31 doubled attention denominator
+
+Pre-implementation account: no wrapper challenge. The complete scalar limb
+product retains independent lookup dimensions b+2,g+3,g+3. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|, where
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is 9b+18g+31, product identity loss k-1
+and A1 reduction 4b. Nonlookup draws are 4b+8g+13 ZeroWeight and 6b+8g+14
+Sumcheck. Every actual operand and public power consumer remains mandatory.
+Expected schema, roles, external/internal roots and verified product state
+bind the returned composition state. Static whole/column bounds and exact
+coefficient-two joins exclude aliases without lifting D into M31. Binding/FS/H
+and the positive upstream source proof remain additional. Confirm runtime
+receipts before evidence or admission; no Accepted profile or cut changes.

@@ -987,3 +987,9 @@ attention magnitudes without truncating sixteen-byte outputs or reducing the
 channel domain? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-NUMERATOR.md)
 precede tests/code. Fixed channel groups preserve existing range capacities;
 actual magnitude sources and all signed-normalization consumers remain required.
+
+Q26/Q31 continuation: can the complete sixteen-byte denominator source bind
+2D through the existing limb product, including the 2^65 boundary and every
+original consumer? [Scope and kill criteria](../../research/cqis-bounds/ATTENTION-DOUBLED-DENOMINATOR.md)
+precede tests/code. Strict remainder and signed-normalization composition
+remain required; a standalone zero product does not establish positivity.
