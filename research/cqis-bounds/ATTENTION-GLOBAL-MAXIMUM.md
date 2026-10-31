@@ -36,6 +36,11 @@ bytes. Replay reauthenticates every compact group root. Read selected raw
 and offset bytes from that authenticated group. Check selected is allowed,
 its root matches the expected selection, and its raw bytes equal the complete
 maximum bytes exactly. This is a byte join, with no signed32 equality in M31.
+The producer can prepare this same fixed-width file in one input pass, writing
+raw bytes and reserving the other slots while finding the allowed maximum.
+It then fills each group in place. No full-row integer vector or second
+full-row spool is included in the stated storage bound. Verifier group
+retention writes the same records from complete checked child openings.
 
 The row identities are the existing byte-column identities:
 raw+S+incoming(C0)=O+256*C0;
@@ -100,3 +105,8 @@ exponential consumers on compatible byte roots in small complete cases.
 Full Q/K/V and model ownership, private selection/PCS/ZK/FS, native/GPU
 parity, resources, fidelity and independent audit remain open. Original task
 criteria, Accepted text, production coverage and all live runs are unchanged.
+
+The compact-replay correction is inherited before implementation. It rejected
+all twenty unused-high-byte mutations and preserved eight complete proof
+states in both fields. New group replay must likewise authenticate all
+stored bytes before projection, including zeros beyond each compact width.
