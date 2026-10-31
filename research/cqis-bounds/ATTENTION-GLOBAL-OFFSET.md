@@ -89,3 +89,10 @@ covering both fields/modes and singleton, ragged and full configured domains.
 All complete child ranges fit unchanged limits; final carry caps are zero.
 The test-first control invocation then failed on the missing implementation
 module, as expected. Neither check establishes proof admission.
+
+The streamed consumer is implemented. Full geometry and context checks
+passed. The first complete control run rejected a changed padded source
+word through the actual source-copy claim; its test expected an earlier
+commitment diagnostic. Only that assertion changed. The failed log remains
+recorded and the original corpus continues; corrected complete controls,
+proof matrices, full-size proofs and repository gates remain required.

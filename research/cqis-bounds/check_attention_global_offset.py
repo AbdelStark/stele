@@ -71,7 +71,17 @@ def corpus():
     print(json.dumps(dict(seed=2754,cases=10000,capacity_cases=4,cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
+def projection():
+    rng=random.Random(2755)
+    for case in range(10000):
+        d=4 if case%2 else 8;n=1<<(case%7);words=[rng.randint(-262143,262143) for _ in range(n)];weights=[[rng.randrange(r.sc.P) for _ in range(d)] for _ in range(n)]
+        matrix=c.nmod_mat(n,d,[x for row in weights for x in row],r.sc.P)
+        expected=tuple(sum(x*row[j] for x,row in zip(words,weights))%r.sc.P for j in range(d));assert c.project(words,matrix,d)==expected
+    print('10000 exact signed coefficient projections match independent integer dot products',flush=True)
+
+
 def boundaries():
+    projection()
     for mode in ('exact','block1024'):
         for d in (4,8):
             p=spec(mode,1048576,16384,(1<<42)-1,2);v=c.derive(p,d);assert v['B']==1024 and v['n']==16384 and v['bb']==10 and v['carry_caps'][-1]==0
@@ -92,7 +102,7 @@ def controls():
         for bad in (proof[:-1],proof+[proof[-1]],proof[1:],list(reversed(proof))):rejects('StreamShape',lambda:c.verify(p,expected,iter(bad),4))
         for value in (True,-1,1):
             bad=copy.deepcopy(proof);bad[0]['block']=value;rejects('StreamShape',lambda:c.verify(p,expected,iter(bad),4))
-        bad=copy.deepcopy(proof);bad[0]['range']['words'][p.schema.width]=1;rejects('Block:0:Range:CommitmentMismatch',lambda:c.verify(p,expected,iter(bad),4))
+        bad=copy.deepcopy(proof);bad[0]['range']['words'][p.schema.width]=1;rejects('Block:0:Range:SourceCopy:ClaimMismatch',lambda:c.verify(p,expected,iter(bad),4))
         changed=copy.deepcopy(blocks);changed[0][0]+=1;changed[1][0]-=1;alternate,st=make(p,changed,4);rr=oracle(p,changed)[2];assert rr[-1]==expected[-1] and c.verify(p,rr,iter(alternate),4)['state']==st
         rejects('Block:0:CommitmentMismatch',lambda:c.verify(p,expected,iter(alternate),4))
         original=c.replay
