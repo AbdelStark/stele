@@ -67,3 +67,10 @@ Positive:Product:RoundSumMismatch and Denominator:Product:FinalEvaluationMismatc
 A complete global probability sum composed on its actual root. Valid changed
 and zero source sums could not replace the admitted divisor. The matrix,
 full-metadata boundary proofs and repository gates remain pending.
+
+All 16 matrix cases and both full-metadata scalar boundary proofs subsequently
+passed, with exact receipts, draws and original claims. Their digests are
+frozen. The exact proof preserves D=2^64; the block proof preserves D=2^48.
+Both retain length 1048576 and width 16384 metadata. The original runner
+completed successfully. Repository gates and independent review remain pending;
+this evidence does not claim upstream key/channel ownership.
