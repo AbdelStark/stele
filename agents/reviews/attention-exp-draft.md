@@ -53,3 +53,8 @@ I tried to break it by changing both high-table source finals while preserving
 their compressed value, and the control HighLookup:OpeningMismatch rejected it.
 Native/private inference, physical/model ownership, probability sums, value
 products, full attention, fidelity and independent audit remain open.
+
+CI requires all twelve CLI modes, with direct/product/corrected full-size
+proofs in an unconditional three-job matrix. All 143 inherited commands and
+jobs remain unchanged. All 11 inventory tests passed. The original proof
+matrix, full-size proofs and local gate queue remain pending.

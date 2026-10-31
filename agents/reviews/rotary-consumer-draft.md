@@ -58,3 +58,10 @@ this is not a completed sign-off.
 I tried to break it by setting r=16384 and reducing q while retaining the exact
 whole division and a valid signed output source, and the control
 Remainder:CapRelation:RoundSumMismatch rejected it.
+
+CI now requires all six CLI modes: five normal modes and the separate
+full-size proof. All inherited jobs and 140 commands remain, with this
+consumer adding command 141. All 11 CI tests passed, including rejection of
+every unsuccessful required-job outcome. The mode inventory initially found
+a corpus-local set named modes; it now reads only the guarded script
+entrypoint. No proof verifier changed. Full proof and local gates are pending.

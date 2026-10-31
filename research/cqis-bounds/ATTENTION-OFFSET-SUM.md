@@ -123,3 +123,9 @@ in the same queued runner. Required local repository gates remain queued.
 Continue Q26/Q31 with signed weighted sums and output normalization. Full
 projection-row/GQA/cache ownership, sequence completeness, native/private
 PCS/ZK/FS, fidelity, GPU/scale and original task criteria remain open.
+
+The complete 128x128 mixed-geometry proof passed with exact receipts, draw
+totals and both projected original consumers. Its frozen SHA-256 is
+`fa7af074dcb2ae782e42705f0fd718554fa7884823cea32f1264038ef21c0f32`.
+The original runner continues with the full key and channel geometries;
+repository gates remain queued.

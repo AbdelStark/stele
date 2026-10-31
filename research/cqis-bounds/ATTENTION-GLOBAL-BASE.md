@@ -79,3 +79,10 @@ consumers remained present. Their combined frozen SHA-256 is
 `6367a962df4890477a8e18d1d71be8585ccc5a2ffe9ddf7f1ddd4fe0efe52437`.
 The original proof runner completed successfully. Repository gates remain
 queued; independent review and full upstream ownership are still required.
+
+CI now requires the corpus, controls, boundaries, source composition and
+sixteen-proof matrix, plus a separate maximum-parameter job for both scalar
+cases. All eleven inventory/CLI/aggregate tests passed. Integration preserves
+all inherited jobs and 33 native steps: 161 commands, 63 research groups,
+57 full-capacity jobs and 127 hosted jobs. Hosted CI and the original local
+gate process remain pending; the completed proof runs were not restarted.

@@ -88,3 +88,9 @@ Every receipt, original count and draw total matched. Frozen SHA-256:
 `701f68e006fa0f2b22c62703ecfadb4ce7c23a649d91406dc2ab5f98718aa14d`.
 The three full geometries continue in the original process; their completion
 and the queued repository gates are still required.
+
+The original runner passed both 128x128 and 1024x16 full geometries with all
+receipts and original consumers. Their frozen SHA-256 values are respectively
+`303cb9b7aeb08f9ada0d8fbddecf11c4c900900eb52d1de966803beda60ec6c7`
+and `220948758af0af4fbe8cca46aafba5e7699ecbe64f1e1448a459452a70788b1e`.
+The 1x16384 proof continues in the same process; repository gates remain queued.
