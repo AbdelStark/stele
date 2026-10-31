@@ -162,5 +162,8 @@
   ],
   "cqis-norm-output-factors": [
     "uv run --locked --script research/cqis-bounds/check_norm_output_factors.py"
+  ],
+  "cqis-norm-xy": [
+    "uv run --locked --script research/cqis-bounds/check_norm_xy.py"
   ]
 }
