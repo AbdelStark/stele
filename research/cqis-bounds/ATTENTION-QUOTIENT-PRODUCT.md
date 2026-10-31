@@ -85,3 +85,9 @@ including the valid carry change +256 that leaves its low byte unchanged.
 All seven compensated or zero-hidden original-final attacks rejected at
 Product:ClaimMismatch. Corpus, boundaries, source compositions, matrix and
 full proofs remain under validation; repository gates are queued once.
+
+Boundary controls subsequently passed. Whole caps, padded entries, terminal
+carries, full external byte planes and the genuine ranged Qp-p alias retain
+their consumers. A forged initial carry with a compensating product byte
+rejected at Product:ClaimMismatch. Source compositions, corpus, matrix, full
+proofs and repository gates remain pending.

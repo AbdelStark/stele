@@ -57,3 +57,9 @@ byte through a separately valid complete range proof, and the control
 Product:RoundSumMismatch rejected it. All seven original-final attacks also
 rejected at Product:ClaimMismatch, including both factors hidden by zeros.
 Other proof suites, the corpus, full proofs and repository gates remain open.
+
+Boundary controls subsequently passed. Whole caps, padded entries, terminal
+carries, full external byte planes and the genuine ranged Qp-p alias retain
+their consumers. A forged initial carry with a compensating product byte
+rejected at Product:ClaimMismatch. Source compositions, corpus, matrix, full
+proofs and repository gates remain pending.
