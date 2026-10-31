@@ -81,3 +81,10 @@ broadcast on padding rejected at StrictRemainder:RoundSumMismatch. These new
 controls ran separately because the original suite was already loaded; future
 boundary runs include them. Corpus, primary/boundary suites, compositions,
 matrix, full proofs and repository gates remain pending.
+
+Primary controls passed. Every external/internal root, fresh false remainder,
+gap/carry value and complete child substitution retained its consumer. All
+ten compensated original-final attacks rejected at Equality:ClaimMismatch
+or StrictRemainder:ClaimMismatch. The initial complete receipt matched the
+static account. Corpus, remaining boundaries, source compositions, matrix,
+full proofs and repository gates remain pending.

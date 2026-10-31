@@ -58,3 +58,10 @@ the product, and QuotientProduct:Denominator:CommitmentMismatch rejected it.
 The bias-source substitution, metadata replay, remainder high plane and
 unmasked D2 broadcast also rejected. The original complete suite continues;
 these focused results do not establish the remaining controls or full proofs.
+
+The primary suite subsequently passed. I tried to break both byte relations
+by compensating final claims to preserve their equations, and all ten controls
+rejected at their original-point ClaimMismatch consumers. Fresh false range
+values and complete child substitutions also rejected; the initial complete
+receipt matched the account. Remaining validation continues in the original
+processes without a restart.
