@@ -80,6 +80,7 @@ def honest(mode='matrix'):
             p=replace(spec(width,7610+done,reps),schema=c.bounds.Spec(length,width,fv,fo,E,'static',1,acc,drop));v=c.derive(p,d);D=0 if width==1 else v['constants']['denominator_max']-(mode=='full-carry');qs=[(0,1,32767,32768)[i%4] for i in range(width)]
             if mode=='full-carry':assert max(c.carry_values(v,{name:{'words':r.witness(child,c.witness(p,qs,D)[name])[0]} for name,child in v['ranges'].items()}))>255
             print('honest start',done+1,d,reps,width,v['groups'],flush=True);proof,state=c.prove(p,qs,D,d);out=c.verify(p,oracle(p,qs,D)[1],proof,d);assert out['state']==state;account(p,out,d);digest.update(state);done+=1;print('honest passed',done,d,reps,width,v['groups'],flush=True)
+    if mode=='matrix':assert done==16 and digest.hexdigest()=='7a800845a194a1d8a35f11ddef32eadebeef199c92b8a675edd1b42159e468e2'
     print(json.dumps(dict(mode=mode,proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
