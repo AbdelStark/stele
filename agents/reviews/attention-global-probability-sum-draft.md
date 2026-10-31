@@ -79,3 +79,8 @@ Sum:Product:RoundSumMismatch rejected the false sum. The full digest is frozen
 and the original runner completed successfully. Repository gates and
 independent review remain pending; global attainment and source ownership
 still require their complete consumers.
+
+CI integration passed all 11 inventory/CLI/aggregate tests and preserves
+every inherited job and native step. Five normal modes and the full-size
+sum/alias proof are mandatory. Hosted results and local repository gates
+remain pending; this does not replace independent review.
