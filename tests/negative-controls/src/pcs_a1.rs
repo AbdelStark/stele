@@ -169,8 +169,12 @@ where
                 .push(stele_sumcheck::message_bytes(instance.id, n as u32, values).expect("round"));
         }
         bytes.push(
-            stele_sumcheck::message_bytes(instance.id, instance.num_vars, &proof.final_values)
-                .expect("final"),
+            stele_sumcheck::message_bytes(
+                instance.id,
+                instance.inputs.len() as u32,
+                &proof.final_values,
+            )
+            .expect("final"),
         );
         bytes.extend(openings.iter().cloned());
         bytes.push(
