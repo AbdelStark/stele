@@ -62,3 +62,9 @@ alias and denominator broadcast on padded channels. Both rejected at
 Bias:RoundSumMismatch; whole caps, endpoints and external high planes also
 retained their consumers. Remaining source proofs, corpus, matrix and
 full-width validation are pending.
+
+The corpus and both source compositions subsequently passed. All 10000
+independent cases and six ragged/full capacity cases preserve byte roots,
+carry columns and all three group families; the digest is frozen in the
+scope. Separately valid replacements of either source reject in both exact
+and block modes. Matrix, full proofs and repository gates remain pending.

@@ -84,3 +84,11 @@ Boundary controls passed. Whole caps, dense padding, all carry endpoints,
 the genuine output-ranged W-p alias, an incorrectly unmasked D broadcast and
 all external high planes rejected at their stated consumers. Source
 composition, corpus, matrix and full-width proofs remain under validation.
+
+The independent seed-2745 corpus passed all 10000 cases and six capacity
+cases, covering 403456 channels and 3333 zero-bound cases. Both 8193 and
+16384 channels retain all three group families. The frozen digest is
+`2142863c9f6b3ce4f9c744b91d57f2570e5b6aa7463abea40df046ee62f96e65`.
+Both exact and block-mode scaled-numerator/positive-denominator compositions
+also passed, including valid source replacement rejection. The original
+matrix continues; full proofs and repository gates remain queued.
