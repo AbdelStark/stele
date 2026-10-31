@@ -51,3 +51,10 @@ suites are running; this is not a completed sign-off.
 
 The observed-attack conclusion remains pending the controls. Required local
 repository gates and the full-size proof queue must also complete.
+
+The first control run rejected metadata replay at Shift:ClaimMismatch. The
+arithmetic was unchanged, so its linear zero relation remained valid; the
+changed transcript point was caught by the actual original consumer. The
+test had expected RoundSumMismatch. Only the expected diagnostic changed.
+All preceding root, false-value and compensated-original controls passed.
+The original failed-run log is retained; the failed suite must complete.

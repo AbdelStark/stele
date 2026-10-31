@@ -102,7 +102,7 @@ def controls():
         bad=copy.deepcopy(zp)
         for column,delta in changes:bad['zero'][0]['final'][column][0]=r.sc.add(bad['zero'][0]['final'][column][0],r.sc.scalar(delta,d))
         rejects('Shift:ClaimMismatch',lambda:c.verify(p,zr,bad,d))
-    other=replace(p,schema=replace(p.schema,fraction=4,output_fraction=9));rejects('Shift:RoundSumMismatch',lambda:c.verify(other,roots,proof,d))
+    other=replace(p,schema=replace(p.schema,fraction=4,output_fraction=9));rejects('Shift:ClaimMismatch',lambda:c.verify(other,roots,proof,d))
     for key in ('receipt','certificate','shift','group'):rejects('ProofShape',lambda:c.verify(p,roots,dict(proof,**{key:{}}),d))
     bad=copy.deepcopy(proof);bad['zero'][0]['rounds'][0][0]=(False,0,0,0);rejects('NoncanonicalField',lambda:c.verify(p,roots,bad,d));rejects('Root',lambda:c.verify(p,roots[:-1],proof,d))
     print('external/internal roots, complete children, false source/output/carry, metadata replay and all four compensated original views reject',flush=True)
