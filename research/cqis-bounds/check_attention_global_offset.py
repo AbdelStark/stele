@@ -68,6 +68,7 @@ def corpus():
     for mode in ('exact','block1024'):
         p=spec(mode,1048576,1,20000);v=c.derive(p,4);blocks=[[cap-(b%257)] for b,cap in enumerate(v['caps'])];out,carry,roots,cols,_=oracle(p,blocks);assert c.final_values(p,v,cols)==(out,carry);digest.update(b''.join(roots))
         p=spec(mode,1,16384,20001);v=c.derive(p,4);blocks=[[i%257 for i in range(16384)]];out,carry,roots,cols,_=oracle(p,blocks);assert c.final_values(p,v,cols)==(out,carry);digest.update(b''.join(roots))
+    assert digest.hexdigest()=='372bdec714302fa688f851576060ab956eb050cc6522af6f86c7ac63998efb9c'
     print(json.dumps(dict(seed=2754,cases=10000,capacity_cases=4,cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

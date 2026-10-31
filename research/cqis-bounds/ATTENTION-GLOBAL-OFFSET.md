@@ -96,3 +96,10 @@ word through the actual source-copy claim; its test expected an earlier
 commitment diagnostic. Only that assertion changed. The failed log remains
 recorded and the original corpus continues; corrected complete controls,
 proof matrices, full-size proofs and repository gates remain required.
+
+The original integer corpus passed all 10000 cases over 52244 source cells
+and four capacity cases. Frozen SHA-256:
+`372bdec714302fa688f851576060ab956eb050cc6522af6f86c7ac63998efb9c`.
+A separate 10000-case signed coefficient projection check matched independent
+integer dot products. Complete proof validation and resource evidence remain
+required; neither check establishes full-size proof acceptance.
