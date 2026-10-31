@@ -151,6 +151,27 @@ def run(*args):
     return subprocess.check_output(args,cwd=ROOT,text=True).strip()
 
 
+def assemble(metadata,records):
+    """Format already-validated observations; the controller enforces complete campaign coverage."""
+    return dict(schema_version=1,kind='micro',workload='micro/conditional-field-pcs',commit=metadata['commit'],
+        toolchain=metadata['toolchain'],device=metadata['device'],driver='not-applicable',
+        model_config=dict(**metadata,samples=records),
+        plan_digest=hashlib.sha256(json.dumps(metadata['plan'],sort_keys=True,separators=(',',':')).encode()).hexdigest(),
+        profile='standard',bindings_all_on=True,batch_size=1,prompt_tokens=0,generated_tokens=0,
+        prover_time_ns=sum(r['total_ns'] for r in records),witness_recompute_ns=0,
+        stage_times_ns={f'{i}/{s}':n for i,r in enumerate(records)
+                        for s,n in (r['stages_ns'] | {'remainder':r['remainder_ns']}).items()},
+        kernel_counters={
+            'preparation_hashes':sum(s['preparation_hashes']['hash_evaluations'] for r in records for s in r['sources']),
+            'certificate_merkle_and_id_hashes':sum(s['certificate_verify']['local']['hash_evaluations'] for r in records for s in r['sources']),
+            'opening_merkle_hashes':sum(r['consumer_usage']['local']['hash_evaluations'] for r in records)},
+        proof_size_bytes=0,verifier_time_ns=dict(rust=0,python=0),
+        controls=dict(total=0,passed=0,failed=0),
+        note='Complete native registration plus two ordinary openings, and actual three-original A1 closure. '
+             'All samples retained; inclusive cleanup/replay cost and fresh-worker whole-pipeline RSS. '
+             'Component sizes/times live in model_config; root inference fields are zero. No profile admission or fitted constant.')
+
+
 def main():
     if len(sys.argv)!=2 or (platform.system(),platform.machine())!=('Darwin','arm64'):
         raise SystemExit('usage on arm64 macOS: uv run --python 3.12 bench/field_pcs.py <new-ledger.json>')
@@ -214,19 +235,7 @@ def main():
     for start in range(0,len(records),3):
         identity=lambda v:(v['sources'],v['openings'],v['a1'],v['consumer_usage'],v['consumer_continuation'])
         assert identity(records[start])==identity(records[start+1])==identity(records[start+2])
-    data=dict(schema_version=1,kind='micro',workload='micro/conditional-field-pcs',commit=commit,
-        toolchain=metadata['toolchain'],device=metadata['device'],driver='not-applicable',
-        model_config=dict(**metadata,samples=records),
-        plan_digest=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
-        profile='standard',bindings_all_on=True,batch_size=1,prompt_tokens=0,generated_tokens=0,
-        prover_time_ns=sum(r['total_ns'] for r in records),witness_recompute_ns=0,
-        stage_times_ns={f'{i}/{s}':n for i,r in enumerate(records)
-                        for s,n in (r['stages_ns'] | {'remainder':r['remainder_ns']}).items()},
-        kernel_counters={},proof_size_bytes=0,verifier_time_ns=dict(rust=0,python=0),
-        controls=dict(total=0,passed=0,failed=0),
-        note='Complete native registration plus two ordinary openings, and actual three-original A1 closure. '
-             'All samples retained; inclusive cleanup/replay cost and fresh-worker whole-pipeline RSS. '
-             'Component sizes/times live in model_config; root inference fields are zero. No profile admission or fitted constant.')
+    data=assemble(metadata,records)
     with output.open('x') as stream:json.dump(data,stream,indent=2);stream.write('\n')
     subprocess.run(['cargo','run','-p','stele-bench','--locked','--offline','--','ledger','validate',str(output)],
                    cwd=ROOT,check=True)

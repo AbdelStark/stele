@@ -1,6 +1,7 @@
 """RFC-0010 A9 §6: incomplete measured consumer receipts cannot become ledgers."""
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
 import shutil
@@ -39,6 +40,7 @@ class FieldPcsBenchTests(unittest.TestCase):
                         'field_pcs_bench', '--locked', '--offline'], cwd=ROOT,
                        check=True, capture_output=True)
         binary = ROOT/'target/debug/examples/field_pcs_bench'
+        records = []
         for mode, ell, m, b, d in [('primitive', 0, 0, 1, 4), ('primitive', 2, 1, 2, 8),
                                   ('a1', 2, 1, 1, 4), ('a1', 2, 1, 2, 8)]:
             args = mode, ell, m, b, d
@@ -46,6 +48,7 @@ class FieldPcsBenchTests(unittest.TestCase):
                                     check=True, text=True, capture_output=True)
             value = BENCH.decode(result.stdout)
             BENCH.receipt(value, *args)
+            records.append(value)
             mutations = [lambda x: x['stages_ns'].pop('certificate_verify'),
                          lambda x: x.update(total_ns=1),
                          lambda x: x['sources'][0].update(certificate_bytes=1),
@@ -68,6 +71,16 @@ class FieldPcsBenchTests(unittest.TestCase):
                 mutate(altered)
                 with self.subTest(args=args, mutation=mutate), self.assertRaises(AssertionError):
                     BENCH.receipt(altered, *args)
+        # Exercise the production formatter and native schema validator, not only inner receipts.
+        metadata = dict(commit='0'*40,toolchain='schema fixture',device='schema fixture',plan={'test':1})
+        data = BENCH.assemble(metadata, records)
+        self.assertEqual(data['kernel_counters']['opening_merkle_hashes'],
+                         sum(r['consumer_usage']['local']['hash_evaluations'] for r in records))
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = Path(directory)/'schema-fixture.json'
+            ledger.write_text(json.dumps(data))
+            subprocess.run(['cargo','run','-q','-p','stele-bench','--locked','--offline',
+                            '--','ledger','validate',str(ledger)],cwd=ROOT,check=True,capture_output=True)
 
     def test_rejects_missing_or_reordered_campaign_samples(self):
         with self.assertRaisesRegex(AssertionError, 'duplicate JSON keys'):
