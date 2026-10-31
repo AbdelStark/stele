@@ -1769,3 +1769,13 @@ consumer on identical O/Z roots. Canonical stream order and both child and
 outer EOF remain mandatory. No wrapper challenge or loss is introduced;
 every child account and original source consumer remains. Actual per-block
 and model ownership remain open. Accepted semantics and cuts are unchanged.
+
+### A3/A6 research plan — Complete weighted attention block sources
+
+The [block-offset scope](../../research/cqis-bounds/ATTENTION-BLOCK-OFFSET.md)
+requires every canonical block row and all channels through 1024x16384.
+Complete streamed source ranges reconstruct the same flat four-plane value
+root. One degree-two A1 consumes both actual source projections after all
+roots and child states; every carry plane remains ranged. This is revealing
+research, with actual value/probability preparation and full composition still
+required. Accepted cuts, semantics and original task criteria are unchanged.

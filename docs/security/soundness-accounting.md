@@ -1423,3 +1423,20 @@ The exact-mode probability adapter's minimum legal auxiliary shift is fixed
 from expected metadata and changes no L/Q cap or exact arithmetic. Binding,
 FS/H and actual upstream/model ownership remain additional. Require child
 and aggregate receipt equality and complete substitution controls.
+
+### Draft Q26/Q31 complete weighted attention block
+
+Pre-implementation account: each probability/value/output/carry range keeps
+independent lookup identity ((2^m+255)/|K|)^r, m=a_i+b_i+1, and unsquared
+reduction r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator
+is sum_i(9a_i+7b_i). Child nonlookup draws per label are sum_i(4a_i+3b_i).
+After every expected root and verified child state, draw rho and ac channel
+coordinates. The column/channel identity contributes (K-1+ac)/|K|. One
+degree-two A1 over all ar padded key coordinates contributes 2ar/|K| and
+ar further draws; total parent Sumcheck draws are 1+ac+ar. Keep those terms
+separate and consume both actual projected tables at the emitted point.
+Complete U ranges cover every canonical block row; replay reauthenticates
+each compact group and preserves the flat four-plane external source root.
+Static count C<=1024 bounds column sides below p/2. Streaming adds no
+challenge. Exact roster/EOF, padding and all carry slots remain mandatory.
+Binding, FS/H and actual upstream/model ownership remain additional.

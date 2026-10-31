@@ -1045,3 +1045,10 @@ configured output-row conversion on the actual ordered int16 source bytes?
 precede namespace checks, tests and code. Full h=128,w=128 composition and
 valid replacement/source-order controls remain required. Conditional head
 arithmetic does not establish actual GQA/key/value/model ownership.
+
+Q26/Q31 continuation: can every canonical attention block consume all actual
+probability/value sources through 1024x16384 with one weighted-sum proof?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-BLOCK-OFFSET.md)
+precede tests and code. Stream complete ranges, preserve the flat source root
+and retain independent consumers even at zero probability. Actual restored-
+value preparation and complete upstream/model ownership remain required.
