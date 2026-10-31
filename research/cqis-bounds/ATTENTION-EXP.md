@@ -120,3 +120,10 @@ false bounded outputs or remainders. Product and corrected branches rejected
 all four at Product:RoundSumMismatch or Correction:RoundSumMismatch. This
 checks the arithmetic bindings directly, in addition to the original-claim
 and root controls. The verifier and completed corpus/matrix states are unchanged.
+
+CI preserves all 143 inherited commands and adds all nine normal modes as
+command 144. Three mandatory full-size matrix jobs cover direct, product and
+corrected representations with fail-fast disabled. All 11 CI inventory tests
+passed, including exact coverage of all twelve CLI modes and rejection of
+every unsuccessful required result. The original matrix/full-size runners
+and local gate queue continue without a restart.

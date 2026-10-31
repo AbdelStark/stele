@@ -75,3 +75,9 @@ full-size proof and repository gates remain pending.
 The complete 16-proof matrix passed with all exact receipt, original-id and
 draw checks. Its transcript digest is frozen. Full-size evidence and the
 repository gate queue remain pending.
+
+CI now requires all five normal modes and the complete 16384-channel proof.
+The aggregate rejects every non-success prerequisite. All inherited jobs and
+33 native steps are preserved. All 11 CI inventory/CLI/aggregate tests passed.
+The original full-width proof and queued repository gates continue; no proof
+or gate process was restarted for this integration. Hosted CI remains pending.
