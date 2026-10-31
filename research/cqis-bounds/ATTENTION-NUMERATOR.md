@@ -93,3 +93,11 @@ all carry endpoints and zero-bound shift 92. Both complete raw and block
 canonical magnitude sources composed; separately valid changed magnitudes
 rejected their pinned source roots. The matrix continues in the original
 runner, while the corrected corpus and full-width proofs remain queued.
+
+The corrected corpus passed all 10000 cases plus the two full-capacity cases
+at widths 8193 and 16384. Seed 2743 covered 354302 channels, 3352 zero-bound
+cases and every shift from 0 through 92. Complete byte roots, column carries
+and explicit ragged half-domain caps matched. Frozen SHA-256:
+`52884129cf30f2439d1a29263c1f5b11d6a7aba6b00ad0ed8a987f074e3f88f6`.
+The original failed corpus log is retained; its corrected driver completed
+successfully. Matrix, full-width proofs and repository gates remain pending.
