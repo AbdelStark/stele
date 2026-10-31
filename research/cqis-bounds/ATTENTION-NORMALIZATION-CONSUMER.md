@@ -69,3 +69,15 @@ conversion, full model/checkpoint/context/cache/decode ownership, native/private
 PCS/ZK/FS, GPU parity, fidelity and independent audit remain required. No new
 cut, weight pass, benchmark or production coverage is claimed. Original task
 criteria stay blocked and Draft amendments remain unaccepted.
+
+The namespace design passed all child derivations at parent identity 2^32-1,
+width 16384 and length 1048576 in both modes and challenge fields. Child
+spans are disjoint and contained in the parent's reserved span; strict
+division retains G=2 in the exact boundary and G=1 in the block boundary.
+This check used the existing complete child implementations. Permanent
+tests-first coverage and the composition implementation remain required.
+
+Equivalent arithmetic metadata may permit valid child proof reuse. The
+returned context state must change with expected schema/roles; a caller
+must bind that state. Controls must reject replay as the original context,
+without requiring rejection of a mathematically valid alternate statement.
