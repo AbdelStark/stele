@@ -469,7 +469,7 @@ Affected tasks: E3-03..E3-06, E8-04/E8-05, E12-09. No acceptance criterion remov
 
 ### A4 — Stacked public coefficients and canonical claim coordinates
 
-Status: Draft. Question Q20. Evidence: [stacking study](../../research/stacked-gkr/REPORT.md).
+Status: Review. Question Q20. Evidence: [stacking study](../../research/stacked-gkr/REPORT.md).
 Motivation: §§3,6 do not fix public-MLE descriptor bytes, their padding and
 axis semantics, the consumed/output claim encoding, or the ownership changes
 required when a layer coordinate is folded. Implementing these choices implicitly
@@ -611,6 +611,38 @@ satisfy them. Cost impact: c_sc, public evaluation in T_misc, memory and block-s
 redistribution. No measured constant, weight-pass count or performance result
 changes here. Affected tasks: E3-06 and downstream GKR/lookup/reduction/distribution
 work; all original acceptance criteria remain required.
+
+#### A4 reviewed implementation boundary
+
+Proposed normative replacement for §§3,6: [conditional stacked runtime](../../formal/stacked-runtime.md).
+This complete contract supersedes the candidate source/byte/adoption conditions
+above for the public-coefficient field runtime only. It fixes statement bytes,
+source fixation, actual A1 reuse, original-point restoration, round ownership,
+errors, resource admission, complete costs and named controls. RFC-0012 A6 and
+RFC-0020 A2 specify its exact transcript and dependency additions.
+
+A7 public coefficient values are actual expected public inputs. Full public
+originals have direct consumers; full unpadded A9 field originals have actual
+certificate/opening consumers outside GKR. The latter retain all conditional
+losses and their unmasked disclosure. No coefficient commitment is added, and
+no original is dropped. The existing A9 A1 adapter remains unchanged.
+
+This scope correction removes joint masking as a prerequisite of implementing
+the conditional runtime. Completed E12-01 depends through E8-02/E8-01/E7-09/
+E7-06 on E3-06; reversing that dependency would prevent either implementation.
+It does not weaken any privacy requirement or adopt a private coefficient
+format. Private source/view/packing/range and joint-ZK admission remain Q20/Q29
+obligations; unsupported private coefficients and implicit views reject.
+Exact-table arithmetic does not admit an unverified CQIS RoPE source. Original
+E3-06 criteria remain unchanged, and require the actual implementing delivery.
+Acceptance of this contract alone completes no task or negative control.
+
+Soundness is the actual A1 SC record m*delta/p^d plus every applicable A9 loss;
+source/frame absorbs add no random draw. Q12, integer inference, complete plan
+ownership and both profile admissions remain open. Cost terms are c_sc and
+T_misc, full source/PCS work, partial storage and input redistribution. No fitted
+constant, performance result or weight pass changes. The historical research
+links above remain evidence for their stated scopes, not native closure.
 
 ### A5 — Typed small-value inputs and deferred prefix folding
 

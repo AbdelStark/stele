@@ -11,7 +11,7 @@
 | NC-0200 | sumcheck engine | 0006 A1 | change one round evaluation | `RoundSumMismatch` | done |
 | NC-0201 | sumcheck engine | 0006 A1 | one final evaluation folded at another instance's challenge | `FinalEvaluationMismatch` | done |
 | NC-0202 | sumcheck engine | 0006 A2 | omit one member/claim contribution from one round evaluation | `RoundSumMismatch` | done |
-| NC-0203 | sumcheck engine | 0006 §8 | block-sparse coefficient hits wrong layer | `RoundCheckFailed` etc. | todo |
+| NC-0203 | stacked coefficient | 0006 A4 | one coefficient final evaluated at the wrong layer; empty P preserves the A1 check | `CoefficientMismatch` | todo |
 | NC-0204 | sumcheck engine | 0006 A5 | small strategy on a truncated unused original value; one changed final | `ClaimMismatch` | done |
 | NC-0205 | sumcheck engine | 0006 A1,A2 | unused final under constant P; mode 1 changes one unclaimed tensor entry | `ClaimMismatch` | done |
 | NC-0206 | sumcheck engine | 0006 A2, 0012 A4 | one round evaluation computed with coefficient drawn before Batch | `RoundSumMismatch` | done |
@@ -19,6 +19,9 @@
 | NC-0208 | sumcheck engine | 0006 A3 | change one weighted tail endpoint or compute it with an early skip challenge | `RoundSumMismatch` | done |
 | NC-0209 | sumcheck engine | 0006 A3 | change one unused original slice final | `ClaimMismatch` | done |
 | NC-0210 | sumcheck engine | 0006 A6 | change one unused Streaming source value; one changed final under original consumer | `ClaimMismatch` | done |
+| NC-0211 | stacked canonical point | 0006 A4 | one unused original final from the raw layer-last point | `ClaimMismatch / ValueMismatch` | todo |
+| NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | todo |
+| NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | todo |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
 | NC-0400–0405 | lookups | 0008 §7 | see RFC | `LogUpImbalance` etc. | todo |
 | NC-0406 | fraction reduction | 0008 A3 | change one root numerator | `FinalEvaluationMismatch` | done |
@@ -58,3 +61,8 @@ RFC-0010 A2 specifies a circle encoder only. Its research order/normalization an
 distance counterexamples add no PCS binding or NC coverage. NC-0603..0605 still
 require the actual commitment/opening consumers; E4-02 encoder tests cannot mark
 them done or admit a PCS profile.
+
+Draft RFC-0006 A4 reserves NC-0211..0213 and refines NC-0203's actual coefficient
+consumer. Its Stack/StackSources extensions of NC-0802 remain pending; existing
+NC-0802 coverage is unchanged. No proposed control becomes done before its native
+implementation and both-field rejection evidence.

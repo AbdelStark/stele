@@ -4,6 +4,11 @@ Status: Draft. This proposes exact statement bytes and the A1 reuse boundary.
 It does not authenticate a source, register a production label or authorize core
 code. A4 acceptance still requires the source/consumer closure and full reviews.
 
+The revised [conditional runtime contract](stacked-runtime.md) is the current
+A4 review proposal. It specifies complete public/certified original consumers
+and explicitly separates private coefficient admission. This file preserves the
+historical research codec and its evidence; it is not the production contract.
+
 ## 1. Statement, coefficient and trust boundary
 
 The verifier derives a statement from its authenticated plan: stage id, common

@@ -1108,3 +1108,12 @@ exponential differences? [Scope and kill criteria](../../research/cqis-bounds/AT
 precede code. Group complete byte ranges while retaining one projected
 parent proof, exact selected-byte attainment and static field certificates.
 Full model provenance and native/private admission remain separate.
+
+Q20 runtime scope review: [the complete conditional contract](../../formal/stacked-runtime.md)
+specifies actual A1/A7/A9 consumption, source fixation, restored points, partials
+and controls. Draft A4/A6/A2 separate this public-coefficient field runtime from
+private coefficient format and joint-ZK adoption. E12-01 depends transitively on
+E3-06; requiring its completion first would create a dependency cycle. Private
+sources/views, integer padding/range, actual CQIS table authority and joint
+privacy retain their original integration requirements. No task, native control
+or profile is completed by this review proposal.
