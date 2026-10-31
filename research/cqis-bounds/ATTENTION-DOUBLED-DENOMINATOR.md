@@ -64,3 +64,11 @@ all compact-width families passed. Frozen corpus SHA-256:
 Primary controls passed, including both actual operand originals, both public
 powers and the coefficient two hidden by zero. Boundary, composition, matrix
 and full-metadata proofs remain under validation; repository gates are queued.
+
+All boundary controls and actual positive-denominator composition passed.
+The output-ranged 2D-p value rejected at the product equation. Valid changed
+and standalone zero sources could not replace the pinned positive source.
+All 16 matrix proofs passed across both fields/repetition counts with exact
+receipts and all original consumers. Frozen SHA-256:
+`4e1b11841e44afb486319288865815ad8ddf56359ed810ea4ec5e3bf15f4b0d5`.
+Full-metadata boundaries and repository gates remain under validation.
