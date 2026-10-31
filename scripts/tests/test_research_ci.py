@@ -25,10 +25,10 @@ SPEC.loader.exec_module(ci)
 class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_command_inventory(self):
         commands = [command for group in ci.load_groups().values() for command in group]
-        # Independent snapshot: serial inventory through remainder consumer.
-        self.assertEqual(len(commands), 118)
+        # Independent snapshot: main inventory through remainder plus reference field checks.
+        self.assertEqual(len(commands), 119)
         digest = hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest()
-        self.assertEqual(digest, 'b3ecb0b5ec330215f6a5bd8ce0049e5382b5dbb02873d6a378359d4886f0d2f7')
+        self.assertEqual(digest, '0969b478719fa0ca99c4e34e8e454f86f901fd363041d297a5d198ddaef6c361')
         for command in commands:
             argv = shlex.split(command)
             if argv[0] == 'curl':
@@ -37,6 +37,10 @@ class ResearchCiTests(unittest.TestCase):
             self.assertTrue(script.is_file(), command)
             if argv[0] == 'uv':
                 self.assertTrue(Path(str(script) + '.lock').is_file(), command)
+
+    def test_requires_reference_field_vectors_and_complete_consumers(self):
+        self.assertEqual(ci.load_groups().get('reference-field'),
+                         ['uv run --locked --script research/sumcheck/check_field.py --vectors --proofs'])
 
     def test_accepts_complete_matrix(self):
         output = io.StringIO()
