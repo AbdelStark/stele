@@ -130,6 +130,26 @@ tasks:
   acceptance:
   - schema documented
   - validator rejects ledgers with bindings_all_on false
+- id: E0-06
+  epic: E0
+  title: Consolidate pending work and shorten required CI
+  depends:
+  - E0-02
+  - E0-04
+  - E0-05
+  rfc:
+  - RFC-0020 §4-5
+  skill: rfc-author
+  crate: ci
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-06-ci-consolidation
+  acceptance:
+  - all existing published work reconciled in one PR with source history preserved
+  - required native controls, independent digests and accounting pass on the consolidated tree
+  - duplicate validation removed and exhaustive research campaigns retain explicit runnable inventories
+  - path selection fails closed and never treats skipped required work as success
+  - one implementation task proceeds through validation and merge before the next starts
 - id: E1-01
   epic: E1
   title: M31 with lazy reduction + canonicalisation
