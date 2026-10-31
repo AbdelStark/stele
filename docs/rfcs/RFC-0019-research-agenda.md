@@ -878,3 +878,10 @@ the strict relation. Paired A/D, bounded M/MD and the decomposition now compose
 with the same R/D roots in revealing research. Continue with the complete
 canonical rsqrt membership and wide signed output branches; retain all original
 native/model/private, physical-layout, fidelity and control obligations.
+
+Q26/Q31 source-capacity continuation: can a [streamed Merkle root builder](../../research/merkle/STREAMING.md)
+preserve Accepted RFC-0012 A3 bytes and complete revealing lookup proofs while
+retaining only a logarithmic digest frontier? Scope and kill criteria precede
+tests and code. This reduces temporary root-construction storage; it does not
+enlarge an inference consumer or admit a new cut. Complete source ranges,
+weighted attention ownership and all original task criteria remain required.
