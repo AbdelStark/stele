@@ -67,6 +67,7 @@ def corpus():
     rejects('Spec',lambda:c.derive(p,True))
     for us,D,qs,rs in (([0]*3,0,[0]*3,[0]*3),([False]*3,1,[0]*3,[1]*3),([0],1,[0]*3,[1]*3),([0]*3,1,[32769]*3,[1]*3),([0]*3,1,[0]*3,[2]*3),([0]*3,1,[0]*3,[False]*3)):rejects('Input',lambda:c.witness(p,us,D,qs,rs))
     assert groups=={1,2} and zeros>0 and edges>0
+    assert (cells,zeros,edges,digest.hexdigest())==(378879,7844,92247,'390669772c84ae3667822f7417690d395e2b76389df305bbe9b654a37bb196b7')
     print(json.dumps(dict(seed=2747,cases=10000,capacity_cases=4,cells=cells,zero_remainders=zeros,maximal_remainders=edges,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
