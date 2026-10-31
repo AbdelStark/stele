@@ -546,7 +546,9 @@ tasks:
   - RFC-0020 A5
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E4-03a-field-source-codec
   acceptance:
   - both-field native/Python certificate and opening byte parity
   - all 59 finite policies; canonical parsing, malformed-proof fuzzing and checked allocation
