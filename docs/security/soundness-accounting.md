@@ -1195,3 +1195,19 @@ child states precede the parent transcript. Static2*max(4G,G+1)<p with
 G=ceil(L/1024)*qmax excludes aliases, including G=0. No new label or A1.
 Binding/FS/H and actual upstream composition remain additional; runtime
 receipts must confirm these formulas before evidence is claimed.
+
+### Draft Q26/Q31 eight-byte probability aggregation
+
+Pre-implementation account: no wrapper challenge. Source wide range and
+complete radix-eight limb product retain independent lookup dimensions
+a+b+1,a+b+2,g+3,g+3, each identity ((2^m+255)/|K|)^r and unsquared
+reduction r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator
+20a+16b+18g+31, product identity k-1 and A1 reduction 2a+4b remain separate.
+Nonlookup draws are 9a+7b+8g+13 ZeroWeight and 10a+9b+8g+14 Sumcheck.
+Both actual operands and both public power originals remain consumed.
+Expected metadata, external/internal roots and verified child states bind the
+returned composition state; no claim of standalone metadata replay rejection
+or upstream membership follows. Complete per-block caps and byte-column
+certificates exclude integer aliases without lifting the global sum to M31.
+Binding/FS/H, global attainment and upstream composition remain additional;
+actual receipts must confirm these formulas before evidence is claimed.

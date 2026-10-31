@@ -969,3 +969,9 @@ Q26/Q31 continuation: [canonical accumulated block sign](../../research/cqis-bou
 uses the static small total bound to test complete sign/magnitude consumption
 without a wide carry grid. G=0 and negative raw signs rounding to zero must
 retain all upstream consumers while the final total sign remains canonical.
+
+Q26/Q31 continuation: can complete per-block probability sums compose into
+one faithful eight-byte total up to 2^34 using the existing limb product?
+[Scope and kill criteria](../../research/cqis-bounds/ATTENTION-GLOBAL-PROBABILITY-SUM.md)
+precede tests/code. One shared globally attained maximum and complete source
+ownership remain required; independent block normalization is invalid.

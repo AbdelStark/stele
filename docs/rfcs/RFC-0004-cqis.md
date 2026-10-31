@@ -1623,3 +1623,14 @@ All seven originals and full external byte planes remain bound. Tests must
 reject negative zero, relaxed-cap aliases and valid total substitutions.
 Global probability sum, normalization units and complete ownership remain
 required. No Accepted role, cut, profile or original criterion changes.
+
+### A3/A6 research plan — Eight-byte global probability aggregation
+
+Draft scope: [global probability sum](../../research/cqis-bounds/ATTENTION-GLOBAL-PROBABILITY-SUM.md).
+Prove the sum of actual four-byte block totals with complete source ranges
+and the existing limb product with exact coefficient-one joins. Block caps
+use absolute positions and the short final length; the eight-byte result can
+reach 2^34. No whole-field global equality or new challenge is introduced.
+Returned metadata-bound composition states do not establish key membership.
+Shared global attainment, positive Z, normalization units, native/private
+source ownership and all original inference criteria remain required.
