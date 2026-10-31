@@ -99,3 +99,9 @@ receipts, draw totals and both operand/public originals matched. Frozen
 SHA-256: `7459d9bdd7da9dbc27fb6a1109534b241f7836429fa2b368dbf2495f97e09d9d`.
 The complete 1024-block proof and its genuinely output-ranged total-minus-p
 control continue in the original runner. Repository gates remain queued.
+
+The complete 1024-block proof passed at Z=2^34. Its total-minus-p substitute
+passed the complete output byte ranges and rejected at the actual sum
+equation. The original runner completed successfully. Frozen full-proof
+SHA-256: `36436d08dfd62ede5837591d8d39ccb1cfcbb4787b747dd794aeb6d5fa084b16`.
+Repository gates, global attainment and full source ownership remain required.
