@@ -69,3 +69,8 @@ subsequently passed. All 10000 cases and four ragged/full capacity cases
 retain complete byte roots and carries, including 144695 carries above 255.
 The corpus digest is frozen in the scope. Matrix, full proofs and repository
 gates remain pending.
+
+The complete 16-proof field/repetition matrix subsequently passed. Exact
+receipts, draws and all seven parent originals matched, and the digest is
+frozen. Both full-width proofs, repository gates and independent review
+remain pending; the original successful runner was not restarted.
