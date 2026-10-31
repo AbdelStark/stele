@@ -909,3 +909,9 @@ closure. Exact policy checks cover all 59 Circle identities and unbiased
 index thresholds. Native consumers, two-field byte parity, actual controls
 and resource evidence remain required. This does not complete packed/fused
 source ownership, privacy, extraction, Q12 or either profile.
+
+Q27 byte continuation: the [field-wire oracle](../../research/merkle-oracle/FIELD-WIRE.md)
+checks complete certificate/opening bytes and the reference RFC-0006 A1 source
+consumer in both challenge fields. Its unused-original control reaches the
+terminal opening after the reduction accepts. Native parity, actual controls,
+resource accounting and all broader PCS/profile obligations remain required.
