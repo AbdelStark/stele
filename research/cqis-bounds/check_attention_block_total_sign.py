@@ -51,6 +51,7 @@ def corpus():
     rejects('Spec',lambda:c.derive(p,True))
     for values in ([False]*3,[-1]*3,[2*v['G']+1]*3,[0]):rejects('Input',lambda:c.witness(p,values))
     assert zeros>1000 and shifts==set(range(2,63)) and {(1,1),(2,1),(2,2),(4,2),(4,4)}<=widths
+    assert (cells,zeros,digest.hexdigest())==(329725,6660,'14c2f3733de98a71593e189c89e72d4d7facd86e07c38f8a64faf9d29f40e2f2')
     print(json.dumps(dict(seed=2740,cases=10000,cells=cells,zero_bound_cases=zeros,widths=sorted(widths),sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

@@ -60,3 +60,20 @@ This supplies canonical magnitude/sign for block normalization. The actual
 global probability sum, restored normalization units, full block/key/model
 ownership, native/private inference, fidelity and all original criteria remain
 required. No production admission or measured performance claim follows.
+
+Seed 2740 passed all 10000 independent corpus cases over 329725 channels,
+including 6660 zero-bound cases. Both unit policies, every admissible shift,
+short/partial/full lengths and all five observed U/M compact-width pairs
+passed. Whole predecessors, canonical signs and complete external byte roots
+matched NumPy. Frozen SHA-256:
+`14c2f3733de98a71593e189c89e72d4d7facd86e07c38f8a64faf9d29f40e2f2`.
+
+Primary and boundary controls passed. Negative zero rejected at CanonicalZero,
+including dimension zero; relaxed-cap modulus aliases rejected at their cap
+relations. All seven original views, metadata replay, Boolean/whole bounds,
+dense padding and full external high planes retained their consumers.
+Complete block-sum sources composed at shifts 26 and 62. A valid changed
+aggregate rejected the pinned U root. At rounded zero, a changed upstream
+sign rejected its upstream root while the unchanged aggregate remained valid.
+The proof matrix and full 16384-channel proof continue in the original runner;
+required repository gates remain queued once.

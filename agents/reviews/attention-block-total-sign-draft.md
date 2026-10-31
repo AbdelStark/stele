@@ -3,8 +3,9 @@
 Codex-root applies cqis-numerics, gkr-reduction-author and soundness-auditor.
 This is a same-author review, not an independent audit. The
 [scope](../../research/cqis-bounds/ATTENTION-BLOCK-TOTAL-SIGN.md) preceded tests
-and implementation. The first run rejected the missing module. Corpus,
-controls, proof matrix and full proof are pending. Repository gates will run
+and implementation. The first run rejected the missing module. All 10000 corpus
+cases, controls and both source compositions passed. Matrix and full proof
+validation continue. Repository gates will run
 once after the preceding block-sum gates. This is not a completed sign-off.
 
 - Public items: Draft RFC-0004 A3/A6 and RFC-0009 A2. Expected schema and
@@ -29,7 +30,7 @@ once after the preceding block-sum gates. This is not a completed sign-off.
   reductions remain. Range/A3 numerator is 41a+7(bo+2bm), including parent 5a.
   Parent draws are 2a per label; full totals are 18a+3(bo+2bm) per label.
   Tests compare all six parent records, seven claim ids and draw counts.
-  Repository accounting verification is pending.
+  Initial receipts and draws matched. Repository accounting verification is pending.
 - Bounds: metadata determines qmax, G and every range cap. Static
   2*max(4G,G+1)<p makes both equalities faithful, including G=0. Complete
   range verification precedes every whole lift. Relaxed-cap alias witnesses
@@ -40,7 +41,7 @@ once after the preceding block-sum gates. This is not a completed sign-off.
   of compact range widths. The sign root retains one full padded plane.
 - Determinism: fixed range, root and relation order; unique sorted expected
   block ids; fixed namespace and schema encoding. No floating point or retry.
-  Independent corpus and both-field proof digests are pending.
+  The independent corpus digest is frozen; both-field proof validation continues.
 - Parity: native CPU/SIMD/CUDA are unchanged. NumPy supplies independent
   differences, signs, whole predecessors and byte roots. The maximum proof
   covers 16384 channels with 1024 block ids as metadata; it does not prove
@@ -60,3 +61,13 @@ The first implementation run passed the total account equality but rejected
 a test expecting two parent records. A3 emits three records per relation,
 including its zero-cost skip record. The assertion now checks all six records
 and all seven original ids; verifier behavior did not change.
+
+I tried to break it by setting the sign to one at zero magnitude, and the
+control CanonicalZero:RoundSumMismatch rejected it. Dimension zero rejected
+the same attack at CanonicalZero:FinalEvaluationMismatch. Every compensated
+original-final attack rejected at its ClaimMismatch consumer.
+
+The independent corpus passed 329725 channels and 6660 zero-bound cases.
+Both complete block-sum source compositions passed, including valid changed
+aggregate rejection and upstream sign binding at rounded zero. Matrix,
+full-size proof and repository gates remain pending.
