@@ -165,7 +165,94 @@ def honest():
     print(json.dumps(dict(proofs=done,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 
+def originals():
+    p=spec(1,1);d=4;proof=list(c.prove(p,[0],[[0]],d));roots=oracle(p,[0],[0])[1]
+    for index in range(4):
+        bad=copy.deepcopy(proof);bad[-1]['predicates']['final'][index][0]=r.sc.scalar(1,d)
+        rejects('ScalePredicates:'+('ClaimMismatch' if index==3 else 'FinalEvaluationMismatch'),lambda:c.verify(p,roots,iter(bad),d))
+    p=spec(1,1,'static',1);proof=list(c.prove(p,[1],[[0]],d));roots=oracle(p,[0],[1])[1]
+    for index in range(2):
+        bad=copy.deepcopy(proof);bad[-1]['sum']['final'][index]=r.sc.add(bad[-1]['sum']['final'][index],r.sc.scalar(1,d))
+        rejects('Restoration:'+('ClaimMismatch' if index==0 else 'FinalEvaluationMismatch'),lambda:c.verify(p,roots,iter(bad),d))
+    p=spec(3,3);v=c.derive(p,d);codes=[0]*9;scales=[0,1,259];proof=list(c.prove(p,scales,[codes],d));us,roots=oracle(p,codes,scales)
+    words=c.planes(us,v['n'],4);words[-1]=1;changed=roots.copy();changed[2]=r.root(p.output,words);rejects('Output:CommitmentMismatch',lambda:c.verify(p,changed,iter(proof),d))
+    wrong=np.pad(np.array(us,dtype=np.uint32).reshape(3,3),((0,1),(0,1))).reshape(-1).tolist();changed[2]=r.root(p.output,c.planes(wrong,v['n'],4));rejects('Output:CommitmentMismatch',lambda:c.verify(p,changed,iter(proof),d))
+    ps=pairs(p,codes,scales,d);plan=c.child_spec(p,v,5)[2];xs=[v['S']+r.sc.P]+[v['S']]*8;ps[5]=r.assemble(plan,*r.witness(replace(plan,caps=(xs[0],)+plan.caps[1:]),xs),d);bad,rr=assemble(p,ps,d);rejects('Output:0:CapRelation:RoundSumMismatch',lambda:c.verify(p,rr,iter(bad),d))
+    print('scale-predicate/static originals, high planes, flat layout and M31 alias reject',flush=True)
+
+
+def predicates_controls():
+    p=spec(1,1);d=4;v=c.derive(p,d)
+    for scales,index,xs in (([0],1,[1]),([0],2,[1]),([1],1,[0])):
+        ps=pairs(p,[0],scales,d);plan=c.child_spec(p,v,index)[2];ps[index]=r.prove(plan,xs,d);bad,roots=assemble(p,ps,d)
+        rejects('ScalePredicates:RoundSumMismatch',lambda:c.verify(p,roots,iter(bad),d))
+    p=spec(1,1,'static',1);proof=list(c.prove(p,[1],[[0]],d));roots=oracle(p,[0],[1])[1];roots[1]=r.root(p.scale_source,[2,0]);rejects('Scale:CommitmentMismatch',lambda:c.verify(p,roots,iter(proof),d))
+    print('valid changed scale predicates and static scale source reject',flush=True)
+
+
+def zero_predicate():
+    p=spec(1,1);d=4;v=c.derive(p,d);ps=pairs(p,[0],[1],d)
+    # s=k+n holds exactly; only the second scale predicate is false.
+    for index,xs in ((1,[0]),(2,[1])):ps[index]=r.prove(c.child_spec(p,v,index)[2],xs,d)
+    bad,roots=assemble(p,ps,d);rejects('ScalePredicates:RoundSumMismatch',lambda:c.verify(p,roots,iter(bad),d))
+    print('isolated scale nonzero predicate rejects',flush=True)
+
+
+def projections():
+    # Arithmetic only: synthetic child states never authorize verify.
+    for d in (4,8):
+        p=spec(3,10923);v=c.derive(p,d);scales=[0,259,1];codes=[(i%255)-127 if scales[i//v['width']] else 0 for i in range(v['count'])];us,expected=oracle(p,codes,scales);roots=[];local=dict(scale=scales+[0],nonzero=[0,1,1,0],predecessor=[0,258,0,0])
+        for plan,name in zip(c.common_specs(p,v),('scale','nonzero','predecessor')):
+            _,_,n,width,*_=r.derive(plan,d);roots.append(r.source_root(plan,c.planes(local[name],n,width)))
+        with tempfile.TemporaryFile() as spool:
+            for g,xs in enumerate(groups(v,codes)):
+                signed,mag,up=c.group_specs(p,v,g);n=1<<(len(xs)-1).bit_length();raw=[x%256 for x in xs];uv=c.values(p,v,g,xs,scales);mr=r.root(mag.source,c.planes(list(map(abs,xs)),n,1));roots.extend((r.root(signed.source,c.planes(raw,n,1)),mr,mr,r.source_root(up,c.planes(uv,n,r.derive(up,d)[3]))));c.write_group(spool,raw,uv)
+            assert c.external_roots(p,v,scales,spool)==expected;states=[bytes(32)]*v['children'];t=c.context(v,expected,roots,states,d);reference=c.context(v,expected,roots,states,d);point=[r.sc.challenge(reference) for _ in range(v['a'])];r.sc.challenge(reference);weights=r.scalar.eq_weights(point,d)
+            instance,tables=c.parent(p,v,t,roots,local,spool,d);assert t.state==reference.state
+            for j in range(v['rows']):
+                lo=j*v['width'];hi=lo+v['width'];project=lambda xs:tuple(sum(x*weight[k] for x,weight in zip(xs,weights[lo:hi]))%r.sc.P for k in range(d))
+                assert tables[1][j]==project([-x for x in codes[lo:hi]]) and tables[3][j]==project(list(map(abs,codes[lo:hi])))
+            assert instance['sum']==tuple(sum((v['S']-u)*weight[k] for u,weight in zip(us,weights))%r.sc.P for k in range(d))
+            for at in (0,5*v['sizes'][0],5*(v['count']-1)+4):
+                spool.seek(at);old=spool.read(1);spool.seek(at);spool.write(bytes([old[0]^1]));g=at//(5*v['group_rows']*v['width']);rejects('Replay:'+str(g)+':CommitmentMismatch',lambda:c.parent(p,v,c.context(v,expected,roots,states,d),roots,local,spool,d));spool.seek(at);spool.write(old)
+        print('ragged value projection and replay arithmetic passed',d,v['sizes'],flush=True)
+
+
+def composition():
+    import row_code as dynamic
+    import static_row_code as static
+    import check_attention_block_offset as weighted
+    for index,(mode,scale,inputs) in enumerate((('dynamic',0,[-32768,0,32767]),('static',2,[-254,0,254]))):
+        p=spec(1,3,mode,scale,8770+index);module=dynamic if mode=='dynamic' else static;schema=static.row.Spec('wide',3,7,mode,scale);rp=module.Spec(schema,8780+index,109,p.scale_source,p.source,1)
+        proof,state=module.prove(rp,inputs,4);rr=module.roots(rp,proof);assert module.verify(rp,rr,proof,4)['state']==state;w=module.witness(rp,inputs);codes=w['codes'];scales=[w['scale'] if mode=='dynamic' else scale];us,roots=oracle(p,codes,scales);assert roots[:2]==[rr[2],rr[1]];run(p,codes,scales,4)
+        wp=weighted.c.Spec(p.schema,0,(True,),8790+index,113,p.output,127,1);assert weighted.oracle(wp,[16384],us)[1][1]==roots[2];weighted.run(wp,[16384],us,4)
+        other=list(c.prove(p,scales,[list(reversed(codes))],4));c.verify(p,oracle(p,list(reversed(codes)),scales)[1],iter(other),4);rejects('Source:CommitmentMismatch',lambda:c.verify(p,roots,iter(other),4));print('prepared row through restored block to weighted sum passed',mode,flush=True)
+
+
+def maximum(mode):
+    rows,width={'maximum':(1024,16384),'full-static':(1024,16384),'full-ragged':(1023,16383),'full-tail':(1,16384)}[mode];policy='static' if mode=='full-static' else 'dynamic';scale=65535 if policy=='static' else 0;p=spec(rows,width,policy,scale,8799);p=replace(p,schema=replace(p.schema,length=1023*1024+rows),block=1023);v=c.derive(p,4);scales=[scale if policy=='static' else (0,259,1)[j%3] for j in range(rows)]
+    if rows==1:scales=[259]
+    print('full block values start',mode,rows,width,v['groups'],flush=True)
+    def sources():
+        at=0
+        for size in v['sizes']:
+            yield [(i*17+31*(i//width))%(2*v['cap']+1)-v['cap'] if scales[i//width] else 0 for i in range(at,at+size)];at+=size
+    def payloads(output):
+        for k in range(4 if output else 1):
+            at=0
+            for xs in sources():
+                values=(v['S']+np.array(xs,dtype=np.int64)*np.repeat(np.array(scales[at:at+len(xs)//width],dtype=np.int64),width)).tolist() if output else [x%256 for x in xs];at+=len(xs)//width
+                for x in values:yield struct.pack('<I',x>>(8*k)&255)
+            for _ in range(v['n']-v['count']):yield bytes(4)
+    merkle=r.lu.merkle;roots=[merkle.root(merkle.Tree(0,p.source,v['n'],4),payloads(False)),r.root(p.scale_source,c.planes(scales,v['nr'],2)),merkle.root(merkle.Tree(0,p.output,4*v['n'],4),payloads(True))];source=Capture(c.prove(p,scales,sources(),4))
+    def observed():
+        for record in source:
+            yield record
+            if 'child' in record:print('full block value children verified',mode,record['child']+1,v['children'],flush=True)
+    out=c.verify(p,roots,observed(),4);assert out['state']==source.state;account(p,out,4);print('full block values passed',mode,out['state'].hex(),flush=True)
+
+
 if __name__=='__main__':
-    modes={'--shapes':shapes,'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--honest':honest};assert set(sys.argv[1:])<=set(modes)
+    modes={'--shapes':shapes,'--corpus':corpus,'--controls':controls,'--boundaries':boundaries,'--honest':honest,'--originals':originals,'--predicates':predicates_controls,'--zero-predicate':zero_predicate,'--projections':projections,'--composition':composition,'--maximum':lambda:maximum('maximum'),'--full-static':lambda:maximum('full-static'),'--full-ragged':lambda:maximum('full-ragged'),'--full-tail':lambda:maximum('full-tail')};assert set(sys.argv[1:])<=set(modes)
     for flag in sys.argv[1:] or modes:
         modes[flag]()

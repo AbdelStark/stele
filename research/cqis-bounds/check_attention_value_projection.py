@@ -52,6 +52,7 @@ def corpus():
         rejects(lambda:EqProjector(point,d))
     for columns in ([],[[1]],[[1],[1],[1,2]],[[True],[1],[1]],[[],[],[]],[[0.0],[1],[1]]):
         rejects(lambda:EqProjector([],4).row(columns))
+    assert (rows,cells,digest.hexdigest())==(36540,75000,'df1424e9bff587280b74434f0084246230a7a814d9178bfd0f686cab89cbd4aa')
     print(json.dumps(dict(cases=20000,rows=rows,cells=cells,sha256=digest.hexdigest()),sort_keys=True),flush=True)
 
 

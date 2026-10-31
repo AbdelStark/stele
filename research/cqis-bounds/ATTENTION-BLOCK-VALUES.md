@@ -75,3 +75,17 @@ small source joins. Require complete 1024x16384 dynamic/static proofs,
 projection-row/GQA/cache ownership, native private PCS/ZK/FS, GPU parity,
 resource evidence, fidelity and independent audit remain open. Original task
 criteria and live runs are unchanged. No production coverage is earned.
+
+The tests-first executions rejected both missing modules. Flat projection then
+passed 10000 random cases per field, 36540 row intervals and 75000 cells;
+counts and SHA-256 are frozen in the checker:
+`df1424e9bff587280b74434f0084246230a7a814d9178bfd0f686cab89cbd4aa`.
+Both fields passed the streamed 2^24-entry closed-form arithmetic check and
+the ragged 3x10923 group projection/replay checks. These are arithmetic tests,
+not complete large source-proof coverage. Source substitutions, false U,
+compensating entries, zero-scale codes, tighter caps, padding, high planes,
+flat layout, M31 aliases and original-view controls passed. Complete small
+prepared-row to restored-block to weighted-sum joins passed for both policies.
+The full shape/corpus run, complete proof matrix and repository gates remain
+in validation. Full-size consumers and independent resource evidence remain
+required. See the [author review](../../agents/reviews/attention-block-values-draft.md).
