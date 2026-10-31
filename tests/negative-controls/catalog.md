@@ -63,6 +63,6 @@ require the actual commitment/opening consumers; E4-02 encoder tests cannot mark
 them done or admit a PCS profile.
 
 Accepted RFC-0006 A4 reserves NC-0211..0213 and refines NC-0203's actual coefficient
-consumer. Its Stack/StackSources extensions of NC-0802 remain pending; existing
-NC-0802 coverage is unchanged. No proposed control becomes done before its native
+consumer. Its Stack/StackSources extensions of NC-0802 remain pending.
+Existing NC-0802 coverage is unchanged. No proposed control becomes done before its native
 implementation and both-field rejection evidence.
