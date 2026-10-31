@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["blake3==1.0.11"]
 # ///
-"""Research-only RFC-0006 A1 oracle; no core code or NC catalog credit."""
+"""Research RFC-0006 A1 oracle with RFC-0003 §2/A1 fields; no core/NC credit."""
 import copy
 import json
 from pathlib import Path
@@ -31,10 +31,23 @@ def mul(a, b):
     d = len(a)
     if d == 1:
         return (a[0] * b[0] % P,)
+    if not any(a[1:]):
+        return tuple(a[0] * x % P for x in b)
+    if not any(b[1:]):
+        return tuple(b[0] * x % P for x in a)
     h = d // 2
     ac, bd = mul(a[:h], b[:h]), mul(a[h:], b[h:])
-    nr = {2: (P-1,), 4: (2, 1), 8: (0, 0, 1, 0)}[d]
-    return add(ac, mul(nr, bd)) + add(mul(a[:h], b[h:]), mul(a[h:], b[:h]))
+    # RFC-0003 §2/A1: multiplication by -1, 2+i and u in the fixed basis.
+    if d == 2:
+        nr_bd = (-bd[0] % P,)
+    elif d == 4:
+        nr_bd = ((2*bd[0]-bd[1]) % P, (bd[0]+2*bd[1]) % P)
+    else:
+        assert d == 8
+        nr_bd = ((2*bd[2]-bd[3]) % P, (bd[2]+2*bd[3]) % P, bd[0], bd[1])
+    # Three lower-field products: (a0+a1)(b0+b1)-a0*b0-a1*b1.
+    cross = mul(add(a[:h], a[h:]), add(b[:h], b[h:]))
+    return add(ac, nr_bd) + tuple((x-y-z) % P for x, y, z in zip(cross, ac, bd))
 
 
 def encode(value):
