@@ -28,7 +28,7 @@ class Spec:
 def derive(p,d):
     need(type(p) is Spec and type(d) is int and d in (4,8),'Spec');norm.constants(p.schema)
     need(type(p.identity) is int and 0<=p.identity<1<<44 and type(p.repetitions) is int and p.repetitions in (1,2),'Spec')
-    count=p.schema.d;a=(count-1).bit_length();n=1<<a;need(4*n<=4096,'Capacity')
+    count=p.schema.d;a=(count-1).bit_length();n=1<<a
     base=(1<<63)+(1<<18)*p.identity;external=(p.left,p.right,p.output)
     need(all(type(x) is int and 2<=x<1<<64 and not base<=x<base+(1<<18) for x in external) and len(set(external))==3,'Spec')
     cert=norm.limbs.derive(norm.column_specs(p.schema)['xy'])

@@ -152,7 +152,8 @@ def controls():
     for bad in (replace(p,caps=(True,)),replace(p,caps=(-1,)),replace(p,caps=(1<<160,)),
                 replace(p,repetitions=0),replace(p,identity=1<<56),replace(p,source=True)):
         rejects('Spec',lambda:r.derive(bad,d))
-    rejects('Capacity',lambda:r.derive(replace(p,caps=(0,)*4097),d))
+    rejects('Capacity',lambda:r.derive(replace(p,caps=(0,)*65537),d))
+    rejects('Capacity',lambda:r.derive(replace(p,caps=((1<<160)-1,)*4097),d))
     rejects('Spec',lambda:r.derive(replace(p,source=r.derive(p,d)[4]),d))
     rejects('Root',lambda:r.verify(p,bytes(31),proof,d))
     rejects('Range',lambda:r.prove(p,[1],d))

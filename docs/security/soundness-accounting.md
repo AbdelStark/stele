@@ -734,3 +734,679 @@ and one exact-frame certificate-ID hash. Rejected attempts retain actual work.
 The Usage record is hash-only: full encoder/buffer accounting remains open.
 NC-0600/0601/0606/0607/0608 and NC-0803 execute this consumer in both fields.
 No opening, A1 closure, complete lifetime budget, Q12, ZK or profile follows.
+
+The [range capacity continuation](../../research/cqis-bounds/RANGE-CAPACITY.md)
+admits at most65536 caps with padded N*B<=131072. It preserves2BN<=262144<p
+and m=a+b+1<=18, so the existing exact lookup identity/reduction formulas and
+characteristic-safe unit remain. With a<=16,b<=5,a+b<=17, wide-range A3 loss
+9a+7b is at most151/|K| and each nonlookup label has at most67 draws. These
+replace the old domain maxima143 and63; actual per-instance accounting remains
+exact. Old-domain encodings/challenges are unchanged. Signed count<=16384 gives
+maximum signed32 A3 numerator663 with lookup dimensions17,17,16. Full-row xy
+has a=14, A3 numerator1606, six dimension16 and two dimension17 lookups, and674
+draws of each nonlookup label. Repetitions apply only to each lookup identity
+and its separately linear reduction. Every original/public claim and carry
+boundary remains consumed. Expected cap metadata can grow to1310720 bytes
+and the terminal A3 view to65536 entries; the word-byte bound does not conceal
+these increases. Binding/FS, other norm
+roles and native/physical/model/private inference remain additional.
+
+The [norm reciprocal-product study](../../research/cqis-bounds/NORM-PRODUCT.md)
+uses N=2^a padded rows and five complete ranges with lookup dimensions
+a+3,2,a+4,a+4,a+2. Each retains its own identity ((2^m+255)/|K|)^r and
+reduction r*[F(m)+F(8)+3m]/|K|, F(m)=3m(m-1)/2+2m. Range A3 numerators
+sum to 36a+76; the degree-two dimension a+3 parent adds 3a+9, giving
+(39a+85)/|K|. Full nonlookup draws are 17a+36 of each A3 label. At a=14,
+these are numerator 631, 274 draws per label and lookup dimensions 17,2,18,18,16.
+No scalar-join challenge is added: actual verified J-8192 bytes reconstruct J
+and its canonical-u32 root is compared with the expected rsqrt output root.
+The parent absorbs expected norm bytes, three external roots, three auxiliary
+roots and five verified child states before weights/rounds/finals. All seven
+original views are consumed, including zero-hidden operands and both high
+output planes. Closed carry caps 0,254,318,318,128,16,0 and whole xy/J/t ranges
+give maximum column side 81663, with 2*81663<p. Runtime receipt checks remain
+required. Binding/FS, full rsqrt membership, canonical sign/zero predicates,
+output branches and native/physical/model/private composition are additional.
+
+The [norm canonical-sign study](../../research/cqis-bounds/NORM-SIGN.md) retains
+the complete xy consumer and adds two ranges, each with lookup dimension a+3,
+for Boolean flags and bounded predecessors. Their A3 numerators are 9a+18 and
+9a+16; parent predicate/sign A3 numerators are 3a+6 and 3a. Total A3 is
+(131a+148)/|K|, with 55a+61 draws of each nonlookup label. Six lookup
+dimensions are a+2 and four are a+3, each retaining its separate identity
+((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|. At a=14, A3 is
+1982/|K| and each nonlookup label has 831 draws. No challenge is added by
+the exact sign-root reconstruction from the actual verified flag plane.
+Expected norm bytes, four external roots, two auxiliary roots and all three
+verified child states precede parent weights/rounds/finals. All nine parent
+original claims are consumed. Whole m<=32768, k<=32767 and Boolean flags
+bound predicate sides by 65536; sign sides are at most 2 and 3. All are
+strictly below p/2. Expected zero caps retain padded flags/predecessors; there
+is no quotient/output selector. Runtime receipts, binding/FS, configured
+output branches and native/physical/model/private composition remain additional.
+
+The [full-row statistic consumer](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
+has signed-source A3 numerator43a+35 for N=2^a. The scalar S range has byte
+width2^bs (bs2or3), and its carry vector pads to eight words of byte width2^bc
+(bc0..2). Their A3 contribution is27+7(bs+bc), giving total
+(43a+62+7(bs+bc))/|K|. Three degree-two A1 column sums add6a/|K| separately;
+five dimension-zero tail instances add no draw or algebraic loss. Lookup
+dimensions are a+2 three times, bs+1 and bc+4. Each retains its own identity
+((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. A1/A3 losses are not squared with lookup repetitions.
+Nonlookup draws are18a+26+3(bs+bc) ZeroWeight and21a+26+3(bs+bc) Sumcheck.
+At full a14/bs3/bc2, A3=699, A1=84, ZeroWeight=293 and Sumcheck=335.
+Five roots, three verified child states and complete expected norm bytes
+precede parent instances. Each initial sum is derived from actual verified
+S/carry bytes and absorbed before challenges; all four original byte claims
+have independent consumers at emitted points. Whole bounds, zero endpoints
+and closed column sides enforce integer lifting: maximum1073709311<p/2.
+Exact S-root zero extension adds no challenge. Runtime receipts, binding/FS,
+native/model/private composition and all remaining norm roles stay additional.
+
+The [quotient-product consumer](../../research/cqis-bounds/NORM-QUOTIENT-PRODUCT.md)
+has N=2^a rows and P=2^c padded columns. Let bd/bl/bh be byte-width exponents
+for offset B-1 and low/high result ranges, h indicate an active high range,
+and g count active four-plane carry families with exponents bg. All activity
+comes from the closed expected certificate. Set X=1+bd+bl+h*bh+sum(bg).
+Total A3 loss is[(21+9h+9g)*a+7X+18g+3c]/|K|; each nonlookup label has
+(9+4h+4g)*a+3X+8g+c draws. Lookup dimensions are a+2, bd+1, a+bl+1,
+a+bh+1 when h=1, and a+bg+3 for each active family. Each keeps its separate
+identity ((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. No A3 term is squared with lookup repetitions.
+At full a14/c4, bd4/bl3/bh3, h1/g4 and sum(bg)=3, A3 is1106/|K| and
+each nonlookup label has484 draws; lookup dimensions are16,5,18,18,18,18,18,17.
+Complete metadata, three external roots, all auxiliary roots and verified
+range states precede parent weights/rounds/finals. All seven original views
+have independent consumers at emitted points. Actual bounded offset bytes
+reconstruct positive B and its expected16-slot root without a challenge.
+Split result bounds imply digit caps only; whole q/B, faithful columns and
+zero carry endpoints yield qd<=Zmax afterward. Maximum column side98047 is
+below p/2. Original source/range consumers retain zero quotients and padding.
+Runtime receipts, binding/FS, actual factor/branch authentication, remaining
+output roles and native/model/private composition stay additional.
+
+The [biased-sum consumer](../../research/cqis-bounds/NORM-BIAS.md) has
+N=2^a rows and P=2^c padded columns. Let bh/bl/bu be byte-width exponents
+for scalar bias and low/high result ranges, H indicate an active high range,
+and g count active four-plane Boolean carry families. With
+X=3+bh+bl+H*bu, total A3 loss is[(20+9H+9g)*a+7X+18g+2c]/|K|;
+each nonlookup label has(9+4H+4g)*a+3X+8g+c draws. Lookup dimensions are
+a+4, bh+1, a+bl+1, optional a+bu+1 and g instances of a+3. Each retains
+its own identity ((2^m+255)/|K|)^r and reduction
+r*[F(m)+F(8)+3m]/|K|, F(m)=3m(m-1)/2+2m. A3 is not squared with r.
+At full a14/c4, bh4/bl3/bu2, H1/g3 and X12, A3 is930/|K| and each
+nonlookup label has414 draws; lookup dimensions are18,5,18,17,17,17,17.
+Complete expected metadata, three external roots, all auxiliary roots and
+verified range states precede parent weights/rounds/finals. All five original
+views have independent consumers at emitted points. Scalar reconstruction
+and the expected real-row mask add no challenge. Whole t/h ranges, faithful
+addition and zero endpoints establish U's whole bound; split ranges alone
+do not. Closed column sides are at most511, below p/2. Padded rows and high
+extensions stay zero. Runtime receipts, binding/FS, actual factor/branch
+authentication, remaining output roles and native/model/private composition
+remain additional.
+
+The [output-division consumer](../../research/cqis-bounds/NORM-DIVISION.md)
+inherits both complete quotient-product and biased-sum accounts. For N=2^a,
+let bl/bh be byte-width exponents of the remainder/gap halves, H indicate
+an active high half, and g count all active equality/strict carry families.
+Additional A3 loss is[(22+18H+9g)*a+14*(bl+H*bh)+18g+16]/|K|.
+Each additional nonlookup label has(10+8H+4g)*a+6*(bl+H*bh)+8g+8 draws.
+Additional lookup dimensions are a+bl+1 twice, optional a+bh+1 twice and
+g instances of a+3. Each retains its separate identity
+((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. A3 terms are not squared with repetitions.
+At full a14/bl3/bh2/H1/g7, additional A3 is1654/|K| with738 draws per
+nonlookup label. Including both children gives3690/|K| and1636 draws per
+label across26 lookup units. Complete expected metadata, seven external
+roots, every auxiliary root and every verified child state precede parent
+challenges. Both degree-one dimension a+4 relations consume their five
+original views independently. Actual B and the initial strict one are masked
+by expected real rows; these deterministic views add no challenge. Range
+halves give exact whole r/gap<=Bmax-1. Byte bounds<=255 and Boolean carries
+give sides<=511<p/2. Zero endpoints yield faithful equality and strict
+remainder, retaining all inherited claims and high zeros. Runtime receipts,
+binding/FS, same configured factors, selected branches, signed output and
+native/model/private composition remain additional.
+
+The [left-factor consumer](../../research/cqis-bounds/NORM-LEFT.md) has
+N=2^a rows and eight byte columns. Let bl be the offset L-1 byte-width
+exponent, g count active carry families and bg their byte-width exponents.
+Total A3 loss is[(21+9g)*a+37+7bl+18g+7*sum(bg)]/|K|. Each nonlookup
+label has(9+4g)*a+15+3bl+8g+3*sum(bg) draws. Lookup dimensions are
+a+4, a+2, bl+1 and a+bg+3 for each family. Each retains its separate
+identity ((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. No A3 term is squared with lookup repetitions.
+At full a14/bl1/g2/bg1,1, A3 is640/|K| and each nonlookup label has278
+draws; lookup dimensions are18,16,2,18,18. Complete expected metadata,
+three external roots, every auxiliary root and verified range state precede
+parent challenges. All nine original views are independently consumed,
+including the three factor-byte views at zero product. Reconstructing
+positive L from actual offset bytes adds no challenge. Whole input ranges,
+closed carry caps and zero endpoints supply integer lifting; maximum side
+is130815<p/2. All padded rows and six high quotient planes stay zero.
+Runtime receipts, binding/FS, actual same-exponent factors, selected branches,
+signed output and native/model/private composition remain additional.
+
+The [signed-output consumer](../../research/cqis-bounds/NORM-SIGNED-OUTPUT.md)
+retains complete canonical product-sign A3 numerator131a+148 and signed-Y
+numerator43a+35 for N=2^a. Its degree-two parent adds3a, giving total
+(177a+183)/|K|. Each nonlookup label has74a+75 draws. Preserve the ordered
+lookup dimensions: six a+2, four a+3, then three a+2. Each retains its own
+identity ((2^m+255)/|K|)^r and reduction r*[F(m)+F(8)+3m]/|K|,
+F(m)=3m(m-1)/2+2m. At full a14, total A3 is2661/|K| and each nonlookup
+label has1111 draws across13 lookup units. A3 losses are not squared with r.
+Complete expected metadata, six external roots and both verified child states
+precede parent challenges. Actual verified byte/flag planes supply all three
+original views, independently consumed at emitted points. Whole q<=32768
+and Boolean s/sy bound each nonnegative side by32768<p/2. At q=0, canonical
+product sign and both zero predicates remain enforced by the complete child;
+only the equality of output/product signs becomes vacuous as rounding requires.
+No child is gated by the output. Runtime receipts, binding/FS, same-magnitude
+rounding composition, selected branches and native/model/private inference
+remain additional.
+
+The [configured-output wrapper](../../research/cqis-bounds/NORM-CONFIGURED-OUTPUT.md)
+adds no random challenge. Sum the four complete child accounts in order:
+configured factors, signed output, reciprocal product and selected left/division.
+Keep each lookup identity and reduction separate. The first child retains
+selection reduction6/|K|, product identity(k-1)/|K|, product reduction4b/|K|
+and A3 numerator199+9b+18g for its static limb layout. Signed output adds
+177a+183 and reciprocal product39a+85 to the A3 numerator, for N=2^a;
+add the selected branch's complete A3/range/lookup account. No reduction is
+squared with lookup repetitions. The wrapper preserves the factor-only
+selection/product terms explicitly rather than dropping them during aggregation.
+Complete expected function bytes, role ids, fifteen external roots, verified
+branch, right-branch total root if present and all four verified states seed
+the final transcript. Its draw map is empty. Exact source-root joins add no
+algebraic loss conditional on binding. The verified factor bundle alone selects
+the branch; every original consumer remains mandatory at zero products. The
+left branch checks both unused qd/r roots against16N canonical zero slots.
+Binding, FS/H, full normalized-interval/statistic/rsqrt joins, private composition
+and model ownership remain additional. No profile or production cut is admitted.
+
+The [complete RMSNorm arithmetic wrapper](../../research/cqis-bounds/NORM-COMPOSITION.md)
+adds no random challenge. It retains seven complete child accounts in fixed order:
+configured output, full statistic, numerator, mantissa product, normalization sum,
+strict normalization remainder and reciprocal lookup. Concatenate the first six
+children's ordered range-lookup identities, then the actual reciprocal identity
+(98304/|K|)^r. Add its392r/|K| reduction to the six lookup-reduction totals.
+Sum the inherited range/A3 numerators and retain the statistic A1 numerator
+separately. Keep the factor selection reduction6/|K|. Four independent limb
+product identity numerators remain in order (configured factors, numerator,
+mantissa product, normalization sum); their sum over|K| is a union bound, not
+one repeated identity. Add their four product-reduction numerators over|K|.
+No reduction is squared with lookup repetitions. Full child receipts retain
+every original/public claim and challenge event. The parent draw map is empty.
+Its final seed binds complete expected function/role bytes, all nineteen roots
+and seven verified states. Exact root joins add no algebraic loss conditional
+on binding. N=ed*S+en*unit with positive expected epsilon and the same X source,
+A=MD+R with bounded M and strict R<D, and complete (M,J) membership remain actual
+consumers even at zero output. Binding, FS/H, physical/model ownership, native
+lowering and private composition losses remain additional; no profile is admitted.
+
+### Draft A3/A8 residual alignment consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-ALIGNED.md). With padded
+N=2^a, output range width2^b and g statically nonzero four-column carry families,
+retain six signed16 lookup identities at m=a+2, one output identity at a+b+1
+and g carry identities at a+3. Each contributes ((2^m+255)/|K|)^r separately,
+with unsquared reduction r*(f(m)+f(8)+3m)/|K|, f(m)=3m(m-1)/2+2m.
+Complete range/A3 numerator is (97+9g)*a+76+7b+18g. This includes the parent's
+degree-one A3 over8N, whose three phase losses are a+3,0,a+3. Its five original
+views are independently consumed at their emitted points. Fixed expected role
+and schema bytes, three external roots, auxiliary roots and verified child
+states precede ZeroWeight and the Instance/Round/Final schedule. Parent draws
+are a+3 per ZeroWeight/Sumcheck label; including signed/range children, totals
+are (41+4g)*a+31+3b+8g for each label, excluding separate lookup schedules.
+Carry caps are static, at most255; both byte-column sides are at most65535<p/2.
+No runtime maximum establishes integer faithfulness. Binding, FS/H, private
+composition and physical/model ownership remain additional. No production
+profile, native control or complete residual/inference claim is admitted.
+
+### Draft A3/A8 canonical residual numerator sign (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-SIGN.md). Six complete
+ranges O,M,s,g,c0,c1 retain lookup dimensions a+b_o+1,a+b_m+1,a+1,a+2,a+3,a+3,
+where N=2^a and actual O/M range byte widths are2^b_o and2^b_m. Each separate
+identity is ((2^m+255)/|K|)^r; its unsquared reduction is
+r*(f(m)+f(8)+3m)/|K|, f(m)=3m(m-1)/2+2m. Range/A3 numerator totals
+61a+7(b_o+b_m)+52. Parent A3s run in fixed order: terminal degree1 at a,
+signed columns degree2 at a+3, canonical zero degree1 at a. Their phase
+numerators sum to7a+9; all twelve original claims retain their consumers.
+Expected schema/roles, three external roots, six auxiliary roots and verified
+child states precede parent weights and Instance/Round/Final messages.
+Parent draws per ZeroWeight/Sumcheck label are3a+3; full nonlookup totals
+are27a+22+3(b_o+b_m), with lookup schedules accounted separately.
+Natural carry bounds[-2,2], shifted to[0,4], and exact endpoints yield integer
+column faithfulness with sides<=1534<p/2. Canonical zero uses actual byte sum
+<=2040 and g+s<=2041, never a wide M31 residue or runtime fit. Binding, FS/H,
+physical/model/private composition and full inference remain additional;
+no production profile or native control credit is admitted.
+
+### Draft A3/A8 residual magnitude rounding (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-ROUNDING.md). Five complete
+ranges M,q,r,c0,c1 retain lookup dimensions a+b_m+1,a+2,a+b_r+1,a+3,a+3,
+where N=2^a and actual M/r range byte widths are2^b_m and2^b_r. Each identity
+is ((2^m+255)/|K|)^rpt with separate unsquared reduction
+rpt*(f(m)+f(8)+3m)/|K|, f(m)=3m(m-1)/2+2m. Complete range/A3 numerator is
+49a+7(b_m+b_r)+49. Parent terminal and column A3s have degree1 and dimensions
+a,a+3; their three-phase numerators total4a+6. All eight original claims
+retain their actual-point consumers. Expected schema/roles, three external
+roots, five auxiliary roots and five verified child states precede weights
+and Instance/Round/Final messages. Parent draws per ZeroWeight/Sumcheck label
+are2a+3; full nonlookup totals are22a+22+3(b_m+b_r), with lookup schedules
+accounted separately. Natural carry[-129,2], encoded by adding129, has complete
+range[0,131] and exact endpoints. Column sides<=66431<p/2 make M+h=q*B+r
+integer-faithful. Expected fractions determine B and h; whole r<B, q<=32768
+and M<=H remain actual range consumers. Binding, FS/H, native/model/private
+composition and physical source ownership remain additional. No profile is
+admitted and no production control or complete residual credit is claimed.
+
+### Draft A3/A8 complete residual arithmetic composition (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/RESIDUAL-COMPOSITION.md). Four complete
+children retain aligned inputs, canonical numerator sign, magnitude rounding
+and signed output. For N=2^a, actual O/M/r byte widths2^bo/2^bm/2^br and g
+nonzero alignment carry families, retain all21+g independent lookup identities
+and their original unsquared reductions. Complete range/A3 numerator is
+(253+9g)*a+212+14*(bo+bm)+7*br+18g. The parent degree-two A3 q*(s-sZ)=0
+contributes3a across its phases and retains all three original consumers.
+Expected schema/roles, eight external roots and four verified child states
+precede parent ZeroWeight and Instance/Round/Final messages. Parent draws are
+a per ZeroWeight/Sumcheck label; full nonlookup totals are
+(109+4g)*a+89+6*(bo+bm)+3*br+8g. Complete receipts preserve all lookup schedules.
+The static parent product bound32768<p/2 and inherited static byte certificates
+establish integer faithfulness; no child is omitted at q=0. Exact shared-root
+joins add no algebraic error conditional on binding. Binding, FS/H, physical
+source/model ownership, native lowering and private composition remain
+additional. No production profile or native control credit is admitted.
+
+### Draft A3/A6/A7 canonical rotary row consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ROTARY-CONSUMER.md). Two complete
+signed16 sources and four whole ranges retain ten lookup identities: six at
+dimension a+2, then a+3,a+1,a+3,a+2, for padded row size N=2^a. Each contributes
+((2^m+255)/|K|)^rpt independently, with unsquared reduction
+rpt*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Four parent A3s at dimension a
+have degrees2,1,1,2; phase numerators total10a. Complete range/A3 numerator is
+132a+105. Parent draws are4a per ZeroWeight/Sumcheck label; complete nonlookup
+totals are56a+43 each. All sixteen original claims retain actual-point consumers.
+Expected schema, units, canonical A7 descriptor, absolute position, eight roots
+and six verified child states precede parent weights and Instance/Round/Final
+messages. Public coefficients are regenerated from that definition, including
+their expected pairing and padding; no supplied coefficient row authorizes
+acceptance. The fixed23171 envelope bounds the signed numerator by759267328;
+M+8192<=759275520, g+s<=759267329 and q*16384+r<=536887295 stay below p/2.
+Complete signed/range consumers remain mandatory at zero and in passthrough.
+Binding, FS/H, physical/model ownership, native lowering and private composition
+remain additional. No profile or NC-0106/0109 credit is admitted.
+
+### Draft A3/A6 masked attention maximum consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-MAXIMUM-CONSUMER.md).
+For N=2^a and offset/difference widths2^bo/2^bd, eight complete ranges retain
+separate lookup identities at dimensions a+3,3,a+bo+1,a+bd+1,a+bd+1 and three
+a+3. Each contributes ((2^m+255)/|K|)^rpt with unsquared reduction
+rpt*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Five parent A3s use dimensions
+a+2,a+2,a+2,a,2 and degrees1,2,1,1,1. Parent numerator9a+18 and all20 original
+consumers remain; total range/A3 numerator is72a+100+7bo+14bd. Parent draws
+are4a+8 of each ZeroWeight/Sumcheck label; complete nonlookup totals are
+32a+44+3bo+6bd each. Expected schema/positions/block/window, nine roots and
+eight verified states precede weights and Instance/Round/Final messages.
+The selected absolute ID has a checked complete opening against its expected
+root and is required to be an allowed key. Its derived prefix and source
+views retain their actual-point consumers. Public masks come from expected
+metadata. All byte sides are bounded by511<p/2. The source translation
+permits a final Boolean wrap at2^32; static S<2^31 and O<=2S establish signed
+range faithfulness. Difference/prefix terminal carries must both be zero;
+their sum<=2 cannot alias. Binding, FS/H, private selection, physical/model
+ownership and key-set completeness remain additional. No production profile
+or native NC-0500..0506 credit is admitted.
+
+### Draft A3/A6 exponential index split consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-EXP-INDEX.md). For N=2^a
+and actual byte widths2^bu/2^bh/2^bl, four independent lookup identities use
+dimensions a+bu+1,a+bh+1,a+bl+1,a+3. Each contributes
+((2^m+255)/|K|)^rpt and an unsquared reduction rpt*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. One degree-one parent A3 at a+2 adds2a+4; total range/A3
+numerator is38a+22+7*(bu+bh+bl). Parent draws are a+2 per ZeroWeight/Sumcheck
+label, and complete nonlookup counts are17a+10+3*(bu+bh+bl) each. All five
+original views have actual-point consumers, including shifted high zeros.
+Expected maximum-instance metadata, exact function/representation, four roots
+and four verified range states precede parent weights and Instance/Round/Final
+messages. Four byte columns reconstruct u=2^k*h+l, with c=2^(k mod8)<=128,
+carry<=c and zero initial/final carries; each side<=33023<p/2. Whole u/domain
+and strict low-index caps enforce the inclusive endpoint. Composition joins
+the actual verified maximum difference root without new draws and retains
+that child's entire independent account. Binding, FS/H, private sources,
+physical/model ownership and canonical table membership remain additional.
+No production profile or native NC-0500..0506 credit is admitted.
+
+### Draft A3/A6 canonical exponential output consumer (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-EXP.md). For N=2^a,
+retain all index/range lookup identities separately at their actual dimensions
+m: ((2^m+255)/|K|)^rpt, plus unsquared rpt*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Every complete canonical two-column lookup with T valid
+rows adds ((N+2T-1)/|K|)^rpt and unsquared
+rpt*(F(a)+F(ceil(log2 T))+3a)/|K|. File padding is excluded; fraction-tree
+neutral padding stays internal. Direct/product/corrected paths have3/10/13
+independent lookup units. The input-indexed correction is a full domain table.
+
+Let bu,bh,bl be actual input/index byte exponents, bp the output/value exponent,
+and br the remainder exponent. Total range/A3 numerators are18a+7*(bu+bp),
+77a+22+7*(bu+bh+bl)+21bp+7br, and97a+22+7*(bu+bh+bl)+28bp+7br respectively.
+Their parent numerators are0,3a,5a, retaining0/4/8 actual original consumers.
+Complete nonlookup ZeroWeight/Sumcheck draws per label are8a+3*(bu+bp),
+34a+10+3*(bu+bh+bl)+9bp+3br, and43a+10+3*(bu+bh+bl)+12bp+3br; parent
+counts are0,a,2a. Each canonical lookup draws rpt Beta/Alpha, rpt*(a+t)
+Gamma/Fold and rpt*(a*(a-1)/2+t*(t-1)/2+a) Sumcheck, t=ceil(log2 T).
+Multiplicity commitments precede all challenge pairs. No unit challenge is
+needed because b=m=a; no reduction term is squared by lookup repetition.
+
+Expected maximum metadata/function/representation, external/auxiliary/tuple
+roots and all verified child states precede parent weights and A3 messages.
+Tuple columns equal actual verified byte views, including masked zeros.
+Static Q<=16384 bounds product sides by Q^2+Q-1<p/2 and correction sides by
+Q+3<p/2. Strict remainder r<Q proves floor; correction offset in[0,3] and
+expected mask reconstruct signed C. Direct/correction inputs satisfy u<=2^15,
+so their signed field lifts are injective. Actual maximum composition retains
+its entire independent account without extra join draws. Binding, FS/H,
+physical/model ownership, native/private lowering remain additional. No
+production profile or native NC-0500..0506 credit is admitted.
+
+### Draft A3/A6 consumed probability row sum (Q26/Q31)
+
+[Research scope](../../research/cqis-bounds/ATTENTION-PROBABILITY-SUM.md).
+For source dimension a and source/scalar byte exponents bp/bz, two complete
+range lookup units use dimensions a+bp+1 and bz+1. Each independently retains
+((2^m+255)/|K|)^rpt and unsquared rpt*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is9a+7bp+7bz; the separate degree-one
+sum A1 adds a/|K|. Its one original claim has an independent full-hypercube
+consumer at the exact emitted point. Full nonlookup draws are4a+3bp+3bz
+ZeroWeight and5a+3bp+3bz Sumcheck; the parent draws a Sumcheck challenges.
+Expected complete row/mask/E metadata, two external roots, compact scalar root
+and both verified range states precede parent Instance/Round/Final messages.
+Static K*2^E<=2^28<p/2 bounds both sides; no M31 alias can satisfy the actual
+scalar range. Full output binding retains four canonical byte leaves even when
+the compact range uses one or two. Standalone zero sums do not skip any child
+or the dimension-zero final equation. Whole-row positivity requires the actual
+attained maximum and complete exponential proofs on the same source roots;
+all their independent accounts remain additional, with no extra join draws.
+Binding, FS/H, physical/model ownership and native/private lowering remain
+additional. No production profile or native NC-0503 credit is admitted.
+
+### Planned restored-value consumer (Q26/Q31; Draft RFC-0004 A3/A6)
+
+Before implementation, let a=log2(padded value entries), ar=log2(padded key
+positions), and bo=log2(compact output byte width). Retain the complete
+signed8 source account. Static restoration adds two complete wide ranges
+and one degree-two A3, for total numerator 64a+9+7bo and 27a+4+3bo draws
+per nonlookup label. Ordered lookup dimensions are a+1,a+1,a+2,a+1,a+bo+1.
+Dynamic restoration also consumes scale, Boolean nonzero and predecessor
+ranges on positions, one degree-two A3 over 2R predicate entries, and one
+over N value entries for zero-scale codes. Its total A3 numerator is
+67a+30ar+26+7bo and each nonlookup label has 28a+13ar+11+3bo draws. Append
+lookup dimensions ar+2,ar+1,ar+2. Each unit retains its separate identity
+((2^m+255)/|K|)^r and unsquared reduction r*(F(m)+F(8)+3m)/|K|, where
+F(m)=3m(m-1)/2+2m. Complete expected metadata, external/auxiliary roots
+and all verified child states precede parent weights, rounds and finals.
+The planned restoration relation has five actual original-point consumers;
+dynamic predicates and zero-scale codes add four and two respectively.
+
+These formulas are not runtime evidence. Tests must verify each receipt
+and challenge count before acceptance. Actual prepared-row source ownership,
+Binding/H/FS, PCS/ZK, weighted-sum composition and native inference remain
+additional obligations. No production profile or NC credit is granted.
+
+### Planned weighted-offset consumer (Q26/Q31; Draft RFC-0004 A3/A6)
+
+[Pre-implementation scope](../../research/cqis-bounds/ATTENTION-OFFSET-SUM.md).
+For K<=13 radix-16 result columns, padded channel dimension ac and key dimension
+ar, bind all expected metadata/roots and verified whole-range states before
+sampling rho and ac channel coordinates with the Sumcheck label. The resulting
+nonzero column/channel polynomial has total degree at most K-1+ac. Static
+integer side bounds make each false column nonzero in M31. Schwartz-Zippel
+contributes(K-1+ac)/|Kfield|; the separate degree-two A1 contributes2*ar/|Kfield|.
+Both projected original claims retain actual consumers, including at zero.
+The parent draws1+ac+ar Sumcheck challenges and no ZeroWeight challenges.
+
+For every probability/value/output/carry range i, retain separate lookup
+dimension m_i=a_i+b_i+1, identity((2^m_i+255)/|Kfield|)^r and unsquared
+reduction r*(F(m_i)+F(8)+3*m_i)/|Kfield|, F(m)=3*m*(m-1)/2+2*m.
+Sum range/A3 numerators9*a_i+7*b_i and draws4*a_i+3*b_i per nonlookup label.
+Do not square these reductions or merge the polynomial identity with A1.
+Initial/final and unused carries, padded channels and full external byte roots
+remain mandatory. Runtime receipt checks, actual source composition, Binding,
+FS/H, PCS/ZK and native inference are additional; no profile is admitted.
+
+### Planned attention offset-base consumer (Q26/Q31; Draft A3/A6)
+
+[Pre-implementation scope](../../research/cqis-bounds/ATTENTION-BASE.md).
+One complete Z range and one complete one-term radix256 limb-product retain
+lookup dimensions bz+1,b+2,g+3,g+3. Each has its own identity
+((2^m+255)/|Kfield|)^r and unsquared r*(F(m)+F(8)+3*m)/|Kfield|,
+F(m)=3*m*(m-1)/2+2*m. Planned range/A3 numerator is7*bz+9*b+18*g+31;
+product identity K-1 and product reduction4*b remain separate. Draw totals
+are3*bz+4*b+8*g+13 ZeroWeight and3*bz+6*b+8*g+14 Sumcheck. The parent
+wrapper adds no challenges, joins exact input bytes before full product
+verification, and binds all external/compact/input roots and verified states.
+The Z cap is derived from expected key count, and S from the fixed schema;
+no runtime fit or omitted zero-factor source is permitted. Actual receipts,
+source composition, Binding/FS/H, PCS/ZK and native inference remain required.
+
+### Planned canonical attention sign (Q26/Q31; Draft A3/A6)
+
+[Pre-implementation scope](../../research/cqis-bounds/ATTENTION-SIGN.md).
+For channel dimension a and compact offset/base/magnitude exponents bo,bh,bm,
+seven ordered lookup dimensions are a+bo+1,bh+1,a+bm+1,a+1,a+2,a+3,a+3.
+Retain each identity((2^m+255)/|Kfield|)^r and unsquared
+r*(F(m)+F(8)+3*m)/|Kfield|, F(m)=3*m*(m-1)/2+2*m. Planned total range/A3
+numerator is61*a+7*(bo+bh+bm)+52. Three parent A3s contribute7*a+9 and12
+independent original claims. Parent draws3*a+3 per nonlookup label; full draws
+are27*a+22+3*(bo+bh+bm) per label. All metadata, external/auxiliary roots and
+verified range states precede parent challenges. Signed-column sides<=1534
+and magnitude-byte sum<=2040 establish static integer faithfulness. Actual
+receipts, source composition, Binding/FS/H, PCS/ZK and native lowering remain
+required. No production profile or control credit is admitted.
+
+### Draft Q26/Q31 attention block-rounding consumer
+
+Pre-implementation accounting: five independently repeated wide lookup identities
+at dimensions a+bm+1,a+bq+1,a+br+1,a+3,a+3. Each keeps identity loss
+((2^m+255)/|K|)^r and unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Complete range/A3 numerator49a+7(bm+bq+br)+42 includes
+the parent4a+6. Parent draws2a+3 of each ZeroWeight/Sumcheck label; total
+nonlookup draws22a+19+3(bm+bq+br) each. Eight parent originals and all source
+roots retain actual consumers. Expected schema/block ids/roles, external and
+internal roots and verified child states precede the parent transcript. Static
+sides<=66431<p/2 and whole bounds Hmax+h,qmax*D<2^64 prevent aliases and
+high-product loss. No new label or A1. Binding/FS/H and complete upstream
+composition remain additional; exact runtime receipts are required evidence.
+
+### Draft Q26/Q31 signed attention block totals
+
+Pre-implementation account: independent lookup dimensions a+1,a+bq+1,ac+bo+1,
+each identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator18a+9ac+7(bq+bo).
+Channel identity ac and A1 reduction2a are separate error events. Parent draws
+ac+a Sumcheck; total nonlookup draws8a+4ac+3(bq+bo) ZeroWeight and
+9a+5ac+3(bq+bo) Sumcheck. Both actual originals are consumed, even when q=0.
+Expected schema, roles and block ids, all external/internal roots and verified
+range states precede channel coordinates and the A1 transcript. Static8G<p,
+G=ceil(L/1024)*qmax, makes each integer channel equality faithful. No new label.
+Binding/FS/H and upstream composition remain additional; actual receipts must
+confirm the formulas before evidence is claimed.
+
+### Draft Q26/Q31 canonical accumulated block sign
+
+Pre-implementation account: independent lookup dimensions a+bo+1,a+bm+1,a+1,
+a+bm+1, each identity ((2^m+255)/|K|)^r and unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Full range/A3 numerator41a+7(bo+2bm)
+includes parent5a. Parent draws2a per ZeroWeight/Sumcheck label; full totals
+18a+3(bo+2bm) each. Seven actual original claims remain consumed at their
+emitted points. Full expected metadata, external/internal roots and verified
+child states precede the parent transcript. Static2*max(4G,G+1)<p with
+G=ceil(L/1024)*qmax excludes aliases, including G=0. No new label or A1.
+Binding/FS/H and actual upstream composition remain additional; runtime
+receipts must confirm these formulas before evidence is claimed.
+
+### Draft Q26/Q31 eight-byte probability aggregation
+
+Pre-implementation account: no wrapper challenge. Source wide range and
+complete radix-eight limb product retain independent lookup dimensions
+a+b+1,a+b+2,g+3,g+3, each identity ((2^m+255)/|K|)^r and unsquared
+reduction r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator
+20a+16b+18g+31, product identity k-1 and A1 reduction 2a+4b remain separate.
+Nonlookup draws are 9a+7b+8g+13 ZeroWeight and 10a+9b+8g+14 Sumcheck.
+Both actual operands and both public power originals remain consumed.
+Expected metadata, external/internal roots and verified child states bind the
+returned composition state; no claim of standalone metadata replay rejection
+or upstream membership follows. Complete per-block caps and byte-column
+certificates exclude integer aliases without lifting the global sum to M31.
+Binding/FS/H, global attainment and upstream composition remain additional;
+actual receipts must confirm these formulas before evidence is claimed.
+
+### Draft Q26/Q31 positive scaled attention denominator
+
+Pre-implementation account: no wrapper challenge. Gap range and two complete
+limb products retain seven independent lookup dimensions
+bg+1,bp+3,gp+3,gp+3,bd+2,gd+3,gd+3, with identity ((2^m+255)/|K|)^r and
+unsquared reduction r*(F0(m)+F0(8)+3m)/|K|, F0(m)=3m(m-1)/2+2m. Range/A3
+numerator 7bg+9(bp+bd)+18(gp+gd)+73, separate product identities kp-1/kd-1
+and total A1 reduction 2+4(bp+bd) remain. Nonlookup draws are
+3bg+4(bp+bd)+8(gp+gd)+31 ZeroWeight and 3bg+6(bp+bd)+8(gp+gd)+34 Sumcheck.
+Every actual operand and public power consumer is retained. Expected schema,
+roles, external/internal roots and verified child states bind the returned
+composition state. Complete gap/column consumers establish Q<=Z<=LQ and
+D=Z*F without whole-field global equalities. Binding/FS/H, upstream sources
+and global attainment remain additional. Actual receipts must confirm the
+formulas; no production admission follows.
+
+### Draft Q26/Q31 scaled attention numerator
+
+Pre-implementation account: source/output/carry wide ranges retain independent
+lookup dimensions a+bm+1, G copies of a-log2(G)+bu+1 and four copies of a+3.
+Each identity is ((2^m+255)/|K|)^r; unsquared reduction is
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator is
+56a+7(bm+bu)+80 for G=1 or 65a+7bm+14bu+62 for G=2, including parent2(a+4).
+Parent draws a+4 per ZeroWeight/Sumcheck label. Full nonlookup totals per
+label are 25a+36+3(bm+bu) or 29a+28+3bm+6bu respectively. No A1/new label.
+Expected schema, all roots and verified child states precede the parent; all
+four actual original views remain consumed at their emitted points. Static
+Tmax<<shift<2^128 and byte-column sides<=32767<p/2 exclude integer aliases.
+Complete whole ranges, initial/final carry bounds and channel-group joins
+remain mandatory. Binding/FS/H and upstream composition remain additional;
+actual receipts must confirm formulas before evidence or admission is claimed.
+
+### Draft Q26/Q31 doubled attention denominator
+
+Pre-implementation account: no wrapper challenge. The complete scalar limb
+product retains independent lookup dimensions b+2,g+3,g+3. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|, where
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is 9b+18g+31, product identity loss k-1
+and A1 reduction 4b. Nonlookup draws are 4b+8g+13 ZeroWeight and 6b+8g+14
+Sumcheck. Every actual operand and public power consumer remains mandatory.
+Expected schema, roles, external/internal roots and verified product state
+bind the returned composition state. Static whole/column bounds and exact
+coefficient-two joins exclude aliases without lifting D into M31. Binding/FS/H
+and the positive upstream source proof remain additional. Confirm runtime
+receipts before evidence or admission; no Accepted profile or cut changes.
+
+### Draft Q26/Q31 biased attention numerator
+
+Pre-implementation account: GU source and GW output groups retain independent
+lookup dimensions a-log2(GU)+bu+1 and a-log2(GW)+bw+1 respectively; the scalar
+denominator adds bd+1 and four carry groups add four dimensions a+3. Each
+identity is ((2^m+255)/|K|)^r with unsquared reduction
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Range/A3 numerator is
+(9(GU+GW)+38)*a+7(GU*bu+GW*bw+bd)+80-9(GU*log2(GU)+GW*log2(GW)),
+including parent2(a+4). Full nonlookup draws per ZeroWeight/Sumcheck label are
+(4(GU+GW)+17)*a+3(GU*bu+GW*bw+bd)+36-4(GU*log2(GU)+GW*log2(GW));
+parent draws a+4 each. No A1/new label. Full schema, all roots and verified
+child states precede the parent. Five actual originals retain their consumers.
+Static Wmax<2^128 and byte-column sides<=767<p/2 exclude integer aliases.
+Complete whole ranges, broadcast joins and carry endpoints remain mandatory.
+Binding/FS/H and upstream positivity/magnitude proofs remain additional;
+confirm runtime receipts before evidence or admission.
+
+### Draft Q26/Q31 attention quotient product
+
+Pre-implementation account: independent lookup dimensions a+2, G copies of
+a-log2(G)+bp+1, bd+1 and four copies of a+4. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|, where
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is 57a+7bp+7bd+119 for G=1,
+or 66a+14bp+7bd+101 for G=2, including parent3(a+4). Full nonlookup
+draws per ZeroWeight/Sumcheck label are 25a+3bp+3bd+51 or
+29a+6bp+3bd+43 respectively; parent draws a+4 each. No A1/new label.
+Full schema, all roots and verified child states precede the degree-two
+parent; all seven actual originals retain their consumers. Complete whole
+ranges bound q<=32768, D<=Dmax and Qp<=32768Dmax<2^128. Carry words<=510
+use both verified bytes; independent column sides are bounded by 130815<p/2.
+Binding/FS/H, positive source provenance and the strict division relation
+remain additional. Confirm runtime receipts before evidence or admission.
+
+### Draft Q26/Q31 strict attention normalization division
+
+Pre-implementation account: add 2G independent lookup dimensions
+a-log2(G)+br+1 and eight dimensions a+3. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. New range/A3 numerator is 94a+14br+160 for G=1
+or 112a+28br+124 for G=2, including parent4(a+4). New full nonlookup
+draws per ZeroWeight/Sumcheck label are 42a+6br+72 or 50a+12br+56;
+parent draws 2(a+4) each. Complete quotient-product, biased-numerator and
+doubled-denominator accounts are additional, unchanged, including the latter's
+separate K-1 identity and 4b A1 reduction. No new label or A1. Expected
+schema, all roots and verified child states precede both parent A3s. Ten
+actual originals, static sides<=767/511<p/2, complete whole ranges and
+zero final carries preserve faithful equality and strict remainder. Binding/
+FS/H and upstream source provenance remain additional. Confirm runtime
+receipts and source joins before evidence or admission.
+
+### Draft Q26/Q31 signed attention normalization output
+
+Pre-implementation account: independent lookup dimensions a+1 and three
+copies of a+2 retain identities ((2^m+255)/|K|)^r and unsquared reductions
+r*(F(m)+F(8)+3m)/|K|, F(m)=3m(m-1)/2+2m. Full range/A3 numerator is
+55a+35, including parent3a and the complete signed-source43a+35. Full
+nonlookup draws per ZeroWeight/Sumcheck label are 23a+14; parent draws a
+each. No A1/new label. Full expected schema, all external roots and verified
+child states precede the parent. All three actual parent originals and every
+inherited source/public claim remain mandatory, including at q=0. Static
+sides<=32768<p/2 and complete int16 source relations preserve faithful signed
+output. Binding/FS/H and actual canonical-sign/magnitude/division provenance
+remain additional. Confirm runtime receipts and source joins before admission.
+
+### Draft Q26/Q31 global attention offset base
+
+Pre-implementation account: no wrapper challenge. One complete scalar limb
+product retains independent lookup dimensions b+2,g+3,g+3. Each identity is
+((2^m+255)/|K|)^r with unsquared reduction r*(F(m)+F(8)+3m)/|K|,
+F(m)=3m(m-1)/2+2m. Range/A3 numerator is 9b+18g+31; product identity k-1
+and A1 reduction 4b remain separate. Nonlookup draws are 4b+8g+13 ZeroWeight
+and 6b+8g+14 Sumcheck. All actual operands and public powers remain consumed.
+Expected schema, roles, external/internal roots and verified product state
+bind the composition state. Static whole/column bounds and every exact S
+byte exclude aliases without lifting global Z/H into M31. Binding/FS/H,
+positive Z and actual upstream ownership remain additional. Confirm runtime
+receipts and all source joins before evidence or admission.
+
+### Draft Q26/Q31 complete conditional attention normalization
+
+Pre-implementation account: the wrapper draws no challenge and adds no
+identity or reduction loss. Sum complete canonical-sign, scaled-numerator,
+positive-denominator, strict-division and signed-output accounts unchanged;
+exact mode additionally includes the global-base account. Retain every
+independent lookup identity and unsquared lookup reduction. Sum range/A3 and
+A1 reductions, keeping four distinct polynomial identity numerators in exact
+mode and three in block mode. Two belong to positive denominator, one to
+division's doubled denominator and the exact-only one to global base. No
+supplied receipt replaces proof verification. Full expected schema/roles,
+ordered expected roots and all verified child states bind the final context.
+Every shared root is passed independently to each complete child verifier.
+Binding/FS/H and upstream ownership remain additional. Check every child
+receipt, aggregate and empty wrapper draw set before evidence or admission.

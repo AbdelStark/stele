@@ -28,10 +28,12 @@ def derive(p,d):
     need(type(p) is Spec and type(d) is int and d in (4,8),'Spec')
     need(type(p.identity) is int and 0<=p.identity<1<<56 and type(p.source) is int and 2<=p.source<1<<64,'Spec')
     need(type(p.repetitions) is int and p.repetitions in (1,2) and type(p.caps) is tuple and p.caps,'Spec')
-    need(len(p.caps)<=4096,'Capacity')
+    need(len(p.caps)<=65536,'Capacity')
     need(all(type(v) is int and 0<=v<1<<160 for v in p.caps),'Spec')
     a=(len(p.caps)-1).bit_length(); n=1<<a
     size=max(1,(max(p.caps).bit_length()+7)//8); b=(size-1).bit_length(); width=1<<b
+    # Draft A3: more narrow words retain the existing maximum byte/lookup domain.
+    need(n*width<=131072,'Capacity')
     base=(1<<63)+64*p.identity; need(not base<=p.source<base+64,'Spec')
     raw=PREFIX+struct.pack('<BBBQQI',1,d,p.repetitions,p.identity,p.source,len(p.caps))
     raw+=b''.join(v.to_bytes(20,'little') for v in p.caps)+scalar.table.table_id(TABLE)
