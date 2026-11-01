@@ -870,6 +870,44 @@ provenance and separate decode/import/closed-verifier/continuation timings.
 Startup, module imports and final serialization are outside its internal timer.
 The existing full correctness corpus remains unchanged.
 
-These workers provide observations for E7-01b. The strict campaign controller,
-fresh-process RSS reports and imported complete resource ledger remain required;
-this delivery reports no benchmark result or fitted cost-model constant.
+The complete campaign controller checks these observations before recording a
+conditional resource ledger. It reports no fitted cost-model constant.
+
+## Complete conditional matmul resources
+
+Run the fixed campaign from clean committed source on arm64 macOS, using Python
+3.12 with assertions enabled and a new external destination:
+
+```sh
+uv run --no-project --python 3.12 python bench/matmul.py /tmp/matmul-run.json
+```
+
+Each of the four scenarios runs in both fields with three fresh sequential
+native/Python worker pairs. There are no warmups, retries or discarded samples.
+The scalar case has zero-bit axes; the full single, stacked and zero-factor
+cases use `(h,a,b,c)` of `(0,4,5,3)`, `(2,3,4,2)` and `(2,2,4,3)` respectively.
+The original source blowups are one and two. Every proof retains both original
+consumers, including the zero-factor case.
+
+The controller validates exact request/source/runtime provenance, complete
+records, actual row visits and source reads, encoder work, capacities and stage
+arithmetic. It checks the two restored claims and terminals, actual continuation
+and probe snapshots, and repeated proof identities. Native and Python protocol
+usage is counted once per distinct transcript; following-A1 and probe deltas
+are separate. Registration, preparation and opening work retain their own scopes.
+
+Each worker's external wall time and maximum RSS cover its complete process,
+including startup and serialization. They are separate from internal stage
+times and the named protocol Vec capacity peak. Native fixture/claim/layout and
+cleanup time are explicit. Original messages, preparations, certificates and
+proofs stay live through the actual native consumers; the independent Python
+worker receives only public artifacts.
+
+Raw outputs, stderr, exit codes, resource reports, build output and source/binary
+identities remain in the adjacent `.samples` directory. The controller validates
+the compact JSON with `stele-bench ledger validate`; import it into `bench/ledger/`
+without changing any values. Component proof bytes and both verifier timings
+live in `model_config.samples`; root inference-summary fields stay zero.
+These measurements cover the conditional field relation. Full CQIS inference,
+configured plans, virtual sources, packing, the bucketed weight phase, privacy
+and profile admission remain separate obligations.
