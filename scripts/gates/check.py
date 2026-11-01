@@ -55,13 +55,13 @@ def bootstrap_guard(root, gate):
 
 
 def field_sources(root):
-    """Closed conditional A1/stacked/lookup consumers; no inference/profile authority."""
+    """Closed conditional A1/stacked/lookup/matmul consumers; no inference/profile authority."""
     crate = root / 'crates/stele-reductions'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs',
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
-               'tests/lookup_verifier.rs', 'src/lookup_work.rs'}
+               'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -69,7 +69,7 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod field_sources;\npub mod lookup;\n'
+               'extern crate alloc;\nmod field_sources;\npub mod lookup;\npub mod matmul;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -145,6 +145,23 @@ def field_sources(root):
             and (name != 'verifier' or 'pubuserecords::{LookupParameters,LookupRecord,RepetitionRecord};' in re.sub(r'\s+', '', source))
             and (name != 'producer' or 'pubusework::{ProverWork,RepetitionWork};' in re.sub(r'\s+', '', source))
             and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', source))
+    matmul = re.sub(r'//[^\n]*', '', (crate / 'src/matmul.rs').read_text())
+    matmul_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', matmul)
+    matmul_closed = (matmul_declarations == [
+        ('struct', 'Statement'), ('', 'id'), ('', 'output_id'), ('', 'coefficient_id'),
+        ('', 'inputs'), ('', 'bits'), ('', 'point'), ('', 'value'), ('enum', 'Error'),
+        ('struct', 'Failure'), ('', 'cause'), ('', 'usage'), ('struct', 'Record'),
+        ('fn', 'sc'), ('fn', 'openings'), ('fn', 'points'), ('fn', 'values'), ('fn', 'verify')]
+        and len(matmul_declarations) == len(re.findall(r'\bpub\b', matmul))
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+fn\b[^\{]*\{', matmul)] == [
+            'pubfnsc(&self)->&ScRecord{', "pubfnopenings(&self)->&[OpeningRecord<'_,K>;2]{",
+            'pubfnpoints(&self)->[&[K];2]{', 'pubfnvalues(&self)->&[K;2]{',
+            "pubfnverify<'cert,K:ChallengeField+CodeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,"
+            "certificates:[&'certVerifiedCertificate<K>;2],wire:&[u8],limits:stacked::Limits,)"
+            "->Result<(Record<'cert,K>,Usage),Failure>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', matmul)]
+            == ["impl<K:ChallengeField>Record<'_,K>{", "impl<'a,K:ChallengeField>Context<'a,K>{"]
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul))
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
@@ -154,10 +171,11 @@ def field_sources(root):
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
                                 ('fn', 'verify_field_sources')]
             or len(declarations) != len(re.findall(r'\bpub\b', code))
-            or not stacked_closed or not lookup_closed or not producer_closed
+            or not stacked_closed or not lookup_closed or not producer_closed or not matmul_closed
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
-                'lookup_closed.py', 'examples/support/lookup_verifier.rs'))):
-        raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup adapters admitted')
+                'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
+                'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs'))):
+        raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup/matmul adapters admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
          [f'test pcs_a1::{n} ... ok' for n in (
@@ -185,14 +203,16 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_producer'],
          [f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))]),
-        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier'],
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul'],
          [f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
-          for prefix,suffix in (('accepts',''),('rejects','_tampers'))]),
+          for prefix,suffix in (('accepts',''),('rejects','_tampers'))]
+         + [f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'lookup::'],
          [f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls']+
-         [arg for i in (400,401,402,403,415,416,417,418,419,610,802) for arg in ('--test',f'nc-{i:04}')],
-         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802)]),
+         [arg for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611) for arg in ('--test',f'nc-{i:04}')],
+         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611)]
+         + ['test rejects_wrong_coefficient_at_actual_a7 ... ok']),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
@@ -202,12 +222,17 @@ def field_sources(root):
             for file, module, record, count in (('field_sources', 'field_sources', 'FieldSourceRecord', 1),
                                           ('stacked_sources', 'stacked_sources', 'StackedSourceRecord', 2),
                                           ('lookup', 'lookup', 'Statement', 1), ('lookup', 'lookup', 'Descriptor', 1),
-                                          ('lookup_records', 'lookup::verifier::records', 'LookupRecord', 3)):
+                                          ('lookup_records', 'lookup::verifier::records', 'LookupRecord', 3),
+                                          ('matmul', 'matmul', 'Record', 3)):
                 pattern = (rf'^test crates/stele-reductions/src/{file}\.rs - {module}::{record} '
                            r'\(line \d+\) - compile fail \.\.\. ok$')
                 matches = re.findall(pattern, result.stdout, re.MULTILINE)
-                if len(set(matches)) != count:
+                if len(matches) != count or len(set(matches)) != count:
                     raise ValueError(f'closed A1 consumer checks failed: missing {record} boundary')
+            positive = re.findall(r'^test crates/stele-reductions/src/matmul\.rs - matmul::Record '
+                                  r'\(line \d+\) \.\.\. ok$', result.stdout, re.MULTILINE)
+            if len(positive) != 1:
+                raise ValueError('closed A1 consumer checks failed: missing matmul temporary-input lifetime boundary')
     result = subprocess.run(['uv', 'run', '--python', '3.12', '--locked', '--script',
                              'tests/negative-controls/lookup_corpus.py'],
                             cwd=root, text=True, capture_output=True)
@@ -217,6 +242,16 @@ def field_sources(root):
                'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41')
     if result.returncode or result.stdout.strip() != receipt:
         raise ValueError(f'lookup producer corpus checks failed: {result.stdout} {result.stderr}')
+    matmul_receipt = (
+        'matmul closed corpus: 2000 seeded cases (1000 per field), 34 honest controls and 34 rejects; '
+        'complete wires, actual records, imports, usage and continuation; '
+        'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456')
+    result = subprocess.run(['uv', 'run', '--python', '3.12', '--locked', '--script',
+                             'tests/negative-controls/matmul_corpus.py'],
+                            cwd=root, text=True, capture_output=True)
+    if result.returncode or result.stdout.strip() != matmul_receipt:
+        raise ValueError(f'matmul corpus checks failed: {result.stdout} {result.stderr}')
+    print('gate matmul closed: actual A4/A1/A7 and both A9 consumers, native controls, opaque records and independent full wire/usage/continuation parity; no native producer or profile credit')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
     print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
     print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')
@@ -883,7 +918,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench')]
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench','matmul_corpus')]
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
@@ -898,7 +933,8 @@ def controls_layout(root):
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
                     'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
-                    'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs'))
+                    'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
+                    'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock'))
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

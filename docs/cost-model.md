@@ -182,7 +182,21 @@ preparation and registration; standalone import and closed verification have
 their own intervals. Diagnostic framing and hashes remain separate executed
 scopes. E3-07's full private/source/plan, c_lu and profile obligations remain.
 
-## 14. Native validation cost
+## 14. Conditional matmul verifier scope
+
+E7-01b2 implements the [original-source matmul verifier](../formal/native-matmul.md).
+Its A4/A1/A7 work contributes to c_sc/T_misc; both A9 consumers retain their full
+row decoding, encoding, scalar checks, path authentication and column equations
+under c_c/T_misc. The verifier reads no original matrix. The outer descriptor,
+restored points, decoded A1 proof and both opening buffers retain their separate
+storage costs. Existing A4 admission scopes conservatively include its unused
+closed-roster bytes and message prefixes, as specified by the contract.
+
+This delivery changes no measured constant or weight-pass count. Complete native
+production, registration/prove/verify timing, observed capacities and process RSS
+remain E7-01b requirements; verifier/control tests supply no resource-ledger credit.
+
+## 15. Native validation cost
 
 The [E0-07 paired ledger](../bench/README.md#native-test-profile-e0-07) measures
 compilation and test execution under Cargo test optimization levels 0 and 2,

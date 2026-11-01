@@ -932,6 +932,30 @@ tasks:
   - complete A9 opening uses the same retained values without rereading the original source; ordinary opening bytes, errors, usage and transcript schedule remain unchanged
   - both-field complete wire, actual certificate/opening verification, continuation and usage parity; source/weight context rejection before mutation, opaque lifetime boundaries and actual row/read capacity observations
   - no matmul statement, closed operation or NC-0611 credit; every E7-01b and parent acceptance criterion remains required
+- id: E7-01b2
+  epic: E7
+  title: Closed conditional stacked matmul verifier and canonical proof codec
+  depends:
+  - E7-01b1
+  - E3-06
+  - E4-03a
+  rfc:
+  - RFC-0007 A2
+  - RFC-0010 A10
+  - RFC-0012 A12
+  - RFC-0020 A7
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E7-01b2-matmul-verifier
+  acceptance:
+  - exact expected stacked source geometry and complete canonical untrusted proof codec with checked lengths, field limbs and scoped resource preflight
+  - MatmulStatement label and inventory land with the actual A4/A1/A7 verifier, restored original X and W consumers and an opaque record borrowing both real certificates, including zero factors
+  - actual NC-0306/0307/0611 and composed NC-0606/0802 reject at their specified consumers in both fields, with all three continuation omissions and honest artifacts accepted first
+  - identical complete reference wires, decisions, restored claims, conditional records, usage and genuine continuation agree with independent Python on at least 1000 seeded bounded cases per field
+  - source, shape, size, budget and malformed-wire failures preserve stated causes and observed usage; record lifetime and exact API/validator gates reject missing evidence
+  - no complete native producer or resource-ledger credit; all six E7-01b and all parent criteria remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -940,6 +964,7 @@ tasks:
   - E3-06
   - E4-03a
   - E7-01b1
+  - E7-01b2
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10

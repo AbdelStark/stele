@@ -34,5 +34,6 @@
   ["absorb", "stele/v0.1/lookup/multiplicity-claims", "-"],
   ["challenge", "stele/v0.1/lookup/unit", "LU"],
   ["challenge", "stele/v0.1/lookup/beta", "LU"],
-  ["challenge", "stele/v0.1/lookup/alpha", "LU"]
+  ["challenge", "stele/v0.1/lookup/alpha", "LU"],
+  ["absorb", "stele/v0.1/matmul/statement", "-"]
 ]

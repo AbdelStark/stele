@@ -4,7 +4,7 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 36);
+    assert_eq!(entries.len(), 37);
     assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 11);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
@@ -17,6 +17,10 @@ fn accepts_the_fixed_registry() {
     assert_eq!(AbsorbLabel::FieldSources.entry(), &entries[25]);
     assert_eq!(entries[25].kind, LabelKind::Absorb);
     assert_eq!(entries[25].loss, None);
+    assert_eq!(AbsorbLabel::MatmulStatement.entry(), &entries[36]);
+    assert_eq!(entries[36].label, "stele/v0.1/matmul/statement");
+    assert_eq!(entries[36].kind, LabelKind::Absorb);
+    assert_eq!(entries[36].loss, None);
     for (label, index) in [(AbsorbLabel::StackSources, 26), (AbsorbLabel::Stack, 27)] {
         assert_eq!(label.entry(), &entries[index]);
         assert_eq!(entries[index].kind, LabelKind::Absorb);
