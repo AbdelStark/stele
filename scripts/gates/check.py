@@ -61,7 +61,8 @@ def field_sources(root):
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
-               'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs'}
+               'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs',
+               'src/matmul_producer.rs', 'tests/matmul_producer.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -148,11 +149,13 @@ def field_sources(root):
     matmul = re.sub(r'//[^\n]*', '', (crate / 'src/matmul.rs').read_text())
     matmul_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', matmul)
     matmul_closed = (matmul_declarations == [
-        ('struct', 'Statement'), ('', 'id'), ('', 'output_id'), ('', 'coefficient_id'),
+        ('use', 'producer'), ('struct', 'Statement'), ('', 'id'), ('', 'output_id'), ('', 'coefficient_id'),
         ('', 'inputs'), ('', 'bits'), ('', 'point'), ('', 'value'), ('enum', 'Error'),
         ('struct', 'Failure'), ('', 'cause'), ('', 'usage'), ('struct', 'Record'),
         ('fn', 'sc'), ('fn', 'openings'), ('fn', 'points'), ('fn', 'values'), ('fn', 'verify')]
         and len(matmul_declarations) == len(re.findall(r'\bpub\b', matmul))
+        and '#[path="matmul_producer.rs"]modproducer;pubuseproducer::{prove,prove_measured,Work};'
+            in re.sub(r'\s+', '', matmul)
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+fn\b[^\{]*\{', matmul)] == [
             'pubfnsc(&self)->&ScRecord{', "pubfnopenings(&self)->&[OpeningRecord<'_,K>;2]{",
             'pubfnpoints(&self)->[&[K];2]{', 'pubfnvalues(&self)->&[K;2]{',
@@ -162,6 +165,22 @@ def field_sources(root):
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', matmul)]
             == ["impl<K:ChallengeField>Record<'_,K>{", "impl<'a,K:ChallengeField>Context<'a,K>{"]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul))
+    matmul_producer = re.sub(r'//[^\n]*', '', (crate / 'src/matmul_producer.rs').read_text())
+    matmul_producer_declarations = re.findall(
+        r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', matmul_producer)
+    producer_parameters = (
+        "<K:ChallengeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,"
+        "sources:[&PreparedSource<'_,K>;2],certificates:[&VerifiedCertificate<K>;2],"
+        'limits:stacked::Limits,retained_row_entries:usize,)')
+    matmul_closed &= (matmul_producer_declarations == [
+        ('struct', 'Work'), ('', 'retained_rows'), ('', 'dense'), ('fn', 'prove'), ('fn', 'prove_measured')]
+        and len(matmul_producer_declarations) == len(re.findall(r'\bpub\b', matmul_producer))
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+struct\s+Work\s*\{([^}]*)\}', matmul_producer)]
+            == ['pubretained_rows:[RetainedRowWork;2],pubdense:stacked::Work,']
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+fn\b[^\{]*\{', matmul_producer)] == [
+            'pubfnprove' + producer_parameters + '->Result<(Vec<u8>,Usage),Failure>{',
+            'pubfnprove_measured' + producer_parameters + '->Result<(Vec<u8>,Usage,Work),Failure>{']
+        and not re.search(r'\bimpl\b|\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul_producer))
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
@@ -193,20 +212,22 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-negative-controls', '--test', 'stacked-certified'],
          ['test rejects_wrong_restored_point_at_actual_opening ... ok',
           'test rejects_substituted_verified_certificate_at_actual_opening ... ok']),
-        (['cargo', 'test', '-p', 'stele-reductions', '--lib', 'lookup::'],
+        (['cargo', 'test', '-p', 'stele-reductions', '--lib'],
          [f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
          + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
-            for field in ('qm31','om31')]),
+            for field in ('qm31','om31')]
+         + ['test matmul::producer::rejects_retained_allocation_sizes ... ok']),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_producer'],
          [f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))]),
-        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul'],
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul', '--test', 'matmul_producer'],
          [f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts',''),('rejects','_tampers'))]
-         + [f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31')]),
+         + [f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31')]
+         + [f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'lookup::'],
          [f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls']+
@@ -245,13 +266,15 @@ def field_sources(root):
     matmul_receipt = (
         'matmul closed corpus: 2000 seeded cases (1000 per field), 34 honest controls and 34 rejects; '
         'complete wires, actual records, imports, usage and continuation; '
-        'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456')
+        'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456\n'
+        'matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, '
+        'actual closed records, usage, retained visits and continuation')
     result = subprocess.run(['uv', 'run', '--python', '3.12', '--locked', '--script',
                              'tests/negative-controls/matmul_corpus.py'],
                             cwd=root, text=True, capture_output=True)
     if result.returncode or result.stdout.strip() != matmul_receipt:
         raise ValueError(f'matmul corpus checks failed: {result.stdout} {result.stderr}')
-    print('gate matmul closed: actual A4/A1/A7 and both A9 consumers, native controls, opaque records and independent full wire/usage/continuation parity; no native producer or profile credit')
+    print('gate matmul closed: native retained-row producer, actual A4/A1/A7 and both A9 consumers, native controls, opaque records and independent full wire/usage/continuation parity; no full resource-ledger or profile credit')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
     print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
     print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')

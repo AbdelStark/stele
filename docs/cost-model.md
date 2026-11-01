@@ -182,7 +182,7 @@ preparation and registration; standalone import and closed verification have
 their own intervals. Diagnostic framing and hashes remain separate executed
 scopes. E3-07's full private/source/plan, c_lu and profile obligations remain.
 
-## 14. Conditional matmul verifier scope
+## 14. Conditional matmul implementation scope
 
 E7-01b2 implements the [original-source matmul verifier](../formal/native-matmul.md).
 Its A4/A1/A7 work contributes to c_sc/T_misc; both A9 consumers retain their full
@@ -192,9 +192,16 @@ restored points, decoded A1 proof and both opening buffers retain their separate
 storage costs. Existing A4 admission scopes conservatively include its unused
 closed-roster bytes and message prefixes, as specified by the contract.
 
-This delivery changes no measured constant or weight-pass count. Complete native
-production, registration/prove/verify timing, observed capacities and process RSS
-remain E7-01b requirements; verifier/control tests supply no resource-ledger credit.
+E7-01b3 adds native production from immutable retained A/B rows. Their construction
+visits each original source once, contributing L*n*d + L*d*m base-to-K MACs to
+c_a/c_w. Actual A4 folding copies those retained rows; both A9 producers serialize
+the same immutable rows and copy prepared encoded-column responses without another
+original-source traversal. Row visit/element counters and Dense capacities retain
+their individual observation scopes.
+
+No measured constant or complete weight-phase result changes. Full registration,
+proving and both verifier timings, A1/PCS/codec allocation overlaps and process RSS
+remain E7-01b requirements. The scoped child observations supply no complete ledger.
 
 ## 15. Native validation cost
 

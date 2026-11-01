@@ -15,7 +15,6 @@ from pathlib import Path
 import json
 import subprocess
 import tempfile
-from itertools import zip_longest
 import random
 import struct
 import sys
@@ -588,23 +587,56 @@ def freeze(path):
 
 def compare(path, directory):
     requests, responses = directory / "requests.jsonl", directory / "native.jsonl"
+    cases = iter(seeded_cases())
     with path.open() as fixtures, requests.open("w") as output:
         for line in fixtures:
-            output.write(json.dumps(json.loads(line)["inputs"], separators=(",", ":")) + "\n")
+            fixture = json.loads(line)
+            inputs = fixture["inputs"]
+            output.write(json.dumps(inputs, separators=(",", ":")) + "\n")
+            if fixture["kind"] == "seeded":
+                case = next(cases)
+                public = json.loads(json.dumps(public_case(case)))
+                assert public == {k: inputs[k] for k in public}
+                # Give production witnesses, never the expected proof or partial rows.
+                producer = {k: v for k, v in inputs.items() if k != "proof_hex"}
+                producer["messages_hex"] = [b"".join(struct.pack("<I", v)
+                    for row in matrix for v in row).hex() for matrix in case["matrices"]]
+                output.write(json.dumps(producer, separators=(",", ":")) + "\n")
+    assert next(cases, None) is None
     with requests.open() as inputs, responses.open("w") as output:
         subprocess.run(["cargo", "run", "--quiet", "--profile", "test", "-p", "stele-negative-controls", "--example",
                         "matmul_corpus", "--locked", "--offline"], cwd=ROOT,
                        stdin=inputs, stdout=output, check=True)
+    produced = 0
     with path.open() as fixtures, responses.open() as actual:
-        for index, (line, response) in enumerate(zip_longest(fixtures, actual)):
-            assert line is not None and response is not None, (index, "native response count")
-            expected, observed = json.loads(line), json.loads(response)
+        for index, line in enumerate(fixtures):
+            expected, observed = json.loads(line), json.loads(next(actual))
             if expected["expected"] != observed:
                 keys = sorted(k for k in expected["expected"].keys() | observed.keys()
                               if expected["expected"].get(k) != observed.get(k))
                 raise AssertionError((index, expected["kind"], keys,
                                       {k: observed.get(k) for k in keys}))
+            if expected["kind"] == "seeded":
+                pair = json.loads(next(actual))
+                assert set(pair) == {"producer", "verification"}
+                assert pair["verification"] == expected["expected"], (index, "produced proof consumer")
+                p, inputs = pair["producer"], expected["inputs"]
+                assert set(p) == {"wire_hex", "usage", "continuation", "retained_rows", "rounds"}
+                assert p["wire_hex"] == inputs["proof_hex"], (index, "complete native producer bytes")
+                assert p["usage"] == dict(transcript=expected["expected"]["usage"]["transcript"],
+                                          non_transcript=hashes()), (index, "actual producer usage")
+                assert p["continuation"] == expected["expected"]["continuation"], (index, "producer continuation")
+                h, a, b, c = inputs["dims"]
+                assert p["rounds"] == h + b
+                assert len(p["retained_rows"]) == 2
+                for row, outer in zip(p["retained_rows"], (a, c)):
+                    assert set(row) == {"source_visits", "source_elements", "retained_bytes"}
+                    assert row["source_visits"] == 1 and row["source_elements"] == 1 << (outer + h + b)
+                    # Actual child capacity is observed, not inferred as an aggregate peak.
+                    assert type(row["retained_bytes"]) is int and row["retained_bytes"] >= (1 << (h + b)) * 4 * inputs["degree"]
+                produced += 1
         assert index + 1 == 2068
+        assert produced == 2000 and next(actual, None) is None, "native response count"
 
 
 if __name__ == "__main__":
@@ -624,3 +656,5 @@ if __name__ == "__main__":
             compare(path, directory)
         print("matmul closed corpus: 2000 seeded cases (1000 per field), 34 honest controls and 34 rejects; "
               "complete wires, actual records, imports, usage and continuation; SHA256 " + EXPECTED)
+        print("matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, "
+              "actual closed records, usage, retained visits and continuation")
