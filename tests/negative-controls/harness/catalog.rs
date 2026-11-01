@@ -16,10 +16,10 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("9/25 bindings; 41/97 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 56);
+    assert!(coverage.contains("10/25 bindings; 44/97 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 53);
     for id in [
-        203, 210, 211, 212, 213, 400, 401, 402, 403, 415, 416, 417, 418, 419, 609,
+        203, 210, 211, 212, 213, 306, 307, 400, 401, 402, 403, 415, 416, 417, 418, 419, 609, 611,
     ] {
         assert!(
             catalog

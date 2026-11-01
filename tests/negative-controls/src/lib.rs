@@ -11,6 +11,8 @@ pub mod fraction_transcript;
 #[doc(hidden)]
 pub mod lookup;
 #[doc(hidden)]
+pub mod matmul;
+#[doc(hidden)]
 pub mod pcs;
 #[doc(hidden)]
 pub mod pcs_a1;
@@ -41,6 +43,24 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 306,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ColumnMismatch",
+        run: || matmul::run(306),
+    },
+    catalog::RegisteredControl {
+        id: 307,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: || matmul::run(307),
+    },
+    catalog::RegisteredControl {
+        id: 611,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ColumnMismatch",
+        run: || matmul::run(611),
+    },
     catalog::RegisteredControl {
         id: 400,
         kind: catalog::ControlKind::Proof,
@@ -167,7 +187,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "RootMismatch",
         run: || {
             pcs::run(606)?;
-            pcs_opening::run(606)
+            pcs_opening::run(606)?;
+            matmul::run(606)
         },
     },
     catalog::RegisteredControl {
@@ -310,7 +331,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             fraction_transcript::run_continuation()?;
             pcs_opening_continuation::run()?;
             stacked::run_continuation()?;
-            lookup::run(802)
+            lookup::run(802)?;
+            matmul::run(802)
         },
     },
     catalog::RegisteredControl {

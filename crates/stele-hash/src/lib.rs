@@ -80,7 +80,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 36] = [
+const REGISTRY: [RegistryEntry<'static>; 37] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -261,6 +261,11 @@ const REGISTRY: [RegistryEntry<'static>; 36] = [
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Lu),
     },
+    RegistryEntry {
+        label: "stele/v0.1/matmul/statement",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -288,7 +293,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 36], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 37], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -377,6 +382,8 @@ pub enum AbsorbLabel {
     LookupRepetition,
     /// Actual table point, numerator and every structural piece value (A11).
     LookupMultiplicityClaims,
+    /// Expected original-source matmul statement before A4/A1 (A12).
+    MatmulStatement,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -405,6 +412,7 @@ impl AbsorbLabel {
             Self::LookupMultiplicities => 30,
             Self::LookupRepetition => 31,
             Self::LookupMultiplicityClaims => 32,
+            Self::MatmulStatement => 36,
         }]
     }
 }

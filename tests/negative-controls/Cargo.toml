@@ -193,3 +193,19 @@ path = "lookup/nc_0418.rs"
 [[test]]
 name = "nc-0419"
 path = "lookup/nc_0419.rs"
+
+[[test]]
+name = "nc-0306"
+path = "matmul/nc_0306.rs"
+
+[[test]]
+name = "nc-0307"
+path = "matmul/nc_0307.rs"
+
+[[test]]
+name = "nc-0611"
+path = "pcs/nc_0611.rs"
+
+[[example]]
+name = "matmul_corpus"
+path = "examples/matmul_corpus.rs"

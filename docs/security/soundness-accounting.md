@@ -1642,7 +1642,7 @@ No profile flag, integer/plan/source ownership, Q12 theorem or joint ZK follows.
 E3-07b still requires complete registration/proving/verification resource ledgers;
 E3-07 and Draft A2/A8 retain their full original requirements.
 
-### Conditional stacked matmul contract
+### Conditional stacked matmul
 
 RFC-0007 A2 / RFC-0010 A10 / RFC-0012 A12 specify the
 [original-source composition](../../formal/native-matmul.md). The actual A4/A1
@@ -1657,7 +1657,10 @@ A1 draws and two complete existing opening schedules; rejected sampler draws,
 failure prefixes, disjoint Merkle hashes and standalone registration work remain
 observed separately. The outer transcript snapshot is cumulative, not additive
 across consumers. Retained-row ownership and pass counts are implementation
-invariants, not extra soundness theorems. No production label/record changes in
-this contract delivery; E7-01b must supply them with actual controls. Q12,
+invariants, not extra soundness theorems. E7-01b2 implements the production
+label and closed verifier record, retaining the actual SC and both A9 records.
+NC-0306/0307/0611 exercise both original consumers; NC-0606 and all three
+NC-0802 omissions extend through this composition. E7-01b retains the complete
+native producer and resource-ledger requirements. Q12,
 adversarial resource caps, integer/virtual ownership, privacy and both profiles
 remain open. No measured constant changes.

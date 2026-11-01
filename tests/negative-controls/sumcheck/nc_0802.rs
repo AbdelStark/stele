@@ -8,4 +8,5 @@ fn rejects_nc_0802() {
     stele_negative_controls::batching::run(802).expect("instance-batch extension");
     stele_negative_controls::zerocheck::run(802).expect("zerocheck extension");
     stele_negative_controls::lookup::run(802).expect("complete lookup extension");
+    stele_negative_controls::matmul::run(802).expect("closed matmul extension");
 }
