@@ -23,6 +23,8 @@
 | NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
 | NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | done |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
+| NC-0306 | matmul phases | 0007 A2 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | todo |
+| NC-0307 | matmul phases | 0007 A2 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | todo |
 | NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | done |
 | NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | done |
 | NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | done |
@@ -52,6 +54,7 @@
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7 | change the expected scalar under zero b or one closed lookup mu-opening row value; reject before column draws | `ValueMismatch` | done |
+| NC-0611 | PCS | 0010 A10, 0007 A2 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |

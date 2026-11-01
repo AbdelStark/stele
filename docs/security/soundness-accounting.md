@@ -1641,3 +1641,23 @@ not a new loss term or a concrete Fiat–Shamir theorem.
 No profile flag, integer/plan/source ownership, Q12 theorem or joint ZK follows.
 E3-07b still requires complete registration/proving/verification resource ledgers;
 E3-07 and Draft A2/A8 retain their full original requirements.
+
+### Conditional stacked matmul contract
+
+RFC-0007 A2 / RFC-0010 A10 / RFC-0012 A12 specify the
+[original-source composition](../../formal/native-matmul.md). The actual A4/A1
+relation has h+b variables and degree three, so SC is 3*(h+b)/|K|, including
+zero-round records and L=1. The public layer eq final has its independent A7
+consumer. Coordinate restoration adds no random loss. Both actual A9 openings
+retain their source-specific query terms and both original certificate/lifetime
+obligations, even under a zero factor. All A8 hash conditions remain.
+
+The new MatmulStatement is absorb-only and precedes Stack/A1. There are h+b
+A1 draws and two complete existing opening schedules; rejected sampler draws,
+failure prefixes, disjoint Merkle hashes and standalone registration work remain
+observed separately. The outer transcript snapshot is cumulative, not additive
+across consumers. Retained-row ownership and pass counts are implementation
+invariants, not extra soundness theorems. No production label/record changes in
+this contract delivery; E7-01b must supply them with actual controls. Q12,
+adversarial resource caps, integer/virtual ownership, privacy and both profiles
+remain open. No measured constant changes.
