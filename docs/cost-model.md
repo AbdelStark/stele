@@ -141,5 +141,8 @@ These observations exclude other retained proof/descriptor storage and are not a
 complete owned-memory peak. The caller's prepared-entry policy covers GKR state; it is not a complete
 adapter memory ceiling. Caller tables, source/descriptor frames, partials, PCS point
 weights, row/encoder storage, retained proofs and process memory have separate costs.
-Complete time, byte and process-memory ledgers remain required before E3-06 is done.
-No constant, weight-pass count or inference projection changes from this implementation alone.
+The [complete stacked ledger](../bench/ledger/e3-06-stacked.json) records actual
+public/certified production, consumption, source registration, observations and
+cleanup, with separate scoped capacities and fresh-worker RSS. Its fixed relation
+and shared-host measurements are described in [the benchmark report](../bench/README.md#complete-conditional-stacked-resources).
+No fitted constant, weight-pass count or inference projection changes from these observations.

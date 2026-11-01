@@ -697,3 +697,23 @@ proof identities before native ledger validation. Import the validated JSON into
 only the declared relation; they do not establish a fitted constant, speedup,
 all-kind scaling, inference/profile admission, zero knowledge or a weight-pass
 result. The mandatory correctness/parity/control gates remain separate.
+
+The [complete stacked ledger](ledger/e3-06-stacked.json) contains all 24 samples
+from clean source `34072630ce9eaf6fd1379130cfe3f86de1ffd4c1` on Apple M1 Max.
+The table reports mean native times truncated to microseconds and maximum RSS
+over each three-sample cell. Total includes actual registration and cleanup;
+producer and consumer columns are its included closed-call intervals. Proof bytes
+include A1 messages and ordinary openings; registration certificates and public
+frames are recorded separately. Original research workers remained active.
+JSON values are unchanged from the validated output; sample rows are compacted.
+
+| Mode | Field | Order | Total ms | Producer ms | Consumer ms | RSS KiB | Proof bytes |
+|---|---|---|---:|---:|---:|---:|---:|
+| public | QM31 | layer-first | 81.845 | 63.634 | 4.031 | 4560 | 1364 |
+| public | QM31 | layer-last | 82.906 | 64.008 | 4.435 | 6128 | 1364 |
+| public | OM31 | layer-first | 201.822 | 159.557 | 10.068 | 11552 | 2548 |
+| public | OM31 | layer-last | 214.936 | 167.833 | 11.551 | 12816 | 2548 |
+| certified | QM31 | layer-first | 169.328 | 69.976 | 19.907 | 7168 | 1193335 |
+| certified | QM31 | layer-last | 166.141 | 68.841 | 19.654 | 7312 | 1193335 |
+| certified | OM31 | layer-first | 349.504 | 167.389 | 44.436 | 9008 | 1213207 |
+| certified | OM31 | layer-last | 338.029 | 161.472 | 43.965 | 7392 | 1213207 |
