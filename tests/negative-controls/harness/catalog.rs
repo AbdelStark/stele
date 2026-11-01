@@ -7,7 +7,7 @@ const ROW: &str = "| NC-0001 | binding | 0002 §7 | change cell | ExactError | t
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 97);
+    assert_eq!(catalog.len(), 104);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
     assert_eq!(catalog.last().map(|entry| entry.id), Some(1203));
     assert!(
@@ -16,8 +16,8 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("10/25 bindings; 44/97 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 53);
+    assert!(coverage.contains("10/32 bindings; 44/104 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 60);
     for id in [
         203, 210, 211, 212, 213, 306, 307, 400, 401, 402, 403, 415, 416, 417, 418, 419, 609, 611,
     ] {
@@ -31,6 +31,15 @@ fn accepts_repository_catalog_without_crediting_stub() {
         assert!(coverage.lines().any(|line| {
             line.starts_with(&format!("NC-{id:04} |")) && line.ends_with("passed")
         }));
+    }
+    for id in 308..=314 {
+        assert!(
+            !catalog
+                .iter()
+                .find(|entry| entry.id == id)
+                .expect("reserved Requant control")
+                .done
+        );
     }
     assert!(coverage.contains("Configuration controls: 1 (not proof-statement coverage)"));
 }

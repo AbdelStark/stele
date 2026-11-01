@@ -19,8 +19,8 @@ For each protocol binding:
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
-label with `DuplicateLabel`; it earns configuration coverage only. Including the conditional stacked, PCS, closed lookup and matmul variants, 44/97 controls run,
-53 remain missing, and 10/25 catalog binding categories have proof controls. Range rows expand
+label with `DuplicateLabel`; it earns configuration coverage only. Including the conditional stacked, PCS, closed lookup and matmul variants, 44/104 controls run,
+60 remain missing, and 10/32 catalog binding categories have proof controls. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 Streaming NC-0210 uses a real prepared file: change one unused source record,
 produce the changed Streaming proof, and apply its single changed final through

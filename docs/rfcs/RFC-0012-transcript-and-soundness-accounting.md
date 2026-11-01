@@ -654,3 +654,29 @@ registration and disjoint local H separate from the cumulative outer snapshot.
 The new frame contributes hash work only. Q12 and both profile budgets remain
 unresolved. Add the production label, inventory and composed NC-0802 extension
 with the implementing consumer; this specification changes none of them.
+
+### A13 — Fixed Requant advice and independent-weight composition
+
+Status: Accepted. Companion RFC-0023; questions Q26/Q28 and retained Q12/Q29.
+Motivation: exact integer Requant needs one fixed advice source, a closed
+constraint list and real source consumers, with every new random combination
+accounted before implementation.
+
+RFC-0023 fixes three absorb labels ending /requant/statement, /constraints and
+/claims, and one challenge label /requant/weight under stele/v0.1. Its complete
+bytes/order are normative. Draw independent coefficients, not powers of one
+challenge. Emit four RLC records with numerator one and actual counts J,4,R,
+1+w(Q): constraint combination, A3 input finals, A3 advice finals, output advice
+finals. Each false fixed vector is hidden with probability at most 1/|K|.
+The aggregate actual A3 contributes 4m/|K|, retaining all three phase records;
+the actual output A1 contributes 3m/|K|. Add both entire A5 inventories and all
+actual A9/lifetime/hash obligations. The three arithmetic source consumers are
+real arbitrary-functionals, not fabricated per-plane OpeningRecords.
+
+Source/statement fixation precedes all dependent draws; every complete final
+roster precedes its group weights. Existing A5 all-unit/all-mu/all-pair schedules
+and A9 row-before-column schedules stay unchanged. Retain zero coefficients,
+all claims, failed-prefix Usage and disjoint standalone registrations/local H.
+Q12 still blocks both profile totals; this is conditional interactive accounting.
+On native implementation add these exact registry entries, records, controls
+and gates. This specification changes no executable registry or measured constant.

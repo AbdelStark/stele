@@ -1666,3 +1666,37 @@ transcript schedule preserve every existing loss. E7-01b retains the complete
 resource-ledger requirements. Q12,
 adversarial resource caps, integer/virtual ownership, privacy and both profiles
 remain open. No measured constant changes.
+# Accepted RFC-0023 inventory: integer Requant advice
+
+This inventory is specification work for E7-01c, not an executable record or
+profile admission. RFC-0023 fixes the complete relation and byte schedule.
+Its three new absorbs end /requant/statement, /constraints and /claims; its
+new independent challenge label ends /requant/weight, under stele/v0.1.
+
+| Purpose | Draws / record | Conditional interactive loss |
+|---|---|---|
+| Fixed constraint-list combination | J independent K draws; RLC phase 0, numerator 1 | 1/\|K\| |
+| Combined A3, skip 0 | m ZeroWeight + m Sumcheck; retain SC phases 0,1,2 | (m+0+3m)/\|K\| |
+| Actual A3 input finals | 4 independent weights; RLC phase 1, numerator 1 | 1/\|K\| |
+| Actual A3 advice finals | R independent weights; RLC phase 2, numerator 1 | 1/\|K\| |
+| Actual output A1 | m Sumcheck, structural degree 3 | 3m/\|K\| |
+| Actual output advice finals | 1+w(Q) independent weights; RLC phase 3, numerator 1 | 1/\|K\| |
+
+The four RLC bounds follow from a fixed nonzero error vector and independent
+uniform coefficients, not powers of one gamma. Use an unconditional union of
+bad events; do not condition a fresh draw on future PCS/hash success. Preserve
+every zero coefficient, full claim roster and actual retained functional record.
+
+Add both complete A5 inventories unchanged. For each source cube of M cells,
+h=log2(M)-min(log2(M),30), Table rows=256 and c=1, the joint LU event is
+min(1,(h+M+255)/|K|)^r. Add its individual tree/leaf SC/RLC, original and mu
+openings, certificate lifetimes and all A8 hash obligations. M is 4N for input
+and RN for advice. Three additional actual A9 functionals consume arithmetic
+groups; there are no fabricated per-plane PCS records. Input/advice and all 2r
+mu handles remain genuinely verified and retained. Failed attempts, standalone
+imports and disjoint local-H work are explicit in RFC-0023 §2.4.
+
+Native registry/record/control/gate changes are required with implementation.
+NC-0308..0314 are catalog reservations only; existing NC-0100/0101/0109 and
+composed NC-0606/0610/0802 remain owed by the actual consumers. Q12/Q29, full
+source/plan/packing/inference contracts and both profile totals remain open.

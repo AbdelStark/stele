@@ -1087,6 +1087,49 @@ tasks:
   - independent Python/native bytes, decisions, restored claims, records, usage and continuation parity with the full corpus in formal/native-matmul.md
   - complete registration, preparation, proving, both verifiers, proof-byte and memory ledgers with all bindings and actual row/pass observations
   - all E7-01/E7-02/E4-04 integer, virtual-source, configured-plan, packing, bucketed, privacy and W8 obligations remain
+- id: E7-01c
+  epic: E7
+  title: Exact integer Requant advice-cut and source-consumer contract
+  depends:
+  - E3-07b
+  - E5-03a
+  - E7-01b
+  rfc:
+  - RFC-0004 A1
+  - RFC-0007 A3
+  - RFC-0022 §2.2
+  - RFC-0023
+  skill: rfc-author
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E7-01c-requant-contract
+  acceptance:
+  - full int32 Requant domain with canonical input bytes, an explicitly named advice cut, static integer bounds and actual range/arithmetic/source consumers
+  - exact statement, advice layout, proof bytes, challenge fixation, claim schedule, conditional loss inventory and resource formulas
+  - soundness-auditor, RFC-author and affected-owner review; source residue alias and unfixed advice attacks addressed without a receipt or callback
+  - no E3-07, E5-03, E6, E7-01, privacy, profile or W8 completion credit; configured matmul linkage requires both accumulator bounds and preserves all parent criteria
+- id: E7-01d
+  epic: E7
+  title: Native closed integer Requant production, verification and resource ledger
+  depends:
+  - E7-01c
+  rfc:
+  - RFC-0023
+  - RFC-0004 A1
+  - RFC-0022 §2.2
+  - RFC-0012 A13
+  - RFC-0020 A8
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - actual static schema compiler, whole-source byte lookups, aggregate A3, output A1 and all three certificate-bound A9 consumers in both fields and repetition counts
+  - full supported Requant parameter domain and RFC-0023 §6 boundary, overflow, zero, source, plane, padding, malformed, lifetime and failed-prefix checks
+  - actual NC-0308..0314, NC-0100/0101/0109 and composed NC-0606/0610/0802 with precise rejecting causes; no verifier bypass or receipt authority
+  - checked-in independent Python/native full wire, decision, claim, record, Usage and continuation parity; preserve existing corpora
+  - complete registration, preparation, proving, import, both verifiers, proof-byte and peak-memory ledgers with every binding enabled
+  - all E3-07/E5-03/E6/E7-01/E7-02, configured source/plan, integer matmul bridge, packing, privacy, profile and W8 criteria remain required
 - id: E7-01
   epic: E7
   title: Matmul reduction (single instance) + requant zerocheck + range lookups
@@ -1094,6 +1137,7 @@ tasks:
   - E3-07
   - E6-02
   - E7-01b
+  - E7-01d
   rfc:
   - RFC-0007 §1
   - RFC-0004 §5.1

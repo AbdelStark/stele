@@ -128,3 +128,26 @@ Draft for packed/signed and complete fused integration. E7-01a accepts the
 contract; E7-01b implements it. E7-01/E7-02/E4-04 retain every original criterion.
 NC-0306/0307/0611 are reservations; actual composed controls and full resource
 ledgers must precede implementation completion. No measured constant changes.
+
+### A3 — Named byte-plane Requant advice cut
+
+Status: Accepted. Companion RFC-0023 / RFC-0005 A2; questions Q26/Q28.
+Motivation: the generic word "aux" in §3 does not define source fixation for
+Requant sign/digit/remainder witnesses, and a field accumulator alone is not an
+injective int32 representation.
+
+Addition to §3: permit exactly the Requant advice cut specified in
+RFC-0023, with its complete byte-plane/cap/carry schema, prechallenge root and
+genuine registration certificate. This explicit extra commitment contains
+information determining the accumulator and rounded result. Its complete
+registration, range checks, arithmetic and source-consumer costs are charged.
+It supplies no generic permission to commit virtual activations or add cuts.
+
+RFC-0023 initially accepts only a separately expected four-byte int32 source.
+It does not splice that source into current field matmul. A real integration
+must enforce the signed original-source ranges, both accumulator bounds, their
+actual same-source equality, every emitted functional and the one-weight-pass
+schedule. Wider/packed source obligations and full E7-01/E7-02/E4-04 criteria
+remain. Soundness/challenge/accounting is exactly RFC-0023 and RFC-0012 A13;
+privacy/Q12/profile/W8 obligations are unchanged. New cut/lookup/arithmetic work
+contributes c_c/c_lu/c_a/T_misc; no measured constant or second pass is authorized.

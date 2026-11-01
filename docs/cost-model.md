@@ -237,3 +237,17 @@ compilation and test execution under Cargo test optimization levels 0 and 2,
 with debug assertions and overflow checks enabled. This changes validation cost
 only. No per-proof term, fitted constant, weight-pass count or inference
 projection above changes; the isolated pair does not measure full-CI wall time.
+
+## 16. Integer Requant advice contract
+
+[RFC-0023](rfcs/RFC-0023-integer-requant-with-advice-cut.md) adds one named advice
+cut with R_q byte planes and N padded positions. Add R_q*N committed M31 cells
+under c_c, including actual preparation, registration, import and openings;
+C_cut above continues to denote residual cells only. Both complete A5 range_8
+consumers charge c_lu on 4N input cells and R_q*N advice cells, including every
+mu source and consumer. The fixed constraint compiler, aggregate A3, output A1
+and three additional A9 functionals contribute c_a/c_sc/T_misc as specified in
+RFC-0023 §§3–4, with actual coefficient and retained-buffer work. R_q is distinct
+from device throughput R. These are formulas for new work, not fitted constants
+or measured performance. E7-01d must supply the complete native ledger; no
+additional weight pass or revised inference projection is authorized.
