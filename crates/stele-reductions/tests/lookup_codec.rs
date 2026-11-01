@@ -131,7 +131,7 @@ fn wire<K: ChallengeField>(s: Statement<'_, '_, K>, d: &Descriptor<'_, '_, K>) -
             packet(&mut f, c.record().source(), ProofKind::Opening);
         }
         let columns = 1usize << (k - u32::from(layout.ell));
-        let count = usize::from(t / columns > 0) + usize::from(t % columns > 0);
+        let count = usize::from(t / columns > 0) + usize::from(!t.is_multiple_of(columns));
         for _ in 0..count {
             f.pieces.push(f.bytes.len());
             f.bytes.resize(f.bytes.len() + 4 * K::DEGREE, 0);
