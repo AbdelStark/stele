@@ -169,7 +169,8 @@ class ClosedStackedGateTests(unittest.TestCase):
             '\n'.join([f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
                       + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
                          for field in ('qm31','om31')]
-                      + ['test matmul::producer::rejects_retained_allocation_sizes ... ok']),
+                      + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
+                         'test matmul::matches_reference_owned_capacities ... ok']),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
             '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
@@ -287,6 +288,7 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/matmul.rs',"\nimpl<K: ChallengeField> Record<'_, K> { pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n"),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> From<bool> for Record<'_, K> { fn from(_: bool) -> Self { todo!() } }\n"),
             ('src/matmul.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/matmul.rs','\nimpl From<VerifierWork> for bool { fn from(_: VerifierWork) -> bool { true } }\n'),
             ('src/matmul_producer.rs','\npub fn from_digest() {}\n'),
             ('src/matmul_producer.rs','\nimpl From<Work> for bool { fn from(_: Work) -> bool { true } }\n'),
             ('src/matmul_producer.rs','\ninclude!("unchecked.rs");\n'),
@@ -331,6 +333,16 @@ class ClosedStackedGateTests(unittest.TestCase):
         for name, old, new in (
             ('matmul.rs', 'mod producer;', 'pub mod producer;'),
             ('matmul.rs', 'pub use producer::{prove, prove_measured, Work};', 'pub use producer::*;'),
+            ('matmul.rs', 'pub context_bytes: usize,', 'pub context_bytes: ScRecord,'),
+            ('matmul.rs', 'pub a1: stele_sumcheck::VerifierWork,', 'pub a1: ScRecord,'),
+            ('matmul.rs', 'pub openings: [stele_pcs::VerifierWork; 2],', 'pub openings: [stele_pcs::VerifierWork; 1],'),
+            ('matmul.rs', 'pub restored_points_bytes: [usize; 2],', 'pub restored_points_bytes: usize,'),
+            ('matmul.rs', 'pub fn verify_measured', 'pub fn from_work'),
+            ('matmul.rs', "Result<(Record<'cert, K>, Usage, VerifierWork), Failure>", "Result<(Record<'static, K>, Usage, VerifierWork), Failure>"),
+            ('matmul.rs', 'fn proof_bytes<K>', 'pub fn proof_bytes<K>'),
+            ('matmul_producer.rs', 'pub proof_bytes: usize,', 'pub proof_bytes: ScRecord,'),
+            ('matmul_producer.rs', 'pub a1: stele_sumcheck::ProverWork,', 'pub a1: ScRecord,'),
+            ('matmul_producer.rs', 'pub openings: [stele_pcs::ProverWork; 2],', 'pub openings: [stele_pcs::ProverWork; 1],'),
             ('matmul_producer.rs', 'pub dense: stacked::Work,', 'pub dense: stele_sumcheck::ScRecord,'),
             ('matmul_producer.rs', 'pub retained_rows: [RetainedRowWork; 2],', 'pub retained_rows: [RetainedRowWork; 1],'),
             ('matmul_producer.rs', "sources: [&PreparedSource<'_, K>; 2]", "sources: [PreparedSource<'_, K>; 2]"),

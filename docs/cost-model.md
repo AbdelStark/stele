@@ -216,8 +216,18 @@ bytes and encoded-value comparisons count their named operations, including repe
 they are distinct c_c/T_misc observations, not physical bandwidth measurements.
 Borrowed preparation, retained rows, coefficients and proofs remain parent costs.
 
+E7-01b6 composes the actual matmul-owned capacities at their existing lifetimes.
+Folding pairs each A1 proof prefix with that round's Dense scratch and counts the
+shared result once, including scalar Instance/Final events. The reserved outer
+wire survives all phases; Dense tables and Prepared drop before serialization,
+and the logical A1 proof drops before column weights. Only the current temporary
+opening coexists with the outer wire. Verification retains its decoded proof,
+Prepared, restored points and returned A1 buffers through both actual A9 calls;
+its fixed A7 Eq evaluator allocates no heap storage. These c_sc/c_c/T_misc capacity
+observations exclude borrowed inputs/preparation, stack and allocator/process costs.
+
 No measured constant or complete weight-phase result changes. Full registration,
-proving and both verifier timings, A1/PCS/codec allocation overlaps and process RSS
+proving and both verifier timings, complete caller allocation overlaps and process RSS
 remain E7-01b requirements. The scoped child observations supply no complete ledger.
 
 ## 15. Native validation cost

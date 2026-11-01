@@ -148,20 +148,32 @@ def field_sources(root):
             and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', source))
     matmul = re.sub(r'//[^\n]*', '', (crate / 'src/matmul.rs').read_text())
     matmul_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', matmul)
+    verifier_parameters = (
+        "<'cert,K:ChallengeField+CodeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,"
+        "certificates:[&'certVerifiedCertificate<K>;2],wire:&[u8],limits:stacked::Limits,)")
     matmul_closed = (matmul_declarations == [
-        ('use', 'producer'), ('struct', 'Statement'), ('', 'id'), ('', 'output_id'), ('', 'coefficient_id'),
+        ('use', 'producer'), ('struct', 'VerifierWork'), ('', 'context_bytes'), ('', 'prepared_bytes'),
+        ('', 'decoded_proof_bytes'), ('', 'restored_points_bytes'), ('', 'a1'), ('', 'openings'),
+        ('', 'reduction_peak_bytes'), ('', 'opening_peak_bytes'), ('', 'peak_owned_bytes'),
+        ('struct', 'Statement'), ('', 'id'), ('', 'output_id'), ('', 'coefficient_id'),
         ('', 'inputs'), ('', 'bits'), ('', 'point'), ('', 'value'), ('enum', 'Error'),
         ('struct', 'Failure'), ('', 'cause'), ('', 'usage'), ('struct', 'Record'),
-        ('fn', 'sc'), ('fn', 'openings'), ('fn', 'points'), ('fn', 'values'), ('fn', 'verify')]
+        ('fn', 'sc'), ('fn', 'openings'), ('fn', 'points'), ('fn', 'values'), ('fn', 'verify'), ('fn', 'verify_measured')]
         and len(matmul_declarations) == len(re.findall(r'\bpub\b', matmul))
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+struct\s+VerifierWork\s*\{([^}]*)\}', matmul)] == [
+            'pubcontext_bytes:usize,pubprepared_bytes:usize,pubdecoded_proof_bytes:usize,'
+            'pubrestored_points_bytes:[usize;2],puba1:stele_sumcheck::VerifierWork,'
+            'pubopenings:[stele_pcs::VerifierWork;2],pubreduction_peak_bytes:usize,'
+            'pubopening_peak_bytes:[usize;2],pubpeak_owned_bytes:usize,']
         and '#[path="matmul_producer.rs"]modproducer;pubuseproducer::{prove,prove_measured,Work};'
             in re.sub(r'\s+', '', matmul)
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+fn\b[^\{]*\{', matmul)] == [
             'pubfnsc(&self)->&ScRecord{', "pubfnopenings(&self)->&[OpeningRecord<'_,K>;2]{",
             'pubfnpoints(&self)->[&[K];2]{', 'pubfnvalues(&self)->&[K;2]{',
-            "pubfnverify<'cert,K:ChallengeField+CodeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,"
-            "certificates:[&'certVerifiedCertificate<K>;2],wire:&[u8],limits:stacked::Limits,)"
-            "->Result<(Record<'cert,K>,Usage),Failure>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]
+            'pubfnverify' + verifier_parameters +
+            "->Result<(Record<'cert,K>,Usage),Failure>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{",
+            'pubfnverify_measured' + verifier_parameters +
+            "->Result<(Record<'cert,K>,Usage,VerifierWork),Failure>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', matmul)]
             == ["impl<K:ChallengeField>Record<'_,K>{", "impl<'a,K:ChallengeField>Context<'a,K>{"]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul))
@@ -173,10 +185,17 @@ def field_sources(root):
         "sources:[&PreparedSource<'_,K>;2],certificates:[&VerifiedCertificate<K>;2],"
         'limits:stacked::Limits,retained_row_entries:usize,)')
     matmul_closed &= (matmul_producer_declarations == [
-        ('struct', 'Work'), ('', 'retained_rows'), ('', 'dense'), ('fn', 'prove'), ('fn', 'prove_measured')]
+        ('struct', 'Work'), ('', 'retained_rows'), ('', 'dense'), ('', 'context_bytes'), ('', 'prepared_bytes'),
+        ('', 'proof_bytes'), ('', 'row_weights_bytes'), ('', 'dense_bytes'), ('', 'captured_point_bytes'),
+        ('', 'column_weights_bytes'), ('', 'a1'), ('', 'round_scratch_peak_bytes'), ('', 'openings'),
+        ('', 'fold_peak_bytes'), ('', 'opening_peak_bytes'), ('', 'peak_owned_bytes'), ('fn', 'prove'), ('fn', 'prove_measured')]
         and len(matmul_producer_declarations) == len(re.findall(r'\bpub\b', matmul_producer))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+struct\s+Work\s*\{([^}]*)\}', matmul_producer)]
-            == ['pubretained_rows:[RetainedRowWork;2],pubdense:stacked::Work,']
+            == ['pubretained_rows:[RetainedRowWork;2],pubdense:stacked::Work,pubcontext_bytes:usize,'
+                'pubprepared_bytes:usize,pubproof_bytes:usize,pubrow_weights_bytes:[usize;2],pubdense_bytes:usize,'
+                'pubcaptured_point_bytes:usize,pubcolumn_weights_bytes:usize,puba1:stele_sumcheck::ProverWork,'
+                'pubround_scratch_peak_bytes:usize,pubopenings:[stele_pcs::ProverWork;2],pubfold_peak_bytes:usize,'
+                'pubopening_peak_bytes:[usize;2],pubpeak_owned_bytes:usize,']
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+fn\b[^\{]*\{', matmul_producer)] == [
             'pubfnprove' + producer_parameters + '->Result<(Vec<u8>,Usage),Failure>{',
             'pubfnprove_measured' + producer_parameters + '->Result<(Vec<u8>,Usage,Work),Failure>{']
@@ -216,7 +235,8 @@ def field_sources(root):
          [f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
          + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
             for field in ('qm31','om31')]
-         + ['test matmul::producer::rejects_retained_allocation_sizes ... ok']),
+         + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
+            'test matmul::matches_reference_owned_capacities ... ok']),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),

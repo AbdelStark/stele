@@ -14,6 +14,31 @@ use stele_sumcheck::{Proof, ScRecord, Term};
 mod producer;
 pub use producer::{prove, prove_measured, Work};
 
+/// Successful owned Vec capacities in the actual closed verifier (A2 §6).
+/// Excludes borrowed inputs/certificates, stack, allocator metadata and process RSS.
+/// These observations neither authorize claims nor constitute the complete ledger.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct VerifierWork {
+    /// Expected frame and inline term's heap factor buffer.
+    pub context_bytes: usize,
+    /// Actual A4 descriptor and nested Instance buffers.
+    pub prepared_bytes: usize,
+    /// Decoded logical A1 proof, including heap-resident Vec headers.
+    pub decoded_proof_bytes: usize,
+    /// Both restored original points, reserved before replay and moved into Record.
+    pub restored_points_bytes: [usize; 2],
+    /// Actual A1 replay, including the full returned claims capacity after A7 pops.
+    pub a1: stele_sumcheck::VerifierWork,
+    /// Actual X,W point consumers, each including its own equality vectors.
+    pub openings: [stele_pcs::VerifierWork; 2],
+    /// Live parent storage plus A1's largest transient event; A7 Eq is heap-free.
+    pub reduction_peak_bytes: usize,
+    /// Live parent and returned reduction storage plus each current A9 peak.
+    pub opening_peak_bytes: [usize; 2],
+    /// Largest simultaneously live owned capacity across the whole successful call.
+    pub peak_owned_bytes: usize,
+}
+
 /// Expected statement fixed by the caller, never decoded from the proof.
 #[derive(Clone, Copy)]
 pub struct Statement<'a, K> {
@@ -139,6 +164,80 @@ fn add(a: usize, b: usize) -> Result<usize, Error> {
 fn mul(a: usize, b: usize) -> Result<usize, Error> {
     a.checked_mul(b).ok_or(Error::Capacity)
 }
+fn bytes<T>(values: &Vec<T>) -> Result<usize, Error> {
+    mul(values.capacity(), core::mem::size_of::<T>())
+}
+fn proof_bytes<K>(proof: &Proof<K>) -> Result<usize, Error> {
+    proof.rounds.iter().try_fold(
+        add(bytes(&proof.rounds)?, bytes(&proof.final_values)?)?,
+        |sum, round| add(sum, bytes(round)?),
+    )
+}
+
+#[cfg(test)]
+#[test]
+fn matches_reference_owned_capacities() {
+    fn check<K: ChallengeField>() {
+        let mut round = Vec::with_capacity(17);
+        round.push(K::from_i64(1));
+        let mut rounds = Vec::with_capacity(7);
+        let round_bytes = round.capacity() * core::mem::size_of::<K>();
+        rounds.push(round);
+        let mut final_values = Vec::with_capacity(11);
+        final_values.push(K::from_i64(2));
+        let expected = rounds.capacity() * core::mem::size_of::<Vec<K>>()
+            + round_bytes
+            + final_values.capacity() * core::mem::size_of::<K>();
+        let proof = Proof {
+            rounds,
+            final_values,
+        };
+        assert_eq!(proof_bytes(&proof), Ok(expected));
+        assert!(expected > 2 * core::mem::size_of::<K>() + core::mem::size_of::<Vec<K>>());
+        let mut frame = Vec::<u8>::with_capacity(401);
+        frame.push(1);
+        let mut factors = Vec::<u32>::with_capacity(19);
+        factors.extend_from_slice(&[0, 1]);
+        let expected = frame.capacity() + factors.capacity() * core::mem::size_of::<u32>();
+        let statement = Statement {
+            id: 1,
+            output_id: 2,
+            coefficient_id: 3,
+            inputs: [4, 5],
+            bits: [0; 4],
+            point: &[],
+            value: K::from_i64(0),
+        };
+        let context = Context {
+            expected: &statement,
+            axes: [Axis { bits: 0, real: 1 }; 2],
+            output_axes: [Axis { bits: 0, real: 1 }; 3],
+            selectors: [None; 2],
+            terms: [Term {
+                coefficient: K::from_i64(1),
+                factors,
+            }],
+            frame,
+            limits: stacked::Limits {
+                descriptor_bytes: 0,
+                proof_bytes: 0,
+                prepared_entries: 0,
+                partial_entries: 0,
+                axis_entries: 0,
+            },
+            opening_sizes: [0; 2],
+            rounds: 0,
+            wire_size: 0,
+            maximum_hashes: 0,
+        };
+        assert_eq!(context.owned_bytes(), Ok(expected));
+        assert!(expected > context.frame.len() + 2 * core::mem::size_of::<u32>());
+    }
+    check::<stele_field::QM31>();
+    check::<stele_field::OM31>();
+    assert_eq!(add(usize::MAX, 1), Err(Error::Capacity));
+    assert_eq!(mul(usize::MAX, 2), Err(Error::Capacity));
+}
 fn reserve<T>(values: &mut Vec<T>, count: usize) -> Result<(), Error> {
     values.try_reserve_exact(count).map_err(|_| Error::Capacity)
 }
@@ -186,6 +285,21 @@ pub fn verify<'cert, K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_measured(t, expected, certificates, wire, limits)
+        .map(|(record, usage, _)| (record, usage))
+}
+
+/// The same closed consumer with success-only, non-authorizing capacity observations.
+pub fn verify_measured<'cert, K: ChallengeField + CodeField + Eq>(
+    t: &mut Transcript<K>,
+    expected: &Statement<'_, K>,
+    certificates: [&'cert VerifiedCertificate<K>; 2],
+    wire: &[u8],
+    limits: stacked::Limits,
+) -> Result<(Record<'cert, K>, Usage, VerifierWork), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let mut hashes = 0u64;
     let result = (|| {
         let context = Context::new(expected, certificates, limits)?;
@@ -204,18 +318,40 @@ where
             reserve(point, add(outer.len(), context.rounds)?)?;
             point.extend_from_slice(outer);
         }
+        let mut work = VerifierWork {
+            context_bytes: context.owned_bytes()?,
+            prepared_bytes: prepared.owned_bytes().map_err(stacked_error)?,
+            decoded_proof_bytes: proof_bytes(&proof)?,
+            restored_points_bytes: [bytes(&points[0])?, bytes(&points[1])?],
+            ..VerifierWork::default()
+        };
+        let baseline = add(
+            add(work.context_bytes, work.prepared_bytes)?,
+            add(
+                work.decoded_proof_bytes,
+                add(work.restored_points_bytes[0], work.restored_points_bytes[1])?,
+            )?,
+        )?;
         t.absorb(AbsorbLabel::MatmulStatement, &context.frame)
             .map_err(Error::Transcript)?;
-        let (reduction, _) = prepared
-            .verify_reduction(t, &proof)
+        let ((reduction, a1), _) = prepared
+            .verify_reduction_measured(t, &proof)
             .map_err(|failure| stacked_error(failure.cause))?;
+        work.a1 = a1;
+        work.reduction_peak_bytes = add(baseline, a1.peak_owned_bytes)?;
+        work.peak_owned_bytes = work.reduction_peak_bytes;
+        // A7 popped a claim, not its allocation. Both buffers survive both A9 calls.
+        let opening_baseline = add(
+            baseline,
+            add(bytes(&reduction.point)?, bytes(&reduction.claims)?)?,
+        )?;
         for point in &mut points {
             point.extend_from_slice(&reduction.point);
         }
         // The fixed A4 instance has exactly X,W plus its independently consumed coefficient.
         let values = [reduction.claims[0].1, reduction.claims[1].1];
         let mut consume = |index: usize| {
-            let result = stele_pcs::verify_point(
+            let result = stele_pcs::verify_point_measured(
                 t,
                 certificates[index],
                 expected.inputs[index],
@@ -224,23 +360,28 @@ where
                 openings[index],
             );
             let usage = match &result {
-                Ok((_, usage)) => usage,
+                Ok((_, usage, _)) => usage,
                 Err(failure) => &failure.usage,
             };
             // Context checked both maximum path counts before replay, including failing prefixes.
             hashes += usage.non_transcript.hash_evaluations;
             debug_assert!(hashes <= context.maximum_hashes);
-            result
-                .map(|(record, _)| record)
-                .map_err(|failure| pcs_error(failure.cause))
+            let (record, _, child) = result.map_err(|failure| pcs_error(failure.cause))?;
+            work.openings[index] = child;
+            work.opening_peak_bytes[index] = add(opening_baseline, child.peak_owned_bytes)?;
+            work.peak_owned_bytes = work.peak_owned_bytes.max(work.opening_peak_bytes[index]);
+            Ok::<_, Error>(record)
         };
         let openings = [consume(0)?, consume(1)?];
-        Ok(Record {
-            sc: reduction.sc,
-            openings,
-            points,
-            values,
-        })
+        Ok((
+            Record {
+                sc: reduction.sc,
+                openings,
+                points,
+                values,
+            },
+            work,
+        ))
     })();
     let usage = Usage {
         transcript: t.usage(),
@@ -250,11 +391,15 @@ where
         },
     };
     result
-        .map(|record| (record, usage))
+        .map(|(record, work)| (record, usage, work))
         .map_err(|cause| Failure { cause, usage })
 }
 
 impl<'a, K: ChallengeField> Context<'a, K> {
+    fn owned_bytes(&self) -> Result<usize, Error> {
+        // The [Term; 1] header is on the stack; only its factors own heap storage.
+        add(bytes(&self.frame)?, bytes(&self.terms[0].factors)?)
+    }
     fn new(
         s: &'a Statement<'a, K>,
         certificates: [&VerifiedCertificate<K>; 2],

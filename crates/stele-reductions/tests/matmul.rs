@@ -5,6 +5,29 @@ use stele_hash::{ChallengeField, HashUsage, Transcript};
 use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind};
 use stele_reductions::matmul::{self, Error, Statement};
 
+fn rejected<K: ChallengeField + CodeField + Eq>(
+    t: &mut Transcript<K>,
+    expected: &Statement<'_, K>,
+    certificates: [&stele_pcs::VerifiedCertificate<K>; 2],
+    wire: &[u8],
+    limits: Limits,
+    public: &[u8],
+) -> matmul::Failure
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let failure = matmul::verify(t, expected, certificates, wire, limits)
+        .err()
+        .expect("rejection");
+    let mut measured = Transcript::<K>::new(public).expect("fixture");
+    let observed = matmul::verify_measured(&mut measured, expected, certificates, wire, limits)
+        .err()
+        .expect("measured rejection");
+    assert_eq!(observed, failure);
+    assert_eq!(measured.usage(), t.usage());
+    failure
+}
+
 fn preflight<K: ChallengeField + CodeField + Eq>()
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -85,9 +108,14 @@ where
     ] {
         let mut t = Transcript::<K>::new(b"matmul preflight").expect("transcript");
         let before = t.usage();
-        let failure = matmul::verify(&mut t, &expected, [&xc, &wc], &[], limits)
-            .err()
-            .expect("expected context rejection");
+        let failure = rejected(
+            &mut t,
+            &expected,
+            [&xc, &wc],
+            &[],
+            limits,
+            b"matmul preflight",
+        );
         assert_eq!(failure.cause, cause);
         assert_eq!(failure.usage.transcript, before);
         assert_eq!(failure.usage.non_transcript, HashUsage::default());
@@ -110,9 +138,14 @@ where
         };
         let mut t = Transcript::<K>::new(b"matmul static maximum").expect("transcript");
         let before = t.usage();
-        let failure = matmul::verify(&mut t, &expected, [&xc, &wc], &[], limits)
-            .err()
-            .expect("expected geometry rejection");
+        let failure = rejected(
+            &mut t,
+            &expected,
+            [&xc, &wc],
+            &[],
+            limits,
+            b"matmul static maximum",
+        );
         assert_eq!(failure.cause, cause);
         assert_eq!(failure.usage.transcript, before);
         assert_eq!(failure.usage.non_transcript, HashUsage::default());
@@ -129,9 +162,14 @@ where
         changed[offset..offset + 4].copy_from_slice(&0x7fff_ffffu32.to_le_bytes());
         let mut t = Transcript::<K>::new(b"matmul canonical limbs").expect("transcript");
         let before = t.usage();
-        let failure = matmul::verify(&mut t, &statement, [&xc, &wc], &changed, limits)
-            .err()
-            .expect("canonical preflight");
+        let failure = rejected(
+            &mut t,
+            &statement,
+            [&xc, &wc],
+            &changed,
+            limits,
+            b"matmul canonical limbs",
+        );
         assert_eq!(failure.cause, Error::NoncanonicalField);
         assert_eq!(failure.usage.transcript, before);
         assert_eq!(failure.usage.non_transcript, HashUsage::default());
@@ -142,9 +180,14 @@ where
         changed[offset] = 2;
         let mut t = Transcript::<K>::new(b"matmul versions").expect("transcript");
         let before = t.usage();
-        let failure = matmul::verify(&mut t, &statement, [&xc, &wc], &changed, limits)
-            .err()
-            .expect("outer and nested versions");
+        let failure = rejected(
+            &mut t,
+            &statement,
+            [&xc, &wc],
+            &changed,
+            limits,
+            b"matmul versions",
+        );
         assert_eq!(failure.cause, Error::ProofShape);
         assert_eq!(failure.usage.transcript, before);
         assert_eq!(failure.usage.non_transcript, HashUsage::default());
@@ -155,9 +198,14 @@ where
     ] {
         let mut t = Transcript::<K>::new(b"matmul complete wire").expect("transcript");
         let before = t.usage();
-        let failure = matmul::verify(&mut t, &statement, [&xc, &wc], &changed, limits)
-            .err()
-            .expect("complete wire");
+        let failure = rejected(
+            &mut t,
+            &statement,
+            [&xc, &wc],
+            &changed,
+            limits,
+            b"matmul complete wire",
+        );
         assert_eq!(failure.cause, Error::ProofShape);
         assert_eq!(failure.usage.transcript, before);
         assert_eq!(t.usage(), before);
@@ -187,9 +235,14 @@ where
     ] {
         let mut t = Transcript::<K>::new(b"matmul capacity").expect("transcript");
         let before = t.usage();
-        let failure = matmul::verify(&mut t, &statement, [&xc, &wc], &wire, limited)
-            .err()
-            .expect("cap rejection");
+        let failure = rejected(
+            &mut t,
+            &statement,
+            [&xc, &wc],
+            &wire,
+            limited,
+            b"matmul capacity",
+        );
         assert_eq!(failure.cause, Error::Capacity);
         assert_eq!(failure.usage.transcript, before);
         assert_eq!(failure.usage.non_transcript, HashUsage::default());
