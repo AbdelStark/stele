@@ -1,6 +1,6 @@
 # Conditional matmul with original field sources
 
-Status: Draft for RFC-0007 A2, RFC-0010 A10, RFC-0012 A12 and RFC-0020 A7.
+Status: Accepted under RFC-0007 A2, RFC-0010 A10, RFC-0012 A12 and RFC-0020 A7.
 This is one complete stacked field statement, using the actual A4/A1
 reduction and A9 source consumers. It is a prerequisite of E7-01/E7-02, not
 integer matmul, a model plan, a complete weight phase, private inference or admission

@@ -905,7 +905,7 @@ tasks:
   - RFC-0020 A7
   skill: rfc-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01a-matmul-contract
   acceptance:
@@ -926,7 +926,7 @@ tasks:
   - RFC-0020 A7
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: blocked(RFC-0007 A2)
+  status: ready
   acceptance:
   - exact stacked expected geometry and complete canonical proof codec in both fields, including zero axes and checked resource preflight
   - actual A4/A1/A7 reduction and both original A9 consumers, immutable retained rows and exactly one original weight visit

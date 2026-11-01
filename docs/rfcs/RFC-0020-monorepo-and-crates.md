@@ -155,7 +155,8 @@ Affected tasks: conditional E3-07b and E3-07, whose full criteria remain intact.
 
 ### A7 — Conditional matmul ownership and existing primitive dependencies
 
-Status: Draft. Companions RFC-0007 A2, RFC-0010 A10 and RFC-0012 A12.
+Status: Accepted. Companions RFC-0007 A2, RFC-0010 A10 and RFC-0012 A12.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
 The [conditional matmul](../../formal/native-matmul.md) belongs in
 stele-reductions and invokes the actual unclosed GKR kernel and PCS consumers.
 Its original-source mapping is operation-owned; neither GKR nor sumcheck

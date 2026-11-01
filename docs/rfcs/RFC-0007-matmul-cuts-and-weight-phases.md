@@ -105,7 +105,8 @@ decomposition and memory need actual ledgers; no measured constant changes here.
 
 ### A2 — Conditional stacked matmul with original field sources
 
-Status: Draft. Companion RFC-0010 A10 and RFC-0012 A12.
+Status: Accepted. Companion RFC-0010 A10 and RFC-0012 A12.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
 Motivation: §5's partial A/B claims need an explicit original-source mapping,
 and ordinary A9 opening production rereads the source after B is computed.
 

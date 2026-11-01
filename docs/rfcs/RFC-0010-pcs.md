@@ -592,7 +592,8 @@ No measured constant, native benchmark or extra model weight pass is supplied.
 
 ### A10 — Retained field row for the conditional matmul consumer
 
-Status: Draft. Companions RFC-0007 A2 and RFC-0012 A12.
+Status: Accepted. Companions RFC-0007 A2 and RFC-0012 A12.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
 Motivation: A9 §4 deliberately supplies no fused B ownership; its ordinary
 producer recomputes the row. Addition to §5 and A9's producer boundary:
 [native-matmul.md §2](../../formal/native-matmul.md#2-retained-functional-row-and-prover-schedule)

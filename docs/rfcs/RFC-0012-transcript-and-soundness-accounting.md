@@ -637,7 +637,8 @@ constant changes; all new framing/hashing/queries belong to c_lu/c_c/T_misc.
 
 ### A12 — Original-source fixation for conditional stacked matmul
 
-Status: Draft. Companions RFC-0007 A2 and RFC-0010 A10.
+Status: Accepted. Companions RFC-0007 A2 and RFC-0010 A10.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
 The exact [native matmul contract](../../formal/native-matmul.md#3-exact-proof-bytes-and-transcript-order)
 defines one absorb-only typed label MatmulStatement with bytes
 `stele/v0.1/matmul/statement`. Its complete expected original source/certificate,
