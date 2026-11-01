@@ -156,7 +156,7 @@ pub struct RetainedRowWork {
 /// ```
 /// The weights and prepared source remain borrowed while the row is used:
 /// ```compile_fail,E0502
-/// use stele_field::{QM31, Serialize};
+/// use stele_field::{QM31, Field};
 /// use stele_pcs::{PreparedSource, RetainedRow};
 /// fn mutate(source: &PreparedSource<'_, QM31>, mut weights: Vec<QM31>) {
 ///     let row = RetainedRow::new(source, &weights).unwrap();
@@ -175,7 +175,7 @@ pub struct RetainedRowWork {
 /// ```
 /// Retained values cannot be edited:
 /// ```compile_fail,E0594
-/// use stele_field::{QM31, Serialize};
+/// use stele_field::{QM31, Field};
 /// use stele_pcs::RetainedRow;
 /// fn mutate(row: &RetainedRow<'_, '_, QM31>) {
 ///     row.values()[0] = QM31::from_i64(0);

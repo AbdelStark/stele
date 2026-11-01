@@ -72,7 +72,7 @@ where
         let work = retained.work();
         assert_eq!(work.source_visits, 1);
         assert_eq!(work.source_elements, message.len());
-        assert!(work.retained_bytes >= retained.values().len() * core::mem::size_of::<K>());
+        assert!(work.retained_bytes >= core::mem::size_of_val(retained.values()));
         let row_bytes: Vec<_> = retained
             .values()
             .iter()
