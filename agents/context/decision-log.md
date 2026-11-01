@@ -455,3 +455,20 @@ parity and resource ledgers remain E7-01b delivery requirements. This source
 representation is not an implicit R_stack view or a new activation cut. Every
 original E7/E4, signed/packed, virtual-source, configured-plan, privacy, profile
 and W8 requirement remains. No measured constant changes. Status: Accepted.
+
+## ADR-045: Fix integer Requant advice before every dependent challenge
+
+Context: sign, digits and carries lacked a named committed source; one M31
+residue cannot distinguish all signed int32 inputs. Decision: accept RFC-0023,
+RFC-0005 A2, RFC-0007 A3, RFC-0012 A13 and RFC-0020 A8. Use four offset input
+bytes and one explicit byte-plane advice cut, including full-width caps on
+shared role results. Close actual A5/A3/A1 work through three actual A9 groups
+and charge four independent-weight RLC events plus every child loss.
+
+The bounded reference review supports this contract. Native implementation,
+controls, independent parity and complete resource ledgers remain E7-01d work.
+The new cut determines accumulator/result information and adds commitment,
+lookup and arithmetic costs. It grants no generic auxiliary commitment or
+matmul join: signed original ranges, both accumulator bounds and their real
+equality consumer remain required. Full plan, privacy, profile and W8 criteria
+remain unchanged; no measured constant or extra weight pass. Status: Accepted.

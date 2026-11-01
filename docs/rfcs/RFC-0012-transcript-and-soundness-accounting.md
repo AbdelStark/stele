@@ -657,7 +657,7 @@ with the implementing consumer; this specification changes none of them.
 
 ### A13 — Fixed Requant advice and independent-weight composition
 
-Status: Draft. Companion RFC-0023; questions Q26/Q28 and retained Q12/Q29.
+Status: Accepted. Companion RFC-0023; questions Q26/Q28 and retained Q12/Q29.
 Motivation: exact integer Requant needs one fixed advice source, a closed
 constraint list and real source consumers, with every new random combination
 accounted before implementation.
@@ -679,4 +679,4 @@ and A9 row-before-column schedules stay unchanged. Retain zero coefficients,
 all claims, failed-prefix Usage and disjoint standalone registrations/local H.
 Q12 still blocks both profile totals; this is conditional interactive accounting.
 On native implementation add these exact registry entries, records, controls
-and gates. This Draft changes no executable registry or measured constant.
+and gates. This specification changes no executable registry or measured constant.

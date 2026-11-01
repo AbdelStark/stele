@@ -25,6 +25,13 @@
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
 | NC-0306 | matmul phases | 0007 A2 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
 | NC-0307 | matmul phases | 0007 A2 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
+| NC-0308 | Requant input bytes | 0023 §6 | field-congruent int32 substituted in advice/arithmetic | `ValueMismatch` | todo |
+| NC-0309 | Requant advice identity | 0023 §6 | separately verified advice handle under unchanged packet | `CertificateContext / CertificateIdentity` | todo |
+| NC-0310 | Requant full-width result | 0023 §6 | t=65537 and q=1 retain valid low division columns | `FinalEvaluationMismatch` | todo |
+| NC-0311 | Requant carry | 0023 §6 | one interior carry exceeds its cap or changes a column | `FinalEvaluationMismatch` | todo |
+| NC-0312 | Requant plane mapping | 0023 §6 | one producer group row uses the wrong plane | `ValueMismatch` | todo |
+| NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 or positive q=H | `FinalEvaluationMismatch` | todo |
+| NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | todo |
 | NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | done |
 | NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | done |
 | NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | done |
@@ -99,3 +106,7 @@ MatmulStatement, X OpeningColumns or W OpeningColumns, changing only a genuine
 following A1 final. All accepted baselines use the same closed verifier. These
 controls supply conditional field-relation coverage; full native production,
 resource evidence, integer matmul and inference remain parent-task obligations.
+
+RFC-0023 reserves NC-0308..0314 for E7-01d. Bounded reference evidence grants
+no native catalog completion. Its NC-0100/0101/0109 and NC-0606/0610/0802
+extensions remain required; existing done rows cover only their listed scopes.

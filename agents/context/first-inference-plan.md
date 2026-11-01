@@ -80,12 +80,14 @@ E7-01b's [conditional stacked matmul](../../formal/native-matmul.md) and complet
 conditional resource campaign are delivered. Its X layout is not an implicit
 R_stack view or permission to commit a virtual activation.
 
-The next named gap is the integer/source join. E7-01c reviews
+The next named gap is the integer/source join. E7-01c accepts
 [RFC-0023](../../docs/rfcs/RFC-0023-integer-requant-with-advice-cut.md): a fixed
 Requant advice cut, full-width integer bounds and actual A5/A3/A1/A9 consumers.
 A whole-source byte lookup and four explicitly accounted independent-weight
 combinations avoid rebuilding the implemented lookup/PCS engines. A short
 division schema must also bound every high byte of its shared result.
+E7-01d implements this contract with complete native consumers, controls,
+independent parity and resource evidence before the full matmul/Requant join.
 
 The direct Requant source is four offset bytes, preserving full int32 input.
 Joining it to field matmul requires actual signed X/W ranges, bounds on both

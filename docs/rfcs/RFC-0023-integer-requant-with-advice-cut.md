@@ -1,6 +1,6 @@
 # RFC-0023 — Integer Requant with a fixed advice cut
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0004 A1, RFC-0006 A1/A3/A7,
+Status: Accepted · Version: 0.1.0 · Depends: RFC-0004 A1, RFC-0006 A1/A3/A7,
 RFC-0008 A5, RFC-0010 A9, RFC-0012 A11, RFC-0022
 
 ## 1. Statement
@@ -473,6 +473,7 @@ remain incomplete. The operation statement is not a replacement plan format.
 
 ## 8. Amendment log
 
-Initial Draft: explicit cut/fixation and complete integer/source consumers for
-the already Accepted Requant semantics. Review, exact control reservations,
-companion amendment/index/ledger/task updates and execution evidence are pending.
+Initial acceptance: explicit cut/fixation and complete integer/source consumers
+for the already Accepted Requant semantics. The [acceptance review](../security/requant-contract-review.md)
+records bounded reference evidence and remaining native obligations. ADR-045 and
+the companion amendments adopt this cut; E7-01d owns native delivery.

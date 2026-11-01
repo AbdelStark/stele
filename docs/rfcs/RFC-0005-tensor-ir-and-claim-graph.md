@@ -58,11 +58,11 @@ lowering/validation costs remain T_misc and actual reductions retain c_a/c_lu.
 
 ### A2 — Explicit Requant advice cut and operation ownership
 
-Status: Draft. Companion RFC-0023 and RFC-0007 A3; questions Q26/Q28.
+Status: Accepted. Companion RFC-0023 and RFC-0007 A3; questions Q26/Q28.
 Motivation: sign, digit and remainder tables need actual fixed sources before
 lookup/arithmetic challenges. A virtual-tensor label supplies no such fixation.
 
-Proposed addition to §§1,3: RFC-0023 alone names the Requant advice cut, its exact
+Addition to §§1,3: RFC-0023 alone names the Requant advice cut, its exact
 byte-plane schema, ownership and consumers. It deliberately fixes information
 determining the accumulator/result; it is not a claim that these values remain
 uncommitted. Every plane reaches the whole-source range lookup, all prescribed

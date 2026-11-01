@@ -131,12 +131,12 @@ ledgers must precede implementation completion. No measured constant changes.
 
 ### A3 — Named byte-plane Requant advice cut
 
-Status: Draft. Companion RFC-0023 / RFC-0005 A2; questions Q26/Q28.
+Status: Accepted. Companion RFC-0023 / RFC-0005 A2; questions Q26/Q28.
 Motivation: the generic word "aux" in §3 does not define source fixation for
 Requant sign/digit/remainder witnesses, and a field accumulator alone is not an
 injective int32 representation.
 
-Proposed addition to §3: permit exactly the Requant advice cut specified in
+Addition to §3: permit exactly the Requant advice cut specified in
 RFC-0023, with its complete byte-plane/cap/carry schema, prechallenge root and
 genuine registration certificate. This explicit extra commitment contains
 information determining the accumulator and rounded result. Its complete

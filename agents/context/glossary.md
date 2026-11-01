@@ -4,7 +4,7 @@
 - **reduction** — a sub-protocol that consumes claims and emits claims (never "gadget", never "component").
 - **stage** — one stacked reduction executed across all layers/heads in one transcript segment.
 - **stacked tensor** — a per-layer (or per-head) tensor viewed as one tensor with the layer/head index as leading hypercube variables.
-- **cut** — a committed tensor that breaks sequential dependency; in v0.1 only the residual stream `R_ℓ`.
+- **cut** — a committed tensor that breaks sequential dependency; the residual stream `R_ℓ` and the explicitly scoped Requant advice cut of RFC-0023 (RFC-0007 A3).
 - **virtual tensor** — any tensor never committed; its claims are reduced to other tensors.
 - **weight pass** — one streaming read of a stacked weight type to compute `B[ℓ,k] = W̃(ℓ,k,r_j)`.
 - **fused opening** — PCS opening whose row vector `u` equals the weight pass output `B`.

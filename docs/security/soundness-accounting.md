@@ -1666,7 +1666,7 @@ transcript schedule preserve every existing loss. E7-01b retains the complete
 resource-ledger requirements. Q12,
 adversarial resource caps, integer/virtual ownership, privacy and both profiles
 remain open. No measured constant changes.
-# Draft RFC-0023 inventory: integer Requant advice
+# Accepted RFC-0023 inventory: integer Requant advice
 
 This inventory is specification work for E7-01c, not an executable record or
 profile admission. RFC-0023 fixes the complete relation and byte schedule.
@@ -1697,6 +1697,6 @@ mu handles remain genuinely verified and retained. Failed attempts, standalone
 imports and disjoint local-H work are explicit in RFC-0023 §2.4.
 
 Native registry/record/control/gate changes are required with implementation.
-NC-0308..0314 are proposed reservations only; existing NC-0100/0101/0109 and
+NC-0308..0314 are catalog reservations only; existing NC-0100/0101/0109 and
 composed NC-0606/0610/0802 remain owed by the actual consumers. Q12/Q29, full
 source/plan/packing/inference contracts and both profile totals remain open.
