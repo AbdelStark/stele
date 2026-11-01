@@ -1109,11 +1109,32 @@ tasks:
   - exact statement, advice layout, proof bytes, challenge fixation, claim schedule, conditional loss inventory and resource formulas
   - soundness-auditor, RFC-author and affected-owner review; source residue alias and unfixed advice attacks addressed without a receipt or callback
   - no E3-07, E5-03, E6, E7-01, privacy, profile or W8 completion credit; configured matmul linkage requires both accumulator bounds and preserves all parent criteria
+- id: E7-01d1
+  epic: E7
+  title: Native Requant advice schema from actual static bound records
+  depends:
+  - E7-01c
+  rfc:
+  - RFC-0023 §2.1
+  - RFC-0022 §2.2
+  - RFC-0020 A8
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E7-01d1-requant-schema
+  acceptance:
+  - derive the actual CQIS Record from separate checked parameters; read only its generated schema-1 roles without duplicating column derivation or accepting supplied record authority
+  - exact ordered value/cap/role/carry planes, shared full-width tighter result caps, zero-cap widths and padded row geometry from RFC-0023 §2.1
+  - independent checked-in Python/native schema parity on boundary and seeded parameter cases, including zero quotient and high shared-result bytes; invalid inputs and checked resource failures reject
+  - exact native API and evidence gates admit static schema metadata only; no challenge, proof consumer, NC-0308..0314 completion or complete resource-ledger credit
+  - all E7-01d consumer, control, full wire/record/Usage/continuation parity and complete resource criteria remain required
 - id: E7-01d
   epic: E7
   title: Native closed integer Requant production, verification and resource ledger
   depends:
   - E7-01c
+  - E7-01d1
   rfc:
   - RFC-0023
   - RFC-0004 A1

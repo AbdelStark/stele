@@ -13,7 +13,9 @@ commit R_stack (residual cuts), multiplicities, aux        → RFC-0010
   everything else: lookups (LogUp-GKR, RFC-0008), zerochecks, activation matmuls (RFC-0009)
 PCS openings: R_stack (1 batched functional), weights (fused), multiplicities, aux
 ```
-**What is committed:** residual stream at layer boundaries (int16), multiplicities, selection indices, scales. Nothing else.
+**What is committed:** residual stream at layer boundaries (int16), multiplicities, selection indices, scales;
+RFC-0023 §2 additionally names the byte-plane advice cut for its standalone scalar Requant reduction.
+That cut does not authorize other auxiliary commitments or the full inference-plan join.
 **What is never computed by the prover:** any multiply-accumulate of the inference inside the proof.
 **Field:** M31 base, QM31 (standard) / OM31 (treaty) challenges. **Hash:** Blake3. **Codes:** circle RS (weights), RAA (cuts).
 **Memory:** one layer's recompute window + stacked sumcheck state (RFC-0014 §4).
