@@ -64,7 +64,7 @@ them done or admit a PCS profile.
 
 The public stacked runtime executes NC-0203, both source variants of NC-0212,
 and both Stack/StackSources extensions of NC-0802 in QM31 and OM31.
-NC-0211 also executes the certified variant: the unchanged opening reaches
+The NC-0211 control also executes the certified variant: the unchanged opening reaches
 ValueMismatch after Opening/OpeningRow and before any column query. NC-0213
 substitutes one separately verified certificate for the unchanged original proof;
 the actual opening rejects RootMismatch. Both fields retain the complete proof
