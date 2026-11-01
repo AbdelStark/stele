@@ -459,7 +459,7 @@ tasks:
   crate: stele-lookup
   status: blocked(RFC-0008 A2)
   agent: codex-root
-  branch: task/E3-07-lookup-consumer-study
+  branch: task/E3-07-native-contract
   acceptance:
   - NC-0400..0403
   - c_lu measured
