@@ -36,7 +36,7 @@ class ScaffoldTests(unittest.TestCase):
             gkr = tomllib.loads((root / 'crates/stele-gkr/Cargo.toml').read_text())
             self.assertEqual(set(gkr['dependencies']), {f'stele-{n}' for n in ('field', 'poly', 'hash', 'sumcheck')})
             reductions = tomllib.loads((root / 'crates/stele-reductions/Cargo.toml').read_text())
-            self.assertEqual(set(reductions['dependencies']), {f'stele-{n}' for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir')})
+            self.assertEqual(set(reductions['dependencies']), {f'stele-{n}' for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis')})
             self.assertIn('#![no_std]', (root / 'crates/stele-reductions/src/lib.rs').read_text())
             source = root / 'crates/stele-field/src/lib.rs'
             source.write_text(source.read_text() + '\n// preserved implementation\n')
@@ -66,6 +66,7 @@ class ScaffoldTests(unittest.TestCase):
                 ('stele-reductions', 'stele-poly', 'dependencies'),
                 ('stele-reductions', 'stele-verifier', 'dependencies'),
                 ('stele-lookup', 'stele-pcs', 'dependencies'),
+                ('stele-lookup', 'stele-cqis', 'dependencies'),
                 ('stele-pcs', 'stele-sumcheck', 'dependencies'),
                 ('stele-pcs', 'stele-verifier', 'dependencies'),
                 ('stele-lookup', 'stele-verifier', 'dev-dependencies'),

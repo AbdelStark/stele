@@ -57,15 +57,16 @@ def bootstrap_guard(root, gate):
 def field_sources(root):
     """Actual closed A1 and stacked consumers; all original obligations remain."""
     crate = root / 'crates/stele-reductions'
-    allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs'}
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs',
+               'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
-                    for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir')}
+                    for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis')}
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod field_sources;\n'
+               'extern crate alloc;\nmod field_sources;\npub mod lookup;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -83,6 +84,20 @@ def field_sources(root):
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', stacked)]
             == ["impl<K:ChallengeField>StackedSourceRecord<'_,K>{"]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', stacked))
+    lookup = re.sub(r'//[^\n]*', '', (crate / 'src/lookup.rs').read_text())
+    lookup_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', lookup)
+    lookup_closed = (lookup_declarations == [
+        ('use', 'stele_cqis'), ('enum', 'Error'), ('struct', 'Layout'), ('', 'id'), ('', 'ell'), ('', 'blowup'),
+        ('struct', 'Limits'), ('', 'positions'), ('', 'public_bytes'), ('', 'proof_bytes'),
+        ('struct', 'Statement'), ('', 'id'), ('', 'm'), ('', 'b'), ('', 'table'), ('', 'selector'),
+        ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'new'),
+        ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
+        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight')]
+        and len(lookup_declarations) == len(re.findall(r'\bpub\b', lookup))
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
+            == ["impl<'input,'cert,K:ChallengeField>Descriptor<'input,'cert,K>{"]
+        and 'pubusestele_cqis::tables::{DescriptorasTableDescriptor,Table};' in re.sub(r'\s+', '', lookup)
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', lookup))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target', 'features'))
@@ -90,8 +105,8 @@ def field_sources(root):
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
                                 ('fn', 'verify_field_sources')]
-            or len(declarations) != len(re.findall(r'\bpub\b', code)) or not stacked_closed):
-        raise ValueError('reductions API not wired; only reviewed closed A1 and stacked adapters admitted')
+            or len(declarations) != len(re.findall(r'\bpub\b', code)) or not stacked_closed or not lookup_closed):
+        raise ValueError('reductions API not wired; only reviewed A1/stacked adapters and untrusted lookup codecs admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
          [f'test pcs_a1::{n} ... ok' for n in (
@@ -109,6 +124,11 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-negative-controls', '--test', 'stacked-certified'],
          ['test rejects_wrong_restored_point_at_actual_opening ... ok',
           'test rejects_substituted_verified_certificate_at_actual_opening ... ok']),
+        (['cargo', 'test', '-p', 'stele-reductions', '--lib', 'lookup::sizes_tests::'],
+         [f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]),
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
+         [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
+          for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
@@ -116,7 +136,8 @@ def field_sources(root):
             raise ValueError(f'closed A1 consumer checks failed: {result.stdout} {result.stderr}')
         if '--doc' in command:
             for module, record, count in (('field_sources', 'FieldSourceRecord', 1),
-                                          ('stacked_sources', 'StackedSourceRecord', 2)):
+                                          ('stacked_sources', 'StackedSourceRecord', 2),
+                                          ('lookup', 'Statement', 1), ('lookup', 'Descriptor', 1)):
                 pattern = (rf'^test crates/stele-reductions/src/{module}\.rs - {module}::{record} '
                            r'\(line \d+\) - compile fail \.\.\. ok$')
                 matches = re.findall(pattern, result.stdout, re.MULTILINE)
@@ -124,6 +145,7 @@ def field_sources(root):
                     raise ValueError(f'closed A1 consumer checks failed: missing {record} boundary')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
     print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
+    print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')
 
 
 def field_source_codec(root):
