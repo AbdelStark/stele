@@ -1557,7 +1557,7 @@ consumed. Exact selected-byte attainment adds no challenge or algebraic loss.
 Streaming must reauthenticate all stored bytes, including public-zero high
 bytes outside compact ranges. Binding, FS/H and model provenance are additional.
 
-### Conditional stacked runtime (E3-06 remains in progress)
+### Conditional stacked runtime (E3-06)
 
 RFC-0006 A4 / RFC-0012 A6 specify StackSources then Stack, with no new draw.
 The actual A1 record remains m*delta/p^d for the complete A*P, including zero
@@ -1581,5 +1581,8 @@ The certified comparison also checks cumulative transcript usage and disjoint lo
 Merkle work for successful stage producers and the corpus's stage-verifier outcomes,
 including a later failed opening. Registration, failed-producer and sampler-abort
 usage remain outside this comparison. No additional challenge or loss term is
-introduced. Complete cost evidence remains an E3-06 requirement. Q12, private
-coefficients, integer inference and ZK remain open.
+introduced. The [bounded resource ledger](../../bench/ledger/e3-06-stacked.json)
+records complete public/certified calls, actual registration, retained-source/proof
+costs and cleanup. Dense work observations enter neither the transcript nor a
+conditional record. This resource evidence adds no soundness or profile credit;
+Q12, private coefficients, integer inference and ZK remain open.
