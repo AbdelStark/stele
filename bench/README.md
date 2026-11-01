@@ -652,3 +652,48 @@ these are bounded observations under shared host load, not speed comparisons.
 | a1 | 2,1 | OM31 | 1/2 | 9.139 | 2.000 | 75555 | 31395 | 336 |
 | a1 | 2,1 | QM31 | 1/4 | 8.122 | 1.859 | 105603 | 31011 | 192 |
 | a1 | 2,1 | OM31 | 1/4 | 10.003 | 2.188 | 105699 | 31107 | 336 |
+
+## Complete conditional stacked resources
+
+`stacked.py` measures actual public and certified stacked producers and consumers
+under RFC-0006 A4 §6. Run it from clean committed source on arm64 macOS, with a
+new destination outside the checkout:
+
+```sh
+uv run --no-project --python 3.12 python bench/stacked.py /tmp/stacked-run.json
+```
+
+The fixed campaign uses both fields, both elimination orders and both source
+modes, with three fresh sequential workers per cell. All cells use axes
+`(4,5,5)`, a public RopeTables coefficient selected on the layer axis, and
+`P=3*f0^3+0*f2`. All three originals are consumed, including unused `f1` and
+zero-coefficient `f2`. Certified sources retain their own `(4,10)`, `(7,7)` and
+`(10,4)` splits, actual registration certificates and ordinary openings.
+
+The native total includes fixture/claim construction, preparation, registration,
+complete closed production/verification, receipt observations, continuation and
+protocol-buffer cleanup. Named stages are disjoint; the remainder includes
+cleanup and other work. Build, process launch, argument parsing and final JSON
+serialization are excluded from that timer. Fresh-worker RSS covers the whole
+process, including serialization and allocator retention. It is not verifier-only
+memory. Expected frames are reconstructed during observation; proof bytes and
+conditional records come from the actual producers and consumers.
+
+`Work` reports capacities from the actual Dense used for production, without a
+second strategy or transcript replay. Its partial/result maximum describes one
+round's live scratch. Other retained proof storage, frames, A7/A9 temporaries and
+caller storage remain outside that count. PreparationWork and caller/proof
+capacities have their own scopes; their separate maxima must not be summed into
+a pipeline peak. Source-specific point-weight entry counts are structural,
+not allocator observations. Dense tables drop before certified opening work;
+caller originals, prepared sources, certificates and proof remain live through
+their actual consumers.
+
+The controller retains every raw sample, exit status, resource report and build
+log. It checks source/binary identity before and after each worker, complete case
+coverage, actual records, bytes, usage, time arithmetic, continuation and repeated
+proof identities before native ledger validation. Import the validated JSON into
+`bench/ledger/` without changing its values. Measurements on a shared host support
+only the declared relation; they do not establish a fitted constant, speedup,
+all-kind scaling, inference/profile admission, zero knowledge or a weight-pass
+result. The mandatory correctness/parity/control gates remain separate.

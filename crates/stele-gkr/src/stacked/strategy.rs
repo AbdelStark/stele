@@ -2,16 +2,34 @@
 use super::{observed, reserve, zeros, Error, Failure, Order, Prepared};
 use crate::public_mle::Kind;
 use alloc::vec::Vec;
+use core::cell::Cell;
 use stele_field::{Field, M31};
 use stele_hash::{AbsorbLabel, ChallengeField, Transcript};
 use stele_sumcheck::{Instance, Proof, Summand};
 
+/// Successful dense execution observations (A4 §§4,6), never proof authority.
+/// Field entries only: excludes Vec headers, Prepared, other retained proof/descriptor storage,
+/// A7/A9 temporaries, caller inputs, allocator metadata and process memory.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct Work {
+    /// Actual retained table capacities plus the reserved captured-point capacity.
+    pub dense_entries: usize,
+    /// Largest actual partial-vector capacity used by a production round.
+    pub partial_entries: usize,
+    /// Largest actual returned round-vector capacity.
+    pub round_entries: usize,
+    /// Largest simultaneous partial-plus-result capacity within one round.
+    pub round_scratch_entries: usize,
+    /// Successful production round calls; diagnostic partials() calls are excluded.
+    pub rounds: usize,
+}
 /// Dense reference strategy. Partials use the same routine as the actual A1 round.
 pub struct Dense<'p, 'a, K> {
     prepared: &'p Prepared<'a, K>,
     tables: Vec<Vec<K>>,
     remaining: usize,
     point: Vec<K>,
+    work: Cell<Work>,
 }
 impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
     // A Boolean predicate/table and selector product; independent of A7's MLE evaluator.
@@ -98,15 +116,25 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
             }
             current.push(table);
         }
-        Ok(Dense {
+        let dense = Dense {
             prepared: self,
             tables: current,
             remaining: self.instance.num_vars as usize,
             point,
-        })
+            work: Cell::new(Work::default()),
+        };
+        dense.work.set(Work {
+            dense_entries: dense.capacity_entries()?,
+            ..Work::default()
+        });
+        Ok(dense)
     }
 }
 impl<K: ChallengeField + Eq> Dense<'_, '_, K> {
+    /// Observed capacities from this actual strategy; not a complete stage peak.
+    pub fn work(&self) -> Work {
+        self.work.get()
+    }
     /// Actual retained field capacity, including the folded-away tail of each table.
     pub fn capacity_entries(&self) -> Result<usize, Error> {
         self.tables
@@ -218,6 +246,21 @@ impl<K: ChallengeField + Eq> Summand<K> for &mut Dense<'_, '_, K> {
                 *out = *out + *value;
             }
         }
+        // A4 §6: observe the actual coexisting buffers, without replay/allocation.
+        let mut work = self.work.get();
+        work.partial_entries = work.partial_entries.max(partials.capacity());
+        work.round_entries = work.round_entries.max(result.capacity());
+        work.round_scratch_entries = work.round_scratch_entries.max(
+            partials
+                .capacity()
+                .checked_add(result.capacity())
+                .ok_or(stele_sumcheck::Error::Capacity)?,
+        );
+        work.rounds = work
+            .rounds
+            .checked_add(1)
+            .ok_or(stele_sumcheck::Error::Capacity)?;
+        self.work.set(work);
         Ok(result)
     }
     fn fold(&mut self, r: K) -> Result<(), stele_sumcheck::Error> {

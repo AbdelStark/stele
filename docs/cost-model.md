@@ -133,7 +133,12 @@ Dense before A9 opening preparation. Each source still incurs its actual A9
 preparation, registration and opening work, including certificate lifetime losses.
 
 `Dense::capacity_entries` measures retained dense tables and captured-point
-capacity. The caller's prepared-entry policy covers GKR state; it is not a complete
+capacity. The measured producers return `Work` from that same Dense instance:
+retained field capacity, actual partial/result capacities and their simultaneous
+round scratch maximum. Ordinary producers execute the same path and discard this
+description. Diagnostic `partials()` calls do not increment production work.
+These observations exclude other retained proof/descriptor storage and are not a
+complete owned-memory peak. The caller's prepared-entry policy covers GKR state; it is not a complete
 adapter memory ceiling. Caller tables, source/descriptor frames, partials, PCS point
 weights, row/encoder storage, retained proofs and process memory have separate costs.
 Complete time, byte and process-memory ledgers remain required before E3-06 is done.

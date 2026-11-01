@@ -68,8 +68,8 @@ def field_sources(root):
                'extern crate alloc;\nmod field_sources;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
-               '    prove_stacked_sources, verify_stacked_sources, Error as StackedError,\n'
-               '    Failure as StackedFailure, StackedProof, StackedSourceRecord,\n};\n')
+               '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
+               '    Error as StackedError, Failure as StackedFailure, StackedProof, StackedSourceRecord,\n};\n')
     code = re.sub(r'//[^\n]*', '', (crate / 'src/field_sources.rs').read_text())
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     stacked = re.sub(r'//[^\n]*', '', (crate / 'src/stacked_sources.rs').read_text())
@@ -78,7 +78,7 @@ def field_sources(root):
         ('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
         ('struct', 'StackedProof'), ('', 'sumcheck'), ('', 'openings'),
         ('struct', 'StackedSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
-        ('fn', 'verify_stacked_sources'), ('fn', 'prove_stacked_sources')]
+        ('fn', 'verify_stacked_sources'), ('fn', 'prove_stacked_sources'), ('fn', 'prove_stacked_sources_measured')]
         and len(stacked_declarations) == len(re.findall(r'\bpub\b', stacked))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', stacked)]
             == ["impl<K:ChallengeField>StackedSourceRecord<'_,K>{"]
@@ -400,11 +400,11 @@ def public_coefficients(root):
     surfaces = {
         'public_mle.rs': ('enum:Error struct:Axis :bits :real enum:Kind struct:Coefficient fn:new fn:evaluate',
                           ["impl<'a,K:Field>Coefficient<'a,K>{"]),
-        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:verify_public fn:verify_reduction',
+        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:prove_public_measured fn:verify_public fn:verify_reduction',
                            ['impl<K>Record<K>{', "impl<K:ChallengeField+Eq>Prepared<'_,K>{"]),
         'stacked/statement.rs': ('enum:Order struct:Claim :id :axes :point :value struct:Statement :id :axes :order :output :coefficient_id :inputs :terms :selectors :kind :source_id struct:Limits :descriptor_bytes :proof_bytes :prepared_entries :partial_entries :axis_entries struct:Prepared fn:new fn:for_certified_sources fn:bytes fn:instance fn:source_bytes',
                                  ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{"]),
-        'stacked/strategy.rs': ('struct:Dense fn:strategy fn:strategy_m31 fn:capacity_entries fn:prove fn:into_point fn:partials',
+        'stacked/strategy.rs': ('struct:Work :dense_entries :partial_entries :round_entries :round_scratch_entries :rounds struct:Dense fn:strategy fn:strategy_m31 fn:work fn:capacity_entries fn:prove fn:into_point fn:partials',
                                 ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{", "impl<K:ChallengeField+Eq>Dense<'_,'_,K>{", "impl<K:ChallengeField+Eq>Summand<K>for&mutDense<'_,'_,K>{"]),
     }
     closed = True
@@ -761,7 +761,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus')]
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench')]
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}

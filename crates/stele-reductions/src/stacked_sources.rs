@@ -2,7 +2,7 @@
 //! Adds every source's existing preparation/registration/opening cost to the GKR
 //! dense c_sc/T_misc work; source setup and complete peak memory are separate costs.
 use alloc::vec::Vec;
-use stele_gkr::stacked::{self, Limits, Prepared, Statement};
+use stele_gkr::stacked::{self, Limits, Prepared, Statement, Work};
 use stele_hash::{AbsorbLabel, ChallengeField, HashUsage, Transcript};
 use stele_pcs::{CodeField, OpeningRecord, PreparedSource, ProofKind, Usage, VerifiedCertificate};
 use stele_sumcheck::{Proof, ScRecord};
@@ -230,6 +230,18 @@ pub fn prove_stacked_sources<K: ChallengeField + CodeField + Eq>(
     certificates: &[&VerifiedCertificate<K>],
     limits: Limits,
 ) -> Result<(StackedProof<K>, Usage), Failure> {
+    prove_stacked_sources_measured(t, s, sources, certificates, limits)
+        .map(|(proof, usage, _)| (proof, usage))
+}
+/// The same complete producer with actual dense observations (A4 §6).
+/// These observations enter neither the transcript nor a conditional record.
+pub fn prove_stacked_sources_measured<K: ChallengeField + CodeField + Eq>(
+    t: &mut Transcript<K>,
+    s: &Statement<'_, K>,
+    sources: &[&PreparedSource<'_, K>],
+    certificates: &[&VerifiedCertificate<K>],
+    limits: Limits,
+) -> Result<(StackedProof<K>, Usage, Work), Failure> {
     let mut hashes = 0u64;
     let result = (|| {
         if sources.len() != certificates.len() {
@@ -251,6 +263,7 @@ pub fn prove_stacked_sources<K: ChallengeField + CodeField + Eq>(
             .map_err(Error::Transcript)?;
         drop(bundle);
         let sumcheck = dense.prove(t).map_err(|f| stacked_error(f.cause))?;
+        let work = dense.work();
         let point = dense.into_point().map_err(stacked_error)?;
         drop(tables);
         drop(prepared);
@@ -268,7 +281,7 @@ pub fn prove_stacked_sources<K: ChallengeField + CodeField + Eq>(
             hashes += usage.non_transcript.hash_evaluations;
             openings.push(result.map_err(|f| pcs_error(f.cause))?.0);
         }
-        Ok(StackedProof { sumcheck, openings })
+        Ok((StackedProof { sumcheck, openings }, work))
     })();
-    observed(result, t, hashes)
+    observed(result, t, hashes).map(|((proof, work), usage)| (proof, usage, work))
 }
