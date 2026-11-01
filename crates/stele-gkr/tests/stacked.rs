@@ -180,6 +180,33 @@ fn exercise<K: ChallengeField + Eq + Debug>(axes: [Axis; 3]) {
             let mut prover = Transcript::new(PUBLIC).expect("stacked fixture");
             let proof = stacked::prove_public(&mut prover, &statement, &tables, LIMITS)
                 .expect("stacked fixture");
+            let measured_next = if matches!(kind, Kind::Eq) {
+                let mut measured = Transcript::new(PUBLIC).expect("measurement");
+                let (same, work) =
+                    stacked::prove_public_measured(&mut measured, &statement, &tables, LIMITS)
+                        .expect("measured producer");
+                assert_eq!(same, proof);
+                assert_eq!(measured.usage(), prover.usage());
+                assert_eq!(work.rounds, m);
+                assert!(work.dense_entries >= 3 * n + m);
+                if m == 0 {
+                    assert_eq!(
+                        (
+                            work.partial_entries,
+                            work.round_entries,
+                            work.round_scratch_entries
+                        ),
+                        (0, 0, 0)
+                    );
+                } else {
+                    assert!(work.partial_entries >= (1 << ell) * 5);
+                    assert!(work.round_entries >= 5);
+                    assert!(work.round_scratch_entries >= work.partial_entries + 5);
+                }
+                Some(measured.challenge(stele_hash::ChallengeLabel::Sumcheck))
+            } else {
+                None
+            };
             let mut verifier = Transcript::new(PUBLIC).expect("stacked fixture");
             let (record, usage) =
                 stacked::verify_public(&mut verifier, &statement, &proof, &tables, LIMITS)
@@ -190,18 +217,35 @@ fn exercise<K: ChallengeField + Eq + Debug>(axes: [Axis; 3]) {
             for (table, (_, value)) in tables.iter().zip(record.claims()) {
                 assert_eq!(eval(table, record.point()), *value);
             }
+            let next = prover.challenge(stele_hash::ChallengeLabel::Sumcheck);
             assert_eq!(
-                prover.challenge(stele_hash::ChallengeLabel::Sumcheck),
+                next,
                 verifier.challenge(stele_hash::ChallengeLabel::Sumcheck)
             );
+            if let Some(expected) = measured_next {
+                assert_eq!(next, expected);
+            }
             let prepared = Prepared::new(&statement, LIMITS).expect("stacked fixture");
             let mut dense = prepared.strategy(&tables).expect("stacked fixture");
+            assert_eq!(
+                dense.work().dense_entries,
+                dense.capacity_entries().expect("capacity")
+            );
             let mut pi: Vec<_> = (0..m).collect();
             if order == Order::LayerLast {
                 pi.rotate_left(ell);
             }
             for j in 0..m {
+                let before = dense.work();
                 let partials = dense.partials().expect("stacked fixture");
+                assert_eq!(dense.work(), before);
+                if matches!(kind, Kind::Eq) {
+                    let strategy = &mut dense;
+                    let round = strategy.round(prepared.instance()).expect("observed round");
+                    assert_eq!(round, proof.rounds[j]);
+                    assert_eq!(dense.work().rounds, before.rounds + 1);
+                    assert!(dense.work().round_entries >= round.capacity());
+                }
                 assert_eq!(partials.len(), (1 << ell) * 5);
                 let mut expected = vec![K::from_i64(0); (1 << ell) * 5];
                 for suffix in 0..1usize << (m - j - 1) {
@@ -319,6 +363,11 @@ fn rejects_preflight_without_transcript_mutation() {
         .expect("stacked fixture");
     assert_eq!(failure.cause, Error::Capacity);
     assert_eq!(failure.usage, before);
+    assert_eq!(t.usage(), before);
+    let ordinary_failure = stacked::prove_public(&mut t, &s, &[], low).expect_err("ordinary cap");
+    let measured_failure =
+        stacked::prove_public_measured(&mut t, &s, &[], low).expect_err("measured cap");
+    assert_eq!(ordinary_failure, measured_failure);
     assert_eq!(t.usage(), before);
     let honest = stacked::prove_public(&mut t, &s, &[], LIMITS).expect("stacked fixture");
     assert_eq!(honest, proof);

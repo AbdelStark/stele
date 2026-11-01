@@ -7,7 +7,8 @@ use stele_gkr::{
 use stele_hash::{merkle, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind, VerifiedCertificate};
 use stele_reductions::{
-    prove_stacked_sources, verify_stacked_sources, StackedError, StackedFailure,
+    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources, StackedError,
+    StackedFailure,
 };
 use stele_sumcheck::Term;
 
@@ -141,6 +142,34 @@ where
                     let (proof, produced) =
                         prove_stacked_sources(&mut producer, &s, &material, &handles, LIMITS)
                             .expect("actual producer");
+                    let measured_next = if coefficient.is_none() {
+                        let mut measured = transcript();
+                        let (same, usage, work) = prove_stacked_sources_measured(
+                            &mut measured,
+                            &s,
+                            &material,
+                            &handles,
+                            LIMITS,
+                        )
+                        .expect("measured certified producer");
+                        assert_eq!(same, proof);
+                        assert_eq!(usage, produced);
+                        assert_eq!(work.rounds, usize::from(m));
+                        assert!(work.dense_entries >= (count + 1) * (1 << m) + usize::from(m));
+                        if m == 0 {
+                            assert_eq!(work.round_scratch_entries, 0);
+                        } else {
+                            assert!(work.partial_entries >= 1 << ell);
+                            assert!(work.round_scratch_entries > work.partial_entries);
+                        }
+                        Some(
+                            measured
+                                .challenge(ChallengeLabel::Sumcheck)
+                                .expect("measured next"),
+                        )
+                    } else {
+                        None
+                    };
                     let openings: Vec<_> = proof.openings.iter().map(Vec::as_slice).collect();
                     let mut verifier = transcript();
                     let (record, observed) = verify_stacked_sources(
@@ -173,10 +202,14 @@ where
                     assert_eq!(observed.non_transcript.hash_evaluations, work);
                     assert_eq!(produced.non_transcript, HashUsage::default());
                     assert_eq!(produced.transcript, observed.transcript);
+                    let next = producer.challenge(ChallengeLabel::Sumcheck).expect("next");
                     assert_eq!(
-                        producer.challenge(ChallengeLabel::Sumcheck).expect("next"),
+                        next,
                         verifier.challenge(ChallengeLabel::Sumcheck).expect("next")
                     );
+                    if let Some(expected) = measured_next {
+                        assert_eq!(next, expected);
+                    }
                     record
                 };
                 for (i, opening) in record.openings().iter().enumerate() {
@@ -218,6 +251,12 @@ where
     };
     let (proof, _) = prove_stacked_sources(&mut transcript(), &s, &[&a, &b], &[&ca, &cb], LIMITS)
         .expect("baseline");
+    let ordinary_failure = prove_stacked_sources(&mut transcript(), &s, &[&a], &[&ca, &cb], LIMITS)
+        .expect_err("ordinary roster");
+    let measured_failure =
+        prove_stacked_sources_measured(&mut transcript(), &s, &[&a], &[&ca, &cb], LIMITS)
+            .expect_err("measured roster");
+    assert_eq!(ordinary_failure, measured_failure);
     let opens: Vec<_> = proof.openings.iter().map(Vec::as_slice).collect();
     for handles in [vec![&ca], vec![&ca, &cb, &ca], vec![&cb, &ca]] {
         untouched(

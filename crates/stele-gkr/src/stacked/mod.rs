@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 pub use statement::{Claim, Limits, Order, Prepared, Statement};
 use stele_hash::{AbsorbLabel, ChallengeField, HashUsage, Transcript};
 use stele_sumcheck::{Proof, Reduction, ScRecord};
-pub use strategy::Dense;
+pub use strategy::{Dense, Work};
 
 /// A checked statement, resource or actual consuming-protocol failure.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -89,13 +89,24 @@ pub fn prove_public<K: ChallengeField + Eq>(
     tables: &[&[K]],
     limits: Limits,
 ) -> Result<Proof<K>, Failure> {
+    prove_public_measured(t, s, tables, limits).map(|(proof, _)| proof)
+}
+/// The same complete public producer, with observations from its actual Dense.
+/// A4 §6: capacities describe selected buffers, not whole-operation peak memory.
+pub fn prove_public_measured<K: ChallengeField + Eq>(
+    t: &mut Transcript<K>,
+    s: &Statement<'_, K>,
+    tables: &[&[K]],
+    limits: Limits,
+) -> Result<(Proof<K>, Work), Failure> {
     let result = (|| {
         let prepared = Prepared::new(s, limits)?;
         let sources = prepared.source_bytes(tables)?;
         let mut dense = prepared.strategy(tables)?;
         t.absorb(AbsorbLabel::StackSources, &sources)
             .map_err(Error::Transcript)?;
-        dense.prove(t).map_err(|failure| failure.cause)
+        let proof = dense.prove(t).map_err(|failure| failure.cause)?;
+        Ok((proof, dense.work()))
     })();
     observed(result, t).map(|(proof, _)| proof)
 }
