@@ -24,7 +24,8 @@ class FieldPcsBenchTests(unittest.TestCase):
             suite = root/'tests/negative-controls'
             shutil.copytree(ROOT/'tests/negative-controls', suite)
             gates.controls_layout(root)
-            for name in ('lookup_corpus.py', 'lookup_corpus.py.lock'):
+            for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
+                         'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)

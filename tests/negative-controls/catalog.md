@@ -23,10 +23,10 @@
 | NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
 | NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | done |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
-| NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | todo |
-| NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | todo |
-| NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | todo |
-| NC-0403 | lookups | 0008 §7,A5 | second repetition's leaf arithmetic uses the first pair; actual outer draws remain independent | `TableDenominatorMismatch` | todo |
+| NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | done |
+| NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | done |
+| NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | done |
+| NC-0403 | lookups | 0008 §7,A5 | second repetition's leaf arithmetic uses the first pair; actual outer draws remain independent | `TableDenominatorMismatch` | done |
 | NC-0404–0405 | lookups | 0008 §7 | see RFC | `LogUpImbalance` etc. | todo |
 | NC-0406 | fraction reduction | 0008 A3 | change one root numerator | `FinalEvaluationMismatch` | done |
 | NC-0407 | fraction reduction | 0008 A3 | change one otherwise unused child final | `LeafMismatch` | done |
@@ -37,11 +37,11 @@
 | NC-0412 | configured function | 0021 §6, 0005 A1 | change one configured semantic parameter while retaining the original operation binding | `FunctionMismatch` | todo |
 | NC-0413 | selected representation | 0021 §6, 0008 A4 | change one selected representation or component role | `RepresentationMismatch` | todo |
 | NC-0414 | table data | 0021 §6, 0011 A2 | change one canonical table-data entry under the correct descriptor | `TableDataMismatch` | todo |
-| NC-0415 | lookups | 0008 A5 | group exponent 31 exceeds the static characteristic bound | `GroupBound` | todo |
-| NC-0416 | lookups | 0008 A5 | one zero denominator leaf, with genuine dependent tree arithmetic | `Pole` | todo |
-| NC-0417 | lookups | 0008 A5 | change one multiplicity piece value under the actual unchanged table numerator | `PieceSumMismatch` | todo |
-| NC-0418 | lookups | 0008 A5 | substitute a verified different-root multiplicity handle under the unchanged registration packet | `CertificateContext` | todo |
-| NC-0419 | lookups | 0008 A5, 0012 A11 | one multiplicity fitted to an alpha drawn before its context binds | `RootMismatch` | todo |
+| NC-0415 | lookups | 0008 A5 | group exponent 31 exceeds the static characteristic bound | `GroupBound` | done |
+| NC-0416 | lookups | 0008 A5 | one zero denominator leaf, with genuine dependent tree arithmetic | `Pole` | done |
+| NC-0417 | lookups | 0008 A5 | change one multiplicity piece value under the actual unchanged table numerator | `PieceSumMismatch` | done |
+| NC-0418 | lookups | 0008 A5 | substitute a verified different-root multiplicity handle under the unchanged registration packet | `CertificateContext` | done |
+| NC-0419 | lookups | 0008 A5, 0012 A11 | one multiplicity fitted to an alpha drawn before its context binds | `RootMismatch` | done |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600 | PCS | 0010 A9 | change one certificate codeword limb or opening row value under zero b; rebuild dependent responses | `ColumnMismatch` | done |
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
@@ -51,11 +51,11 @@
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
-| NC-0610 | PCS | 0010 A9 §4 | change only the expected scalar under zero b; reject before column draws | `ValueMismatch` | done |
+| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7 | change the expected scalar under zero b or one closed lookup mu-opening row value; reject before column draws | `ValueMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3, 0010 A9, 0012 A1,A4,A5,A6,A9,A10 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack or StackSources | `FinalEvaluationMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities or LookupMultiplicityClaims | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
@@ -80,10 +80,10 @@ the actual opening rejects RootMismatch. Both fields retain the complete proof
 bytes across that expected-context substitution. These conditional field controls
 do not complete E3-06's resource evidence or admit inference/privacy profiles.
 
-The conditional lookup reservations grant no native execution credit.
-The NC-0402 variant checks proof consistency with the unchanged literal selector;
-full CQIS padding/range authority remains an E3-07 obligation. The new lookup
-variants of NC-0802 are required by A5 but are not credited by its existing
-done row until actual producer/consumer controls execute.
-The mandatory lookup mu-opening variant of NC-0610 likewise remains pending;
-its existing PCS scalar-control execution does not credit this composed edge.
+The conditional lookup runtime executes NC-0400..0403 and NC-0415..0419
+through genuine registrations and the unchanged closed verifier in both fields.
+The NC-0402 variant checks the unchanged literal selector; full CQIS
+padding/range authority remains an E3-07 obligation. The lookup extensions of
+the NC-0610 and NC-0802 controls execute the actual mu consumer and following A1 verifier.
+They add composed coverage under those existing IDs, not extra controls or a
+Fiat–Shamir theorem. Full private lookup and inference remain unadmitted.

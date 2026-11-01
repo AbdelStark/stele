@@ -6,8 +6,8 @@ use alloc::vec::Vec;
 use core::mem::size_of;
 use stele_cqis::tables::EncodedDescriptor;
 pub use stele_cqis::tables::{Descriptor as TableDescriptor, Table, TableField};
-use stele_field::{Serialize, M31};
-use stele_hash::{ChallengeField, HashUsage};
+use stele_field::{Field, Serialize, M31};
+use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_lookup::fraction;
 use stele_pcs::{ProofKind, Source, VerifiedCertificate};
 
@@ -22,6 +22,10 @@ pub enum Error {
     Selector,
     /// Original count/dimensions or distinct original/multiplicity ids disagree.
     SourceRoster,
+    /// Multiplicity handle count or complete expected source context differs.
+    CertificateContext,
+    /// The genuine same-source handle does not identify this exact certificate packet.
+    CertificateIdentity,
     /// Outer length/version/degree or an outer piece scalar is not canonical.
     ProofShape,
     /// A caller's positions, cumulative public payload or proof cap is exceeded.
@@ -125,6 +129,57 @@ fn addressable<T>(count: usize) -> Result<(), Error> {
         return Err(Error::Capacity);
     }
     Ok(())
+}
+fn reserve<T>(count: usize) -> Result<Vec<T>, Error> {
+    addressable::<T>(count)?;
+    let mut out = Vec::new();
+    out.try_reserve_exact(count).map_err(|_| Error::Capacity)?;
+    Ok(out)
+}
+fn zeros<K: Field>(count: usize) -> Result<Vec<K>, Error> {
+    let mut out = reserve(count)?;
+    out.resize(count, K::from_i64(0));
+    Ok(out)
+}
+fn eq<K: Field>(point: &[K]) -> Result<Vec<K>, Error> {
+    stele_poly::eq_table(point).map_err(|_| Error::Capacity)
+}
+fn absorb<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    label: AbsorbLabel,
+    bytes: &[u8],
+) -> Result<(), Error> {
+    t.absorb(label, bytes).map_err(Error::Transcript)
+}
+fn draw<K: ChallengeField>(t: &mut Transcript<K>, label: ChallengeLabel) -> Result<K, Error> {
+    t.challenge(label).map_err(Error::Transcript)
+}
+fn phase(id: u64, j: usize, phase: u8) -> [u8; 10] {
+    let mut out = [0; 10];
+    out[..8].copy_from_slice(&id.to_le_bytes());
+    out[8] = j as u8;
+    out[9] = phase;
+    out
+}
+
+#[derive(Clone, Copy, Default)]
+struct Registration<'a> {
+    root: [u8; 32],
+    certificate: &'a [u8],
+}
+#[derive(Clone, Copy, Default)]
+struct Repetition<'a> {
+    lookup: &'a [u8],
+    table: &'a [u8],
+    selected: &'a [u8],
+    originals: [&'a [u8]; 2],
+    values: &'a [u8],
+    multiplicities: [&'a [u8]; 2],
+}
+#[derive(Default)]
+struct Wire<'a> {
+    registrations: [Registration<'a>; 2],
+    repetitions: [Repetition<'a>; 2],
 }
 fn tree_size(v: usize, w: usize) -> Result<usize, Error> {
     mul(w, sum(&[2, mul(2, mul(v, v)?)?, mul(3, v)?])?)
@@ -393,66 +448,82 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
     /// Does not authenticate responses, compare packet identities to mu handles, verify
     /// equations or accept lookup membership. Actual A9 consumers decode columns later.
     pub fn preflight(&self, bytes: &[u8]) -> Result<(), Error> {
+        self.wire(bytes).map(|_| ())
+    }
+    // One allocation-free borrowed parser; all lengths come from this descriptor.
+    fn wire<'a>(&self, bytes: &'a [u8]) -> Result<Wire<'a>, Error> {
         if bytes.len() != self.proof_bytes || bytes.get(..2) != Some(&[1, K::DEGREE as u8]) {
             return Err(Error::ProofShape);
         }
         let mut rest = &bytes[2..];
+        let mut wire = Wire::default();
         let r = self.statement.multiplicities.len();
-        for source in &self.mu[..r] {
-            take(&mut rest, 32)?; // Root bytes have no canonical-field restriction.
+        for (source, packet) in self.mu[..r].iter().zip(&mut wire.registrations) {
+            packet.root = take(&mut rest, 32)?
+                .try_into()
+                .map_err(|_| Error::ProofShape)?;
+            packet.certificate = take(
+                &mut rest,
+                source
+                    .proof_size(ProofKind::Certificate)
+                    .map_err(Error::Pcs)?,
+            )?;
             source
-                .parse(
-                    ProofKind::Certificate,
-                    take(
-                        &mut rest,
-                        source
-                            .proof_size(ProofKind::Certificate)
-                            .map_err(Error::Pcs)?,
-                    )?,
-                )
+                .parse(ProofKind::Certificate, packet.certificate)
                 .map_err(Error::Pcs)?;
         }
-        for j in 0..r {
-            for size in [self.tree_bytes[0], self.tree_bytes[1], self.leaf_bytes] {
-                canonical(
-                    take(&mut rest, size)?,
-                    Error::Fraction(fraction::Error::NoncanonicalField),
-                )?;
+        for (j, packet) in wire.repetitions[..r].iter_mut().enumerate() {
+            for (out, size) in [&mut packet.lookup, &mut packet.table, &mut packet.selected]
+                .into_iter()
+                .zip([self.tree_bytes[0], self.tree_bytes[1], self.leaf_bytes])
+            {
+                *out = take(&mut rest, size)?;
+                canonical(out, Error::Fraction(fraction::Error::NoncanonicalField))?;
             }
-            for certificate in self.statement.originals {
+            for (certificate, bytes) in self.statement.originals.iter().zip(&mut packet.originals) {
                 let source = certificate.record().source();
+                *bytes = take(
+                    &mut rest,
+                    source.proof_size(ProofKind::Opening).map_err(Error::Pcs)?,
+                )?;
                 source
-                    .parse(
-                        ProofKind::Opening,
-                        take(
-                            &mut rest,
-                            source.proof_size(ProofKind::Opening).map_err(Error::Pcs)?,
-                        )?,
-                    )
+                    .parse(ProofKind::Opening, bytes)
                     .map_err(Error::Pcs)?;
             }
-            canonical(
-                take(&mut rest, mul(self.pieces[j], 4 * K::DEGREE)?)?,
-                Error::ProofShape,
-            )?;
-            for _ in 0..self.pieces[j] {
+            packet.values = take(&mut rest, mul(self.pieces[j], 4 * K::DEGREE)?)?;
+            canonical(packet.values, Error::ProofShape)?;
+            for bytes in &mut packet.multiplicities[..self.pieces[j]] {
+                *bytes = take(
+                    &mut rest,
+                    self.mu[j]
+                        .proof_size(ProofKind::Opening)
+                        .map_err(Error::Pcs)?,
+                )?;
                 self.mu[j]
-                    .parse(
-                        ProofKind::Opening,
-                        take(
-                            &mut rest,
-                            self.mu[j]
-                                .proof_size(ProofKind::Opening)
-                                .map_err(Error::Pcs)?,
-                        )?,
-                    )
+                    .parse(ProofKind::Opening, bytes)
                     .map_err(Error::Pcs)?;
             }
         }
         if !rest.is_empty() {
             return Err(Error::ProofShape);
         }
-        Ok(())
+        Ok(wire)
+    }
+    fn registration_bytes(&self) -> Result<usize, Error> {
+        self.mu[..self.statement.multiplicities.len()]
+            .iter()
+            .try_fold(0, |total, source| {
+                sum(&[
+                    total,
+                    b"stele/v0.1/pcs-certificate/public".len(),
+                    105,
+                    source
+                        .proof_size(ProofKind::Certificate)
+                        .map_err(Error::Pcs)?
+                        .checked_sub(1)
+                        .ok_or(Error::Capacity)?,
+                ])
+            })
     }
 }
 fn take<'a>(bytes: &mut &'a [u8], count: usize) -> Result<&'a [u8], Error> {
@@ -473,6 +544,14 @@ fn canonical(bytes: &[u8], error: Error) -> Result<(), Error> {
 #[path = "lookup_sizes_tests.rs"]
 mod sizes_tests;
 
+#[path = "lookup_functionals.rs"]
+mod functionals;
 #[path = "lookup_producer.rs"]
 mod producer;
 pub use producer::{ProducerLimits, ProverFailure, ProverUsage, RegistrationUsage};
+#[path = "lookup_verifier.rs"]
+mod verifier;
+pub use verifier::{
+    Failure, LookupParameters, LookupRecord, RegisteredMultiplicities, RegistrationFailure,
+    RepetitionRecord,
+};
