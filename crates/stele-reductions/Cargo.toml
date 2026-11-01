@@ -6,6 +6,7 @@ license = "Apache-2.0"
 description = "Stele — stele-reductions (see RFC-0007 RFC-0008 RFC-0009 RFC-0017)"
 
 [dependencies]
+stele-cqis = { path = "../stele-cqis" }
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }
 stele-sumcheck = { path = "../stele-sumcheck" }

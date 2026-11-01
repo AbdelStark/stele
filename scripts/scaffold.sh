@@ -15,7 +15,7 @@ stele-code|RFC-0010 §3|stele-field stele-simd|no
 stele-pcs|RFC-0010|stele-code stele-field stele-hash stele-poly|no
 stele-cqis|RFC-0004|stele-field|no
 stele-ir|RFC-0005|stele-cqis|no
-stele-reductions|RFC-0007 RFC-0008 RFC-0009 RFC-0017|stele-field stele-hash stele-sumcheck stele-gkr stele-lookup stele-pcs stele-ir|no
+stele-reductions|RFC-0007 RFC-0008 RFC-0009 RFC-0017|stele-field stele-hash stele-sumcheck stele-gkr stele-lookup stele-pcs stele-ir stele-cqis|no
 stele-proof|RFC-0016 §1|stele-field|no
 stele-prover|RFC-0007 §4 RFC-0014 §4|stele-reductions stele-proof|no
 stele-verifier|RFC-0016|stele-field stele-hash|no

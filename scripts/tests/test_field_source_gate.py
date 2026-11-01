@@ -119,12 +119,16 @@ class ClosedStackedGateTests(unittest.TestCase):
             'test rejects_unused_original_final ... ok',
             '\n'.join(f'test crates/stele-reductions/src/{module}.rs - {module}::{record} (line {line}) - compile fail ... ok'
                       for module,record,line in [('field_sources','FieldSourceRecord',30),
-                          ('stacked_sources','StackedSourceRecord',43),('stacked_sources','StackedSourceRecord',48)]),
+                          ('stacked_sources','StackedSourceRecord',43),('stacked_sources','StackedSourceRecord',48),
+                          ('lookup','Statement',60),('lookup','Descriptor',100)]),
             '\n'.join(f'test {name} ... ok' for name in ('accepts_qm31_certified_stacked_sources',
                 'accepts_om31_certified_stacked_sources', 'rejects_qm31_malformed_certified_stacked_sources',
                 'rejects_om31_malformed_certified_stacked_sources')),
             '\n'.join(f'test {name} ... ok' for name in ('rejects_wrong_restored_point_at_actual_opening',
                 'rejects_substituted_verified_certificate_at_actual_opening')),
+            '\n'.join(f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')),
+            '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
+                      for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
         ]
 
     def run_gate(self, outputs=None, failed=None):
@@ -137,10 +141,10 @@ class ClosedStackedGateTests(unittest.TestCase):
 
     def test_accepts_complete_closed_consumers(self):
         commands = self.run_gate()
-        self.assertEqual(len(commands), 5)
+        self.assertEqual(len(commands), 7)
         self.assertTrue(all('--locked' in c and '--offline' in c for c in commands))
         self.assertEqual([c[c.index('--test')+1] for c in commands if '--test' in c],
-                         ['nc-0609','stacked','stacked-certified'])
+                         ['nc-0609','stacked','stacked-certified','lookup_codec'])
 
     def test_rejects_every_failure_and_omitted_receipt(self):
         for i, output in enumerate(self.outputs):
@@ -159,6 +163,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/stacked_sources.rs','\npub fn accept_unchecked() {}\n'),
             ('src/stacked_sources.rs','\nimpl<K> From<Proof<K>> for StackedSourceRecord<\'_,K> {}\n'),
             ('src/stacked_sources.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/lookup.rs','\npub fn verify_lookup_unchecked() {}\n'),
+            ('src/lookup.rs','\nimpl From<bool> for Descriptor { fn from(_: bool) -> Self { todo!() } }\n'),
+            ('src/lookup.rs','\ninclude!("unchecked.rs");\n'),
             ('Cargo.toml','\n[features]\nunwired = []\n'),
         ):
             path=self.root/'crates/stele-reductions'/name; saved=path.read_text()
