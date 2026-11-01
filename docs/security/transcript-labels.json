@@ -24,5 +24,7 @@
   ["absorb", "stele/v0.1/pcs/opening-row", "-"],
   ["challenge", "stele/v0.1/pcs/opening-column", "PCS_QUERY"],
   ["absorb", "stele/v0.1/pcs/opening-columns", "-"],
-  ["absorb", "stele/v0.1/pcs/sources", "-"]
+  ["absorb", "stele/v0.1/pcs/sources", "-"],
+  ["absorb", "stele/v0.1/gkr/stacked-sources", "-"],
+  ["absorb", "stele/v0.1/gkr/stacked", "-"]
 ]

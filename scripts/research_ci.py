@@ -57,7 +57,7 @@ def main(argv=None):
     try:
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument('--full', action='store_true', help='exhaustive scheduled/manual inventory')
-        parser.add_argument('--selection', choices=('all', 'native', 'none'), default='all',
+        parser.add_argument('--selection', choices=('all', 'native', 'stacked', 'native-stacked', 'none'), default='all',
                             help='normal matrix selection; defaults to the complete inventory')
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument('--matrix', action='store_true')
@@ -66,10 +66,14 @@ def main(argv=None):
         groups = load_groups(FULL_MANIFEST if args.full else MANIFEST)
         if args.selection != 'all' and (args.full or not args.matrix):
             parser.error('selection applies only to the normal matrix')
-        if args.selection == 'native':
-            if not groups.get('native-comparisons'):
-                raise ValueError('missing native-comparisons research group')
-            groups = {'native-comparisons': groups['native-comparisons']}
+        subsets = {'native': ('native-comparisons',), 'stacked': ('stacked-gkr',),
+                   'native-stacked': ('native-comparisons', 'stacked-gkr')}
+        if args.selection in subsets:
+            selected = subsets[args.selection]
+            for name in selected:
+                if not groups.get(name):
+                    raise ValueError(f'missing {name} research group')
+            groups = {name: commands for name, commands in groups.items() if name in selected}
         elif args.selection == 'none':
             groups = {}
         if args.group is not None and args.group not in groups:

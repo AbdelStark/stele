@@ -78,7 +78,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 26] = [
+const REGISTRY: [RegistryEntry<'static>; 28] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -209,6 +209,16 @@ const REGISTRY: [RegistryEntry<'static>; 26] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/gkr/stacked-sources",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/gkr/stacked",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -236,7 +246,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 26], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 28], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -311,6 +321,10 @@ pub enum AbsorbLabel {
     OpeningColumns,
     /// Complete ordered original-source bundle before A1 (A10).
     FieldSources,
+    /// Complete public/certified original roster before stacked A1 (A6).
+    StackSources,
+    /// Complete expected stacked statement and public coefficient (A6).
+    Stack,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -332,6 +346,8 @@ impl AbsorbLabel {
             Self::OpeningRow => 22,
             Self::OpeningColumns => 24,
             Self::FieldSources => 25,
+            Self::StackSources => 26,
+            Self::Stack => 27,
         }]
     }
 }

@@ -21,6 +21,8 @@ pub mod pcs_opening_field;
 #[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
+pub mod stacked;
+#[doc(hidden)]
 pub mod streaming;
 #[doc(hidden)]
 pub mod sumcheck;
@@ -35,6 +37,18 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 203,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CoefficientMismatch",
+        run: || stacked::run(203),
+    },
+    catalog::RegisteredControl {
+        id: 212,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CoefficientMismatch",
+        run: || stacked::run(212),
+    },
     catalog::RegisteredControl {
         id: 609,
         kind: catalog::ControlKind::Proof,
@@ -221,7 +235,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             batching::run(802)?;
             zerocheck::run(802)?;
             fraction_transcript::run_continuation()?;
-            pcs_opening_continuation::run()
+            pcs_opening_continuation::run()?;
+            stacked::run_continuation()
         },
     },
     catalog::RegisteredControl {

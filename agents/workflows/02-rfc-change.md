@@ -6,3 +6,6 @@
    `rfc-author` for consistency with the glossary and claim graph, and the owner of each affected crate.
 4. On acceptance: update RFC-0000 index, `agents/context/decision-log.md` (ADR), affected tasks in `graph.yaml`, and
    `tests/negative-controls/catalog.md` (every new binding ⇒ new control id).
+   After catalog changes, update its exact reservation/coverage snapshot and run
+   `cargo test -p stele-negative-controls --test catalog --locked --offline` before publication.
+   A reservation alone never marks a control done.

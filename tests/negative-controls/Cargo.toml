@@ -9,8 +9,11 @@ publish = false
 name = "field_pcs_bench"
 path = "examples/field_pcs_bench.rs"
 
+[[example]]
+name = "stacked_corpus"
+path = "examples/stacked_corpus.rs"
+
 [dev-dependencies]
-stele-poly = { path = "../../crates/stele-poly" }
 serde_json = "=1.0.154"
 blake3 = { version = "=1.8.7", default-features = false }
 
@@ -38,6 +41,8 @@ name = "configuration"
 path = "harness/configuration.rs"
 
 [dependencies]
+stele-gkr = { path = "../../crates/stele-gkr" }
+stele-poly = { path = "../../crates/stele-poly" }
 stele-reductions = { path = "../../crates/stele-reductions" }
 stele-pcs = { path = "../../crates/stele-pcs" }
 stele-lookup = { path = "../../crates/stele-lookup" }
@@ -132,3 +137,7 @@ path = "pcs/nc_0803.rs"
 [[test]]
 name = "nc-0610"
 path = "pcs/nc_0610.rs"
+
+[[test]]
+name = "stacked-public"
+path = "sumcheck/stacked_public.rs"

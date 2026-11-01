@@ -357,20 +357,43 @@ def fraction_corpus(root):
 
 
 def public_coefficients(root):
-    """A7 arithmetic only; keep all unwired stage/consumer code fail-closed."""
+    """A7 arithmetic plus A4's actual closed public stage and independent bytes."""
     crate = root / 'crates/stele-gkr'
-    allowed = {'Cargo.toml', 'src/lib.rs', 'src/public_mle.rs', 'tests/public_mle.rs'}
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/public_mle.rs', 'tests/public_mle.rs',
+               'src/stacked/mod.rs', 'src/stacked/statement.rs', 'src/stacked/strategy.rs', 'tests/stacked.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
-    library = ('//! Stacked reduction primitives governed by RFC-0006 A7.\n'
+    library = ('//! Conditional stacked field runtime governed by RFC-0006 A4/A7.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\npub mod public_mle;\n')
+               'extern crate alloc;\npub mod public_mle;\npub mod stacked;\n')
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    surfaces = {
+        'public_mle.rs': ('enum:Error struct:Axis :bits :real enum:Kind struct:Coefficient fn:new fn:evaluate',
+                          ["impl<'a,K:Field>Coefficient<'a,K>{"]),
+        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:verify_public',
+                           ['impl<K>Record<K>{']),
+        'stacked/statement.rs': ('enum:Order struct:Claim :id :axes :point :value struct:Statement :id :axes :order :output :coefficient_id :inputs :terms :selectors :kind :source_id struct:Limits :descriptor_bytes :proof_bytes :prepared_entries :partial_entries :axis_entries struct:Prepared fn:new fn:bytes fn:instance fn:source_bytes',
+                                 ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{"]),
+        'stacked/strategy.rs': ('struct:Dense fn:strategy fn:capacity_entries fn:partials',
+                                ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{", "impl<K:ChallengeField+Eq>Dense<'_,'_,K>{", "impl<K:ChallengeField+Eq>Summand<K>for&mutDense<'_,'_,K>{"]),
+    }
+    closed = True
+    for name, (declarations, implementations) in surfaces.items():
+        code = re.sub(r'//[^\n]*|pub\(super\)', '', (crate / 'src' / name).read_text())
+        found = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+        closed &= ([':'.join(item) for item in found] == declarations.split()
+                   and len(found) == len(re.findall(r'\bpub\b', code))
+                   and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', code)] == implementations
+                   and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
-            or manifest.get('dependencies') != {'stele-field': {'path': '../stele-field'}}
+            or not closed
+            or manifest.get('dependencies') != {f'stele-{n}': {'path': f'../stele-{n}'} for n in ('field','poly','hash','sumcheck')}
             or any(key in manifest for key in ('build-dependencies', 'dev-dependencies', 'target', 'features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('GKR stage/source validator not wired; only A7 arithmetic admitted (E3-06)')
+        raise ValueError('GKR stage/source validator not wired; only reviewed A7/A4 public APIs admitted (E3-06)')
+    oracle = root / 'research/stacked-gkr/check_native_wire.py'
+    if not oracle.is_file() or not Path(str(oracle)+'.lock').is_file():
+        raise ValueError('stacked wire checks failed: missing locked checker')
     tests = ('matches_reference_qm31_all_kinds', 'matches_reference_om31_all_kinds',
              'rejects_invalid_descriptors_and_resource_limits',
              'accepts_large_masks_and_scalar_axes_without_domain_allocation')
@@ -378,7 +401,29 @@ def public_coefficients(root):
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in tests):
         raise ValueError(f'public coefficient arithmetic checks failed: {result.stdout} {result.stderr}')
-    print('gate public coefficients: 10000 points/kind/field; no stage, source or NC-0203 credit')
+    checks = [
+        (['cargo','test','-p','stele-gkr','--test','stacked','--locked','--offline'],
+         [f'test {n} ... ok' for n in ('matches_reference_qm31_stacked_rounds_and_consumers',
+          'matches_reference_om31_stacked_rounds_and_consumers', 'rejects_preflight_without_transcript_mutation',
+          'rejects_unaddressable_storage_before_any_transcript_work', 'accepts_empty_constant_and_zero_coefficient_relations',
+          'rejects_malformed_statements_sources_and_proofs')]),
+        (['cargo','test','-p','stele-negative-controls','--test','stacked-public','--locked','--offline'],
+         [f'test {n} ... ok' for n in ('rejects_wrong_layer_coefficient', 'rejects_changed_onehot_and_exact_table_source',
+          'rejects_unused_original_at_draw_order_point', 'rejects_missing_stack_or_sources_before_successor')]),
+        (['cargo','test','-p','stele-gkr','--doc','--locked','--offline'], ['compile fail ... ok']),
+        (['uv','run','--locked','--script','research/stacked-gkr/check_native_wire.py'],
+         ['stacked native wire: 116 both-field decisions; complete frames/proofs/restored claims/SC/continuation agree; '
+          +(root/'tests/negative-controls/fixtures/stacked-public.sha256').read_text().strip()]),
+    ]
+    for command, required in checks:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        if result.returncode or any(receipt not in result.stdout for receipt in required):
+            raise ValueError(f'stacked public consumer checks failed: {result.stdout} {result.stderr}')
+        if '--doc' in command and not re.search(
+                r'^test crates/stele-gkr/src/stacked/mod\.rs - stacked::Record \(line \d+\) - compile fail \.\.\. ok$',
+                result.stdout, re.MULTILINE):
+            raise ValueError('stacked public consumer checks failed: missing opaque Record boundary')
+    print('gate stacked public: A7 10000 points/kind/field; actual A4 consumers, controls and independent bytes; certified closure pending')
 
 
 def transcript_registry(root):
@@ -682,18 +727,19 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    example = {'name':'field_pcs_bench','path':'examples/field_pcs_bench.rs'}
-    dev = {'stele-poly':{'path':'../../crates/stele-poly'}, 'serde_json':'=1.0.154',
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus')]
+    dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
-                    for n in ('reductions','pcs','lookup','sumcheck','field','hash')}
+                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly')}
     dependencies['stele-sumcheck']['features'] = ['std']
-    if (manifest.get('example') != [example] or manifest.get('dev-dependencies') != dev
+    if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
     allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
-    allowed.add(example['path'])
+    allowed.update(example['path'] for example in examples)
+    allowed.update(('src/stacked.rs', 'fixtures/stacked-public.sha256'))
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

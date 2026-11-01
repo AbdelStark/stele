@@ -19,7 +19,7 @@ The full RFC-0021 corpus is partitioned into 28 case/field jobs, each retaining
 its original seed and 10,000 points. No-argument local execution still runs all
 280,000 points. A failed or missing shard fails the aggregate. The matrix uses available runner concurrency.
 
-Research, harness and formal changes select every normal research group in
+Research, harness and formal changes normally select every research group in
 `scripts/research-checks.json`. Research runner, inventory, workflow and shared configuration changes do so as well.
 The exact root Cargo.lock path and field/CQIS source changes select the
 `native-comparisons` group: seven existing Python-to-Rust comparisons plus their
@@ -27,11 +27,16 @@ two pinned checkpoint downloads. Any broad trigger selects all 75 groups instead
 The normal inventory retains the same 176 commands exactly once. This scope
 also covers deletions and both names of renamed files; it does not infer scope
 from changed lockfile entries. The mandatory native job and all table rules remain.
-Matrix generation validates explicit all/native/none selection; an unknown mode
+The exact `formal/stacked-runtime.md`, `formal/stacked-ownership.md` and
+`formal/stacked-statement.md` paths select `stacked-gkr`. Combined with native
+triggers they select the ordered union of `native-comparisons` and `stacked-gkr`;
+any broad trigger still takes precedence. Neighbouring formal paths stay broad.
+Matrix generation validates explicit all/native/stacked/native-stacked/none selection; an unknown mode
 or missing selected group fails the plan. Default and exhaustive matrices stay complete.
-The only research-path exceptions are `research/merkle-oracle/check_field_wire.py`
-and its `.lock`: the mandatory native gate runs that locked byte oracle and rejects
-failure or missing output. Shared oracle modules and all other research paths
+The only research-path exceptions are `research/merkle-oracle/check_field_wire.py`,
+`research/stacked-gkr/check_native_wire.py` and their `.lock` files: the mandatory
+native gate runs both locked byte oracles and rejects failure or missing output.
+Shared oracle modules and all other research paths
 retain normal selection. The research matrix uses the available runner concurrency.
 Downloads stay ordered with their consumers. Each command retains shell error
 and pipeline failure propagation. Native-only changes use their independent

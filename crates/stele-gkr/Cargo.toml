@@ -7,6 +7,9 @@ description = "Stele — stele-gkr (see RFC-0006 §3,§6)"
 
 [dependencies]
 stele-field = { path = "../stele-field" }
+stele-poly = { path = "../stele-poly" }
+stele-hash = { path = "../stele-hash" }
+stele-sumcheck = { path = "../stele-sumcheck" }
 
 [lints]
 workspace = true

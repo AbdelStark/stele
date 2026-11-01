@@ -14,6 +14,23 @@ SPEC.loader.exec_module(scope)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_matches_reference_stacked_scope_and_union(self):
+        files = [b'formal/stacked-runtime.md', b'formal/stacked-ownership.md', b'formal/stacked-statement.md']
+        oracle = b'research/stacked-gkr/check_native_wire.py'
+        for path in files:
+            self.assertEqual(scope.scopes([path]), dict(gpu=False,tables=False,research=True,research_selection='stacked'))
+        for paths in (files, list(reversed(files)), files+files+[oracle]):
+            self.assertEqual(scope.scopes(paths)['research_selection'], 'stacked')
+        for native in (b'Cargo.lock', b'crates/stele-field/src/lib.rs', b'crates/stele-cqis/src/lib.rs'):
+            for paths in (files+[native], [native]+files):
+                self.assertEqual(scope.scopes(paths)['research_selection'], 'native-stacked')
+                self.assertTrue(scope.scopes(paths)['tables'])
+        for path in (files[0]+b'.extra',b'formal/stacked.md',b'research/stacked-gkr/stage.py',
+                     b'research/stacked-gkr/weighted_mle.py',b'harness/check.py',b'scripts/research_ci.py',
+                     b'scripts/ci_scope.py',b'.github/workflows/ci.yml'):
+            self.assertEqual(scope.scopes(files+[b'Cargo.lock',oracle,path])['research_selection'], 'all')
+        self.assertEqual(scope.scopes([])['research_selection'],'none')
+
     def test_matches_reference_native_tier_and_broad_precedence(self):
         for native in (b'Cargo.lock', b'crates/stele-cqis/src/lib.rs', b'crates/stele-field/tests/field.rs'):
             selected = scope.scopes([native, b'crates/stele-reductions/src/field_sources.rs'])
@@ -42,6 +59,11 @@ class ScopeTests(unittest.TestCase):
             result = scope.scopes([oracle, shared])
             self.assertTrue(result['research'])
             self.assertTrue(result['tables'])
+        oracle = b'research/stacked-gkr/check_native_wire.py'
+        for paths in ([oracle], [oracle+b'.lock'], [oracle,oracle+b'.lock']):
+            self.assertEqual(scope.scopes(paths)['research_selection'],'none')
+        for neighbor in (oracle+b'.extra',b'research/stacked-gkr/stage.py',b'research/stacked-gkr/check_stage.py'):
+            self.assertEqual(scope.scopes([oracle,neighbor])['research_selection'],'all')
 
     def test_matches_reference_git_changes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -94,6 +116,9 @@ class ScopeTests(unittest.TestCase):
                 ('scripts/research-checks.json', ('false', 'true')),
                 ('research/merkle-oracle/check_field_wire.py', ('false', 'false')),
                 ('research/merkle-oracle/check_field_wire.py.lock', ('false', 'false')),
+                ('research/stacked-gkr/check_native_wire.py', ('false', 'false')),
+                ('research/stacked-gkr/check_native_wire.py.lock', ('false', 'false')),
+                ('formal/stacked-runtime.md', ('false', 'true')),
             ]:
                 before = git('rev-parse', 'HEAD')
                 file = root / path
@@ -106,6 +131,18 @@ class ScopeTests(unittest.TestCase):
                 outputs = dict(line.split('=') for line in result.stdout.splitlines())
                 self.assertEqual((outputs['tables'], outputs['research']), expected)
 
+            before = git('rev-parse', 'HEAD')
+            git('mv','formal/stacked-runtime.md','moved-stacked')
+            git('commit','-m','move stacked contract')
+            self.assertIn('research_selection=stacked',run({'before':before,'after':git('rev-parse','HEAD')}).stdout)
+            (root/'formal/shared.md').write_text('shared\n')
+            git('add','formal/shared.md');git('commit','-m','shared formal fixture')
+            before = git('rev-parse', 'HEAD')
+            git('mv','formal/shared.md','formal/stacked-runtime.md');git('commit','-m','move shared into stacked path')
+            self.assertIn('research_selection=all',run({'before':before,'after':git('rev-parse','HEAD')}).stdout)
+            before = git('rev-parse', 'HEAD')
+            git('rm','formal/stacked-runtime.md');git('commit','-m','delete stacked contract')
+            self.assertIn('research_selection=stacked',run({'before':before,'after':git('rev-parse','HEAD')}).stdout)
             before = git('rev-parse', 'HEAD')
             git('rm', 'research/merkle-oracle/check_field_wire.py')
             git('commit', '-m', 'delete native-owned checker')
