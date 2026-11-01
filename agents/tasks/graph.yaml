@@ -924,7 +924,7 @@ tasks:
   - RFC-0020 A7
   skill: pcs-engineer
   crate: stele-pcs
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01b1-retained-row
   acceptance:

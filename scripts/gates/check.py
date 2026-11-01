@@ -384,10 +384,23 @@ def field_source_codec(root):
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
         if result.returncode or any(text not in result.stdout for text in expected):
             raise ValueError(f'field source codec checks failed: {result.stdout} {result.stderr}')
-        if command[0] == 'cargo' and sorted(re.findall(
-                r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
-                result.stdout, re.MULTILINE)) != ['certificate.rs'] + ['opening.rs'] * 6 + ['preparation.rs', 'source.rs']:
-            raise ValueError('field source codec checks failed: missing compile-fail boundary')
+        if command[0] == 'cargo':
+            expected_boundaries = {
+                ('certificate.rs', 'certificate::VerifiedCertificate'): 1,
+                ('opening.rs', 'opening::OpeningRecord'): 2,
+                ('opening.rs', 'opening::RetainedRow'): 4,
+                ('preparation.rs', 'preparation::PreparedSource'): 1,
+                ('source.rs', 'source::Source'): 1,
+            }
+            boundaries = re.findall(
+                r'^test crates/stele-pcs/src/(\S+) - (\S+) \(line (\d+)\) - compile fail \.\.\. ok$',
+                result.stdout, re.MULTILINE)
+            actual_boundaries = {}
+            for file, target, line in boundaries:
+                actual_boundaries.setdefault((file, target), set()).add(line)
+            if (len(boundaries) != sum(expected_boundaries.values())
+                    or {key: len(lines) for key, lines in actual_boundaries.items()} != expected_boundaries):
+                raise ValueError('field source codec checks failed: missing compile-fail boundary')
     print('gate PCS: native certificates/openings/retained rows/continuations and all59 policies; A1 checked separately; no matmul/profile credit')
 
 

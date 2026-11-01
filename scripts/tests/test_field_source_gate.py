@@ -99,6 +99,15 @@ class FieldSourceGateTests(unittest.TestCase):
             with mock.patch.object(gate.subprocess, 'run', return_value=result):
                 with self.assertRaisesRegex(ValueError, 'missing compile-fail boundary'):
                     gate.field_source_codec(ROOT)
+        retained_docs = [line for line in opening_docs if ' - opening::RetainedRow (' in line]
+        self.assertEqual(len(retained_docs), 4)
+        for output in (
+                actual.stdout.replace(retained_docs[0], retained_docs[1], 1),
+                actual.stdout.replace(' - opening::RetainedRow (', ' - opening::Unrelated (')):
+            result = subprocess.CompletedProcess([], 0, output, '')
+            with mock.patch.object(gate.subprocess, 'run', return_value=result):
+                with self.assertRaisesRegex(ValueError, 'missing compile-fail boundary'):
+                    gate.field_source_codec(ROOT)
         # The scoped oracle still runs in native and fails closed on failure/missing output.
         policy = subprocess.CompletedProcess([], 0, '59 native query pairs match exact independently checked minima', '')
         for code, output in [(1, 'failure'), (0, ''), (2, 'missing checker')]:
