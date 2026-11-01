@@ -11,11 +11,17 @@ mod opening;
 mod preparation;
 mod producer;
 mod source;
-pub use certificate::{verify_certificate, CertificateRecord, Failure, Usage, VerifiedCertificate};
+mod work;
+pub use certificate::{
+    verify_certificate, verify_certificate_measured, CertificateRecord, Failure, Usage,
+    VerifiedCertificate,
+};
 pub use opening::{
-    verify_opening, verify_point, Functional, OpeningRecord, RetainedRow, RetainedRowWork,
+    verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,
+    OpeningRecord, RetainedRow, RetainedRowWork,
 };
 pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};
 pub use producer::CertificateFailure;
 pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};
 pub use stele_code::CodeField;
+pub use work::{ProverWork, VerifierWork};

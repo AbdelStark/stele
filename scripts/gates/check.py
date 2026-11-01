@@ -290,20 +290,24 @@ def field_source_codec(root):
                'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
-               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
+               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional Circle field sources, certificates and functional openings, RFC-0010 A9/A10.\n'
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod certificate;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\n'
-               'pub use certificate::{verify_certificate, CertificateRecord, Failure, Usage, VerifiedCertificate};\n'
+               'extern crate alloc;\nmod certificate;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
+               'pub use certificate::{\n'
+               '    verify_certificate, verify_certificate_measured, CertificateRecord, Failure, Usage,\n'
+               '    VerifiedCertificate,\n};\n'
                'pub use opening::{\n'
-               '    verify_opening, verify_point, Functional, OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
+               '    verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,\n'
+               '    OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
                'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
                'pub use producer::CertificateFailure;\n'
                'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n'
-               'pub use stele_code::CodeField;\n')
+               'pub use stele_code::CodeField;\n'
+               'pub use work::{ProverWork, VerifierWork};\n')
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
     source = (crate / 'src/source.rs').read_text()
@@ -359,12 +363,12 @@ def field_source_codec(root):
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
     producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
     producer_closed = (producer_declarations == [('struct', 'CertificateFailure'),
-        ('', 'cause'), ('', 'usage'), ('fn', 'certificate')]
+        ('', 'cause'), ('', 'usage'), ('fn', 'certificate'), ('fn', 'certificate_measured')]
         and len(producer_declarations) == len(re.findall(r'\bpub\b', producer))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', producer)]
             == ["impl<K:ChallengeField>PreparedSource<'_,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', producer)] == [
-            'usecrate::{Error,PreparedSource,ProofKind,Source};', 'usealloc::vec::Vec;',
+            'usecrate::work::{add,bytes};', 'usecrate::{Error,PreparedSource,ProofKind,ProverWork,Source};', 'usealloc::vec::Vec;',
             'usestele_hash::{AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript};']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', producer)] == [
             '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[path="producer_tests.rs"]']
@@ -375,12 +379,13 @@ def field_source_codec(root):
         ('struct', 'Usage'), ('', 'transcript'), ('', 'non_transcript'),
         ('struct', 'Failure'), ('', 'cause'), ('', 'usage'), ('struct', 'CertificateRecord'),
         ('fn', 'source'), ('fn', 'id'), ('fn', 'parameters'), ('fn', 'ell'), ('fn', 'degree'),
-        ('fn', 'kind'), ('struct', 'VerifiedCertificate'), ('fn', 'record'), ('fn', 'verify_certificate')]
+        ('fn', 'kind'), ('struct', 'VerifiedCertificate'), ('fn', 'record'), ('fn', 'verify_certificate'),
+        ('fn', 'verify_certificate_measured')]
         and len(certificate_declarations) == len(re.findall(r'\bpub\b', certificate))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', certificate)] == [
             'impl<K:ChallengeField>CertificateRecord<K>{', 'impl<K:ChallengeField>VerifiedCertificate<K>{']
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', certificate)] == [
-            'usecrate::{Error,Parameters,ProofKind,Source,Wire};', 'usealloc::vec::Vec;',
+            'usecrate::work::{add,bytes};', 'usecrate::{Error,Parameters,ProofKind,Source,VerifierWork,Wire};', 'usealloc::vec::Vec;',
             'usestele_code::{CodeField,Encoder};', 'usestele_field::{Serialize,M31};',
             'usestele_hash::{certificate_id,merkle,AbsorbLabel,ChallengeField,ChallengeLabel,HashUsage,Transcript,};']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', certificate)] == [
@@ -390,27 +395,46 @@ def field_source_codec(root):
     opening = re.sub(r'//[^\n]*', '', (crate / 'src/opening.rs').read_text())
     opening_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', opening)
     opening_closed = (opening_declarations == [
-        ('struct', 'Functional'), ('', 'id'), ('', 'a'), ('', 'b'), ('', 'value'), ('fn', 'verify_point'),
+        ('struct', 'Functional'), ('', 'id'), ('', 'a'), ('', 'b'), ('', 'value'), ('fn', 'verify_point'), ('fn', 'verify_point_measured'),
         ('struct', 'OpeningRecord'), ('fn', 'certificate'), ('fn', 'id'), ('fn', 'queries'),
         ('fn', 'kind'), ('struct', 'RetainedRowWork'), ('', 'source_visits'),
         ('', 'source_elements'), ('', 'retained_bytes'), ('struct', 'RetainedRow'),
-        ('fn', 'new'), ('fn', 'values'), ('fn', 'work'), ('fn', 'opening'),
-        ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening')]
+        ('fn', 'new'), ('fn', 'values'), ('fn', 'work'), ('fn', 'opening'), ('fn', 'opening_measured'),
+        ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening'), ('fn', 'verify_opening_measured')]
         and len(opening_declarations) == len(re.findall(r'\bpub\b', opening))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
             "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",
             "impl<K:ChallengeField>PreparedSource<'_,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', opening)] == [
-            'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,Source,Usage,VerifiedCertificate,};',
+            'usecrate::work::{add,bytes};',
+            'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,ProverWork,Source,Usage,VerifiedCertificate,VerifierWork,};',
             'usealloc::vec::Vec;', 'usestele_code::{CodeField,Encoder};', 'usestele_field::{Serialize,M31};',
             'usestele_hash::{merkle,AbsorbLabel,ChallengeField,HashUsage,Transcript};']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', opening)] == [
             '#[derive(Clone,Copy)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', opening))
+    work = re.sub(r'//[^\n]*', '', (crate / 'src/work.rs').read_text())
+    work_closed = (re.findall(r'\bpub\b(?:\s*\([^)]*\))?', work) == ['pub'] * 23 + ['pub(crate)'] * 2
+        and [(name, compact(body)) for name, body in re.findall(r'pub struct (\w+)\s*\{([^}]*)\}', work)] == [
+            ('ProverWork', 'pubproof_bytes:usize,pubframe_bytes:usize,pubweights_bytes:usize,'
+             'pubpath_peak_bytes:usize,pubpeak_owned_bytes:usize,pubsource_elements:usize,pubrow_values:usize,'
+             'pubresponses:usize,pubcolumn_bytes_copied:usize,pubpath_bytes_copied:usize,'),
+            ('VerifierWork', 'pubframe_bytes:usize,pubweights_bytes:usize,pubrow_bytes:usize,pubencoded_bytes:usize,'
+             'pubencoder:stele_code::EncoderWork,pubpeak_owned_bytes:usize,pubresponses:usize,'
+             'pubcolumn_bytes_authenticated:usize,pubcolumn_bytes_decoded:usize,pubpath_bytes_copied:usize,'
+             'pubencoded_values_read:usize,')]
+        and [compact(text) for text in re.findall(r'\bpub(?:\s*\([^)]*\))?\s+fn\b[^\{]*\{', work)] == [
+            'pub(crate)fnbytes<T>(values:&Vec<T>)->Result<usize,Error>{',
+            'pub(crate)fnadd(a:usize,b:usize)->Result<usize,Error>{']
+        and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', work)]
+            == ['usecrate::Error;', 'usealloc::vec::Vec;', 'usecore::mem::size_of;', 'usesuper::*;']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', work)]
+            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]'] * 2 + ['#[cfg(test)]', '#[test]']
+        and not re.search(r'\bimpl\b|\b(?:include|include_str|include_bytes|macro_rules)\s*!', work))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or not closed_surface or not prepared_closed or not producer_closed or not certificate_closed
-            or not opening_closed
+            or not opening_closed or not work_closed
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
@@ -424,6 +448,7 @@ def field_source_codec(root):
           'test accepts_maximum_source_shape_without_domain_allocation ... ok',
           'test preparation::tests::rejects_preparation_allocation_sizes ... ok',
           'test opening::rejects_retained_row_allocation_sizes ... ok',
+          'test work::tests::matches_reference_capacity_observations ... ok',
           'test matches_reference_qm31_prepared_columns ... ok',
           'test matches_reference_om31_prepared_columns ... ok',
           'test rejects_preparation_shape_and_hash_overflow ... ok',

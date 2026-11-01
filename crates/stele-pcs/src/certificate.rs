@@ -1,5 +1,6 @@
 //! RFC-0010 A9 §3/§9: complete registration verification and conditional records.
-use crate::{Error, Parameters, ProofKind, Source, Wire};
+use crate::work::{add, bytes};
+use crate::{Error, Parameters, ProofKind, Source, VerifierWork, Wire};
 use alloc::vec::Vec;
 use stele_code::{CodeField, Encoder};
 use stele_field::{Serialize, M31};
@@ -86,11 +87,30 @@ pub fn verify_certificate<K: ChallengeField + CodeField>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_certificate_measured(source, proof).map(|(record, usage, _)| (record, usage))
+}
+/// Full certificate import with actual owned capacities and logical query work.
+/// The decoded row remains live through queries and completed-proof ID hashing.
+pub fn verify_certificate_measured<K: ChallengeField + CodeField>(
+    source: Source<K>,
+    proof: &[u8],
+) -> Result<(VerifiedCertificate<K>, Usage, VerifierWork), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let mut work = VerifierWork::default();
     let mut usage = Usage::default();
     let result = (|| {
         let wire = source.parse(ProofKind::Certificate, proof)?;
         let mut t = transcript(&source)?;
-        let result = verify_inner(&source, proof, &wire, &mut t, &mut usage.non_transcript);
+        let result = verify_inner(
+            &source,
+            proof,
+            &wire,
+            &mut t,
+            &mut usage.non_transcript,
+            &mut work,
+        );
         // A9 §9: no post-construction `?` may bypass this failure observation.
         usage.transcript = t.usage();
         result.map(|id| VerifiedCertificate {
@@ -98,7 +118,7 @@ where
         })
     })();
     result
-        .map(|handle| (handle, usage))
+        .map(|handle| (handle, usage, work))
         .map_err(|cause| Failure { cause, usage })
 }
 fn verify_inner<K: ChallengeField + CodeField>(
@@ -107,6 +127,7 @@ fn verify_inner<K: ChallengeField + CodeField>(
     wire: &Wire<'_>,
     t: &mut Transcript<K>,
     usage: &mut HashUsage,
+    work: &mut VerifierWork,
 ) -> Result<merkle::Digest, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -135,14 +156,27 @@ where
         .map_err(Error::Encoder)?
         .encode_measured(&row)
         .map_err(Error::Encoder)?;
+    work.weights_bytes = bytes(&weights)?;
+    work.row_bytes = bytes(&row)?;
+    work.encoded_bytes = bytes(&encoded.values)?;
+    work.encoder = encoded.work;
+    // A9 §6: row and weights remain live; the encoder peak already includes its output.
+    work.peak_owned_bytes = add(
+        add(work.weights_bytes, work.row_bytes)?,
+        work.encoder.peak_owned_bytes.max(work.encoded_bytes),
+    )?;
     for response in wire.responses() {
         let index = t
             .certificate_column(source.descriptor().count)
             .map_err(Error::Transcript)?;
         let mut siblings = [[0; 32]; 30];
         for (out, bytes) in siblings.iter_mut().zip(response.siblings.chunks_exact(32)) {
+            work.path_bytes_copied = add(work.path_bytes_copied, bytes.len())?;
             out.copy_from_slice(bytes);
         }
+        work.responses = add(work.responses, 1)?;
+        work.column_bytes_authenticated =
+            add(work.column_bytes_authenticated, response.payload.len())?;
         merkle::verify_with_usage(
             source.descriptor(),
             &source.root(),
@@ -156,10 +190,12 @@ where
         .map_err(Error::Merkle)?;
         let mut value = K::from_i64(0);
         for (weight, bytes) in weights.iter().zip(response.payload.chunks_exact(4)) {
+            work.column_bytes_decoded = add(work.column_bytes_decoded, bytes.len())?;
             let limb = M31::from_le_bytes(bytes.try_into().map_err(|_| Error::NoncanonicalField)?)
                 .ok_or(Error::NoncanonicalField)?;
             value = value + *weight * K::from_i64(i64::from(limb.as_u32()));
         }
+        work.encoded_values_read = add(work.encoded_values_read, 1)?;
         if value.to_le_bytes().as_ref() != encoded.values[index as usize].to_le_bytes().as_ref() {
             return Err(Error::ColumnMismatch);
         }

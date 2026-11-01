@@ -36,7 +36,33 @@ fn corpus<K: ChallengeField>() {
             prepared.certificate().expect("deterministic"),
             (proof.clone(), usage)
         );
+        let (measured, measured_usage, work) = prepared.certificate_measured().expect("measured");
+        assert_eq!((&measured, measured_usage), (&proof, usage));
         let source = prepared.source();
+        let response = prepared.response(0).expect("actual path capacity");
+        let path_bytes = response.siblings.capacity() * core::mem::size_of::<[u8; 32]>();
+        assert_eq!(work.proof_bytes, measured.capacity());
+        assert_eq!(work.frame_bytes, 0);
+        assert!(work.weights_bytes >= source.rows() * core::mem::size_of::<K>());
+        assert_eq!(work.path_peak_bytes, path_bytes);
+        assert_eq!(
+            work.peak_owned_bytes,
+            work.proof_bytes + work.weights_bytes.max(path_bytes)
+        );
+        assert_eq!(work.source_elements, message.len());
+        assert_eq!(work.row_values, source.columns());
+        assert_eq!(
+            work.responses,
+            usize::from(source.queries(ProofKind::Certificate))
+        );
+        assert_eq!(
+            work.column_bytes_copied,
+            work.responses * response.payload.len()
+        );
+        assert_eq!(
+            work.path_bytes_copied,
+            work.responses * source.path_height() * 32
+        );
         assert_eq!(
             source.bytes().as_slice(),
             unhex(v["source"].as_str().expect("source"))
@@ -47,7 +73,10 @@ fn corpus<K: ChallengeField>() {
         assert_eq!(usage.hash_evaluations, usage.xof_requests + 4);
         // Exercise the actual production helper, including final response absorption.
         let mut t = transcript(source).expect("transcript");
-        assert_eq!(produce_inner(&prepared, &mut t).expect("inner"), proof);
+        assert_eq!(
+            produce_inner(&prepared, &mut t, &mut ProverWork::default()).expect("inner"),
+            proof
+        );
         assert_eq!(t.usage(), usage);
         let expected = include_str!("../tests/fixtures/certificate-continuation.txt")
             .lines()

@@ -1,7 +1,8 @@
 //! RFC-0010 A9 §§4,9 and A10: functional openings and immutable retained rows.
+use crate::work::{add, bytes};
 use crate::{
-    CertificateRecord, Error, Failure, PreparedSource, ProofKind, Source, Usage,
-    VerifiedCertificate,
+    CertificateRecord, Error, Failure, PreparedSource, ProofKind, ProverWork, Source, Usage,
+    VerifiedCertificate, VerifierWork,
 };
 use alloc::vec::Vec;
 use stele_code::{CodeField, Encoder};
@@ -66,6 +67,22 @@ pub fn verify_point<'cert, K: ChallengeField + CodeField>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_point_measured(t, certificate, id, point, value, proof)
+        .map(|(record, usage, _)| (record, usage))
+}
+/// Actual point verifier work, including both owned eq vectors throughout replay.
+/// Error observations retain the nested functional verifier's complete usage.
+pub fn verify_point_measured<'cert, K: ChallengeField + CodeField>(
+    t: &mut Transcript<K>,
+    certificate: &'cert VerifiedCertificate<K>,
+    id: u64,
+    point: &[K],
+    value: K,
+    proof: &[u8],
+) -> Result<(OpeningRecord<'cert, K>, Usage, VerifierWork), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let weights = (|| {
         let source = certificate.record().source();
         let ell = source.rows().trailing_zeros() as usize;
@@ -75,16 +92,18 @@ where
         }
         source.opening_frame_size()?;
         source.parse(ProofKind::Opening, proof)?;
-        point_weights(point, ell)
+        let (a, b) = point_weights(point, ell)?;
+        let owned = add(bytes(&a)?, bytes(&b)?)?;
+        Ok((a, b, owned))
     })();
-    let (a, b) = weights.map_err(|cause| Failure {
+    let (a, b, owned) = weights.map_err(|cause| Failure {
         cause,
         usage: Usage {
             transcript: t.usage(),
             non_transcript: HashUsage::default(),
         },
     })?;
-    verify_opening(
+    let (record, usage, mut work) = verify_opening_measured(
         t,
         certificate,
         Functional {
@@ -94,7 +113,11 @@ where
             value,
         },
         proof,
-    )
+    )?;
+    work.weights_bytes = owned;
+    work.peak_owned_bytes =
+        add(owned, work.peak_owned_bytes).map_err(|cause| Failure { cause, usage })?;
+    Ok((record, usage, work))
 }
 /// One conditional opening obligation, borrowing the original certificate loss.
 /// It cannot outlive that certificate or be imported from a digest:
@@ -254,6 +277,18 @@ impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K>
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage), Failure> {
+        self.opening_measured(t, certificate, functional)
+            .map(|(proof, usage, _)| (proof, usage))
+    }
+
+    /// Same retained-row production, observing owned frames, proof, paths and copies.
+    /// The retained row, coefficients and prepared source remain borrowed.
+    pub fn opening_measured(
+        &self,
+        t: &mut Transcript<K>,
+        certificate: &VerifiedCertificate<K>,
+        functional: Functional<'_, K>,
+    ) -> Result<(Vec<u8>, Usage, ProverWork), Failure> {
         if self.prepared.source().bytes() != certificate.record().source().bytes()
             || self.weights.len() != functional.a.len()
             || self
@@ -360,6 +395,7 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             value
         });
         self.opening_row(t, certificate, functional, row)
+            .map(|(proof, usage, _)| (proof, usage))
     }
 
     // A9 framing, scalar check and prepared-column responses are shared with A10.
@@ -369,7 +405,8 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
         row: I,
-    ) -> Result<(Vec<u8>, Usage), Failure> {
+    ) -> Result<(Vec<u8>, Usage, ProverWork), Failure> {
+        let mut work = ProverWork::default();
         let result = (|| {
             let record = certificate.record();
             let source = record.source();
@@ -386,6 +423,9 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             proof
                 .try_reserve_exact(proof_size)
                 .map_err(|_| Error::Capacity)?;
+            work.frame_bytes = bytes(&frame)?;
+            work.proof_bytes = bytes(&proof)?;
+            work.peak_owned_bytes = add(work.proof_bytes, work.frame_bytes)?;
             t.absorb(AbsorbLabel::Opening, &frame)
                 .map_err(Error::Transcript)?;
             drop(frame);
@@ -393,6 +433,7 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             let mut scalar = K::from_i64(0);
             for (value, b) in row.zip(functional.b) {
                 scalar = scalar + value * *b;
+                work.row_values = add(work.row_values, 1)?;
                 proof.extend_from_slice(value.to_le_bytes().as_ref());
             }
             t.absorb(AbsorbLabel::OpeningRow, &proof[1..])
@@ -406,8 +447,15 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
                     .opening_column(source.descriptor().count)
                     .map_err(Error::Transcript)?;
                 let response = self.response(index)?;
+                work.path_peak_bytes = work.path_peak_bytes.max(bytes(&response.siblings)?);
+                work.peak_owned_bytes = work
+                    .peak_owned_bytes
+                    .max(add(bytes(&proof)?, bytes(&response.siblings)?)?);
+                work.responses = add(work.responses, 1)?;
+                work.column_bytes_copied = add(work.column_bytes_copied, response.payload.len())?;
                 proof.extend_from_slice(response.payload);
                 for sibling in response.siblings {
+                    work.path_bytes_copied = add(work.path_bytes_copied, sibling.len())?;
                     proof.extend_from_slice(&sibling);
                 }
             }
@@ -420,7 +468,7 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             non_transcript: HashUsage::default(),
         };
         result
-            .map(|proof| (proof, usage))
+            .map(|proof| (proof, usage, work))
             .map_err(|cause| Failure { cause, usage })
     }
 }
@@ -436,6 +484,21 @@ pub fn verify_opening<'cert, K: ChallengeField + CodeField>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_opening_measured(t, certificate, functional, proof)
+        .map(|(record, usage, _)| (record, usage))
+}
+/// Full functional verification with actual row/encoder overlap and query work.
+/// Borrowed proof, coefficients and certificate are excluded from owned capacity.
+pub fn verify_opening_measured<'cert, K: ChallengeField + CodeField>(
+    t: &mut Transcript<K>,
+    certificate: &'cert VerifiedCertificate<K>,
+    functional: Functional<'_, K>,
+    proof: &[u8],
+) -> Result<(OpeningRecord<'cert, K>, Usage, VerifierWork), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let mut work = VerifierWork::default();
     let mut hashes = HashUsage::default();
     let result = (|| {
         let record = certificate.record();
@@ -443,6 +506,7 @@ where
         let size = functional.frame_len(source)?;
         let wire = source.parse(ProofKind::Opening, proof)?;
         let frame = functional.frame(record, size)?;
+        work.frame_bytes = bytes(&frame)?;
         t.absorb(AbsorbLabel::Opening, &frame)
             .map_err(Error::Transcript)?;
         drop(frame);
@@ -470,6 +534,14 @@ where
             .map_err(Error::Encoder)?
             .encode_measured(&row)
             .map_err(Error::Encoder)?;
+        work.row_bytes = bytes(&row)?;
+        work.encoded_bytes = bytes(&encoded.values)?;
+        work.encoder = encoded.work;
+        // A9 §6: frame has dropped; row overlaps encoding, then only the word remains.
+        work.peak_owned_bytes = work
+            .frame_bytes
+            .max(add(work.row_bytes, work.encoder.peak_owned_bytes)?)
+            .max(work.encoded_bytes);
         drop(row);
         for response in wire.responses() {
             let index = t
@@ -477,8 +549,12 @@ where
                 .map_err(Error::Transcript)?;
             let mut siblings = [[0; 32]; 30];
             for (out, bytes) in siblings.iter_mut().zip(response.siblings.chunks_exact(32)) {
+                work.path_bytes_copied = add(work.path_bytes_copied, bytes.len())?;
                 out.copy_from_slice(bytes);
             }
+            work.responses = add(work.responses, 1)?;
+            work.column_bytes_authenticated =
+                add(work.column_bytes_authenticated, response.payload.len())?;
             merkle::verify_with_usage(
                 source.descriptor(),
                 &source.root(),
@@ -492,11 +568,13 @@ where
             .map_err(Error::Merkle)?;
             let mut value = K::from_i64(0);
             for (a, bytes) in functional.a.iter().zip(response.payload.chunks_exact(4)) {
+                work.column_bytes_decoded = add(work.column_bytes_decoded, bytes.len())?;
                 let limb =
                     M31::from_le_bytes(bytes.try_into().map_err(|_| Error::NoncanonicalField)?)
                         .ok_or(Error::NoncanonicalField)?;
                 value = value + *a * K::from_i64(i64::from(limb.as_u32()));
             }
+            work.encoded_values_read = add(work.encoded_values_read, 1)?;
             if value.to_le_bytes().as_ref() != encoded.values[index as usize].to_le_bytes().as_ref()
             {
                 return Err(Error::ColumnMismatch);
@@ -515,6 +593,6 @@ where
         non_transcript: hashes,
     };
     result
-        .map(|record| (record, usage))
+        .map(|record| (record, usage, work))
         .map_err(|cause| Failure { cause, usage })
 }

@@ -48,6 +48,9 @@ class FieldSourceGateTests(unittest.TestCase):
                                  'pub fn from_values(_: Vec<K>) -> Self { todo!() } }\n'),
                                 ('src/opening.rs', '\nimpl<K: ChallengeField> RetainedRow<\'_, \'_, K> { '
                                  'pub fn values_mut(&mut self) -> &mut [K] { &mut self.values } }\n'),
+                                ('src/work.rs', '\npub fn verify() -> bool { true }\n'),
+                                ('src/work.rs', '\nimpl From<ProverWork> for bool {}\n'),
+                                ('src/work.rs', '\ninclude!("unchecked.rs");\n'),
                                 ('Cargo.toml', '\n[features]\nunwired = []\n')]:
                 path = crate / name
                 original = path.read_text()
@@ -57,6 +60,18 @@ class FieldSourceGateTests(unittest.TestCase):
                         gate.field_source_codec(root)
                     run.assert_not_called()
                 path.write_text(original)
+            path = crate/'src/work.rs'; saved = path.read_text()
+            for old, new in [('pub proof_bytes: usize', 'pub proof_bytes: u64'),
+                             ('pub encoded_values_read: usize', 'pub encoded_values_read: bool'),
+                             ('pub encoder: stele_code::EncoderWork', 'pub encoder: usize'),
+                             ('pub(crate) fn bytes', 'pub fn bytes'),
+                             ('pub(crate) fn add', 'pub(super) fn add')]:
+                self.assertIn(old, saved); path.write_text(saved.replace(old, new, 1))
+                with self.subTest(work_api=old), mock.patch.object(gate.subprocess, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'not wired'):
+                        gate.field_source_codec(root)
+                    run.assert_not_called()
+            path.write_text(saved)
             (crate / 'src/opening.rs').write_text('pub fn verify() -> bool { true }')
             with self.assertRaisesRegex(ValueError, 'not wired'):
                 gate.field_source_codec(root)
@@ -74,6 +89,7 @@ class FieldSourceGateTests(unittest.TestCase):
         self.assertEqual(actual.returncode, 0, actual.stderr)
         for name in ('preparation::tests::rejects_preparation_allocation_sizes',
                      'opening::rejects_retained_row_allocation_sizes',
+                     'work::tests::matches_reference_capacity_observations',
                      'matches_reference_qm31_prepared_columns',
                      'matches_reference_om31_prepared_columns',
                      'rejects_preparation_shape_and_hash_overflow',
