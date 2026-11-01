@@ -1,6 +1,6 @@
 //! Conditional selected product and original columns, RFC-0008 A3 / RFC-0012 A9.
 //! c_sc/T_misc: dense A1 copies and linear equality tables; no intermediate commitment.
-use super::super::{reserve, tree::prove_dense, Reduction};
+use super::super::{reserve, tree::prove_dense, work, Reduction, Work};
 use super::{Error, LeafDescriptor};
 use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, Transcript};
@@ -167,6 +167,16 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
         xs: &[Vec<K>],
         t: &mut Transcript<K>,
     ) -> Result<(Proof<K>, LeafReduction<K>), Error> {
+        self.prove_measured(xs, t)
+            .map(|(proof, reduction, _)| (proof, reduction))
+    }
+    /// The same selected-product execution with actual boundary capacities (A5 §6).
+    /// Work carries no authority and adds no challenge, replay or source consumer.
+    pub fn prove_measured(
+        &self,
+        xs: &[Vec<K>],
+        t: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, LeafReduction<K>, Work), Error> {
         self.sources(xs)?;
         let i = self.instance()?;
         let mut tables = Vec::new();
@@ -177,7 +187,10 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
             tables.push(owned(x)?);
         }
         self.bind(t)?;
-        let (proof, point) = prove_dense(&i, tables, t)?;
+        let (proof, point, dense) = prove_dense(&i, tables, t)?;
+        let mut work = Work::default();
+        work.observe(0, dense.tables, 0, dense.point)?;
+        work.observe(0, 0, work::proof(&proof)?, work::bytes(&point)?)?;
         let result = self.finish(
             point,
             &proof.final_values,
@@ -189,7 +202,7 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
                 numerator: 3 * u64::from(i.num_vars),
             },
         )?;
-        Ok((proof, result))
+        Ok((proof, result, work))
     }
     /// Verify the conditional relation and exact Eq/selector finals; retain all columns.
     pub fn verify(

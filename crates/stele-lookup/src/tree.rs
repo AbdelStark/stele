@@ -1,7 +1,7 @@
 //! Conditional fraction tree and original public consumer, RFC-0008 A3.
 //! c_sc/T_misc: linear tree/equality work; retained tree has 2N-1 pairs, plus
 //! dense A1 copies, source, proof and coefficients. No intermediate commitment.
-use super::{reserve, Descriptor, Error, Proof};
+use super::{reserve, work, Descriptor, Error, Proof, Work};
 use alloc::vec::Vec;
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
 use stele_sumcheck::{Dense, Instance, ScRecord, Summand, Term};
@@ -170,15 +170,19 @@ pub(super) fn prove_dense<K: ChallengeField + Eq>(
     i: &Instance<K>,
     tables: Vec<Vec<K>>,
     t: &mut Transcript<K>,
-) -> Result<(stele_sumcheck::Proof<K>, Vec<K>), Error> {
+) -> Result<(stele_sumcheck::Proof<K>, Vec<K>, work::DenseWork), Error> {
     let mut point = Vec::new();
     reserve(&mut point, i.num_vars as usize)?;
+    let observed = work::DenseWork {
+        tables: work::tables(&tables)?,
+        point: work::bytes(&point)?,
+    };
     let strategy = Capture {
         dense: Dense::new(i, tables)?,
         point: &mut point,
     };
     let proof = stele_sumcheck::prove(i, strategy, t)?;
-    Ok((proof, point))
+    Ok((proof, point, observed))
 }
 impl<K: ChallengeField + Eq> Descriptor<K> {
     /// Build and reduce the dense tree; all returned original claims remain obligations.
@@ -187,6 +191,16 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
         leaves: &[[K; 2]],
         t: &mut Transcript<K>,
     ) -> Result<(Proof<K>, Reduction<K>), Error> {
+        self.prove_measured(leaves, t)
+            .map(|(proof, reduction, _)| (proof, reduction))
+    }
+    /// The same actual producer, with descriptive field-buffer observations.
+    /// A3/A5 §6: no additional transcript work or independent tree is executed.
+    pub fn prove_measured(
+        &self,
+        leaves: &[[K; 2]],
+        t: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Reduction<K>, Work), Error> {
         source(self, leaves)?;
         let mut levels = Vec::new();
         reserve(&mut levels, self.m as usize + 1)?;
@@ -204,6 +218,10 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
             levels.push(parents);
         }
         levels.reverse();
+        let levels_bytes = work::tables(&levels)?;
+        let mut work = Work::default();
+        work.observe(levels_bytes, 0, 0, 0)?;
+        let mut proof_bytes = 0;
         let root = levels[0][0];
         let mut values = root;
         let mut point = Vec::new();
@@ -222,7 +240,21 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 tables.push(table);
             }
             tables.push(stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?);
-            let (step, next) = prove_dense(&i, tables, t)?;
+            let (step, next, dense) = prove_dense(&i, tables, t)?;
+            // These exact outer buffers remain unchanged across the actual A1.
+            work.observe(
+                levels_bytes,
+                dense.tables,
+                proof_bytes,
+                work::add(work::bytes(&point)?, dense.point)?,
+            )?;
+            proof_bytes = work::add(proof_bytes, work::proof(&step)?)?;
+            work.observe(
+                levels_bytes,
+                0,
+                proof_bytes,
+                work::add(work::bytes(&point)?, work::bytes(&next)?)?,
+            )?;
             a.layers.push(ScRecord {
                 id: i.id,
                 m: i.num_vars,
@@ -230,10 +262,17 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
                 field_degree: K::DEGREE as u8,
                 numerator: 3 * u64::from(i.num_vars),
             });
-            (point, values) = advance(&point, next, &step.final_values, t, &mut a)?;
+            let (advanced, next_values) = advance(&point, next, &step.final_values, t, &mut a)?;
+            work.observe(
+                levels_bytes,
+                0,
+                proof_bytes,
+                work::add(work::bytes(&point)?, work::bytes(&advanced)?)?,
+            )?;
+            (point, values) = (advanced, next_values);
             steps.push(step);
         }
-        Ok((Proof { root, steps }, result(self, point, values, a)))
+        Ok((Proof { root, steps }, result(self, point, values, a), work))
     }
     /// Verify arithmetic only; the two original claims still require consumers.
     pub fn verify(&self, proof: &Proof<K>, t: &mut Transcript<K>) -> Result<Reduction<K>, Error> {

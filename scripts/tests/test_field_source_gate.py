@@ -212,6 +212,8 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/lookup_records.rs','\npub fn from_digest() {}\n'),
             ('src/lookup_records.rs','\ninclude!("unchecked.rs");\n'),
             ('src/lookup_resources.rs','\npub(super) fn accept_unchecked() {}\n'),
+            ('src/lookup_work.rs','\npub fn verify_unchecked() {}\n'),
+            ('src/lookup_work.rs','\nimpl From<ProverWork> for bool { fn from(_: ProverWork) -> bool { true } }\n'),
             ('src/lookup_functionals.rs','\npub fn verify_unchecked() {}\n'),
             ('src/lookup_functionals.rs','\nimpl From<bool> for Piece<bool> {}\n'),
             ('src/lookup_functionals.rs','\nmacro_rules! unchecked { () => {} }\n'),

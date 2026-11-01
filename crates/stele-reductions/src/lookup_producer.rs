@@ -13,6 +13,9 @@ use stele_pcs::{verify_certificate, CodeField, Functional, PreparedSource};
 
 #[path = "lookup_resources.rs"]
 mod resources;
+#[path = "lookup_work.rs"]
+mod work;
+pub use work::{ProverWork, RepetitionWork};
 
 /// Caller admission for the complete producer, separate from codec/verifier limits.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -75,7 +78,20 @@ where
         originals: &[&PreparedSource<'_, K>],
         limits: ProducerLimits,
     ) -> Result<(Vec<u8>, ProverUsage), ProverFailure> {
+        self.prove_measured(t, originals, limits)
+            .map(|(proof, usage, _)| (proof, usage))
+    }
+    /// The same complete producer with actual A5 §6 capacity observations.
+    /// Success-only Work adds neither authority nor transcript operations.
+    #[allow(clippy::result_large_err)]
+    pub fn prove_measured(
+        &self,
+        t: &mut Transcript<K>,
+        originals: &[&PreparedSource<'_, K>],
+        limits: ProducerLimits,
+    ) -> Result<(Vec<u8>, ProverUsage, ProverWork), ProverFailure> {
         let mut usage = ProverUsage::default();
+        let mut work = ProverWork::default();
         let result = (|| {
             if originals.len() != self.statement.originals.len() {
                 return Err(Error::SourceRoster);
@@ -90,12 +106,12 @@ where
             {
                 return Err(Error::ResourceLimit);
             }
-            self.produce(t, originals, &mut usage)
+            self.produce(t, originals, &mut usage, &mut work)
         })();
         // No post-mutation ? may bypass the actual shared transcript observation.
         usage.transcript = t.usage();
         result
-            .map(|proof| (proof, usage))
+            .map(|proof| (proof, usage, work))
             .map_err(|cause| ProverFailure { cause, usage })
     }
     fn produce(
@@ -103,6 +119,7 @@ where
         t: &mut Transcript<K>,
         originals: &[&PreparedSource<'_, K>],
         usage: &mut ProverUsage,
+        work: &mut ProverWork,
     ) -> Result<Vec<u8>, Error> {
         let s = &self.statement;
         let (r, c) = (s.multiplicities.len(), s.originals.len());
@@ -110,8 +127,11 @@ where
         let real = s.table.descriptor().shape().rows() as usize;
         let d = <K as CodeField>::DEGREE as usize;
         let mut out = reserve(self.proof_bytes)?;
+        work.proof_bytes = work::bytes(&out)?;
         out.extend_from_slice(&[1, d as u8]);
         let statement = self.encode(&mut usage.non_transcript)?;
+        work.wire(statement.capacity());
+        work.local(&[out.capacity(), statement.capacity()])?;
         absorb(t, AbsorbLabel::LookupStatement, &statement)?;
         drop(statement);
 
@@ -124,6 +144,7 @@ where
                 units.push(draw(t, ChallengeLabel::LookupUnit)?);
             }
         }
+        work.units_bytes = work::vectors(&theta)?;
         // Signed Table keys use canonical M31 residues. This separate sorted
         // index never changes Table bytes or histogram row order.
         let mut index = reserve(real)?;
@@ -135,6 +156,7 @@ where
             index.push((key, i));
         }
         index.sort_unstable();
+        work.index_bytes = work::bytes(&index)?;
         let mut mu: [Vec<K>; 2] = [Vec::new(), Vec::new()];
         let mut limbs: [Vec<M31>; 2] = [Vec::new(), Vec::new()];
         for j in 0..r {
@@ -164,6 +186,17 @@ where
                     );
                 }
             }
+            work.mu_values_bytes = work::vectors(&mu)?;
+            work.mu_limbs_bytes = work::vectors(&limbs)?;
+            work.group_weights_bytes = work.group_weights_bytes.max(work::bytes(&weights)?);
+            work.local(&[
+                out.capacity(),
+                work.units_bytes,
+                work.index_bytes,
+                work.mu_values_bytes,
+                work.mu_limbs_bytes,
+                work::bytes(&weights)?,
+            ])?;
         }
         drop(index);
         // Every owning limb buffer is stable before any PreparedSource borrows.
@@ -172,6 +205,14 @@ where
         let mut bundle = reserve(sum(&[9, mul(138, r)?])?)?;
         bundle.extend_from_slice(&s.id.to_le_bytes());
         bundle.push(r as u8);
+        work.wire(bundle.capacity());
+        let preparation_base = sum(&[
+            out.capacity(),
+            work.units_bytes,
+            work.mu_values_bytes,
+            work.mu_limbs_bytes,
+            bundle.capacity(),
+        ])?;
         for (j, message) in limbs[..r].iter().enumerate() {
             let layout = s.multiplicities[j];
             let columns = self.mu[j].columns().trailing_zeros() as u8;
@@ -184,12 +225,29 @@ where
                 &mut usage.non_transcript,
             )
             .map_err(Error::Pcs)?;
+            let preparation = p.work();
+            work.child(
+                sum(&[preparation_base, work.prepared_bytes])?,
+                preparation.peak_owned_bytes,
+            )?;
+            work.prepared_bytes = sum(&[
+                work.prepared_bytes,
+                preparation.encoded_columns_bytes,
+                preparation.merkle_nodes_bytes,
+            ])?;
+            work.preparations[j] = Some(preparation);
             let registration = usage.registrations[j].insert(RegistrationUsage::default());
             let (certificate, production) = p.certificate().map_err(|failure| {
                 registration.production = failure.usage;
                 Error::Pcs(failure.cause)
             })?;
             registration.production = production;
+            work.wire(certificate.capacity());
+            work.local(&[
+                preparation_base,
+                work.prepared_bytes,
+                certificate.capacity(),
+            ])?;
             let (handle, verification) =
                 verify_certificate(*p.source(), &certificate).map_err(|failure| {
                     registration.verification = failure.usage;
@@ -228,6 +286,19 @@ where
             );
             ids[i] = original.source().descriptor().id;
         }
+        work.selector_bytes = work::bytes(&sigma)?;
+        work.originals_bytes = work::vectors(&xs)?;
+        // These exact outer buffers remain live and unchanged during each A3 call.
+        let base = sum(&[
+            out.capacity(),
+            work.units_bytes,
+            work.mu_values_bytes,
+            work.mu_limbs_bytes,
+            work.prepared_bytes,
+            work.selector_bytes,
+            work.originals_bytes,
+        ])?;
+        work.local(&[base])?;
         for j in 0..r {
             let [beta, alpha] = pairs[j];
             absorb(t, AbsorbLabel::LookupRepetition, &phase(s.id, j, 1))?;
@@ -260,9 +331,25 @@ where
                     K::from_i64(1) - *selected + *selected * (alpha - value),
                 ]);
             }
-            let (left_proof, lookup) = left.prove(&leaves, t).map_err(Error::Fraction)?;
+            let (left_proof, lookup, lookup_work) =
+                left.prove_measured(&leaves, t).map_err(Error::Fraction)?;
+            work.child(
+                sum(&[base, work::bytes(&leaves)?])?,
+                lookup_work.peak_observed_bytes,
+            )?;
             let left_root = left_proof.root;
-            out.extend_from_slice(&left_proof.encode(&left).map_err(Error::Fraction)?);
+            let encoded = left_proof.encode(&left).map_err(Error::Fraction)?;
+            let lookup_point = work::bytes(&lookup.point)?;
+            work.wire(encoded.capacity());
+            work.local(&[
+                base,
+                work::bytes(&leaves)?,
+                work::tree(&left_proof)?,
+                lookup_point,
+                encoded.capacity(),
+            ])?;
+            out.extend_from_slice(&encoded);
+            drop(encoded);
             drop(left_proof);
             drop(leaves);
             let mut leaves = reserve(n)?;
@@ -277,9 +364,26 @@ where
                     [K::from_i64(0), K::from_i64(1)]
                 });
             }
-            let (right_proof, table) = right.prove(&leaves, t).map_err(Error::Fraction)?;
+            let (right_proof, table, table_work) =
+                right.prove_measured(&leaves, t).map_err(Error::Fraction)?;
+            work.child(
+                sum(&[base, lookup_point, work::bytes(&leaves)?])?,
+                table_work.peak_observed_bytes,
+            )?;
             let right_root = right_proof.root;
-            out.extend_from_slice(&right_proof.encode(&right).map_err(Error::Fraction)?);
+            let encoded = right_proof.encode(&right).map_err(Error::Fraction)?;
+            let table_point = work::bytes(&table.point)?;
+            work.wire(encoded.capacity());
+            work.local(&[
+                base,
+                lookup_point,
+                work::bytes(&leaves)?,
+                work::tree(&right_proof)?,
+                table_point,
+                encoded.capacity(),
+            ])?;
+            out.extend_from_slice(&encoded);
+            drop(encoded);
             drop(right_proof);
             drop(leaves);
             fraction::check_roots(left_root, right_root).map_err(Error::Fraction)?;
@@ -297,17 +401,39 @@ where
             let leaf = LeafDescriptor::new(&left, &ids[..c]).map_err(Error::Fraction)?;
             let selected = SelectedProduct::new(leaf, &lookup, &sigma, alpha, beta)
                 .map_err(Error::Fraction)?;
-            let (proof, reduction) = selected.prove(&xs[..c], t).map_err(Error::Fraction)?;
-            out.extend_from_slice(&leaf.encode(&proof).map_err(Error::Fraction)?);
+            let (proof, reduction, selected_work) = selected
+                .prove_measured(&xs[..c], t)
+                .map_err(Error::Fraction)?;
+            work.child(
+                sum(&[base, lookup_point, table_point])?,
+                selected_work.peak_observed_bytes,
+            )?;
+            let encoded = leaf.encode(&proof).map_err(Error::Fraction)?;
+            let opening_base = sum(&[
+                base,
+                lookup_point,
+                table_point,
+                work::bytes(&reduction.point)?,
+            ])?;
+            work.wire(encoded.capacity());
+            work.local(&[opening_base, work::proof(&proof)?, encoded.capacity()])?;
+            out.extend_from_slice(&encoded);
+            drop(encoded);
             drop(proof);
             for (i, (id, value)) in reduction.claims.iter().enumerate() {
                 let (proof, _) = originals[i]
                     .opening_point(t, s.originals[i], *id, &reduction.point, *value)
                     .map_err(|f| Error::Pcs(f.cause))?;
                 // Actual opening production reuses prepared responses; local H is zero.
+                work.wire(proof.capacity());
+                work.local(&[opening_base, proof.capacity()])?;
                 out.extend_from_slice(&proof);
             }
             let pieces = functionals::pieces(prepared[j].source(), &table.point, real)?;
+            let coefficients = pieces
+                .iter()
+                .try_fold(0, |n, p| sum(&[n, work::bytes(&p.a)?, work::bytes(&p.b)?]))?;
+            work.coefficients_bytes = work.coefficients_bytes.max(coefficients);
             let mut values = [K::from_i64(0); 2];
             let mut total = K::from_i64(0);
             for (i, piece) in pieces.iter().enumerate() {
@@ -322,6 +448,8 @@ where
                 mul(4 * d, table.point.len() + 1)?,
                 mul(pieces.len(), 1 + 4 * d)?,
             ])?)?;
+            work.wire(claims.capacity());
+            work.local(&[opening_base, coefficients, claims.capacity()])?;
             claims.extend_from_slice(&phase(s.id, j, pieces.len() as u8));
             for value in table.point.iter().chain([&table.claims[0].1]) {
                 claims.extend_from_slice(value.to_le_bytes().as_ref());
@@ -346,8 +474,15 @@ where
                         },
                     )
                     .map_err(|f| Error::Pcs(f.cause))?;
+                work.wire(proof.capacity());
+                work.local(&[opening_base, coefficients, proof.capacity()])?;
                 out.extend_from_slice(&proof);
             }
+            work.repetitions[j] = Some(RepetitionWork {
+                lookup: lookup_work,
+                table: table_work,
+                selected: selected_work,
+            });
         }
         if out.len() != self.proof_bytes {
             return Err(Error::ProofShape);

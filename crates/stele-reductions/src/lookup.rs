@@ -548,7 +548,9 @@ mod sizes_tests;
 mod functionals;
 #[path = "lookup_producer.rs"]
 mod producer;
-pub use producer::{ProducerLimits, ProverFailure, ProverUsage, RegistrationUsage};
+pub use producer::{
+    ProducerLimits, ProverFailure, ProverUsage, ProverWork, RegistrationUsage, RepetitionWork,
+};
 #[path = "lookup_verifier.rs"]
 mod verifier;
 pub use verifier::{

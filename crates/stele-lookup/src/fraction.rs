@@ -9,6 +9,9 @@ use alloc::vec::Vec;
 use stele_hash::ChallengeField;
 use stele_sumcheck::Proof as SumcheckProof;
 pub use tree::{check_roots, Accounting, Reduction};
+#[path = "work.rs"]
+mod work;
+pub use work::Work;
 
 /// Invalid input, resource failure or rejected reduction; abort the entire attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
