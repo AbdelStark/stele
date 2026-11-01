@@ -451,6 +451,7 @@ tasks:
   depends:
   - E3-06
   - E3-07a
+  - E3-07b
   rfc:
   - RFC-0008 §1-3,§6
   - RFC-0008 A2
@@ -485,6 +486,28 @@ tasks:
   - real NC-0406..0410 via ProverHook plus challenge-order and continuation controls
   - shared Rust/Python proof, decision, claim, accounting and continuation corpus plus 1000 seeded cases per field
   - complete primitive cost and memory ledgers; E3-07 retains all private consumer, full lookup, NC-0400..0403 and c_lu criteria
+- id: E3-07b
+  epic: E3
+  title: Conditional grouped lookup with actual certified original and multiplicity consumers
+  depends:
+  - E3-06
+  - E3-07a
+  - E4-03a
+  - E5-02
+  rfc:
+  - RFC-0008 A5
+  - RFC-0012 A11
+  - RFC-0020 A6
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: blocked(RFC-0008 A5)
+  acceptance:
+  - exact native descriptors, complete codecs, bounded preflight and malformed proofs in both fields and repetition counts
+  - actual A3 trees, selected-product and canonical Table consumers; every original and K-limb prefix piece reaches its actual A9 opening
+  - actual NC-0400..0403 and NC-0415..0419 plus the composed mu-opening NC-0610 variant, complete frames/continuation and opaque record lifetimes
+  - independent Python/native proof, claim, conditional record, usage and continuation parity including seeded cases, zero weights and table tails
+  - complete registration, proving, verification, proof-byte and memory ledgers with every binding enabled; no primitive-only resource substitute
+  - original E3-07 full private/source/plan, c_lu and profile obligations remain; no Q12 or joint-ZK credit
 - id: E3-08
   epic: E3
   title: Table registry + decomposition compiler (large table = composition of <=2^16 tables)

@@ -46,3 +46,27 @@ inference-mask or performance credit. Recommendation: continue Q31 with the
 private committed consumers, production descriptors/parser, complete field/profile
 admission, native controls, implementation and measured c_lu. E3-07 retains all
 original criteria and remains blocked on Draft A2.
+
+## Canonical limb-view evidence for the native contract
+
+The proposed [conditional native contract](../../formal/native-lookup.md)
+uses M31 limb messages and actual A9 functionals, with logical zero extension
+of the real table prefix. The same checker now includes 258 exact algebra
+cases across QM31/OM31, logical depths 0..4, every positive real-prefix length
+and every row/column split with the limb axis wholly in columns.
+
+It independently folds the logical K records and compares against the sum of
+one or two physical row-combination/column-dot functionals. Cases include full
+extension and Boolean points, scalar domains, all prefix boundary classes,
+canonical basis bytes and deliberately nonzero physical tails. Changing an
+ignored physical tail limb preserves the logical result. Wrong basis order
+and an unmasked tail give different results in explicit fixtures. Structural
+pieces remain present when their sampled coefficients vanish.
+
+Run only this bounded new check with
+`uv run --python 3.12 --locked research/logup-characteristic/check_lookup.py --limb-view-only`;
+the existing full checker also runs it. This is algebra/representation evidence,
+not native PCS execution, negative-control credit, privacy or a performance
+result. Existing A9 arguments supply the separate conditional near-message
+interpretation; implementation must still exercise the actual consumers and
+complete canonical bytes. No new research command or dependency is needed.

@@ -126,3 +126,28 @@ exception and introduces no proof-system dependency. Update the exact native
 dependency policy and rejection tests only with accepted implementation.
 Original stacked, inference, private-source and profile requirements remain.
 Specification acceptance alone introduces no Cargo edge or runtime behavior.
+
+### A6 — Closed grouped lookup ownership and public-table dependencies
+
+Status: Draft. Companions RFC-0008 A5 and RFC-0012 A11.
+The [conditional native lookup adapter](../../formal/native-lookup.md) belongs
+in stele-reductions. Reuse actual stele-lookup A3 arithmetic and stele-pcs A9
+consumers; neither arithmetic crate acquires an authentication callback.
+
+For this exact adapter, stele-reductions may additionally depend directly on
+stele-cqis for immutable generated Table/actual Table::evaluate and on stele-poly
+for shared MSB equality coefficients. Its existing field/hash/lookup/PCS edges
+supply canonical limbs, typed transcript/usage and actual consumers. Do not
+route those calls through the unimplemented IR or duplicate table/field algebra.
+No direct PCS/CQIS edge enters stele-gkr or stele-lookup for this delivery.
+
+The external caller owns original and multiplicity VerifiedCertificate handles;
+the closed result borrows the actual opening records. A registration helper may
+derive expected contexts and invoke real A9 verification but cannot accept
+lookup membership. No new unchecked handle/receipt API or proof dependency is
+authorized. Full-verifier integration keeps its separate dependency contract.
+
+Update exact dependency bans/API guards only with the admitted implementation,
+including rejection cases for all still-forbidden edges. This amendment alone
+changes no Cargo manifest, native allowlist, registry or production behavior.
+Affected tasks: conditional E3-07b and E3-07, whose full criteria remain intact.
