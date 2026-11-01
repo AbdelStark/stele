@@ -74,14 +74,17 @@ vectors and regenerates those vectors with the independent Python tree oracle.
 Root-comparison and batch-authentication bypass mutants fail this gate. Merkle
 membership does not certify PCS encoding, query scheduling or a profile budget.
 
-RFC-0006 A4 adds the closed public stacked producer/consumer beside A7's real
-six-kind, 120,000-point differential suite. Both control/accounting gates require
-the actual partial-round and source controls, opaque-record boundary, and the
-locked native/Python wire comparison. The closed file/API inventory and exact
-field/poly/hash/sumcheck dependencies reject unreviewed additions. Certified
-closure and complete resource measurements remain E3-06 requirements. The native
-checker is mandatory even when the research matrix is empty; its shared Python
-protocol dependencies continue to select broad research validation.
+RFC-0006 A4 adds closed public and certified stacked producers/consumers beside
+A7's real six-kind, 120,000-point differential suite. The native union requires
+actual partial-round/source controls, public and certificate-borrowing record
+boundaries, and the locked native/Python wire comparison: 116 unchanged public
+decisions plus 48 certified decisions. Control/accounting gates also require
+actual certified A1/A7/A9 closure, NC-0211/0213, complete descriptor/proof budgets
+and failure-work observations. The closed API/dependency inventory keeps PCS
+closure in reductions and GKR on field/poly/hash/sumcheck. Complete resource
+measurements remain an E3-06 requirement. The native checker is mandatory even
+when the research matrix is empty; its shared Python protocol dependencies
+continue to select broad research validation.
 
 RFC-0010 A9 source parsing replaces only the PCS empty-crate guard with actual
 native/Python codec and policy checks. Its closed public declaration inventory

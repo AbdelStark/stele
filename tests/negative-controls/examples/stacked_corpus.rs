@@ -6,7 +6,9 @@ use stele_gkr::{
     public_mle::{Axis, Kind},
     stacked::{self, Claim, Limits, Order, Prepared, Statement},
 };
-use stele_hash::{ChallengeField, ChallengeLabel, Transcript};
+use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
+use stele_pcs::{verify_certificate, CodeField, PreparedSource, Source, Usage};
+use stele_reductions::{prove_stacked_sources, verify_stacked_sources};
 use stele_sumcheck::{Proof, Term};
 
 fn array(v: &Value) -> Result<&Vec<Value>, String> {
@@ -62,9 +64,202 @@ fn wire<K: ChallengeField>(p: &Proof<K>, id: u64, count: usize) -> Vec<String> {
     .expect("final")));
     result
 }
-fn check<K: ChallengeField + Eq + core::fmt::Debug>(case: &Value) -> Result<Value, String>
+fn unhex(v: &Value) -> Result<Vec<u8>, String> {
+    let text = v.as_str().ok_or("FixtureHex")?;
+    if text.len() % 2 != 0 {
+        return Err("FixtureHex".into());
+    }
+    text.as_bytes()
+        .chunks_exact(2)
+        .map(|pair| {
+            let pair = core::str::from_utf8(pair).map_err(|_| "FixtureHex")?;
+            u8::from_str_radix(pair, 16).map_err(|_| "FixtureHex".into())
+        })
+        .collect()
+}
+fn hashes(u: HashUsage) -> Value {
+    json!({"hash_evaluations":u.hash_evaluations,"xof_requests":u.xof_requests,
+        "xof_bytes":u.xof_bytes,"state_updates":u.state_updates,
+        "candidate_words":u.candidate_words,"column_attempts":u.column_attempts})
+}
+fn usage(u: Usage) -> Value {
+    json!({"transcript":hashes(u.transcript),"non_transcript":hashes(u.non_transcript)})
+}
+fn certified<K: ChallengeField + CodeField + Eq + core::fmt::Debug>(
+    case: &Value,
+    s: &Statement<'_, K>,
+    proof: &Proof<K>,
+    limits: Limits,
+) -> Result<Value, String>
 where
     K::Bytes: TryFrom<Vec<u8>>,
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let infos = array(&case["certificates"])?;
+    let mut certificates = Vec::new();
+    for info in infos {
+        let source = Source::<K>::new(
+            number(&info["id"])?,
+            number(&info["ell"])?
+                .try_into()
+                .map_err(|_| "FixtureShape")?,
+            number(&info["m"])?.try_into().map_err(|_| "FixtureShape")?,
+            number(&info["blowup"])?
+                .try_into()
+                .map_err(|_| "FixtureShape")?,
+            unhex(&info["root"])?
+                .try_into()
+                .map_err(|_| "FixtureRoot")?,
+        )
+        .map_err(|e| format!("{e:?}"))?;
+        assert_eq!(source.bytes().as_slice(), unhex(&info["bytes"])?);
+        let bytes = unhex(&info["certificate"])?;
+        match verify_certificate(source, &bytes) {
+            Ok((c, _)) => {
+                assert_eq!(
+                    hex(&c.record().id()),
+                    info["certificate_id"].as_str().ok_or("FixtureId")?
+                );
+                certificates.push(c);
+            }
+            Err(f) => {
+                return Ok(json!({"phase":"registration","decision":format!("{:?}",f.cause)}))
+            }
+        }
+    }
+    let handles: Vec<_> = certificates.iter().collect();
+    let opening_bytes: Vec<_> = array(&case["openings"])?
+        .iter()
+        .map(unhex)
+        .collect::<Result<_, _>>()?;
+    let openings: Vec<_> = opening_bytes.iter().map(Vec::as_slice).collect();
+    let mut verifier = Transcript::new(b"certified stacked wire oracle").expect("public input");
+    let (record, observed) = match verify_stacked_sources(
+        &mut verifier,
+        s,
+        &handles,
+        proof,
+        &openings,
+        limits,
+    ) {
+        Ok(value) => value,
+        Err(f) => {
+            return Ok(
+                json!({"phase":"stage","decision":format!("{:?}",f.cause),"usage":usage(f.usage)}),
+            )
+        }
+    };
+    // Matrices are producer witness material only. Acceptance above used only
+    // independently selected contexts, verified handles and proof messages.
+    let messages: Vec<Vec<M31>> = infos
+        .iter()
+        .map(|info| {
+            array(&info["matrix"])?
+                .iter()
+                .flat_map(|row| match array(row) {
+                    Ok(values) => values
+                        .iter()
+                        .map(|v| {
+                            number(v).and_then(|v| {
+                                u32::try_from(v)
+                                    .ok()
+                                    .and_then(M31::from_canonical)
+                                    .ok_or("NoncanonicalField".into())
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                    Err(e) => vec![Err(e)],
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<_, String>>()?;
+    let mut material = Vec::new();
+    let mut registrations = Vec::new();
+    for (info, message) in infos.iter().zip(&messages) {
+        let source = PreparedSource::<K>::new(
+            number(&info["id"])?,
+            number(&info["ell"])?
+                .try_into()
+                .map_err(|_| "FixtureShape")?,
+            number(&info["m"])?.try_into().map_err(|_| "FixtureShape")?,
+            number(&info["blowup"])?
+                .try_into()
+                .map_err(|_| "FixtureShape")?,
+            message,
+            &mut HashUsage::default(),
+        )
+        .map_err(|e| format!("producer source: {e:?}"))?;
+        assert_eq!(source.source().bytes().as_slice(), unhex(&info["bytes"])?);
+        let (bytes, _) = source
+            .certificate()
+            .map_err(|e| format!("producer certificate: {e:?}"))?;
+        assert_eq!(bytes, unhex(&info["certificate"])?);
+        registrations.push(hex(&bytes));
+        material.push(source);
+    }
+    let material_refs: Vec<_> = material.iter().collect();
+    let mut producer = Transcript::new(b"certified stacked wire oracle").expect("public input");
+    let (native, produced) =
+        prove_stacked_sources(&mut producer, s, &material_refs, &handles, limits)
+            .map_err(|e| format!("native certified producer: {e:?}"))?;
+    assert_eq!(&native.sumcheck, proof);
+    assert_eq!(native.openings, opening_bytes);
+    assert_eq!(produced.transcript, observed.transcript);
+    assert_eq!(produced.non_transcript, HashUsage::default());
+    let prepared = Prepared::for_certified_sources(s, limits).map_err(|e| format!("{e:?}"))?;
+    let mut sources = vec![1, 1];
+    sources.extend_from_slice(&s.id.to_le_bytes());
+    sources.extend_from_slice(&(handles.len() as u32).to_le_bytes());
+    for c in &certificates {
+        sources.extend_from_slice(&c.record().source().bytes());
+        sources.extend_from_slice(&c.record().id());
+    }
+    // Diagnostic replay reports restored claims only; it never feeds the actual
+    // producer or any opening, and its usage is excluded from stage observations.
+    let mut diagnostic = Transcript::new(b"certified stacked wire oracle").expect("public input");
+    diagnostic
+        .absorb(AbsorbLabel::StackSources, &sources)
+        .expect("sources");
+    let (reduction, _) = prepared
+        .verify_reduction(&mut diagnostic, proof)
+        .expect("kernel");
+    assert_eq!(&reduction.sc, record.sc());
+    let records: Vec<_> = record.openings().iter().map(|opening| {
+        let c = opening.certificate();
+        let p = c.parameters();
+        json!({"id":opening.id(),"queries":opening.queries(),"kind":format!("{:?}",opening.kind()),
+            "certificate":{"id":hex(&c.id()),"source":hex(&c.source().bytes()),"ell":c.ell(),
+                "degree":c.degree(),"kind":format!("{:?}",c.kind()),"length":p.length,"distance":p.distance,
+                "radius":p.radius,"certificate_queries":p.certificate_queries,"opening_queries":p.opening_queries}})
+    }).collect();
+    let sc = record.sc();
+    let next = verifier
+        .challenge(ChallengeLabel::Sumcheck)
+        .expect("continuation");
+    assert_eq!(
+        next,
+        producer
+            .challenge(ChallengeLabel::Sumcheck)
+            .expect("producer continuation")
+    );
+    Ok(
+        json!({"phase":"stage","decision":"accept","stack":hex(prepared.bytes()),
+        "sources":hex(&sources),"instance":hex(&prepared.instance().encode().expect("instance")),
+        "proof":wire(&native.sumcheck,s.id,s.inputs.len()+1),
+        "openings":native.openings.iter().map(|p|hex(p)).collect::<Vec<_>>(),"registrations":registrations,
+        "point":reduction.point.iter().map(|x|hex(x.to_le_bytes().as_ref())).collect::<Vec<_>>(),
+        "claims":reduction.claims.iter().map(|(id,x)|json!([id,hex(x.to_le_bytes().as_ref())])).collect::<Vec<_>>(),
+        "sc":{"id":sc.id,"m":sc.m,"degree":sc.degree,"field_degree":sc.field_degree,"numerator":sc.numerator},
+        "records":records,"usage":usage(observed),"producer_usage":usage(produced),
+        "continuation":hex(next.to_le_bytes().as_ref())}),
+    )
+}
+fn check<K: ChallengeField + CodeField + Eq + core::fmt::Debug>(
+    case: &Value,
+) -> Result<Value, String>
+where
+    K::Bytes: TryFrom<Vec<u8>>,
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let s = &case["statement"];
     let c = &s["coefficient"];
@@ -184,11 +379,6 @@ where
             Some(number(&c["source_id"])?)
         },
     };
-    let owned: Vec<Vec<K>> = array(&case["tables"])?
-        .iter()
-        .map(fields::<K>)
-        .collect::<Result<_, _>>()?;
-    let tables: Vec<_> = owned.iter().map(Vec::as_slice).collect();
     let proof = Proof {
         rounds: array(&case["proof"]["rounds"])?
             .iter()
@@ -203,6 +393,14 @@ where
         partial_entries: 1 << 12,
         axis_entries: 1 << 12,
     };
+    if case["mode"] == "certified" {
+        return certified(case, &statement, &proof, limits);
+    }
+    let owned: Vec<Vec<K>> = array(&case["tables"])?
+        .iter()
+        .map(fields::<K>)
+        .collect::<Result<_, _>>()?;
+    let tables: Vec<_> = owned.iter().map(Vec::as_slice).collect();
     let mut verifier = Transcript::new(b"stacked wire oracle").expect("public input");
     let (record, usage) =
         match stacked::verify_public(&mut verifier, &statement, &proof, &tables, limits) {
@@ -240,6 +438,9 @@ fn main() {
             Some(8) => check::<OM31>(&value),
             _ => Err("InvalidStacked".into()),
         };
-        println!("{}", result.expect("valid corpus adapter"));
+        println!(
+            "{}",
+            result.unwrap_or_else(|error| json!({"phase":"fixture","decision":error}))
+        );
     }
 }

@@ -16,18 +16,9 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("6/25 bindings; 30/89 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 59);
-    for id in [211, 213] {
-        assert!(
-            !catalog
-                .iter()
-                .find(|entry| entry.id == id)
-                .expect("reserved stacked control")
-                .done
-        );
-    }
-    for id in [203, 210, 212, 609] {
+    assert!(coverage.contains("8/25 bindings; 32/89 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 57);
+    for id in [203, 210, 211, 212, 213, 609] {
         assert!(
             catalog
                 .iter()

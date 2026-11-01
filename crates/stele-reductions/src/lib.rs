@@ -6,3 +6,8 @@
 extern crate alloc;
 mod field_sources;
 pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};
+mod stacked_sources;
+pub use stacked_sources::{
+    prove_stacked_sources, verify_stacked_sources, Error as StackedError,
+    Failure as StackedFailure, StackedProof, StackedSourceRecord,
+};

@@ -71,6 +71,7 @@ pub struct Prepared<'a, K> {
     pub(super) partial_count: usize,
     bytes: Vec<u8>,
     source_len: usize,
+    certified: bool,
 }
 fn layout(axes: &[Axis], required: bool) -> Result<usize, Error> {
     if axes.len() > 64
@@ -103,6 +104,14 @@ fn put_layout(out: &mut Vec<u8>, axes: &[Axis]) {
 impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
     /// Validate all identities, A7 parameters, A1 shapes and simultaneous capacities.
     pub fn new(s: &'a Statement<'a, K>, limits: Limits) -> Result<Self, Error> {
+        Self::prepare(s, limits, false)
+    }
+    /// Budget the mode-1 roster. This grants no source or certificate authority;
+    /// the closed consumer must fix and validate every expected A9 handle.
+    pub fn for_certified_sources(s: &'a Statement<'a, K>, limits: Limits) -> Result<Self, Error> {
+        Self::prepare(s, limits, true)
+    }
+    fn prepare(s: &'a Statement<'a, K>, limits: Limits, certified: bool) -> Result<Self, Error> {
         let m = layout(s.axes, true)?;
         if layout(s.output.axes, false)? != s.output.point.len()
             || s.coefficient_id == s.output.id
@@ -162,7 +171,8 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
             mul(m, add(12, mul(degree + 1, k)?)?)?,
             add(12, mul(count, k)?)?,
         )?;
-        let source_len = add(14, mul(a, add(8, mul(n, k)?)?)?)?;
+        let entry_len = if certified { 137 } else { add(8, mul(n, k)?)? };
+        let source_len = add(14, mul(a, entry_len)?)?;
         let mut len = add(
             10 + 1
                 + 9 * s.axes.len()
@@ -318,6 +328,7 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
             partial_count,
             bytes,
             source_len,
+            certified,
         })
     }
     /// Canonical Stack payload, derived from the immutable expected statement.
@@ -344,12 +355,12 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
             .zip(coordinates)
             .all(|(a, i)| *i < a.real)
     }
-    pub(super) fn check_tables(&self, tables: &[&[K]]) -> Result<(), Error> {
+    pub(super) fn check_tables<T: Copy + Eq>(&self, tables: &[&[T]], zero: T) -> Result<(), Error> {
         if tables.len() != self.statement.inputs.len() || tables.iter().any(|t| t.len() != self.n) {
             return Err(Error::PublicShape);
         }
         for i in 0..self.n {
-            if !self.valid(&self.coordinates(i)) && tables.iter().any(|t| t[i] != K::from_i64(0)) {
+            if !self.valid(&self.coordinates(i)) && tables.iter().any(|t| t[i] != zero) {
                 return Err(Error::PublicShape);
             }
         }
@@ -357,7 +368,10 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
     }
     /// Exact public StackSources payload, including the empty source roster.
     pub fn source_bytes(&self, tables: &[&[K]]) -> Result<Vec<u8>, Error> {
-        self.check_tables(tables)?;
+        if self.certified {
+            return Err(Error::InvalidStacked);
+        }
+        self.check_tables(tables, K::from_i64(0))?;
         let mut bytes = Vec::new();
         reserve(&mut bytes, self.source_len)?;
         bytes.extend_from_slice(&[1, 0]);

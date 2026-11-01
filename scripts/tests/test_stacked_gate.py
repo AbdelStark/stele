@@ -38,7 +38,8 @@ class StackedGateTests(unittest.TestCase):
             shutil.copytree(ROOT / name, self.root / name)
         for name in ('research/stacked-gkr/check_native_wire.py',
                      'research/stacked-gkr/check_native_wire.py.lock',
-                     'tests/negative-controls/fixtures/stacked-public.sha256'):
+                     'tests/negative-controls/fixtures/stacked-public.sha256',
+                     'tests/negative-controls/fixtures/stacked-certified.sha256'):
             target = self.root / name
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT / name, target)
@@ -46,7 +47,9 @@ class StackedGateTests(unittest.TestCase):
         self.outputs += [
             'test crates/stele-gkr/src/stacked/mod.rs - stacked::Record (line 40) - compile fail ... ok',
             'stacked native wire: 116 both-field decisions; complete frames/proofs/restored claims/SC/continuation agree; '
-            + (self.root / 'tests/negative-controls/fixtures/stacked-public.sha256').read_text().strip(),
+            + (self.root / 'tests/negative-controls/fixtures/stacked-public.sha256').read_text().strip()
+            + '\nstacked certified wire: 48 both-field decisions; actual certificates/producer/openings/records/usage/continuation agree; '
+            + (self.root / 'tests/negative-controls/fixtures/stacked-certified.sha256').read_text().strip(),
         ]
 
     def run_gate(self, outputs=None, failed=None):
@@ -80,10 +83,18 @@ class StackedGateTests(unittest.TestCase):
         altered[3] = altered[3].replace('stacked::Record', 'unrelated::Boundary')
         with self.assertRaisesRegex(ValueError, 'missing opaque Record boundary'):
             self.run_gate(altered)
+        altered = self.outputs.copy()
+        digest = (self.root / 'tests/negative-controls/fixtures/stacked-certified.sha256').read_text().strip()
+        altered[4] = altered[4].replace(digest, '0'*64)
+        with self.assertRaisesRegex(ValueError, 'checks failed'):
+            self.run_gate(altered)
 
     def test_rejects_missing_locked_checker_before_execution(self):
-        for name in ('check_native_wire.py', 'check_native_wire.py.lock'):
-            path = self.root / 'research/stacked-gkr' / name
+        for name in ('research/stacked-gkr/check_native_wire.py',
+                     'research/stacked-gkr/check_native_wire.py.lock',
+                     'tests/negative-controls/fixtures/stacked-public.sha256',
+                     'tests/negative-controls/fixtures/stacked-certified.sha256'):
+            path = self.root / name
             saved = path.read_bytes()
             path.unlink()
             with patch.object(gate.subprocess, 'run') as run:

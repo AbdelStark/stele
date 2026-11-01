@@ -1,15 +1,17 @@
 //! RFC-0006 A4 §4: restrict inputs before nonlinear P; one owned current state.
-use super::{reserve, zeros, Error, Order, Prepared};
+use super::{observed, reserve, zeros, Error, Failure, Order, Prepared};
 use crate::public_mle::Kind;
 use alloc::vec::Vec;
-use stele_hash::ChallengeField;
-use stele_sumcheck::{Instance, Summand};
+use stele_field::{Field, M31};
+use stele_hash::{AbsorbLabel, ChallengeField, Transcript};
+use stele_sumcheck::{Instance, Proof, Summand};
 
 /// Dense reference strategy. Partials use the same routine as the actual A1 round.
 pub struct Dense<'p, 'a, K> {
     prepared: &'p Prepared<'a, K>,
     tables: Vec<Vec<K>>,
     remaining: usize,
+    point: Vec<K>,
 }
 impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
     // A Boolean predicate/table and selector product; independent of A7's MLE evaluator.
@@ -58,23 +60,40 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
     }
     /// Prepare originals and A once, in the expected draw order, without a transcript.
     pub fn strategy(&self, tables: &[&[K]]) -> Result<Dense<'_, 'a, K>, Error> {
-        self.check_tables(tables)?;
+        self.check_tables(tables, K::from_i64(0))?;
+        self.prepare_tables(tables.len(), |input, index| tables[input][index])
+    }
+    /// Embed immutable A9 message values directly into their final dense slots;
+    /// no additional full extension-field copy is retained.
+    pub fn strategy_m31(&self, tables: &[&[M31]]) -> Result<Dense<'_, 'a, K>, Error> {
+        self.check_tables(tables, M31::from_i64(0))?;
+        self.prepare_tables(tables.len(), |input, index| {
+            K::from_i64(i64::from(tables[input][index].as_u32()))
+        })
+    }
+    fn prepare_tables<F: Fn(usize, usize) -> K>(
+        &self,
+        count: usize,
+        value: F,
+    ) -> Result<Dense<'_, 'a, K>, Error> {
+        let mut point = Vec::new();
+        reserve(&mut point, self.instance.num_vars as usize)?;
         let mut current = Vec::new();
-        reserve(&mut current, tables.len() + 1)?;
+        reserve(&mut current, count + 1)?;
         let ell = usize::from(self.statement.axes[0].bits);
         let inner = self.instance.num_vars as usize - ell;
-        for input in 0..=tables.len() {
+        for input in 0..=count {
             let mut table = zeros(self.n)?;
-            for (index, value) in table.iter_mut().enumerate() {
+            for (index, out) in table.iter_mut().enumerate() {
                 let canonical = if self.statement.order == Order::LayerFirst {
                     index
                 } else {
                     ((index & ((1usize << ell) - 1)) << inner) | (index >> ell)
                 };
-                *value = if input == tables.len() {
+                *out = if input == count {
                     self.boolean(canonical)
                 } else {
-                    tables[input][canonical]
+                    value(input, canonical)
                 };
             }
             current.push(table);
@@ -83,15 +102,46 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
             prepared: self,
             tables: current,
             remaining: self.instance.num_vars as usize,
+            point,
         })
     }
 }
 impl<K: ChallengeField + Eq> Dense<'_, '_, K> {
     /// Actual retained field capacity, including the folded-away tail of each table.
     pub fn capacity_entries(&self) -> Result<usize, Error> {
-        self.tables.iter().try_fold(0usize, |sum, t| {
-            sum.checked_add(t.capacity()).ok_or(Error::Capacity)
-        })
+        self.tables
+            .iter()
+            .try_fold(self.point.capacity(), |sum, t| {
+                sum.checked_add(t.capacity()).ok_or(Error::Capacity)
+            })
+    }
+    /// Absorb Stack and run the actual A1 producer on pristine prepared state.
+    /// The enclosing consumer must have fixed all originals before this segment.
+    pub fn prove(&mut self, t: &mut Transcript<K>) -> Result<Proof<K>, Failure> {
+        let result = (|| {
+            if self.remaining != self.prepared.instance.num_vars as usize || !self.point.is_empty()
+            {
+                return Err(Error::InvalidStacked);
+            }
+            t.absorb(AbsorbLabel::Stack, self.prepared.bytes())
+                .map_err(Error::Transcript)?;
+            stele_sumcheck::prove(self.prepared.instance(), &mut *self, t).map_err(Error::Sumcheck)
+        })();
+        observed(result, t).map(|(proof, _)| proof)
+    }
+    /// Consume the completed strategy and move out its captured fold arguments.
+    /// In the closed producer these are exactly the actual A1 challenges; this
+    /// unclosed strategy method grants no transcript or source authority itself.
+    /// Retained tables are dropped here, before the producer prepares PCS openings.
+    pub fn into_point(mut self) -> Result<Vec<K>, Error> {
+        if self.remaining != 0 || self.point.len() != self.prepared.instance.num_vars as usize {
+            return Err(Error::InvalidStacked);
+        }
+        if self.prepared.statement.order == Order::LayerLast {
+            self.point
+                .rotate_right(usize::from(self.prepared.statement.axes[0].bits));
+        }
+        Ok(self.point)
     }
     /// Block-major delta+1 entries for every original padded layer slot.
     pub fn partials(&self) -> Result<Vec<K>, Error> {
@@ -182,6 +232,9 @@ impl<K: ChallengeField + Eq> Summand<K> for &mut Dense<'_, '_, K> {
             table.truncate(half);
         }
         self.remaining -= 1;
+        // A4 §3: the closed producer gets this argument from the actual A1 engine.
+        // All m slots were reserved before any transcript absorb.
+        self.point.push(r);
         Ok(())
     }
     fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {

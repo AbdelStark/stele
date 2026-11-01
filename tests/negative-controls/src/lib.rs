@@ -23,6 +23,8 @@ pub mod small;
 #[doc(hidden)]
 pub mod stacked;
 #[doc(hidden)]
+pub mod stacked_certified;
+#[doc(hidden)]
 pub mod streaming;
 #[doc(hidden)]
 pub mod sumcheck;
@@ -37,6 +39,18 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 211,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch / ValueMismatch",
+        run: stacked_certified::run_point,
+    },
+    catalog::RegisteredControl {
+        id: 213,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: stacked_certified::run_root,
+    },
     catalog::RegisteredControl {
         id: 203,
         kind: catalog::ControlKind::Proof,

@@ -123,12 +123,18 @@ cleanup. Process RSS covers the complete pipeline; preparation and caller
 capacities retain their partial scopes. No fitted constant, additional weight
 pass, private-source composition, Q12 or inference/profile admission follows.
 
-## 12. Public stacked runtime scope
+## 12. Conditional stacked runtime scope
 
-The E3-06 public-source runtime implements RFC-0006 A4's dense preparation,
-block partials, A1 reduction and complete public consumption. This work belongs
-to c_sc/T_misc. `Dense::capacity_entries` measures retained dense field storage
-only; caller tables, source/descriptor frames, partials and consumer memory have
-separate costs. Complete time, byte and process-memory ledgers remain required
-with certified-source closure before E3-06 is done. No constant, weight-pass
-count or inference projection changes from this implementation alone.
+The E3-06 runtime implements RFC-0006 A4's dense preparation, block partials,
+A1 reduction and complete public or certified consumption. This work belongs to
+c_sc/T_misc. Certified preparation embeds immutable M31 messages directly into
+Dense and retains the actual m fold challenges; consuming that point releases
+Dense before A9 opening preparation. Each source still incurs its actual A9
+preparation, registration and opening work, including certificate lifetime losses.
+
+`Dense::capacity_entries` measures retained dense tables and captured-point
+capacity. The caller's prepared-entry policy covers GKR state; it is not a complete
+adapter memory ceiling. Caller tables, source/descriptor frames, partials, PCS point
+weights, row/encoder storage, retained proofs and process memory have separate costs.
+Complete time, byte and process-memory ledgers remain required before E3-06 is done.
+No constant, weight-pass count or inference projection changes from this implementation alone.
