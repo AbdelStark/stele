@@ -2,7 +2,9 @@
 use stele_code::CodeField;
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
-use stele_pcs::{verify_certificate, verify_opening, Error, Functional, PreparedSource, ProofKind};
+use stele_pcs::{
+    verify_certificate, verify_opening, Error, Functional, PreparedSource, ProofKind, RetainedRow,
+};
 
 fn unhex(text: &str) -> Vec<u8> {
     text.as_bytes()
@@ -65,9 +67,34 @@ where
             .opening(&mut prover, &verified, functional)
             .expect("opening");
         assert_eq!(proof, unhex(v["opening"].as_str().expect("proof")));
+        let retained = RetainedRow::new(&prepared, &a).expect("retained row");
+        let pointer = retained.values().as_ptr();
+        let work = retained.work();
+        assert_eq!(work.source_visits, 1);
+        assert_eq!(work.source_elements, message.len());
+        assert!(work.retained_bytes >= retained.values().len() * core::mem::size_of::<K>());
+        let row_bytes: Vec<_> = retained
+            .values()
+            .iter()
+            .flat_map(|value| value.to_le_bytes().as_ref().to_vec())
+            .collect();
+        assert_eq!(
+            row_bytes,
+            prepared
+                .source()
+                .parse(ProofKind::Opening, &proof)
+                .expect("wire")
+                .row_bytes()
+        );
+        let mut retained_prover = Transcript::<K>::new(b"field wire oracle").expect("transcript");
+        let (retained_proof, retained_usage) = retained
+            .opening(&mut retained_prover, &verified, functional)
+            .expect("retained opening");
+        assert_eq!(retained_proof, proof);
+        assert_eq!(retained_usage, produced);
         let mut verifier = Transcript::<K>::new(b"field wire oracle").expect("transcript");
         let (record, usage) =
-            verify_opening(&mut verifier, &verified, functional, &proof).expect("opening");
+            verify_opening(&mut verifier, &verified, functional, &retained_proof).expect("opening");
         assert!(core::ptr::eq(record.certificate(), verified.record()));
         assert_eq!(record.id(), 12);
         assert_eq!(
@@ -107,6 +134,14 @@ where
         assert_eq!(next.to_le_bytes().as_ref(), unhex(expected));
         assert_eq!(
             next.to_le_bytes().as_ref(),
+            retained_prover
+                .challenge(ChallengeLabel::Sumcheck)
+                .expect("next")
+                .to_le_bytes()
+                .as_ref()
+        );
+        assert_eq!(
+            next.to_le_bytes().as_ref(),
             prover
                 .challenge(ChallengeLabel::Sumcheck)
                 .expect("next")
@@ -123,6 +158,22 @@ where
                 },
             )
             .expect("reuse");
+        let copied_weights = a.clone();
+        let (retained_second, retained_again) = retained
+            .opening(
+                &mut retained_prover,
+                &verified,
+                Functional {
+                    id: 13,
+                    a: &copied_weights,
+                    ..functional
+                },
+            )
+            .expect("retained reuse with equal weights");
+        assert_eq!(retained_second, second);
+        assert_eq!(retained_again, produced_again);
+        assert_eq!(retained.values().as_ptr(), pointer);
+        assert_eq!(retained.work(), work);
         let (reused, observed_again) = verify_opening(
             &mut verifier,
             &verified,
@@ -183,6 +234,82 @@ where
             .expect_err("context");
         assert_eq!(failed.cause, Error::CertificateContext);
         assert_eq!(failed.usage.transcript, before);
+        let other_row = RetainedRow::new(&other, &a).expect("other retained row");
+        let failed = other_row
+            .opening(&mut t, &verified, functional)
+            .expect_err("retained source context");
+        assert_eq!(failed.cause, Error::RowContext);
+        assert_eq!(failed.usage.transcript, before);
+        let mut wrong_weights = a.clone();
+        wrong_weights[0] = wrong_weights[0] + K::from_i64(1);
+        for weights in [&wrong_weights[..], &a[..a.len() - 1]] {
+            let failed = retained
+                .opening(
+                    &mut t,
+                    &verified,
+                    Functional {
+                        a: weights,
+                        ..functional
+                    },
+                )
+                .expect_err("retained weights");
+            assert_eq!(failed.cause, Error::RowContext);
+            assert_eq!(failed.usage.transcript, before);
+            assert_eq!(failed.usage.non_transcript, HashUsage::default());
+            assert_eq!(t.usage(), before);
+        }
+        assert_eq!(
+            RetainedRow::new(&prepared, &a[..a.len() - 1])
+                .err()
+                .expect("short weights"),
+            Error::FunctionalShape
+        );
+        let failed = retained
+            .opening(
+                &mut t,
+                &verified,
+                Functional {
+                    b: &b[..b.len() - 1],
+                    ..functional
+                },
+            )
+            .expect_err("retained columns");
+        assert_eq!(failed.cause, Error::FunctionalShape);
+        assert_eq!(t.usage(), before);
+        let mut ordinary = Transcript::<K>::new(b"wrong retained scalar").expect("transcript");
+        let mut cached = Transcript::<K>::new(b"wrong retained scalar").expect("transcript");
+        assert_eq!(
+            retained
+                .opening(&mut cached, &verified, wrong)
+                .expect_err("retained value"),
+            prepared
+                .opening(&mut ordinary, &verified, wrong)
+                .expect_err("ordinary value")
+        );
+        let zeros = vec![K::from_i64(0); a.len()];
+        let zero_row = RetainedRow::new(&prepared, &zeros).expect("zero weights");
+        assert_eq!(zero_row.work().source_elements, message.len());
+        assert_eq!(zero_row.work().source_visits, 1);
+        let zero = Functional {
+            a: &zeros,
+            value: K::from_i64(0),
+            ..functional
+        };
+        let mut zp = Transcript::<K>::new(b"zero retained row").expect("transcript");
+        let mut zo = Transcript::<K>::new(b"zero retained row").expect("transcript");
+        let mut zv = Transcript::<K>::new(b"zero retained row").expect("transcript");
+        let actual = zero_row
+            .opening(&mut zp, &verified, zero)
+            .expect("zero retained");
+        assert_eq!(
+            actual,
+            prepared
+                .opening(&mut zo, &verified, zero)
+                .expect("zero ordinary")
+        );
+        let verified_zero =
+            verify_opening(&mut zv, &verified, zero, &actual.0).expect("zero verified");
+        assert_eq!(verified_zero.1.transcript, actual.1.transcript);
         // Deterministic bounded arbitrary-byte mutation and truncation over every wire region.
         let mut seed = 0x3141_5926_5358_9793u64;
         let mut random = || {
