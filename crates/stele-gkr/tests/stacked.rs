@@ -16,6 +16,155 @@ const LIMITS: Limits = Limits {
     axis_entries: 1 << 12,
 };
 const PUBLIC: &[u8] = b"stacked public native";
+fn allocation_observations<K: ChallengeField + Eq + Debug>() {
+    use std::mem::size_of;
+    for (ell, inner) in [(0, 0), (0, 2), (2, 0), (1, 2)] {
+        let axes = [
+            Axis {
+                bits: ell,
+                real: 1 << ell,
+            },
+            Axis {
+                bits: inner,
+                real: 1 << inner,
+            },
+        ];
+        let m = usize::from(ell + inner);
+        let table: Vec<_> = (0..1 << m).map(|n| K::from_i64(n + 2)).collect();
+        for order in [Order::LayerFirst, Order::LayerLast] {
+            let terms = [Term {
+                coefficient: K::from_i64(0),
+                factors: vec![0; 3],
+            }];
+            let s = Statement {
+                id: 1,
+                axes: &axes,
+                order,
+                output: Claim {
+                    id: 2,
+                    axes: &[],
+                    point: &[],
+                    value: K::from_i64(0),
+                },
+                coefficient_id: 3,
+                inputs: &[4],
+                terms: &terms,
+                selectors: &[None, None],
+                kind: Kind::Eq,
+                source_id: None,
+            };
+            let prepared = Prepared::new(&s, LIMITS).expect("prepared");
+            let instance = prepared.instance();
+            let nested = instance.inputs.capacity() * size_of::<u64>()
+                + instance.terms.capacity() * size_of::<Term<K>>()
+                + instance
+                    .terms
+                    .iter()
+                    .map(|t| t.factors.capacity() * size_of::<u32>())
+                    .sum::<usize>();
+            assert!(prepared.owned_bytes().expect("owned") >= prepared.bytes().len() + nested);
+            let mut ordinary = prepared.strategy(&[&table]).expect("strategy");
+            let mut dense = prepared.strategy(&[&table]).expect("strategy");
+            let initial_owned = dense.owned_bytes().expect("owned");
+            assert!(
+                initial_owned
+                    >= dense.capacity_entries().expect("fields") * size_of::<K>()
+                        + 2 * size_of::<Vec<K>>()
+            );
+            let transcript = || Transcript::<K>::new(PUBLIC).expect("transcript");
+            let mut a = transcript();
+            let mut b = transcript();
+            let expected = ordinary.prove(&mut a).expect("ordinary");
+            let mut a1 = vec![stele_sumcheck::RoundWork::default(); m];
+            let mut rounds = vec![stacked::DenseRoundWork::default(); m];
+            let (proof, work) = dense
+                .prove_measured(&mut b, &mut a1, &mut rounds)
+                .expect("measured");
+            assert_eq!(proof, expected);
+            assert_eq!(a.usage(), b.usage());
+            assert_eq!(dense.work(), ordinary.work());
+            assert_eq!(dense.owned_bytes().expect("retained"), initial_owned);
+            assert_eq!(dense.work().rounds, m);
+            for ((slot, fold), values) in a1.iter().zip(&rounds).zip(&proof.rounds) {
+                assert_eq!(slot.values_bytes, fold.values_bytes);
+                assert_eq!(fold.values_bytes, values.capacity() * size_of::<K>());
+                assert!(fold.partial_bytes >= (1 << ell) * 5 * size_of::<K>());
+                assert!(
+                    work.peak_owned_bytes
+                        >= slot.proof_prefix_bytes + slot.values_bytes + slot.payload_bytes
+                );
+            }
+            let mut v = transcript();
+            let mut mv = transcript();
+            let (reduction, usage) = prepared
+                .verify_reduction(&mut v, &proof)
+                .expect("reduction");
+            let ((same, measured), observed) = prepared
+                .verify_reduction_measured(&mut mv, &proof)
+                .expect("measured reduction");
+            assert_eq!(same, reduction);
+            assert_eq!(usage, observed);
+            assert_eq!(usage, a.usage());
+            assert_eq!(measured.point_bytes, same.point.capacity() * size_of::<K>());
+            assert_eq!(
+                measured.claims_bytes,
+                same.claims.capacity() * size_of::<(u64, K)>()
+            );
+            assert_eq!(dense.into_point().expect("captured"), reduction.point);
+            let next = a.challenge(stele_hash::ChallengeLabel::Sumcheck);
+            for t in [&mut b, &mut v, &mut mv] {
+                assert_eq!(t.challenge(stele_hash::ChallengeLabel::Sumcheck), next);
+            }
+            // Zero P leaves the coefficient obligation to the actual A7 consumer.
+            let mut bad = proof;
+            bad.final_values[1] = K::from_i64(2);
+            let mut v = transcript();
+            let mut mv = transcript();
+            let ordinary_failure = prepared.verify_reduction(&mut v, &bad).expect_err("A7");
+            let measured = prepared
+                .verify_reduction_measured(&mut mv, &bad)
+                .expect_err("A7");
+            assert_eq!(ordinary_failure, measured);
+            assert_eq!(measured.cause, Error::CoefficientMismatch);
+            let mut sizes = vec![(m + 1, m), (m, m + 1)];
+            if m > 0 {
+                sizes.extend([(m - 1, m), (m, m - 1)]);
+            }
+            for (an, dn) in sizes {
+                let mut dense = prepared.strategy(&[&table]).expect("strategy");
+                let mut t = transcript();
+                let before = t.usage();
+                let failure = dense
+                    .prove_measured(
+                        &mut t,
+                        &mut vec![stele_sumcheck::RoundWork::default(); an],
+                        &mut vec![stacked::DenseRoundWork::default(); dn],
+                    )
+                    .expect_err("slot count");
+                assert_eq!(failure.cause, Error::Capacity);
+                assert_eq!(failure.usage, before);
+                assert_eq!(t.usage(), before);
+                assert_eq!(dense.work().rounds, 0);
+            }
+            if m > 0 {
+                let before = a.usage();
+                let failure = ordinary
+                    .prove_measured(&mut a, &mut a1, &mut rounds)
+                    .expect_err("pristine");
+                assert_eq!(failure.cause, Error::InvalidStacked);
+                assert_eq!(failure.usage, before);
+            }
+        }
+    }
+}
+#[test]
+fn matches_reference_qm31_stacked_allocations() {
+    allocation_observations::<QM31>();
+}
+#[test]
+fn matches_reference_om31_stacked_allocations() {
+    allocation_observations::<OM31>();
+}
 fn eval<K: Field>(table: &[K], point: &[K]) -> K {
     table
         .iter()

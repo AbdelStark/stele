@@ -19,6 +19,7 @@ mod dense;
 mod instance;
 mod small;
 mod streaming;
+mod work;
 /// Eq-factored zerocheck and bounded skip, RFC-0006 A3.
 pub mod zerocheck;
 pub use buffers::prove_into;
@@ -26,6 +27,7 @@ pub use dense::Dense;
 pub use instance::{Instance, Term};
 pub use small::{Small, SmallTable};
 pub use streaming::{Source, Streaming};
+pub use work::{ProverWork, RoundWork, VerifierWork};
 
 /// Invalid input or failed reduction; abort the entire transcript attempt on error.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -248,20 +250,6 @@ fn round_payload<K: ChallengeField + Eq>(
     let challenge = transcript.challenge(ChallengeLabel::Sumcheck)?;
     Ok((challenge, interpolate(values, challenge)?))
 }
-fn finish<K: ChallengeField + Eq>(
-    i: &Instance<K>,
-    final_values: &[K],
-    running: K,
-    transcript: &mut Transcript<K>,
-) -> Result<(), Error> {
-    finish_payload(
-        i,
-        final_values,
-        running,
-        &message_bytes(i.id, i.inputs.len() as u32, final_values)?,
-        transcript,
-    )
-}
 fn finish_payload<K: ChallengeField + Eq>(
     i: &Instance<K>,
     final_values: &[K],
@@ -278,21 +266,68 @@ fn finish_payload<K: ChallengeField + Eq>(
 /// Prove the verifier-owned instance with an arbitrary checked strategy.
 pub fn prove<K: ChallengeField + Eq>(
     i: &Instance<K>,
-    mut summand: impl Summand<K>,
+    summand: impl Summand<K>,
     transcript: &mut Transcript<K>,
 ) -> Result<Proof<K>, Error> {
+    prove_inner(i, summand, transcript, None).map(|(proof, _)| proof)
+}
+/// Run the same producer with exactly one caller-owned observation slot per round.
+/// Invalid slot counts reject before absorb. Discard all observations on failure.
+pub fn prove_measured<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    summand: impl Summand<K>,
+    transcript: &mut Transcript<K>,
+    rounds: &mut [RoundWork],
+) -> Result<(Proof<K>, ProverWork), Error> {
+    prove_inner(i, summand, transcript, Some(rounds))
+}
+fn prove_inner<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    mut summand: impl Summand<K>,
+    transcript: &mut Transcript<K>,
+    mut observations: Option<&mut [RoundWork]>,
+) -> Result<(Proof<K>, ProverWork), Error> {
     let degree = i.validate()?;
     summand.validate_instance(i)?;
+    if let Some(slots) = &mut observations {
+        if slots.len() != i.num_vars as usize {
+            return Err(Error::Capacity);
+        }
+        slots.fill(RoundWork::default());
+    }
     let mut rounds = Vec::new();
     reserve(&mut rounds, i.num_vars as usize)?;
-    transcript.absorb(AbsorbLabel::Instance, &i.encode()?)?;
+    let mut work = ProverWork {
+        round_headers_bytes: work::bytes(&rounds)?,
+        ..ProverWork::default()
+    };
+    work.proof_bytes = work.round_headers_bytes;
+    let payload = i.encode()?;
+    work.instance_bytes = payload.capacity();
+    work.peak_owned_bytes = work::add(work.proof_bytes, work.instance_bytes)?;
+    transcript.absorb(AbsorbLabel::Instance, &payload)?;
+    drop(payload);
     let mut running = i.claimed_sum;
     for index in 0..i.num_vars {
         let values = summand.round(i)?;
         if values.len() != degree + 1 {
             return Err(Error::ProofShape);
         }
-        let (challenge, next) = round(i.id, index, &values, running, transcript)?;
+        let payload = message_bytes(i.id, index, &values)?;
+        let observation = RoundWork {
+            proof_prefix_bytes: work.proof_bytes,
+            values_bytes: work::bytes(&values)?,
+            payload_bytes: payload.capacity(),
+        };
+        work.proof_bytes = work::add(work.proof_bytes, observation.values_bytes)?;
+        work.peak_owned_bytes = work
+            .peak_owned_bytes
+            .max(work::add(work.proof_bytes, payload.capacity())?);
+        let (challenge, next) = round_payload(&values, running, &payload, transcript)?;
+        drop(payload); // A1: preserve the original temporary's lifetime, before fold.
+        if let Some(slots) = &mut observations {
+            *slots.get_mut(index as usize).ok_or(Error::Capacity)? = observation;
+        }
         summand.fold(challenge)?;
         if summand.shape() != (i.num_vars - index - 1, i.inputs.len()) {
             return Err(Error::PublicShape);
@@ -304,11 +339,22 @@ pub fn prove<K: ChallengeField + Eq>(
     if final_values.len() != i.inputs.len() {
         return Err(Error::ProofShape);
     }
-    finish(i, &final_values, running, transcript)?;
-    Ok(Proof {
-        rounds,
-        final_values,
-    })
+    work.final_values_bytes = work::bytes(&final_values)?;
+    work.proof_bytes = work::add(work.proof_bytes, work.final_values_bytes)?;
+    let payload = message_bytes(i.id, i.inputs.len() as u32, &final_values)?;
+    work.final_payload_bytes = payload.capacity();
+    work.peak_owned_bytes = work
+        .peak_owned_bytes
+        .max(work::add(work.proof_bytes, payload.capacity())?);
+    finish_payload(i, &final_values, running, &payload, transcript)?;
+    drop(payload);
+    Ok((
+        Proof {
+            rounds,
+            final_values,
+        },
+        work,
+    ))
 }
 /// Validate the complete A1 shape and message sizes without absorbing or verifying.
 /// RFC-0010 A9 §5 uses this before binding its complete source roster.
@@ -331,36 +377,68 @@ pub fn verify<K: ChallengeField + Eq>(
     proof: &Proof<K>,
     transcript: &mut Transcript<K>,
 ) -> Result<Reduction<K>, Error> {
+    verify_measured(i, proof, transcript).map(|(reduction, _)| reduction)
+}
+/// Run the same verifier and observe its actual frames and returned allocations.
+/// Observations authorize no claim; the returned reduction still needs consumers.
+pub fn verify_measured<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    proof: &Proof<K>,
+    transcript: &mut Transcript<K>,
+) -> Result<(Reduction<K>, VerifierWork), Error> {
     let degree = preflight(i, proof)?;
     let mut point = Vec::new();
     reserve(&mut point, i.num_vars as usize)?;
     let mut claims = Vec::new();
     reserve(&mut claims, i.inputs.len())?;
-    transcript.absorb(AbsorbLabel::Instance, &i.encode()?)?;
+    let mut work = VerifierWork {
+        point_bytes: work::bytes(&point)?,
+        claims_bytes: work::bytes(&claims)?,
+        ..VerifierWork::default()
+    };
+    let payload = i.encode()?;
+    work.instance_bytes = payload.capacity();
+    transcript.absorb(AbsorbLabel::Instance, &payload)?;
+    drop(payload);
     let mut running = i.claimed_sum;
     for (index, values) in proof.rounds.iter().enumerate() {
-        let (challenge, next) = round(i.id, index as u32, values, running, transcript)?;
+        let payload = message_bytes(i.id, index as u32, values)?;
+        work.round_payload_bytes = work.round_payload_bytes.max(payload.capacity());
+        let (challenge, next) = round_payload(values, running, &payload, transcript)?;
+        drop(payload);
         point.push(challenge);
         running = next;
     }
-    finish(i, &proof.final_values, running, transcript)?;
+    let payload = message_bytes(i.id, i.inputs.len() as u32, &proof.final_values)?;
+    work.final_payload_bytes = payload.capacity();
+    finish_payload(i, &proof.final_values, running, &payload, transcript)?;
+    drop(payload);
+    work.peak_owned_bytes = work::add(
+        work::add(work.point_bytes, work.claims_bytes)?,
+        work.instance_bytes
+            .max(work.round_payload_bytes)
+            .max(work.final_payload_bytes),
+    )?;
     claims.extend(
         i.inputs
             .iter()
             .copied()
             .zip(proof.final_values.iter().copied()),
     );
-    Ok(Reduction {
-        point,
-        claims,
-        sc: ScRecord {
-            id: i.id,
-            m: i.num_vars,
-            degree: degree as u8,
-            field_degree: (K::from_i64(0).to_le_bytes().as_ref().len() / 4) as u8,
-            numerator: u64::from(i.num_vars) * degree as u64,
+    Ok((
+        Reduction {
+            point,
+            claims,
+            sc: ScRecord {
+                id: i.id,
+                m: i.num_vars,
+                degree: degree as u8,
+                field_degree: (K::from_i64(0).to_le_bytes().as_ref().len() / 4) as u8,
+                numerator: u64::from(i.num_vars) * degree as u64,
+            },
         },
-    })
+        work,
+    ))
 }
 /// Close every final obligation using verifier-owned public tables in input order.
 /// Private tensors instead need their real reduction/PCS consumers.

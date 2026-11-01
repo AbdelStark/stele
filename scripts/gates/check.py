@@ -579,12 +579,13 @@ def public_coefficients(root):
     surfaces = {
         'public_mle.rs': ('enum:Error struct:Axis :bits :real enum:Kind struct:Coefficient fn:new fn:evaluate',
                           ["impl<'a,K:Field>Coefficient<'a,K>{"]),
-        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:prove_public_measured fn:verify_public fn:verify_reduction',
+        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:prove_public_measured fn:verify_public fn:verify_reduction fn:verify_reduction_measured',
                            ['impl<K>Record<K>{', "impl<K:ChallengeField+Eq>Prepared<'_,K>{"]),
-        'stacked/statement.rs': ('enum:Order struct:Claim :id :axes :point :value struct:Statement :id :axes :order :output :coefficient_id :inputs :terms :selectors :kind :source_id struct:Limits :descriptor_bytes :proof_bytes :prepared_entries :partial_entries :axis_entries struct:Prepared fn:new fn:for_certified_sources fn:bytes fn:instance fn:source_bytes',
+        'stacked/statement.rs': ('enum:Order struct:Claim :id :axes :point :value struct:Statement :id :axes :order :output :coefficient_id :inputs :terms :selectors :kind :source_id struct:Limits :descriptor_bytes :proof_bytes :prepared_entries :partial_entries :axis_entries struct:Prepared fn:new fn:for_certified_sources fn:bytes fn:instance fn:owned_bytes fn:source_bytes',
                                  ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{"]),
-        'stacked/strategy.rs': ('struct:Work :dense_entries :partial_entries :round_entries :round_scratch_entries :rounds struct:Dense fn:strategy fn:strategy_m31 fn:work fn:capacity_entries fn:prove fn:into_point fn:partials',
-                                ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{", "impl<K:ChallengeField+Eq>Dense<'_,'_,K>{", "impl<K:ChallengeField+Eq>Summand<K>for&mutDense<'_,'_,K>{"]),
+        'stacked/strategy.rs': ('struct:Work :dense_entries :partial_entries :round_entries :round_scratch_entries :rounds struct:DenseRoundWork :partial_bytes :values_bytes struct:Dense fn:strategy fn:strategy_m31 fn:work fn:capacity_entries fn:owned_bytes fn:prove fn:prove_measured fn:into_point fn:partials',
+                                ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{", "impl<K:ChallengeField+Eq>Dense<'_,'_,K>{", "impl<K:ChallengeField+Eq>Summand<K>for&mutDense<'_,'_,K>{",
+                                 "impl<K:ChallengeField+Eq>Dense<'_,'_,K>{", "impl<K:ChallengeField+Eq>Summand<K>forMeasured<'_,'_,'_,'_,K>{"]),
     }
     closed = True
     for name, (declarations, implementations) in surfaces.items():
@@ -617,7 +618,8 @@ def public_coefficients(root):
          [f'test {n} ... ok' for n in ('matches_reference_qm31_stacked_rounds_and_consumers',
           'matches_reference_om31_stacked_rounds_and_consumers', 'rejects_preflight_without_transcript_mutation',
           'rejects_unaddressable_storage_before_any_transcript_work', 'accepts_empty_constant_and_zero_coefficient_relations',
-          'rejects_malformed_statements_sources_and_proofs')]),
+          'rejects_malformed_statements_sources_and_proofs',
+          'matches_reference_qm31_stacked_allocations', 'matches_reference_om31_stacked_allocations')]),
         (['cargo','test','-p','stele-negative-controls','--test','stacked-public','--locked','--offline'],
          [f'test {n} ... ok' for n in ('rejects_wrong_layer_coefficient', 'rejects_changed_onehot_and_exact_table_source',
           'rejects_unused_original_at_draw_order_point', 'rejects_missing_stack_or_sources_before_successor')]),
@@ -820,14 +822,24 @@ def small_strategy(root):
 
 
 def buffered_engine(root):
-    """A6 engine buffers retain A1 bytes, consumers, capacities and preflight errors."""
+    """A6 buffers and A1 observations retain bytes, consumers and preflight errors."""
+    crate = root / 'crates/stele-sumcheck'
+    if any(not (crate / name).is_file() for name in ('src/lib.rs', 'src/work.rs', 'tests/work.rs')):
+        raise ValueError('A1 observation API not wired: missing source/test')
+    library = re.sub(r'//[^\n]*', '', (crate / 'src/lib.rs').read_text())
+    if ([re.sub(r'\s+', '', item) for item in re.findall(
+            r'\b(?:pub(?:\s*\([^)]*\))?\s+)?mod\s+work\s*;', library)] != ['modwork;']
+            or [re.sub(r'\s+', '', item) for item in re.findall(r'\bpub\s+use\s+work\b[^;]*;', library)]
+                != ['pubusework::{ProverWork,RoundWork,VerifierWork};']):
+        raise ValueError('A1 observation API not wired: private module and exact work exports required')
     tests = ('matches_reference_buffered_qm31', 'matches_reference_buffered_om31',
              'accepts_empty_inputs_and_reuses_proof_and_byte_buffers',
              'rejects_buffer_shapes_before_mutating_transcript',
              'matches_reference_payloads_and_rejects_short_buffers_without_partial_writes',
              'rejects_buffered_false_sum_and_invalid_descriptor',
-             'rejects_buffered_unused_final_value')
-    result = subprocess.run(['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'buffers',
+             'rejects_buffered_unused_final_value',
+             'matches_reference_qm31_allocation_observations', 'matches_reference_om31_allocation_observations')
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'buffers', '--test', 'work',
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     if result.returncode or any(f'test {test} ... ok' not in result.stdout for test in tests):
         raise ValueError(f'buffered A1 parity/consumer mismatch: {result.stdout} {result.stderr}')

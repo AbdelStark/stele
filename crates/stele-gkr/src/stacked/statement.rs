@@ -339,6 +339,27 @@ impl<'a, K: ChallengeField + Eq> Prepared<'a, K> {
     pub fn instance(&self) -> &Instance<K> {
         &self.instance
     }
+    /// Actual owned Stack bytes and nested Instance buffers, including term headers.
+    /// Excludes the borrowed statement and inline/stack storage (A4 §6).
+    pub fn owned_bytes(&self) -> Result<usize, Error> {
+        let bytes = add(
+            self.bytes.capacity(),
+            mul(self.instance.inputs.capacity(), core::mem::size_of::<u64>())?,
+        )?;
+        let bytes = add(
+            bytes,
+            mul(
+                self.instance.terms.capacity(),
+                core::mem::size_of::<Term<K>>(),
+            )?,
+        )?;
+        self.instance.terms.iter().try_fold(bytes, |sum, term| {
+            add(
+                sum,
+                mul(term.factors.capacity(), core::mem::size_of::<u32>())?,
+            )
+        })
+    }
     pub(super) fn coordinates(&self, index: usize) -> [u64; 64] {
         let mut coordinates = [0; 64];
         let mut shift = self.instance.num_vars as usize;

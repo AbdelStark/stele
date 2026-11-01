@@ -2,7 +2,10 @@
 use super::{observed, reserve, zeros, Error, Failure, Order, Prepared};
 use crate::public_mle::Kind;
 use alloc::vec::Vec;
-use core::cell::Cell;
+use core::{
+    cell::{Cell, RefCell},
+    mem::size_of,
+};
 use stele_field::{Field, M31};
 use stele_hash::{AbsorbLabel, ChallengeField, Transcript};
 use stele_sumcheck::{Instance, Proof, Summand};
@@ -22,6 +25,15 @@ pub struct Work {
     pub round_scratch_entries: usize,
     /// Successful production round calls; diagnostic partials() calls are excluded.
     pub rounds: usize,
+}
+/// Actual simultaneous scratch allocations in one A4 production round.
+/// Pair with that round's A1 proof prefix; values are the same returned vector.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct DenseRoundWork {
+    /// Partial-vector capacity in bytes, before it is dropped.
+    pub partial_bytes: usize,
+    /// Result-vector capacity in bytes, transferred to A1 without copying.
+    pub values_bytes: usize,
 }
 /// Dense reference strategy. Partials use the same routine as the actual A1 round.
 pub struct Dense<'p, 'a, K> {
@@ -143,17 +155,59 @@ impl<K: ChallengeField + Eq> Dense<'_, '_, K> {
                 sum.checked_add(t.capacity()).ok_or(Error::Capacity)
             })
     }
+    /// Actual table headers, full table capacities and captured-point capacity.
+    /// Excludes borrowed Prepared, stack, temporary rounds and allocator metadata.
+    pub fn owned_bytes(&self) -> Result<usize, Error> {
+        super::add(
+            super::mul(self.capacity_entries()?, size_of::<K>())?,
+            super::mul(self.tables.capacity(), size_of::<Vec<K>>())?,
+        )
+    }
+    fn begin(&self, t: &mut Transcript<K>) -> Result<(), Error> {
+        if self.remaining != self.prepared.instance.num_vars as usize || !self.point.is_empty() {
+            return Err(Error::InvalidStacked);
+        }
+        t.absorb(AbsorbLabel::Stack, self.prepared.bytes())
+            .map_err(Error::Transcript)
+    }
     /// Absorb Stack and run the actual A1 producer on pristine prepared state.
     /// The enclosing consumer must have fixed all originals before this segment.
     pub fn prove(&mut self, t: &mut Transcript<K>) -> Result<Proof<K>, Failure> {
         let result = (|| {
-            if self.remaining != self.prepared.instance.num_vars as usize || !self.point.is_empty()
-            {
-                return Err(Error::InvalidStacked);
-            }
-            t.absorb(AbsorbLabel::Stack, self.prepared.bytes())
-                .map_err(Error::Transcript)?;
+            self.begin(t)?;
             stele_sumcheck::prove(self.prepared.instance(), &mut *self, t).map_err(Error::Sumcheck)
+        })();
+        observed(result, t).map(|(proof, _)| proof)
+    }
+    /// The same A4/A1 execution, recording both sides of each actual round.
+    /// Both slices must have exactly m slots; bad counts reject before Stack.
+    /// Returned work covers A1 only; add owned Prepared/Dense and paired scratch
+    /// at their actual lifetimes. Discard all observations on any failure.
+    pub fn prove_measured(
+        &mut self,
+        t: &mut Transcript<K>,
+        a1_rounds: &mut [stele_sumcheck::RoundWork],
+        dense_rounds: &mut [DenseRoundWork],
+    ) -> Result<(Proof<K>, stele_sumcheck::ProverWork), Failure> {
+        let result = (|| {
+            let instance = self.prepared.instance();
+            if a1_rounds.len() != instance.num_vars as usize
+                || dense_rounds.len() != instance.num_vars as usize
+            {
+                return Err(Error::Capacity);
+            }
+            self.begin(t)?;
+            dense_rounds.fill(DenseRoundWork::default());
+            stele_sumcheck::prove_measured(
+                instance,
+                Measured {
+                    dense: self,
+                    rounds: RefCell::new(dense_rounds),
+                },
+                t,
+                a1_rounds,
+            )
+            .map_err(Error::Sumcheck)
         })();
         observed(result, t).map(|(proof, _)| proof)
     }
@@ -229,6 +283,41 @@ impl<K: ChallengeField + Eq> Summand<K> for &mut Dense<'_, '_, K> {
         Ok(())
     }
     fn round(&self, i: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        self.round_with_work(i).map(|(values, _)| values)
+    }
+    fn fold(&mut self, r: K) -> Result<(), stele_sumcheck::Error> {
+        if self.remaining == 0 {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        for table in &mut self.tables {
+            let half = table.len() / 2;
+            for j in 0..half {
+                table[j] = table[j] + r * (table[j + half] - table[j]);
+            }
+            table.truncate(half);
+        }
+        self.remaining -= 1;
+        // A4 §3: the closed producer gets this argument from the actual A1 engine.
+        // All m slots were reserved before any transcript absorb.
+        self.point.push(r);
+        Ok(())
+    }
+    fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+        if self.remaining != 0 {
+            return Err(stele_sumcheck::Error::PublicShape);
+        }
+        let mut result = Vec::new();
+        reserve(&mut result, self.tables.len()).map_err(|_| stele_sumcheck::Error::Capacity)?;
+        result.extend(self.tables.iter().map(|t| t[0]));
+        Ok(result)
+    }
+}
+
+impl<K: ChallengeField + Eq> Dense<'_, '_, K> {
+    fn round_with_work(
+        &self,
+        i: &Instance<K>,
+    ) -> Result<(Vec<K>, DenseRoundWork), stele_sumcheck::Error> {
         if i != self.prepared.instance() {
             return Err(stele_sumcheck::Error::InvalidInstance);
         }
@@ -261,32 +350,50 @@ impl<K: ChallengeField + Eq> Summand<K> for &mut Dense<'_, '_, K> {
             .checked_add(1)
             .ok_or(stele_sumcheck::Error::Capacity)?;
         self.work.set(work);
-        Ok(result)
+        let observation = DenseRoundWork {
+            partial_bytes: partials
+                .capacity()
+                .checked_mul(size_of::<K>())
+                .ok_or(stele_sumcheck::Error::Capacity)?,
+            values_bytes: result
+                .capacity()
+                .checked_mul(size_of::<K>())
+                .ok_or(stele_sumcheck::Error::Capacity)?,
+        };
+        Ok((result, observation))
+    }
+}
+
+// A4 §6: one borrowed recorder, no heap allocation or protocol callback.
+struct Measured<'d, 'p, 'a, 'o, K> {
+    dense: &'d mut Dense<'p, 'a, K>,
+    rounds: RefCell<&'o mut [DenseRoundWork]>,
+}
+impl<K: ChallengeField + Eq> Summand<K> for Measured<'_, '_, '_, '_, K> {
+    fn shape(&self) -> (u32, usize) {
+        self.dense.shape()
+    }
+    fn validate_instance(&self, i: &Instance<K>) -> Result<(), stele_sumcheck::Error> {
+        self.dense.validate_instance(i)
+    }
+    fn round(&self, i: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
+        let index = (i.num_vars as usize)
+            .checked_sub(self.dense.remaining)
+            .ok_or(stele_sumcheck::Error::Capacity)?;
+        let (values, work) = self.dense.round_with_work(i)?;
+        let mut rounds = self
+            .rounds
+            .try_borrow_mut()
+            .map_err(|_| stele_sumcheck::Error::Capacity)?;
+        *rounds
+            .get_mut(index)
+            .ok_or(stele_sumcheck::Error::Capacity)? = work;
+        Ok(values)
     }
     fn fold(&mut self, r: K) -> Result<(), stele_sumcheck::Error> {
-        if self.remaining == 0 {
-            return Err(stele_sumcheck::Error::PublicShape);
-        }
-        for table in &mut self.tables {
-            let half = table.len() / 2;
-            for j in 0..half {
-                table[j] = table[j] + r * (table[j + half] - table[j]);
-            }
-            table.truncate(half);
-        }
-        self.remaining -= 1;
-        // A4 §3: the closed producer gets this argument from the actual A1 engine.
-        // All m slots were reserved before any transcript absorb.
-        self.point.push(r);
-        Ok(())
+        self.dense.fold(r)
     }
     fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
-        if self.remaining != 0 {
-            return Err(stele_sumcheck::Error::PublicShape);
-        }
-        let mut result = Vec::new();
-        reserve(&mut result, self.tables.len()).map_err(|_| stele_sumcheck::Error::Capacity)?;
-        result.extend(self.tables.iter().map(|t| t[0]));
-        Ok(result)
+        self.dense.final_values()
     }
 }

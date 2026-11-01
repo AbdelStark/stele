@@ -199,6 +199,14 @@ the same immutable rows and copy prepared encoded-column responses without anoth
 original-source traversal. Row visit/element counters and Dense capacities retain
 their individual observation scopes.
 
+E7-01b4 observes actual A1 message, proof and returned verifier capacities in the
+shared execution paths. Each Dense round reports its partial and result capacities
+beside that same A1 proof prefix; the result is one shared allocation, counted once.
+Prepared and Dense getters include their owned nested vector headers. These expose
+c_sc/T_misc storage costs without changing arithmetic or source passes. Borrowed
+inputs, caller observation slots, A7/PCS scratch, parent overlaps and stack/allocator
+storage remain separate; the A1 high water is not whole-operation memory.
+
 No measured constant or complete weight-phase result changes. Full registration,
 proving and both verifier timings, A1/PCS/codec allocation overlaps and process RSS
 remain E7-01b requirements. The scoped child observations supply no complete ledger.

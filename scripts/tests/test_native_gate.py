@@ -2,6 +2,9 @@
 from contextlib import ExitStack, redirect_stderr
 import importlib.util
 import io
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -51,6 +54,46 @@ class NativeGateTests(unittest.TestCase):
                 code, calls = self.run_gate('native', fail=validator)
                 self.assertNotEqual(code, 0)
                 self.assertEqual(calls[-1][0], validator)
+
+    def test_rejects_missing_a1_work_sources_exports_and_receipts(self):
+        names = ('matches_reference_buffered_qm31', 'matches_reference_buffered_om31',
+                 'accepts_empty_inputs_and_reuses_proof_and_byte_buffers',
+                 'rejects_buffer_shapes_before_mutating_transcript',
+                 'matches_reference_payloads_and_rejects_short_buffers_without_partial_writes',
+                 'rejects_buffered_false_sum_and_invalid_descriptor', 'rejects_buffered_unused_final_value',
+                 'matches_reference_qm31_allocation_observations', 'matches_reference_om31_allocation_observations')
+        lines = [f'test {name} ... ok' for name in names]; output = '\n'.join(lines)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); crate = root/'crates/stele-sumcheck'
+            for name in ('src/lib.rs', 'src/work.rs', 'tests/work.rs'):
+                target = crate/name; target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(ROOT/'crates/stele-sumcheck'/name, target)
+            with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, '')) as run:
+                gate.buffered_engine(root)
+                run.assert_called_once_with(
+                    ['cargo', 'test', '-p', 'stele-sumcheck', '--test', 'buffers', '--test', 'work', '--locked', '--offline'],
+                    cwd=root, text=True, capture_output=True)
+            for code, text in [(1, output)] + [(0, output.replace(line, '')) for line in lines]:
+                with self.subTest(code=code, output=text), patch.object(gate.subprocess, 'run',
+                        return_value=subprocess.CompletedProcess([], code, text, '')):
+                    with self.assertRaisesRegex(ValueError, 'buffered A1 parity/consumer mismatch'):
+                        gate.buffered_engine(root)
+            path = crate/'src/lib.rs'; saved = path.read_text()
+            for old, new in [('mod work;', 'pub mod work;'),
+                             ('pub use work::{ProverWork, RoundWork, VerifierWork};', 'pub use work::*;')]:
+                self.assertIn(old, saved); path.write_text(saved.replace(old, new, 1))
+                with self.subTest(api=old), patch.object(gate.subprocess, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'not wired'):
+                        gate.buffered_engine(root)
+                    run.assert_not_called()
+            path.write_text(saved)
+            for name in ('src/work.rs', 'tests/work.rs'):
+                path = crate/name; saved = path.read_bytes(); path.unlink()
+                with self.subTest(missing=name), patch.object(gate.subprocess, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'not wired'):
+                        gate.buffered_engine(root)
+                    run.assert_not_called()
+                path.write_bytes(saved)
 
 
 if __name__ == '__main__':
