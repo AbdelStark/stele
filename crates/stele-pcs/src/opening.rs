@@ -1,4 +1,4 @@
-//! RFC-0010 A9 §§4,9: general functionals against a verified conditional certificate.
+//! RFC-0010 A9 §§4,9 and A10: functional openings and immutable retained rows.
 use crate::{
     CertificateRecord, Error, Failure, PreparedSource, ProofKind, Source, Usage,
     VerifiedCertificate,
@@ -134,6 +134,171 @@ impl<K: ChallengeField> OpeningRecord<'_, K> {
         ProofKind::Opening
     }
 }
+
+/// Observed row construction only; excludes borrowed source/weights and opening storage.
+/// Capacity is the actual retained Vec capacity, not allocator metadata or process RSS.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RetainedRowWork {
+    /// Complete row-major traversals of the original message.
+    pub source_visits: usize,
+    /// Original M31 elements read, including zero-weight rows.
+    pub source_elements: usize,
+    /// Owned K-valued row capacity in bytes.
+    pub retained_bytes: usize,
+}
+
+/// RFC-0010 A10: u = a^T M, borrowing the exact prepared source and row weights.
+/// Construction is the only original-message visit; openings borrow this immutable u.
+/// There is no constructor for caller-supplied row values:
+/// ```compile_fail,E0599
+/// use stele_field::QM31;
+/// let fake = stele_pcs::RetainedRow::<QM31>::from_values(vec![]);
+/// ```
+/// The weights and prepared source remain borrowed while the row is used:
+/// ```compile_fail,E0502
+/// use stele_field::{QM31, Field};
+/// use stele_pcs::{PreparedSource, RetainedRow};
+/// fn mutate(source: &PreparedSource<'_, QM31>, mut weights: Vec<QM31>) {
+///     let row = RetainedRow::new(source, &weights).unwrap();
+///     weights[0] = QM31::from_i64(0);
+///     let _ = row.values();
+/// }
+/// ```
+/// ```compile_fail,E0505
+/// use stele_field::QM31;
+/// use stele_pcs::{PreparedSource, RetainedRow};
+/// fn release(source: PreparedSource<'_, QM31>, weights: &[QM31]) {
+///     let row = RetainedRow::new(&source, weights).unwrap();
+///     drop(source);
+///     let _ = row.values();
+/// }
+/// ```
+/// Retained values cannot be edited:
+/// ```compile_fail,E0594
+/// use stele_field::{QM31, Field};
+/// use stele_pcs::RetainedRow;
+/// fn mutate(row: &RetainedRow<'_, '_, QM31>) {
+///     row.values()[0] = QM31::from_i64(0);
+/// }
+/// ```
+pub struct RetainedRow<'prepared, 'message, K: ChallengeField> {
+    prepared: &'prepared PreparedSource<'message, K>,
+    weights: &'prepared [K],
+    values: Vec<K>,
+    work: RetainedRowWork,
+}
+
+fn row_bytes<K>(columns: usize) -> Result<usize, Error> {
+    columns
+        .checked_mul(core::mem::size_of::<K>())
+        .filter(|bytes| *bytes <= isize::MAX as usize)
+        .ok_or(Error::Capacity)
+}
+
+impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K> {
+    /// Accumulate every source element once in row-major order, with checked storage.
+    pub fn new(
+        prepared: &'prepared PreparedSource<'message, K>,
+        weights: &'prepared [K],
+    ) -> Result<Self, Error> {
+        let source = prepared.source();
+        if weights.len() != source.rows() {
+            return Err(Error::FunctionalShape);
+        }
+        row_bytes::<K>(source.columns())?;
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(source.columns())
+            .map_err(|_| Error::Capacity)?;
+        values.resize(source.columns(), K::from_i64(0));
+        let mut work = RetainedRowWork {
+            source_visits: 0,
+            source_elements: 0,
+            retained_bytes: row_bytes::<K>(values.capacity())?,
+        };
+        // PreparedSource guarantees the exact R*C shape; even zero weights read each limb.
+        work.source_visits += 1;
+        for (row, a) in prepared
+            .message()
+            .chunks_exact(source.columns())
+            .zip(weights)
+        {
+            for (value, limb) in values.iter_mut().zip(row) {
+                *value = *value + *a * K::from_i64(i64::from(limb.as_u32()));
+                work.source_elements += 1;
+            }
+        }
+        Ok(Self {
+            prepared,
+            weights,
+            values,
+            work,
+        })
+    }
+
+    /// Borrow the retained row for folding or opening; no mutable access is exposed.
+    pub fn values(&self) -> &[K] {
+        &self.values
+    }
+
+    /// Construction observations, not a proof record or a full inference resource ledger.
+    pub fn work(&self) -> RetainedRowWork {
+        self.work
+    }
+
+    /// Emit the ordinary A9 opening from retained values without rereading the message.
+    /// A source or row-weight mismatch fails before any transcript mutation.
+    pub fn opening(
+        &self,
+        t: &mut Transcript<K>,
+        certificate: &VerifiedCertificate<K>,
+        functional: Functional<'_, K>,
+    ) -> Result<(Vec<u8>, Usage), Failure> {
+        if self.prepared.source().bytes() != certificate.record().source().bytes()
+            || self.weights.len() != functional.a.len()
+            || self
+                .weights
+                .iter()
+                .zip(functional.a)
+                .any(|(a, expected)| a.to_le_bytes().as_ref() != expected.to_le_bytes().as_ref())
+        {
+            return Err(Failure {
+                cause: Error::RowContext,
+                usage: Usage {
+                    transcript: t.usage(),
+                    non_transcript: HashUsage::default(),
+                },
+            });
+        }
+        self.prepared
+            .opening_row(t, certificate, functional, self.values.iter().copied())
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn rejects_retained_row_allocation_sizes() {
+    assert_eq!(
+        row_bytes::<stele_field::QM31>(usize::MAX),
+        Err(Error::Capacity)
+    );
+    assert_eq!(
+        row_bytes::<stele_field::OM31>(
+            isize::MAX as usize / core::mem::size_of::<stele_field::OM31>() + 1
+        ),
+        Err(Error::Capacity)
+    );
+    let limit = isize::MAX as usize / core::mem::size_of::<stele_field::OM31>();
+    assert_eq!(
+        row_bytes::<stele_field::OM31>(limit),
+        Ok(limit * core::mem::size_of::<stele_field::OM31>())
+    );
+    assert_eq!(
+        row_bytes::<stele_field::QM31>(2),
+        Ok(2 * core::mem::size_of::<stele_field::QM31>())
+    );
+}
+
 impl<K: ChallengeField> PreparedSource<'_, K> {
     /// Produce an A9 opening at the canonical tensor point. The expected source's
     /// own row split determines weights; no stacked layer width is substituted.
@@ -185,6 +350,26 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage), Failure> {
+        // Lazy iteration preserves A9's preflight and original read/absorption order.
+        let row = (0..functional.b.len()).map(|column| {
+            let mut value = K::from_i64(0);
+            for (row, a) in functional.a.iter().enumerate() {
+                let limb = self.message()[row * self.source().columns() + column];
+                value = value + *a * K::from_i64(i64::from(limb.as_u32()));
+            }
+            value
+        });
+        self.opening_row(t, certificate, functional, row)
+    }
+
+    // A9 framing, scalar check and prepared-column responses are shared with A10.
+    fn opening_row<I: ExactSizeIterator<Item = K>>(
+        &self,
+        t: &mut Transcript<K>,
+        certificate: &VerifiedCertificate<K>,
+        functional: Functional<'_, K>,
+        row: I,
+    ) -> Result<(Vec<u8>, Usage), Failure> {
         let result = (|| {
             let record = certificate.record();
             let source = record.source();
@@ -192,6 +377,9 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
                 return Err(Error::CertificateContext);
             }
             let size = functional.frame_len(source)?;
+            if row.len() != source.columns() {
+                return Err(Error::FunctionalShape);
+            }
             let proof_size = source.proof_size(ProofKind::Opening)?;
             let frame = functional.frame(record, size)?;
             let mut proof = Vec::new();
@@ -203,12 +391,7 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             drop(frame);
             proof.push(1);
             let mut scalar = K::from_i64(0);
-            for (column, b) in functional.b.iter().enumerate() {
-                let mut value = K::from_i64(0);
-                for (row, a) in functional.a.iter().enumerate() {
-                    let limb = self.message()[row * source.columns() + column];
-                    value = value + *a * K::from_i64(i64::from(limb.as_u32()));
-                }
+            for (value, b) in row.zip(functional.b) {
                 scalar = scalar + value * *b;
                 proof.extend_from_slice(value.to_le_bytes().as_ref());
             }

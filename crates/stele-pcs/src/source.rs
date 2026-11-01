@@ -47,6 +47,8 @@ pub enum Error {
     ValueMismatch,
     /// Prepared material belongs to a different verified source/context.
     CertificateContext,
+    /// Retained row belongs to a different source or exact row-weight vector (A10).
+    RowContext,
     /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }

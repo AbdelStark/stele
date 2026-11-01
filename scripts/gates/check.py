@@ -225,7 +225,7 @@ def field_sources(root):
 
 
 def field_source_codec(root):
-    """A9 certificate/opening consumers; complete profiles remain guarded."""
+    """A9 consumers and A10 retained rows; complete profiles remain guarded."""
     crate = root / 'crates/stele-pcs'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs',
                'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
@@ -234,13 +234,14 @@ def field_source_codec(root):
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
                'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
-    library = ('//! Conditional Circle field sources, certificates and functional openings, RFC-0010 A9.\n'
+    library = ('//! Conditional Circle field sources, certificates and functional openings, RFC-0010 A9/A10.\n'
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                'extern crate alloc;\nmod certificate;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\n'
                'pub use certificate::{verify_certificate, CertificateRecord, Failure, Usage, VerifiedCertificate};\n'
-               'pub use opening::{verify_opening, verify_point, Functional, OpeningRecord};\n'
+               'pub use opening::{\n'
+               '    verify_opening, verify_point, Functional, OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
                'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
                'pub use producer::CertificateFailure;\n'
                'pub use source::{Error, Parameters, ProofKind, Response, Source, Wire};\n'
@@ -274,7 +275,7 @@ def field_source_codec(root):
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
                        'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,'
-                       'FunctionalShape,ValueMismatch,CertificateContext,Capacity,'),
+                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
@@ -333,16 +334,21 @@ def field_source_codec(root):
     opening_closed = (opening_declarations == [
         ('struct', 'Functional'), ('', 'id'), ('', 'a'), ('', 'b'), ('', 'value'), ('fn', 'verify_point'),
         ('struct', 'OpeningRecord'), ('fn', 'certificate'), ('fn', 'id'), ('fn', 'queries'),
-        ('fn', 'kind'), ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening')]
+        ('fn', 'kind'), ('struct', 'RetainedRowWork'), ('', 'source_visits'),
+        ('', 'source_elements'), ('', 'retained_bytes'), ('struct', 'RetainedRow'),
+        ('fn', 'new'), ('fn', 'values'), ('fn', 'work'), ('fn', 'opening'),
+        ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening')]
         and len(opening_declarations) == len(re.findall(r'\bpub\b', opening))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
+            "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",
             "impl<K:ChallengeField>PreparedSource<'_,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', opening)] == [
             'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,Source,Usage,VerifiedCertificate,};',
             'usealloc::vec::Vec;', 'usestele_code::{CodeField,Encoder};', 'usestele_field::{Serialize,M31};',
             'usestele_hash::{merkle,AbsorbLabel,ChallengeField,HashUsage,Transcript};']
-        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', opening)] == ['#[derive(Clone,Copy)]']
+        and [compact(text) for text in re.findall(r'#\[[^\]]*\]', opening)] == [
+            '#[derive(Clone,Copy)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', opening))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or not closed_surface or not prepared_closed or not producer_closed or not certificate_closed
@@ -351,7 +357,7 @@ def field_source_codec(root):
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
             or 'build' in manifest.get('package', {})):
-        raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening APIs admitted (E4-03a)')
+        raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-pcs', '--locked', '--offline'],
          ['test matches_reference_qm31_source_and_wire ... ok',
@@ -359,6 +365,7 @@ def field_source_codec(root):
           'test rejects_unsupported_sources_without_allocation ... ok',
           'test accepts_maximum_source_shape_without_domain_allocation ... ok',
           'test preparation::tests::rejects_preparation_allocation_sizes ... ok',
+          'test opening::rejects_retained_row_allocation_sizes ... ok',
           'test matches_reference_qm31_prepared_columns ... ok',
           'test matches_reference_om31_prepared_columns ... ok',
           'test rejects_preparation_shape_and_hash_overflow ... ok',
@@ -377,11 +384,24 @@ def field_source_codec(root):
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
         if result.returncode or any(text not in result.stdout for text in expected):
             raise ValueError(f'field source codec checks failed: {result.stdout} {result.stderr}')
-        if command[0] == 'cargo' and sorted(re.findall(
-                r'^test crates/stele-pcs/src/(\S+) - .* - compile fail \.\.\. ok$',
-                result.stdout, re.MULTILINE)) != ['certificate.rs', 'opening.rs', 'opening.rs', 'preparation.rs', 'source.rs']:
-            raise ValueError('field source codec checks failed: missing compile-fail boundary')
-    print('gate PCS: native certificates/openings/continuations and all59 policies; A1 checked separately; no profile credit')
+        if command[0] == 'cargo':
+            expected_boundaries = {
+                ('certificate.rs', 'certificate::VerifiedCertificate'): 1,
+                ('opening.rs', 'opening::OpeningRecord'): 2,
+                ('opening.rs', 'opening::RetainedRow'): 4,
+                ('preparation.rs', 'preparation::PreparedSource'): 1,
+                ('source.rs', 'source::Source'): 1,
+            }
+            boundaries = re.findall(
+                r'^test crates/stele-pcs/src/(\S+) - (\S+) \(line (\d+)\) - compile fail \.\.\. ok$',
+                result.stdout, re.MULTILINE)
+            actual_boundaries = {}
+            for file, target, line in boundaries:
+                actual_boundaries.setdefault((file, target), set()).add(line)
+            if (len(boundaries) != sum(expected_boundaries.values())
+                    or {key: len(lines) for key, lines in actual_boundaries.items()} != expected_boundaries):
+                raise ValueError('field source codec checks failed: missing compile-fail boundary')
+    print('gate PCS: native certificates/openings/retained rows/continuations and all59 policies; A1 checked separately; no matmul/profile credit')
 
 
 def fraction_reductions(root):

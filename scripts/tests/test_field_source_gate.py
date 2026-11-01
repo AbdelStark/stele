@@ -1,4 +1,4 @@
-"""RFC-0010 A9: certificate/opening authority is private; unwired APIs reject."""
+"""RFC-0010 A9/A10: certificate and retained-row boundaries; unwired APIs reject."""
 import importlib.util
 from contextlib import redirect_stdout
 import io
@@ -44,6 +44,10 @@ class FieldSourceGateTests(unittest.TestCase):
                                  'pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n'),
                                 ('src/opening.rs', '\nimpl<K: ChallengeField> From<OpeningRecord<\'_, K>> for bool { '
                                  'fn from(_: OpeningRecord<\'_, K>) -> bool { true } }\n'),
+                                ('src/opening.rs', '\nimpl<K: ChallengeField> RetainedRow<\'_, \'_, K> { '
+                                 'pub fn from_values(_: Vec<K>) -> Self { todo!() } }\n'),
+                                ('src/opening.rs', '\nimpl<K: ChallengeField> RetainedRow<\'_, \'_, K> { '
+                                 'pub fn values_mut(&mut self) -> &mut [K] { &mut self.values } }\n'),
                                 ('Cargo.toml', '\n[features]\nunwired = []\n')]:
                 path = crate / name
                 original = path.read_text()
@@ -69,6 +73,7 @@ class FieldSourceGateTests(unittest.TestCase):
                                 cwd=ROOT, text=True, capture_output=True)
         self.assertEqual(actual.returncode, 0, actual.stderr)
         for name in ('preparation::tests::rejects_preparation_allocation_sizes',
+                     'opening::rejects_retained_row_allocation_sizes',
                      'matches_reference_qm31_prepared_columns',
                      'matches_reference_om31_prepared_columns',
                      'rejects_preparation_shape_and_hash_overflow',
@@ -88,9 +93,18 @@ class FieldSourceGateTests(unittest.TestCase):
                 self.assertEqual(run.call_count, 1)
         opening_docs = [line for line in actual.stdout.splitlines()
                         if line.startswith('test crates/stele-pcs/src/opening.rs') and 'compile fail' in line]
-        self.assertEqual(len(opening_docs), 2)
+        self.assertEqual(len(opening_docs), 6)
         for line in opening_docs:
             result = subprocess.CompletedProcess([], 0, actual.stdout.replace(line, '', 1), '')
+            with mock.patch.object(gate.subprocess, 'run', return_value=result):
+                with self.assertRaisesRegex(ValueError, 'missing compile-fail boundary'):
+                    gate.field_source_codec(ROOT)
+        retained_docs = [line for line in opening_docs if ' - opening::RetainedRow (' in line]
+        self.assertEqual(len(retained_docs), 4)
+        for output in (
+                actual.stdout.replace(retained_docs[0], retained_docs[1], 1),
+                actual.stdout.replace(' - opening::RetainedRow (', ' - opening::Unrelated (')):
+            result = subprocess.CompletedProcess([], 0, output, '')
             with mock.patch.object(gate.subprocess, 'run', return_value=result):
                 with self.assertRaisesRegex(ValueError, 'missing compile-fail boundary'):
                     gate.field_source_codec(ROOT)
