@@ -209,3 +209,7 @@ path = "pcs/nc_0611.rs"
 [[example]]
 name = "matmul_corpus"
 path = "examples/matmul_corpus.rs"
+
+[[example]]
+name = "matmul_bench"
+path = "examples/matmul_bench.rs"

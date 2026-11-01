@@ -639,8 +639,130 @@ def compare(path, directory):
         assert produced == 2000 and next(actual, None) is None, "native response count"
 
 
+def verify_native(path):
+    """Verify one native public artifact; no fixture/prover/corpus engine runs.
+
+    Timers exclude configure/import/startup and final JSON serialization; total
+    includes request reading, validation, all consumers and local cleanup.
+    Process RSS and launch-to-exit wall time belong to the external controller.
+    A rejection raises its actual error and emits no successful receipt.
+    """
+    from time import perf_counter_ns
+
+    sources = configure(ROOT)
+    times = {}
+
+    def keys(value, expected):
+        pcs.require(type(value) is dict and set(value) == set(expected), "NativeRequestKeys")
+
+    def array(value, count):
+        pcs.require(type(value) is list and len(value) == count, "NativeRequestShape")
+        return value
+
+    def integer(value, bound):
+        pcs.require(type(value) is int and 0 <= value < bound, "NativeRequestInteger")
+        return value
+
+    def raw_hex(value, size=None):
+        pcs.require(type(value) is str and len(value) % 2 == 0
+                    and all(c in "0123456789abcdef" for c in value), "NativeRequestHex")
+        raw = bytes.fromhex(value)
+        pcs.require(size is None or len(raw) == size, "NativeRequestShape")
+        return raw
+
+    def unique(pairs):
+        pcs.require(len(pairs) == len(dict(pairs)), "NativeRequestDuplicateKey")
+        return dict(pairs)
+
+    def decode(raw):
+        value = json.loads(raw, object_pairs_hook=unique)
+        keys(value, ("degree", "dims", "ids", "point", "value", "public_hex",
+                     "originals", "proof_hex", "following_hex"))
+        degree = integer(value["degree"], 9)
+        pcs.require(degree in (4, 8), "NativeRequestField")
+        dims = [integer(n, 256) for n in array(value["dims"], 4)]
+        h, a, b, c = dims
+        pcs.require(a <= 30 and c <= 30 and h+b <= 29 and h+a+c <= 63,
+                    "NativeRequestShape")
+        ids = [integer(n, 1 << 64) for n in array(value["ids"], 5)]
+        pcs.require(len(set(ids[:4])) == 4, "NativeRequestIdentity")
+        def field(v):
+            return tuple(integer(x, pcs.P) for x in array(v, degree))
+        points = [[field(v) for v in array(part, count)]
+                  for part, count in zip(array(value["point"], 3), (h, a, c))]
+        public = raw_hex(value["public_hex"])
+        pcs.require(public, "NativeRequestPublic")
+        case = dict(degree=degree, dims=dims, ids=ids, point=points,
+                    value=field(value["value"]), public_hex=public.hex())
+        originals = []
+        for info, identity, ell in zip(array(value["originals"], 2), ids[:2], (a, c)):
+            keys(info, ("id", "ell", "m", "blowup", "root_hex", "source_hex", "certificate_hex"))
+            actual = (integer(info["id"], 1 << 64), integer(info["ell"], 31),
+                      integer(info["m"], 30))
+            pcs.require(actual == (identity, ell, h+b), "NativeRequestSource")
+            source = pcs.Source(degree, identity, ell, h+b,
+                                integer(info["blowup"], 256), raw_hex(info["root_hex"], 32))
+            pcs.require(source.bytes() == raw_hex(info["source_hex"], 105), "NativeRequestSource")
+            originals.append((source, raw_hex(info["certificate_hex"])))
+        wire = raw_hex(value["proof_hex"])
+        next_values = pcs.fields(raw_hex(value["following_hex"], 12*degree), degree)
+        next_proof = dict(rounds=[next_values[:2]], final=next_values[2:])
+        return case, originals, wire, next_proof
+
+    def consume(decoded):
+        case, originals, wire, next_proof = decoded
+        with observed_references():
+            handles, imports = [], []
+            for side, (source, proof) in zip(("x", "w"), originals):
+                tick = perf_counter_ns()
+                before = len(_created)
+                local = hashes()
+                with local_hashes(local):
+                    handle = pcs.verify_certificate(source, proof)
+                pcs.require(len(_created) == before+1, "NativeObservationTranscript")
+                imports.append(dict(transcript=_created[-1].usage.copy(), non_transcript=local))
+                handles.append(handle)
+                times["certificate_import_"+side] = perf_counter_ns()-tick
+            tick = perf_counter_ns()
+            expected, verifier = verify_wire(case, handles, wire)
+            times["closed_relation"] = perf_counter_ns()-tick
+            # Do not route arbitrary failures through the corpus's finite attack map.
+            pcs.require(expected["decision"] == "accept", expected["decision"])
+            tick = perf_counter_ns()
+            degree = case["degree"]
+            instance = dict(id=901, m=1, ids=[902],
+                            terms=[(sc.scalar(1, degree), [0])], sum=sc.scalar(7, degree))
+            tables = [[sc.scalar(2, degree), sc.scalar(5, degree)]]
+            record = sc.verify_public(verifier, instance, next_proof, tables)
+            expected["continuation"] = dict(decision="accept", sc=record["sc"],
+                point=[sc.encode(v).hex() for v in record["point"]], usage=verifier.usage.copy())
+            expected["continuation"]["probe"] = sc.encode(verifier.field(pcs.CHALLENGE)).hex()
+            diagnostic_probe_usage = verifier.usage.copy()
+            times["continuation"] = perf_counter_ns()-tick
+            result = projection(expected, imports)
+        # Actual imported handles/transcripts/temporary proof state drop on return.
+        return result, diagnostic_probe_usage
+
+    start = perf_counter_ns()
+    raw = Path(path).read_bytes()
+    decoded = decode(raw)
+    request_sha256 = hashlib.sha256(raw).hexdigest()
+    times["decode"] = perf_counter_ns()-start
+    verification, diagnostic_probe_usage = consume(decoded)
+    del raw, decoded
+    total = perf_counter_ns()-start
+    remainder = total-sum(times.values())
+    pcs.require(remainder >= 0, "NativeObservationTiming")
+    return dict(verification=verification, stages_ns=times, total_ns=total,
+                remainder_ns=remainder, request_sha256=request_sha256, sources=sources,
+                runtime=dict(version=sys.version, executable=sys.executable, implementation=sys.implementation.name),
+                diagnostic_probe_usage=diagnostic_probe_usage)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "--reference-only":
+    if len(sys.argv) == 3 and sys.argv[1] == "--verify-native":
+        print(json.dumps(verify_native(Path(sys.argv[2])), sort_keys=True))
+    elif len(sys.argv) == 3 and sys.argv[1] == "--reference-only":
         # Root freezes independent evidence before the first native comparison.
         path = Path(sys.argv[2])
         receipt = freeze(path)
