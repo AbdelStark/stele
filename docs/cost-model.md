@@ -207,6 +207,15 @@ c_sc/T_misc storage costs without changing arithmetic or source passes. Borrowed
 inputs, caller observation slots, A7/PCS scratch, parent overlaps and stack/allocator
 storage remain separate; the A1 high water is not whole-operation memory.
 
+E7-01b5 observes actual PCS proof, frame, weight, row, encoded-word and path
+capacities through the ordinary execution paths. Encoder work comes from that
+same encoding. Certificate import retains its row through queries; functional
+verification drops it after encoding, and point verification owns both eq vectors
+through the inner call. Source reads, response copies, authenticated/decoded column
+bytes and encoded-value comparisons count their named operations, including repeats;
+they are distinct c_c/T_misc observations, not physical bandwidth measurements.
+Borrowed preparation, retained rows, coefficients and proofs remain parent costs.
+
 No measured constant or complete weight-phase result changes. Full registration,
 proving and both verifier timings, A1/PCS/codec allocation overlaps and process RSS
 remain E7-01b requirements. The scoped child observations supply no complete ledger.

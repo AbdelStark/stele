@@ -33,7 +33,7 @@ where
         let root: [u8; 32] = context[73..].try_into().expect("root");
         let source = Source::<K>::new(41, ell, m, b, root).expect("source");
         let proof = unhex(v["certificate"].as_str().expect("proof"));
-        let (verified, usage) = verify_certificate(source, &proof).expect("honest certificate");
+        let (verified, usage) = verify_both(source, &proof).expect("honest certificate");
         let wire = source
             .parse(ProofKind::Certificate, &proof)
             .expect("parsed");
@@ -44,6 +44,7 @@ where
             &wire,
             &mut continuation,
             &mut Default::default(),
+            &mut VerifierWork::default(),
         )
         .expect("complete inner verifier");
         let expected = include_str!("../tests/fixtures/certificate-continuation.txt")
@@ -82,8 +83,7 @@ where
             usage.transcript.hash_evaluations,
             usage.transcript.xof_requests + 4
         );
-        let (reused, repeated_work) =
-            verify_certificate(source, &proof).expect("reverified import");
+        let (reused, repeated_work) = verify_both(source, &proof).expect("reverified import");
         assert_eq!(reused.record().id(), record.id());
         assert_eq!(reused.record().parameters(), record.parameters());
         assert_eq!(usage, repeated_work);
@@ -91,7 +91,7 @@ where
         for offset in (1..row_end).step_by(4) {
             let mut changed = proof.clone();
             changed[offset..offset + 4].copy_from_slice(&0x7fff_ffffu32.to_le_bytes());
-            let failure = verify_certificate(source, &changed).err().expect("bad row");
+            let failure = verify_both(source, &changed).err().expect("bad row");
             assert_eq!(failure.cause, Error::NoncanonicalField);
             assert_eq!(failure.usage, Usage::default());
         }
@@ -100,15 +100,13 @@ where
             [&proof[..], &[0]].concat(),
             [&[2], &proof[1..]].concat(),
         ] {
-            let failure = verify_certificate(source, &changed)
-                .err()
-                .expect("bad shape");
+            let failure = verify_both(source, &changed).err().expect("bad shape");
             assert_eq!(failure.cause, Error::ProofShape);
             assert_eq!(failure.usage, Usage::default());
         }
         let mut changed = proof.clone();
         changed[row_end] ^= 1;
-        let failure = verify_certificate(source, &changed)
+        let failure = verify_both(source, &changed)
             .err()
             .expect("changed imported leaf");
         assert_eq!(failure.cause, Error::Merkle(merkle::Error::RootMismatch));
@@ -119,7 +117,7 @@ where
         assert!(failure.usage.transcript.column_attempts > 0);
         // Authentication must precede canonical decoding, even for a visibly invalid limb.
         changed[row_end..row_end + 4].copy_from_slice(&0x7fff_ffffu32.to_le_bytes());
-        let failure = verify_certificate(source, &changed)
+        let failure = verify_both(source, &changed)
             .err()
             .expect("unauthenticated limb");
         assert_eq!(failure.cause, Error::Merkle(merkle::Error::RootMismatch));
@@ -127,12 +125,20 @@ where
             failure.usage.non_transcript.hash_evaluations,
             1 + source.path_height() as u64
         );
+        let mut late = proof.clone();
+        *late.last_mut().expect("last sibling") ^= 1;
+        let failure = verify_both(source, &late).err().expect("late path");
+        assert_eq!(failure.cause, Error::Merkle(merkle::Error::RootMismatch));
+        assert_eq!(
+            failure.usage.non_transcript.hash_evaluations,
+            queries * (1 + source.path_height() as u64)
+        );
         malformed_sweep(source, &proof, row_end);
         let mut wrong_root = root;
         wrong_root[0] ^= 1;
         let wrong = Source::<K>::new(41, ell, m, b, wrong_root).expect("different expected root");
         assert_eq!(
-            verify_certificate(wrong, &proof)
+            verify_both(wrong, &proof)
                 .err()
                 .expect("context substitution")
                 .cause,
@@ -142,6 +148,71 @@ where
     }
     assert_eq!(cases, 3);
 }
+// Exercise both public entry points on every targeted success and rejection.
+fn verify_both<K: ChallengeField + CodeField>(
+    source: Source<K>,
+    proof: &[u8],
+) -> Result<(VerifiedCertificate<K>, Usage), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let ordinary = verify_certificate(source, proof);
+    let measured = verify_certificate_measured(source, proof);
+    match &ordinary {
+        Ok((record, usage)) => {
+            let (actual, observed, work) = measured.expect("measured accepts");
+            assert_eq!(record.record().id(), actual.record().id());
+            assert_eq!(
+                record.record().source().bytes(),
+                actual.record().source().bytes()
+            );
+            assert_eq!(*usage, observed);
+            let wire = source.parse(ProofKind::Certificate, proof).expect("wire");
+            let row: Vec<K> = wire
+                .row_bytes()
+                .chunks_exact(4 * usize::from(<K as CodeField>::DEGREE))
+                .map(|b| {
+                    K::from_le_bytes(K::Bytes::try_from(b).ok().expect("width")).expect("field")
+                })
+                .collect();
+            let encoded = Encoder::from_code_id(&source.code().code_id())
+                .expect("encoder")
+                .encode_measured(&row)
+                .expect("encoding");
+            assert_eq!(work.encoder, encoded.work);
+            assert_eq!(
+                work.encoded_bytes,
+                encoded.values.capacity() * core::mem::size_of::<K>()
+            );
+            assert!(work.row_bytes >= core::mem::size_of_val(row.as_slice()));
+            assert!(work.weights_bytes >= source.rows() * core::mem::size_of::<K>());
+            assert_eq!(work.frame_bytes, 0);
+            assert_eq!(
+                work.peak_owned_bytes,
+                work.weights_bytes
+                    + work.row_bytes
+                    + work.encoder.peak_owned_bytes.max(work.encoded_bytes)
+            );
+            assert_eq!(
+                work.responses,
+                usize::from(source.queries(ProofKind::Certificate))
+            );
+            assert_eq!(
+                work.column_bytes_authenticated,
+                work.responses * 4 * source.rows()
+            );
+            assert_eq!(work.column_bytes_decoded, work.column_bytes_authenticated);
+            assert_eq!(
+                work.path_bytes_copied,
+                work.responses * 32 * source.path_height()
+            );
+            assert_eq!(work.encoded_values_read, work.responses);
+        }
+        Err(expected) => assert_eq!(*expected, measured.err().expect("measured rejects")),
+    }
+    ordinary
+}
+
 // Bounded deterministic fuzzing covers header, row, payload, path and arbitrary truncations.
 fn malformed_sweep<K: ChallengeField + CodeField>(source: Source<K>, proof: &[u8], row_end: usize)
 where
