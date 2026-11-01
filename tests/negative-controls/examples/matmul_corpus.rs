@@ -275,7 +275,7 @@ where
         .map_err(|e| format!("FixtureTranscript({e:?})"))?;
     let before = t.usage();
     // Fixed explicit fixture budgets, independent of expected results. They
-    // admit the bounded strata; exact/one-below and maximum caps are core tests.
+    // admit the bounded strata; static geometry and cap rejection are core tests.
     let limits = Limits {
         descriptor_bytes: 16_000_000,
         proof_bytes: 16_000_000,
