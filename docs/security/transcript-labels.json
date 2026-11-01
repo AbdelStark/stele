@@ -26,5 +26,13 @@
   ["absorb", "stele/v0.1/pcs/opening-columns", "-"],
   ["absorb", "stele/v0.1/pcs/sources", "-"],
   ["absorb", "stele/v0.1/gkr/stacked-sources", "-"],
-  ["absorb", "stele/v0.1/gkr/stacked", "-"]
+  ["absorb", "stele/v0.1/gkr/stacked", "-"],
+  ["absorb", "stele/v0.1/lookup/statement", "-"],
+  ["absorb", "stele/v0.1/lookup/units", "-"],
+  ["absorb", "stele/v0.1/lookup/multiplicities", "-"],
+  ["absorb", "stele/v0.1/lookup/repetition", "-"],
+  ["absorb", "stele/v0.1/lookup/multiplicity-claims", "-"],
+  ["challenge", "stele/v0.1/lookup/unit", "LU"],
+  ["challenge", "stele/v0.1/lookup/beta", "LU"],
+  ["challenge", "stele/v0.1/lookup/alpha", "LU"]
 ]

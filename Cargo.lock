@@ -321,6 +321,7 @@ dependencies = [
  "stele-ir",
  "stele-lookup",
  "stele-pcs",
+ "stele-poly",
  "stele-sumcheck",
 ]
 

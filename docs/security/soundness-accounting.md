@@ -1604,6 +1604,21 @@ External composition owns adversarial/attempt caps; local successful usage is
 not a substitute. Standalone registration usages are separate from the outer
 cumulative transcript and its disjoint local hashes, including failure prefixes.
 
+The native producer consumes the five lookup absorb labels and the three challenge
+labels in that schedule. The registry classifies Unit, Beta and Alpha as LU;
+this classification refers to the single joint identity event above. Actual A3/A9
+producers supply the tree, selected-product, certificate and opening bytes. The
+independent eight-case QM31/OM31 corpus compares complete bytes, registration
+observations, outer and local usage, public payload totals and successful
+continuations. Its two RootMismatch attempts retain both completed registrations
+and the actual failed outer prefix. This bounded corpus does not claim sampler-abort
+or arbitrary failed-opening parity. Producer admission checks complete public
+payloads and conservative dense slots; these are neither observed RSS nor a
+soundness record. A separate direct-product functional check covers every prefix
+and row split up to k=4 at 10,320 points per field, including Boolean points and
+nonzero physical tails. It grants no PCS coverage. Closed lookup verification
+and its native controls remain pending.
+
 This contract grants no native control coverage, profile flag, integer/plan/source
 ownership, Q12 theorem or joint ZK. E3-07b requires actual complete delivery;
 E3-07 and Draft A2/A8 retain their full original requirements.

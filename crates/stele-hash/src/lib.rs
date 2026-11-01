@@ -67,6 +67,8 @@ pub enum LossLine {
     PcsTensor,
     /// Certificate/opening column miss term, separate from FS/H (RFC-0012 A10).
     PcsQuery,
+    /// Joint grouped-lookup identity (A11); counted once per lookup, never per draw.
+    Lu,
 }
 /// Registered label metadata; validation does not authorize a caller-supplied registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,7 +80,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 28] = [
+const REGISTRY: [RegistryEntry<'static>; 36] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -219,6 +221,46 @@ const REGISTRY: [RegistryEntry<'static>; 28] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/statement",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/units",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/multiplicities",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/repetition",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/multiplicity-claims",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/unit",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Lu),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/beta",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Lu),
+    },
+    RegistryEntry {
+        label: "stele/v0.1/lookup/alpha",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Lu),
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -246,7 +288,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 28], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 36], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -325,6 +367,16 @@ pub enum AbsorbLabel {
     StackSources,
     /// Complete expected stacked statement and public coefficient (A6).
     Stack,
+    /// Complete immutable expected lookup statement (A11).
+    LookupStatement,
+    /// Lookup/repetition identity before its unit coordinates (A11).
+    LookupUnits,
+    /// Every multiplicity context and genuine registration identity (A11).
+    LookupMultiplicities,
+    /// Lookup/repetition and pair-or-tree phase (A11).
+    LookupRepetition,
+    /// Actual table point, numerator and every structural piece value (A11).
+    LookupMultiplicityClaims,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -348,6 +400,11 @@ impl AbsorbLabel {
             Self::FieldSources => 25,
             Self::StackSources => 26,
             Self::Stack => 27,
+            Self::LookupStatement => 28,
+            Self::LookupUnits => 29,
+            Self::LookupMultiplicities => 30,
+            Self::LookupRepetition => 31,
+            Self::LookupMultiplicityClaims => 32,
         }]
     }
 }
@@ -370,6 +427,12 @@ pub enum ChallengeLabel {
     CertificateColumn,
     /// Full K draw for an opening column attempt, PCS query term (A10).
     OpeningColumn,
+    /// Independent grouped-unit coordinate, part of the joint LU identity (A11).
+    LookupUnit,
+    /// Tuple compression draw after every multiplicity, joint LU identity (A11).
+    LookupBeta,
+    /// Denominator draw after every multiplicity, joint LU identity (A11).
+    LookupAlpha,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -382,6 +445,9 @@ impl ChallengeLabel {
             Self::CertificateWeight => 17,
             Self::CertificateColumn => 19,
             Self::OpeningColumn => 23,
+            Self::LookupUnit => 33,
+            Self::LookupBeta => 34,
+            Self::LookupAlpha => 35,
         }]
     }
 }
