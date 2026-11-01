@@ -1129,12 +1129,34 @@ tasks:
   - independent checked-in Python/native schema parity on boundary and seeded parameter cases, including zero quotient and high shared-result bytes; invalid inputs and checked resource failures reject
   - exact native API and evidence gates admit static schema metadata only; no challenge, proof consumer, NC-0308..0314 completion or complete resource-ledger credit
   - all E7-01d consumer, control, full wire/record/Usage/continuation parity and complete resource criteria remain required
+- id: E7-01d2
+  epic: E7
+  title: Native ordered Requant arithmetic constraint compiler
+  depends:
+  - E7-01d1
+  rfc:
+  - RFC-0023 §2.1
+  - RFC-0023 §2.2
+  - RFC-0020 A8
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01d2-requant-constraints
+  acceptance:
+  - derive all ordered arithmetic constraints from the actual immutable native schema; check actual operand caps against recorded role bounds without duplicating column derivation
+  - preserve common input ordinals, every zero coefficient and repeated factor, full-width caps, high columns, sign and target equations, input and advice padding and reserved-plane equations exactly
+  - use actual sumcheck Term types with checked bounded allocation and shared input geometry; no witness-position table or repeated full input roster per constraint
+  - independent checked-in Python/native complete ordered term parity in both fields on boundary and seeded cases; direct honest and one-value-tamper equation tests cover structural regressions without native proof-control credit
+  - exact API and evidence gates admit only the closed compiler; no arbitrary polynomial constructor, transcript challenge, accepting proof record, NC completion or complete resource-ledger credit
+  - all E7-01d descriptor, source consumer, control, complete wire/record/Usage/continuation parity and complete resource criteria remain required
 - id: E7-01d
   epic: E7
   title: Native closed integer Requant production, verification and resource ledger
   depends:
   - E7-01c
   - E7-01d1
+  - E7-01d2
   rfc:
   - RFC-0023
   - RFC-0004 A1
