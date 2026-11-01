@@ -1,7 +1,7 @@
 # Conditional grouped lookup with certified original sources
 
-Status: Draft for RFC-0008 A5, RFC-0012 A11 and RFC-0020 A6. No production
-behavior is authorized until coordinated acceptance. This specifies field
+Status: Accepted under RFC-0008 A5, RFC-0012 A11 and RFC-0020 A6.
+Review: [coordinated skill sign-off](../agents/reviews/lookup-contract-accepted.md). This specifies field
 membership against the unique near messages of actual RFC-0010 A9 sources.
 It does not establish CQIS ownership, range dominance, privacy, either profile
 or Fiat–Shamir soundness. Full E3-07 requirements and Q12/Q29 remain open.
@@ -437,7 +437,7 @@ c_lu evidence; Q29 retains joint privacy and Q12 retains FS/profile composition.
 This contract's conditional native task cannot mark those questions or E3-07
 done. Existing Q20/Q26/Q28 coefficient, integer and packing obligations remain.
 
-Draft history: specify the grouped identity with actual A3/A9 consumers,
+Adoption history: specify the grouped identity with actual A3/A9 consumers,
 canonical lookup-owned K-limb projection, at most two prefix-mask functionals,
 caller-owned registration handles and complete wire/accounting/resource scope.
-Acceptance requires Workflow02 soundness, RFC and affected-owner sign-offs.
+Workflow02 soundness, RFC and affected-owner sign-offs are recorded in the linked review.

@@ -129,7 +129,8 @@ Specification acceptance alone introduces no Cargo edge or runtime behavior.
 
 ### A6 — Closed grouped lookup ownership and public-table dependencies
 
-Status: Draft. Companions RFC-0008 A5 and RFC-0012 A11.
+Status: Accepted. Companions RFC-0008 A5 and RFC-0012 A11.
+Review: [coordinated skill sign-off](../../agents/reviews/lookup-contract-accepted.md).
 The [conditional native lookup adapter](../../formal/native-lookup.md) belongs
 in stele-reductions. Reuse actual stele-lookup A3 arithmetic and stele-pcs A9
 consumers; neither arithmetic crate acquires an authentication callback.

@@ -602,8 +602,9 @@ E3-06's terminal source work and E8-05, without completion of their criteria.
 
 ### A11 — Conditional grouped lookup schedule and joint identity record
 
-Status: Draft. Question Q31; companion RFC-0008 A5.
-The exact [native lookup contract](../../formal/native-lookup.md) proposes five
+Status: Accepted. Question Q31; companion RFC-0008 A5.
+Review: [coordinated skill sign-off](../../agents/reviews/lookup-contract-accepted.md).
+The exact [native lookup contract](../../formal/native-lookup.md) fixes five
 absorb labels: stele/v0.1/lookup/statement, /units, /multiplicities, /repetition
 and /multiplicity-claims; and three challenge labels: /unit, /beta and /alpha.
 Typed choices, payload bytes, order and scalar boundaries are fixed there.

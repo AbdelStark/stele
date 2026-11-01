@@ -1587,9 +1587,9 @@ costs and cleanup. Dense work observations enter neither the transcript nor a
 conditional record. This resource evidence adds no soundness or profile credit;
 Q12, private coefficients, integer inference and ZK remain open.
 
-### Draft conditional grouped lookup contract
+### Conditional grouped lookup contract
 
-RFC-0008 A5 / RFC-0012 A11 propose the exact [native lookup schedule](../../formal/native-lookup.md).
+RFC-0008 A5 / RFC-0012 A11 fix the exact [native lookup schedule](../../formal/native-lookup.md).
 For fixed original near messages, Table and Boolean selector, B=2^b<p and
 h=m-b, charge the joint identity term min(1,(h+N+c*t-1)/|K|)^r. Its r*h Unit,
 r Beta and r Alpha draws form that single event; they do not each receive a
@@ -1604,6 +1604,6 @@ External composition owns adversarial/attempt caps; local successful usage is
 not a substitute. Standalone registration usages are separate from the outer
 cumulative transcript and its disjoint local hashes, including failure prefixes.
 
-This Draft grants no native control coverage, profile flag, integer/plan/source
+This contract grants no native control coverage, profile flag, integer/plan/source
 ownership, Q12 theorem or joint ZK. E3-07b requires actual complete delivery;
 E3-07 and Draft A2/A8 retain their full original requirements.

@@ -311,13 +311,14 @@ private PCS/ZK and all E3-07 criteria remain required; no profile or label chang
 
 ### A5 — Conditional grouped lookup with actual certified consumers
 
-Status: Draft. Question Q31. Companions RFC-0012 A11 and RFC-0020 A6.
-Exact proposed contract: [native lookup](../../formal/native-lookup.md).
+Status: Accepted. Question Q31. Companions RFC-0012 A11 and RFC-0020 A6.
+Review: [coordinated skill sign-off](../../agents/reviews/lookup-contract-accepted.md).
+Exact contract: [native lookup](../../formal/native-lookup.md).
 Motivation: A3 supplies the arithmetic but leaves full source/multiplicity
 consumption unspecified. A9 supplies M31 sources; weighted multiplicities are
 K-valued and need an explicit authenticated interpretation, not a type cast.
 
-Proposed addition to §2, as a separate conditional field protocol:
+Addition to §2, as a separate conditional field protocol:
 
 > Implement only the exact grouped-unit, wire, transcript, error and resource
 > contract in formal/native-lookup.md. Use actual A3 trees/selected products,

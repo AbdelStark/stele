@@ -149,7 +149,7 @@ No fitted constant, weight-pass count or inference projection changes from these
 
 ## 12. Conditional grouped lookup contract
 
-Draft RFC-0008 A5 fixes [complete lookup costs](../formal/native-lookup.md#6-complete-costs-and-resource-admission):
+RFC-0008 A5 fixes [complete lookup costs](../formal/native-lookup.md#6-complete-costs-and-resource-admission):
 source/table validation, grouped histograms, K-limb conversion and actual mu
 preparation/registration, two A3 trees and selected-product work per repetition,
 every original opening, and one or two mu functional openings for the real

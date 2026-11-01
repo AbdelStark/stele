@@ -429,8 +429,8 @@ conditional fraction/selected-product contract for E3-07a. Native types, engines
 actual public consumers, controls, shared parity and complete primitive ledgers
 are all required. This does not accept A2's whole lookup or reduce E3-07's scope.
 
-Q31 certified continuation: Draft RFC-0008 A5 / RFC-0012 A11 / RFC-0020 A6
-specify a [conditional native lookup](../../formal/native-lookup.md) using actual
+Q31 certified continuation: Accepted RFC-0008 A5 / RFC-0012 A11 / RFC-0020 A6
+fix a [conditional native lookup](../../formal/native-lookup.md) using actual
 A3 arithmetic and A9 consumers. Canonical K-limb reconstruction and a rank-two
 prefix mask consume table tails without assuming physical zero padding. The
 bounded algebra checker covers 258 cases in both fields; it supplies no native
