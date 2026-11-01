@@ -912,6 +912,26 @@ tasks:
   - reviewed exact stacked field source mapping, A4/A1 and actual A9 consumer contract
   - retained-row ownership and one-source-visit schedule with full resource and independent-verifier delivery requirements
   - soundness, transcript, controls and implementation tasks specified without relaxing E7-01/E7-02, packing, virtual-source, privacy or W8 criteria
+- id: E7-01b1
+  epic: E7
+  title: Retained PCS functional rows for conditional matmul
+  depends:
+  - E7-01a
+  rfc:
+  - RFC-0010 A9
+  - RFC-0010 A10
+  - RFC-0007 A2
+  - RFC-0020 A7
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01b1-retained-row
+  acceptance:
+  - immutable retained row borrows the exact prepared source and row weights, with one observed row-major source visit and checked allocation sizes
+  - complete A9 opening uses the same retained values without rereading the original source; ordinary opening bytes, errors, usage and transcript schedule remain unchanged
+  - both-field complete wire, actual certificate/opening verification, continuation and usage parity; source/weight context rejection before mutation, opaque lifetime boundaries and actual row/read capacity observations
+  - no matmul statement, closed operation or NC-0611 credit; every E7-01b and parent acceptance criterion remains required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -919,6 +939,7 @@ tasks:
   - E7-01a
   - E3-06
   - E4-03a
+  - E7-01b1
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10
