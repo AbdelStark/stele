@@ -22,7 +22,8 @@ TESTS = (
      'rejects_preflight_without_transcript_mutation',
      'rejects_unaddressable_storage_before_any_transcript_work',
      'accepts_empty_constant_and_zero_coefficient_relations',
-     'rejects_malformed_statements_sources_and_proofs'),
+     'rejects_malformed_statements_sources_and_proofs',
+     'matches_reference_qm31_stacked_allocations', 'matches_reference_om31_stacked_allocations'),
     ('rejects_wrong_layer_coefficient', 'rejects_changed_onehot_and_exact_table_source',
      'rejects_unused_original_at_draw_order_point',
      'rejects_missing_stack_or_sources_before_successor'),
@@ -110,6 +111,7 @@ class StackedGateTests(unittest.TestCase):
             ('src/stacked/mod.rs', '\ninclude!("unchecked.rs");\n'),
             ('src/stacked/statement.rs', '\npub struct Unchecked;\n'),
             ('src/stacked/strategy.rs', '\npub fn unchecked_point() {}\n'),
+            ('src/stacked/strategy.rs', '\nimpl From<DenseRoundWork> for bool {}\n'),
             ('Cargo.toml', '\nstele-pcs = { path = "../stele-pcs" }\n'),
         ):
             path = self.root / 'crates/stele-gkr' / name

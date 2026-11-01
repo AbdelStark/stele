@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 pub use statement::{Claim, Limits, Order, Prepared, Statement};
 use stele_hash::{AbsorbLabel, ChallengeField, HashUsage, Transcript};
 use stele_sumcheck::{Proof, Reduction, ScRecord};
-pub use strategy::{Dense, Work};
+pub use strategy::{Dense, DenseRoundWork, Work};
 
 /// A checked statement, resource or actual consuming-protocol failure.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -153,12 +153,22 @@ impl<K: ChallengeField + Eq> Prepared<'_, K> {
         t: &mut Transcript<K>,
         proof: &Proof<K>,
     ) -> Result<(Reduction<K>, HashUsage), Failure> {
+        self.verify_reduction_measured(t, proof)
+            .map(|((reduction, _), usage)| (reduction, usage))
+    }
+    /// The same Stack/A1/A7 consumer, with A1-only allocation observations.
+    /// Excludes borrowed Prepared/proof and A7 evaluator scratch, not a stage peak.
+    pub fn verify_reduction_measured(
+        &self,
+        t: &mut Transcript<K>,
+        proof: &Proof<K>,
+    ) -> Result<((Reduction<K>, stele_sumcheck::VerifierWork), HashUsage), Failure> {
         let result = (|| {
             stele_sumcheck::preflight(self.instance(), proof).map_err(Error::Sumcheck)?;
             t.absorb(AbsorbLabel::Stack, self.bytes())
                 .map_err(Error::Transcript)?;
-            let mut reduction =
-                stele_sumcheck::verify(self.instance(), proof, t).map_err(Error::Sumcheck)?;
+            let (mut reduction, work) = stele_sumcheck::verify_measured(self.instance(), proof, t)
+                .map_err(Error::Sumcheck)?;
             if self.statement.order == Order::LayerLast {
                 reduction
                     .point
@@ -173,7 +183,7 @@ impl<K: ChallengeField + Eq> Prepared<'_, K> {
                 return Err(Error::CoefficientMismatch);
             }
             reduction.claims.pop();
-            Ok(reduction)
+            Ok((reduction, work))
         })();
         observed(result, t)
     }
