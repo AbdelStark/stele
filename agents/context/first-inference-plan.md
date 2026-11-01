@@ -31,7 +31,7 @@ certificate and negative control remains required.
 The initial audit at `ff0f005e87d283d4d2fb8fbce172216b0eda5322` found 45 open
 PRs, primarily one research stack. Those are historical queue figures; the
 current checkpoint has no open PR. Keep research scope
-and evidence separate from native implementation progress. The CI snapshot
+and evidence separate from native implementation progress. That initial CI snapshot
 had 40 active hosted runners and 1546 queued jobs. Five runs used superseded
 heads; another pair shared one head, workflow and base. Cancel obsolete work
 only after confirming current replacement runs. Preserve logs and useful

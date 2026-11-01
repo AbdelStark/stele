@@ -902,6 +902,7 @@ tasks:
   - RFC-0010 A9
   - RFC-0010 A10
   - RFC-0012 A12
+  - RFC-0020 A7
   skill: rfc-author
   crate: stele-reductions
   status: in_progress
@@ -922,6 +923,7 @@ tasks:
   - RFC-0007 A2
   - RFC-0010 A10
   - RFC-0012 A12
+  - RFC-0020 A7
   skill: gkr-reduction-author
   crate: stele-reductions
   status: blocked(RFC-0007 A2)

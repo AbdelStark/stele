@@ -45,7 +45,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted |
 | 0019 | Research agenda | Research |
-| 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6) |
+| 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6); A7 Draft |
 | 0021 | Canonical nonlinear functions, tables and representations | Accepted |
 | 0022 | Closed static arithmetic records | Accepted |
 

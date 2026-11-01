@@ -1,6 +1,6 @@
 # Conditional matmul with original field sources
 
-Status: Draft for RFC-0007 A2, RFC-0010 A10 and RFC-0012 A12.
+Status: Draft for RFC-0007 A2, RFC-0010 A10, RFC-0012 A12 and RFC-0020 A7.
 This is one complete stacked field statement, using the actual A4/A1
 reduction and A9 source consumers. It is a prerequisite of E7-01/E7-02, not
 integer matmul, a model plan, a complete weight phase, private inference or admission
@@ -28,7 +28,8 @@ rates may differ. All extents are full powers of two without implicit
 padding, packing or range interpretation. Source identities X,W and the
 output and coefficient identities are pairwise distinct u64 values. The stage id is
 unique within the enclosing expected statement. Reject shape/field/context
-disagreement before any absorb. Zero-bit axes are valid, including L=d=1.
+disagreement before any absorb. Inherit A4's output-layout bound h+a+c<=63
+and both A9 source/code bounds. Zero-bit axes are valid, including L=d=1.
 
 This explicitly fixes logical X coordinates `(l,i,k)` to physical `(i,l,k)`
 and logical W coordinates `(l,k,j)` to physical `(j,l,k)`. It does not infer a
@@ -56,7 +57,8 @@ borrows one immutable PreparedSource and takes exact row weights of the
 source's row count. It validates all dimensions and capacities, then reads
 each original message element exactly once in row-major order, accumulating
 the K-valued row `u[column]=sum_row a[row]*M[row,column]`. It retains the
-source borrow, exact row weights and immutable u. No public constructor from
+source borrow, an immutable borrow or ownership of the one row-weight vector,
+and immutable u. No public constructor from
 an arbitrary u, mutable row access, deserialization or digest constructor is
 allowed. The type supplies no verification or profile credit.
 
@@ -117,8 +119,9 @@ After complete preflight, the schedule is MatmulStatement; actual A4 Stack;
 actual A1 Instance/Round/Sumcheck/Final; actual X Opening/OpeningRow/OpeningColumn
 draws/OpeningColumns; then actual W in the same order. Use the original
 tensor id as each opening id inside the bound stage. Both source contexts
-and certificate ids bind before any A1 draw. Use the unclosed A4 kernel only;
-do not call its public/certified closed adapters or emit StackSources. This
+and certificate ids bind before any A1 draw. Call the unclosed A4 kernel
+directly; its public/certified closed adapters are outside this operation,
+and StackSources is absent. This
 operation's explicit original-source mapping supplies the kernel's fixation
 precondition. It changes neither existing A4 adapter nor A9 FieldSources.
 Opening queries follow the
@@ -194,17 +197,34 @@ this does not satisfy the complete configured weight-phase, bucketed, memory
 or succinctness criteria. Charge the public coefficient, per-layer partials
 and all A4 dense strategy capacity in addition to retained A/B.
 
-Preflight checked integer shifts/products/sums and fallible allocation before
-every buffer. Caller budgets bound complete descriptor/proof bytes and peak
-working elements, including retained A/B, folding copies, eq weights, encoded
-rows, response material, codec buffers and overlap. Preserve A9's own limits.
-Keep the existing unclosed Prepared::for_certified_sources conservative
-descriptor reservation, including its unused closed-roster allowance, and
-add the MatmulStatement frame and opening costs. This accounting does not
-mean StackSources was emitted. No new GKR constructor is required to save it.
-Include preparation, registration matrices/encodings/Merkle nodes, generated
-proof and verification allocations in complete process-memory measurements.
-Budget exhaustion returns Capacity, never truncated work or partial success.
+Use the existing A4 Limits with their exact units: descriptor/proof bytes,
+prepared K entries, partial K entries and A7 axis K entries. Before invoking
+Prepared::for_certified_sources, subtract the full MatmulStatement and both
+A9 functional-frame lengths from descriptor_bytes; subtract the outer version
+byte and both complete A9 wire sizes from proof_bytes. Preserve A4's remaining conservative
+allowances, including its unused closed-roster bytes and its A1 message
+id/index prefixes. The resulting sum intentionally overcounts some wire
+values through A1's existing id/index prefixes. It does not imply StackSources
+was emitted or require a new kernel.
+
+The producer also has a retained_row_entries cap in K elements. With S=L*d,
+require `3*S+n+m` checked entries: two retained rows, one shared column-eq
+vector, and one owned or borrowed immutable vector of each set of row weights.
+Move or borrow those vectors; no duplicate validation copy is needed. Existing
+A4 prepared_entries separately covers its folding state;
+these are distinct scopes, not interchangeable credits. This cap applies to
+the producer only; verifier preflight uses the same byte and A4 shape limits
+without allocating or requiring original matrices/retained rows.
+
+These limits bound requested payloads in the listed scopes, not allocator
+capacity, full process memory or an aggregate peak across A9. A9 retains its
+own checked/fallible allocation paths for row decoding, encoding and responses.
+Every static size, shift, conversion, sum and caller cap is checked before
+replay. Later allocation failure still aborts with Capacity and actual usage.
+Measure actual vector capacities and all retained/fold/opening/codec overlaps,
+including borrowed preparation, registration matrices/encodings/Merkle nodes,
+proof buffers and verifier allocations, in the complete resource ledger.
+Report process RSS separately from requested payload/capacity counts.
 
 The native delivery must include both fields; L=d=1 and zero-bit outer axes;
 asymmetric dimensions and code rates; all-zero factors; malformed/noncanonical
@@ -231,12 +251,18 @@ conditional controls; specification acceptance earns no executed coverage:
   while keeping the verifier's statement fixed and the opposite source zero.
   Generate A1 and all dependent opening bytes at the expected transcript
   history using this false row. A1's product check still passes; the actual
-  A9 column equation must reject ColumnMismatch. Use L=d=1 with a nonconstant
-  affected source, so every sampled column detects the changed functional.
+  A9 column equation must reject ColumnMismatch. Use L=d=1 and affected
+  source rows [0],[1] (or the row-index vector for more outer bits); change
+  one outer coordinate by +1 and assert the retained scalar differs, so every
+  sampled column detects the change.
   Exercise both X and W, with asymmetric geometry to detect axis swaps.
 * NC-0307: change one A1 final under a zero other factor, keeping all rounds
   and honest retained opening rows unchanged. A1 still passes; the actual
-  X or W opening must reject ValueMismatch before queries. Exercise both.
+  X or W opening must reject ValueMismatch before queries. Exercise both,
+  including a genuinely stacked h>0,b>0 asymmetric fixture with non-Boolean
+  points: substitute the original value at a wrong layer/inner restoration,
+  assert it differs, and rebuild preceding query responses under the actual
+  changed Final history so rejection reaches the intended scalar consumer.
 * NC-0611: change one OpeningRow value under a zero opposite factor and
   reconstruct its A1 final and all dependent proof arithmetic/responses at
   the expected history, with L=d=1 for deterministic column rejection.
@@ -244,9 +270,12 @@ conditional controls; specification acceptance earns no executed coverage:
   Separately test opaque-row owner/weight substitution rejects RowContext
   before any transcript change; that API test alone earns no control credit.
 
-Also extend real NC-0606 source/certificate substitution and NC-0802 missing
-MatmulStatement/terminal-response absorption through this complete consumer
-and a genuine following A1 instance. Preserve existing control coverage;
+Also extend real NC-0606 source/certificate substitution through this complete
+consumer. NC-0802 has separate omission variants for MatmulStatement, X's
+OpeningColumns and W's OpeningColumns. Keep the honest closed artifact intact;
+alter only a genuine following A1 final using the corresponding omitted-history
+challenge, and require FinalEvaluationMismatch at the unchanged chained verifier.
+Preserve existing control coverage;
 no research-only sensitivity test or producer rejection replaces a verifier
 control. Each honest artifact must first pass the same production verifier.
 
