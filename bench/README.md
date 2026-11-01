@@ -93,6 +93,49 @@ the measurement, establish coverage, or verify an inference proof. Fixtures unde
 `crates/stele-bench/tests/fixtures/` are synthetic and are never benchmark evidence.
 No performance result is supplied by this task. Fitting constants remains E9-03.
 
+## Native test profile (E0-07)
+
+The [paired ledger](ledger/e0-07-test-profile.json) measures the unchanged
+`stele-cqis` `table_mle` integration test from clean commit
+`b638390716ddce6cb2442a64ddb6cfd6da773845`. Both configurations retain debug
+assertions and overflow checks. All four tests passed, including the 14
+maximum-shape cases in QM31 and OM31 at two seeded points each.
+
+| Test optimization | Clean compilation (s) | Test execution (s) | Complete command (s) |
+|---|---:|---:|---:|
+| 0 | 6.47 | 119.99 | 126.835 |
+| 2 | 7.56 | 8.31 | 16.272 |
+
+This is one sequential pair on a shared Apple M1 Max host with existing proof
+workers retained. Each configuration used a new target directory. Cargo reports
+compile/test times to hundredths of a second; complete command time includes
+Cargo overhead. Command walls include the compile and execution components;
+these ledger stages overlap and must not be summed. No repetition, warmup,
+discarded sample or inference measurement
+is implied, and these results do not establish full-CI wall time. The manifest
+uses the measured opt2 settings; source tests and their independent oracle remain
+unchanged. Default dev builds and release table parity keep their prior profiles.
+
+To reproduce the commands, use a clean checkout of the measured commit and a
+different empty `CARGO_TARGET_DIR` for each `LEVEL` (0, then 2):
+
+```sh
+CARGO_PROFILE_TEST_OPT_LEVEL="$LEVEL" \
+CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true \
+CARGO_PROFILE_TEST_OVERFLOW_CHECKS=true \
+cargo test -p stele-cqis --test table_mle --all-features --locked --offline --verbose
+```
+
+The ledger embeds the measurement and verification scripts, source hashes, raw
+log hashes, exact commands, test names and binary hashes. A postprocessing check
+initially confused Cargo's separate build-dependency profile with test artifacts;
+both actual test commands had passed. The preserved verification corrected that
+scope without rerunning either sample. Subsequent fresh `--no-run` JSON artifact
+inspection confirmed both checks on the actual test, CQIS and field artifacts;
+small runtime probes also rejected a false debug assertion and integer overflow.
+These checks are outside the timed commands. The micro record's proof, verifier
+and controls fields remain zero; no proof-system cost-model constant changes.
+
 ## Scalar field multiplication (E1-02)
 
 From a clean committed checkout, run:

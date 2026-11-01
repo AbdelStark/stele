@@ -13,6 +13,13 @@ actual negative-control catalogue, soundness accounting, and repository checks.
 `scripts/gates/native.sh` executes the union of digest/control/accounting
 validators once. Each standalone gate remains complete.
 
+Cargo's test profile uses optimization level 2 with debug assertions and overflow
+checks explicitly enabled. Test cases, seeds, dimensions and required commands
+are unchanged. The paired [E0-07 measurement](../../bench/README.md#native-test-profile-e0-07)
+records compilation and execution separately; it does not measure full CI or
+inference performance. Default dev and release profiles retain their existing
+settings. Profile edits still follow the shared-configuration routing below.
+
 Table parity runs when field, polynomial, SIMD or CQIS code changes, including
 its test oracle. Dependency and CI routing changes also select it.
 The full RFC-0021 corpus is partitioned into 28 case/field jobs, each retaining

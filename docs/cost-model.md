@@ -181,3 +181,11 @@ separate from observed capacity. The producer interval includes internal mu
 preparation and registration; standalone import and closed verification have
 their own intervals. Diagnostic framing and hashes remain separate executed
 scopes. E3-07's full private/source/plan, c_lu and profile obligations remain.
+
+## 14. Native validation cost
+
+The [E0-07 paired ledger](../bench/README.md#native-test-profile-e0-07) measures
+compilation and test execution under Cargo test optimization levels 0 and 2,
+with debug assertions and overflow checks enabled. This changes validation cost
+only. No per-proof term, fitted constant, weight-pass count or inference
+projection above changes; the isolated pair does not measure full-CI wall time.
