@@ -7,6 +7,9 @@ import re
 import subprocess
 import sys
 
+STACKED_FORMAL = (b'formal/stacked-runtime.md', b'formal/stacked-ownership.md', b'formal/stacked-statement.md')
+NATIVE_ORACLES = (b'research/merkle-oracle/check_field_wire.py', b'research/merkle-oracle/check_field_wire.py.lock',
+                  b'research/stacked-gkr/check_native_wire.py', b'research/stacked-gkr/check_native_wire.py.lock')
 
 def git(*arguments):
     return subprocess.check_output(['git', *arguments])
@@ -38,16 +41,16 @@ def scopes(paths):
     routing = any(path in (b'.github/workflows/ci.yml', b'scripts/ci_scope.py',
                           b'scripts/ci_result.py') for path in paths)
     broad = any(path != b'Cargo.lock' for path in shared) or routing or any(
-        (path.startswith((b'research/', b'harness/', b'formal/')) and path not in (
-            # The mandatory native gate executes this exact locked oracle.
-            b'research/merkle-oracle/check_field_wire.py',
-            b'research/merkle-oracle/check_field_wire.py.lock')) or path in (
+        # Only these exact entrypoints are executed by the mandatory native gate.
+        (path.startswith((b'research/', b'harness/', b'formal/')) and path not in NATIVE_ORACLES + STACKED_FORMAL) or path in (
             b'.github/workflows/exhaustive.yml', b'scripts/research_ci.py',
             b'scripts/research-checks.json', b'scripts/research-full-checks.json')
         for path in paths)
     native = any(path == b'Cargo.lock' or path.startswith((b'crates/stele-cqis/', b'crates/stele-field/'))
                  for path in paths)
-    selection = 'all' if broad else 'native' if native else 'none'
+    stacked = any(path in STACKED_FORMAL for path in paths)
+    selection = ('all' if broad else 'native-stacked' if native and stacked else
+                 'native' if native else 'stacked' if stacked else 'none')
     return {
         'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/'))
                    for path in paths),

@@ -11,7 +11,7 @@
 | NC-0200 | sumcheck engine | 0006 A1 | change one round evaluation | `RoundSumMismatch` | done |
 | NC-0201 | sumcheck engine | 0006 A1 | one final evaluation folded at another instance's challenge | `FinalEvaluationMismatch` | done |
 | NC-0202 | sumcheck engine | 0006 A2 | omit one member/claim contribution from one round evaluation | `RoundSumMismatch` | done |
-| NC-0203 | stacked coefficient | 0006 A4 | one coefficient final evaluated at the wrong layer; empty P preserves the A1 check | `CoefficientMismatch` | todo |
+| NC-0203 | stacked coefficient | 0006 A4 | one coefficient final evaluated at the wrong layer; empty P preserves the A1 check | `CoefficientMismatch` | done |
 | NC-0204 | sumcheck engine | 0006 A5 | small strategy on a truncated unused original value; one changed final | `ClaimMismatch` | done |
 | NC-0205 | sumcheck engine | 0006 A1,A2 | unused final under constant P; mode 1 changes one unclaimed tensor entry | `ClaimMismatch` | done |
 | NC-0206 | sumcheck engine | 0006 A2, 0012 A4 | one round evaluation computed with coefficient drawn before Batch | `RoundSumMismatch` | done |
@@ -20,7 +20,7 @@
 | NC-0209 | sumcheck engine | 0006 A3 | change one unused original slice final | `ClaimMismatch` | done |
 | NC-0210 | sumcheck engine | 0006 A6 | change one unused Streaming source value; one changed final under original consumer | `ClaimMismatch` | done |
 | NC-0211 | stacked canonical point | 0006 A4 | one unused original final from the raw layer-last point | `ClaimMismatch / ValueMismatch` | todo |
-| NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | todo |
+| NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
 | NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | todo |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
 | NC-0400–0405 | lookups | 0008 §7 | see RFC | `LogUpImbalance` etc. | todo |
@@ -46,7 +46,7 @@
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3, 0008 A3, 0010 A9, 0012 A1,A4,A5,A9,A10 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal or OpeningColumns | `FinalEvaluationMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3, 0010 A9, 0012 A1,A4,A5,A6,A9,A10 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack or StackSources | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
@@ -62,7 +62,8 @@ distance counterexamples add no PCS binding or NC coverage. NC-0603..0605 still
 require the actual commitment/opening consumers; E4-02 encoder tests cannot mark
 them done or admit a PCS profile.
 
-Accepted RFC-0006 A4 reserves NC-0211..0213 and refines NC-0203's actual coefficient
-consumer. Its Stack/StackSources extensions of NC-0802 remain pending.
-Existing NC-0802 coverage is unchanged. No proposed control becomes done before its native
-implementation and both-field rejection evidence.
+The public stacked runtime executes NC-0203, both source variants of NC-0212,
+and both Stack/StackSources extensions of NC-0802 in QM31 and OM31.
+The public NC-0211 variant rejects at its actual original consumer, but the ID
+remains pending until certified closure supplies its ValueMismatch variant.
+Certified-source substitution NC-0213 also remains pending (E3-06).

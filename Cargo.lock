@@ -195,6 +195,9 @@ name = "stele-gkr"
 version = "0.1.0"
 dependencies = [
  "stele-field",
+ "stele-hash",
+ "stele-poly",
+ "stele-sumcheck",
 ]
 
 [[package]]
@@ -247,6 +250,7 @@ dependencies = [
  "blake3",
  "serde_json",
  "stele-field",
+ "stele-gkr",
  "stele-hash",
  "stele-lookup",
  "stele-pcs",

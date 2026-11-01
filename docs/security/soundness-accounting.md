@@ -1557,7 +1557,7 @@ consumed. Exact selected-byte attainment adds no challenge or algebraic loss.
 Streaming must reauthenticate all stored bytes, including public-zero high
 bytes outside compact ranges. Binding, FS/H and model provenance are additional.
 
-### Accepted Q20 conditional stacked contract (implementation pending)
+### Conditional public stacked runtime (E3-06 remains in progress)
 
 RFC-0006 A4 / RFC-0012 A6 specify StackSources then Stack, with no new draw.
 The actual A1 record remains m*delta/p^d for the complete A*P, including zero
@@ -1566,6 +1566,10 @@ canonical point restoration add no algebraic loss. Every certified original
 keeps the actual A9 certificate, ordinary-opening and lifetime/hash records;
 no public coefficient is included in that certified roster. Use one cumulative
 transcript Usage snapshot and disjoint local Merkle work, including failures.
-Actual implementation must bind this schedule to the closed registry/inventory
-and native gates. This specification supplies no current production accounting or
-NC coverage. Q12, private coefficients, integer inference and ZK remain open.
+The native public adapter now binds this schedule to the closed registry/inventory,
+consumes every public original, and retains the actual A1 record after the A7 check.
+NC-0203, both NC-0212 variants and both stacked NC-0802 continuations execute in
+both fields. Native/Python comparison includes complete bytes, restored claims,
+SC records and continuation. The public NC-0211 case is exercised without claiming
+the pending certified variant. Certified closure/NC-0213 and complete cost evidence
+remain E3-06 requirements. Q12, private coefficients, integer inference and ZK remain open.

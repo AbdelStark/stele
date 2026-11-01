@@ -60,6 +60,8 @@ class ResearchCiTests(unittest.TestCase):
         self.assertEqual([c.split()[0] for c in selected[-3:]], ['curl', 'curl', 'uv'])
         for arguments, expected in [
             (['--matrix', '--selection', 'native'], ['native-comparisons']),
+            (['--matrix', '--selection', 'stacked'], ['stacked-gkr']),
+            (['--matrix', '--selection', 'native-stacked'], [g for g in groups if g in ('native-comparisons','stacked-gkr')]),
             (['--matrix', '--selection', 'none'], []),
             (['--matrix', '--selection', 'all'], list(groups)),
             (['--full', '--matrix'], list(ci.load_groups(ci.FULL_MANIFEST))),
@@ -79,6 +81,15 @@ class ResearchCiTests(unittest.TestCase):
         for groups in ({'other': ['true']}, {'native-comparisons': []}):
             with mock.patch.object(ci, 'load_groups', return_value=groups), redirect_stderr(io.StringIO()):
                 self.assertNotEqual(ci.main(['--matrix', '--selection', 'native']), 0)
+        for selection in ('stacked','native-stacked'):
+            for args in (['--full','--matrix','--selection',selection],['--group','stacked-gkr','--selection',selection]):
+                with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    ci.main(args)
+            for groups in ({'native-comparisons':['true']},{'stacked-gkr':[]},{}):
+                with mock.patch.object(ci,'load_groups',return_value=groups),redirect_stderr(io.StringIO()):
+                    self.assertEqual(ci.main(['--matrix','--selection',selection]),1)
+        with mock.patch.object(ci,'load_groups',return_value={'stacked-gkr':['true']}),redirect_stderr(io.StringIO()):
+            self.assertEqual(ci.main(['--matrix','--selection','native-stacked']),1)
 
     def test_rejects_invalid_manifest(self):
         cases = ('{}', '[]', '{"group":[]}', '{"bad name":["true"]}',

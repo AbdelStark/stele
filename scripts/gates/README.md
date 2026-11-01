@@ -74,12 +74,14 @@ vectors and regenerates those vectors with the independent Python tree oracle.
 Root-comparison and batch-authentication bypass mutants fail this gate. Merkle
 membership does not certify PCS encoding, query scheduling or a profile budget.
 
-RFC-0006 A7 replaces only the GKR arithmetic scaffold guard: the real six-kind,
-120,000-point differential suite runs in both control/accounting gates. A closed
-file inventory, exact arithmetic-only module entry and field-only dependency
-manifest continue to reject unwired GKR stage/source/transcript additions.
-This earns no NC-0203, source authentication or stage accounting coverage. The
-bootstrap snapshot is not refreshed; E3-06 still requires its full producer.
+RFC-0006 A4 adds the closed public stacked producer/consumer beside A7's real
+six-kind, 120,000-point differential suite. Both control/accounting gates require
+the actual partial-round and source controls, opaque-record boundary, and the
+locked native/Python wire comparison. The closed file/API inventory and exact
+field/poly/hash/sumcheck dependencies reject unreviewed additions. Certified
+closure and complete resource measurements remain E3-06 requirements. The native
+checker is mandatory even when the research matrix is empty; its shared Python
+protocol dependencies continue to select broad research validation.
 
 RFC-0010 A9 source parsing replaces only the PCS empty-crate guard with actual
 native/Python codec and policy checks. Its closed public declaration inventory

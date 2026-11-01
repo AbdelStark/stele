@@ -26,7 +26,7 @@ class FieldPcsBenchTests(unittest.TestCase):
             gates.controls_layout(root)
             manifest = suite/'Cargo.toml'
             original = manifest.read_text()
-            entry = 'stele-poly = { path = "../../crates/stele-poly" }'
+            entry = 'serde_json = "=1.0.154"'
             manifest.write_text(original.replace(entry, '').replace('[dependencies]', '[dependencies]\n'+entry))
             with self.assertRaisesRegex(ValueError, 'dev-only'):
                 gates.controls_layout(root)

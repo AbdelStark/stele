@@ -9,7 +9,7 @@ stele-simd|RFC-0003 §6|stele-field|yes
 stele-poly|RFC-0006 §5|stele-field stele-simd|no
 stele-hash|RFC-0012|stele-field|no
 stele-sumcheck|RFC-0006|stele-poly stele-hash|no
-stele-gkr|RFC-0006 §3,§6|stele-sumcheck|no
+stele-gkr|RFC-0006 A4/A7|stele-field stele-poly stele-hash stele-sumcheck|no
 stele-lookup|RFC-0008|stele-gkr|no
 stele-code|RFC-0010 §3|stele-field stele-simd|no
 stele-pcs|RFC-0010|stele-code stele-field stele-hash stele-poly|no
