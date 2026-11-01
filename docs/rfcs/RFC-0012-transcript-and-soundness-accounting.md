@@ -410,33 +410,41 @@ canonical inventory and actual per-invocation accounting gate change atomically
 with the consumer; this amendment alone supplies no production coverage.
 No measured constant or weight pass moves. Q12 still blocks profile certification.
 
-### A6 — Stacked statement descriptor
+### A6 — Stacked statement and original sources
 
-Status: Draft. Question Q20. Companion to RFC-0006 Draft A4.
-Motivation: bind the complete verifier-owned stacked relation, consumed claim,
-canonical layout/order and resolved coefficient source values before A1 rounds.
-Candidate payload and exact schedule: [stacked statement](../../formal/stacked-statement.md).
+Status: Accepted. Review: [coordinated skill passes](../../agents/reviews/stacked-runtime-a4.md). Question Q20. Companion to RFC-0006 A4.
+Motivation: fix the expected public coefficient and complete original-source
+roster before the nested A1 challenges, without committing the coefficient or
+passing draw-order points to original consumers. Exact bytes, errors, costs and
+controls: [conditional stacked runtime](../../formal/stacked-runtime.md).
 
-Proposed registry addition on implementation after acceptance:
+Add these closed absorbs atomically with the implementing consumer:
 
 | Kind | Label bytes | Consumer / accounting |
 |---|---|---|
-| Absorb | `stele/v0.1/gkr/stacked` | Stack; full A4 statement, no challenge |
+| Absorb | `stele/v0.1/gkr/stacked-sources` | StackSources; complete public or certified original roster |
+| Absorb | `stele/v0.1/gkr/stacked` | Stack; complete expected statement including public coefficient values |
 
-Stack precedes the derived A1 Instance. A1 Round, Sumcheck and Final operations
-remain unchanged, with one SC record m*delta/p^d for the complete A*P polynomial.
-No extra draw or algebraic loss is proposed; FS/H and Q12 remain separate.
-Absorbing source bytes is not authentication against their original commitment,
-public input or CQIS identity. Actual source resolution and original consumers
-remain mandatory. No private-source, profile or coverage claim follows here.
+Closed schedule: StackSources, Stack, derived A1 Instance, ordinary Round /
+Sumcheck operations, Final, independent A7 coefficient check, then every actual
+original consumer in order. Certified originals use the unchanged A9 Opening /
+OpeningRow / OpeningColumn / OpeningColumns schedule at the restored point.
+A kernel-only reduction uses Stack and exports unconsumed original obligations;
+it grants no closed result. The original sources must already be fixed before
+any challenge by that caller's real consuming protocol.
 
-Before acceptance, complete the source interface, error/control mapping and
-required A4 reviews. On implementation, change the closed registry, canonical
-inventory and actual accounting/control gates atomically. The current production
-registry remains unchanged; this Draft alone grants no label or protocol access.
-Cost impact: descriptor/source-byte absorption in T_misc, with no fitted constant
-or weight-pass change. Affected tasks: E3-06 and its reduction consumers.
+No new draw or algebraic loss is added. Retain the one complete A1 SC record
+m*delta/p^d and all actual A9 certificate/opening/lifetime/hash obligations.
+FieldSources retains A9's exact all-A1-input meaning; it is not reused for the
+mixed original-plus-public-coefficient nested A1 roster. Q12, private coefficient
+formats, privacy and profile admission remain open.
 
+On implementation update the registry, canonical inventory and actual gates
+with NC-0203/0211..0213 and the two missing-frame NC-0802 continuations. Until
+then no new label or control is implemented. Descriptor/source absorption costs
+T_misc; no measured constant or weight-pass change. Affected task: E3-06 and
+its operation/source consumers. The coordinated review approves this specification;
+native implementation and controls remain required.
 
 ### A7 — Separate setup failure over the complete seed universe
 

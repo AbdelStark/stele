@@ -374,3 +374,21 @@ whole-pipeline RSS and existing preparation capacities with separate scopes;
 do not infer a complete owned-vector peak from partial observations. Preserve
 all samples and failed-run artifacts with clean source provenance. No profile,
 privacy, fitted constant or weight-pass claim. Status: Accepted.
+
+## ADR-040: Separate the stacked field runtime from private coefficient admission
+
+Context: Draft A4 coupled a public stacked reduction runtime to private-source
+formats and joint masking. The existing E12-01 dependency path reaches E3-06,
+so requiring that completed masking delivery first would create a cycle.
+Decision: accept the complete conditional field contract in RFC-0006 A4 with
+RFC-0012 A6 and RFC-0020 A2. Fix complete expected source and statement bytes,
+reuse actual A1, restore canonical points, check A7 independently and consume
+every original through direct public evaluation or actual A9 openings.
+
+Certified originals have full real dimensions; public originals explicitly
+check zero padding. No implicit view, private coefficient format, CQIS identity
+or privacy authority is inferred. Preserve all original E3-06 criteria and
+require complete native source/control/parity/resource delivery before done.
+Private source/format and joint-ZK obligations remain Q20/Q29. Both inference
+profiles remain unadmitted. No challenge kind, fitted constant, new committed
+intermediate or weight-pass claim is introduced. Status: Accepted.

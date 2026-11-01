@@ -1,8 +1,13 @@
 # Candidate stacked statement and bytes (Q20 / RFC-0006 A4)
 
-Status: Draft. This proposes exact statement bytes and the A1 reuse boundary.
-It does not authenticate a source, register a production label or authorize core
-code. A4 acceptance still requires the source/consumer closure and full reviews.
+Status: Historical research proposal. This records the candidate statement
+bytes and A1 reuse study. Its research codec does not authenticate a source,
+register a production label or supply native implementation evidence.
+
+The revised [conditional runtime contract](stacked-runtime.md) is the current
+Accepted A4 contract. It specifies complete public/certified original consumers
+and explicitly separates private coefficient admission. This file preserves the
+historical research codec and its evidence; it is not the production contract.
 
 ## 1. Statement, coefficient and trust boundary
 

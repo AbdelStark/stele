@@ -1,8 +1,10 @@
 # Candidate stacked round ownership (Q20 / RFC-0006 A4)
 
-Status: Draft. This specifies candidate algebra, coordinate restoration and
-logical block ownership. It does not authorize core code, define a wire protocol,
-authenticate inputs or implement a distributed transport. A4 remains Draft.
+Sections 1-4 are adopted by RFC-0006 A4 for the complete A*P summand and a+1
+inputs, under the [conditional runtime contract](stacked-runtime.md). The
+research evidence and delivery limits in section 5 remain scoped to their
+original executions. This lemma alone defines no source authentication or
+distributed transport.
 
 ## 1. Layout and order
 
@@ -101,7 +103,7 @@ be included in actual c_sc/T_misc and memory measurements. The reference rule is
 not claimed optimal, distributed, GPU-ready or bounded by partial messages alone.
 The CPU prototype models values and logical ownership; it supplies no benchmark.
 
-## 5. Required closure before implementation and delivery
+## 5. Historical closure requirements and research evidence
 
 A4 must still bind the full consumed claim, source identities, public coefficient,
 polynomial, canonical layout and elimination order with exact descriptor bytes.

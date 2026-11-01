@@ -411,17 +411,22 @@ tasks:
   depends:
   - E3-02
   - E3-06a
+  - E4-03a
   rfc:
   - RFC-0006 §3,§6
+  - RFC-0006 A4
+  - RFC-0012 A6
+  - RFC-0020 A2
   skill: gkr-reduction-author
   crate: stele-gkr
-  status: blocked(RFC-0006 A4)
+  status: ready
   agent: codex-root
-  branch: task/E3-06-paired-source
+  branch: task/E3-06-stacked-contract
   acceptance:
   - prover/verifier MLE agreement 1e4 points per kind
   - NC-0203
   - per-block partial sums exposed
+  - complete conditional public/certified source closure and delivery gates in formal/stacked-runtime.md
 - id: E3-06a
   epic: E3
   title: Public coefficient arithmetic primitives for stacked reductions

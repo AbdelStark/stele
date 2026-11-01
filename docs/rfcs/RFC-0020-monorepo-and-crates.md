@@ -73,15 +73,21 @@ implementation is delivered; the amendment alone adds no Cargo dependency.
 
 ### A2 — Direct stacked-runtime primitive dependencies
 
-Status: Draft. Question Q20. Companion to RFC-0006 Draft A4 and RFC-0012 Draft A6.
-Proposed `stele-gkr` dependencies are `[field, poly, hash, sumcheck]` for exact
-coefficient arithmetic, original-point evaluation, descriptor framing and A1
-reuse. These are downward edges. Source authentication stays in the existing
-reduction/orchestration consumers; GKR must not import PCS upward or accept a
-prover-supplied authentication callback. No dependency is added by this Draft.
-On acceptance/implementation, update dependency bans and their rejection tests
-with the actual API change. No challenge, soundness loss or measured cost changes.
-Affected task: E3-06; source/consumer closure and required reviews remain open.
+Status: Accepted. Review: [coordinated skill passes](../../agents/reviews/stacked-runtime-a4.md). Question Q20. Companion to RFC-0006 A4 and RFC-0012 A6.
+For the [conditional stacked runtime](../../formal/stacked-runtime.md),
+`stele-gkr` dependencies are exactly `[field, poly, hash, sumcheck]` for public
+coefficient arithmetic, direct public originals, canonical framing and A1 reuse.
+These are downward edges. Certified-source closure stays in stele-reductions,
+using its existing GKR/PCS/field/hash edges and the actual A9 point verifier.
+GKR imports no PCS, CQIS, IR or authentication callback. No core crate imports
+the control harness, and no new external dependency is authorized.
+
+On implementation replace the A7-only scaffold guard with the actual reviewed
+stacked producers/consumers; update exact dependency bans and rejection tests.
+The amendment alone changes no Cargo manifest, production gate, challenge,
+soundness record, measured constant or weight pass. Affected task: E3-06.
+Private coefficient/source and inference admission remain outside this contract;
+the coordinated review approves these exact edges for implementation.
 
 ### A3 — Public coefficient field dependency
 
