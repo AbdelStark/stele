@@ -22,3 +22,16 @@ operations may compute the replacement; no state import, injected RNG, test-only
 verifier bypass or toy verifier is permitted. This is a proof-artifact control,
 not a configuration-validation exception. Honest/prover failures, no-op mutations,
 acceptance and wrong errors fail. Witness-first controls retain their existing path.
+
+RFC-0008 A5 §7 fixes false source statements for NC-0401 and NC-0419: genuine
+source256, selector1 and range_8. Such a statement has no accepted honest proof.
+Keep a separate genuine accepted source7 sanity fixture. For the negative case,
+fix its own source256 certificate before every outer draw, declare exactly one
+source deviation (0401) or early-fitted mu entry (0419) through ProverHook, and
+regenerate genuine dependent registrations/trees/openings. Hold that negative
+statement unchanged through the actual verifier and require RootMismatch.
+Never reuse source7 authority for source256 leaves or claim an accepted baseline
+for the false statement. This narrow Accepted-contract requirement does not
+relax any verifier check or the ordinary accepted-baseline control paths.
+NC-0415 is the separately specified static descriptor GroupBound boundary;
+it requires no fabricated huge proof or claim of proof-statement acceptance.

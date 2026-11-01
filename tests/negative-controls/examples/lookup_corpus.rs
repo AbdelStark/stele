@@ -1,4 +1,4 @@
-//! RFC-0008 A5: fixture adapter for the actual untrusted producer, never acceptance.
+//! RFC-0008 A5: independent fixture adapter to actual producer and closed verifier.
 use serde_json::{json, Value};
 use std::io::{self, BufRead};
 use stele_field::{M31, OM31, QM31};
@@ -8,6 +8,8 @@ use stele_reductions::lookup::{
     Descriptor, Layout, Limits, ProducerLimits, ProverUsage, Statement, Table, TableDescriptor,
     TableField,
 };
+#[path = "support/lookup_verifier.rs"]
+mod verification;
 
 fn number(v: &Value) -> Result<u64, String> {
     v.as_u64().ok_or("FixtureNumber".into())
@@ -133,6 +135,17 @@ where
         },
     )
     .map_err(|e| format!("{e:?}"))?;
+    match case.get("mode").and_then(Value::as_str) {
+        Some("verify") => {
+            return verification::verify(
+                case,
+                &descriptor,
+                json!({"name":case["name"],"degree":case["degree"],"originals":setup}),
+            )
+        }
+        None => {}
+        _ => return Err("FixtureMode".into()),
+    }
     // Diagnostic encoding is outside the measured producer call and its counters.
     let statement = descriptor
         .encode(&mut HashUsage::default())

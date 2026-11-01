@@ -55,12 +55,13 @@ def bootstrap_guard(root, gate):
 
 
 def field_sources(root):
-    """Closed A1/stacked consumers and untrusted lookup production; no lookup authority."""
+    """Closed conditional A1/stacked/lookup consumers; no inference/profile authority."""
     crate = root / 'crates/stele-reductions'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs',
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
-               'tests/lookup_producer.rs'}
+               'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
+               'tests/lookup_verifier.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -94,12 +95,13 @@ def field_sources(root):
         ('struct', 'Statement'), ('', 'id'), ('', 'm'), ('', 'b'), ('', 'table'), ('', 'selector'),
         ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'new'),
         ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
-        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('use', 'producer')]
+        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('use', 'producer'), ('use', 'verifier')]
         and len(lookup_declarations) == len(re.findall(r'\bpub\b', lookup))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
             == ["impl<'input,'cert,K:ChallengeField>Descriptor<'input,'cert,K>{"]
         and 'pubusestele_cqis::tables::{DescriptorasTableDescriptor,Table,TableField};' in re.sub(r'\s+', '', lookup)
         and 'pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage,RegistrationUsage};' in re.sub(r'\s+', '', lookup)
+        and 'pubuseverifier::{Failure,LookupParameters,LookupRecord,RegisteredMultiplicities,RegistrationFailure,RepetitionRecord,};' in re.sub(r'\s+', '', lookup)
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', lookup))
     producer_closed = True
     for name, visibility, expected, impls in (
@@ -112,14 +114,27 @@ def field_sources(root):
         ('resources', 'pub(super)', [('fn','elements')], []),
         ('functionals', 'pub(super)', [('struct','Piece'), ('','id'), ('','a'), ('','b'),
              ('fn','value'), ('fn','pieces')], ['impl<K:ChallengeField>Piece<K>{']),
+        ('verifier', 'pub', [('use','records'), ('struct','Failure'), ('','cause'), ('','usage'),
+             ('struct','RegistrationFailure'), ('','cause'), ('','registrations'),
+             ('type','RegisteredMultiplicities'), ('fn','register_multiplicities'), ('fn','verify')],
+         ["impl<'input,'original,K:ChallengeField+CodeField+TableField+Eq>Descriptor<'input,'original,K>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]),
+        ('records', ['pub']*11+['pub(super)']*5+['pub']*6+['pub(super)']*2+['pub']*2,
+         [('struct','LookupParameters'), ('','id'), ('','degree'), ('','positions'), ('','table_rows'),
+          ('','columns'), ('','group_bits'), ('','unit_bits'), ('','repetitions'), ('','identity_numerator'),
+          ('struct','RepetitionRecord'), ('','lookup'), ('','table'), ('','selected'), ('','originals'), ('','multiplicities'),
+          ('fn','lookup_tree'), ('fn','table_tree'), ('fn','selected_product'), ('fn','originals'), ('fn','multiplicities'),
+          ('struct','LookupRecord'), ('','parameters'), ('','repetitions'), ('fn','parameters'), ('fn','repetitions')],
+         ["impl<K:ChallengeField>RepetitionRecord<'_,K>{", "impl<K:ChallengeField>LookupRecord<'_,K>{"]),
     ):
         source = re.sub(r'//[^\n]*', '', (crate / f'src/lookup_{name}.rs').read_text())
         # Private helpers may expose only the explicitly reviewed parent interface.
         public = re.findall(r'\bpub\b(?:\s*\([^)]*\))?', source)
-        normalized = source.replace('pub(super)', 'pub') if visibility == 'pub(super)' else source
+        normalized = source.replace('pub(super)', 'pub')
         found = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', normalized)
-        producer_closed &= (public == [visibility] * len(expected) and found == expected
+        expected_visibility = visibility if isinstance(visibility, list) else [visibility] * len(expected)
+        producer_closed &= (public == expected_visibility and found == expected
             and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', source)] == impls
+            and (name != 'verifier' or 'pubuserecords::{LookupParameters,LookupRecord,RepetitionRecord};' in re.sub(r'\s+', '', source))
             and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', source))
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
@@ -131,8 +146,9 @@ def field_sources(root):
                                 ('fn', 'verify_field_sources')]
             or len(declarations) != len(re.findall(r'\bpub\b', code))
             or not stacked_closed or not lookup_closed or not producer_closed
-            or not oracle.is_file() or not oracle.with_suffix('.py.lock').is_file()):
-        raise ValueError('reductions API not wired; only reviewed A1/stacked adapters and untrusted lookup producer admitted')
+            or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
+                'lookup_closed.py', 'examples/support/lookup_verifier.rs'))):
+        raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup adapters admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
          [f'test pcs_a1::{n} ... ok' for n in (
@@ -152,7 +168,7 @@ def field_sources(root):
           'test rejects_substituted_verified_certificate_at_actual_opening ... ok']),
         (['cargo', 'test', '-p', 'stele-reductions', '--lib', 'lookup::'],
          [f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
-         + [f'test lookup::producer::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
+         + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
             for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
@@ -160,16 +176,25 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_producer'],
          [f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))]),
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier'],
+         [f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
+          for prefix,suffix in (('accepts',''),('rejects','_tampers'))]),
+        (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'lookup::'],
+         [f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')]),
+        (['cargo', 'test', '-p', 'stele-negative-controls']+
+         [arg for i in (400,401,402,403,415,416,417,418,419,610,802) for arg in ('--test',f'nc-{i:04}')],
+         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802)]),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
         if result.returncode or any(text not in result.stdout for text in expected):
             raise ValueError(f'closed A1 consumer checks failed: {result.stdout} {result.stderr}')
         if '--doc' in command:
-            for module, record, count in (('field_sources', 'FieldSourceRecord', 1),
-                                          ('stacked_sources', 'StackedSourceRecord', 2),
-                                          ('lookup', 'Statement', 1), ('lookup', 'Descriptor', 1)):
-                pattern = (rf'^test crates/stele-reductions/src/{module}\.rs - {module}::{record} '
+            for file, module, record, count in (('field_sources', 'field_sources', 'FieldSourceRecord', 1),
+                                          ('stacked_sources', 'stacked_sources', 'StackedSourceRecord', 2),
+                                          ('lookup', 'lookup', 'Statement', 1), ('lookup', 'lookup', 'Descriptor', 1),
+                                          ('lookup_records', 'lookup::verifier::records', 'LookupRecord', 3)):
+                pattern = (rf'^test crates/stele-reductions/src/{file}\.rs - {module}::{record} '
                            r'\(line \d+\) - compile fail \.\.\. ok$')
                 matches = re.findall(pattern, result.stdout, re.MULTILINE)
                 if len(set(matches)) != count:
@@ -178,13 +203,16 @@ def field_sources(root):
                              'tests/negative-controls/lookup_corpus.py'],
                             cwd=root, text=True, capture_output=True)
     receipt = ('lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
-               'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit')
+               'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
+               'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '
+               'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41')
     if result.returncode or result.stdout.strip() != receipt:
         raise ValueError(f'lookup producer corpus checks failed: {result.stdout} {result.stderr}')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
     print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
     print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')
     print('gate lookup producer: actual A3/A9 production, independent bytes and observed usage; no lookup verification or NC credit')
+    print('gate lookup closed: actual A3/Table/A9 consumers, opaque records, native controls and independent failure/usage parity; no profile credit')
 
 
 def field_source_codec(root):
@@ -837,7 +865,8 @@ def controls_layout(root):
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
-                    'lookup_corpus.py', 'lookup_corpus.py.lock'))
+                    'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
+                    'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs'))
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

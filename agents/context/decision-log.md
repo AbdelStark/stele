@@ -411,3 +411,17 @@ CQIS/poly dependency permissions needed for those actual APIs. E3-07b requires
 native controls, complete parity and resource ledgers; E3-07 retains its original
 private/full/source/plan obligations. No new committed intermediate, profile,
 Q12/ZK result, cost constant or weight-pass claim. Status: Accepted.
+
+## ADR-042: Preserve fixed false lookup statements in their controls
+
+Context: Workflow 08's ordinary accepted-baseline path cannot accept the false
+source256/selector1/range_8 statement required by Accepted RFC-0008 A5 §7 for
+NC-0401/0419. Decision: follow that specific contract. Keep an independently
+accepted source7 sanity fixture, then use the negative statement's own genuine
+source256 certificate, fixed before every outer draw. Declare the single source
+or mu deviation through ProverHook, regenerate its dependent real proof work,
+and require the unchanged actual closed verifier's RootMismatch. Do not claim
+acceptance for the false statement or substitute source7 authority. NC-0415
+remains its specified static GroupBound admission check. This clarifies test
+authoring only; no protocol, accepted RFC, verifier check, soundness bound or
+profile admission changes. Status: Accepted.

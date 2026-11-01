@@ -1,15 +1,16 @@
 //! RFC-0008 A5 §§2–6: complete untrusted producer using the actual A3/A9 engines.
 //! T_misc includes sorted real-row indexing O(t log t + N log t), source lifts,
 //! grouped histograms and prefix functionals. Actual A3/A9 calls own their costs.
-use super::{addressable, mul, sum, Descriptor, Error, TableField};
+use super::{
+    absorb, addressable, draw, eq, functionals, mul, phase, reserve, sum, zeros, Descriptor, Error,
+    TableField,
+};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_lookup::fraction::{self, LeafDescriptor, SelectedProduct};
-use stele_pcs::{verify_certificate, CodeField, Functional, PreparedSource, ProofKind};
+use stele_pcs::{verify_certificate, CodeField, Functional, PreparedSource};
 
-#[path = "lookup_functionals.rs"]
-mod functionals;
 #[path = "lookup_resources.rs"]
 mod resources;
 
@@ -49,37 +50,6 @@ pub struct ProverFailure {
     /// Work executed before the error; permits no retry or continuation.
     pub usage: ProverUsage,
 }
-fn reserve<T>(count: usize) -> Result<Vec<T>, Error> {
-    addressable::<T>(count)?;
-    let mut out = Vec::new();
-    out.try_reserve_exact(count).map_err(|_| Error::Capacity)?;
-    Ok(out)
-}
-fn zeros<K: Field>(count: usize) -> Result<Vec<K>, Error> {
-    let mut out = reserve(count)?;
-    out.resize(count, K::from_i64(0));
-    Ok(out)
-}
-fn eq<K: Field>(point: &[K]) -> Result<Vec<K>, Error> {
-    stele_poly::eq_table(point).map_err(|_| Error::Capacity)
-}
-fn absorb<K: ChallengeField>(
-    t: &mut Transcript<K>,
-    label: AbsorbLabel,
-    bytes: &[u8],
-) -> Result<(), Error> {
-    t.absorb(label, bytes).map_err(Error::Transcript)
-}
-fn draw<K: ChallengeField>(t: &mut Transcript<K>, label: ChallengeLabel) -> Result<K, Error> {
-    t.challenge(label).map_err(Error::Transcript)
-}
-fn phase(id: u64, j: usize, phase: u8) -> [u8; 10] {
-    let mut out = [0; 10];
-    out[..8].copy_from_slice(&id.to_le_bytes());
-    out[8] = j as u8;
-    out[9] = phase;
-    out
-}
 impl<K: ChallengeField + CodeField + TableField + Eq> Descriptor<'_, '_, K>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -87,20 +57,7 @@ where
     /// Complete absorb-payload admission, including both actual registration calls.
     /// Like the codec bound, excludes hash framing and challenge requests.
     pub fn producer_public_bytes(&self) -> Result<usize, Error> {
-        let mut total = self.public_bytes;
-        for source in &self.mu[..self.statement.multiplicities.len()] {
-            let registration = sum(&[
-                b"stele/v0.1/pcs-certificate/public".len(),
-                105,
-                source
-                    .proof_size(ProofKind::Certificate)
-                    .map_err(Error::Pcs)?
-                    .checked_sub(1)
-                    .ok_or(Error::Capacity)?,
-            ])?;
-            total = sum(&[total, mul(2, registration)?])?;
-        }
-        Ok(total)
+        sum(&[self.public_bytes, mul(2, self.registration_bytes()?)?])
     }
     /// Conservative dense-slot admission for this implementation; not measured memory.
     /// Also checks known non-field allocations before execution.

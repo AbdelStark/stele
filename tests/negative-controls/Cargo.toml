@@ -153,3 +153,39 @@ path = "sumcheck/stacked_public.rs"
 [[test]]
 name = "stacked-certified"
 path = "sumcheck/stacked_certified.rs"
+
+[[test]]
+name = "nc-0400"
+path = "lookup/nc_0400.rs"
+
+[[test]]
+name = "nc-0401"
+path = "lookup/nc_0401.rs"
+
+[[test]]
+name = "nc-0402"
+path = "lookup/nc_0402.rs"
+
+[[test]]
+name = "nc-0403"
+path = "lookup/nc_0403.rs"
+
+[[test]]
+name = "nc-0415"
+path = "lookup/nc_0415.rs"
+
+[[test]]
+name = "nc-0416"
+path = "lookup/nc_0416.rs"
+
+[[test]]
+name = "nc-0417"
+path = "lookup/nc_0417.rs"
+
+[[test]]
+name = "nc-0418"
+path = "lookup/nc_0418.rs"
+
+[[test]]
+name = "nc-0419"
+path = "lookup/nc_0419.rs"

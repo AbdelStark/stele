@@ -1616,9 +1616,28 @@ or arbitrary failed-opening parity. Producer admission checks complete public
 payloads and conservative dense slots; these are neither observed RSS nor a
 soundness record. A separate direct-product functional check covers every prefix
 and row split up to k=4 at 10,320 points per field, including Boolean points and
-nonzero physical tails. It grants no PCS coverage. Closed lookup verification
-and its native controls remain pending.
+nonzero physical tails. It grants no PCS coverage.
 
-This contract grants no native control coverage, profile flag, integer/plan/source
-ownership, Q12 theorem or joint ZK. E3-07b requires actual complete delivery;
+The closed verifier now consumes both actual A3 reductions, the immutable Table
+denominator, the selected product, every original A9 opening and every structural
+mu piece. Its opaque record retains the actual tree/leaf and borrowed opening
+records. Complete wire preflight precedes all context checks, which precede every
+certificate-ID hash and the first outer frame. Standalone imports preserve each
+attempted registration's usage without returning partial handles. Outer failures
+retain cumulative transcript work and the disjoint executed local-H prefix.
+
+The separate independent 40-case closed corpus compares eight accepts and 32
+rejections in both fields: actual conditional records, original/mu identities,
+registration and outer usage, malformed wire, context/identity mismatch, piece
+sum and terminal scalar/authentication failures, and successful continuation.
+It includes genuine nonzero physical-tail sources with zero selected weights;
+all structural pieces and unused originals still reach actual consumers. This
+bounded corpus does not establish sampler-abort or arbitrary-failure parity.
+Native NC-0400..0403 and NC-0415..0419, composed mu-opening NC-0610 and the three
+lookup-frame NC-0802 continuations execute through the unchanged real verifier.
+Their exact failure prefixes add execution evidence for the existing bindings,
+not a new loss term or a concrete Fiat–Shamir theorem.
+
+No profile flag, integer/plan/source ownership, Q12 theorem or joint ZK follows.
+E3-07b still requires complete registration/proving/verification resource ledgers;
 E3-07 and Draft A2/A8 retain their full original requirements.

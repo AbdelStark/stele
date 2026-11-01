@@ -9,6 +9,8 @@ pub mod fraction;
 #[doc(hidden)]
 pub mod fraction_transcript;
 #[doc(hidden)]
+pub mod lookup;
+#[doc(hidden)]
 pub mod pcs;
 #[doc(hidden)]
 pub mod pcs_a1;
@@ -39,6 +41,60 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 400,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || lookup::run(400),
+    },
+    catalog::RegisteredControl {
+        id: 401,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || lookup::run(401),
+    },
+    catalog::RegisteredControl {
+        id: 402,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "SelectorMismatch",
+        run: || lookup::run(402),
+    },
+    catalog::RegisteredControl {
+        id: 403,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "TableDenominatorMismatch",
+        run: || lookup::run(403),
+    },
+    catalog::RegisteredControl {
+        id: 415,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GroupBound",
+        run: || lookup::run(415),
+    },
+    catalog::RegisteredControl {
+        id: 416,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Pole",
+        run: || lookup::run(416),
+    },
+    catalog::RegisteredControl {
+        id: 417,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "PieceSumMismatch",
+        run: || lookup::run(417),
+    },
+    catalog::RegisteredControl {
+        id: 418,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CertificateContext",
+        run: || lookup::run(418),
+    },
+    catalog::RegisteredControl {
+        id: 419,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || lookup::run(419),
+    },
     catalog::RegisteredControl {
         id: 211,
         kind: catalog::ControlKind::Proof,
@@ -91,7 +147,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 610,
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
-        run: || pcs_opening::run(610),
+        run: || {
+            pcs_opening::run(610)?;
+            lookup::run(610)
+        },
     },
     catalog::RegisteredControl {
         id: 600,
@@ -250,7 +309,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             zerocheck::run(802)?;
             fraction_transcript::run_continuation()?;
             pcs_opening_continuation::run()?;
-            stacked::run_continuation()
+            stacked::run_continuation()?;
+            lookup::run(802)
         },
     },
     catalog::RegisteredControl {

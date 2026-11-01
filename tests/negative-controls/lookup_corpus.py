@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["blake3==1.0.11"]
 # ///
-"""RFC-0008 A5: independent complete producer bytes/usage; no lookup acceptance."""
+"""RFC-0008 A5: independent producer and closed-consumer bytes/records/usage."""
 from contextlib import contextmanager
 import hashlib
 import json
@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 from blake3 import blake3 as raw_hash
+sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
 for folder in ('merkle-oracle', 'logup-characteristic', 'cqis-tables'):
@@ -29,6 +30,7 @@ STATEMENT, UNITS, MULTIPLICITIES, REPETITION, CLAIMS, UNIT, BETA, ALPHA = (
     PREFIX+s for s in (b'statement', b'units', b'multiplicities', b'repetition', b'multiplicity-claims', b'unit', b'beta', b'alpha'))
 PUBLIC = b'conditional lookup producer corpus/v1'
 EXPECTED = 'cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9'
+CLOSED_EXPECTED = 'ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41'
 
 def hashes():
     return dict(hash_evaluations=0, xof_requests=0, xof_bytes=0, state_updates=0,
@@ -45,6 +47,7 @@ class Transcript(pcs.Transcript):
         self.usage = hashes() | dict(hash_evaluations=2, state_updates=1)
         self.public_bytes = len(public)
         self.in_column = False
+        self.draws = {}
         CREATED.append(self)
 
     def absorb(self, label, payload):
@@ -72,6 +75,7 @@ class Transcript(pcs.Transcript):
         self.state = raw_hash(pcs.frame(old, 2, label, payload)).digest()
         self.usage['hash_evaluations'] += 1
         self.usage['state_updates'] += 1
+        self.draws[label] = self.draws.get(label, 0)+1
         return value, consumed
 
     def field(self, label):
@@ -174,6 +178,9 @@ def reference(case):
         for j, layout in enumerate(layouts):
             column_bits = n.bit_length()-1-layout['ell']+(d.bit_length()-1)
             limbs = [limb for value in mu[j] for limb in value]
+            if case.get('physical_tail'):
+                assert real < n
+                limbs[real*d:] = range(1, (n-real)*d+1)
             width = 1 << column_bits
             matrix = [limbs[i:i+width] for i in range(0, len(limbs), width)]
             with local_hashes(usage['non_transcript']):
@@ -269,20 +276,26 @@ def main():
     pcs.Transcript = Transcript
     try:
         expected = [reference(case) for case in inputs]
+        from lookup_closed import batch
+        closed_inputs, closed_expected = batch(sys.modules[__name__], inputs, expected)
     finally:
         pcs.Transcript = old
     assert len(expected) == 8 and sum(v['outcome'] == 'produced' for v in expected) == 6
     assert all(v['cause'] == 'Fraction(RootMismatch)' for v in expected if v['outcome'] == 'error')
     digest = hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     assert digest == EXPECTED, f'independent lookup corpus digest: {digest}'
+    closed_digest = hashlib.sha256(json.dumps(closed_expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    assert len(closed_expected) == 40 and sum(v['decision'] == 'accept' for v in closed_expected) == 8
+    assert closed_digest == CLOSED_EXPECTED, f'independent closed lookup corpus digest: {closed_digest}'
     native = subprocess.run(['cargo', 'run', '-q', '-p', 'stele-negative-controls', '--example', 'lookup_corpus', '--locked', '--offline'],
-        cwd=ROOT, input=''.join(json.dumps(case)+'\n' for case in inputs), text=True, capture_output=True)
+        cwd=ROOT, input=''.join(json.dumps(case)+'\n' for case in inputs+closed_inputs), text=True, capture_output=True)
     assert native.returncode == 0, native.stderr
     actual = [json.loads(line) for line in native.stdout.splitlines()]
-    assert len(actual) == len(expected)
-    for case, left, right in zip(inputs, actual, expected):
+    assert len(actual) == len(expected)+len(closed_expected)
+    for case, left, right in zip(inputs+closed_inputs, actual, expected+closed_expected):
         assert left == right, f'lookup mismatch {case["name"]}: {[k for k in left.keys() | right.keys() if left.get(k) != right.get(k)]}'
     print(f'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; SHA256 {digest}; no lookup verification credit')
+    print(f'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; SHA256 {closed_digest}')
 
 if __name__ == '__main__':
     main()
