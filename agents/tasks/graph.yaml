@@ -934,7 +934,7 @@ tasks:
   - no matmul statement, closed operation or NC-0611 credit; every E7-01b and parent acceptance criterion remains required
 - id: E7-01b2
   epic: E7
-  title: Conditional stacked matmul producer and canonical proof codec
+  title: Closed conditional stacked matmul verifier and canonical proof codec
   depends:
   - E7-01b1
   - E3-06
@@ -948,13 +948,14 @@ tasks:
   crate: stele-reductions
   status: in_progress
   agent: codex-root
-  branch: task/E7-01b2-matmul-producer
+  branch: task/E7-01b2-matmul-verifier
   acceptance:
   - exact expected stacked source geometry and complete canonical untrusted proof codec with checked lengths, field limbs and scoped resource preflight
-  - actual A4/A1 producer consumes folding copies of the retained PCS rows, captures its actual point and emits both original retained A9 openings without rereading source messages
-  - MatmulStatement framing, full proof bytes, producer usage and continuation match the independent reference on at least 1000 seeded bounded complete cases per field, including zero axes and factors and asymmetric rates
-  - producer context, size and budget failures preserve stated causes and observed usage; exact API and validator gates reject missing evidence
-  - no closed matmul record, accepting operation verifier or NC-0306/0307/0611 completion credit; all six E7-01b and all parent criteria remain required
+  - MatmulStatement label and inventory land with the actual A4/A1/A7 verifier, restored original X and W consumers and an opaque record borrowing both real certificates, including zero factors
+  - actual NC-0306/0307/0611 and composed NC-0606/0802 reject at their specified consumers in both fields, with all three continuation omissions and honest artifacts accepted first
+  - identical complete reference wires, decisions, restored claims, conditional records, usage and genuine continuation agree with independent Python on at least 1000 seeded bounded cases per field
+  - source, shape, size, budget and malformed-wire failures preserve stated causes and observed usage; record lifetime and exact API/validator gates reject missing evidence
+  - no complete native producer or resource-ledger credit; all six E7-01b and all parent criteria remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
