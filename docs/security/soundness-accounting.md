@@ -1557,7 +1557,7 @@ consumed. Exact selected-byte attainment adds no challenge or algebraic loss.
 Streaming must reauthenticate all stored bytes, including public-zero high
 bytes outside compact ranges. Binding, FS/H and model provenance are additional.
 
-### Conditional public stacked runtime (E3-06 remains in progress)
+### Conditional stacked runtime (E3-06 remains in progress)
 
 RFC-0006 A4 / RFC-0012 A6 specify StackSources then Stack, with no new draw.
 The actual A1 record remains m*delta/p^d for the complete A*P, including zero
@@ -1566,10 +1566,20 @@ canonical point restoration add no algebraic loss. Every certified original
 keeps the actual A9 certificate, ordinary-opening and lifetime/hash records;
 no public coefficient is included in that certified roster. Use one cumulative
 transcript Usage snapshot and disjoint local Merkle work, including failures.
-The native public adapter now binds this schedule to the closed registry/inventory,
-consumes every public original, and retains the actual A1 record after the A7 check.
-NC-0203, both NC-0212 variants and both stacked NC-0802 continuations execute in
-both fields. Native/Python comparison includes complete bytes, restored claims,
-SC records and continuation. The public NC-0211 case is exercised without claiming
-the pending certified variant. Certified closure/NC-0213 and complete cost evidence
-remain E3-06 requirements. Q12, private coefficients, integer inference and ZK remain open.
+The native public and certified adapters bind this schedule to the closed
+registry/inventory and retain the actual A1 record after the A7 check. The certified
+producer captures actual fold challenges, restores the canonical point and opens
+every original through A9; its verifier derives the point independently and
+returns opening records borrowing the verified certificates. Registration losses
+remain owned by those certificates across reuse.
+
+NC-0203, both NC-0212 variants, public/certified NC-0211, NC-0213 and both stacked
+NC-0802 continuations execute in both fields. Independent native/Python comparisons
+retain the 116 public decisions and add 48 certified decisions with complete source,
+certificate, A1 and opening bytes, restored claims, actual records and continuation.
+The certified comparison also checks cumulative transcript usage and disjoint local
+Merkle work for successful stage producers and the corpus's stage-verifier outcomes,
+including a later failed opening. Registration, failed-producer and sampler-abort
+usage remain outside this comparison. No additional challenge or loss term is
+introduced. Complete cost evidence remains an E3-06 requirement. Q12, private
+coefficients, integer inference and ZK remain open.

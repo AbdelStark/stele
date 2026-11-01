@@ -55,9 +55,9 @@ def bootstrap_guard(root, gate):
 
 
 def field_sources(root):
-    """The actual closed A1 consumer replaces only the reductions scaffold guard."""
+    """Actual closed A1 and stacked consumers; all original obligations remain."""
     crate = root / 'crates/stele-reductions'
-    allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs'}
+    allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -66,9 +66,23 @@ def field_sources(root):
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                'extern crate alloc;\nmod field_sources;\n'
-               'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n')
+               'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
+               'mod stacked_sources;\npub use stacked_sources::{\n'
+               '    prove_stacked_sources, verify_stacked_sources, Error as StackedError,\n'
+               '    Failure as StackedFailure, StackedProof, StackedSourceRecord,\n};\n')
     code = re.sub(r'//[^\n]*', '', (crate / 'src/field_sources.rs').read_text())
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    stacked = re.sub(r'//[^\n]*', '', (crate / 'src/stacked_sources.rs').read_text())
+    stacked_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', stacked)
+    stacked_closed = (stacked_declarations == [
+        ('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
+        ('struct', 'StackedProof'), ('', 'sumcheck'), ('', 'openings'),
+        ('struct', 'StackedSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
+        ('fn', 'verify_stacked_sources'), ('fn', 'prove_stacked_sources')]
+        and len(stacked_declarations) == len(re.findall(r'\bpub\b', stacked))
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', stacked)]
+            == ["impl<K:ChallengeField>StackedSourceRecord<'_,K>{"]
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', stacked))
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target', 'features'))
@@ -76,8 +90,8 @@ def field_sources(root):
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
                                 ('fn', 'verify_field_sources')]
-            or len(declarations) != len(re.findall(r'\bpub\b', code))):
-        raise ValueError('reductions API not wired; only the reviewed closed A1 adapter admitted')
+            or len(declarations) != len(re.findall(r'\bpub\b', code)) or not stacked_closed):
+        raise ValueError('reductions API not wired; only reviewed closed A1 and stacked adapters admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
          [f'test pcs_a1::{n} ... ok' for n in (
@@ -88,12 +102,28 @@ def field_sources(root):
          ['test rejects_unused_original_final ... ok']),
         (['cargo', 'test', '-p', 'stele-reductions', '--doc'],
          ['compile fail ... ok']),
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'stacked'],
+         [f'test {name} ... ok' for name in ('accepts_qm31_certified_stacked_sources',
+          'accepts_om31_certified_stacked_sources', 'rejects_qm31_malformed_certified_stacked_sources',
+          'rejects_om31_malformed_certified_stacked_sources')]),
+        (['cargo', 'test', '-p', 'stele-negative-controls', '--test', 'stacked-certified'],
+         ['test rejects_wrong_restored_point_at_actual_opening ... ok',
+          'test rejects_substituted_verified_certificate_at_actual_opening ... ok']),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
         if result.returncode or any(text not in result.stdout for text in expected):
             raise ValueError(f'closed A1 consumer checks failed: {result.stdout} {result.stderr}')
+        if '--doc' in command:
+            for module, record, count in (('field_sources', 'FieldSourceRecord', 1),
+                                          ('stacked_sources', 'StackedSourceRecord', 2)):
+                pattern = (rf'^test crates/stele-reductions/src/{module}\.rs - {module}::{record} '
+                           r'\(line \d+\) - compile fail \.\.\. ok$')
+                matches = re.findall(pattern, result.stdout, re.MULTILINE)
+                if len(set(matches)) != count:
+                    raise ValueError(f'closed A1 consumer checks failed: missing {record} boundary')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
+    print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
 
 
 def field_source_codec(root):
@@ -205,7 +235,7 @@ def field_source_codec(root):
     opening_closed = (opening_declarations == [
         ('struct', 'Functional'), ('', 'id'), ('', 'a'), ('', 'b'), ('', 'value'), ('fn', 'verify_point'),
         ('struct', 'OpeningRecord'), ('fn', 'certificate'), ('fn', 'id'), ('fn', 'queries'),
-        ('fn', 'kind'), ('fn', 'opening'), ('fn', 'verify_opening')]
+        ('fn', 'kind'), ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening')]
         and len(opening_declarations) == len(re.findall(r'\bpub\b', opening))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
@@ -370,11 +400,11 @@ def public_coefficients(root):
     surfaces = {
         'public_mle.rs': ('enum:Error struct:Axis :bits :real enum:Kind struct:Coefficient fn:new fn:evaluate',
                           ["impl<'a,K:Field>Coefficient<'a,K>{"]),
-        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:verify_public',
-                           ['impl<K>Record<K>{']),
-        'stacked/statement.rs': ('enum:Order struct:Claim :id :axes :point :value struct:Statement :id :axes :order :output :coefficient_id :inputs :terms :selectors :kind :source_id struct:Limits :descriptor_bytes :proof_bytes :prepared_entries :partial_entries :axis_entries struct:Prepared fn:new fn:bytes fn:instance fn:source_bytes',
+        'stacked/mod.rs': ('use:statement use:strategy enum:Error struct:Failure :cause :usage struct:Record fn:point fn:claims fn:sc fn:prove_public fn:verify_public fn:verify_reduction',
+                           ['impl<K>Record<K>{', "impl<K:ChallengeField+Eq>Prepared<'_,K>{"]),
+        'stacked/statement.rs': ('enum:Order struct:Claim :id :axes :point :value struct:Statement :id :axes :order :output :coefficient_id :inputs :terms :selectors :kind :source_id struct:Limits :descriptor_bytes :proof_bytes :prepared_entries :partial_entries :axis_entries struct:Prepared fn:new fn:for_certified_sources fn:bytes fn:instance fn:source_bytes',
                                  ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{"]),
-        'stacked/strategy.rs': ('struct:Dense fn:strategy fn:capacity_entries fn:partials',
+        'stacked/strategy.rs': ('struct:Dense fn:strategy fn:strategy_m31 fn:capacity_entries fn:prove fn:into_point fn:partials',
                                 ["impl<'a,K:ChallengeField+Eq>Prepared<'a,K>{", "impl<K:ChallengeField+Eq>Dense<'_,'_,K>{", "impl<K:ChallengeField+Eq>Summand<K>for&mutDense<'_,'_,K>{"]),
     }
     closed = True
@@ -392,7 +422,9 @@ def public_coefficients(root):
             or 'build' in manifest.get('package', {})):
         raise ValueError('GKR stage/source validator not wired; only reviewed A7/A4 public APIs admitted (E3-06)')
     oracle = root / 'research/stacked-gkr/check_native_wire.py'
-    if not oracle.is_file() or not Path(str(oracle)+'.lock').is_file():
+    if (not oracle.is_file() or not Path(str(oracle)+'.lock').is_file()
+            or not (root/'tests/negative-controls/fixtures/stacked-public.sha256').is_file()
+            or not (root/'tests/negative-controls/fixtures/stacked-certified.sha256').is_file()):
         raise ValueError('stacked wire checks failed: missing locked checker')
     tests = ('matches_reference_qm31_all_kinds', 'matches_reference_om31_all_kinds',
              'rejects_invalid_descriptors_and_resource_limits',
@@ -413,7 +445,9 @@ def public_coefficients(root):
         (['cargo','test','-p','stele-gkr','--doc','--locked','--offline'], ['compile fail ... ok']),
         (['uv','run','--locked','--script','research/stacked-gkr/check_native_wire.py'],
          ['stacked native wire: 116 both-field decisions; complete frames/proofs/restored claims/SC/continuation agree; '
-          +(root/'tests/negative-controls/fixtures/stacked-public.sha256').read_text().strip()]),
+          +(root/'tests/negative-controls/fixtures/stacked-public.sha256').read_text().strip(),
+          'stacked certified wire: 48 both-field decisions; actual certificates/producer/openings/records/usage/continuation agree; '
+          +(root/'tests/negative-controls/fixtures/stacked-certified.sha256').read_text().strip()]),
     ]
     for command, required in checks:
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
@@ -423,7 +457,7 @@ def public_coefficients(root):
                 r'^test crates/stele-gkr/src/stacked/mod\.rs - stacked::Record \(line \d+\) - compile fail \.\.\. ok$',
                 result.stdout, re.MULTILINE):
             raise ValueError('stacked public consumer checks failed: missing opaque Record boundary')
-    print('gate stacked public: A7 10000 points/kind/field; actual A4 consumers, controls and independent bytes; certified closure pending')
+    print('gate stacked public: A7 10000 points/kind/field; actual A4 consumers, controls and public/certified independent bytes')
 
 
 def transcript_registry(root):
@@ -739,7 +773,8 @@ def controls_layout(root):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
     allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
-    allowed.update(('src/stacked.rs', 'fixtures/stacked-public.sha256'))
+    allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
+                    'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256'))
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

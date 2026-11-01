@@ -19,9 +19,9 @@
 | NC-0208 | sumcheck engine | 0006 A3 | change one weighted tail endpoint or compute it with an early skip challenge | `RoundSumMismatch` | done |
 | NC-0209 | sumcheck engine | 0006 A3 | change one unused original slice final | `ClaimMismatch` | done |
 | NC-0210 | sumcheck engine | 0006 A6 | change one unused Streaming source value; one changed final under original consumer | `ClaimMismatch` | done |
-| NC-0211 | stacked canonical point | 0006 A4 | one unused original final from the raw layer-last point | `ClaimMismatch / ValueMismatch` | todo |
+| NC-0211 | stacked canonical point | 0006 A4 | one unused original final from the raw layer-last point | `ClaimMismatch / ValueMismatch` | done |
 | NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
-| NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | todo |
+| NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | done |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
 | NC-0400–0405 | lookups | 0008 §7 | see RFC | `LogUpImbalance` etc. | todo |
 | NC-0406 | fraction reduction | 0008 A3 | change one root numerator | `FinalEvaluationMismatch` | done |
@@ -64,6 +64,9 @@ them done or admit a PCS profile.
 
 The public stacked runtime executes NC-0203, both source variants of NC-0212,
 and both Stack/StackSources extensions of NC-0802 in QM31 and OM31.
-The public NC-0211 variant rejects at its actual original consumer, but the ID
-remains pending until certified closure supplies its ValueMismatch variant.
-Certified-source substitution NC-0213 also remains pending (E3-06).
+The NC-0211 control also executes the certified variant: the unchanged opening reaches
+ValueMismatch after Opening/OpeningRow and before any column query. NC-0213
+substitutes one separately verified certificate for the unchanged original proof;
+the actual opening rejects RootMismatch. Both fields retain the complete proof
+bytes across that expected-context substitution. These conditional field controls
+do not complete E3-06's resource evidence or admit inference/privacy profiles.

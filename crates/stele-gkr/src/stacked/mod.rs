@@ -1,4 +1,4 @@
-//! RFC-0006 A4 / formal/stacked-runtime.md: conditional public-source field proofs.
+//! RFC-0006 A4 / formal/stacked-runtime.md: stacked kernels and closed public proofs.
 //! Dense preparation, round work, partial storage and public consumption are charged
 //! separately by §6; this implementation makes no streaming or inference claim.
 mod statement;
@@ -95,9 +95,7 @@ pub fn prove_public<K: ChallengeField + Eq>(
         let mut dense = prepared.strategy(tables)?;
         t.absorb(AbsorbLabel::StackSources, &sources)
             .map_err(Error::Transcript)?;
-        t.absorb(AbsorbLabel::Stack, prepared.bytes())
-            .map_err(Error::Transcript)?;
-        stele_sumcheck::prove(prepared.instance(), &mut dense, t).map_err(Error::Sumcheck)
+        dense.prove(t).map_err(|failure| failure.cause)
     })();
     observed(result, t).map(|(proof, _)| proof)
 }
@@ -115,22 +113,9 @@ pub fn verify_public<K: ChallengeField + Eq>(
         let sources = prepared.source_bytes(tables)?;
         t.absorb(AbsorbLabel::StackSources, &sources)
             .map_err(Error::Transcript)?;
-        t.absorb(AbsorbLabel::Stack, prepared.bytes())
-            .map_err(Error::Transcript)?;
-        let mut reduction =
-            stele_sumcheck::verify(prepared.instance(), proof, t).map_err(Error::Sumcheck)?;
-        if s.order == Order::LayerLast {
-            reduction.point.rotate_right(usize::from(s.axes[0].bits));
-        }
-        if prepared
-            .coefficient
-            .evaluate(&reduction.point)
-            .map_err(|_| Error::Capacity)?
-            != proof.final_values[tables.len()]
-        {
-            return Err(Error::CoefficientMismatch);
-        }
-        reduction.claims.pop();
+        let (reduction, _) = prepared
+            .verify_reduction(t, proof)
+            .map_err(|failure| failure.cause)?;
         if !tables.is_empty() {
             let weights = stele_poly::eq_table(&reduction.point).map_err(|_| Error::Capacity)?;
             for (table, (_, expected)) in tables.iter().zip(&reduction.claims) {
@@ -146,4 +131,39 @@ pub fn verify_public<K: ChallengeField + Eq>(
         Ok(Record(reduction))
     })();
     observed(result, t)
+}
+
+impl<K: ChallengeField + Eq> Prepared<'_, K> {
+    /// Run Stack/A1/A7 and return unconsumed original claims at the canonical point.
+    /// The caller must fix originals through its real source consumer before the
+    /// first challenge, then consume every claim. This returns no closed record.
+    pub fn verify_reduction(
+        &self,
+        t: &mut Transcript<K>,
+        proof: &Proof<K>,
+    ) -> Result<(Reduction<K>, HashUsage), Failure> {
+        let result = (|| {
+            stele_sumcheck::preflight(self.instance(), proof).map_err(Error::Sumcheck)?;
+            t.absorb(AbsorbLabel::Stack, self.bytes())
+                .map_err(Error::Transcript)?;
+            let mut reduction =
+                stele_sumcheck::verify(self.instance(), proof, t).map_err(Error::Sumcheck)?;
+            if self.statement.order == Order::LayerLast {
+                reduction
+                    .point
+                    .rotate_right(usize::from(self.statement.axes[0].bits));
+            }
+            if self
+                .coefficient
+                .evaluate(&reduction.point)
+                .map_err(|_| Error::Capacity)?
+                != proof.final_values[self.statement.inputs.len()]
+            {
+                return Err(Error::CoefficientMismatch);
+            }
+            reduction.claims.pop();
+            Ok(reduction)
+        })();
+        observed(result, t)
+    }
 }

@@ -1,5 +1,7 @@
 """RFC-0010 A9: certificate/opening authority is private; unwired APIs reject."""
 import importlib.util
+from contextlib import redirect_stdout
+import io
 from pathlib import Path
 import shutil
 import subprocess
@@ -101,6 +103,77 @@ class FieldSourceGateTests(unittest.TestCase):
                     gate.field_source_codec(ROOT)
                 self.assertEqual(run.call_args.args[0],
                                  ['uv', 'run', '--locked', '--script', 'research/merkle-oracle/check_field_wire.py'])
+
+
+class ClosedStackedGateTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        shutil.copytree(ROOT/'crates/stele-reductions', self.root/'crates/stele-reductions')
+        self.outputs = [
+            '\n'.join(f'test pcs_a1::{name} ... ok' for name in (
+                'accepts_qm31_closed_originals', 'accepts_om31_closed_originals',
+                'rejects_qm31_later_source_and_roster', 'rejects_om31_later_source_and_roster',
+                'matches_reference_closed_a1_bytes')),
+            'test rejects_unused_original_final ... ok',
+            '\n'.join(f'test crates/stele-reductions/src/{module}.rs - {module}::{record} (line {line}) - compile fail ... ok'
+                      for module,record,line in [('field_sources','FieldSourceRecord',30),
+                          ('stacked_sources','StackedSourceRecord',43),('stacked_sources','StackedSourceRecord',48)]),
+            '\n'.join(f'test {name} ... ok' for name in ('accepts_qm31_certified_stacked_sources',
+                'accepts_om31_certified_stacked_sources', 'rejects_qm31_malformed_certified_stacked_sources',
+                'rejects_om31_malformed_certified_stacked_sources')),
+            '\n'.join(f'test {name} ... ok' for name in ('rejects_wrong_restored_point_at_actual_opening',
+                'rejects_substituted_verified_certificate_at_actual_opening')),
+        ]
+
+    def run_gate(self, outputs=None, failed=None):
+        outputs = self.outputs if outputs is None else outputs
+        results = [subprocess.CompletedProcess([], int(i == failed), text, '')
+                   for i,text in enumerate(outputs)]
+        with mock.patch.object(gate.subprocess, 'run', side_effect=results) as run, redirect_stdout(io.StringIO()):
+            gate.field_sources(self.root)
+        return [call.args[0] for call in run.call_args_list]
+
+    def test_accepts_complete_closed_consumers(self):
+        commands = self.run_gate()
+        self.assertEqual(len(commands), 5)
+        self.assertTrue(all('--locked' in c and '--offline' in c for c in commands))
+        self.assertEqual([c[c.index('--test')+1] for c in commands if '--test' in c],
+                         ['nc-0609','stacked','stacked-certified'])
+
+    def test_rejects_every_failure_and_omitted_receipt(self):
+        for i, output in enumerate(self.outputs):
+            with self.subTest(failed=i), self.assertRaisesRegex(ValueError, 'checks failed'):
+                self.run_gate(failed=i)
+            for line in output.splitlines():
+                altered=self.outputs.copy(); altered[i]=output.replace(line,'')
+                with self.subTest(missing=line), self.assertRaisesRegex(ValueError, 'checks failed'):
+                    self.run_gate(altered)
+        altered=self.outputs.copy(); altered[2]=altered[2].replace('stacked_sources::StackedSourceRecord','unrelated::Record')
+        with self.assertRaisesRegex(ValueError, 'missing StackedSourceRecord boundary'):
+            self.run_gate(altered)
+
+    def test_rejects_unreviewed_api_conversions_and_dependencies(self):
+        for name, addition in (
+            ('src/stacked_sources.rs','\npub fn accept_unchecked() {}\n'),
+            ('src/stacked_sources.rs','\nimpl<K> From<Proof<K>> for StackedSourceRecord<\'_,K> {}\n'),
+            ('src/stacked_sources.rs','\ninclude!("unchecked.rs");\n'),
+            ('Cargo.toml','\n[features]\nunwired = []\n'),
+        ):
+            path=self.root/'crates/stele-reductions'/name; saved=path.read_text()
+            path.write_text(saved+addition)
+            with self.subTest(addition=addition), mock.patch.object(gate.subprocess,'run') as run:
+                with self.assertRaisesRegex(ValueError,'not wired'):
+                    gate.field_sources(self.root)
+                run.assert_not_called()
+            path.write_text(saved)
+        path=self.root/'crates/stele-reductions/src/stacked_sources.rs'
+        path.unlink()
+        with mock.patch.object(gate.subprocess,'run') as run:
+            with self.assertRaises((ValueError,FileNotFoundError)):
+                gate.field_sources(self.root)
+            run.assert_not_called()
 
 
 if __name__ == '__main__':

@@ -8,6 +8,15 @@ use stele_code::{CodeField, Encoder};
 use stele_field::{Serialize, M31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeField, HashUsage, Transcript};
 
+fn point_weights<K: ChallengeField>(
+    point: &[K],
+    row_bits: usize,
+) -> Result<(Vec<K>, Vec<K>), Error> {
+    let a = stele_poly::eq_table(&point[..row_bits]).map_err(|_| Error::Capacity)?;
+    let b = stele_poly::eq_table(&point[row_bits..]).map_err(|_| Error::Capacity)?;
+    Ok((a, b))
+}
+
 /// Caller-owned expected coefficients and value; this descriptor carries no authority.
 #[derive(Clone, Copy)]
 pub struct Functional<'a, K: ChallengeField> {
@@ -66,9 +75,7 @@ where
         }
         source.opening_frame_size()?;
         source.parse(ProofKind::Opening, proof)?;
-        let a = stele_poly::eq_table(&point[..ell]).map_err(|_| Error::Capacity)?;
-        let b = stele_poly::eq_table(&point[ell..]).map_err(|_| Error::Capacity)?;
-        Ok((a, b))
+        point_weights(point, ell)
     })();
     let (a, b) = weights.map_err(|cause| Failure {
         cause,
@@ -128,6 +135,48 @@ impl<K: ChallengeField> OpeningRecord<'_, K> {
     }
 }
 impl<K: ChallengeField> PreparedSource<'_, K> {
+    /// Produce an A9 opening at the canonical tensor point. The expected source's
+    /// own row split determines weights; no stacked layer width is substituted.
+    pub fn opening_point(
+        &self,
+        t: &mut Transcript<K>,
+        certificate: &VerifiedCertificate<K>,
+        id: u64,
+        point: &[K],
+        value: K,
+    ) -> Result<(Vec<u8>, Usage), Failure> {
+        let weights = (|| {
+            let source = certificate.record().source();
+            if self.source().bytes() != source.bytes() {
+                return Err(Error::CertificateContext);
+            }
+            let row_bits = source.rows().trailing_zeros() as usize;
+            let column_bits = source.columns().trailing_zeros() as usize;
+            if point.len() != row_bits + column_bits {
+                return Err(Error::FunctionalShape);
+            }
+            source.opening_frame_size()?;
+            source.proof_size(ProofKind::Opening)?;
+            point_weights(point, row_bits)
+        })();
+        let (a, b) = weights.map_err(|cause| Failure {
+            cause,
+            usage: Usage {
+                transcript: t.usage(),
+                non_transcript: HashUsage::default(),
+            },
+        })?;
+        self.opening(
+            t,
+            certificate,
+            Functional {
+                id,
+                a: &a,
+                b: &b,
+                value,
+            },
+        )
+    }
     /// Produce full ordered opening bytes. Any error aborts the caller's entire attempt.
     /// Transcript usage is cumulative; do not add snapshots from shared transcripts.
     pub fn opening(

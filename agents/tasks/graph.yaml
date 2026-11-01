@@ -421,7 +421,7 @@ tasks:
   crate: stele-gkr
   status: in_progress
   agent: codex-root
-  branch: task/E3-06-stacked-public
+  branch: task/E3-06-stacked-certified
   acceptance:
   - prover/verifier MLE agreement 1e4 points per kind
   - NC-0203

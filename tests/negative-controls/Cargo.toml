@@ -141,3 +141,7 @@ path = "pcs/nc_0610.rs"
 [[test]]
 name = "stacked-public"
 path = "sumcheck/stacked_public.rs"
+
+[[test]]
+name = "stacked-certified"
+path = "sumcheck/stacked_certified.rs"
