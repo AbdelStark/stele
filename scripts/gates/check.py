@@ -863,7 +863,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus')]
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench')]
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}

@@ -25,13 +25,20 @@ class FieldPcsBenchTests(unittest.TestCase):
             shutil.copytree(ROOT/'tests/negative-controls', suite)
             gates.controls_layout(root)
             for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
-                         'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs'):
+                         'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
+                         'examples/lookup_bench.rs'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)
                 path.write_bytes(saved)
             manifest = suite/'Cargo.toml'
             original = manifest.read_text()
+            benchmark = '[[example]]\nname = "lookup_bench"\npath = "examples/lookup_bench.rs"\n'
+            self.assertIn(benchmark, original)
+            manifest.write_text(original.replace(benchmark, ''))
+            with self.assertRaisesRegex(ValueError, 'example exact'):
+                gates.controls_layout(root)
+            manifest.write_text(original)
             entry = 'serde_json = "=1.0.154"'
             manifest.write_text(original.replace(entry, '').replace('[dependencies]', '[dependencies]\n'+entry))
             with self.assertRaisesRegex(ValueError, 'dev-only'):

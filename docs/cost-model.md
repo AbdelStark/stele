@@ -158,10 +158,11 @@ there is no uncharged batched opening. Actual Table serialization hashes and
 certificate-ID comparison belong to disjoint local H/T_misc.
 
 Retained source, tree/A1, preparation, coefficient and proof buffers have distinct
-lifetimes. Complete pipeline time and memory need their own ledger; existing
-fraction/PCS/stacked primitive reports do not establish c_lu for this composition.
-This contract supplies formulas and required observations only, with no fitted
-constant, benchmark number, inference projection or weight-pass change.
+lifetimes. The [complete lookup ledger](../bench/ledger/e3-07b-lookup.json)
+and [benchmark report](../bench/README.md#complete-conditional-lookup-resources)
+record actual registration, production, import, closed verification and cleanup.
+These bounded conditional observations do not fit c_lu, change an inference
+projection or establish a weight-pass result.
 
 The native A3 and lookup `prove_measured` methods execute the same producer as
 ordinary `prove`. Their descriptive Work values record actual capacities from
@@ -174,7 +175,9 @@ Completed proofs are counted after A1 returns, when its Dense has dropped.
 `peak_observed_bytes` is the largest included boundary observation, not an exact
 allocation peak, a sum of independent category maxima, or process RSS. Vector
 headers, descriptor/record metadata and unobserved internal scratch remain
-outside its scope. The complete benchmark must retain all these costs in its
-inclusive timing and fresh-worker RSS. Conservative producer admission limits
-remain separate from observed capacity. E3-07b still requires the complete
-registration, production, import and verification ledger.
+outside its scope. The complete benchmark retains these costs in its inclusive
+timing and fresh-worker RSS. Conservative producer admission limits remain
+separate from observed capacity. The producer interval includes internal mu
+preparation and registration; standalone import and closed verification have
+their own intervals. Diagnostic framing and hashes remain separate executed
+scopes. E3-07's full private/source/plan, c_lu and profile obligations remain.

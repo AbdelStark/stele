@@ -500,9 +500,9 @@ tasks:
   - RFC-0020 A6
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
-  branch: task/E3-07b-lookup-resources
+  branch: task/E3-07b-lookup-ledger
   acceptance:
   - exact native descriptors, complete codecs, bounded preflight and malformed proofs in both fields and repetition counts
   - actual A3 trees, selected-product and canonical Table consumers; every original and K-limb prefix piece reaches its actual A9 opening
