@@ -589,3 +589,26 @@ corresponding bindings. This amendment adds no coverage. The original task
 criteria remain intact. Cost terms include complete registration, source rows,
 encoding, queries, paths, coefficient storage and proof buffers in c_c/T_misc.
 No measured constant, native benchmark or extra model weight pass is supplied.
+
+### A10 — Retained field row for the conditional matmul consumer
+
+Status: Accepted. Companions RFC-0007 A2 and RFC-0012 A12.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
+Motivation: A9 §4 deliberately supplies no fused B ownership; its ordinary
+producer recomputes the row. Addition to §5 and A9's producer boundary:
+[native-matmul.md §2](../../formal/native-matmul.md#2-retained-functional-row-and-prover-schedule)
+defines a producer-only immutable row owner borrowing its actual PreparedSource
+and exact row weights. Its checked construction visits each message element
+once. The matmul fold scratch derives from those retained rows; the opening
+serializes the same retained row with no original-message reread or replacement
+vector. Expected source/row-weight disagreement rejects before mutation.
+
+This changes no A9 verifier, source bytes, finite policy, wire, challenge or
+theorem. The operation's explicit expected original layout is fixed before A4;
+it cannot relabel an existing commitment or authorize a new activation cut.
+The owner is not a verified certificate or acceptance receipt. Charge retained
+rows, folding copies, queries, source/encoded-column reads and full registration
+separately. Actual one-pass and row-identity evidence is required in E7-01b;
+NC-0611 requires a real column-equation attack, not only an API rejection.
+A6/A7, E4-03/E4-04/E4-05, signed packing, short columns and joint privacy retain
+all obligations. No fitted cost, complete weight-phase or profile claim follows.

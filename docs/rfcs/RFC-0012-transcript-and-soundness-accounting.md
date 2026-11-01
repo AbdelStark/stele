@@ -634,3 +634,23 @@ classification with the actual producer, consumers, controls and gates. The
 specification alone changes no executable registry or transcript-label JSON.
 Draft A8 and the original full lookup/profile obligations remain. No cost-model
 constant changes; all new framing/hashing/queries belong to c_lu/c_c/T_misc.
+
+### A12 — Original-source fixation for conditional stacked matmul
+
+Status: Accepted. Companions RFC-0007 A2 and RFC-0010 A10.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
+The exact [native matmul contract](../../formal/native-matmul.md#3-exact-proof-bytes-and-transcript-order)
+defines one absorb-only typed label MatmulStatement with bytes
+`stele/v0.1/matmul/statement`. Its complete expected original source/certificate,
+layout and output-claim frame precedes the unchanged A4 Stack and A1 schedule.
+The operation closes both restored originals through the unchanged A9 schedule.
+There is no StackSources frame or new challenge; existing closed A4/A9 adapters
+retain their meanings. Both A9 response blocks precede any continuation.
+
+Charge actual SC 3*(h+b)/|K| once, both actual A9 certificate/opening and
+lifetime terms, and all existing A8/FS/H conditions. Count h+b A1 draws and
+both actual column-sampling histories, including failures; keep standalone
+registration and disjoint local H separate from the cumulative outer snapshot.
+The new frame contributes hash work only. Q12 and both profile budgets remain
+unresolved. Add the production label, inventory and composed NC-0802 extension
+with the implementing consumer; this specification changes none of them.

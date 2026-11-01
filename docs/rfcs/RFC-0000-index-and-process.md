@@ -32,12 +32,12 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1, A4, A5); A2 superseded by A4; A3 Draft |
 | 0005 | Tensor IR, claim graph, witness capture | Accepted (A1) |
 | 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3, A4, A5, A6, A7) |
-| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted; A1 Draft |
+| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A2); A1 Draft |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A3, A4, A5); A1, A2 Draft |
 | 0009 | Attention protocol | Accepted (A1) |
-| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2, A4, A5, A8, A9); A1, A3, A6, A7 Draft |
+| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A2, A4, A5, A8, A9, A10); A1, A3, A6, A7 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted (A2); A1, A3 Draft |
-| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A9, A10, A11); A7, A8 Draft |
+| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A9, A10, A11, A12); A7, A8 Draft |
 | 0013 | Zero-knowledge | Accepted; A1 Draft |
 | 0014 | GPU prover architecture | Accepted (A1) |
 | 0015 | Distributed proving | Accepted |
@@ -45,7 +45,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted |
 | 0018 | Benchmarks, targets, cost-model protocol | Accepted |
 | 0019 | Research agenda | Research |
-| 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6) |
+| 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6, A7) |
 | 0021 | Canonical nonlinear functions, tables and representations | Accepted |
 | 0022 | Closed static arithmetic records | Accepted |
 

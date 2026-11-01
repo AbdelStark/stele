@@ -102,3 +102,29 @@ this Draft authorizes no alternate weight pass or commitment. E4-04 and E7
 criteria, NC-0300..0305/0605 and static certificates remain unchanged. Any future
 challenges/losses require explicit accounting. Message counts, c_w/c_c/T_misc,
 decomposition and memory need actual ledgers; no measured constant changes here.
+
+### A2 — Conditional stacked matmul with original field sources
+
+Status: Accepted. Companion RFC-0010 A10 and RFC-0012 A12.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
+Motivation: §5's partial A/B claims need an explicit original-source mapping,
+and ordinary A9 opening production rereads the source after B is computed.
+
+Addition to §§1,5,7: the exact [native matmul contract](../../formal/native-matmul.md)
+authorizes one conditional stacked field relation with expected A9 matrices
+X stored as (i,l,k) and W as (j,l,k). These are explicit physical source
+representations, not inferred views of another root or new inference cuts.
+Retain A/B rows from one original-source visit, reuse the actual A4/A1 kernel
+with its independently checked layer eq coefficient, then close both originals
+through actual A9 openings at the restored physical coordinates. Both consumers
+run under zero factors; only complete borrowed conditional records survive.
+
+The exact statement/proof bytes, transcript order, immutable row ownership,
+preflight/failure rules, costs and delivery gates are normative in that contract.
+The actual A1 SC term is 3*(log2 L+log2 d)/|K|, including L=1; retain both
+certificate lifetimes, opening terms and A8 hash hypotheses. No new challenge,
+PCS theorem, integer bound, privacy or profile admission is supplied. A1 remains
+Draft for packed/signed and complete fused integration. E7-01a accepts the
+contract; E7-01b implements it. E7-01/E7-02/E4-04 retain every original criterion.
+NC-0306/0307/0611 are reservations; actual composed controls and full resource
+ledgers must precede implementation completion. No measured constant changes.

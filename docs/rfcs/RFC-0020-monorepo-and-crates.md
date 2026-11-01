@@ -152,3 +152,21 @@ Update exact dependency bans/API guards only with the admitted implementation,
 including rejection cases for all still-forbidden edges. This amendment alone
 changes no Cargo manifest, native allowlist, registry or production behavior.
 Affected tasks: conditional E3-07b and E3-07, whose full criteria remain intact.
+
+### A7 — Conditional matmul ownership and existing primitive dependencies
+
+Status: Accepted. Companions RFC-0007 A2, RFC-0010 A10 and RFC-0012 A12.
+Review: [coordinated skill sign-off](../../agents/reviews/matmul-contract-accepted.md).
+The [conditional matmul](../../formal/native-matmul.md) belongs in
+stele-reductions and invokes the actual unclosed GKR kernel and PCS consumers.
+Its original-source mapping is operation-owned; neither GKR nor sumcheck
+acquires a PCS dependency or authentication callback. The retained-row producer
+belongs in stele-pcs and supplies no verifier authority.
+
+Extend A6's reductions-to-poly permission to this operation's shared MSB eq
+weights. All other calls use the existing field/hash/GKR/PCS/sumcheck edges.
+No Cargo edge or dependency change is needed. External callers retain the real
+VerifiedCertificate owners; the complete result borrows their OpeningRecords.
+E7-01b must update exact native API policy with the admitted producer/consumer
+and its rejection tests. This contract changes no executable allowlist, and
+full verifier/plan integration retains its separate ownership contract.

@@ -437,3 +437,21 @@ checks. Keep every test, seed, shape, oracle and gate command. Default dev and
 release settings and broad shared-configuration CI routing remain unchanged.
 The measured result is a shared-host screening pair; it establishes neither a
 full-CI speedup nor an inference cost constant. Status: Accepted.
+
+## ADR-044: Close stacked field matmul through its original source openings
+
+Context: A4 can prove the stacked product relation and A9 can consume original
+functionals, but the operation's source mapping was unspecified and ordinary
+opening production rereads the original matrix. Decision: accept RFC-0007 A2,
+RFC-0010 A10, RFC-0012 A12 and RFC-0020 A7. Fix expected X(i,l,k) and W(j,l,k)
+physical layouts before A4. Retain the exact partial rows for both folding
+scratch and actual A9 openings; consume both originals under zero products.
+
+Reuse the existing unclosed A4/A1/A7 kernel and A9 verifier, with one new
+absorb-only frame and an operation-specific closed consumer. Keep requested
+payload admission separate from actual capacities and process memory. Bounded
+reference composition supports the contract; native ownership, controls, full
+parity and resource ledgers remain E7-01b delivery requirements. This source
+representation is not an implicit R_stack view or a new activation cut. Every
+original E7/E4, signed/packed, virtual-source, configured-plan, privacy, profile
+and W8 requirement remains. No measured constant changes. Status: Accepted.
