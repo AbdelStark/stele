@@ -152,14 +152,16 @@ class ClosedStackedGateTests(unittest.TestCase):
                 'rejects_substituted_verified_certificate_at_actual_opening')),
             '\n'.join([f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
                       + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
-                         for field in ('qm31','om31')]),
+                         for field in ('qm31','om31')]
+                      + ['test matmul::producer::rejects_retained_allocation_sizes ... ok']),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
             '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))),
             '\n'.join(f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('accepts',''),('rejects','_tampers')))+'\n'+'\n'.join(
-                      f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31')),
+                      f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31'))+'\n'+'\n'.join(
+                      f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31')),
             '\n'.join(f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')),
             '\n'.join(f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611))+'\n'
                       'test rejects_wrong_coefficient_at_actual_a7 ... ok',
@@ -169,7 +171,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41',
             'matmul closed corpus: 2000 seeded cases (1000 per field), 34 honest controls and 34 rejects; '
             'complete wires, actual records, imports, usage and continuation; '
-            'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456',
+            'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456\n'
+            'matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, '
+            'actual closed records, usage, retained visits and continuation',
         ]
 
     def run_gate(self, outputs=None, failed=None):
@@ -189,8 +193,10 @@ class ClosedStackedGateTests(unittest.TestCase):
         self.assertEqual(commands[-1], ['uv', 'run', '--python', '3.12', '--locked', '--script',
                                        'tests/negative-controls/matmul_corpus.py'])
         self.assertEqual(sum('--doc' in c for c in commands), 1)
+        self.assertEqual([c for c in commands if 'stele-reductions' in c and '--lib' in c],
+                         [['cargo', 'test', '-p', 'stele-reductions', '--lib', '--locked', '--offline']])
         self.assertEqual([c[i+1] for c in commands for i,arg in enumerate(c) if arg == '--test'],
-                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul']+
+                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul','matmul_producer']+
                          [f'nc-{i:04}' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611)])
 
     def test_rejects_every_failure_and_omitted_receipt(self):
@@ -230,6 +236,20 @@ class ClosedStackedGateTests(unittest.TestCase):
             altered[-1] = altered[-1].replace(old, new)
             with self.subTest(matmul_receipt=old), self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
                 self.run_gate(altered)
+        for old, new in (('2000 native proofs', '1999 native proofs'), ('1000 per field', '999 per field'),
+                         ('native proofs', 'reference proofs'), ('identical complete wires, ', ''),
+                         ('actual closed records, ', ''), ('usage, ', ''), ('retained visits and ', ''),
+                         ('continuation', '')):
+            lines = self.outputs[-1].splitlines()
+            self.assertEqual(len(lines), 2)
+            self.assertIn(old, lines[1])
+            lines[1] = lines[1].replace(old, new)
+            altered = self.outputs.copy(); altered[-1] = '\n'.join(lines)
+            with self.subTest(producer_receipt=old), self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
+                self.run_gate(altered)
+        altered = self.outputs.copy(); altered[-1] = '\n'.join(reversed(altered[-1].splitlines()))
+        with self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
+            self.run_gate(altered)
         altered = self.outputs.copy(); altered[-1] += '\nextra receipt'
         with self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
             self.run_gate(altered)
@@ -251,6 +271,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/matmul.rs',"\nimpl<K: ChallengeField> Record<'_, K> { pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n"),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> From<bool> for Record<'_, K> { fn from(_: bool) -> Self { todo!() } }\n"),
             ('src/matmul.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/matmul_producer.rs','\npub fn from_digest() {}\n'),
+            ('src/matmul_producer.rs','\nimpl From<Work> for bool { fn from(_: Work) -> bool { true } }\n'),
+            ('src/matmul_producer.rs','\ninclude!("unchecked.rs");\n'),
             ('src/stacked_sources.rs','\npub fn accept_unchecked() {}\n'),
             ('src/stacked_sources.rs','\nimpl<K> From<Proof<K>> for StackedSourceRecord<\'_,K> {}\n'),
             ('src/stacked_sources.rs','\ninclude!("unchecked.rs");\n'),
@@ -289,6 +312,23 @@ class ClosedStackedGateTests(unittest.TestCase):
                     gate.field_sources(self.root)
                 run.assert_not_called()
             path.write_text(saved)
+        for name, old, new in (
+            ('matmul.rs', 'mod producer;', 'pub mod producer;'),
+            ('matmul.rs', 'pub use producer::{prove, prove_measured, Work};', 'pub use producer::*;'),
+            ('matmul_producer.rs', 'pub dense: stacked::Work,', 'pub dense: stele_sumcheck::ScRecord,'),
+            ('matmul_producer.rs', 'pub retained_rows: [RetainedRowWork; 2],', 'pub retained_rows: [RetainedRowWork; 1],'),
+            ('matmul_producer.rs', "sources: [&PreparedSource<'_, K>; 2]", "sources: [PreparedSource<'_, K>; 2]"),
+            ('matmul_producer.rs', 'certificates: [&VerifiedCertificate<K>; 2]', 'certificates: [VerifiedCertificate<K>; 2]'),
+            ('matmul_producer.rs', 'retained_row_entries: usize', 'retained_row_entries: &mut usize'),
+        ):
+            path = self.root/'crates/stele-reductions/src'/name; saved = path.read_text()
+            self.assertIn(old, saved)
+            path.write_text(saved.replace(old, new, 1))
+            with self.subTest(producer_api=old), mock.patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'not wired'):
+                    gate.field_sources(self.root)
+                run.assert_not_called()
+            path.write_text(saved)
         for name in ('lookup_resources.rs', 'lookup_functionals.rs', 'lookup_records.rs'):
             path = self.root/'crates/stele-reductions/src'/name; saved = path.read_text()
             for visibility in ('pub', 'pub(crate)'):
@@ -298,12 +338,13 @@ class ClosedStackedGateTests(unittest.TestCase):
                         gate.field_sources(self.root)
                     run.assert_not_called()
             path.write_text(saved)
-        path=self.root/'crates/stele-reductions/src/stacked_sources.rs'
-        path.unlink()
-        with mock.patch.object(gate.subprocess,'run') as run:
-            with self.assertRaises((ValueError,FileNotFoundError)):
-                gate.field_sources(self.root)
-            run.assert_not_called()
+        for name in ('src/stacked_sources.rs', 'src/matmul_producer.rs', 'tests/matmul_producer.rs'):
+            path = self.root/'crates/stele-reductions'/name; saved = path.read_bytes(); path.unlink()
+            with self.subTest(missing=name), mock.patch.object(gate.subprocess,'run') as run:
+                with self.assertRaises((ValueError,FileNotFoundError)):
+                    gate.field_sources(self.root)
+                run.assert_not_called()
+            path.write_bytes(saved)
 
 
 if __name__ == '__main__':

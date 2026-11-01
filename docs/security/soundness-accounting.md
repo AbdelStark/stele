@@ -1660,7 +1660,9 @@ across consumers. Retained-row ownership and pass counts are implementation
 invariants, not extra soundness theorems. E7-01b2 implements the production
 label and closed verifier record, retaining the actual SC and both A9 records.
 NC-0306/0307/0611 exercise both original consumers; NC-0606 and all three
-NC-0802 omissions extend through this composition. E7-01b retains the complete
-native producer and resource-ledger requirements. Q12,
+NC-0802 omissions extend through this composition. E7-01b3 adds native production
+using actual retained rows, A4 folds and both A9 openings; the same proof bytes and
+transcript schedule preserve every existing loss. E7-01b retains the complete
+resource-ledger requirements. Q12,
 adversarial resource caps, integer/virtual ownership, privacy and both profiles
 remain open. No measured constant changes.

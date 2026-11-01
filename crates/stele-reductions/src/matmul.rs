@@ -10,6 +10,10 @@ use stele_hash::{AbsorbLabel, ChallengeField, HashUsage, Transcript};
 use stele_pcs::{CodeField, OpeningRecord, ProofKind, Usage, VerifiedCertificate};
 use stele_sumcheck::{Proof, ScRecord, Term};
 
+#[path = "matmul_producer.rs"]
+mod producer;
+pub use producer::{prove, prove_measured, Work};
+
 /// Expected statement fixed by the caller, never decoded from the proof.
 #[derive(Clone, Copy)]
 pub struct Statement<'a, K> {

@@ -956,6 +956,27 @@ tasks:
   - identical complete reference wires, decisions, restored claims, conditional records, usage and genuine continuation agree with independent Python on at least 1000 seeded bounded cases per field
   - source, shape, size, budget and malformed-wire failures preserve stated causes and observed usage; record lifetime and exact API/validator gates reject missing evidence
   - no complete native producer or resource-ledger credit; all six E7-01b and all parent criteria remain required
+- id: E7-01b3
+  epic: E7
+  title: Native conditional matmul producer from immutable retained rows
+  depends:
+  - E7-01b1
+  - E7-01b2
+  rfc:
+  - RFC-0007 A2
+  - RFC-0010 A10
+  - RFC-0012 A12
+  - RFC-0020 A7
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E7-01b3-matmul-producer
+  acceptance:
+  - canonical native producer validates both original contexts and checked retained-row, byte and A4 capacities before replay, preserving actual causes and failure usage
+  - actual A4 dense folds derive only from immutable retained A/B, with one observed original source visit each, captured challenges and both unchanged A9 openings even for zero factors
+  - complete native producer bytes, actual closed records, usage and continuation agree with independent Python on at least 1000 seeded bounded cases per field; all existing verifier controls remain
+  - exact API and evidence gates admit only the producer and explicitly scoped work observations; full A1, PCS and verifier allocation observations and every E7-01b resource-ledger criterion remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -965,6 +986,7 @@ tasks:
   - E4-03a
   - E7-01b1
   - E7-01b2
+  - E7-01b3
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10

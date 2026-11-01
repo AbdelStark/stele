@@ -1,12 +1,15 @@
-//! RFC-0007 A2 / RFC-0010 A10: actual closed-verifier JSONL adapter.
-//! Fixture bytes are untrusted. No matrices, expected records, state import or
-//! producer replay are accepted; all records come from the actual consumers.
+//! RFC-0007 A2 / RFC-0010 A10: native producer and closed-verifier JSONL adapter.
+//! Producer witnesses and verifier proof requests are distinct. The accepting
+//! verifier receives no matrices; all records come from the actual consumers.
 use serde_json::{json, Value};
 use std::io::{self, BufRead};
-use stele_field::{OM31, QM31};
+use stele_field::{Serialize, M31, OM31, QM31};
 use stele_gkr::stacked::Limits;
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
-use stele_pcs::{verify_certificate, CodeField, OpeningRecord, Source, Usage, VerifiedCertificate};
+use stele_pcs::{
+    verify_certificate, CodeField, OpeningRecord, PreparedSource, Source, Usage,
+    VerifiedCertificate,
+};
 use stele_reductions::matmul::{self, Statement};
 use stele_sumcheck::{Instance, Proof, ScRecord, Term};
 
@@ -181,10 +184,12 @@ where
             "value",
             "public_hex",
             "originals",
-            "proof_hex",
         ],
-        &["following_hex"],
+        &["proof_hex", "following_hex", "messages_hex"],
     )?;
+    if input.get("proof_hex").is_some() == input.get("messages_hex").is_some() {
+        return Err("FixtureProducerOrProof".into());
+    }
     if number(&input["degree"])? != u64::from(<K as CodeField>::DEGREE) {
         return Err("FixtureDegree".into());
     }
@@ -270,7 +275,6 @@ where
     }
     let certificates: [VerifiedCertificate<K>; 2] =
         certificates.try_into().map_err(|_| "FixtureSources")?;
-    let proof = unhex(&input["proof_hex"])?;
     let mut t = Transcript::<K>::new(&unhex(&input["public_hex"])?)
         .map_err(|e| format!("FixtureTranscript({e:?})"))?;
     let before = t.usage();
@@ -283,8 +287,70 @@ where
         partial_entries: 65_536,
         axis_entries: 65_536,
     };
+    let (proof, produced) = if let Some(messages) = input.get("messages_hex") {
+        let messages = array(messages, 2)?
+            .iter()
+            .map(|message| {
+                let raw = unhex(message)?;
+                if !raw.len().is_multiple_of(4) {
+                    return Err("FixtureMessageShape".into());
+                }
+                raw.chunks_exact(4)
+                    .map(|bytes| {
+                        M31::from_le_bytes(bytes.try_into().expect("four-byte limb"))
+                            .ok_or_else(|| "FixtureMessageField".into())
+                    })
+                    .collect::<Result<Vec<_>, String>>()
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut sources = Vec::new();
+        for (info, message) in array(&input["originals"], 2)?.iter().zip(&messages) {
+            sources.push(
+                PreparedSource::<K>::new(
+                    number(&info["id"])?,
+                    byte(&info["ell"])?,
+                    byte(&info["m"])?,
+                    byte(&info["blowup"])?,
+                    message,
+                    &mut HashUsage::default(),
+                )
+                .map_err(|e| format!("FixturePreparation({e:?})"))?,
+            );
+        }
+        let mut pt = Transcript::<K>::new(&unhex(&input["public_hex"])?)
+            .map_err(|e| format!("FixtureTranscript({e:?})"))?;
+        let (wire, used, work) = matmul::prove_measured(
+            &mut pt,
+            &statement,
+            [&sources[0], &sources[1]],
+            [&certificates[0], &certificates[1]],
+            limits,
+            65_536,
+        )
+        .map_err(|e| format!("FixtureProduction({e:?})"))?;
+        assert_eq!(used.transcript, pt.usage());
+        let continuation = if let Some(raw) = input.get("following_hex") {
+            following(&mut pt, &unhex(raw)?)?
+        } else {
+            Value::Null
+        };
+        let rows: Vec<_> = work
+            .retained_rows
+            .iter()
+            .map(|r| {
+                json!({
+            "source_visits":r.source_visits,"source_elements":r.source_elements,
+            "retained_bytes":r.retained_bytes})
+            })
+            .collect();
+        let observed = json!({"wire_hex":hex(&wire),"usage":usage(used),
+            "continuation":continuation,"retained_rows":rows,"rounds":work.dense.rounds});
+        (wire, Some(observed))
+    } else {
+        (unhex(&input["proof_hex"])?, None)
+    };
     // Never substitute replay of separate kernels for the actual closed consumer.
-    match matmul::verify(
+    let verified: Result<Value, String> = match matmul::verify(
         &mut t,
         &statement,
         [&certificates[0], &certificates[1]],
@@ -320,7 +386,13 @@ where
             }
             Ok(out)
         }
-    }
+    };
+    let verified = verified?;
+    Ok(if let Some(producer) = produced {
+        json!({"producer":producer,"verification":verified})
+    } else {
+        verified
+    })
 }
 
 fn main() {
