@@ -996,6 +996,25 @@ tasks:
   - A4 propagates actual A1 observations and reports owned Prepared storage; caller-owned round slots pair each actual dense scratch allocation with that same A1 proof prefix
   - both-field zero-round and degree-zero through degree-four parity preserves complete proofs, reductions, usage, continuation and real failure causes; short observation buffers reject before transcript mutation
   - scoped observations grant no acceptance or complete memory-ledger credit; PCS, matmul lifetime composition, registration, both verifier timings, RSS and all E7-01b criteria remain required
+- id: E7-01b5
+  epic: E7
+  title: Actual PCS registration and opening resource observations
+  depends:
+  - E7-01b4
+  rfc:
+  - RFC-0010 A9
+  - RFC-0010 A10
+  - RFC-0007 A2
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01b5-pcs-work
+  acceptance:
+  - measured certificate production/import, retained opening and functional/point verification share ordinary execution paths with unchanged proof bytes, records, errors and usage
+  - actual vector capacities and encoder observations preserve live overlaps and drop points; logical source reads, repeated column/path operations and encoded comparisons are counted at execution
+  - both-field complete fixture and continuation parity, zero weights, point-derived weights, malformed preflight, scalar/context and early/late authentication failures preserve certificate lifetimes and stated causes
+  - existing PCS gates retain independent wire, policy and control coverage without another Cargo invocation; complete matmul composition, registration and both verifier timings, RSS and all E7-01b criteria remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -1007,6 +1026,7 @@ tasks:
   - E7-01b2
   - E7-01b3
   - E7-01b4
+  - E7-01b5
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10
