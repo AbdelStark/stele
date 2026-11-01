@@ -977,6 +977,25 @@ tasks:
   - actual A4 dense folds derive only from immutable retained A/B, with one observed original source visit each, captured challenges and both unchanged A9 openings even for zero factors
   - complete native producer bytes, actual closed records, usage and continuation agree with independent Python on at least 1000 seeded bounded cases per field; all existing verifier controls remain
   - exact API and evidence gates admit only the producer and explicitly scoped work observations; full A1, PCS and verifier allocation observations and every E7-01b resource-ledger criterion remain required
+- id: E7-01b4
+  epic: E7
+  title: Actual A1 allocations and paired dense round observations
+  depends:
+  - E7-01b3
+  rfc:
+  - RFC-0006 A1
+  - RFC-0006 A4
+  - RFC-0007 A2
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01b4-a1-work
+  acceptance:
+  - ordinary and measured A1 entry points share the actual producer and verifier loops, observing vector capacities and live proof/message or point/claim overlaps without replay
+  - A4 propagates actual A1 observations and reports owned Prepared storage; caller-owned round slots pair each actual dense scratch allocation with that same A1 proof prefix
+  - both-field zero-round and degree-zero through degree-four parity preserves complete proofs, reductions, usage, continuation and real failure causes; short observation buffers reject before transcript mutation
+  - scoped observations grant no acceptance or complete memory-ledger credit; PCS, matmul lifetime composition, registration, both verifier timings, RSS and all E7-01b criteria remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -987,6 +1006,7 @@ tasks:
   - E7-01b1
   - E7-01b2
   - E7-01b3
+  - E7-01b4
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10
