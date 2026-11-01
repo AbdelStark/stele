@@ -89,6 +89,36 @@ where
             assert!(observed.retained_bytes >= size * core::mem::size_of::<K>());
         }
         assert_eq!(work.dense.rounds, usize::from(h + b));
+        assert_eq!(work.proof_bytes, wire.capacity());
+        assert_eq!(
+            work.row_weights_bytes,
+            [eq[1].capacity(), eq[2].capacity()].map(|n| n * core::mem::size_of::<K>())
+        );
+        let columns_observation = stele_poly::eq_table(&vec![K::from_i64(2); usize::from(h + b)])
+            .expect("column weights");
+        assert_eq!(
+            work.column_weights_bytes,
+            columns_observation.capacity() * core::mem::size_of::<K>()
+        );
+        assert!(work.context_bytes >= 304 + (point.len() + 1) * core::mem::size_of::<K>());
+        assert!(work.prepared_bytes > 0);
+        assert!(work.a1.proof_bytes > 0);
+        assert!(work.a1.instance_bytes > 0 && work.a1.final_payload_bytes > 0);
+        assert!(work.fold_peak_bytes >= work.a1.peak_owned_bytes + work.dense_bytes);
+        assert_eq!(work.round_scratch_peak_bytes == 0, h + b == 0);
+        // The first temporary wire has dropped: both openings see the same parent owners.
+        assert_eq!(
+            work.opening_peak_bytes[0] - work.openings[0].peak_owned_bytes,
+            work.opening_peak_bytes[1] - work.openings[1].peak_owned_bytes
+        );
+        for (opening, source) in work.openings.iter().zip([px.source(), pw.source()]) {
+            assert_eq!(opening.source_elements, 0);
+            assert_eq!(opening.row_values, size);
+            assert_eq!(
+                opening.responses,
+                usize::from(source.queries(stele_pcs::ProofKind::Opening))
+            );
+        }
         assert_eq!(usage.transcript, pt.usage());
         assert_eq!(usage.non_transcript, HashUsage::default());
         let mut vt = Transcript::<K>::new(b"matmul native producer").expect("valid fixture");
@@ -100,7 +130,90 @@ where
         assert_eq!(record.openings()[1].id(), 102);
         assert_eq!(record.points()[0].len(), usize::from(a + h + b));
         assert_eq!(record.points()[1].len(), usize::from(c + h + b));
-        assert!(pt.challenge(ChallengeLabel::Sumcheck) == vt.challenge(ChallengeLabel::Sumcheck));
+        let mut measured = Transcript::<K>::new(b"matmul native producer").expect("valid fixture");
+        let (observed, measured_usage, verification) =
+            matmul::verify_measured(&mut measured, &expected, [&cx, &cw], &wire, LIMITS)
+                .expect("measured consumer");
+        assert_eq!(measured_usage, consumed);
+        assert_eq!(observed.sc(), record.sc());
+        assert!(observed.points() == record.points());
+        assert!(observed.values() == record.values());
+        assert_eq!(verification.context_bytes, work.context_bytes);
+        assert_eq!(verification.prepared_bytes, work.prepared_bytes);
+        // Decoding reserves exact counts; A1's outer round vector uses growable reserve.
+        assert!(
+            verification.decoded_proof_bytes
+                >= (4 * usize::from(h + b) + 3) * core::mem::size_of::<K>()
+                    + usize::from(h + b) * core::mem::size_of::<Vec<K>>()
+        );
+        assert!(verification.a1.instance_bytes > 0 && verification.a1.final_payload_bytes > 0);
+        assert_eq!(
+            verification.opening_peak_bytes[0] - verification.openings[0].peak_owned_bytes,
+            verification.opening_peak_bytes[1] - verification.openings[1].peak_owned_bytes
+        );
+        for index in 0..2 {
+            let opening = &observed.openings()[index];
+            let original = &record.openings()[index];
+            assert!(core::ptr::eq(opening.certificate(), original.certificate()));
+            assert_eq!(opening.id(), original.id());
+            assert_eq!(opening.queries(), original.queries());
+            assert_eq!(opening.kind(), original.kind());
+            assert!(
+                verification.restored_points_bytes[index]
+                    >= core::mem::size_of_val(observed.points()[index])
+            );
+            assert_eq!(
+                verification.openings[index].responses,
+                work.openings[index].responses
+            );
+            assert_eq!(
+                verification.openings[index].column_bytes_authenticated,
+                work.openings[index].column_bytes_copied
+            );
+        }
+        let continuation = pt.challenge(ChallengeLabel::Sumcheck);
+        assert!(continuation == vt.challenge(ChallengeLabel::Sumcheck));
+        assert!(continuation == measured.challenge(ChallengeLabel::Sumcheck));
+
+        // The final response path of each real consumer rejects after its actual prefix.
+        let first_end = 1
+            + (4 * usize::from(h + b) + 3) * core::mem::size_of::<K>()
+            + px.source()
+                .proof_size(stele_pcs::ProofKind::Opening)
+                .expect("X size");
+        let mut expected_hashes = 0;
+        for (end, source) in [first_end, wire.len()]
+            .into_iter()
+            .zip([px.source(), pw.source()])
+        {
+            expected_hashes += u64::from(source.queries(stele_pcs::ProofKind::Opening))
+                * (1 + source.path_height() as u64);
+            let mut changed = wire.clone();
+            changed[end - 1] ^= 1;
+            let mut ordinary = Transcript::<K>::new(b"matmul native producer").expect("fixture");
+            let mut measured = Transcript::<K>::new(b"matmul native producer").expect("fixture");
+            let failure = matmul::verify(&mut ordinary, &expected, [&cx, &cw], &changed, LIMITS)
+                .err()
+                .expect("changed path");
+            let observed =
+                matmul::verify_measured(&mut measured, &expected, [&cx, &cw], &changed, LIMITS)
+                    .err()
+                    .expect("changed measured path");
+            assert_eq!(observed, failure);
+            assert!(matches!(
+                failure.cause,
+                Error::Pcs(stele_pcs::Error::Merkle(_))
+            ));
+            assert_eq!(observed.usage.transcript, measured.usage());
+            assert_eq!(
+                observed.usage.non_transcript.hash_evaluations,
+                expected_hashes
+            );
+            assert!(
+                ordinary.challenge(ChallengeLabel::Sumcheck)
+                    == measured.challenge(ChallengeLabel::Sumcheck)
+            );
+        }
         let mut repeat = Transcript::<K>::new(b"matmul native producer").expect("valid fixture");
         assert_eq!(
             matmul::prove(
@@ -174,6 +287,13 @@ where
             assert_eq!(error.usage.transcript, before);
             assert_eq!(error.usage.non_transcript, HashUsage::default());
             assert_eq!(t.usage(), before);
+            let mut measured = Transcript::<K>::new(b"matmul producer preflight").expect("fixture");
+            assert_eq!(
+                matmul::prove_measured(&mut measured, &expected, sources, [&cx, &cw], limit, cap)
+                    .expect_err("measured preflight"),
+                error
+            );
+            assert_eq!(measured.usage(), before);
         }
         let mut t = Transcript::<K>::new(b"matmul wrong claimed value").expect("valid fixture");
         let before = t.usage();
