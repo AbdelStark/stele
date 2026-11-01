@@ -1015,6 +1015,26 @@ tasks:
   - actual vector capacities and encoder observations preserve live overlaps and drop points; logical source reads, repeated column/path operations and encoded comparisons are counted at execution
   - both-field complete fixture and continuation parity, zero weights, point-derived weights, malformed preflight, scalar/context and early/late authentication failures preserve certificate lifetimes and stated causes
   - existing PCS gates retain independent wire, policy and control coverage without another Cargo invocation; complete matmul composition, registration and both verifier timings, RSS and all E7-01b criteria remain required
+- id: E7-01b6
+  epic: E7
+  title: Compose actual matmul producer and verifier resource observations
+  depends:
+  - E7-01b5
+  rfc:
+  - RFC-0007 A2
+  - RFC-0010 A10
+  - RFC-0012 A12
+  - RFC-0020 A7
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01b6-matmul-work
+  acceptance:
+  - shared ordinary and measured matmul paths compose actual context, codec, A1, paired Dense and PCS capacities at their existing live overlaps without replay or extra heap recorders
+  - both-field scalar, asymmetric and zero-factor fixtures preserve complete wires, records, usage and continuation; preflight and late consumer failures retain their causes and actual usage
+  - exact API and evidence gates retain all existing controls and independent corpus coverage without another Cargo invocation
+  - observations supply no acceptance or complete ledger credit; registration, both verifier timings, RSS and all E7-01b and parent criteria remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -1027,6 +1047,7 @@ tasks:
   - E7-01b3
   - E7-01b4
   - E7-01b5
+  - E7-01b6
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10
