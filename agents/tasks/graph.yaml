@@ -419,9 +419,9 @@ tasks:
   - RFC-0020 A2
   skill: gkr-reduction-author
   crate: stele-gkr
-  status: ready
+  status: in_progress
   agent: codex-root
-  branch: task/E3-06-stacked-contract
+  branch: task/E3-06-stacked-public
   acceptance:
   - prover/verifier MLE agreement 1e4 points per kind
   - NC-0203
