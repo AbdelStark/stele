@@ -1,6 +1,6 @@
 # First native inference: closure plan
 
-Current integration checkpoint: main `b014de490f542c287bebee6bcb03e691dcf6a3b7`.
+Current integration checkpoint: main `5b8d404f4a0d6acb82d18b11cccc1789ddf30346`.
 The objective is the original W8 proof and independent verification flow,
 followed by the existing scale, privacy and performance requirements. This
 plan does not redefine W8 or mark any original task complete.
@@ -76,13 +76,25 @@ That first R2 field-source package is delivered: A8/A9 fix the Merkle oracle,
 certificate and opening consumers; A4 closes stacked originals; A5 closes
 grouped lookup. Their field-only and lifetime conditions remain explicit.
 
-The next R3/R4 integration is E7-01b, the [conditional stacked matmul](../../formal/native-matmul.md).
-E7-01a reviews its exact original-source layouts, actual A4/A1/A7 schedule,
-retained A/B rows and both A9 consumers before implementation. This is an
-operation composition, with one original weight visit and complete resource
-evidence required. Its X physical layout is not an implicit R_stack view or
-permission to commit a virtual activation. Full E7-01/E7-02, packing, CQIS
-ownership, GPT-2 semantics, ZK and Q12 retain their existing criteria.
+E7-01b's [conditional stacked matmul](../../formal/native-matmul.md) and complete
+conditional resource campaign are delivered. Its X layout is not an implicit
+R_stack view or permission to commit a virtual activation.
+
+The next named gap is the integer/source join. E7-01c reviews
+[RFC-0023](../../docs/rfcs/RFC-0023-integer-requant-with-advice-cut.md): a fixed
+Requant advice cut, full-width integer bounds and actual A5/A3/A1/A9 consumers.
+A whole-source byte lookup and four explicitly accounted independent-weight
+combinations avoid rebuilding the implemented lookup/PCS engines. A short
+division schema must also bound every high byte of its shared result.
+
+The direct Requant source is four offset bytes, preserving full int32 input.
+Joining it to field matmul requires actual signed X/W ranges, bounds on both
+accumulators in the same interval of width below p, and their real equality
+consumer. The residue alias 0 versus p is not a valid join. Canonical configured
+parameter/source/plan ownership, per-position scale integration, packing,
+one-pass composition, GPT-2 semantics, ZK and Q12 retain their original criteria.
+An explicit named advice cut is an RFC decision with new commitment/resource
+costs; a generic aux label or declaration of determinism is not authorization.
 
 ## Evidence required at the integration boundary
 

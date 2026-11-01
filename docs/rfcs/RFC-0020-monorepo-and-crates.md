@@ -170,3 +170,17 @@ VerifiedCertificate owners; the complete result borrows their OpeningRecords.
 E7-01b must update exact native API policy with the admitted producer/consumer
 and its rejection tests. This contract changes no executable allowlist, and
 full verifier/plan integration retains its separate ownership contract.
+
+### A8 — Closed integer Requant ownership using existing engines
+
+Status: Draft. Companions RFC-0023, RFC-0005 A2, RFC-0007 A3 and RFC-0012 A13.
+The Requant adapter belongs in stele-reductions. Extend its existing CQIS use
+to the actual RFC-0022 schema-1 parameter/record validator; reuse generated
+range_8, existing A3/A1, A7 coefficients, A5 and A9 consumers. The fixed compiler
+and independent-weight orchestration belong to this operation, not callbacks
+inside arithmetic crates. Retain actual caller-owned input/advice/mu certificates.
+
+No new Cargo edge or external dependency is needed. Update exact public API
+guards with native delivery; this Draft changes no executable allowlist.
+Top-level verifier/IR/proof integration keeps its separate contract. E7-01c and
+its native successor preserve every full inference, privacy and profile criterion.

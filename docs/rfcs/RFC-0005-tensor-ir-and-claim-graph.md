@@ -55,3 +55,26 @@ obligations remain. NC-0412/0413 cover real configured-function/representation
 substitution when those consumers exist; research/primitive tests earn no credit.
 No challenge, loss line, cut, weight pass or measured constant is introduced;
 lowering/validation costs remain T_misc and actual reductions retain c_a/c_lu.
+
+### A2 — Explicit Requant advice cut and operation ownership
+
+Status: Draft. Companion RFC-0023 and RFC-0007 A3; questions Q26/Q28.
+Motivation: sign, digit and remainder tables need actual fixed sources before
+lookup/arithmetic challenges. A virtual-tensor label supplies no such fixation.
+
+Proposed addition to §§1,3: RFC-0023 alone names the Requant advice cut, its exact
+byte-plane schema, ownership and consumers. It deliberately fixes information
+determining the accumulator/result; it is not a claim that these values remain
+uncommitted. Every plane reaches the whole-source range lookup, all prescribed
+integer/padding constraints and the actual certificate-bound functional groups.
+The output remains a derived claim consumed through actual A1, not an extra root.
+
+The expected operation statement is not plan.json, full cqis_id or an arbitrary
+plan constructor. Full configured lowering/source/range ownership and E6 criteria
+remain. No generic auxiliary commitment, arbitrary Table output, callback or
+matmul integer splice is authorized. RFC-0023's centered/wider bridge conditions
+remain explicit prerequisites for that integration. Soundness: the exact four
+RLC events plus existing child losses are in RFC-0023/RFC-0012 A13. Costs include
+the actual new cut, complete byte lookups and arithmetic/source consumers;
+no measured constant or weight-pass change. Affected tasks: E7-01c and its native
+successor; E3-07/E5-03/E6/E7 retain all original acceptance criteria.

@@ -48,6 +48,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6, A7) |
 | 0021 | Canonical nonlinear functions, tables and representations | Accepted |
 | 0022 | Closed static arithmetic records | Accepted |
+| 0023 | Integer Requant with a fixed advice cut | Draft |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`
