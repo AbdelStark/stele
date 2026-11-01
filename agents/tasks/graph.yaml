@@ -932,6 +932,29 @@ tasks:
   - complete A9 opening uses the same retained values without rereading the original source; ordinary opening bytes, errors, usage and transcript schedule remain unchanged
   - both-field complete wire, actual certificate/opening verification, continuation and usage parity; source/weight context rejection before mutation, opaque lifetime boundaries and actual row/read capacity observations
   - no matmul statement, closed operation or NC-0611 credit; every E7-01b and parent acceptance criterion remains required
+- id: E7-01b2
+  epic: E7
+  title: Conditional stacked matmul producer and canonical proof codec
+  depends:
+  - E7-01b1
+  - E3-06
+  - E4-03a
+  rfc:
+  - RFC-0007 A2
+  - RFC-0010 A10
+  - RFC-0012 A12
+  - RFC-0020 A7
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01b2-matmul-producer
+  acceptance:
+  - exact expected stacked source geometry and complete canonical untrusted proof codec with checked lengths, field limbs and scoped resource preflight
+  - actual A4/A1 producer consumes folding copies of the retained PCS rows, captures its actual point and emits both original retained A9 openings without rereading source messages
+  - MatmulStatement framing, full proof bytes, producer usage and continuation match the independent reference on at least 1000 seeded bounded complete cases per field, including zero axes and factors and asymmetric rates
+  - producer context, size and budget failures preserve stated causes and observed usage; exact API and validator gates reject missing evidence
+  - no closed matmul record, accepting operation verifier or NC-0306/0307/0611 completion credit; all six E7-01b and all parent criteria remain required
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -940,6 +963,7 @@ tasks:
   - E3-06
   - E4-03a
   - E7-01b1
+  - E7-01b2
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10
