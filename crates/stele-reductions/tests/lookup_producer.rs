@@ -158,6 +158,37 @@ where
             .all(Option::is_none));
         // Registration alone accepts no lookup; independent complete-wire parity follows.
         assert!(cursor < proof.len());
+        let mut measured = transcript();
+        let (same, observed, work) = descriptor
+            .prove_measured(&mut measured, &material, limits)
+            .expect("same actual producer with capacity observations");
+        assert_eq!(same, proof);
+        assert_eq!(observed, usage);
+        assert_eq!(work.proof_bytes, same.capacity());
+        assert!(
+            work.peak_observed_bytes
+                >= work.proof_bytes + work.mu_values_bytes + work.mu_limbs_bytes
+        );
+        assert!(work.units_bytes >= repetitions * usize::from(m - b) * core::mem::size_of::<K>());
+        for j in 0..repetitions {
+            let source = descriptor.multiplicity_source(j, [0; 32]).expect("shape");
+            let preparation = work.preparations[j].expect("actual mu preparation");
+            assert_eq!(
+                preparation.borrowed_message_bytes,
+                source.rows() * source.columns() * core::mem::size_of::<M31>()
+            );
+            assert!(preparation.encoded_columns_bytes > 0 && preparation.merkle_nodes_bytes > 0);
+            let phases = work.repetitions[j].expect("actual reductions");
+            assert!(phases.lookup.levels_bytes > 0 && phases.table.levels_bytes > 0);
+            assert!(phases.selected.dense_bytes > 0);
+        }
+        assert!(work.preparations[repetitions..].iter().all(Option::is_none));
+        assert!(work.repetitions[repetitions..].iter().all(Option::is_none));
+        assert_eq!(
+            t.challenge(ChallengeLabel::Sumcheck),
+            measured.challenge(ChallengeLabel::Sumcheck)
+        );
+        assert_eq!(t.usage(), measured.usage());
     }
 }
 fn unchanged<K: ChallengeField + Eq + Debug>(
@@ -242,6 +273,14 @@ where
         let failure = descriptor
             .prove(&mut t, &sources, limits)
             .expect_err("admission rejection");
+        let mut measured = transcript();
+        assert_eq!(
+            descriptor
+                .prove_measured(&mut measured, &sources, limits)
+                .expect_err("same admission"),
+            failure
+        );
+        assert_eq!(measured.usage(), t.usage());
         unchanged(&mut t, before, failure, cause);
     }
 }
@@ -289,6 +328,14 @@ where
     let failure = descriptor
         .prove(&mut t, &[&prepared], limits)
         .expect_err("actual nonpole roots disagree");
+    let mut measured = transcript();
+    assert_eq!(
+        descriptor
+            .prove_measured(&mut measured, &[&prepared], limits)
+            .expect_err("same genuine late failure"),
+        failure
+    );
+    assert_eq!(measured.usage(), t.usage());
     assert_eq!(
         failure.cause,
         Error::Fraction(stele_lookup::fraction::Error::RootMismatch)

@@ -147,7 +147,7 @@ cleanup, with separate scoped capacities and fresh-worker RSS. Its fixed relatio
 and shared-host measurements are described in [the benchmark report](../bench/README.md#complete-conditional-stacked-resources).
 No fitted constant, weight-pass count or inference projection changes from these observations.
 
-## 12. Conditional grouped lookup contract
+## 13. Conditional grouped lookup contract
 
 RFC-0008 A5 fixes [complete lookup costs](../formal/native-lookup.md#6-complete-costs-and-resource-admission):
 source/table validation, grouped histograms, K-limb conversion and actual mu
@@ -162,3 +162,19 @@ lifetimes. Complete pipeline time and memory need their own ledger; existing
 fraction/PCS/stacked primitive reports do not establish c_lu for this composition.
 This contract supplies formulas and required observations only, with no fitted
 constant, benchmark number, inference projection or weight-pass change.
+
+The native A3 and lookup `prove_measured` methods execute the same producer as
+ordinary `prove`. Their descriptive Work values record actual capacities from
+that invocation. A3 observes level, Dense, completed-proof and point payloads;
+lookup observes its index, units, multiplicities, limbs, original lifts, selector,
+returned coefficients and wire buffers, plus actual mu preparation. A child
+observation is combined only with buffers retained throughout that child call.
+Completed proofs are counted after A1 returns, when its Dense has dropped.
+
+`peak_observed_bytes` is the largest included boundary observation, not an exact
+allocation peak, a sum of independent category maxima, or process RSS. Vector
+headers, descriptor/record metadata and unobserved internal scratch remain
+outside its scope. The complete benchmark must retain all these costs in its
+inclusive timing and fresh-worker RSS. Conservative producer admission limits
+remain separate from observed capacity. E3-07b still requires the complete
+registration, production, import and verification ledger.

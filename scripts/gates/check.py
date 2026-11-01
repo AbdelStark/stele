@@ -61,7 +61,7 @@ def field_sources(root):
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
-               'tests/lookup_verifier.rs'}
+               'tests/lookup_verifier.rs', 'src/lookup_work.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -100,18 +100,26 @@ def field_sources(root):
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
             == ["impl<'input,'cert,K:ChallengeField>Descriptor<'input,'cert,K>{"]
         and 'pubusestele_cqis::tables::{DescriptorasTableDescriptor,Table,TableField};' in re.sub(r'\s+', '', lookup)
-        and 'pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage,RegistrationUsage};' in re.sub(r'\s+', '', lookup)
+        and 'pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage,ProverWork,RegistrationUsage,RepetitionWork,};' in re.sub(r'\s+', '', lookup)
         and 'pubuseverifier::{Failure,LookupParameters,LookupRecord,RegisteredMultiplicities,RegistrationFailure,RepetitionRecord,};' in re.sub(r'\s+', '', lookup)
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', lookup))
     producer_closed = True
     for name, visibility, expected, impls in (
-        ('producer', 'pub', [('struct','ProducerLimits'), ('','public_bytes'), ('','dense_elements'),
+        ('producer', 'pub', [('use','work'), ('struct','ProducerLimits'), ('','public_bytes'), ('','dense_elements'),
             ('struct','RegistrationUsage'), ('','production'), ('','verification'),
             ('struct','ProverUsage'), ('','transcript'), ('','non_transcript'), ('','registrations'),
             ('struct','ProverFailure'), ('','cause'), ('','usage'),
-            ('fn','producer_public_bytes'), ('fn','producer_dense_elements'), ('fn','prove')],
+            ('fn','producer_public_bytes'), ('fn','producer_dense_elements'), ('fn','prove'), ('fn','prove_measured')],
          ["impl<K:ChallengeField+CodeField+TableField+Eq>Descriptor<'_,'_,K>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]),
         ('resources', 'pub(super)', [('fn','elements')], []),
+        ('work', ['pub']*20+['pub(super)']*7,
+         [('struct','RepetitionWork'), ('','lookup'), ('','table'), ('','selected'),
+          ('struct','ProverWork'), ('','proof_bytes'), ('','units_bytes'), ('','index_bytes'),
+          ('','group_weights_bytes'), ('','mu_values_bytes'), ('','mu_limbs_bytes'), ('','originals_bytes'),
+          ('','selector_bytes'), ('','prepared_bytes'), ('','coefficients_bytes'), ('','temporary_wire_bytes'),
+          ('','local_peak_observed_bytes'), ('','peak_observed_bytes'), ('','preparations'), ('','repetitions'),
+          ('fn','bytes'), ('fn','vectors'), ('fn','proof'), ('fn','tree'), ('fn','local'), ('fn','child'), ('fn','wire')],
+         ['implProverWork{']),
         ('functionals', 'pub(super)', [('struct','Piece'), ('','id'), ('','a'), ('','b'),
              ('fn','value'), ('fn','pieces')], ['impl<K:ChallengeField>Piece<K>{']),
         ('verifier', 'pub', [('use','records'), ('struct','Failure'), ('','cause'), ('','usage'),
@@ -135,6 +143,7 @@ def field_sources(root):
         producer_closed &= (public == expected_visibility and found == expected
             and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', source)] == impls
             and (name != 'verifier' or 'pubuserecords::{LookupParameters,LookupRecord,RepetitionRecord};' in re.sub(r'\s+', '', source))
+            and (name != 'producer' or 'pubusework::{ProverWork,RepetitionWork};' in re.sub(r'\s+', '', source))
             and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', source))
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
@@ -381,7 +390,8 @@ def fraction_reductions(root):
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/fraction.rs', 'tests/codec.rs',
                'tests/fixtures/fraction-codec.jsonl', 'src/tree.rs', 'tests/tree.rs',
                'src/leaf_codec.rs', 'tests/leaf_codec.rs', 'tests/fixtures/leaf-codec.jsonl',
-               'src/selected.rs', 'tests/selected.rs', 'examples/fraction_corpus.rs', 'examples/fraction_bench.rs'}
+               'src/selected.rs', 'tests/selected.rs', 'src/work.rs', 'tests/work.rs',
+               'examples/fraction_corpus.rs', 'examples/fraction_bench.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional fraction primitives governed by RFC-0008 A3.\n//!\n'
                '//! Tree and selected-product arithmetic return conditional claims; full lookup is absent.\n'
@@ -406,7 +416,9 @@ def fraction_reductions(root):
              'rejects_om31_leaf_codec_boundaries', 'matches_reference_qm31_selected_product_codec',
              'matches_reference_om31_selected_product_codec',
              'accepts_qm31_selected_product_original_consumers','accepts_om31_selected_product_original_consumers',
-             'rejects_selected_product_context_and_source_shapes')
+             'rejects_selected_product_context_and_source_shapes',
+             'matches_reference_qm31_fraction_work', 'matches_reference_om31_fraction_work',
+             'rejects_qm31_measured_fraction_failures', 'rejects_om31_measured_fraction_failures')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in names):
         raise ValueError(f'fraction codec checks failed: {result.stdout} {result.stderr}')
     result = subprocess.run(['uv','run','--locked','--script',
