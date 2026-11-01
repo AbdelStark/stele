@@ -841,3 +841,35 @@ workers remained active on the shared host. These bounded c_lu/c_sc/c_c/T_misc
 observations establish neither a fitted constant nor a comparative speed result.
 The parent E3-07 private source/plan, c_lu and profile obligations remain;
 Q12, joint ZK, inference admission and weight-pass claims are unchanged.
+
+## Conditional matmul measurement workers
+
+The native worker runs actual source preparation, certificate
+production/import, matmul production and closed native verification. Arguments
+select `scalar`, `single`, `stacked` or `zero`; field degree `4` or `8`; and
+`smoke` or `full` geometry. The JSON includes the complete public request and
+actual records, work, capacities and disjoint stage times through cleanup.
+Logical and physical fixture storage are measured separately. Protocol Vec
+peaks exclude stack, allocator/runtime, benchmark bookkeeping and the subsequent
+diagnostic A1; they are not process RSS.
+
+```sh
+cargo run -p stele-negative-controls --example matmul_bench --release --locked --offline -- stacked 4 smoke
+```
+
+Save its `request` object as JSON, then run:
+
+```sh
+uv run --python 3.12 --locked --script tests/negative-controls/matmul_corpus.py --verify-native request.json
+```
+
+This mode receives no matrices, imports both
+certificates, verifies the identical matmul wire and consumes the supplied
+following public A1 proof. It reports actual records, usage, source/interpreter
+provenance and separate decode/import/closed-verifier/continuation timings.
+Startup, module imports and final serialization are outside its internal timer.
+The existing full correctness corpus remains unchanged.
+
+These workers provide observations for E7-01b. The strict campaign controller,
+fresh-process RSS reports and imported complete resource ledger remain required;
+this delivery reports no benchmark result or fitted cost-model constant.
