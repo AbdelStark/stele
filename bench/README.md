@@ -911,3 +911,27 @@ live in `model_config.samples`; root inference-summary fields stay zero.
 These measurements cover the conditional field relation. Full CQIS inference,
 configured plans, virtual sources, packing, the bucketed weight phase, privacy
 and profile admission remain separate obligations.
+
+The [complete matmul ledger](ledger/e7-01b-matmul.json) records all 24 samples
+from clean source `477a44b59f3a413b4a35e49a4a4c358b47aae7ab` on Apple M1 Max.
+The imported file is byte-identical to the validated campaign output. All raw
+artifacts remain at the recorded external destination. The original research
+workers stayed active on the shared host.
+
+The table shows means truncated to microseconds and maximum reported worker
+command RSS within each three-sample cell. Native total covers fixture generation
+through cleanup, including registration and diagnostic continuation work. The
+closed verifier columns exclude certificate imports and following-A1 diagnostics;
+the ledger records those intervals separately. Proof bytes cover version/A1 and
+both original openings; standalone registration certificates are separate.
+
+| Scenario | Field | Native total ms | Prove ms | Native closed ms | Python closed ms | Native RSS KiB | Python RSS KiB | Proof bytes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| scalar | QM31 | 4.333 | 0.198 | 0.289 | 3.339 | 2112 | 27696 | 4539 |
+| scalar | OM31 | 4.140 | 0.190 | 0.296 | 4.147 | 2128 | 25856 | 4619 |
+| single | QM31 | 33.488 | 0.966 | 2.569 | 43.746 | 4016 | 27520 | 88947 |
+| single | OM31 | 36.588 | 1.148 | 3.267 | 65.089 | 3824 | 29936 | 90339 |
+| stacked | QM31 | 37.061 | 1.083 | 2.892 | 56.639 | 4112 | 28288 | 94147 |
+| stacked | OM31 | 41.023 | 1.346 | 3.399 | 105.255 | 4048 | 27840 | 96627 |
+| zero | QM31 | 36.390 | 1.075 | 2.869 | 53.278 | 4128 | 28592 | 92675 |
+| zero | OM31 | 38.818 | 1.451 | 3.590 | 109.799 | 3888 | 28496 | 95155 |
