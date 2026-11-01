@@ -24,6 +24,11 @@ class FieldPcsBenchTests(unittest.TestCase):
             suite = root/'tests/negative-controls'
             shutil.copytree(ROOT/'tests/negative-controls', suite)
             gates.controls_layout(root)
+            for name in ('lookup_corpus.py', 'lookup_corpus.py.lock'):
+                path = suite/name; saved = path.read_bytes(); path.unlink()
+                with self.assertRaisesRegex(ValueError, 'not wired'):
+                    gates.controls_layout(root)
+                path.write_bytes(saved)
             manifest = suite/'Cargo.toml'
             original = manifest.read_text()
             entry = 'serde_json = "=1.0.154"'

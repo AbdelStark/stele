@@ -1,10 +1,11 @@
 //! RFC-0008 A5 / native-lookup §§1,3,5,6: checked expected data and untrusted wire.
 //! Validation scans selectors/proof bytes; encoding copies public bytes and charges
-//! Table's ordinary hash to T_misc. No membership, registration or profile is verified.
+//! Table's ordinary hash to T_misc. Production executes actual registrations and
+//! emits untrusted lookup bytes; no lookup acceptance record or profile is granted.
 use alloc::vec::Vec;
 use core::mem::size_of;
 use stele_cqis::tables::EncodedDescriptor;
-pub use stele_cqis::tables::{Descriptor as TableDescriptor, Table};
+pub use stele_cqis::tables::{Descriptor as TableDescriptor, Table, TableField};
 use stele_field::{Serialize, M31};
 use stele_hash::{ChallengeField, HashUsage};
 use stele_lookup::fraction;
@@ -33,6 +34,12 @@ pub enum Error {
     Pcs(stele_pcs::Error),
     /// Preserve the actual immutable Table encoding cause.
     Table(stele_cqis::tables::Error),
+    /// Actual public Table denominator disagrees with the table-tree claim.
+    TableDenominatorMismatch,
+    /// All structural piece values do not sum to the actual table numerator.
+    PieceSumMismatch,
+    /// The production transcript aborted; discard the entire attempt.
+    Transcript(stele_hash::Error),
 }
 /// Expected physical multiplicity layout; its root remains a proof choice.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -465,3 +472,7 @@ fn canonical(bytes: &[u8], error: Error) -> Result<(), Error> {
 #[cfg(test)]
 #[path = "lookup_sizes_tests.rs"]
 mod sizes_tests;
+
+#[path = "lookup_producer.rs"]
+mod producer;
+pub use producer::{ProducerLimits, ProverFailure, ProverUsage, RegistrationUsage};

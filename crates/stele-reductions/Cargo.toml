@@ -13,6 +13,7 @@ stele-sumcheck = { path = "../stele-sumcheck" }
 stele-gkr = { path = "../stele-gkr" }
 stele-lookup = { path = "../stele-lookup" }
 stele-pcs = { path = "../stele-pcs" }
+stele-poly = { path = "../stele-poly" }
 stele-ir = { path = "../stele-ir" }
 
 [lints]

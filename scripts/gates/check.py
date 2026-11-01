@@ -55,14 +55,16 @@ def bootstrap_guard(root, gate):
 
 
 def field_sources(root):
-    """Actual closed A1 and stacked consumers; all original obligations remain."""
+    """Closed A1/stacked consumers and untrusted lookup production; no lookup authority."""
     crate = root / 'crates/stele-reductions'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs',
-               'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs'}
+               'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
+               'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
+               'tests/lookup_producer.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
-                    for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis')}
+                    for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
@@ -92,12 +94,34 @@ def field_sources(root):
         ('struct', 'Statement'), ('', 'id'), ('', 'm'), ('', 'b'), ('', 'table'), ('', 'selector'),
         ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'new'),
         ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
-        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight')]
+        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('use', 'producer')]
         and len(lookup_declarations) == len(re.findall(r'\bpub\b', lookup))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
             == ["impl<'input,'cert,K:ChallengeField>Descriptor<'input,'cert,K>{"]
-        and 'pubusestele_cqis::tables::{DescriptorasTableDescriptor,Table};' in re.sub(r'\s+', '', lookup)
+        and 'pubusestele_cqis::tables::{DescriptorasTableDescriptor,Table,TableField};' in re.sub(r'\s+', '', lookup)
+        and 'pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage,RegistrationUsage};' in re.sub(r'\s+', '', lookup)
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', lookup))
+    producer_closed = True
+    for name, visibility, expected, impls in (
+        ('producer', 'pub', [('struct','ProducerLimits'), ('','public_bytes'), ('','dense_elements'),
+            ('struct','RegistrationUsage'), ('','production'), ('','verification'),
+            ('struct','ProverUsage'), ('','transcript'), ('','non_transcript'), ('','registrations'),
+            ('struct','ProverFailure'), ('','cause'), ('','usage'),
+            ('fn','producer_public_bytes'), ('fn','producer_dense_elements'), ('fn','prove')],
+         ["impl<K:ChallengeField+CodeField+TableField+Eq>Descriptor<'_,'_,K>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]),
+        ('resources', 'pub(super)', [('fn','elements')], []),
+        ('functionals', 'pub(super)', [('struct','Piece'), ('','id'), ('','a'), ('','b'),
+             ('fn','value'), ('fn','pieces')], ['impl<K:ChallengeField>Piece<K>{']),
+    ):
+        source = re.sub(r'//[^\n]*', '', (crate / f'src/lookup_{name}.rs').read_text())
+        # Private helpers may expose only the explicitly reviewed parent interface.
+        public = re.findall(r'\bpub\b(?:\s*\([^)]*\))?', source)
+        normalized = source.replace('pub(super)', 'pub') if visibility == 'pub(super)' else source
+        found = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', normalized)
+        producer_closed &= (public == [visibility] * len(expected) and found == expected
+            and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', source)] == impls
+            and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', source))
+    oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target', 'features'))
@@ -105,8 +129,10 @@ def field_sources(root):
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
                                 ('fn', 'verify_field_sources')]
-            or len(declarations) != len(re.findall(r'\bpub\b', code)) or not stacked_closed or not lookup_closed):
-        raise ValueError('reductions API not wired; only reviewed A1/stacked adapters and untrusted lookup codecs admitted')
+            or len(declarations) != len(re.findall(r'\bpub\b', code))
+            or not stacked_closed or not lookup_closed or not producer_closed
+            or not oracle.is_file() or not oracle.with_suffix('.py.lock').is_file()):
+        raise ValueError('reductions API not wired; only reviewed A1/stacked adapters and untrusted lookup producer admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
          [f'test pcs_a1::{n} ... ok' for n in (
@@ -124,11 +150,16 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-negative-controls', '--test', 'stacked-certified'],
          ['test rejects_wrong_restored_point_at_actual_opening ... ok',
           'test rejects_substituted_verified_certificate_at_actual_opening ... ok']),
-        (['cargo', 'test', '-p', 'stele-reductions', '--lib', 'lookup::sizes_tests::'],
-         [f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]),
+        (['cargo', 'test', '-p', 'stele-reductions', '--lib', 'lookup::'],
+         [f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
+         + [f'test lookup::producer::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
+            for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_producer'],
+         [f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
+          for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))]),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
@@ -143,9 +174,17 @@ def field_sources(root):
                 matches = re.findall(pattern, result.stdout, re.MULTILINE)
                 if len(set(matches)) != count:
                     raise ValueError(f'closed A1 consumer checks failed: missing {record} boundary')
+    result = subprocess.run(['uv', 'run', '--python', '3.12', '--locked', '--script',
+                             'tests/negative-controls/lookup_corpus.py'],
+                            cwd=root, text=True, capture_output=True)
+    receipt = ('lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
+               'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit')
+    if result.returncode or result.stdout.strip() != receipt:
+        raise ValueError(f'lookup producer corpus checks failed: {result.stdout} {result.stderr}')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
     print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
     print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')
+    print('gate lookup producer: actual A3/A9 production, independent bytes and observed usage; no lookup verification or NC credit')
 
 
 def field_source_codec(root):
@@ -494,7 +533,8 @@ def transcript_registry(root):
         raise ValueError('transcript registry mapping mismatch against soundness inventory')
     result = subprocess.run(['cargo', 'test', '-p', 'stele-hash', '--lib', '--all-features', '--locked', '--offline'],
                             cwd=root, text=True, capture_output=True)
-    required = ('transcript_tests::matches_reference_transcript_vectors',
+    required = ('tests::accepts_the_fixed_registry', 'tests::matches_reference_lookup_label_classes',
+                'transcript_tests::matches_reference_transcript_vectors',
                 'transcript_tests::rejects_empty_public_input',
                 'usage_tests::rejects_unrepresentable_frame_lengths',
                 'usage_tests::matches_reference_transcript_usage',
@@ -783,7 +823,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench')]
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus')]
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
@@ -796,7 +836,8 @@ def controls_layout(root):
     allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
-                    'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256'))
+                    'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
+                    'lookup_corpus.py', 'lookup_corpus.py.lock'))
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

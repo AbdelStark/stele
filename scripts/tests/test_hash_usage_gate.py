@@ -20,7 +20,8 @@ class HashUsageGateTests(unittest.TestCase):
     def test_rejects_missing_or_failed_transcript_usage_controls(self):
         registry = json.loads((ROOT / 'docs/security/transcript-labels.json').read_text())
         produced = subprocess.CompletedProcess([], 0, '\n'.join('\t'.join(row) for row in registry), '')
-        names = ('transcript_tests::matches_reference_transcript_vectors',
+        names = ('tests::accepts_the_fixed_registry', 'tests::matches_reference_lookup_label_classes',
+                 'transcript_tests::matches_reference_transcript_vectors',
                  'transcript_tests::rejects_empty_public_input',
                  'usage_tests::rejects_unrepresentable_frame_lengths',
                  'usage_tests::matches_reference_transcript_usage',

@@ -4,8 +4,8 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 28);
-    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 8);
+    assert_eq!(entries.len(), 36);
+    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 11);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
     assert_eq!(entries[9].loss, Some(LossLine::Sc));
@@ -21,6 +21,42 @@ fn accepts_the_fixed_registry() {
         assert_eq!(label.entry(), &entries[index]);
         assert_eq!(entries[index].kind, LabelKind::Absorb);
         assert_eq!(entries[index].loss, None);
+    }
+}
+#[test]
+fn matches_reference_lookup_label_classes() {
+    let entries = registry().expect("valid fixed registry");
+    for (label, suffix, index) in [
+        (AbsorbLabel::LookupStatement, "statement", 28),
+        (AbsorbLabel::LookupUnits, "units", 29),
+        (AbsorbLabel::LookupMultiplicities, "multiplicities", 30),
+        (AbsorbLabel::LookupRepetition, "repetition", 31),
+        (
+            AbsorbLabel::LookupMultiplicityClaims,
+            "multiplicity-claims",
+            32,
+        ),
+    ] {
+        assert_eq!(label.entry(), &entries[index]);
+        assert_eq!(
+            entries[index].label.strip_prefix("stele/v0.1/lookup/"),
+            Some(suffix)
+        );
+        assert_eq!(entries[index].kind, LabelKind::Absorb);
+        assert_eq!(entries[index].loss, None);
+    }
+    for (label, suffix, index) in [
+        (ChallengeLabel::LookupUnit, "unit", 33),
+        (ChallengeLabel::LookupBeta, "beta", 34),
+        (ChallengeLabel::LookupAlpha, "alpha", 35),
+    ] {
+        assert_eq!(label.entry(), &entries[index]);
+        assert_eq!(
+            entries[index].label.strip_prefix("stele/v0.1/lookup/"),
+            Some(suffix)
+        );
+        assert_eq!(entries[index].kind, LabelKind::Challenge);
+        assert_eq!(entries[index].loss, Some(LossLine::Lu));
     }
 }
 #[test]

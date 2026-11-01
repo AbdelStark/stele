@@ -111,6 +111,10 @@ class ClosedStackedGateTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
         shutil.copytree(ROOT/'crates/stele-reductions', self.root/'crates/stele-reductions')
+        oracle = self.root/'tests/negative-controls'
+        oracle.mkdir(parents=True)
+        for name in ('lookup_corpus.py', 'lookup_corpus.py.lock'):
+            shutil.copy(ROOT/'tests/negative-controls'/name, oracle/name)
         self.outputs = [
             '\n'.join(f'test pcs_a1::{name} ... ok' for name in (
                 'accepts_qm31_closed_originals', 'accepts_om31_closed_originals',
@@ -126,9 +130,15 @@ class ClosedStackedGateTests(unittest.TestCase):
                 'rejects_om31_malformed_certified_stacked_sources')),
             '\n'.join(f'test {name} ... ok' for name in ('rejects_wrong_restored_point_at_actual_opening',
                 'rejects_substituted_verified_certificate_at_actual_opening')),
-            '\n'.join(f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')),
+            '\n'.join([f'test lookup::sizes_tests::matches_reference_{field}_lookup_sizes ... ok' for field in ('qm31','om31')]
+                      + [f'test lookup::producer::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
+                         for field in ('qm31','om31')]),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
+            '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
+                      for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))),
+            'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
+            'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit',
         ]
 
     def run_gate(self, outputs=None, failed=None):
@@ -141,10 +151,12 @@ class ClosedStackedGateTests(unittest.TestCase):
 
     def test_accepts_complete_closed_consumers(self):
         commands = self.run_gate()
-        self.assertEqual(len(commands), 7)
-        self.assertTrue(all('--locked' in c and '--offline' in c for c in commands))
+        self.assertEqual(len(commands), 9)
+        self.assertTrue(all('--locked' in c and '--offline' in c for c in commands[:-1]))
+        self.assertEqual(commands[-1], ['uv', 'run', '--python', '3.12', '--locked', '--script',
+                                        'tests/negative-controls/lookup_corpus.py'])
         self.assertEqual([c[c.index('--test')+1] for c in commands if '--test' in c],
-                         ['nc-0609','stacked','stacked-certified','lookup_codec'])
+                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer'])
 
     def test_rejects_every_failure_and_omitted_receipt(self):
         for i, output in enumerate(self.outputs):
@@ -157,6 +169,21 @@ class ClosedStackedGateTests(unittest.TestCase):
         altered=self.outputs.copy(); altered[2]=altered[2].replace('stacked_sources::StackedSourceRecord','unrelated::Record')
         with self.assertRaisesRegex(ValueError, 'missing StackedSourceRecord boundary'):
             self.run_gate(altered)
+        for old, new in (('8 complete', '6 complete'), ('QM31/OM31', 'QM31'),
+                         ('cb8e5b658', '000000000'), ('usage,', ''), ('continuation;', ';')):
+            altered = self.outputs.copy(); altered[-1] = altered[-1].replace(old, new)
+            with self.subTest(receipt=old), self.assertRaisesRegex(ValueError, 'corpus checks failed'):
+                self.run_gate(altered)
+
+    def test_rejects_missing_lookup_oracle_before_execution(self):
+        for name in ('lookup_corpus.py', 'lookup_corpus.py.lock'):
+            path = self.root/'tests/negative-controls'/name
+            saved = path.read_bytes(); path.unlink()
+            with mock.patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'not wired'):
+                    gate.field_sources(self.root)
+                run.assert_not_called()
+            path.write_bytes(saved)
 
     def test_rejects_unreviewed_api_conversions_and_dependencies(self):
         for name, addition in (
@@ -166,6 +193,13 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/lookup.rs','\npub fn verify_lookup_unchecked() {}\n'),
             ('src/lookup.rs','\nimpl From<bool> for Descriptor { fn from(_: bool) -> Self { todo!() } }\n'),
             ('src/lookup.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/lookup_producer.rs','\npub fn verify_unchecked() {}\n'),
+            ('src/lookup_producer.rs','\nimpl From<bool> for ProverUsage {}\n'),
+            ('src/lookup_producer.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/lookup_resources.rs','\npub(super) fn accept_unchecked() {}\n'),
+            ('src/lookup_functionals.rs','\npub fn verify_unchecked() {}\n'),
+            ('src/lookup_functionals.rs','\nimpl From<bool> for Piece<bool> {}\n'),
+            ('src/lookup_functionals.rs','\nmacro_rules! unchecked { () => {} }\n'),
             ('Cargo.toml','\n[features]\nunwired = []\n'),
         ):
             path=self.root/'crates/stele-reductions'/name; saved=path.read_text()
@@ -174,6 +208,15 @@ class ClosedStackedGateTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'not wired'):
                     gate.field_sources(self.root)
                 run.assert_not_called()
+            path.write_text(saved)
+        for name in ('lookup_resources.rs', 'lookup_functionals.rs'):
+            path = self.root/'crates/stele-reductions/src'/name; saved = path.read_text()
+            for visibility in ('pub', 'pub(crate)'):
+                path.write_text(saved.replace('pub(super)', visibility))
+                with mock.patch.object(gate.subprocess, 'run') as run:
+                    with self.assertRaisesRegex(ValueError, 'not wired'):
+                        gate.field_sources(self.root)
+                    run.assert_not_called()
             path.write_text(saved)
         path=self.root/'crates/stele-reductions/src/stacked_sources.rs'
         path.unlink()
