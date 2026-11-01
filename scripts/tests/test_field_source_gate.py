@@ -144,7 +144,8 @@ class ClosedStackedGateTests(unittest.TestCase):
         oracle = self.root/'tests/negative-controls'
         oracle.mkdir(parents=True)
         for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py', 'examples/support/lookup_verifier.rs',
-                     'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs'):
+                     'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
+                     'requant_schema.py'):
             (oracle/name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT/'tests/negative-controls'/name, oracle/name)
         self.outputs = [
@@ -170,7 +171,9 @@ class ClosedStackedGateTests(unittest.TestCase):
                       + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
                          for field in ('qm31','om31')]
                       + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
-                         'test matmul::matches_reference_owned_capacities ... ok']),
+                         'test matmul::matches_reference_owned_capacities ... ok']
+                      + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
+                         'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
             '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
@@ -273,7 +276,8 @@ class ClosedStackedGateTests(unittest.TestCase):
 
     def test_rejects_missing_lookup_oracle_before_execution(self):
         for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py', 'examples/support/lookup_verifier.rs',
-                     'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs'):
+                     'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
+                     'requant_schema.py'):
             path = self.root/'tests/negative-controls'/name
             saved = path.read_bytes(); path.unlink()
             with mock.patch.object(gate.subprocess, 'run') as run:
@@ -283,7 +287,18 @@ class ClosedStackedGateTests(unittest.TestCase):
             path.write_bytes(saved)
 
     def test_rejects_unreviewed_api_conversions_and_dependencies(self):
+        for name in ('src/requant.rs', 'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt'):
+            path = self.root/'crates/stele-reductions'/name
+            saved = path.read_bytes(); path.unlink()
+            with mock.patch.object(gate.subprocess, 'run') as run:
+                with self.assertRaisesRegex(ValueError, 'not wired'):
+                    gate.field_sources(self.root)
+                run.assert_not_called()
+            path.write_bytes(saved)
         for name, addition in (
+            ('src/requant.rs','\npub fn verify() {}\n'),
+            ('src/requant.rs','\nimpl From<bool> for Schema {}\n'),
+            ('src/requant.rs','\ninclude!("unchecked.rs");\n'),
             ('src/matmul.rs','\npub fn prove() {}\n'),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> Record<'_, K> { pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n"),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> From<bool> for Record<'_, K> { fn from(_: bool) -> Self { todo!() } }\n"),
@@ -331,6 +346,10 @@ class ClosedStackedGateTests(unittest.TestCase):
                 run.assert_not_called()
             path.write_text(saved)
         for name, old, new in (
+            ('requant.rs', '    cap: u64,', '    pub cap: u64,'),
+            ('requant.rs', 'pub fn values(&self) -> &[Block]', 'pub fn values(&mut self) -> &mut [Block]'),
+            ('requant.rs', 'mantissa: u32, shift: u32, format: Format', 'record: bounds::Record'),
+            ('requant.rs', 'cap: u64,', 'cap: u32,'),
             ('matmul.rs', 'mod producer;', 'pub mod producer;'),
             ('matmul.rs', 'pub use producer::{prove, prove_measured, Work};', 'pub use producer::*;'),
             ('matmul.rs', 'pub context_bytes: usize,', 'pub context_bytes: ScRecord,'),

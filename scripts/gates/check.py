@@ -54,6 +54,36 @@ def bootstrap_guard(root, gate):
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
 
 
+def requant_schema_api(crate):
+    """RFC-0020 A8: static metadata only; no Requant proof admission yet."""
+    code = re.sub(r'//[^\n]*', '', (crate/'src/requant.rs').read_text())
+    compact = lambda text: re.sub(r'\s+', '', text)
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    expected = [('enum','Error'), ('struct','Block')]
+    expected += [('fn',n) for n in ('cap','value','slack','carry')]
+    expected += [('struct','Role')] + [('fn',n) for n in ('count','bounds','widths','result_cap','carries')]
+    expected += [('struct','Schema')] + [('fn',n) for n in ('new','bounds','values','roles','u_carries','allocated_rows','rows')]
+    methods = [('cap','u64'), ('value','Range<usize>'), ('slack','Range<usize>'), ('carry','Range<usize>'),
+               ('count','u32'), ('bounds','[u64;3]'), ('widths','[u8;3]'),
+               ('result_cap','Option<&Block>'), ('carries','&[Block]')]
+    signatures = [f'pubfn{n}(&self)->{t}{{' for n,t in methods]
+    signatures += ['pubfnnew(mantissa:u32,shift:u32,format:Format)->Result<Self,Error>{']
+    signatures += [f'pubfn{n}(&self)->{t}{{' for n,t in (
+        ('bounds','&bounds::Record'), ('values','&[Block]'), ('roles','&[Role]'),
+        ('u_carries','Range<usize>'), ('allocated_rows','usize'), ('rows','usize'))]
+    return (declarations == expected and len(declarations) == len(re.findall(r'\bpub\b',code))
+        and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == signatures
+        and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]
+            == ['implBlock{','implRole{','implSchema{',"impl<'a>Reader<'a>{"]
+        and [(n,compact(v)) for n,v in re.findall(r'pub struct (\w+)\s*\{([^}]*)\}',code)] == [
+            ('Block','cap:u64,value:Range<usize>,slack:Range<usize>,carry:Range<usize>,'),
+            ('Role','count:u32,bounds:[u64;3],widths:[u8;3],result_cap:Option<Block>,carries:Vec<Block>,'),
+            ('Schema','bounds:bounds::Record,layout:Layout,')]
+        and [compact(v) for v in re.findall(r'pub enum Error\s*\{([^}]*)\}',code)]
+            == ['Parameters(stele_cqis::Error),Bounds(bounds::Error),Encoding,Capacity,']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
+
+
 def field_sources(root):
     """Closed conditional A1/stacked/lookup/matmul consumers; no inference/profile authority."""
     crate = root / 'crates/stele-reductions'
@@ -62,7 +92,8 @@ def field_sources(root):
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
                'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs',
-               'src/matmul_producer.rs', 'tests/matmul_producer.rs'}
+               'src/matmul_producer.rs', 'tests/matmul_producer.rs', 'src/requant.rs',
+               'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -70,7 +101,7 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod field_sources;\npub mod lookup;\npub mod matmul;\n'
+               'extern crate alloc;\nmod field_sources;\npub mod lookup;\npub mod matmul;\npub mod requant;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -210,9 +241,11 @@ def field_sources(root):
                                 ('fn', 'verify_field_sources')]
             or len(declarations) != len(re.findall(r'\bpub\b', code))
             or not stacked_closed or not lookup_closed or not producer_closed or not matmul_closed
+            or not requant_schema_api(crate)
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
                 'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
-                'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs'))):
+                'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
+                'requant_schema.py'))):
         raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup/matmul adapters admitted')
     checks = [
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'pcs_a1::'],
@@ -236,7 +269,9 @@ def field_sources(root):
          + [f'test lookup::functionals::tests::matches_reference_{field}_lookup_prefix_functionals ... ok'
             for field in ('qm31','om31')]
          + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
-            'test matmul::matches_reference_owned_capacities ... ok']),
+            'test matmul::matches_reference_owned_capacities ... ok']
+         + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
+            'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
@@ -300,6 +335,7 @@ def field_sources(root):
     print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')
     print('gate lookup producer: actual A3/A9 production, independent bytes and observed usage; no lookup verification or NC credit')
     print('gate lookup closed: actual A3/Table/A9 consumers, opaque records, native controls and independent failure/usage parity; no profile credit')
+    print('gate requant schema: 18 complete independent layouts; generated CQIS records, shared tails and zero caps; no proof or NC credit')
 
 
 def field_source_codec(root):
@@ -1014,7 +1050,8 @@ def controls_layout(root):
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
                     'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
                     'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
-                    'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock'))
+                    'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
+                    'requant_schema.py'))
     for target in manifest.get('test', []):
         path = Path(target['path'])
         if path.is_absolute() or '..' in path.parts or path.suffix != '.rs':

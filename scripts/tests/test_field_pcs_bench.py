@@ -28,7 +28,7 @@ class FieldPcsBenchTests(unittest.TestCase):
                          'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
                          'examples/lookup_bench.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
                          'examples/matmul_corpus.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
-                         'examples/matmul_bench.rs'):
+                         'examples/matmul_bench.rs', 'requant_schema.py'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)
