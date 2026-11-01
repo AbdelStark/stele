@@ -150,6 +150,24 @@ tasks:
   - duplicate validation removed and exhaustive research campaigns retain explicit runnable inventories
   - path selection fails closed and never treats skipped required work as success
   - one implementation task proceeds through validation and merge before the next starts
+- id: E0-07
+  epic: E0
+  title: Optimize native test execution with all checks retained
+  depends:
+  - E0-06
+  rfc:
+  - RFC-0020 §4-5
+  - RFC-0018 §1
+  skill: benchmark-runner
+  crate: ci
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-07-test-profile
+  acceptance:
+  - compare the unchanged maximum-shape table test under default and optimized test profiles on one frozen source
+  - retain every test case, debug assertion and overflow check; record compile and execution costs separately
+  - preserve raw measurements and a validated micro ledger without claiming inference or full-CI speedup
+  - all required local and selected hosted gates pass on the final merge tree
 - id: E1-01
   epic: E1
   title: M31 with lazy reduction + canonicalisation
