@@ -500,7 +500,7 @@ tasks:
   - RFC-0020 A6
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E3-07b-lookup-ledger
   acceptance:

@@ -717,3 +717,84 @@ JSON values are unchanged from the validated output; sample rows are compacted.
 | certified | QM31 | layer-last | 166.141 | 68.841 | 19.654 | 7312 | 1193335 |
 | certified | OM31 | layer-first | 349.504 | 167.389 | 44.436 | 9008 | 1213207 |
 | certified | OM31 | layer-last | 338.029 | 161.472 | 43.965 | 7392 | 1213207 |
+
+
+## Complete conditional lookup resources
+
+`lookup.py` measures the actual conditional grouped lookup from RFC-0008 A5 §6.
+Run it from clean committed source on arm64 macOS with a new external destination:
+
+```sh
+uv run --no-project --python 3.12 python bench/lookup.py /tmp/lookup-run.json
+```
+
+The [complete lookup ledger](ledger/e3-07b-lookup.json) contains all 24 samples
+from clean source `0d07604cec88e55af697c036e3f2916e76e247f3` on Apple M1 Max.
+Each cell has three fresh sequential release workers. Every sample prepares and
+registers the original sources, produces one complete lookup proof, imports its
+multiplicity certificates, and calls the actual closed verifier. Every original
+and structural multiplicity piece is consumed, including zero-valued pieces and
+all originals under the zero selector. Complete-proof digests, actual conditional records,
+usage, continuations and observed capacities agree across repeats.
+
+The fixed cases use genuine registered Tables:
+
+- Scalar: range_8, one selected value 7, m=b=0, r=1, mu ell4/blowup1.
+- Grouped: exp_q/hi parameters [7,0,0,6], three real rows padded to four,
+  m12/b0/r2, original splits (4,8)/(8,4), mu ell1/blowup1 and ell0/blowup2.
+- Signed: exp_q/direct parameters [7,0,0], 129 real rows padded to 256,
+  m=b=12/r2, the same original splits, mu ell4/blowup1 and ell5/blowup2.
+- Zero: the three-row Table, m8/b4/r1, original splits (2,6)/(6,2),
+  mu ell2/blowup2, all original values 256 and every selector byte zero.
+
+Selected non-scalar tuples use row `(37*i+11) mod t`, jointly across columns;
+every fourth position is inactive. Inactive original values are 256. Fixed
+source identities and the public prefix remain unchanged across repetitions of
+a sample. The grouped layouts exercise both prefix pieces and the sole partial
+piece; scalar/full and zero cases retain their required full piece.
+
+The table reports mean native times truncated to microseconds and maximum RSS
+within each three-sample cell. Original setup includes actual preparation,
+certificate production and verification. Producer time includes its internal mu
+preparation, certificate production and verification; no separate internal mu
+timer is inferred. Import is the additional actual caller registration. Lookup
+bytes include embedded mu certificates exactly once; standalone original
+certificate bytes are separate. Public Table/selector/statement framing remains
+in each receipt.
+
+| Scenario | Field | Total ms | Original setup ms | Producer ms | Import ms | Verify ms | RSS KiB | Lookup bytes | Original certificate bytes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| scalar | QM31 | 15.549 | 0.755 | 7.866 | 3.838 | 2.189 | 3072 | 206009 | 4697 |
+| scalar | OM31 | 22.302 | 0.768 | 12.012 | 5.380 | 3.173 | 3152 | 241257 | 4713 |
+| grouped | QM31 | 108.259 | 20.058 | 61.011 | 3.976 | 19.128 | 6768 | 882663 | 691042 |
+| grouped | OM31 | 229.634 | 32.433 | 155.357 | 5.238 | 32.597 | 7728 | 955011 | 695394 |
+| signed | QM31 | 124.076 | 20.927 | 68.125 | 7.026 | 22.599 | 6896 | 1159116 | 691042 |
+| signed | OM31 | 260.161 | 32.513 | 168.750 | 9.379 | 43.662 | 8224 | 1251340 | 695394 |
+| zero | QM31 | 22.291 | 9.136 | 5.747 | 1.796 | 4.331 | 3184 | 186246 | 226338 |
+| zero | OM31 | 32.357 | 11.999 | 9.855 | 2.185 | 6.821 | 3264 | 206182 | 227426 |
+
+The inclusive native total covers fixture/Table generation through protocol
+cleanup, including all registrations, complete production/verification and
+receipt observations. Named intervals are disjoint; the remainder includes
+cleanup and bookkeeping. Build, launch, argument parsing and final JSON
+serialization are outside that timer. Fresh-worker RSS covers the entire native
+process, including serialization and allocator retention, and is not isolated
+verifier memory. Original messages, prepared sources, certificates, proof and
+imported handles remain live through verification.
+
+ProverWork and its actual A3/preparation observations describe named buffer
+capacities and their included live overlaps. They exclude vector headers,
+record/descriptor metadata and unobserved internal scratch; they are not an
+exact allocation peak or a sum of category maxima. Conservative admission
+limits remain separate. The producer uses its actual captured points, with no
+transcript replay or second tree. Diagnostic statement encoding, receipt
+hashes and continuation deltas are charged separately from protocol hash scopes.
+
+The controller preserves all raw outputs, exits, resource reports and source/
+binary identities. The imported ledger is byte-identical to the validated
+external output. Its root inference-summary fields are zero; component proof
+sizes and verifier times live in `model_config.samples`. Original research
+workers remained active on the shared host. These bounded c_lu/c_sc/c_c/T_misc
+observations establish neither a fitted constant nor a comparative speed result.
+The parent E3-07 private source/plan, c_lu and profile obligations remain;
+Q12, joint ZK, inference admission and weight-pass claims are unchanged.
