@@ -21,6 +21,10 @@ path = "examples/stacked_bench.rs"
 name = "lookup_corpus"
 path = "examples/lookup_corpus.rs"
 
+[[example]]
+name = "lookup_bench"
+path = "examples/lookup_bench.rs"
+
 [dev-dependencies]
 serde_json = "=1.0.154"
 blake3 = { version = "=1.8.7", default-features = false }
