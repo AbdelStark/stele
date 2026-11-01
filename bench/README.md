@@ -870,6 +870,68 @@ provenance and separate decode/import/closed-verifier/continuation timings.
 Startup, module imports and final serialization are outside its internal timer.
 The existing full correctness corpus remains unchanged.
 
-These workers provide observations for E7-01b. The strict campaign controller,
-fresh-process RSS reports and imported complete resource ledger remain required;
-this delivery reports no benchmark result or fitted cost-model constant.
+The complete campaign controller checks these observations before recording a
+conditional resource ledger. It reports no fitted cost-model constant.
+
+## Complete conditional matmul resources
+
+Run the fixed campaign from clean committed source on arm64 macOS, using Python
+3.12 with assertions enabled and a new external destination:
+
+```sh
+uv run --no-project --python 3.12 python bench/matmul.py /tmp/matmul-run.json
+```
+
+Each of the four scenarios runs in both fields with three fresh sequential
+native/Python worker pairs. There are no warmups, retries or discarded samples.
+The scalar case has zero-bit axes; the full single, stacked and zero-factor
+cases use `(h,a,b,c)` of `(0,4,5,3)`, `(2,3,4,2)` and `(2,2,4,3)` respectively.
+The original source blowups are one and two. Every proof retains both original
+consumers, including the zero-factor case.
+
+The controller validates exact request/source/runtime provenance, complete
+records, actual row visits and source reads, encoder work, capacities and stage
+arithmetic. It checks the two restored claims and terminals, actual continuation
+and probe snapshots, and repeated proof identities. Native and Python protocol
+usage is counted once per distinct transcript; following-A1 and probe deltas
+are separate. Registration, preparation and opening work retain their own scopes.
+
+Each worker's external wall time and maximum RSS cover its complete process,
+including startup and serialization. They are separate from internal stage
+times and the named protocol Vec capacity peak. Native fixture/claim/layout and
+cleanup time are explicit. Original messages, preparations, certificates and
+proofs stay live through the actual native consumers; the independent Python
+worker receives only public artifacts.
+
+Raw outputs, stderr, exit codes, resource reports, build output and source/binary
+identities remain in the adjacent `.samples` directory. The controller validates
+the compact JSON with `stele-bench ledger validate`; import it into `bench/ledger/`
+without changing any values. Component proof bytes and both verifier timings
+live in `model_config.samples`; root inference-summary fields stay zero.
+These measurements cover the conditional field relation. Full CQIS inference,
+configured plans, virtual sources, packing, the bucketed weight phase, privacy
+and profile admission remain separate obligations.
+
+The [complete matmul ledger](ledger/e7-01b-matmul.json) records all 24 samples
+from clean source `477a44b59f3a413b4a35e49a4a4c358b47aae7ab` on Apple M1 Max.
+The imported file is byte-identical to the validated campaign output. All raw
+artifacts remain at the recorded external destination. The original research
+workers stayed active on the shared host.
+
+The table shows means truncated to microseconds and maximum reported worker
+command RSS within each three-sample cell. Native total covers fixture generation
+through cleanup, including registration and diagnostic continuation work. The
+closed verifier columns exclude certificate imports and following-A1 diagnostics;
+the ledger records those intervals separately. Proof bytes cover version/A1 and
+both original openings; standalone registration certificates are separate.
+
+| Scenario | Field | Native total ms | Prove ms | Native closed ms | Python closed ms | Native RSS KiB | Python RSS KiB | Proof bytes |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| scalar | QM31 | 4.333 | 0.198 | 0.289 | 3.339 | 2112 | 27696 | 4539 |
+| scalar | OM31 | 4.140 | 0.190 | 0.296 | 4.147 | 2128 | 25856 | 4619 |
+| single | QM31 | 33.488 | 0.966 | 2.569 | 43.746 | 4016 | 27520 | 88947 |
+| single | OM31 | 36.588 | 1.148 | 3.267 | 65.089 | 3824 | 29936 | 90339 |
+| stacked | QM31 | 37.061 | 1.083 | 2.892 | 56.639 | 4112 | 28288 | 94147 |
+| stacked | OM31 | 41.023 | 1.346 | 3.399 | 105.255 | 4048 | 27840 | 96627 |
+| zero | QM31 | 36.390 | 1.075 | 2.869 | 53.278 | 4128 | 28592 | 92675 |
+| zero | OM31 | 38.818 | 1.451 | 3.590 | 109.799 | 3888 | 28496 | 95155 |
