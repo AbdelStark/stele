@@ -16,6 +16,12 @@ disallowed_types = "forbid"
 unwrap_used = "warn"
 panic = "warn"
 
+# RFC-0020 §4-5: accelerate tests while retaining runtime safety checks.
+[profile.test]
+opt-level = 2
+debug-assertions = true
+overflow-checks = true
+
 [profile.release]
 lto = "fat"
 codegen-units = 1

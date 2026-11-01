@@ -425,3 +425,15 @@ acceptance for the false statement or substitute source7 authority. NC-0415
 remains its specified static GroupBound admission check. This clarifies test
 authoring only; no protocol, accepted RFC, verifier check, soundness bound or
 profile admission changes. Status: Accepted.
+
+## ADR-043: Optimize native tests with runtime checks retained
+
+Context: the unchanged maximum-shape table comparison spends substantial time
+in unoptimized field arithmetic. The [E0-07 paired ledger](../../bench/ledger/e0-07-test-profile.json)
+records the same tests on one frozen source with independent clean build
+directories, including the additional compilation cost. Decision: use Cargo
+test optimization level 2 and explicitly retain debug assertions and overflow
+checks. Keep every test, seed, shape, oracle and gate command. Default dev and
+release settings and broad shared-configuration CI routing remain unchanged.
+The measured result is a shared-host screening pair; it establishes neither a
+full-CI speedup nor an inference cost constant. Status: Accepted.

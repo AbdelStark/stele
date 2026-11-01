@@ -160,7 +160,7 @@ tasks:
   - RFC-0018 §1
   skill: benchmark-runner
   crate: ci
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E0-07-test-profile
   acceptance:

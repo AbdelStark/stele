@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/ci-test-profile",
+  "commit": "b638390716ddce6cb2442a64ddb6cfd6da773845",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8; cargo 1.90.0 (840b83a10 2025-07-30)",
+  "device": "Apple M1 Max",
+  "driver": "not-applicable: CPU; macOS-15.6.1-arm64-arm-64bit",
+  "model_config": {
+    "plan": {
+      "operation": "cold Cargo compilation and unchanged table_mle integration test",
+      "package": "stele-cqis",
+      "target": "table_mle",
+      "all_features": true,
+      "locked": true,
+      "offline": true,
+      "order": [
+        0,
+        2
+      ],
+      "repeats": 1,
+      "clean_target_per_configuration": true,
+      "debug_assertions": true,
+      "overflow_checks": true,
+      "test_count": 4,
+      "maximum_shape_cases": 14,
+      "extension_fields": [
+        "QM31",
+        "OM31"
+      ],
+      "seeded_points_per_case_field": 2,
+      "comparison_seed": "0x123400000021",
+      "source_commit": "b638390716ddce6cb2442a64ddb6cfd6da773845",
+      "source_tree": "eb35e676c069a441a2a04a76e1d1865eefd2b984",
+      "source_sha256": {
+        "Cargo.toml": "7454fa0eb87cc72f9eceb1b844ffb64b1b86d90eb83b53be5bc713ae21acd37a",
+        "Cargo.lock": "5b09a23e8935aa29ecd720d314ad425229e01dc1b21f9558b6acf3745ddf3fe3",
+        "rust-toolchain.toml": "0484a3d0d7267e43e09b8b0e76a799bed558037d7ccd6046dd70fdd0cc1b6ef9",
+        "crates/stele-cqis/tests/table_mle.rs": "7657417bd52247970dc65c5ef993fdbd15e9deef93f4a25524bbe47ed89e5112",
+        "crates/stele-cqis/tests/support/table_mle.rs": "0396463d5d424b64d05b8487585833f8e0f529bbee723272843f89f099112acf"
+      }
+    },
+    "measurement": {
+      "head": "b638390716ddce6cb2442a64ddb6cfd6da773845",
+      "tree": "eb35e676c069a441a2a04a76e1d1865eefd2b984",
+      "python": "3.12.12",
+      "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+      "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)",
+      "device": "Apple M1 Max",
+      "host": "macOS-15.6.1-arm64-arm-64bit",
+      "started_at": "2026-11-01T11:30:21.815727+00:00",
+      "measurements": [
+        {
+          "opt_level": 0,
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "stele-cqis",
+            "--test",
+            "table_mle",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--verbose"
+          ],
+          "env": {
+            "CARGO_TARGET_DIR": "/tmp/stele-test-profile-pair-b638390/target-opt0",
+            "CARGO_PROFILE_TEST_OPT_LEVEL": "0",
+            "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+            "CARGO_PROFILE_TEST_OVERFLOW_CHECKS": "true"
+          },
+          "started_at": "2026-11-01T11:30:21.912952+00:00",
+          "ended_at": "2026-11-01T11:32:28.747362+00:00",
+          "wall_ns": 126834554958,
+          "load_before": [
+            "15.93408203125",
+            "20.74560546875",
+            "26.50146484375"
+          ],
+          "load_after": [
+            "23.3974609375",
+            "22.05029296875",
+            "26.2412109375"
+          ],
+          "exit_code": 0,
+          "log": {
+            "path": "/tmp/stele-test-profile-pair-b638390/opt0.log",
+            "sha256": "a6f91e02f998e456fc894dc7dd5e701298b2d9feb37349072116a631e86137ce"
+          },
+          "test_names": [
+            "accepts_signed_rows_and_excludes_padding_with_a_separate_selector",
+            "matches_reference_all_kinds_maximum_shapes_and_extension_fields",
+            "matches_reference_msb_coordinates_and_nonboolean_validity",
+            "rejects_wrong_point_dimension_before_evaluation"
+          ],
+          "compile_reported_ns": 6470000000,
+          "execution_reported_ns": 119990000000,
+          "rustc_invocations": [
+            "     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_field --edition=2021 crates/stele-field/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=5e05f0b8531661a7 -C extra-filename=-f569da9e8f25839f --out-dir /tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps -C incremental=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/incremental -L dependency=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps`",
+            "     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_cqis --edition=2021 crates/stele-cqis/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=404fc8ddca941fda -C extra-filename=-2bc020e4937e919e --out-dir /tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps -C incremental=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/incremental -L dependency=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps --extern blake3=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/libblake3-eac2a45a320267e4.rmeta --extern stele_field=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/libstele_field-f569da9e8f25839f.rmeta -L native=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/build/blake3-f82ed25b5931a26e/out`",
+            "     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name table_mle --edition=2021 crates/stele-cqis/tests/table_mle.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=3422e77fb84e6913 -C extra-filename=-3f47498de5cdb2da --out-dir /tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps -C incremental=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/incremental -L dependency=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps --extern blake3=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/libblake3-eac2a45a320267e4.rlib --extern serde_json=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/libserde_json-f71e6ed8a92ba46f.rlib --extern stele_cqis=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/libstele_cqis-2bc020e4937e919e.rlib --extern stele_field=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/libstele_field-f569da9e8f25839f.rlib -L native=/tmp/stele-test-profile-pair-b638390/target-opt0/debug/build/blake3-f82ed25b5931a26e/out`"
+          ],
+          "binary": {
+            "path": "/tmp/stele-test-profile-pair-b638390/target-opt0/debug/deps/table_mle-3f47498de5cdb2da",
+            "sha256": "6f30303c0a52582d9045be8ea5e394fe186fcfbe4185a7859d5138e00b530dc2"
+          },
+          "cargo_artifacts": {
+            "command": [
+              "cargo",
+              "test",
+              "-p",
+              "stele-cqis",
+              "--test",
+              "table_mle",
+              "--all-features",
+              "--locked",
+              "--offline",
+              "--verbose",
+              "--no-run",
+              "--message-format=json"
+            ],
+            "path": "/tmp/stele-test-profile-pair-b638390/opt0-artifacts.jsonl",
+            "sha256": "aa4c44db35cb834168def35e24b3a5e60ea568b726fce4df6c7272a969ae9006",
+            "stderr_path": "/tmp/stele-test-profile-pair-b638390/opt0-artifacts.stderr",
+            "stderr_sha256": "7a3491686d043b82f86c94f4413119598887e3878b2d072fb41483fd8f485f1b",
+            "all_fresh": true,
+            "relevant_profiles": [
+              {
+                "target": "stele_field",
+                "profile": {
+                  "opt_level": "0",
+                  "debuginfo": 2,
+                  "debug_assertions": true,
+                  "overflow_checks": true,
+                  "test": false
+                }
+              },
+              {
+                "target": "stele_cqis",
+                "profile": {
+                  "opt_level": "0",
+                  "debuginfo": 2,
+                  "debug_assertions": true,
+                  "overflow_checks": true,
+                  "test": false
+                }
+              },
+              {
+                "target": "table_mle",
+                "profile": {
+                  "opt_level": "0",
+                  "debuginfo": 2,
+                  "debug_assertions": true,
+                  "overflow_checks": true,
+                  "test": true
+                }
+              }
+            ]
+          },
+          "runtime_checks": {
+            "source": "/tmp/stele-test-profile-pair-b638390/checks.rs",
+            "source_sha256": "50277bece5aab4085754bb917c0dbe2303d760ab20839d435c56e7528c76bdbf",
+            "compile_command": [
+              "rustc",
+              "--edition=2021",
+              "/tmp/stele-test-profile-pair-b638390/checks.rs",
+              "-o",
+              "/tmp/stele-test-profile-pair-b638390/checks-opt0"
+            ],
+            "binary_sha256": "d1b554704d794d9684c7dc182c1e714ff8bbfcab7efb35d4d4e15a6e26fc6c7c",
+            "command": [
+              "/tmp/stele-test-profile-pair-b638390/checks-opt0",
+              "255"
+            ],
+            "exit_code": 0,
+            "stdout": "PASS debug assertion and runtime overflow checks\n"
+          }
+        },
+        {
+          "opt_level": 2,
+          "command": [
+            "cargo",
+            "test",
+            "-p",
+            "stele-cqis",
+            "--test",
+            "table_mle",
+            "--all-features",
+            "--locked",
+            "--offline",
+            "--verbose"
+          ],
+          "env": {
+            "CARGO_TARGET_DIR": "/tmp/stele-test-profile-pair-b638390/target-opt2",
+            "CARGO_PROFILE_TEST_OPT_LEVEL": "2",
+            "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+            "CARGO_PROFILE_TEST_OVERFLOW_CHECKS": "true"
+          },
+          "started_at": "2026-11-01T11:32:28.877045+00:00",
+          "ended_at": "2026-11-01T11:32:45.149516+00:00",
+          "wall_ns": 16272121625,
+          "load_before": [
+            "23.3974609375",
+            "22.05029296875",
+            "26.2412109375"
+          ],
+          "load_after": [
+            "24.8466796875",
+            "22.4384765625",
+            "26.30615234375"
+          ],
+          "exit_code": 0,
+          "log": {
+            "path": "/tmp/stele-test-profile-pair-b638390/opt2.log",
+            "sha256": "b7f4568a56dbbe1de6d617f1cf56a909f42afe7d1ec7e93c72697a9417e2ee8a"
+          },
+          "test_names": [
+            "accepts_signed_rows_and_excludes_padding_with_a_separate_selector",
+            "matches_reference_all_kinds_maximum_shapes_and_extension_fields",
+            "matches_reference_msb_coordinates_and_nonboolean_validity",
+            "rejects_wrong_point_dimension_before_evaluation"
+          ],
+          "compile_reported_ns": 7560000000,
+          "execution_reported_ns": 8310000000,
+          "rustc_invocations": [
+            "     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_field --edition=2021 crates/stele-field/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0b0c42f7774cfb46 -C extra-filename=-3cc38f6c3874ec33 --out-dir /tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps -C incremental=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/incremental -L dependency=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps`",
+            "     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_cqis --edition=2021 crates/stele-cqis/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0c14e48fb214396f -C extra-filename=-ec1d90ed464ad3cb --out-dir /tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps -C incremental=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/incremental -L dependency=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps --extern blake3=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/libblake3-56e868565ecc4dd7.rmeta --extern stele_field=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta -L native=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/build/blake3-32fc601c72db0e6a/out`",
+            "     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name table_mle --edition=2021 crates/stele-cqis/tests/table_mle.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=ceb95f386e246711 -C extra-filename=-1d580f1906299eac --out-dir /tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps -C incremental=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/incremental -L dependency=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps --extern blake3=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/libblake3-56e868565ecc4dd7.rlib --extern serde_json=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/libserde_json-50332d76385fe107.rlib --extern stele_cqis=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/libstele_cqis-ec1d90ed464ad3cb.rlib --extern stele_field=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/libstele_field-3cc38f6c3874ec33.rlib -L native=/tmp/stele-test-profile-pair-b638390/target-opt2/debug/build/blake3-32fc601c72db0e6a/out`"
+          ],
+          "binary": {
+            "path": "/tmp/stele-test-profile-pair-b638390/target-opt2/debug/deps/table_mle-1d580f1906299eac",
+            "sha256": "298da6ed2fd4d92fdb1e05c0cbceb9f2b7146245cb54a625090d72708609cd09"
+          },
+          "cargo_artifacts": {
+            "command": [
+              "cargo",
+              "test",
+              "-p",
+              "stele-cqis",
+              "--test",
+              "table_mle",
+              "--all-features",
+              "--locked",
+              "--offline",
+              "--verbose",
+              "--no-run",
+              "--message-format=json"
+            ],
+            "path": "/tmp/stele-test-profile-pair-b638390/opt2-artifacts.jsonl",
+            "sha256": "2f9040ed69196b992f6d631b9f564026b858140f23fe2fd574a0c2315e95125a",
+            "stderr_path": "/tmp/stele-test-profile-pair-b638390/opt2-artifacts.stderr",
+            "stderr_sha256": "95b81e569d7e25eae19e57c5404852b15c8254980a74cbd8ebba69bd4694b767",
+            "all_fresh": true,
+            "relevant_profiles": [
+              {
+                "target": "stele_field",
+                "profile": {
+                  "opt_level": "2",
+                  "debuginfo": 2,
+                  "debug_assertions": true,
+                  "overflow_checks": true,
+                  "test": false
+                }
+              },
+              {
+                "target": "stele_cqis",
+                "profile": {
+                  "opt_level": "2",
+                  "debuginfo": 2,
+                  "debug_assertions": true,
+                  "overflow_checks": true,
+                  "test": false
+                }
+              },
+              {
+                "target": "table_mle",
+                "profile": {
+                  "opt_level": "2",
+                  "debuginfo": 2,
+                  "debug_assertions": true,
+                  "overflow_checks": true,
+                  "test": true
+                }
+              }
+            ]
+          },
+          "runtime_checks": {
+            "source": "/tmp/stele-test-profile-pair-b638390/checks.rs",
+            "source_sha256": "50277bece5aab4085754bb917c0dbe2303d760ab20839d435c56e7528c76bdbf",
+            "compile_command": [
+              "rustc",
+              "--edition=2021",
+              "/tmp/stele-test-profile-pair-b638390/checks.rs",
+              "-o",
+              "/tmp/stele-test-profile-pair-b638390/checks-opt2",
+              "-C",
+              "opt-level=2",
+              "-C",
+              "debug-assertions=on"
+            ],
+            "binary_sha256": "018a4c5587643cb7892ce63f17d917b86a1034ac64dd4a8ccda7a9b369cd16aa",
+            "command": [
+              "/tmp/stele-test-profile-pair-b638390/checks-opt2",
+              "255"
+            ],
+            "exit_code": 0,
+            "stdout": "PASS debug assertion and runtime overflow checks\n"
+          }
+        }
+      ],
+      "script": {
+        "path": "/tmp/stele-test-profile-measure.py",
+        "sha256": "f38851d095fc5fa8e5522262c3a4a351952bf79c829293cd100fbde6c34852d4"
+      },
+      "sources": {
+        "Cargo.toml": "7454fa0eb87cc72f9eceb1b844ffb64b1b86d90eb83b53be5bc713ae21acd37a",
+        "Cargo.lock": "5b09a23e8935aa29ecd720d314ad425229e01dc1b21f9558b6acf3745ddf3fe3",
+        "rust-toolchain.toml": "0484a3d0d7267e43e09b8b0e76a799bed558037d7ccd6046dd70fdd0cc1b6ef9",
+        "crates/stele-cqis/tests/table_mle.rs": "7657417bd52247970dc65c5ef993fdbd15e9deef93f4a25524bbe47ed89e5112",
+        "crates/stele-cqis/tests/support/table_mle.rs": "0396463d5d424b64d05b8487585833f8e0f529bbee723272843f89f099112acf"
+      },
+      "complete": true,
+      "original_driver_outcome": "Both cargo test processes exited 0; postprocessing wrongly required build-time dependencies to use opt2. This verification limits that assertion to the actual test, CQIS and field crates. No test was rerun.",
+      "original_receipt": {
+        "path": "/tmp/stele-test-profile-pair-b638390/receipt.json",
+        "sha256": "6c29aba5d936794cd3317feaca97f07e5ba3015d9a075e871c7b65d8474c6302"
+      },
+      "verified_at": "2026-11-01T11:33:28.790775+00:00",
+      "verification_script": {
+        "path": "/tmp/stele-test-profile-verify.py",
+        "sha256": "cd70b596218fe697b16be31933d8a1c37288d5aa2ef5dcb62dbfc04dea4af432"
+      }
+    },
+    "verified_receipt_sha256": "c8f360db04db17536d792c124a6d0c73cb18a7524cded4ba7a2a7e7bc580690a",
+    "measurement_driver_source": "from pathlib import Path\nfrom decimal import Decimal\nimport datetime\nimport hashlib\nimport json\nimport os\nimport platform\nimport re\nimport subprocess\nimport sys\nimport time\n\nROOT = Path('/tmp/stele-ci-test-profile')\nOUT = Path('/tmp/stele-test-profile-pair-b638390')\nassert sys.version_info[:2] == (3, 12)\ndef command(*args):\n    return subprocess.check_output(args, cwd=ROOT, text=True).strip()\ndef digest(path):\n    return hashlib.sha256(Path(path).read_bytes()).hexdigest()\ndef now():\n    return datetime.datetime.now(datetime.timezone.utc).isoformat()\ndef ns(value):\n    return int(Decimal(value) * 1_000_000_000)\nhead = command('git', 'rev-parse', 'HEAD')\ntree = command('git', 'rev-parse', 'HEAD^{tree}')\nassert head.startswith('b638390') and not command('git', 'status', '--porcelain')\nassert not any(k.startswith('CARGO_PROFILE_') or k in ('RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS') for k in os.environ)\nnames = sorted([\n    'matches_reference_all_kinds_maximum_shapes_and_extension_fields',\n    'matches_reference_msb_coordinates_and_nonboolean_validity',\n    'accepts_signed_rows_and_excludes_padding_with_a_separate_selector',\n    'rejects_wrong_point_dimension_before_evaluation',\n])\nOUT.mkdir(exist_ok=False)\nreceipt = dict(head=head, tree=tree, python=sys.version.split()[0],\n               rustc=command('rustc', '-vV'), cargo=command('cargo', '-V'),\n               device=command('sysctl', '-n', 'machdep.cpu.brand_string'),\n               host=platform.platform(), started_at=now(), measurements=[],\n               script=dict(path=__file__, sha256=digest(__file__)),\n               sources={p: digest(ROOT / p) for p in [\n                   'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml',\n                   'crates/stele-cqis/tests/table_mle.rs',\n                   'crates/stele-cqis/tests/support/table_mle.rs']}, complete=False)\ndef save():\n    temp = OUT / 'receipt.tmp'\n    temp.write_text(json.dumps(receipt, indent=2) + '\\n')\n    temp.replace(OUT / 'receipt.json')\nsave()\nfor level in (0, 2):\n    assert command('git', 'rev-parse', 'HEAD') == head\n    assert not command('git', 'status', '--porcelain')\n    target = OUT / f'target-opt{level}'\n    assert not target.exists()\n    env = os.environ.copy()\n    settings = {'CARGO_TARGET_DIR': str(target), 'CARGO_PROFILE_TEST_OPT_LEVEL': str(level),\n                'CARGO_PROFILE_TEST_DEBUG_ASSERTIONS': 'true', 'CARGO_PROFILE_TEST_OVERFLOW_CHECKS': 'true'}\n    env.update(settings)\n    args = ['cargo', 'test', '-p', 'stele-cqis', '--test', 'table_mle', '--all-features', '--locked', '--offline', '--verbose']\n    log = OUT / f'opt{level}.log'\n    started = now()\n    load_before = [str(v) for v in os.getloadavg()]\n    print(f'{started} start opt{level}', flush=True)\n    begin = time.perf_counter_ns()\n    with log.open('xb') as stream:\n        result = subprocess.run(args, cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT)\n    elapsed = time.perf_counter_ns() - begin\n    raw = log.read_text()\n    item = dict(opt_level=level, command=args, env=settings, started_at=started,\n                ended_at=now(), wall_ns=elapsed, load_before=load_before,\n                load_after=[str(v) for v in os.getloadavg()], exit_code=result.returncode,\n                log=dict(path=str(log), sha256=digest(log)))\n    receipt['measurements'].append(item)\n    save()\n    assert result.returncode == 0, item\n    actual_names = sorted(re.findall(r'^test ([a-z_]+) \\.\\.\\. ok$', raw, re.M))\n    assert actual_names == names, actual_names\n    timing = re.findall(r'test result: ok\\. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ([0-9.]+)s', raw)\n    compile_time = re.findall(r'Finished `test` profile \\[[^\\]]+\\] target\\(s\\) in ([0-9.]+)s', raw)\n    assert len(timing) == len(compile_time) == 1\n    invocations = [line for line in raw.splitlines() if 'Running `' in line and '--crate-name ' in line]\n    assert any('--crate-name table_mle ' in line and '--test ' in line for line in invocations)\n    assert any('--crate-name stele_cqis ' in line for line in invocations)\n    assert any('--crate-name stele_field ' in line for line in invocations)\n    if level:\n        assert all('-C opt-level=2' in line and '-C debug-assertions=on' in line for line in invocations)\n    else:\n        assert all('-C opt-level=' not in line and '-C debug-assertions=off' not in line for line in invocations)\n    assert all('-C overflow-checks=off' not in line for line in invocations)\n    binaries = [p for p in (target / 'debug/deps').glob('table_mle-*') if p.is_file() and p.suffix != '.d' and os.access(p, os.X_OK)]\n    assert len(binaries) == 1\n    item.update(test_names=actual_names, compile_reported_ns=ns(compile_time[0]),\n                execution_reported_ns=ns(timing[0]), rustc_invocations=invocations,\n                binary=dict(path=str(binaries[0]), sha256=digest(binaries[0])))\n    save()\n    print(json.dumps({k: item[k] for k in ('opt_level', 'wall_ns', 'compile_reported_ns', 'execution_reported_ns', 'exit_code')}), flush=True)\nassert command('git', 'rev-parse', 'HEAD') == head and not command('git', 'status', '--porcelain')\nassert all(digest(ROOT / p) == h for p, h in receipt['sources'].items())\nreceipt.update(complete=True, ended_at=now())\nsave()\nprint(f'complete {OUT}/receipt.json', flush=True)\n",
+    "verification_source": "from pathlib import Path\nfrom decimal import Decimal\nimport datetime\nimport hashlib\nimport json\nimport os\nimport re\nimport subprocess\nimport sys\n\nROOT = Path('/tmp/stele-ci-test-profile')\nOUT = Path('/tmp/stele-test-profile-pair-b638390')\nassert sys.version_info[:2] == (3, 12)\ndef digest(path):\n    return hashlib.sha256(Path(path).read_bytes()).hexdigest()\ndef git(*args):\n    return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()\nreceipt = json.loads((OUT / 'receipt.json').read_text())\nassert receipt['head'] == git('rev-parse', 'HEAD') and not git('status', '--porcelain')\nassert len(receipt['measurements']) == 2\nassert digest(receipt['script']['path']) == receipt['script']['sha256']\nreceipt['original_driver_outcome'] = 'Both cargo test processes exited 0; postprocessing wrongly required build-time dependencies to use opt2. This verification limits that assertion to the actual test, CQIS and field crates. No test was rerun.'\nreceipt['original_receipt'] = dict(path=str(OUT / 'receipt.json'), sha256=digest(OUT / 'receipt.json'))\nprobe = OUT / 'checks.rs'\nprobe.write_text('''fn main() {\n    std::panic::set_hook(Box::new(|_| {}));\n    assert!(std::panic::catch_unwind(|| debug_assert!(std::hint::black_box(false))).is_err());\n    let n: u8 = std::env::args().nth(1).expect(\"input\").parse().expect(\"u8\");\n    assert!(std::panic::catch_unwind(|| std::hint::black_box(n) + 1).is_err());\n    println!(\"PASS debug assertion and runtime overflow checks\");\n}\n''')\nfor item in receipt['measurements']:\n    level = item['opt_level']\n    assert item['exit_code'] == 0 and digest(item['log']['path']) == item['log']['sha256']\n    raw = Path(item['log']['path']).read_text()\n    names = sorted(re.findall(r'^test ([a-z_]+) \\.\\.\\. ok$', raw, re.M))\n    assert len(names) == 4 and names == receipt['measurements'][0]['test_names']\n    times = re.findall(r'test result: ok\\. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in ([0-9.]+)s', raw)\n    compilation = re.findall(r'Finished `test` profile \\[[^\\]]+\\] target\\(s\\) in ([0-9.]+)s', raw)\n    assert len(times) == len(compilation) == 1\n    invocations = [line for line in raw.splitlines() if 'Running `' in line and any(f'--crate-name {name} ' in line for name in ('table_mle', 'stele_cqis', 'stele_field'))]\n    assert len(invocations) == 3\n    assert all('-C overflow-checks=off' not in line and '-C debug-assertions=off' not in line for line in invocations)\n    assert all(('-C opt-level=2' in line and '-C debug-assertions=on' in line) if level == 2 else '-C opt-level=' not in line for line in invocations)\n    target = Path(item['env']['CARGO_TARGET_DIR'])\n    binaries = [p for p in (target / 'debug/deps').glob('table_mle-*') if p.is_file() and p.suffix != '.d' and os.access(p, os.X_OK)]\n    assert len(binaries) == 1\n    binary_sha = digest(binaries[0])\n    env = os.environ.copy()\n    env.update(item['env'])\n    args = item['command'] + ['--no-run', '--message-format=json']\n    metadata = OUT / f'opt{level}-artifacts.jsonl'\n    stderr = OUT / f'opt{level}-artifacts.stderr'\n    with metadata.open('xb') as stdout, stderr.open('xb') as err:\n        result = subprocess.run(args, cwd=ROOT, env=env, stdout=stdout, stderr=err)\n    assert result.returncode == 0 and digest(binaries[0]) == binary_sha\n    records = [json.loads(line) for line in metadata.read_text().splitlines()]\n    artifacts = [r for r in records if r['reason'] == 'compiler-artifact']\n    assert artifacts and all(r['fresh'] for r in artifacts)\n    relevant = [r for r in artifacts if r['target']['name'] in ('table_mle', 'stele-cqis', 'stele_cqis', 'stele-field', 'stele_field')]\n    assert len(relevant) == 3\n    assert all(r['profile']['opt_level'] == str(level) and r['profile']['debug_assertions'] is True and r['profile']['overflow_checks'] is True for r in relevant)\n    executable = OUT / f'checks-opt{level}'\n    # Match the actual commands: overflow checking follows enabled debug assertions.\n    flags = ['-C', 'opt-level=2', '-C', 'debug-assertions=on'] if level else []\n    compile_args = ['rustc', '--edition=2021', str(probe), '-o', str(executable), *flags]\n    result = subprocess.run(compile_args, cwd=ROOT, capture_output=True, text=True)\n    assert result.returncode == 0, result.stderr\n    run = subprocess.run([str(executable), '255'], capture_output=True, text=True)\n    assert run.returncode == 0 and run.stdout.strip() == 'PASS debug assertion and runtime overflow checks' and not run.stderr\n    item.update(test_names=names, compile_reported_ns=int(Decimal(compilation[0])*1_000_000_000),\n                execution_reported_ns=int(Decimal(times[0])*1_000_000_000), rustc_invocations=invocations,\n                binary=dict(path=str(binaries[0]), sha256=binary_sha),\n                cargo_artifacts=dict(command=args, path=str(metadata), sha256=digest(metadata),\n                    stderr_path=str(stderr), stderr_sha256=digest(stderr), all_fresh=True,\n                    relevant_profiles=[dict(target=r['target']['name'], profile=r['profile']) for r in relevant]),\n                runtime_checks=dict(source=str(probe), source_sha256=digest(probe), compile_command=compile_args,\n                    binary_sha256=digest(executable), command=[str(executable), '255'], exit_code=run.returncode, stdout=run.stdout))\nassert git('rev-parse', 'HEAD') == receipt['head'] and not git('status', '--porcelain')\nassert all(digest(ROOT / p) == h for p, h in receipt['sources'].items())\nreceipt.update(complete=True, verified_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),\n               verification_script=dict(path=__file__, sha256=digest(__file__)))\npath = OUT / 'verified-receipt.json'\nwith path.open('x') as f:\n    json.dump(receipt, f, indent=2)\n    f.write('\\n')\nprint(json.dumps(dict(path=str(path), sha256=digest(path), complete=True,\n    measurements=[{k: row[k] for k in ('opt_level', 'wall_ns', 'compile_reported_ns', 'execution_reported_ns')} for row in receipt['measurements']])))\n",
+    "qualification": "One sequential pair on a shared host with existing proof workers retained. Cargo compile/test durations are reported to 0.01 s; command walls use perf_counter_ns. Fresh no-run artifact inspection and safety probes occur after measurement and are not included in command timing. No repetitions, discarded samples, warmup or test reruns."
+  },
+  "plan_digest": "7081f6eb1b2159af1f1f3a583dc2b0692e15d9c392f3ee210a20ca3909539357",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 143106676583,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "opt0_cold_command": 126834554958,
+    "opt0_cargo_compile_reported": 6470000000,
+    "opt0_test_execution_reported": 119990000000,
+    "opt2_cold_command": 16272121625,
+    "opt2_cargo_compile_reported": 7560000000,
+    "opt2_test_execution_reported": 8310000000
+  },
+  "kernel_counters": {
+    "measured_commands": 2,
+    "passing_tests": 8,
+    "maximum_shape_comparisons": 112,
+    "preserved_debug_assertion_configurations": 2,
+    "preserved_overflow_check_configurations": 2,
+    "runtime_safety_probes_passed": 2
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "RFC-0020 sections 4-5, E0-07. Measures validation cost only: unchanged table_mle tests under test opt0 and opt2, with debug assertions and overflow checks enabled. No prover/verifier binding was disabled. Micro schema standard profile is a tag, not admission; proof/verifier/control fields are zero and prover_time_ns is the sum of the two measured command walls. No inference, fitted cost constant, GPU or full-CI speedup claim. Both test processes passed; the original driver then rejected Cargo build-dependency defaults during postprocessing. The retained verified receipt corrects only that scope check and independently validates fresh artifacts and actual runtime checks; neither measurement was rerun."
+}
