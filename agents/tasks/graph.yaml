@@ -1027,7 +1027,7 @@ tasks:
   - RFC-0020 A7
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01b6-matmul-work
   acceptance:
