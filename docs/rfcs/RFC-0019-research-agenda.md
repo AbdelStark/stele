@@ -429,6 +429,14 @@ conditional fraction/selected-product contract for E3-07a. Native types, engines
 actual public consumers, controls, shared parity and complete primitive ledgers
 are all required. This does not accept A2's whole lookup or reduce E3-07's scope.
 
+Q31 certified continuation: Accepted RFC-0008 A5 / RFC-0012 A11 / RFC-0020 A6
+fix a [conditional native lookup](../../formal/native-lookup.md) using actual
+A3 arithmetic and A9 consumers. Canonical K-limb reconstruction and a rank-two
+prefix mask consume table tails without assuming physical zero padding. The
+bounded algebra checker covers 258 cases in both fields; it supplies no native
+control or PCS execution credit. E3-07b tracks complete conditional delivery;
+E3-07, A2/A8, Q12 and Q29 retain their full private/inference obligations.
+
 Q26 record continuation: the [physical tensor study](../../research/cqis-checkpoint/RECORDS.md)
 defines candidate shape/dtype/channel bytes, continuous int4 packing and exact
 int16 gain conversion. Independent complete-byte and rational/NumPy checks cover

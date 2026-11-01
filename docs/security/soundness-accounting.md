@@ -1586,3 +1586,24 @@ records complete public/certified calls, actual registration, retained-source/pr
 costs and cleanup. Dense work observations enter neither the transcript nor a
 conditional record. This resource evidence adds no soundness or profile credit;
 Q12, private coefficients, integer inference and ZK remain open.
+
+### Conditional grouped lookup contract
+
+RFC-0008 A5 / RFC-0012 A11 fix the exact [native lookup schedule](../../formal/native-lookup.md).
+For fixed original near messages, Table and Boolean selector, B=2^b<p and
+h=m-b, charge the joint identity term min(1,(h+N+c*t-1)/|K|)^r. Its r*h Unit,
+r Beta and r Alpha draws form that single event; they do not each receive a
+duplicate LU term. Only independent identity repetitions are squared.
+
+Separately retain actual A3 tree/leaf losses r*[F(m)+F(k)+3m]/|K|, where
+F(v)=3v(v-1)/2+2v, every original/mu certificate obligation, r*c original
+openings and every structurally present mu piece opening. Basis reconstruction
+and the rank-two prefix identity are deterministic, with no additional SZ loss.
+RFC-0010 A8's lifetime/hash events and A9's actual adaptive opening bounds remain.
+External composition owns adversarial/attempt caps; local successful usage is
+not a substitute. Standalone registration usages are separate from the outer
+cumulative transcript and its disjoint local hashes, including failure prefixes.
+
+This contract grants no native control coverage, profile flag, integer/plan/source
+ownership, Q12 theorem or joint ZK. E3-07b requires actual complete delivery;
+E3-07 and Draft A2/A8 retain their full original requirements.

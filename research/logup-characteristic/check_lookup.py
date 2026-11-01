@@ -201,7 +201,81 @@ def check_early_denominator():
     rejects('RootMismatch',lambda: lu.verify(p,roots,proof,d))
 
 
-if __name__ == '__main__':
+def check_limb_view():
+    """Draft A5 algebra only: independent MLE versus actual matrix functionals."""
+    cases = 0
+    for d in (4,8):
+        zero,one = sc.scalar(0,d),sc.scalar(1,d)
+        basis = [tuple(int(a == j) for a in range(d)) for j in range(d)]
+        assert [sc.encode(e) for e in basis] == [
+            b''.join(int(a == j).to_bytes(4,'little') for a in range(d))
+            for j in range(d)]
+
+        def eq_weights(point):
+            weights = [one]
+            for x in point:
+                weights = [v for w in weights for v in
+                           (sc.mul(w,sc.add(one,sc.neg(x))),sc.mul(w,x))]
+            return weights
+
+        def pieces(limbs,point,ell,t):
+            rows,suffix = 1 << ell,1 << (len(point)-ell)
+            q,s = divmod(t,suffix)
+            left,right = eq_weights(point[:ell]),eq_weights(point[ell:])
+            result = []
+            for piece,present in ((0,q > 0),(1,s > 0)):
+                if not present:
+                    continue
+                a = [w if (u < q if piece == 0 else u == q) else zero
+                     for u,w in enumerate(left)]
+                b = [sc.mul(w,basis[j]) if piece == 0 or v < s else zero
+                     for v,w in enumerate(right) for j in range(d)]
+                value = zero
+                for column,weight in enumerate(b):
+                    # First form the physical row combination, then dot with b.
+                    row_value = zero
+                    for u in range(rows):
+                        row_value = sc.add(row_value,sc.mul(a[u],
+                            sc.scalar(limbs[u*suffix*d+column],d)))
+                    value = sc.add(value,sc.mul(row_value,weight))
+                result.append((piece,value))
+            assert len(result) == int(q > 0)+int(s > 0)
+            return result
+
+        for k in range(5):
+            n = 1 << k
+            # Every physical tail is deliberately nonzero, including nonbase limbs.
+            records = [tuple(11+37*i+5*j for j in range(d)) for i in range(n)]
+            limbs = [a for row in records for a in row]
+            for t in range(1,n+1):
+                point = [tuple(19+7*i+3*j for j in range(d)) for i in range(k)]
+                if t % 3 == 0:
+                    point = [sc.scalar(i % 2,d) for i in range(k)]
+                # This independent oracle folds logical K records, not coefficients.
+                expected = evaluate(records[:t]+[zero]*(n-t),point)
+                for ell in range(k+1):
+                    actual = pieces(limbs,point,ell,t)
+                    assert sc.add(actual[0][1],actual[1][1] if len(actual) == 2 else zero) == expected
+                    changed = limbs[:]
+                    if t < n:
+                        changed[t*d] += 1
+                        assert pieces(changed,point,ell,t) == actual
+                    cases += 1
+        # Concrete wrong-basis and unmasked-tail results differ from the true view.
+        scalar = tuple(range(1,d+1))
+        assert pieces(list(reversed(scalar)),[],0,1)[0][1] != evaluate([scalar],[])
+        point = [tuple(13+3*j for j in range(d))]
+        assert pieces(list(scalar+scalar),point,0,2)[0][1] != evaluate([scalar,zero],point)
+    assert cases == 258
+    return cases
+
+
+if __name__ == '__main__' and sys.argv[1:] == ['--limb-view-only']:
+    print(f'{check_limb_view()} QM31/OM31 limb-view cases: rank-two functionals match independent MLEs; no native PCS/NC credit')
+elif __name__ == '__main__':
+    if len(sys.argv) != 1:
+        raise SystemExit('usage: check_lookup.py [--limb-view-only]')
+    view_cases = check_limb_view()
     total = check_honest()
     check_bindings()
     check_false_identity()
@@ -209,3 +283,4 @@ if __name__ == '__main__':
     check_early_denominator()
     print(f'{total} complete QM31/OM31 single/paired lookups: committed source/multiplicity consumers and accounting agree')
     print('tampered commitments, openings, identities, shapes, invalid selected value and pole controls reject; no ZK/native NC credit')
+    print(f'{view_cases} canonical limb-view identities and physical-tail projections agree; no native PCS/NC credit')

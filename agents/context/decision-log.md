@@ -392,3 +392,22 @@ require complete native source/control/parity/resource delivery before done.
 Private source/format and joint-ZK obligations remain Q20/Q29. Both inference
 profiles remain unadmitted. No challenge kind, fitted constant, new committed
 intermediate or weight-pass claim is introduced. Status: Accepted.
+
+## ADR-041: Close conditional grouped lookup through existing field consumers
+
+Context: E3-07 remains blocked on the full A2/A8/private contract, while actual
+A3 arithmetic and A9 certified sources are available. Decision: accept the
+separate RFC-0008 A5 / RFC-0012 A11 / RFC-0020 A6 conditional field contract.
+Fix originals before independent unit vectors and all multiplicities before
+every denominator pair. Store weighted K multiplicities as canonical M31 limbs;
+define the real table prefix by a deterministic view and consume it through
+one or two separate actual A9 functionals. No physical-tail-zero assumption or
+new PCS theorem is introduced.
+
+The reductions-owned closure uses actual A3/Table/source consumers, caller-owned
+verified certificates and borrowed opening records. Explicit local/failure work
+and certificate lifetimes remain separate from adversarial caps. Add only the
+CQIS/poly dependency permissions needed for those actual APIs. E3-07b requires
+native controls, complete parity and resource ledgers; E3-07 retains its original
+private/full/source/plan obligations. No new committed intermediate, profile,
+Q12/ZK result, cost constant or weight-pass claim. Status: Accepted.

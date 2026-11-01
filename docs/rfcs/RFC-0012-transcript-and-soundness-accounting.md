@@ -599,3 +599,38 @@ FunctionalShape, InvalidColumnDomain and ColumnSamplingExhausted errors. Specifi
 registry or ledger. Existing Q12 FS/H and quantum
 obligations remain; neither profile is enabled. Affected tasks are E4-03,
 E3-06's terminal source work and E8-05, without completion of their criteria.
+
+### A11 — Conditional grouped lookup schedule and joint identity record
+
+Status: Accepted. Question Q31; companion RFC-0008 A5.
+Review: [coordinated skill sign-off](../../agents/reviews/lookup-contract-accepted.md).
+The exact [native lookup contract](../../formal/native-lookup.md) fixes five
+absorb labels: stele/v0.1/lookup/statement, /units, /multiplicities, /repetition
+and /multiplicity-claims; and three challenge labels: /unit, /beta and /alpha.
+Typed choices, payload bytes, order and scalar boundaries are fixed there.
+A1 framing, capped rejection sampling and ratcheting remain unchanged.
+
+All r independent length-h unit vectors follow the expected original statement.
+All r mu contexts and verified certificate identities bind before any beta/alpha.
+All pairs precede the trees. Complete piece claims bind before individual A9
+queries, whose rows and responses retain A10 order. Equal sampled values are
+allowed; exhaustion/poles abort without hidden retries or fallback.
+
+The three new challenge kinds belong to one joint LU identity record with
+numerator h+N+c*t-1, denominator |K|=p^d and exponent r in {1,2}, capped at one.
+Do not add that loss once per draw. Actual draw counts are r*h,r,r, while
+every A3 tree/leaf SC/RLC and each actual A9 certificate/opening term remain
+separate. The deterministic rank-two projection adds no random loss.
+Complete external certificate lifetimes and RFC-0010 A8 hash events remain charged.
+
+The outer cumulative transcript Usage is distinct from standalone registration
+usages and disjoint ordinary hashes, including real table encoding and exact
+certificate-ID comparison. Preserve all earlier/failing work without returning
+a partial acceptance record. Local counts are not adversarial query caps.
+No inferred profile total or proven flag is introduced; Q12 remains open.
+
+On implementation add these exact eight registry entries and the joint loss
+classification with the actual producer, consumers, controls and gates. The
+specification alone changes no executable registry or transcript-label JSON.
+Draft A8 and the original full lookup/profile obligations remain. No cost-model
+constant changes; all new framing/hashing/queries belong to c_lu/c_c/T_misc.

@@ -308,3 +308,48 @@ whole-word bytes meet at an additional consumed A3 packing relation. Separate
 lookup identities/reductions and A3 errors are added under their existing
 conditional hypotheses. Native range dominance, complete source/plan consumers,
 private PCS/ZK and all E3-07 criteria remain required; no profile or label changes.
+
+### A5 — Conditional grouped lookup with actual certified consumers
+
+Status: Accepted. Question Q31. Companions RFC-0012 A11 and RFC-0020 A6.
+Review: [coordinated skill sign-off](../../agents/reviews/lookup-contract-accepted.md).
+Exact contract: [native lookup](../../formal/native-lookup.md).
+Motivation: A3 supplies the arithmetic but leaves full source/multiplicity
+consumption unspecified. A9 supplies M31 sources; weighted multiplicities are
+K-valued and need an explicit authenticated interpretation, not a type cast.
+
+Addition to §2, as a separate conditional field protocol:
+
+> Implement only the exact grouped-unit, wire, transcript, error and resource
+> contract in formal/native-lookup.md. Use actual A3 trees/selected products,
+> complete canonical RFC-0021 tables and actual A9 original point openings.
+> Represent each repetition's multiplicities by canonical M31 limbs under an
+> expected A9 context, reconstructing K values in the RFC-0003 A1 basis.
+> Define logical table tails by prefix projection; consume their actual MLE
+> through the contract's one or two separate rank-one functional openings.
+> Physical tail zeros are not inferred from a certificate. Every original
+> and every structurally present piece remains mandatory, even at zero weights.
+>
+> Bind all original contexts/table/selectors before independent unit vectors;
+> bind all multiplicity contexts/certificate identities before every beta/alpha.
+> Use the specified nonzero-root and public table-denominator consumers.
+> Borrow actual caller-owned verified certificates and return only actual
+> conditional records after complete consumption. Imported certificate bytes
+> match opaque handles through A9's charged digest identity, never a trusted
+> metadata receipt. Preserve failure usage, checked limits and abort semantics.
+
+The mathematical scope adopts weighted-logup.md §§1-3 for the stated fixed-data
+interactive identity and the exact deterministic limb/prefix lemma in the new
+contract. A3/A9 retain their existing conditional hypotheses and individual
+losses. Repetitions square only the joint identity event. Q12, external source
+ownership, range discipline and joint privacy remain unresolved; neither profile
+is admitted. This is not acceptance of Draft A2/A8 or of the revealing study
+as a production PCS. No lookup value or tree intermediate becomes a cut.
+
+A conditional prerequisite E3-07b must deliver complete native bytes/consumers,
+real controls, independent parity and complete resource ledgers before done.
+E3-07 retains every original NC-0400..0403, c_lu, committed-multiplicity and
+private/full-lookup obligation. Reserve NC-0415..0419 as todo; no specification
+or research check earns execution coverage. Cost terms are c_lu/c_sc/c_c and
+T_misc, including actual registration, both trees, all openings and retained
+state. No measured constant, performance result or weight-pass change.

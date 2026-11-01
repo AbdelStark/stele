@@ -146,3 +146,19 @@ public/certified production, consumption, source registration, observations and
 cleanup, with separate scoped capacities and fresh-worker RSS. Its fixed relation
 and shared-host measurements are described in [the benchmark report](../bench/README.md#complete-conditional-stacked-resources).
 No fitted constant, weight-pass count or inference projection changes from these observations.
+
+## 12. Conditional grouped lookup contract
+
+RFC-0008 A5 fixes [complete lookup costs](../formal/native-lookup.md#6-complete-costs-and-resource-admission):
+source/table validation, grouped histograms, K-limb conversion and actual mu
+preparation/registration, two A3 trees and selected-product work per repetition,
+every original opening, and one or two mu functional openings for the real
+table prefix. Each piece pays its own A9 row preparation/encoding/query work;
+there is no uncharged batched opening. Actual Table serialization hashes and
+certificate-ID comparison belong to disjoint local H/T_misc.
+
+Retained source, tree/A1, preparation, coefficient and proof buffers have distinct
+lifetimes. Complete pipeline time and memory need their own ledger; existing
+fraction/PCS/stacked primitive reports do not establish c_lu for this composition.
+This contract supplies formulas and required observations only, with no fitted
+constant, benchmark number, inference projection or weight-pass change.
