@@ -19,7 +19,13 @@ fn accepts_repository_catalog_without_crediting_stub() {
     assert!(coverage.contains("8/25 bindings; 32/94 controls"));
     assert_eq!(coverage.matches("MISSING").count(), 62);
     for id in 415..=419 {
-        assert!(!catalog.iter().find(|entry| entry.id == id).unwrap().done);
+        assert!(
+            !catalog
+                .iter()
+                .find(|entry| entry.id == id)
+                .expect("reserved lookup control")
+                .done
+        );
         assert!(coverage.lines().any(|line| {
             line.starts_with(&format!("NC-{id:04} |")) && line.contains("MISSING")
         }));
