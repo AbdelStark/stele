@@ -1035,6 +1035,27 @@ tasks:
   - both-field scalar, asymmetric and zero-factor fixtures preserve complete wires, records, usage and continuation; preflight and late consumer failures retain their causes and actual usage
   - exact API and evidence gates retain all existing controls and independent corpus coverage without another Cargo invocation
   - observations supply no acceptance or complete ledger credit; registration, both verifier timings, RSS and all E7-01b and parent criteria remain required
+- id: E7-01b7
+  epic: E7
+  title: Complete native and independent Python matmul measurement workers
+  depends:
+  - E7-01b6
+  rfc:
+  - RFC-0007 A2
+  - RFC-0010 A10
+  - RFC-0012 A12
+  - RFC-0018 §1
+  skill: benchmark-runner
+  crate: stele-bench
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01b7-matmul-bench-workers
+  acceptance:
+  - native worker executes actual preparation, both certificate producers and imports, complete matmul production and closed verification, exporting full wires, records, usage, work and disjoint stage timings
+  - actual caller capacities compose with current child peaks at their live overlaps; logical and physical fixture capacities remain distinct; diagnostic A1 and process RSS are separate scopes
+  - strict public-only Python mode imports both actual certificates and verifies identical native matmul and following public A1 artifacts, returning independent records, usage, continuation and separate timings
+  - both-field scalar, asymmetric, stacked and zero-factor smoke cases agree; duplicate/private input, certificate path, final opening path and following-final alterations reject for stated causes
+  - existing corpus definitions, digest, controls and CI jobs remain; frozen campaign, strict receipt controller, both process RSS reports and imported full ledger remain E7-01b obligations
 - id: E7-01b
   epic: E7
   title: Conditional stacked matmul with retained rows and actual original source consumers
@@ -1048,6 +1069,7 @@ tasks:
   - E7-01b4
   - E7-01b5
   - E7-01b6
+  - E7-01b7
   rfc:
   - RFC-0007 A2
   - RFC-0010 A10
@@ -1055,9 +1077,7 @@ tasks:
   - RFC-0020 A7
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
-  agent: /root
-  branch: task/E7-01b-matmul-ledger
+  status: ready
   acceptance:
   - exact stacked expected geometry and complete canonical proof codec in both fields, including zero axes and checked resource preflight
   - actual A4/A1/A7 reduction and both original A9 consumers, immutable retained rows and exactly one original weight visit
