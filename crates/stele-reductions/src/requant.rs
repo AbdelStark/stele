@@ -3,8 +3,11 @@
 use alloc::vec::Vec;
 use core::ops::Range;
 use stele_cqis::{bounds, Format, Requant};
+#[path = "requant_constraints.rs"]
+mod constraints;
+pub use constraints::Constraints;
 
-/// Failure before any schema is returned.
+/// Failure during static schema or constraint derivation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     /// Unsupported separately supplied scalar configuration.
@@ -118,6 +121,7 @@ impl Schema {
 
 #[derive(Debug)]
 struct Layout {
+    params: [u8; 4],
     values: Vec<Block>,
     roles: Vec<Role>,
     u_carries: Range<usize>,
@@ -161,7 +165,7 @@ fn buffer<T>(count: usize) -> Result<Vec<T>, Error> {
 fn read_layout(raw: &[u8]) -> Result<Layout, Error> {
     let mut r = Reader(raw);
     r.expect(b"stele/v0.1/cqis/bounds\x01\0\0\0\x01\x04\0")?;
-    let params = r.take(4)?;
+    let params: [u8; 4] = r.take(4)?.try_into().map_err(|_| Error::Encoding)?;
     if params[0..2] == [0, 0] || params[2] > 62 || ![8, 16].contains(&params[3]) {
         return Err(Error::Encoding);
     }
@@ -242,6 +246,7 @@ fn read_layout(raw: &[u8]) -> Result<Layout, Error> {
     let u_carries = allocate(&mut at, 3)?;
     let rows = at.checked_next_power_of_two().ok_or(Error::Capacity)?;
     Ok(Layout {
+        params,
         values,
         roles,
         u_carries,
