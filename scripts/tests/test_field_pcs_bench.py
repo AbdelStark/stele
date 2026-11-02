@@ -28,13 +28,24 @@ class FieldPcsBenchTests(unittest.TestCase):
                          'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
                          'examples/lookup_bench.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
                          'examples/matmul_corpus.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
-                         'examples/matmul_bench.rs', 'requant_schema.py'):
+                         'examples/matmul_bench.rs', 'requant_schema.py', 'src/requant.rs',
+                         'requant/verifier.rs', 'fixtures/requant/scalar-K4.bin'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)
                 path.write_bytes(saved)
             manifest = suite/'Cargo.toml'
             original = manifest.read_text()
+            target = '[[test]]\nname = "requant-verifier"\npath = "requant/verifier.rs"\n'
+            self.assertIn(target, original)
+            manifest.write_text(original.replace(target, ''))
+            with self.assertRaisesRegex(ValueError, 'targets not wired'):
+                gates.controls_layout(root)
+            manifest.write_text(original)
+            extra = suite/'fixtures/requant/unlisted.bin'; extra.write_bytes(b'0')
+            with self.assertRaisesRegex(ValueError, 'inventory'):
+                gates.controls_layout(root)
+            extra.unlink()
             for name in ('lookup_bench', 'matmul_bench'):
                 benchmark = f'[[example]]\nname = "{name}"\npath = "examples/{name}.rs"\n'
                 self.assertIn(benchmark, original)

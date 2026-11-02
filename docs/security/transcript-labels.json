@@ -35,5 +35,9 @@
   ["challenge", "stele/v0.1/lookup/unit", "LU"],
   ["challenge", "stele/v0.1/lookup/beta", "LU"],
   ["challenge", "stele/v0.1/lookup/alpha", "LU"],
-  ["absorb", "stele/v0.1/matmul/statement", "-"]
+  ["absorb", "stele/v0.1/matmul/statement", "-"],
+  ["absorb", "stele/v0.1/requant/statement", "-"],
+  ["absorb", "stele/v0.1/requant/constraints", "-"],
+  ["absorb", "stele/v0.1/requant/claims", "-"],
+  ["challenge", "stele/v0.1/requant/weight", "RLC"]
 ]

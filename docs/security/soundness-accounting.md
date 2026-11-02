@@ -1668,8 +1668,10 @@ adversarial resource caps, integer/virtual ownership, privacy and both profiles
 remain open. No measured constant changes.
 # Accepted RFC-0023 inventory: integer Requant advice
 
-This inventory is specification work for E7-01c, not an executable record or
-profile admission. RFC-0023 fixes the complete relation and byte schedule.
+RFC-0023 fixes the complete relation and byte schedule. The native closed
+consumer in `requant_verifier.rs` retains the four actual independent-weight
+`RlcRecord`s and every actual A3/A1/A5/A9 obligation. This is conditional
+interactive accounting, not profile admission or a complete resource ledger.
 Its three new absorbs end /requant/statement, /constraints and /claims; its
 new independent challenge label ends /requant/weight, under stele/v0.1.
 
@@ -1696,7 +1698,23 @@ groups; there are no fabricated per-plane PCS records. Input/advice and all 2r
 mu handles remain genuinely verified and retained. Failed attempts, standalone
 imports and disjoint local-H work are explicit in RFC-0023 §2.4.
 
-Native registry/record/control/gate changes are required with implementation.
-NC-0308..0314 are catalog reservations only; existing NC-0100/0101/0109 and
-composed NC-0606/0610/0802 remain owed by the actual consumers. Q12/Q29, full
-source/plan/packing/inference contracts and both profile totals remain open.
+The fixed registry contains the three typed absorbs and `RequantWeight` under
+RLC. Phase 0 follows the complete unsampled constraint frame; phases 1..3 each
+follow their complete fixed source/row/id/point/value frame. No zero claim or
+sampled zero coefficient is removed. All draws use the actual Transcript.
+The enclosing Usage snapshots the cumulative transcript once and sums only
+the one advice packet-id H, both child A5 local-H counters and the three child
+A9 local-H counters, including a failed child's prefix. Standalone advice and
+ordered multiplicity imports retain separate Usage and cannot return partial
+handle rosters. Four RLC records are produced only after every consumer closes.
+
+The actual native consumers execute NC-0308..0314, the four independent-weight
+phases of NC-0610, the six separate frame omissions of NC-0802 and the genuine
+advice-context substitution of NC-0606. The bounded signed-tie NC-0100/0101
+cases and static bound-encoding NC-0109 case do not complete the broad CQIS
+family. Frozen independent wires check both fields and repetition counts,
+retained obligations, standalone imports, exact failed-prefix Usage and a
+genuine following A1. Two separately constructed input-padding cases preserve
+the original statement and A5 packets. Native general production, full-domain
+controls, complete resource ledgers, Q12/Q29, source/plan/packing/inference
+contracts and both profile totals remain open.

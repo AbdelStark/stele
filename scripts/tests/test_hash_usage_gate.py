@@ -21,6 +21,7 @@ class HashUsageGateTests(unittest.TestCase):
         registry = json.loads((ROOT / 'docs/security/transcript-labels.json').read_text())
         produced = subprocess.CompletedProcess([], 0, '\n'.join('\t'.join(row) for row in registry), '')
         names = ('tests::accepts_the_fixed_registry', 'tests::matches_reference_lookup_label_classes',
+                 'tests::matches_reference_requant_label_classes',
                  'transcript_tests::matches_reference_transcript_vectors',
                  'transcript_tests::rejects_empty_public_input',
                  'usage_tests::rejects_unrepresentable_frame_lengths',

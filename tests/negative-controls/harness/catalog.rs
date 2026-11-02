@@ -16,10 +16,11 @@ fn accepts_repository_catalog_without_crediting_stub() {
     );
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
-    assert!(coverage.contains("10/32 bindings; 44/104 controls"));
-    assert_eq!(coverage.matches("MISSING").count(), 60);
+    assert!(coverage.contains("17/32 bindings; 51/104 controls"));
+    assert_eq!(coverage.matches("MISSING").count(), 53);
     for id in [
-        203, 210, 211, 212, 213, 306, 307, 400, 401, 402, 403, 415, 416, 417, 418, 419, 609, 611,
+        203, 210, 211, 212, 213, 306, 307, 308, 309, 310, 311, 312, 313, 314, 400, 401, 402, 403,
+        415, 416, 417, 418, 419, 609, 611,
     ] {
         assert!(
             catalog
@@ -32,12 +33,12 @@ fn accepts_repository_catalog_without_crediting_stub() {
             line.starts_with(&format!("NC-{id:04} |")) && line.ends_with("passed")
         }));
     }
-    for id in 308..=314 {
+    for id in 100..=109 {
         assert!(
             !catalog
                 .iter()
                 .find(|entry| entry.id == id)
-                .expect("reserved Requant control")
+                .expect("pending full CQIS control")
                 .done
         );
     }

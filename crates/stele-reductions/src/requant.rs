@@ -2,13 +2,17 @@
 //! Static metadata alone authenticates no source, witness, or inference claim.
 use alloc::vec::Vec;
 use core::ops::Range;
-use stele_cqis::{bounds, Format, Requant};
+pub use stele_cqis::Format;
+use stele_cqis::{bounds, Requant};
 #[path = "requant_constraints.rs"]
 mod constraints;
 pub use constraints::Constraints;
 #[path = "requant_codec.rs"]
 mod codec;
 pub use crate::lookup::Limits;
+pub use codec::verifier::{
+    Failure, GroupRecord, Record, RegisteredMultiplicities, RegistrationFailure, RlcRecord,
+};
 pub use codec::{Descriptor, Statement};
 
 /// Failure during schema, expected descriptor or untrusted codec validation.
@@ -38,6 +42,18 @@ pub enum Error {
     Lookup(crate::lookup::Error),
     /// Preserve the actual A1 descriptor cause.
     Sumcheck(stele_sumcheck::Error),
+    /// Actual transcript failure, including exhausted sampling.
+    Transcript(stele_hash::Error),
+    /// Expected context differs from a genuine registered certificate.
+    CertificateContext,
+    /// The packet differs from the exact genuinely registered certificate.
+    CertificateIdentity,
+    /// Actual arithmetic claims differ from the fixed ordered roster or point.
+    ArithmeticRoster,
+    /// Actual public coefficient differs from the arithmetic final.
+    CoefficientMismatch,
+    /// Preserve the actual A7 public coefficient cause.
+    PublicCoefficient(stele_gkr::public_mle::Error),
 }
 
 /// One whole-value cap, including its slack and interior Boolean carries.

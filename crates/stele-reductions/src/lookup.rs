@@ -509,7 +509,7 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
         }
         Ok(wire)
     }
-    fn registration_bytes(&self) -> Result<usize, Error> {
+    pub(crate) fn registration_bytes(&self) -> Result<usize, Error> {
         self.mu[..self.statement.multiplicities.len()]
             .iter()
             .try_fold(0, |total, source| {
