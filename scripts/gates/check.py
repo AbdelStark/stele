@@ -59,7 +59,7 @@ def requant_schema_api(crate):
     code = re.sub(r'//[^\n]*', '', (crate/'src/requant.rs').read_text())
     compact = lambda text: re.sub(r'\s+', '', text)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
-    expected = [('use','stele_cqis'), ('use','constraints'), ('use','crate'), ('use','codec'), ('use','codec'), ('use','codec'), ('use','witness'), ('enum','Error'), ('struct','Block')]
+    expected = [('use','stele_cqis'), ('use','constraints'), ('use','crate'), ('use','codec'), ('use','codec'), ('use','codec'), ('use','witness'), ('use','embedded'), ('enum','Error'), ('struct','Block')]
     expected += [('fn',n) for n in ('cap','value','slack','carry')]
     expected += [('struct','Role')] + [('fn',n) for n in ('count','bounds','widths','result_cap','carries')]
     expected += [('struct','Schema')] + [('fn',n) for n in ('new','bounds','values','roles','u_carries','allocated_rows','rows')]
@@ -80,7 +80,8 @@ def requant_schema_api(crate):
         and 'pubusecodec::verifier::{Failure,GroupRecord,Record,RegisteredMultiplicities,RegistrationFailure,RlcRecord,VerifierWork,};' in compact(code)
         and '#[path="requant_witness.rs"]modwitness;pubusewitness::Witness;' in compact(code)
         and requant_constraints_api(crate) and requant_codec_api(crate) and requant_verifier_api(crate)
-        and requant_witness_api(crate) and requant_producer_api(crate)
+        and requant_witness_api(crate) and requant_producer_api(crate) and requant_embedded_api(crate)
+        and '#[path="requant_embedded.rs"]modembedded;pubuseembedded::{EmbeddedSchema,EmbeddedWitness};' in compact(code)
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == signatures
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]
             == ['implBlock{','implRole{','implSchema{',"impl<'a>Reader<'a>{"]
@@ -100,6 +101,16 @@ def requant_witness_api(crate):
     """Untrusted integer-derived buffers with immutable readers, no record authority."""
     code=re.sub(r'//[^\n]*','',(crate/'src/requant_witness.rs').read_text())
     compact=lambda text:re.sub(r'\s+','',text)
+    private = re.findall(r'\bpub\(super\)\s+fn\b[^\{]*\{', code)
+    if [compact(v) for v in private] != [
+        'pub(super)fnput(out:&mut[M31],n:usize,at:usize,rows:core::ops::Range<usize>,value:u64,)->Result<(),Error>{',
+        'pub(super)fncap(out:&mut[M31],n:usize,at:usize,block:&Block,value:u64,)->Result<(),Error>{',
+        'pub(super)fnwitness_outputs(&self,inputs:&[i32])->Result<Vec<i16>,Error>{',
+        'pub(super)fnfill_witness(&self,advice:&mut[M31],n:usize,at:usize,acc:i32,)->Result<(),Error>{',
+    ]:
+        return False
+    for signature in private:
+        code = code.replace(signature, signature.replace('pub(super)', '', 1), 1)
     declarations=re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)',code)
     return (declarations==[('struct','Witness')]+[('fn',n) for n in ('input','advice','output','owned_bytes','witness')]
         and len(declarations)==len(re.findall(r'\bpub\b',code))
@@ -108,6 +119,30 @@ def requant_witness_api(crate):
             'pubfnowned_bytes(&self)->Result<usize,Error>{','pubfnwitness(&self,inputs:&[i32],positions:usize)->Result<Witness,Error>{']
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]==['implWitness{','implSchema{']
         and [compact(v) for v in re.findall(r'pub struct Witness\s*\{([^}]*)\}',code)]==['input:Vec<M31>,advice:Vec<M31>,output:Vec<i16>,']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
+
+
+def requant_embedded_api(crate):
+    """RFC-0024 static layout/witness only; no supplied terms or accepting authority."""
+    code = re.sub(r'//[^\n]*', '', (crate/'src/requant_embedded.rs').read_text())
+    compact = lambda text: re.sub(r'\s+', '', text)
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    expected = [('struct','EmbeddedSchema')]+[('fn',n) for n in
+        ('new','semantic','bound','allocated_rows','rows','constraints','witness')]
+    expected += [('struct','EmbeddedWitness')]+[('fn',n) for n in ('advice','output','owned_bytes')]
+    return (declarations == expected and len(declarations) == len(re.findall(r'\bpub\b',code))
+        and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == [
+            'pubfnnew(inner_bits:u8,mantissa:u32,shift:u32,format:Format)->Result<Self,Error>{',
+            'pubfnsemantic(&self)->&Schema{','pubfnbound(&self)->u64{',
+            'pubfnallocated_rows(&self)->usize{','pubfnrows(&self)->usize{',
+            'pubfnconstraints<K:ChallengeField>(&self)->Result<Constraints<K>,Error>{',
+            'pubfnwitness(&self,captured:&[i32],positions:usize)->Result<EmbeddedWitness,Error>{',
+            'pubfnadvice(&self)->&[M31]{','pubfnoutput(&self)->&[i16]{',
+            'pubfnowned_bytes(&self)->Result<usize,Error>{']
+        and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)] == ['implEmbeddedSchema{','implEmbeddedWitness{']
+        and [(n,compact(v)) for n,v in re.findall(r'pub struct (\w+)\s*\{([^}]*)\}',code)] == [
+            ('EmbeddedSchema','semantic:Schema,cap:Block,rows:usize,'),
+            ('EmbeddedWitness','advice:Vec<M31>,output:Vec<i16>,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
 
 
@@ -142,6 +177,15 @@ def requant_constraints_api(crate):
     """Closed RFC-0023 term compiler, without descriptor or accepting authority."""
     code = re.sub(r'//[^\n]*', '', (crate/'src/requant_constraints.rs').read_text())
     compact = lambda text: re.sub(r'\s+', '', text)
+    private = re.findall(r'\bpub\(super\)\s+fn\b[^\{]*\{', code)
+    if [compact(v) for v in private] != [
+        'pub(super)fnsemantic_constraints<K:ChallengeField>(&self,tail_equations:usize,)->Result<Vec<Vec<Term<K>>>,Error>{',
+        'pub(super)fnfinish<K:ChallengeField>(mutequations:Vec<Vec<Term<K>>>,allocated_inputs:usize,input_count:usize,)->Result<Constraints<K>,Error>{',
+        'pub(super)fncap<K:ChallengeField>(out:&mutVec<Vec<Term<K>>>,b:&Block)->Result<(),Error>{',
+    ]:
+        return False
+    for signature in private:
+        code = code.replace(signature, signature.replace('pub(super)', '', 1), 1)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     return (declarations == [('struct','Constraints'),('fn','input_count'),('fn','equations'),('fn','constraints')]
         and len(declarations) == len(re.findall(r'\bpub\b',code))
@@ -356,7 +400,8 @@ def field_sources(root):
                'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt', 'src/requant_constraints.rs',
                'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
                'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt',
-               'src/requant_verifier.rs', 'src/requant_witness.rs', 'src/requant_witness_tests.rs', 'src/requant_producer.rs'}
+               'src/requant_verifier.rs', 'src/requant_witness.rs', 'src/requant_witness_tests.rs', 'src/requant_producer.rs',
+               'src/requant_embedded.rs','src/requant_embedded_tests.rs','tests/fixtures/embedded-requant.txt'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -511,7 +556,7 @@ def field_sources(root):
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
                 'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
                 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
-                'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'requant/producer.rs', 'requant/records.rs',
+                'requant_schema.py', 'embedded_requant.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'requant/producer.rs', 'requant/records.rs',
                 'src/requant.rs', 'src/requant_composer.rs'))):
         raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup/matmul adapters admitted')
     requant_fixtures(root)
@@ -545,7 +590,10 @@ def field_sources(root):
          + [f'test requant::codec::tests::{n} ... ok' for n in ('matches_reference_qm31_codec',
             'matches_reference_om31_codec','rejects_codec_statement_and_sources')]
          + [f'test requant::witness::tests::{n} ... ok' for n in ('matches_reference_frozen_witness_bytes',
-            'accepts_witness_shift_width_sign_and_padding_boundaries','rejects_witness_overflow_and_resource_caps')]),
+            'accepts_witness_shift_width_sign_and_padding_boundaries','rejects_witness_overflow_and_resource_caps')]
+         + [f'test requant::embedded::tests::{n} ... ok' for n in ('matches_reference_qm31_embedded',
+            'matches_reference_om31_embedded','rejects_embedded_bounds_shapes_and_caps',
+            'rejects_embedded_high_cap_and_reserved_equations','rejects_embedded_alias_and_truncated_cap_equations')]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
@@ -622,7 +670,7 @@ def field_sources(root):
     print('gate lookup producer: actual A3/A9 production, independent bytes and observed usage; no lookup verification or NC credit')
     print('gate lookup closed: actual A3/Table/A9 consumers, opaque records, native controls and independent failure/usage parity; no profile credit')
     print('gate requant schema: 18 complete independent layouts; generated CQIS records, shared tails and zero caps; no proof or NC credit')
-    print('gate requant constraints: 18 complete ordered term fixtures in QM31/OM31; honest rows and equation mutations; no proof or NC credit')
+    print('gate requant constraints: 18 standalone and 20 embedded complete ordered term fixtures in QM31/OM31; physical witness bytes and equation mutations; no proof or NC credit')
     print('gate requant codec: 8 independent expected frames, outer costs and untrusted wire decisions; genuine source handles and cumulative caps; no proof or NC credit')
     print('gate requant closed: native witness/producer and actual A5/A3/A7/A1/A9 consumers, opaque borrowed records, native controls and pinned independent full-wire/producer-usage/record/import/failure/continuation parity; complete resource measurements separate; no profile or inference completion')
 
@@ -1342,7 +1390,7 @@ def controls_layout(root):
                     'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
                     'src/lookup.rs', 'src/lookup_composer.rs', 'src/lookup_byte_range.rs', 'examples/support/lookup_verifier.rs',
                     'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
-                    'requant_schema.py', 'src/requant.rs', 'src/requant_composer.rs',
+                    'requant_schema.py', 'embedded_requant.py', 'src/requant.rs', 'src/requant_composer.rs',
                     'requant/witness_fixtures.py', 'requant/input_padding_fixture.py', 'requant/coefficients.rs',
                     'requant/producer.rs','requant/records.rs','requant/production_fixtures.py',
                     'requant/reference.py','requant/lookup_reference.py','requant/protocol_reference.py',
