@@ -1,10 +1,14 @@
 """Allocation bookkeeping checks only; these are not protocol controls."""
 from pathlib import Path
 import gzip
+import importlib.util
 import tempfile
 import unittest
 
-from bench.malloc_trace import summarize
+SPEC = importlib.util.spec_from_file_location('malloc_trace', Path(__file__).resolve().parents[2]/'bench/malloc_trace.py')
+TRACE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(TRACE)
+summarize = TRACE.summarize
 
 
 class MallocTraceTests(unittest.TestCase):

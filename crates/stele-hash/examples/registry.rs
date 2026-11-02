@@ -1,4 +1,4 @@
-//! RFC-0012 A1 — emit the validated canonical registry for transcript construction.
+//! RFC-0012 A1/A14 — emit the validated canonical registry for transcript construction.
 use stele_hash::{registry, LabelKind, LossLine};
 fn main() -> Result<(), String> {
     for entry in registry().map_err(|error| format!("{error:?}"))? {
@@ -10,6 +10,7 @@ fn main() -> Result<(), String> {
         let loss = match entry.loss {
             None => "-",
             Some(LossLine::Sc) => "SC",
+            Some(LossLine::Sz) => "SZ",
             Some(LossLine::Rlc) => "RLC",
             Some(LossLine::PcsTensor) => "PCS_TENSOR",
             Some(LossLine::PcsQuery) => "PCS_QUERY",
