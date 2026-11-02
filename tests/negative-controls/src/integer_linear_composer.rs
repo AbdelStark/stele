@@ -15,6 +15,7 @@ pub(super) enum Attack {
     ReplayResponses,
     SwapWeights(u8),
     OmitWeight(u8),
+    WrongPlane,
 }
 pub(super) struct Packet<K: ChallengeField> {
     pub wire: Vec<u8>,
@@ -305,8 +306,28 @@ where
         let mut weights = vec![K::from_i64(0); schema.rows()];
         let mut value = K::from_i64(0);
         for ((row, claim), eta) in rows.iter().zip(&values).zip(eta) {
-            weights[*row] = eta;
+            let row = if attack == Attack::WrongPlane && group == 2 && *row == 4 {
+                4 + schema.semantic().values()[0].value().start
+            } else {
+                *row
+            };
+            weights[row] = eta;
             value = value + eta * *claim;
+        }
+        let columns = mm::weights(&point);
+        if attack == Attack::WrongPlane && group == 2 {
+            let row = stele_pcs::RetainedRow::new(advice, &weights)
+                .expect("actual wrong-plane producer row");
+            let actual = row
+                .values()
+                .iter()
+                .zip(&columns)
+                .fold(K::from_i64(0), |sum, (v, b)| sum + *v * *b);
+            assert!(
+                actual != value,
+                "the fixed wrong plane must alter this functional"
+            );
+            value = actual;
         }
         group_offsets[usize::from(group)] = wire.len();
         group_prefix[usize::from(group)] = t.usage();
@@ -318,7 +339,7 @@ where
                     Functional {
                         id: base + 3072 + u64::from(group),
                         a: &weights,
-                        b: &mm::weights(&point),
+                        b: &columns,
                         value,
                     },
                 )

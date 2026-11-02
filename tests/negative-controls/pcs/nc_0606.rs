@@ -7,3 +7,8 @@ fn rejects_nc_0606() {
     stele_negative_controls::matmul::run(606).expect("closed matmul extension");
     stele_negative_controls::requant::run(309).expect("closed Requant extension");
 }
+
+#[test]
+fn rejects_integer_linear_replaced_source_context() {
+    stele_negative_controls::integer_linear::run(606).expect("genuine original range contexts");
+}

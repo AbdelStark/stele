@@ -51,6 +51,7 @@ where
 {
     for repetitions in 1..=2 {
         let cases = match id {
+            606 => vec![([0; 4], Some(0)), ([0; 4], Some(1))],
             306 | 611 => vec![([0, 1, 0, 1], Some(0)), ([0, 1, 0, 1], Some(1))],
             307 => vec![
                 ([0, 1, 0, 1], Some(0)),
@@ -212,7 +213,130 @@ where
                 .expect("valid fixed fixture")
                 .0;
             let refs: Vec<_> = mu.iter().collect();
-            if matches!(id, 306 | 307 | 611 | 802 | 610) {
+            if id == 606 {
+                let side = side.expect("one original source context");
+                let changed = [M31::from_i64(129)];
+                let replacement = PreparedSource::<K>::new(
+                    101 + side as u64,
+                    0,
+                    0,
+                    1 + side as u8,
+                    &changed,
+                    &mut HashUsage::default(),
+                )
+                .expect("genuine replacement source");
+                let owner = verify_certificate(
+                    *replacement.source(),
+                    &replacement.certificate().expect("genuine packet").0,
+                )
+                .expect("genuine replacement owner")
+                .0;
+                let ids = if side == 0 { [111, 112] } else { [121, 122] };
+                let range_descriptor = byte_range::Descriptor::new(
+                    &owner,
+                    9 + side as u64,
+                    &ids[..repetitions],
+                    LIMITS,
+                )
+                .expect("same fixed whole-source range policy");
+                let range_proof = range(&range_descriptor, &replacement);
+                let range_mu = range_descriptor
+                    .register_multiplicities(&range_proof, usize::MAX)
+                    .expect("genuine replacement range imports")
+                    .0;
+                let range_refs: Vec<_> = range_mu.iter().collect();
+                let replacement_range = range_descriptor
+                    .verify(&range_refs, &range_proof)
+                    .expect("actual replacement byte-range event");
+                let baseline = RangeWitness { ranges: [&xr, &wr] };
+                check_control(
+                    &baseline,
+                    &ChangeRange {
+                        side,
+                        replacement: &replacement_range,
+                    },
+                    |changed: &RangeWitness<'_, K>| -> Result<_, String> {
+                        let statement = linear::Statement {
+                            originals: changed.ranges,
+                            ..expected
+                        };
+                        let descriptor = linear::Descriptor::new(statement, &ca, LIMITS, MATMUL)
+                            .expect("genuine range context");
+                        // Only the original range handle changes. The affected response owner
+                        // remains the original prepared source; every dependent message is rebuilt.
+                        let packet = composer::compose(
+                            &descriptor,
+                            &statement,
+                            &schema,
+                            [&px, &pw],
+                            &pa,
+                            &ca,
+                            &certificate,
+                            b"RFC0024/complete-control/v1",
+                            composer::Attack::Honest,
+                            None,
+                            None,
+                        );
+                        assert!(packet.rows.iter().flatten().all(|v| *v == K::from_i64(128)));
+                        assert!(packet.matmul.final_values[..2]
+                            .iter()
+                            .all(|v| *v == K::from_i64(0)));
+                        if changed == &baseline {
+                            assert_eq!(packet.wire, honest);
+                        }
+                        Ok((*changed, packet))
+                    },
+                    |(changed, packet)| {
+                        let statement = linear::Statement {
+                            originals: changed.ranges,
+                            ..expected
+                        };
+                        let descriptor = linear::Descriptor::new(statement, &ca, LIMITS, MATMUL)
+                            .expect("expected genuine source context");
+                        let owners = descriptor
+                            .register_multiplicities(&packet.wire, usize::MAX)
+                            .expect("actual advice multiplicity imports")
+                            .0;
+                        let refs: Vec<_> = owners.iter().collect();
+                        let mut t = transcript();
+                        descriptor
+                            .verify(&mut t, &refs, &packet.wire)
+                            .map(|_| ())
+                            .map_err(|failure| {
+                                assert_eq!(failure.usage.transcript, t.usage());
+                                assert_eq!(
+                                    failure.usage.transcript,
+                                    packet.original_prefix[side][1]
+                                );
+                                let mut hashes = descriptor.max_local_hashes();
+                                for range in &changed.ranges[side..] {
+                                    let source = range.original().record().source();
+                                    hashes -= u64::from(source.queries(ProofKind::Opening))
+                                        * (1 + source.path_height() as u64);
+                                }
+                                hashes += 1 + changed.ranges[side]
+                                    .original()
+                                    .record()
+                                    .source()
+                                    .path_height()
+                                    as u64;
+                                assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
+                                failure.cause
+                            })
+                    },
+                    linear::Error::Matmul(matmul::Error::Pcs(stele_pcs::Error::Merkle(
+                        stele_hash::merkle::Error::RootMismatch,
+                    ))),
+                )
+                .map_err(|e| {
+                    format!(
+                        "NC-0606 K{}, r{repetitions}, source {side}: {e:?}",
+                        <K as CodeField>::DEGREE
+                    )
+                })?;
+                continue;
+            }
+            if matches!(id, 306 | 307 | 312 | 611 | 802 | 610) {
                 use composer::Attack;
                 let compose = |attack: Attack,
                                template: Option<&composer::Packet<K>>,
@@ -373,56 +497,62 @@ where
                     }
                     continue;
                 }
-                if id == 610 {
+                if id == 610 || id == 312 {
                     let width = core::mem::size_of::<K>();
                     let opening_hashes = |s: &stele_pcs::Source<K>| {
                         u64::from(s.queries(ProofKind::Opening)) * (1 + s.path_height() as u64)
                     };
-                    for phase in 0..4 {
-                        let group = usize::from(phase.max(1) - 1);
-                        for attack in [Attack::SwapWeights(phase), Attack::OmitWeight(phase)] {
-                            let other = compose(attack, None, None);
-                            let at = baseline.group_offsets[group] + 1;
-                            let replacement = other.group_offsets[group] + 1;
-                            check_proof_control(
-                                || Ok::<_, String>(honest.clone()),
-                                &Cell {
-                                    at,
-                                    value: other.wire[replacement..replacement + width].to_vec(),
-                                },
-                                |proof| {
-                                    let mut t = transcript();
-                                    d.verify(&mut t, &refs, proof)
-                                        .map(|_| ())
-                                        .map_err(|failure| {
-                                            assert_eq!(failure.usage.transcript, t.usage());
-                                            let mut exact = baseline.group_prefix[group];
-                                            exact.hash_evaluations += 2;
-                                            exact.state_updates += 2;
-                                            assert_eq!(
-                                                failure.usage.transcript, exact,
-                                                "no affected-group query"
-                                            );
-                                            assert_eq!(
-                                                failure.usage.non_transcript.hash_evaluations,
-                                                d.max_local_hashes()
-                                                    - (3 - group as u64)
-                                                        * opening_hashes(pa.source())
-                                                    - opening_hashes(px.source())
-                                                    - opening_hashes(pw.source())
-                                            );
-                                            failure.cause
-                                        })
-                                },
-                                linear::Error::Pcs(stele_pcs::Error::ValueMismatch),
+                    let variants = if id == 312 {
+                        vec![(2, Attack::WrongPlane)]
+                    } else {
+                        (0u8..4)
+                            .flat_map(|phase| {
+                                [Attack::SwapWeights(phase), Attack::OmitWeight(phase)]
+                                    .map(|attack| (usize::from(phase.max(1) - 1), attack))
+                            })
+                            .collect()
+                    };
+                    for (group, attack) in variants {
+                        let other = compose(attack, None, None);
+                        let at = baseline.group_offsets[group] + 1;
+                        let replacement = other.group_offsets[group] + 1;
+                        check_proof_control(
+                            || Ok::<_, String>(honest.clone()),
+                            &Cell {
+                                at,
+                                value: other.wire[replacement..replacement + width].to_vec(),
+                            },
+                            |proof| {
+                                let mut t = transcript();
+                                d.verify(&mut t, &refs, proof)
+                                    .map(|_| ())
+                                    .map_err(|failure| {
+                                        assert_eq!(failure.usage.transcript, t.usage());
+                                        let mut exact = baseline.group_prefix[group];
+                                        exact.hash_evaluations += 2;
+                                        exact.state_updates += 2;
+                                        assert_eq!(
+                                            failure.usage.transcript, exact,
+                                            "no affected-group query"
+                                        );
+                                        assert_eq!(
+                                            failure.usage.non_transcript.hash_evaluations,
+                                            d.max_local_hashes()
+                                                - (3 - group as u64) * opening_hashes(pa.source())
+                                                - opening_hashes(px.source())
+                                                - opening_hashes(pw.source())
+                                        );
+                                        failure.cause
+                                    })
+                            },
+                            linear::Error::Pcs(stele_pcs::Error::ValueMismatch),
+                        )
+                        .map_err(|e| {
+                            format!(
+                                "NC-{id:04} K{}, r{repetitions}, {attack:?}: {e:?}",
+                                <K as CodeField>::DEGREE
                             )
-                            .map_err(|e| {
-                                format!(
-                                    "NC-0610 K{}, r{repetitions}, {attack:?}: {e:?}",
-                                    <K as CodeField>::DEGREE
-                                )
-                            })?;
-                        }
+                        })?;
                     }
                     continue;
                 }
@@ -497,7 +627,7 @@ where
                     .expect("valid fixed fixture");
             let start = honest.len() - suffix;
             let (at, value, expected) = match id {
-                316 => {
+                314 | 316 => {
                     let q = schema.semantic().values()[2].value().len();
                     let zero_end = start
                         - 3 * pa
@@ -506,11 +636,51 @@ where
                             .expect("valid fixed fixture")
                         - width * (q + 2);
                     let zero_start = zero_end - width * (schema.rows() + 1);
-                    let ordinal = 1 + schema.semantic().allocated_rows() + 7;
+                    let ordinal = if id == 314 {
+                        assert!(schema.rows() > schema.allocated_rows());
+                        schema.rows()
+                    } else {
+                        1 + schema.semantic().allocated_rows() + 7
+                    };
                     assert_eq!(
                         &honest[zero_start + ordinal * width..zero_start + (ordinal + 1) * width],
                         K::from_i64(0).to_le_bytes().as_ref()
                     );
+                    if id == 314 {
+                        let mut values: Vec<K> = honest[zero_start..zero_end]
+                            .chunks_exact(width)
+                            .map(|raw| {
+                                K::from_le_bytes(K::Bytes::try_from(raw).ok().expect("field width"))
+                                    .expect("canonical finals")
+                            })
+                            .collect();
+                        values[ordinal] = K::from_i64(1);
+                        let constraints = schema
+                            .constraints::<K>()
+                            .expect("actual embedded equations");
+                        let failed: Vec<_> = constraints
+                            .equations()
+                            .iter()
+                            .filter(|equation| {
+                                equation.iter().fold(K::from_i64(0), |sum, term| {
+                                    sum + term
+                                        .factors
+                                        .iter()
+                                        .fold(term.coefficient, |product, factor| {
+                                            product * values[*factor as usize]
+                                        })
+                                }) != K::from_i64(0)
+                            })
+                            .collect();
+                        assert_eq!(
+                            failed.len(),
+                            1,
+                            "only the physical reserved-plane equation fails"
+                        );
+                        assert_eq!(failed[0].len(), 1);
+                        assert_eq!(failed[0][0].coefficient, K::from_i64(1));
+                        assert_eq!(failed[0][0].factors, vec![ordinal as u32]);
+                    }
                     (
                         zero_start + ordinal * width,
                         K::from_i64(1),
@@ -542,6 +712,19 @@ where
                     let mut t = transcript();
                     d.verify(&mut t, &refs, proof).map(|_| ()).map_err(|f| {
                         assert_eq!(f.usage.transcript, t.usage());
+                        if id == 314 || id == 316 {
+                            let opening_hashes = |s: &stele_pcs::Source<K>| {
+                                u64::from(s.queries(ProofKind::Opening))
+                                    * (1 + s.path_height() as u64)
+                            };
+                            assert_eq!(
+                                f.usage.non_transcript.hash_evaluations,
+                                d.max_local_hashes()
+                                    - 3 * opening_hashes(pa.source())
+                                    - opening_hashes(px.source())
+                                    - opening_hashes(pw.source())
+                            );
+                        }
                         if id == 318 {
                             let original_hashes: u64 = [px.source(), pw.source()]
                                 .iter()
@@ -598,4 +781,47 @@ impl<K: ChallengeField + Eq + core::fmt::Debug> ProverHook<stele_sumcheck::Proof
 enum ChainError {
     Linear(linear::Error),
     Sumcheck(stele_sumcheck::Error),
+}
+
+#[derive(Clone, Copy)]
+struct RangeWitness<'a, K: ChallengeField> {
+    ranges: [&'a byte_range::ByteRange<'a, K>; 2],
+}
+impl<K: ChallengeField> PartialEq for RangeWitness<'_, K> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ranges
+            .iter()
+            .zip(other.ranges)
+            .all(|(a, b)| core::ptr::eq(*a, b))
+    }
+}
+struct ChangeRange<'a, K: ChallengeField> {
+    side: usize,
+    replacement: &'a byte_range::ByteRange<'a, K>,
+}
+impl<'a, K: ChallengeField> ProverHook<RangeWitness<'a, K>> for ChangeRange<'a, K> {
+    fn tamper(&self, witness: &mut RangeWitness<'a, K>) {
+        let before = witness.ranges;
+        let old = before[self.side].original().record().source();
+        let new = self.replacement.original().record().source();
+        assert_eq!(old.descriptor().id, new.descriptor().id);
+        assert_eq!(
+            (old.rows(), old.columns(), old.code().code_id()),
+            (new.rows(), new.columns(), new.code().code_id())
+        );
+        assert_eq!(
+            before[self.side].lookup().parameters().id,
+            self.replacement.lookup().parameters().id
+        );
+        assert_ne!(old.root(), new.root());
+        witness.ranges[self.side] = self.replacement;
+        assert_eq!(
+            before
+                .iter()
+                .zip(witness.ranges)
+                .filter(|(a, b)| !core::ptr::eq(**a, *b))
+                .count(),
+            1
+        );
+    }
 }

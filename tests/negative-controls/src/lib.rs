@@ -99,7 +99,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 312,
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
-        run: || requant::run(312),
+        run: || {
+            requant::run(312)?;
+            integer_linear::run(312)
+        },
     },
     catalog::RegisteredControl {
         id: 313,
@@ -111,7 +114,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 314,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch / FinalEvaluationMismatch",
-        run: || requant::run(314),
+        run: || {
+            requant::run(314)?;
+            integer_linear::run(314)
+        },
     },
     catalog::RegisteredControl {
         id: 306,
@@ -270,7 +276,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             pcs::run(606)?;
             pcs_opening::run(606)?;
             matmul::run(606)?;
-            requant::run(309)
+            requant::run(309)?;
+            integer_linear::run(606)
         },
     },
     catalog::RegisteredControl {

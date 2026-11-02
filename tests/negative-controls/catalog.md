@@ -29,9 +29,9 @@
 | NC-0309 | Requant advice identity | 0023 §6 | separately verified advice handle under unchanged packet | `CertificateContext` | done |
 | NC-0310 | Requant full-width result | 0023 §6 | t=65537 and q=1 retain valid low division columns | `FinalEvaluationMismatch` | done |
 | NC-0311 | Requant carry | 0023 §6 | one interior carry exceeds its cap or changes a column | `FinalEvaluationMismatch` | done |
-| NC-0312 | Requant plane mapping | 0023 §6 | one producer group row uses the wrong plane | `ValueMismatch` | done |
+| NC-0312 | Requant plane mapping | 0023 §6, 0024 §6 | one producer group row uses the wrong plane, including the embedded output group | `ValueMismatch` | done |
 | NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 | `FinalEvaluationMismatch` | done |
-| NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | done |
+| NC-0314 | Requant padding | 0023 §6, 0024 §6 | one padded or reserved-plane byte becomes one, including an embedded physical reserved plane | `RoundSumMismatch / FinalEvaluationMismatch` | done |
 | NC-0315 | centered original bytes | 0024 §6 | one original byte256 under a zero opposite signed factor, fixed negative statement | `RootMismatch` | done |
 | NC-0316 | centered accumulator cap | 0024 §6 | one new high-cap slack A3 final becomes one | `FinalEvaluationMismatch` | done |
 | NC-0317 | centered matmul join | 0024 §6 | one scalar signed-matmul original final changes under nonzero opposite factor | `FinalEvaluationMismatch` | done |
@@ -60,7 +60,7 @@
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
-| NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet | `RootMismatch / CertificateContext` | done |
+| NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6, 0024 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet or one original range handle with responses from the old source | `RootMismatch / CertificateContext` | done |
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
@@ -149,3 +149,13 @@ authentic-path attempt. One changed final, including non-Boolean layer/inner
 restoration, reaches ValueMismatch without an affected-source query. Accepted
 complete native baselines and exact failure prefixes are required for all 32
 variants; W failures consume X first.
+
+The centered NC-0606 extension substitutes one genuinely verified original
+range handle, rebuilds dependent proof messages, and retains the old source's
+responses. Both sources, fields and repetition counts reach RootMismatch on
+the first affected path, with exact transcript and local-hash prefixes.
+NC-0312 changes one opening-row value derived from a wrong output-group plane
+and reaches ValueMismatch before queries. NC-0314 changes one reserved-plane
+A3 final; exactly its physical zero equation fails, reaching
+FinalEvaluationMismatch. These 16 variants require accepted complete native
+baselines and add no catalog IDs or complete resource evidence.
