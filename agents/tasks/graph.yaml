@@ -178,7 +178,7 @@ tasks:
   - RFC-0020 §5
   skill: rfc-author
   crate: ci
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E0-08-native-ci-split
   acceptance:
