@@ -1163,7 +1163,7 @@ tasks:
   - RFC-0020 A8
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01d3-requant-codec
   acceptance:
