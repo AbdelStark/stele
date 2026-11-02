@@ -1150,6 +1150,31 @@ tasks:
   - independent checked-in Python/native complete ordered term parity in both fields on boundary and seeded cases; direct honest and one-value-tamper equation tests cover structural regressions without native proof-control credit
   - exact API and evidence gates admit only the closed compiler; no arbitrary polynomial constructor, transcript challenge, accepting proof record, NC completion or complete resource-ledger credit
   - all E7-01d descriptor, source consumer, control, complete wire/record/Usage/continuation parity and complete resource criteria remain required
+- id: E7-01d3
+  epic: E7
+  title: Native Requant expected statement and complete proof codec
+  depends:
+  - E7-01d2
+  rfc:
+  - RFC-0023 §1
+  - RFC-0023 §2.3
+  - RFC-0023 §2.4
+  - RFC-0023 §4
+  - RFC-0020 A8
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E7-01d3-requant-codec
+  acceptance:
+  - validate the independently expected statement, fixed source geometry, parameters, stage and all derived ids using genuine caller-owned input and advice certificate handles; an expected advice Source helper grants no acceptance
+  - encode exact RequantStatement and complete ordered RequantConstraints bytes in both fields; derive the actual output A1 structure with canonical input and term order; retain one common constraint input roster and every zero or repeated factor
+  - construct both whole-physical-source A5 descriptors from the actual generated range_8 Table, fixed all-one selectors and derived multiplicity layouts; reuse child validation without fabricated handles or self-referential descriptor ownership
+  - derive the complete exact proof partition and perform shape, version and canonical arithmetic preflight through actual child codecs; leave A9 response columns opaque until authentication and preserve each child's context and packet-identity timing
+  - check cumulative padded-position, proof-byte, public-payload and local-hash maxima before replay with checked arithmetic and fallible allocation; no claim of complete measured producer or verifier memory accounting
+  - independent Python/native expected bytes, sizes and rejection decisions on both fields and repetition counts, n=1 and non-power-of-two shapes, source and id mismatches, malformed packets and resource limits using genuine native certificates
+  - exact API and evidence gates admit checked expected metadata and untrusted wire only; no transcript challenge, accepting record, arbitrary polynomial constructor, native proof-control completion or complete resource-ledger credit
+  - all E7-01d registration, source consumer, control, complete wire/record/Usage/continuation parity and complete resource criteria remain required
 - id: E7-01d
   epic: E7
   title: Native closed integer Requant production, verification and resource ledger
@@ -1157,6 +1182,7 @@ tasks:
   - E7-01c
   - E7-01d1
   - E7-01d2
+  - E7-01d3
   rfc:
   - RFC-0023
   - RFC-0004 A1

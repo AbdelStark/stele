@@ -160,7 +160,9 @@ class ClosedStackedGateTests(unittest.TestCase):
                           ('lookup','Statement',60),('lookup','Descriptor',100)])+'\n'+'\n'.join(
                       f'test crates/stele-reductions/src/lookup_records.rs - lookup::verifier::records::LookupRecord (line {line}) - compile fail ... ok' for line in (61,66,82))+'\n'+'\n'.join(
                       f'test crates/stele-reductions/src/matmul.rs - matmul::Record (line {line}) - compile fail ... ok'
-                      for line in (64,69,82))+'\n'
+                      for line in (64,69,82))+'\n'+'\n'.join(
+                      f'test crates/stele-reductions/src/requant_codec.rs - requant::codec::Descriptor (line {line}) - compile fail ... ok'
+                      for line in (35,43))+'\n'
                       'test crates/stele-reductions/src/matmul.rs - matmul::Record (line 95) ... ok',
             '\n'.join(f'test {name} ... ok' for name in ('accepts_qm31_certified_stacked_sources',
                 'accepts_om31_certified_stacked_sources', 'rejects_qm31_malformed_certified_stacked_sources',
@@ -175,7 +177,9 @@ class ClosedStackedGateTests(unittest.TestCase):
                       + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
                          'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]
                       + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
-                         'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]),
+                         'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]
+                      + [f'test requant::codec::tests::{n} ... ok' for n in ('matches_reference_qm31_codec',
+                         'matches_reference_om31_codec','rejects_codec_statement_and_sources')]),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
             '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
@@ -240,6 +244,13 @@ class ClosedStackedGateTests(unittest.TestCase):
             altered = self.outputs.copy(); altered[2] = output
             with self.assertRaisesRegex(ValueError, 'missing Record boundary'):
                 self.run_gate(altered)
+        requant_docs = [line for line in self.outputs[2].splitlines() if ' - requant::codec::Descriptor (' in line]
+        self.assertEqual(len(requant_docs), 2)
+        for output in (self.outputs[2].replace(requant_docs[0], requant_docs[1], 1),
+                       self.outputs[2].replace(' - requant::codec::Descriptor (', ' - unrelated::Descriptor (')):
+            altered = self.outputs.copy(); altered[2] = output
+            with self.assertRaisesRegex(ValueError, 'missing Descriptor boundary'):
+                self.run_gate(altered)
         for old, new in (('8 complete', '6 complete'), ('QM31/OM31', 'QM31'),
                          ('cb8e5b658', '000000000'), ('ce40cdb3', '00000000'), ('40 complete', '38 complete'),
                          ('8 accepts and 32 rejects', '40 accepts'), ('records,', ''), ('failure usage', 'usage'),
@@ -290,7 +301,8 @@ class ClosedStackedGateTests(unittest.TestCase):
 
     def test_rejects_unreviewed_api_conversions_and_dependencies(self):
         for name in ('src/requant.rs', 'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt',
-                     'src/requant_constraints.rs', 'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt'):
+                     'src/requant_constraints.rs', 'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
+                     'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt'):
             path = self.root/'crates/stele-reductions'/name
             saved = path.read_bytes(); path.unlink()
             with mock.patch.object(gate.subprocess, 'run') as run:
@@ -305,6 +317,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/requant_constraints.rs','\npub fn from_terms() {}\n'),
             ('src/requant_constraints.rs','\nimpl<K> From<Vec<Term<K>>> for Constraints<K> {}\n'),
             ('src/requant_constraints.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/requant_codec.rs','\npub fn from_terms() {}\n'),
+            ('src/requant_codec.rs','\nimpl From<bool> for Descriptor {}\n'),
+            ('src/requant_codec.rs','\ninclude!("unchecked.rs");\n'),
             ('src/matmul.rs','\npub fn prove() {}\n'),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> Record<'_, K> { pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n"),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> From<bool> for Record<'_, K> { fn from(_: bool) -> Self { todo!() } }\n"),
@@ -360,6 +375,13 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('requant_constraints.rs', '    equations: Vec<Vec<Term<K>>>,', '    pub equations: Vec<Vec<Term<K>>>,'),
             ('requant_constraints.rs', 'pub fn equations(&self) -> &[Vec<Term<K>>]', 'pub fn equations(&mut self) -> &mut [Vec<Term<K>>]'),
             ('requant_constraints.rs', 'constraints<K: ChallengeField>', 'constraints<K: stele_field::Field>'),
+            ('requant_codec.rs', '    output: Instance<K>,', '    pub output: Instance<K>,'),
+            ('requant_codec.rs', "pub schema: &'a Schema,", 'pub schema: bounds::Record,'),
+            ('requant_codec.rs', "pub input: &'cert VerifiedCertificate<K>,", 'pub input: Source<K>,'),
+            ('requant_codec.rs', "advice: &'cert VerifiedCertificate<K>,", 'advice: Source<K>,'),
+            ('requant_codec.rs', "pub point: &'a [K],", "pub point: &'a mut [K],"),
+            ('requant_codec.rs', "K: ChallengeField> Descriptor", "K: stele_field::Field> Descriptor"),
+            ('requant_codec.rs', 'pub fn preflight(&self, bytes: &[u8])', 'pub fn preflight(&mut self, bytes: &[u8])'),
             ('matmul.rs', 'mod producer;', 'pub mod producer;'),
             ('matmul.rs', 'pub use producer::{prove, prove_measured, Work};', 'pub use producer::*;'),
             ('matmul.rs', 'pub context_bytes: usize,', 'pub context_bytes: ScRecord,'),

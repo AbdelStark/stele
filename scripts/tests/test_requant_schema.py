@@ -20,6 +20,9 @@ class RequantSchemaTests(unittest.TestCase):
     def test_matches_reference_constraint_fixtures(self):
         self.assertEqual((ROOT/'crates/stele-reductions/tests/fixtures/requant-constraints.txt').read_text(), REF.constraint_fixtures())
 
+    def test_matches_reference_codec_fixtures(self):
+        self.assertEqual((ROOT/'crates/stele-reductions/tests/fixtures/requant-codec.txt').read_text(), REF.codec_fixtures())
+
     def test_rejects_invalid_parameters(self):
         for params in ((0,0,8), (65536,0,8), (1,63,8), (1,0,32)):
             with self.subTest(params=params), self.assertRaisesRegex(ValueError, 'Spec'):
