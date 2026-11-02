@@ -2,6 +2,7 @@
 import importlib.util
 from contextlib import redirect_stdout
 import io
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -148,6 +149,12 @@ class RequantFixtureTests(unittest.TestCase):
             for name in ('witness_fixtures.py', 'input_padding_fixture.py'):
                 (suite/'requant').mkdir(exist_ok=True)
                 shutil.copy(ROOT/'tests/negative-controls/requant'/name, suite/'requant'/name)
+            shutil.copytree(ROOT/'tests/negative-controls/fixtures/requant-production',suite/'fixtures/requant-production')
+            for name in ('requant_schema.py','requant/production_fixtures.py'):
+                shutil.copy(ROOT/'tests/negative-controls'/name,suite/name)
+            for name in ('encoding.py','limbs.py','norm_bounds.py','requant.py'):
+                target=root/'research/cqis-bounds'/name;target.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copy(ROOT/'research/cqis-bounds'/name,target)
             gate.requant_fixtures(root)
             for name in ('manifest.json', 'scalar-K4.bin', 'input-padding-K8.json'):
                 path = fixtures/name; saved = path.read_bytes(); path.unlink()
@@ -166,6 +173,22 @@ class RequantFixtureTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'inventory'):
                 gate.requant_fixtures(root)
             path.unlink(); path.write_bytes(saved)
+            production=suite/'fixtures/requant-production'
+            for name in ('manifest.json','usage.json','positive-h-8.bin','positive-h-16.bin'):
+                path=production/name;saved=path.read_bytes();path.unlink()
+                with self.subTest(missing_production=name),self.assertRaisesRegex(ValueError,'not wired'):gate.requant_fixtures(root)
+                path.write_bytes(saved+b'0')
+                with self.subTest(altered_production=name),self.assertRaisesRegex(ValueError,'not wired'):gate.requant_fixtures(root)
+                path.unlink();path.symlink_to(outside)
+                with self.subTest(escaping_production=name),self.assertRaisesRegex(ValueError,'not wired'):gate.requant_fixtures(root)
+                path.unlink();path.write_bytes(saved)
+            extra=production/'unlisted.bin';extra.write_bytes(b'0')
+            with self.assertRaisesRegex(ValueError,'inventory'):gate.requant_fixtures(root)
+            extra.unlink()
+            for name in ('tests/negative-controls/requant/production_fixtures.py','research/cqis-bounds/requant.py'):
+                path=root/name;saved=path.read_bytes();path.write_bytes(saved+b'\n')
+                with self.assertRaisesRegex(ValueError,'source'):gate.requant_fixtures(root)
+                path.write_bytes(saved)
             path = suite/'requant/input_padding_fixture.py'; path.write_bytes(path.read_bytes()+b'\n')
             with self.assertRaisesRegex(ValueError, 'generator'):
                 gate.requant_fixtures(root)
@@ -181,7 +204,7 @@ class ClosedStackedGateTests(unittest.TestCase):
         oracle.mkdir(parents=True)
         for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py', 'examples/support/lookup_verifier.rs',
                      'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
-                     'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'src/requant.rs', 'src/requant_composer.rs'):
+                     'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'requant/producer.rs', 'requant/records.rs', 'src/requant.rs', 'src/requant_composer.rs'):
             (oracle/name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT/'tests/negative-controls'/name, oracle/name)
         self.outputs = [
@@ -217,7 +240,9 @@ class ClosedStackedGateTests(unittest.TestCase):
                       + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
                          'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]
                       + [f'test requant::codec::tests::{n} ... ok' for n in ('matches_reference_qm31_codec',
-                         'matches_reference_om31_codec','rejects_codec_statement_and_sources')]),
+                         'matches_reference_om31_codec','rejects_codec_statement_and_sources')]
+                      + [f'test requant::witness::tests::{n} ... ok' for n in ('matches_reference_frozen_witness_bytes',
+                         'accepts_witness_shift_width_sign_and_padding_boundaries','rejects_witness_overflow_and_resource_caps')]),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
             '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
@@ -232,7 +257,8 @@ class ClosedStackedGateTests(unittest.TestCase):
                       'test matches_reference_requant_full_wire_qm31 ... ok\n'
                       'test matches_reference_requant_full_wire_om31 ... ok\n'
                       'test rejects_requant_scoped_cqis_bindings ... ok\n'
-                      'test rejects_requant_output_coefficient_at_actual_a7 ... ok',
+                      'test rejects_requant_output_coefficient_at_actual_a7 ... ok\n'
+                      'test rejects_requant_producer_late_arithmetic_with_exact_usage ... ok',
             'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
             'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
             'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '
@@ -267,6 +293,17 @@ class ClosedStackedGateTests(unittest.TestCase):
         self.assertEqual([c[i+1] for c in commands for i,arg in enumerate(c) if arg == '--test'],
                          ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul','matmul_producer']+
                          [f'nc-{i:04}' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314)]+['requant-verifier'])
+
+    def test_rejects_every_broadened_requant_sibling_visibility(self):
+        crate=self.root/'crates/stele-reductions';path=crate/'src/requant_verifier.rs';saved=path.read_text()
+        occurrences=list(re.finditer(r'pub\(super\)',saved));self.assertEqual(len(occurrences),9)
+        self.assertTrue(gate.requant_verifier_api(crate))
+        for occurrence in occurrences:
+            for replacement in ('pub(crate)','pub'):
+                path.write_text(saved[:occurrence.start()]+replacement+saved[occurrence.end():])
+                with self.subTest(offset=occurrence.start(),visibility=replacement):
+                    self.assertFalse(gate.requant_verifier_api(crate))
+        path.write_text(saved)
 
     def test_rejects_missing_fixture_manifest_before_execution(self):
         with mock.patch.object(gate.subprocess, 'run') as run:
@@ -346,7 +383,7 @@ class ClosedStackedGateTests(unittest.TestCase):
     def test_rejects_missing_lookup_oracle_before_execution(self):
         for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py', 'examples/support/lookup_verifier.rs',
                      'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
-                     'requant_schema.py'):
+                     'requant_schema.py','requant/producer.rs','requant/records.rs'):
             path = self.root/'tests/negative-controls'/name
             saved = path.read_bytes(); path.unlink()
             with mock.patch.object(gate.subprocess, 'run') as run:
@@ -358,7 +395,8 @@ class ClosedStackedGateTests(unittest.TestCase):
     def test_rejects_unreviewed_api_conversions_and_dependencies(self):
         for name in ('src/requant.rs', 'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt',
                      'src/requant_constraints.rs', 'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
-                     'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt', 'src/requant_verifier.rs'):
+                     'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt', 'src/requant_verifier.rs',
+                     'src/requant_witness.rs','src/requant_witness_tests.rs','src/requant_producer.rs'):
             path = self.root/'crates/stele-reductions'/name
             saved = path.read_bytes(); path.unlink()
             with mock.patch.object(gate.subprocess, 'run') as run:
@@ -367,6 +405,11 @@ class ClosedStackedGateTests(unittest.TestCase):
                 run.assert_not_called()
             path.write_bytes(saved)
         for name, addition in (
+            ('src/requant_producer.rs','\nimpl From<ProverWork> for bool {}\n'),
+            ('src/requant_producer.rs','\npub fn accept_unchecked() {}\n'),
+            ('src/requant_witness.rs','\nimpl From<Witness> for bool {}\n'),
+            ('src/requant_verifier.rs','\npub(super) fn extra() {}\n'),
+            ('src/requant.rs','\npub use codec::verifier::GroupWeights;\n'),
             ('src/requant_verifier.rs',"\nimpl<K: ChallengeField> Record<'_, K> { pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n"),
             ('src/requant_verifier.rs',"\nimpl<K: ChallengeField> From<bool> for Record<'_, K> {}\n"),
             ('src/requant_verifier.rs','\ninclude!("unchecked.rs");\n'),
@@ -426,6 +469,13 @@ class ClosedStackedGateTests(unittest.TestCase):
                 run.assert_not_called()
             path.write_text(saved)
         for name, old, new in (
+            ('requant_producer.rs','pub group_coefficients_bytes: [[usize; 3]; 3]','pub group_coefficients_bytes: [[usize; 3]; 2]'),
+            ('requant_producer.rs','pub fn prove_measured','pub fn from_work'),
+            ('requant_verifier.rs','pub group_coefficients_bytes: [[usize; 3]; 3]','pub group_coefficients_bytes: [[usize; 3]; 2]'),
+            ('requant_verifier.rs','pub fn verify_measured','pub fn from_work'),
+            ('requant_verifier.rs',"Result<(Record<'cert, K>, Usage, VerifierWork), Failure>","Result<(Record<'static, K>, Usage, VerifierWork), Failure>"),
+            ('requant_witness.rs','pub fn owned_bytes','pub fn observed'),
+            ('requant_witness.rs','pub fn input(&self) -> &[M31]','pub fn input(&mut self) -> &mut [M31]'),
             ('requant_verifier.rs', '    phase: u8,', '    pub phase: u8,'),
             ('requant_verifier.rs', '    point: Vec<K>,', '    pub point: Vec<K>,'),
             ('requant_verifier.rs', "    lookups: [LookupRecord<'cert, K>; 2],", "    pub lookups: [LookupRecord<'cert, K>; 2],"),

@@ -111,6 +111,67 @@ fn matches_reference_zerocheck_bytes_and_accounting() {
     }
 }
 
+fn retained_point<K: ChallengeField + Eq + core::fmt::Debug>() {
+    for (m, skip) in [(0, 0), (2, 0), (2, 1)] {
+        let zero = K::from_i64(0);
+        let one = K::from_i64(1);
+        let instance = Instance {
+            id: 2301,
+            num_vars: m,
+            inputs: vec![7, 8],
+            terms: vec![
+                Term {
+                    coefficient: one,
+                    factors: vec![0, 0],
+                },
+                Term {
+                    coefficient: -one,
+                    factors: vec![1],
+                },
+            ],
+            claimed_sum: zero,
+        };
+        let values: Vec<_> = (0..1 << m).map(K::from_i64).collect();
+        let mut tables = vec![values.clone(), values.iter().map(|v| *v * *v).collect()];
+        let z = Zerocheck {
+            instance: &instance,
+            skip,
+        };
+        let (mut a, mut b) = (transcript(), transcript());
+        let ordinary = z.prove(&tables, &mut a).expect("honest relation");
+        let (retained, tail) = z
+            .prove_with_point(&tables, &mut b)
+            .expect("honest relation");
+        assert_eq!(ordinary, retained);
+        assert_eq!(a.usage(), b.usage());
+        assert_eq!(
+            a.challenge(ChallengeLabel::Sumcheck),
+            b.challenge(ChallengeLabel::Sumcheck)
+        );
+        let reduction = z
+            .verify_public(&retained, &tables, &mut transcript())
+            .expect("actual source consumers");
+        assert_eq!(tail.len(), m as usize - usize::from(skip));
+        for claim in reduction.claims {
+            assert_eq!(&claim.point[usize::from(skip)..], tail);
+        }
+        tables[1][0] = tables[1][0] + one;
+        let (mut a, mut b) = (transcript(), transcript());
+        let old = z.prove(&tables, &mut a).expect_err("one false row");
+        let new = z
+            .prove_with_point(&tables, &mut b)
+            .expect_err("one false row");
+        assert_eq!(old, new);
+        assert_eq!(a.usage(), b.usage());
+    }
+}
+
+#[test]
+fn matches_reference_retained_tail_and_failed_prefix() {
+    retained_point::<QM31>();
+    retained_point::<OM31>();
+}
+
 #[test]
 fn rejects_invalid_zero_descriptors_and_accepts_empty_relations() {
     use stele_field::Field;

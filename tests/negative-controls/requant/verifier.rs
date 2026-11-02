@@ -3,15 +3,16 @@ use serde_json::{json, Value};
 use std::{fs, path::PathBuf};
 use stele_field::{OM31, QM31};
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
-use stele_pcs::{
-    verify_certificate, CodeField, OpeningRecord, ProofKind, Source, Usage, VerifiedCertificate,
-};
+use stele_pcs::{verify_certificate, CodeField, ProofKind, Source, Usage, VerifiedCertificate};
 use stele_reductions::{
     lookup::TableField,
     requant::{Descriptor, Format, Limits, Schema, Statement},
 };
-use stele_sumcheck::{Instance, Proof, ScRecord, Term};
+use stele_sumcheck::{Instance, Proof, Term};
 mod coefficients;
+mod producer;
+mod records;
+use records::{fields, hashes, hex, lookup, opening, sc, usage};
 
 fn fixture(name: &str) -> Vec<u8> {
     fs::read(
@@ -21,9 +22,7 @@ fn fixture(name: &str) -> Vec<u8> {
     )
     .expect("valid pinned fixture")
 }
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
-}
+
 fn unhex(v: &Value) -> Vec<u8> {
     v.as_str()
         .expect("valid pinned fixture")
@@ -52,67 +51,7 @@ where
     )
     .expect("valid pinned fixture")
 }
-fn fields<K: ChallengeField>(v: &[K]) -> Value {
-    json!(v
-        .iter()
-        .map(|v| v
-            .to_le_bytes()
-            .as_ref()
-            .chunks_exact(4)
-            .map(|b| u32::from_le_bytes(b.try_into().expect("valid pinned fixture")))
-            .collect::<Vec<_>>())
-        .collect::<Vec<_>>())
-}
-fn hashes(u: HashUsage) -> Value {
-    json!({"hash_evaluations":u.hash_evaluations,"xof_requests":u.xof_requests,
-        "xof_bytes":u.xof_bytes,"state_updates":u.state_updates,
-        "candidate_words":u.candidate_words,"column_attempts":u.column_attempts})
-}
-fn usage(u: Usage) -> Value {
-    json!({"transcript":hashes(u.transcript),"non_transcript":hashes(u.non_transcript)})
-}
-fn sc(r: &ScRecord) -> Value {
-    json!({"id":r.id,"m":r.m,"degree":r.degree,"field_degree":r.field_degree,"numerator":r.numerator})
-}
-fn opening<K: ChallengeField>(o: &OpeningRecord<'_, K>) -> Value {
-    let c = o.certificate();
-    let p = c.parameters();
-    json!({"id":o.id(),"queries":o.queries(),"kind":format!("{:?}",o.kind()),"certificate":{
-        "id":hex(&c.id()),"source":hex(&c.source().bytes()),"ell":c.ell(),"degree":c.degree(),
-        "kind":format!("{:?}",c.kind()),"length":p.length,"distance":p.distance,"radius":p.radius,
-        "certificate_queries":p.certificate_queries,"opening_queries":p.opening_queries}})
-}
-fn hex_point<K: ChallengeField>(point: &[K]) -> Vec<String> {
-    point
-        .iter()
-        .map(|v| hex(v.to_le_bytes().as_ref()))
-        .collect()
-}
-fn hex_claims<K: ChallengeField>(claims: &[(u64, K)]) -> Vec<Value> {
-    claims
-        .iter()
-        .map(|(id, v)| json!([id, hex(v.to_le_bytes().as_ref())]))
-        .collect()
-}
-fn tree<K: ChallengeField>(r: &stele_lookup::fraction::Reduction<K>) -> Value {
-    let a = &r.accounting;
-    json!({"point":hex_point(&r.point),"claims":hex_claims(&r.claims),"accounting":{
-        "tree_id":a.tree_id,"field_degree":a.field_degree,"gamma":a.gamma,"fold":a.fold,
-        "layers":a.layers.iter().map(sc).collect::<Vec<_>>()}})
-}
-fn lookup<K: ChallengeField>(r: &stele_reductions::lookup::LookupRecord<'_, K>) -> Value {
-    let p = r.parameters();
-    let repetitions:Vec<_>=r.repetitions().iter().map(|r|{
-        let s=r.selected_product();
-        json!({"lookup":tree(r.lookup_tree()),"table":tree(r.table_tree()),
-            "selected":{"tree_id":s.tree_id,"point":hex_point(&s.point),"claims":hex_claims(&s.claims),"sc":sc(&s.sc)},
-            "originals":r.originals().iter().map(opening).collect::<Vec<_>>(),
-            "multiplicities":r.multiplicities().iter().map(opening).collect::<Vec<_>>()})
-    }).collect();
-    json!({"parameters":{"id":p.id,"degree":p.degree,"positions":p.positions,"table_rows":p.table_rows,
-        "columns":p.columns,"group_bits":p.group_bits,"unit_bits":p.unit_bits,"repetitions":p.repetitions,
-        "identity_numerator":p.identity_numerator},"repetitions":repetitions})
-}
+
 // Positive lifetime check: owned schema, point, proof and descriptor die here.
 // Only the genuine original/advice/multiplicity owners constrain the result.
 fn verify_temporary<'cert, K: ChallengeField + CodeField + TableField + Eq>(
@@ -163,7 +102,16 @@ where
         },
     )
     .expect("expected descriptor")
-    .verify(t, mu, &proof)
+    .verify_measured(t, mu, &proof)
+    .map(|(record, usage, work)| {
+        let width = core::mem::size_of::<K>();
+        for (actual, g) in work.group_coefficients_bytes.iter().zip(record.groups()) {
+            assert!(actual[0] >= g.opening().certificate().source().rows() * width);
+            assert!(actual[1] >= g.opening().certificate().source().columns() * width);
+            assert!(actual[2] >= g.claims().len() * width);
+        }
+        (record, usage)
+    })
 }
 fn rebuilt_failure<K: ChallengeField + CodeField + TableField + Eq>(
     c: &Value,
@@ -306,7 +254,7 @@ where
             },
         )
         .expect("valid pinned fixture");
-        let wire = fixture(c["wire"].as_str().expect("valid pinned fixture"));
+        let mut wire = fixture(c["wire"].as_str().expect("valid pinned fixture"));
         let root = wire[2..34].try_into().expect("valid pinned fixture");
         let blowup = c["blowup"].as_u64().expect("valid pinned fixture") as u8;
         let source = schema
@@ -359,6 +307,11 @@ where
             proof_bytes: 32_000_000,
         };
         let d = Descriptor::new(statement, &advice, limits).expect("valid pinned fixture");
+        if kind != "high-tail" {
+            let produced = producer::frozen(kind, &c, &schema, &d, &input, &advice);
+            assert_eq!(produced, wire, "complete independently frozen wire: {name}");
+            wire = produced;
+        }
         let mu_source = Source::<K>::new(
             (31u64 << 40) + 16,
             0,
@@ -925,4 +878,10 @@ fn rejects_requant_scoped_cqis_bindings() {
 fn rejects_requant_output_coefficient_at_actual_a7() {
     stele_negative_controls::requant::run_output_coefficient()
         .expect("zero output must not hide a false equality coefficient");
+}
+
+#[test]
+fn rejects_requant_producer_late_arithmetic_with_exact_usage() {
+    stele_negative_controls::requant::run_producer_failures()
+        .expect("actual failed A3/A1 prefixes in both fields");
 }

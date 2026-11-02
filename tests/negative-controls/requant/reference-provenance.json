@@ -1,0 +1,16 @@
+{
+  "original_helper": {
+    "references.py": "1fb8d4e5bdfc4c33c7f360e68c82de7a6006e5d2280e69c26f11363a58baf2ee",
+    "lookup_adapter.py": "e60e168b26c89b4748c916413d3d36b0c9b323767ceeb9b87ee839437bda7af4",
+    "protocol.py": "ce8b8179b950e51d667846032fb6d914b8d3681f6fd5dc3fae894512b6dc61fc",
+    "schema.py": "7094cf8c92538ea46a16e65540412fe9863e6d46c100f31153e2b8275d73cd1c"
+  },
+  "changes": [
+    "Verification-only extraction: removed complete producer methods from lookup_adapter and Protocol; existing arithmetic/PCS consumers unchanged.",
+    "Renamed local imports; independent static layout and constraints now reuse checked-in requant_schema.Schema.",
+    "Retain the actual phase-0 weights already drawn by the reference aggregate, for new complete vector comparisons.",
+    "Observe elapsed time around actual child imports and separate their disjoint time from the inclusive closed call; no duplicate execution.",
+    "Use the checked-in static layout with the original operation-id, output-instance and constraint-instance adapters; impose a 4096-position benchmark resource cap."
+  ],
+  "scope": "Original frozen helper files read only; original campaign not rerun."
+}

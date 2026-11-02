@@ -27,6 +27,7 @@ pub(super) enum Attack {
     OmitWeight(u8),
     WrongPlane,
     ScalarFinals, // Untrusted false A3 packet, never an accepting verifier hook.
+    OutputFinals, // Untrusted m=0 A1 finals under a false incoming value.
 }
 pub(super) struct Packet<K: ChallengeField> {
     pub wire: Vec<u8>,
@@ -34,6 +35,7 @@ pub(super) struct Packet<K: ChallengeField> {
     pub advice: VerifiedCertificate<K>,
     pub transcript: Transcript<K>,
     pub group_offsets: [usize; 3],
+    pub producer_lookups: [lookup::ProverUsage; 2],
 }
 fn fields<K: ChallengeField>(out: &mut Vec<u8>, values: &[K]) {
     for value in values {
@@ -181,6 +183,7 @@ where
     wire.extend_from_slice(&advice.record().source().root());
     wire.extend_from_slice(&advice_packet);
     let table = lookup::Table::range(8).expect("actual range8 table");
+    let mut producer_lookups = [lookup::ProverUsage::default(); 2];
     for (b, certificate) in [&input, &advice].into_iter().enumerate() {
         let m = certificate.record().source().rows().ilog2() as u8;
         let originals = [certificate];
@@ -207,12 +210,11 @@ where
             public_bytes: lookup.producer_public_bytes().expect("payload bound"),
             dense_elements: lookup.producer_dense_elements().expect("dense bound"),
         };
-        wire.extend(
-            lookup
-                .prove(&mut t, &[&sources[b]], limits)
-                .expect("actual complete A5 producer")
-                .0,
-        );
+        let (proof, observed) = lookup
+            .prove(&mut t, &[&sources[b]], limits)
+            .expect("actual complete A5 producer");
+        producer_lookups[b] = observed;
+        wire.extend(proof);
     }
     let constraints = schema.constraints::<K>().expect("static constraints");
     absorb(
@@ -270,6 +272,7 @@ where
             advice,
             transcript: t,
             group_offsets: [0; 3],
+            producer_lookups,
         };
     }
     let tables: Vec<_> = values.iter().map(|v| vec![*v]).collect();
@@ -326,6 +329,20 @@ where
                         .map(|r| vec![K::from_i64(i64::from(advice_bytes[*r]))]),
                 )
                 .collect();
+            if attack == Attack::OutputFinals {
+                fields(&mut wire, &tables.iter().map(|r| r[0]).collect::<Vec<_>>());
+                wire.extend(empty_opening(sources[1].source()));
+                d.preflight(&wire)
+                    .expect("canonical untrusted A1 failure suffix");
+                return Packet {
+                    wire,
+                    input,
+                    advice,
+                    transcript: t,
+                    group_offsets: offsets,
+                    producer_lookups,
+                };
+            }
             let proof = stele_sumcheck::prove(
                 &instance,
                 Dense::new(&instance, tables).expect("output tables"),
@@ -446,6 +463,7 @@ where
                 advice,
                 transcript: t,
                 group_offsets: offsets,
+                producer_lookups,
             };
         }
     }
@@ -456,6 +474,7 @@ where
         advice,
         transcript: t,
         group_offsets: offsets,
+        producer_lookups,
     }
 }
 

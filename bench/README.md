@@ -1,5 +1,54 @@
 # Benchmark ledgers (RFC-0018 §1, task E0-05)
 
+## Native Requant (E7-01d)
+
+From a clean committed macOS arm64 checkout, run:
+
+```sh
+uv run --no-project --python 3.12 python -B bench/requant.py /tmp/requant-<run>.json
+```
+
+The controller builds the native worker once and selects the executable from
+Cargo's actual artifact report. It executes scalar, ties, wide, shift62,
+radix255 and radix256 in both fields, with three samples per cell, sequentially
+and without warmup, retries or discarded samples. The fixed matrix includes
+both target formats, repetition counts and source rates, scalar and padded
+geometry, signed endpoints and the mantissa byte boundary. It is a bounded
+operation measurement, not an exhaustive parameter or scaling campaign.
+
+Each native worker constructs the integer witness, prepares and registers both
+sources, produces the complete proof, imports its multiplicities and executes
+the closed native consumer. A fresh locked Python worker independently consumes
+the identical public request without witness matrices or saved decisions. Before
+compaction the controller compares all child records, claims, four complete RLC
+vectors, registrations, hash Usage and the following A1 record/continuation.
+The unchanged historical Requant full-wire corpus remains a separate producer
+parity check; this measurement does not regenerate it.
+
+Stage timers separate witness, preparation, certificate production/import,
+expected metadata, proving, external multiplicity imports, closed verification,
+continuation, observations and cleanup. Native proving includes its internal
+lookup preparation and certificate calls. Those internal calls are not repeated
+for timing. Python subtracts actual separately timed imports from its inclusive
+closed call. Both workers retain an explicit remainder.
+
+Whole-worker wall time and peak RSS include startup, imports, runtime, receipt
+construction, hexadecimal/JSON copies, serialization and remaining cleanup.
+Native RSS covers producer and consumer in the same fresh process; it is not an
+isolated prover peak. Actual witness, table, point, group coefficient and child
+capacity observations retain their documented partial scopes. Their sum is not
+an exact heap peak. All bindings stay enabled; no profile, privacy, full-inference
+or fitted-cost claim follows from this component ledger.
+
+The external `.samples` directory preserves every stdout, stderr, exit status,
+time report and public request, plus source/tree, exact binary, runtime and build
+provenance. The compact ledger retains their hashes, every wire section's bytes
+and hash, actual Usage and capacity observations. The controller validates the
+complete fixed sample order, repeated deterministic identities and the ledger
+schema before reporting success. CI runs the two radix cases and bounded request
+and receipt mutations through `scripts/tests/test_requant_bench.py`; it does not
+run the measurement campaign.
+
 ## Circle encoding (E4-02)
 
 On macOS, from a clean committed checkout, run

@@ -10,10 +10,15 @@ pub use constraints::Constraints;
 #[path = "requant_codec.rs"]
 mod codec;
 pub use crate::lookup::Limits;
+pub use codec::producer::{ProducerLimits, ProverFailure, ProverUsage, ProverWork};
 pub use codec::verifier::{
     Failure, GroupRecord, Record, RegisteredMultiplicities, RegistrationFailure, RlcRecord,
+    VerifierWork,
 };
 pub use codec::{Descriptor, Statement};
+#[path = "requant_witness.rs"]
+mod witness;
+pub use witness::Witness;
 
 /// Failure during schema, expected descriptor or untrusted codec validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -54,6 +59,8 @@ pub enum Error {
     CoefficientMismatch,
     /// Preserve the actual A7 public coefficient cause.
     PublicCoefficient(stele_gkr::public_mle::Error),
+    /// Exact integer advice has a negative slack or invalid column carry.
+    Witness,
 }
 
 /// One whole-value cap, including its slack and interior Boolean carries.

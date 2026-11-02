@@ -1,0 +1,30 @@
+{
+  "files": {
+    "positive-h-16.bin": {
+      "bytes": 128,
+      "sha256": "b3a5d68ec7d0933a6c96801c8303cfac9d1684a9ea29bf9fb3904bcef336a968"
+    },
+    "positive-h-8.bin": {
+      "bytes": 128,
+      "sha256": "91ee7386e43e9669a810e015ca26cc83422f0ed1c29511b9c24f7606045f62c8"
+    },
+    "usage.json": {
+      "bytes": 28106,
+      "sha256": "8a30c8cd3d34a8817bf15bf5a1afb101e80f9d37f8fdf146a898ac5b80509711"
+    }
+  },
+  "original_results": [
+    "596c63ae4bf00f4de9b4a521d67a67c2340bec8e8bc2f3c8200170350b472adb",
+    "653a92864e7efe23d8790c3da539aaa7c8649866c9c98681f0506b5fbc5d8c2e",
+    "e6203b873e0461c1889a4819f9ecd1aab6f175037c6c775201ecd40c1c15a202"
+  ],
+  "qualification": "Historical producer Usage projected without proof execution; two independent integer-only positive-H candidates, only target residual is +1.",
+  "sources": {
+    "research/cqis-bounds/encoding.py": "e90ca2f43f5ce7a856531237747e720c7ce6ff511e32642833d4fe548298ea76",
+    "research/cqis-bounds/limbs.py": "b2c42aea5d67fca66f2a6e5d81ce976aeadcd73be2346627025b94f4c5974d4f",
+    "research/cqis-bounds/norm_bounds.py": "36209df5548090be140b898fc3c8fe14f74b1a20f864f30580b0a330141e1a83",
+    "research/cqis-bounds/requant.py": "f82221be309906f78a3b7b96c7ae59ddf9d3fb97e916ce2410372c53dd06a68c",
+    "tests/negative-controls/requant/production_fixtures.py": "db6f2325b079ab00a817469b82ec2ca78d8641d0314cb3f03bc65fcfd41354b5",
+    "tests/negative-controls/requant_schema.py": "df4b773c234daf9ed2f46fb612149dbc080e01c2346223b0a786c2b42acfe6ce"
+  }
+}

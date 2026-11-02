@@ -29,7 +29,11 @@ class FieldPcsBenchTests(unittest.TestCase):
                          'examples/lookup_bench.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
                          'examples/matmul_corpus.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
                          'examples/matmul_bench.rs', 'requant_schema.py', 'src/requant.rs',
-                         'requant/verifier.rs', 'fixtures/requant/scalar-K4.bin'):
+                         'requant/verifier.rs', 'fixtures/requant/scalar-K4.bin',
+                         'requant/producer.rs','requant/records.rs','requant/production_fixtures.py',
+                         'requant/reference.py','requant/lookup_reference.py','requant/protocol_reference.py',
+                         'requant/reference-provenance.json','requant_corpus.py','requant_corpus.py.lock',
+                         'examples/requant_bench.rs','fixtures/requant-production/usage.json'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)
@@ -46,7 +50,7 @@ class FieldPcsBenchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'inventory'):
                 gates.controls_layout(root)
             extra.unlink()
-            for name in ('lookup_bench', 'matmul_bench'):
+            for name in ('lookup_bench', 'matmul_bench', 'requant_bench'):
                 benchmark = f'[[example]]\nname = "{name}"\npath = "examples/{name}.rs"\n'
                 self.assertIn(benchmark, original)
                 manifest.write_text(original.replace(benchmark, ''))
