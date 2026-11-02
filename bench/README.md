@@ -27,13 +27,13 @@ request, including both ranges and the following A1. It receives no matrices.
 
 The native worker retains allocation markers and pauses after output.
 `malloc_history -allEvents` observes only that newly launched worker. Lossless
-compressed traces preserve every event and its uncompressed digest. The parser
-tracks simultaneous live malloc requests, including caller and harness buffers;
+compressed allocation logs preserve every event and their uncompressed digest.
+The parser tracks simultaneous live malloc requests, including caller and harness buffers;
 it does not add unrelated category maxima. Allocator metadata, anonymous VM,
 stacks and unlogged profiler internals have a separate scope. Python reports
 managed allocations from protocol setup through result projection. Both
 whole-worker peak RSS measurements include runtime and instrumentation overhead.
-Native process wall time also includes the pause for trace collection.
+Native process wall time also includes the pause for allocation collection.
 
 The sampler compares full records, imports, Usage and continuation before saving
 each completion. Assembly checks the complete matrix, source and binary pins,

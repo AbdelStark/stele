@@ -19,9 +19,11 @@ For each protocol binding:
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
-label with `DuplicateLabel`; it earns configuration coverage only. The last qualified coverage, including conditional stacked, PCS, closed lookup, matmul, Requant and original byte-range variants, is 52/108 controls,
-56 remain missing, and 18/36 catalog binding categories have proof controls. NC-0315 closes the separate original range obligation; the composed integer-linear additions still require final gate qualification. Range rows expand
-to individual ids; malformed and duplicate ids fail.
+label with `DuplicateLabel`; it earns configuration coverage only. Qualified
+coverage is 55/108 controls, including that one configuration control; 53 remain
+missing. Proof controls cover 21/36 catalog binding categories, including the
+original byte-range and centered integer-linear variants. Range rows expand to
+individual ids; malformed and duplicate ids fail.
 Streaming NC-0210 uses a real prepared file: change one unused source record,
 produce the changed Streaming proof, and apply its single changed final through
 ProverHook. Both fields reject it with ClaimMismatch against the original inputs.

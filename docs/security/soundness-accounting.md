@@ -1755,6 +1755,10 @@ consumer registers the absorb-only LinearStatement, retains the actual A3
 tail in PointEqualityRecord, and consumes it through the signed matmul and
 both original openings before returning a record. NC-0316..0318 exercise the
 complete accepted scalar composition in both fields and both repetition
-counts. Independent complete parity, the remaining composition variants and
-complete resource evidence remain E7-01f acceptance requirements; all parent
+counts. The native gate regenerates 28 complete positive proofs and consumes
+270 distinct public requests against the [frozen independent corpus](../../tests/negative-controls/fixtures/integer-linear/README.md),
+checking complete bytes, imports, records, failed-prefix Usage and continuation.
+Actual controls also exercise original point/final/row, source identity,
+independent weights, embedded planes, reserved rows and following-A1 bindings.
+Complete resource evidence remains an E7-01f acceptance requirement; all parent
 and Q12/Q29 gaps remain.
