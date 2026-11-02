@@ -178,7 +178,9 @@ tasks:
   - RFC-0020 §5
   skill: rfc-author
   crate: ci
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-08-native-ci-split
   acceptance:
   - independent core and native-union jobs check out the same PR merge source and retain every existing validation command, argument, feature mode and environment
   - both native jobs are mandatory; missing, failed, cancelled or skipped results reject under every table, research and GPU selection
