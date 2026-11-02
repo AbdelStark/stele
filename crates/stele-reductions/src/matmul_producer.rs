@@ -2,7 +2,8 @@
 //! Partial preparation costs L*n*d + L*d*m base-to-K MACs. Dense folding and
 //! coefficient/partial costs remain A4's; both A9 openings keep their full wires.
 use super::{
-    add, bytes, mul, pcs_error, reserve, stacked_error, Context, Error, Failure, Statement,
+    add, bytes, centered, mul, pcs_error, reserve, stacked_error, Context, Error, Failure, Mode,
+    Statement,
 };
 use alloc::vec::Vec;
 use stele_gkr::stacked;
@@ -48,8 +49,11 @@ pub struct Work {
     pub peak_owned_bytes: usize,
 }
 
-fn retained_entries<K>(size: usize, n: usize, m: usize) -> Result<usize, Error> {
-    let total = add(mul(3, size)?, add(n, m)?)?;
+fn retained_entries<K>(size: usize, n: usize, m: usize, mode: Mode) -> Result<usize, Error> {
+    let total = add(
+        mul(if mode == Mode::Centered { 5 } else { 3 }, size)?,
+        add(n, m)?,
+    )?;
     for entries in [size, n, m] {
         if mul(entries, core::mem::size_of::<K>())? > isize::MAX as usize {
             return Err(Error::Capacity);
@@ -90,9 +94,30 @@ pub fn prove_measured<K: ChallengeField + Eq>(
     limits: stacked::Limits,
     retained_row_entries: usize,
 ) -> Result<(Vec<u8>, Usage, Work), Failure> {
+    prove_mode(
+        t,
+        expected,
+        sources,
+        certificates,
+        limits,
+        retained_row_entries,
+        Mode::Field,
+    )
+    .map(|(wire, usage, work)| (wire, usage, work.inner))
+}
+
+pub(super) fn prove_mode<K: ChallengeField + Eq>(
+    t: &mut Transcript<K>,
+    expected: &Statement<'_, K>,
+    sources: [&PreparedSource<'_, K>; 2],
+    certificates: [&VerifiedCertificate<K>; 2],
+    limits: stacked::Limits,
+    retained_row_entries: usize,
+    mode: Mode,
+) -> Result<(Vec<u8>, Usage, centered::Work), Failure> {
     let mut hashes = 0u64;
     let result = (|| {
-        let context = Context::new(expected, certificates, limits)?;
+        let context = Context::new(expected, certificates, limits, mode)?;
         // Check both owners before either RetainedRow traverses an original message.
         for (source, certificate) in sources.iter().zip(certificates) {
             if source.source().bytes() != certificate.record().source().bytes() {
@@ -104,7 +129,7 @@ pub fn prove_measured<K: ChallengeField + Eq>(
             .map_err(stacked_error)?;
         let [h, a, b, c] = expected.bits.map(usize::from);
         let [size, n, m] = [1usize << (h + b), 1usize << a, 1usize << c];
-        if retained_entries::<K>(size, n, m)? > retained_row_entries {
+        if retained_entries::<K>(size, n, m, mode)? > retained_row_entries {
             return Err(Error::Capacity);
         }
         let mut wire = Vec::new();
@@ -118,9 +143,23 @@ pub fn prove_measured<K: ChallengeField + Eq>(
             RetainedRow::new(sources[0], &weights[0]).map_err(pcs_error)?,
             RetainedRow::new(sources[1], &weights[1]).map_err(pcs_error)?,
         ];
-        let mut dense = prepared
-            .strategy(&[rows[0].values(), rows[1].values()])
-            .map_err(stacked_error)?;
+        let mut signed = [Vec::new(), Vec::new()];
+        if mode == Mode::Centered {
+            for index in 0..2 {
+                reserve(&mut signed[index], size)?;
+                let shift = K::from_i64(128) * centered::sum(&weights[index]);
+                signed[index].extend(rows[index].values().iter().map(|v| *v - shift));
+            }
+        }
+        let inputs = if mode == Mode::Centered {
+            [&signed[0][..], &signed[1][..]]
+        } else {
+            [rows[0].values(), rows[1].values()]
+        };
+        let mut dense = prepared.strategy(&inputs).map_err(stacked_error)?;
+        let signed_input_bytes = [bytes(&signed[0])?, bytes(&signed[1])?];
+        // RFC-0024 §2.4: both temporary copies overlap Dense, then cease to be live.
+        drop(signed);
         t.absorb(AbsorbLabel::MatmulStatement, &context.frame)
             .map_err(Error::Transcript)?;
         // A2 bounds h+b by 29; observation storage stays on the stack.
@@ -175,7 +214,11 @@ pub fn prove_measured<K: ChallengeField + Eq>(
             add(baseline, add(work.prepared_bytes, work.dense_bytes)?)?,
             a1.peak_owned_bytes.max(round_scratch_peak_bytes),
         )?;
-        work.peak_owned_bytes = work.fold_peak_bytes;
+        let preparation_peak_bytes = add(
+            add(baseline, add(work.prepared_bytes, work.dense_bytes)?)?,
+            add(signed_input_bytes[0], signed_input_bytes[1])?,
+        )?;
+        work.peak_owned_bytes = work.fold_peak_bytes.max(preparation_peak_bytes);
         let point = dense.into_point().map_err(stacked_error)?;
         work.captured_point_bytes = bytes(&point)?;
         drop(prepared);
@@ -201,7 +244,14 @@ pub fn prove_measured<K: ChallengeField + Eq>(
                     id: expected.inputs[index],
                     a: &weights[index],
                     b: &columns,
-                    value: values[index],
+                    value: if mode == Mode::Centered {
+                        values[index]
+                            + K::from_i64(128)
+                                * centered::sum(&weights[index])
+                                * centered::sum(&columns)
+                    } else {
+                        values[index]
+                    },
                 },
             );
             let usage = match &result {
@@ -220,7 +270,14 @@ pub fn prove_measured<K: ChallengeField + Eq>(
         if wire.len() != context.wire_size {
             return Err(Error::ProofShape);
         }
-        Ok((wire, work))
+        Ok((
+            wire,
+            centered::Work {
+                inner: work,
+                signed_input_bytes,
+                preparation_peak_bytes,
+            },
+        ))
     })();
     let usage = Usage {
         transcript: t.usage(),
@@ -238,18 +295,19 @@ pub fn prove_measured<K: ChallengeField + Eq>(
 #[test]
 fn rejects_retained_allocation_sizes() {
     use stele_field::OM31;
-    assert_eq!(retained_entries::<OM31>(4, 2, 8), Ok(22));
+    assert_eq!(retained_entries::<OM31>(4, 2, 8, Mode::Field), Ok(22));
+    assert_eq!(retained_entries::<OM31>(4, 2, 8, Mode::Centered), Ok(30));
     assert_eq!(
-        retained_entries::<OM31>(usize::MAX, 1, 1),
+        retained_entries::<OM31>(usize::MAX, 1, 1, Mode::Field),
         Err(Error::Capacity)
     );
     assert_eq!(
-        retained_entries::<OM31>(1, usize::MAX, 1),
+        retained_entries::<OM31>(1, usize::MAX, 1, Mode::Field),
         Err(Error::Capacity)
     );
     let oversized = isize::MAX as usize / core::mem::size_of::<OM31>() + 1;
     assert_eq!(
-        retained_entries::<OM31>(1, oversized, 1),
+        retained_entries::<OM31>(1, oversized, 1, Mode::Field),
         Err(Error::Capacity)
     );
 }

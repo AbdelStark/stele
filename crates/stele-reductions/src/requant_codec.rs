@@ -78,12 +78,12 @@ pub struct Descriptor<'a, 'cert, K: ChallengeField> {
     local_hashes: u64,
 }
 
-fn sum(values: &[usize]) -> Result<usize, Error> {
+pub(super) fn sum(values: &[usize]) -> Result<usize, Error> {
     values
         .iter()
         .try_fold(0usize, |s, v| s.checked_add(*v).ok_or(Error::Capacity))
 }
-fn mul(a: usize, b: usize) -> Result<usize, Error> {
+pub(super) fn mul(a: usize, b: usize) -> Result<usize, Error> {
     a.checked_mul(b).ok_or(Error::Capacity)
 }
 fn addressable<T>(count: usize) -> Result<(), Error> {
@@ -127,7 +127,7 @@ impl Schema {
         .map_err(Error::Pcs)
     }
 }
-fn term<K: ChallengeField>(coefficient: K, factors: &[u32]) -> Result<Term<K>, Error> {
+pub(super) fn term<K: ChallengeField>(coefficient: K, factors: &[u32]) -> Result<Term<K>, Error> {
     let mut out = buffer(factors.len())?;
     out.extend_from_slice(factors);
     Ok(Term {
@@ -422,33 +422,22 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
     }
     /// Encode every unsampled constraint without dropping zero terms or inputs.
     pub fn encode_constraints(&self) -> Result<Vec<u8>, Error> {
-        let mut out = buffer(self.constraints_bytes)?;
-        put(&mut out, &self.statement.stage.to_le_bytes())?;
-        put(&mut out, &[self.m])?;
-        put(&mut out, &(self.ids.len() as u32).to_le_bytes())?;
-        for id in &self.ids {
-            put(&mut out, &id.to_le_bytes())?;
+        self.arithmetic().encode_constraints(self.constraints_bytes)
+    }
+    pub(super) fn arithmetic(&self) -> crate::requant::arithmetic::Arithmetic<'_, 'cert, K> {
+        crate::requant::arithmetic::Arithmetic {
+            stage: self.statement.stage,
+            base: self.base,
+            m: self.m,
+            positions: self.originals[0][0].record().source().columns(),
+            ids: &self.ids,
+            constraints: &self.constraints,
+            groups: [
+                self.originals[0][0],
+                self.originals[1][0],
+                self.originals[1][0],
+            ],
         }
-        put(
-            &mut out,
-            &(self.constraints.equations().len() as u32).to_le_bytes(),
-        )?;
-        for (i, equation) in self.constraints.equations().iter().enumerate() {
-            put(&mut out, &(self.base + 4096 + i as u64).to_le_bytes())?;
-            put(
-                &mut out,
-                &[equation.iter().map(|t| t.factors.len()).max().unwrap_or(0) as u8],
-            )?;
-            put(&mut out, &(equation.len() as u32).to_le_bytes())?;
-            for term in equation {
-                put(&mut out, term.coefficient.to_le_bytes().as_ref())?;
-                put(&mut out, &[term.factors.len() as u8])?;
-                for f in &term.factors {
-                    put(&mut out, &f.to_le_bytes())?;
-                }
-            }
-        }
-        Ok(out)
     }
     /// Check complete shape and canonical arithmetic/row prefixes without allocation.
     /// Advice root/packet identities and A9 response authentication remain unchecked.
@@ -494,14 +483,14 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
         })
     }
 }
-fn put(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), Error> {
+pub(super) fn put(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), Error> {
     if bytes.len() > out.capacity() - out.len() {
         return Err(Error::Capacity);
     }
     out.extend_from_slice(bytes);
     Ok(())
 }
-fn take<'b>(rest: &mut &'b [u8], size: usize) -> Result<&'b [u8], Error> {
+pub(super) fn take<'b>(rest: &mut &'b [u8], size: usize) -> Result<&'b [u8], Error> {
     let out = rest.get(..size).ok_or(Error::ProofShape)?;
     *rest = &rest[size..];
     Ok(out)

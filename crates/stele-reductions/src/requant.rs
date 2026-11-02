@@ -23,6 +23,9 @@ pub use witness::Witness;
 mod embedded;
 pub use embedded::{EmbeddedSchema, EmbeddedWitness};
 
+#[path = "requant_arithmetic.rs"]
+pub(crate) mod arithmetic;
+
 /// Failure during schema, expected descriptor or untrusted codec validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {

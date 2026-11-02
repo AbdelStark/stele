@@ -33,9 +33,9 @@
 | NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 | `FinalEvaluationMismatch` | done |
 | NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | done |
 | NC-0315 | centered original bytes | 0024 §6 | one original byte256 under a zero opposite signed factor, fixed negative statement | `RootMismatch` | done |
-| NC-0316 | centered accumulator cap | 0024 §6 | one new high-cap slack A3 final becomes one | `FinalEvaluationMismatch` | todo |
-| NC-0317 | centered matmul join | 0024 §6 | one scalar signed-matmul original final changes under nonzero opposite factor | `FinalEvaluationMismatch` | todo |
-| NC-0318 | centered affine source | 0024 §6 | one scalar raw opening-row cell replaced by its signed value | `ValueMismatch` | todo |
+| NC-0316 | centered accumulator cap | 0024 §6 | one new high-cap slack A3 final becomes one | `FinalEvaluationMismatch` | done |
+| NC-0317 | centered matmul join | 0024 §6 | one scalar signed-matmul original final changes under nonzero opposite factor | `FinalEvaluationMismatch` | done |
+| NC-0318 | centered affine source | 0024 §6 | one scalar raw opening-row cell replaced by its signed value | `ValueMismatch` | done |
 | NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | done |
 | NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | done |
 | NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | done |

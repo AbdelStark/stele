@@ -9,6 +9,8 @@ pub mod fraction;
 #[doc(hidden)]
 pub mod fraction_transcript;
 #[doc(hidden)]
+pub mod integer_linear;
+#[doc(hidden)]
 pub mod lookup;
 #[doc(hidden)]
 pub mod matmul;
@@ -45,6 +47,24 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 316,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || integer_linear::run(316),
+    },
+    catalog::RegisteredControl {
+        id: 317,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || integer_linear::run(317),
+    },
+    catalog::RegisteredControl {
+        id: 318,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: || integer_linear::run(318),
+    },
     catalog::RegisteredControl {
         id: 315,
         kind: catalog::ControlKind::Proof,
