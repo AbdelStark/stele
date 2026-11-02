@@ -168,6 +168,25 @@ tasks:
   - retain every test case, debug assertion and overflow check; record compile and execution costs separately
   - preserve raw measurements and a validated micro ledger without claiming inference or full-CI speedup
   - all required local and selected hosted gates pass on the final merge tree
+- id: E0-08
+  epic: E0
+  title: Run the required native gate alongside core Rust validation
+  depends:
+  - E0-07
+  - E7-01d
+  rfc:
+  - RFC-0020 §5
+  skill: rfc-author
+  crate: ci
+  status: done
+  agent: codex-root
+  branch: task/E0-08-native-ci-split
+  acceptance:
+  - independent core and native-union jobs check out the same PR merge source and retain every existing validation command, argument, feature mode and environment
+  - both native jobs are mandatory; missing, failed, cancelled or skipped results reject under every table, research and GPU selection
+  - standalone gates, actual controls, corpora, seeds, quick tests and broad workflow routing remain unchanged; caches contain build inputs only with separate role keys
+  - focused readiness and exact command-inventory regressions pass; all existing selected hosted checks pass at the current main base and intended merge tree
+  - retain actual hosted job, queue, setup and execution evidence without deriving a speedup from the previous serialized run or changing any inference cost term
 - id: E1-01
   epic: E1
   title: M31 with lazy reduction + canonicalisation

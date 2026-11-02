@@ -472,3 +472,20 @@ lookup and arithmetic costs. It grants no generic auxiliary commitment or
 matmul join: signed original ranges, both accumulator bounds and their real
 equality consumer remain required. Full plan, privacy, profile and W8 criteria
 remain unchanged; no measured constant or extra weight pass. Status: Accepted.
+
+## ADR-046: Run independent required native checks in separate jobs
+
+Context: the required native workflow serializes core Rust/tooling checks and
+the complete digest/control/accounting union, although neither needs a result
+produced by the other. Decision: E0-08 moves the unchanged native union to its
+own plan-dependent job. Both jobs check out the same event merge source, fetch
+their own locked dependencies and must succeed before the aggregate can pass.
+Use separate Cargo cache keys and restore prefixes; store no pass receipts.
+
+Retain every validation command, feature/profile mode, corpus, seed, control
+and standalone gate. Workflow changes still select the complete table and
+research checks. Reusing workspace output for default-feature gates is deferred
+because their feature graphs and ownership checks differ. Independent runners
+can duplicate compilation or wait in queues; no speedup is inferred from the
+old serialized timings. No protocol behavior, inference cost term, profile or
+weight-pass count changes. Status: Accepted.
