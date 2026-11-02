@@ -187,6 +187,23 @@ tasks:
   - standalone gates, actual controls, corpora, seeds, quick tests and broad workflow routing remain unchanged; caches contain build inputs only with separate role keys
   - focused readiness and exact command-inventory regressions pass; all existing selected hosted checks pass at the current main base and intended merge tree
   - retain actual hosted job, queue, setup and execution evidence without deriving a speedup from the previous serialized run or changing any inference cost term
+- id: E0-09
+  epic: E0
+  title: Optimize control coverage with the existing checked test profile
+  depends:
+  - E0-08
+  rfc:
+  - RFC-0020 §4-5
+  - RFC-0018 §1
+  skill: benchmark-runner
+  crate: ci
+  status: ready
+  acceptance:
+  - compare the same normal coverage binary under dev and test profiles from one frozen source; record cold build and complete execution separately with actual compiler, binary and raw-output evidence
+  - preserve default features, debug assertions, overflow checks, every registered control and byte-identical successful coverage output; invalid arguments retain their exits and usage output
+  - adopt the existing test profile at all five direct coverage callers only with a useful measured benefit; preserve every other argument, preceding gate and actual failure path
+  - one focused command-order and failure-propagation regression plus the existing real NC-0410 source-consumer mutation reject as specified; no unrelated campaign or historical ledger is rerun or rewritten
+  - retain a validated micro ledger with bounded validation-cost claims; all required local and selected hosted gates pass on the exact current-base merge tree without workflow, profile-setting or routing changes
 - id: E1-01
   epic: E1
   title: M31 with lazy reduction + canonicalisation
