@@ -1311,6 +1311,28 @@ tasks:
   - accepted real byte7 sanity and genuine fixed source256 cases execute NC-0315 separately for X/W with zero opposite signed factors in both fields; exact Fraction(RootMismatch), single declared deviation and dependent reconstruction
   - both fields and repetition counts, nonconstant physical sources, exact cap/context/identity/malformed failures and owner-lifetime guards agree with independent complete A5 wire/record/Usage evidence; preserve existing corpora and gate invocations
   - no outer LinearStatement, SZ record, composed integer proof or complete resource-ledger credit; all five E7-01f and every parent criterion remain required
+- id: E7-01f2
+  epic: E7
+  title: Native embedded Requant schema and captured witness
+  depends:
+  - E7-01f1
+  - E7-01d
+  rfc:
+  - RFC-0024 §2.1,§2.4,§3
+  - RFC-0023 §2.1,§2.2
+  - RFC-0004 A1
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01f2-embedded-advice
+  acceptance:
+  - derive the static centered dot bound with b=0..15 and reject b=16; preserve the complete scalar parameter domain and unchanged generated CQIS record
+  - reuse the actual semantic compiler through its target identity; emit exact full-width cap columns and Boolean carries, regenerate all physical padding and reserved equations, and check input and equation counts without guessed compiled-list slicing
+  - generate one canonical untrusted embedded advice matrix from captured full-power-of-two accumulator positions, with checked capacity, exact signed outputs, full-width bound slack and no online original-source scan or partial witness on failure
+  - independent complete ordered-term and physical-witness parity in both fields covers signed, tie, cap, parameter and scalar/nonconstant boundaries; exact static and equation-mutation failures earn no proof-control credit
+  - preserve every standalone Requant API, fixture and historical oracle byte; integrate new checks into existing native gate invocations and retain all prior corpus and control obligations
+  - no accepting outer record, LinearStatement, SZ, NC-0316..0318 or complete resource/inference credit; all five E7-01f and every parent criterion remain required
 - id: E7-01f
   epic: E7
   title: Native centered signed-int8 matmul and Requant composition
@@ -1320,6 +1342,7 @@ tasks:
   - E7-01b
   - E7-01d
   - E7-01f1
+  - E7-01f2
   rfc:
   - RFC-0024
   - RFC-0007 A4
