@@ -4,6 +4,7 @@
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 extern crate alloc;
+pub mod byte_range;
 mod field_sources;
 pub mod lookup;
 pub mod matmul;

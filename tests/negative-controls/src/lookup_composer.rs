@@ -81,11 +81,31 @@ pub(super) fn compose<K: ChallengeField + CodeField + TableField + Eq + core::fm
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    compose_with_public_input(
+        descriptor,
+        s,
+        originals,
+        attack,
+        b"closed lookup controls/v1",
+    )
+}
+pub(super) fn compose_with_public_input<
+    K: ChallengeField + CodeField + TableField + Eq + core::fmt::Debug,
+>(
+    descriptor: &Descriptor<'_, '_, K>,
+    s: Statement<'_, '_, K>,
+    originals: &[&PreparedSource<'_, K>],
+    attack: Attack,
+    public: &[u8],
+) -> Packet<K>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let (r, c) = (s.multiplicities.len(), originals.len());
     let d = usize::from(<K as CodeField>::DEGREE);
     let n = s.table.descriptor().shape().padded() as usize;
     let real = s.table.descriptor().shape().rows() as usize;
-    let mut t = transcript();
+    let mut t = Transcript::new(public).expect("fixture prefix");
     let statement = descriptor
         .encode(&mut HashUsage::default())
         .expect("expected statement");
@@ -141,7 +161,7 @@ where
     }
     let early = if attack == Attack::Early {
         // The incorrect ordering exists only in this independent adversarial replay.
-        let mut early = transcript::<K>();
+        let mut early = Transcript::<K>::new(public).expect("fixture prefix");
         early
             .absorb(AbsorbLabel::LookupStatement, &statement)
             .expect("Statement");

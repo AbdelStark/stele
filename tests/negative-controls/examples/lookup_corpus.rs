@@ -4,6 +4,7 @@ use std::io::{self, BufRead};
 use stele_field::{M31, OM31, QM31};
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::{verify_certificate, CodeField, PreparedSource};
+use stele_reductions::byte_range;
 use stele_reductions::lookup::{
     Descriptor, Layout, Limits, ProducerLimits, ProverUsage, Statement, Table, TableDescriptor,
     TableField,
@@ -135,11 +136,30 @@ where
         },
     )
     .map_err(|e| format!("{e:?}"))?;
+    let range = if case["byte_range"] == true {
+        let ids: Vec<_> = layouts.iter().map(|layout| layout.id).collect();
+        Some(
+            byte_range::Descriptor::new(
+                originals[0],
+                number(&case["lookup_id"])?,
+                &ids,
+                Limits {
+                    positions: 16,
+                    public_bytes: 16_000_000,
+                    proof_bytes: 16_000_000,
+                },
+            )
+            .map_err(|e| format!("{e:?}"))?,
+        )
+    } else {
+        None
+    };
     match case.get("mode").and_then(Value::as_str) {
         Some("verify") => {
             return verification::verify(
                 case,
                 &descriptor,
+                range.as_ref(),
                 json!({"name":case["name"],"degree":case["degree"],"originals":setup}),
             )
         }
@@ -150,6 +170,24 @@ where
     let statement = descriptor
         .encode(&mut HashUsage::default())
         .map_err(|e| format!("{e:?}"))?;
+    if let Some(range) = range {
+        let limits = ProducerLimits {
+            public_bytes: range
+                .producer_public_bytes()
+                .map_err(|e| format!("{e:?}"))?,
+            dense_elements: range
+                .producer_dense_elements()
+                .map_err(|e| format!("{e:?}"))?,
+        };
+        let (proof, observed) = range
+            .prove(prepared[0], limits)
+            .map_err(|e| format!("{e:?}"))?;
+        return Ok(
+            json!({"name":case["name"],"degree":case["degree"],"statement":hex(&statement),
+            "originals":setup,"outcome":"produced","proof":hex(&proof),"usage":usage(observed),
+            "public_bytes":limits.public_bytes}),
+        );
+    }
     let limits = ProducerLimits {
         public_bytes: descriptor
             .producer_public_bytes()

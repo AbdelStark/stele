@@ -249,3 +249,7 @@ path = "requant/nc_0313.rs"
 [[test]]
 name = "nc-0314"
 path = "requant/nc_0314.rs"
+
+[[test]]
+name = "nc-0315"
+path = "lookup/nc_0315.rs"

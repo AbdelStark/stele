@@ -1746,6 +1746,11 @@ events even when source/certificate IDs match. There is no new proof-ID hash.
 LinearStatement is absorb-only. Signed MatmulStatement payload version2 and
 the actual restored raw-source functionals have deterministic semantics.
 Neither changes existing standalone formats or adds a random loss. Exact
-payload/cap/failed-prefix Usage is RFC-0024 §§2,4. This accepted specification has no
-executed SZ consumer, registry entry or new control coverage. E7-01f must supply
-those gates and complete resource evidence; all parent and Q12/Q29 gaps remain.
+payload/cap/failed-prefix Usage is RFC-0024 §§2,4. E7-01f1 implements the separate
+§1.1 range event with the fixed constructor plus unchanged complete A5 schedule,
+actual ordered A9 imports and borrowed certificate owners. NC-0315 rejects the
+genuine fixed byte256 source for each original role, including a zero opposite
+signed factor. This adds no new challenge or loss family. There is still no
+executed SZ consumer or LinearStatement registry entry. E7-01f must supply the
+composed-operation controls and complete resource evidence; all parent and
+Q12/Q29 gaps remain.

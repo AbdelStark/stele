@@ -224,7 +224,7 @@ def batch(o, inputs, produced):
         case = dict(original, name='closed-'+original['name'], proof=output['proof'])
         g = geometry(case, output)
         add(case, g)
-        if not original['name'].startswith('partial'):
+        if not original['name'].startswith('partial') and not (original.get('byte_range') and original['m']):
             continue
         d = case['degree']
         raw = bytes.fromhex(output['proof'])
@@ -276,6 +276,8 @@ def batch(o, inputs, produced):
         changed = bytearray(raw); offset = packets[0][2]
         changed[offset-32:offset] = alt.root; changed[offset:offset+len(cert)] = cert
         add(dict(case, name=f'context-{d}', registration_proof=changed.hex()), g, 'CertificateContext')
+        if original.get('byte_range'):
+            continue
         tail = copy.deepcopy(original)
         tail.update(name=f'tail-{d}', physical_tail=True, selector=[0]*len(tail['selector']))
         for source in tail['originals']:

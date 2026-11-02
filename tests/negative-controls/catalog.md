@@ -32,7 +32,7 @@
 | NC-0312 | Requant plane mapping | 0023 §6 | one producer group row uses the wrong plane | `ValueMismatch` | done |
 | NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 | `FinalEvaluationMismatch` | done |
 | NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | done |
-| NC-0315 | centered original bytes | 0024 §6 | one original byte256 under a zero opposite signed factor, fixed negative statement | `RootMismatch` | todo |
+| NC-0315 | centered original bytes | 0024 §6 | one original byte256 under a zero opposite signed factor, fixed negative statement | `RootMismatch` | done |
 | NC-0316 | centered accumulator cap | 0024 §6 | one new high-cap slack A3 final becomes one | `FinalEvaluationMismatch` | todo |
 | NC-0317 | centered matmul join | 0024 §6 | one scalar signed-matmul original final changes under nonzero opposite factor | `FinalEvaluationMismatch` | todo |
 | NC-0318 | centered affine source | 0024 §6 | one scalar raw opening-row cell replaced by its signed value | `ValueMismatch` | todo |
