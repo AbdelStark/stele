@@ -1175,6 +1175,31 @@ tasks:
   - independent Python/native expected bytes, sizes and rejection decisions on both fields and repetition counts, n=1 and non-power-of-two shapes, source and id mismatches, malformed packets and resource limits using genuine native certificates
   - exact API and evidence gates admit checked expected metadata and untrusted wire only; no transcript challenge, accepting record, arbitrary polynomial constructor, native proof-control completion or complete resource-ledger credit
   - all E7-01d registration, source consumer, control, complete wire/record/Usage/continuation parity and complete resource criteria remain required
+- id: E7-01d4
+  epic: E7
+  title: Native closed Requant verifier and retained obligations
+  depends:
+  - E7-01d3
+  rfc:
+  - RFC-0023 §§1-2
+  - RFC-0023 §§4-6
+  - RFC-0012 A13
+  - RFC-0020 A8
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01d4-requant-verifier
+  acceptance:
+  - import genuine expected advice and both ordered multiplicity rosters with separate registration Usage and no partial-handle escape; compare outer advice context and packet identity before RequantStatement while preserving each actual A5 identity boundary
+  - execute the complete prescribed input/advice A5, independently weighted aggregate A3, actual A7 sigma consumer, both A3 source groups, output A1, actual A7 eq consumer and output advice group through actual A9 openings; no pending claim may create an accepting record
+  - add the three typed Requant absorbs and independent weight challenge with exact registry and executable accounting; retain all four RLC records, every actual A3/A1/A5/A9 obligation and genuine original/multiplicity lifetimes in a private closed record
+  - preserve every ordered claim including zero values and coefficients; derive fixed rows, ids and actual points before independent group draws; no supplied functional, callback, verifier bypass, retry or rollback
+  - check geometry, complete wire, cumulative limits and concrete allocation sizes before replay; return precise child causes and exact consumed-prefix transcript and disjoint local-hash Usage on every failure, without partial accepting records
+  - check independent full-wire decisions, complete retained records, registration and outer Usage, and genuine following-A1 continuation in both fields and repetition counts using the already completed frozen reference artifacts; checked-in fixtures have explicit expected inputs and pinned byte/source provenance without temporary-path dependencies
+  - execute same-PR actual-consumer one-value controls for every newly accepting binding, with honest baselines and exact rejecting causes; construct missing input-alias, sign/target and independent frame-omission cases separately as needed and award native catalog credit only to executed cases
+  - enforce original and multiplicity owner lifetimes, positive temporary-descriptor lifetime behavior and exact API/evidence gates; preserve existing corpora and keep added validation bounded without new unrelated campaigns
+  - all E7-01d native witness and producer, full-domain proof/control coverage, complete production parity and complete registration/preparation/prove/import/verify/peak-memory ledger criteria remain required; no matmul bridge, source/plan, privacy, profile or inference completion credit
 - id: E7-01d
   epic: E7
   title: Native closed integer Requant production, verification and resource ledger
@@ -1183,6 +1208,7 @@ tasks:
   - E7-01d1
   - E7-01d2
   - E7-01d3
+  - E7-01d4
   rfc:
   - RFC-0023
   - RFC-0004 A1
