@@ -1289,6 +1289,28 @@ tasks:
   - genuine separately charged range registration and witness/advice capture boundaries preserve one online weight visit through immutable retained rows and actual original consumers
   - bounded independent evidence and actual counterexamples support the integer and affine identities; all new bindings have reserved controls with precise rejecting causes and no premature execution credit
   - coordinated soundness, RFC and implementing-skill acceptance; preserve standalone Requant, existing primitives and every E3/E4/E5/E6/E7, wider/packed, configured-scale, privacy, profile and W8 requirement
+- id: E7-01f1
+  epic: E7
+  title: Native original byte-range registration and ownership
+  depends:
+  - E7-01e
+  - E3-07b
+  rfc:
+  - RFC-0024 §1.1,§6
+  - RFC-0008 A5
+  - RFC-0010 A9
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01f1-byte-range-authority
+  acceptance:
+  - derive only canonical whole-source all-one range_8 A5 statements with b=min(total_bits,30), r=1/2 and expected distinct ell=0 blowup=1 mu layouts; initialize the exact separate fixed transcript
+  - only the complete actual A5 verifier creates opaque byte-range evidence retaining the genuine original and ordered caller-owned mu certificates, actual LookupRecord, policy and constructor-plus-A5 Usage; temporary descriptors and buffers do not own it
+  - actual producer and separate mu-import paths retain complete public/dense admission, every real registration attempt and exact failed-prefix Usage without partial owners, record promotion or source-digest deduplication
+  - accepted real byte7 sanity and genuine fixed source256 cases execute NC-0315 separately for X/W with zero opposite signed factors in both fields; exact Fraction(RootMismatch), single declared deviation and dependent reconstruction
+  - both fields and repetition counts, nonconstant physical sources, exact cap/context/identity/malformed failures and owner-lifetime guards agree with independent complete A5 wire/record/Usage evidence; preserve existing corpora and gate invocations
+  - no outer LinearStatement, SZ record, composed integer proof or complete resource-ledger credit; all five E7-01f and every parent criterion remain required
 - id: E7-01f
   epic: E7
   title: Native centered signed-int8 matmul and Requant composition
@@ -1297,6 +1319,7 @@ tasks:
   - E3-07b
   - E7-01b
   - E7-01d
+  - E7-01f1
   rfc:
   - RFC-0024
   - RFC-0007 A4
@@ -1304,9 +1327,7 @@ tasks:
   - RFC-0012 A14
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
-  agent: codex-root
-  branch: task/E7-01f-integer-linear-native
+  status: ready
   acceptance:
   - implement only the Accepted E7-01e contract with actual range, arithmetic, matmul and certificate-bound source consumers in both fields and repetition counts
   - complete nonconstant stacked matrix composition, source/point/plane/alias/range/zero-factor/padding/lifetime rejection controls and exact failed-prefix usage; preserve all existing corpora
