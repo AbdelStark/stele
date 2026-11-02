@@ -1422,7 +1422,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench','matmul_corpus','matmul_bench','requant_bench')]
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench','matmul_corpus','matmul_bench','requant_bench','integer_linear_corpus','integer_linear_bench')]
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
@@ -1444,6 +1444,12 @@ def controls_layout(root):
                     'requant/producer.rs','requant/records.rs','requant/production_fixtures.py',
                     'requant/reference.py','requant/lookup_reference.py','requant/protocol_reference.py',
                     'requant/reference-provenance.json','requant_corpus.py','requant_corpus.py.lock'))
+    allowed.update(('src/integer_linear.rs', 'src/integer_linear_composer.rs',
+                    'src/integer_linear_replay.rs', 'examples/support/integer_linear_case.rs',
+                    'examples/support/integer_linear_record.rs', 'examples/support/integer_linear_verifier.rs',
+                    'integer_linear_adversary.py', 'integer_linear_continuation.py',
+                    'integer_linear_controls.py', 'integer_linear_import_cases.py',
+                    'integer_linear_lookup.py', 'integer_linear_producer.py', 'integer_linear_reference.py'))
     fixtures = requant_fixture_manifest(root)
     allowed.update(f'fixtures/requant/{name}' for name in [
         'manifest.json', *fixtures['files'], *fixtures['additional_controls'],
@@ -1452,7 +1458,8 @@ def controls_layout(root):
     allowed.update(f'fixtures/requant-production/{name}' for name in ['manifest.json',*production['files']])
     targets = {entry['name']: entry['path'] for entry in manifest.get('test', [])}
     if (targets.get('requant-verifier') != 'requant/verifier.rs'
-            or any(targets.get(f'nc-{i:04}') != f'requant/nc_{i:04}.rs' for i in range(308,315))):
+            or any(targets.get(f'nc-{i:04}') != f'requant/nc_{i:04}.rs'
+                   for i in (*range(308,315), 316, 317, 318))):
         raise ValueError('negative-controls: Requant targets not wired')
     for target in manifest.get('test', []):
         path = Path(target['path'])

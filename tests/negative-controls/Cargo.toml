@@ -234,6 +234,14 @@ path = "examples/matmul_bench.rs"
 name = "requant_bench"
 path = "examples/requant_bench.rs"
 
+[[example]]
+name = "integer_linear_corpus"
+path = "examples/integer_linear_corpus.rs"
+
+[[example]]
+name = "integer_linear_bench"
+path = "examples/integer_linear_bench.rs"
+
 [[test]]
 name = "nc-0308"
 path = "requant/nc_0308.rs"

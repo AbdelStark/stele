@@ -33,7 +33,13 @@ class FieldPcsBenchTests(unittest.TestCase):
                          'requant/producer.rs','requant/records.rs','requant/production_fixtures.py',
                          'requant/reference.py','requant/lookup_reference.py','requant/protocol_reference.py',
                          'requant/reference-provenance.json','requant_corpus.py','requant_corpus.py.lock',
-                         'examples/requant_bench.rs','fixtures/requant-production/usage.json'):
+                         'examples/requant_bench.rs','fixtures/requant-production/usage.json',
+                         'src/integer_linear.rs','src/integer_linear_composer.rs','src/integer_linear_replay.rs',
+                         'examples/integer_linear_corpus.rs','examples/integer_linear_bench.rs',
+                         'examples/support/integer_linear_case.rs','examples/support/integer_linear_record.rs',
+                         'examples/support/integer_linear_verifier.rs','integer_linear_adversary.py',
+                         'integer_linear_continuation.py','integer_linear_controls.py','integer_linear_import_cases.py',
+                         'integer_linear_lookup.py','integer_linear_producer.py','integer_linear_reference.py'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)
@@ -50,7 +56,8 @@ class FieldPcsBenchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'inventory'):
                 gates.controls_layout(root)
             extra.unlink()
-            for name in ('lookup_bench', 'matmul_bench', 'requant_bench'):
+            for name in ('lookup_bench', 'matmul_bench', 'requant_bench',
+                         'integer_linear_corpus', 'integer_linear_bench'):
                 benchmark = f'[[example]]\nname = "{name}"\npath = "examples/{name}.rs"\n'
                 self.assertIn(benchmark, original)
                 manifest.write_text(original.replace(benchmark, ''))
