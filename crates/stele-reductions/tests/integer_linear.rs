@@ -2,7 +2,7 @@
 use stele_field::{Field, M31, OM31, QM31};
 use stele_gkr::stacked;
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
-use stele_pcs::{verify_certificate, CodeField, PreparedSource};
+use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind};
 use stele_reductions::{
     byte_range, integer_linear as linear, lookup,
     requant::{EmbeddedSchema, Format},
@@ -176,6 +176,106 @@ where
         assert!(core::ptr::eq(record.originals()[1], &wr));
         for group in record.groups() {
             assert!(core::ptr::eq(group.opening().certificate(), ca.record()));
+        }
+        // Static shape/policy/cap failures never acquire proof authority.
+        for (s, limits, expected) in [
+            (
+                linear::Statement {
+                    bits: [h, a, 16, c],
+                    ..statement
+                },
+                LIMITS,
+                linear::Error::Bounds(stele_cqis::bounds::Error::FieldBound),
+            ),
+            (
+                linear::Statement {
+                    repetitions: 3 - repetitions as u8,
+                    ..statement
+                },
+                LIMITS,
+                linear::Error::SourceRoster,
+            ),
+            (
+                linear::Statement {
+                    originals: [&xr, &xr],
+                    ..statement
+                },
+                LIMITS,
+                linear::Error::SourceRoster,
+            ),
+            (
+                statement,
+                lookup::Limits {
+                    public_bytes: descriptor.public_bytes() - 1,
+                    ..LIMITS
+                },
+                linear::Error::ResourceLimit,
+            ),
+            (
+                statement,
+                lookup::Limits {
+                    proof_bytes: descriptor.proof_size() - 1,
+                    ..LIMITS
+                },
+                linear::Error::ResourceLimit,
+            ),
+            (
+                statement,
+                lookup::Limits {
+                    positions: (schema.rows() * captured.len() + x.len() + w.len() - 1) as u64,
+                    ..LIMITS
+                },
+                linear::Error::ResourceLimit,
+            ),
+        ] {
+            assert_eq!(
+                linear::Descriptor::new(s, &ca, limits, MATMUL)
+                    .err()
+                    .expect("invalid expected statement"),
+                expected
+            );
+        }
+        let width = core::mem::size_of::<K>();
+        let suffix = 1
+            + width * (4 * usize::from(h + b) + 3)
+            + px.source()
+                .proof_size(ProofKind::Opening)
+                .expect("X opening size")
+            + pw.source()
+                .proof_size(ProofKind::Opening)
+                .expect("W opening size");
+        let mut cases = Vec::new();
+        cases.push((
+            proof[..proof.len() - 1].to_vec(),
+            linear::Error::ProofShape,
+            0,
+        ));
+        for at in [0, 1] {
+            let mut changed = proof.clone();
+            changed[at] ^= 1;
+            cases.push((changed, linear::Error::ProofShape, 0));
+        }
+        let mut changed = proof.clone();
+        let at = proof.len() - suffix + 1;
+        changed[at..at + 4].copy_from_slice(&M31::MODULUS.to_le_bytes());
+        cases.push((changed, linear::Error::NoncanonicalField, 0));
+        let mut changed = proof.clone();
+        changed[2] ^= 1;
+        cases.push((changed, linear::Error::CertificateContext, 0));
+        let mut changed = proof.clone();
+        changed[34 + packet.len() - 1] ^= 1;
+        cases.push((changed, linear::Error::CertificateIdentity, 1));
+        for (changed, expected, hashes) in cases {
+            let mut t = transcript();
+            let before = t.usage();
+            let failure = descriptor
+                .verify(&mut t, &refs, &changed)
+                .err()
+                .expect("preflight rejection");
+            assert_eq!(failure.cause, expected);
+            assert_eq!(failure.usage.transcript, before);
+            assert_eq!(t.usage(), before);
+            assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
         }
     }
 }
