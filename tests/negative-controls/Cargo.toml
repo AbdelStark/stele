@@ -38,6 +38,10 @@ name = "harness"
 path = "harness/nc_stub.rs"
 
 [[test]]
+name = "requant-verifier"
+path = "requant/verifier.rs"
+
+[[test]]
 name = "nc-0609"
 path = "pcs/nc_0609.rs"
 
@@ -213,3 +217,31 @@ path = "examples/matmul_corpus.rs"
 [[example]]
 name = "matmul_bench"
 path = "examples/matmul_bench.rs"
+
+[[test]]
+name = "nc-0308"
+path = "requant/nc_0308.rs"
+
+[[test]]
+name = "nc-0309"
+path = "requant/nc_0309.rs"
+
+[[test]]
+name = "nc-0310"
+path = "requant/nc_0310.rs"
+
+[[test]]
+name = "nc-0311"
+path = "requant/nc_0311.rs"
+
+[[test]]
+name = "nc-0312"
+path = "requant/nc_0312.rs"
+
+[[test]]
+name = "nc-0313"
+path = "requant/nc_0313.rs"
+
+[[test]]
+name = "nc-0314"
+path = "requant/nc_0314.rs"

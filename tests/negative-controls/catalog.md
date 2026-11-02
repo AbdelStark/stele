@@ -25,13 +25,13 @@
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
 | NC-0306 | matmul phases | 0007 A2 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
 | NC-0307 | matmul phases | 0007 A2 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
-| NC-0308 | Requant input bytes | 0023 §6 | field-congruent int32 substituted in advice/arithmetic | `ValueMismatch` | todo |
-| NC-0309 | Requant advice identity | 0023 §6 | separately verified advice handle under unchanged packet | `CertificateContext / CertificateIdentity` | todo |
-| NC-0310 | Requant full-width result | 0023 §6 | t=65537 and q=1 retain valid low division columns | `FinalEvaluationMismatch` | todo |
-| NC-0311 | Requant carry | 0023 §6 | one interior carry exceeds its cap or changes a column | `FinalEvaluationMismatch` | todo |
-| NC-0312 | Requant plane mapping | 0023 §6 | one producer group row uses the wrong plane | `ValueMismatch` | todo |
-| NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 or positive q=H | `FinalEvaluationMismatch` | todo |
-| NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | todo |
+| NC-0308 | Requant input bytes | 0023 §6 | field-congruent int32 substituted in advice/arithmetic | `ValueMismatch` | done |
+| NC-0309 | Requant advice identity | 0023 §6 | separately verified advice handle under unchanged packet | `CertificateContext` | done |
+| NC-0310 | Requant full-width result | 0023 §6 | t=65537 and q=1 retain valid low division columns | `FinalEvaluationMismatch` | done |
+| NC-0311 | Requant carry | 0023 §6 | one interior carry exceeds its cap or changes a column | `FinalEvaluationMismatch` | done |
+| NC-0312 | Requant plane mapping | 0023 §6 | one producer group row uses the wrong plane | `ValueMismatch` | done |
+| NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 | `FinalEvaluationMismatch` | done |
+| NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | done |
 | NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | done |
 | NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | done |
 | NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | done |
@@ -56,16 +56,16 @@
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
-| NC-0606 | PCS | 0010 A9, 0007 A2 | replace the expected certificate root or use a separately verified certificate for one unchanged opening | `RootMismatch` | done |
+| NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet | `RootMismatch / CertificateContext` | done |
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
-| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7 | change the expected scalar under zero b or one closed lookup mu-opening row value; reject before column draws | `ValueMismatch` | done |
+| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12, 0007 A2 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement or either original matmul OpeningColumns | `FinalEvaluationMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13, 0007 A2 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
@@ -107,6 +107,14 @@ following A1 final. All accepted baselines use the same closed verifier. These
 controls supply conditional field-relation coverage; full native production,
 resource evidence, integer matmul and inference remain parent-task obligations.
 
-RFC-0023 reserves NC-0308..0314 for E7-01d. Bounded reference evidence grants
-no native catalog completion. Its NC-0100/0101/0109 and NC-0606/0610/0802
-extensions remain required; existing done rows cover only their listed scopes.
+The closed Requant verifier executes NC-0308..0314 in QM31 and OM31 with
+fixed expected statements and actual A3/A9 consumers. NC-0313 covers s=1 at v=0;
+positive q=H remains a full-domain obligation. NC-0314 covers reserved advice
+planes and padded input/advice views. NC-0606 adds genuine advice-context
+substitution; NC-0610 swaps or omits a weight independently in all four phases.
+The NC-0802 cases omit six frames independently and change one following A1 final.
+The scoped NC-0100/0101 cases exercise both signed rounding ties through A3;
+The NC-0109 case checks the actual static bound encoding after an accepted baseline.
+These do not complete the broad CQIS family or grant it catalog credit.
+Native general witness/production, full-domain controls, complete resource
+ledgers and inference/profile admission remain E7-01d and parent obligations.

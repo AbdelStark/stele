@@ -4,8 +4,8 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 37);
-    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 11);
+    assert_eq!(entries.len(), 41);
+    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 12);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
     assert_eq!(entries[9].loss, Some(LossLine::Sc));
@@ -26,6 +26,27 @@ fn accepts_the_fixed_registry() {
         assert_eq!(entries[index].kind, LabelKind::Absorb);
         assert_eq!(entries[index].loss, None);
     }
+}
+#[test]
+fn matches_reference_requant_label_classes() {
+    let entries = registry().expect("fixed registry");
+    for (label, suffix, index) in [
+        (AbsorbLabel::RequantStatement, "statement", 37),
+        (AbsorbLabel::RequantConstraints, "constraints", 38),
+        (AbsorbLabel::RequantClaims, "claims", 39),
+    ] {
+        assert_eq!(label.entry(), &entries[index]);
+        assert_eq!(
+            entries[index].label,
+            alloc::format!("stele/v0.1/requant/{suffix}")
+        );
+        assert_eq!(entries[index].kind, LabelKind::Absorb);
+        assert_eq!(entries[index].loss, None);
+    }
+    assert_eq!(ChallengeLabel::RequantWeight.entry(), &entries[40]);
+    assert_eq!(entries[40].label, "stele/v0.1/requant/weight");
+    assert_eq!(entries[40].kind, LabelKind::Challenge);
+    assert_eq!(entries[40].loss, Some(LossLine::Rlc));
 }
 #[test]
 fn matches_reference_lookup_label_classes() {

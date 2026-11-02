@@ -1,0 +1,78 @@
+{
+  "after": 1,
+  "arithmetic_offset": 915173,
+  "arithmetic_size": 2256,
+  "baseline": "padded-K4",
+  "baseline_sha256": "653316867cfcc12e628e15deeb9658b714e2163d48d60d29e95482dbc36e9cd2",
+  "before": 0,
+  "case_sha256": "d1760f27aaaea0d7b8db311dc96e41e7148b416b6fa7d395b6f38161a0743fb4",
+  "changed_position": 3,
+  "changed_table": 1,
+  "expected": {
+    "decision": "RoundSumMismatch",
+    "failed_prefix_usage": {
+      "candidate_words": 4944,
+      "column_attempts": 830,
+      "hash_evaluations": 1473,
+      "state_updates": 1472,
+      "xof_bytes": 316416,
+      "xof_requests": 1236
+    },
+    "local_hashes": 6893,
+    "phase": "aggregate-A3",
+    "registrations": [
+      [
+        {
+          "non_transcript": {
+            "candidate_words": 0,
+            "column_attempts": 0,
+            "hash_evaluations": 5929,
+            "state_updates": 0,
+            "xof_bytes": 0,
+            "xof_requests": 0
+          },
+          "transcript": {
+            "candidate_words": 1976,
+            "column_attempts": 494,
+            "hash_evaluations": 498,
+            "state_updates": 497,
+            "xof_bytes": 126464,
+            "xof_requests": 494
+          }
+        },
+        null
+      ],
+      [
+        {
+          "non_transcript": {
+            "candidate_words": 0,
+            "column_attempts": 0,
+            "hash_evaluations": 5929,
+            "state_updates": 0,
+            "xof_bytes": 0,
+            "xof_requests": 0
+          },
+          "transcript": {
+            "candidate_words": 1976,
+            "column_attempts": 494,
+            "hash_evaluations": 498,
+            "state_updates": 497,
+            "xof_bytes": 126464,
+            "xof_requests": 494
+          }
+        },
+        null
+      ]
+    ]
+  },
+  "qualification": "One changed arithmetic-view byte; original statement, sources, A5 packets and unreachable suffix unchanged.",
+  "residuals": [
+    [
+      "input.padding[0]",
+      1
+    ]
+  ],
+  "wire": "input-padding-K4.bin",
+  "wire_bytes": 1172776,
+  "wire_sha256": "8cad52922d1679b7e9a6fbd9c36c996cc7bb492aed61a94c84773d88e27b9a90"
+}

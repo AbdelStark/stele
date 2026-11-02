@@ -3,4 +3,5 @@
 fn rejects_nc_0610() {
     stele_negative_controls::pcs_opening::run(610).expect("wrong scalar must reject");
     stele_negative_controls::lookup::run(610).expect("complete lookup extension");
+    stele_negative_controls::requant::run(610).expect("closed Requant extension");
 }

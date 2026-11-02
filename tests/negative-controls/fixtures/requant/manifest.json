@@ -1,0 +1,318 @@
+{
+  "additional_controls": {
+    "control-high-tail.bin": {
+      "bytes": 128,
+      "sha256": "d25dfdcfde121895cbf0e9a64facdf5affbb374040d58e1db6dc02b5907f4089"
+    },
+    "control-negative-h.bin": {
+      "bytes": 128,
+      "sha256": "dedce1a5fc58ecdb81e76967b394f68bbb30747d367d6c4e8cae5242c22dfecf"
+    },
+    "control-one-0.bin": {
+      "bytes": 128,
+      "sha256": "78ba792aeee6d89093323acf7c3d12e1e9b528d63e907146e6a3affcb63f38c0"
+    },
+    "control-p-31.bin": {
+      "bytes": 256,
+      "sha256": "ab4f366788c068d3dab1f35bf2386186ca99be26d04699cb1a3ae18880c7c258"
+    },
+    "control-tie-negative.bin": {
+      "bytes": 128,
+      "sha256": "19207a6068e105c0367660977f43a7aa7fd681305a15ddfb51a6df9b638c55a5"
+    },
+    "control-tie-positive.bin": {
+      "bytes": 128,
+      "sha256": "dccd6fcfe7754ec61758c4e15a42561562b04bc2e2b863b8f7e3f392b788e5b0"
+    },
+    "control-witnesses.json": {
+      "bytes": 18033,
+      "sha256": "0f4d5b435e424b8e87ae9edb1c6c00d14541ba2fe44a5c2dcebd3ee9b66ff121"
+    },
+    "control-zero-0.bin": {
+      "bytes": 128,
+      "sha256": "682545889151cabac95b9f59c20f5b94fd6615bc618100911f8274016f77ed5c"
+    },
+    "control-zero-31.bin": {
+      "bytes": 256,
+      "sha256": "b89eded56bbedbdf47bdf8b41f6f2516bc2de501b53c8b7e20294d5b296f6d01"
+    },
+    "input-padding-K4.bin": {
+      "bytes": 1172776,
+      "sha256": "8cad52922d1679b7e9a6fbd9c36c996cc7bb492aed61a94c84773d88e27b9a90"
+    },
+    "input-padding-K4.json": {
+      "bytes": 2106,
+      "sha256": "85ae344bf8fda288d6cd51c0e0acddd20025f784c35f9b06ca8fbd3f29c8bde8"
+    },
+    "input-padding-K8.bin": {
+      "bytes": 1427768,
+      "sha256": "0923f27949d70fb1a717aa77595703d3e259288966f1160962f06f43e307d756"
+    },
+    "input-padding-K8.json": {
+      "bytes": 2107,
+      "sha256": "fdf86398f90bff0bcdaca2edfea98fa29e81711c60ef5aa4c6889e3a5fdafe73"
+    },
+    "input-padding-provenance.json": {
+      "bytes": 2355,
+      "sha256": "40e262d915425a49feae5c8153d8267baff131297e37250f04c22b54a8d1fad6"
+    }
+  },
+  "additional_qualification": "Eight scalar witness files and exactly two new fixed-statement input-padding candidates; provenance stays separate from the original frozen campaign.",
+  "cases": [
+    {
+      "file": "scalar-K4.json",
+      "sha256": "efe4b7123758c7b01a5deae2aebabbb386967a782c40eef87b37ae650937fa01",
+      "source": "/tmp/stele-requant-reference-pilot-88e114c-k4-scalar/scalar-K4.json",
+      "source_sha256": "224f5098e2cd40e7bec53f24378ab14ddcc17339c1aecf118bf804086088e269"
+    },
+    {
+      "file": "wide-K4.json",
+      "sha256": "88a8201fde34826eb80968154b8f25a56cdd08a9d3b70f7d92ac7bedc503bd20",
+      "source": "/tmp/stele-requant-reference-remaining-88e114c-k4/wide-K4.json",
+      "source_sha256": "61ef7976aa18b93683e528df35db29f431eb4365a3343cbe4d7fcfd8138c01b1"
+    },
+    {
+      "file": "shift62-K4.json",
+      "sha256": "24c8f7fa7e197a29e0f74aa81962a0016c0bf2b3b02d6a9c62d91fbf122cdd3a",
+      "source": "/tmp/stele-requant-reference-remaining-88e114c-k4/shift62-K4.json",
+      "source_sha256": "43ad63e35d89538ed258f55dd8d5d49795b7419428d9af4e9da653c0211c0cb8"
+    },
+    {
+      "file": "ties-K4.json",
+      "sha256": "011b683029a81a82c5a25b5bf52600e8b73b936a128ddfd7d94875cd8d0a60f0",
+      "source": "/tmp/stele-requant-reference-remaining-88e114c-k4/ties-K4.json",
+      "source_sha256": "5fde22dcbe21aa8667149e1eadb5fdfec6c08167c24b0514d66a0dedaa51e978"
+    },
+    {
+      "file": "padded-K4.json",
+      "sha256": "d1760f27aaaea0d7b8db311dc96e41e7148b416b6fa7d395b6f38161a0743fb4",
+      "source": "/tmp/stele-requant-reference-remaining-88e114c-k4/padded-K4.json",
+      "source_sha256": "46832e2a61e733814d1eda0b3e7370baff5a3b660c79188ff4ee22460a0cec9d"
+    },
+    {
+      "file": "high-tail-K4.json",
+      "sha256": "79b9c452e76e315124e048a87c28b6823ac60532588d99d64c0e3fb672655310",
+      "source": "/tmp/stele-requant-reference-remaining-88e114c-k4/high-tail-K4.json",
+      "source_sha256": "169e7209b209ad6b6bb914c2416eaf003eba236cec1cce4a4ea4c6c028337f7b"
+    },
+    {
+      "file": "scalar-K8.json",
+      "sha256": "9a233bf25ed38f93257ba028c86cdf99e17176499c2592556451d34b373e8839",
+      "source": "/tmp/stele-requant-reference-88e114c-k8/scalar-K8.json",
+      "source_sha256": "b0e9342ad3789e583ed9d73a85fda422d77e9d2da5f2473e9dab5773b980eb28"
+    },
+    {
+      "file": "wide-K8.json",
+      "sha256": "0f951e4b13b03a44db6cd7af7b5387c6d95e0df2b99648d9b3b2b5b650eca2c1",
+      "source": "/tmp/stele-requant-reference-88e114c-k8/wide-K8.json",
+      "source_sha256": "e4d43d2c355a7bc5f65aa526241ba9b266630588b405a159e28f5e17195be5ca"
+    },
+    {
+      "file": "shift62-K8.json",
+      "sha256": "c063b92466bfd249de1603edc603ce0992efa71228d95ae1f63289c061db503c",
+      "source": "/tmp/stele-requant-reference-88e114c-k8/shift62-K8.json",
+      "source_sha256": "304b53869ae8c7ad066b87430ce73d497ea473195afc72cafc1599d250aec45b"
+    },
+    {
+      "file": "ties-K8.json",
+      "sha256": "bb1c7ef6c41004a94c5df69cb002e0c0977977b400501ef9ac089fae9736cb05",
+      "source": "/tmp/stele-requant-reference-88e114c-k8/ties-K8.json",
+      "source_sha256": "33abed503f01965ca1cc5b2c09ce55b04cb44a765ce1e53110e3d3e2b2ba5822"
+    },
+    {
+      "file": "padded-K8.json",
+      "sha256": "c0099a43081ed24c662a87034ad4cd577400a4bc49b7bbf9278002c491b2a725",
+      "source": "/tmp/stele-requant-reference-88e114c-k8/padded-K8.json",
+      "source_sha256": "c757445aba0fea0b6c07183fd4a43141c5996901f20997d8aa8739620f3da6e2"
+    },
+    {
+      "file": "high-tail-K8.json",
+      "sha256": "7f3bf7ac4563ebd23759a69f6a027e583f6f11fbab3236712680337bc7c10f05",
+      "source": "/tmp/stele-requant-reference-88e114c-k8/high-tail-K8.json",
+      "source_sha256": "f63cc35c1dc6761bf3c83106e7faf57578fc9a9354e618a2edd636bac0fadc16"
+    }
+  ],
+  "files": {
+    "high-tail-K4-input-certificate.bin": {
+      "bytes": 6257,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/high-tail-K4-input-certificate.bin",
+      "sha256": "5f4239d59a96829fc66d18ec3c80c9f59aa8f6b11887c20307fc94d5b654092a"
+    },
+    "high-tail-K4.bin": {
+      "bytes": 658696,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/high-tail-K4.bin",
+      "sha256": "0c69a21401a2d7fe21b9b5e716fd8e421fd66b1adc4b221815709b444aa402d9"
+    },
+    "high-tail-K8-input-certificate.bin": {
+      "bytes": 6273,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/high-tail-K8-input-certificate.bin",
+      "sha256": "c104eccaac3b6a79f96ed66e88b8290616a35cc3322dde34eab75eb57c3f93bc"
+    },
+    "high-tail-K8.bin": {
+      "bytes": 911288,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/high-tail-K8.bin",
+      "sha256": "cac7231dbd66ffe5ed94d5b0be7a0a4ea76b3c4b90f4c7506f46041a583ead42"
+    },
+    "padded-K4-input-certificate.bin": {
+      "bytes": 35233,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/padded-K4-input-certificate.bin",
+      "sha256": "4e44f785819066fd566f413863986cbaf8bfb0f10d25e5203d981d52634f9daa"
+    },
+    "padded-K4-nonzero-padding.bin": {
+      "bytes": 1172776,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/padded-K4-nonzero-padding.bin",
+      "sha256": "a9e2e3ba01ffd680bb3e8b677331a4fa7d34eee609eee075d67edaf2a3310e3f"
+    },
+    "padded-K4-nonzero-reserved-plane.bin": {
+      "bytes": 1172776,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/padded-K4-nonzero-reserved-plane.bin",
+      "sha256": "10033afc1b73ac612a4d263ee3f96e254ff766677963daf28cec0398774269e7"
+    },
+    "padded-K4.bin": {
+      "bytes": 1172776,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/padded-K4.bin",
+      "sha256": "653316867cfcc12e628e15deeb9658b714e2163d48d60d29e95482dbc36e9cd2"
+    },
+    "padded-K8-input-certificate.bin": {
+      "bytes": 35297,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/padded-K8-input-certificate.bin",
+      "sha256": "c5944630672a0c84d3b3d1a9671cf4417fff82a27d3ef8767798a1d0a6bafa83"
+    },
+    "padded-K8-nonzero-padding.bin": {
+      "bytes": 1427768,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/padded-K8-nonzero-padding.bin",
+      "sha256": "6784f4dddc20227349b8b8c05fa5f1fc3a379a845c52f4cca00df7d1f7bcbc91"
+    },
+    "padded-K8-nonzero-reserved-plane.bin": {
+      "bytes": 1427768,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/padded-K8-nonzero-reserved-plane.bin",
+      "sha256": "b2b76d962ab777d07599b0a71de56b92513f999f6f26bc1eaac75332cd8de12a"
+    },
+    "padded-K8.bin": {
+      "bytes": 1427768,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/padded-K8.bin",
+      "sha256": "d2858ceb62e79d25fbf68fe2ef28eb08be44d634286b5447bfe58ca43e4ea2ba"
+    },
+    "scalar-K4-different-advice-certificate.bin": {
+      "bytes": 70737,
+      "path": "/tmp/stele-requant-reference-pilot-88e114c-k4-scalar/scalar-K4-different-advice-certificate.bin",
+      "sha256": "756232634b2b6b0c17e3f22b21be8020f17251106713bc55737fb49be0d5cd97"
+    },
+    "scalar-K4-false-carry.bin": {
+      "bytes": 658696,
+      "path": "/tmp/stele-requant-reference-pilot-88e114c-k4-scalar/scalar-K4-false-carry.bin",
+      "sha256": "770808e23a5d5303da0bd15be5d48e4963f6e6c79c0a800dd28336660049b3e6"
+    },
+    "scalar-K4-input-certificate.bin": {
+      "bytes": 6257,
+      "path": "/tmp/stele-requant-reference-pilot-88e114c-k4-scalar/scalar-K4-input-certificate.bin",
+      "sha256": "6e17595535c65612c71522c3c75d89078e8151a7b9ced54752016dd0c3da67c1"
+    },
+    "scalar-K4.bin": {
+      "bytes": 658696,
+      "path": "/tmp/stele-requant-reference-pilot-88e114c-k4-scalar/scalar-K4.bin",
+      "sha256": "e85b9015b7a81fdfb286709c000b105df1b9869535ed875ce5919aafa3a56357"
+    },
+    "scalar-K8-different-advice-certificate.bin": {
+      "bytes": 70753,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/scalar-K8-different-advice-certificate.bin",
+      "sha256": "9bca658fcc1ab3a74d2c1e737ca0703a0830b479d42adb338e6df1ac598c16a5"
+    },
+    "scalar-K8-false-carry.bin": {
+      "bytes": 911288,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/scalar-K8-false-carry.bin",
+      "sha256": "96cbeff19dd294ecbc2fdc741d4280d82b908fd2bcbde4c2b224635a874c2a52"
+    },
+    "scalar-K8-input-certificate.bin": {
+      "bytes": 6273,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/scalar-K8-input-certificate.bin",
+      "sha256": "27af2d28522bd6bd1275bb154e367a84601141b7f41052fffb679c10b3b6db03"
+    },
+    "scalar-K8.bin": {
+      "bytes": 911288,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/scalar-K8.bin",
+      "sha256": "2b55a8afd26171b718e0d8d4436fb365e46c11d4e19fd7d4a674a036bd61e7fd"
+    },
+    "shift62-K4-input-certificate.bin": {
+      "bytes": 25153,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/shift62-K4-input-certificate.bin",
+      "sha256": "21587912fde1a90d0d233118196cdc7cd56e8f41e9ae9f49b3b306aecad9a060"
+    },
+    "shift62-K4.bin": {
+      "bytes": 2114150,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/shift62-K4.bin",
+      "sha256": "5100907d30ecf7fc4a4dabd3e330fa6b3e0cfac382dbc9385e07eb062f5cbe86"
+    },
+    "shift62-K8-input-certificate.bin": {
+      "bytes": 25185,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/shift62-K8-input-certificate.bin",
+      "sha256": "0b326053a7bf65b232484c616c18bd2a12e54183179546484673fa6e5e3ee48f"
+    },
+    "shift62-K8.bin": {
+      "bytes": 2622438,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/shift62-K8.bin",
+      "sha256": "2e47e07e33d92f6adb8751087676ddb40e2bf85707cda18737993799575b1a8e"
+    },
+    "ties-K4-input-certificate.bin": {
+      "bytes": 25153,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/ties-K4-input-certificate.bin",
+      "sha256": "2dd75e0a729a44a4dd2ca71d9373de40dfae8d6dd8851142ca2639371acecc69"
+    },
+    "ties-K4.bin": {
+      "bytes": 1013640,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/ties-K4.bin",
+      "sha256": "2361f45fa7e91882902ac84fb7b62044bc0b95e43b5f537f2cd27bf4894a5452"
+    },
+    "ties-K8-input-certificate.bin": {
+      "bytes": 25185,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/ties-K8-input-certificate.bin",
+      "sha256": "63dc3220b301d853b6ac8a1f4db7abb269a1211cd98081bf170151008af2af2f"
+    },
+    "ties-K8.bin": {
+      "bytes": 1267320,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/ties-K8.bin",
+      "sha256": "67755731084d9fe31812893b511d97a962da49fabbcdff6b11f48d120ad08e53"
+    },
+    "wide-K4-input-certificate.bin": {
+      "bytes": 25153,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/wide-K4-input-certificate.bin",
+      "sha256": "637442acdd7b32ac86b0abbfa91a6b6e8d6ca6f08a9039229e5962e63d01ee66"
+    },
+    "wide-K4.bin": {
+      "bytes": 1970614,
+      "path": "/tmp/stele-requant-reference-remaining-88e114c-k4/wide-K4.bin",
+      "sha256": "b9bba53c262c69e5f7ed0e3323fe1ddd8c474188e8fe0c927b206526a2912513"
+    },
+    "wide-K8-input-certificate.bin": {
+      "bytes": 25185,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/wide-K8-input-certificate.bin",
+      "sha256": "537393d977e99685e5d80eb0f368afd55dc7236dba7bfbd22281d60e657138e0"
+    },
+    "wide-K8.bin": {
+      "bytes": 2478918,
+      "path": "/tmp/stele-requant-reference-88e114c-k8/wide-K8.bin",
+      "sha256": "b6b508928f0ae18779f0467dfa2bae001d5d8a95e484f838e40bccb3cfffedbb"
+    }
+  },
+  "generators": {
+    "requant/input_padding_fixture.py": "3a0f0ac9e3d2d3fbbbbcc1061554585c8aecba77ad8daa92d3372a73a3e8f970",
+    "requant/witness_fixtures.py": "6b9800a8a94c1d10480fc85e0b80c64d1b5bcd6643c4b12e9cb6d8a6420d70cb"
+  },
+  "helper_source_pins": {
+    "controls.py": "0fadc890304556eb61b1be0d854aa2430df8d79f531eba2f460895220261d2b1",
+    "lookup_adapter.py": "e60e168b26c89b4748c916413d3d36b0c9b323767ceeb9b87ee839437bda7af4",
+    "protocol.py": "ce8b8179b950e51d667846032fb6d914b8d3681f6fd5dc3fae894512b6dc61fc",
+    "references.py": "1fb8d4e5bdfc4c33c7f360e68c82de7a6006e5d2280e69c26f11363a58baf2ee",
+    "run.py": "fb12b53744a2fb7564ef4bd8162c67db786fabc8897679e3f7abd4c1b03412a3",
+    "schema.py": "7094cf8c92538ea46a16e65540412fe9863e6d46c100f31153e2b8275d73cd1c"
+  },
+  "known_reference_gaps": [
+    "input 0/p source-authority control",
+    "independent per-frame omission variants",
+    "native controls"
+  ],
+  "qualification": "Data-only projection of the frozen independent reference campaign; no reference engine was rerun. Native tests supply separate execution evidence.",
+  "reference_audit_sha256": "5e093f616d73f5ac1d228794b6867749349b9cbe291f16168f524023ca0e7dda",
+  "source_head": "88e114cbbb9e973c74997119445c6a4da0bc8efc",
+  "source_tree": "52a7a28fafc521c74af48e3497a99e63d87aaa06"
+}

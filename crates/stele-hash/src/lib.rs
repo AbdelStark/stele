@@ -80,7 +80,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 37] = [
+const REGISTRY: [RegistryEntry<'static>; 41] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -266,6 +266,26 @@ const REGISTRY: [RegistryEntry<'static>; 37] = [
         kind: LabelKind::Absorb,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/requant/statement",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/requant/constraints",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/requant/claims",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/requant/weight",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Rlc),
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -293,7 +313,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 37], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 41], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -384,6 +404,12 @@ pub enum AbsorbLabel {
     LookupMultiplicityClaims,
     /// Expected original-source matmul statement before A4/A1 (A12).
     MatmulStatement,
+    /// Complete expected integer Requant statement (A13).
+    RequantStatement,
+    /// Complete ordered unsampled Requant constraints (A13).
+    RequantConstraints,
+    /// Complete ordered Requant source claims before independent weights (A13).
+    RequantClaims,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -413,6 +439,9 @@ impl AbsorbLabel {
             Self::LookupRepetition => 31,
             Self::LookupMultiplicityClaims => 32,
             Self::MatmulStatement => 36,
+            Self::RequantStatement => 37,
+            Self::RequantConstraints => 38,
+            Self::RequantClaims => 39,
         }]
     }
 }
@@ -441,6 +470,8 @@ pub enum ChallengeLabel {
     LookupBeta,
     /// Denominator draw after every multiplicity, joint LU identity (A11).
     LookupAlpha,
+    /// Independent coefficient of a fixed Requant vector, RLC numerator one (A13).
+    RequantWeight,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -456,6 +487,7 @@ impl ChallengeLabel {
             Self::LookupUnit => 33,
             Self::LookupBeta => 34,
             Self::LookupAlpha => 35,
+            Self::RequantWeight => 40,
         }]
     }
 }

@@ -1,0 +1,28 @@
+{
+  "helper_sources": {
+    "controls.py": "0fadc890304556eb61b1be0d854aa2430df8d79f531eba2f460895220261d2b1",
+    "lookup_adapter.py": "e60e168b26c89b4748c916413d3d36b0c9b323767ceeb9b87ee839437bda7af4",
+    "protocol.py": "ce8b8179b950e51d667846032fb6d914b8d3681f6fd5dc3fae894512b6dc61fc",
+    "references.py": "1fb8d4e5bdfc4c33c7f360e68c82de7a6006e5d2280e69c26f11363a58baf2ee",
+    "run.py": "fb12b53744a2fb7564ef4bd8162c67db786fabc8897679e3f7abd4c1b03412a3",
+    "schema.py": "7094cf8c92538ea46a16e65540412fe9863e6d46c100f31153e2b8275d73cd1c"
+  },
+  "qualification": "Exactly two new controls; saved A5 verification plus actual small A3 production; no original campaign rerun.",
+  "script_sha256": "3a0f0ac9e3d2d3fbbbbcc1061554585c8aecba77ad8daa92d3372a73a3e8f970",
+  "sources": {
+    "research/batching/check_batching.py": "26ad92fb42362a0eef971cf3f41b198dff4fbd73db869f15837faa0e6c125d44",
+    "research/cqis-bounds/encoding.py": "e90ca2f43f5ce7a856531237747e720c7ce6ff511e32642833d4fe548298ea76",
+    "research/cqis-bounds/limbs.py": "b2c42aea5d67fca66f2a6e5d81ce976aeadcd73be2346627025b94f4c5974d4f",
+    "research/cqis-bounds/requant.py": "f82221be309906f78a3b7b96c7ae59ddf9d3fb97e916ce2410372c53dd06a68c",
+    "research/cqis-tables/table_identity.py": "df79795236a01c114f80b6cb07a9575c5c8ef844197d30586f3e97bb888eac5c",
+    "research/logup-characteristic/fraction.py": "ec8f54a627a5f29380d976451ec480de89ad7be11411eb6f283cc4d91c927bb1",
+    "research/merkle-oracle/field_wire.py": "ce60cfe1ca9fb7130f75a8d320a48c9791b237aa745c025bc31b15c36925c3a6",
+    "research/merkle-oracle/native_policy.py": "87b864b0135cf07cea6a57e0d0c41613a2b5c7f0345509e1391fe34780aff002",
+    "research/stacked-gkr/statement.py": "7305640e0963e18529a3baa313ac8038c63c2cce1281bd46c25d4c927cd3b39b",
+    "research/stacked-gkr/weighted_mle.py": "df23dbe864d13637b429c3df21de45abb8830c56424c52c53dc0f9887d02ea4f",
+    "research/sumcheck/check_sumcheck.py": "12a5d3405e2cde0384c18080e6f95564752bc6ba88ca4d216f487e1508553d8c",
+    "research/zerocheck/check_zerocheck.py": "ff8126c262410604d70589317a3e02f0b13b3f365f76e36269b845f115e239b3",
+    "tests/negative-controls/lookup_closed.py": "008082550a8ea3658257cbdb486ebd45aea912b30db230c4c218f8264ab7479e",
+    "tests/negative-controls/lookup_corpus.py": "b0c901c09baab067e05187252cd35d6b7d073ac51f514e769488ab67140869c5"
+  }
+}

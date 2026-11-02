@@ -23,6 +23,8 @@ pub mod pcs_opening_continuation;
 #[doc(hidden)]
 pub mod pcs_opening_field;
 #[doc(hidden)]
+pub mod requant;
+#[doc(hidden)]
 pub mod small;
 #[doc(hidden)]
 pub mod stacked;
@@ -43,6 +45,48 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 308,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: || requant::run(308),
+    },
+    catalog::RegisteredControl {
+        id: 309,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CertificateContext",
+        run: || requant::run(309),
+    },
+    catalog::RegisteredControl {
+        id: 310,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || requant::run(310),
+    },
+    catalog::RegisteredControl {
+        id: 311,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || requant::run(311),
+    },
+    catalog::RegisteredControl {
+        id: 312,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: || requant::run(312),
+    },
+    catalog::RegisteredControl {
+        id: 313,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || requant::run(313),
+    },
+    catalog::RegisteredControl {
+        id: 314,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch / FinalEvaluationMismatch",
+        run: || requant::run(314),
+    },
     catalog::RegisteredControl {
         id: 306,
         kind: catalog::ControlKind::Proof,
@@ -169,7 +213,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "ValueMismatch",
         run: || {
             pcs_opening::run(610)?;
-            lookup::run(610)
+            lookup::run(610)?;
+            requant::run(610)
         },
     },
     catalog::RegisteredControl {
@@ -184,11 +229,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
     catalog::RegisteredControl {
         id: 606,
         kind: catalog::ControlKind::Proof,
-        expected_error: "RootMismatch",
+        expected_error: "RootMismatch / CertificateContext",
         run: || {
             pcs::run(606)?;
             pcs_opening::run(606)?;
-            matmul::run(606)
+            matmul::run(606)?;
+            requant::run(309)
         },
     },
     catalog::RegisteredControl {
@@ -332,7 +378,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             pcs_opening_continuation::run()?;
             stacked::run_continuation()?;
             lookup::run(802)?;
-            matmul::run(802)
+            matmul::run(802)?;
+            requant::run(802)
         },
     },
     catalog::RegisteredControl {

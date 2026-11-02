@@ -5,4 +5,5 @@ fn rejects_nc_0606() {
         .expect("native certificate must reject the stated tamper");
     stele_negative_controls::pcs_opening::run(606).expect("native opening must reject");
     stele_negative_controls::matmul::run(606).expect("closed matmul extension");
+    stele_negative_controls::requant::run(309).expect("closed Requant extension");
 }

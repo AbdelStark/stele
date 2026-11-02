@@ -8,6 +8,13 @@ use stele_field::{Serialize, M31};
 use stele_hash::ChallengeField;
 use stele_pcs::{ProofKind, Source, VerifiedCertificate};
 use stele_sumcheck::{Instance, Term};
+#[path = "requant_verifier.rs"]
+pub(super) mod verifier;
+
+struct Wire<'b> {
+    root: [u8; 32],
+    parts: [&'b [u8]; 8],
+}
 
 /// Caller-owned expected input and output claim; construction validates nothing.
 #[derive(Clone, Copy)]
@@ -210,6 +217,18 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
         let constraints = s.schema.constraints::<K>()?;
         let p = constraints.input_count();
         let j = constraints.equations().len();
+        // RFC-0023 §4: concrete aggregate, decoded arithmetic and retained claim
+        // buffers are admitted before replay, including A3's P separate points.
+        let terms = constraints
+            .equations()
+            .iter()
+            .try_fold(0, |n, ts| sum(&[n, ts.len()]))?;
+        addressable::<Term<K>>(terms)?;
+        addressable::<stele_sumcheck::batch::Claim<K>>(p)?;
+        addressable::<K>(mul(p, usize::from(m))?)?;
+        addressable::<K>(j)?;
+        addressable::<(u32, u64, K)>(r)?;
+        addressable::<K>(sum(&[4 * usize::from(m), 2 + q])?)?;
         let t = constraints
             .equations()
             .iter()
@@ -310,7 +329,9 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
             mul(2, advice_public)?,
         ])?;
         for c in [4, r, 1 + q] {
-            public = sum(&[public, 147, mul(usize::from(m), w)?, mul(c, 12 + w)?])?;
+            let frame = sum(&[147, mul(usize::from(m), w)?, mul(c, 12 + w)?])?;
+            addressable::<u8>(frame)?;
+            public = sum(&[public, frame])?;
         }
         let local_hashes = [
             left.max_local_hashes(),
@@ -430,6 +451,9 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
     /// Check complete shape and canonical arithmetic/row prefixes without allocation.
     /// Advice root/packet identities and A9 response authentication remain unchecked.
     pub fn preflight(&self, bytes: &[u8]) -> Result<(), Error> {
+        self.wire(bytes).map(|_| ())
+    }
+    fn wire<'b>(&self, bytes: &'b [u8]) -> Result<Wire<'b>, Error> {
         if bytes.len() != self.proof_bytes || bytes.get(..2) != Some(&[1, K::DEGREE as u8]) {
             return Err(Error::ProofShape);
         }
@@ -462,7 +486,10 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
         if !rest.is_empty() {
             return Err(Error::ProofShape);
         }
-        Ok(())
+        Ok(Wire {
+            root: bytes[2..34].try_into().map_err(|_| Error::ProofShape)?,
+            parts,
+        })
     }
 }
 fn put(out: &mut Vec<u8>, bytes: &[u8]) -> Result<(), Error> {
