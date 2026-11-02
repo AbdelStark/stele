@@ -49,6 +49,14 @@ schema before reporting success. CI runs the two radix cases and bounded request
 and receipt mutations through `scripts/tests/test_requant_bench.py`; it does not
 run the measurement campaign.
 
+Recorded [E7-01d ledger](ledger/e7-01d-requant.json), measured from clean commit
+`0c3547f4dd946816f4e178534a58cc6043fe4ab8`. All 36 ordered native/Python pairs
+completed and all three nonvolatile repeats per cell matched. The imported file
+is byte-identical to the emitted ledger, SHA256
+`d3ad45ab19721ec6852e9b570d8424c7c428c3b7bb4017c3828446c1af774626`.
+The [production review](../docs/security/requant-production-review.md) qualifies
+the actual controls, raw-artifact audit, source provenance and resource scope.
+
 ## Circle encoding (E4-02)
 
 On macOS, from a clean committed checkout, run
