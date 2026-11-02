@@ -59,7 +59,7 @@ def requant_schema_api(crate):
     code = re.sub(r'//[^\n]*', '', (crate/'src/requant.rs').read_text())
     compact = lambda text: re.sub(r'\s+', '', text)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
-    expected = [('use','constraints'), ('enum','Error'), ('struct','Block')]
+    expected = [('use','constraints'), ('use','crate'), ('use','codec'), ('enum','Error'), ('struct','Block')]
     expected += [('fn',n) for n in ('cap','value','slack','carry')]
     expected += [('struct','Role')] + [('fn',n) for n in ('count','bounds','widths','result_cap','carries')]
     expected += [('struct','Schema')] + [('fn',n) for n in ('new','bounds','values','roles','u_carries','allocated_rows','rows')]
@@ -73,7 +73,9 @@ def requant_schema_api(crate):
         ('u_carries','Range<usize>'), ('allocated_rows','usize'), ('rows','usize'))]
     return (declarations == expected and len(declarations) == len(re.findall(r'\bpub\b',code))
         and 'pubuseconstraints::Constraints;' in compact(code)
-        and requant_constraints_api(crate)
+        and 'pubusecrate::lookup::Limits;' in compact(code)
+        and 'pubusecodec::{Descriptor,Statement};' in compact(code)
+        and requant_constraints_api(crate) and requant_codec_api(crate)
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == signatures
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]
             == ['implBlock{','implRole{','implSchema{',"impl<'a>Reader<'a>{"]
@@ -82,7 +84,9 @@ def requant_schema_api(crate):
             ('Role','count:u32,bounds:[u64;3],widths:[u8;3],result_cap:Option<Block>,carries:Vec<Block>,'),
             ('Schema','bounds:bounds::Record,layout:Layout,')]
         and [compact(v) for v in re.findall(r'pub enum Error\s*\{([^}]*)\}',code)]
-            == ['Parameters(stele_cqis::Error),Bounds(bounds::Error),Encoding,Capacity,']
+            == ['Parameters(stele_cqis::Error),Bounds(bounds::Error),Encoding,Capacity,Statement,SourceRoster,'
+                'ResourceLimit,ProofShape,NoncanonicalField,Pcs(stele_pcs::Error),Lookup(crate::lookup::Error),'
+                'Sumcheck(stele_sumcheck::Error),']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
 
 
@@ -102,6 +106,38 @@ def requant_constraints_api(crate):
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
 
 
+def requant_codec_api(crate):
+    """Expected metadata and untrusted shape only; genuine handles remain borrowed."""
+    code = re.sub(r'//[^\n]*', '', (crate/'src/requant_codec.rs').read_text())
+    compact = lambda text: re.sub(r'\s+', '', text)
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    fields = ['stage','n','schema','repetitions','advice_blowup','point','value','input']
+    methods = ['advice_source','new','statement_size','constraints_size','proof_size',
+               'public_bytes','max_local_hashes','encode','encode_constraints','preflight']
+    expected = [('struct','Statement')]+[('',n) for n in fields]+[('struct','Descriptor')]+[('fn',n) for n in methods]
+    return (declarations == expected and len(declarations) == len(re.findall(r'\bpub\b',code))
+        and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == [
+            'pubfnadvice_source<K:ChallengeField>(&self,stage:u32,n:u64,blowup:u8,root:[u8;32],)->Result<Source<K>,Error>{',
+            "pubfnnew(statement:Statement<'a,'cert,K>,advice:&'certVerifiedCertificate<K>,limits:Limits,)->Result<Self,Error>{",
+            *[f'pubfn{n}(&self)->usize{{' for n in methods[2:6]],
+            'pubfnmax_local_hashes(&self)->u64{',
+            'pubfnencode(&self)->Result<Vec<u8>,Error>{',
+            'pubfnencode_constraints(&self)->Result<Vec<u8>,Error>{',
+            'pubfnpreflight(&self,bytes:&[u8])->Result<(),Error>{']
+        and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)] == [
+            'implSchema{', "impl<'a,'cert,K:ChallengeField>Descriptor<'a,'cert,K>{"]
+        and [(n,compact(g),compact(v)) for n,g,v in re.findall(r'pub struct (\w+)([^\{]*)\{([^}]*)\}',code)] == [
+            ('Statement',"<'a,'cert,K:ChallengeField>",
+             "pubstage:u32,pubn:u64,pubschema:&'aSchema,pubrepetitions:u8,pubadvice_blowup:u8,"
+             "pubpoint:&'a[K],pubvalue:K,pubinput:&'certVerifiedCertificate<K>,"),
+            ('Descriptor',"<'a,'cert,K:ChallengeField>",
+             "statement:Statement<'a,'cert,K>,originals:[[&'certVerifiedCertificate<K>;1];2],table:lookup::Table,"
+             'selectors:[Vec<u8>;2],layouts:[[lookup::Layout;2];2],constraints:Constraints<K>,ids:Vec<u64>,'
+             'output:Instance<K>,base:u64,m:u8,limits:Limits,statement_bytes:usize,constraints_bytes:usize,'
+             'parts:[usize;8],proof_bytes:usize,public_bytes:usize,local_hashes:u64,')]
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
+
+
 def field_sources(root):
     """Closed conditional A1/stacked/lookup/matmul consumers; no inference/profile authority."""
     crate = root / 'crates/stele-reductions'
@@ -112,7 +148,8 @@ def field_sources(root):
                'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs',
                'src/matmul_producer.rs', 'tests/matmul_producer.rs', 'src/requant.rs',
                'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt', 'src/requant_constraints.rs',
-               'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt'}
+               'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
+               'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -292,7 +329,9 @@ def field_sources(root):
          + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
             'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]
          + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
-            'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]),
+            'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]
+         + [f'test requant::codec::tests::{n} ... ok' for n in ('matches_reference_qm31_codec',
+            'matches_reference_om31_codec','rejects_codec_statement_and_sources')]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
@@ -320,7 +359,8 @@ def field_sources(root):
                                           ('stacked_sources', 'stacked_sources', 'StackedSourceRecord', 2),
                                           ('lookup', 'lookup', 'Statement', 1), ('lookup', 'lookup', 'Descriptor', 1),
                                           ('lookup_records', 'lookup::verifier::records', 'LookupRecord', 3),
-                                          ('matmul', 'matmul', 'Record', 3)):
+                                          ('matmul', 'matmul', 'Record', 3),
+                                          ('requant_codec', 'requant::codec', 'Descriptor', 2)):
                 pattern = (rf'^test crates/stele-reductions/src/{file}\.rs - {module}::{record} '
                            r'\(line \d+\) - compile fail \.\.\. ok$')
                 matches = re.findall(pattern, result.stdout, re.MULTILINE)
@@ -358,6 +398,7 @@ def field_sources(root):
     print('gate lookup closed: actual A3/Table/A9 consumers, opaque records, native controls and independent failure/usage parity; no profile credit')
     print('gate requant schema: 18 complete independent layouts; generated CQIS records, shared tails and zero caps; no proof or NC credit')
     print('gate requant constraints: 18 complete ordered term fixtures in QM31/OM31; honest rows and equation mutations; no proof or NC credit')
+    print('gate requant codec: 8 independent expected frames, outer costs and untrusted wire decisions; genuine source handles and cumulative caps; no proof or NC credit')
 
 
 def field_source_codec(root):

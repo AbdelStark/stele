@@ -1,4 +1,4 @@
-//! RFC-0023 §2.1: immutable advice layout from actual RFC-0022 schema-1 records.
+//! RFC-0023 §§2.1-2.4: immutable advice layout, expected frames and untrusted codec.
 //! Static metadata alone authenticates no source, witness, or inference claim.
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -6,8 +6,12 @@ use stele_cqis::{bounds, Format, Requant};
 #[path = "requant_constraints.rs"]
 mod constraints;
 pub use constraints::Constraints;
+#[path = "requant_codec.rs"]
+mod codec;
+pub use crate::lookup::Limits;
+pub use codec::{Descriptor, Statement};
 
-/// Failure during static schema or constraint derivation.
+/// Failure during schema, expected descriptor or untrusted codec validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
     /// Unsupported separately supplied scalar configuration.
@@ -18,6 +22,22 @@ pub enum Error {
     Encoding,
     /// Checked row arithmetic or bounded allocation failed.
     Capacity,
+    /// Invalid independently expected operation geometry or fixed parameters.
+    Statement,
+    /// Genuine input/advice context differs from the fixed source roster.
+    SourceRoster,
+    /// Cumulative padded positions, public payload or proof cap is exceeded.
+    ResourceLimit,
+    /// Complete untrusted wire shape or outer version/field differs.
+    ProofShape,
+    /// An outer arithmetic scalar has a noncanonical base limb.
+    NoncanonicalField,
+    /// Preserve the actual A9 shape/context cause.
+    Pcs(stele_pcs::Error),
+    /// Preserve the actual A5 descriptor/preflight cause.
+    Lookup(crate::lookup::Error),
+    /// Preserve the actual A1 descriptor cause.
+    Sumcheck(stele_sumcheck::Error),
 }
 
 /// One whole-value cap, including its slack and interior Boolean carries.
