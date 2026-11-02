@@ -173,7 +173,9 @@ class ClosedStackedGateTests(unittest.TestCase):
                       + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
                          'test matmul::matches_reference_owned_capacities ... ok']
                       + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
-                         'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]),
+                         'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]
+                      + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
+                         'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]),
             '\n'.join(f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))),
             '\n'.join(f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
@@ -287,7 +289,8 @@ class ClosedStackedGateTests(unittest.TestCase):
             path.write_bytes(saved)
 
     def test_rejects_unreviewed_api_conversions_and_dependencies(self):
-        for name in ('src/requant.rs', 'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt'):
+        for name in ('src/requant.rs', 'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt',
+                     'src/requant_constraints.rs', 'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt'):
             path = self.root/'crates/stele-reductions'/name
             saved = path.read_bytes(); path.unlink()
             with mock.patch.object(gate.subprocess, 'run') as run:
@@ -299,6 +302,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('src/requant.rs','\npub fn verify() {}\n'),
             ('src/requant.rs','\nimpl From<bool> for Schema {}\n'),
             ('src/requant.rs','\ninclude!("unchecked.rs");\n'),
+            ('src/requant_constraints.rs','\npub fn from_terms() {}\n'),
+            ('src/requant_constraints.rs','\nimpl<K> From<Vec<Term<K>>> for Constraints<K> {}\n'),
+            ('src/requant_constraints.rs','\ninclude!("unchecked.rs");\n'),
             ('src/matmul.rs','\npub fn prove() {}\n'),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> Record<'_, K> { pub fn from_digest(_: [u8; 32]) -> Self { todo!() } }\n"),
             ('src/matmul.rs',"\nimpl<K: ChallengeField> From<bool> for Record<'_, K> { fn from(_: bool) -> Self { todo!() } }\n"),
@@ -350,6 +356,10 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('requant.rs', 'pub fn values(&self) -> &[Block]', 'pub fn values(&mut self) -> &mut [Block]'),
             ('requant.rs', 'mantissa: u32, shift: u32, format: Format', 'record: bounds::Record'),
             ('requant.rs', 'cap: u64,', 'cap: u32,'),
+            ('requant.rs', 'pub use constraints::Constraints;', 'pub use constraints::*;'),
+            ('requant_constraints.rs', '    equations: Vec<Vec<Term<K>>>,', '    pub equations: Vec<Vec<Term<K>>>,'),
+            ('requant_constraints.rs', 'pub fn equations(&self) -> &[Vec<Term<K>>]', 'pub fn equations(&mut self) -> &mut [Vec<Term<K>>]'),
+            ('requant_constraints.rs', 'constraints<K: ChallengeField>', 'constraints<K: stele_field::Field>'),
             ('matmul.rs', 'mod producer;', 'pub mod producer;'),
             ('matmul.rs', 'pub use producer::{prove, prove_measured, Work};', 'pub use producer::*;'),
             ('matmul.rs', 'pub context_bytes: usize,', 'pub context_bytes: ScRecord,'),
