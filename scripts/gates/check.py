@@ -54,10 +54,46 @@ def bootstrap_guard(root, gate):
     print(f'gate {gate}: remaining scaffold guards verified (task {OWNERS[gate]})')
 
 
+def integer_linear_api(crate, names=None):
+    """RFC-0024: exact borrowed owners and reviewed private sibling interfaces."""
+    expected = json.loads(Path(__file__).with_name('integer-linear-api.json').read_text())
+    inventory = {'integer_linear', 'integer_linear_producer', 'integer_linear_verifier',
+                 'matmul_centered', 'requant_arithmetic'}
+    if set(expected) != inventory:
+        return False
+    for name in inventory if names is None else names:
+        path = crate/'src'/f'{name}.rs'
+        if name not in inventory or not path.is_file() or path.is_symlink():
+            return False
+        code = re.sub(r'//[^\n]*', '', path.read_text())
+        visibility = r'pub(?:\s*\([^)]*\))?'
+        compact = lambda s: re.sub(r'\s+', '', s)
+        patterns = {
+            'public': r'\b'+visibility+r'\s+(?:(?:fn|struct|enum|type|trait|mod|use|const|static)\s+)?\w+',
+            'functions': r'\b'+visibility+r'\s+fn\b[^\{]*\{',
+            'impls': r'\bimpl\b[^\{]*\{',
+            'structures': r'\b'+visibility+r'\s+struct\b[^\{]*\{[^}]*\}',
+            'enums': r'\b(?:'+visibility+r'\s+)?enum\b[^\{]*\{[^}]*\}',
+            'aliases': r'\b'+visibility+r'\s+type\b.*?;\n',
+            'exports': r'\b'+visibility+r'\s+use\b[^;]*;',
+            'paths': r'#\[path\s*=\s*"[^"]+"\]\s*(?:'+visibility+r'\s+)?mod\s+\w+;',
+        }
+        actual = {key: [compact(v) for v in re.findall(pattern, code, re.S)]
+                  for key, pattern in patterns.items()}
+        if (actual != expected[name] or len(actual['public']) != len(re.findall(r'\bpub\b', code))
+                or re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code)):
+            return False
+    return True
+
+
 def requant_schema_api(crate):
     """RFC-0020 A8: closed Requant owner and immutable generated metadata."""
     code = re.sub(r'//[^\n]*', '', (crate/'src/requant.rs').read_text())
     compact = lambda text: re.sub(r'\s+', '', text)
+    sibling = '#[path="requant_arithmetic.rs"]pub(crate)modarithmetic;'
+    if sibling not in compact(code) or code.count('pub(crate) mod arithmetic;') != 1:
+        return False
+    code = code.replace('pub(crate) mod arithmetic;', '')
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     expected = [('use','stele_cqis'), ('use','constraints'), ('use','crate'), ('use','codec'), ('use','codec'), ('use','codec'), ('use','witness'), ('use','embedded'), ('enum','Error'), ('struct','Block')]
     expected += [('fn',n) for n in ('cap','value','slack','carry')]
@@ -80,6 +116,7 @@ def requant_schema_api(crate):
         and 'pubusecodec::verifier::{Failure,GroupRecord,Record,RegisteredMultiplicities,RegistrationFailure,RlcRecord,VerifierWork,};' in compact(code)
         and '#[path="requant_witness.rs"]modwitness;pubusewitness::Witness;' in compact(code)
         and requant_constraints_api(crate) and requant_codec_api(crate) and requant_verifier_api(crate)
+        and integer_linear_api(crate, ('requant_arithmetic',))
         and requant_witness_api(crate) and requant_producer_api(crate) and requant_embedded_api(crate)
         and '#[path="requant_embedded.rs"]modembedded;pubuseembedded::{EmbeddedSchema,EmbeddedWitness};' in compact(code)
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == signatures
@@ -168,7 +205,6 @@ def requant_producer_api(crate):
         and [(n,compact(v)) for n,v in re.findall(r'pub struct (\w+)\s*\{([^}]*)\}',code)]==[
             (n,','.join('pub'+f for f in body.rstrip(',').split(','))+',') for n,body in structs]
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]==[
-            "impl<K:ChallengeField>Summand<K>forCapture<'_,K>{",
             "impl<K:ChallengeField+CodeField+lookup::TableField+Eq>Descriptor<'_,'_,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
 
@@ -207,6 +243,17 @@ def requant_codec_api(crate):
         if len(module)!=1:
             return False
         code=code.replace(module[0],'',1)
+    helpers = re.findall(r'\bpub\(super\)\s+fn\b[^\{]*\{', code)
+    if [compact(v) for v in helpers] != [
+            'pub(super)fnsum(values:&[usize])->Result<usize,Error>{',
+            'pub(super)fnmul(a:usize,b:usize)->Result<usize,Error>{',
+            'pub(super)fnterm<K:ChallengeField>(coefficient:K,factors:&[u32])->Result<Term<K>,Error>{',
+            "pub(super)fnarithmetic(&self)->crate::requant::arithmetic::Arithmetic<'_,'cert,K>{",
+            'pub(super)fnput(out:&mutVec<u8>,bytes:&[u8])->Result<(),Error>{',
+            "pub(super)fntake<'b>(rest:&mut&'b[u8],size:usize)->Result<&'b[u8],Error>{"]:
+        return False
+    for signature in helpers:
+        code = code.replace(signature, signature.replace('pub(super)', '', 1), 1)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     fields = ['stage','n','schema','repetitions','advice_blowup','point','value','input']
     methods = ['advice_source','new','statement_size','constraints_size','proof_size',
@@ -239,28 +286,10 @@ def requant_verifier_api(crate):
     """Only the actual closed consumer constructs borrowed Requant obligations."""
     code=re.sub(r'//[^\n]*','',(crate/'src/requant_verifier.rs').read_text())
     compact=lambda text:re.sub(r'\s+','',text)
-    restricted=re.findall(r'\bpub\s*\(([^)]*)\)\s*(?:(struct|fn)\s+)?(\w+)',code)
-    helpers=['owned_field_bytes','weights','aggregate','group_weights']
-    if (restricted != [('super','struct','GroupWeights')]+[('super','',n) for n in ('a','b','value','rlc')]+[('super','fn',n) for n in helpers]
-            or len(restricted)!=len(re.findall(r'\bpub\s*\(',code))
-            or [compact(v) for v in re.findall(r'pub\(super\) struct GroupWeights<K>\s*\{([^}]*)\}',code)]
-                != ['pub(super)a:Vec<K>,pub(super)b:Vec<K>,pub(super)value:K,pub(super)rlc:RlcRecord<K>,']
-            or [compact(v) for v in re.findall(r'\bpub\(super\)\s+fn\b[^\{]*\{',code)] != [
-                'pub(super)fnowned_field_bytes(&self)->Result<[usize;3],Error>{',
-                'pub(super)fnweights(&self,t:&mutTranscript<K>,phase:u8,count:usize,)->Result<RlcRecord<K>,Error>{',
-                'pub(super)fnaggregate(&self,weights:&[K])->Result<Instance<K>,Error>{',
-                'pub(super)fngroup_weights(&self,t:&mutTranscript<K>,group:u8,point:&[K],claims:&[(u32,u64,K)],)->Result<GroupWeights<K>,Error>{']):
-        return False
-    # Normalize only after the complete restricted inventory and signatures pass.
-    code=code.replace('pub(super)','')
     declarations=re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)',code)
-    expected=[('struct','Failure'),('','cause'),('','usage'),('struct','RegistrationFailure'),('','cause'),('','registrations'),('struct','VerifierWork'),('','group_coefficients_bytes'),('type','RegisteredMultiplicities'),('struct','RlcRecord')]
-    expected += [('fn',n) for n in ('stage','phase','weights','field_degree','numerator')]
-    expected += [('struct','GroupRecord')]+[('fn',n) for n in ('point','claims','opening')]
+    expected=[('use','crate'),('struct','Failure'),('','cause'),('','usage'),('struct','RegistrationFailure'),('','cause'),('','registrations'),('struct','VerifierWork'),('','group_coefficients_bytes'),('type','RegisteredMultiplicities')]
     expected += [('struct','Record')]+[('fn',n) for n in ('lookups','zerocheck','output','groups','rlc','register_advice','register_multiplicities','verify','verify_measured')]
-    readers=[('stage','u32'),('phase','u8'),('weights','&[K]'),('field_degree','u8'),('numerator','u64'),
-        ('point','&[K]'),('claims','&[(u32,u64,K)]'),('opening',"&OpeningRecord<'_,K>"),
-        ('lookups',"&[LookupRecord<'_,K>;2]"),('zerocheck','&zerocheck::Reduction<K>'),
+    readers=[('lookups',"&[LookupRecord<'_,K>;2]"),('zerocheck','&zerocheck::Reduction<K>'),
         ('output','&stele_sumcheck::Reduction<K>'),('groups',"&[GroupRecord<'_,K>;3]"),('rlc','&[RlcRecord<K>;4]')]
     signatures=[f'pubfn{name}(&self)->{result}{{' for name,result in readers]+[
         "pubfnregister_advice<K:ChallengeField+CodeField>(&self,stage:u32,n:u64,blowup:u8,root:[u8;32],proof:&[u8],max_public_bytes:usize,)->Result<(VerifiedCertificate<K>,Usage),Failure>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{",
@@ -269,16 +298,15 @@ def requant_verifier_api(crate):
     return (declarations==expected and len(declarations)==len(re.findall(r'\bpub\b',code))
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)]==signatures
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]==[
-            'impl<K>GroupWeights<K>{','impl<K:ChallengeField>RlcRecord<K>{',"impl<K:ChallengeField>GroupRecord<'_,K>{",
             "impl<K:ChallengeField>Record<'_,K>{",'implSchema{',
             "impl<'a,'original,K:ChallengeField+CodeField+TableField+Eq>Descriptor<'a,'original,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"]
         and [(n,compact(g),compact(v)) for n,g,v in re.findall(r'pub struct (\w+)([^\{]*)\{([^}]*)\}',code)]==[
             ('Failure','','pubcause:Error,pubusage:Usage,'),
             ('RegistrationFailure','','pubcause:Error,pubregistrations:[[Option<Usage>;2];2],'),
             ('VerifierWork','','pubgroup_coefficients_bytes:[[usize;3];3],'),
-            ('RlcRecord','<K>','stage:u32,phase:u8,weights:Vec<K>,'),
-            ('GroupRecord',"<'cert,K:ChallengeField>","point:Vec<K>,claims:Vec<(u32,u64,K)>,opening:OpeningRecord<'cert,K>,"),
             ('Record',"<'cert,K:ChallengeField>","lookups:[LookupRecord<'cert,K>;2],zero:zerocheck::Reduction<K>,output:stele_sumcheck::Reduction<K>,groups:[GroupRecord<'cert,K>;3],rlc:[RlcRecord<K>;4],")]
+        and 'pubusecrate::requant::arithmetic::{GroupRecord,RlcRecord};' in compact(code)
+        and integer_linear_api(crate, ('requant_arithmetic',))
         and 'pubtypeRegisteredMultiplicities<K>=([Vec<VerifiedCertificate<K>>;2],[[Option<Usage>;2];2]);' in compact(code)
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
 
@@ -391,6 +419,9 @@ def field_sources(root):
     """Closed conditional A1/stacked/lookup/matmul consumers; no inference/profile authority."""
     crate = root / 'crates/stele-reductions'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs',
+               'src/integer_linear.rs', 'src/integer_linear_producer.rs', 'src/integer_linear_verifier.rs',
+               'tests/integer_linear.rs', 'src/matmul_centered.rs', 'src/matmul_centered_tests.rs',
+               'src/requant_arithmetic.rs',
                'src/byte_range.rs', 'tests/byte_range.rs',
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
@@ -409,7 +440,7 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\npub mod byte_range;\nmod field_sources;\npub mod lookup;\npub mod matmul;\npub mod requant;\n'
+               'extern crate alloc;\npub mod byte_range;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod requant;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -489,6 +520,10 @@ def field_sources(root):
             and (name != 'producer' or 'pubusework::{ProverWork,RepetitionWork};' in re.sub(r'\s+', '', source))
             and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', source))
     matmul = re.sub(r'//[^\n]*', '', (crate / 'src/matmul.rs').read_text())
+    centered_module = re.findall(r'#\[path\s*=\s*"matmul_centered.rs"\]\s*pub\(crate\)\s+mod\s+centered;', matmul)
+    if len(centered_module) != 1 or re.findall(r'enum Mode\s*\{([^}]*)\}', matmul) != ['\n    Field,\n    Centered,\n']:
+        raise ValueError('centered matmul API not wired')
+    matmul = matmul.replace(centered_module[0], '', 1)
     matmul_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', matmul)
     verifier_parameters = (
         "<'cert,K:ChallengeField+CodeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,"
@@ -520,6 +555,13 @@ def field_sources(root):
             == ["impl<K:ChallengeField>Record<'_,K>{", "impl<'a,K:ChallengeField>Context<'a,K>{"]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul))
     matmul_producer = re.sub(r'//[^\n]*', '', (crate / 'src/matmul_producer.rs').read_text())
+    shared_producer = re.findall(r'\bpub\(super\)\s+fn\b[^\{]*\{', matmul_producer)
+    if [re.sub(r'\s+', '', v) for v in shared_producer] != [
+            "pub(super)fnprove_mode<K:ChallengeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,"
+            "sources:[&PreparedSource<'_,K>;2],certificates:[&VerifiedCertificate<K>;2],"
+            "limits:stacked::Limits,retained_row_entries:usize,mode:Mode,)->Result<(Vec<u8>,Usage,centered::Work),Failure>{"]:
+        raise ValueError('shared matmul producer API not wired')
+    matmul_producer = matmul_producer.replace(shared_producer[0], shared_producer[0].replace('pub(super)', '', 1), 1)
     matmul_producer_declarations = re.findall(
         r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', matmul_producer)
     producer_parameters = (
@@ -552,7 +594,7 @@ def field_sources(root):
                                 ('fn', 'verify_field_sources')]
             or len(declarations) != len(re.findall(r'\bpub\b', code))
             or not stacked_closed or not lookup_closed or not producer_closed or not matmul_closed
-            or not requant_schema_api(crate) or not byte_range_api(crate)
+            or not requant_schema_api(crate) or not byte_range_api(crate) or not integer_linear_api(crate)
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
                 'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
                 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
@@ -583,6 +625,8 @@ def field_sources(root):
             for field in ('qm31','om31')]
          + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
             'test matmul::matches_reference_owned_capacities ... ok']
+         + [f'test matmul::centered::tests::matches_reference_{field}_centered ... ok'
+            for field in ('qm31', 'om31')]
          + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
             'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]
          + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
@@ -600,24 +644,28 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_producer'],
          [f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))]),
-        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul', '--test', 'matmul_producer', '--test', 'byte_range'],
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul', '--test', 'matmul_producer', '--test', 'byte_range', '--test', 'integer_linear'],
          [f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts',''),('rejects','_tampers'))]
          + [f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31')]
          + [f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31')]
-         + ['test matches_reference_complete_byte_range ... ok']),
+         + ['test matches_reference_complete_byte_range ... ok']
+         + [f'test accepts_{field}_integer_linear ... ok' for field in ('qm31', 'om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'lookup::'],
          [f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls']+
-         [arg for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315) for arg in ('--test',f'nc-{i:04}')]
+         [arg for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315,316,317,318) for arg in ('--test',f'nc-{i:04}')]
          + ['--test','requant-verifier'],
-         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315)]
+         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315,316,317,318)]
          + ['test rejects_wrong_coefficient_at_actual_a7 ... ok',
             'test matches_reference_requant_full_wire_qm31 ... ok',
             'test matches_reference_requant_full_wire_om31 ... ok',
             'test rejects_requant_scoped_cqis_bindings ... ok',
             'test rejects_requant_output_coefficient_at_actual_a7 ... ok',
-            'test rejects_requant_producer_late_arithmetic_with_exact_usage ... ok']),
+            'test rejects_requant_producer_late_arithmetic_with_exact_usage ... ok']
+         + [f'test rejects_integer_linear_{name} ... ok' for name in
+            ('replaced_source_context', 'wrong_weights', 'wrong_source_point', 'wrong_original_final',
+             'reserved_plane', 'wrong_output_plane', 'wrong_retained_row', 'omitted_frames')]),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
@@ -631,7 +679,8 @@ def field_sources(root):
                                           ('byte_range', 'byte_range', 'ByteRange', 3),
                                           ('matmul', 'matmul', 'Record', 3),
                                           ('requant_codec', 'requant::codec', 'Descriptor', 2),
-                                          ('requant_verifier', 'requant::codec::verifier', 'Record', 5)):
+                                          ('requant_verifier', 'requant::codec::verifier', 'Record', 5),
+                                          ('integer_linear_verifier', 'integer_linear::verifier', 'Record', 5)):
                 pattern = (rf'^test crates/stele-reductions/src/{file}\.rs - {module}::{record} '
                            r'\(line \d+\) - compile fail \.\.\. ok$')
                 matches = re.findall(pattern, result.stdout, re.MULTILINE)

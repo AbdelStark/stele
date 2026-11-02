@@ -39,5 +39,6 @@
   ["absorb", "stele/v0.1/requant/statement", "-"],
   ["absorb", "stele/v0.1/requant/constraints", "-"],
   ["absorb", "stele/v0.1/requant/claims", "-"],
-  ["challenge", "stele/v0.1/requant/weight", "RLC"]
+  ["challenge", "stele/v0.1/requant/weight", "RLC"],
+  ["absorb", "stele/v0.1/integer-linear/statement", "-"]
 ]

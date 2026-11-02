@@ -1,0 +1,285 @@
+{
+  "integer_linear": {
+    "public": [
+      "pubuserequant",
+      "pubuseverifier",
+      "pubuseproducer",
+      "pubstructStatement",
+      "pubstage",
+      "pubbits",
+      "pubmantissa",
+      "pubshift",
+      "pubformat",
+      "pubrepetitions",
+      "pubadvice_blowup",
+      "pubpoint",
+      "pubvalue",
+      "puboriginals",
+      "pubenumError",
+      "pubstructDescriptor",
+      "pubfnnew",
+      "pubfnstatement_size",
+      "pubfnconstraints_size",
+      "pubfnproof_size",
+      "pubfnpublic_bytes",
+      "pubfnmax_local_hashes",
+      "pubfnretained_row_entries",
+      "pubfnencode",
+      "pubfnencode_constraints",
+      "pubfnpreflight"
+    ],
+    "functions": [
+      "pubfnnew(s:Statement<'a,'cert,K>,advice:&'certVerifiedCertificate<K>,limits:lookup::Limits,matmul_limits:stacked::Limits,)->Result<Self,Error>{",
+      "pubfnstatement_size(&self)->usize{",
+      "pubfnconstraints_size(&self)->usize{",
+      "pubfnproof_size(&self)->usize{",
+      "pubfnpublic_bytes(&self)->usize{",
+      "pubfnmax_local_hashes(&self)->u64{",
+      "pubfnretained_row_entries(&self)->usize{",
+      "pubfnencode(&self)->Result<Vec<u8>,Error>{",
+      "pubfnencode_constraints(&self)->Result<Vec<u8>,Error>{",
+      "pubfnpreflight(&self,proof:&[u8])->Result<(),Error>{"
+    ],
+    "impls": [
+      "implFrom<requant::Error>forError{",
+      "impl<'a,'cert,K:ChallengeField>Descriptor<'a,'cert,K>{"
+    ],
+    "structures": [
+      "pubstructStatement<'a,'cert,K:ChallengeField>{pubstage:u32,pubbits:[u8;4],pubmantissa:u32,pubshift:u32,pubformat:Format,pubrepetitions:u8,pubadvice_blowup:u8,pubpoint:&'a[K],pubvalue:K,puboriginals:[&'certByteRange<'cert,K>;2],}",
+      "pubstructDescriptor<'a,'cert,K:ChallengeField>{statement:Statement<'a,'cert,K>,advice:[&'certVerifiedCertificate<K>;1],schema:requant::EmbeddedSchema,table:lookup::Table,selector:Vec<u8>,layouts:[lookup::Layout;2],constraints:requant::Constraints<K>,ids:Vec<u64>,output:Instance<K>,base:u64,m:u8,n:usize,limits:lookup::Limits,matmul_limits:stacked::Limits,matmul:matmul::centered::Geometry,statement_bytes:usize,constraints_bytes:usize,parts:[usize;8],proof_bytes:usize,public_bytes:usize,local_hashes:u64,}"
+    ],
+    "enums": [
+      "pubenumError{Statement,Parameters(stele_cqis::Error),Bounds(bounds::Error),Encoding,Capacity,ResourceLimit,SourceRoster,ProofShape,NoncanonicalField,CertificateContext,CertificateIdentity,ArithmeticRoster,CoefficientMismatch,Witness,PublicCoefficient(stele_gkr::public_mle::Error),Sumcheck(stele_sumcheck::Error),Lookup(lookup::Error),Pcs(stele_pcs::Error),Matmul(matmul::Error),Transcript(stele_hash::Error),}"
+    ],
+    "aliases": [],
+    "exports": [
+      "pubuserequant::Format;",
+      "pubuseverifier::{Failure,PointEqualityRecord,Record,RegistrationFailure};",
+      "pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage};"
+    ],
+    "paths": [
+      "#[path=\"integer_linear_verifier.rs\"]modverifier;",
+      "#[path=\"integer_linear_producer.rs\"]modproducer;"
+    ]
+  },
+  "integer_linear_producer": {
+    "public": [
+      "pubstructProducerLimits",
+      "pubpublic_bytes",
+      "pubdense_elements",
+      "pubretained_row_entries",
+      "pubstructProverUsage",
+      "pubtranscript",
+      "pubnon_transcript",
+      "pubregistrations",
+      "pubstructProverFailure",
+      "pubcause",
+      "pubusage",
+      "pubfnproducer_public_bytes",
+      "pubfnproducer_dense_elements",
+      "pubfnprove"
+    ],
+    "functions": [
+      "pubfnproducer_public_bytes(&self)->Result<usize,Error>{",
+      "pubfnproducer_dense_elements(&self)->Result<usize,Error>{",
+      "pubfnprove(&self,t:&mutTranscript<K>,originals:[&PreparedSource<'_,K>;2],advice:&PreparedSource<'_,K>,advice_packet:&[u8],limits:ProducerLimits,)->Result<(Vec<u8>,ProverUsage),ProverFailure>{"
+    ],
+    "impls": [
+      "impl<K:ChallengeField+CodeField+lookup::TableField+Eq>Descriptor<'_,'_,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"
+    ],
+    "structures": [
+      "pubstructProducerLimits{pubpublic_bytes:usize,pubdense_elements:usize,pubretained_row_entries:usize,}",
+      "pubstructProverUsage{pubtranscript:HashUsage,pubnon_transcript:HashUsage,pubregistrations:[Option<lookup::RegistrationUsage>;2],}",
+      "pubstructProverFailure{pubcause:Error,pubusage:ProverUsage,}"
+    ],
+    "enums": [],
+    "aliases": [],
+    "exports": [],
+    "paths": []
+  },
+  "integer_linear_verifier": {
+    "public": [
+      "pubstructFailure",
+      "pubcause",
+      "pubusage",
+      "pubstructRegistrationFailure",
+      "pubcause",
+      "pubregistrations",
+      "pubstructPointEqualityRecord",
+      "pubfnstage",
+      "pubfnaggregate_id",
+      "pubfnpoint",
+      "pubfnfamily",
+      "pubfnnumerator",
+      "pubfnfield_degree",
+      "pubstructRecord",
+      "pubfnoriginals",
+      "pubfnlookup",
+      "pubfnzerocheck",
+      "pubfnoutput",
+      "pubfngroups",
+      "pubfnrlc",
+      "pubfnpoint_equality",
+      "pubfnmatmul",
+      "pubfnregister_multiplicities",
+      "pubfnverify"
+    ],
+    "functions": [
+      "pubfnstage(&self)->u32{",
+      "pubfnaggregate_id(&self)->u64{",
+      "pubfnpoint(&self)->&[K]{",
+      "pubfnfamily(&self)->LossLine{",
+      "pubfnnumerator(&self)->u64{",
+      "pubfnfield_degree(&self)->u8{",
+      "pubfnoriginals(&self)->[&'certByteRange<'cert,K>;2]{",
+      "pubfnlookup(&self)->&lookup::LookupRecord<'cert,K>{",
+      "pubfnzerocheck(&self)->&zerocheck::Reduction<K>{",
+      "pubfnoutput(&self)->&stele_sumcheck::Reduction<K>{",
+      "pubfngroups(&self)->&[requant::GroupRecord<'cert,K>;3]{",
+      "pubfnrlc(&self)->&[requant::RlcRecord<K>;4]{",
+      "pubfnpoint_equality(&self)->&PointEqualityRecord<K>{",
+      "pubfnmatmul(&self)->&matmul::Record<'cert,K>{",
+      "pubfnregister_multiplicities(&self,proof:&[u8],max_public_bytes:usize,)->Result<lookup::RegisteredMultiplicities<K>,RegistrationFailure>{",
+      "pubfnverify<'cert>(&self,t:&mutTranscript<K>,multiplicities:&[&'certVerifiedCertificate<K>],proof:&[u8],)->Result<(Record<'cert,K>,Usage),Failure>where'original:'cert,{"
+    ],
+    "impls": [
+      "impl<K:ChallengeField>PointEqualityRecord<K>{",
+      "impl<'cert,K:ChallengeField>Record<'cert,K>{",
+      "impl<'a,'original,K:ChallengeField+CodeField+lookup::TableField+Eq>Descriptor<'a,'original,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"
+    ],
+    "structures": [
+      "pubstructFailure{pubcause:Error,pubusage:Usage,}",
+      "pubstructRegistrationFailure{pubcause:Error,pubregistrations:[Option<Usage>;2],}",
+      "pubstructPointEqualityRecord<K>{stage:u32,aggregate_id:u64,point:Vec<K>,}",
+      "pubstructRecord<'cert,K:ChallengeField>{originals:[&'certByteRange<'cert,K>;2],lookup:lookup::LookupRecord<'cert,K>,zero:zerocheck::Reduction<K>,output:stele_sumcheck::Reduction<K>,groups:[requant::GroupRecord<'cert,K>;3],rlc:[requant::RlcRecord<K>;4],equality:PointEqualityRecord<K>,matmul:matmul::Record<'cert,K>,}"
+    ],
+    "enums": [],
+    "aliases": [],
+    "exports": [],
+    "paths": []
+  },
+  "matmul_centered": {
+    "public": [
+      "pub(crate)structGeometry",
+      "pub(crate)wire_bytes",
+      "pub(crate)public_bytes",
+      "pub(crate)local_hashes",
+      "pub(crate)retained_entries",
+      "pub(crate)fnnew",
+      "pub(crate)fnpreflight",
+      "pub(crate)structWork",
+      "pub(crate)inner",
+      "pub(crate)signed_input_bytes",
+      "pub(crate)preparation_peak_bytes",
+      "pub(crate)fnprove_measured",
+      "pub(crate)fnverify_measured",
+      "pub(super)fnsum",
+      "pub(super)fnopening"
+    ],
+    "functions": [
+      "pub(crate)fnnew<K:ChallengeField>(bits:[u8;4],certificates:[&VerifiedCertificate<K>;2],limits:stacked::Limits,)->Result<Self,Error>{",
+      "pub(crate)fnpreflight<K:ChallengeField>(&self,certificates:[&VerifiedCertificate<K>;2],wire:&[u8],)->Result<(),Error>{",
+      "pub(crate)fnprove_measured<K:ChallengeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,sources:[&PreparedSource<'_,K>;2],certificates:[&VerifiedCertificate<K>;2],limits:stacked::Limits,retained_row_entries:usize,)->Result<(Vec<u8>,Usage,Work),Failure>{",
+      "pub(crate)fnverify_measured<'cert,K:ChallengeField+CodeField+Eq>(t:&mutTranscript<K>,expected:&Statement<'_,K>,certificates:[&'certVerifiedCertificate<K>;2],wire:&[u8],limits:stacked::Limits,)->Result<(Record<'cert,K>,Usage,VerifierWork),Failure>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{",
+      "pub(super)fnsum<K:ChallengeField>(values:&[K])->K{",
+      "pub(super)fnopening<'cert,K:ChallengeField+CodeField>(t:&mutTranscript<K>,certificate:&'certVerifiedCertificate<K>,id:u64,point:&[K],value:&mutK,wire:&[u8],)->Result<OpeningResult<'cert,K>,Error>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"
+    ],
+    "impls": [
+      "implGeometry{"
+    ],
+    "structures": [
+      "pub(crate)structGeometry{pub(crate)wire_bytes:usize,pub(crate)public_bytes:usize,pub(crate)local_hashes:u64,pub(crate)retained_entries:usize,rounds:usize,openings:[usize;2],}",
+      "pub(crate)structWork{pub(crate)inner:super::Work,pub(crate)signed_input_bytes:[usize;2],pub(crate)preparation_peak_bytes:usize,}"
+    ],
+    "enums": [],
+    "aliases": [],
+    "exports": [],
+    "paths": [
+      "#[path=\"matmul_centered_tests.rs\"]modtests;"
+    ]
+  },
+  "requant_arithmetic": {
+    "public": [
+      "pub(crate)structArithmetic",
+      "pub(crate)stage",
+      "pub(crate)base",
+      "pub(crate)m",
+      "pub(crate)positions",
+      "pub(crate)ids",
+      "pub(crate)constraints",
+      "pub(crate)groups",
+      "pub(crate)structGroupWeights",
+      "pub(crate)a",
+      "pub(crate)b",
+      "pub(crate)value",
+      "pub(crate)rlc",
+      "pub(crate)fnowned_field_bytes",
+      "pub(crate)typeGroupResult",
+      "pubstructRlcRecord",
+      "pubfnstage",
+      "pubfnphase",
+      "pubfnweights",
+      "pubfnfield_degree",
+      "pubfnnumerator",
+      "pubstructGroupRecord",
+      "pubfnpoint",
+      "pubfnclaims",
+      "pubfnopening",
+      "pub(crate)fnadd_local",
+      "pub(crate)fncopied",
+      "pub(crate)fnarithmetic",
+      "pub(crate)fnencode_constraints",
+      "pub(crate)fnweights",
+      "pub(crate)fnaggregate",
+      "pub(crate)fncoefficient",
+      "pub(crate)fngroup",
+      "pub(crate)fngroup_weights",
+      "pub(crate)structCapture",
+      "pub(crate)dense",
+      "pub(crate)point",
+      "pub(crate)fnfields"
+    ],
+    "functions": [
+      "pub(crate)fnowned_field_bytes(&self)->Result<[usize;3],Error>{",
+      "pubfnstage(&self)->u32{",
+      "pubfnphase(&self)->u8{",
+      "pubfnweights(&self)->&[K]{",
+      "pubfnfield_degree(&self)->u8{",
+      "pubfnnumerator(&self)->u64{",
+      "pubfnpoint(&self)->&[K]{",
+      "pubfnclaims(&self)->&[(u32,u64,K)]{",
+      "pubfnopening(&self)->&OpeningRecord<'_,K>{",
+      "pub(crate)fnadd_local(hashes:&mutHashUsage,usage:Usage)->Result<(),Error>{",
+      "pub(crate)fncopied<T:Copy>(values:&[T])->Result<Vec<T>,Error>{",
+      "pub(crate)fnarithmetic<K:ChallengeField>(raw:&[u8],m:u8,count:usize,)->Result<stele_sumcheck::Proof<K>,Error>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{",
+      "pub(crate)fnencode_constraints(&self,bytes:usize)->Result<Vec<u8>,Error>{",
+      "pub(crate)fnweights(&self,t:&mutTranscript<K>,phase:u8,count:usize,)->Result<RlcRecord<K>,Error>{",
+      "pub(crate)fnaggregate(&self,weights:&[K])->Result<Instance<K>,Error>{",
+      "pub(crate)fncoefficient(&self,point:&[K],real:u64,selector:Option<&[K]>,value:K,)->Result<(),Error>{",
+      "pub(crate)fngroup<'cert>(&self,t:&mutTranscript<K>,group:u8,point:&[K],claims:Vec<(u32,u64,K)>,proof:&[u8],hashes:&mutHashUsage,)->Result<GroupResult<'cert,K>,Error>where'source:'cert,{",
+      "pub(crate)fngroup_weights(&self,t:&mutTranscript<K>,group:u8,point:&[K],claims:&[(u32,u64,K)],)->Result<GroupWeights<K>,Error>{",
+      "pub(crate)fnfields<K:ChallengeField>(out:&mutVec<u8>,rows:&[Vec<K>],finals:&[K],)->Result<(),Error>{"
+    ],
+    "impls": [
+      "impl<K>GroupWeights<K>{",
+      "impl<K:ChallengeField>RlcRecord<K>{",
+      "impl<K:ChallengeField>GroupRecord<'_,K>{",
+      "impl<K:ChallengeField>Arithmetic<'_,'_,K>{",
+      "impl<'a,'source,K:ChallengeField+CodeField+Eq>Arithmetic<'a,'source,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{",
+      "impl<K:ChallengeField>Summand<K>forCapture<'_,K>{"
+    ],
+    "structures": [
+      "pub(crate)structArithmetic<'a,'cert,K:ChallengeField>{pub(crate)stage:u32,pub(crate)base:u64,pub(crate)m:u8,pub(crate)positions:usize,pub(crate)ids:&'a[u64],pub(crate)constraints:&'aConstraints<K>,pub(crate)groups:[&'certVerifiedCertificate<K>;3],}",
+      "pub(crate)structGroupWeights<K>{pub(crate)a:Vec<K>,pub(crate)b:Vec<K>,pub(crate)value:K,pub(crate)rlc:RlcRecord<K>,}",
+      "pubstructRlcRecord<K>{stage:u32,phase:u8,weights:Vec<K>,}",
+      "pubstructGroupRecord<'cert,K:ChallengeField>{point:Vec<K>,claims:Vec<(u32,u64,K)>,opening:OpeningRecord<'cert,K>,}",
+      "pub(crate)structCapture<'a,K>{pub(crate)dense:Dense<K>,pub(crate)point:&'amutVec<K>,}"
+    ],
+    "enums": [],
+    "aliases": [
+      "pub(crate)typeGroupResult<'cert,K>=(GroupRecord<'cert,K>,RlcRecord<K>,[usize;3]);"
+    ],
+    "exports": [],
+    "paths": []
+  }
+}
