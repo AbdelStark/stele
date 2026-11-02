@@ -706,13 +706,17 @@ def field_sources(root):
         'complete wires, actual records, imports, usage and continuation; '
         'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456\n'
         'matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, '
-        'actual closed records, usage, retained visits and continuation')
+        'actual closed records, usage, retained visits and continuation\n'
+        'integer linear corpus: 28 native complete proofs, 270 closed requests; QM31/OM31; '
+        'frozen independent bytes, imports, records, usage and continuation; '
+        'SHA256 204cb6df7bec005aaa2b0d20802d98a66ef0f5937ed928297a4bd63a532cfaf2')
     result = subprocess.run(['uv', 'run', '--python', '3.12', '--locked', '--script',
                              'tests/negative-controls/matmul_corpus.py'],
                             cwd=root, text=True, capture_output=True)
     if result.returncode or result.stdout.strip() != matmul_receipt:
         raise ValueError(f'matmul corpus checks failed: {result.stdout} {result.stderr}')
     print('gate matmul closed: native retained-row producer, actual A4/A1/A7 and both A9 consumers, native controls, opaque records and independent full wire/usage/continuation parity; no full resource-ledger or profile credit')
+    print('gate integer linear: complete native positive production and frozen independent closed records, imports, failures and continuation; actual composed controls; no profile credit')
     print('gate closed A1: all original claims, full Python bytes, NC-0609 and lifetime boundary; no profile credit')
     print('gate stacked certified: actual A1/A7/A9 producer and consumers, NC-0211/0213, budgets and certificate lifetime; no profile credit')
     print('gate lookup codec: exact statement/wire, cumulative budgets and borrowed handles; no lookup verification or NC credit')
@@ -1449,7 +1453,9 @@ def controls_layout(root):
                     'examples/support/integer_linear_record.rs', 'examples/support/integer_linear_verifier.rs',
                     'integer_linear_adversary.py', 'integer_linear_continuation.py',
                     'integer_linear_controls.py', 'integer_linear_import_cases.py',
-                    'integer_linear_lookup.py', 'integer_linear_producer.py', 'integer_linear_reference.py'))
+                    'integer_linear_lookup.py', 'integer_linear_producer.py', 'integer_linear_reference.py',
+                    'integer_linear_corpus.py', 'fixtures/integer-linear/manifest.json',
+                    'fixtures/integer-linear/provenance.json', 'fixtures/integer-linear/corpus.zip'))
     fixtures = requant_fixture_manifest(root)
     allowed.update(f'fixtures/requant/{name}' for name in [
         'manifest.json', *fixtures['files'], *fixtures['additional_controls'],

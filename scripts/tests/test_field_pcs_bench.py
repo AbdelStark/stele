@@ -39,7 +39,9 @@ class FieldPcsBenchTests(unittest.TestCase):
                          'examples/support/integer_linear_case.rs','examples/support/integer_linear_record.rs',
                          'examples/support/integer_linear_verifier.rs','integer_linear_adversary.py',
                          'integer_linear_continuation.py','integer_linear_controls.py','integer_linear_import_cases.py',
-                         'integer_linear_lookup.py','integer_linear_producer.py','integer_linear_reference.py'):
+                         'integer_linear_lookup.py','integer_linear_producer.py','integer_linear_reference.py',
+                         'integer_linear_corpus.py','fixtures/integer-linear/manifest.json',
+                         'fixtures/integer-linear/provenance.json','fixtures/integer-linear/corpus.zip'):
                 path = suite/name; saved = path.read_bytes(); path.unlink()
                 with self.assertRaisesRegex(ValueError, 'not wired'):
                     gates.controls_layout(root)

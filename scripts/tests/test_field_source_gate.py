@@ -281,7 +281,10 @@ class ClosedStackedGateTests(unittest.TestCase):
             'complete wires, actual records, imports, usage and continuation; '
             'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456\n'
             'matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, '
-            'actual closed records, usage, retained visits and continuation',
+            'actual closed records, usage, retained visits and continuation\n'
+            'integer linear corpus: 28 native complete proofs, 270 closed requests; QM31/OM31; '
+            'frozen independent bytes, imports, records, usage and continuation; '
+            'SHA256 204cb6df7bec005aaa2b0d20802d98a66ef0f5937ed928297a4bd63a532cfaf2',
         ]
 
     def run_gate(self, outputs=None, failed=None):
@@ -429,11 +432,17 @@ class ClosedStackedGateTests(unittest.TestCase):
                          ('actual closed records, ', ''), ('usage, ', ''), ('retained visits and ', ''),
                          ('continuation', '')):
             lines = self.outputs[-1].splitlines()
-            self.assertEqual(len(lines), 2)
+            self.assertEqual(len(lines), 3)
             self.assertIn(old, lines[1])
             lines[1] = lines[1].replace(old, new)
             altered = self.outputs.copy(); altered[-1] = '\n'.join(lines)
             with self.subTest(producer_receipt=old), self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
+                self.run_gate(altered)
+        for line in range(3):
+            lines = self.outputs[-1].splitlines()
+            lines.pop(line)
+            altered = self.outputs.copy(); altered[-1] = '\n'.join(lines)
+            with self.subTest(missing_line=line), self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
                 self.run_gate(altered)
         altered = self.outputs.copy(); altered[-1] = '\n'.join(reversed(altered[-1].splitlines()))
         with self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
