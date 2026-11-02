@@ -1134,3 +1134,11 @@ E3-06 is ready for implementation, with all original criteria and the added
 actual source-closure/resource gates intact. Private coefficient formats/views,
 zero-padding/range consumers, CQIS table authority, joint ZK and profile admission
 remain unresolved. No source study, control or runtime is declared complete.
+
+Q26/Q28 centered join: [RFC-0024](RFC-0024-centered-integer-linear.md) and the
+[bounded algebra evidence](../../research/integer-linear/REPORT.md) specify the
+signed offset-int8 matmul/Requant composition. Fix full-source byte evidence,
+both centered bounds, the actual A3-tail equality event and affine raw-source
+openings before native delivery. E7-01e/f retain full source/plan/quantiser,
+wider/packed, scale, private/virtual, W8 and Q12/Q29 obligations. No algebra
+check, contract acceptance or registration receipt completes those parents.

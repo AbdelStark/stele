@@ -1721,3 +1721,30 @@ and a false sigma with genuine source-plane finals passes actual A3 before
 the expected public coefficient rejects. Native general production, full-domain
 controls, complete resource ledgers, Q12/Q29, source/plan/packing/inference
 contracts and both profile totals remain open.
+
+## Draft RFC-0024 centered integer linear inventory
+
+RFC-0012 A14 adds SZ to the total only for the new RFC-0024 operation. Its
+fixed table difference is C_tilde-(sum_t 256^t*U_t_tilde-2^31), of degree at
+most m=h+a+c. Source/range fixation precedes the actual skip=0 A3 tail; the
+presampled-tail argument gives an additional m/|K| without a fresh challenge.
+Retain PointEqualityRecord with the actual A3 tail origin, including m=0.
+The separate A3 phase0 event stays in SC. This is a conditional interactive
+Schwartz-Zippel argument, not a profile or Fiat-Shamir theorem.
+
+The direct operation events are SC 4m/|K| from all three A3 phases,
+SC 3m/|K| from output A1, SC 3(h+b)/|K| from signed matmul, four independent
+RLC events 1/|K| each, and SZ m/|K|. Group counts are J,4,R-4,1+q_bytes.
+Add one complete advice A5 for R*N words, all original range-verification
+events, three advice and two original A9 openings, genuine certificate
+lifetimes and every existing hash hypothesis. The range proofs each use the
+complete all-one range_8 statement; generic LookupRecords grant no range fact.
+Reuse of one actual range event keeps its obligations; new attempts are new
+events even when source/certificate IDs match. There is no new proof-ID hash.
+
+LinearStatement is absorb-only. Signed MatmulStatement payload version2 and
+the actual restored raw-source functionals have deterministic semantics.
+Neither changes existing standalone formats or adds a random loss. Exact
+payload/cap/failed-prefix Usage is RFC-0024 §§2,4. This Draft inventory has no
+executed SZ consumer, registry entry or new control coverage. E7-01f must supply
+those gates and complete resource evidence; all parent and Q12/Q29 gaps remain.

@@ -477,3 +477,17 @@ Initial acceptance: explicit cut/fixation and complete integer/source consumers
 for the already Accepted Requant semantics. The [acceptance review](../security/requant-contract-review.md)
 records bounded reference evidence and remaining native obligations. ADR-045 and
 the companion amendments adopt this cut; E7-01d owns native delivery.
+
+### A1 — Centered linear embedded-input mode
+
+Status: Draft. Companion RFC-0024, RFC-0005 A3 and RFC-0007 A4.
+RFC-0024 defines a separate composed operation with U in physical advice rows
+0..3, the unchanged semantic equations, a full-width v<=B cap and regenerated
+padding/reserved equations. One whole-cut A5 and three actual A9 claim groups
+consume all physical rows; the linear U claim joins actual signed matmul.
+This explicit schema does not alias two standalone source handles to one root.
+Standalone RFC-0023 bytes, API and full-int32 behavior remain unchanged. The
+new operation's exact IDs, frames, costs and additional SZ term are RFC-0024's;
+the four independent-weight RLC events and actual child losses remain visible.
+No new generic cut, performance result or profile follows. E7-01e/f own the
+contract and native delivery; all full model/plan/scale/privacy criteria remain.

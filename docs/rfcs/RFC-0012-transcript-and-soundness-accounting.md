@@ -680,3 +680,30 @@ all claims, failed-prefix Usage and disjoint standalone registrations/local H.
 Q12 still blocks both profile totals; this is conditional interactive accounting.
 On native implementation add these exact registry entries, records, controls
 and gates. This specification changes no executable registry or measured constant.
+
+### A14 — Actual-tail centered equality and embedded advice
+
+Status: Draft. Companion RFC-0024; questions Q26/Q28 and retained Q12/Q29.
+Addition to §4: total error includes a separate sum SZ, for fixed-polynomial
+point equalities not already represented by an executed sumcheck. RFC-0024's
+PointEqualityRecord stores stage, m, field degree, numerator=m and the actual
+aggregate A3 id/tail origin; its conditional interactive loss is m/|K| by
+Schwartz-Zippel. Keep the zero record for m=0. No new draw occurs: A3's actual
+tail is reused. Its presampled-vector proof uses an unconditional union with
+source/range/PCS and arithmetic failure events; do not condition on acceptance
+to assert uniformity. This SZ term does not replace A3 phase0 or any child loss.
+
+Add the absorb-only LinearStatement label `stele/v0.1/integer-linear/statement`
+with RFC-0024's exact payload. Its final signed matmul uses MatmulStatement
+payload version2 and unchanged nested wire version1. Existing version1 field
+matmul and standalone Requant remain unchanged. The embedded constraint and
+claim groups retain four RLC events, each numerator1, counts J,4,R-4,1+q_bytes;
+there are J+R+1+q_bytes independent RequantWeight draws. Direct SC+RLC+SZ
+contribution is (8m+3(h+b)+4)/|K| before all genuine advice A5, original range
+registration, every A9 and lifetime/hash obligation. Actual child records remain
+separate; this shorthand cannot replace them or account independent attempts.
+
+Native E7-01f must add the exact registry/frame, SZ record inventory and composed
+controls, with no new challenge family or duplicated transcript snapshots.
+This specification adds no executable registry or profile admission. Complete
+FS/H/query bounds, masking and conditional source hypotheses remain unchanged.
