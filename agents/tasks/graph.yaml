@@ -1323,7 +1323,7 @@ tasks:
   - RFC-0004 A1
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01f2-embedded-advice
   acceptance:

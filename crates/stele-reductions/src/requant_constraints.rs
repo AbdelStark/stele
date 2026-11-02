@@ -12,7 +12,7 @@ pub struct Constraints<K> {
     equations: Vec<Vec<Term<K>>>,
 }
 impl<K> Constraints<K> {
-    /// Sigma, four input byte planes, then all R advice planes.
+    /// Number of common inputs, including sigma at ordinal zero.
     pub fn input_count(&self) -> usize {
         self.input_count
     }
