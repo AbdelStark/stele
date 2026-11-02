@@ -316,6 +316,21 @@ where
 
 fn main() -> Result<(), &'static str> {
     let args: Vec<_> = std::env::args().skip(1).collect();
+    if args.len() == 3 && args[0] == "--controls" {
+        let id = args[2].parse::<u16>().map_err(|_| "control id")?;
+        if !matches!(
+            id,
+            306 | 307 | 312 | 314 | 316 | 317 | 318 | 606 | 610 | 611
+        ) {
+            return Err("unsupported control export");
+        }
+        return match args[1].as_str() {
+            "4" => controls::<QM31>(id),
+            "8" => controls::<OM31>(id),
+            _ => return Err("invalid field degree"),
+        }
+        .map_err(|_| "control export failed");
+    }
     if args == ["--verify"] {
         use std::io::{self, BufRead};
         for line in io::stdin().lock().lines() {
@@ -332,7 +347,7 @@ fn main() -> Result<(), &'static str> {
         return Ok(());
     }
     if args.len() != 3 {
-        return Err("usage: integer_linear_corpus K CASE r, or --verify");
+        return Err("usage: integer_linear_corpus K CASE r, --controls K ID, or --verify");
     }
     let case = case(&args[1])?;
     let repetitions = match args[2].as_str() {
@@ -347,4 +362,40 @@ fn main() -> Result<(), &'static str> {
     };
     println!("{result}");
     Ok(())
+}
+
+fn controls<K: ChallengeField + CodeField + lookup::TableField + Eq + core::fmt::Debug>(
+    id: u16,
+) -> Result<(), String>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    stele_negative_controls::integer_linear::run_observed::<K>(id, &|attempt| {
+        let c = attempt.context;
+        let originals: Vec<_> = c
+            .originals
+            .iter()
+            .enumerate()
+            .map(|(side, original)| {
+                let ids = if side == 0 { [111, 112] } else { [121, 122] };
+                json!({"source_hex":hex(&original.source.bytes()),
+                "certificate_hex":hex(original.certificate),"lookup_id":9+side,
+                "mu_ids":&ids[..c.repetitions],"range_proof_hex":hex(original.range)})
+            })
+            .collect();
+        let observed = match attempt.result {
+            Ok(u) => json!({"decision":"accept","usage":usage(u)}),
+            Err(f) => json!({"decision":format!("{:?}",f.cause),"usage":usage(f.usage)}),
+        };
+        let request = json!({"degree":<K as CodeField>::DEGREE,"stage":31,"dims":c.bits,
+            "parameters":{"mantissa":1,"shift":1,"bits":8},"repetitions":c.repetitions,
+            "advice_blowup":1,"point":fields(c.point),"value":fields(&[c.value])[0],
+            "public_hex":hex(b"RFC0024/complete-control/v1"),"originals":originals,
+            "proof_hex":hex(attempt.wire),"following_hex":hex(&attempt.following)});
+        println!(
+            "{}",
+            json!({"control":c.id,"side":c.side,"variant":attempt.variant,
+            "observed":observed,"request":request})
+        );
+    })
 }

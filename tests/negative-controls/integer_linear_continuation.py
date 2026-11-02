@@ -5,7 +5,7 @@ The replay is an untrusted message history, not another accepting verifier.
 """
 from copy import deepcopy
 import struct
-from integer_linear_reference import LINEAR, decode_request, following_instance, need
+from integer_linear_reference import LINEAR, decode_request, decode_following, following_instance, need
 from protocol_reference import CONSTRAINTS, CLAIMS
 
 
@@ -33,11 +33,12 @@ def requests(ref, request):
 
     ref.Transcript = Observed
     try:
-        operation, wire, following = decode_request(ref, request)
+        operation, wire = decode_request(ref, request)
         _, observed = operation.verify(wire)
     finally:
         ref.Transcript = base
     need(type(observed) is Observed, 'ObservedOuterTranscript')
+    following = decode_following(ref, request)
     instance = following_instance(operation)
     tables = [[ref.sc.scalar(1, operation.d), ref.sc.scalar(2, operation.d)]]
 

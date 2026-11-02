@@ -105,3 +105,24 @@ baseline must match the native proof bytes and transcript Usage. Seven independe
 frame omissions each replace one following A1 final, leaving the accepted outer
 proof fixed. The independent Python replay checks the same frame inventory using
 a fresh transcript, with an exact no-omission replay before any mutation.
+
+`integer_linear_corpus --controls K ID` exports the actual accepted and rejected
+ProverHook packets for NC-0306/0307/0312/0314/0316/0317/0318/0606/0610/0611.
+The request adapter reconstructs every original certificate and range event from
+bytes. `integer_linear_controls.py` compares its complete results with the
+independent Python consumer, including failed-prefix Usage and every import.
+It consumes identical requests once and checks every original control observation
+against that result. Exported observations never grant verification authority.
+
+Run this qualification explicitly into fresh output directories:
+
+```sh
+cargo build --profile test -p stele-negative-controls --example integer_linear_corpus
+PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.12 --with blake3==1.0.11 python -B tests/negative-controls/integer_linear_controls.py target/debug/examples/integer_linear_corpus /tmp/stele-linear-controls-k4 4
+PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.12 --with blake3==1.0.11 python -B tests/negative-controls/integer_linear_controls.py target/debug/examples/integer_linear_corpus /tmp/stele-linear-controls-k8 8
+```
+
+`--exports DIRECTORY` replays saved native exports through both consumers.
+The report records that source directory; it does not claim a new ProverHook
+execution. This campaign is outside default CI and grants no additional catalog
+IDs, independent adversarial-production credit or complete resource evidence.

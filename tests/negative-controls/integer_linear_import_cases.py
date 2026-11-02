@@ -5,7 +5,7 @@ from integer_linear_reference import decode_request, need
 
 def requests(ref, request):
     """Mutate fixed public packets, then use fresh closed verifiers for each case."""
-    operation, wire, _ = decode_request(ref, request)
+    operation, wire = decode_request(ref, request)
     _, parts = operation.partition(wire)
     d, r = operation.d, operation.repetitions
     yield dict(name='honest', expected='accept', phase=None, request=request)

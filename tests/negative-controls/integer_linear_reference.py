@@ -438,9 +438,16 @@ def decode_request(ref, request):
             range_proof=raw_hex(info['range_proof_hex'])))
     wire = raw_hex(request['proof_hex'])
     need(len(wire) <= 64 << 20, 'ResourceLimit')
-    following = ref.pcs.fields(raw_hex(request['following_hex'], 12*d), d)
     operation = Operation(ref, s, d, repetitions, packets, point, value, public, blowup)
-    return operation, wire, dict(rounds=[following[:2]], final=following[2:])
+    return operation, wire
+
+
+def decode_following(ref, request):
+    """The native adapter decodes the successor only after outer acceptance."""
+    from requant_corpus import raw_hex
+    d = request['degree']
+    following = ref.pcs.fields(raw_hex(request['following_hex'], 12*d), d)
+    return dict(rounds=[following[:2]], final=following[2:])
 
 
 def project(operation, records, transcript):
@@ -476,7 +483,7 @@ def following_instance(operation):
 
 def verify_request(ref, request):
     try:
-        operation, wire, following = decode_request(ref, request)
+        operation, wire = decode_request(ref, request)
     except VerificationAbort as error:
         return error.result
     try:
@@ -505,6 +512,7 @@ def verify_request(ref, request):
             usage=dict(transcript=attempt['transcript'].usage.copy(), non_transcript=local))
     result = project(operation, records, transcript)
     sc, d = ref.sc, operation.d
+    following = decode_following(ref, request)
     try:
         next_record = sc.verify_public(transcript, following_instance(operation), following,
                                       [[sc.scalar(1, d), sc.scalar(2, d)]])

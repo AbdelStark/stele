@@ -23,6 +23,8 @@ const MATMUL: stacked::Limits = stacked::Limits {
 };
 #[path = "integer_linear_composer.rs"]
 mod composer;
+#[path = "integer_linear_replay.rs"]
+pub mod replay;
 struct Cell {
     at: usize,
     value: Vec<u8>,
@@ -40,11 +42,22 @@ impl ProverHook<Vec<u8>> for Cell {
 }
 /// Execute the specified new binding in both fields and both repetition counts.
 pub fn run(id: u16) -> Result<(), String> {
-    run_field::<QM31>(id)?;
-    run_field::<OM31>(id)
+    run_field::<QM31>(id, None)?;
+    run_field::<OM31>(id, None)
+}
+/// Observe the same control execution; every request must be verified again by its consumer.
+pub fn run_observed<K: ChallengeField + CodeField + lookup::TableField + Eq + core::fmt::Debug>(
+    id: u16,
+    observer: &dyn Fn(replay::Attempt<'_, K>),
+) -> Result<(), String>
+where
+    for<'b> K::Bytes: TryFrom<&'b [u8]>,
+{
+    run_field::<K>(id, Some(observer))
 }
 fn run_field<K: ChallengeField + CodeField + lookup::TableField + Eq + core::fmt::Debug>(
     id: u16,
+    observer: replay::Observer<'_, K>,
 ) -> Result<(), String>
 where
     for<'b> K::Bytes: TryFrom<&'b [u8]>,
@@ -91,18 +104,14 @@ where
                 .expect("valid fixed fixture");
             let pw = PreparedSource::<K>::new(102, c, h + b, 2, w, &mut HashUsage::default())
                 .expect("valid fixed fixture");
-            let cx = verify_certificate(
-                *px.source(),
-                &px.certificate().expect("valid fixed fixture").0,
-            )
-            .expect("valid fixed fixture")
-            .0;
-            let cw = verify_certificate(
-                *pw.source(),
-                &pw.certificate().expect("valid fixed fixture").0,
-            )
-            .expect("valid fixed fixture")
-            .0;
+            let xp = px.certificate().expect("valid fixed fixture").0;
+            let wp = pw.certificate().expect("valid fixed fixture").0;
+            let cx = verify_certificate(*px.source(), &xp)
+                .expect("valid fixed fixture")
+                .0;
+            let cw = verify_certificate(*pw.source(), &wp)
+                .expect("valid fixed fixture")
+                .0;
             let dx = byte_range::Descriptor::new(&cx, 9, &[111, 112][..repetitions], LIMITS)
                 .expect("valid fixed fixture");
             let dw = byte_range::Descriptor::new(&cw, 10, &[121, 122][..repetitions], LIMITS)
@@ -188,6 +197,26 @@ where
                 value,
                 originals: [&xr, &wr],
             };
+            let replay = replay::Context {
+                id,
+                bits,
+                repetitions,
+                side,
+                point: &point,
+                value,
+                originals: [
+                    replay::Original {
+                        source: *px.source(),
+                        certificate: &xp,
+                        range: &rx,
+                    },
+                    replay::Original {
+                        source: *pw.source(),
+                        certificate: &wp,
+                        range: &rw,
+                    },
+                ],
+            };
             let d = linear::Descriptor::new(expected, &ca, LIMITS, MATMUL)
                 .expect("valid fixed fixture");
             let transcript = || {
@@ -225,12 +254,10 @@ where
                     &mut HashUsage::default(),
                 )
                 .expect("genuine replacement source");
-                let owner = verify_certificate(
-                    *replacement.source(),
-                    &replacement.certificate().expect("genuine packet").0,
-                )
-                .expect("genuine replacement owner")
-                .0;
+                let replacement_packet = replacement.certificate().expect("genuine packet").0;
+                let owner = verify_certificate(*replacement.source(), &replacement_packet)
+                    .expect("genuine replacement owner")
+                    .0;
                 let ids = if side == 0 { [111, 112] } else { [121, 122] };
                 let range_descriptor = byte_range::Descriptor::new(
                     &owner,
@@ -299,30 +326,33 @@ where
                             .0;
                         let refs: Vec<_> = owners.iter().collect();
                         let mut t = transcript();
-                        descriptor
-                            .verify(&mut t, &refs, &packet.wire)
-                            .map(|_| ())
-                            .map_err(|failure| {
-                                assert_eq!(failure.usage.transcript, t.usage());
-                                assert_eq!(
-                                    failure.usage.transcript,
-                                    packet.original_prefix[side][1]
-                                );
-                                let mut hashes = descriptor.max_local_hashes();
-                                for range in &changed.ranges[side..] {
-                                    let source = range.original().record().source();
-                                    hashes -= u64::from(source.queries(ProofKind::Opening))
-                                        * (1 + source.path_height() as u64);
-                                }
-                                hashes += 1 + changed.ranges[side]
-                                    .original()
-                                    .record()
-                                    .source()
-                                    .path_height()
-                                    as u64;
-                                assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
-                                failure.cause
-                            })
+                        let result = descriptor.verify(&mut t, &refs, &packet.wire);
+                        let mut context = replay;
+                        if changed != &baseline {
+                            context.originals[side] = replay::Original {
+                                source: *replacement.source(),
+                                certificate: &replacement_packet,
+                                range: &range_proof,
+                            };
+                        }
+                        context.emit(observer, "range-context", &packet.wire, &mut t, &result);
+                        result.map(|_| ()).map_err(|failure| {
+                            assert_eq!(failure.usage.transcript, t.usage());
+                            assert_eq!(failure.usage.transcript, packet.original_prefix[side][1]);
+                            let mut hashes = descriptor.max_local_hashes();
+                            for range in &changed.ranges[side..] {
+                                let source = range.original().record().source();
+                                hashes -= u64::from(source.queries(ProofKind::Opening))
+                                    * (1 + source.path_height() as u64);
+                            }
+                            hashes += 1 + changed.ranges[side]
+                                .original()
+                                .record()
+                                .source()
+                                .path_height() as u64;
+                            assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
+                            failure.cause
+                        })
                     },
                     linear::Error::Matmul(matmul::Error::Pcs(stele_pcs::Error::Merkle(
                         stele_hash::merkle::Error::RootMismatch,
@@ -374,33 +404,32 @@ where
                     let rejected = linear::Error::Matmul(matmul::Error::Pcs(error));
                     let checked = |packet: &composer::Packet<K>| {
                         let mut t = transcript();
-                        d.verify(&mut t, &refs, &packet.wire)
-                            .map(|_| ())
-                            .map_err(|failure| {
-                                assert_eq!(failure.cause, rejected, "actual original consumer");
-                                assert_eq!(failure.usage.transcript, t.usage());
-                                let mut hashes = d.max_local_hashes();
-                                for source in &originals[side..] {
-                                    hashes -=
-                                        u64::from(source.source().queries(ProofKind::Opening))
-                                            * (1 + source.source().path_height() as u64);
-                                }
-                                let exact = if id == 307 {
-                                    let mut prefix = packet.original_prefix[side][0];
-                                    prefix.hash_evaluations += 2;
-                                    prefix.state_updates += 2;
-                                    prefix
-                                } else {
-                                    hashes += 1 + originals[side].source().path_height() as u64;
-                                    packet.original_prefix[side][1]
-                                };
-                                assert_eq!(
-                                    failure.usage.transcript, exact,
-                                    "actual first-query or no-query prefix"
-                                );
-                                assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
-                                failure.cause
-                            })
+                        let result = d.verify(&mut t, &refs, &packet.wire);
+                        replay.emit(observer, "original", &packet.wire, &mut t, &result);
+                        result.map(|_| ()).map_err(|failure| {
+                            assert_eq!(failure.cause, rejected, "actual original consumer");
+                            assert_eq!(failure.usage.transcript, t.usage());
+                            let mut hashes = d.max_local_hashes();
+                            for source in &originals[side..] {
+                                hashes -= u64::from(source.source().queries(ProofKind::Opening))
+                                    * (1 + source.source().path_height() as u64);
+                            }
+                            let exact = if id == 307 {
+                                let mut prefix = packet.original_prefix[side][0];
+                                prefix.hash_evaluations += 2;
+                                prefix.state_updates += 2;
+                                prefix
+                            } else {
+                                hashes += 1 + originals[side].source().path_height() as u64;
+                                packet.original_prefix[side][1]
+                            };
+                            assert_eq!(
+                                failure.usage.transcript, exact,
+                                "actual first-query or no-query prefix"
+                            );
+                            assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
+                            failure.cause
+                        })
                     };
                     if id == 307 {
                         let replacement = if h + b == 0 {
@@ -524,26 +553,32 @@ where
                             },
                             |proof| {
                                 let mut t = transcript();
-                                d.verify(&mut t, &refs, proof)
-                                    .map(|_| ())
-                                    .map_err(|failure| {
-                                        assert_eq!(failure.usage.transcript, t.usage());
-                                        let mut exact = baseline.group_prefix[group];
-                                        exact.hash_evaluations += 2;
-                                        exact.state_updates += 2;
-                                        assert_eq!(
-                                            failure.usage.transcript, exact,
-                                            "no affected-group query"
-                                        );
-                                        assert_eq!(
-                                            failure.usage.non_transcript.hash_evaluations,
-                                            d.max_local_hashes()
-                                                - (3 - group as u64) * opening_hashes(pa.source())
-                                                - opening_hashes(px.source())
-                                                - opening_hashes(pw.source())
-                                        );
-                                        failure.cause
-                                    })
+                                let result = d.verify(&mut t, &refs, proof);
+                                replay.emit(
+                                    observer,
+                                    &format!("{attack:?}"),
+                                    proof,
+                                    &mut t,
+                                    &result,
+                                );
+                                result.map(|_| ()).map_err(|failure| {
+                                    assert_eq!(failure.usage.transcript, t.usage());
+                                    let mut exact = baseline.group_prefix[group];
+                                    exact.hash_evaluations += 2;
+                                    exact.state_updates += 2;
+                                    assert_eq!(
+                                        failure.usage.transcript, exact,
+                                        "no affected-group query"
+                                    );
+                                    assert_eq!(
+                                        failure.usage.non_transcript.hash_evaluations,
+                                        d.max_local_hashes()
+                                            - (3 - group as u64) * opening_hashes(pa.source())
+                                            - opening_hashes(px.source())
+                                            - opening_hashes(pw.source())
+                                    );
+                                    failure.cause
+                                })
                             },
                             linear::Error::Pcs(stele_pcs::Error::ValueMismatch),
                         )
@@ -710,7 +745,9 @@ where
                 },
                 |proof| {
                     let mut t = transcript();
-                    d.verify(&mut t, &refs, proof).map(|_| ()).map_err(|f| {
+                    let result = d.verify(&mut t, &refs, proof);
+                    replay.emit(observer, "proof-value", proof, &mut t, &result);
+                    result.map(|_| ()).map_err(|f| {
                         assert_eq!(f.usage.transcript, t.usage());
                         if id == 314 || id == 316 {
                             let opening_hashes = |s: &stele_pcs::Source<K>| {
