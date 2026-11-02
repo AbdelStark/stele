@@ -67,7 +67,7 @@ def main():
                     ['cargo','test','-p','stele-lookup','--example','fraction_bench','--release','--locked','--offline'],
                     ['cargo','build','-p','stele-lookup','--example','fraction_bench','--release','--locked','--offline']]:
         subprocess.run(command,cwd=ROOT,check=True)
-    coverage = run('cargo','run','-q','-p','stele-negative-controls','--bin','stele-controls','--locked','--offline','--','--coverage')
+    coverage = run('cargo','run','--profile','test','-q','-p','stele-negative-controls','--bin','stele-controls','--locked','--offline','--','--coverage')
     passed, catalog = map(int,re.search(r'(\d+)/(\d+) controls',coverage).groups())
     data, evidence = {}, {}
     degree = 4 if field == 'QM31' else 8

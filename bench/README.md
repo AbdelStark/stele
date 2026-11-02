@@ -193,6 +193,51 @@ small runtime probes also rejected a false debug assertion and integer overflow.
 These checks are outside the timed commands. The micro record's proof, verifier
 and controls fields remain zero; no proof-system cost-model constant changes.
 
+## Control coverage profile (E0-09)
+
+The [paired ledger](ledger/e0-09-control-profile.json) measures the ordinary
+`stele-controls --coverage` binary from clean commit
+`bc1830ffa91b92241b288c1ac4c04bb492a1ce10`. Selecting the existing Cargo test
+profile changes optimization from 0 to 2 while retaining default features,
+debug assertions and overflow checks in the binary and its runtime dependencies.
+Cargo compiler artifacts confirm these are normal binaries, without `cfg(test)`.
+
+| Cargo profile | Cold build (s) | Direct coverage execution (s) | Sum (s) |
+|---|---:|---:|---:|
+| dev | 17.570 | 190.481 | 208.051 |
+| test | 30.890 | 14.041 | 44.931 |
+
+This is one dev-then-test pair on a shared Apple M1 Max with existing proof
+workers retained. Each build used a separate new target directory. The two
+phases are disjoint; direct execution includes process launch and output capture
+but excludes Cargo launch overhead. There was no warmup, repetition, discarded
+sample or inference measurement. Host load changed between samples, so this
+pair supplies neither a statistical speedup estimate nor full-CI latency.
+
+Both runs produced identical coverage output: 50 proof-statement controls and
+one configuration control passed, 53 controls were missing, and 17 of 32 bindings
+were covered. No coverage was added. Both binaries also rejected missing,
+unexpected and extra arguments with identical exit codes and usage output.
+The five direct callers now select `--profile test`; every preceding gate and
+remaining argument is preserved. Benchmark coverage preflights remain outside
+their timed workers.
+
+To reproduce, use a clean checkout of the measured commit, fetch its locked
+dependencies, remove profile/compiler overrides, and choose a new empty
+`CARGO_TARGET_DIR` for each `PROFILE` (`dev`, then `test`):
+
+```sh
+cargo build --profile "$PROFILE" -p stele-negative-controls --bin stele-controls \
+  --locked --offline --verbose --message-format=json
+```
+
+Run the executable reported by that build's `compiler-artifact` record with
+`--coverage`, timing build and execution separately. The ledger embeds the exact
+controller and exporter, raw logs, source pins, binary hashes and compiler
+metadata. Its top-level proof, verifier and controls fields are zero because it
+is a validation microbenchmark; actual control results are in the embedded
+reports and counters. No proof-system cost constant changes.
+
 ## Scalar field multiplication (E1-02)
 
 From a clean committed checkout, run:

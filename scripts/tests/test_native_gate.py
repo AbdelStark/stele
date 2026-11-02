@@ -2,9 +2,14 @@
 from contextlib import ExitStack, redirect_stderr
 import importlib.util
 import io
+import json
+import os
+import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
+import tomllib
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -21,6 +26,45 @@ VALIDATORS = ('controls_layout', 'field_source_codec', 'field_sources', 'bootstr
 
 
 class NativeGateTests(unittest.TestCase):
+    def test_accepts_checked_coverage_commands_and_rejects_failures(self):
+        profile = tomllib.loads((ROOT / 'Cargo.toml').read_text())['profile']['test']
+        self.assertIs(profile['debug-assertions'], True)
+        self.assertIs(profile['overflow-checks'], True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / 'commands.jsonl'
+            helper = root / 'capture.py'
+            helper.write_text('''import json, os, sys
+from pathlib import Path
+command = [Path(sys.argv[1]).name, *sys.argv[2:]]
+with Path(os.environ['STELE_GATE_COMMAND_LOG']).open('a') as output:
+    output.write(json.dumps(command) + '\\n')
+phase = command[0] if command[0] == 'python3' else command[1]
+sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
+''')
+            stub = '#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' ' + shlex.quote(str(helper)) + ' "$0" "$@"\n'
+            for name in ('python3', 'cargo'):
+                path = root / name
+                path.write_text(stub)
+                path.chmod(0o755)
+            for name, arguments in [('native', []), ('negative-controls', []),
+                                    ('negative-controls', ['--coverage'])]:
+                expected = [
+                    ['python3', str(ROOT / 'scripts/gates/check.py'), name],
+                    ['cargo', 'test', '-p', 'stele-negative-controls', '--locked', '--offline'],
+                    ['cargo', 'run', '--profile', 'test', '-p', 'stele-negative-controls',
+                     '--bin', 'stele-controls', '--locked', '--offline', '--', '--coverage'],
+                ]
+                for failure, count in [('', 3), ('python3', 1), ('test', 2), ('run', 3)]:
+                    with self.subTest(gate=name, arguments=arguments, failure=failure):
+                        log.write_text('')
+                        env = dict(os.environ, PATH=directory + os.pathsep + os.environ['PATH'],
+                                   STELE_GATE_COMMAND_LOG=str(log), STELE_GATE_FAIL_PHASE=failure)
+                        result = subprocess.run(['bash', str(ROOT / 'scripts/gates' / f'{name}.sh'), *arguments],
+                                                cwd='/', env=env, text=True, capture_output=True)
+                        self.assertEqual(result.returncode, 37 if failure else 0, result.stderr)
+                        self.assertEqual([json.loads(line) for line in log.read_text().splitlines()], expected[:count])
+
     def run_gate(self, name, fail=None):
         calls = []
         def validator(label):
