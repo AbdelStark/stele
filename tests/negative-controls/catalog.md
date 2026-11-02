@@ -154,7 +154,7 @@ The centered NC-0606 extension substitutes one genuinely verified original
 range handle, rebuilds dependent proof messages, and retains the old source's
 responses. Both sources, fields and repetition counts reach RootMismatch on
 the first affected path, with exact transcript and local-hash prefixes.
-NC-0312 changes one opening-row value derived from a wrong output-group plane
+The NC-0312 variant changes one opening-row value derived from a wrong output-group plane
 and reaches ValueMismatch before queries. NC-0314 changes one reserved-plane
 A3 final; exactly its physical zero equation fails, reaching
 FinalEvaluationMismatch. These 16 variants require accepted complete native
