@@ -151,3 +151,19 @@ schedule. Wider/packed source obligations and full E7-01/E7-02/E4-04 criteria
 remain. Soundness/challenge/accounting is exactly RFC-0023 and RFC-0012 A13;
 privacy/Q12/profile/W8 obligations are unchanged. New cut/lookup/arithmetic work
 contributes c_c/c_lu/c_a/T_misc; no measured constant or second pass is authorized.
+
+### A4 — Centered offset-int8 matmul joined to Requant
+
+Status: Accepted. Companion RFC-0024 and RFC-0005 A3; questions Q26/Q28.
+Addition to A2/A3: RFC-0024 fixes the centered signed interpretation, original
+whole-source ranges, static 2*d*128^2<p admission, complete embedded advice cap,
+and actual same-point equality consumer. Keep raw retained rows immutable;
+subtract128 in their A4 scratch and restore the exact raw scalar for ordinary
+A9 openings. Both originals close even under zero factors. The online phase
+visits each original once; separately charged forward/capture, static range
+registration, encoding and query reads are not erased by that count.
+The complete contract adds m/|K| SZ and retains every actual child loss. The
+affine O(L*d) work and expanded advice/range work enter existing cost terms;
+no measured constant or extra online weight pass is authorized. Existing field
+matmul stays unchanged. Full configured phases, wider/packed dots, virtual
+sources, privacy, profiles and W8 remain E7/E4 and parent obligations.

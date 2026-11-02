@@ -35,3 +35,10 @@ for the false statement. This narrow Accepted-contract requirement does not
 relax any verifier check or the ordinary accepted-baseline control paths.
 NC-0415 is the separately specified static descriptor GroupBound boundary;
 it requires no fabricated huge proof or claim of proof-statement acceptance.
+
+RFC-0024 §6 extends the fixed-false-source procedure to NC-0315 only:
+separate accepted byte7 sanity; negative source256 with its own genuine fixed
+certificate; one declared source deviation and regenerated genuine dependent
+work; actual A5 Fraction(RootMismatch). No accepted honest proof is claimed for
+that negative statement. NC-0316..0318 use ordinary accepted-baseline proof
+mutations. Range-handle API and static-bound checks earn no proof-control count.

@@ -504,3 +504,21 @@ The single ordered pair on a shared host supports this validation-cost change;
 it does not establish full-CI latency or inference performance. No profile
 settings, CI routing, protocol behavior, soundness term, inference cost constant
 or weight-pass count changes. Status: Accepted.
+
+## ADR-048: Join centered integer matmul through the actual Requant tail
+
+Context: standalone Requant authenticates four int32 bytes, while field matmul
+alone cannot distinguish integer residues such as 0 and p. Decision: accept
+RFC-0024 and RFC-0005 A3/0007 A4/0012 A14/0020 A9/0023 A1. Require actual
+whole-source offset-int8 ranges, derive B=d*128^2 with 2B<p, and include U plus
+the complete four-byte magnitude cap in the one named advice cut. Its consumed
+linear U claim joins signed matmul at A3's actual tail; charge a separate m/|K|
+SZ event. Raw retained rows stay immutable and affine scalar restoration uses
+ordinary A9 consumers. Static range registration and request capture are real
+separate work; online proof retains one original weight visit.
+
+The coordinated review and bounded algebra/reference rejections support this
+specification only. E7-01f still owes native consumers/controls, complete parity
+and resource ledgers. Full plan/source ownership, scales, wider/packed dots,
+private/virtual sources, Q12/Q29, both profiles and W8 remain open. No measured
+constant or generic auxiliary cut changes. Status: Accepted.

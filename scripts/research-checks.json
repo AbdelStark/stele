@@ -10,7 +10,8 @@
     "uv run --locked --script research/batching/check_batching.py",
     "uv run --locked --script research/zerocheck/check_zerocheck.py",
     "uv run --locked --script research/merkle-oracle/check_field_wire.py",
-    "uv run --locked --script research/merkle/check_streaming.py --corpus --proofs"
+    "uv run --locked --script research/merkle/check_streaming.py --corpus --proofs",
+    "uv run --locked --script research/integer-linear/check_contract.py"
   ],
   "cqis-definitions": [
     "python3 research/cqis-rounding/check_rounding.py",

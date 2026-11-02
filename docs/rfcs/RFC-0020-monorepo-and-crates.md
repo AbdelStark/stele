@@ -184,3 +184,15 @@ No new Cargo edge or external dependency is needed. Update exact public API
 guards with native delivery; this specification changes no executable allowlist.
 Top-level verifier/IR/proof integration keeps its separate contract. E7-01c and
 its native successor preserve every full inference, privacy and profile criterion.
+
+### A9 — Centered integer linear operation and genuine byte-range evidence
+
+Status: Accepted. Companions RFC-0024 and RFC-0012 A14.
+The new operation and fixed byte-range verifier belong in stele-reductions,
+using the existing CQIS schema, generated range_8, A5/A3/A1/A4/A7/A9 and
+immutable PCS retained-row engines. A private range constructor executes its
+exact all-one A5 statement; arbitrary LookupRecords cannot be promoted. Records
+borrow caller-owned actual certificates and completed range objects. No source
+cache, callback, generic Reduction trait or new dependency edge is introduced.
+E7-01f updates exact API/registry guards and actual native evidence; this contract
+does not change an executable allowlist or complete top-level artifact ownership.

@@ -78,3 +78,18 @@ RLC events plus existing child losses are in RFC-0023/RFC-0012 A13. Costs includ
 the actual new cut, complete byte lookups and arithmetic/source consumers;
 no measured constant or weight-pass change. Affected tasks: E7-01c and its native
 successor; E3-07/E5-03/E6/E7 retain all original acceptance criteria.
+
+### A3 — Embedded accumulator bytes in the centered linear advice cut
+
+Status: Accepted. Companion RFC-0024; questions Q26/Q28.
+Addition to §§3,4 and A2: RFC-0024 extends the named Requant advice cut with
+the four offset accumulator bytes and full-width centered cap. Its fixed schema
+uses one advice source, with no separate accumulator/input/output commitment.
+The actual A3 tail supplies the equality point consumed by signed matmul and
+its original byte-range-verified X/W sources. External X ownership grants no
+permission to commit a model's virtual activation. Capture is request-specific,
+untrusted witness work; its weight reads and registration are charged separately.
+No plan format or generic auxiliary cut is admitted. Soundness adds the explicit
+SZ event in RFC-0024 §5; all real child/lifetime losses remain. Advice/range costs
+change by the exact schema counts, with no measured constant. E7-01e/f own this
+contract and delivery; all original E3/E5/E6/E7 and W8 criteria remain.

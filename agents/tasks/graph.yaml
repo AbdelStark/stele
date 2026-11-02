@@ -1265,6 +1265,52 @@ tasks:
   - checked-in independent Python/native full wire, decision, claim, record, Usage and continuation parity; preserve existing corpora
   - complete registration, preparation, proving, import, both verifiers, proof-byte and peak-memory ledgers with every binding enabled
   - all E3-07/E5-03/E6/E7-01/E7-02, configured source/plan, integer matmul bridge, packing, privacy, profile and W8 criteria remain required
+- id: E7-01e
+  epic: E7
+  title: Specify the centered signed-int8 matmul and Requant source join
+  depends:
+  - E3-07b
+  - E7-01b
+  - E7-01d
+  rfc:
+  - RFC-0024
+  - RFC-0007 A4
+  - RFC-0023 §5
+  - RFC-0005 A3
+  - RFC-0010 A10
+  skill: rfc-author
+  crate: stele-reductions
+  status: done
+  agent: codex-root
+  branch: task/E7-01e-integer-linear-contract
+  acceptance:
+  - Accepted exact composed operation contract for actual signed original ranges, verifier-derived centered dot bounds and advice bounds, same-source integer equality and actual rounded-output consumption
+  - exact source and named-advice-cut mode, full canonical bytes, prechallenge fixation, point restoration, source-handle lifetimes, errors, failed-prefix usage and every child loss; no separate intermediate C/U root
+  - genuine separately charged range registration and witness/advice capture boundaries preserve one online weight visit through immutable retained rows and actual original consumers
+  - bounded independent evidence and actual counterexamples support the integer and affine identities; all new bindings have reserved controls with precise rejecting causes and no premature execution credit
+  - coordinated soundness, RFC and implementing-skill acceptance; preserve standalone Requant, existing primitives and every E3/E4/E5/E6/E7, wider/packed, configured-scale, privacy, profile and W8 requirement
+- id: E7-01f
+  epic: E7
+  title: Native centered signed-int8 matmul and Requant composition
+  depends:
+  - E7-01e
+  - E3-07b
+  - E7-01b
+  - E7-01d
+  rfc:
+  - RFC-0024
+  - RFC-0007 A4
+  - RFC-0023 A1
+  - RFC-0012 A14
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - implement only the Accepted E7-01e contract with actual range, arithmetic, matmul and certificate-bound source consumers in both fields and repetition counts
+  - complete nonconstant stacked matrix composition, source/point/plane/alias/range/zero-factor/padding/lifetime rejection controls and exact failed-prefix usage; preserve all existing corpora
+  - independent complete proof-byte, decision, claim, record and continuation parity for the specified parameter and boundary matrix
+  - complete same-execution capture, preparation, original/range/advice registration, proving, import, both-verifier, proof-byte and memory ledgers with every binding enabled and one actual online weight visit
+  - every original E3/E4/E5/E6/E7, wider/packed, configured-scale, virtual-source, privacy, profile and W8 criterion remains required
 - id: E7-01
   epic: E7
   title: Matmul reduction (single instance) + requant zerocheck + range lookups
@@ -1273,6 +1319,7 @@ tasks:
   - E6-02
   - E7-01b
   - E7-01d
+  - E7-01f
   rfc:
   - RFC-0007 §1
   - RFC-0004 §5.1

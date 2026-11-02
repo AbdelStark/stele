@@ -45,7 +45,8 @@ Research, harness and formal changes normally select every research group in
 The exact root Cargo.lock path and field/CQIS source changes select the
 `native-comparisons` group: seven existing Python-to-Rust comparisons plus their
 two pinned checkpoint downloads. Any broad trigger selects all 75 groups instead.
-The normal inventory retains the same 176 commands exactly once. This scope
+The normal inventory retains the inherited 176 commands exactly once and adds
+the bounded RFC-0024 algebra checker to `algebra` (177 commands total). This scope
 also covers deletions and both names of renamed files; it does not infer scope
 from changed lockfile entries. Both mandatory native jobs and all table rules remain.
 The exact `formal/stacked-runtime.md`, `formal/stacked-ownership.md` and
