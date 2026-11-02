@@ -7,7 +7,7 @@ import sys
 
 def accepts(needs):
     try:
-        if any(needs[job]['result'] != 'success' for job in ('plan', 'native')):
+        if any(needs[job]['result'] != 'success' for job in ('plan', 'native', 'native-union')):
             return False
         scope = needs['plan']['outputs']
         for job, name in (('table-parity', 'tables'), ('research', 'research'), ('gpu-parity', 'gpu')):

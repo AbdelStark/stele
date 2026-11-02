@@ -52,8 +52,8 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: native-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
-          restore-keys: native-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-
+          key: native-core-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: native-core-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-
       - uses: actions/cache@v4
         id: cargo-deny
         with:
@@ -75,11 +75,36 @@ jobs:
         env:
           STELE_REQUIRE_SIMD: avx2
         run: cargo test -p stele-simd --release --locked --offline -- --nocapture
-      - run: scripts/gates/native.sh
       - run: scripts/gates/ledger-validate.sh
       - run: scripts/gates/rfc-status.sh
       - run: scripts/gates/docs-links.sh
       - run: scripts/gates/glossary-lint.sh
+  native-union:
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff # v6
+        with:
+          version: "0.13.4"
+          checksum: "2b428396f12572d4429cf210ca234dd599a33b3af0958a4d5ed569d63e3f344f"
+          enable-cache: true
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: native-union-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-${{ github.sha }}
+          restore-keys: native-union-${{ runner.os }}-${{ runner.arch }}-1.90.0-${{ hashFiles('Cargo.lock') }}-
+      - run: cargo fetch --locked
+      - run: scripts/gates/native.sh
   table-build:
     needs: plan
     if: needs.plan.outputs.tables == 'true'
@@ -139,7 +164,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: scripts/gates/parity.sh
   gates:
-    needs: [plan, native, table-parity, research, gpu-parity]
+    needs: [plan, native, native-union, table-parity, research, gpu-parity]
     if: always()
     runs-on: ubuntu-latest
     steps:
