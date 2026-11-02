@@ -5,6 +5,12 @@ fn rejects_nc_0307() {
 }
 
 #[test]
+fn rejects_integer_linear_wrong_original_final() {
+    stele_negative_controls::integer_linear::run(307)
+        .expect("centered scalar and stacked restoration");
+}
+
+#[test]
 fn rejects_wrong_coefficient_at_actual_a7() {
     stele_negative_controls::matmul::run_coefficient()
         .expect("independent coefficient consumer in both fields");

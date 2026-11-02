@@ -23,8 +23,8 @@
 | NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
 | NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | done |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
-| NC-0306 | matmul phases | 0007 A2 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
-| NC-0307 | matmul phases | 0007 A2 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
+| NC-0306 | matmul phases | 0007 A2, 0024 §6 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
+| NC-0307 | matmul phases | 0007 A2, 0024 §6 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
 | NC-0308 | Requant input bytes | 0023 §6 | field-congruent int32 substituted in advice/arithmetic | `ValueMismatch` | done |
 | NC-0309 | Requant advice identity | 0023 §6 | separately verified advice handle under unchanged packet | `CertificateContext` | done |
 | NC-0310 | Requant full-width result | 0023 §6 | t=65537 and q=1 retain valid low division columns | `FinalEvaluationMismatch` | done |
@@ -65,7 +65,7 @@
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
-| NC-0611 | PCS | 0010 A10, 0007 A2 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
+| NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
@@ -140,3 +140,12 @@ the four phases. Each variant changes one encoded opening-row value through
 ProverHook after an accepted complete baseline. All 32 field/repetition/phase
 variants reach Pcs(ValueMismatch), before an affected-group query, with exact
 transcript and local-hash prefixes.
+
+The centered NC-0306/0307/0611 extensions cover both original sources, fields
+and repetition counts with a zero opposite signed factor. One changed outer
+coordinate rebuilds the retained row and dependent proof; the actual A3 join
+point stays fixed. One changed retained row reaches ColumnMismatch on the first
+authentic-path attempt. One changed final, including non-Boolean layer/inner
+restoration, reaches ValueMismatch without an affected-source query. Accepted
+complete native baselines and exact failure prefixes are required for all 32
+variants; W failures consume X first.

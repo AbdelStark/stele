@@ -117,19 +117,28 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 306,
         kind: catalog::ControlKind::Proof,
         expected_error: "ColumnMismatch",
-        run: || matmul::run(306),
+        run: || {
+            matmul::run(306)?;
+            integer_linear::run(306)
+        },
     },
     catalog::RegisteredControl {
         id: 307,
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
-        run: || matmul::run(307),
+        run: || {
+            matmul::run(307)?;
+            integer_linear::run(307)
+        },
     },
     catalog::RegisteredControl {
         id: 611,
         kind: catalog::ControlKind::Proof,
         expected_error: "ColumnMismatch",
-        run: || matmul::run(611),
+        run: || {
+            matmul::run(611)?;
+            integer_linear::run(611)
+        },
     },
     catalog::RegisteredControl {
         id: 400,

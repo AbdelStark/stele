@@ -1,5 +1,5 @@
 //! RFC-0024 §6: complete accepted baseline, one encoded K value, actual rejection.
-use crate::{check_proof_control, ProverHook};
+use crate::{check_control, check_proof_control, ProverHook};
 use stele_field::{Field, M31, OM31, QM31};
 use stele_gkr::stacked;
 use stele_hash::{ChallengeField, HashUsage, Transcript};
@@ -50,19 +50,45 @@ where
     for<'b> K::Bytes: TryFrom<&'b [u8]>,
 {
     for repetitions in 1..=2 {
-        let shapes = [[0; 4], [1; 4]];
-        for &bits in &shapes[..if id == 802 { 2 } else { 1 }] {
+        let cases = match id {
+            306 | 611 => vec![([0, 1, 0, 1], Some(0)), ([0, 1, 0, 1], Some(1))],
+            307 => vec![
+                ([0, 1, 0, 1], Some(0)),
+                ([0, 1, 0, 1], Some(1)),
+                ([1; 4], Some(0)),
+                ([1; 4], Some(1)),
+            ],
+            802 => vec![([0; 4], None), ([1; 4], None)],
+            _ => vec![([0; 4], None)],
+        };
+        for (bits, side) in cases {
             let [h, a, b, c] = bits;
             let columns = 1usize << (h + b);
-            let x: Vec<_> = (0..columns * (1 << a))
-                .map(|i| M31::from_i64(125 + (i % 7) as i64))
-                .collect();
-            let w: Vec<_> = (0..columns * (1 << c))
-                .map(|i| M31::from_i64(126 + (i % 5) as i64))
-                .collect();
-            let px = PreparedSource::<K>::new(101, a, h + b, 1, &x, &mut HashUsage::default())
+            let messages: [Vec<M31>; 2] = core::array::from_fn(|source| {
+                (0..columns * (1 << if source == 0 { a } else { c }))
+                    .map(|i| {
+                        let value = if let Some(changed) = side {
+                            if changed != source {
+                                128
+                            } else {
+                                let row = i / columns;
+                                let layer = (i % columns) >> b;
+                                let inner = i & ((1 << b) - 1);
+                                128 + row * 13 + layer * 5 + inner * 7 + layer * inner * 3
+                            }
+                        } else if source == 0 {
+                            125 + i % 7
+                        } else {
+                            126 + i % 5
+                        };
+                        M31::from_i64(value as i64)
+                    })
+                    .collect()
+            });
+            let [x, w] = messages.each_ref();
+            let px = PreparedSource::<K>::new(101, a, h + b, 1, x, &mut HashUsage::default())
                 .expect("valid fixed fixture");
-            let pw = PreparedSource::<K>::new(102, c, h + b, 2, &w, &mut HashUsage::default())
+            let pw = PreparedSource::<K>::new(102, c, h + b, 2, w, &mut HashUsage::default())
                 .expect("valid fixed fixture");
             let cx = verify_certificate(
                 *px.source(),
@@ -186,9 +212,11 @@ where
                 .expect("valid fixed fixture")
                 .0;
             let refs: Vec<_> = mu.iter().collect();
-            if id == 802 || id == 610 {
+            if matches!(id, 306 | 307 | 611 | 802 | 610) {
                 use composer::Attack;
-                let compose = |attack, template| {
+                let compose = |attack: Attack,
+                               template: Option<&composer::Packet<K>>,
+                               view: Option<composer::View<'_, K>>| {
                     composer::compose(
                         &d,
                         &expected,
@@ -200,14 +228,151 @@ where
                         b"RFC0024/complete-control/v1",
                         attack,
                         template,
+                        view,
                     )
                 };
-                let mut baseline = compose(Attack::Honest, None);
+                let mut baseline = compose(Attack::Honest, None, None);
                 assert_eq!(
                     baseline.wire, honest,
                     "composer must match the complete actual producer"
                 );
                 assert_eq!(baseline.transcript.usage(), producer_usage.transcript);
+                if let Some(side) = side {
+                    use crate::matmul::{ChangeFinal, ChangeRow, RowWitness};
+                    use composer::View;
+                    let originals = [&px, &pw];
+                    assert_eq!(baseline.rows[1 - side], vec![K::from_i64(128); columns]);
+                    let error = if id == 307 {
+                        stele_pcs::Error::ValueMismatch
+                    } else {
+                        stele_pcs::Error::ColumnMismatch
+                    };
+                    let rejected = linear::Error::Matmul(matmul::Error::Pcs(error));
+                    let checked = |packet: &composer::Packet<K>| {
+                        let mut t = transcript();
+                        d.verify(&mut t, &refs, &packet.wire)
+                            .map(|_| ())
+                            .map_err(|failure| {
+                                assert_eq!(failure.cause, rejected, "actual original consumer");
+                                assert_eq!(failure.usage.transcript, t.usage());
+                                let mut hashes = d.max_local_hashes();
+                                for source in &originals[side..] {
+                                    hashes -=
+                                        u64::from(source.source().queries(ProofKind::Opening))
+                                            * (1 + source.source().path_height() as u64);
+                                }
+                                let exact = if id == 307 {
+                                    let mut prefix = packet.original_prefix[side][0];
+                                    prefix.hash_evaluations += 2;
+                                    prefix.state_updates += 2;
+                                    prefix
+                                } else {
+                                    hashes += 1 + originals[side].source().path_height() as u64;
+                                    packet.original_prefix[side][1]
+                                };
+                                assert_eq!(
+                                    failure.usage.transcript, exact,
+                                    "actual first-query or no-query prefix"
+                                );
+                                assert_eq!(failure.usage.non_transcript.hash_evaluations, hashes);
+                                failure.cause
+                            })
+                    };
+                    if id == 307 {
+                        let replacement = if h + b == 0 {
+                            baseline.matmul.final_values[side] + K::from_i64(1)
+                        } else {
+                            assert_eq!(baseline.matmul_point.len(), 2);
+                            assert!(baseline
+                                .matmul_point
+                                .iter()
+                                .all(|q| *q != K::from_i64(0) && *q != K::from_i64(1)));
+                            let mut full = if side == 0 {
+                                baseline.join_point[usize::from(h)..usize::from(h + a)].to_vec()
+                            } else {
+                                baseline.join_point[usize::from(h + a)..].to_vec()
+                            };
+                            full.extend_from_slice(&baseline.matmul_point);
+                            let raw =
+                                crate::matmul::composer::original_value(originals[side], &full);
+                            assert_eq!(raw - K::from_i64(128), baseline.matmul.final_values[side]);
+                            let end = full.len();
+                            full.swap(end - 2, end - 1);
+                            crate::matmul::composer::original_value(originals[side], &full)
+                                - K::from_i64(128)
+                        };
+                        assert_ne!(replacement, baseline.matmul.final_values[side]);
+                        check_control(
+                            &baseline.matmul,
+                            &ChangeFinal {
+                                index: side,
+                                value: replacement,
+                            },
+                            |proof| -> Result<_, String> {
+                                let packet =
+                                    compose(Attack::Honest, None, Some(View::Proof(proof)));
+                                assert_eq!(
+                                    packet.rows, baseline.rows,
+                                    "retained raw rows do not change"
+                                );
+                                assert_eq!(packet.matmul_point, baseline.matmul_point);
+                                if proof == &baseline.matmul {
+                                    assert_eq!(packet.wire, honest);
+                                }
+                                Ok(packet)
+                            },
+                            checked,
+                            rejected,
+                        )
+                        .map_err(|e| {
+                            format!(
+                                "NC-0307 K{}, r{repetitions}, {bits:?}, source {side}: {e:?}",
+                                <K as CodeField>::DEGREE
+                            )
+                        })?;
+                    } else {
+                        let view = RowWitness {
+                            point: baseline.join_point.clone(),
+                            rows: baseline.rows.clone(),
+                        };
+                        check_control(
+                            &view,
+                            &ChangeRow {
+                                id,
+                                side,
+                                coordinate: usize::from(if side == 0 { h } else { h + a }),
+                            },
+                            |changed| -> Result<_, String> {
+                                let override_ = if id == 306 {
+                                    View::Point(&changed.point)
+                                } else {
+                                    View::Rows(&changed.rows)
+                                };
+                                let packet = compose(Attack::Honest, None, Some(override_));
+                                assert_eq!(packet.rows[1 - side], baseline.rows[1 - side]);
+                                assert_eq!(
+                                    packet.join_point, baseline.join_point,
+                                    "actual A3 join remains fixed"
+                                );
+                                if changed == &view {
+                                    assert_eq!(packet.wire, honest);
+                                } else {
+                                    assert_ne!(packet.rows[side], baseline.rows[side]);
+                                }
+                                Ok(packet)
+                            },
+                            checked,
+                            rejected,
+                        )
+                        .map_err(|e| {
+                            format!(
+                                "NC-{id:04} K{}, r{repetitions}, source {side}: {e:?}",
+                                <K as CodeField>::DEGREE
+                            )
+                        })?;
+                    }
+                    continue;
+                }
                 if id == 610 {
                     let width = core::mem::size_of::<K>();
                     let opening_hashes = |s: &stele_pcs::Source<K>| {
@@ -216,7 +381,7 @@ where
                     for phase in 0..4 {
                         let group = usize::from(phase.max(1) - 1);
                         for attack in [Attack::SwapWeights(phase), Attack::OmitWeight(phase)] {
-                            let other = compose(attack, None);
+                            let other = compose(attack, None, None);
                             let at = baseline.group_offsets[group] + 1;
                             let replacement = other.group_offsets[group] + 1;
                             check_proof_control(
@@ -275,7 +440,7 @@ where
                     .expect("actual following A1 producer")
                 };
                 let accepted = following(&mut baseline.transcript);
-                let mut replay = compose(Attack::ReplayResponses, Some(&baseline));
+                let mut replay = compose(Attack::ReplayResponses, Some(&baseline), None);
                 assert_eq!(
                     replay.wire, honest,
                     "actual response replay matches complete proof"
@@ -283,7 +448,7 @@ where
                 assert_eq!(following(&mut replay.transcript), accepted);
                 assert_eq!(replay.transcript.usage(), baseline.transcript.usage());
                 for frame in 0..7 {
-                    let mut other = compose(Attack::OmitFrame(frame), Some(&baseline));
+                    let mut other = compose(Attack::OmitFrame(frame), Some(&baseline), None);
                     let wrong = following(&mut other.transcript);
                     assert_eq!(wrong.rounds, accepted.rounds);
                     check_proof_control(

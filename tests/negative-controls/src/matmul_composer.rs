@@ -57,7 +57,7 @@ pub(crate) fn rows<K: ChallengeField>(
             .to_vec()
     })
 }
-pub(super) fn original_value<K: ChallengeField>(source: &PreparedSource<'_, K>, point: &[K]) -> K {
+pub(crate) fn original_value<K: ChallengeField>(source: &PreparedSource<'_, K>, point: &[K]) -> K {
     let a = weights(point);
     assert_eq!(a.len(), source.message().len());
     source
@@ -224,6 +224,17 @@ pub(crate) fn untrusted_opening<K: ChallengeField>(
     f: Functional<'_, K>,
     row: &[K],
 ) -> Vec<u8> {
+    untrusted_opening_observed(t, owner, c, f, row).0
+}
+pub(crate) fn untrusted_opening_observed<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    owner: &PreparedSource<'_, K>,
+    c: &VerifiedCertificate<K>,
+    f: Functional<'_, K>,
+    row: &[K],
+) -> (Vec<u8>, [HashUsage; 2]) {
+    let before = t.usage();
+    let mut first_query = None;
     assert_eq!(row.len(), c.record().source().columns());
     assert_eq!(
         owner.source().descriptor().count,
@@ -239,6 +250,7 @@ pub(crate) fn untrusted_opening<K: ChallengeField>(
         let index = t
             .opening_column(c.record().source().descriptor().count)
             .expect("actual sampler");
+        first_query.get_or_insert(t.usage());
         let response = owner.response(index).expect("genuine path producer");
         proof.extend_from_slice(response.payload);
         for sibling in response.siblings {
@@ -247,7 +259,10 @@ pub(crate) fn untrusted_opening<K: ChallengeField>(
     }
     t.absorb(AbsorbLabel::OpeningColumns, &proof[start..])
         .expect("actual response absorb");
-    proof
+    (
+        proof,
+        [before, first_query.expect("at least one actual query")],
+    )
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct Artifact<K> {

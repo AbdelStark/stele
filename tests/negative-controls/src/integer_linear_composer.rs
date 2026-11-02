@@ -22,6 +22,17 @@ pub(super) struct Packet<K: ChallengeField> {
     pub original_offsets: [usize; 2],
     pub group_offsets: [usize; 3],
     pub group_prefix: [HashUsage; 3],
+    pub join_point: Vec<K>,
+    pub rows: [Vec<K>; 2],
+    pub matmul: Proof<K>,
+    pub matmul_point: Vec<K>,
+    pub original_prefix: [[HashUsage; 2]; 2],
+}
+#[derive(Clone, Copy)]
+pub(super) enum View<'a, K> {
+    Point(&'a [K]),
+    Rows(&'a [Vec<K>; 2]),
+    Proof(&'a Proof<K>),
 }
 fn weights<K: ChallengeField>(
     t: &mut Transcript<K>,
@@ -100,6 +111,7 @@ pub(super) fn compose<K: ChallengeField + CodeField + lookup::TableField + Eq>(
     public: &[u8],
     attack: Attack,
     response_template: Option<&Packet<K>>,
+    view: Option<View<'_, K>>,
 ) -> Packet<K>
 where
     for<'b> K::Bytes: TryFrom<&'b [u8]>,
@@ -337,13 +349,24 @@ where
     }
     t.absorb(AbsorbLabel::MatmulStatement, &frame)
         .expect("actual centered frame");
-    let rows = mm::rows(&statement, originals, &join_point);
+    let rows = match view {
+        Some(View::Point(point)) => mm::rows(&statement, originals, point),
+        Some(View::Rows(rows)) => rows.clone(),
+        _ => mm::rows(&statement, originals, &join_point),
+    };
     let signed = rows.each_ref().map(|row| {
         row.iter()
             .map(|v| *v - K::from_i64(128))
             .collect::<Vec<_>>()
     });
     let (proof, point) = mm::with_kernel(&statement, |p| {
+        if let Some(View::Proof(proof)) = view {
+            let reduced = p
+                .verify_reduction(&mut t, proof)
+                .expect("actual A1/A7 under zero opposite factor")
+                .0;
+            return (proof.clone(), reduced.point);
+        }
         let mut dense = p
             .strategy(&[&signed[0], &signed[1]])
             .expect("actual A4 strategy");
@@ -353,6 +376,7 @@ where
     wire.push(1);
     arithmetic(&mut wire, &proof);
     let mut offsets = [0; 2];
+    let mut original_prefix = [[HashUsage::default(); 2]; 2];
     for side in 0..2 {
         let a = mm::weights(mm::outer(&statement, &join_point, side));
         let b = mm::weights(&point);
@@ -400,13 +424,15 @@ where
             );
             wire.extend_from_slice(bytes);
         } else {
-            wire.extend(mm::untrusted_opening(
+            let (opening, observed) = mm::untrusted_opening_observed(
                 &mut t,
                 originals[side],
                 certs[side],
                 functional,
                 &rows[side],
-            ));
+            );
+            original_prefix[side] = observed;
+            wire.extend(opening);
         }
     }
     descriptor
@@ -418,5 +444,10 @@ where
         original_offsets: offsets,
         group_offsets,
         group_prefix,
+        join_point,
+        rows,
+        matmul: proof,
+        matmul_point: point,
+        original_prefix,
     }
 }
