@@ -489,3 +489,18 @@ because their feature graphs and ownership checks differ. Independent runners
 can duplicate compilation or wait in queues; no speedup is inferred from the
 old serialized timings. No protocol behavior, inference cost term, profile or
 weight-pass count changes. Status: Accepted.
+
+## ADR-047: Select the checked test profile for actual control coverage
+
+Context: Cargo run defaults to an unoptimized dev binary even when a gate has
+already used the optimized test profile. The [E0-09 pair](../../bench/ledger/e0-09-control-profile.json)
+records cold builds and complete coverage execution on one frozen source, with
+identical features, runtime checks, coverage output and argument rejections.
+Decision: select the existing test profile at all five direct coverage callers.
+Keep the ordinary binary, every control, preceding validation and failure path.
+Benchmark preflights stay outside their timed workers.
+
+The single ordered pair on a shared host supports this validation-cost change;
+it does not establish full-CI latency or inference performance. No profile
+settings, CI routing, protocol behavior, soundness term, inference cost constant
+or weight-pass count changes. Status: Accepted.

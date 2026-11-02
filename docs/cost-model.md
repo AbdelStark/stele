@@ -238,6 +238,13 @@ with debug assertions and overflow checks enabled. This changes validation cost
 only. No per-proof term, fitted constant, weight-pass count or inference
 projection above changes; the isolated pair does not measure full-CI wall time.
 
+The [E0-09 paired ledger and method](../bench/README.md#control-coverage-profile-e0-09)
+measure the ordinary control coverage binary under dev and the existing checked
+test profile. Cold build plus direct execution was 208.051 s and 44.931 s,
+respectively, in one ordered shared-host pair with identical coverage output.
+This also changes validation cost only; it supplies no fitted inference constant
+or weight-pass change.
+
 ## 16. Integer Requant advice contract
 
 [RFC-0023](rfcs/RFC-0023-integer-requant-with-advice-cut.md) adds one named advice

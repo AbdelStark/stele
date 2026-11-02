@@ -27,6 +27,13 @@ records compilation and execution separately; it does not measure full CI or
 inference performance. Default dev and release profiles retain their existing
 settings. Profile edits still follow the shared-configuration routing below.
 
+All five direct `stele-controls --coverage` callers select this existing test
+profile for the ordinary binary, preserving default features and runtime checks.
+The gates still execute the complete catalogue and propagate failures. Fraction
+and streaming benchmark preflights use the same selection outside their timed
+workers. The [E0-09 pair](../../bench/README.md#control-coverage-profile-e0-09)
+records cold compilation and direct execution separately on identical source.
+
 Table parity runs when field, polynomial, SIMD or CQIS code changes, including
 its test oracle. Dependency and CI routing changes also select it.
 The full RFC-0021 corpus is partitioned into 28 case/field jobs, each retaining

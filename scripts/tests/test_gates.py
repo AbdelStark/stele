@@ -153,7 +153,7 @@ class GateTests(unittest.TestCase):
                       result.stdout + result.stderr)
         # The corpus now detects this mutation before the gate reaches catalog
         # controls. Still exercise the real controls and require their reason.
-        result = subprocess.run(['cargo','run','-q','-p','stele-negative-controls',
+        result = subprocess.run(['cargo','run','--profile','test','-q','-p','stele-negative-controls',
                                  '--bin','stele-controls','--locked','--offline','--','--coverage'],
                                 cwd=self.root,text=True,capture_output=True)
         self.assertNotEqual(result.returncode, 0)

@@ -1,0 +1,964 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/control-coverage-profile",
+  "commit": "bc1830ffa91b92241b288c1ac4c04bb492a1ce10",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8; cargo 1.90.0 (840b83a10 2025-07-30)",
+  "device": "Apple M1 Max",
+  "driver": "not-applicable: CPU; macOS-15.6.1-arm64-arm-64bit",
+  "model_config": {
+    "plan": {
+      "task": "E0-09",
+      "source_commit": "bc1830ffa91b92241b288c1ac4c04bb492a1ce10",
+      "source_tree": "e70205d7392f973fa56a884c56609d387dbd7374",
+      "source_sha256": {
+        "Cargo.toml": "5502aa507d82246125e99388cd6d69ce8cafb396766faa0e91fb80e2ff335965",
+        "Cargo.lock": "5b09a23e8935aa29ecd720d314ad425229e01dc1b21f9558b6acf3745ddf3fe3",
+        "rust-toolchain.toml": "0484a3d0d7267e43e09b8b0e76a799bed558037d7ccd6046dd70fdd0cc1b6ef9",
+        "tests/negative-controls/Cargo.toml": "f796ef32da622b5b789d413a72791ac12a4572ec21cc36912f50b3c92efd432f",
+        "tests/negative-controls/catalog.md": "9bda1c2dd72001b7a708c7597cca26c0aa65ed43dcb74301eb0bb3a6e5af52fc",
+        "tests/negative-controls/src/main.rs": "db506d7021df48536ef61a5d39f5ed036fd545dea34b47c9a2e74a569bd3f823",
+        "tests/negative-controls/src/lib.rs": "e04f898d3ba75a972754395b60606ed0152b15e28eccecf596895b6b11e62cdf",
+        "tests/negative-controls/src/catalog.rs": "c7a7315f4d3277b836c8193c90e8bf82cf6c899122a0fa6a112819fa19085770"
+      },
+      "order": [
+        "dev",
+        "test"
+      ],
+      "repetitions": 1,
+      "build": "Separate empty target directories; actual normal binary, locked/offline.",
+      "execution": "One direct --coverage execution per profile; build and execution are disjoint.",
+      "invalid_arguments": [
+        [],
+        [
+          "unexpected"
+        ],
+        [
+          "--coverage",
+          "extra"
+        ]
+      ],
+      "expected": {
+        "rows": 104,
+        "proof_controls": 50,
+        "configuration_controls": 1,
+        "missing_controls": 53,
+        "named_bindings": 17,
+        "catalog_bindings": 32
+      },
+      "qualifications": [
+        "Shared host; original workers retained and not inspected or manipulated.",
+        "One ordered screening pair; no statistical, whole-CI or inference speedup claim.",
+        "No warm Cargo execution or duplicate coverage sample is hidden in this pair.",
+        "Commit/tree plus clean-source checks identify the complete repository source."
+      ],
+      "controller_sha256": "32bda45c2c9e71b6cad7f26de9cea3840e9f891e366b7ee20773872c5a64963a",
+      "started_at": "2026-11-02T07:01:39.795552+00:00"
+    },
+    "measurement": {
+      "plan": {
+        "task": "E0-09",
+        "source_commit": "bc1830ffa91b92241b288c1ac4c04bb492a1ce10",
+        "source_tree": "e70205d7392f973fa56a884c56609d387dbd7374",
+        "source_sha256": {
+          "Cargo.toml": "5502aa507d82246125e99388cd6d69ce8cafb396766faa0e91fb80e2ff335965",
+          "Cargo.lock": "5b09a23e8935aa29ecd720d314ad425229e01dc1b21f9558b6acf3745ddf3fe3",
+          "rust-toolchain.toml": "0484a3d0d7267e43e09b8b0e76a799bed558037d7ccd6046dd70fdd0cc1b6ef9",
+          "tests/negative-controls/Cargo.toml": "f796ef32da622b5b789d413a72791ac12a4572ec21cc36912f50b3c92efd432f",
+          "tests/negative-controls/catalog.md": "9bda1c2dd72001b7a708c7597cca26c0aa65ed43dcb74301eb0bb3a6e5af52fc",
+          "tests/negative-controls/src/main.rs": "db506d7021df48536ef61a5d39f5ed036fd545dea34b47c9a2e74a569bd3f823",
+          "tests/negative-controls/src/lib.rs": "e04f898d3ba75a972754395b60606ed0152b15e28eccecf596895b6b11e62cdf",
+          "tests/negative-controls/src/catalog.rs": "c7a7315f4d3277b836c8193c90e8bf82cf6c899122a0fa6a112819fa19085770"
+        },
+        "order": [
+          "dev",
+          "test"
+        ],
+        "repetitions": 1,
+        "build": "Separate empty target directories; actual normal binary, locked/offline.",
+        "execution": "One direct --coverage execution per profile; build and execution are disjoint.",
+        "invalid_arguments": [
+          [],
+          [
+            "unexpected"
+          ],
+          [
+            "--coverage",
+            "extra"
+          ]
+        ],
+        "expected": {
+          "rows": 104,
+          "proof_controls": 50,
+          "configuration_controls": 1,
+          "missing_controls": 53,
+          "named_bindings": 17,
+          "catalog_bindings": 32
+        },
+        "qualifications": [
+          "Shared host; original workers retained and not inspected or manipulated.",
+          "One ordered screening pair; no statistical, whole-CI or inference speedup claim.",
+          "No warm Cargo execution or duplicate coverage sample is hidden in this pair.",
+          "Commit/tree plus clean-source checks identify the complete repository source."
+        ],
+        "controller_sha256": "32bda45c2c9e71b6cad7f26de9cea3840e9f891e366b7ee20773872c5a64963a",
+        "started_at": "2026-11-02T07:01:39.795552+00:00"
+      },
+      "python": "3.12.12 (main, Feb 12 2026, 00:42:34) [Clang 21.1.4 ]",
+      "host": "macOS-15.6.1-arm64-arm-64bit",
+      "cpu": "Apple M1 Max",
+      "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+      "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)",
+      "configurations": [
+        {
+          "profile": "dev",
+          "env": {
+            "CARGO_TARGET_DIR": "/tmp/stele-controls-profile-bc1830f/target-dev",
+            "CARGO_TERM_COLOR": "never"
+          },
+          "build": {
+            "label": "dev-build",
+            "argv": [
+              "cargo",
+              "build",
+              "--profile",
+              "dev",
+              "-p",
+              "stele-negative-controls",
+              "--bin",
+              "stele-controls",
+              "--locked",
+              "--offline",
+              "--verbose",
+              "--message-format=json"
+            ],
+            "cwd": "/tmp/stele-control-profile",
+            "started_at": "2026-11-02T07:01:40.168957+00:00",
+            "load_before": [
+              "23.1767578125",
+              "16.75634765625",
+              "15.6484375"
+            ],
+            "wall_ns": 17570125541,
+            "exit_code": 0,
+            "ended_at": "2026-11-02T07:01:57.739065+00:00",
+            "load_after": [
+              "28.27734375",
+              "18.34033203125",
+              "16.24267578125"
+            ],
+            "stdout": "/tmp/stele-controls-profile-bc1830f/dev-build.stdout",
+            "stdout_sha256": "82434acebbdae9ca6448c08ec781c2cbce8ba2bd5ed3c373a95f96e009009959",
+            "stdout_bytes": 17505,
+            "stderr": "/tmp/stele-controls-profile-bc1830f/dev-build.stderr",
+            "stderr_sha256": "703aa31b7f4071dd7aac155bb7bd6f454c3c929377712418a70541ada33e6d29",
+            "stderr_bytes": 28366
+          },
+          "artifact": {
+            "reason": "compiler-artifact",
+            "package_id": "path+file:///private/tmp/stele-control-profile/tests/negative-controls#stele-negative-controls@0.1.0",
+            "manifest_path": "/private/tmp/stele-control-profile/tests/negative-controls/Cargo.toml",
+            "target": {
+              "kind": [
+                "bin"
+              ],
+              "crate_types": [
+                "bin"
+              ],
+              "name": "stele-controls",
+              "src_path": "/private/tmp/stele-control-profile/tests/negative-controls/src/main.rs",
+              "edition": "2021",
+              "doc": true,
+              "doctest": false,
+              "test": true
+            },
+            "profile": {
+              "opt_level": "0",
+              "debuginfo": 2,
+              "debug_assertions": true,
+              "overflow_checks": true,
+              "test": false
+            },
+            "features": [],
+            "filenames": [
+              "/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls"
+            ],
+            "executable": "/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls",
+            "fresh": false
+          },
+          "executable_sha256": "651e9dcb4de4acf1827d3d82ef038d1675233dd0fa144948062d02c3b8e6eb7e",
+          "runtime_artifacts": [
+            {
+              "name": "stele_field",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_simd",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_poly",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_code",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_hash",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_pcs",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_ir",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_sumcheck",
+              "features": [
+                "std"
+              ],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_cqis",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_gkr",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_lookup",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_reductions",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_negative_controls",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele-controls",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            }
+          ],
+          "coverage": {
+            "label": "dev-coverage",
+            "argv": [
+              "/private/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls",
+              "--coverage"
+            ],
+            "cwd": "/tmp/stele-control-profile",
+            "started_at": "2026-11-02T07:01:57.757950+00:00",
+            "load_before": [
+              "28.27734375",
+              "18.34033203125",
+              "16.24267578125"
+            ],
+            "wall_ns": 190480559958,
+            "exit_code": 0,
+            "ended_at": "2026-11-02T07:05:08.237174+00:00",
+            "load_after": [
+              "26.833984375",
+              "21.748046875",
+              "18.0791015625"
+            ],
+            "stdout": "/tmp/stele-controls-profile-bc1830f/dev-coverage.stdout",
+            "stdout_sha256": "f7292523bd88a10bce68d4f48f3a05300e5e6f8a0c681ad89509d089705ca1bb",
+            "stdout_bytes": 4897,
+            "stderr": "/tmp/stele-controls-profile-bc1830f/dev-coverage.stderr",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_bytes": 0
+          },
+          "invalid_arguments": [
+            {
+              "label": "dev-invalid-0",
+              "argv": [
+                "/private/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls"
+              ],
+              "cwd": "/tmp/stele-control-profile",
+              "started_at": "2026-11-02T07:05:08.239191+00:00",
+              "load_before": [
+                "26.833984375",
+                "21.748046875",
+                "18.0791015625"
+              ],
+              "wall_ns": 7260041,
+              "exit_code": 1,
+              "ended_at": "2026-11-02T07:05:08.246526+00:00",
+              "load_after": [
+                "26.833984375",
+                "21.748046875",
+                "18.0791015625"
+              ],
+              "stdout": "/tmp/stele-controls-profile-bc1830f/dev-invalid-0.stdout",
+              "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "stdout_bytes": 0,
+              "stderr": "/tmp/stele-controls-profile-bc1830f/dev-invalid-0.stderr",
+              "stderr_sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+              "stderr_bytes": 33
+            },
+            {
+              "label": "dev-invalid-1",
+              "argv": [
+                "/private/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls",
+                "unexpected"
+              ],
+              "cwd": "/tmp/stele-control-profile",
+              "started_at": "2026-11-02T07:05:08.248191+00:00",
+              "load_before": [
+                "26.833984375",
+                "21.748046875",
+                "18.0791015625"
+              ],
+              "wall_ns": 10002667,
+              "exit_code": 1,
+              "ended_at": "2026-11-02T07:05:08.258251+00:00",
+              "load_after": [
+                "26.833984375",
+                "21.748046875",
+                "18.0791015625"
+              ],
+              "stdout": "/tmp/stele-controls-profile-bc1830f/dev-invalid-1.stdout",
+              "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "stdout_bytes": 0,
+              "stderr": "/tmp/stele-controls-profile-bc1830f/dev-invalid-1.stderr",
+              "stderr_sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+              "stderr_bytes": 33
+            },
+            {
+              "label": "dev-invalid-2",
+              "argv": [
+                "/private/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls",
+                "--coverage",
+                "extra"
+              ],
+              "cwd": "/tmp/stele-control-profile",
+              "started_at": "2026-11-02T07:05:08.260024+00:00",
+              "load_before": [
+                "26.833984375",
+                "21.748046875",
+                "18.0791015625"
+              ],
+              "wall_ns": 7435333,
+              "exit_code": 1,
+              "ended_at": "2026-11-02T07:05:08.267518+00:00",
+              "load_after": [
+                "26.833984375",
+                "21.748046875",
+                "18.0791015625"
+              ],
+              "stdout": "/tmp/stele-controls-profile-bc1830f/dev-invalid-2.stdout",
+              "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "stdout_bytes": 0,
+              "stderr": "/tmp/stele-controls-profile-bc1830f/dev-invalid-2.stderr",
+              "stderr_sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+              "stderr_bytes": 33
+            }
+          ]
+        },
+        {
+          "profile": "test",
+          "env": {
+            "CARGO_TARGET_DIR": "/tmp/stele-controls-profile-bc1830f/target-test",
+            "CARGO_TERM_COLOR": "never"
+          },
+          "build": {
+            "label": "test-build",
+            "argv": [
+              "cargo",
+              "build",
+              "--profile",
+              "test",
+              "-p",
+              "stele-negative-controls",
+              "--bin",
+              "stele-controls",
+              "--locked",
+              "--offline",
+              "--verbose",
+              "--message-format=json"
+            ],
+            "cwd": "/tmp/stele-control-profile",
+            "started_at": "2026-11-02T07:05:08.415348+00:00",
+            "load_before": [
+              "26.833984375",
+              "21.748046875",
+              "18.0791015625"
+            ],
+            "wall_ns": 30889614000,
+            "exit_code": 0,
+            "ended_at": "2026-11-02T07:05:39.304851+00:00",
+            "load_after": [
+              "35.9921875",
+              "24.47412109375",
+              "19.1943359375"
+            ],
+            "stdout": "/tmp/stele-controls-profile-bc1830f/test-build.stdout",
+            "stdout_sha256": "3c06279e6f72ea90d15d4c3a25e0a2a3ec7d26d38f5a61da0e12ef01ddb32aed",
+            "stdout_bytes": 17550,
+            "stderr": "/tmp/stele-controls-profile-bc1830f/test-build.stderr",
+            "stderr_sha256": "daf7c2f3c019172830f768bc2f5edfed39e5f736179703086e27533eee5638f0",
+            "stderr_bytes": 29178
+          },
+          "artifact": {
+            "reason": "compiler-artifact",
+            "package_id": "path+file:///private/tmp/stele-control-profile/tests/negative-controls#stele-negative-controls@0.1.0",
+            "manifest_path": "/private/tmp/stele-control-profile/tests/negative-controls/Cargo.toml",
+            "target": {
+              "kind": [
+                "bin"
+              ],
+              "crate_types": [
+                "bin"
+              ],
+              "name": "stele-controls",
+              "src_path": "/private/tmp/stele-control-profile/tests/negative-controls/src/main.rs",
+              "edition": "2021",
+              "doc": true,
+              "doctest": false,
+              "test": true
+            },
+            "profile": {
+              "opt_level": "2",
+              "debuginfo": 2,
+              "debug_assertions": true,
+              "overflow_checks": true,
+              "test": false
+            },
+            "features": [],
+            "filenames": [
+              "/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls"
+            ],
+            "executable": "/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls",
+            "fresh": false
+          },
+          "executable_sha256": "a5901e1f4a2c4b5f87014f7aa28ed170faccbe06289e335d3389207641192564",
+          "runtime_artifacts": [
+            {
+              "name": "stele_poly",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_field",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_simd",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_hash",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_code",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_pcs",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_sumcheck",
+              "features": [
+                "std"
+              ],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_ir",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_gkr",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_lookup",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_cqis",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_reductions",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_negative_controls",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele-controls",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            }
+          ],
+          "coverage": {
+            "label": "test-coverage",
+            "argv": [
+              "/private/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls",
+              "--coverage"
+            ],
+            "cwd": "/tmp/stele-control-profile",
+            "started_at": "2026-11-02T07:05:39.312800+00:00",
+            "load_before": [
+              "35.9921875",
+              "24.47412109375",
+              "19.1943359375"
+            ],
+            "wall_ns": 14041363667,
+            "exit_code": 0,
+            "ended_at": "2026-11-02T07:05:53.354121+00:00",
+            "load_after": [
+              "33.673828125",
+              "24.5302734375",
+              "19.306640625"
+            ],
+            "stdout": "/tmp/stele-controls-profile-bc1830f/test-coverage.stdout",
+            "stdout_sha256": "f7292523bd88a10bce68d4f48f3a05300e5e6f8a0c681ad89509d089705ca1bb",
+            "stdout_bytes": 4897,
+            "stderr": "/tmp/stele-controls-profile-bc1830f/test-coverage.stderr",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_bytes": 0
+          },
+          "invalid_arguments": [
+            {
+              "label": "test-invalid-0",
+              "argv": [
+                "/private/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls"
+              ],
+              "cwd": "/tmp/stele-control-profile",
+              "started_at": "2026-11-02T07:05:53.356619+00:00",
+              "load_before": [
+                "33.673828125",
+                "24.5302734375",
+                "19.306640625"
+              ],
+              "wall_ns": 11122875,
+              "exit_code": 1,
+              "ended_at": "2026-11-02T07:05:53.367803+00:00",
+              "load_after": [
+                "33.673828125",
+                "24.5302734375",
+                "19.306640625"
+              ],
+              "stdout": "/tmp/stele-controls-profile-bc1830f/test-invalid-0.stdout",
+              "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "stdout_bytes": 0,
+              "stderr": "/tmp/stele-controls-profile-bc1830f/test-invalid-0.stderr",
+              "stderr_sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+              "stderr_bytes": 33
+            },
+            {
+              "label": "test-invalid-1",
+              "argv": [
+                "/private/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls",
+                "unexpected"
+              ],
+              "cwd": "/tmp/stele-control-profile",
+              "started_at": "2026-11-02T07:05:53.369720+00:00",
+              "load_before": [
+                "33.673828125",
+                "24.5302734375",
+                "19.306640625"
+              ],
+              "wall_ns": 7693625,
+              "exit_code": 1,
+              "ended_at": "2026-11-02T07:05:53.377489+00:00",
+              "load_after": [
+                "33.673828125",
+                "24.5302734375",
+                "19.306640625"
+              ],
+              "stdout": "/tmp/stele-controls-profile-bc1830f/test-invalid-1.stdout",
+              "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "stdout_bytes": 0,
+              "stderr": "/tmp/stele-controls-profile-bc1830f/test-invalid-1.stderr",
+              "stderr_sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+              "stderr_bytes": 33
+            },
+            {
+              "label": "test-invalid-2",
+              "argv": [
+                "/private/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls",
+                "--coverage",
+                "extra"
+              ],
+              "cwd": "/tmp/stele-control-profile",
+              "started_at": "2026-11-02T07:05:53.380032+00:00",
+              "load_before": [
+                "33.673828125",
+                "24.5302734375",
+                "19.306640625"
+              ],
+              "wall_ns": 8694000,
+              "exit_code": 1,
+              "ended_at": "2026-11-02T07:05:53.388819+00:00",
+              "load_after": [
+                "33.673828125",
+                "24.5302734375",
+                "19.306640625"
+              ],
+              "stdout": "/tmp/stele-controls-profile-bc1830f/test-invalid-2.stdout",
+              "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "stdout_bytes": 0,
+              "stderr": "/tmp/stele-controls-profile-bc1830f/test-invalid-2.stderr",
+              "stderr_sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+              "stderr_bytes": 33
+            }
+          ]
+        }
+      ],
+      "complete": true,
+      "ended_at": "2026-11-02T07:05:53.542242+00:00",
+      "coverage_sha256": "f7292523bd88a10bce68d4f48f3a05300e5e6f8a0c681ad89509d089705ca1bb",
+      "safety_and_features_equal": true,
+      "exact_coverage_output_equal": true
+    },
+    "raw_artifacts": {
+      "dev-build.stdout": {
+        "bytes": 17505,
+        "sha256": "82434acebbdae9ca6448c08ec781c2cbce8ba2bd5ed3c373a95f96e009009959",
+        "utf8": "{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#cfg-if@1.0.5\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cfg-if-1.0.5/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"cfg_if\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cfg-if-1.0.5/src/lib.rs\",\"edition\":\"2018\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libcfg_if-6ac0a837eec0a7ff.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libcfg_if-6ac0a837eec0a7ff.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#shlex@2.0.1\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shlex-2.0.1/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"shlex\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shlex-2.0.1/src/lib.rs\",\"edition\":\"2018\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[\"default\",\"std\"],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libshlex-4bb61bbce4f1a4fc.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libshlex-4bb61bbce4f1a4fc.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#arrayvec@0.7.8\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/arrayvec-0.7.8/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"arrayvec\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/arrayvec-0.7.8/src/lib.rs\",\"edition\":\"2018\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libarrayvec-ed41d4d3754599d7.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libarrayvec-ed41d4d3754599d7.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#constant_time_eq@0.4.2\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/constant_time_eq-0.4.2/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"constant_time_eq\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/constant_time_eq-0.4.2/src/lib.rs\",\"edition\":\"2024\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libconstant_time_eq-bd1dfdd1c6834609.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libconstant_time_eq-bd1dfdd1c6834609.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#find-msvc-tools@0.1.15\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/find-msvc-tools-0.1.15/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"find_msvc_tools\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/find-msvc-tools-0.1.15/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libfind_msvc_tools-0f4aa9311a5294e7.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libfind_msvc_tools-0f4aa9311a5294e7.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-field#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-field/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_field\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-field/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-simd#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-simd/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_simd\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-simd/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_simd-d9856e987c98ea98.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_simd-d9856e987c98ea98.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-poly#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-poly/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_poly\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-poly/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#cc@1.10.0\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cc-1.10.0/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"cc\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cc-1.10.0/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libcc-aa10b9799b6e0490.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libcc-aa10b9799b6e0490.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#blake3@1.8.7\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/Cargo.toml\",\"target\":{\"kind\":[\"custom-build\"],\"crate_types\":[\"bin\"],\"name\":\"build-script-build\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/build.rs\",\"edition\":\"2024\",\"doc\":false,\"doctest\":false,\"test\":false},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-07037469866c8c01/build-script-build\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"build-script-executed\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#blake3@1.8.7\",\"linked_libs\":[\"static=blake3_neon\"],\"linked_paths\":[\"native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out\"],\"cfgs\":[\"blake3_neon\"],\"env\":[],\"out_dir\":\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out\"}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#blake3@1.8.7\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"blake3\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/src/lib.rs\",\"edition\":\"2024\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libblake3-eac2a45a320267e4.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libblake3-eac2a45a320267e4.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-code#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-code/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_code\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-code/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_code-7d57f33605dd321c.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_code-7d57f33605dd321c.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-hash#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-hash/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_hash\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-hash/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-pcs#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-pcs/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_pcs\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-pcs/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_pcs-e64b386c2050d617.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_pcs-e64b386c2050d617.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-ir#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-ir/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_ir\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-ir/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_ir-963fc8de355e1d75.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_ir-963fc8de355e1d75.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-sumcheck#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-sumcheck/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_sumcheck\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-sumcheck/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[\"std\"],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-cqis#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-cqis/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_cqis\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-cqis/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_cqis-2bc020e4937e919e.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_cqis-2bc020e4937e919e.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-gkr#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-gkr/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_gkr\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-gkr/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_gkr-3ad2accffd3c4670.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_gkr-3ad2accffd3c4670.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-lookup#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-lookup/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_lookup\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-lookup/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_lookup-260e9e197fea0491.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_lookup-260e9e197fea0491.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-reductions#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-reductions/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_reductions\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-reductions/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_reductions-5a5ba7b132b48bda.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_reductions-5a5ba7b132b48bda.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/tests/negative-controls#stele-negative-controls@0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_negative_controls\",\"src_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_negative_controls-ef86a2007568b517.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_negative_controls-ef86a2007568b517.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/tests/negative-controls#stele-negative-controls@0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/Cargo.toml\",\"target\":{\"kind\":[\"bin\"],\"crate_types\":[\"bin\"],\"name\":\"stele-controls\",\"src_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/src/main.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":false,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls\"],\"executable\":\"/tmp/stele-controls-profile-bc1830f/target-dev/debug/stele-controls\",\"fresh\":false}\n{\"reason\":\"build-finished\",\"success\":true}\n"
+      },
+      "dev-build.stderr": {
+        "bytes": 28366,
+        "sha256": "703aa31b7f4071dd7aac155bb7bd6f454c3c929377712418a70541ada33e6d29",
+        "utf8": "   Compiling find-msvc-tools v0.1.15\n   Compiling shlex v2.0.1\n   Compiling stele-field v0.1.0 (/private/tmp/stele-control-profile/crates/stele-field)\n   Compiling cfg-if v1.0.5\n   Compiling constant_time_eq v0.4.2\n   Compiling arrayvec v0.7.8\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name find_msvc_tools --edition=2021 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/find-msvc-tools-0.1.15/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --allow=unexpected_cfgs '--warn=clippy::ptr_cast_constness' '--warn=clippy::ptr_as_ptr' --warn=missing_docs '--warn=clippy::manual_let_else' '--warn=clippy::doc_markdown' '--warn=clippy::disallowed_methods' '--warn=clippy::borrow_as_ptr' --check-cfg 'cfg(disable_clang_cl_tests)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=81878ff15c48b7c9 -C extra-filename=-0f4aa9311a5294e7 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name shlex --edition=2018 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shlex-2.0.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --warn=unexpected_cfgs --check-cfg 'cfg(manual_codegen_check)' --cfg 'feature=\"default\"' --cfg 'feature=\"std\"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"default\", \"std\"))' -C metadata=135cc443ab636184 -C extra-filename=-4bb61bbce4f1a4fc --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_field --edition=2021 crates/stele-field/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=5e05f0b8531661a7 -C extra-filename=-f569da9e8f25839f --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name cfg_if --edition=2018 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cfg-if-1.0.5/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"core\", \"rustc-dep-of-std\"))' -C metadata=0080dd3979f1fbad -C extra-filename=-6ac0a837eec0a7ff --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name constant_time_eq --edition=2024 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/constant_time_eq-0.4.2/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"count_instructions_test\", \"default\", \"std\"))' -C metadata=d6f23bf70fa2d513 -C extra-filename=-bd1dfdd1c6834609 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name arrayvec --edition=2018 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/arrayvec-0.7.8/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"borsh\", \"default\", \"serde\", \"std\", \"zeroize\"))' -C metadata=4f2b5573115aab0b -C extra-filename=-ed41d4d3754599d7 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --cap-lints allow`\n   Compiling cc v1.10.0\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name cc --edition=2021 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cc-1.10.0/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --allow=unexpected_cfgs '--warn=clippy::ptr_cast_constness' '--warn=clippy::ptr_as_ptr' --warn=missing_docs '--warn=clippy::manual_let_else' '--warn=clippy::doc_markdown' '--warn=clippy::disallowed_methods' '--warn=clippy::borrow_as_ptr' --check-cfg 'cfg(disable_clang_cl_tests)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"compile-commands\", \"jobserver\", \"parallel\"))' -C metadata=7e99d4b5dd3e1433 -C extra-filename=-aa10b9799b6e0490 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern find_msvc_tools=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libfind_msvc_tools-0f4aa9311a5294e7.rmeta --extern shlex=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libshlex-4bb61bbce4f1a4fc.rmeta --cap-lints allow`\n   Compiling stele-simd v0.1.0 (/private/tmp/stele-control-profile/crates/stele-simd)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_simd --edition=2021 crates/stele-simd/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=39690204e9f82467 -C extra-filename=-d9856e987c98ea98 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta`\n   Compiling stele-poly v0.1.0 (/private/tmp/stele-control-profile/crates/stele-poly)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_poly --edition=2021 crates/stele-poly/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0d2d443818d5eafd -C extra-filename=-0199031a1aa7bfe8 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_simd=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_simd-d9856e987c98ea98.rmeta`\n   Compiling blake3 v1.8.7\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name build_script_build --edition=2024 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/build.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"default\", \"digest\", \"mmap\", \"neon\", \"no_avx2\", \"no_avx512\", \"no_neon\", \"no_sse2\", \"no_sse41\", \"prefer_intrinsics\", \"pure\", \"rayon\", \"serde\", \"std\", \"traits-preview\", \"wasm32_simd\", \"zeroize\"))' -C metadata=51773aee43b735fc -C extra-filename=-07037469866c8c01 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-07037469866c8c01 -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern cc=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libcc-aa10b9799b6e0490.rlib --cap-lints allow`\n     Running `/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-07037469866c8c01/build-script-build`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name blake3 --edition=2024 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"default\", \"digest\", \"mmap\", \"neon\", \"no_avx2\", \"no_avx512\", \"no_neon\", \"no_sse2\", \"no_sse41\", \"prefer_intrinsics\", \"pure\", \"rayon\", \"serde\", \"std\", \"traits-preview\", \"wasm32_simd\", \"zeroize\"))' -C metadata=ed99807ebe6767d6 -C extra-filename=-eac2a45a320267e4 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern arrayvec=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libarrayvec-ed41d4d3754599d7.rmeta --extern cfg_if=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libcfg_if-6ac0a837eec0a7ff.rmeta --extern constant_time_eq=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libconstant_time_eq-bd1dfdd1c6834609.rmeta --cap-lints allow -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out -l static=blake3_neon --cfg blake3_neon --check-cfg 'cfg(blake3_sse2_ffi, values(none()))' --check-cfg 'cfg(blake3_sse2_rust, values(none()))' --check-cfg 'cfg(blake3_sse41_ffi, values(none()))' --check-cfg 'cfg(blake3_sse41_rust, values(none()))' --check-cfg 'cfg(blake3_avx2_ffi, values(none()))' --check-cfg 'cfg(blake3_avx2_rust, values(none()))' --check-cfg 'cfg(blake3_avx512_ffi, values(none()))' --check-cfg 'cfg(blake3_neon, values(none()))' --check-cfg 'cfg(blake3_wasm32_simd, values(none()))'`\n   Compiling stele-hash v0.1.0 (/private/tmp/stele-control-profile/crates/stele-hash)\n   Compiling stele-code v0.1.0 (/private/tmp/stele-control-profile/crates/stele-code)\n   Compiling stele-cqis v0.1.0 (/private/tmp/stele-control-profile/crates/stele-cqis)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_hash --edition=2021 crates/stele-hash/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"wrapper\"))' -C metadata=19cbe47d7c94af2f -C extra-filename=-297b43cad5d60e9c --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern blake3=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libblake3-eac2a45a320267e4.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_code --edition=2021 crates/stele-code/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=8acbdeda0a3ba3a5 -C extra-filename=-7d57f33605dd321c --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern blake3=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libblake3-eac2a45a320267e4.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_simd=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_simd-d9856e987c98ea98.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_cqis --edition=2021 crates/stele-cqis/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=404fc8ddca941fda -C extra-filename=-2bc020e4937e919e --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern blake3=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libblake3-eac2a45a320267e4.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-sumcheck v0.1.0 (/private/tmp/stele-control-profile/crates/stele-sumcheck)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_sumcheck --edition=2021 crates/stele-sumcheck/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --cfg 'feature=\"std\"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"std\"))' -C metadata=842747b3367bb99d -C extra-filename=-4f8080db34c3a1ac --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-pcs v0.1.0 (/private/tmp/stele-control-profile/crates/stele-pcs)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_pcs --edition=2021 crates/stele-pcs/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=914f931f4b78e465 -C extra-filename=-e64b386c2050d617 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_code=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_code-7d57f33605dd321c.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-ir v0.1.0 (/private/tmp/stele-control-profile/crates/stele-ir)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_ir --edition=2021 crates/stele-ir/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=84af9d142528e6e8 -C extra-filename=-963fc8de355e1d75 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_cqis=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_cqis-2bc020e4937e919e.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-gkr v0.1.0 (/private/tmp/stele-control-profile/crates/stele-gkr)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_gkr --edition=2021 crates/stele-gkr/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=cb7d54c335f83652 -C extra-filename=-3ad2accffd3c4670 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-lookup v0.1.0 (/private/tmp/stele-control-profile/crates/stele-lookup)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_lookup --edition=2021 crates/stele-lookup/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=f02bec93af36a15c -C extra-filename=-260e9e197fea0491 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_gkr-3ad2accffd3c4670.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-reductions v0.1.0 (/private/tmp/stele-control-profile/crates/stele-reductions)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_reductions --edition=2021 crates/stele-reductions/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=245b6f05286ca87a -C extra-filename=-5a5ba7b132b48bda --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_cqis=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_cqis-2bc020e4937e919e.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_gkr-3ad2accffd3c4670.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta --extern stele_ir=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_ir-963fc8de355e1d75.rmeta --extern stele_lookup=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_lookup-260e9e197fea0491.rmeta --extern stele_pcs=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_pcs-e64b386c2050d617.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n   Compiling stele-negative-controls v0.1.0 (/private/tmp/stele-control-profile/tests/negative-controls)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_negative_controls --edition=2021 tests/negative-controls/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=14267a18d9825c2a -C extra-filename=-ef86a2007568b517 --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rmeta --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_gkr-3ad2accffd3c4670.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rmeta --extern stele_lookup=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_lookup-260e9e197fea0491.rmeta --extern stele_pcs=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_pcs-e64b386c2050d617.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rmeta --extern stele_reductions=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_reductions-5a5ba7b132b48bda.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_controls --edition=2021 tests/negative-controls/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=17289e09d573d84e -C extra-filename=-ea3bca8ca4483beb --out-dir /tmp/stele-controls-profile-bc1830f/target-dev/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-dev/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_field-f569da9e8f25839f.rlib --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_gkr-3ad2accffd3c4670.rlib --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_hash-297b43cad5d60e9c.rlib --extern stele_lookup=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_lookup-260e9e197fea0491.rlib --extern stele_negative_controls=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_negative_controls-ef86a2007568b517.rlib --extern stele_pcs=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_pcs-e64b386c2050d617.rlib --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_poly-0199031a1aa7bfe8.rlib --extern stele_reductions=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_reductions-5a5ba7b132b48bda.rlib --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-dev/debug/deps/libstele_sumcheck-4f8080db34c3a1ac.rlib -L native=/tmp/stele-controls-profile-bc1830f/target-dev/debug/build/blake3-f82ed25b5931a26e/out`\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 17.46s\n"
+      },
+      "dev-coverage.stdout": {
+        "bytes": 4897,
+        "sha256": "f7292523bd88a10bce68d4f48f3a05300e5e6f8a0c681ad89509d089705ca1bb",
+        "utf8": "NC-0001 | output token \u2194 logits | 0004 \u00a77 | MISSING\nNC-0002 | residual cut \u2194 layer | 0007 \u00a73 | MISSING\nNC-0003 | weight block \u2194 layer index | 0007 \u00a72 | MISSING\nNC-0004 | passport binding | 0011 | MISSING\nNC-0005 | prompt binding | 0001 \u00a73 | MISSING\nNC-0100 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0101 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0102 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0103 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0104 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0105 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0106 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0107 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0108 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0109 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0200 | sumcheck engine | 0006 A1 | passed\nNC-0201 | sumcheck engine | 0006 A1 | passed\nNC-0202 | sumcheck engine | 0006 A2 | passed\nNC-0203 | stacked coefficient | 0006 A4 | passed\nNC-0204 | sumcheck engine | 0006 A5 | passed\nNC-0205 | sumcheck engine | 0006 A1,A2 | passed\nNC-0206 | sumcheck engine | 0006 A2, 0012 A4 | passed\nNC-0207 | sumcheck engine | 0006 A3 | passed\nNC-0208 | sumcheck engine | 0006 A3 | passed\nNC-0209 | sumcheck engine | 0006 A3 | passed\nNC-0210 | sumcheck engine | 0006 A6 | passed\nNC-0211 | stacked canonical point | 0006 A4 | passed\nNC-0212 | stacked public coefficient source | 0006 A4 | passed\nNC-0213 | stacked original certificate | 0006 A4 | passed\nNC-0300 | matmul phases | 0007 \u00a78 | MISSING\nNC-0301 | matmul phases | 0007 \u00a78 | MISSING\nNC-0302 | matmul phases | 0007 \u00a78 | MISSING\nNC-0303 | matmul phases | 0007 \u00a78 | MISSING\nNC-0304 | matmul phases | 0007 \u00a78 | MISSING\nNC-0305 | matmul phases | 0007 \u00a78 | MISSING\nNC-0306 | matmul phases | 0007 A2 | passed\nNC-0307 | matmul phases | 0007 A2 | passed\nNC-0308 | Requant input bytes | 0023 \u00a76 | passed\nNC-0309 | Requant advice identity | 0023 \u00a76 | passed\nNC-0310 | Requant full-width result | 0023 \u00a76 | passed\nNC-0311 | Requant carry | 0023 \u00a76 | passed\nNC-0312 | Requant plane mapping | 0023 \u00a76 | passed\nNC-0313 | Requant sign and target | 0023 \u00a76 | passed\nNC-0314 | Requant padding | 0023 \u00a76 | passed\nNC-0400 | lookups | 0008 \u00a77,A5 | passed\nNC-0401 | lookups | 0008 \u00a77,A5 | passed\nNC-0402 | lookups | 0008 \u00a77,A5 | passed\nNC-0403 | lookups | 0008 \u00a77,A5 | passed\nNC-0404 | lookups | 0008 \u00a77 | MISSING\nNC-0405 | lookups | 0008 \u00a77 | MISSING\nNC-0406 | fraction reduction | 0008 A3 | passed\nNC-0407 | fraction reduction | 0008 A3 | passed\nNC-0408 | fraction reduction | 0008 A3 | passed\nNC-0409 | fraction reduction | 0008 A3 | passed\nNC-0410 | fraction reduction | 0008 A3 | passed\nNC-0411 | fraction reduction | 0008 A3, 0012 A9 | passed\nNC-0412 | configured function | 0021 \u00a76, 0005 A1 | MISSING\nNC-0413 | selected representation | 0021 \u00a76, 0008 A4 | MISSING\nNC-0414 | table data | 0021 \u00a76, 0011 A2 | MISSING\nNC-0415 | lookups | 0008 A5 | passed\nNC-0416 | lookups | 0008 A5 | passed\nNC-0417 | lookups | 0008 A5 | passed\nNC-0418 | lookups | 0008 A5 | passed\nNC-0419 | lookups | 0008 A5, 0012 A11 | passed\nNC-0500 | attention | 0009 \u00a77 | MISSING\nNC-0501 | attention | 0009 \u00a77 | MISSING\nNC-0502 | attention | 0009 \u00a77 | MISSING\nNC-0503 | attention | 0009 \u00a77 | MISSING\nNC-0504 | attention | 0009 \u00a77 | MISSING\nNC-0505 | attention | 0009 \u00a77 | MISSING\nNC-0506 | attention | 0009 \u00a77 | MISSING\nNC-0600 | PCS | 0010 A9 | passed\nNC-0601 | PCS | 0010 A9 | passed\nNC-0602 | PCS | 0010 \u00a710, 0012 A3 | passed\nNC-0603 | PCS | 0010 \u00a710 | MISSING\nNC-0604 | PCS | 0010 \u00a710 | MISSING\nNC-0605 | PCS | 0010 \u00a710 | MISSING\nNC-0606 | PCS | 0010 A9, 0007 A2, 0023 \u00a76 | passed\nNC-0607 | PCS | 0010 A9 | passed\nNC-0608 | PCS | 0010 A9 | passed\nNC-0609 | PCS | 0010 A9 | passed\nNC-0610 | PCS | 0010 A9 \u00a74, 0008 A5 \u00a77, 0023 \u00a76 | passed\nNC-0611 | PCS | 0010 A10, 0007 A2 | passed\nNC-0700 | passport | 0011 \u00a76 | MISSING\nNC-0701 | passport | 0011 \u00a76 | MISSING\nNC-0702 | passport | 0011 \u00a76 | MISSING\nNC-0703 | passport | 0011 \u00a76 | MISSING\nNC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | passed\nNC-0801 | transcript/ledger | 0012 A1 | passed (configuration)\nNC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13, 0007 A2 | passed\nNC-0803 | transcript/ledger | 0010 A9, 0012 A10 | passed\nNC-0804 | transcript/ledger | 0012 \u00a76 | MISSING\nNC-0805 | transcript/ledger | 0012 \u00a76 | MISSING\nNC-0900 | ZK | 0013 \u00a76 | MISSING\nNC-0901 | ZK | 0013 \u00a76 | MISSING\nNC-1000 | GPU | 0014 \u00a77 | MISSING\nNC-1001 | GPU | 0014 \u00a77 | MISSING\nNC-1002 | GPU | 0014 \u00a77 | MISSING\nNC-1100 | distributed | 0015 \u00a77 | MISSING\nNC-1101 | distributed | 0015 \u00a77 | MISSING\nNC-1200 | verifier/wrapper | 0016 \u00a77 | MISSING\nNC-1201 | verifier/wrapper | 0016 \u00a77 | MISSING\nNC-1202 | verifier/wrapper | 0016 \u00a77 | MISSING\nNC-1203 | verifier/wrapper | 0016 \u00a77 | MISSING\nCatalog coverage: 17/32 bindings; 51/104 controls.\nConfiguration controls: 1 (not proof-statement coverage).\n"
+      },
+      "dev-coverage.stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "dev-invalid-0.stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "dev-invalid-0.stderr": {
+        "bytes": 33,
+        "sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+        "utf8": "usage: stele-controls --coverage\n"
+      },
+      "dev-invalid-1.stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "dev-invalid-1.stderr": {
+        "bytes": 33,
+        "sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+        "utf8": "usage: stele-controls --coverage\n"
+      },
+      "dev-invalid-2.stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "dev-invalid-2.stderr": {
+        "bytes": 33,
+        "sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+        "utf8": "usage: stele-controls --coverage\n"
+      },
+      "test-build.stdout": {
+        "bytes": 17550,
+        "sha256": "3c06279e6f72ea90d15d4c3a25e0a2a3ec7d26d38f5a61da0e12ef01ddb32aed",
+        "utf8": "{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#cfg-if@1.0.5\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cfg-if-1.0.5/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"cfg_if\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cfg-if-1.0.5/src/lib.rs\",\"edition\":\"2018\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libcfg_if-cd61b7cd22e3e096.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libcfg_if-cd61b7cd22e3e096.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#shlex@2.0.1\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shlex-2.0.1/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"shlex\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shlex-2.0.1/src/lib.rs\",\"edition\":\"2018\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[\"default\",\"std\"],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libshlex-4bb61bbce4f1a4fc.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libshlex-4bb61bbce4f1a4fc.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#find-msvc-tools@0.1.15\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/find-msvc-tools-0.1.15/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"find_msvc_tools\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/find-msvc-tools-0.1.15/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libfind_msvc_tools-0f4aa9311a5294e7.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libfind_msvc_tools-0f4aa9311a5294e7.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#arrayvec@0.7.8\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/arrayvec-0.7.8/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"arrayvec\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/arrayvec-0.7.8/src/lib.rs\",\"edition\":\"2018\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libarrayvec-665cd80de585c071.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libarrayvec-665cd80de585c071.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#constant_time_eq@0.4.2\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/constant_time_eq-0.4.2/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"constant_time_eq\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/constant_time_eq-0.4.2/src/lib.rs\",\"edition\":\"2024\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libconstant_time_eq-61e4b3d3ae0df501.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libconstant_time_eq-61e4b3d3ae0df501.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-poly#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-poly/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_poly\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-poly/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-field#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-field/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_field\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-field/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-simd#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-simd/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_simd\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-simd/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_simd-71328ddf46ce6548.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_simd-71328ddf46ce6548.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#cc@1.10.0\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cc-1.10.0/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"cc\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cc-1.10.0/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libcc-aa10b9799b6e0490.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libcc-aa10b9799b6e0490.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#blake3@1.8.7\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/Cargo.toml\",\"target\":{\"kind\":[\"custom-build\"],\"crate_types\":[\"bin\"],\"name\":\"build-script-build\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/build.rs\",\"edition\":\"2024\",\"doc\":false,\"doctest\":false,\"test\":false},\"profile\":{\"opt_level\":\"0\",\"debuginfo\":0,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-07037469866c8c01/build-script-build\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"build-script-executed\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#blake3@1.8.7\",\"linked_libs\":[\"static=blake3_neon\"],\"linked_paths\":[\"native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out\"],\"cfgs\":[\"blake3_neon\"],\"env\":[],\"out_dir\":\"/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out\"}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-hash#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-hash/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_hash\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-hash/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-code#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-code/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_code\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-code/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_code-6553c75abf17abc1.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_code-6553c75abf17abc1.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"registry+https://github.com/rust-lang/crates.io-index#blake3@1.8.7\",\"manifest_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"blake3\",\"src_path\":\"/Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/src/lib.rs\",\"edition\":\"2024\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libblake3-56e868565ecc4dd7.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libblake3-56e868565ecc4dd7.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-pcs#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-pcs/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_pcs\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-pcs/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_pcs-206ee0e4e09cd644.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_pcs-206ee0e4e09cd644.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-sumcheck#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-sumcheck/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_sumcheck\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-sumcheck/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[\"std\"],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-ir#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-ir/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_ir\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-ir/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_ir-b049e7d9878c65de.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_ir-b049e7d9878c65de.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-gkr#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-gkr/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_gkr\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-gkr/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_gkr-fbca534cb5beaebb.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_gkr-fbca534cb5beaebb.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-lookup#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-lookup/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_lookup\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-lookup/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_lookup-d977fe5ba45062e3.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_lookup-d977fe5ba45062e3.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-cqis#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-cqis/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_cqis\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-cqis/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_cqis-ec1d90ed464ad3cb.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_cqis-ec1d90ed464ad3cb.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/crates/stele-reductions#0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/crates/stele-reductions/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_reductions\",\"src_path\":\"/private/tmp/stele-control-profile/crates/stele-reductions/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_reductions-abe03daea7a963b0.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_reductions-abe03daea7a963b0.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/tests/negative-controls#stele-negative-controls@0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/Cargo.toml\",\"target\":{\"kind\":[\"lib\"],\"crate_types\":[\"lib\"],\"name\":\"stele_negative_controls\",\"src_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/src/lib.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":true,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_negative_controls-b83f1636760a7306.rlib\",\"/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_negative_controls-b83f1636760a7306.rmeta\"],\"executable\":null,\"fresh\":false}\n{\"reason\":\"compiler-artifact\",\"package_id\":\"path+file:///private/tmp/stele-control-profile/tests/negative-controls#stele-negative-controls@0.1.0\",\"manifest_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/Cargo.toml\",\"target\":{\"kind\":[\"bin\"],\"crate_types\":[\"bin\"],\"name\":\"stele-controls\",\"src_path\":\"/private/tmp/stele-control-profile/tests/negative-controls/src/main.rs\",\"edition\":\"2021\",\"doc\":true,\"doctest\":false,\"test\":true},\"profile\":{\"opt_level\":\"2\",\"debuginfo\":2,\"debug_assertions\":true,\"overflow_checks\":true,\"test\":false},\"features\":[],\"filenames\":[\"/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls\"],\"executable\":\"/tmp/stele-controls-profile-bc1830f/target-test/debug/stele-controls\",\"fresh\":false}\n{\"reason\":\"build-finished\",\"success\":true}\n"
+      },
+      "test-build.stderr": {
+        "bytes": 29178,
+        "sha256": "daf7c2f3c019172830f768bc2f5edfed39e5f736179703086e27533eee5638f0",
+        "utf8": "   Compiling find-msvc-tools v0.1.15\n   Compiling shlex v2.0.1\n   Compiling stele-field v0.1.0 (/private/tmp/stele-control-profile/crates/stele-field)\n   Compiling arrayvec v0.7.8\n   Compiling constant_time_eq v0.4.2\n   Compiling cfg-if v1.0.5\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name find_msvc_tools --edition=2021 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/find-msvc-tools-0.1.15/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --allow=unexpected_cfgs '--warn=clippy::ptr_cast_constness' '--warn=clippy::ptr_as_ptr' --warn=missing_docs '--warn=clippy::manual_let_else' '--warn=clippy::doc_markdown' '--warn=clippy::disallowed_methods' '--warn=clippy::borrow_as_ptr' --check-cfg 'cfg(disable_clang_cl_tests)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=81878ff15c48b7c9 -C extra-filename=-0f4aa9311a5294e7 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_field --edition=2021 crates/stele-field/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0b0c42f7774cfb46 -C extra-filename=-3cc38f6c3874ec33 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name constant_time_eq --edition=2024 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/constant_time_eq-0.4.2/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"count_instructions_test\", \"default\", \"std\"))' -C metadata=315a116888f52489 -C extra-filename=-61e4b3d3ae0df501 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name shlex --edition=2018 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/shlex-2.0.1/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --warn=unexpected_cfgs --check-cfg 'cfg(manual_codegen_check)' --cfg 'feature=\"default\"' --cfg 'feature=\"std\"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"default\", \"std\"))' -C metadata=135cc443ab636184 -C extra-filename=-4bb61bbce4f1a4fc --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name arrayvec --edition=2018 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/arrayvec-0.7.8/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"borsh\", \"default\", \"serde\", \"std\", \"zeroize\"))' -C metadata=e014d2bef203231b -C extra-filename=-665cd80de585c071 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --cap-lints allow`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name cfg_if --edition=2018 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cfg-if-1.0.5/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"core\", \"rustc-dep-of-std\"))' -C metadata=3159e7bbdb2a6530 -C extra-filename=-cd61b7cd22e3e096 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --cap-lints allow`\n   Compiling cc v1.10.0\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name cc --edition=2021 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cc-1.10.0/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no --allow=unexpected_cfgs '--warn=clippy::ptr_cast_constness' '--warn=clippy::ptr_as_ptr' --warn=missing_docs '--warn=clippy::manual_let_else' '--warn=clippy::doc_markdown' '--warn=clippy::disallowed_methods' '--warn=clippy::borrow_as_ptr' --check-cfg 'cfg(disable_clang_cl_tests)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"compile-commands\", \"jobserver\", \"parallel\"))' -C metadata=7e99d4b5dd3e1433 -C extra-filename=-aa10b9799b6e0490 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern find_msvc_tools=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libfind_msvc_tools-0f4aa9311a5294e7.rmeta --extern shlex=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libshlex-4bb61bbce4f1a4fc.rmeta --cap-lints allow`\n   Compiling stele-simd v0.1.0 (/private/tmp/stele-control-profile/crates/stele-simd)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_simd --edition=2021 crates/stele-simd/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=7ab1ff8527ecb0c0 -C extra-filename=-71328ddf46ce6548 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta`\n   Compiling stele-poly v0.1.0 (/private/tmp/stele-control-profile/crates/stele-poly)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_poly --edition=2021 crates/stele-poly/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=8b7defef9b2991ab -C extra-filename=-dd86c7c06ad2e506 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_simd=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_simd-71328ddf46ce6548.rmeta`\n   Compiling blake3 v1.8.7\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name build_script_build --edition=2024 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/build.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"default\", \"digest\", \"mmap\", \"neon\", \"no_avx2\", \"no_avx512\", \"no_neon\", \"no_sse2\", \"no_sse41\", \"prefer_intrinsics\", \"pure\", \"rayon\", \"serde\", \"std\", \"traits-preview\", \"wasm32_simd\", \"zeroize\"))' -C metadata=51773aee43b735fc -C extra-filename=-07037469866c8c01 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-07037469866c8c01 -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern cc=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libcc-aa10b9799b6e0490.rlib --cap-lints allow`\n     Running `/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-07037469866c8c01/build-script-build`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name blake3 --edition=2024 /Users/abdel/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake3-1.8.7/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"default\", \"digest\", \"mmap\", \"neon\", \"no_avx2\", \"no_avx512\", \"no_neon\", \"no_sse2\", \"no_sse41\", \"prefer_intrinsics\", \"pure\", \"rayon\", \"serde\", \"std\", \"traits-preview\", \"wasm32_simd\", \"zeroize\"))' -C metadata=a0faaf9dede64dd2 -C extra-filename=-56e868565ecc4dd7 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern arrayvec=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libarrayvec-665cd80de585c071.rmeta --extern cfg_if=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libcfg_if-cd61b7cd22e3e096.rmeta --extern constant_time_eq=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libconstant_time_eq-61e4b3d3ae0df501.rmeta --cap-lints allow -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out -l static=blake3_neon --cfg blake3_neon --check-cfg 'cfg(blake3_sse2_ffi, values(none()))' --check-cfg 'cfg(blake3_sse2_rust, values(none()))' --check-cfg 'cfg(blake3_sse41_ffi, values(none()))' --check-cfg 'cfg(blake3_sse41_rust, values(none()))' --check-cfg 'cfg(blake3_avx2_ffi, values(none()))' --check-cfg 'cfg(blake3_avx2_rust, values(none()))' --check-cfg 'cfg(blake3_avx512_ffi, values(none()))' --check-cfg 'cfg(blake3_neon, values(none()))' --check-cfg 'cfg(blake3_wasm32_simd, values(none()))'`\n   Compiling stele-hash v0.1.0 (/private/tmp/stele-control-profile/crates/stele-hash)\n   Compiling stele-code v0.1.0 (/private/tmp/stele-control-profile/crates/stele-code)\n   Compiling stele-cqis v0.1.0 (/private/tmp/stele-control-profile/crates/stele-cqis)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_hash --edition=2021 crates/stele-hash/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"wrapper\"))' -C metadata=b2e424c9dcd01cdb -C extra-filename=-c454f741270751b2 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern blake3=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libblake3-56e868565ecc4dd7.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_code --edition=2021 crates/stele-code/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=f42bc3eab87a28f9 -C extra-filename=-6553c75abf17abc1 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern blake3=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libblake3-56e868565ecc4dd7.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_simd=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_simd-71328ddf46ce6548.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_cqis --edition=2021 crates/stele-cqis/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0c14e48fb214396f -C extra-filename=-ec1d90ed464ad3cb --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern blake3=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libblake3-56e868565ecc4dd7.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-sumcheck v0.1.0 (/private/tmp/stele-control-profile/crates/stele-sumcheck)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_sumcheck --edition=2021 crates/stele-sumcheck/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --cfg 'feature=\"std\"' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values(\"std\"))' -C metadata=0a6a88de488a1259 -C extra-filename=-e3d2c1d9bcf49139 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-pcs v0.1.0 (/private/tmp/stele-control-profile/crates/stele-pcs)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_pcs --edition=2021 crates/stele-pcs/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=fe8026a2af2b7acf -C extra-filename=-206ee0e4e09cd644 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_code=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_code-6553c75abf17abc1.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-gkr v0.1.0 (/private/tmp/stele-control-profile/crates/stele-gkr)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_gkr --edition=2021 crates/stele-gkr/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=fa9580b16a81012f -C extra-filename=-fbca534cb5beaebb --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-ir v0.1.0 (/private/tmp/stele-control-profile/crates/stele-ir)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_ir --edition=2021 crates/stele-ir/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=21e9f8c644adc22a -C extra-filename=-b049e7d9878c65de --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_cqis=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_cqis-ec1d90ed464ad3cb.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-lookup v0.1.0 (/private/tmp/stele-control-profile/crates/stele-lookup)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_lookup --edition=2021 crates/stele-lookup/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=50d4528e9fabbe4d -C extra-filename=-d977fe5ba45062e3 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_gkr-fbca534cb5beaebb.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-reductions v0.1.0 (/private/tmp/stele-control-profile/crates/stele-reductions)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_reductions --edition=2021 crates/stele-reductions/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=3618306bc1d8e7ec -C extra-filename=-abe03daea7a963b0 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_cqis=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_cqis-ec1d90ed464ad3cb.rmeta --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_gkr-fbca534cb5beaebb.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta --extern stele_ir=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_ir-b049e7d9878c65de.rmeta --extern stele_lookup=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_lookup-d977fe5ba45062e3.rmeta --extern stele_pcs=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_pcs-206ee0e4e09cd644.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n   Compiling stele-negative-controls v0.1.0 (/private/tmp/stele-control-profile/tests/negative-controls)\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_negative_controls --edition=2021 tests/negative-controls/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=d4f993c843717073 -C extra-filename=-b83f1636760a7306 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rmeta --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_gkr-fbca534cb5beaebb.rmeta --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rmeta --extern stele_lookup=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_lookup-d977fe5ba45062e3.rmeta --extern stele_pcs=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_pcs-206ee0e4e09cd644.rmeta --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rmeta --extern stele_reductions=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_reductions-abe03daea7a963b0.rmeta --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rmeta -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n     Running `/Users/abdel/.rustup/toolchains/1.90.0-aarch64-apple-darwin/bin/rustc --crate-name stele_controls --edition=2021 tests/negative-controls/src/main.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type bin --emit=dep-info,link -C opt-level=2 -C embed-bitcode=no -C debuginfo=2 -C split-debuginfo=unpacked '--warn=clippy::unwrap_used' --warn=unsafe_code '--warn=clippy::panic' '--forbid=clippy::float_arithmetic' '--forbid=clippy::disallowed_types' -C debug-assertions=on --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=d9530a155f65c800 -C extra-filename=-26240b03698ba7e2 --out-dir /tmp/stele-controls-profile-bc1830f/target-test/debug/deps -C incremental=/tmp/stele-controls-profile-bc1830f/target-test/debug/incremental -L dependency=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps --extern stele_field=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_field-3cc38f6c3874ec33.rlib --extern stele_gkr=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_gkr-fbca534cb5beaebb.rlib --extern stele_hash=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_hash-c454f741270751b2.rlib --extern stele_lookup=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_lookup-d977fe5ba45062e3.rlib --extern stele_negative_controls=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_negative_controls-b83f1636760a7306.rlib --extern stele_pcs=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_pcs-206ee0e4e09cd644.rlib --extern stele_poly=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_poly-dd86c7c06ad2e506.rlib --extern stele_reductions=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_reductions-abe03daea7a963b0.rlib --extern stele_sumcheck=/tmp/stele-controls-profile-bc1830f/target-test/debug/deps/libstele_sumcheck-e3d2c1d9bcf49139.rlib -L native=/tmp/stele-controls-profile-bc1830f/target-test/debug/build/blake3-32fc601c72db0e6a/out`\n    Finished `test` profile [optimized + debuginfo] target(s) in 30.80s\n"
+      },
+      "test-coverage.stdout": {
+        "bytes": 4897,
+        "sha256": "f7292523bd88a10bce68d4f48f3a05300e5e6f8a0c681ad89509d089705ca1bb",
+        "utf8": "NC-0001 | output token \u2194 logits | 0004 \u00a77 | MISSING\nNC-0002 | residual cut \u2194 layer | 0007 \u00a73 | MISSING\nNC-0003 | weight block \u2194 layer index | 0007 \u00a72 | MISSING\nNC-0004 | passport binding | 0011 | MISSING\nNC-0005 | prompt binding | 0001 \u00a73 | MISSING\nNC-0100 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0101 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0102 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0103 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0104 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0105 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0106 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0107 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0108 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0109 | CQIS gadgets | 0004 \u00a710 | MISSING\nNC-0200 | sumcheck engine | 0006 A1 | passed\nNC-0201 | sumcheck engine | 0006 A1 | passed\nNC-0202 | sumcheck engine | 0006 A2 | passed\nNC-0203 | stacked coefficient | 0006 A4 | passed\nNC-0204 | sumcheck engine | 0006 A5 | passed\nNC-0205 | sumcheck engine | 0006 A1,A2 | passed\nNC-0206 | sumcheck engine | 0006 A2, 0012 A4 | passed\nNC-0207 | sumcheck engine | 0006 A3 | passed\nNC-0208 | sumcheck engine | 0006 A3 | passed\nNC-0209 | sumcheck engine | 0006 A3 | passed\nNC-0210 | sumcheck engine | 0006 A6 | passed\nNC-0211 | stacked canonical point | 0006 A4 | passed\nNC-0212 | stacked public coefficient source | 0006 A4 | passed\nNC-0213 | stacked original certificate | 0006 A4 | passed\nNC-0300 | matmul phases | 0007 \u00a78 | MISSING\nNC-0301 | matmul phases | 0007 \u00a78 | MISSING\nNC-0302 | matmul phases | 0007 \u00a78 | MISSING\nNC-0303 | matmul phases | 0007 \u00a78 | MISSING\nNC-0304 | matmul phases | 0007 \u00a78 | MISSING\nNC-0305 | matmul phases | 0007 \u00a78 | MISSING\nNC-0306 | matmul phases | 0007 A2 | passed\nNC-0307 | matmul phases | 0007 A2 | passed\nNC-0308 | Requant input bytes | 0023 \u00a76 | passed\nNC-0309 | Requant advice identity | 0023 \u00a76 | passed\nNC-0310 | Requant full-width result | 0023 \u00a76 | passed\nNC-0311 | Requant carry | 0023 \u00a76 | passed\nNC-0312 | Requant plane mapping | 0023 \u00a76 | passed\nNC-0313 | Requant sign and target | 0023 \u00a76 | passed\nNC-0314 | Requant padding | 0023 \u00a76 | passed\nNC-0400 | lookups | 0008 \u00a77,A5 | passed\nNC-0401 | lookups | 0008 \u00a77,A5 | passed\nNC-0402 | lookups | 0008 \u00a77,A5 | passed\nNC-0403 | lookups | 0008 \u00a77,A5 | passed\nNC-0404 | lookups | 0008 \u00a77 | MISSING\nNC-0405 | lookups | 0008 \u00a77 | MISSING\nNC-0406 | fraction reduction | 0008 A3 | passed\nNC-0407 | fraction reduction | 0008 A3 | passed\nNC-0408 | fraction reduction | 0008 A3 | passed\nNC-0409 | fraction reduction | 0008 A3 | passed\nNC-0410 | fraction reduction | 0008 A3 | passed\nNC-0411 | fraction reduction | 0008 A3, 0012 A9 | passed\nNC-0412 | configured function | 0021 \u00a76, 0005 A1 | MISSING\nNC-0413 | selected representation | 0021 \u00a76, 0008 A4 | MISSING\nNC-0414 | table data | 0021 \u00a76, 0011 A2 | MISSING\nNC-0415 | lookups | 0008 A5 | passed\nNC-0416 | lookups | 0008 A5 | passed\nNC-0417 | lookups | 0008 A5 | passed\nNC-0418 | lookups | 0008 A5 | passed\nNC-0419 | lookups | 0008 A5, 0012 A11 | passed\nNC-0500 | attention | 0009 \u00a77 | MISSING\nNC-0501 | attention | 0009 \u00a77 | MISSING\nNC-0502 | attention | 0009 \u00a77 | MISSING\nNC-0503 | attention | 0009 \u00a77 | MISSING\nNC-0504 | attention | 0009 \u00a77 | MISSING\nNC-0505 | attention | 0009 \u00a77 | MISSING\nNC-0506 | attention | 0009 \u00a77 | MISSING\nNC-0600 | PCS | 0010 A9 | passed\nNC-0601 | PCS | 0010 A9 | passed\nNC-0602 | PCS | 0010 \u00a710, 0012 A3 | passed\nNC-0603 | PCS | 0010 \u00a710 | MISSING\nNC-0604 | PCS | 0010 \u00a710 | MISSING\nNC-0605 | PCS | 0010 \u00a710 | MISSING\nNC-0606 | PCS | 0010 A9, 0007 A2, 0023 \u00a76 | passed\nNC-0607 | PCS | 0010 A9 | passed\nNC-0608 | PCS | 0010 A9 | passed\nNC-0609 | PCS | 0010 A9 | passed\nNC-0610 | PCS | 0010 A9 \u00a74, 0008 A5 \u00a77, 0023 \u00a76 | passed\nNC-0611 | PCS | 0010 A10, 0007 A2 | passed\nNC-0700 | passport | 0011 \u00a76 | MISSING\nNC-0701 | passport | 0011 \u00a76 | MISSING\nNC-0702 | passport | 0011 \u00a76 | MISSING\nNC-0703 | passport | 0011 \u00a76 | MISSING\nNC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | passed\nNC-0801 | transcript/ledger | 0012 A1 | passed (configuration)\nNC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13, 0007 A2 | passed\nNC-0803 | transcript/ledger | 0010 A9, 0012 A10 | passed\nNC-0804 | transcript/ledger | 0012 \u00a76 | MISSING\nNC-0805 | transcript/ledger | 0012 \u00a76 | MISSING\nNC-0900 | ZK | 0013 \u00a76 | MISSING\nNC-0901 | ZK | 0013 \u00a76 | MISSING\nNC-1000 | GPU | 0014 \u00a77 | MISSING\nNC-1001 | GPU | 0014 \u00a77 | MISSING\nNC-1002 | GPU | 0014 \u00a77 | MISSING\nNC-1100 | distributed | 0015 \u00a77 | MISSING\nNC-1101 | distributed | 0015 \u00a77 | MISSING\nNC-1200 | verifier/wrapper | 0016 \u00a77 | MISSING\nNC-1201 | verifier/wrapper | 0016 \u00a77 | MISSING\nNC-1202 | verifier/wrapper | 0016 \u00a77 | MISSING\nNC-1203 | verifier/wrapper | 0016 \u00a77 | MISSING\nCatalog coverage: 17/32 bindings; 51/104 controls.\nConfiguration controls: 1 (not proof-statement coverage).\n"
+      },
+      "test-coverage.stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "test-invalid-0.stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "test-invalid-0.stderr": {
+        "bytes": 33,
+        "sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+        "utf8": "usage: stele-controls --coverage\n"
+      },
+      "test-invalid-1.stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "test-invalid-1.stderr": {
+        "bytes": 33,
+        "sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+        "utf8": "usage: stele-controls --coverage\n"
+      },
+      "test-invalid-2.stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "utf8": ""
+      },
+      "test-invalid-2.stderr": {
+        "bytes": 33,
+        "sha256": "74599c44e15ff7508f8b31b216cf56e07d5f55feeab0bae133f31dc65849ea25",
+        "utf8": "usage: stele-controls --coverage\n"
+      }
+    },
+    "measurement_receipt_sha256": "54b93ad02de023c32b43d9f051701a953ebe204c7a5e88b74b372ef1d709f771",
+    "measurement_driver_source": "\"\"\"E0-09: one frozen-source dev/test pair; no inference measurement.\"\"\"\nfrom collections import Counter\nfrom datetime import datetime, timezone\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport re\nimport subprocess\nimport sys\nimport time\nimport tomllib\n\nROOT = Path('/tmp/stele-control-profile')\nOUT = Path('/tmp/stele-controls-profile-bc1830f')\nHEAD = 'bc1830ffa91b92241b288c1ac4c04bb492a1ce10'\nTREE = 'e70205d7392f973fa56a884c56609d387dbd7374'\n\ndef stamp():\n    return datetime.now(timezone.utc).isoformat()\n\ndef sha(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\n\ndef read_command(args):\n    return subprocess.check_output(args, cwd=ROOT, text=True).strip()\n\ndef source_check():\n    assert read_command(['git', 'rev-parse', 'HEAD']) == HEAD\n    assert read_command(['git', 'rev-parse', 'HEAD^{tree}']) == TREE\n    assert not read_command(['git', 'status', '--porcelain'])\n\nsource_check()\noverrides = [k for k, v in os.environ.items() if v and (\n    k.startswith('CARGO_PROFILE_') or k in {\n        'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS', 'CARGO_BUILD_RUSTFLAGS',\n        'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTC', 'CARGO_BUILD_TARGET'})]\nassert not overrides, ('Unexpected compiler override names', overrides)\nconfig = tomllib.loads((ROOT / 'Cargo.toml').read_text())\nassert config['profile']['test'] == {\n    'opt-level': 2, 'debug-assertions': True, 'overflow-checks': True}\nassert 'dev' not in config['profile']\nOUT.mkdir()\nsource_paths = ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml',\n    'tests/negative-controls/Cargo.toml', 'tests/negative-controls/catalog.md',\n    'tests/negative-controls/src/main.rs', 'tests/negative-controls/src/lib.rs',\n    'tests/negative-controls/src/catalog.rs']\nsource_pins = {p: sha(ROOT / p) for p in source_paths}\nplan = dict(task='E0-09', source_commit=HEAD, source_tree=TREE,\n    source_sha256=source_pins, order=['dev', 'test'], repetitions=1,\n    build='Separate empty target directories; actual normal binary, locked/offline.',\n    execution='One direct --coverage execution per profile; build and execution are disjoint.',\n    invalid_arguments=[[], ['unexpected'], ['--coverage', 'extra']],\n    expected=dict(rows=104, proof_controls=50, configuration_controls=1,\n        missing_controls=53, named_bindings=17, catalog_bindings=32),\n    qualifications=['Shared host; original workers retained and not inspected or manipulated.',\n        'One ordered screening pair; no statistical, whole-CI or inference speedup claim.',\n        'No warm Cargo execution or duplicate coverage sample is hidden in this pair.',\n        'Commit/tree plus clean-source checks identify the complete repository source.'],\n    controller_sha256=sha(Path(__file__)), started_at=stamp())\n(OUT / 'plan.json').write_text(json.dumps(plan, indent=2) + '\\n')\nresults = dict(plan=plan, python=sys.version, host=platform.platform(),\n    cpu=read_command(['sysctl', '-n', 'machdep.cpu.brand_string']),\n    rustc=read_command(['rustc', '--version', '--verbose']),\n    cargo=read_command(['cargo', '--version']), configurations=[], complete=False)\n\ndef save():\n    (OUT / 'results.json').write_text(json.dumps(results, indent=2) + '\\n')\n\ndef run(label, argv, env):\n    stdout, stderr = OUT / (label + '.stdout'), OUT / (label + '.stderr')\n    record = dict(label=label, argv=argv, cwd=str(ROOT), started_at=stamp(),\n        load_before=[str(x) for x in os.getloadavg()])\n    print(json.dumps({'start': label}), flush=True)\n    start = time.monotonic_ns()\n    with stdout.open('xb') as out, stderr.open('xb') as err:\n        completed = subprocess.run(argv, cwd=ROOT, env=env, stdout=out, stderr=err)\n    record.update(wall_ns=time.monotonic_ns() - start, exit_code=completed.returncode,\n        ended_at=stamp(), load_after=[str(x) for x in os.getloadavg()],\n        stdout=str(stdout), stdout_sha256=sha(stdout), stdout_bytes=stdout.stat().st_size,\n        stderr=str(stderr), stderr_sha256=sha(stderr), stderr_bytes=stderr.stat().st_size)\n    print(json.dumps({'finish': label, 'exit_code': record['exit_code'],\n        'wall_ns': record['wall_ns']}), flush=True)\n    return record\n\nsave()\nreports, invalid_results, runtime_graphs = [], [], []\nfor profile, level in [('dev', '0'), ('test', '2')]:\n    target = OUT / ('target-' + profile)\n    target.mkdir()\n    overrides = {'CARGO_TARGET_DIR': str(target), 'CARGO_TERM_COLOR': 'never'}\n    env = dict(os.environ, **overrides)\n    item = dict(profile=profile, env=overrides)\n    results['configurations'].append(item)\n    command = ['cargo', 'build', '--profile', profile, '-p', 'stele-negative-controls',\n        '--bin', 'stele-controls', '--locked', '--offline', '--verbose', '--message-format=json']\n    item['build'] = run(profile + '-build', command, env)\n    save()\n    assert item['build']['exit_code'] == 0\n    messages = [json.loads(line) for line in Path(item['build']['stdout']).read_text().splitlines()]\n    assert any(m['reason'] == 'build-finished' and m['success'] for m in messages)\n    artifacts = [m for m in messages if m['reason'] == 'compiler-artifact']\n    selected = [m for m in artifacts if m['target']['name'] == 'stele-controls'\n                and m['target']['kind'] == ['bin'] and m['executable']]\n    assert len(selected) == 1\n    artifact = selected[0]\n    executable = Path(artifact['executable']).resolve()\n    assert executable.is_relative_to(target.resolve()) and executable.is_file()\n    item['artifact'] = artifact\n    item['executable_sha256'] = sha(executable)\n    runtime = [m for m in artifacts if m['target']['name'].startswith('stele_')\n               or m['target']['name'] == 'stele-controls']\n    assert len(runtime) >= 10\n    for m in runtime:\n        p = m['profile']\n        assert p['opt_level'] == level and p['debug_assertions'] and p['overflow_checks']\n        assert p['test'] is False\n    graph = {m['target']['name']: sorted(m['features']) for m in runtime}\n    assert len(graph) == len(runtime)\n    runtime_graphs.append(graph)\n    item['runtime_artifacts'] = [dict(name=m['target']['name'], features=m['features'],\n                                    profile=m['profile']) for m in runtime]\n    save()\n    item['coverage'] = run(profile + '-coverage', [str(executable), '--coverage'], env)\n    save()\n    assert item['coverage']['exit_code'] == 0\n    report = Path(item['coverage']['stdout']).read_bytes()\n    assert Path(item['coverage']['stderr']).read_bytes() == b''\n    reports.append(report)\n    lines = report.decode().splitlines()\n    rows = [line for line in lines if re.match(r'^NC-\\d{4} \\|', line)]\n    statuses = Counter(line.rsplit('|', 1)[-1].strip() for line in rows)\n    assert len(rows) == 104 and statuses == {'passed': 50, 'passed (configuration)': 1, 'MISSING': 53}\n    assert lines.count('Catalog coverage: 17/32 bindings; 51/104 controls.') == 1\n    assert lines.count('Configuration controls: 1 (not proof-statement coverage).') == 1\n    item['invalid_arguments'] = []\n    invalid = []\n    for index, args in enumerate(plan['invalid_arguments']):\n        check = run(f'{profile}-invalid-{index}', [str(executable), *args], env)\n        item['invalid_arguments'].append(check)\n        save()\n        out, err = Path(check['stdout']).read_bytes(), Path(check['stderr']).read_bytes()\n        assert check['exit_code'] == 1 and out == b'' and err == b'usage: stele-controls --coverage\\n'\n        invalid.append((check['exit_code'], out, err))\n    invalid_results.append(invalid)\n    assert sha(executable) == item['executable_sha256']\n    source_check()\n    assert source_pins == {p: sha(ROOT / p) for p in source_paths}\nassert reports[0] == reports[1] and invalid_results[0] == invalid_results[1]\nassert runtime_graphs[0] == runtime_graphs[1]\nresults.update(complete=True, ended_at=stamp(), coverage_sha256=hashlib.sha256(reports[0]).hexdigest(),\n    safety_and_features_equal=True, exact_coverage_output_equal=True)\nsave()\nprint(json.dumps({'complete': True, 'receipt': str(OUT / 'results.json'),\n    'sha256': sha(OUT / 'results.json')}), flush=True)\n",
+    "verification_source": "\"\"\"E0-09: verify the saved pair and export its validation-only micro ledger.\"\"\"\nfrom collections import Counter\nimport hashlib\nimport json\nfrom pathlib import Path\nimport subprocess\n\nROOT = Path('/tmp/stele-control-profile')\nFOLDER = Path('/tmp/stele-controls-profile-bc1830f')\nRECEIPT_SHA = '54b93ad02de023c32b43d9f051701a953ebe204c7a5e88b74b372ef1d709f771'\n\ndef sha(raw):\n    return hashlib.sha256(raw).hexdigest()\n\nreceipt_bytes = (FOLDER / 'results.json').read_bytes()\nassert sha(receipt_bytes) == RECEIPT_SHA\nresults = json.loads(receipt_bytes)\nplan = results['plan']\nassert results['complete'] and results['exact_coverage_output_equal'] and results['safety_and_features_equal']\nassert plan == json.loads((FOLDER / 'plan.json').read_bytes())\ncontroller = Path('/tmp/stele-controls-profile-measure.py').read_bytes()\nassert sha(controller) == plan['controller_sha256']\nfor path, digest in plan['source_sha256'].items():\n    original = subprocess.check_output(['git', 'show', plan['source_commit'] + ':' + path], cwd=ROOT)\n    assert sha(original) == digest == sha((ROOT / path).read_bytes())\nassert subprocess.check_output(['git', 'rev-parse', plan['source_commit'] + '^{tree}'], cwd=ROOT, text=True).strip() == plan['source_tree']\nraw_artifacts, times, outputs, features = {}, {}, [], []\nassert [c['profile'] for c in results['configurations']] == ['dev', 'test']\nfor configuration, level in zip(results['configurations'], ['0', '2']):\n    profile = configuration['profile']\n    assert configuration['build']['exit_code'] == configuration['coverage']['exit_code'] == 0\n    for phase in ('build', 'coverage'):\n        times[profile + '_' + phase] = configuration[phase]['wall_ns']\n    for record in [configuration['build'], configuration['coverage'], *configuration['invalid_arguments']]:\n        for stream in ('stdout', 'stderr'):\n            path = Path(record[stream])\n            assert path.parent == FOLDER\n            raw = path.read_bytes()\n            assert len(raw) == record[stream + '_bytes'] and sha(raw) == record[stream + '_sha256']\n            assert path.name not in raw_artifacts\n            raw_artifacts[path.name] = dict(bytes=len(raw), sha256=sha(raw), utf8=raw.decode())\n    artifact = configuration['artifact']\n    assert sha(Path(artifact['executable']).read_bytes()) == configuration['executable_sha256']\n    graph = {}\n    for row in configuration['runtime_artifacts']:\n        p = row['profile']\n        assert p['opt_level'] == level and p['debug_assertions'] and p['overflow_checks']\n        assert p['test'] is False\n        graph[row['name']] = sorted(row['features'])\n    features.append(graph)\n    output = Path(configuration['coverage']['stdout']).read_bytes()\n    outputs.append(output)\n    assert Path(configuration['coverage']['stderr']).read_bytes() == b''\n    rows = [line for line in output.decode().splitlines() if line.startswith('NC-')]\n    assert len(rows) == 104\n    assert Counter(line.rsplit('|', 1)[-1].strip() for line in rows) == {\n        'passed': 50, 'passed (configuration)': 1, 'MISSING': 53}\n    assert len(configuration['invalid_arguments']) == 3\n    for record, args in zip(configuration['invalid_arguments'], plan['invalid_arguments']):\n        assert record['argv'][1:] == args and record['exit_code'] == 1\n        assert Path(record['stdout']).read_bytes() == b''\n        assert Path(record['stderr']).read_bytes() == b'usage: stele-controls --coverage\\n'\nassert outputs[0] == outputs[1] and features[0] == features[1]\nledger = dict(schema_version=1, kind='micro', workload='micro/control-coverage-profile',\n    commit=plan['source_commit'], toolchain=results['rustc'] + '; ' + results['cargo'],\n    device=results['cpu'], driver='not-applicable: CPU; ' + results['host'],\n    model_config=dict(plan=plan, measurement=results, raw_artifacts=raw_artifacts,\n        measurement_receipt_sha256=RECEIPT_SHA,\n        measurement_driver_source=controller.decode(), verification_source=Path(__file__).read_text(),\n        qualification='One ordered pair on a shared host. Cold build and direct execution are disjoint; no warm Cargo run or full-CI timing. Every registered control runs under both ordinary binaries; six argument checks are outside the compared costs.'),\n    plan_digest=sha(json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()),\n    profile='standard', bindings_all_on=True, batch_size=1, prompt_tokens=0, generated_tokens=0,\n    prover_time_ns=sum(times.values()), witness_recompute_ns=0, stage_times_ns=times,\n    kernel_counters=dict(cold_builds=2, complete_coverage_runs=2, invalid_argument_checks=6,\n        registered_controls_per_run=51, proof_controls_per_run=50, configuration_controls_per_run=1,\n        catalog_rows_per_run=104, missing_controls_per_run=53, named_bindings=17,\n        retained_checked_profile_configurations=2),\n    proof_size_bytes=0, verifier_time_ns=dict(rust=0, python=0), controls=dict(total=0, passed=0, failed=0),\n    note='RFC-0020 sections 4-5 / RFC-0018 section 1, E0-09. Measures validation cost only. The standard profile tag and zero proof/verifier/control slots are required micro-schema fields, not inference or profile admission. Actual registered-control executions are recorded in named diagnostics and full identical reports. prover_time_ns sums the four disjoint build/coverage phases; invalid-argument checks are separate untimed qualifications. Both debug assertions and overflow checks remain enabled. No original worker was inspected or manipulated. One shared-host ordered pair supplies no distribution, inference cost fit, GPU result or full-CI speedup.')\npath = ROOT / 'bench/ledger/e0-09-control-profile.json'\nassert not path.exists()\npath.write_text(json.dumps(ledger, indent=2) + '\\n')\nprint(json.dumps({'ledger': str(path), 'sha256': sha(path.read_bytes()), 'bytes': path.stat().st_size,\n    'stage_times_ns': times}))\n",
+    "qualification": "One ordered pair on a shared host. Cold build and direct execution are disjoint; no warm Cargo run or full-CI timing. Every registered control runs under both ordinary binaries; six argument checks are outside the compared costs."
+  },
+  "plan_digest": "90952756cf728cc5da3c3b7b28b45e87dcec4ef9984476b7ef4e7035a591e9f6",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 252981663166,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "dev_build": 17570125541,
+    "dev_coverage": 190480559958,
+    "test_build": 30889614000,
+    "test_coverage": 14041363667
+  },
+  "kernel_counters": {
+    "cold_builds": 2,
+    "complete_coverage_runs": 2,
+    "invalid_argument_checks": 6,
+    "registered_controls_per_run": 51,
+    "proof_controls_per_run": 50,
+    "configuration_controls_per_run": 1,
+    "catalog_rows_per_run": 104,
+    "missing_controls_per_run": 53,
+    "named_bindings": 17,
+    "retained_checked_profile_configurations": 2
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "RFC-0020 sections 4-5 / RFC-0018 section 1, E0-09. Measures validation cost only. The standard profile tag and zero proof/verifier/control slots are required micro-schema fields, not inference or profile admission. Actual registered-control executions are recorded in named diagnostics and full identical reports. prover_time_ns sums the four disjoint build/coverage phases; invalid-argument checks are separate qualifications outside the compared costs. Both debug assertions and overflow checks remain enabled. No original worker was inspected or manipulated. One shared-host ordered pair supplies no distribution, inference cost fit, GPU result or full-CI speedup."
+}
