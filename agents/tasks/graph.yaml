@@ -1301,7 +1301,7 @@ tasks:
   - RFC-0010 A9
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01f1-byte-range-authority
   acceptance:
