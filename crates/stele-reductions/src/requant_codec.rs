@@ -8,6 +8,8 @@ use stele_field::{Serialize, M31};
 use stele_hash::ChallengeField;
 use stele_pcs::{ProofKind, Source, VerifiedCertificate};
 use stele_sumcheck::{Instance, Term};
+#[path = "requant_producer.rs"]
+pub(super) mod producer;
 #[path = "requant_verifier.rs"]
 pub(super) mod verifier;
 

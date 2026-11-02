@@ -248,6 +248,9 @@ consumers charge c_lu on 4N input cells and R_q*N advice cells, including every
 mu source and consumer. The fixed constraint compiler, aggregate A3, output A1
 and three additional A9 functionals contribute c_a/c_sc/T_misc as specified in
 RFC-0023 §§3–4, with actual coefficient and retained-buffer work. R_q is distinct
-from device throughput R. These are formulas for new work, not fitted constants
-or measured performance. E7-01d must supply the complete native ledger; no
-additional weight pass or revised inference projection is authorized.
+from device throughput R. The [E7-01d component ledger](../bench/ledger/e7-01d-requant.json)
+records complete native production, both closed consumers, registration/import,
+proof bytes and fresh-worker peak RSS with every binding enabled. The
+[methodology](../bench/README.md#native-requant-e7-01d) distinguishes actual partial
+capacities from whole-worker RSS and bounds the measured matrix. These formulas
+remain unfitted; no constant, weight-pass count or inference projection changes.

@@ -98,12 +98,18 @@ where
             let new = || Transcript::<K>::new(&seed.to_le_bytes()).expect("public");
             let (mut rt, mut pt, mut vt) = (new(), new(), new());
             let expected = reference::prove(&z, &tables, &mut rt);
-            let actual = z.prove(&tables, &mut pt).expect("true row assertion");
+            let (actual, tail) = z
+                .prove_with_point(&tables, &mut pt)
+                .expect("true row assertion");
             assert_eq!(actual, expected, "degree={degree} case={case} m={m} k={k}");
             let result = z
                 .verify_public(&actual, &tables, &mut vt)
                 .expect("every original claim");
             assert_eq!(result.claims.len(), i.inputs.len() * (1 << k));
+            assert_eq!(tail.len(), m - k);
+            for claim in &result.claims {
+                assert_eq!(&claim.point[k..], tail);
+            }
             let next = rt
                 .challenge(ChallengeLabel::Sumcheck)
                 .expect("continuation");

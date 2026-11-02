@@ -218,6 +218,10 @@ path = "examples/matmul_corpus.rs"
 name = "matmul_bench"
 path = "examples/matmul_bench.rs"
 
+[[example]]
+name = "requant_bench"
+path = "examples/requant_bench.rs"
+
 [[test]]
 name = "nc-0308"
 path = "requant/nc_0308.rs"

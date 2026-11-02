@@ -55,6 +55,17 @@ class NativeGateTests(unittest.TestCase):
                 self.assertNotEqual(code, 0)
                 self.assertEqual(calls[-1][0], validator)
 
+    def test_rejects_missing_actual_zerocheck_point_receipt(self):
+        names=['matches_reference_zerocheck_bytes_and_accounting','matches_reference_retained_tail_and_failed_prefix',
+               'matches_reference_naive_zerocheck_qm31','matches_reference_naive_zerocheck_om31','zerocheck::rejects_zerocheck_binding_tampers']
+        output='\n'.join(f'test {name} ... ok' for name in names)
+        with patch.object(gate.subprocess,'run',return_value=subprocess.CompletedProcess([],0,output,'')) as run:
+            gate.zerocheck(ROOT);self.assertEqual(run.call_count,5)
+        for code,text in [(1,output),(0,output.replace(f'test {names[1]} ... ok',''))]:
+            with patch.object(gate.subprocess,'run',return_value=subprocess.CompletedProcess([],code,text,'')) as run:
+                with self.assertRaisesRegex(ValueError,'zerocheck bytes'):gate.zerocheck(ROOT)
+                self.assertEqual(run.call_count,1)
+
     def test_rejects_missing_a1_work_sources_exports_and_receipts(self):
         names = ('matches_reference_buffered_qm31', 'matches_reference_buffered_om31',
                  'accepts_empty_inputs_and_reuses_proof_and_byte_buffers',

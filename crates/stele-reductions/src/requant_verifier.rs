@@ -29,6 +29,32 @@ pub struct RegistrationFailure {
     /// Input then advice, each in repetition order, including the failed attempt.
     pub registrations: [[Option<Usage>; 2]; 2],
 }
+// Shared fixed group construction; no public caller can supply a functional.
+pub(super) struct GroupWeights<K> {
+    pub(super) a: Vec<K>,
+    pub(super) b: Vec<K>,
+    pub(super) value: K,
+    pub(super) rlc: RlcRecord<K>,
+}
+impl<K> GroupWeights<K> {
+    pub(super) fn owned_field_bytes(&self) -> Result<[usize; 3], Error> {
+        let w = core::mem::size_of::<K>();
+        Ok([
+            mul(self.a.capacity(), w)?,
+            mul(self.b.capacity(), w)?,
+            mul(self.rlc.weights.capacity(), w)?,
+        ])
+    }
+}
+/// Scoped actual simultaneous group coefficient capacities, never proof authority.
+/// All other verifier allocations are excluded; complete process RSS is separate.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct VerifierWork {
+    /// Ordered groups, each actual a, b and independent-weight Vec capacity in bytes.
+    pub group_coefficients_bytes: [[usize; 3]; 3],
+}
+// Actual closed group, independent RLC obligation, and scoped field capacities.
+type GroupResult<'cert, K> = (GroupRecord<'cert, K>, RlcRecord<K>, [usize; 3]);
 /// Caller-owned handles and separate attempted-import Usage, in fixed group order.
 pub type RegisteredMultiplicities<K> = ([Vec<VerifiedCertificate<K>>; 2], [[Option<Usage>; 2]; 2]);
 
@@ -326,17 +352,31 @@ where
     where
         'original: 'cert,
     {
+        self.verify_measured(t, multiplicities, proof)
+            .map(|(record, usage, _)| (record, usage))
+    }
+    /// The same closed verifier with only the scoped capacity observations in VerifierWork.
+    pub fn verify_measured<'cert>(
+        &self,
+        t: &mut Transcript<K>,
+        multiplicities: [&[&'cert VerifiedCertificate<K>]; 2],
+        proof: &[u8],
+    ) -> Result<(Record<'cert, K>, Usage, VerifierWork), Failure>
+    where
+        'original: 'cert,
+    {
         let mut hashes = HashUsage::default();
-        let result = self.verify_inner(t, multiplicities, proof, &mut hashes);
+        let mut work = VerifierWork::default();
+        let result = self.verify_inner(t, multiplicities, proof, &mut hashes, &mut work);
         let usage = Usage {
             transcript: t.usage(),
             non_transcript: hashes,
         };
         result
-            .map(|record| (record, usage))
+            .map(|record| (record, usage, work))
             .map_err(|cause| Failure { cause, usage })
     }
-    fn weights(
+    pub(super) fn weights(
         &self,
         t: &mut Transcript<K>,
         phase: u8,
@@ -355,7 +395,7 @@ where
             weights,
         })
     }
-    fn aggregate(&self, weights: &[K]) -> Result<Instance<K>, Error> {
+    pub(super) fn aggregate(&self, weights: &[K]) -> Result<Instance<K>, Error> {
         let count = self
             .constraints
             .equations()
@@ -405,10 +445,49 @@ where
         claims: Vec<(u32, u64, K)>,
         proof: &[u8],
         hashes: &mut HashUsage,
-    ) -> Result<(GroupRecord<'cert, K>, RlcRecord<K>), Error>
+    ) -> Result<GroupResult<'cert, K>, Error>
     where
         'original: 'cert,
     {
+        let weights = self.group_weights(t, group, point, &claims)?;
+        let capacities = weights.owned_field_bytes()?;
+        let certificate = self.originals[usize::from(group != 0)][0];
+        let result = verify_opening(
+            t,
+            certificate,
+            Functional {
+                id: self.base + 3072 + u64::from(group),
+                a: &weights.a,
+                b: &weights.b,
+                value: weights.value,
+            },
+            proof,
+        );
+        add_local(
+            hashes,
+            match &result {
+                Ok((_, u)) => *u,
+                Err(f) => f.usage,
+            },
+        )?;
+        let opening = result.map_err(|f| Error::Pcs(f.cause))?.0;
+        Ok((
+            GroupRecord {
+                point: copied(point)?,
+                claims,
+                opening,
+            },
+            weights.rlc,
+            capacities,
+        ))
+    }
+    pub(super) fn group_weights(
+        &self,
+        t: &mut Transcript<K>,
+        group: u8,
+        point: &[K],
+        claims: &[(u32, u64, K)],
+    ) -> Result<GroupWeights<K>, Error> {
         let certificate = self.originals[usize::from(group != 0)][0];
         let source = certificate.record().source();
         let width = 4 * usize::from(<K as CodeField>::DEGREE);
@@ -427,7 +506,7 @@ where
         for v in point {
             put(&mut frame, v.to_le_bytes().as_ref())?;
         }
-        for (row, id, value) in &claims {
+        for (row, id, value) in claims {
             put(&mut frame, &row.to_le_bytes())?;
             put(&mut frame, &id.to_le_bytes())?;
             put(&mut frame, value.to_le_bytes().as_ref())?;
@@ -444,33 +523,7 @@ where
             value = value + *weight * *v;
         }
         let b = stele_poly::eq_table(point).map_err(|_| Error::Capacity)?;
-        let result = verify_opening(
-            t,
-            certificate,
-            Functional {
-                id: self.base + 3072 + u64::from(group),
-                a: &a,
-                b: &b,
-                value,
-            },
-            proof,
-        );
-        add_local(
-            hashes,
-            match &result {
-                Ok((_, u)) => *u,
-                Err(f) => f.usage,
-            },
-        )?;
-        let opening = result.map_err(|f| Error::Pcs(f.cause))?.0;
-        Ok((
-            GroupRecord {
-                point: copied(point)?,
-                claims,
-                opening,
-            },
-            rlc,
-        ))
+        Ok(GroupWeights { a, b, value, rlc })
     }
     fn verify_inner<'cert>(
         &self,
@@ -478,6 +531,7 @@ where
         multiplicities: [&[&'cert VerifiedCertificate<K>]; 2],
         proof: &[u8],
         hashes: &mut HashUsage,
+        work: &mut VerifierWork,
     ) -> Result<Record<'cert, K>, Error>
     where
         'original: 'cert,
@@ -550,12 +604,16 @@ where
         for (row, claim) in zero.claims[1..5].iter().enumerate() {
             input.push((row as u32, claim.tensor, claim.value));
         }
-        let (g0, rlc1) = self.group(t, 0, &first.point, input, wire.parts[4], hashes)?;
+        let (g0, rlc1, capacities) =
+            self.group(t, 0, &first.point, input, wire.parts[4], hashes)?;
+        work.group_coefficients_bytes[0] = capacities;
         let mut advice_claims = buffer(s.schema.rows())?;
         for (row, claim) in zero.claims[5..].iter().enumerate() {
             advice_claims.push((row as u32, claim.tensor, claim.value));
         }
-        let (g1, rlc2) = self.group(t, 1, &first.point, advice_claims, wire.parts[5], hashes)?;
+        let (g1, rlc2, capacities) =
+            self.group(t, 1, &first.point, advice_claims, wire.parts[5], hashes)?;
+        work.group_coefficients_bytes[1] = capacities;
         let packet = arithmetic(wire.parts[6], self.m, self.output.inputs.len())?;
         let output = stele_sumcheck::verify(&self.output, &packet, t).map_err(Error::Sumcheck)?;
         if output.claims.len() != self.output.inputs.len()
@@ -581,7 +639,9 @@ where
         {
             claims.push((row as u32, *id, *value));
         }
-        let (g2, rlc3) = self.group(t, 2, &output.point, claims, wire.parts[7], hashes)?;
+        let (g2, rlc3, capacities) =
+            self.group(t, 2, &output.point, claims, wire.parts[7], hashes)?;
+        work.group_coefficients_bytes[2] = capacities;
         Ok(Record {
             lookups: lookups.try_into().map_err(|_| Error::ArithmeticRoster)?,
             zero,

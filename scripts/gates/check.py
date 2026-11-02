@@ -59,7 +59,7 @@ def requant_schema_api(crate):
     code = re.sub(r'//[^\n]*', '', (crate/'src/requant.rs').read_text())
     compact = lambda text: re.sub(r'\s+', '', text)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
-    expected = [('use','stele_cqis'), ('use','constraints'), ('use','crate'), ('use','codec'), ('use','codec'), ('enum','Error'), ('struct','Block')]
+    expected = [('use','stele_cqis'), ('use','constraints'), ('use','crate'), ('use','codec'), ('use','codec'), ('use','codec'), ('use','witness'), ('enum','Error'), ('struct','Block')]
     expected += [('fn',n) for n in ('cap','value','slack','carry')]
     expected += [('struct','Role')] + [('fn',n) for n in ('count','bounds','widths','result_cap','carries')]
     expected += [('struct','Schema')] + [('fn',n) for n in ('new','bounds','values','roles','u_carries','allocated_rows','rows')]
@@ -76,8 +76,11 @@ def requant_schema_api(crate):
         and 'pubusecrate::lookup::Limits;' in compact(code)
         and 'pubusecodec::{Descriptor,Statement};' in compact(code)
         and 'pubusestele_cqis::Format;' in compact(code)
-        and 'pubusecodec::verifier::{Failure,GroupRecord,Record,RegisteredMultiplicities,RegistrationFailure,RlcRecord,};' in compact(code)
+        and 'pubusecodec::producer::{ProducerLimits,ProverFailure,ProverUsage,ProverWork};' in compact(code)
+        and 'pubusecodec::verifier::{Failure,GroupRecord,Record,RegisteredMultiplicities,RegistrationFailure,RlcRecord,VerifierWork,};' in compact(code)
+        and '#[path="requant_witness.rs"]modwitness;pubusewitness::Witness;' in compact(code)
         and requant_constraints_api(crate) and requant_codec_api(crate) and requant_verifier_api(crate)
+        and requant_witness_api(crate) and requant_producer_api(crate)
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == signatures
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]
             == ['implBlock{','implRole{','implSchema{',"impl<'a>Reader<'a>{"]
@@ -89,7 +92,49 @@ def requant_schema_api(crate):
             == ['Parameters(stele_cqis::Error),Bounds(bounds::Error),Encoding,Capacity,Statement,SourceRoster,'
                 'ResourceLimit,ProofShape,NoncanonicalField,Pcs(stele_pcs::Error),Lookup(crate::lookup::Error),'
                 'Sumcheck(stele_sumcheck::Error),Transcript(stele_hash::Error),CertificateContext,CertificateIdentity,'
-                'ArithmeticRoster,CoefficientMismatch,PublicCoefficient(stele_gkr::public_mle::Error),']
+                'ArithmeticRoster,CoefficientMismatch,PublicCoefficient(stele_gkr::public_mle::Error),Witness,']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
+
+
+def requant_witness_api(crate):
+    """Untrusted integer-derived buffers with immutable readers, no record authority."""
+    code=re.sub(r'//[^\n]*','',(crate/'src/requant_witness.rs').read_text())
+    compact=lambda text:re.sub(r'\s+','',text)
+    declarations=re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)',code)
+    return (declarations==[('struct','Witness')]+[('fn',n) for n in ('input','advice','output','owned_bytes','witness')]
+        and len(declarations)==len(re.findall(r'\bpub\b',code))
+        and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)]==[
+            'pubfninput(&self)->&[M31]{','pubfnadvice(&self)->&[M31]{','pubfnoutput(&self)->&[i16]{',
+            'pubfnowned_bytes(&self)->Result<usize,Error>{','pubfnwitness(&self,inputs:&[i32],positions:usize)->Result<Witness,Error>{']
+        and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]==['implWitness{','implSchema{']
+        and [compact(v) for v in re.findall(r'pub struct Witness\s*\{([^}]*)\}',code)]==['input:Vec<M31>,advice:Vec<M31>,output:Vec<i16>,']
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
+
+
+def requant_producer_api(crate):
+    """Complete untrusted production and scoped observations only."""
+    code=re.sub(r'//[^\n]*','',(crate/'src/requant_producer.rs').read_text())
+    compact=lambda text:re.sub(r'\s+','',text)
+    structs=[('ProducerLimits','public_bytes:usize,dense_elements:usize,'),
+        ('ProverUsage','transcript:HashUsage,non_transcript:HashUsage,registrations:[[Option<lookup::RegistrationUsage>;2];2],'),
+        ('ProverFailure','cause:Error,usage:ProverUsage,'),
+        ('ProverWork','proof_bytes:usize,lookups:[lookup::ProverWork;2],aggregate_tables_bytes:usize,aggregate_point_bytes:usize,output_tables_bytes:usize,output_point_bytes:usize,group_coefficients_bytes:[[usize;3];3],')]
+    expected=[]
+    for name,body in structs:
+        expected += [('struct',name)]+[('',f.split(':',1)[0]) for f in body.rstrip(',').split(',')]
+    methods=['producer_public_bytes','producer_dense_elements','prove','prove_measured']
+    expected += [('fn',n) for n in methods]
+    declarations=re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)',code)
+    signatures=[f'pubfn{n}(&self)->Result<usize,Error>{{' for n in methods[:2]]
+    signatures += [f"pubfn{name}(&self,t:&mutTranscript<K>,sources:[&PreparedSource<'_,K>;2],advice_packet:&[u8],limits:ProducerLimits,)->Result<(Vec<u8>,ProverUsage{extra}),ProverFailure>{{"
+        for name,extra in [('prove',''),('prove_measured',',ProverWork')]]
+    return (declarations==expected and len(declarations)==len(re.findall(r'\bpub\b',code))
+        and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)]==signatures
+        and [(n,compact(v)) for n,v in re.findall(r'pub struct (\w+)\s*\{([^}]*)\}',code)]==[
+            (n,','.join('pub'+f for f in body.rstrip(',').split(','))+',') for n,body in structs]
+        and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]==[
+            "impl<K:ChallengeField>Summand<K>forCapture<'_,K>{",
+            "impl<K:ChallengeField+CodeField+lookup::TableField+Eq>Descriptor<'_,'_,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!',code))
 
 
@@ -113,10 +158,11 @@ def requant_codec_api(crate):
     """Expected metadata and untrusted shape only; genuine handles remain borrowed."""
     code = re.sub(r'//[^\n]*', '', (crate/'src/requant_codec.rs').read_text())
     compact = lambda text: re.sub(r'\s+', '', text)
-    module = re.findall(r'#\[path\s*=\s*"requant_verifier.rs"\]\s*pub\(super\)\s+mod\s+verifier;',code)
-    if len(module)!=1:
-        return False
-    code=code.replace(module[0],'',1)
+    for name in ('producer','verifier'):
+        module = re.findall(r'#\[path\s*=\s*"requant_'+name+r'.rs"\]\s*pub\(super\)\s+mod\s+'+name+r';',code)
+        if len(module)!=1:
+            return False
+        code=code.replace(module[0],'',1)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     fields = ['stage','n','schema','repetitions','advice_blowup','point','value','input']
     methods = ['advice_source','new','statement_size','constraints_size','proof_size',
@@ -149,11 +195,25 @@ def requant_verifier_api(crate):
     """Only the actual closed consumer constructs borrowed Requant obligations."""
     code=re.sub(r'//[^\n]*','',(crate/'src/requant_verifier.rs').read_text())
     compact=lambda text:re.sub(r'\s+','',text)
+    restricted=re.findall(r'\bpub\s*\(([^)]*)\)\s*(?:(struct|fn)\s+)?(\w+)',code)
+    helpers=['owned_field_bytes','weights','aggregate','group_weights']
+    if (restricted != [('super','struct','GroupWeights')]+[('super','',n) for n in ('a','b','value','rlc')]+[('super','fn',n) for n in helpers]
+            or len(restricted)!=len(re.findall(r'\bpub\s*\(',code))
+            or [compact(v) for v in re.findall(r'pub\(super\) struct GroupWeights<K>\s*\{([^}]*)\}',code)]
+                != ['pub(super)a:Vec<K>,pub(super)b:Vec<K>,pub(super)value:K,pub(super)rlc:RlcRecord<K>,']
+            or [compact(v) for v in re.findall(r'\bpub\(super\)\s+fn\b[^\{]*\{',code)] != [
+                'pub(super)fnowned_field_bytes(&self)->Result<[usize;3],Error>{',
+                'pub(super)fnweights(&self,t:&mutTranscript<K>,phase:u8,count:usize,)->Result<RlcRecord<K>,Error>{',
+                'pub(super)fnaggregate(&self,weights:&[K])->Result<Instance<K>,Error>{',
+                'pub(super)fngroup_weights(&self,t:&mutTranscript<K>,group:u8,point:&[K],claims:&[(u32,u64,K)],)->Result<GroupWeights<K>,Error>{']):
+        return False
+    # Normalize only after the complete restricted inventory and signatures pass.
+    code=code.replace('pub(super)','')
     declarations=re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)',code)
-    expected=[('struct','Failure'),('','cause'),('','usage'),('struct','RegistrationFailure'),('','cause'),('','registrations'),('type','RegisteredMultiplicities'),('struct','RlcRecord')]
+    expected=[('struct','Failure'),('','cause'),('','usage'),('struct','RegistrationFailure'),('','cause'),('','registrations'),('struct','VerifierWork'),('','group_coefficients_bytes'),('type','RegisteredMultiplicities'),('struct','RlcRecord')]
     expected += [('fn',n) for n in ('stage','phase','weights','field_degree','numerator')]
     expected += [('struct','GroupRecord')]+[('fn',n) for n in ('point','claims','opening')]
-    expected += [('struct','Record')]+[('fn',n) for n in ('lookups','zerocheck','output','groups','rlc','register_advice','register_multiplicities','verify')]
+    expected += [('struct','Record')]+[('fn',n) for n in ('lookups','zerocheck','output','groups','rlc','register_advice','register_multiplicities','verify','verify_measured')]
     readers=[('stage','u32'),('phase','u8'),('weights','&[K]'),('field_degree','u8'),('numerator','u64'),
         ('point','&[K]'),('claims','&[(u32,u64,K)]'),('opening',"&OpeningRecord<'_,K>"),
         ('lookups',"&[LookupRecord<'_,K>;2]"),('zerocheck','&zerocheck::Reduction<K>'),
@@ -161,16 +221,17 @@ def requant_verifier_api(crate):
     signatures=[f'pubfn{name}(&self)->{result}{{' for name,result in readers]+[
         "pubfnregister_advice<K:ChallengeField+CodeField>(&self,stage:u32,n:u64,blowup:u8,root:[u8;32],proof:&[u8],max_public_bytes:usize,)->Result<(VerifiedCertificate<K>,Usage),Failure>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{",
         'pubfnregister_multiplicities(&self,proof:&[u8],max_public_bytes:usize,)->Result<RegisteredMultiplicities<K>,RegistrationFailure>{',
-        "pubfnverify<'cert>(&self,t:&mutTranscript<K>,multiplicities:[&[&'certVerifiedCertificate<K>];2],proof:&[u8],)->Result<(Record<'cert,K>,Usage),Failure>where'original:'cert,{"]
+        *[f"pubfn{name}<'cert>(&self,t:&mutTranscript<K>,multiplicities:[&[&'certVerifiedCertificate<K>];2],proof:&[u8],)->Result<(Record<'cert,K>,Usage{extra}),Failure>where'original:'cert,{{" for name,extra in [('verify',''),('verify_measured',',VerifierWork')]]]
     return (declarations==expected and len(declarations)==len(re.findall(r'\bpub\b',code))
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)]==signatures
         and [compact(v) for v in re.findall(r'\bimpl\b[^\{]*\{',code)]==[
-            'impl<K:ChallengeField>RlcRecord<K>{',"impl<K:ChallengeField>GroupRecord<'_,K>{",
+            'impl<K>GroupWeights<K>{','impl<K:ChallengeField>RlcRecord<K>{',"impl<K:ChallengeField>GroupRecord<'_,K>{",
             "impl<K:ChallengeField>Record<'_,K>{",'implSchema{',
             "impl<'a,'original,K:ChallengeField+CodeField+TableField+Eq>Descriptor<'a,'original,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"]
         and [(n,compact(g),compact(v)) for n,g,v in re.findall(r'pub struct (\w+)([^\{]*)\{([^}]*)\}',code)]==[
             ('Failure','','pubcause:Error,pubusage:Usage,'),
             ('RegistrationFailure','','pubcause:Error,pubregistrations:[[Option<Usage>;2];2],'),
+            ('VerifierWork','','pubgroup_coefficients_bytes:[[usize;3];3],'),
             ('RlcRecord','<K>','stage:u32,phase:u8,weights:Vec<K>,'),
             ('GroupRecord',"<'cert,K:ChallengeField>","point:Vec<K>,claims:Vec<(u32,u64,K)>,opening:OpeningRecord<'cert,K>,"),
             ('Record',"<'cert,K:ChallengeField>","lookups:[LookupRecord<'cert,K>;2],zero:zerocheck::Reduction<K>,output:stele_sumcheck::Reduction<K>,groups:[GroupRecord<'cert,K>;3],rlc:[RlcRecord<K>;4],")]
@@ -234,6 +295,34 @@ def requant_fixtures(root):
             expected = case['expected']['controls'][f'false-source-functional-{group}']
             if len(candidate) != expected['wire_bytes'] or hashlib.sha256(candidate).hexdigest() != expected['wire_sha256']:
                 raise ValueError('Requant fixtures not wired: reconstructed source mutation')
+    production=requant_production_manifest(root)
+    for name,entry in production['files'].items():
+        raw=(directory.parent/'requant-production'/name).read_bytes()
+        if len(raw)!=entry['bytes'] or hashlib.sha256(raw).hexdigest()!=entry['sha256']:
+            raise ValueError(f'Requant production fixtures not wired: altered {name}')
+        if name=='usage.json' and set(json.loads(raw))!={f'{kind}-K{d}' for kind in ('scalar','wide','shift62','ties','padded') for d in (4,8)}:
+            raise ValueError('Requant production fixtures not wired: case inventory')
+    for name,digest in production['sources'].items():
+        path=root/name
+        if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:
+            raise ValueError(f'Requant production fixtures not wired: source {name}')
+
+
+def requant_production_manifest(root):
+    """Separate immutable projection; never regenerates the historical campaign."""
+    directory=root/'tests/negative-controls/fixtures/requant-production'
+    path=directory/'manifest.json'
+    if directory.is_symlink() or directory.parent.is_symlink() or path.is_symlink() or not path.is_file():
+        raise ValueError('Requant production fixtures not wired: missing manifest')
+    raw=path.read_bytes()
+    if hashlib.sha256(raw).hexdigest()!='d0872d7eea33d0150a3917ae57c59811bf4214026fd37c14fe660d19971ce21e':
+        raise ValueError('Requant production fixtures not wired: manifest digest')
+    manifest=json.loads(raw)
+    names={'manifest.json','usage.json','positive-h-8.bin','positive-h-16.bin'}
+    if (set(manifest['files'])!=names-{'manifest.json'} or {p.name for p in directory.iterdir()}!=names
+            or any((directory/name).is_symlink() or not (directory/name).is_file() for name in names)):
+        raise ValueError('Requant production fixtures not wired: exact file inventory')
+    return manifest
 
 
 def field_sources(root):
@@ -248,7 +337,7 @@ def field_sources(root):
                'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt', 'src/requant_constraints.rs',
                'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
                'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt',
-               'src/requant_verifier.rs'}
+               'src/requant_verifier.rs', 'src/requant_witness.rs', 'src/requant_witness_tests.rs', 'src/requant_producer.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -403,7 +492,8 @@ def field_sources(root):
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
                 'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
                 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
-                'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'src/requant.rs', 'src/requant_composer.rs'))):
+                'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'requant/producer.rs', 'requant/records.rs',
+                'src/requant.rs', 'src/requant_composer.rs'))):
         raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup/matmul adapters admitted')
     requant_fixtures(root)
     checks = [
@@ -434,7 +524,9 @@ def field_sources(root):
          + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
             'matches_reference_om31_constraints','rejects_constraint_caps_and_resources')]
          + [f'test requant::codec::tests::{n} ... ok' for n in ('matches_reference_qm31_codec',
-            'matches_reference_om31_codec','rejects_codec_statement_and_sources')]),
+            'matches_reference_om31_codec','rejects_codec_statement_and_sources')]
+         + [f'test requant::witness::tests::{n} ... ok' for n in ('matches_reference_frozen_witness_bytes',
+            'accepts_witness_shift_width_sign_and_padding_boundaries','rejects_witness_overflow_and_resource_caps')]),
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_codec'],
          [f'test {prefix}_{field}_lookup_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('matches_reference','statement'),('rejects','shape_and_limits'))]),
@@ -456,7 +548,8 @@ def field_sources(root):
             'test matches_reference_requant_full_wire_qm31 ... ok',
             'test matches_reference_requant_full_wire_om31 ... ok',
             'test rejects_requant_scoped_cqis_bindings ... ok',
-            'test rejects_requant_output_coefficient_at_actual_a7 ... ok']),
+            'test rejects_requant_output_coefficient_at_actual_a7 ... ok',
+            'test rejects_requant_producer_late_arithmetic_with_exact_usage ... ok']),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
@@ -508,7 +601,7 @@ def field_sources(root):
     print('gate requant schema: 18 complete independent layouts; generated CQIS records, shared tails and zero caps; no proof or NC credit')
     print('gate requant constraints: 18 complete ordered term fixtures in QM31/OM31; honest rows and equation mutations; no proof or NC credit')
     print('gate requant codec: 8 independent expected frames, outer costs and untrusted wire decisions; genuine source handles and cumulative caps; no proof or NC credit')
-    print('gate requant closed: actual A5/A3/A7/A1/A9 consumers, opaque borrowed records, native controls and pinned independent wire/record/import/failure-usage/continuation parity; no general producer, full-domain, resource-ledger or profile completion')
+    print('gate requant closed: native witness/producer and actual A5/A3/A7/A1/A9 consumers, opaque borrowed records, native controls and pinned independent full-wire/producer-usage/record/import/failure/continuation parity; complete resource measurements separate; no profile or inference completion')
 
 
 def field_source_codec(root):
@@ -1154,7 +1247,8 @@ def zerocheck(root):
         ('', ['uv', 'run', '--locked', '--script', 'research/zerocheck/check_zerocheck.py']),
     ]:
         result = subprocess.run(command, cwd=root, text=True, capture_output=True)
-        if result.returncode or (test and f'test {test} ... ok' not in result.stdout):
+        required=([test] if test else [])+(['matches_reference_retained_tail_and_failed_prefix'] if test=='matches_reference_zerocheck_bytes_and_accounting' else [])
+        if result.returncode or any(f'test {name} ... ok' not in result.stdout.splitlines() for name in required):
             raise ValueError(f'zerocheck bytes/claims/accounting/control mismatch: {result.stdout} {result.stderr}')
     print('gate zerocheck: 130 both-field vectors, 1000 reference cases per degree/field, all slice claims, three SC phases and actual controls; no profile certified')
 
@@ -1208,7 +1302,7 @@ def controls_layout(root):
     """Every standalone control source must be a declared Cargo test target."""
     suite = root / 'tests/negative-controls'
     manifest = tomllib.loads((suite / 'Cargo.toml').read_text())
-    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench','matmul_corpus','matmul_bench')]
+    examples = [{'name':name,'path':f'examples/{name}.rs'} for name in ('field_pcs_bench','stacked_corpus','stacked_bench','lookup_corpus','lookup_bench','matmul_corpus','matmul_bench','requant_bench')]
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
@@ -1226,11 +1320,16 @@ def controls_layout(root):
                     'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
                     'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
                     'requant_schema.py', 'src/requant.rs', 'src/requant_composer.rs',
-                    'requant/witness_fixtures.py', 'requant/input_padding_fixture.py', 'requant/coefficients.rs'))
+                    'requant/witness_fixtures.py', 'requant/input_padding_fixture.py', 'requant/coefficients.rs',
+                    'requant/producer.rs','requant/records.rs','requant/production_fixtures.py',
+                    'requant/reference.py','requant/lookup_reference.py','requant/protocol_reference.py',
+                    'requant/reference-provenance.json','requant_corpus.py','requant_corpus.py.lock'))
     fixtures = requant_fixture_manifest(root)
     allowed.update(f'fixtures/requant/{name}' for name in [
         'manifest.json', *fixtures['files'], *fixtures['additional_controls'],
         *(c['file'] for c in fixtures['cases'])])
+    production=requant_production_manifest(root)
+    allowed.update(f'fixtures/requant-production/{name}' for name in ['manifest.json',*production['files']])
     targets = {entry['name']: entry['path'] for entry in manifest.get('test', [])}
     if (targets.get('requant-verifier') != 'requant/verifier.rs'
             or any(targets.get(f'nc-{i:04}') != f'requant/nc_{i:04}.rs' for i in range(308,315))):
@@ -1242,7 +1341,7 @@ def controls_layout(root):
         allowed.add(str(path))
     actual = {str(p.relative_to(suite)) for p in suite.rglob('*') if p.is_file()
               and p.suffix != '.md' and p.name != '.gitkeep'}
-    if actual != allowed:
+    if actual != allowed or any((suite/name).is_symlink() for name in allowed):
         raise ValueError(f'negative-controls: sources not wired to Cargo targets: {sorted(actual ^ allowed)}')
 
 

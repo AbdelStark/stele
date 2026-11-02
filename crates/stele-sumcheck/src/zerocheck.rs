@@ -266,6 +266,17 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
     }
     /// Dense CPU prover: interpolate prefixes, fold tail coordinates, retain original slices.
     pub fn prove(&self, tables: &[Vec<K>], t: &mut Transcript<K>) -> Result<Proof<K>, Error> {
+        self.prove_with_point(tables, t).map(|(proof, _)| proof)
+    }
+    /// The same producer, retaining its actual m-skip tail challenges for source openings.
+    /// With skip>0 each original slice point is its Boolean prefix followed by this
+    /// tail; the skipped interpolation challenge is not a tensor coordinate.
+    /// Returned points and proof bytes grant no verifier authority.
+    pub fn prove_with_point(
+        &self,
+        tables: &[Vec<K>],
+        t: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Vec<K>), Error> {
         let (degree, s, j, count) = self.shape()?;
         check_tables(self.instance, tables)?;
         let width = 1usize.checked_shl(j).ok_or(Error::Capacity)?;
@@ -309,10 +320,13 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
             }
         }
         self.finish(t, &final_values, &weights, running)?;
-        Ok(Proof {
-            skip_values,
-            rounds,
-            final_values,
-        })
+        Ok((
+            Proof {
+                skip_values,
+                rounds,
+                final_values,
+            },
+            point,
+        ))
     }
 }

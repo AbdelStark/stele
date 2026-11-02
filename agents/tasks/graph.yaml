@@ -1217,7 +1217,9 @@ tasks:
   - RFC-0020 A8
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: done
+  agent: codex-root
+  branch: task/E7-01d-requant-production
   acceptance:
   - actual static schema compiler, whole-source byte lookups, aggregate A3, output A1 and all three certificate-bound A9 consumers in both fields and repetition counts
   - full supported Requant parameter domain and RFC-0023 §6 boundary, overflow, zero, source, plane, padding, malformed, lifetime and failed-prefix checks

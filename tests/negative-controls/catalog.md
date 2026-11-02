@@ -108,13 +108,17 @@ controls supply conditional field-relation coverage; full native production,
 resource evidence, integer matmul and inference remain parent-task obligations.
 
 The closed Requant verifier executes NC-0308..0314 in QM31 and OM31 with
-fixed expected statements and actual A3/A9 consumers. NC-0313 covers s=1 at v=0;
-positive q=H remains a full-domain obligation. NC-0314 covers reserved advice
+fixed expected statements and actual A3/A9 consumers. NC-0313 covers s=1 at v=0
+and positive q=H for both target formats. The positive-H candidates have only
+the target residual +1 and reach actual A3 FinalEvaluationMismatch. NC-0314 covers reserved advice
 planes and padded input/advice views. NC-0606 adds genuine advice-context
 substitution; NC-0610 swaps or omits a weight independently in all four phases.
 The NC-0802 cases omit six frames independently and change one following A1 final.
 The scoped NC-0100/0101 cases exercise both signed rounding ties through A3;
 The NC-0109 case checks the actual static bound encoding after an accepted baseline.
 These do not complete the broad CQIS family or grant it catalog credit.
-Native general witness/production, full-domain controls, complete resource
-ledgers and inference/profile admission remain E7-01d and parent obligations.
+The native witness/producer is compared against unchanged independent full wires,
+including full producer registration Usage and continuation. These 62 declared
+variants include two static validations; they are not 62 proof rejections or new
+catalog IDs. Complete operation resource evidence is separate from catalogue
+coverage; inference/profile admission and the broad CQIS family remain parent work.
