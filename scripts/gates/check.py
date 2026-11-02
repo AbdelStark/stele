@@ -403,7 +403,7 @@ def field_sources(root):
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
                 'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
                 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
-                'requant_schema.py', 'requant/verifier.rs', 'src/requant.rs', 'src/requant_composer.rs'))):
+                'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'src/requant.rs', 'src/requant_composer.rs'))):
         raise ValueError('reductions API not wired; only reviewed conditional A1/stacked/lookup/matmul adapters admitted')
     requant_fixtures(root)
     checks = [
@@ -455,7 +455,8 @@ def field_sources(root):
          + ['test rejects_wrong_coefficient_at_actual_a7 ... ok',
             'test matches_reference_requant_full_wire_qm31 ... ok',
             'test matches_reference_requant_full_wire_om31 ... ok',
-            'test rejects_requant_scoped_cqis_bindings ... ok']),
+            'test rejects_requant_scoped_cqis_bindings ... ok',
+            'test rejects_requant_output_coefficient_at_actual_a7 ... ok']),
     ]
     for command, expected in checks:
         result = subprocess.run([*command, '--locked', '--offline'], cwd=root, text=True, capture_output=True)
@@ -1225,7 +1226,7 @@ def controls_layout(root):
                     'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
                     'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
                     'requant_schema.py', 'src/requant.rs', 'src/requant_composer.rs',
-                    'requant/witness_fixtures.py', 'requant/input_padding_fixture.py'))
+                    'requant/witness_fixtures.py', 'requant/input_padding_fixture.py', 'requant/coefficients.rs'))
     fixtures = requant_fixture_manifest(root)
     allowed.update(f'fixtures/requant/{name}' for name in [
         'manifest.json', *fixtures['files'], *fixtures['additional_controls'],

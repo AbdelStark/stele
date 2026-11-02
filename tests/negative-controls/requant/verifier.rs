@@ -11,6 +11,7 @@ use stele_reductions::{
     requant::{Descriptor, Format, Limits, Schema, Statement},
 };
 use stele_sumcheck::{Instance, Proof, ScRecord, Term};
+mod coefficients;
 
 fn fixture(name: &str) -> Vec<u8> {
     fs::read(
@@ -220,7 +221,7 @@ where
         .err()
         .expect("valid pinned fixture")
 }
-fn run<K: ChallengeField + CodeField + TableField + Eq>()
+fn run<K: ChallengeField + CodeField + TableField + Eq + core::fmt::Debug>()
 where
     for<'b> K::Bytes: TryFrom<&'b [u8]>,
 {
@@ -570,6 +571,17 @@ where
             continue;
         }
         let (record, observed) = result.expect("valid pinned fixture");
+        if kind == "ties" {
+            coefficients::rejects_sigma(
+                &c,
+                &schema,
+                &input,
+                &advice,
+                [&refs[0], &refs[1]],
+                &d,
+                &wire,
+            );
+        }
         accepted += 1;
         assert_eq!(
             observed.non_transcript,
@@ -882,8 +894,7 @@ where
                 &[vec![K::from_i64(1), K::from_i64(2)]],
                 &mut t,
             )
-            .err()
-            .expect("valid pinned fixture");
+            .expect_err("valid pinned fixture");
             assert_eq!(cause, stele_sumcheck::Error::FinalEvaluationMismatch);
             assert_eq!(hashes(t.usage()), stale["failed_prefix_usage"]);
         }
@@ -908,4 +919,10 @@ fn rejects_requant_scoped_cqis_bindings() {
     for id in [100, 101, 109] {
         stele_negative_controls::requant::run(id).expect("actual native binding rejection");
     }
+}
+
+#[test]
+fn rejects_requant_output_coefficient_at_actual_a7() {
+    stele_negative_controls::requant::run_output_coefficient()
+        .expect("zero output must not hide a false equality coefficient");
 }

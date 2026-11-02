@@ -1715,6 +1715,9 @@ cases and static bound-encoding NC-0109 case do not complete the broad CQIS
 family. Frozen independent wires check both fields and repetition counts,
 retained obligations, standalone imports, exact failed-prefix Usage and a
 genuine following A1. Two separately constructed input-padding cases preserve
-the original statement and A5 packets. Native general production, full-domain
+the original statement and A5 packets. Both public A7 consumers have direct
+false-coefficient controls: zero output leaves Eq unconstrained by raw A1,
+and a false sigma with genuine source-plane finals passes actual A3 before
+the expected public coefficient rejects. Native general production, full-domain
 controls, complete resource ledgers, Q12/Q29, source/plan/packing/inference
 contracts and both profile totals remain open.

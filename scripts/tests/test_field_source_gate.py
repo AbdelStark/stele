@@ -181,7 +181,7 @@ class ClosedStackedGateTests(unittest.TestCase):
         oracle.mkdir(parents=True)
         for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py', 'examples/support/lookup_verifier.rs',
                      'matmul_corpus.py', 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
-                     'requant_schema.py', 'requant/verifier.rs', 'src/requant.rs', 'src/requant_composer.rs'):
+                     'requant_schema.py', 'requant/verifier.rs', 'requant/coefficients.rs', 'src/requant.rs', 'src/requant_composer.rs'):
             (oracle/name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT/'tests/negative-controls'/name, oracle/name)
         self.outputs = [
@@ -231,7 +231,8 @@ class ClosedStackedGateTests(unittest.TestCase):
                       'test rejects_wrong_coefficient_at_actual_a7 ... ok\n'
                       'test matches_reference_requant_full_wire_qm31 ... ok\n'
                       'test matches_reference_requant_full_wire_om31 ... ok\n'
-                      'test rejects_requant_scoped_cqis_bindings ... ok',
+                      'test rejects_requant_scoped_cqis_bindings ... ok\n'
+                      'test rejects_requant_output_coefficient_at_actual_a7 ... ok',
             'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
             'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
             'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '

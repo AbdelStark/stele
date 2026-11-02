@@ -441,8 +441,55 @@ where
     Ok(())
 }
 
-/// Run one scalar control in both canonical fields through the closed native verifier.
+/// Run one control in both canonical fields through the closed native verifier.
 pub fn run(id: u16) -> Result<(), String> {
     check::<QM31>(id)?;
     check::<OM31>(id)
+}
+
+/// RFC-0023 §5: a zero result cannot make the public output Eq final unconstrained.
+pub fn run_output_coefficient() -> Result<(), String> {
+    fn check<K: ChallengeField + CodeField + TableField + Eq + core::fmt::Debug>(
+    ) -> Result<(), String>
+    where
+        for<'b> K::Bytes: TryFrom<&'b [u8]>,
+    {
+        let schema = Schema::new(1, 0, Format::Int8).expect("fixed zero schema");
+        let mut public = b"RFC0023/batched/independent-reference/v1/scalar".to_vec();
+        public.push(<K as CodeField>::DEGREE);
+        let baseline = compose::<K>(
+            &schema,
+            0,
+            0,
+            &fixture("control-zero-0.bin"),
+            0,
+            &public,
+            Attack::Honest,
+            None,
+        );
+        let width = 4 * usize::from(<K as CodeField>::DEGREE);
+        let at = baseline.group_offsets[2] - width * (2 + schema.values()[2].value().len());
+        assert_eq!(
+            &baseline.wire[at..at + width],
+            K::from_i64(1).to_le_bytes().as_ref()
+        );
+        // Only Eq changes. q=0 keeps the actual A1 final identity equal to zero;
+        // the unchanged source prefix passes before the actual output A7 rejects.
+        check_proof_control(
+            || Ok::<_, String>(baseline.wire.clone()),
+            &Row {
+                at,
+                value: K::from_i64(0).to_le_bytes().as_ref().to_vec(),
+            },
+            |wire| {
+                verify_wire(&baseline, wire, &schema, 0, &public)
+                    .map(|_| ())
+                    .map_err(|f| f.cause)
+            },
+            stele_reductions::requant::Error::CoefficientMismatch,
+        )
+        .map_err(|e| format!("output equality: {e:?}"))
+    }
+    check::<QM31>()?;
+    check::<OM31>()
 }
