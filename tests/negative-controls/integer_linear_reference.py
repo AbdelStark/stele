@@ -23,6 +23,13 @@ MATMUL = b'stele/v0.1/matmul/statement'
 RANGE_PUBLIC = b'stele/v0.1/integer-linear/byte-range/v1'
 
 
+class VerificationAbort(ValueError):
+    """An actual early consumer failure, retaining only its executed prefix."""
+    def __init__(self, result):
+        super().__init__(result['decision'])
+        self.result = result
+
+
 def consumer(kind, call, *args):
     """Keep the native composition's exact wrappers around actual engine failures."""
     try:
@@ -156,12 +163,13 @@ class Operation:
         self.repetitions, self.blowup = repetitions, blowup
         self.z, self.value, self.public = z, value, public
         self.observations, self.originals, self.ranges = [], [], []
+        self.imports = dict(originals=[], original_multiplicities=[], advice=None, multiplicities=None)
         ref.degree = degree
         need(degree in (4, 8) and repetitions in (1, 2) and blowup in (1, 2), 'Parameters')
         need(len(z) == schema.m and len(packets) == 2, 'Statement')
         self.pcs.fields(self.pcs.field_bytes([*z, value]), degree)
-        from lookup_reference import make
-        self.adapter = make(ref.o)
+        from integer_linear_lookup import Lookup
+        self.adapter = Lookup(ref.o)
         h, a, b, c = schema.dims
         need(schema.R*schema.N+(1 << (h+b))*((1 << a)+(1 << c)) <= 65536, 'ResourceLimit')
         for index, (packet, ell) in enumerate(zip(packets, (a, c), strict=True)):
@@ -174,23 +182,58 @@ class Operation:
                  and len(set(range_ids)) == len(range_ids), 'SourceRoster')
             need(not schema.S <= packet['lookup_id']*16 < schema.S+(1 << 40), 'SourceRoster')
             need(all(not schema.S <= identity < schema.S+(1 << 40) for identity in packet['mu_ids']), 'SourceRoster')
-            original = self.observed(f'original-{index}-import', self.pcs.verify_certificate,
-                                     source, packet['certificate'])
+            original = self.import_certificate(source, packet['certificate'], index)
+            self.originals.append(original)
+        need(self.originals[0].source.identity != self.originals[1].source.identity, 'SourceRoster')
+        prepared = []
+        for index, (packet, original) in enumerate(zip(packets, self.originals, strict=True)):
+            source = original.source
             case = source_range_case(degree, source, packet['lookup_id'], packet['mu_ids'])
             geometry = self.adapter.geometry(case, [original])
             case['proof'] = packet['range_proof'].hex()
+            imported = self.adapter.register(case, geometry)
+            self.imports['original_multiplicities'].append(imported['registrations'])
+            if imported['decision'] != 'accept':
+                self.abort(imported['decision'], 'original-multiplicity-import', index=index)
+            prepared.append((case, geometry, imported))
+        for index, (case, geometry, imported) in enumerate(prepared):
             transcript = ref.Transcript(RANGE_PUBLIC, degree)
-            receipt = self.adapter.verify(case, geometry, transcript)
-            need(receipt['decision'] == 'accept', f"OriginalRange:{receipt['decision']}")
+            receipt = self.adapter.consume(case, geometry, transcript, imported)
+            if receipt['decision'] != 'accept':
+                self.abort(receipt['decision'], 'original-range', index=index, usage=receipt['usage'])
             owners = receipt['_retained_mu_handles']
             need(len(owners) == repetitions, 'SourceRoster')
-            self.originals.append(original)
-            self.ranges.append(dict(identity=packet['lookup_id'], owners=owners,
+            self.ranges.append(dict(identity=case['lookup_id'], owners=owners,
                                     record=receipt, transcript=transcript))
-        need(self.originals[0].source.identity != self.originals[1].source.identity, 'SourceRoster')
         self.advice_shape = self.pcs.Source(degree, schema.S+2, schema.a0, schema.m, blowup, bytes(32))
         self.constituents = schema.instances(degree)
         self.output, self.output_rows = schema.output_instance(degree, value)
+
+    def abort(self, cause, phase, **details):
+        raise VerificationAbort(dict(decision=cause, phase=phase, imports=self.imports, record=None, **details))
+
+    def import_certificate(self, source, packet, original=None):
+        scope = 'advice-import' if original is None else f'original-{original}-import'
+        failure = None
+        try:
+            owner = self.observed(scope, self.pcs.verify_certificate, source, packet)
+        except ValueError as error:
+            failure = str(error)
+        observed = self.observations[-1]
+        created = observed['created_transcripts']
+        need(len(created) <= 1, 'ImportObservation')
+        usage = dict(transcript=created[0] if created else self.ref.o.hashes(),
+                     non_transcript=observed['non_transcript'])
+        if original is None:
+            self.imports['advice'] = usage
+        else:
+            self.imports['originals'].append(usage)
+        if failure is not None:
+            need(failure in ('ProofShape', 'NoncanonicalField', 'ColumnMismatch', 'RootMismatch'), 'UnclassifiedImportFailure')
+            cause = 'Merkle(RootMismatch)' if failure == 'RootMismatch' else failure
+            self.abort(cause, 'advice-import' if original is None else 'original-import',
+                       **({} if original is None else dict(index=original)))
+        return owner
 
     def statement(self, advice):
         s = self.s
@@ -290,20 +333,33 @@ class Operation:
 
     def verify(self, wire, advice_handle=None):
         """Actual closed proof verifier; original matrices and captured C are absent."""
-        t = self.ref.Transcript(self.public, self.d)
-        self.last_verification = dict(transcript=t, phase='preflight', observation_start=len(self.observations))
-        root, parts = self.partition(wire)
+        self.last_verification = dict(phase='preflight', observation_start=len(self.observations))
+        self.imports['advice'], self.imports['multiplicities'] = None, None
+        count = self.adapter.size(self.advice_shape, 0)
+        need(len(wire) >= 34+count, 'NativeRequestProofShape')
+        root, packet = wire[2:34], wire[34:34+count]
         source = self.pcs.Source(self.d, self.s.S+2, self.s.a0, self.s.m, self.blowup, root)
         advice = advice_handle
         if advice is None:
-            advice = self.observed('advice-import', self.pcs.verify_certificate, source, parts[0])
-        self.preflight(parts, advice)
+            advice = self.import_certificate(source, packet)
+        self.imports['multiplicities'] = [None, None]
+        try:
+            _, parts = self.partition(wire)
+            self.preflight(parts, advice)
+        except ValueError as error:
+            self.abort(str(error), 'multiplicity-import')
+        case, geometry = self.advice_geometry(advice)
+        case['proof'] = parts[1].hex()
+        imported = self.adapter.register(case, geometry)
+        self.imports['multiplicities'] = imported['registrations']
+        if imported['decision'] != 'accept':
+            self.abort(f"Lookup({imported['decision']})", 'multiplicity-import')
+        t = self.ref.Transcript(self.public, self.d)
+        self.last_verification['transcript'] = t
         self.observed('outer-advice-packet-identity', self.check_advice_packet, source, parts[0], advice)
         self.last_verification['phase'] = 'advice-A5'
         t.absorb(LINEAR, self.statement(advice))
-        case, geometry = self.advice_geometry(advice)
-        case['proof'] = parts[1].hex()
-        lookup = self.adapter.verify(case, geometry, t)
+        lookup = self.adapter.consume(case, geometry, t, imported)
         self.last_verification['lookup'] = lookup
         need(lookup['decision'] == 'accept', f"Lookup({lookup['decision']})")
         aggregate = self.aggregate(t)
@@ -419,12 +475,16 @@ def following_instance(operation):
 
 
 def verify_request(ref, request):
-    operation, wire, following = decode_request(ref, request)
+    try:
+        operation, wire, following = decode_request(ref, request)
+    except VerificationAbort as error:
+        return error.result
     try:
         records, transcript = operation.verify(wire)
+    except VerificationAbort as error:
+        return error.result
     except ValueError as error:
-        # This adapter reports a complete outer failed prefix only after the genuine
-        # independent imports succeeded. Earlier request/import errors stay errors.
+        # Imports have their own abort records; this is the actual outer prefix.
         attempt = operation.last_verification
         lookup = attempt.get('lookup')
         if lookup is None or lookup['phase'] != 'outer':
