@@ -64,7 +64,7 @@
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
-| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
+| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
@@ -134,3 +134,9 @@ byte for byte. Each omission changes one following A1 final through ProverHook;
 the unchanged closed operation accepts and the following A1 rejects with
 FinalEvaluationMismatch and its exact observed prefix. These 56 variants add
 coverage under NC-0802; they do not add catalog IDs or resource evidence.
+
+The centered NC-0610 extension swaps or omits a weight separately in each of
+the four phases. Each variant changes one encoded opening-row value through
+ProverHook after an accepted complete baseline. All 32 field/repetition/phase
+variants reach Pcs(ValueMismatch), before an affected-group query, with exact
+transcript and local-hash prefixes.

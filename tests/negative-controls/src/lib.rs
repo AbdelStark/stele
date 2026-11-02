@@ -240,7 +240,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || {
             pcs_opening::run(610)?;
             lookup::run(610)?;
-            requant::run(610)
+            requant::run(610)?;
+            integer_linear::run(610)
         },
     },
     catalog::RegisteredControl {

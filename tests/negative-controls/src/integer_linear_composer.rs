@@ -2,7 +2,7 @@
 //! The closed verifier never receives an attack, witness or transcript override.
 use super::LIMITS;
 use crate::matmul::composer as mm;
-use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
+use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::{CodeField, Functional, PreparedSource, ProofKind, VerifiedCertificate};
 use stele_reductions::{integer_linear as linear, lookup, matmul, requant::EmbeddedSchema};
 use stele_sumcheck::{zerocheck, Dense, Instance, Proof, Summand, Term};
@@ -13,11 +13,37 @@ pub(super) enum Attack {
     // Statement, constraints, groups 0..2, original X/W OpeningColumns.
     OmitFrame(u8),
     ReplayResponses,
+    SwapWeights(u8),
+    OmitWeight(u8),
 }
 pub(super) struct Packet<K: ChallengeField> {
     pub wire: Vec<u8>,
     pub transcript: Transcript<K>,
     pub original_offsets: [usize; 2],
+    pub group_offsets: [usize; 3],
+    pub group_prefix: [HashUsage; 3],
+}
+fn weights<K: ChallengeField>(
+    t: &mut Transcript<K>,
+    phase: u8,
+    count: usize,
+    attack: Attack,
+) -> Vec<K> {
+    let mut values: Vec<_> = (0..count)
+        .map(|index| {
+            if attack == Attack::OmitWeight(phase) && index == 0 {
+                K::from_i64(0)
+            } else {
+                t.challenge(ChallengeLabel::RequantWeight)
+                    .expect("actual independent draw")
+            }
+        })
+        .collect();
+    if attack == Attack::SwapWeights(phase) {
+        // The fixed scalar U endpoints differ; advice sign/v and output sign/q differ.
+        values.swap(0, if phase == 1 { count - 1 } else { 1 });
+    }
+    values
 }
 fn fields<K: ChallengeField>(out: &mut Vec<u8>, values: &[K]) {
     for value in values {
@@ -141,10 +167,12 @@ where
         .constraints::<K>()
         .expect("static embedded constraints");
     let mut terms = Vec::new();
-    for equation in constraints.equations() {
-        let weight = t
-            .challenge(ChallengeLabel::RequantWeight)
-            .expect("actual independent draw");
+    for (equation, weight) in constraints.equations().iter().zip(weights(
+        &mut t,
+        0,
+        constraints.equations().len(),
+        attack,
+    )) {
         terms.extend(equation.iter().map(|term| Term {
             coefficient: weight * term.coefficient,
             factors: term.factors.clone(),
@@ -182,6 +210,8 @@ where
         join_value = join_value + power * *value;
         power = power * K::from_i64(256);
     }
+    let mut group_offsets = [0; 3];
+    let mut group_prefix = [HashUsage::default(); 3];
     for group in 0..3 {
         let (rows, ids, values, point) = if group < 2 {
             let rows: Vec<_> = if group == 0 {
@@ -259,15 +289,15 @@ where
             &frame,
             attack,
         );
+        let eta = weights(&mut t, group + 1, rows.len(), attack);
         let mut weights = vec![K::from_i64(0); schema.rows()];
         let mut value = K::from_i64(0);
-        for (row, claim) in rows.iter().zip(&values) {
-            let eta = t
-                .challenge(ChallengeLabel::RequantWeight)
-                .expect("actual independent draw");
+        for ((row, claim), eta) in rows.iter().zip(&values).zip(eta) {
             weights[*row] = eta;
             value = value + eta * *claim;
         }
+        group_offsets[usize::from(group)] = wire.len();
+        group_prefix[usize::from(group)] = t.usage();
         wire.extend(
             advice
                 .opening(
@@ -386,5 +416,7 @@ where
         wire,
         transcript: t,
         original_offsets: offsets,
+        group_offsets,
+        group_prefix,
     }
 }

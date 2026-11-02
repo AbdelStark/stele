@@ -5,3 +5,8 @@ fn rejects_nc_0610() {
     stele_negative_controls::lookup::run(610).expect("complete lookup extension");
     stele_negative_controls::requant::run(610).expect("closed Requant extension");
 }
+
+#[test]
+fn rejects_integer_linear_wrong_weights() {
+    stele_negative_controls::integer_linear::run(610).expect("all four centered RLC phases");
+}

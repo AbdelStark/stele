@@ -186,7 +186,7 @@ where
                 .expect("valid fixed fixture")
                 .0;
             let refs: Vec<_> = mu.iter().collect();
-            if id == 802 {
+            if id == 802 || id == 610 {
                 use composer::Attack;
                 let compose = |attack, template| {
                     composer::compose(
@@ -208,6 +208,59 @@ where
                     "composer must match the complete actual producer"
                 );
                 assert_eq!(baseline.transcript.usage(), producer_usage.transcript);
+                if id == 610 {
+                    let width = core::mem::size_of::<K>();
+                    let opening_hashes = |s: &stele_pcs::Source<K>| {
+                        u64::from(s.queries(ProofKind::Opening)) * (1 + s.path_height() as u64)
+                    };
+                    for phase in 0..4 {
+                        let group = usize::from(phase.max(1) - 1);
+                        for attack in [Attack::SwapWeights(phase), Attack::OmitWeight(phase)] {
+                            let other = compose(attack, None);
+                            let at = baseline.group_offsets[group] + 1;
+                            let replacement = other.group_offsets[group] + 1;
+                            check_proof_control(
+                                || Ok::<_, String>(honest.clone()),
+                                &Cell {
+                                    at,
+                                    value: other.wire[replacement..replacement + width].to_vec(),
+                                },
+                                |proof| {
+                                    let mut t = transcript();
+                                    d.verify(&mut t, &refs, proof)
+                                        .map(|_| ())
+                                        .map_err(|failure| {
+                                            assert_eq!(failure.usage.transcript, t.usage());
+                                            let mut exact = baseline.group_prefix[group];
+                                            exact.hash_evaluations += 2;
+                                            exact.state_updates += 2;
+                                            assert_eq!(
+                                                failure.usage.transcript, exact,
+                                                "no affected-group query"
+                                            );
+                                            assert_eq!(
+                                                failure.usage.non_transcript.hash_evaluations,
+                                                d.max_local_hashes()
+                                                    - (3 - group as u64)
+                                                        * opening_hashes(pa.source())
+                                                    - opening_hashes(px.source())
+                                                    - opening_hashes(pw.source())
+                                            );
+                                            failure.cause
+                                        })
+                                },
+                                linear::Error::Pcs(stele_pcs::Error::ValueMismatch),
+                            )
+                            .map_err(|e| {
+                                format!(
+                                    "NC-0610 K{}, r{repetitions}, {attack:?}: {e:?}",
+                                    <K as CodeField>::DEGREE
+                                )
+                            })?;
+                        }
+                    }
+                    continue;
+                }
                 let next = next::<K>();
                 let following = |t: &mut Transcript<K>| {
                     stele_sumcheck::prove(
