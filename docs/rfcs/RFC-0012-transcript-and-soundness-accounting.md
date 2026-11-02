@@ -683,7 +683,7 @@ and gates. This specification changes no executable registry or measured constan
 
 ### A14 — Actual-tail centered equality and embedded advice
 
-Status: Draft. Companion RFC-0024; questions Q26/Q28 and retained Q12/Q29.
+Status: Accepted. Companion RFC-0024; questions Q26/Q28 and retained Q12/Q29.
 Addition to §4: total error includes a separate sum SZ, for fixed-polynomial
 point equalities not already represented by an executed sumcheck. RFC-0024's
 PointEqualityRecord stores stage, m, field degree, numerator=m and the actual

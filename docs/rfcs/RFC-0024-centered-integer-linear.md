@@ -1,15 +1,15 @@
 # RFC-0024 — Centered signed-int8 matmul and Requant
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0007 A2/A3, RFC-0008 A5,
-RFC-0010 A9/A10, RFC-0012 A11/A12/A13, RFC-0022, RFC-0023
+Status: Accepted · Version: 0.1.0 · Depends: RFC-0005 A3, RFC-0007 A2/A4,
+RFC-0008 A5, RFC-0010 A9/A10, RFC-0012 A14, RFC-0020 A9, RFC-0022, RFC-0023 A1
 
 ## 1. Statement
 
 This contract joins one stacked signed-int8 matrix product to scalar Requant.
 It fixes the original byte interpretation, both accumulator bounds and their
 actual equality consumer. Existing field matmul and standalone full-int32
-Requant keep their APIs, schemas, bytes and semantics. This Draft authorizes no
-native implementation, generic source view, model plan or profile.
+Requant keep their APIs, schemas, bytes and semantics. Native delivery is
+E7-01f; this operation supplies no generic source view, model plan or profile.
 
 The independently expected statement fixes K=QM31/OM31; stage j in [1,2^20);
 full power-of-two dimensions L=2^h, n=2^a, d=2^b, o=2^c; scalar parameters
@@ -131,8 +131,8 @@ three and exact term order even though sigma is identically one here.
 J_old means the complete original count, including all old input padding and
 reserved-row equations. Constraint order is the original semantic order through the target identity;
 then the four new cap columns and their three Boolean equations; then
-(1-sigma)*row for all allocated physical rows in order; then row=0 for every
-reserved row in order. Regenerate these last two groups for the new layout;
+(1-sigma)*row for physical rows 0..L_old+10 inclusive, in order; then row=0
+for reserved rows L_old+11..R-1 in order. Regenerate these last two groups for the new layout;
 do not retain the old reserved-row constraints or slice a compiled list by
 guessed counts. Conservative degrees and term ordering follow RFC-0023.
 The common input count is 1+R and J=J_old-R_old+R+3. Keep all zero terms and
@@ -460,5 +460,7 @@ whole-source composition, independent wire checks or complete resource ledgers.
 
 ## 8. Amendment log
 
-Initial Draft for E7-01e. Companion append-only amendments, control reservations
-and coordinated reviews are required before acceptance or native implementation.
+Initial acceptance for E7-01e, with the five companion amendments and
+NC-0315..0318 reservations. The [coordinated review](../security/integer-linear-contract-review.md)
+qualifies the bounded evidence and exact source. ADR-048 adopts this contract;
+E7-01f owns native consumers, independent parity and complete resource evidence.

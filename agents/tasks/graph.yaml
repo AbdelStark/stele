@@ -1273,13 +1273,14 @@ tasks:
   - E7-01b
   - E7-01d
   rfc:
-  - RFC-0007 A3
+  - RFC-0024
+  - RFC-0007 A4
   - RFC-0023 §5
-  - RFC-0005 A2
+  - RFC-0005 A3
   - RFC-0010 A10
   skill: rfc-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E7-01e-integer-linear-contract
   acceptance:
@@ -1297,8 +1298,10 @@ tasks:
   - E7-01b
   - E7-01d
   rfc:
-  - RFC-0007 A3
-  - RFC-0023 §5
+  - RFC-0024
+  - RFC-0007 A4
+  - RFC-0023 A1
+  - RFC-0012 A14
   skill: gkr-reduction-author
   crate: stele-reductions
   status: ready

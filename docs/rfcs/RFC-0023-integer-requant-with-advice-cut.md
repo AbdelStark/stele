@@ -480,7 +480,7 @@ the companion amendments adopt this cut; E7-01d owns native delivery.
 
 ### A1 — Centered linear embedded-input mode
 
-Status: Draft. Companion RFC-0024, RFC-0005 A3 and RFC-0007 A4.
+Status: Accepted. Companion RFC-0024, RFC-0005 A3 and RFC-0007 A4.
 RFC-0024 defines a separate composed operation with U in physical advice rows
 0..3, the unchanged semantic equations, a full-width v<=B cap and regenerated
 padding/reserved equations. One whole-cut A5 and three actual A9 claim groups

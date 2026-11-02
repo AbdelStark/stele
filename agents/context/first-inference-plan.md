@@ -1,6 +1,6 @@
 # First native inference: closure plan
 
-Current integration checkpoint: main `5b8d404f4a0d6acb82d18b11cccc1789ddf30346`.
+Integration baseline: main `516b27b1feff30d45f87a73e8bdcba67672e3c69`.
 The objective is the original W8 proof and independent verification flow,
 followed by the existing scale, privacy and performance requirements. This
 plan does not redefine W8 or mark any original task complete.
@@ -86,8 +86,12 @@ Requant advice cut, full-width integer bounds and actual A5/A3/A1/A9 consumers.
 A whole-source byte lookup and four explicitly accounted independent-weight
 combinations avoid rebuilding the implemented lookup/PCS engines. A short
 division schema must also bound every high byte of its shared result.
-E7-01d implements this contract with complete native consumers, controls,
-independent parity and resource evidence before the full matmul/Requant join.
+E7-01d delivered this contract with complete native consumers, controls,
+independent parity and resource evidence. E7-01e accepts
+[RFC-0024](../../docs/rfcs/RFC-0024-centered-integer-linear.md) for the centered
+signed-int8 join: genuine original range evidence, full-width advice cap, actual
+A3-tail equality and affine raw-source openings. E7-01f must deliver its complete
+native composition and resource evidence before this join has execution credit.
 
 The direct Requant source is four offset bytes, preserving full int32 input.
 Joining it to field matmul requires actual signed X/W ranges, bounds on both

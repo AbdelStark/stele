@@ -187,7 +187,7 @@ its native successor preserve every full inference, privacy and profile criterio
 
 ### A9 — Centered integer linear operation and genuine byte-range evidence
 
-Status: Draft. Companions RFC-0024 and RFC-0012 A14.
+Status: Accepted. Companions RFC-0024 and RFC-0012 A14.
 The new operation and fixed byte-range verifier belong in stele-reductions,
 using the existing CQIS schema, generated range_8, A5/A3/A1/A4/A7/A9 and
 immutable PCS retained-row engines. A private range constructor executes its

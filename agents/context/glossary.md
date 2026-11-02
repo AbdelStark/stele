@@ -4,7 +4,7 @@
 - **reduction** — a sub-protocol that consumes claims and emits claims (never "gadget", never "component").
 - **stage** — one stacked reduction executed across all layers/heads in one transcript segment.
 - **stacked tensor** — a per-layer (or per-head) tensor viewed as one tensor with the layer/head index as leading hypercube variables.
-- **cut** — a committed tensor that breaks sequential dependency; the residual stream `R_ℓ` and the explicitly scoped Requant advice cut of RFC-0023 (RFC-0007 A3).
+- **cut** — a committed tensor that breaks sequential dependency; the residual stream `R_ℓ` and the explicitly scoped Requant advice cut of RFC-0023 and its RFC-0024 embedded-input mode (RFC-0007 A3/A4).
 - **virtual tensor** — any tensor never committed; its claims are reduced to other tensors.
 - **weight pass** — one streaming read of a stacked weight type to compute `B[ℓ,k] = W̃(ℓ,k,r_j)`.
 - **fused opening** — PCS opening whose row vector `u` equals the weight pass output `B`.
@@ -26,3 +26,6 @@
 - verified certificate: an opaque handle created only by complete registration-certificate verification; it retains the original conditional loss record.
 Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is traced), "gadget", "constraint system",
 "prover-side randomness".
+
+- **byte-range handle** — opaque completed all-one range_8 A5 result for one exact original certificate, borrowing its genuine owners and retaining its conditional event/lifetime obligations (RFC-0024 §1.1).
+- **point-equality record** — PointEqualityRecord for the fixed-polynomial SZ loss at the actual A3 tail; it introduces no new challenge or executed sumcheck (RFC-0024 §5).

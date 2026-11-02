@@ -154,7 +154,7 @@ contributes c_c/c_lu/c_a/T_misc; no measured constant or second pass is authoriz
 
 ### A4 — Centered offset-int8 matmul joined to Requant
 
-Status: Draft. Companion RFC-0024 and RFC-0005 A3; questions Q26/Q28.
+Status: Accepted. Companion RFC-0024 and RFC-0005 A3; questions Q26/Q28.
 Addition to A2/A3: RFC-0024 fixes the centered signed interpretation, original
 whole-source ranges, static 2*d*128^2<p admission, complete embedded advice cap,
 and actual same-point equality consumer. Keep raw retained rows immutable;

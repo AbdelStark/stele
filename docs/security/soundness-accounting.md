@@ -1,10 +1,11 @@
 # Soundness accounting (generated per proof config by `stele-verifier::accounting`; this file is the human-readable spec)
 
-Total error ε = Σ SC + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC-0012 §4). Profile bound: standard 2⁻¹⁰⁰, treaty 2⁻¹²⁸.
+Total error ε = Σ SC + Σ SZ + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC-0012 §4). Profile bound: standard 2⁻¹⁰⁰, treaty 2⁻¹²⁸.
 
 | Line | Instance count driver | Formula | Proven? |
 |---|---|---|---|
 | SC | stacked reductions per stage (≈ 10²/proof) | `m·δ/|K|` | yes (Schwartz–Zippel) |
+| SZ | RFC-0024 actual-tail equality | `m/p^d`, zero at m=0 | conditional interactive (RFC-0012 A14) |
 | RLC | RLC batch reductions | `t/|K|` | yes |
 | LU | one per (table, challenge pair) | `(N+|T|)/|K|`, squared with double challenge | yes (Haböck 2022) |
 | PCS | one per opening (R_stack, 7–9 weight types, multiplicities, aux) | `ε_gap(ρ,δ)+(1−δ)^q+ε_Merkle` | treaty: proven only (BCIKS20, DP23/24, Khatam) |
@@ -1722,7 +1723,7 @@ the expected public coefficient rejects. Native general production, full-domain
 controls, complete resource ledgers, Q12/Q29, source/plan/packing/inference
 contracts and both profile totals remain open.
 
-## Draft RFC-0024 centered integer linear inventory
+## Accepted RFC-0024 centered integer linear inventory
 
 RFC-0012 A14 adds SZ to the total only for the new RFC-0024 operation. Its
 fixed table difference is C_tilde-(sum_t 256^t*U_t_tilde-2^31), of degree at
@@ -1745,6 +1746,6 @@ events even when source/certificate IDs match. There is no new proof-ID hash.
 LinearStatement is absorb-only. Signed MatmulStatement payload version2 and
 the actual restored raw-source functionals have deterministic semantics.
 Neither changes existing standalone formats or adds a random loss. Exact
-payload/cap/failed-prefix Usage is RFC-0024 §§2,4. This Draft inventory has no
+payload/cap/failed-prefix Usage is RFC-0024 §§2,4. This accepted specification has no
 executed SZ consumer, registry entry or new control coverage. E7-01f must supply
 those gates and complete resource evidence; all parent and Q12/Q29 gaps remain.

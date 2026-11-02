@@ -81,7 +81,7 @@ successor; E3-07/E5-03/E6/E7 retain all original acceptance criteria.
 
 ### A3 — Embedded accumulator bytes in the centered linear advice cut
 
-Status: Draft. Companion RFC-0024; questions Q26/Q28.
+Status: Accepted. Companion RFC-0024; questions Q26/Q28.
 Addition to §§3,4 and A2: RFC-0024 extends the named Requant advice cut with
 the four offset accumulator bytes and full-width centered cap. Its fixed schema
 uses one advice source, with no separate accumulator/input/output commitment.
