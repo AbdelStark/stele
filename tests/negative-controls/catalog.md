@@ -69,7 +69,7 @@
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13, 0007 A2 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns | `FinalEvaluationMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13,A14, 0007 A2, 0024 §6 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns; centered LinearStatement, RequantConstraints, each RequantClaims or either original OpeningColumns | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
@@ -126,3 +126,11 @@ including full producer registration Usage and continuation. These 62 declared
 variants include two static validations; they are not 62 proof rejections or new
 catalog IDs. Complete operation resource evidence is separate from catalogue
 coverage; inference/profile admission and the broad CQIS family remain parent work.
+
+The centered integer-linear NC-0802 extension independently omits seven frames
+for scalar and nonconstant stacked matrices, in both fields and both repetition
+counts. Each accepted complete native producer matches the control composer
+byte for byte. Each omission changes one following A1 final through ProverHook;
+the unchanged closed operation accepts and the following A1 rejects with
+FinalEvaluationMismatch and its exact observed prefix. These 56 variants add
+coverage under NC-0802; they do not add catalog IDs or resource evidence.

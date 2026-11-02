@@ -7,7 +7,7 @@ use stele_pcs::{CodeField, VerifiedCertificate};
 use stele_reductions::matmul::{self, Error, Statement};
 use stele_sumcheck::Proof;
 #[path = "matmul_composer.rs"]
-mod composer;
+pub(crate) mod composer;
 use composer::{Artifact, LIMITS};
 
 fn checked<K: ChallengeField + CodeField + Eq + core::fmt::Debug>(

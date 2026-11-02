@@ -445,8 +445,14 @@ def verify_request(ref, request):
             usage=dict(transcript=attempt['transcript'].usage.copy(), non_transcript=local))
     result = project(operation, records, transcript)
     sc, d = ref.sc, operation.d
-    next_record = sc.verify_public(transcript, following_instance(operation), following,
-                                  [[sc.scalar(1, d), sc.scalar(2, d)]])
+    try:
+        next_record = sc.verify_public(transcript, following_instance(operation), following,
+                                      [[sc.scalar(1, d), sc.scalar(2, d)]])
+    except ValueError as error:
+        need(str(error) in ('RoundSumMismatch', 'FinalEvaluationMismatch', 'ClaimMismatch'),
+             'UnclassifiedContinuationFailure')
+        result['continuation'] = dict(decision=str(error), usage=transcript.usage.copy(), record=None)
+        return result
     result['continuation'] = dict(record={k: next_record[k] for k in ('point', 'sc')},
                                   usage=transcript.usage.copy())
     result['continuation']['probe'] = sc.encode(transcript.field(ref.pcs.CHALLENGE)).hex()

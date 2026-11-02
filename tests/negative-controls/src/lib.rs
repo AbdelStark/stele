@@ -405,7 +405,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             stacked::run_continuation()?;
             lookup::run(802)?;
             matmul::run(802)?;
-            requant::run(802)
+            requant::run(802)?;
+            integer_linear::run(802)
         },
     },
     catalog::RegisteredControl {

@@ -19,8 +19,8 @@ For each protocol binding:
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
-label with `DuplicateLabel`; it earns configuration coverage only. Including the conditional stacked, PCS, closed lookup, matmul, Requant and original byte-range variants, 52/108 controls run,
-56 remain missing, and 18/36 catalog binding categories have proof controls. NC-0315 closes the separate original range obligation; the composed integer-linear controls remain pending. Range rows expand
+label with `DuplicateLabel`; it earns configuration coverage only. The last qualified coverage, including conditional stacked, PCS, closed lookup, matmul, Requant and original byte-range variants, is 52/108 controls,
+56 remain missing, and 18/36 catalog binding categories have proof controls. NC-0315 closes the separate original range obligation; the composed integer-linear additions still require final gate qualification. Range rows expand
 to individual ids; malformed and duplicate ids fail.
 Streaming NC-0210 uses a real prepared file: change one unused source record,
 produce the changed Streaming proof, and apply its single changed final through
@@ -98,3 +98,10 @@ omit Statement, Multiplicities or the first MultiplicityClaims only while
 computing one replacement final for a following A1 proof. The submitted lookup
 proof stays honest and must close first. Genuine nonzero physical-tail proofs
 with zero selected weights are accepted through every structural consumer.
+
+RFC-0024 continuation controls use the complete native integer-linear producer
+and verifier. A control-only composer shares the actual child engines; every
+baseline must match the native proof bytes and transcript Usage. Seven independent
+frame omissions each replace one following A1 final, leaving the accepted outer
+proof fixed. The independent Python replay checks the same frame inventory using
+a fresh transcript, with an exact no-omission replay before any mutation.
