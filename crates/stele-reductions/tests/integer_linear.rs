@@ -1,7 +1,7 @@
 //! RFC-0024: complete native composition, independent original range events.
 use stele_field::{Field, M31, OM31, QM31};
 use stele_gkr::stacked;
-use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
+use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind};
 use stele_reductions::{
     byte_range, integer_linear as linear, lookup,
@@ -159,14 +159,34 @@ where
             )
             .expect("valid fixed fixture");
         assert_eq!(proof.len(), descriptor.proof_size());
-        let (mu, _) = descriptor
-            .register_multiplicities(&proof, usize::MAX)
+        let import_cap = (descriptor
+            .producer_public_bytes()
+            .expect("producer public bound")
+            - descriptor.public_bytes())
+            / 2;
+        let (mu, imports) = descriptor
+            .register_multiplicities(&proof, import_cap)
             .expect("valid fixed fixture");
         let refs: Vec<_> = mu.iter().collect();
         let mut vt = transcript();
-        let (record, consumed) = descriptor
-            .verify(&mut vt, &refs, &proof)
-            .expect("valid fixed fixture");
+        let (record, consumed) = {
+            let temporary_point = point.clone();
+            let temporary_proof = proof.clone();
+            let temporary_refs: Vec<_> = mu.iter().collect();
+            let temporary_descriptor = linear::Descriptor::new(
+                linear::Statement {
+                    point: &temporary_point,
+                    ..statement
+                },
+                &ca,
+                LIMITS,
+                MATMUL,
+            )
+            .expect("temporary expected statement");
+            temporary_descriptor
+                .verify(&mut vt, &temporary_refs, &temporary_proof)
+                .expect("record outlives statement, proof, descriptor and reference-vector buffers")
+        };
         assert_eq!(produced.transcript, consumed.transcript);
         assert!(pt.challenge(ChallengeLabel::Sumcheck) == vt.challenge(ChallengeLabel::Sumcheck));
         assert_eq!(record.point_equality().numerator(), u64::from(h + a + c));
@@ -177,6 +197,72 @@ where
         for group in record.groups() {
             assert!(core::ptr::eq(group.opening().certificate(), ca.record()));
         }
+        let failure = descriptor
+            .register_multiplicities(&proof, import_cap - 1)
+            .err()
+            .expect("one-below import cap");
+        assert_eq!(
+            failure.cause,
+            linear::Error::Lookup(lookup::Error::ResourceLimit)
+        );
+        assert_eq!(failure.registrations, [None; 2]);
+        // Each failed certificate prefix is retained in order, including a late failure.
+        let mut at = 34 + packet.len() + 2;
+        for (j, owner) in mu.iter().enumerate() {
+            let source = *owner.record().source();
+            let size = source
+                .proof_size(ProofKind::Certificate)
+                .expect("mu certificate size");
+            let start = at + 32;
+            let mut changed = proof.clone();
+            changed[start + size - 1] ^= 1;
+            let child = verify_certificate(source, &changed[start..start + size])
+                .err()
+                .expect("altered mu authentication path");
+            assert_eq!(
+                child.cause,
+                stele_pcs::Error::Merkle(stele_hash::merkle::Error::RootMismatch)
+            );
+            let failure = descriptor
+                .register_multiplicities(&changed, import_cap)
+                .err()
+                .expect("complete import attempt must fail");
+            assert_eq!(
+                failure.cause,
+                linear::Error::Lookup(lookup::Error::Pcs(child.cause))
+            );
+            assert_eq!(&failure.registrations[..j], &imports[..j]);
+            assert_eq!(failure.registrations[j], Some(child.usage));
+            assert!(failure.registrations[j + 1..].iter().all(Option::is_none));
+            at = start + size;
+        }
+        let mut t = transcript();
+        let entry = t.usage();
+        let failure = descriptor
+            .verify(&mut t, &refs[..repetitions - 1], &proof)
+            .err()
+            .expect("missing mu owner");
+        assert_eq!(failure.cause, linear::Error::CertificateContext);
+        assert_eq!(failure.usage.transcript, entry);
+        assert_eq!(failure.usage.non_transcript, HashUsage::default());
+        let mut t = transcript();
+        let failure = descriptor
+            .verify(&mut t, &vec![&cx; repetitions], &proof)
+            .err()
+            .expect("unrelated genuine owner cannot authorize advice multiplicities");
+        assert_eq!(
+            failure.cause,
+            linear::Error::Lookup(lookup::Error::CertificateContext)
+        );
+        let mut expected = transcript();
+        expected
+            .absorb(
+                AbsorbLabel::LinearStatement,
+                &descriptor.encode().expect("statement bytes"),
+            )
+            .expect("linear statement frame");
+        assert_eq!(failure.usage.transcript, expected.usage());
+        assert_eq!(failure.usage.non_transcript.hash_evaluations, 1);
         // Static shape/policy/cap failures never acquire proof authority.
         for (s, limits, expected) in [
             (

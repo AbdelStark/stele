@@ -78,6 +78,21 @@ impl<K: ChallengeField> PointEqualityRecord<K> {
 ///         .unwrap().verify(t,mu,proof).unwrap().0
 /// }
 /// ```
+/// W's completed range event independently owns the result's lifetime:
+/// ```compile_fail,E0515
+/// use stele_field::QM31;
+/// use stele_hash::Transcript;
+/// use stele_pcs::VerifiedCertificate;
+/// use stele_gkr::stacked;
+/// use stele_reductions::{byte_range::ByteRange, integer_linear::*, lookup};
+/// fn escape(s:Statement<'_,'static,QM31>, w:ByteRange<'static,QM31>,
+///     a:&'static VerifiedCertificate<QM31>, mu:&[&'static VerifiedCertificate<QM31>],
+///     t:&mut Transcript<QM31>, proof:&[u8], l:lookup::Limits, m:stacked::Limits)
+///     ->Record<'static,QM31> {
+///     Descriptor::new(Statement{originals:[s.originals[0],&w],..s},a,l,m)
+///         .unwrap().verify(t,mu,proof).unwrap().0
+/// }
+/// ```
 /// The genuine advice owner remains borrowed after the descriptor is gone:
 /// ```compile_fail,E0515
 /// use stele_field::QM31;
