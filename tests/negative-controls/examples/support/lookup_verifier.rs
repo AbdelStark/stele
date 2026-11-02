@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use stele_hash::{ChallengeField, ChallengeLabel, Transcript};
 use stele_lookup::fraction::Reduction;
 use stele_pcs::{CodeField, OpeningRecord, Usage};
+use stele_reductions::byte_range;
 use stele_reductions::lookup::{Descriptor, TableField};
 
 fn usage(u: Usage) -> Value {
@@ -41,6 +42,7 @@ fn opening<K: ChallengeField>(o: &OpeningRecord<'_, K>) -> Value {
 pub(super) fn verify<K: ChallengeField + CodeField + TableField + Eq>(
     case: &Value,
     d: &Descriptor<'_, '_, K>,
+    range: Option<&byte_range::Descriptor<'_, K>>,
     mut out: Value,
 ) -> Result<Value, String>
 where
@@ -52,7 +54,11 @@ where
         Some(v) => usize::try_from(number(v)?).map_err(|_| "FixtureCapacity")?,
         None => (d.producer_public_bytes().map_err(|e| format!("{e:?}"))? - d.public_bytes()) / 2,
     };
-    let (handles, imports) = match d.register_multiplicities(&registration, cap) {
+    let imported = match range {
+        Some(range) => range.register_multiplicities(&registration, cap),
+        None => d.register_multiplicities(&registration, cap),
+    };
+    let (handles, imports) = match imported {
         Ok(result) => result,
         Err(f) => {
             out["phase"] = json!("import");
@@ -64,26 +70,30 @@ where
     out["registrations"] = json!(imports.map(|u| u.map(usage)));
     out["phase"] = json!("outer");
     let refs: Vec<_> = handles.iter().collect();
+    if let Some(range) = range {
+        match range.verify(&refs, &proof) {
+            Ok(accepted) => {
+                out["decision"] = json!("accept");
+                out["usage"] = usage(*accepted.usage());
+                out["record"] = record(accepted.lookup());
+            }
+            Err(f) => {
+                out["decision"] = json!(format!("{:?}", f.cause));
+                out["usage"] = usage(f.usage);
+            }
+        }
+        return Ok(out);
+    }
     let mut t = Transcript::new(&unhex(&case["public_hex"])?).map_err(|e| format!("{e:?}"))?;
     match d.verify(&mut t, &refs, &proof) {
         Err(f) => {
             out["decision"] = json!(format!("{:?}", f.cause));
             out["usage"] = usage(f.usage);
         }
-        Ok((record, observed)) => {
+        Ok((accepted, observed)) => {
             out["decision"] = json!("accept");
             out["usage"] = usage(observed);
-            let p = record.parameters();
-            let reps:Vec<_>=record.repetitions().iter().map(|r|{
-                let s=r.selected_product();
-                json!({"lookup":tree(r.lookup_tree()),"table":tree(r.table_tree()),
-                    "selected":{"tree_id":s.tree_id,"point":point(&s.point),"claims":claims(&s.claims),"sc":sc(&s.sc)},
-                    "originals":r.originals().iter().map(opening).collect::<Vec<_>>(),
-                    "multiplicities":r.multiplicities().iter().map(opening).collect::<Vec<_>>()})
-            }).collect();
-            out["record"] = json!({"parameters":{"id":p.id,"degree":p.degree,"positions":p.positions,
-                "table_rows":p.table_rows,"columns":p.columns,"group_bits":p.group_bits,"unit_bits":p.unit_bits,
-                "repetitions":p.repetitions,"identity_numerator":p.identity_numerator},"repetitions":reps});
+            out["record"] = record(&accepted);
             out["continuation"] = json!(hex(t
                 .challenge(ChallengeLabel::Sumcheck)
                 .map_err(|e| format!("{e:?}"))?
@@ -92,4 +102,17 @@ where
         }
     }
     Ok(out)
+}
+fn record<K: ChallengeField>(record: &stele_reductions::lookup::LookupRecord<'_, K>) -> Value {
+    let p = record.parameters();
+    let reps:Vec<_>=record.repetitions().iter().map(|r|{
+        let s=r.selected_product();
+        json!({"lookup":tree(r.lookup_tree()),"table":tree(r.table_tree()),
+            "selected":{"tree_id":s.tree_id,"point":point(&s.point),"claims":claims(&s.claims),"sc":sc(&s.sc)},
+            "originals":r.originals().iter().map(opening).collect::<Vec<_>>(),
+            "multiplicities":r.multiplicities().iter().map(opening).collect::<Vec<_>>()})
+    }).collect();
+    json!({"parameters":{"id":p.id,"degree":p.degree,"positions":p.positions,
+        "table_rows":p.table_rows,"columns":p.columns,"group_bits":p.group_bits,"unit_bits":p.unit_bits,
+        "repetitions":p.repetitions,"identity_numerator":p.identity_numerator},"repetitions":reps})
 }

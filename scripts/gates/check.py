@@ -325,10 +325,29 @@ def requant_production_manifest(root):
     return manifest
 
 
+def byte_range_api(crate):
+    path = crate / 'src/byte_range.rs'
+    if not path.is_file():
+        return False
+    code = re.sub(r'//[^\n]*', '', path.read_text())
+    declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
+    return (declarations == [('struct', 'Descriptor'), ('struct', 'ByteRange')]
+        + [('fn', name) for name in ('lookup', 'original', 'multiplicities', 'limits', 'usage', 'new',
+            'public_bytes', 'proof_size', 'producer_public_bytes', 'producer_dense_elements',
+            'prove', 'register_multiplicities', 'verify')]
+        and len(declarations) == len(re.findall(r'\bpub\b', code))
+        and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', code)] == [
+            "impl<'cert,K:ChallengeField>ByteRange<'cert,K>{",
+            "impl<'original,K:ChallengeField>Descriptor<'original,K>{",
+            "impl<'original,K:ChallengeField+CodeField+TableField+Eq>Descriptor<'original,K>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]
+        and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
+
+
 def field_sources(root):
     """Closed conditional A1/stacked/lookup/matmul consumers; no inference/profile authority."""
     crate = root / 'crates/stele-reductions'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/field_sources.rs', 'src/stacked_sources.rs', 'tests/stacked.rs',
+               'src/byte_range.rs', 'tests/byte_range.rs',
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
@@ -345,7 +364,7 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod field_sources;\npub mod lookup;\npub mod matmul;\npub mod requant;\n'
+               'extern crate alloc;\npub mod byte_range;\nmod field_sources;\npub mod lookup;\npub mod matmul;\npub mod requant;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -488,7 +507,7 @@ def field_sources(root):
                                 ('fn', 'verify_field_sources')]
             or len(declarations) != len(re.findall(r'\bpub\b', code))
             or not stacked_closed or not lookup_closed or not producer_closed or not matmul_closed
-            or not requant_schema_api(crate)
+            or not requant_schema_api(crate) or not byte_range_api(crate)
             or any(not (oracle.parent/name).is_file() for name in ('lookup_corpus.py', 'lookup_corpus.py.lock',
                 'lookup_closed.py', 'examples/support/lookup_verifier.rs', 'matmul_corpus.py',
                 'matmul_corpus.py.lock', 'examples/matmul_corpus.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
@@ -533,17 +552,18 @@ def field_sources(root):
         (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_producer'],
          [f'test {prefix}_{field}_lookup_producer_{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts','registrations'),('rejects','before_mutation'),('rejects','after_registration'))]),
-        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul', '--test', 'matmul_producer'],
+        (['cargo', 'test', '-p', 'stele-reductions', '--test', 'lookup_verifier', '--test', 'matmul', '--test', 'matmul_producer', '--test', 'byte_range'],
          [f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
           for prefix,suffix in (('accepts',''),('rejects','_tampers'))]
          + [f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31')]
-         + [f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31')]),
+         + [f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31')]
+         + ['test matches_reference_complete_byte_range ... ok']),
         (['cargo', 'test', '-p', 'stele-negative-controls', '--lib', 'lookup::'],
          [f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')]),
         (['cargo', 'test', '-p', 'stele-negative-controls']+
-         [arg for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314) for arg in ('--test',f'nc-{i:04}')]
+         [arg for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315) for arg in ('--test',f'nc-{i:04}')]
          + ['--test','requant-verifier'],
-         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314)]
+         [f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315)]
          + ['test rejects_wrong_coefficient_at_actual_a7 ... ok',
             'test matches_reference_requant_full_wire_qm31 ... ok',
             'test matches_reference_requant_full_wire_om31 ... ok',
@@ -560,6 +580,7 @@ def field_sources(root):
                                           ('stacked_sources', 'stacked_sources', 'StackedSourceRecord', 2),
                                           ('lookup', 'lookup', 'Statement', 1), ('lookup', 'lookup', 'Descriptor', 1),
                                           ('lookup_records', 'lookup::verifier::records', 'LookupRecord', 3),
+                                          ('byte_range', 'byte_range', 'ByteRange', 3),
                                           ('matmul', 'matmul', 'Record', 3),
                                           ('requant_codec', 'requant::codec', 'Descriptor', 2),
                                           ('requant_verifier', 'requant::codec::verifier', 'Record', 5)):
@@ -578,7 +599,9 @@ def field_sources(root):
     receipt = ('lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
                'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
                'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '
-               'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41')
+               'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41\n'
+               'byte range corpus: 4 complete proofs, 4 accepts and 32 rejects; QM31/OM31; fixed prefix, bytes, records, imports and usage; '
+               'SHA256 edfd2629223cacc9320e84637e63c2de252e8b6b915e8cc41caca82c6b50af28')
     if result.returncode or result.stdout.strip() != receipt:
         raise ValueError(f'lookup producer corpus checks failed: {result.stdout} {result.stderr}')
     matmul_receipt = (
@@ -1317,7 +1340,7 @@ def controls_layout(root):
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
                     'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
-                    'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
+                    'src/lookup.rs', 'src/lookup_composer.rs', 'src/lookup_byte_range.rs', 'examples/support/lookup_verifier.rs',
                     'src/matmul.rs', 'src/matmul_composer.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
                     'requant_schema.py', 'src/requant.rs', 'src/requant_composer.rs',
                     'requant/witness_fixtures.py', 'requant/input_padding_fixture.py', 'requant/coefficients.rs',

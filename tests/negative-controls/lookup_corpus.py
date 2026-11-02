@@ -270,6 +270,16 @@ def cases():
                 originals=[dict(id=10+a, ell=0 if a == 0 else m, blowup=1, message=[row[a] % sc.P for row in tuples]) for a in range(len(tuples[0]))],
                 multiplicities=[dict(id=20+j, ell=ell, blowup=blowup) for j, (ell, blowup) in enumerate(layouts)])
 
+def range_cases():
+    for degree in (4, 8):
+        for m, ell, r in ((0, 0, 1), (2, degree // 4, 2)):
+            yield dict(name=f'byte-range-{degree}-{m}', degree=degree, byte_range=True,
+                public_hex=b'stele/v0.1/integer-linear/byte-range/v1'.hex(), lookup_id=7,
+                m=m, b=min(m, 30), table=dict(name='range_8', version=1, params_hex=''),
+                selector=[1]*(1 << m), originals=[dict(id=10, ell=ell, blowup=1,
+                    message=[7] if m == 0 else [0, 127, 128, 255])],
+                multiplicities=[dict(id=20+j, ell=0, blowup=1) for j in range(r)])
+
 def main():
     inputs = list(cases())
     old = pcs.Transcript
@@ -278,6 +288,13 @@ def main():
         expected = [reference(case) for case in inputs]
         from lookup_closed import batch
         closed_inputs, closed_expected = batch(sys.modules[__name__], inputs, expected)
+        range_inputs = list(range_cases())
+        range_expected = [reference(case) for case in range_inputs]
+        range_closed, range_verified = batch(sys.modules[__name__], range_inputs, range_expected)
+        for produced in range_expected:
+            produced['public_bytes'] += len(b'stele/v0.1/integer-linear/byte-range/v1')
+        for result in range_expected + range_verified:
+            result.pop('continuation', None)  # Standalone range API has no continuation transcript.
     finally:
         pcs.Transcript = old
     assert len(expected) == 8 and sum(v['outcome'] == 'produced' for v in expected) == 6
@@ -287,15 +304,20 @@ def main():
     closed_digest = hashlib.sha256(json.dumps(closed_expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     assert len(closed_expected) == 40 and sum(v['decision'] == 'accept' for v in closed_expected) == 8
     assert closed_digest == CLOSED_EXPECTED, f'independent closed lookup corpus digest: {closed_digest}'
+    range_digest = hashlib.sha256(json.dumps(range_expected+range_verified, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    assert range_digest == 'edfd2629223cacc9320e84637e63c2de252e8b6b915e8cc41caca82c6b50af28', range_digest
+    assert len(range_expected) == 4 and len(range_verified) == 36
+    assert sum(v['decision'] == 'accept' for v in range_verified) == 4
     native = subprocess.run(['cargo', 'run', '-q', '-p', 'stele-negative-controls', '--example', 'lookup_corpus', '--locked', '--offline'],
-        cwd=ROOT, input=''.join(json.dumps(case)+'\n' for case in inputs+closed_inputs), text=True, capture_output=True)
+        cwd=ROOT, input=''.join(json.dumps(case)+'\n' for case in inputs+closed_inputs+range_inputs+range_closed), text=True, capture_output=True)
     assert native.returncode == 0, native.stderr
     actual = [json.loads(line) for line in native.stdout.splitlines()]
-    assert len(actual) == len(expected)+len(closed_expected)
-    for case, left, right in zip(inputs+closed_inputs, actual, expected+closed_expected):
+    assert len(actual) == len(expected)+len(closed_expected)+len(range_expected)+len(range_verified)
+    for case, left, right in zip(inputs+closed_inputs+range_inputs+range_closed, actual, expected+closed_expected+range_expected+range_verified):
         assert left == right, f'lookup mismatch {case["name"]}: {[k for k in left.keys() | right.keys() if left.get(k) != right.get(k)]}'
     print(f'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; SHA256 {digest}; no lookup verification credit')
     print(f'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; SHA256 {closed_digest}')
+    print(f'byte range corpus: 4 complete proofs, 4 accepts and 32 rejects; QM31/OM31; fixed prefix, bytes, records, imports and usage; SHA256 {range_digest}')
 
 if __name__ == '__main__':
     main()

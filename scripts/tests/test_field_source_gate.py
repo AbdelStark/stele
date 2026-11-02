@@ -216,7 +216,8 @@ class ClosedStackedGateTests(unittest.TestCase):
             '\n'.join(f'test crates/stele-reductions/src/{module}.rs - {module}::{record} (line {line}) - compile fail ... ok'
                       for module,record,line in [('field_sources','FieldSourceRecord',30),
                           ('stacked_sources','StackedSourceRecord',43),('stacked_sources','StackedSourceRecord',48),
-                          ('lookup','Statement',60),('lookup','Descriptor',100)])+'\n'+'\n'.join(
+                          ('lookup','Statement',60),('lookup','Descriptor',100),
+                          ('byte_range','ByteRange',26),('byte_range','ByteRange',32),('byte_range','ByteRange',42)])+'\n'+'\n'.join(
                       f'test crates/stele-reductions/src/lookup_records.rs - lookup::verifier::records::LookupRecord (line {line}) - compile fail ... ok' for line in (61,66,82))+'\n'+'\n'.join(
                       f'test crates/stele-reductions/src/matmul.rs - matmul::Record (line {line}) - compile fail ... ok'
                       for line in (64,69,82))+'\n'+'\n'.join(
@@ -250,9 +251,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             '\n'.join(f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('accepts',''),('rejects','_tampers')))+'\n'+'\n'.join(
                       f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31'))+'\n'+'\n'.join(
-                      f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31')),
+                      f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31'))+'\ntest matches_reference_complete_byte_range ... ok',
             '\n'.join(f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')),
-            '\n'.join(f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314))+'\n'
+            '\n'.join(f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315))+'\n'
                       'test rejects_wrong_coefficient_at_actual_a7 ... ok\n'
                       'test matches_reference_requant_full_wire_qm31 ... ok\n'
                       'test matches_reference_requant_full_wire_om31 ... ok\n'
@@ -262,7 +263,9 @@ class ClosedStackedGateTests(unittest.TestCase):
             'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
             'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
             'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '
-            'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41',
+            'SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41\n'
+               'byte range corpus: 4 complete proofs, 4 accepts and 32 rejects; QM31/OM31; fixed prefix, bytes, records, imports and usage; '
+               'SHA256 edfd2629223cacc9320e84637e63c2de252e8b6b915e8cc41caca82c6b50af28',
             'matmul closed corpus: 2000 seeded cases (1000 per field), 34 honest controls and 34 rejects; '
             'complete wires, actual records, imports, usage and continuation; '
             'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456\n'
@@ -291,8 +294,8 @@ class ClosedStackedGateTests(unittest.TestCase):
         self.assertEqual([c for c in commands if 'stele-reductions' in c and '--lib' in c],
                          [['cargo', 'test', '-p', 'stele-reductions', '--lib', '--locked', '--offline']])
         self.assertEqual([c[i+1] for c in commands for i,arg in enumerate(c) if arg == '--test'],
-                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul','matmul_producer']+
-                         [f'nc-{i:04}' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314)]+['requant-verifier'])
+                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul','matmul_producer','byte_range']+
+                         [f'nc-{i:04}' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315)]+['requant-verifier'])
 
     def test_rejects_every_broadened_requant_sibling_visibility(self):
         crate=self.root/'crates/stele-reductions';path=crate/'src/requant_verifier.rs';saved=path.read_text()
@@ -405,6 +408,8 @@ class ClosedStackedGateTests(unittest.TestCase):
                 run.assert_not_called()
             path.write_bytes(saved)
         for name, addition in (
+            ('src/byte_range.rs','\npub fn accept_unchecked() {}\n'),
+            ('src/byte_range.rs','\nimpl From<bool> for ByteRange {}\n'),
             ('src/requant_producer.rs','\nimpl From<ProverWork> for bool {}\n'),
             ('src/requant_producer.rs','\npub fn accept_unchecked() {}\n'),
             ('src/requant_witness.rs','\nimpl From<Witness> for bool {}\n'),

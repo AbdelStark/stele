@@ -8,6 +8,8 @@ use stele_reductions::lookup::{
     TableField,
 };
 
+#[path = "lookup_byte_range.rs"]
+mod byte_range;
 #[path = "lookup_composer.rs"]
 mod composer;
 use composer::{compose, transcript, Attack, Packet};
@@ -451,6 +453,11 @@ where
 }
 /// Conditional lookup variants and the existing composed PCS/transcript controls.
 pub fn run(id: u16) -> Result<(), String> {
+    if id == 315 {
+        byte_range::exercise::<QM31>();
+        byte_range::exercise::<OM31>();
+        return Ok(());
+    }
     exercise::<QM31>(id)?;
     exercise::<OM31>(id)
 }
