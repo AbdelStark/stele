@@ -7,11 +7,18 @@ update and revalidate if that base changed. Direct implementation pushes to main
 are forbidden by the repository workflow. This is currently a procedural rule;
 GitHub branch protection is not configured.
 
- A ready PR runs format,
-Clippy, workspace and example tests, dependency policy, independent digests, the
-actual negative-control catalogue, soundness accounting, and repository checks.
-`scripts/gates/native.sh` executes the union of digest/control/accounting
-validators once. Each standalone gate remains complete.
+A ready PR starts two mandatory jobs after the plan. `native` runs format,
+Clippy, workspace and example tests, dependency policy, quick tooling tests,
+scoped feature checks, native SIMD parity and repository checks. `native-union`
+runs the unchanged `scripts/gates/native.sh` digest/control/accounting union,
+including the actual negative-control catalogue. Neither job depends on the
+other; both check out the same event merge source and perform their own locked
+dependency fetch. Each standalone gate remains complete.
+
+The two jobs use separate Cargo cache keys and restore prefixes. Caches contain
+dependencies and build outputs only; a cache hit never skips validation. Separate
+runners can duplicate setup and compilation, and runner queues can delay either
+job. Job scheduling alone does not establish a measured latency improvement.
 
 Cargo's test profile uses optimization level 2 with debug assertions and overflow
 checks explicitly enabled. Test cases, seeds, dimensions and required commands
@@ -33,7 +40,7 @@ The exact root Cargo.lock path and field/CQIS source changes select the
 two pinned checkpoint downloads. Any broad trigger selects all 75 groups instead.
 The normal inventory retains the same 176 commands exactly once. This scope
 also covers deletions and both names of renamed files; it does not infer scope
-from changed lockfile entries. The mandatory native job and all table rules remain.
+from changed lockfile entries. Both mandatory native jobs and all table rules remain.
 The exact `formal/stacked-runtime.md`, `formal/stacked-ownership.md` and
 `formal/stacked-statement.md` paths select `stacked-gkr`. Combined with native
 triggers they select the ordered union of `native-comparisons` and `stacked-gkr`;
@@ -63,8 +70,9 @@ remain available through `python3 -m unittest discover -s scripts/tests -v`.
 The removed positive all-gates regression duplicated the real native job;
 all copied-source rejection tests remain in the exhaustive workflow.
 
-The required `gates` job rejects failed, cancelled, missing or unexpectedly
-skipped checks. A scoped check may be skipped only when a successful plan
+The required `gates` job requires success from the plan and both native jobs and
+rejects failed, cancelled, missing or unexpectedly skipped checks. A scoped check
+may be skipped only when a successful plan
 explicitly excludes it. Draft runs never provide merge evidence. GPU changes
 still require the actual GPU runner. Dependency/build caches store no pass
 receipts, and every selected check executes again.
