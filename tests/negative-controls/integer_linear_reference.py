@@ -23,6 +23,33 @@ MATMUL = b'stele/v0.1/matmul/statement'
 RANGE_PUBLIC = b'stele/v0.1/integer-linear/byte-range/v1'
 
 
+def consumer(kind, call, *args):
+    """Keep the native composition's exact wrappers around actual engine failures."""
+    try:
+        return call(*args)
+    except ValueError as error:
+        name = str(error)
+        if kind in ('Pcs', 'MatmulPcs'):
+            need(name in ('ProofShape', 'NoncanonicalField', 'ValueMismatch', 'ColumnMismatch', 'RootMismatch'), 'UnclassifiedPcsFailure')
+            if kind == 'MatmulPcs' and name in ('ProofShape', 'NoncanonicalField'):
+                raise
+            name = 'Merkle(RootMismatch)' if name == 'RootMismatch' else name
+            name = f'Pcs({name})'
+            if kind == 'MatmulPcs':
+                name = f'Matmul({name})'
+        elif kind in ('Sumcheck', 'MatmulStacked'):
+            need(name in ('ProofShape', 'NoncanonicalField', 'RoundSumMismatch', 'FinalEvaluationMismatch', 'CoefficientMismatch'), 'UnclassifiedArithmeticFailure')
+            if name != 'CoefficientMismatch':
+                name = f'Sumcheck({name})'
+            if kind == 'MatmulStacked':
+                name = f'Matmul(Stacked({name}))'
+        elif kind == 'Lookup':
+            name = f'Lookup({name})'
+        else:
+            raise AssertionError(kind)
+        raise ValueError(name) from error
+
+
 @contextmanager
 def load(root=ROOT):
     """One shared field/transcript implementation, scoped to this new operation."""
@@ -142,6 +169,9 @@ class Operation:
             need((source.degree, source.ell, source.m) == (degree, ell, h+b), 'SourceRoster')
             need(2 <= source.identity < 2**64 and not schema.S <= source.identity < schema.S+(1 << 40), 'SourceRoster')
             need(0 <= packet['lookup_id'] < 2**60 and len(packet['mu_ids']) == repetitions, 'SourceRoster')
+            range_ids = [source.identity, *packet['mu_ids']]
+            need(all(type(identity) is int and 2 <= identity < 2**64 for identity in range_ids)
+                 and len(set(range_ids)) == len(range_ids), 'SourceRoster')
             need(not schema.S <= packet['lookup_id']*16 < schema.S+(1 << 40), 'SourceRoster')
             need(all(not schema.S <= identity < schema.S+(1 << 40) for identity in packet['mu_ids']), 'SourceRoster')
             original = self.observed(f'original-{index}-import', self.pcs.verify_certificate,
@@ -198,11 +228,12 @@ class Operation:
 
     def preflight(self, parts, advice):
         case, geometry = self.advice_geometry(advice)
-        self.adapter.parse(case, geometry, parts[1])
+        consumer('Pcs', self.pcs.parse, advice.source, parts[0], self.pcs.counts(advice.source.m, advice.source.blowup)[0])
+        consumer('Lookup', self.adapter.parse, case, geometry, parts[1])
         self.arithmetic_read(Reader(parts[2]), len(self.s.ids), zero=True)
         self.arithmetic_read(Reader(parts[5]), len(self.output['ids']))
         for index in (3, 4, 6):
-            self.pcs.parse(advice.source, parts[index], self.pcs.counts(advice.source.m, advice.source.blowup)[1])
+            consumer('Pcs', self.pcs.parse, advice.source, parts[index], self.pcs.counts(advice.source.m, advice.source.blowup)[1])
         # Suffix geometry is known before q. No dummy point or claim is constructed.
         t, width = self.s.dims[0]+self.s.dims[2], 4*self.d
         suffix = Reader(parts[7])
@@ -238,7 +269,7 @@ class Operation:
         proof = dict(rounds=[self.pcs.fields(reader.take(4*width), self.d) for _ in range(h+b)],
                      final=self.pcs.fields(reader.take(3*width), self.d))
         t.absorb(MATMUL, frame)
-        reduction = self.ref.stage.verify_reduction(t, statement, proof)
+        reduction = consumer('MatmulStacked', self.ref.stage.verify_reduction, t, statement, proof)
         columns = self.pcs.eq(reduction['point'], self.d)
         outer_points = [point[h:h+a], point[h+a:]]
         records, points, values = [], [], []
@@ -249,7 +280,7 @@ class Operation:
             total = lambda v: self.pcs.dot([self.sc.scalar(1, self.d)]*len(v), v, self.d)
             raw = self.sc.add(signed, self.sc.mul(self.sc.scalar(128, self.d), self.sc.mul(total(rows), total(columns))))
             opening = reader.take(self.adapter.size(original.source, 1))
-            self.observed(f'verify-original-A9-{index}', self.pcs.verify_opening,
+            self.observed(f'verify-original-A9-{index}', consumer, 'MatmulPcs', self.pcs.verify_opening,
                           t, identity, original, rows, columns, raw, opening)
             records.append(self.adapter.opening_record(original, identity))
             points.append(outer+reduction['point'])
@@ -259,6 +290,8 @@ class Operation:
 
     def verify(self, wire, advice_handle=None):
         """Actual closed proof verifier; original matrices and captured C are absent."""
+        t = self.ref.Transcript(self.public, self.d)
+        self.last_verification = dict(transcript=t, phase='preflight', observation_start=len(self.observations))
         root, parts = self.partition(wire)
         source = self.pcs.Source(self.d, self.s.S+2, self.s.a0, self.s.m, self.blowup, root)
         advice = advice_handle
@@ -266,16 +299,16 @@ class Operation:
             advice = self.observed('advice-import', self.pcs.verify_certificate, source, parts[0])
         self.preflight(parts, advice)
         self.observed('outer-advice-packet-identity', self.check_advice_packet, source, parts[0], advice)
-        t = self.ref.Transcript(self.public, self.d)
-        self.last_verification = dict(transcript=t, phase='advice-A5')
+        self.last_verification['phase'] = 'advice-A5'
         t.absorb(LINEAR, self.statement(advice))
         case, geometry = self.advice_geometry(advice)
         case['proof'] = parts[1].hex()
         lookup = self.adapter.verify(case, geometry, t)
-        need(lookup['decision'] == 'accept', f"LookupVerifier:{lookup['decision']}")
+        self.last_verification['lookup'] = lookup
+        need(lookup['decision'] == 'accept', f"Lookup({lookup['decision']})")
         aggregate = self.aggregate(t)
         packet = self.arithmetic_read(Reader(parts[2]), len(self.s.ids), zero=True)
-        zero, _ = self.ref.zc.verify_reduction(t, aggregate, packet)
+        zero, _ = consumer('Sumcheck', self.ref.zc.verify_reduction, t, aggregate, packet)
         point, claims = zero['point'], zero['claims']
         need([identity for identity, _, _ in claims] == self.s.ids, 'ArithmeticRoster')
         need(all(p == point for _, p, _ in claims), 'ArithmeticRoster')
@@ -286,7 +319,7 @@ class Operation:
                 (0, list(range(4)), self.s.ids[1:5], values[1:5], 3),
                 (1, list(range(4, self.s.R)), self.s.ids[5:], values[5:], 4)):
             identity, a, b, value, record = self.group(t, index, advice, point, rows, ids, finals)
-            self.observed(f'verify-advice-A9-{index}', self.pcs.verify_opening,
+            self.observed(f'verify-advice-A9-{index}', consumer, 'Pcs', self.pcs.verify_opening,
                           t, identity, advice, a, b, value, parts[at])
             record['opening_record'] = self.adapter.opening_record(advice, identity)
             groups.append(record)
@@ -294,12 +327,12 @@ class Operation:
         join_value = self.sc.add(self.sc.scalar(-(1 << 31), self.d),
             self.pcs.dot([self.sc.scalar(256**k, self.d) for k in range(4)], groups[0]['claims'], self.d))
         packet = self.arithmetic_read(Reader(parts[5]), len(self.output['ids']))
-        output = self.sc.verify_reduction(t, self.output, packet)
+        output = consumer('Sumcheck', self.sc.verify_reduction, t, self.output, packet)
         need([identity for identity, _ in output['claims']] == self.output['ids'], 'ArithmeticRoster')
         need(output['claims'][0][1] == public_eq(self.ref, output['point'], self.s.N, self.z), 'CoefficientMismatch')
         identity, a, b, value, record = self.group(t, 2, advice, output['point'], self.output_rows,
                                                  self.output['ids'][1:], [v for _, v in output['claims'][1:]])
-        self.observed('verify-advice-A9-2', self.pcs.verify_opening, t, identity, advice, a, b, value, parts[6])
+        self.observed('verify-advice-A9-2', consumer, 'Pcs', self.pcs.verify_opening, t, identity, advice, a, b, value, parts[6])
         record['opening_record'] = self.adapter.opening_record(advice, identity)
         groups.append(record)
         matmul = self.verify_matmul(t, join_point, join_value, parts[7])
@@ -359,7 +392,7 @@ def project(operation, records, transcript):
     from requant_corpus import usage
     by_scope = {o['scope']: o for o in operation.observations}
     local = operation.ref.o.hashes()
-    outer = [o for o in operation.observations if o['scope'] == 'outer-advice-packet-identity'
+    outer = [o for o in operation.observations[operation.last_verification['observation_start']:] if o['scope'] == 'outer-advice-packet-identity'
              or o['scope'].startswith(('verify-advice-A9-', 'verify-original-A9-'))]
     need(len(outer) == 6, 'OuterObservation')
     for o in outer+[records['lookup']['usage']]:
@@ -387,7 +420,29 @@ def following_instance(operation):
 
 def verify_request(ref, request):
     operation, wire, following = decode_request(ref, request)
-    records, transcript = operation.verify(wire)
+    try:
+        records, transcript = operation.verify(wire)
+    except ValueError as error:
+        # This adapter reports a complete outer failed prefix only after the genuine
+        # independent imports succeeded. Earlier request/import errors stay errors.
+        attempt = operation.last_verification
+        lookup = attempt.get('lookup')
+        if lookup is None or lookup['phase'] != 'outer':
+            raise
+        from requant_corpus import usage
+        by_scope = {o['scope']: o for o in operation.observations}
+        local = ref.o.hashes()
+        outer = [o for o in operation.observations[attempt['observation_start']:]
+                 if o['scope'] == 'outer-advice-packet-identity'
+                 or o['scope'].startswith(('verify-advice-A9-', 'verify-original-A9-'))]
+        for o in outer+[lookup['usage']]:
+            local = {k: v+o['non_transcript'][k] for k, v in local.items()}
+        return dict(decision=str(error), phase='outer', record=None,
+            imports=dict(originals=[usage(by_scope[f'original-{i}-import']) for i in range(2)],
+                advice=usage(by_scope['advice-import']),
+                original_multiplicities=[r['record']['registrations'] for r in operation.ranges],
+                multiplicities=lookup['registrations']),
+            usage=dict(transcript=attempt['transcript'].usage.copy(), non_transcript=local))
     result = project(operation, records, transcript)
     sc, d = ref.sc, operation.d
     next_record = sc.verify_public(transcript, following_instance(operation), following,
