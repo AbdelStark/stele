@@ -12,6 +12,10 @@ REF = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = REF
 SPEC.loader.exec_module(REF)
 
+EMBED_SPEC = importlib.util.spec_from_file_location('embedded_requant', ROOT/'tests/negative-controls/embedded_requant.py')
+EMBED = importlib.util.module_from_spec(EMBED_SPEC)
+EMBED_SPEC.loader.exec_module(EMBED)
+
 
 class RequantSchemaTests(unittest.TestCase):
     def test_matches_reference_complete_fixtures(self):
@@ -22,6 +26,9 @@ class RequantSchemaTests(unittest.TestCase):
 
     def test_matches_reference_codec_fixtures(self):
         self.assertEqual((ROOT/'crates/stele-reductions/tests/fixtures/requant-codec.txt').read_text(), REF.codec_fixtures())
+
+    def test_matches_reference_embedded_fixtures(self):
+        self.assertEqual((ROOT/'crates/stele-reductions/tests/fixtures/embedded-requant.txt').read_text(), EMBED.fixtures())
 
     def test_rejects_invalid_parameters(self):
         for params in ((0,0,8), (65536,0,8), (1,63,8), (1,0,32)):

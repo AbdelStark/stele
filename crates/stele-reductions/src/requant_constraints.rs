@@ -38,7 +38,16 @@ impl Schema {
             .checked_add(5)
             .filter(|v| u32::try_from(*v).is_ok())
             .ok_or(Error::Capacity)?;
-        let mut count = self.rows().checked_add(13).ok_or(Error::Capacity)?;
+        let equations = self.semantic_constraints(input_count - 1)?;
+        finish(equations, 5 + self.allocated_rows(), input_count)
+    }
+
+    // RFC-0024 §2.1 preserves these ordinals; only the physical tail changes.
+    pub(super) fn semantic_constraints<K: ChallengeField>(
+        &self,
+        tail_equations: usize,
+    ) -> Result<Vec<Vec<Term<K>>>, Error> {
+        let mut count: usize = 9;
         for b in self.values().iter().chain(
             self.roles()
                 .iter()
@@ -57,9 +66,10 @@ impl Schema {
                 .checked_add(usize::from(r.widths[2]))
                 .ok_or(Error::Capacity)?;
         }
-        if count >= 1 << 20 {
-            return Err(Error::Capacity);
-        }
+        let capacity = count
+            .checked_add(tail_equations)
+            .filter(|n| *n < 1 << 20)
+            .ok_or(Error::Capacity)?;
         let p = self.layout.params;
         let mantissa = u64::from(u16::from_le_bytes([p[0], p[1]]));
         let d = 1u64.checked_shl(u32::from(p[2])).ok_or(Error::Encoding)?;
@@ -86,7 +96,7 @@ impl Schema {
                 }
             }
         }
-        let mut equations = buffer(count)?;
+        let mut equations = buffer(capacity)?;
         boolean(&mut equations, 0)?;
         for b in self.values() {
             cap(&mut equations, b)?;
@@ -152,33 +162,52 @@ impl Schema {
         append(&mut target, term(1 - h, &[])?)?;
         append(&mut target, scaled_advice(0, -1)?)?;
         real(&mut equations, target)?;
-        for ordinal in (1..5).chain(5..5 + self.allocated_rows()) {
-            let mut terms = buffer(2)?;
-            terms.push(term(1, &[ordinal as u32])?);
-            terms.push(term(-1, &[0, ordinal as u32])?);
-            append(&mut equations, terms)?;
-        }
-        for row in self.allocated_rows()..self.rows() {
-            let mut terms = buffer(1)?;
-            terms.push(advice(row)?);
-            append(&mut equations, terms)?;
-        }
-        if equations.len() != count
-            || equations.iter().any(|e| {
-                e.is_empty()
-                    || u32::try_from(e.len()).is_err()
-                    || e.iter().any(|t| {
-                        t.factors.len() > 3 || t.factors.iter().any(|f| *f as usize >= input_count)
-                    })
-            })
-        {
+        if equations.len() != count {
             return Err(Error::Encoding);
         }
-        Ok(Constraints {
-            input_count,
-            equations,
-        })
+        Ok(equations)
     }
+}
+
+pub(super) fn finish<K: ChallengeField>(
+    mut equations: Vec<Vec<Term<K>>>,
+    allocated_inputs: usize,
+    input_count: usize,
+) -> Result<Constraints<K>, Error> {
+    let count = input_count
+        .checked_sub(1)
+        .and_then(|n| n.checked_add(equations.len()))
+        .filter(|n| *n < 1 << 20)
+        .ok_or(Error::Capacity)?;
+    if allocated_inputs > input_count || u32::try_from(input_count).is_err() {
+        return Err(Error::Capacity);
+    }
+    for ordinal in 1..allocated_inputs {
+        let mut terms = buffer(2)?;
+        terms.push(term(1, &[ordinal as u32])?);
+        terms.push(term(-1, &[0, ordinal as u32])?);
+        append(&mut equations, terms)?;
+    }
+    for ordinal in allocated_inputs..input_count {
+        let mut terms = buffer(1)?;
+        terms.push(term(1, &[ordinal as u32])?);
+        append(&mut equations, terms)?;
+    }
+    if equations.len() != count
+        || equations.iter().any(|e| {
+            e.is_empty()
+                || u32::try_from(e.len()).is_err()
+                || e.iter().any(|t| {
+                    t.factors.len() > 3 || t.factors.iter().any(|f| *f as usize >= input_count)
+                })
+        })
+    {
+        return Err(Error::Encoding);
+    }
+    Ok(Constraints {
+        input_count,
+        equations,
+    })
 }
 
 fn append<T>(out: &mut Vec<T>, value: T) -> Result<(), Error> {
@@ -233,7 +262,7 @@ fn boolean<K: ChallengeField>(out: &mut Vec<Vec<Term<K>>>, row: usize) -> Result
     real(out, terms)
 }
 
-fn cap<K: ChallengeField>(out: &mut Vec<Vec<Term<K>>>, b: &Block) -> Result<(), Error> {
+pub(super) fn cap<K: ChallengeField>(out: &mut Vec<Vec<Term<K>>>, b: &Block) -> Result<(), Error> {
     for (k, row) in b.value().enumerate() {
         let mut terms = buffer(5)?;
         terms.push(advice(row)?);

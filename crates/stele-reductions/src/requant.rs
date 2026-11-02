@@ -1,4 +1,4 @@
-//! RFC-0023 §§2.1-2.4: immutable advice layout, expected frames and untrusted codec.
+//! RFC-0023 §§2.1-2.4 and RFC-0024 §2.1: advice layouts and untrusted codecs.
 //! Static metadata alone authenticates no source, witness, or inference claim.
 use alloc::vec::Vec;
 use core::ops::Range;
@@ -19,6 +19,9 @@ pub use codec::{Descriptor, Statement};
 #[path = "requant_witness.rs"]
 mod witness;
 pub use witness::Witness;
+#[path = "requant_embedded.rs"]
+mod embedded;
+pub use embedded::{EmbeddedSchema, EmbeddedWitness};
 
 /// Failure during schema, expected descriptor or untrusted codec validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
