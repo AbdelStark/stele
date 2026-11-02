@@ -14,7 +14,7 @@ use stele_sumcheck::{Instance, Term};
 pub use verifier::{Failure, PointEqualityRecord, Record, RegistrationFailure};
 #[path = "integer_linear_producer.rs"]
 mod producer;
-pub use producer::{ProducerLimits, ProverFailure, ProverUsage};
+pub use producer::{ProducerLimits, ProverFailure, ProverUsage, ProverWork};
 
 /// The expected operation; proof metadata cannot select parameters or original owners.
 #[derive(Clone, Copy)]

@@ -29,6 +29,16 @@ pub struct ProverUsage {
     /// Actual ordered advice-mu production/import attempts.
     pub registrations: [Option<lookup::RegistrationUsage>; 2],
 }
+/// Actual signed-child observations from this execution, not a whole-operation heap peak.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProverWork {
+    /// Includes actual original source visits, retained rows, folding and original openings.
+    pub matmul: matmul::Work,
+    /// Actual capacities of the two centered copies, separately from retained raw rows.
+    pub signed_input_bytes: [usize; 2],
+    /// Signed-child preparation overlap; excludes outer and caller-owned allocations.
+    pub affine_preparation_peak_bytes: usize,
+}
 /// Failed whole attempt; no partial wire or continuation escapes.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProverFailure {
@@ -89,6 +99,20 @@ where
         advice_packet: &[u8],
         limits: ProducerLimits,
     ) -> Result<(Vec<u8>, ProverUsage), ProverFailure> {
+        self.prove_measured(t, originals, advice, advice_packet, limits)
+            .map(|(wire, usage, _)| (wire, usage))
+    }
+    /// The ordinary producer loop, returning its already-observed signed-child work.
+    /// Capture, registrations, outer A5/A3/A1 and complete live memory remain separate scopes.
+    #[allow(clippy::result_large_err)]
+    pub fn prove_measured(
+        &self,
+        t: &mut Transcript<K>,
+        originals: [&PreparedSource<'_, K>; 2],
+        advice: &PreparedSource<'_, K>,
+        advice_packet: &[u8],
+        limits: ProducerLimits,
+    ) -> Result<(Vec<u8>, ProverUsage, ProverWork), ProverFailure> {
         let mut usage = ProverUsage::default();
         let result = (|| {
             for (prepared, certificate) in
@@ -131,7 +155,7 @@ where
         })();
         usage.transcript = t.usage();
         result
-            .map(|wire| (wire, usage))
+            .map(|(wire, work)| (wire, usage, work))
             .map_err(|cause| ProverFailure { cause, usage })
     }
     fn produce(
@@ -142,7 +166,7 @@ where
         advice_packet: &[u8],
         limits: ProducerLimits,
         usage: &mut ProverUsage,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<(Vec<u8>, ProverWork), Error> {
         let mut wire = buffer(self.proof_bytes)?;
         put(&mut wire, &[1, <K as CodeField>::DEGREE])?;
         put(&mut wire, &advice.source().root())?;
@@ -275,9 +299,18 @@ where
                 Err(f) => f.usage,
             },
         )?;
-        put(&mut wire, &result.map_err(|f| matmul_error(f.cause))?.0)?;
+        let (child, _, work) = result.map_err(|f| matmul_error(f.cause))?;
+        put(&mut wire, &child)?;
+        drop(child);
         self.preflight(&wire)?;
-        Ok(wire)
+        Ok((
+            wire,
+            ProverWork {
+                matmul: work.inner,
+                signed_input_bytes: work.signed_input_bytes,
+                affine_preparation_peak_bytes: work.preparation_peak_bytes,
+            },
+        ))
     }
     #[allow(clippy::too_many_arguments)]
     fn produce_group(

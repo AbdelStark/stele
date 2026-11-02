@@ -141,23 +141,35 @@ where
             Transcript::<K>::new(b"complete centered integer linear").expect("valid fixed fixture")
         };
         let mut pt = transcript();
-        let (proof, produced) = descriptor
-            .prove(
-                &mut pt,
-                [&px, &pw],
-                &pa,
-                &packet,
-                linear::ProducerLimits {
-                    public_bytes: descriptor
-                        .producer_public_bytes()
-                        .expect("valid fixed fixture"),
-                    dense_elements: descriptor
-                        .producer_dense_elements()
-                        .expect("valid fixed fixture"),
-                    retained_row_entries: descriptor.retained_row_entries(),
-                },
-            )
+        let producer_limits = linear::ProducerLimits {
+            public_bytes: descriptor
+                .producer_public_bytes()
+                .expect("valid fixed fixture"),
+            dense_elements: descriptor
+                .producer_dense_elements()
+                .expect("valid fixed fixture"),
+            retained_row_entries: descriptor.retained_row_entries(),
+        };
+        let (proof, produced, work) = descriptor
+            .prove_measured(&mut pt, [&px, &pw], &pa, &packet, producer_limits)
             .expect("valid fixed fixture");
+        let mut ordinary = transcript();
+        let (ordinary_proof, ordinary_usage) = descriptor
+            .prove(&mut ordinary, [&px, &pw], &pa, &packet, producer_limits)
+            .expect("ordinary producer");
+        assert_eq!(ordinary_proof, proof);
+        assert_eq!(ordinary_usage, produced);
+        assert_eq!(ordinary.usage(), pt.usage());
+        for (source, expected_elements) in work.matmul.retained_rows.iter().zip([x.len(), w.len()])
+        {
+            assert_eq!(source.source_visits, 1);
+            assert_eq!(source.source_elements, expected_elements);
+            assert_eq!(source.retained_bytes, size * core::mem::size_of::<K>());
+        }
+        assert_eq!(
+            work.signed_input_bytes,
+            [size * core::mem::size_of::<K>(); 2]
+        );
         assert_eq!(proof.len(), descriptor.proof_size());
         let import_cap = (descriptor
             .producer_public_bytes()

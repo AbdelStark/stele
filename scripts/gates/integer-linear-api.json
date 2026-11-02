@@ -55,7 +55,7 @@
     "exports": [
       "pubuserequant::Format;",
       "pubuseverifier::{Failure,PointEqualityRecord,Record,RegistrationFailure};",
-      "pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage};"
+      "pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage,ProverWork};"
     ],
     "paths": [
       "#[path=\"integer_linear_verifier.rs\"]modverifier;",
@@ -72,17 +72,23 @@
       "pubtranscript",
       "pubnon_transcript",
       "pubregistrations",
+      "pubstructProverWork",
+      "pubmatmul",
+      "pubsigned_input_bytes",
+      "pubaffine_preparation_peak_bytes",
       "pubstructProverFailure",
       "pubcause",
       "pubusage",
       "pubfnproducer_public_bytes",
       "pubfnproducer_dense_elements",
-      "pubfnprove"
+      "pubfnprove",
+      "pubfnprove_measured"
     ],
     "functions": [
       "pubfnproducer_public_bytes(&self)->Result<usize,Error>{",
       "pubfnproducer_dense_elements(&self)->Result<usize,Error>{",
-      "pubfnprove(&self,t:&mutTranscript<K>,originals:[&PreparedSource<'_,K>;2],advice:&PreparedSource<'_,K>,advice_packet:&[u8],limits:ProducerLimits,)->Result<(Vec<u8>,ProverUsage),ProverFailure>{"
+      "pubfnprove(&self,t:&mutTranscript<K>,originals:[&PreparedSource<'_,K>;2],advice:&PreparedSource<'_,K>,advice_packet:&[u8],limits:ProducerLimits,)->Result<(Vec<u8>,ProverUsage),ProverFailure>{",
+      "pubfnprove_measured(&self,t:&mutTranscript<K>,originals:[&PreparedSource<'_,K>;2],advice:&PreparedSource<'_,K>,advice_packet:&[u8],limits:ProducerLimits,)->Result<(Vec<u8>,ProverUsage,ProverWork),ProverFailure>{"
     ],
     "impls": [
       "impl<K:ChallengeField+CodeField+lookup::TableField+Eq>Descriptor<'_,'_,K>wherefor<'b>K::Bytes:TryFrom<&'b[u8]>,{"
@@ -90,6 +96,7 @@
     "structures": [
       "pubstructProducerLimits{pubpublic_bytes:usize,pubdense_elements:usize,pubretained_row_entries:usize,}",
       "pubstructProverUsage{pubtranscript:HashUsage,pubnon_transcript:HashUsage,pubregistrations:[Option<lookup::RegistrationUsage>;2],}",
+      "pubstructProverWork{pubmatmul:matmul::Work,pubsigned_input_bytes:[usize;2],pubaffine_preparation_peak_bytes:usize,}",
       "pubstructProverFailure{pubcause:Error,pubusage:ProverUsage,}"
     ],
     "enums": [],
