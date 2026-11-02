@@ -197,7 +197,9 @@ tasks:
   - RFC-0018 §1
   skill: benchmark-runner
   crate: ci
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E0-09-control-profile
   acceptance:
   - compare the same normal coverage binary under dev and test profiles from one frozen source; record cold build and complete execution separately with actual compiler, binary and raw-output evidence
   - preserve default features, debug assertions, overflow checks, every registered control and byte-identical successful coverage output; invalid arguments retain their exits and usage output
