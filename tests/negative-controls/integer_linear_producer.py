@@ -146,17 +146,48 @@ def produce(operation, original_witnesses, advice_witness, advice, packet):
     return wire, t, usage
 
 
-def fixture(ref, degree, dims, repetitions):
+CASES = dict(
+    scalar=([0, 0, 0, 0], 1, 1, 8), stacked=([1, 1, 1, 1], 1, 1, 8),
+    ties=([0, 0, 0, 2], 1, 1, 8), zero_x=([1, 1, 1, 0], 32767, 62, 16),
+    zero_w=([0, 1, 1, 1], 1, 0, 8), wide=([1, 1, 0, 1], 32767, 15, 16),
+    shift62=([0, 1, 1, 1], 32767, 62, 16), int16_min=([0, 0, 2, 0], 1, 0, 16),
+    int16_max=([0, 0, 2, 0], 1, 0, 16), int8_min=([0, 0, 0, 0], 1, 0, 8),
+    int8_max=([0, 0, 0, 0], 1, 0, 8), cap=([0, 0, 0, 0], 1, 8, 8))
+
+
+def fixture(ref, degree, scenario, repetitions):
     """Small deterministic signed matrices, generated independently of native output."""
     pcs, sc = ref.pcs, ref.sc
+    dims, mantissa, shift, bits = CASES[scenario]
     h, a, b, c = dims
     size, layers, inner = 1 << (h+b), 1 << h, 1 << b
-    matrices = [[[125+(i*size+k) % 7 for k in range(size)] for i in range(1 << a)],
-                [[126+(i*size+k) % 5 for k in range(size)] for i in range(1 << c)]]
+    messages = [[125+i % 7 for i in range((1 << a)*size)],
+                [126+i % 5 for i in range((1 << c)*size)]]
+    if scenario == 'ties':
+        messages = [[127], [127, 129, 125, 131]]
+    elif scenario == 'zero_x':
+        messages[0] = [128]*len(messages[0])
+    elif scenario == 'zero_w':
+        messages[1] = [128]*len(messages[1])
+    elif scenario == 'wide':
+        messages = [[0, 255, 129, 127], [255, 0, 127, 129]]
+    elif scenario == 'int16_min':
+        messages = [[0]*4, [192]*4]
+    elif scenario == 'int16_max':
+        messages = [[255, 255, 255, 129], [255, 255, 132, 129]]
+    elif scenario == 'int8_min':
+        messages = [[0], [129]]
+    elif scenario == 'int8_max':
+        messages = [[255], [129]]
+    elif scenario == 'cap':
+        messages = [[0], [0]]
+    matrices = [[message[i:i+size] for i in range(0, len(message), size)] for message in messages]
+    base_point = scenario in ('scalar', 'stacked')
+    rates = (1, 2, 1) if base_point else (2, 1, 2)
     captured = [sum((matrices[0][i][l*inner+k]-128)*(matrices[1][j][l*inner+k]-128)
                     for k in range(inner)) for l in range(layers) for i in range(1 << a) for j in range(1 << c)]
     packets, witnesses, originals = [], [], []
-    for index, (matrix, ell, rate, identity, mu_ids) in enumerate(zip(matrices, (a, c), (1, 2),
+    for index, (matrix, ell, rate, identity, mu_ids) in enumerate(zip(matrices, (a, c), rates[:2],
             (101, 102), ([111, 112][:repetitions], [121, 122][:repetitions]), strict=True)):
         source, witness = pcs.commit(matrix, ell, h+b, rate, degree, identity)
         handle, packet, _, _ = ref.o.register(source, witness)
@@ -166,19 +197,21 @@ def fixture(ref, degree, dims, repetitions):
         witnesses.append(witness)
         originals.append(dict(source_hex=source.bytes().hex(), certificate_hex=packet.hex(),
                               lookup_id=9+index, mu_ids=mu_ids, range_proof_hex=range_proof.hex()))
-    schema = Schema(ref, dims, 1, 1, 8, 31)
+    schema = Schema(ref, dims, mantissa, shift, bits, 31)
     matrix = schema.witness(captured)
-    source, witness = pcs.commit(matrix, schema.a0, schema.m, 1, degree, schema.S+2)
+    source, witness = pcs.commit(matrix, schema.a0, schema.m, rates[2], degree, schema.S+2)
     advice, packet, _, _ = ref.o.register(source, witness)
-    point = [sc.scalar(i+2, degree) for i in range(schema.m)]
-    outputs = [(-1 if v < 0 else 1)*((abs(v)+1)//2) for v in captured]
+    point = [sc.scalar(i+2, degree) if base_point else tuple((i+2)*(j+1) for j in range(degree))
+             for i in range(schema.m)]
+    bias = 0 if shift == 0 else 1 << (shift-1)
+    outputs = [(-1 if v < 0 else 1)*((abs(v)*mantissa+bias) >> shift) for v in captured]
     value = pcs.dot(pcs.eq(point, degree), [sc.scalar(v, degree) for v in outputs], degree)
     public = b'complete centered integer linear'
-    operation = Operation(ref, schema, degree, repetitions, packets, point, value, public)
+    operation = Operation(ref, schema, degree, repetitions, packets, point, value, public, rates[2])
     wire, t, usage = produce(operation, witnesses, witness, advice, packet)
     following, _ = sc.prove(t, following_instance(operation), [[sc.scalar(1, degree), sc.scalar(2, degree)]])
     return dict(request=dict(degree=degree, stage=31, dims=list(dims),
-                parameters=dict(mantissa=1, shift=1, bits=8), repetitions=repetitions, advice_blowup=1,
+                parameters=dict(mantissa=mantissa, shift=shift, bits=bits), repetitions=repetitions, advice_blowup=rates[2],
                 point=point, value=value, public_hex=public.hex(), originals=originals,
                 proof_hex=wire.hex(), following_hex=arithmetic(pcs, following).hex()), producer_usage=usage)
 
@@ -186,12 +219,14 @@ def fixture(ref, degree, dims, repetitions):
 if __name__ == '__main__':
     import argparse
     import json
+    import sys
     from integer_linear_reference import load
+    need(sys.version_info[:2] == (3, 12) and not sys.flags.optimize, 'Runtime')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('degree', type=int, choices=(4, 8))
-    parser.add_argument('case', choices=('scalar', 'stacked'))
+    parser.add_argument('case', choices=tuple(CASES))
     parser.add_argument('repetitions', type=int, choices=(1, 2))
     args = parser.parse_args()
     with load() as ref:
-        print(json.dumps(fixture(ref, args.degree, [0 if args.case == 'scalar' else 1]*4,
+        print(json.dumps(fixture(ref, args.degree, args.case,
                                  args.repetitions), sort_keys=True, separators=(',', ':')))

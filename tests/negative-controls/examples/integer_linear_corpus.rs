@@ -32,22 +32,97 @@ const STAGE: u32 = 31;
 const BASE: u64 = (STAGE as u64) << 40;
 const PUBLIC: &[u8] = b"complete centered integer linear";
 
-fn attempt<K: ChallengeField + CodeField + lookup::TableField + Eq>(
+struct Case {
     bits: [u8; 4],
+    mantissa: u32,
+    shift: u32,
+    format: Format,
+    rates: [u8; 3],
+    messages: [Vec<u8>; 2],
+    base_point: bool,
+}
+fn case(name: &str) -> Result<Case, &'static str> {
+    let (bits, mantissa, shift, format) = match name {
+        "scalar" => ([0; 4], 1, 1, Format::Int8),
+        "stacked" => ([1; 4], 1, 1, Format::Int8),
+        "ties" => ([0, 0, 0, 2], 1, 1, Format::Int8),
+        "zero_x" => ([1, 1, 1, 0], 32767, 62, Format::Int16),
+        "zero_w" => ([0, 1, 1, 1], 1, 0, Format::Int8),
+        "wide" => ([1, 1, 0, 1], 32767, 15, Format::Int16),
+        "shift62" => ([0, 1, 1, 1], 32767, 62, Format::Int16),
+        "int16_min" | "int16_max" => ([0, 0, 2, 0], 1, 0, Format::Int16),
+        "int8_min" | "int8_max" => ([0; 4], 1, 0, Format::Int8),
+        "cap" => ([0; 4], 1, 8, Format::Int8),
+        _ => return Err("unknown fixture"),
+    };
+    let [h, a, b, c] = bits;
+    let mut x: Vec<_> = (0..1usize << (h + a + b))
+        .map(|i| 125 + (i % 7) as u8)
+        .collect();
+    let mut w: Vec<_> = (0..1usize << (h + c + b))
+        .map(|i| 126 + (i % 5) as u8)
+        .collect();
+    match name {
+        "ties" => {
+            x = vec![127];
+            w = vec![127, 129, 125, 131];
+        }
+        "zero_x" => x.fill(128),
+        "zero_w" => w.fill(128),
+        "wide" => {
+            x = vec![0, 255, 129, 127];
+            w = vec![255, 0, 127, 129];
+        }
+        "int16_min" => {
+            x.fill(0);
+            w.fill(192);
+        }
+        "int16_max" => {
+            x = vec![255, 255, 255, 129];
+            w = vec![255, 255, 132, 129];
+        }
+        "int8_min" => {
+            x = vec![0];
+            w = vec![129];
+        }
+        "int8_max" => {
+            x = vec![255];
+            w = vec![129];
+        }
+        "cap" => {
+            x = vec![0];
+            w = vec![0];
+        }
+        _ => (),
+    }
+    let base_point = matches!(name, "scalar" | "stacked");
+    Ok(Case {
+        bits,
+        mantissa,
+        shift,
+        format,
+        rates: if base_point { [1, 2, 1] } else { [2, 1, 2] },
+        messages: [x, w],
+        base_point,
+    })
+}
+
+fn attempt<K: ChallengeField + CodeField + lookup::TableField + Eq>(
+    case: &Case,
     repetitions: usize,
 ) -> Value
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    let bits = case.bits;
     let [h, a, b, c] = bits;
     let [layers, rows, inner, columns] = bits.map(|n| 1usize << n);
     let size = layers * inner;
-    let x: Vec<_> = (0..rows * size)
-        .map(|i| M31::from_i64(125 + (i % 7) as i64))
-        .collect();
-    let w: Vec<_> = (0..columns * size)
-        .map(|i| M31::from_i64(126 + (i % 5) as i64))
-        .collect();
+    let [x, w] = case.messages.each_ref().map(|v| {
+        v.iter()
+            .map(|v| M31::from_i64(i64::from(*v)))
+            .collect::<Vec<_>>()
+    });
     let mut captured = Vec::new();
     for l in 0..layers {
         for i in 0..rows {
@@ -63,9 +138,9 @@ where
             }
         }
     }
-    let px = PreparedSource::<K>::new(101, a, h + b, 1, &x, &mut HashUsage::default())
+    let px = PreparedSource::<K>::new(101, a, h + b, case.rates[0], &x, &mut HashUsage::default())
         .expect("original X preparation");
-    let pw = PreparedSource::<K>::new(102, c, h + b, 2, &w, &mut HashUsage::default())
+    let pw = PreparedSource::<K>::new(102, c, h + b, case.rates[1], &w, &mut HashUsage::default())
         .expect("original W preparation");
     let xp = px.certificate().expect("original X certificate").0;
     let wp = pw.certificate().expect("original W certificate").0;
@@ -100,7 +175,8 @@ where
     let wr = dw
         .verify(&mw.iter().collect::<Vec<_>>(), &rw)
         .expect("complete W range");
-    let schema = EmbeddedSchema::new(b, 1, 1, Format::Int8).expect("embedded schema");
+    let schema =
+        EmbeddedSchema::new(b, case.mantissa, case.shift, case.format).expect("embedded schema");
     let witness = schema
         .witness(&captured, LIMITS.positions as usize)
         .expect("captured advice");
@@ -108,7 +184,7 @@ where
         BASE + 2,
         schema.rows().trailing_zeros() as u8,
         h + a + c,
-        1,
+        case.rates[2],
         witness.advice(),
         &mut HashUsage::default(),
     )
@@ -116,7 +192,20 @@ where
     let packet = pa.certificate().expect("advice certificate").0;
     let (ca, ia) = verify_certificate(*pa.source(), &packet).expect("advice import");
     let point: Vec<_> = (0..h + a + c)
-        .map(|i| K::from_i64(i64::from(i) + 2))
+        .map(|i| {
+            if case.base_point {
+                return K::from_i64(i64::from(i) + 2);
+            }
+            let raw: Vec<_> = (0..<K as CodeField>::DEGREE)
+                .flat_map(|j| ((u32::from(i) + 2) * (j as u32 + 1)).to_le_bytes())
+                .collect();
+            K::from_le_bytes(
+                K::Bytes::try_from(raw.as_slice())
+                    .ok()
+                    .expect("fixture field width"),
+            )
+            .expect("canonical nonbase fixture point")
+        })
         .collect();
     let eq = stele_poly::eq_table(&point).expect("output point");
     let value = eq
@@ -129,11 +218,11 @@ where
         linear::Statement {
             stage: STAGE,
             bits,
-            mantissa: 1,
-            shift: 1,
-            format: Format::Int8,
+            mantissa: case.mantissa,
+            shift: case.shift,
+            format: case.format,
             repetitions: repetitions as u8,
-            advice_blowup: 1,
+            advice_blowup: case.rates[2],
             point: &point,
             value,
             originals: [&xr, &wr],
@@ -211,8 +300,8 @@ where
         })
         .collect();
     json!({"request":{"degree":<K as CodeField>::DEGREE,"stage":STAGE,"dims":bits,
-        "parameters":{"mantissa":1,"shift":1,"bits":8},"repetitions":repetitions,
-        "advice_blowup":1,"point":fields(&point),"value":fields(&[value])[0],
+        "parameters":{"mantissa":case.mantissa,"shift":case.shift,"bits":match case.format {Format::Int8=>8,Format::Int16=>16}},"repetitions":repetitions,
+        "advice_blowup":case.rates[2],"point":fields(&point),"value":fields(&[value])[0],
         "public_hex":hex(PUBLIC),"originals":originals,"proof_hex":hex(&wire),"following_hex":hex(&following)},
         "producer_usage":{"transcript":hashes(produced.transcript),"non_transcript":hashes(produced.non_transcript),
             "registrations":produced.registrations.map(|u|u.map(|u|json!({"production":hashes(u.production),"verification":usage(u.verification)})))},
@@ -243,21 +332,17 @@ fn main() -> Result<(), &'static str> {
         return Ok(());
     }
     if args.len() != 3 {
-        return Err("usage: integer_linear_corpus K scalar|stacked r");
+        return Err("usage: integer_linear_corpus K CASE r, or --verify");
     }
-    let bits = match args[1].as_str() {
-        "scalar" => [0; 4],
-        "stacked" => [1; 4],
-        _ => return Err("unknown fixture"),
-    };
+    let case = case(&args[1])?;
     let repetitions = match args[2].as_str() {
         "1" => 1,
         "2" => 2,
         _ => return Err("invalid repetition count"),
     };
     let result = match args[0].as_str() {
-        "4" => attempt::<QM31>(bits, repetitions),
-        "8" => attempt::<OM31>(bits, repetitions),
+        "4" => attempt::<QM31>(&case, repetitions),
+        "8" => attempt::<OM31>(&case, repetitions),
         _ => return Err("invalid field degree"),
     };
     println!("{result}");
