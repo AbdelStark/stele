@@ -1008,3 +1008,66 @@ Complete Source/Assets/Map corpus SHA-256:
 `89f149a71806a728ac1ea158fdcae7c6fde6b91b708121fe089c9130b9afdc68`.
 Candidate SHA-256: `81abfcd818557e07586337e0ce263bcf11b14f2c34abe40e860efbcaa2862115`.
 Checker SHA-256: `abe9a2be5678aaa2d3926e58b715634d911c3da37d8b228647aec454679092ae`.
+
+## Exact original-source conversion
+
+The [conversion appendix](../../docs/rfcs/full-model-conversion.md) and
+`source_conversion.py` connect verified immutable source slices to complete
+Scales and Artifact bytes. Scalar access follows each declared physical
+transform. Integer dyadic comparisons derive the least matrix exponent and
+channel mantissas; exact signed division supplies half-away rounding. Int16
+vectors retain their configured fractions and reject overflow. Every selected
+scalar and vector range is validated before output begins.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with safetensors==0.6.2 python -B research/cqis-model-contract/check_source_conversion.py`.
+Seed 2689 checks 10000 complete conversions, 5000 per family, against independent
+rational scalar decoding, array transforms and complete byte framing. The
+unchanged earlier quantiser helper supplies rational matrix scales/codes and
+vector rounding. Absolute matrix errors also satisfy the declared half-scale
+bound. These are calls to pure helpers, without rerunning an earlier campaign.
+
+The 222508 physical records comprise 58924 int4 matrices, 58666 int8 matrices
+and 104918 int16 vectors. Transform counts are 154461 copies, 45433 transposes,
+11307 fused Q/K/V matrix parts and 11307 fused bias parts. Complete Scales bytes,
+Artifact bytes/hashes, typed source/asset identities and quantiser_id agree;
+every emitted Artifact also passes the previously qualified structural reader.
+The largest randomized Artifact is 2749 bytes.
+
+Focused checks cover 32 zero/signed-zero/subnormal/maximum-finite matrix cases
+across all four source formats and both weight widths. Six vector cases cover
+signed halfway rounding and both int16 endpoints/overflow. Selected infinity
+and NaN reject; a nonfinite value in the final fused-bias partition rejects
+before any output. Ignored nonfinite buffers retain structural handling only.
+A peak in Q does not change K/V's exponent. Zero token rows retain their matrix's
+nonzero exponent with mantissa one. Repartitioning or changing signed-zero
+representations can preserve Artifact while changing source identity. Changed
+source bytes and short output writes reject without a conversion success result.
+
+A separate complete generated conversion has 4194305 token elements in rows
+of width five. Alternating signed F16 minimum subnormals derive e=-42, m=37450
+and alternating codes +7/-7, with one final zero high nibble. The complete
+3776389-byte Artifact matches an independently constructed expected frame;
+chunks reach 65536 bytes. This exercises nonzero payloads and scale words across
+chunk boundaries, odd rows and a real element count above the old 2^22 cap.
+It is not a named-checkpoint conversion or a fidelity/performance result.
+
+The first main run failed in the new Llama fixture constructor, which requested
+head width one despite needing a rotary pair. The fixture now selects widths
+2 through 4 for Llama and retains widths 1 through 4 for GPT-2. The converter
+and shared helpers were unchanged; the failed log, receipt and exact checker
+snapshot are preserved. The corrected complete campaign passes.
+
+Conversion uses two offline matrix scans for scales and one for codes, with
+separate vector validation/emission. It retains whole immutable source files,
+bounded Scales metadata and chunk buffers without whole transformed-tensor
+copies. Failed output must be discarded. Actual stored-byte integrity, semantic
+config/tokenizer/generation adapters, authenticated outer passport/statement,
+commitment/hash proof, native consumers/resources, full model/cache execution,
+private PCS/ZK, profiles and named fidelity remain required. No online weight
+pass, production dependency, NC coverage or measured cost constant changes.
+
+Complete typed-source/Scales/Artifact corpus SHA-256:
+`d02945e344e6048bef61429c762539040a88b3056259c7a9c1939d8b6060c6e6`.
+Candidate SHA-256: `1983de68a52f87196462edffc72829ac1fa5a30592bdc1ea8203b632e69a4cf7`.
+Checker SHA-256: `2310619abc3e204c3dc29c4fbe6e8016efc3d5b5998d50236aed6ba91d9adef2`.

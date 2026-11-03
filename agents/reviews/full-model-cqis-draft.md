@@ -35,6 +35,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The source appendix now specifies complete typed Source/Assets frames and
    original-byte container/selection checks, under Draft RFC-0011 A3/A4.
 
+   The conversion appendix now specifies exact original-scalar access and
+   exact Scales derivation and streamed Artifact emission under RFC-0025 §2.1.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -52,6 +55,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Source and Assets identities also require independent expected authority.
    The complete Source frame remains bound even when a kind-0 filename change
    leaves its single-file SHA-256 unchanged.
+
+   Conversion adds no challenge. Its emitted-byte digest and source identities
+   still require the complete authenticated passport and H/query schedule.
 
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
@@ -73,6 +79,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Source verification returns immutable original-byte slices after all files,
    shard locations, selection metadata and permitted alias bytes pass. It does
    not create an E6 source handle or discharge conversion/text-adapter semantics.
+
+   Numerical conversion consumes verified immutable source slices and derives
+   every scale/code byte. The resulting metadata cannot construct a native
+   source handle or prove what a separate storage system or commitment contains.
 
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
@@ -111,6 +121,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    changes alter the bundle identity even when selected tensor bytes agree.
    These are research controls, with no native NC coverage.
 
+   Conversion controls include selected nonfinite values, int16 halfway
+   overflow, late fused-partition failures, file changes and failed output
+   writes. All selected scalar checks precede output; no native NC credit follows.
+
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -127,6 +141,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Preparation/Artifact identities instantiate no native H/query schedule here.
    Source/Assets SHA-256 and BLAKE3 uses remain part of the pending complete
    identity accounting; this research codec adds no native loss or query line.
+
+   Exact source conversion adds deterministic arithmetic and hash uses only;
+   the required global identity accounting is unchanged acceptance work.
 
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
@@ -204,6 +221,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    u64 values. Index length bounds shard count and total filename bytes before
    descriptor allocation; the frame cap is independent of checkpoint payloads.
 
+   Minimal matrix exponents/mantissas derive from all transformed source
+   values. They do not use rounded codes to tighten static bounds.
+   Every original scalar, full source index and int16 overflow rule is retained.
+
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -245,6 +266,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Their allowed raw scalar/empty/sub-byte formats do not change the selected
    physical role shapes, packed Artifact tails or permitted alias rules.
 
+   Conversion emits continuous physical-order int4 nibbles across odd rows,
+   with only the final inactive nibble zero. This does not admit proof padding
+   selectors or substitute for committed source geometry.
+
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -263,7 +288,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    definitions and preserves every ordered function/layer reference. Digest
    caches contain only regenerated data; rotation parameters validate before
    lookup so Boolean fields cannot alias integer keys. Complete passport
-   codecs, source regeneration and full/cache model flows still need their checks.
+   codecs, native source regeneration and full/cache model flows still need
+   their checks.
    Registry's final run matches 15 complete component and 53 complete rotation
    definitions against independent real-data oracles. Expanded tests exposed a
    floor-versus-rounding error in the new oracle; it is corrected with a retained
@@ -277,8 +303,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    runtime fractions. Artifact includes every exact configured scale/payload byte.
    Source/Assets frames preserve exact UTF-8 names and original file bytes.
    Returned slices keep the immutable bytes whose hashes passed; dictionary
-   replacement cannot substitute data after verification. Source conversion
+   replacement cannot substitute data after verification. Native source conversion
    and complete passport/cache flows still require their own evidence.
+
+   Conversion uses integer dyadic comparisons and exact signed half-away
+   division. Fused Q/K/V matrices derive separate scales. Source repartitioning
+   and signed-zero representations can preserve Artifact while changing Source.
 
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
@@ -300,6 +330,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The large generated source fixture is not a named checkpoint, native parity
    or a model-fidelity result.
 
+   Conversion uses independent rational scalar/transform/framing checks and
+   the unchanged quantiser helper as its oracle. The large generated conversion
+   fixture is neither a named checkpoint nor Rust/SIMD/CUDA parity evidence.
+
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -317,6 +351,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     it does not alter the one-pass inference schedule or wrapper hash obligation.
     Source hashing/parsing is preparation T_misc. The index is grouped once
     by shard; this supplies no measured speed result or online weight-pass change.
+
+    Conversion uses two offline matrix scans for scales and one for emitted
+    codes; vector validation and emission are separate. These preparation
+    scans do not change the one online weight pass or report a measured constant.
 
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
@@ -351,6 +389,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     without whole-tensor copies. This is not native bounded-memory admission.
     Native loading must preserve the same bytes through every consuming pass.
 
+    Conversion retains source files and bounded Scales metadata, reads scalar
+    spans and emits chunks of at most 65536 bytes. Failed writes produce no
+    success result; partial output must be discarded. Native resource admission
+    and stored-byte integrity still require their own checks.
+
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -366,6 +409,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     A typed file identity or Assets digest remains distinct from publisher
     authority, semantic configuration/tokenizer validation and a proof source.
 
+    A numerical conversion result remains distinct from a proven source,
+    committed-plaintext hash binding, semantic adapter or complete passport.
+
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
 That result is limited to the research mapper and does not approve a protocol.
@@ -373,8 +419,8 @@ That result is limited to the research mapper and does not approve a protocol.
 ## Findings still preventing acceptance
 
 Actual consuming-reduction closure, authenticated outer
-passport/request schemas, complete passport codecs, source regeneration and
-semantic config/tokenizer/generation adapters,
+passport/request schemas, complete passport codecs, actual native conversion
+consumers and semantic config/tokenizer/generation adapters,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against

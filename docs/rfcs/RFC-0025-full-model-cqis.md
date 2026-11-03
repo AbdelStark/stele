@@ -76,6 +76,8 @@ and fused Q/K/V partition must be explicit source-map operations; they cannot
 be inferred during execution. Source mapping is offline preparation, not another
 online proof weight pass. The [encoding appendix](full-model-encoding.md) defines
 the exact physical role order, transform bytes, fused partitions and alias rules.
+The [conversion appendix](full-model-conversion.md) fixes original-byte scalar
+access, complete scale derivation and streamed Artifact completion semantics.
 
 ### 2.2 Row conversion, affine projection and residual alignment
 
