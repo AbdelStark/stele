@@ -240,13 +240,130 @@ operands of every term and the result to have 269 bytes, each role has at most
 7159 bytes and the whole frame fewer than 100000 bytes, below the 128 KiB cap.
 These are mathematical encoding/workspace bounds, not measured performance.
 
-## 6. LayerNorm and complete-model closure
+## 6. Closed exact-mean LayerNorm record
 
-RFC-0025 §2.3/§2.8 and the checked numerical study already give the LayerNorm
-whole-value bounds. Their closed offset/statistic/centered-square/variance/
-normalization/affine-output column roles still require explicit expansion here,
-with the same original X/S/Q/C/V/gain/bias sources and all 33 exponent branches.
-RMSNorm retains RFC-0022 without changing its original bytes or authority.
+Schema 3 uses RFC-0025 §2.3's checked parameters d,F,G,E,Gb,en,ed. Its parameter
+bytes are `u16(d) || u8(F,G,E,Gb) || u32(en,ed)`, exactly fourteen bytes. The
+frame and column derivation are §5's, with the following fixed scalars/roles.
+This schema does not alter RMSNorm or RFC-0022's original bytes or authority.
+Let H=32768, O=65535 and derive
+
+    Smax=d*H, Omax=d*O, Qmax=d*H^2, Cmax=O*(d-1), Vmax=d^2*H^2,
+    unit=d^2*2^(2F), Nmax=ed*Vmax+en*unit, P=ed*unit,
+    fa_max=2^46, fd_max=2^18, Amax=Nmax*fa_max, Dmax=P*fd_max,
+    MDmax=65535*Dmax, Jmax=16384, CHmax=Cmax*H, Tmax=CHmax*Jmax.
+
+For every integer a in [-23,9], derive e=F+G+21+a-E, k=max(e,Gb-E,0),
+Lt(a)=2^(k-e), Lb(a)=2^(k+E-Gb), K(a)=2^k. Denote their respective maxima
+over this fixed range by Ltmax,Lbmax,Kmax. Then
+
+    dLbmax=d*Lbmax, Ucap=Tmax*Ltmax+H*dLbmax, Doutmax=d*Kmax,
+    qmax=32768, qDmax=qmax*Doutmax.
+
+These are common bounds across all 33 branches. They never choose a branch or
+permit independently chosen factors. A single original a must select the joint
+tuple `(2^max(-2a,0), 2^max(2a,0), Lt(a), Lb(a), K(a))`. Its source, signed range
+and complete tuple relation are mandatory. Independent membership checks for
+the five coordinates are insufficient. No runtime parameter, arbitrary factor
+table or freely supplied tuple becomes a static bound.
+
+The ordered scalars are H,O,Smax,Omax,Qmax,Cmax,Vmax,unit,Nmax,P,fa_max,fd_max,
+Amax,Dmax,MDmax,Jmax,CHmax,Tmax,Ltmax,Lbmax,Kmax,dLbmax,Ucap,Doutmax,qmax,qDmax,
+131071,65536. The ordered i16 shifts are min(e),max(e),min(k),max(k), over the
+same 33 branches. Encode exactly 28 scalars, four shifts and these 33 roles:
+
+| Id | Role | Terms (n,A,C) |
+|---|---|---|
+| 1 | original row offset sum | (d,O,1) |
+| 2 | original squared statistic | (d,H,H) |
+| 3 | row-sum sign left | (1,Omax,1), (1,Smax,2) |
+| 4 | row-sum sign right | (1,Smax,1), (1,Smax,1) |
+| 5 | centering left | (1,O,d), (1,Cmax,1) |
+| 6 | centering right | (1,2Cmax,1), (1,Omax,1) |
+| 7 | centered sign left | (1,2Cmax,1), (1,Cmax,2) |
+| 8 | centered sign right | (1,Cmax,1), (1,Cmax,1) |
+| 9 | squared row sum | (1,Smax,Smax) |
+| 10 | scaled statistic | (1,Qmax,d) |
+| 11 | variance identity | (1,Vmax,1), (1,Vmax,1) |
+| 12 | epsilon numerator | (1,Vmax,ed), (1,unit,en) |
+| 13 | normalized numerator | (1,Nmax,fa_max) |
+| 14 | normalized denominator | (1,P,fd_max) |
+| 15 | mantissa product | (1,65535,Dmax) |
+| 16 | normalization sum | (1,MDmax,1), (1,Dmax-1,1) |
+| 17 | strict normalization remainder | (1,Dmax-1,1), (1,Dmax-1,1), (1,1,1) |
+| 18 | centered magnitude times gain | (1,Cmax,H) |
+| 19 | reciprocal product | (1,CHmax,Jmax) |
+| 20 | product sign left | (1,2Tmax,1), (1,Tmax,2) |
+| 21 | product sign right | (1,Tmax,1), (1,Tmax,1) |
+| 22 | bias factor | (1,d,Lbmax) |
+| 23 | branch offset | (1,Tmax,Ltmax), (1,H,dLbmax) |
+| 24 | aligned offset numerator | (1,2Tmax,Ltmax), (1,O,dLbmax) |
+| 25 | numerator sign left | (1,2Ucap,1), (1,Ucap,2) |
+| 26 | numerator sign right | (1,Ucap,1), (1,Ucap,1) |
+| 27 | output denominator | (1,d,Kmax) |
+| 28 | quotient product | (1,qmax,Doutmax) |
+| 29 | division sum | (1,qDmax,1), (1,Doutmax-1,1) |
+| 30 | strict output remainder | (1,Doutmax-1,1), (1,Doutmax-1,1), (1,1,1) |
+| 31 | doubled output remainder | (1,Doutmax-1,2) |
+| 32 | lower-half comparison | (1,2Doutmax-2,1), (1,Doutmax-1,1), (1,1,1) |
+| 33 | upper-half comparison | (1,Doutmax,1), (1,Doutmax-1,1) |
+
+The source relation for X, gain H_i and bias B_i is
+`(x+32768)+2*sign(x)*abs(x)=32768+abs(x)`; the recorded side bounds are 131071
+and 65536. Enforce original int16 endpoints, canonical zero signs and original
+physical gain/bias roles. Row sum and statistic both use the same complete X:
+
+    s0=sum_i(X_i+H)=S+dH, Q=sum_i abs(X_i)^2,
+    s0+2*sign(S)*abs(S)=dH+abs(S),
+    d*(X_i+H)+Cmax=(C_i+Cmax)+s0,
+    (C_i+Cmax)+2*sign(C_i)*abs(C_i)=Cmax+abs(C_i),
+    V+abs(S)^2=dQ, N=ed*V+en*unit.
+
+All occurrences of S,Q,C,V denote the same bounded words across their roles;
+in particular 0<=V<=Vmax and |C_i|<=Cmax are enforced independently. Roles 9–11
+do not admit a field-only variance subtraction. Even at d=1, zero C/T cannot
+erase the input, gain or bias source joins.
+
+Roles 13–17 require A=N*fa, D=P*fd, A=M*D+R and R+(D-R-1)+1=D, with positive
+N/P/D, 16384<=M<=65535, and 0<=R<D. Those exact intervals fix the unique a.
+J is the original configured rsqrt(M) result with 8192<=J<=16384; a matching
+output range is not table membership. Roles 18–21 bind abs(C_i)*abs(H_i)*J
+and T_i=C_i*H_i*J. Its sign is the XOR of the original C_i/H_i signs for nonzero
+product, otherwise zero; the Boolean/zero-source relations must be consumed.
+
+The actual branch offset is **Ubar(a)=Tmax*Lt(a)+d*H*Lb(a)**. It is bounded by
+Ucap but is not generally equal to Ucap. Roles 22–26 enforce
+
+    dLb=d*Lb(a), Ubar=Tmax*Lt(a)+H*dLb,
+    u0=(T_i+Tmax)*Lt(a)+(B_i+H)*dLb=U_i+Ubar,
+    u0+2*sign(U_i)*abs(U_i)=Ubar+abs(U_i).
+
+This binds U_i to the actual signed sum. Substituting global Ucap for Ubar changes
+the represented integer and is forbidden. The semantic bounds u0<=2Ucap,
+abs(U_i)<=Ucap and every narrower product/word range are separate checks.
+Role 27 binds Dout=d*K(a) using the same a. Roles 28–33 implement §2 with this
+positive variable Dout: q<=32768, r<Dout, the selected half comparison, inactive
+gap zero, signed magnitude and original int16 output. The record uses safe
+Doutmax bounds, never a different denominator in the actual equalities.
+
+Capacity follows from the parameter domains: Nmax<2^121, P<2^120, Amax<2^167,
+Dmax<2^138, MDmax<2^154, Ltmax<=2^32, Lbmax<=2^90 and Kmax<=2^90. Thus
+Tmax<2^59, Ucap<2^120, Doutmax<=2^104 and qDmax<=2^119. All terms/results fit
+167 bits and K<=21. Role 2 is exactly RFC-0022's bounded statistic, with maximum
+side 1073709311<p/2. Role 1's maximum side is <=4194303. Every other role has
+at most three count-one terms; each side is <=3*21*255*256+255=4112895<p/2.
+The small source/output side bounds also satisfy the strict inequality.
+With at most 2447 bytes per role, the full frame is below 90000 bytes and the
+same 128 KiB cap. These are analytic capacity bounds, not benchmark results.
+
+Consumer dependencies: exact original row/source ranges, statistic and centering,
+variance and joint normalization tuple, configured reciprocal lookup, physical
+gain/bias, then wide output rounding under E5-03/E6 and new LayerNorm work beside
+E7-03. E7-03 currently names RMSNorm only; the acceptance DAG must add the full
+LayerNorm consumer explicitly. No new advice cut, proof receipt or independent
+challenge is authorized by this static schema.
+
+## 7. Complete-model closure
 
 The complete model additionally requires closed rows for conversion, rotary,
 residual, attention score/max/exp/block/global normalization, activation/gated

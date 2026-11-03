@@ -48,8 +48,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The new affine/embedding records retain complete sign/offset/division/
    comparison columns and up to 269 byte positions. Rational/polynomial/struct
    oracles check 10000 configurations per schema; the appendix separately proves
-   domain-wide widths, column side bounds and encoded capacity. The full model
-   still needs LayerNorm's column record, remaining families, collection bytes
+   domain-wide widths, column side bounds and encoded capacity. LayerNorm now
+   has a closed 33-role record checked on 10000 configurations and all 33
+   normalization branches. Its original row/variance/gain/bias relations and
+   common exponent determine the actual offset Ubar; global Ucap is only a bound.
+   The maximum-dimension statistic retains RFC-0022's strict field margin.
+   The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
@@ -97,7 +101,8 @@ still required before a normal PR merge. No task status is changed to done here.
 
 The operation inventory is now explicit for both full families, including the
 missing LayerNorm, GPT-2 activation and wide affine/position delivery work that
-the acceptance DAG must name. Existing E7-02 is the stacked weight phase, E7-09
-is dynamic scale attainment and E7-10 is residual/RLC glue; their scopes are
+the acceptance DAG must name. LayerNorm's new column record supplies arithmetic
+metadata only; no native source or proof consumer is added. Existing E7-02 is the
+stacked weight phase, E7-09 is dynamic scale attainment and E7-10 is residual/RLC glue; their scopes are
 preserved. E13-04's top-k extension remains separate original work. A dependency
 name is not proof that its current primitive closes the required source edge.

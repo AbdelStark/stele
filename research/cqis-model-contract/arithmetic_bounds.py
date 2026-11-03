@@ -1,7 +1,7 @@
-"""Draft RFC-0025 static appendix §§1–5: closed affine/embedding records only."""
+"""Draft RFC-0025 static appendix §§1–6: closed arithmetic records, no proof API."""
 from dataclasses import dataclass
 
-from numerics import integer
+from numerics import LayerNorm, integer
 
 P = (1 << 31)-1
 WORD_BYTES = 288
@@ -134,8 +134,58 @@ def _rounding_roles(maximum, divisor):
     )
 
 
+def _layernorm(p):
+    """Schema 3: common bounds retain the joint exponent/source obligations."""
+    h, o = 32768, 65535
+    s, os, q, c, v = p.d*h, p.d*o, p.d*h*h, o*(p.d-1), p.d*p.d*h*h
+    unit = p.d*p.d << (2*p.F)
+    n, denominator = p.ed*v+p.en*unit, p.ed*unit
+    fa, fd = 1 << 46, 1 << 18
+    aa, dd = n*fa, denominator*fd
+    md, ch = 65535*dd, c*h
+    t = ch*16384
+    branches = []
+    for a in range(-23, 10):
+        e = p.F+p.G+21+a-p.E
+        k = max(e, p.Gb-p.E, 0)
+        branches.append((e, k, 1 << (k-e), 1 << (k+p.E-p.Gb), 1 << k))
+    lt, lb, power = (max(row[i] for row in branches) for i in (2, 3, 4))
+    dlb, dout = p.d*lb, p.d*power
+    maximum = t*lt+h*dlb
+    quotient, qd = 32768, 32768*dout
+    scalars = (h, o, s, os, q, c, v, unit, n, denominator, fa, fd, aa, dd, md,
+               16384, ch, t, lt, lb, power, dlb, maximum, dout, quotient, qd, 131071, 65536)
+    shifts = (min(row[0] for row in branches), max(row[0] for row in branches),
+              min(row[1] for row in branches), max(row[1] for row in branches))
+    roles = (
+        ((p.d, o, 1),), ((p.d, h, h),),
+        ((1, os, 1), (1, s, 2)), ((1, s, 1), (1, s, 1)),
+        ((1, o, p.d), (1, c, 1)), ((1, 2*c, 1), (1, os, 1)),
+        ((1, 2*c, 1), (1, c, 2)), ((1, c, 1), (1, c, 1)),
+        ((1, s, s),), ((1, q, p.d),), ((1, v, 1), (1, v, 1)),
+        ((1, v, p.ed), (1, unit, p.en)), ((1, n, fa),), ((1, denominator, fd),),
+        ((1, 65535, dd),), ((1, md, 1), (1, dd-1, 1)),
+        ((1, dd-1, 1), (1, dd-1, 1), (1, 1, 1)),
+        ((1, c, h),), ((1, ch, 16384),),
+        ((1, 2*t, 1), (1, t, 2)), ((1, t, 1), (1, t, 1)),
+        ((1, p.d, lb),), ((1, t, lt), (1, h, dlb)),
+        ((1, 2*t, lt), (1, o, dlb)),
+        ((1, 2*maximum, 1), (1, maximum, 2)), ((1, maximum, 1), (1, maximum, 1)),
+        ((1, p.d, power),), ((1, quotient, dout),),
+        ((1, qd, 1), (1, dout-1, 1)),
+        ((1, dout-1, 1), (1, dout-1, 1), (1, 1, 1)),
+        ((1, dout-1, 2),), ((1, 2*dout-2, 1), (1, dout-1, 1), (1, 1, 1)),
+        ((1, dout, 1), (1, dout-1, 1)),
+    )
+    for scalar in scalars:
+        _caps(scalar)
+    return 3, scalars, shifts, tuple(_column(terms) for terms in roles)
+
+
 def derive(parameters):
     """Static metadata only: no values, source handles, field or arbitrary ops."""
+    if type(parameters) is LayerNorm:
+        return _layernorm(parameters)
     if type(parameters) is Affine:
         p = parameters
         weight = (1 << (p.bits-1))-1
@@ -189,7 +239,12 @@ def derive(parameters):
 
 def encode(parameters):
     schema, scalars, shifts, roles = derive(parameters)
-    params = parameters.parameters()
+    if type(parameters) is LayerNorm:
+        p = parameters
+        params = (_unsigned(p.d, 2)+bytes((p.F, p.G, p.E, p.Gb))+
+                  _unsigned(p.en, 4)+_unsigned(p.ed, 4))
+    else:
+        params = parameters.parameters()
     chunks = [PREFIX, _unsigned(1, 4), bytes((schema,)), _unsigned(len(params), 2), params,
               _unsigned(P, 4), bytes((8, len(scalars)))]
     chunks.extend(_unsigned(value, WORD_BYTES) for value in scalars)

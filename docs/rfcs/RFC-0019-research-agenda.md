@@ -1151,9 +1151,10 @@ biases and tanh-GeLU FFN, and its storage caps cannot run the named models.
 The [new exact evidence](../../research/cqis-model-contract/REPORT.md) checks
 exact-mean affine LayerNorm, one-round projection/position addition, complete
 physical role/source-map transforms and exact temperature/top-p/CDF arithmetic.
-The static continuation checks closed affine/position records with complete
-high bytes, sign/division/comparison columns and independent exact encoding;
-the full operation inventory retains both architectures and every source edge.
+The static continuation checks closed affine/position/LayerNorm records with
+complete high bytes, sign/division/comparison columns and independent exact encoding;
+LayerNorm retains the same exponent in every factor and its actual branch offset.
+The full operation inventory retains both architectures and every source edge.
 Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
 static/range/branch/index/source expansion, complete model-flow evidence,
 sampled decoding and coordinated review/implementation DAG. No tiny-model,

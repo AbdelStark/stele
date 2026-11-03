@@ -163,9 +163,61 @@ changes, truncations, suffixes, changed valid expected parameters, over-capacity
 inputs, invalid shapes/exponents and Boolean aliases reject.
 
 Corpus SHA-256: `0a5e8bc2b9a7c302da9203fb46e58327ecfa622682ef58d36f67bf1dc3eb8967`.
-Candidate source SHA-256: `0c69e8e448c4d00e5e2f5367ded4a0c3f5c0560bf7f533be909ebb0d6a0b5891`.
+Original candidate source SHA-256: `0c69e8e448c4d00e5e2f5367ded4a0c3f5c0560bf7f533be909ebb0d6a0b5891`.
 Checker source SHA-256: `b6b2ec4f3e27e30cfe4a1b1de1c2a773bc6ac8ad84d14b9e638b4ce1cd534882`.
 The [full operation inventory](../../docs/rfcs/full-model-consumers.md) now names
-the consumer dependencies across both architectures. LayerNorm's full column
-record, the remaining families/collection, runtime/outer codecs, native/source
+the consumer dependencies across both architectures. The remaining families/
+collection, runtime/outer codecs, native/source
 consumers and original full-model delivery remain open. No NC/profile credit.
+
+## Exact-mean LayerNorm static record
+
+The static appendix §6 defines schema 3: 28 scalar bounds and 33 closed arithmetic
+roles, with one complete record for all normalization branches. Each role retains
+its exact operands, byte caps, whole bounds, carries and final zero. The same
+original row feeds both S and Q, then centered C and variance V. The normalization
+and output factors derive jointly from one a; the original gain, reciprocal and
+bias reach the single final rounding. This remains numerical metadata, with
+every actual source, range, tuple and lookup consumer required at native delivery.
+
+Run `python3 -B research/cqis-model-contract/check_layernorm_bounds.py`.
+Seed 2674 checks 10000 configurations across the full parameter domain, including
+dimensions 1 and 16384. The independent oracle uses rational coefficients and
+common denominators for the branch factors, polynomial multiplication for the
+column bounds, and struct/word framing for the complete bytes. It also checks
+actual source products and every integer column on rows represented by one/two
+value groups with exact multiplicities summing to d. No smaller dimension is
+substituted in those statistic/row-sum checks.
+
+The sampled source coordinates yield 12262 in-range and 4452 out-of-range rounded
+outputs; these are arithmetic cases, not model or proof outcomes. All upstream
+source relations and bounds are checked in both outcomes, with the output
+division/rounding roles checked on successful results. Separate cases attain
+every a in [-23,9]. At d=16384, the statistic's largest side is 1073709311,
+strictly below p/2; the capacity case reaches 21 columns. This field margin is
+checked exactly, without floats or observed-data tightening.
+
+All 10000 sampled configurations distinguish the actual Ubar(a) from global
+Ucap. The checker binds the signed numerator to Ubar and verifies the exact
+rational output before rounding. Replacing that offset by Ucap would change
+the represented integer. The independent whole-column checks retain zero
+operands, d=1, original sign endpoints, variable denominators and strict gaps.
+Byte mutations, truncations, suffixes, changed valid Gb, non-reduced epsilon,
+out-of-domain dimensions and Boolean parameters reject. These checks earn no
+native negative-control or proof-admission credit.
+
+The randomized record corpus reaches 55991 bytes, 166-bit scalar values and
+21 columns. The separate analytic limits in the appendix, rather than these
+sampled maxima, bound every supported configuration.
+Corpus SHA-256: `2cabc658d1fae9d08fb6e1b6bdf358612f040b51a64b0a55ed9109d3e7ab67ce`.
+Candidate source SHA-256: `37e0b0e4a05d2e24a07db3994a7841ebe95dfa7c6af7f1706ff9e783d4f82c09`.
+LayerNorm checker SHA-256: `19623ad8c4042b20969c34a6f098ceccb81f9ac6bf789a9f2123cb880d2d7d51`.
+It also imports the unchanged column/framing helpers from the affine checker
+whose source hash is recorded above. The original numerical module and its
+evidence are unchanged. Full collection/runtime identities, operation integration,
+native parity, named-model fidelity and actual proof consumers remain required.
+
+After adding the LayerNorm dispatch, the unchanged affine/embedding checker was
+run on the same candidate hash above. Its complete 20000-record corpus, counts,
+maxima and SHA-256 remain exactly those of the original qualification. The old
+schemas retain their bytes; the new LayerNorm schema does not reinterpret them.

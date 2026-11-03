@@ -292,9 +292,9 @@ Umax=Tmax*2^(k-e)+d*32768*2^(k+E-Gb), D_out=d*2^k.
 The quotient/remainder, rounding increment and output range are separate checks.
 These bounds describe exact integers; a single field element cannot hold them.
 
-The [static arithmetic appendix](full-model-bounds.md) specifies the new affine
-and learned-position derivations and their word/source obligations. The canonical
-full bound schema, expansion order and actual consuming-reduction mapping remain
+The [static arithmetic appendix](full-model-bounds.md) specifies the new affine,
+learned-position and exact-mean LayerNorm records and their word/source obligations.
+The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;
 neither DPA nor a new advice cut is an implicit fallback.
