@@ -7,6 +7,7 @@ Replace a guard with the actual validator in the task named in its diagnostic.
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -690,9 +691,12 @@ def field_sources(root):
                                   r'\(line \d+\) \.\.\. ok$', result.stdout, re.MULTILINE)
             if len(positive) != 1:
                 raise ValueError('closed A1 consumer checks failed: missing matmul temporary-input lifetime boundary')
+    # Keep the frozen oracle source intact; scope checked optimisation to its child Cargo process.
+    lookup_env = dict(os.environ, CARGO_PROFILE_DEV_OPT_LEVEL='2',
+                      CARGO_PROFILE_DEV_DEBUG_ASSERTIONS='true', CARGO_PROFILE_DEV_OVERFLOW_CHECKS='true')
     result = subprocess.run(['uv', 'run', '--python', '3.12', '--locked', '--script',
                              'tests/negative-controls/lookup_corpus.py'],
-                            cwd=root, text=True, capture_output=True)
+                            cwd=root, text=True, capture_output=True, env=lookup_env)
     receipt = ('lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
                'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
                'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '

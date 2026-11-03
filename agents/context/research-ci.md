@@ -34,10 +34,13 @@ and streaming benchmark preflights use the same selection outside their timed
 workers. The [E0-09 pair](../../bench/README.md#control-coverage-profile-e0-09)
 records cold compilation and direct execution separately on identical source.
 
-The lookup parity corpus also selects this test profile for its ordinary native
-example. Its independent Python expectations, all 88 requests, exact comparisons
-and failure handling are unchanged. The [E0-10 pair](../../bench/README.md#lookup-corpus-profile-e0-10)
-records separate cold-build and execution costs; it does not measure full CI.
+The gate launches the lookup parity corpus with dev-profile optimization level 2,
+debug assertions and overflow checks explicitly enabled in that child process.
+These match the checked test-profile settings while preserving the pinned oracle
+source and its Cargo command. Other gate subprocesses retain their environment.
+All 88 requests, independent expectations, comparisons and failure handling remain.
+The [E0-10 measurements](../../bench/README.md#lookup-corpus-profile-e0-10)
+separate cold-build and execution costs; they do not measure full CI.
 
 Table parity runs when field, polynomial, SIMD or CQIS code changes, including
 its test oracle. Dependency and CI routing changes also select it.

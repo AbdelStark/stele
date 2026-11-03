@@ -259,9 +259,9 @@ and controls fields remain zero; no proof-system cost-model constant changes.
 
 The [paired ledger](ledger/e0-10-lookup-corpus-profile.json) measures the ordinary
 native lookup example from clean commit
-`f2dfd917baf00b8419dbf264c5f3cbdafa052d46`. The caller now selects the existing
-Cargo test profile, with optimization level 2, default features, debug assertions
-and overflow checks. Compiler artifacts verify those settings in the example
+`f2dfd917baf00b8419dbf264c5f3cbdafa052d46`. It screened the existing Cargo test
+profile, with optimization level 2, default features, debug assertions and
+overflow checks. Compiler artifacts verify those settings in the example
 and its runtime dependencies; these are ordinary binaries without `cfg(test)`.
 
 | Cargo profile | Cold build (s) | Complete native corpus (s) | Sum (s) |
@@ -294,6 +294,15 @@ their complete outputs and run the unchanged independent expectations. The
 ledger preserves both drivers, commands, compiler metadata, source/binary hashes
 and raw-artifact hashes. Its proof, verifier and controls slots are zero; no
 inference cost-model constant or coverage count changes.
+
+The complete native gate rejected changing the oracle's Cargo command because
+the integer-linear frozen evidence pins that entire source file. Its original
+bytes and all frozen manifests are preserved. The gate instead scopes
+`CARGO_PROFILE_DEV_OPT_LEVEL=2`, `CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true` and
+`CARGO_PROFILE_DEV_OVERFLOW_CHECKS=true` to the lookup child process. These are
+the same checked settings, applied outside the pinned oracle. The actual scoped
+execution is separately qualified before publication; the screening pair alone
+does not qualify that caller.
 
 ## Control coverage profile (E0-09)
 

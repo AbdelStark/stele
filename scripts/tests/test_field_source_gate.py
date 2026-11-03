@@ -294,10 +294,19 @@ class ClosedStackedGateTests(unittest.TestCase):
         # Payload integrity is exercised separately; receipt permutations do not reread 28 MB.
         with mock.patch.object(gate, 'requant_fixtures'), mock.patch.object(gate.subprocess, 'run', side_effect=results) as run, redirect_stdout(io.StringIO()):
             gate.field_sources(self.root)
+        self.calls = run.call_args_list
         return [call.args[0] for call in run.call_args_list]
 
     def test_accepts_complete_closed_consumers(self):
-        commands = self.run_gate()
+        checked_profile = {'CARGO_PROFILE_DEV_OPT_LEVEL': '2',
+                           'CARGO_PROFILE_DEV_DEBUG_ASSERTIONS': 'true',
+                           'CARGO_PROFILE_DEV_OVERFLOW_CHECKS': 'true'}
+        with mock.patch.dict(gate.os.environ, {key: 'inherited-value' for key in checked_profile}):
+            before = dict(gate.os.environ)
+            commands = self.run_gate()
+            self.assertEqual(dict(gate.os.environ), before)
+        self.assertEqual(self.calls[-2].kwargs['env'], dict(before, **checked_profile))
+        self.assertTrue(all('env' not in call.kwargs for call in self.calls[:-2]+self.calls[-1:]))
         self.assertEqual(len(commands), 13)
         self.assertTrue(all('--locked' in c and '--offline' in c for c in commands[:-2]))
         self.assertEqual(commands[-2], ['uv', 'run', '--python', '3.12', '--locked', '--script',

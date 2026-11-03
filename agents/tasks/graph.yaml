@@ -208,7 +208,7 @@ tasks:
   - retain a validated micro ledger with bounded validation-cost claims; all required local and selected hosted gates pass on the exact current-base merge tree without workflow, profile-setting or routing changes
 - id: E0-10
   epic: E0
-  title: Run the lookup parity corpus with the existing checked test profile
+  title: Optimize lookup parity execution while preserving frozen oracle sources
   depends:
   - E0-09
   - E7-01f
@@ -223,7 +223,8 @@ tasks:
   acceptance:
   - compare the ordinary lookup corpus executable under dev and test profiles on one frozen source; preserve cold build and complete execution costs separately
   - generate the unchanged independent corpus and require byte-identical native outputs for all 88 production and verification requests, including every rejection and usage record
-  - preserve features, debug assertions, overflow checks, reference digests, caller failure propagation and every existing gate; change only the caller profile when the measured benefit supports it
+  - qualify the actual scoped dev-profile settings against those same requests and compiler metadata, retaining the original dev/test screening pair and every frozen source pin
+  - preserve features, debug assertions, overflow checks, frozen oracle sources, reference digests, caller failure propagation and every existing gate; qualify scoped checked optimisation without rewriting historical evidence
   - retain a validated micro ledger and raw source/compiler/binary/output evidence; no whole-CI, inference, profile-admission or historical-campaign claim
   - all required local and selected hosted gates pass on the current-base merge tree before normal merge
 - id: E1-01
