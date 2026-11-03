@@ -43,30 +43,49 @@ The [E0-10 measurements](../../bench/README.md#lookup-corpus-profile-e0-10)
 separate cold-build and execution costs; they do not measure full CI.
 
 Table parity runs when field, polynomial, SIMD or CQIS code changes, including
-its test oracle. Dependency and CI routing changes also select it.
+its test oracle. Dependency and workflow changes also select it.
 The full RFC-0021 corpus is partitioned into 28 case/field jobs, each retaining
 its original seed and 10,000 points. No-argument local execution still runs all
 280,000 points. A failed or missing shard fails the aggregate. The matrix uses available runner concurrency.
 
 Research, harness and formal changes normally select every research group in
-`scripts/research-checks.json`. Research runner, inventory, workflow and shared configuration changes do so as well.
+`scripts/research-checks.json` and `scripts/model-contract-checks.json`.
+The inherited research inventories, workflow and shared configuration changes do so as well.
 The exact root Cargo.lock path and field/CQIS source changes select the
 `native-comparisons` group: seven existing Python-to-Rust comparisons plus their
-two pinned checkpoint downloads. Any broad trigger selects all 75 groups instead.
+two pinned checkpoint downloads. Any broad trigger selects all 76 groups instead.
 The normal inventory retains the inherited 176 commands exactly once and adds
-the bounded RFC-0024 algebra checker to `algebra` (177 commands total). This scope
+the bounded RFC-0024 algebra checker to `algebra` (177 inherited commands).
+The separate model-contract inventory adds one locked regression command. This scope
 also covers deletions and both names of renamed files; it does not infer scope
 from changed lockfile entries. Both mandatory native jobs and all table rules remain.
 The exact `formal/stacked-runtime.md`, `formal/stacked-ownership.md` and
 `formal/stacked-statement.md` paths select `stacked-gkr`. Combined with native
 triggers they select the ordered union of `native-comparisons` and `stacked-gkr`;
 any broad trigger still takes precedence. Neighbouring formal paths stay broad.
-Matrix generation validates explicit all/native/stacked/native-stacked/none selection; an unknown mode
+Changes under `research/cqis-model-contract/`, its `docs/rfcs/full-model-*`
+appendices, RFC-0025 and its separate inventory select `model-contract`.
+Its independent oracles cover all nineteen bound schemas and the complete
+source/numerical/outer-identity joins on bounded regression cases. They invoke
+no historical campaign main. The original full qualifications and named-model
+delivery criteria remain separate; a short regression grants neither credit.
+Changes to imported checkpoint/table helpers still select every research group.
+Native, stacked and model selections compose as an ordered union, with broad
+triggers taking precedence. The inherited inventories and commands are unchanged.
+
+Planner/runner/aggregate edits (`ci_scope.py`, `research_ci.py`, `ci_result.py`)
+run their mandatory tooling tests without invalidating numerical corpora merely
+because routing code changed. These tests check all selection unions, broad
+precedence, deleted/renamed paths, exact inherited inventories, failure propagation
+and missing/skipped results. A change to an actual shared input still selects
+its numerical checks. Neither native job nor a selected check can use cached success.
+
+Matrix generation validates explicit all/native/stacked/model/none and union selections; an unknown mode
 or missing selected group fails the plan. Default and exhaustive matrices stay complete.
-The only research-path exceptions are `research/merkle-oracle/check_field_wire.py`,
+The additional research-path exceptions are `research/merkle-oracle/check_field_wire.py`,
 `research/stacked-gkr/check_native_wire.py` and their `.lock` files: the mandatory
 native gate runs both locked byte oracles and rejects failure or missing output.
-Shared oracle modules and all other research paths
+Shared oracle modules and all remaining research paths
 retain normal selection. The research matrix uses the available runner concurrency.
 Downloads stay ordered with their consumers. Each command retains shell error
 and pipeline failure propagation. Native-only changes use their independent

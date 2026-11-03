@@ -11,6 +11,12 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'scripts/research-checks.json'
 FULL_MANIFEST = ROOT / 'scripts/research-full-checks.json'
+MODEL_MANIFEST = ROOT / 'scripts/model-contract-checks.json'
+SUBSETS = {'native': ('native-comparisons',), 'stacked': ('stacked-gkr',),
+           'model': ('model-contract',), 'native-stacked': ('native-comparisons', 'stacked-gkr'),
+           'native-model': ('native-comparisons', 'model-contract'),
+           'stacked-model': ('stacked-gkr', 'model-contract'),
+           'native-stacked-model': ('native-comparisons', 'stacked-gkr', 'model-contract')}
 
 
 def unique_object(pairs):
@@ -24,6 +30,12 @@ def unique_object(pairs):
 
 def load_groups(path=MANIFEST):
     groups = json.loads(path.read_text(), object_pairs_hook=unique_object)
+    if path == MANIFEST:
+        model = json.loads(MODEL_MANIFEST.read_text(), object_pairs_hook=unique_object)
+        if (not isinstance(groups, dict) or not groups or not isinstance(model, dict) or
+                set(model) != {'model-contract'} or groups.keys() & model.keys()):
+            raise ValueError('invalid or duplicate model research group')
+        groups = {**groups, **model}
     if not isinstance(groups, dict) or not groups:
         raise ValueError('research inventory must be a nonempty object')
     seen = set()
@@ -57,7 +69,7 @@ def main(argv=None):
     try:
         parser = argparse.ArgumentParser(description=__doc__)
         parser.add_argument('--full', action='store_true', help='exhaustive scheduled/manual inventory')
-        parser.add_argument('--selection', choices=('all', 'native', 'stacked', 'native-stacked', 'none'), default='all',
+        parser.add_argument('--selection', choices=('all', *SUBSETS, 'none'), default='all',
                             help='normal matrix selection; defaults to the complete inventory')
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument('--matrix', action='store_true')
@@ -66,10 +78,8 @@ def main(argv=None):
         groups = load_groups(FULL_MANIFEST if args.full else MANIFEST)
         if args.selection != 'all' and (args.full or not args.matrix):
             parser.error('selection applies only to the normal matrix')
-        subsets = {'native': ('native-comparisons',), 'stacked': ('stacked-gkr',),
-                   'native-stacked': ('native-comparisons', 'stacked-gkr')}
-        if args.selection in subsets:
-            selected = subsets[args.selection]
+        if args.selection in SUBSETS:
+            selected = SUBSETS[args.selection]
             for name in selected:
                 if not groups.get(name):
                     raise ValueError(f'missing {name} research group')

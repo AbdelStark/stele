@@ -107,10 +107,10 @@ Every listed dependency denotes required implementation work. It is not a claim
 that a same-named existing primitive already consumes these sources, proves all
 the integer relations or supports its full dimensions. Any missing Accepted
 protocol/source schedule must be supplied before production instantiation.
-The current E7-03 title covers RMSNorm, and E7-05 covers the SiLU/gated path;
-their names do not silently grant LayerNorm or GPT-2 activation coverage. The
-acceptance DAG must explicitly add that work and the new aligned affine/position
-relations. E13-04's original top-k extension remains required separately; this
+The acceptance DAG explicitly includes LayerNorm in E7-03, GPT-2 activation
+in E7-05, and aligned affine/position relations in E7-01/E7-08. Their expanded
+criteria grant no implementation coverage before those tasks pass their gates.
+E13-04's original top-k extension remains required separately; this
 temperature/top-p contract does not complete it.
 
 ## 4. Cache and stopping consistency

@@ -38,19 +38,24 @@ def scopes(paths):
     # alter Python research proofs or the independent table arithmetic oracle.
     shared = [path for path in paths if path.startswith((
         b'.github/actions/', b'.cargo/', b'Cargo.', b'rust-toolchain', b'uv.lock', b'pyproject.toml'))]
-    routing = any(path in (b'.github/workflows/ci.yml', b'scripts/ci_scope.py',
-                          b'scripts/ci_result.py') for path in paths)
+    # Planner/runner edits are checked by the mandatory tooling suite. They do
+    # not change arithmetic inputs; workflow edits still invalidate all jobs.
+    routing = b'.github/workflows/ci.yml' in paths
+    model_paths = [path for path in paths if path.startswith(b'research/cqis-model-contract/') or
+                   path.startswith(b'docs/rfcs/full-model-') or path in (
+                       b'docs/rfcs/RFC-0025-full-model-cqis.md', b'scripts/model-contract-checks.json')]
     broad = any(path != b'Cargo.lock' for path in shared) or routing or any(
         # Only these exact entrypoints are executed by the mandatory native gate.
-        (path.startswith((b'research/', b'harness/', b'formal/')) and path not in NATIVE_ORACLES + STACKED_FORMAL) or path in (
-            b'.github/workflows/exhaustive.yml', b'scripts/research_ci.py',
+        (path.startswith((b'research/', b'harness/', b'formal/')) and
+         path not in NATIVE_ORACLES + STACKED_FORMAL and path not in model_paths) or path in (
+            b'.github/workflows/exhaustive.yml',
             b'scripts/research-checks.json', b'scripts/research-full-checks.json')
         for path in paths)
     native = any(path == b'Cargo.lock' or path.startswith((b'crates/stele-cqis/', b'crates/stele-field/'))
                  for path in paths)
     stacked = any(path in STACKED_FORMAL for path in paths)
-    selection = ('all' if broad else 'native-stacked' if native and stacked else
-                 'native' if native else 'stacked' if stacked else 'none')
+    selected = [name for name, needed in (('native', native), ('stacked', stacked), ('model', bool(model_paths))) if needed]
+    selection = 'all' if broad else '-'.join(selected) or 'none'
     return {
         'gpu': any(path.startswith((b'crates/stele-gpu/', b'crates/stele-kernels/'))
                    for path in paths),

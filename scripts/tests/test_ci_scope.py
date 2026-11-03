@@ -14,6 +14,33 @@ SPEC.loader.exec_module(scope)
 
 
 class ScopeTests(unittest.TestCase):
+    def test_matches_reference_model_scope_and_all_unions(self):
+        paths = [b'research/cqis-model-contract/check_ci.py',
+                 b'research/cqis-model-contract/check_ci.py.lock',
+                 b'research/cqis-model-contract/source_codec.py',
+                 b'research/cqis-model-contract/fixtures/gpt2-config.json',
+                 b'docs/rfcs/full-model-encoding.md',
+                 b'docs/rfcs/RFC-0025-full-model-cqis.md', b'scripts/model-contract-checks.json']
+        for path in paths:
+            self.assertEqual(scope.scopes([path]), dict(gpu=False, tables=False, research=True, research_selection='model'))
+            for extra, expected in (([], 'model'), ([b'Cargo.lock'], 'native-model'),
+                                    ([scope.STACKED_FORMAL[0]], 'stacked-model'),
+                                    ([b'Cargo.lock', scope.STACKED_FORMAL[0]], 'native-stacked-model')):
+                self.assertEqual(scope.scopes([path, *extra])['research_selection'], expected)
+        for dependency in (b'research/cqis-checkpoint/source.py', b'research/cqis-checkpoint/rope.py',
+                           b'research/cqis-tables/function_identity.py', b'research/cqis-model-contract-extra/x.py',
+                           b'harness/check.py', b'formal/new.md', b'Cargo.toml',
+                           b'scripts/research-checks.json', b'scripts/research-full-checks.json',
+                           b'.github/workflows/ci.yml'):
+            self.assertEqual(scope.scopes([*paths, dependency])['research_selection'], 'all')
+
+    def test_matches_reference_tooling_only_routing_changes(self):
+        # These programs change orchestration, not any arithmetic oracle input.
+        for path in (b'scripts/ci_scope.py', b'scripts/ci_result.py', b'scripts/research_ci.py'):
+            self.assertEqual(scope.scopes([path]), dict(gpu=False, tables=False, research=False, research_selection='none'))
+            self.assertEqual(scope.scopes([path, b'research/cqis-model-contract/check_ci.py'])['research_selection'], 'model')
+            self.assertEqual(scope.scopes([path, b'research/cqis-checkpoint/quantiser.py'])['research_selection'], 'all')
+
     def test_matches_reference_stacked_scope_and_union(self):
         files = [b'formal/stacked-runtime.md', b'formal/stacked-ownership.md', b'formal/stacked-statement.md']
         oracle = b'research/stacked-gkr/check_native_wire.py'
@@ -26,8 +53,7 @@ class ScopeTests(unittest.TestCase):
                 self.assertEqual(scope.scopes(paths)['research_selection'], 'native-stacked')
                 self.assertTrue(scope.scopes(paths)['tables'])
         for path in (files[0]+b'.extra',b'formal/stacked.md',b'research/stacked-gkr/stage.py',
-                     b'research/stacked-gkr/weighted_mle.py',b'harness/check.py',b'scripts/research_ci.py',
-                     b'scripts/ci_scope.py',b'.github/workflows/ci.yml'):
+                     b'research/stacked-gkr/weighted_mle.py',b'harness/check.py',b'.github/workflows/ci.yml'):
             self.assertEqual(scope.scopes(files+[b'Cargo.lock',oracle,path])['research_selection'], 'all')
         self.assertEqual(scope.scopes([])['research_selection'],'none')
 
@@ -39,7 +65,6 @@ class ScopeTests(unittest.TestCase):
             for broad in (b'Cargo.toml', b'Cargo.lock.extra', b'.cargo/config.toml', b'rust-toolchain.toml',
                           b'uv.lock', b'pyproject.toml', b'.github/actions/setup/action.yml',
                           b'.github/workflows/ci.yml', b'.github/workflows/exhaustive.yml',
-                          b'scripts/ci_scope.py', b'scripts/ci_result.py', b'scripts/research_ci.py',
                           b'scripts/research-checks.json', b'scripts/research-full-checks.json',
                           b'research/merkle-oracle/field_wire.py', b'harness/check.py', b'formal/proof.md'):
                 with self.subTest(native=native, broad=broad):
@@ -55,7 +80,7 @@ class ScopeTests(unittest.TestCase):
                          b'research/merkle-oracle/vectors.json', oracle + b'.extra',
                          b'research/sumcheck/check.py', b'harness/check.py', b'formal/proof.md'):
             self.assertTrue(scope.scopes([oracle, lock, neighbor])['research'])
-        for shared in (b'Cargo.lock', b'.github/workflows/ci.yml', b'scripts/ci_scope.py'):
+        for shared in (b'Cargo.lock', b'.github/workflows/ci.yml'):
             result = scope.scopes([oracle, shared])
             self.assertTrue(result['research'])
             self.assertTrue(result['tables'])

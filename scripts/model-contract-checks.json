@@ -1,0 +1,5 @@
+{
+  "model-contract": [
+    "uv run --locked --script research/cqis-model-contract/check_ci.py"
+  ]
+}

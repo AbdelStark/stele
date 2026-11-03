@@ -8,8 +8,9 @@ and soundness-auditor. No independent human or agent review is claimed.
 Scope: [RFC-0025](../../docs/rfcs/RFC-0025-full-model-cqis.md), its encoding and
 decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0001/0004/0011/0017/0021, and
 [the new research evidence](../../research/cqis-model-contract/REPORT.md).
-All earlier Accepted text remains an unchanged prefix. No native crate, frozen
-oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
+All earlier Accepted text remains an unchanged prefix. No production crate,
+qualified oracle, existing fixture, inherited research manifest, benchmark ledger
+or original proof campaign changes. The separate CI runner/inventory is described below.
 
 ## Required Workflow 03 answers
 
@@ -771,15 +772,53 @@ I tried to break it by omitting the new reservations, and the catalogue snapshot
 control rejected it. This checks reservation completeness and earns no new native
 proof-control coverage. The complete catalogue test passes after all 27 additions.
 
+## CI and final identity review checkpoint
+
+The [identity review](full-model-delivery-closure.md#5-final-outer-identity-and-authority-review)
+closes the exact numerical/source/outer-identity definition and names all native
+owners. Separately Accepted child contracts remain prerequisites of those owners;
+the review supplies no private proof, key authority, profile or native admission.
+The explicit §7.1 dispositions resolve the older partial Draft proposals.
+The operation inventory now matches the expanded E7-03/E7-05 acceptance criteria.
+
+All twelve answers above were checked against this checkpoint:
+
+| Checklist item | Checkpoint result |
+|---|---|
+| 1. Governing contract | RFC-0025 remains Draft. The new regression runner is CI evidence under RFC-0020 §5, with no production API. |
+| 2. Challenges | No challenge, transcript order or native absorption changes. Deterministic hash uses retain the explicit accounting inventory and native admission requirements. |
+| 3. Consumers | The complete identity review and existing operation inventory name actual source/reduction/admission owners. References grant no child validation. |
+| 4. Bindings | All 27 new reservations remain todo. Bounded regression mutations reject; they earn no native NC coverage. |
+| 5. Ledger | No native loss/query/profile line changes. Complete Q12/Q29, private lifetime and eventual signature/hash accounting remain required before admission. |
+| 6. Static bounds | Six independent complete frames cover all nineteen schemas; each remains derived from complete configured domains. No observed-value tightening. |
+| 7. Padding/masks | Existing absolute-block, source-position and full/cache helpers execute; no mask or source rule changes. |
+| 8. Determinism | Fixed regression seeds, pinned dependencies, canonical inventory order and exact frame comparisons. No timing-dependent choice or cached pass receipt. |
+| 9. Parity | Research scalar/oracle and full/cache comparisons pass for both families. No native CPU/GPU proof parity claimed. |
+| 10. Costs | No cost-model constant or benchmark claim. Only relevant CI groups are selected; all inherited 177 commands and complete workload criteria remain. |
+| 11. Resources/verifier | No production verifier changes. Native resource admission remains required; small CI fixtures are not named-model capacity evidence. |
+| 12. Vocabulary | Existing glossary/claim distinctions remain. Subject, final Passport and externally expected statement retain separate roles. |
+
+The runner calls qualified helpers, never any historical campaign main. Its five
+suites pass, including successful forward/cache comparisons in both families.
+The twenty routing/inventory tests pass with all subset unions, broader imported
+dependencies, invalid/missing groups and command failure propagation checked.
+Planner/runner-only changes use mandatory tooling validation; arithmetic/shared
+input changes still select their numerical checks. Neither native job changes.
+
+I tried to break selection with a missing model group, malformed inventory and
+failed command, and the routing/inventory controls rejected them. I also supplied
+changed complete bound frames and the existing numerical controls rejected them.
+
 ## Findings still preventing acceptance
 
-Contract acceptance still requires the final identity/authority and consuming
-dependency review, review of the coordinated Draft dispositions and hash-use
-inventory, final control mapping and a complete sequential native implementation DAG. The
+Contract acceptance still requires the final coordinated skill sign-offs,
+acceptance entries and full local/selected hosted qualification. The identity
+review, explicit Draft dispositions, hash-use inventory, control reservations
+and sequential native implementation DAG are present. The
 [delivery-closure audit](full-model-delivery-closure.md) separates these from
 native delivery and records the prerequisite tasks/edges that remove the audited
 completion cycles without completing any parent workload.
-All twelve answers must be revisited against the final contract before acceptance.
+All twelve answers must remain current through the acceptance change.
 Full local and selected hosted gates remain required before a normal PR merge.
 No task status is changed to done here.
 
@@ -787,12 +826,12 @@ Native conversion, complete plan/passport/child validators, named source/config
 and tokenizer adapters, full GPT-2/Llama forward/cache execution, actual sampled
 exp/request/seed source consumers, private proof/profile admission and fidelity
 remain required implementation work. RFC-0025 §7 places native delivery after
-specification acceptance; neither step completes the other. Explicit conditions
-in older Draft amendments still need coordinated resolution before acceptance.
+specification acceptance; neither step completes the other. Section 7.1 names
+the exact coordinated disposition of the older Draft conditions.
 
 The operation inventory is now explicit for both full families, including the
 missing LayerNorm, GPT-2 activation and wide affine/position delivery work that
-the acceptance DAG must name. LayerNorm's new column record supplies arithmetic
+the acceptance DAG now names. LayerNorm's new column record supplies arithmetic
 metadata only; no native source or proof consumer is added. Existing E7-02 is the
 stacked weight phase, E7-09 is dynamic scale attainment and E7-10 is residual/RLC glue; their scopes are
 preserved. E13-04's top-k extension remains separate original work. A dependency

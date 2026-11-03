@@ -504,8 +504,9 @@ and accepted before production instantiation, with original source/point/range,
 privacy, transcript, accounting and control obligations. No root/reference or
 metadata success may bypass them. Their absence prevents native proof/passport
 admission, not definition of the numerical computation that they must prove.
-The final review must still close the exact §7 identity-join item and identify
-every owning task; this disposition is not a declaration that it is closed.
+The [identity review](../../agents/reviews/full-model-delivery-closure.md#5-final-outer-identity-and-authority-review)
+checks this exact join and every owning task. Its definition grants no native
+child-validation or admission credit; coordinated acceptance and gates still apply.
 
 Native Rust/NumPy parity, NC-0109, full named inference/fidelity, actual private
 proofs, profiles and W8 remain completion criteria of their original tasks.

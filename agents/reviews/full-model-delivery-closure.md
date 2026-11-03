@@ -46,7 +46,7 @@ certificate, checkpoint-proof, fidelity and registration artifacts still require
 complete typed contracts and actual validators. Their references are not opaque
 trusted configuration. The final review must distinguish what the numerical
 contract defines from what a separately Accepted consumer must define before
-instantiation. This audit does not mark the §7 identity-join item closed.
+instantiation. Section 5 checks the complete outer identity join and its native owners.
 
 ## 3. Native owners and non-negotiable completion evidence
 
@@ -113,13 +113,52 @@ Original task criteria, all unaffected edges and workload sizes remain. The
 only removed edges are the three final-artifact edges described in findings 2/3;
 their complete production/validation work remains in the graph. Run one task at a time.
 
-## 5. Next contract work
+## 5. Final outer identity and authority review
+
+This review closes the numerical/source/outer-identity definition in RFC-0025
+§7 item 1. It does not accept a child protocol or authorize native admission.
+The source, encoding, conversion, architecture, public-input and passport
+appendices define the exact earlier bytes and joins below. Every later child
+has an explicit owner and must acquire its complete Accepted contract before
+that owner can construct or validate it. No unspecified child field influences
+numerical execution or becomes trusted configuration through a reference.
+
+| Earlier value and exact join | Consumer and authority requirement |
+|---|---|
+| Original File bytes, SHA-256 and typed Source identity | E5-03 validates complete immutable containers/index/selection; E12-05 authenticates the independently expected source. Single-file SHA-256 remains distinct from indexed H(Source). |
+| Original Assets, SourceMap and SourceConfig | E5-03 checks original architecture/role transforms against Model; E5-05 supplies the original tokenizer/generation adapters and named fidelity. File identity alone proves no text consumption. |
+| Preparation and complete Artifact | E5-03 reproduces every scalar, scale, role and packed byte; E14-02 binds the same complete Artifact to actual private committed plaintext. |
+| Model, Scales and regenerated Registry | E5-03/E3-08 validate complete parameters/data, and E6 derives owned numerical roles. A supplied digest cannot choose the expected model or tables. |
+| Bounds and cqis_id | Bounds binds the first three complete artifacts; cqis_id hashes exactly the four artifact digests. Bounds contains no cqis_id, so this join has no cycle. E5-03/E6/E8-02 rederive it. |
+| Model-wide PlanTemplate, WeightBindings and TableBindings | E6-01/02, E4-05 and E3-08/E12-05a must supply complete code/layout/source/private-lifetime contracts and actual bindings. References in Subject cannot replace them. |
+| Fixed Subject | E12-05a binds the complete numerical/source/artifact and three child references. Subject and all referenced contexts omit later evidence, registration, signatures, final root and request data. |
+| Proximity, checkpoint-binding and fidelity evidence | E12-06, E14-02 and E5-05/E12-05 validate the actual required relations for that same fixed Subject. Treaty still requires the actual certificate; both profiles require checkpoint and fidelity evidence. |
+| Registration and signing message | E12-05 selects no authority from a self-supplied key. Its separately Accepted suite/key/authority/timestamp contract must validate the independently expected complete roster and every signature. The signing preimage omits signatures and the final root. |
+| Final Passport and public passport_root | E12-05 validates all children before signing/final construction; E8-02 checks the externally expected final root, never the earlier subject_id. Prior records must already exist independently; later anchoring receipts stay external. |
+| Request, PlanInstance and ledger | E6-02/E8-05a derive complete actual geometry/schedule/profile accounting. The instance omits its own hash, final passport root, I/O roots and ledger; the ledger omits its own hash and final public frame. Q12/Q29 and actual privacy remain prerequisites. |
+| PublicInput and actual token sources | E8-01/02 bind the complete policy, q/g/reason, profile, four identities and exactly one I/O mode before transcript construction. E7-08/E8/E14 consume original token/seed/draw/hash relations; commitment mode also requires actual owned token/empty-output sources. |
+
+The topological order is source/configuration and numerical artifacts, complete
+model-wide children, fixed Subject, evidence, Registration, signatures, final
+Passport, then the independently requested public statement. Request-instance
+and ledger derivation depend on the complete earlier template and request,
+without embedding the final statement they help identify. The native DAG
+places preparation before evidence and evidence before final admission.
+The eventual child specifications must preserve this order.
+
+The review found one stale inventory paragraph describing the old E7-03/E7-05
+titles; it now names the explicit LayerNorm/GPT-2 criteria already in the DAG.
+No numerical definition, identity preimage or qualified oracle changed.
+This is same-author review, with no external review claimed. The remaining
+coordinated acceptance and full local/selected hosted qualification still apply.
+
+## 6. Next contract work
 
 The coordinated Draft dispositions are now explicit in RFC-0025 §7.1, and
 27 new NC ids are reserved as `todo` with the exact catalogue snapshot updated.
 The accounting document enumerates deterministic hash-use families without
 claiming actual query bounds. The four prerequisite tasks and their consumer
-edges are now in graph.yaml. Finish the coordinated specification and DAG review.
+edges are now in graph.yaml. The outer identity/authority review is complete.
 Review the resulting specification and all twelve answers before acceptance.
 Keep complete child-protocol work assigned to its actual consumers and forbid
 production use until their own contracts and gates are satisfied. This audit

@@ -1398,3 +1398,30 @@ Complete frame/signing-message corpus SHA-256:
 `a1911cb4dbea6858b7e71d24494b1eb703c75da9bc9833054b6c786168e09c23`.
 Candidate SHA-256: `ab7640294665d2f198190b8bde41da48cb546fa53c9eae5881ad2570d0f2d82e`.
 Checker SHA-256: `1c46e465742fe4e4ccabe47e2ecf2ef09fc7bb1c3a684a6e9eb7af9653acebf4`.
+
+## Bounded CI regression
+
+`uv run --locked --script research/cqis-model-contract/check_ci.py` reuses the
+qualified independent helpers without calling any historical campaign main.
+It pins Python 3.12 and the same BLAKE3, python-flint and safetensors versions. The prior
+10,000-case numerical qualifications and their source pins remain unchanged.
+The CI check executes these cases every time its group is selected:
+
+- Six complete collections span both families and all three exponential modes;
+  independently encoded records cover all nineteen bound schemas and reject mutations.
+- Twelve original-source packages span three layouts, four IEEE formats and
+  single/indexed sources, including source/configuration and complete identity controls.
+- Sixty-four decoding cases cover both families and greedy plus three sampled
+  representations, with 48 accepted and 16 exact ExpDomain rejections for seed 26962.
+- Sixteen forward/cache cases give three accepted GPT-2 and four accepted Llama
+  cases; remaining cases agree on exact numerical rejection. Existing helpers
+  check activation tails, absolute blocks, source/cache substitutions and atomic failure.
+- Complete numerical/public-input/passport joins and structural controls retain
+  the distinction between fixed Subject and final Passport identities.
+
+These are regression fixtures, not the named model workloads. The outer identity
+checks still use explicit plan/commitment/evidence/signature fixtures and grant
+no cryptographic admission, new native NC, fidelity, profile or performance credit.
+Full-domain and larger randomized evidence remains in the preceding sections.
+The CI scope and inventory checks preserve all 177 inherited research commands;
+imported checkpoint/table changes still select the complete research inventory.

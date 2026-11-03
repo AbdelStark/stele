@@ -46,8 +46,10 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_native_selection_and_command_union(self):
         groups = ci.load_groups()
         commands = [c for group in groups.values() for c in group]
-        self.assertEqual((len(groups), len(commands), len(set(commands))), (75, 177, 177))
-        self.assertEqual(hashlib.sha256(json.dumps(sorted(commands), separators=(',', ':')).encode()).hexdigest(),
+        self.assertEqual((len(groups), len(commands), len(set(commands))), (76, 178, 178))
+        legacy = [c for name, group in groups.items() if name != 'model-contract' for c in group]
+        self.assertEqual(len(legacy), 177)
+        self.assertEqual(hashlib.sha256(json.dumps(sorted(legacy), separators=(',', ':')).encode()).hexdigest(),
                          '1b5d77c2a2ce9a2e58c9fff96868453e0ef88978f322bee8512d2575f834f1e7')
         selected = groups['native-comparisons']
         self.assertEqual(len(selected), 9)
@@ -62,6 +64,8 @@ class ResearchCiTests(unittest.TestCase):
             (['--matrix', '--selection', 'native'], ['native-comparisons']),
             (['--matrix', '--selection', 'stacked'], ['stacked-gkr']),
             (['--matrix', '--selection', 'native-stacked'], [g for g in groups if g in ('native-comparisons','stacked-gkr')]),
+            *[(['--matrix', '--selection', name], [g for g in groups if g in subset])
+              for name, subset in ci.SUBSETS.items() if 'model' in name],
             (['--matrix', '--selection', 'none'], []),
             (['--matrix', '--selection', 'all'], list(groups)),
             (['--full', '--matrix'], list(ci.load_groups(ci.FULL_MANIFEST))),
@@ -81,11 +85,15 @@ class ResearchCiTests(unittest.TestCase):
         for groups in ({'other': ['true']}, {'native-comparisons': []}):
             with mock.patch.object(ci, 'load_groups', return_value=groups), redirect_stderr(io.StringIO()):
                 self.assertNotEqual(ci.main(['--matrix', '--selection', 'native']), 0)
-        for selection in ('stacked','native-stacked'):
+        for selection in ci.SUBSETS:
             for args in (['--full','--matrix','--selection',selection],['--group','stacked-gkr','--selection',selection]):
                 with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     ci.main(args)
-            for groups in ({'native-comparisons':['true']},{'stacked-gkr':[]},{}):
+            for groups in ({'irrelevant':['true']},{'stacked-gkr':[]},{}):
+                with mock.patch.object(ci,'load_groups',return_value=groups),redirect_stderr(io.StringIO()):
+                    self.assertEqual(ci.main(['--matrix','--selection',selection]),1)
+            for missing in ci.SUBSETS[selection]:
+                groups = {name: ['true'] for name in ci.SUBSETS[selection] if name != missing}
                 with mock.patch.object(ci,'load_groups',return_value=groups),redirect_stderr(io.StringIO()):
                     self.assertEqual(ci.main(['--matrix','--selection',selection]),1)
         with mock.patch.object(ci,'load_groups',return_value={'stacked-gkr':['true']}),redirect_stderr(io.StringIO()):
@@ -103,6 +111,16 @@ class ResearchCiTests(unittest.TestCase):
                     path.write_text(raw)
                     with self.assertRaises(ValueError):
                         ci.load_groups(path)
+
+    def test_rejects_invalid_additional_inventory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'model.json'
+            for raw in ('{}', '[]', '{"typo":["true"]}', '{"native-comparisons":["true"]}',
+                        '{"model-contract":[]}', '{"model-contract":["true"],"model-contract":["false"]}'):
+                path.write_text(raw)
+                with self.subTest(raw=raw), mock.patch.object(ci, 'MODEL_MANIFEST', path):
+                    with self.assertRaises(ValueError):
+                        ci.load_groups()
 
     def test_rejects_unknown_group(self):
         result = subprocess.run([sys.executable, str(SCRIPT), '--group', 'unknown; exit 0'],
@@ -153,6 +171,9 @@ class ResearchCiTests(unittest.TestCase):
             (ci.FULL_MANIFEST, '3e83c7bad42261c951687446c2c1e446acd45256e3715601c17222557df56702'),
         ):
             groups = ci.load_groups(manifest)
+            if manifest == ci.MANIFEST:
+                self.assertEqual(groups.pop('model-contract'),
+                                 ['uv run --locked --script research/cqis-model-contract/check_ci.py'])
             digest = hashlib.sha256(json.dumps(groups, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             self.assertEqual(digest, expected, manifest.name)
 
