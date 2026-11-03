@@ -312,6 +312,29 @@ Length bounds are metadata bounds, not permission to omit full data regeneration
 Reduction range functions and coded public-source roots remain part of the full
 proof plan, with all original registry/source/selector obligations.
 
+Registry validation derives the exact ordered metadata and unique definition
+sets from the structurally checked Model. It checks exact total length and all
+metadata bytes before generating data. Every remaining 32-byte field is then
+compared with the digest of its complete regenerated component or rotation data;
+there is no supplied-data authority callback or option to skip regeneration.
+An immutable cache may retain only digests computed by that same full generation
+path, keyed by the complete checked definition. Validate host fields before a
+cache lookup; Boolean pseudo-integers must not alias valid integer keys.
+
+Rotation data generation streams position-major rows of at most 32768 bytes,
+retaining every pair through length*width/2. It has no former research-size cap.
+The data prefix and rotation_id participate in the hash even when two layouts
+produce identical coefficient values. Table generation retains all real rows
+and canonical zero padding, including every correction component. A full-table
+overflow or failed precision certificate rejects the complete Registry.
+
+The declared caps give Manifest at most 250161 bytes: 33 header/count bytes,
+514 function entries of at most 324 bytes and 516 components of at most 162
+bytes. Registry's ordered references, rotation records and framing bring its
+domain bound below 312000 bytes, within 1 MiB. These metadata capacities do not
+bound preparation time or the total regenerated data size, and do not establish
+native fallible allocation, public-MLE authentication or passport admission.
+
 `cqis_id = H(ASCII("stele/v0.1/cqis/identity") || H(Model)[32]
 || H(Scales)[32] || H(Registry)[32] || H(Bounds)[32])`.
 Bounds must be the complete statically derived collection with a closed schema,

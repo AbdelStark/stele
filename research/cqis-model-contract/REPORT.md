@@ -697,3 +697,79 @@ The qualified Model codec and all shared helpers are unchanged. No historical
 proof campaign is rerun. Registry regeneration, complete Bounds expansion,
 outer/source identity admission, native consumers and full named-model delivery
 remain required; this codec earns no native NC, privacy, parity or proof credit.
+
+## Registry with regenerated data
+
+The Registry codec implements [encoding appendix §6](../../docs/rfcs/full-model-encoding.md).
+It derives every ordered function/representation reference and the sorted unique
+definition sets from Model. It retains each layer's rotation reference, even
+when multiple layers use one definition. Exact metadata and total length are
+checked before data generation; every table/rotation digest is then compared
+with the complete regenerated definition. Supplied digests cannot populate
+the bounded caches, and no callback or flag can skip generation.
+
+Component bytes use the unchanged certified-table generator, with LayerNorm
+selecting the original rsqrt component through its proposed mode 4. Rotation
+data has the new configured prefix/identity and streams every position/pair
+through the unchanged integer-certified point generator. It has no additional
+whole-table size cap. Pairing participates in the identity even when coefficient
+values coincide. Rotation host fields validate before cache lookup so Boolean
+pseudo-integers cannot reuse an integer key.
+
+The independent oracle assembles role/function/representation/component bytes
+without calling the candidate codec helpers. It uses Arb real intervals for
+every table entry, including exp components/corrections, SiLU, tanh-GeLU and
+rsqrt, and retains all canonical padded rows. The unchanged independent rotary
+point oracle supplies complete row bytes under the new data framing. Shared
+parameter constructors and BLAKE3 are not independent implementations.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 python -B
+research/cqis-model-contract/check_registry_codec.py`.
+The fixed-seed framing campaign uses 10000 configurations with one to four
+layers and randomized norm/Model parameters. Its table pool uses exp B=7,
+F=E=0 and split 4 when present, plus F=E=0 activations. Additional full-data
+cases cover nontrivial F=E=7 activations/corrections and the largest B=31,
+split-16 exp components. These are explicit parameter sets, not an exhaustive
+qualification of every possible table configuration.
+
+The initial campaign passed. Review then added wider rotation rows and nonzero
+correction cases; the latter exposed an error in the new oracle, which rounded
+the product instead of applying RFC-0021's floor division. The unchanged
+candidate follows the RFC. The corrected oracle retains t=-126 at B=F=E=7,
+split 4: its correction is 1, while the erroneous rounding gives 0. Initial and
+failed expanded receipts and exact oracle sources are preserved separately.
+
+The corrected full run passes. Seed 2684 retains 5000 configurations per family;
+direct/product/corrected modes occur 3334/3333/3333 times. Every Registry matches
+the independent complete bytes and verifies; one bit change per randomized
+record rejects. The largest randomized record is 4159 bytes. Both successful
+runs retain corpus SHA-256
+`e970640b93b6d6a153469d9ba4f1d059fb59632446dbf50dadbf395d35325f2c`.
+
+The complete data checks cover 15 distinct component definitions and 53 rotation
+definitions. The nontrivial correction fixture has 47 nonzero entries. Wider
+rotation fixtures cover width 8 over 17 positions in base/linear modes, width
+128 over three positions in llama3 mode, and a complete width-16384 row at
+position zero. A separate width-2 table streams all 65537 positions, exceeding
+the former research generator's 65536-pair cap; its data digest is
+`9d9eb601cb448ce9ceddf0a547f50a40d8b0e6a4d538fcc175db448c8f232d9a`.
+No early frequency/angle rounding is introduced.
+
+All strict truncations and all 1842 single-byte mutations of the selected
+complete fixture reject. Targeted cases cover all six data-digest slots, a
+digest recomputed from corrupted padded rsqrt data, changed Model identity,
+oversized/mutable frames, full activation-table overflow and a Boolean cache-key
+alias. Metadata-only named fixtures retain 49/130 ordered roles in 13811/42037
+bytes; 128-layer fixtures retain 514 roles in 148566/165252 bytes. These latter
+fixtures do not regenerate their complete table/rotation data, select a named
+numerical preset or establish checkpoint fidelity.
+
+Candidate SHA-256: `8417f0e688e10fa0c78f88184673e86a2d823fd317387a5ec53a3531d4afc427`.
+Final checker SHA-256: `6ce2c572f07f0a73554dc4a9526510a0bc6ea8abec7a77b1c7617b3f6a937f7f`.
+The candidate and shared sources remain unchanged across the three runs. Only
+the new checker gained coverage and its floor-division correction. No historical
+proof campaign is rerun. Complete Bounds expansion, artifact/passport/source
+admission, full named-model regeneration/fidelity and native proof delivery
+remain open. These checks provide no native NC, privacy, profile, parity or
+performance credit.

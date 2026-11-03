@@ -25,6 +25,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The complete structural Model codec implements encoding appendix §4 only;
    Registry/Bounds/source admission remains a separate required step.
    The complete Scales codec now implements appendix §5's matrix-only frame.
+   Registry now implements §6's complete function/component/rotation set and
+   compares all data digests with regeneration under the declared definitions.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -32,6 +34,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    authenticated public input merely because the caller supplies it.
    The Model expected-digest check has exactly that content-only limitation.
    Scales binds full H(Model); its expected digest likewise needs authentication.
+   Registry derives its expected definitions from Model, whose source/passport
+   authority is still required. Its deterministic checks add no FS challenge.
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
    branch/point obligation remains. The §2.8 inventory is not yet a complete
@@ -41,6 +45,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    do not discharge table validity or static score/full-block admission.
    Scales provides every configured channel, with source minimality and the
    artifact/passport equality obligations still owned by their consumers.
+   Complete Registry data validation does not supply a coded public-source root,
+   lookup membership, point binding or a full-model certificate.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -58,6 +64,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    changed canonical models and fail the original expected-digest join.
    Scales bit changes produce 1286 structural and 8714 expected-digest
    rejections. Same-shaped numerical Model substitution rejects separately.
+   Registry controls reject changed role/definition bytes, every data-digest
+   slot and a digest recomputed from a corrupted canonical rsqrt frame. A
+   structurally valid activation configuration whose full table overflows rejects.
+   All 10000 randomized bit mutations and 1842 fixture-byte mutations reject.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -67,6 +77,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Model hashing adds no native hash query here; complete identity accounting
    remains acceptance work.
    The Scales research hash joins do not instantiate native H/query accounting.
+   Registry's complete data hashes remain part of the pending global accounting.
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -122,6 +133,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    or weakening static admission based on sampled values.
    Full-domain Scales retains all 16777216 channels; no observed code or
    activation is used to tighten bounds. Collection derivation remains open.
+   Registry's derived manifest and total metadata bounds fit 256 KiB and 1 MiB.
+   Its data regeneration is mandatory even when all metadata parses; this step
+   still does not establish score/full-block or other arithmetic admission.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -148,6 +162,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Model physical shapes come from Shape's closed role expansion, never supplied
    dimensions or padding. Rotation data and public-MLE masks remain unchecked here.
    Scales has one word per real matrix output channel and no padding entries.
+   Registry regenerates real table rows and zero padding. Rotation data has
+   exactly length*width/2 real pairs and no padding. Public-MLE selectors remain
+   separately required at actual proof consumers.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -162,8 +179,15 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    existing selection/temperature and shared bound helpers remain unchanged.
    Complete Model framing now matches independent struct and function-component
    assembly on 10000 configurations. Scales independently matches another 10000
-   complete frames and both maximal domains. Artifact/registry/passport codecs
+   complete frames and both maximal domains. Registry derives sorted unique
+   definitions and preserves every ordered function/layer reference. Digest
+   caches contain only regenerated data; rotation parameters validate before
+   lookup so Boolean fields cannot alias integer keys. Artifact/passport codecs
    and full/cache model flows still need their checks.
+   Registry's final run matches 15 complete component and 53 complete rotation
+   definitions against independent real-data oracles. Expanded tests exposed a
+   floor-versus-rounding error in the new oracle; it is corrected with a retained
+   regression. The unchanged candidate follows RFC-0021's floor semantics.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -172,6 +196,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The complete 196/291-record Model fixtures use randomized numerical settings;
    they do not establish named presets or checkpoint fidelity.
    Named-shape Scales fixtures use patterned values without source conversion.
+   Registry's named/maximal metadata layouts do not regenerate full named-model
+   coefficient data or establish native/fidelity parity.
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -179,6 +205,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     tied embedding/head still needs a single-source plan. No extra cut is granted.
     Model metadata parsing makes no weight-pass or runtime cost claim.
     Scales validation reports domain sizes only, with no benchmark claim.
+    Registry generation contributes preparation T_misc for every selected table
+    and rotation entry. Streaming its hash makes no measured speed claim.
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -194,11 +222,15 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Scales derives exact byte length before entry parsing and uses a separate
     64 MiB cap. Its full domain reaches 33558078 bytes; native allocation and
     RFC-0011's encrypted-to-verifiers scale policy remain unchanged obligations.
+    Registry checks exact length and all expected metadata before regenerating
+    data. Rotation rows are at most 32768 bytes, with no whole-table size cap.
+    The bounded Python cache is not a native admission or resource guarantee.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
     Structural Model identity remains distinct from full cqis_id and admission.
     Legal scale values remain distinct from authenticated conversion results.
+    Regenerated Registry data remains distinct from authenticated proof sources.
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
@@ -207,7 +239,7 @@ That result is limited to the research mapper and does not approve a protocol.
 ## Findings still preventing acceptance
 
 The complete static-bound collection and consumer expansion, authenticated outer
-passport/request schemas, independent artifact/registry codecs,
+passport/request schemas, independent artifact/passport codecs,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against
