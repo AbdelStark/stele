@@ -506,3 +506,50 @@ Shared arithmetic/numerical/checker helpers are unchanged from the preceding
 qualified versions. No historical proof campaign is rerun. Decoding records,
 complete collection/outer identities, actual native consumers/parity and full
 named-model inference/proving/verification/benchmark delivery remain open.
+
+## Full-vocabulary decoding static records
+
+The [decoding-bound appendix](../../docs/rfcs/full-model-decoding-bounds.md) adds
+schemas 15–17 for original logit maxima, one-round temperature and complete
+sampled selection. It preserves the full permutation/inverse, source weights,
+every prefix, least inclusive top-p boundary, original retained mass, exact CDF
+division and strict chosen bucket. Hash bytes reconstruct the full draw word;
+seed/hash/request ownership remains a separate mandatory consumer.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11 python -B
+research/cqis-model-contract/check_decoding_bounds.py`.
+Seed 2680 checks 10000 configurations per schema, with vocabulary sizes 1..32
+for complete randomized witnesses. Independent rational rounding, rank-based
+selection, polynomial column arithmetic and struct framing agree. Actual source
+values exercise every role's byte columns and carries. The selection vectors
+are conditional exp outputs with an attained Q; they do not prove the selected
+exp table or its original logit sources.
+
+Temperature has 4547 successful vectors and 5453 matching exp-domain failures.
+All original numerator words are checked even on failure. Across these vectors,
+14407 nonmaximum logits round to zero. Sampling checks 106207 unretained real
+ranks with canonical zero CDF auxiliaries while preserving their original
+weights, order and prefixes. These are arithmetic counts, not proof results.
+
+A separate full 1048576-token fixture checks every permutation entry and CDF
+endpoint using a linear exact oracle. Its last three endpoints are
+`4294967295,4294967295,4294967296`: the positive penultimate weight has an empty
+bucket, and maximum draw selects the final token. Complete counted original
+weights feed the sum's byte-column check; endpoint product, bucket and four-byte
+draw roles are checked separately. This fixture does not claim every role's
+byte columns were replayed at every rank. Other boundary cases cover singleton
+vocabulary, ties, int16 endpoints, exact/failed exp endpoints, top-p equality,
+zero-weight suffixes, full configuration domains and field-congruent draw words.
+
+Randomized record maxima are 7527/14027/31187 bytes and 3/10/7 columns. The
+separate analytic proof bounds records below 12000/20000/40000 bytes; selection
+at full vocabulary retains nine columns. Byte changes, truncations, suffixes,
+changed valid expected fractions, mutable/oversized input, invalid vocabulary,
+nonreduced/invalid rationals and Boolean fields reject. No native NC credit.
+
+Corpus SHA-256: `f40da432521ab5038450c1cb1ea3f5d3af1c3ffa809bb3b1ef11ed9b4815766a`.
+Candidate SHA-256: `8a03dc21173b69ffb16959fc97c85ea4a0b19526c23a9cbb1216865fdfb96a13`.
+Checker SHA-256: `9809815ff5600acd58524233b85b42bcb4767be48d68f22e24ade42669efb40f`.
+All shared helpers and earlier numerical sources are unchanged. Exact stopping
+and outer request schemas, the full collection/consumer plan, native controls,
+full model parity and original proving/verification/benchmark delivery remain.

@@ -312,6 +312,9 @@ radix-16 columns through the full context domain.
 The [RMSNorm appendix](full-model-rms-bounds.md) integrates the unchanged
 RFC-0021 statistic, shared exponent factors, reciprocal lookup and signed output
 into a complete record, including original source and padding obligations.
+The [decoding-bound appendix](full-model-decoding-bounds.md) adds original logit
+maxima, one-round temperature and complete sampled permutation/prefix/CDF/draw
+arithmetic. Exact stop/request records and their identity joins remain required.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

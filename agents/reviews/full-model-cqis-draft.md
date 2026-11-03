@@ -80,6 +80,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    reciprocal indices and exact signed output remain separate obligations.
    A mixed factor tuple can pass individual ranges without corresponding to
    any a; only the joint original-index relation is sufficient.
+   Logit/temperature/selection schemas each have 10000-configuration exact
+   column/framing checks and full small-vector arithmetic. Temperature cases
+   retain request-domain failures and nonmaximum logits rounded to zero.
+   The full 1048576-token boundary preserves its empty CDF bucket and final
+   endpoint 2^32. All original weight, permutation/inverse, prefix, minimal
+   top-p, retained-divisor and selected-bucket joins remain required consumers.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
@@ -99,6 +105,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    RMSNorm counts exactly d original statistic terms; inactive source words
    stay zero. Neither padded reciprocal rows nor padded exponent selections
    may become real queries. The row-wide M/J and factors retain their sources.
+   Decoding excludes padding from every original maximum/permutation/prefix
+   relation. Its inactive CDF words are zero for real unretained ranks, whose
+   original prefix and weight checks remain active. Padded layouts gate complete
+   equations, including constants; an output selector alone is insufficient.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -108,6 +118,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The radix extension separately preserves all nonhelper syntax and exactly
    specializes to the prior three helper bodies at the default eight bits.
    Sixteen boundary encodings cover all earlier eleven schemas unchanged.
+   Decoding record validation rejects changed bytes, truncated/suffixed frames
+   and different valid expected parameters. The arithmetic seed is fixed; the
+   existing selection/temperature and shared bound helpers remain unchanged.
    Complete runtime/artifact/
    registry/passport codecs and full/cache model flows still need their checks.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact

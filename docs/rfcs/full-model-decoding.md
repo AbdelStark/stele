@@ -83,8 +83,10 @@ successful generation from sampled logits or omit that failure in fidelity.
 Each weight is in [0,2^E]; W<=v*2^E<=2^34. Every prefix lies in [0,W]. Threshold
 products are strictly below 2^66. CDF numerators are at most 2^66, divisors in
 [1,2^34], quotients in [0,2^32], remainders strictly below their divisor.
-One M31 equality cannot represent these full integers. Static byte/sign/carry/
-high-plane checks and final zero carry remain required at actual consumers.
+One M31 equality cannot represent these full integers. The
+[decoding-bound records](full-model-decoding-bounds.md) specify the complete
+logit, temperature and selection words/roles. Static byte/sign/carry/high-plane
+checks and final zero carry remain required at actual consumers.
 
 The consumer inventory includes the original previous-position logits, attained
 maximum and ties, temperature relation, exp representation/membership, complete
