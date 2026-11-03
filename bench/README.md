@@ -53,6 +53,15 @@ zero. The `standard` schema tag grants no profile admission. Full inference,
 configured scale, virtual sources, wider or packed dots, privacy and W8 remain
 separate requirements.
 
+Recorded [E7-01f ledger](ledger/e7-01f-integer-linear.json), measured from clean
+commit `80c99acbfe3ee80a5b12cf058d43ea08160c79c4`. All 28 ordered native/Python
+pairs completed, with complete consumer agreement and one actual online visit
+per original source in every sample. The imported file is byte-identical to the
+assembled ledger, SHA256
+`d01105997b95b34dcf2d8d0e9a2304824e35d4377e1a3f3a694c8ed90f2cc056`.
+The [production review](../docs/security/integer-linear-production-review.md)
+records control, source, raw-artifact, local-validation and resource scope.
+
 ## Native Requant (E7-01d)
 
 From a clean committed macOS arm64 checkout, run:

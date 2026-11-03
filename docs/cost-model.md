@@ -261,3 +261,20 @@ proof bytes and fresh-worker peak RSS with every binding enabled. The
 [methodology](../bench/README.md#native-requant-e7-01d) distinguishes actual partial
 capacities from whole-worker RSS and bounds the measured matrix. These formulas
 remain unfitted; no constant, weight-pass count or inference projection changes.
+
+## 17. Centered integer-linear component observations
+
+The [E7-01f ledger](../bench/ledger/e7-01f-integer-linear.json) and
+[recording method](../bench/README.md#centered-integer-linear-resource-recorder-e7-01f)
+cover the complete bounded RFC-0024 operation. Original/range/advice preparation
+and registration charge c_c/c_lu; advice arithmetic and the signed matmul join
+charge c_a/c_sc/T_misc. Actual RetainedRow counters preserve one online visit per
+original; forward capture, advice generation and all registrations are separate
+executed work. The ledger includes both complete consumers, continuation and
+transmitted bytes, with all bindings enabled.
+
+Native phase times, simultaneous live malloc requests, Python-managed allocation
+peaks and whole-worker RSS retain their stated instrumented scopes. These
+observations leave the planning constants and inference projections unchanged.
+They establish no configured-scale, virtual-source, wider/packed-dot, privacy,
+profile or W8 result; those parent requirements remain open.

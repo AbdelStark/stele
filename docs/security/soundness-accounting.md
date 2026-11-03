@@ -1760,5 +1760,7 @@ counts. The native gate regenerates 28 complete positive proofs and consumes
 checking complete bytes, imports, records, failed-prefix Usage and continuation.
 Actual controls also exercise original point/final/row, source identity,
 independent weights, embedded planes, reserved rows and following-A1 bindings.
-Complete resource evidence remains an E7-01f acceptance requirement; all parent
-and Q12/Q29 gaps remain.
+The [complete component ledger](../../bench/ledger/e7-01f-integer-linear.json)
+records all 28 same-execution native/independent resource samples; the
+[production review](integer-linear-production-review.md) states their scope.
+All parent and Q12/Q29 gaps remain.
