@@ -342,3 +342,21 @@ they are not silently admitted as lookup components by this closed registry.
 Initial contract. Companion amendments preserve the full inference objective and
 all original downstream acceptance criteria. No model-fidelity default, completed
 native task, independent audit or production inference claim follows from adoption.
+
+### A1 — Exact-mean affine LayerNorm function
+
+Status: Draft. Question Q26; companion RFC-0004 A11 / RFC-0025 §2.3, task E5-03b.
+Proposed addition to §§2.3/4: layernorm_q uses the exact rational centered
+variance, shared normalization/rsqrt definition and one affine output rounding
+specified by [RFC-0025](RFC-0025-full-model-cqis.md). Its complete parameters
+include the bias fraction Gb; its operation binds both learned gain and bias
+sources. It reuses rsqrt_q data and cannot substitute for rmsnorm_q.
+
+The [encoding appendix](full-model-encoding.md) specifies version 1 parameters
+u16 d, u8 F/G/E/Gb, u32 en/ed and mode 4 with the existing rsqrt component.
+Native generator/evaluator admission, consumer/control mapping and coordinated
+reviews remain required before acceptance. Existing FunctionIds and modes are unchanged. The new
+[independent numerical evidence](../../research/cqis-model-contract/REPORT.md)
+does not admit a new registry entry or native API. No challenge or loss term
+changes; extra row statistics and affine division contribute c_a/T_witness,
+with no new table, cut, fitted constant or profile admission.

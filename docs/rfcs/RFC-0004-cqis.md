@@ -1779,3 +1779,21 @@ root. One degree-two A1 consumes both actual source projections after all
 roots and child states; every carry plane remains ranged. This is revealing
 research, with actual value/probability preparation and full composition still
 required. Accepted cuts, semantics and original task criteria are unchanged.
+
+### A11 — Complete named-model CQIS contract
+
+Status: Draft. Question Q26; task E5-03b. Proposed coordinated replacement and
+completion of A3/A6–A10: [RFC-0025](RFC-0025-full-model-cqis.md). The numerical
+contract must cover the original GPT-2-small and Llama-3.1-8B architectures,
+including exact-mean affine LayerNorm, learned positions, biases, both FFN
+forms, complete source/configuration/quantiser identity and every static
+arithmetic/range/branch/index/source obligation. Numerical evidence is in the
+[complete-model study](../../research/cqis-model-contract/REPORT.md).
+
+No prior Draft becomes Accepted through this entry. RFC-0025 §7 requires its
+remaining byte/consumer/decoding contracts and coordinated reviews before
+acceptance. Original E5-03/04/05, E6, E7 and E8 criteria remain intact, including
+actual native consumers, full named-model parity/fidelity and W8. Numerical
+agreement is not a private proof, profile, passport or full bound certificate.
+No challenge, ledger term, new cut or weight pass changes. Added numerical work
+belongs to T_witness/c_a/T_misc, with no measured constant or performance claim.

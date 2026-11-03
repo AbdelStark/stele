@@ -22,3 +22,22 @@ Status: Accepted · Version: 0.1.0 · Depends: RFC-0004, RFC-0009
 
 Unsupported in v0.1 (fail loudly with this id): state-space layers (Mamba), convolutional stems, non-integer
 positional schemes, dynamic shapes, ops with data-dependent control flow beyond routing/argmax/sampling.
+
+## Amendment log
+
+### A1 — Explicit GPT-2-small and Llama-3.1-8B roles
+
+Status: Draft. Question Q26; task E5-03b. [RFC-0025](RFC-0025-full-model-cqis.md)
+proposes complete numerical and configuration contracts for the original named
+targets. GPT-2 requires mean-centering affine LayerNorm, learned position
+embeddings, biased projections, tanh-GeLU and a tied token embedding/head;
+those roles cannot be supplied by the existing RMSNorm/SwiGLU candidate.
+Llama requires its actual GQA, scaled-RoPE, RMSNorm and SiLU-gated roles.
+The original architecture feature table and other implementation targets remain.
+
+Acceptance requires exact operation/source identities and the complete static
+and decoding contract; source names or matching dimensions do not establish
+architecture coverage. No accepted behavior, profile, new commitment or error
+term changes. Source preparation and additional arithmetic are charged to
+T_misc/T_witness/c_a without a benchmark claim. Full native inference and
+fidelity retain their original gates; this Draft earns no model or NC coverage.

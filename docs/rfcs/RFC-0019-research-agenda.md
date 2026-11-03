@@ -1142,3 +1142,17 @@ both centered bounds, the actual A3-tail equality event and affine raw-source
 openings before native delivery. E7-01e/f retain full source/plan/quantiser,
 wider/packed, scale, private/virtual, W8 and Q12/Q29 obligations. No algebra
 check, contract acceptance or registration receipt completes those parents.
+
+Q26 full-model contract: E5-03b and [RFC-0025](RFC-0025-full-model-cqis.md)
+require the complete original GPT-2-small/Llama-3.1-8B numerical, source,
+quantiser, configuration and static-consumer contract. The existing model
+candidate cannot express GPT-2's mean-centering LayerNorm, learned positions,
+biases and tanh-GeLU FFN, and its storage caps cannot run the named models.
+The [new exact evidence](../../research/cqis-model-contract/REPORT.md) checks
+exact-mean affine LayerNorm, one-round projection/position addition, complete
+physical role/source-map transforms and exact temperature/top-p/CDF arithmetic.
+Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
+static/range/branch/index/source expansion, complete model-flow evidence,
+sampled decoding and coordinated review/implementation DAG. No tiny-model,
+research or conditional proof result discharges the original full native
+inference, fidelity, private PCS/ZK, profile or W8 requirements.

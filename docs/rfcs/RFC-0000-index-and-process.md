@@ -50,6 +50,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0022 | Closed static arithmetic records | Accepted |
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
+| 0025 | Canonical full-model CQIS and checkpoint conversion | Draft |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`
