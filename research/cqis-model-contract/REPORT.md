@@ -283,3 +283,59 @@ receipts retain their original source hashes; the extraction qualification is
 separate. No historical proof campaign was rerun. Remaining bound families,
 collection/runtime identities, native consumers and all original named-model
 delivery gates remain open.
+
+## Rotary and attention-input records
+
+The [attention-input appendix](../../docs/rfcs/full-model-attention-bounds.md)
+adds schemas 7–9. Rotary retains the original head/pair/position mapping,
+coupled coefficient envelope, application rounding and full source indices.
+The score schema retains RFC-0004 A6's static worst-case int32 admissibility,
+whole-row conversion policies, GQA views and every signed-output byte. The
+maximum schema binds the causal first maximum, original masked scores,
+complete differences and the inclusive ascending-domain exp index. Product
+hi/lo splitting still uses the same original difference under RFC-0021.
+
+Run `python3 -B research/cqis-model-contract/check_attention_input_bounds.py`.
+Seed 2676 checks 10000 complete records per schema against independent rational
+coefficient/policy bounds, polynomial columns and full-byte framing. Another
+6727 candidate score configurations fail the independent static bound and
+reject with ScoreBound in the candidate; zero actual inputs cannot rescue them.
+The successful score configurations include 4274 zero worst-score bounds.
+
+Score input cases numerically convert complete Q/K rows, preserving their
+scales before selecting a query head and its actual GQA group. They compare
+every restored product, division and signed word to exact rational rounding;
+3037 sampled pairs include a zero scale. Maximum cases retain the configured
+complete dense key span using constant intervals, split at causal/selection
+boundaries. They produce 7901 in-domain cases and 2099 domain failures. These
+are conditional arithmetic cases, not proof-source authentication or inference
+on a named checkpoint.
+
+Rotary application uses nearest Q14 values of exact rational unit-circle
+points, then exact signed application rounding. Among 20000 sampled output
+coordinates, 12880 fit int16 and 7120 overflow; a native complete operation
+must reject if any coordinate overflows. These inputs exercise the coupled
+envelope, not configured base/linear/llama3 frequency generation. Of the
+randomized records, 614 have coefficient pair indices above p. The explicit
+largest supported shape retains pair index 2^33-1 and payload byte index
+2^35-1 without materializing the coefficient table. No research materialization
+cap is substituted for the full semantic domain.
+
+Boundary cases retain a width-one score and a denominator at shift -122,
+inclusive exp index 2^31, complete high zero bytes and an int32 score change
+of exactly p. The latter has equal field residues but unequal required word
+results. The complete masked/first-tie/index joins remain mandatory at actual
+consumers; these arithmetic examples earn no native negative-control credit.
+Byte mutations, truncations, suffixes, changed valid fractions, absent/odd
+rotary widths, invalid GQA groups, domain bits and Boolean fractions reject.
+
+Randomized maxima are 10708/21408/9485 bytes and 5/15/5 columns for rotary,
+score and maximum respectively. The appendix derives capacity limits from
+all permitted parameters separately. No sampled maximum supplies authority.
+Corpus SHA-256: `4cfdd242129bb1f6bc457a598eadd32e190a74a45e0ba3115e97145878f8d413`.
+Candidate SHA-256: `dea9a5014bc410ac9cc963d7262711e84d74b26dc7d2091538ce593c96e674ec`.
+Checker SHA-256: `dfcc449ba960707c5c7491187d05b296c35dcc870e8656dae89138581118c5f2`.
+Shared arithmetic/numerical/checker helpers are unchanged from their earlier
+qualified versions. Canonical frequency generation, exp/table/weighted/block/
+global normalization consumers, collection/runtime identities, native parity,
+named-model fidelity and complete private inference proofs remain outstanding.

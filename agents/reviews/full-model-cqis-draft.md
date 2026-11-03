@@ -59,12 +59,19 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    bounds include static gated scales through 8454661, first-maximum/zero
    branches, complete aligned rounding and the positive gated endpoint 2^30.
    Common whole-word ranges and zero predicates have explicit byte/index bounds.
+   Rotary/score/maximum records each have 10000-configuration checks, including
+   large coefficient indices and complete exp endpoints. Inadmissible static
+   score configurations reject before execution; actual zero inputs cannot
+   weaken that rule. Rational unit-circle tests cover the application envelope,
+   not canonical configured-frequency generation or public-MLE authentication.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
-   positions and blocks. Actual lookup/zerocheck selectors and public-source MLE
+   positions and blocks. The maximum record retains every dense real key, the
+   causal mask, first tie and canonical masked delta/gap/index zeros; actual
+   masked scores still require their source/arithmetic checks. Actual lookup/zerocheck selectors and public-source MLE
    layouts remain proof-plan requirements. Raw coefficient data/zero padding is
    not proof that padded rows are excluded.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,

@@ -144,7 +144,9 @@ Head t uses KV group floor(t/(h/g)). For query i and key j,
 score=R(dot(q_i,k_j)*sq_i*sk_j*m_score*2^(e_score-fq-fk+Fexp)), where
 1<=m_score<=65535, -62<=e_score<=30 and Fexp is the selected exp function's
 fraction. This dyadic score multiplier is explicit; no implicit sqrt(d_h).
-Scores require signed int32 and their static bound. Masked scores still use the
+The static worst absolute score, using the complete successful int16 row-policy
+domains, must be below 2^31 before execution, as in RFC-0004 A6. An actual small
+or zero score cannot rescue an inadmissible configuration. Masked scores still use the
 same arithmetic. Each real causal query has its own unmasked key, so its set
 is nonempty. Choose the first unmasked maximum; only unmasked differences enter
 the exact selected RFC-0021 exp function. Enforce its entire inclusive domain.
@@ -297,6 +299,9 @@ learned-position and exact-mean LayerNorm records and their word/source obligati
 The [flow-bound appendix](full-model-flow-bounds.md) adds complete-row conversion,
 one-round residual alignment and the exact gated product, including the full
 gated static scale range and canonical first-maximum/zero branches.
+The [attention-input appendix](full-model-attention-bounds.md) covers full rotary
+source indices, statically admissible scaled scores, causal first maxima and
+complete inclusive exponential indices.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

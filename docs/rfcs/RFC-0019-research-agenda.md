@@ -1158,6 +1158,10 @@ The flow continuation covers the full gated row scale domain, canonical first
 attainment and zero rows, one-round residuals and exact gated products. Shared
 word ranges retain all bytes and the final zero carry; zero predicates retain
 the first nonzero byte and its original source.
+The attention-input continuation retains full rotary table addressing, the
+existing static score admissibility rule, causal first maxima and inclusive
+exp indices without M31 aliases. Canonical coefficient generation and the
+actual complete attention/lookup/source consumers remain separate obligations.
 The full operation inventory retains both architectures and every source edge.
 Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
 static/range/branch/index/source expansion, complete model-flow evidence,

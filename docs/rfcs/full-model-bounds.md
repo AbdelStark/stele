@@ -383,8 +383,9 @@ challenge is authorized by this static schema.
 
 The [flow-bound appendix](full-model-flow-bounds.md) specifies conversion,
 residual and gated-product records, using the same complete word predicates.
-Closed records for rotary, attention score/max/exp/block/global normalization,
-activation, greedy/sample/stop and their source/index/range/branch obligations
+The [attention-input appendix](full-model-attention-bounds.md) adds rotary,
+scaled scores and causal maximum/index records. Closed exp/block/global
+normalization, activation, greedy/sample/stop and their source/index/range/branch obligations
 still require completion and integration into the full model collection.
 The existing twelve-family numerical collection supplies evidence only; its
 scoped membership is not the final collection or proof plan. None of those
