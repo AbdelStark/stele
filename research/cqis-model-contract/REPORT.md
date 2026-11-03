@@ -1071,3 +1071,63 @@ Complete typed-source/Scales/Artifact corpus SHA-256:
 `d02945e344e6048bef61429c762539040a88b3056259c7a9c1939d8b6060c6e6`.
 Candidate SHA-256: `1983de68a52f87196462edffc72829ac1fa5a30592bdc1ea8203b632e69a4cf7`.
 Checker SHA-256: `2310619abc3e204c3dc29c4fbe6e8016efc3d5b5998d50236aed6ba91d9adef2`.
+
+## Original config and architecture binding
+
+The [source-architecture appendix](../../docs/rfcs/full-model-source-architecture.md)
+and `source_architecture.py` bind original config bytes to Model, Map and Assets.
+Three explicit adapters cover bare/prefixed Hugging Face GPT-2 and Hugging Face
+Llama. Exact bounded JSON parsing retains decimal rationals and rejects duplicate
+keys, unknown fields and incompatible architecture flags. Every norm epsilon,
+rotation and physical source-role transform must match the declared config.
+Optional legacy buffers cannot supply mask or rotary data to CQIS execution.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with safetensors==0.6.2 python -B research/cqis-model-contract/check_source_architecture.py`.
+Seed 2690 checks 10000 configurations: 2500 for each GPT-2 layout and 5000 for
+Llama. Independent role construction and complete Architecture/SourceConfig
+framing agree with the candidate and the previously qualified Model/Map/Assets
+oracles. The largest randomized binding is 319 bytes. Controls reject changed
+config files, model epsilon/rotation, role names, ignored names, architecture
+flags and supplied binding bytes. An annotation-only change retains the derived
+architecture but changes the complete binding through Assets.
+
+Boundary checks exercise exact decimals, duplicate/nonfinite JSON, malformed
+Unicode, excessive number/depth/node/string/file sizes and incompatible fields.
+Valid inputs reach the 1 MiB JSON cap, 65536 nodes and 65535-byte strings. A
+50000-entry EOS list produces a complete 200207-byte binding. Four metadata-only
+shape checks cover GPT-2-small, the declared Llama-3.1-8B dimensions, and both
+maximal family shapes. Their physical-role/Map-byte/binding-byte counts are
+196/6063/211, 291/16146/311, 2052/65217/219 and 1155/64714/319. These checks do
+not allocate weight payloads or establish a named numerical preset.
+
+Primary definitions are pinned to Transformers commit
+`174890280b340b89c5bfa092f6b4fb0e2dc2d7fc`; the appendix links the exact files.
+The Llama model uses split-half rotary channels. Its conversion helper supplies
+evidence for names and Q/K permutation but omits `rope_scaling`; it is not
+authority for Llama-3.1 scaling. The Llama fixture uses the previously pinned
+Meta architecture with synthetic Hugging Face config bytes. Access to the
+official config at revision `d04e592bb4f6aa9cfee91e2e20afa771667e1d4b` returned
+HTTP 401. No gated config or checkpoint was acquired.
+
+The GPT-2 fixture contains the exact public config at Hugging Face revision
+`607a30d783dfa663caf39e06633721c8d4cfcd7e`, SHA-256
+`0daed7749b4f02b8f76240d5444551d7b08712dab4d0adb8239c56ba823bb7b4`.
+A separate check compares its derived map against the actual pinned
+`model.safetensors` header: all 196 physical roles match the shapes/dtypes of
+148 selected tensors, with 12 declared legacy buffers completing the 160-name
+header. Only the 14291-byte length/header prefix was fetched, SHA-256
+`6201ba7dfaf69457803f802c211019e95f0c1a99a1f5387dcb53e500e5e30e85`.
+This establishes metadata compatibility, without a whole-file hash, payload
+conversion, publisher authentication or fidelity result.
+
+Tokenizer vocabulary/execution, special-token insertion, generation/stop-policy
+joins, actual named source admission, full model/cache integration and outer
+passport/proof consumers remain required. This evidence gives no native control,
+proof, privacy, profile, parity, fidelity or performance credit. It changes no
+production dependency, challenge, cut or online weight pass.
+
+Complete SourceConfig corpus SHA-256:
+`0143939dd7fb4e6916a1c580bc470f9a6d1817b7ad608cd2947d704076a412d4`.
+Candidate SHA-256: `5e36baac0a9464164371984ca4a2f6790b80d5f790052b666e7db3fb280ba7b7`.
+Checker SHA-256: `bfba604cafd2b35229ba77b940a2e97c7aa5d22ab6dd29eb95091418c2a3335d`.

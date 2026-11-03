@@ -407,6 +407,13 @@ consumers must check all used parameters. No content hash authenticates
 its own expected value. The numerical identity contains no private tensor payload
 or public proof-admission flag and does not instantiate the complete passport.
 
+The [source-architecture appendix](full-model-source-architecture.md) adds the
+complete SourceConfig/source_config_id binding for the explicit adapter, exact
+original config, Model, Map and Assets. It checks shape, epsilon, rotary layout
+and complete role transforms. The passport must authenticate this record with
+those same inputs; tokenizer/generation semantics and actual source/proof
+consumers remain separate requirements.
+
 ## 7. Remaining acceptance work
 
 The [request contract](full-model-request.md) fixes request/stop/token-I/O

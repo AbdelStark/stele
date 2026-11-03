@@ -38,6 +38,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The conversion appendix now specifies exact original-scalar access and
    exact Scales derivation and streamed Artifact emission under RFC-0025 §2.1.
 
+   The source-architecture appendix adds three explicit HF source layouts and
+   the canonical SourceConfig binding, under Draft RFC-0011 A3/A4.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -58,6 +61,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
 
    Conversion adds no challenge. Its emitted-byte digest and source identities
    still require the complete authenticated passport and H/query schedule.
+
+   SourceConfig binds complete Model/Map/Assets hashes and the derived source
+   architecture. These expected inputs still require passport authority; the
+   deterministic binding adds no Fiat–Shamir challenge.
 
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
@@ -83,6 +90,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Numerical conversion consumes verified immutable source slices and derives
    every scale/code byte. The resulting metadata cannot construct a native
    source handle or prove what a separate storage system or commitment contains.
+
+   The config adapter checks original numeric fields and every physical role
+   name/transform. Its result cannot authorize an E6 source, tokenizer, decoding
+   policy or proof; those actual consumers retain their complete joins.
 
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
@@ -125,6 +136,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    overflow, late fused-partition failures, file changes and failed output
    writes. All selected scalar checks precede output; no native NC credit follows.
 
+   SourceConfig controls reject changed shape/epsilon/rotation/layout, wrong
+   source roles, ignored nonbuffers, unsupported flags and hostile JSON. A
+   metadata-only file change preserves architecture but changes the binding.
+
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -144,6 +159,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
 
    Exact source conversion adds deterministic arithmetic and hash uses only;
    the required global identity accounting is unchanged acceptance work.
+
+   SourceConfig adds research content-hash uses only. Their complete native
+   H/query schedule remains part of the coordinated accounting amendment.
 
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
@@ -225,6 +243,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    values. They do not use rounded codes to tighten static bounds.
    Every original scalar, full source index and int16 overflow rule is retained.
 
+   Exact decimal rationals preserve config epsilon and rotation values; no
+   binary64 cast or observed tensor range tightens bounds. The adapter retains
+   full shapes and checks every layer against the same source architecture.
+
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -270,6 +292,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    with only the final inactive nibble zero. This does not admit proof padding
    selectors or substitute for committed source geometry.
 
+   Recognized legacy mask/frequency buffers remain excluded from execution.
+   They cannot replace configured causal masks, regenerated rotary data or any
+   required physical source; full container coverage still applies to them.
+
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -310,6 +336,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    division. Fused Q/K/V matrices derive separate scales. Source repartitioning
    and signed-zero representations can preserve Artifact while changing Source.
 
+   Layout tags distinguish bare/prefixed GPT-2 names and HF split-half Llama
+   channels. Closed absence rules, exact JSON numbers and canonical semantic
+   frames match independent config/role/struct oracles on 10000 configurations.
+
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -334,6 +364,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    the unchanged quantiser helper as its oracle. The large generated conversion
    fixture is neither a named checkpoint nor Rust/SIMD/CUDA parity evidence.
 
+   The actual GPT-2 config and header match all 196 physical roles across
+   148 selected tensors and 12 legacy buffers. This is header metadata only.
+   The gated Llama config returned HTTP 401. Its named-shape fixture uses pinned
+   Meta architecture and cannot establish checkpoint compatibility or fidelity.
+
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -355,6 +390,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Conversion uses two offline matrix scans for scales and one for emitted
     codes; vector validation and emission are separate. These preparation
     scans do not change the one online weight pass or report a measured constant.
+
+    Source architecture parsing and role comparison are preparation T_misc.
+    No inference weight pass, cost constant or measured performance claim changes.
 
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
@@ -394,6 +432,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     success result; partial output must be discarded. Native resource admission
     and stored-byte integrity still require their own checks.
 
+    Config JSON has explicit byte/node/depth/string/number bounds. The parser
+    checks pending-node capacity before expanding children; complete binding
+    verification derives expected bytes. Native fallible parsing remains required.
+
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -412,6 +454,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     A numerical conversion result remains distinct from a proven source,
     committed-plaintext hash binding, semantic adapter or complete passport.
 
+    SourceConfig establishes a declared architecture/role binding only. It
+    remains distinct from tokenizer behavior, source publisher authority and
+    a full passport or native proof source.
+
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
 That result is limited to the research mapper and does not approve a protocol.
@@ -420,7 +466,7 @@ That result is limited to the research mapper and does not approve a protocol.
 
 Actual consuming-reduction closure, authenticated outer
 passport/request schemas, complete passport codecs, actual native conversion
-consumers and semantic config/tokenizer/generation adapters,
+consumers, actual named source/config admission and tokenizer/generation adapters,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against

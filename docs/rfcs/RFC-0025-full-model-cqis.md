@@ -258,6 +258,10 @@ are explicit and checked against the mandatory model role set.
 The [source appendix](full-model-source.md) closes Source/Assets file frames,
 exact container/selection checks and immutable original-byte slices. Config,
 tokenizer and generation semantics still require their authenticated consumers.
+The [source-architecture appendix](full-model-source-architecture.md) binds the
+explicit adapter and original config to Model/Map/Assets, including all norm
+epsilons, rotary layouts and physical source-role transforms. It does not
+establish tokenizer execution or the generation/stop-policy join.
 RFC-0011 A4 proposes the corresponding complete physical Artifact/Preparation
 binding. Structural streaming validation of those bytes is separate from
 reproducible source conversion and the proven commitment-to-Artifact hash join.

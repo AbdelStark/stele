@@ -211,3 +211,13 @@ relation remain separate obligations; a numerical conversion result does not
 discharge them. Complete semantic adapters, native consumers, outer passport,
 H/query accounting and every existing privacy/profile/fidelity requirement
 remain necessary for acceptance and delivery.
+
+The [source-architecture appendix](full-model-source-architecture.md) further
+specifies SourceConfig/source_config_id. Authenticate the explicit source
+layout and this complete record alongside its same Model, Map and Assets.
+Original config bytes must supply the exact declared architecture, epsilon,
+rotation and source-role mapping; a matching dimensional summary is insufficient.
+Closed absence rules belong to the versioned adapter, not host-library defaults
+selected during execution. Configuration metadata never authorizes remote code,
+casts or an unchecked inference backend. Tokenizer/generation consumers, original
+checkpoint authority and the commitment/hash/private-proof obligations remain.
