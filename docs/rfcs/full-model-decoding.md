@@ -109,3 +109,43 @@ draft does not produce a profile budget or a new challenge/error record. The
 deterministic CDF rounding error above is not a probabilistic soundness loss.
 Coordinated ledger/control review and independent numerical evidence remain open
 before this appendix or RFC-0025 can be Accepted.
+
+## Numerical Model/request composition
+
+`decoding_execution.py` composes these existing definitions with the complete
+structurally validated Model and RequestBoundary. Its public-policy bytes are
+exactly `B(Decoding) || B(RequestBoundary)` from the request contract. Verification
+rederives both records from independently expected inputs and compares every
+byte. The subrecord does not identify the entire Model; the outer statement
+must bind the same authenticated Model/CQIS identity.
+
+Before choosing a token, require the original prompt and complete current token
+prefix, with exact prompt equality, in-vocabulary ids and an absolute position
+in `[q,q+maximum_new)`. No already-generated prefix token may be in the request's
+EOS set. Prompt EOS remains legal. Consume exactly v int16 logits from position
+`len(prefix)-1`; the actual source relation must establish that provenance.
+There is no interface for supplied weights, a supplied draw or a changed policy.
+
+Sampled execution checks the original seed against the request commitment,
+derives the absolute-position draw, computes every temperature argument, and
+evaluates the selected exponential representation before top-p/CDF selection.
+Direct evaluation uses certified nearest entries. Product evaluation uses its
+separate nearest high/low entries and floor division. Corrected evaluation adds
+the definition-derived correction to that product. A bounded immutable point
+cache contains only locally derived values; it never accepts supplied tables
+or digests. Point evaluation does not validate a complete Registry or provide
+lookup/source proof. Their complete regeneration and consumer requirements remain.
+
+Greedy execution checks the same request/prefix/logit boundaries, requires no
+seed bytes and chooses the first maximum. A zero-limit request makes no decoding
+step, but its sampled seed relation remains required: `validate_seed` checks it
+separately. The full inference wrapper must call that check even when no token
+is generated. Any failure produces no Decision; the prototype mutates no cache
+of inference K/V state. A returned Decision is numerical evidence only.
+
+The policy frame is bounded by Model's 1 MiB cap plus RequestBoundary's maximum
+4194381 bytes and eight framing bytes. Full-vocabulary arguments, weights,
+permutation and CDF require O(v) research storage; prefix checks require O(n).
+Native bounded allocation, complete model/cache evaluation, stop completion,
+TokenIO, private source/seed proofs and outer authority remain delivery work.
+This composition introduces no new hash domain, challenge, cut or weight pass.

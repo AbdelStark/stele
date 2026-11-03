@@ -1131,3 +1131,58 @@ Complete SourceConfig corpus SHA-256:
 `0143939dd7fb4e6916a1c580bc470f9a6d1817b7ad608cd2947d704076a412d4`.
 Candidate SHA-256: `5e36baac0a9464164371984ca4a2f6790b80d5f790052b666e7db3fb280ba7b7`.
 Checker SHA-256: `bfba604cafd2b35229ba77b940a2e97c7aa5d22ab6dd29eb95091418c2a3335d`.
+
+## Model, request and sampled-decoding composition
+
+`decoding_execution.py` composes the [decoding](../../docs/rfcs/full-model-decoding.md)
+and [request](../../docs/rfcs/full-model-request.md) contracts. Complete Model
+validation determines the policy, vocabulary, logit units and exponential
+selection. The supplied prompt/prefix must match, fit the request and contain
+no prior generated EOS. The original seed must match its commitment. Actual
+temperature arguments and definition-derived exponential point values feed the
+existing top-p/CDF operation; callers cannot supply weights or random draws.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 python -B research/cqis-model-contract/check_decoding_execution.py`.
+Seed 2691 checks 10000 configurations split equally among greedy, direct exp,
+product exp and corrected exp, with both family descriptors. All 2500 greedy
+cases agree. Sampled acceptance/domain-rejection counts are 1047/1453,
+1532/968 and 1018/1482 respectively. Rejection is the required outcome when
+temperature arguments exceed the selected function's domain; no clipping occurs.
+
+The oracle independently frames the complete public-policy subrecord, uses
+rational temperature arithmetic and 256-bit Arb exponential enclosures, and
+reuses the earlier independent rank/interval oracle for top-p/CDF. No historical
+campaign is rerun. Every successful case matches all arguments, weights, the
+complete order/CDF, draw, absolute position and selected token. The full Model
+still requires its independent identity: policy bytes contain the decoding and
+request subrecords only.
+
+Controls reject changed policy/seed, prompt mismatch, decoding after a generated
+EOS, exhausted limits, malformed logits and out-of-domain exponential arguments.
+Prompt EOS is allowed. Zero-limit sampled requests still validate their seed;
+greedy requests reject seed bytes. Absolute position two produces its exact
+draw and differs from the generation-local position-zero draw. Across all 129
+arguments in a focused domain, direct/corrected outputs agree while product
+differs at 21 points, retaining its separately specified rounding. The product
+domain endpoint -2^31 also matches the independent oracle.
+
+A full 1048576-entry vocabulary executes sampled selection on uniform logits.
+All arguments, weights, permutation and CDF endpoints match the complete
+expected arrays; draw-derived token 943670 is selected. A complete EOS list of
+the same size produces 4194600 policy bytes matching independent framing. A
+separate full-context request chooses at absolute position 1048575. These cases
+exercise the full numerical domains without substituting for named-model
+weights, complete forward execution or fidelity validation.
+
+The point cache stores at most 65536 locally certified entries. It cannot
+admit supplied table data, replace complete Registry generation or provide a
+lookup/source proof. Full model/cache execution, logits and token provenance,
+stop completion/TokenIO, private seed/source proofs, native bounded resources
+and the outer authenticated statement remain required. No new hash domain,
+challenge, cut, weight pass, native control credit or measured cost is added.
+
+Complete policy/input/decision corpus SHA-256:
+`2806088859a8ca5b0147542d234b1e9d0d7513fe912739bf6f8d269591538228`.
+Candidate SHA-256: `38ca4e497fcc9cf563a9fa18bc256d7ed5c299f52bb9517f8e52372674ec03fb`.
+Checker SHA-256: `cb9ef10b118b999a9813ad55750f718df07338670a75be2a744efcf8686f5e3d`.
