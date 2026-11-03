@@ -150,3 +150,34 @@ RFC-0004 A3/static certificates, Q12/Q29, all original tasks and existing contro
 remain required. No challenge, production loss, new commitment or profile is
 introduced; source/hash preparation is T_misc, without a measured constant or
 inference weight-pass change. E5-03, E10 and E12-05 are affected but not completed.
+
+### A4 — Complete physical Artifact and Preparation binding
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0025 §2.7 and its
+[encoding appendix §3](full-model-encoding.md). This proposes the complete
+`cqis-weights-v1` frame for the mandatory GPT-2/Llama physical roles: explicitly
+selected int4/int8 matrices, int16 gain/bias vectors, original matrix scales and
+the prescribed GPT-2 token/head tie. It broadens §1 item 5's packed-int8
+description; it is not enabled by the current Accepted contract.
+
+The passport must authenticate the exact Preparation/quantiser_id, Model and
+Scales used to derive every physical record, alongside the complete typed source
+identity from A3 and digest_cqis. Preparation binds the canonical source map and
+all physical configurations; the Artifact embeds its quantiser_id. Record and
+payload lengths, order, coordinates, packed tails and every scale byte derive
+from that same expected configuration. A syntactically valid changed payload
+changes digest_cqis without changing the conversion algorithm identity.
+
+Streaming structural validation checks all bytes and exact exhaustion. It does
+not establish minimal quantiser scales, source conversion, alias equality or
+publisher authority. Preserve §1 item 5's reproducible original-source conversion
+requirement and its separate proven commitment-to-Artifact hash binding. The
+actual wrapper must bind the same physical codes, scales, packing, role/layout
+and complete Artifact bytes; a hash beside an unchecked commitment is insufficient.
+
+The full passport/public-input codecs, actual hash/source consumers, H/query
+accounting and negative controls remain acceptance/delivery work. A2's complete
+table commitment binding, A1/Q29 confidentiality, private PCS/ZK, fidelity,
+certificates, registration and encrypted-to-verifiers scales remain required.
+Preparation/Artifact scans are one-time T_misc/hash work; this proposal adds no
+online inference weight pass, cut, challenge, profile or measured constant.

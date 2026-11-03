@@ -6,7 +6,7 @@ The same author, codex-root, applies rfc-author, cqis-numerics, gkr-reduction-au
 and soundness-auditor. No independent human or agent review is claimed.
 
 Scope: [RFC-0025](../../docs/rfcs/RFC-0025-full-model-cqis.md), its encoding and
-decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0001/0004/0017/0021, and
+decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0001/0004/0011/0017/0021, and
 [the new research evidence](../../research/cqis-model-contract/REPORT.md).
 All earlier Accepted text remains an unchanged prefix. No native crate, frozen
 oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
@@ -30,6 +30,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The physical appendix adds schema 19 for canonical tensor/code/scale addresses.
    The collection appendix fixes all nineteen schemas' ordered slots and complete
    Model/Scales/Registry parameter selection, with exact outer framing.
+   Encoding §3 now closes Preparation and streaming Artifact parsing. RFC-0011
+   A4 proposes their passport/commitment binding while preserving Accepted text.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -42,6 +44,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Physical address derivation adds no challenge or absorption either.
    Bounds binds all three complete input hashes without a cqis_id cycle. These
    content joins still require independently authenticated expected inputs.
+   Artifact digest comparison also requires an independently expected value;
+   complete byte hashing cannot authenticate its own source or passport.
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
    branch/point obligation remains. The §2.8 inventory does not instantiate
@@ -57,6 +61,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    original source-container joins still belong to their actual consumers.
    Fixed collection slots preserve every physical and numerical role. Weighted's
    shared record retains its separate probability/block/global consumers.
+   The Artifact codec retains exact record/scale/payload association. Source
+   regeneration and actual commitment-to-Artifact hash consumers remain required.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -85,6 +91,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    under changed formats, forged Registry data and static admission failures.
    Those controls pass, including full-table overflow and block rejection at
    n=1. The final-duplicate control expects Trailing after exact exhaustion.
+   Artifact controls target configuration/scale/length substitution, malformed
+   reads, excluded codes, odd packed tails and changed canonical payload hashes.
+   All 10000 byte mutations reject: 7352 structurally and 2648 at expected
+   digest identity. Bad codes beyond the stream chunk boundary reject as well.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -98,6 +108,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The physical record adds deterministic word relations, with no new loss term.
    Collection hashing adds no native loss line here; complete H accounting
    remains part of the coordinated acceptance work.
+   Preparation/Artifact identities instantiate no native H/query schedule here.
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -146,8 +157,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    and token-I/O frames retain context/vocabulary 2^20. The EOS public-mask
    formula matches independent dense folding at 10000 M31 points; native E6
    source construction and all challenge-field/profile parity remain required.
-   The full model still needs Artifact/source/view indexing and actual
-   consuming-reduction closure. No generic opaque certificate or
+   The full model still needs actual Artifact/source/view indexing consumers
+   and consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
    Model parsing retains full configured domains without deriving a certificate
    or weakening static admission based on sampled values.
@@ -166,6 +177,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    channel still participates in Scales identity and its actual source consumer.
    All 10000 independently expanded parameter sets agree. Twenty-two complete
    frames and every named/maximal record match independent byte oracles.
+   Complete Artifact lengths and global record/payload offsets derive from all
+   Model dimensions/formats with checked u64 arithmetic and a bound below 2^39.
+   All named/maximal layout offsets match independent derivation; the largest
+   Artifact is 274919947094 bytes without allocating its weight payloads.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -201,6 +216,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Every expected collection slot survives even when record parameters repeat.
    Request-dependent geometry and source selectors are not derived from a
    supplied collection count or from the static context capacity alone.
+   Artifact payloads have no per-row int4 padding; an odd final high nibble is
+   zero. Both real nibbles and all int8 bytes retain symmetric code ranges.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -218,8 +235,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    complete frames and both maximal domains. Registry derives sorted unique
    definitions and preserves every ordered function/layer reference. Digest
    caches contain only regenerated data; rotation parameters validate before
-   lookup so Boolean fields cannot alias integer keys. Artifact/passport codecs
-   and full/cache model flows still need their checks.
+   lookup so Boolean fields cannot alias integer keys. Typed source/passport
+   codecs, source regeneration and full/cache model flows still need their checks.
    Registry's final run matches 15 complete component and 53 complete rotation
    definitions against independent real-data oracles. Expanded tests exposed a
    floor-versus-rounding error in the new oracle; it is corrected with a retained
@@ -229,6 +246,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The collection's closed expansion selects all fractions/policies/matrices,
    derives Maximum's bound from Score and retains Normalize's exact Weighted
    parameters. It has no caller-selected role list or hash-only Registry path.
+   Preparation binds the exact Map and physical C_i, independently of unrelated
+   runtime fractions. Artifact includes every exact configured scale/payload byte.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -243,6 +262,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    without checkpoint payloads or a full-model execution.
    Named/maximal collection fixtures likewise derive complete record sets only;
    they do not regenerate named Registry data or execute checkpoint inference.
+   Artifact layout fixtures likewise retain full shapes without allocating
+   named weight payloads or claiming source conversion/fidelity/native parity.
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -256,6 +277,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     charged to their reductions. No constant, weight pass or cut changes.
     Collection generation is preparation T_misc. Its stream does not alter
     the actual E7 weight schedule or establish a runtime speed claim.
+    Artifact syntax validation scans its complete bytes during preparation;
+    it does not alter the one-pass inference schedule or wrapper hash obligation.
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -279,6 +302,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     The collection has at most 5005/4620 slots and a domain bound below
     496000000 bytes, within 512 MiB. A record stream or incremental digest is
     complete only after exhaustion; early prefixes confer no admission.
+    Preparation has a separate 17 MiB cap. Artifact reads use at most 64 KiB
+    chunks and expected lengths, with short reads supported and exact EOF.
+    A supplied u64 length never controls allocation. Native streaming and
+    resource admission still require their own implementation qualification.
+    The 16 MiB Map boundary round-trips, and complete Artifact bytes/hashes
+    agree under three-byte short reads and payloads crossing 64 KiB chunks.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -288,6 +317,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     A physical address or range certificate is not a source-ownership handle.
     Complete numerical Bounds remains distinct from a complete proof plan,
     authenticated passport or accepted inference statement.
+    A structurally valid Artifact remains distinct from reproducible conversion
+    and the proven binding between committed plaintext and digest_cqis.
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
@@ -296,7 +327,7 @@ That result is limited to the research mapper and does not approve a protocol.
 ## Findings still preventing acceptance
 
 Actual consuming-reduction closure, authenticated outer
-passport/request schemas, independent artifact/passport codecs,
+passport/request schemas, complete typed source/passport codecs and source regeneration,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against

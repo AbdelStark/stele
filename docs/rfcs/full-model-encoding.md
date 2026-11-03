@@ -142,6 +142,55 @@ ignored policy changes Map and therefore quantiser_id and Artifact's header,
 even when all numerical tensor payloads remain equal. No contradictory claim of
 source-independent artifact bytes is made.
 
+Preparation parsing first checks its 17 MiB cap, prefix and Map length (at most
+16 MiB), then decodes the complete canonical Map. Map.Shape must equal the
+independently expected Model.Shape. Every remaining C_i must equal Model's
+derived physical configuration, with exact exhaustion. The cap covers the
+maximum Map plus 2052 configurations of at most 13 bytes and framing. Checking
+an expected quantiser_id joins content identity only; the original source and
+expected map/configuration still require authentication.
+
+Artifact length and every record/payload offset derive from Model before reads.
+Its fixed header has 49 bytes. Start at o=49; for each physical i let N_i be
+the product of its dimensions, P_i=ceil(N_i*bits_i/8), and
+H_i=22+4+byte_length(C_i)+8+[matrix]*(2+2*dim[0]). The u64 length is at o,
+R_i starts at o+8, and its payload at o+8+H_i. Require the declared record length
+H_i+P_i and payload length P_i, then advance o by 8+H_i+P_i. All additions
+and products use checked u64 arithmetic. Supplied lengths never size a buffer
+or select a record. Schema 19's record-relative byte j maps to o+8+j for this
+same expected record; equality modulo the proof field cannot replace that
+whole address or its actual source/view consumer.
+
+The complete matrix element count is d*(v+n)+12*L*d^2 for GPT-2, or
+2*v*d+L*(2*d^2+2*d*g*a+3*f*d) for Llama. At int8 it bounds matrix payload
+bytes by 2^35 and 2^38 respectively over the declared domains. Vector payloads
+are below 2^24 bytes; scales and framing together are below 2^26 bytes. Thus
+total Artifact length is strictly below 2^39. There is
+no former research element cap or metadata-sized whole-Artifact cap. These
+are layout bounds; actual source files and resource allocations have separate
+checked limits. Record-relative and Artifact-global addresses retain all bytes.
+
+Streaming structural validation compares the exact header, quantiser_id,
+record count, every C_i and every exponent/mantissa byte against the expected
+Preparation/Model/Scales. Scales must first parse completely under that Model.
+Read every payload byte in bounded chunks, reject either int4 nibble equal to
+8 and int8 byte 128, and require an odd int4 final high nibble to be zero.
+Int4 has no per-row padding, including when a row has odd width. All int16
+bit patterns are legal; conversion overflow belongs to source regeneration.
+After the final expected byte require EOF. Hash the complete actual Artifact
+bytes, and compare any independently expected digest_cqis only after successful
+structural validation and exhaustion. A legal changed code remains canonical
+but changes digest_cqis, while quantiser_id stays unchanged.
+
+A stream may return short reads; accumulate only the bounded current chunk.
+Premature EOF, non-byte or oversized read results reject. No seek or whole-file
+allocation is required. A streaming producer or digest is complete only after
+all payloads and their exact lengths have been checked. Partial output is not
+an admitted Artifact. Structural validity does not prove that scales are minimal,
+codes came from source conversion, aliases match original source bytes, or the
+source map is publisher-authorized. Those original source/conversion/passport
+checks remain mandatory, with unchanged private PCS/ZK and one-pass obligations.
+
 ## 4. Runtime numerical configuration
 
 `Model = ASCII("stele/v0.1/cqis/model") || B(Shape) || C_i for every i

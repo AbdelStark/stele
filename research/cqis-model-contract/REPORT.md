@@ -885,3 +885,67 @@ Named/maximal record-stream corpus SHA-256:
 `ee840619777a30ee91bb9fae5d71edea9d055addd6bdc9d257d64da553cacc8e`.
 Candidate SHA-256: `daa798f6e34e4cb38821402a4071252bc5227cd3540dfae23bd524039e8ee302`.
 Checker SHA-256: `7e47fee94a985d225a27e4c7511e4eb907eb73abe1e585db5e94ba723ba49118`.
+
+## Complete Preparation and streaming Artifact codecs
+
+The [encoding appendix §3](../../docs/rfcs/full-model-encoding.md) now has
+complete Preparation and Artifact codecs. Preparation retains the exact Map,
+all Model-selected physical configurations and a separate 17 MiB cap. Artifact
+validation derives every expected record/payload length and offset, compares
+all original scale bytes, checks every packed code and hashes the complete
+actual byte stream. Supplied lengths never control allocation. Reads support
+short results and use at most 65536 bytes, with exact EOF required.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11 python -B
+research/cqis-model-contract/check_artifact_codec.py`.
+Seed 2687 checks 10000 complete Preparation/Artifact pairs, 5000 per family,
+against independent role/struct framing and whole-file hashes. Their 285989
+physical records include 75234 int4 matrices, 74981 int8 matrices and 135774
+int16 vectors. GPT-2 cases retain explicit fused Q/K/V partitions and aliases;
+both families retain every required layer and role. Randomized Preparation and
+Artifact frames reach 1703 and 9277 bytes respectively.
+
+Every one-bit Artifact mutation rejects under the original expected digest.
+Of those, 7352 fail structural/code checks; 2648 remain canonical but change
+digest_cqis. Separate controls cover wrong Map/configuration joins, changed
+scale/header/count/length fields, u64::MAX record lengths, truncation/suffixes,
+mutable or oversized read results, missing or overlong payload streams,
+excluded int4 nibbles/int8 codes, and the final odd int4 high nibble. An unrelated
+runtime logit fraction changes Model while preserving Preparation, as intended.
+Changing the source map's ignored policy changes quantiser_id.
+
+Three-byte short reads produce identical complete bytes/hashes. Separate real
+streaming fixtures have 131079 matrix elements, an odd row width, and payloads
+of 65540/131079 bytes for int4/int8. Scale words cross the chunk boundary too.
+Every generated chunk is at most 65536 bytes; mutations after that boundary
+still reject. Int4 retains continuous packing across rows and its one zero tail.
+The maximal Map fixture is exactly 16 MiB; its Preparation is 16777457 bytes
+and round-trips through the complete parser.
+
+Independent full-domain layout fixtures produce these exact metadata results:
+
+| Shape fixture, all matrices int8 | Physical records | Artifact bytes | Largest payload |
+|---|---:|---:|---:|
+| GPT-2-small dimensions | 196 | 124840091 | 38597376 |
+| Llama-3.1-8B dimensions | 291 | 8033809270 | 525336576 |
+| Maximal GPT-2 domain | 2052 | 34387127049 | 4294967296 |
+| Maximal Llama domain | 1155 | 274919947094 | 17179869184 |
+
+These checks derive all offsets and lengths without allocating named/maximal
+weight payloads. They are not checkpoint conversions or named-model fidelity
+runs. The separate domain proof bounds complete Artifact length below 2^39;
+all intermediate length/offset calculations retain complete checked u64 values.
+
+RFC-0011 A4 proposes the corresponding passport/commitment binding and remains
+Draft. Structural validity cannot establish minimal quantiser scales, original
+source conversion, alias-byte equality or source authority. The actual wrapper
+must still prove the committed-plaintext/Artifact hash relation. Complete typed
+source/config/tokenizer and passport codecs, full numerical/cache integration,
+native resources/consumers, privacy, profiles and parity remain required.
+No old proof campaign runs, shared-code changes, NC coverage or performance
+claim accompany this codec evidence.
+
+Complete Preparation/Artifact corpus SHA-256:
+`05006736baf5f1ea1699c2eb93dc659b6200d5ab1bf0b99e165633fdbf8ccbe1`.
+Candidate SHA-256: `7774d96e92ebf8d33c2153e5a930000d9b0795e45161fe103f841e23855bffe3`.
+Checker SHA-256: `9c522dc2057eda893b34f478361e37136354a293816b7c6c5d2d5d6c38898fb2`.

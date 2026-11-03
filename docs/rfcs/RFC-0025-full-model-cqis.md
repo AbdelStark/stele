@@ -253,6 +253,9 @@ does not promote the research model digest to a complete canonical identity.
 Single-file SHA-256 and the typed indexed-shard bundle identity remain distinct;
 hash original file bytes, never reconstructed JSON. Selection and ignored entries
 are explicit and checked against the mandatory model role set.
+RFC-0011 A4 proposes the corresponding complete physical Artifact/Preparation
+binding. Structural streaming validation of those bytes is separate from
+reproducible source conversion and the proven commitment-to-Artifact hash join.
 
 ### 2.8 Static arithmetic and consumer inventory
 
