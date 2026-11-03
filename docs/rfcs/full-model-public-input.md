@@ -3,8 +3,9 @@
 Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This specifies the complete public-input envelope and its required joins.
 It does not supply the complete passport, proof-plan, private commitment or
-ledger codecs, or admit any profile. Those remain required before acceptance
-of the complete contract and before native proof construction.
+ledger codecs, or admit any profile. Those require their own complete Accepted
+consumer contracts and native validation before proof construction/admission;
+RFC-0025 §7.1 fixes the numerical-specification and native-delivery boundary.
 
 ## 1. Independently expected statement
 

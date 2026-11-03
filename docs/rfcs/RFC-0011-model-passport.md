@@ -280,3 +280,41 @@ profile, intermediate cut, measured constant or online weight pass. Preparation,
 signature and evidence validation remain explicit T_misc/registration work.
 Affected tasks: E5-03b, E6, E8, E12-05/06 and E14. NC-0700..0703 and all original
 source/hash/private-proof controls must run against their real consumers.
+
+### A7 — Complete source contract and separate native admission gates
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12 and
+[RFC-0025 §7.1](RFC-0025-full-model-cqis.md).
+Motivation: A3's source study predates complete original-file, numerical and
+outer frames and combines specification requirements with native delivery.
+
+For the RFC-0025 families, replace A3's candidate source framing with the exact
+Source/Assets, source-architecture, conversion and encoding appendices. The
+typed single-file identity retains the original safetensors SHA-256; indexed
+identity retains its distinct tag and complete Source frame. Validate the exact
+original file set, container/index coverage, transforms, aliases and role map.
+SourceConfig binds the original configuration to the full Model and map.
+Preparation determines quantiser_id, and Artifact supplies digest_cqis under A4.
+No filename, model label, reconstructed JSON or self-selected digest establishes
+source authority. Assets binds original tokenizer/generation files without
+silently choosing request policy or claiming text/traffic provenance.
+
+A3's complete outer/role/identity specification condition is addressed by the
+RFC-0025 appendices and A4–A6, subject to their final review. Its native streaming,
+resource-admission and actual source controls remain E5-03/E12-05 completion
+criteria. This exact disposition allows the numerical/source specification to
+precede those implementations and grants no source or passport admission.
+
+PlanTemplate, WeightBindings, TableBindings, certificates, checkpoint proofs,
+fidelity and registration keys/signatures retain complete typed child contracts
+and actual validation before any passport is admitted. A6 reference comparison
+does not discharge them. E12-05/06 and E14-02 retain the complete 8B passport,
+proximity, hash binding, signature authority and original native controls.
+NC-0704..0710 reserve the additional reference/source/evidence/signature edges;
+NC-0700..0703 remain required. Q12/Q29, lifetime confidentiality and private
+PCS/ZK remain open until their own complete contracts and evidence close.
+
+No challenge, commitment construction, security budget, cut or proof pass changes.
+Exact reference/source hash uses remain in complete H/query accounting, and
+preparation/evidence/signature checks contribute T_misc/registration work.
+No measured constant changes. Affected tasks: E5-03/04/05, E6, E8, E12 and E14.

@@ -1820,3 +1820,56 @@ come from checked Model/Scales/Registry, with complete table regeneration and
 static score/full-block admission. The header binds those three objects and
 avoids a cqis_id cycle. This Draft framing does not replace Artifact/source,
 owned-view, actual consuming-reduction or passport obligations.
+
+### A12 — Consolidated full-model semantics and delivery prerequisites
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0003 A4, RFC-0009 A3,
+RFC-0011 A7, RFC-0017 A2 and RFC-0021 A2.
+Motivation: the successive A3/A6–A11 studies use different partial descriptors
+and scale domains. Native implementation needs one complete numerical authority.
+
+Proposed replacement for §§1–3,5.2–5.8,6,7,9 for the two RFC-0025 families:
+use [RFC-0025 §§1–6 and its linked definitions](RFC-0025-full-model-cqis.md).
+The exact source conversion, role order, single-round affine/residual/position
+arithmetic, two norm kinds, both FFNs, complete-row conversions, restored
+attention units, rotary coefficients and generation rules are mandatory.
+Other architecture work retains RFC-0017 and its own complete contracts.
+Accepted A1 scalar arithmetic, A4 function definitions and A5's two native
+static schemas remain unchanged; they are not substitutes for the wider model
+operations or complete Bounds collection.
+
+In particular, static gated-row scales span 1..8454661 and use u32 in Model;
+wide int16-row scales span 1..65535. This replaces A8's u16 gated restriction.
+No int16 narrowing occurs between SiLU/up multiplication and gated conversion.
+Exact/block1024 attention is explicitly configured, with whole-row scales,
+absolute blocks and full configured static admission even for shorter requests.
+All supported source tensors and all operation slots remain in their prescribed
+order. Dense cache execution retains the full prefix and evaluates returned EOS.
+
+cqis_id is exactly the encoding appendix §6's numerical identity over complete
+Model, Scales, Registry and Bounds. This replaces §1's hash sketch and A10's
+proposal to include plan/commitment data in that identity. The complete passport
+separately binds Preparation, original Source/Assets/SourceConfig, Artifact,
+plan template, commitments and evidence; PublicInput binds its final root and
+request-specific plan/ledger identities. Every actual authority and child check
+remains required. No numerical digest authenticates its own expected value.
+
+The A7 displayed base/linear/llama3 frequency definitions are incorporated by
+RFC-0025 §2.4; the complete encoding appendix replaces the earlier candidate
+descriptor/data framing. This retains the exact functions without adopting
+the research materialization limit as a model limit.
+
+The disposition in RFC-0025 §7.1 replaces A3/A6–A11's partial numerical proposals
+when this coordinated package is accepted; their source histories and evidence
+remain. A3 item 6's Rust/NumPy parity and NC-0109, A6's native parity/fidelity,
+and A7–A10's native/source/consumer requirements are mandatory completion gates
+of E5-03/04/05, E6 and E7. They do not authorize code before specification
+acceptance or count as completed by it. The original §8 fidelity protocol and
+every parent acceptance criterion are unchanged.
+
+NC-0110..0126 reserve the newly explicit numerical/source relations alongside
+NC-0100..0109 and all attention/PCS controls. The actual consumers must earn
+coverage. No challenge, cut, profile, loss formula or online weight pass changes.
+Complete deterministic hash-use accounting and all original Q12/Q29/private
+PCS/ZK obligations remain. New arithmetic and preparation retain the explicit
+T_witness/c_a/c_lu/c_x/T_misc costs; no measured constant is claimed.

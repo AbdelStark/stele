@@ -41,3 +41,26 @@ architecture coverage. No accepted behavior, profile, new commitment or error
 term changes. Source preparation and additional arithmetic are charged to
 T_misc/T_witness/c_a without a benchmark claim. Full native inference and
 fidelity retain their original gates; this Draft earns no model or NC coverage.
+
+### A2 — Named-model authority and unchanged architecture coverage
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12.
+Motivation: A1's required physical roles now have complete numerical and source
+definitions, while the broader architecture feature table remains required.
+
+For GPT-2-small and Llama-3.1-8B, use the complete RFC-0025 Model, SourceConfig,
+physical role map and operation expansion. GPT-2 uses exact-mean affine
+LayerNorm, learned positions, biased projections, tanh-GeLU and the identical
+physical token/head source. Llama uses its declared GQA, RMSNorm, scaled RoPE,
+SiLU/up product and distinct head. Complete dimensions, context, vocabulary and
+source configuration must match each named target. Smaller fixtures prove no
+named-model result. Explicit configuration replaces host defaults.
+
+The existing feature table remains authoritative for its other families and
+extensions. The closed RFC-0025 adapter must reject unsupported source features;
+that rejection does not complete or cancel their E13 tasks. Top-k, chaining,
+parallel blocks, hidden shapes and traffic interfaces retain their own contracts.
+E5-04/05 retain full native parity and fidelity; E8 retains W8 and E9 retains
+the complete 8B workload. NC-0110/0113..0121 cover the new family/source edges.
+No challenge, profile, cut, measured constant or proof weight-pass change.
+Preparation and additional arithmetic retain T_misc/T_witness/c_a costs.

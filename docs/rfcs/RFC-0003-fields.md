@@ -144,3 +144,35 @@ Proposed replacement for §4's int16-times-int8 gated-product bullet:
 No soundness loss, profile, cost constant or production behavior is admitted.
 The required wider product/scale arithmetic contributes to c_a/T_witness.
 Affected tasks E5-03/04 and E7-05 remain incomplete; existing A2 is unchanged.
+
+### A4 — Full-model static domains and exact integer identities
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12 and
+[RFC-0025 §§2.8,7.1](RFC-0025-full-model-cqis.md).
+Motivation: A2/A3 correct individual bounds but do not select the complete
+model's format domains, wide records or consuming dependencies.
+
+Proposed replacement for §4's format-only admission rules for RFC-0025 models:
+derive the complete nineteen-schema Bounds collection from the independently
+expected Model, Scales and regenerated Registry. Symmetric int4/int8 weights
+exclude -8/-128; converted rows exclude -128. Enforce those source ranges at
+the physical/row consumers before using them. Check each centered bound with
+exact integers using 2C<p, and each general equality with both enforced sides
+and difference in (-p,p). A2's strict endpoints remain valid for its full signed
+format examples; narrower model bounds require the actual narrower sources.
+
+The complete gated product uses schema 6's wide byte-column identities and
+the conservative int16-by-int16 domain, including +2^30. A3's tighter SiLU
+bound may justify a separate single-field consumer only after its exact whole
+table membership, operand ranges and result range are enforced. It does not
+replace schema 6, permit narrowing to int16 or restrict the full gated static
+scale domain 1..8454661. All wide identities retain every byte, sign, carry,
+whole-word range and final zero carry from the governing schema.
+
+Reject unsupported shapes or arithmetic before instantiation. Neither DPA,
+an observed model maximum nor an extra committed partial sum is a fallback.
+Native consumers retain NC-0109, NC-0122 and all original source/range controls.
+No random challenge or loss changes; Q12/Q29 and profile gates remain. Static
+derivation contributes T_misc and actual wide consumers c_a/c_lu/T_witness,
+with no measured constant or weight-pass change. Affected tasks: E5-03/04,
+E6 and E7. This entry remains Draft until the coordinated review closes.

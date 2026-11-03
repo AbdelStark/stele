@@ -431,6 +431,30 @@ complete raw-source/artifact/plan/proof identities; and all required gates.
 Fidelity is the original RFC-0004 §8 protocol, not agreement between two integer
 implementations. W8 remains GPT-2-small with complete proving and verification.
 
+The following additional reservations are `todo` in the control catalogue.
+Each requires an accepted honest baseline, one independently changed value and
+rejection at its actual owning consumer. Rebuilding dependent encodings or
+witnesses must not replace the independently expected source or policy. A parser
+failure or an unexecuted reservation supplies no proof-binding coverage.
+
+| Controls | Required binding | Native owner |
+|---|---|---|
+| NC-0110..0112 | LayerNorm kind, exact mean and original affine bias | E5-04, E6, E7-03 |
+| NC-0113/0114 | Original learned-position source and absolute index | E6, E7-08 |
+| NC-0115/0116 | Original projection bias and rounding after addition | E7-01, E6 |
+| NC-0117 | Prescribed FFN family/activation role | E6, E7-05 |
+| NC-0118/0119 | Complete physical roles and identical tied-head source | E5-03, E6, E7-02/08 |
+| NC-0120/0121 | Complete numerical identity and original source configuration | E5-03, E6, E12-05 |
+| NC-0122 | Full gated scale, including its high bytes | E5-03, E7-01/05/09 |
+| NC-0123/0124 | Complete-row attention scale and absolute block position | E6, E7-06/07 |
+| NC-0125/0126 | Actual stopping reason and absolute sampling position | E6, E7-08, E8/E14 |
+| NC-0704..0710 | Complete child references, preparation, typed source, assets, evidence subject, key authority and signatures | E5-03, E12-05/06, E14-02 |
+| NC-1204..1206 | Request-specific plan, minimum profile and original I/O source | E6, E8-02, E12/E14 |
+
+NC-0108 still covers the wrong seed, NC-0700 the final passport root and
+NC-0412..0414 the configured function/representation/table data. Their existing
+scope remains; the added reservations cannot mark any original control done.
+
 ## 7. Open questions and acceptance gate — Q26 / E5-03b
 
 1. Complete the exact binary model/source-map/quantiser/artifact/bound schemas and
@@ -452,6 +476,44 @@ implementations. W8 remains GPT-2-small with complete proving and verification.
 Only after these items and required skill reviews close may this RFC become
 Accepted. Native implementation, named-model fidelity, private PCS/ZK, profile
 admission and complete end-to-end proof delivery remain required after acceptance.
+
+### 7.1 Coordinated amendment disposition
+
+This is the exact proposed package; every entry remains Draft until the §7
+review, control reservations, implementation DAG and required gates close.
+No old text or evidence is deleted and no code may cite this package yet.
+
+| Existing proposal | Authority when this package is accepted | Disposition |
+|---|---|---|
+| RFC-0003 A2/A3 | RFC-0003 A4 and this RFC's complete Bounds definitions | Retain strict integer endpoints and actual source enforcement; use full wide gated records. |
+| RFC-0004 A3/A6–A11 | RFC-0004 A12, §§1–6 and linked canonical appendices | Supersede partial numerical descriptors and the old gated u16 restriction; preserve all original native completion gates. |
+| RFC-0009 A2 | RFC-0009 A3 and §2.4 | Complete configured source/scale/block semantics; actual reverse reductions remain mandatory. |
+| RFC-0011 A3 | RFC-0011 A7 and exact Source/Assets/SourceConfig/Preparation frames | Replace candidate framing; require native streaming and source controls at their native delivery tasks. |
+| RFC-0017 A1 | RFC-0017 A2 and complete model/source definitions | Fix both mandatory families; preserve every other architecture target. |
+| RFC-0021 A1 | RFC-0021 A2 and §2.3/encoding §6 | Adopt the exact LayerNorm definition/identity; native descriptor, evaluator and source consumers remain required. |
+| RFC-0001 A1/A2, RFC-0005 A4, RFC-0011 A4/A5/A6, RFC-0016 A2/A3 | Those exact coordinated entries and their linked request/public-input/passport frames | Retain the exact policy, numerical identity, model-wide template, request instance and acyclic attestation order. |
+
+Accepted RFC-0004 A1/A4/A5, existing function bytes and existing native proofs
+are unchanged. The package defines numerical/source contracts and the outer
+identity joins; it does not instantiate a full proof plan, private commitment,
+certificate, signature suite, authority policy or security profile.
+
+The complete typed child schemas and actual validators remain prerequisites of
+their accepting consumers in E6/E8/E12/E14. They must be separately specified
+and accepted before production instantiation, with original source/point/range,
+privacy, transcript, accounting and control obligations. No root/reference or
+metadata success may bypass them. Their absence prevents native proof/passport
+admission, not definition of the numerical computation that they must prove.
+The final review must still close the exact §7 identity-join item and identify
+every owning task; this disposition is not a declaration that it is closed.
+
+Native Rust/NumPy parity, NC-0109, full named inference/fidelity, actual private
+proofs, profiles and W8 remain completion criteria of their original tasks.
+The sequential DAG preserves those criteria and splits prerequisite artifact
+production from final workload delivery, so a final passport or proof is not
+required to construct its own evidence.
+The [delivery audit](../../agents/reviews/full-model-delivery-closure.md) records
+the prerequisite artifacts and moved edges. No Draft protocol or placeholder profile is enabled.
 
 ## 8. Amendment log
 

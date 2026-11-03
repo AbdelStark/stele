@@ -1,8 +1,8 @@
 # E5-03b contract acceptance and native delivery audit
 
 Status: Draft. Same-author rfc-author and soundness-auditor review by codex-root.
-This audit adds two prerequisite edges and changes no task status, acceptance
-criterion, Accepted requirement, protocol or admission rule. It accompanies
+This audit adds prerequisite tasks and edges, retaining every original task
+status and acceptance criterion. It changes no Accepted protocol or admission rule. It accompanies
 [the twelve review answers](full-model-cqis-draft.md).
 The authoritative task definitions remain [graph.yaml](../tasks/graph.yaml).
 
@@ -39,7 +39,7 @@ Existing evidence is in [REPORT.md](../../research/cqis-model-contract/REPORT.md
 | Complete static arithmetic and consumer dependencies | Nineteen-schema collection and [operation inventory](../../docs/rfcs/full-model-consumers.md) | Put all missing consumers into the acceptance DAG, including wide affine/position arithmetic, LayerNorm, GPT-2 activation, sampled decoding and actual source joins. |
 | Independent evidence for newly specified numerical choices | Pinned exact arithmetic, framing, boundary and malformed-input results | Review the evidence-to-contract mapping and preserve earlier receipts. Re-run a campaign only for a relevant change or unresolved failure. |
 | Coordinated amendments and controls | Draft amendments and all twelve review answers | Resolve the Draft dispositions, reserve actual new NC ids and update the reservation snapshot. Complete deterministic hash-use and eventual consumer accounting obligations. |
-| Sequential native delivery | Existing parent tasks retain the original workloads | Repair missing prerequisite edges and completion cycles, then review the final graph and run required local and selected hosted gates. |
+| Sequential native delivery | Original workloads retained; four prerequisite tasks separate earlier artifacts from final delivery | Review the complete DAG and run required local and selected hosted gates; no dependency alone proves native completion. |
 
 Outer PlanTemplate, PlanInstance, ledger, private WeightBindings, TableBindings,
 certificate, checkpoint-proof, fidelity and registration artifacts still require
@@ -70,52 +70,56 @@ original obligations. No traffic-provenance claim is added to the base statement
 
 ## 4. Dependency findings
 
-The explicit YAML graph is acyclic. Findings 1 and 6 are repaired by adding their
-prerequisites. The other findings require separating prerequisite artifacts from
-final delivery; adding only the missing completion edges would create cycles.
-Resolve those before adopting the final E5-03b implementation DAG.
+The explicit YAML graph remains acyclic. Four prerequisite tasks now separate
+earlier artifacts from final workload delivery. All original acceptance lines
+and statuses remain; the missing numerical consumers have explicit added criteria.
 
 1. E5-03 now depends on E5-03b as well as E5-03a, requiring the
    complete accepted numerical contract before unblocking E5-03.
    E5-03a's two static schemas do not supply the nineteen-schema model contract.
-2. E12-06 depends on E12-05, while a complete treaty
-   passport requires the E12-06 certificate. Separate model-subject preparation
-   from final passport delivery. Certificate generation consumes that fixed
-   subject and its real commitments; final delivery consumes the verified result.
-3. E14-02 depends on E12-05 and E14-01,
-   while E12-05's complete passport requires checkpoint-binding evidence.
-   E14-01 in turn depends on E8-02 and includes a full W8 wrapper result.
-   Separate the selected backend/checkpoint-relation prerequisites from the
-   completed inference-wrapper workload. The one-time hash relation must bind
-   the pre-evidence subject, without needing the final passport root or an
-   already accepted inference proof. This does not select a backend or waive
-   RFC-0016 A1, Q12/Q14/Q29, private source or extraction requirements.
-4. E8-05 follows E8-02, but E8-02 must recompute the
-   ledger before acceptance. Make the deterministic ledger/profile checker a
-   prerequisite of accepting verification; retain E8-05's complete W8 results
-   for both profiles as its final delivery requirement. No supplied ledger hash
-   or temporary profile bypass can stand in for that checker.
-5. E12-01 follows E8-02. Required privacy cannot
-   be deferred past acceptance of a profile that promises it. Distinguish the
-   complete native replay engine from final profile admission, and schedule
-   the actual privacy prerequisites accordingly. Keep native ZK requirements;
-   no optional compact wrapper is silently promoted to the privacy mechanism.
+2. E12-05a prepares the fixed subject from complete original artifacts and real
+   private commitments. E12-06 now depends on E12-05a instead of the final
+   E12-05 passport. E12-05 also depends on E12-06 and must validate its
+   certificate before complete 8B passport delivery. The moved edge changes
+   which artifact is required, without waiving certificate verification.
+3. E14-02a must deliver the complete Accepted standalone checkpoint-proof
+   contract, including the selected backend and Q12/Q14/Q29 composition.
+   E14-02 now depends on that contract and E12-05a rather than the final
+   E12-05 passport or E14-01 W8 inference wrapper. It implements the actual
+   backend/relation and retains complete 8B proof production/verification.
+   E12-05 consumes this result. E14-01 retains its full W8 wrapper criteria
+   and E8-02 dependency. No backend or privacy architecture is selected here.
+4. E8-05a derives/checks the complete native ledger and profile from the plan
+   and actual consumer schedule, without a final passport or accepted inference
+   proof. It remains blocked on the missing security contracts. E8-01 requires
+   it and the complete E12-05 passport before full W8 production; E8-02 retains
+   its independent accepting verifier. E8-05 retains both-profile W8 ledger
+   delivery after E8-02. No supplied hash or profile bypass substitutes for
+   the prerequisite checker.
+5. E12-01a supplies the actual native masked reductions and private transcript
+   composition, after E4-05 and the original source consumers. It remains
+   blocked on the complete joint-view/lifetime contract. E8-05a depends on it,
+   placing real privacy before accepting proof production/verification.
+   E12-01 retains full inference integration and its original overhead gate
+   after E8-02. The optional compact wrapper is not a replacement for native ZK.
 6. E8-01 already reaches E7-06 through E7-09 and now also depends on E7-07.
    Any full target configured for block attention must consume the completed
    E7-07 implementation before its proof can be admitted. A change of attention
    mode is not a scheduling shortcut.
 
-Each split must give the prerequisite task a concrete artifact and acceptance
-criteria, retain all parent criteria, preserve actual workload sizes, and leave
-the parent unfinished until the complete workload passes. Add no dependency on
-a final artifact from a task that constructs an earlier part of that artifact.
-The final graph must include all existing dependencies, with any moved edge
-justified by the precise prerequisite artifact it needs. Run one task at a time.
+Each new prerequisite has explicit acceptance criteria and cannot complete its
+parent. Native implementation still requires its complete Accepted contract.
+Original task criteria, all unaffected edges and workload sizes remain. The
+only removed edges are the three final-artifact edges described in findings 2/3;
+their complete production/validation work remains in the graph. Run one task at a time.
 
 ## 5. Next contract work
 
-Finish the coordinated amendment dispositions and NC reservations, then apply
-the reviewed dependency changes to graph.yaml with explicit acceptance criteria.
+The coordinated Draft dispositions are now explicit in RFC-0025 §7.1, and
+27 new NC ids are reserved as `todo` with the exact catalogue snapshot updated.
+The accounting document enumerates deterministic hash-use families without
+claiming actual query bounds. The four prerequisite tasks and their consumer
+edges are now in graph.yaml. Finish the coordinated specification and DAG review.
 Review the resulting specification and all twelve answers before acceptance.
 Keep complete child-protocol work assigned to its actual consumers and forbid
 production use until their own contracts and gates are satisfied. This audit

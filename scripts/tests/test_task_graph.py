@@ -56,9 +56,11 @@ class TaskGraphTests(unittest.TestCase):
             return seen
 
         required = {
-            'E8-01': {'E6-03'} | {f'E7-{i:02}' for i in range(1, 11) if i != 7},
+            'E8-01': {'E6-03', 'E8-05a', 'E12-01a', 'E12-05', 'E12-06', 'E14-02'}
+                     | {f'E7-{i:02}' for i in range(1, 11)},
             'E8-06': {'E8-01', 'E8-02'},
             'E9-01': {'E8-01', 'E8-02', 'E8-05', 'E8-06'},
+            'E12-05': {'E12-05a', 'E12-06', 'E14-02a', 'E14-02'},
         }
         for milestone, prerequisites in required.items():
             with self.subTest(milestone=milestone):

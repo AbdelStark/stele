@@ -360,3 +360,24 @@ reviews remain required before acceptance. Existing FunctionIds and modes are un
 does not admit a new registry entry or native API. No challenge or loss term
 changes; extra row statistics and affine division contribute c_a/T_witness,
 with no new table, cut, fitted constant or profile admission.
+
+### A2 — LayerNorm definition and native implementation order
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12.
+Motivation: A1's proposed function/representation bytes are now exercised by the
+complete Registry and numerical identity, but its native API does not yet exist.
+
+Adopt A1's exact layernorm_q definition and version-1 parameter/mode bytes only
+with the coordinated RFC-0025 package. Complete Registry validation derives its
+rsqrt component from that definition; it cannot substitute rmsnorm_q or omit the
+learned bias source. All previously Accepted FunctionIds, RepresentationIds,
+table bytes and native modes stay unchanged.
+
+Replace A1's native-before-acceptance condition with these explicit delivery
+dependencies: native descriptor/evaluator/registry support belongs to E5-03/04
+and E3-08, and actual LayerNorm source/statistic/affine/lookup consumers belong
+to E7-03's expanded work. Their exact-codec, Rust/NumPy, whole-table validation
+and actual NC-0110..0112/0412..0414 gates remain mandatory before native admission.
+Specification acceptance supplies no implemented registry entry or proof record.
+No new table, challenge, loss, cut or profile; extra statistics/affine arithmetic
+retain c_a/T_witness and validation T_misc, without a measured constant change.

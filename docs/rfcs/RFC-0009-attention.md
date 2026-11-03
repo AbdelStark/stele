@@ -105,3 +105,31 @@ original raw-score matmul is insufficient for these restored units. GQA uses
 floor(t/(h/g)); cached positions select the same public rotation and absolute
 accumulation block as full evaluation. All new source/scale/rotation/comparison
 consumers, static schemas and accounting remain mandatory before admission.
+
+### A3 — Complete configured attention semantics
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12.
+Motivation: A2's source/unit correction needs the complete model configuration
+and static collection rather than the earlier research descriptor.
+
+For RFC-0025 models, replace §§1,2,6's numerical definitions with
+[RFC-0025 §2.4](RFC-0025-full-model-cqis.md) and its attention, function and
+weighted-bound appendices. Preserve the existing reverse claim flow, attained
+maximum, selected exponential representation, actual mask/lookup consumers and
+uncommitted attention intermediates. Numerical schemas do not instantiate those
+reductions or add an advice cut.
+
+Q/K/V conversions cover their complete projection rows before head/group views.
+Each view retains the same row scale and units. Restore V scales in every
+weighted product, retain absolute 1024-key blocks including masked zero slots,
+and restore the configured block drop in the final single rounding. Assemble
+all heads before the O-input whole-row conversion. Static score and block bounds
+use the full configured domains; actual request length cannot tighten them.
+
+E7-06/07 retain complete claim/point/source schedules, integer and field range
+checks, full-context memory gates, original NC-0500..0506 and the measured c_x
+ledger. NC-0123/0124 add complete-row scope and absolute-block controls. E5-04/05
+retain full/cache native parity and named fidelity after contract acceptance.
+A2 is superseded only on acceptance of this package; no loss is waived and no
+profile or challenge is added. Charge all restored-scale/rounding/source work to
+c_a/c_x/T_misc; no measured constant or online weight-pass change.

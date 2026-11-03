@@ -598,12 +598,14 @@ tasks:
   - RFC-0004 §4
   - RFC-0008 A4
   - RFC-0021 §§4,6
+  - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-lookup
   status: ready
   acceptance:
   - NC-0404/0405
   - table ids in cqis_id
+  - complete configured Registry and LayerNorm mode support, regenerated component data and actual NC-0412/0413/0414 consumers under the full-model contract
 - id: E4-01
   epic: E4
   title: Code trait + codes.toml with proven flags; RAA/expander linear-time encoder
@@ -825,6 +827,7 @@ tasks:
   - RFC-0003 A3
   - RFC-0004 A9
   - RFC-0004 A10
+  - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-cqis
   status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
@@ -833,6 +836,8 @@ tasks:
   acceptance:
   - certificates property-tested on random shapes
   - NC-0109
+  - complete RFC-0025 native Model/Scales/Registry/Bounds and original Source/Assets/SourceConfig/Preparation/Artifact conversion at named-model sizes, with all nineteen static schemas and native LayerNorm descriptors
+  - all new numerical/source controls assigned to E5-03 in RFC-0025 section6; no numerical digest or parsed metadata grants proof admission
 - id: E5-03a
   epic: E5
   title: Native closed Requant and RMSNorm static records (no proof admission)
@@ -897,6 +902,7 @@ tasks:
   - RFC-0003 A3
   - RFC-0004 A9
   - RFC-0004 A10
+  - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-cqis+harness
   status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
@@ -905,6 +911,7 @@ tasks:
   acceptance:
   - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
   - decode == single causal pass test
+  - learned positions, affine biases, exact-mean LayerNorm, GPT-2 activation, all full/cache cuts and complete sampled/stop semantics under the accepted full-model contract
 - id: E5-05
   epic: E5
   title: Fidelity harness (perplexity, GPQA-D, MMLU-Pro, IFEval; paired SE) and first report on Llama-3.1-8B
@@ -942,12 +949,15 @@ tasks:
   - RFC-0005 A1
   - RFC-0021 §4
   - RFC-0004 A10
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-ir
   status: blocked(RFC-0004 A10)
   acceptance:
   - plan.json canonical and deterministic
   - unsupported ops fail with RFC-0017 ids
+  - complete model-wide PlanTemplate and request-specific PlanInstance codecs, all original source/role/view/point owners, canonical private WeightBindings and TableBindings contracts accepted before instantiation
+  - exact original token/seed/stop/scale/bias/function joins and all RFC-0025 operation inventory consumers, with actual NC-0110..0126 and NC-1204/1206 variants assigned to lowering
 - id: E6-02
   epic: E6
   title: Stacking + padding + range-discipline checker
@@ -1421,12 +1431,14 @@ tasks:
   rfc:
   - RFC-0007 §1
   - RFC-0004 §5.1
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-reductions
   status: ready
   acceptance:
   - NC-0300/0302/0303
   - NC-0100/0101
+  - complete signed int4/int8 sources and wide scaled/biased affine, row, residual and learned-position arithmetic; exact protocols accepted before production, including NC-0115/0116/0122
 - id: E7-02
   epic: E7
   title: Stacked weight phase (ℓ,k sumcheck, bucketed B, fused opening)
@@ -1443,7 +1455,7 @@ tasks:
   - NC-0301/0304/0305
 - id: E7-03
   epic: E7
-  title: RMSNorm reduction (limb split, bit-length witness, rsqrt lookup, requant)
+  title: RMSNorm and exact-mean affine LayerNorm reductions
   depends:
   - E7-01
   rfc:
@@ -1451,12 +1463,14 @@ tasks:
   - RFC-0004 A3
   - RFC-0004 A4
   - RFC-0021 §2.3
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-reductions
   status: blocked(RFC-0004 A3)
   acceptance:
   - NC-0105
   - certificate for d up to 2^14 and chunked beyond
+  - complete LayerNorm S/Q/C/variance, shared normalization/rsqrt, original gain/bias and one-round affine output with actual NC-0110/0111/0112; no RMS substitution
 - id: E7-04
   epic: E7
   title: RoPE zerocheck with public rotation tables + requant
@@ -1473,7 +1487,7 @@ tasks:
   - variants parametrised
 - id: E7-05
   epic: E7
-  title: SiLU·gate reduction (silu_q lookups, product zerocheck, requant8)
+  title: SiLU gated product and GPT-2 tanh-GeLU FFN reductions
   depends:
   - E7-01
   - E3-08
@@ -1482,11 +1496,13 @@ tasks:
   - RFC-0021 §2.2
   - RFC-0004 A8
   - RFC-0003 A3
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-reductions
   status: blocked(RFC-0004 A8; RFC-0003 A3)
   acceptance:
   - controls for table id and product
+  - full GPT-2 activation/source path and Llama exact int32 product with complete gated scales through 8454661; actual NC-0117/0122 and original configured lookup consumers
 - id: E7-06
   epic: E7
   title: Attention chain (output normalisation, P̂V, Z, exp lookups with mask selector, attained max, QKᵀ, GQA broadcast)
@@ -1530,12 +1546,14 @@ tasks:
   rfc:
   - RFC-0004 §5.8,§7
   - RFC-0004 A9
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-reductions
   status: blocked(RFC-0004 A9)
   acceptance:
   - NC-0107/0108
   - one pass over E
+  - complete learned-position gather/alignment, identical tied token/head source and full vocabulary sampling/stop/absolute-draw consumers; actual NC-0113/0114/0119/0125/0126
 - id: E7-09
   epic: E7
   title: Dynamic per-token scale attainment gadget
@@ -1557,12 +1575,14 @@ tasks:
   rfc:
   - RFC-0007 §4 rows 0,1,8,9
   - RFC-0010 §2
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-reductions
   status: ready
   acceptance:
   - NC-0002
   - single R_stack opening counter
+  - one-round aligned residual source arithmetic and every virtual/cut point join from the complete model inventory
 - id: E8-01
   epic: E8
   title: Prover orchestrator (stage runner, claim graph executor) and proof container v1
@@ -1575,15 +1595,19 @@ tasks:
   - E7-08
   - E7-09
   - E7-10
+  - E8-05a
+  - E12-05
   rfc:
   - RFC-0007 §4
   - RFC-0016 §1
+  - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-prover+stele-proof
   status: ready
   acceptance:
   - W8 proof produced
   - size matches plan
+  - complete admitted passports, private source/mask consumers and recomputed profile ledger; no placeholder signature/certificate/ledger or unwrapped privacy fallback
 - id: E8-02
   epic: E8
   title: no_std verifier (plan derivation, ledger, graph replay)
@@ -1631,6 +1655,7 @@ tasks:
   title: Soundness ledger generator + accounting gate; first ledger for W8 both profiles
   depends:
   - E8-02
+  - E8-05a
   rfc:
   - RFC-0012 §4-5
   skill: soundness-auditor
@@ -1639,6 +1664,34 @@ tasks:
   acceptance:
   - NC-0804/0805
   - totals within profile or config rejected
+- id: E8-05a
+  epic: E8
+  title: Native deterministic ledger and profile admission prerequisites
+  depends:
+  - E6-02
+  - E7-03
+  - E7-04
+  - E7-05
+  - E7-07
+  - E7-08
+  - E7-09
+  - E7-10
+  - E12-01a
+  - E12-02
+  - E12-04
+  rfc:
+  - RFC-0012 §4-5
+  - RFC-0012 A7
+  - RFC-0013 A1
+  - RFC-0025 §7.1
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: blocked(RFC-0012 A7; RFC-0013 A1)
+  acceptance:
+  - Accepted complete Q12 query/FS/hash and Q29 privacy composition before profile admission; no placeholder theorem, adversarial query cap or MASK term
+  - exact canonical ledger derived from complete independently expected plan, instance geometry, actual consumer schedule and permitted profile; every challenge/query/failed-attempt/lifetime obligation retained
+  - native no_std derivation/checking and independent exact enumeration with actual NC-0804/0805 and NC-1205 rejection, including missing or substituted child losses
+  - no final passport or accepted inference proof is a derivation input; E8-05 retains both-profile full W8 ledger delivery and original budget criteria
 - id: E8-06
   epic: E8
   title: Digest gate with recorded W8 digests
@@ -1863,6 +1916,7 @@ tasks:
   depends:
   - E8-02
   - E4-05
+  - E12-01a
   rfc:
   - RFC-0013
   - RFC-0013 A1
@@ -1872,6 +1926,26 @@ tasks:
   acceptance:
   - NC-0900/0901
   - overhead <= 5%
+- id: E12-01a
+  epic: E12
+  title: Native masked reductions and private transcript composition
+  depends:
+  - E3-07
+  - E4-05
+  - E6-02
+  - E7-10
+  rfc:
+  - RFC-0013
+  - RFC-0013 A1
+  - RFC-0011 A1
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck+stele-pcs+stele-reductions
+  status: blocked(RFC-0013 A1)
+  acceptance:
+  - Accepted complete joint-view simulator, source fixation, original query bounds and fixed-passport mask lifetime before native instantiation; Q29 and native ZK requirements retained
+  - exact native prover/verifier components for every selected masked reduction, actual private lookup/opening/source joins and deterministic bytes on full supported geometry
+  - actual NC-0900/0901 and complete disclosure/lifetime controls with independent verification; no accepting profile flag or missing-mask bypass
+  - complete component resource accounting including preparation, source reads and live state; E12-01 retains full inference integration and its original overhead criterion
 - id: E12-02
   epic: E12
   title: Double-challenge LogUp in treaty profile
@@ -1919,29 +1993,59 @@ tasks:
   depends:
   - E4-02
   - E5-05
+  - E12-05a
+  - E12-06
+  - E14-02
   rfc:
   - RFC-0011 §1-2
   - RFC-0011 A2
   - RFC-0021 §4
+  - RFC-0025 §2,§6,§7.1
   skill: pcs-engineer
   crate: stele-passport
   status: ready
   acceptance:
   - 8B passport produced
   - NC-0700..0703
+  - complete approved registration/key/suite/authority/timestamp and child codecs, actual NC-0704..0710, verified checkpoint/proximity/fidelity evidence and final signing/root/public-input joins
+- id: E12-05a
+  epic: E12
+  title: Native passport subject preparation from complete original artifacts
+  depends:
+  - E5-03
+  - E5-05
+  - E6-02
+  - E3-08
+  - E4-05
+  - E8-05a
+  rfc:
+  - RFC-0011 §1-2
+  - RFC-0011 A2
+  - RFC-0011 A4-A7
+  - RFC-0025 §2.7,§7.1
+  skill: pcs-engineer
+  crate: stele-passport
+  status: ready
+  acceptance:
+  - complete Accepted typed Model/Scales/Registry/Bounds/Preparation/Source/Assets/SourceConfig/PlanTemplate/WeightBindings/TableBindings contracts before native construction
+  - full GPT-2/8B original-source conversion and actual private commitment/table/code/layout ownership, approved profile configuration and exact fixed subject bytes
+  - subject and all referenced contexts are immutable and exclude later evidence, signatures, final passport root and requests; actual source/role/reference controls reject substitutions
+  - no passport admission or E12-05 completion; E12-06 and E14-02 consume this same subject, and E12-05 must validate all returned evidence and registration before final delivery
 - id: E12-06
   epic: E12
   title: Proximity certificate generation and verification
   depends:
-  - E12-05
+  - E12-05a
   rfc:
   - RFC-0011 §1.4
   - RFC-0010 §5
+  - RFC-0025 §2,§6,§7.1
   skill: pcs-engineer
   crate: stele-passport
   status: ready
   acceptance:
   - certificate verified by stele-verifier
+  - complete private certificate/source/code/subject and lifetime checks before final passport formation; full 8B evidence and NC-0702/0708, with no reference-only admission
 - id: E12-07
   epic: E12
   title: 'Security review workflow run #1 (fuzz, differential, coverage, forbidden grep)'
@@ -2081,16 +2185,38 @@ tasks:
   epic: E14
   title: Checkpoint-binding one-time proof (hash of committed plaintext == digest_cqis)
   depends:
-  - E14-01
-  - E12-05
+  - E14-02a
+  - E12-05a
   rfc:
   - RFC-0011 §1.5
   - RFC-0016 §6
+  - RFC-0025 §2,§6,§7.1
   skill: pcs-engineer
   crate: stele-wrapper
   status: ready
   acceptance:
   - 8B binding proof produced and verified
+  - actual standalone approved backend/constraint/proof implementation binds the fixed subject and original private committed plaintext to the complete Artifact hash; no final-passport or accepted-inference dependency
+  - real wrong-source/subject/hash controls, full native resource ledger and selected backend security/privacy checks; optional full W8 inference wrapper remains E14-01
+- id: E14-02a
+  epic: E14
+  title: Complete standalone checkpoint-binding proof contract
+  depends:
+  - E5-03b
+  - E4-05
+  - E8-05a
+  rfc:
+  - RFC-0011 §1.5
+  - RFC-0016 §6
+  - RFC-0016 A3
+  - RFC-0025 §7.1
+  skill: rfc-author
+  crate: stele-wrapper
+  status: ready
+  acceptance:
+  - Accepted complete selected backend/mode, public/private relation, canonical proof/statement bytes and committed-source/Artifact/subject ownership, independent of a finalized passport or an accepted inference proof
+  - exact proven-only knowledge/extraction/hash/FS composition and privacy lifecycle with Q12/Q14/Q29 resolved for this use; no backend-name or parameter-bit substitute
+  - all parser/commitment/hash constraints, full 8B resource domains, actual-control reservations and native E14-02 delivery criteria specified; E14-01 retains its full W8 wrapper requirements
 - id: E14-03
   epic: E14
   title: Table MLE openings from passport in wrapper mode

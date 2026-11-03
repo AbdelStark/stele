@@ -62,6 +62,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    codecs, approved signature suites/authority and private proof validation
    remain mandatory; outer syntax admits none of them.
 
+   The coordinated disposition is explicit in RFC-0025 §7.1 and append-only
+   Draft RFC-0003 A4, RFC-0004 A12, RFC-0009 A3, RFC-0011 A7, RFC-0017 A2 and
+   RFC-0021 A2. It resolves older partial descriptor/identity/scale proposals and
+   assigns native evidence to its actual delivery owners. No entry is Accepted.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -107,6 +112,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Fiat-Shamir challenge or transcript construction. Actual evidence proofs
    must bind the pre-evidence subject and same original sources; signatures
    cover the defined earlier identities, not the later final root.
+
+   The accounting document enumerates the proposed deterministic hash-use
+   families and actual consumer owners. There is no new challenge or transcript
+   implementation; semantic relation counts are not adversarial query bounds.
 
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
@@ -159,6 +168,16 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    numerical identity and eight subject references from the same original
    files. Plan/weight/table references and all evidence/key/signature
    references still require their complete actual validators and authority.
+
+   RFC-0025 §6 assigns the new control reservations to E5/E6/E7/E8/E12/E14.
+   Complete child schemas, original point/source ownership and cryptographic
+   validators remain prerequisites of each accepting consumer.
+
+   The DAG now names E12-01a native private components, E8-05a ledger/profile
+   derivation, E12-05a fixed subject preparation and E14-02a the standalone
+   checkpoint-proof contract. Complete W8/8B parent delivery retains every
+   original criterion; the subject, certificate and hash proof precede the final
+   passport. Missing security contracts keep their actual prerequisites blocked.
 
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
@@ -229,6 +248,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    of subject_id for final passport_root in the public input. These
    structural/research checks do not verify signatures or certificates and earn
    no native NC credit.
+
+   NC-0110..0126, NC-0704..0710 and NC-1204..1206 are now reserved as `todo`.
+   The catalogue snapshot retains 55 executed controls and records all 27 new
+   reservations as missing. Native controls must reject at the named consumer;
+   no research comparison or outer parse can earn that coverage.
 
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
@@ -743,14 +767,18 @@ I tried to break composition with stale evidence subjects, altered registration
 evidence, wrong signers and a subject-id substitution for the final public root;
 the research controls rejected them. Signature/proof admission remains unimplemented.
 
+I tried to break it by omitting the new reservations, and the catalogue snapshot
+control rejected it. This checks reservation completeness and earns no new native
+proof-control coverage. The complete catalogue test passes after all 27 additions.
+
 ## Findings still preventing acceptance
 
 Contract acceptance still requires the final identity/authority and consuming
-dependency review, coordinated amendment dispositions, accounting/control
-reservations and a complete sequential native implementation DAG. The
+dependency review, review of the coordinated Draft dispositions and hash-use
+inventory, final control mapping and a complete sequential native implementation DAG. The
 [delivery-closure audit](full-model-delivery-closure.md) separates these from
-native delivery, adds the E5-03b/E7-07 prerequisites to their consumers and
-identifies the remaining completion cycles.
+native delivery and records the prerequisite tasks/edges that remove the audited
+completion cycles without completing any parent workload.
 All twelve answers must be revisited against the final contract before acceptance.
 Full local and selected hosted gates remain required before a normal PR merge.
 No task status is changed to done here.

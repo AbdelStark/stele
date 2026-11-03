@@ -8,6 +8,23 @@
 | NC-0004 | passport binding | 0011 | prove with another passport | `PassportRootMismatch` | todo |
 | NC-0005 | prompt binding | 0001 §3 | change one prompt id in `io_digest` | `EmbeddingClaimMismatch` | todo |
 | NC-0100–0109 | CQIS gadgets | 0004 §10 | see RFC | typed per gadget | todo |
+| NC-0110 | LayerNorm | 0025 §2.3, 0021 A2 | change one norm kind to RMSNorm | `NormKindMismatch` | todo |
+| NC-0111 | LayerNorm | 0025 §2.3 | replace one centered numerator with the value from a rounded mean | `LayerNormMeanMismatch` | todo |
+| NC-0112 | LayerNorm | 0025 §2.3 | change one learned bias value under the original source | `NormBiasMismatch` | todo |
+| NC-0113 | learned position | 0025 §2.5 | substitute one learned-position source handle | `PositionSourceMismatch` | todo |
+| NC-0114 | learned position | 0025 §2.5 | change one absolute gather position | `PositionIndexMismatch` | todo |
+| NC-0115 | affine projection | 0025 §2.2 | omit one nonzero original projection bias | `AffineBiasMismatch` | todo |
+| NC-0116 | affine projection | 0025 §2.2 | replace one result with rounding before bias addition on a separating case | `AffineRoundingMismatch` | todo |
+| NC-0117 | FFN family | 0025 §2.5 | select one activation role from the other model family | `FunctionMismatch` | todo |
+| NC-0118 | physical roles | 0025 §2.7 | omit one required physical role | `PhysicalRoleMismatch` | todo |
+| NC-0119 | physical roles | 0025 §2.5 | replace the tied head source with a separately committed equal-valued tensor | `TiedSourceMismatch` | todo |
+| NC-0120 | numerical identity | 0025 §2.7 | change one Model parameter while retaining the independently expected cqis_id | `CqisIdentityMismatch` | todo |
+| NC-0121 | source configuration | 0025 §2.7, 0011 A7 | change one original architecture field while retaining the expected Model | `SourceConfigMismatch` | todo |
+| NC-0122 | gated scale | 0025 §2.5, 0003 A4 | truncate one valid gated scale above 65535 to its low u16 | `ScaleSourceMismatch` | todo |
+| NC-0123 | attention row scope | 0025 §2.4, 0009 A3 | substitute one head-local scale for the original complete-row scale | `RowScopeMismatch` | todo |
+| NC-0124 | absolute blocks | 0025 §2.4, 0009 A3 | change one key's absolute block index | `BlockPositionMismatch` | todo |
+| NC-0125 | request stop | 0025 §2.6 | change EOS reason to limit when EOS coincides with maximum_new | `StopMismatch` | todo |
+| NC-0126 | sampling position | 0025 §2.6 | derive one draw at another absolute position under the same seed | `DrawPositionMismatch` | todo |
 | NC-0200 | sumcheck engine | 0006 A1 | change one round evaluation | `RoundSumMismatch` | done |
 | NC-0201 | sumcheck engine | 0006 A1 | one final evaluation folded at another instance's challenge | `FinalEvaluationMismatch` | done |
 | NC-0202 | sumcheck engine | 0006 A2 | omit one member/claim contribution from one round evaluation | `RoundSumMismatch` | done |
@@ -67,6 +84,13 @@
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
+| NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
+| NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
+| NC-0706 | passport | 0011 A3/A7 | change the source-identity kind while retaining the digest bytes | `SourceIdentityMismatch` | todo |
+| NC-0707 | passport | 0011 A7 | change one original config/tokenizer/generation asset byte under its expected File reference | `AssetsMismatch` | todo |
+| NC-0708 | passport | 0011 A6, 0016 A3 | substitute one otherwise valid evidence child for a different subject | `EvidenceSubjectMismatch` | todo |
+| NC-0709 | passport | 0011 A6 | substitute one signing key outside the independently expected registrant authority | `RegistrantMismatch` | todo |
+| NC-0710 | passport | 0011 A6 | change one signature value under the unchanged signing message and key | `SignatureMismatch` | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
 | NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13,A14, 0007 A2, 0024 §6 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns; centered LinearStatement, RequantConstraints, each RequantClaims or either original OpeningColumns | `FinalEvaluationMismatch` | done |
@@ -76,7 +100,17 @@
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
+| NC-1204 | request plan | 0005 A4, 0016 A2 | substitute one plan instance from a different request under the same model template | `PlanInstanceMismatch` | todo |
+| NC-1205 | profile minimum | 0016 A2, 0025 §2.7 | change treaty to standard below the passport's minimum profile | `ProfileMismatch` | todo |
+| NC-1206 | token source | 0016 A2, 0025 §2.6 | substitute one prompt/output source context while retaining the expected tokens and I/O mode | `TokenSourceMismatch` | todo |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
+
+The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
+remain `todo`. Their named errors are required rejection causes at the eventual
+typed native consumers, not implemented error variants. The exact owner mapping
+is RFC-0025 §6. Each reference-role variant retains full actual child validation;
+outer byte comparison alone cannot earn a cryptographic source/evidence control.
+These reservations add no coverage and change no existing control or registration.
 
 The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.
 
