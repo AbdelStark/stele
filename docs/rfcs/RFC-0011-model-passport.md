@@ -245,3 +245,38 @@ No challenge, commitment construction, profile, cost constant or online weight
 pass changes. Preparation/identity checks contribute T_misc; complete H/query
 accounting and actual passport/source controls remain required. Affected tasks:
 E5-03b, E6, E8, E12-05, E13-05 and E14.
+
+### A6 — Acyclic passport subject, evidence and signatures
+
+Status: Draft. Question Q26; task E5-03b. Motivation: §1's H(all fields) needs
+exact framing and an acyclic construction when certificates, signatures and
+registry references are themselves fields of the passport.
+
+Proposed replacement for the outer encoding in §§1,2: use the complete
+[RFC-0025 composition frame](full-model-passport-composition.md). Its model
+subject binds exact numerical/source/Artifact, plan and commitment/table roles.
+Evidence binds that subject; registration binds the subject, evidence and exact
+key roster. Every registered key signs the defined 120-byte message over those
+three identities. The final passport includes all signature references and has
+its own root. Signatures and evidence do not attest to that later final root.
+Actual proof and signature verification remain mandatory at their consumers.
+
+Each referenced artifact must match its complete bytes and pass its typed
+semantic/authority checks. This framing admits no opaque configuration, arbitrary
+signature suite, self-authorized registrant, private commitment or security
+profile. All complete child codecs and approved authority/suite contracts remain
+prerequisites. Treaty still requires valid proximity evidence; checkpoint binding,
+fidelity and registration remain mandatory, with Q12/Q29 and private PCS/ZK intact.
+
+A registry receipt created after publication refers to the final passport from
+outside it. An optional in-passport registry reference can identify only an
+already fixed independent record. Do not mutate a passport to include a receipt
+whose transaction depends on that passport's root. Existing traffic/chaining
+and lifetime/privacy requirements remain unchanged.
+
+This fixes deterministic preimages and adds their reference/composition hash
+work to the pending complete H/query schedule. It adds no Fiat-Shamir challenge,
+profile, intermediate cut, measured constant or online weight pass. Preparation,
+signature and evidence validation remain explicit T_misc/registration work.
+Affected tasks: E5-03b, E6, E8, E12-05/06 and E14. NC-0700..0703 and all original
+source/hash/private-proof controls must run against their real consumers.

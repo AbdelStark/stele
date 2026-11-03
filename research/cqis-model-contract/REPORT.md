@@ -1347,3 +1347,54 @@ Complete envelope corpus SHA-256:
 `342e13562b83045b7e5f474f7aa1f7eec537d34cc31301d845e6e511de4cc0ca`.
 Candidate SHA-256: `f4c1b650ec78cc81dca0cea149db1f0402831d807f64a66c227475e8453aea8f`.
 Checker SHA-256: `b000577a17908728272f58d3528c8ac1d1476afa0975617baa731bb05c3ae40e`.
+
+## Passport composition and attestation identities
+
+The [composition appendix](../../docs/rfcs/full-model-passport-composition.md)
+and `passport_composition.py` fix the subject/evidence/registration/signature
+reference frames and final passport root. The subject retains all eleven fixed
+artifact roles. Evidence refers to that subject; registration binds the evidence
+and exact key roster. Signatures cover the three earlier identities, and the
+final root includes the signatures. Later registry receipts remain external.
+Draft RFC-0011 A6 and RFC-0016 A3 preserve every actual child/authority/proof check.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 --with safetensors==0.6.2 python -B
+research/cqis-model-contract/check_passport_composition.py`.
+Seed 2695 checks 10000 composition fixtures against independent struct framing
+and identity derivation. Source kinds occur 5058/4942 times, and proximity-reference
+absence/presence occurs 4854/5146 times. These are structural choices; absent
+proximity evidence does not pass treaty admission. Every complete frame and
+120-byte signing message agrees, and all 10000 one-bit changes fail the expected
+frame comparison. Canonical decode/re-encode preserves every byte.
+
+Controls reject stale evidence subjects, altered registration subject/evidence,
+wrong or reordered signers, duplicate keys, malformed references, unknown
+presence tags and length/type violations. Changing a signature changes the final
+root without changing its own signing message. Changing subject, evidence or
+registration changes that message. Parsing a changed registration with old
+signature references remains structural only; actual signatures are not verified.
+
+Two original-file cases regenerate bare GPT-2 single-file and HF Llama indexed
+source conversion, complete numerical identity and the first eight subject
+references. Independent conversion produces 2621/1504-byte Artifacts. Both reach
+the existing public-input envelope with the final root and complete numerical
+identity. Substituting the earlier subject_id for that root rejects. Plan/weight/
+table, evidence, key, signature and ledger references remain explicit fixtures.
+
+The full 65535-key roster matches independent framing and round-trips in 7340889
+bytes. Each reference length can retain 2^64-1 without allocating its payload;
+actual child validators still enforce their own resource limits. The 8 MiB cap
+covers the exact analytic outer maximum. This is reference metadata capacity,
+not full key/signature/evidence validation or a named-model resource result.
+
+All 69 pinned inputs remained unchanged, including all prior Python pins. No
+historical campaign was rerun. Complete child schemas, approved signature suites
+and authority, actual private source/certificate/hash/wrapper consumers, profile,
+fidelity and native proof delivery remain required. No native NC, parity,
+privacy, W8 or performance credit follows from this framing evidence.
+
+Complete frame/signing-message corpus SHA-256:
+`a1911cb4dbea6858b7e71d24494b1eb703c75da9bc9833054b6c786168e09c23`.
+Candidate SHA-256: `ab7640294665d2f198190b8bde41da48cb546fa53c9eae5881ad2570d0f2d82e`.
+Checker SHA-256: `1c46e465742fe4e4ccabe47e2ecf2ef09fc7bb1c3a684a6e9eb7af9653acebf4`.

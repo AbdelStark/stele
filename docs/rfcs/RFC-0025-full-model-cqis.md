@@ -271,6 +271,10 @@ The [public-input appendix](full-model-public-input.md) fixes the complete outer
 statement envelope, actual request geometry and both I/O reference modes. Full
 passport/template/instance/ledger/private-source codecs and authenticated proof
 consumers remain required; none is replaced by a digest field in that envelope.
+The [passport composition appendix](full-model-passport-composition.md) fixes
+the subject/evidence/registration/signature order and final-root preimage. It
+retains every required child artifact and avoids self-referential attestations;
+complete child schemas, authority and proof validation remain mandatory.
 
 ### 2.8 Static arithmetic and consumer inventory
 

@@ -57,6 +57,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    proposals distinguish the passport template from the per-request plan
    instance; all child codecs remain mandatory.
 
+   The passport-composition appendix and Draft RFC-0011 A6/RFC-0016 A3 define
+   subject/evidence/registration/signature framing and exact preimages. Child
+   codecs, approved signature suites/authority and private proof validation
+   remain mandatory; outer syntax admits none of them.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -97,6 +102,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    actual passport/plan/ledger/profile validation. The research codec
    constructs no transcript and grants no authority to supplied roots or
    profile tags.
+
+   Composition adds deterministic reference and identity preimages, with no
+   Fiat-Shamir challenge or transcript construction. Actual evidence proofs
+   must bind the pre-evidence subject and same original sources; signatures
+   cover the defined earlier identities, not the later final root.
 
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
@@ -144,6 +154,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    prompt/output sources, causal/decode selectors and stop/inference consumers.
    Plan/ledger reference bytes do not supply those consumers or a private
    opening.
+
+   The source helper regenerates complete conversion, stored Artifact,
+   numerical identity and eight subject references from the same original
+   files. Plan/weight/table references and all evidence/key/signature
+   references still require their complete actual validators and authority.
 
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
@@ -209,6 +224,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Actual statement/profile/passport/source controls remain required; research
    checks earn no native NC credit.
 
+   Controls reject stale embedded subject/evidence identities, wrong signer
+   roster/order, malformed references, altered expected frames and substitution
+   of subject_id for final passport_root in the public input. These
+   structural/research checks do not verify signatures or certificates and earn
+   no native NC credit.
+
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -245,6 +266,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    No new challenge, extra absorb or native loss line is introduced.
    Plan/ledger/TokenIO/numerical hashes still require their complete actual
    H/query accounting, and a profile tag never satisfies the security budget.
+
+   New reference/composition and eventual signature-suite hash uses retain
+   explicit complete H/query obligations. No native ledger line or profile is
+   enabled; honest metadata counts cannot substitute for adversarial/quantum
+   accounting.
 
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
@@ -346,6 +372,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    capacity. The public frame cannot tighten any static bound using observed
    tokens, lengths or numerical results.
 
+   Fixed subject roles and bounded roster counts determine outer lengths.
+   Referenced u64 lengths never allocate child payloads or tighten arithmetic
+   Bounds; actual child validators retain their independent shape/resource and
+   static-domain checks.
+
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -412,6 +443,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    evaluation and seed binding. A committed empty output still needs its
    complete canonical source contract.
 
+   Only the two defined optional references have presence tags. All-zero
+   digests remain ordinary present values. No source padding, private layout,
+   mask lifecycle or intermediate commitment is introduced by the envelope.
+
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -474,6 +509,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    identities remain distinct; the plan excludes its own hash and outer
    roots/ledger digest to avoid cycles.
 
+   The exact order is subject, evidence, registration, signatures and final
+   root. Keys are strictly sorted by complete descriptor digest; signatures
+   match that roster exactly. Later registry receipts remain external, and
+   changing a signature changes the root without changing its own signed
+   message.
+
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -521,6 +562,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    profile tags are fixtures, not private PCS/ZK, native inference, named
    fidelity or admitted-profile evidence.
 
+   Composition checks use structural evidence/key/signature reference fixtures,
+   without cryptographic verification. Two original-source numerical joins and
+   full reference-count framing establish no named fidelity, native proof,
+   private PCS/ZK or parity result.
+
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -562,6 +608,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     contribute T_misc. No measured constant, new cut or online weight-pass
     change is claimed; complete native proof and private-source costs remain
     required.
+
+    Content hashing, evidence and signature verification remain explicit
+    preparation/T_misc/registration work. No measured constant, extra online
+    weight pass or native performance improvement is claimed.
 
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
@@ -623,6 +673,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     no_std/fallible parsing, complete passport/plan/ledger validation and
     private source resources remain implementation requirements.
 
+    The maximal outer frame is 7340889 bytes for 65535 keys, within 8 MiB; the
+    message is 120 bytes. Child lengths and counts exhaust exact sections before
+    entry construction. Native fallible allocation/streaming and complete child
+    admission remain required.
+
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -661,6 +716,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     remain distinct from an admitted passport, plan, private source, security
     profile and verified inference statement.
 
+    Subject, Evidence, Registration and Signature values are metadata. A
+    signature reference differs from a verified signature; subject_id differs
+    from the final passport_root carried by PublicInput. Neither root grants
+    its own authority.
+
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
@@ -678,6 +738,10 @@ checks; E5-03b remains Draft/in_progress.
 I tried to break the public envelope with altered profile/identity/policy fields,
 field-congruent lengths, duplicate tree references and changed token preimages;
 the research controls rejected them. This does not approve native proof admission.
+
+I tried to break composition with stale evidence subjects, altered registration
+evidence, wrong signers and a subject-id substitution for the final public root;
+the research controls rejected them. Signature/proof admission remains unimplemented.
 
 ## Findings still preventing acceptance
 

@@ -140,3 +140,8 @@ and source/proof checks retain T_witness/c_a/c_lu/PCS costs. No measured constan
 changes. Controls must cover every identity/profile/policy/geometry/I/O field at
 the real E6/E8/E12-05/E14 consumers, alongside NC-0001/0004/0005/0107/0108,
 NC-0700..0703, NC-0804/0805 and NC-1201/1203. Research mutations earn no NC credit.
+
+The [passport composition appendix](full-model-passport-composition.md) defines
+the referenced final passport_root and separates it from the earlier subject_id
+used by its evidence and signing message. The public input always carries the
+final root; a subject or signing preimage hash cannot substitute for it.

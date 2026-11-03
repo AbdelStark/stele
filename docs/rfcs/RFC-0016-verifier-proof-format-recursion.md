@@ -128,3 +128,26 @@ additional absorb, profile or loss line changes; existing complete H/query
 accounting remains mandatory. Parsing/derivation contributes T_misc without a
 measured constant or weight-pass change. Affected tasks: E5-03b, E6, E8,
 E12-05 and E14. NC-0804/0805 and NC-1201/1203 remain actual-consumer gates.
+
+### A3 — Checkpoint evidence binds the pre-evidence subject
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0011 A6 and the
+[passport composition contract](full-model-passport-composition.md).
+Motivation: a checkpoint-binding proof included in a passport cannot depend on
+the final root that includes that proof's own bytes or digest.
+
+Proposed clarification of §6: checkpoint evidence binds the exact subject_id
+and the same complete original Artifact, numeric/source, commitment/layout/code
+and plan/table fields in that subject. Its actual relation proves the required
+commitment-to-Artifact hash binding; repeating subject_id establishes nothing.
+Its complete proof/public-input codec and private source consumers remain
+mandatory. The resulting evidence is referenced before registration/signing and
+the final passport root are formed. Proximity evidence follows the same identity
+order under its own complete certificate contract.
+
+This supplies no wrapper/backend, new proof acceptance path, challenge or
+profile. Complete H/query and signature/evidence composition remains required;
+Q12/Q29 and A1's actual verifier/privacy/extraction obligations remain unchanged.
+No cut, online weight pass or measured constant changes. Evidence generation
+and verification remain T_misc/registration work. Affected tasks: E5-03b,
+E12-05/06 and E14, with actual wrong-subject/root/source controls still required.
