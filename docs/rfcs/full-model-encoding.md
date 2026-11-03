@@ -277,6 +277,18 @@ This separate bound does not inherit Model's 1 MiB metadata cap. Stream validati
 and fallible allocation remain native requirements; no entire-copy promise is
 made by these bounds. RFC-0011's public/encrypted-to-verifiers scale policy remains.
 
+The largest GPT-2 channel count is 6815744, with 770 matrices, since its FFN
+constraint limits d to 4096. The largest Llama count is 16777216, with 898
+matrices. The exact maximum Scales lengths are therefore 13634622 and 33558078
+bytes, including the 54-byte prefix/hash header and four bytes per matrix.
+These are analytic domain bounds, not sampled maxima or benchmark results.
+The decoder derives this exact size and matrix order from the checked Model
+before reading entries. It compares the complete H(Model), including numerical
+fields unrelated to shape, and validates every positive mantissa. A legal
+changed channel changes H(Scales); matching shape/exponent alone is insufficient.
+Structural validation does not establish the source-dependent minimal exponent
+or mantissas, nor authenticate the expected Model/Scales digests.
+
 ## 6. Registry and numerical identity
 
 The ordered neural function roles are first norm, attention exp, second norm,

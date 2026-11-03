@@ -24,12 +24,14 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    as an exact prefix, with no production use of the Draft amendment.
    The complete structural Model codec implements encoding appendix §4 only;
    Registry/Bounds/source admission remains a separate required step.
+   The complete Scales codec now implements appendix §5's matrix-only frame.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
    accounting remain required before acceptance. A hash digest is not an
    authenticated public input merely because the caller supplies it.
    The Model expected-digest check has exactly that content-only limitation.
+   Scales binds full H(Model); its expected digest likewise needs authentication.
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
    branch/point obligation remains. The §2.8 inventory is not yet a complete
@@ -37,6 +39,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    numerical execution cannot construct a source, PCS or proof-admission handle.
    Model's typed fields provide derivation parameters; they are not claims and
    do not discharge table validity or static score/full-block admission.
+   Scales provides every configured channel, with source minimality and the
+   artifact/passport equality obligations still owned by their consumers.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -52,6 +56,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Model controls reject broken physical/norm/unit/family joins and conflicting
    representations. Of 10000 bit changes, 9697 fail structural checks; 303 are
    changed canonical models and fail the original expected-digest join.
+   Scales bit changes produce 1286 structural and 8714 expected-digest
+   rejections. Same-shaped numerical Model substitution rejects separately.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -60,6 +66,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    do not substitute for it.
    Model hashing adds no native hash query here; complete identity accounting
    remains acceptance work.
+   The Scales research hash joins do not instantiate native H/query accounting.
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -113,6 +120,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    caller-selected field is accepted.
    Model parsing retains full configured domains without deriving a certificate
    or weakening static admission based on sampled values.
+   Full-domain Scales retains all 16777216 channels; no observed code or
+   activation is used to tighten bounds. Collection derivation remains open.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -138,6 +147,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    with the token limit; an empty continuation cannot inherit prompt EOS.
    Model physical shapes come from Shape's closed role expansion, never supplied
    dimensions or padding. Rotation data and public-MLE masks remain unchecked here.
+   Scales has one word per real matrix output channel and no padding entries.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -151,7 +161,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    and different valid expected parameters. The arithmetic seed is fixed; the
    existing selection/temperature and shared bound helpers remain unchanged.
    Complete Model framing now matches independent struct and function-component
-   assembly on 10000 configurations. Scales/artifact/registry/passport codecs
+   assembly on 10000 configurations. Scales independently matches another 10000
+   complete frames and both maximal domains. Artifact/registry/passport codecs
    and full/cache model flows still need their checks.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
@@ -160,12 +171,14 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Llama-3.1-8B parity remain required implementation work.
    The complete 196/291-record Model fixtures use randomized numerical settings;
    they do not establish named presets or checkpoint fidelity.
+   Named-shape Scales fixtures use patterned values without source conversion.
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
     scans are separate from the preserved one online physical-weight pass; a
     tied embedding/head still needs a single-source plan. No extra cut is granted.
-   Model metadata parsing makes no weight-pass or runtime cost claim.
+    Model metadata parsing makes no weight-pass or runtime cost claim.
+    Scales validation reports domain sizes only, with no benchmark claim.
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -175,13 +188,17 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     TokenIO may remain a private hash preimage; commitment-mode tokens still
     require their own typed openings and same-source proof. The research parser
     receives plaintext expected prompt data and supplies no privacy evidence.
-   Model's analytic bound is below 220000 bytes, with a 1 MiB cap and bounded
-   inner frames. Full 128-layer fixtures parse without tensor payloads; this
-   does not establish native fallible allocation or streaming behavior.
+    Model's analytic bound is below 220000 bytes, with a 1 MiB cap and bounded
+    inner frames. Full 128-layer fixtures parse without tensor payloads; this
+    does not establish native fallible allocation or streaming behavior.
+    Scales derives exact byte length before entry parsing and uses a separate
+    64 MiB cap. Its full domain reaches 33558078 bytes; native allocation and
+    RFC-0011's encrypted-to-verifiers scale policy remain unchanged obligations.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
     Structural Model identity remains distinct from full cqis_id and admission.
+    Legal scale values remain distinct from authenticated conversion results.
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
@@ -190,7 +207,7 @@ That result is limited to the research mapper and does not approve a protocol.
 ## Findings still preventing acceptance
 
 The complete static-bound collection and consumer expansion, authenticated outer
-passport/request schemas, independent Scales/artifact/registry codecs,
+passport/request schemas, independent artifact/registry codecs,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against

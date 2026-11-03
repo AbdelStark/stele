@@ -655,3 +655,45 @@ Checker SHA-256: `3076ce37404edc522324ee3ab46889a37775d89c5e9c27cfbe7d0c471df242
 Shared helpers and historical campaigns remain unchanged. Scales and Registry
 codecs, the complete bound collection, outer identity/source admission, native
 consumers and full named-model inference/proving/verification remain open.
+
+## Complete public Scales codec
+
+The Scales codec implements [encoding appendix §5](../../docs/rfcs/full-model-encoding.md).
+It derives every matrix ordinal and channel count from the complete checked
+Model, validates exact total length before reading entries, and compares the
+full H(Model). Each exponent retains [-1099,1024]; every channel mantissa is a
+positive u16. Immutable packed words preserve all channels without expanding
+them into retained Python integer objects. There are no vector entries or extra
+tied-head records, and no shape-only substitute for the Model identity.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11 python -B
+research/cqis-model-contract/check_scales_codec.py`.
+Seed 2683 checks 10000 complete randomized Scales frames, split equally between
+GPT-2 and Llama. Independent role expansion and struct framing, including the
+independently assembled Model preimage, agree byte for byte. BLAKE3 is shared.
+Randomized shapes have one to four layers, vocabulary/context up to 64, and at
+most 1550 channels; the largest randomized Scales frame has 3274 bytes.
+
+The full named-shape fixtures separately retain all 74/226 matrix entries and
+134225/1632768 channels, producing 268800/3266494-byte frames. Maximal-domain
+fixtures retain 770/898 matrices and 6815744/16777216 channels; exact lengths
+13634622/33558078 match the independent analytic bound. Every mantissa is
+validated, with both exponent endpoints and u16 endpoints represented. These
+fixtures use patterned scale values, not scales converted from named checkpoints.
+
+Single-bit changes produce 1286 structural rejections and 8714 legal changed
+Scales objects that reject against the original expected digest. Targeted cases
+reject wrong matrix ordinals, missing/extra records, zero mantissas, out-of-range
+or Boolean exponents, malformed lengths, mutable data and every truncation of a
+complete small fixture. Changing only Model's logit precision rejects the old
+Scales frame despite unchanged physical shapes. A Llama head cannot adopt the
+token matrix's ordinal. Source-dependent scale minimality is deliberately not
+claimed from structural parsing; source/artifact/passport joins remain required.
+
+Corpus SHA-256: `1fffb27012a8922f55e1bc96e2b66bf7206d177583ce4dd3438ed621cf0900b1`.
+Candidate SHA-256: `370404bf7d45ccae359799cad1d98b7cb5c97e0401d50a5640fab12b5718b634`.
+Checker SHA-256: `8458e7bc1a0cd608c435f699f27d1fb441aa7d4cad3876f86500d274db7fa408`.
+The qualified Model codec and all shared helpers are unchanged. No historical
+proof campaign is rerun. Registry regeneration, complete Bounds expansion,
+outer/source identity admission, native consumers and full named-model delivery
+remain required; this codec earns no native NC, privacy, parity or proof credit.
