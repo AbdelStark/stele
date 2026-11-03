@@ -1806,3 +1806,10 @@ schema 18, with no inherited small research entry-product cap. RFC-0001 A1
 proposes the corresponding canonical public-policy and token-I/O subrecords.
 Both remain Draft; full outer identity, source/hash, private-token and native
 consumer gates are unchanged.
+
+The [physical record bounds](full-model-physical-bounds.md) add A11's schema 19
+for every canonical tensor role, packed payload coordinate and original code/
+scale word. Complete integer addresses can exceed M31 and retain all byte
+columns. Source-container transforms and Artifact-global offsets remain separate
+obligations. This Draft addition changes no challenge, cut, measured constant or
+weight pass, and grants no native source or proof admission.

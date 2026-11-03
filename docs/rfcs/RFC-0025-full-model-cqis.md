@@ -319,6 +319,10 @@ The [decoding-bound appendix](full-model-decoding-bounds.md) adds original logit
 maxima, one-round temperature and complete sampled permutation/prefix/CDF/draw
 arithmetic. The [request contract](full-model-request.md) adds schema 18 and exact
 stop/token-I/O subrecords; their full public-statement and source joins remain required.
+The [physical record appendix](full-model-physical-bounds.md) adds schema 19 for
+complete tensor coordinates, packed payload addresses and original code/scale
+words, including addresses larger than p. Canonical Artifact and source owners
+must still consume these bounds and their original bytes.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

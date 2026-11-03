@@ -773,3 +773,48 @@ proof campaign is rerun. Complete Bounds expansion, artifact/passport/source
 admission, full named-model regeneration/fidelity and native proof delivery
 remain open. These checks provide no native NC, privacy, profile, parity or
 performance credit.
+
+## Complete physical record addresses
+
+The [physical appendix](../../docs/rfcs/full-model-physical-bounds.md) adds schema
+19 for each canonical physical tensor role. It retains flat coordinates, packed
+payload and record-relative byte addresses, both int4 nibbles, signed source
+words, and original matrix exponent/mantissa bytes. Whole-word ranges and byte
+columns preserve indices beyond M31. Model/Scales/Artifact authority and actual
+source ownership remain required; this record does not supply them.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11 python -B
+research/cqis-model-contract/check_physical_bounds.py`.
+Seed 2685 checks 10000 full records against independent role expansion, address
+arithmetic, polynomial byte columns and struct framing. Formats include 2914
+int4 matrices, 2844 int8 matrices and 4242 int16 vectors. Actual coordinate,
+code, sign, scale and exponent values exercise every applicable column role.
+Twelve randomized record addresses exceed p; they retain complete integer words.
+
+Separate named-shape fixtures check all 196/291 physical roles, and maximal
+shapes check all 2052/1155 roles. These include each role's final coordinate and
+negative source endpoint, without allocating tensor payloads. The maximum
+flat index is 17179869183, with final record byte 17181966384. Subtracting p
+gives a distinct in-range index with the same field residue. Actual source/column
+consumers must therefore retain all high bytes. This observation
+does not claim rejection by a native proof consumer.
+
+The three-element int4 fixture retains its zero final high nibble and excludes
+that nibble as a real element. Unsigned word and ranged-offset equations exclude
+matrix codes -8/-128 while retaining vector -32768. Malformed record bytes,
+truncations, suffixes, mutable/oversized frames, changed expected fractions,
+invalid formats and Boolean fields reject in the research record validator.
+Neither byte framing nor these static bounds establish quantisation minimality.
+
+The largest randomized record is 34294 bytes with five columns. The separate
+domain proof gives a strict 36000-byte cap and column sides below p/2.
+Randomized corpus SHA-256:
+`360f4433714196c9696c80dfab24c62c4463e6fd094c305fcfa7284cdb5172a0`.
+Complete named/maximal role corpus SHA-256:
+`8d839dd0ae1742d582f5908c5efbf0e5ec57ad588b8014587fc5f628952eb90b`.
+Candidate SHA-256: `d2bf013fa0a43afbaa24d45e7054e4798a30380da1997cef781a3223cc5272e5`.
+Checker SHA-256: `0b26cd5cd7c5fdb2f3c9e145f2138b9f0d849fe3e1f97a99f0e8256cebe36a5e`.
+Shared helpers and previous codecs are unchanged. No historical proof campaign
+is rerun. Complete Bounds assembly, Artifact-global/source-container joins and
+native consumers remain open; named-shape address checks do not establish
+checkpoint conversion, fidelity, privacy, parity or full proof delivery.

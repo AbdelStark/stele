@@ -27,6 +27,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The complete Scales codec now implements appendix §5's matrix-only frame.
    Registry now implements §6's complete function/component/rotation set and
    compares all data digests with regeneration under the declared definitions.
+   The physical appendix adds schema 19 for canonical tensor/code/scale addresses.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -36,6 +37,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Scales binds full H(Model); its expected digest likewise needs authentication.
    Registry derives its expected definitions from Model, whose source/passport
    authority is still required. Its deterministic checks add no FS challenge.
+   Physical address derivation adds no challenge or absorption either.
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
    branch/point obligation remains. The §2.8 inventory is not yet a complete
@@ -47,6 +49,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    artifact/passport equality obligations still owned by their consumers.
    Complete Registry data validation does not supply a coded public-source root,
    lookup membership, point binding or a full-model certificate.
+   Schema 19 supplies coordinate/byte/code/scale bounds. Artifact-global and
+   original source-container joins still belong to their actual consumers.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -68,6 +72,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    slot and a digest recomputed from a corrupted canonical rsqrt frame. A
    structurally valid activation configuration whose full table overflows rejects.
    All 10000 randomized bit mutations and 1842 fixture-byte mutations reject.
+   Physical-record mutations and changed expected fractions reject; complete
+   word examples distinguish field-congruent addresses. That distinction earns
+   no native source-binding or NC coverage.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -78,6 +85,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    remains acceptance work.
    The Scales research hash joins do not instantiate native H/query accounting.
    Registry's complete data hashes remain part of the pending global accounting.
+   The physical record adds deterministic word relations, with no new loss term.
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -136,6 +144,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Registry's derived manifest and total metadata bounds fit 256 KiB and 1 MiB.
    Its data regeneration is mandatory even when all metadata parses; this step
    still does not establish score/full-block or other arithmetic admission.
+   Physical schema 19 uses only Shape and Model-selected formats. Its five-byte
+   indices cover N=2^34; all 10000 records match independent polynomial/struct
+   derivation, with complete actual-word column checks. Every named/maximal
+   physical role is retained. The whole record is statically below 36000 bytes.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -165,6 +177,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Registry regenerates real table rows and zero padding. Rotation data has
    exactly length*width/2 real pairs and no padding. Public-MLE selectors remain
    separately required at actual proof consumers.
+   Physical int4 has no row padding; only the odd final high nibble is zero.
+   Whole index range excludes that lane. Both source nibbles remain bound to
+   the original byte; vector absence removes all matrix scale fields/roles.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -188,6 +203,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    definitions against independent real-data oracles. Expanded tests exposed a
    floor-versus-rounding error in the new oracle; it is corrected with a retained
    regression. The unchanged candidate follows RFC-0021's floor semantics.
+   Physical role order and packed addresses follow the canonical Artifact
+   layout, with no alternate vector or tied-head record selection.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -198,6 +215,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Named-shape Scales fixtures use patterned values without source conversion.
    Registry's named/maximal metadata layouts do not regenerate full named-model
    coefficient data or establish native/fidelity parity.
+   All-role physical boundary checks likewise use metadata and coordinate words,
+   without checkpoint payloads or a full-model execution.
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -207,6 +226,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Scales validation reports domain sizes only, with no benchmark claim.
     Registry generation contributes preparation T_misc for every selected table
     and rotation entry. Streaming its hash makes no measured speed claim.
+    Physical bound derivation is T_misc; actual byte/source consumers remain
+    charged to their reductions. No constant, weight pass or cut changes.
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -225,12 +246,15 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Registry checks exact length and all expected metadata before regenerating
     data. Rotation rows are at most 32768 bytes, with no whole-table size cap.
     The bounded Python cache is not a native admission or resource guarantee.
+    Physical records retain five-byte addresses and complete parameter-derived
+    lengths; no tensor payload allocation is required for their derivation.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
     Structural Model identity remains distinct from full cqis_id and admission.
     Legal scale values remain distinct from authenticated conversion results.
     Regenerated Registry data remains distinct from authenticated proof sources.
+    A physical address or range certificate is not a source-ownership handle.
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.

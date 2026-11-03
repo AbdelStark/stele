@@ -393,7 +393,9 @@ weighted/block/global normalization with fixed radix-16 records. The
 joint factors, lookup and output chain. The [decoding-bound appendix](full-model-decoding-bounds.md)
 specifies full logit maxima, temperature and sampled selection, including the
 inclusive 2^32 CDF endpoint. The [request contract](full-model-request.md) adds
-the complete stop and token-byte arithmetic record. The full collection and its
+the complete stop and token-byte arithmetic record. The
+[physical record appendix](full-model-physical-bounds.md) adds canonical tensor,
+packed-byte and original scale-word addressing. The full collection and its
 source/index/range/branch expansion still require completion and integration.
 The existing twelve-family numerical collection supplies evidence only; its
 scoped membership is not the final collection or proof plan. None of those
