@@ -176,3 +176,24 @@ No random challenge or loss changes; Q12/Q29 and profile gates remain. Static
 derivation contributes T_misc and actual wide consumers c_a/c_lu/T_witness,
 with no measured constant or weight-pass change. Affected tasks: E5-03/04,
 E6 and E7. This entry remains Draft until the coordinated review closes.
+
+### A5 — Accept complete-model integer faithfulness
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: the complete Bounds collection now fixes the full numerical domains.
+Exact replacement for §4's RFC-0025 format admission: apply A4's complete
+nineteen-schema derivation, enforced source domains, strict 2C<p and (-p,p)
+difference checks, and all wide byte/sign/carry obligations. Its full
+int16-by-int16 gated domain, including +2^30 and static scales 1..8454661,
+is mandatory. The definitions are
+[RFC-0025 §§2.8,7.1](RFC-0025-full-model-cqis.md).
+A4's proposal is adopted; A2/A3 are superseded in this scope. Their stricter
+or narrower examples never establish an unenforced source range. Unsupported
+instances reject; DPA, observed maxima and extra cuts are not fallbacks.
+
+No new challenge or loss; actual field/range consumers retain all accounting
+and NC-0109/0122 requirements. Static derivation contributes T_misc; wide
+consumers contribute c_a/c_lu/T_witness. No measured constant, profile or pass
+changes. Affected tasks: E5-03/04, E6 and E7.

@@ -1,6 +1,6 @@
 # RFC-0025 operation and consumer inventory
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This inventory defines required numerical/source obligations. It is not an
 Accepted proof plan, transcript schedule, source-fixation construction or native
 consumer implementation. Every row below remains mandatory in the final lowering.

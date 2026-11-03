@@ -1,6 +1,6 @@
 # RFC-0025 source architecture and role binding
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This record joins original config bytes to Model's architecture, norm epsilon,
 rotation and the complete source-role map. Tokenizer execution, generation
 policy, outer authentication and actual proof consumers remain separate.

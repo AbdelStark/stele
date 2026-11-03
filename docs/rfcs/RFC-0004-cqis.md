@@ -1873,3 +1873,29 @@ coverage. No challenge, cut, profile, loss formula or online weight pass changes
 Complete deterministic hash-use accounting and all original Q12/Q29/private
 PCS/ZK obligations remain. New arithmetic and preparation retain the explicit
 T_witness/c_a/c_lu/c_x/T_misc costs; no measured constant is claimed.
+
+### A13 — Accept canonical full-model semantics
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: native implementation needs one complete numerical contract.
+Exact replacement for §§1–3,5.2–5.8,6,7,9 for the two mandatory families:
+apply A12's complete replacement as defined by Accepted
+[RFC-0025 §§1–6 and its appendices](RFC-0025-full-model-cqis.md).
+A12's disposition of A3/A6–A11 is now effective. Its wide gated scale domain,
+complete-row conversions, configured attention, exact source/role ordering,
+full-prefix cache/EOS behavior and four-artifact cqis_id are mandatory.
+RFC-0025 §2.4 incorporates A7's exact frequency definitions without its
+research materialization cap. A1/A4/A5, existing native scalar/function/static
+schemas, §8's fidelity protocol and every original task criterion are preserved.
+
+The numerical specification precedes native implementation. Every native parity,
+source/control, named fidelity, private PCS/ZK, Q12/Q29/profile, W8 and full 8B
+criterion remains required at the owner in RFC-0025 §7.1. This accepts no partial
+proof plan, missing child validator or admission based on metadata alone.
+NC-0110..0126 remain reservations until their actual consumers reject tampering.
+No new challenge, probabilistic loss, committed cut or online weight pass.
+All deterministic hashes retain full H accounting; numerical/source work retains
+T_witness/c_a/c_lu/c_x/T_misc costs, with no measured constant change.
+Affected tasks: E5-03b/03/04/05, E6, E7, E8, E12 and E14.

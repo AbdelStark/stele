@@ -1,6 +1,6 @@
 # RFC-0025 canonical public input
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This specifies the complete public-input envelope and its required joins.
 It does not supply the complete passport, proof-plan, private commitment or
 ledger codecs, or admit any profile. Those require their own complete Accepted

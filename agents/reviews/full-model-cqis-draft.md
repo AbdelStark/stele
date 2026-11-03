@@ -1,14 +1,18 @@
-# E5-03b — Full-model CQIS draft review
+# E5-03b — Full-model CQIS review
 
-Decision: retain Draft; E5-03b remains in progress. This is a checkpoint of the
-contract and evidence, not approval to merge or instantiate production behavior.
+Decision: approve the coordinated numerical/source specification. E5-03b remains
+in progress until complete local and selected hosted qualification and normal merge.
+This does not approve a missing child protocol or native proof/passport admission.
 The same author, codex-root, applies rfc-author, cqis-numerics, gkr-reduction-author
-and soundness-auditor. No independent human or agent review is claimed.
+and soundness-auditor, with a pcs-engineer boundary pass. No independent human
+or agent review is claimed. Earlier numbered paragraphs retain the qualification
+history; the acceptance sign-offs and current checklist table below fix their disposition.
 
 Scope: [RFC-0025](../../docs/rfcs/RFC-0025-full-model-cqis.md), its encoding and
-decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0001/0004/0011/0017/0021, and
+decoding/static-arithmetic/consumer appendices, the exact RFC-0025 §7.1 companion amendments, and
 [the new research evidence](../../research/cqis-model-contract/REPORT.md).
-All earlier Accepted text remains an unchanged prefix. No production crate,
+All earlier Accepted protocol text remains an unchanged prefix; the RFC-0000
+index is maintained under Workflow 02. No production crate,
 qualified oracle, existing fixture, inherited research manifest, benchmark ledger
 or original proof campaign changes. The separate CI runner/inventory is described below.
 
@@ -785,7 +789,7 @@ All twelve answers above were checked against this checkpoint:
 
 | Checklist item | Checkpoint result |
 |---|---|
-| 1. Governing contract | RFC-0025 remains Draft. The new regression runner is CI evidence under RFC-0020 §5, with no production API. |
+| 1. Governing contract | RFC-0025 and its §7.1 companion entries are Accepted as a numerical/source specification. The regression runner is CI evidence under RFC-0020 §5, with no production API. |
 | 2. Challenges | No challenge, transcript order or native absorption changes. Deterministic hash uses retain the explicit accounting inventory and native admission requirements. |
 | 3. Consumers | The complete identity review and existing operation inventory name actual source/reduction/admission owners. References grant no child validation. |
 | 4. Bindings | All 27 new reservations remain todo. Bounded regression mutations reject; they earn no native NC coverage. |
@@ -809,16 +813,81 @@ I tried to break selection with a missing model group, malformed inventory and
 failed command, and the routing/inventory controls rejected them. I also supplied
 changed complete bound frames and the existing numerical controls rejected them.
 
-## Findings still preventing acceptance
+## Coordinated acceptance sign-offs
 
-Contract acceptance still requires the final coordinated skill sign-offs,
-acceptance entries and full local/selected hosted qualification. The identity
-review, explicit Draft dispositions, hash-use inventory, control reservations
+Reviewer: codex-root, also the author. These are separate required skill passes
+and affected crate-owner perspectives by the same agent, not independent review.
+The approved package is exactly RFC-0025, its nineteen appendices and
+RFC-0001 A3/0003 A5/0004 A13/0005 A5/0009 A4/0011 A8/0016 A4/0017 A3/0021 A3.
+The new append-only entries adopt the complete earlier proposals with explicit
+supersession; they leave every old Accepted protocol prefix and historical receipt intact.
+
+**rfc-author:** approve the complete numerical/source/identity definition and
+the §7.1 dispositions. All five §7 specification requirements have concrete
+definitions and qualified evidence: closed schemas and original-source/alias joins;
+nineteen static schemas plus every source/range/branch/index consumer; independent
+arithmetic and complete-model evidence; all sampled policies and full/cache/EOS
+rules; coordinated amendments, 27 todo reservations and the acyclic native DAG.
+ADR-051 and the index record acceptance. E5-03 becomes ready but cannot start
+before E5-03b is done. No implementation or workload criterion is removed.
+
+**cqis-numerics, stele-cqis/stele-field:** approve the exact integer definitions,
+format domains and static derivations. Rounding is signed half-away with one
+rounding at each specified boundary; original affine biases and exact-mean
+LayerNorm are retained. Gated products keep +2^30 and u32 static scales.
+Source conversion uses exact finite IEEE scalar values and mandatory role order.
+The independent full qualifications and the bounded regression agree; the six
+activation-tail controls preserve the open-endpoint oracle correction.
+Future native parity, NC-0109, original named-model execution/fidelity and all
+source consumers remain mandatory. The output-error inequalities are numerical
+approximation bounds, not proof soundness or fidelity claims.
+
+**gkr-reduction-author, stele-ir/stele-reductions/stele-gkr:** approve the complete
+operation and consumer inventory and template/request-instance distinction.
+Every configured numerical role retains its exact source, point, range and
+padding obligations. Whole-row conversion precedes head/group views; absolute
+blocks and residual cuts stay fixed. Multiple claims still use the prescribed
+batch consumer before their producer. No new public-MLE kind, reduction API,
+transcript loop, advice cut or proof consumer is implemented by this specification.
+E6/E7 must supply any missing complete Accepted schedule before native instantiation.
+
+**pcs-engineer, stele-code/stele-pcs/stele-passport/stele-wrapper:** approve only
+the source/outer-composition boundary. Subject precedes actual evidence;
+evidence precedes registration/signatures/final root. No hash-only child, supplied
+key roster, unvalidated TableBinding or reference length grants admission.
+Actual private commitments retain their code/layout/source/mask ownership,
+post-u query order, fused B identity, proven parameters and cumulative lifetime
+obligations. No PCS/backend/suite/proximity theorem is chosen or reclassified here.
+E12-05a/06/E14-02 prerequisites preserve the full 8B evidence and final passport.
+The unresolved Q12/Q29/private construction and wrapper extraction requirements
+remain binding and prevent admission until their own contracts and evidence close.
+
+**soundness-auditor, stele-hash/stele-lookup/stele-verifier:** approve this
+deterministic specification, with no new challenge, probabilistic error formula
+or cryptographic theorem. SC/RLC/LU/PCS/MASK/FS/H remain their existing actual
+consumer obligations. The deterministic hash-use inventory names every new
+preimage family; complete invocation/adversarial/quantum accounting remains
+mandatory before native admission. The existing transcript constructor absorbs
+the complete validated PublicInput once. Static integer faithfulness requires
+the actually enforced full source domains and differences, or complete wide
+byte/carry relations; metadata cannot supply a range fact. Profile tags and
+numerical success cannot bypass ledger, privacy or signature authority checks.
+
+I tried to break the complete identity with changed original files, rehashed
+wrong configuration, substituted Artifact/Bounds, stale evidence subjects and
+a subject-id substitution for the final root, and the qualified research
+controls rejected them. These controls approve deterministic relations only;
+the catalogue retains all new native controls as todo.
+
+## Remaining merge gates and native delivery
+
+Full local/selected hosted qualification remains required before normal merge.
+The identity review, explicit accepted dispositions, hash-use inventory, control reservations
 and sequential native implementation DAG are present. The
 [delivery-closure audit](full-model-delivery-closure.md) separates these from
 native delivery and records the prerequisite tasks/edges that remove the audited
 completion cycles without completing any parent workload.
-All twelve answers must remain current through the acceptance change.
+All twelve answers remain current through the acceptance change.
 Full local and selected hosted gates remain required before a normal PR merge.
 No task status is changed to done here.
 

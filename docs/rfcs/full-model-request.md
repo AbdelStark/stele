@@ -1,6 +1,6 @@
 # RFC-0025 request, stopping and token-I/O contract
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This closes the request boundary and stop arithmetic. The complete passport,
 public statement, private-token commitments and actual hash/source consumers
 remain required; these frames alone cannot admit an inference proof.
@@ -89,7 +89,8 @@ remain available and mandatory where that statement requests them: the actual
 wrapper must establish that their same original token sources satisfy these
 boundaries and the inference relations. No plaintext replay substitutes for
 private proof, and no new intermediate commitment is authorized. Complete typed
-commitment/opening and public-input codecs remain outer-contract acceptance work.
+commitment/opening contracts and native validators remain required; the
+[public-input appendix](full-model-public-input.md) fixes the complete outer frame.
 Text encoding, special-token insertion, conversation formatting and traffic
 ownership require their separately authenticated tokenizer/adapter sources;
 numeric token ids alone make no such claims. E13-05 chaining remains required.

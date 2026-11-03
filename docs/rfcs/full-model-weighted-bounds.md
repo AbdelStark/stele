@@ -1,6 +1,6 @@
 # RFC-0025 weighted attention bounds
 
-Status: Draft. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md)
+Status: Accepted. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md)
 §2.8. It uses the complete [word predicates and frame](full-model-bounds.md),
 with fixed radix **16** (header radix_bits=4) for schemas 12/13. Schemas 1–11
 retain radix 256 and unchanged bytes. Source bytes split as byte=lo+16*hi,

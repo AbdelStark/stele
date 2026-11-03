@@ -1,7 +1,7 @@
 # RFC-0025 typed source and auxiliary files
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b,
-and RFC-0011 A3/A4. These records bind original file bytes. They do not establish
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b,
+and RFC-0011 A8. These records bind original file bytes. They do not establish
 publisher authority, source conversion, tokenizer semantics or a proof source.
 
 ## 1. Closed file and source frames

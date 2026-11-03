@@ -1,6 +1,6 @@
 # RFC-0025 sampled decoding appendix
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This defines deterministic numerical choices; no sample proof or hash-opening
 consumer is implemented by the numerical prototype.
 
@@ -72,7 +72,7 @@ manifest. A different policy changes the model/CQIS identity, even if a specific
 request happens to generate the same tokens. Seed, prompt, maximum_new and EOS
 are separately authenticated request data. The [request contract](full-model-request.md)
 specifies the boundary/token-I/O subrecords and exact stop cause; their complete
-public-statement frame remains RFC-0025's outer-contract acceptance work.
+public-statement frame is fixed by the [public-input appendix](full-model-public-input.md).
 
 ## Static obligations and cost
 

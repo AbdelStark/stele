@@ -1,6 +1,6 @@
 # RFC-0025 exact original-source conversion
 
-Status: Draft. Part of [RFC-0025 §2.1](RFC-0025-full-model-cqis.md), Q26/E5-03b,
+Status: Accepted. Part of [RFC-0025 §2.1](RFC-0025-full-model-cqis.md), Q26/E5-03b,
 the [source appendix](full-model-source.md) and [encoding §3](full-model-encoding.md).
 Conversion consumes the same immutable source bytes that passed every file,
 container, index, selection and alias check. It implements the declared scalar,

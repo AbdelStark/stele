@@ -1,6 +1,6 @@
 # RFC-0025 function-bound appendix
 
-Status: Draft. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md)
+Status: Accepted. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md)
 §2.8 and uses the [static arithmetic frame](full-model-bounds.md) §5, p=2^31-1,
 radix 256 and its complete word predicates. Schemas 10/11 depend on independently
 expected shapes and RFC-0021 function/representation parameters. They do not

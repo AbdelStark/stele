@@ -1,6 +1,6 @@
 # RFC-0025 row and residual flow bounds
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 These closed records use the [static appendix](full-model-bounds.md) §1's exact
 radix-256 columns, whole ranges, signs, zero predicates and original-source
 obligations, and §5's canonical frame. They introduce schema ids 4, 5 and 6
@@ -146,7 +146,8 @@ These are checked-domain capacity proofs, not sampled-fit or benchmark claims.
 Validation rederives parameters, counts, scalars, shifts, roles and every byte;
 supplied record fields never choose expected authority. Model collection/source
 association, rotary, attention, activation, decoding and full-model identity
-closure remain required before RFC-0025 acceptance. No challenge, ledger loss,
+are fixed by the complete RFC-0025 appendices; actual proof consumers remain
+mandatory before native admission. No challenge, ledger loss,
 native negative-control completion or profile admission is added. Static work
 is T_misc; actual source/range/branch/arithmetic consumption remains charged to
 T_witness/c_a/c_lu at its required reductions.

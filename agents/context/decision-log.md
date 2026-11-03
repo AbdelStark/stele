@@ -550,3 +550,23 @@ historical receipt; no compatibility exception or evidence regeneration is
 introduced. An existing gate test checks override values and isolation from
 the parent and other commands. Actual compiler/output qualification and the
 complete gates remain required before E0-10 delivery. Status: Accepted.
+
+## ADR-051: Accept the complete numerical contract before native delivery
+
+Context: the accumulated Q26 proposals used partial model/source descriptors
+and incompatible identity or scale choices. Decision: accept RFC-0025 and its
+nineteen appendices with RFC-0001 A3/0003 A5/0004 A13/0005 A5/0009 A4/0011 A8/
+0016 A4/0017 A3/0021 A3. Exact integer preparation and full-model semantics cover
+the original GPT-2-small and Llama-3.1-8B targets. Complete source/configuration,
+four-artifact numerical identity and acyclic outer passport/public-input joins
+replace the older Draft proposals under the explicit §7.1 disposition.
+
+Independent numerical evidence and same-author skill reviews approve this
+specification. They do not supply native implementation or cryptographic admission.
+The DAG requires complete typed child contracts, real private PCS/ZK, Q12/Q29,
+profiles, original source authority, native controls/parity, named fidelity,
+W8/8B and benchmarks at their owners. Fixed passport preparation precedes evidence;
+evidence precedes final admission. Every original completion criterion remains.
+No new cut, challenge, loss theorem, measured constant or online weight pass.
+E5-03 can implement this contract after E5-03b delivery; no second task is claimed.
+Status: Accepted.

@@ -151,3 +151,26 @@ Q12/Q29 and A1's actual verifier/privacy/extraction obligations remain unchanged
 No cut, online weight pass or measured constant changes. Evidence generation
 and verification remain T_misc/registration work. Affected tasks: E5-03b,
 E12-05/06 and E14, with actual wrong-subject/root/source controls still required.
+
+### A4 — Accept statement and checkpoint-subject identity order
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: full statement bytes and checkpoint evidence need acyclic identities.
+Exact additions to §§1,2,6: adopt A2/A3's complete statement and pre-evidence
+subject rules under [RFC-0025 public input](full-model-public-input.md) and
+[passport composition](full-model-passport-composition.md).
+A2/A3's Draft proposals are superseded. Validate the externally expected
+complete statement, real passport children, instance/ledger and profile before
+the existing transcript constructor absorbs the public bytes once.
+Checkpoint/proximity evidence must establish its real relation for the same
+earlier Subject and original private sources; repeating subject_id proves nothing.
+No evidence or signing preimage contains the later final passport root.
+
+A1's wrapper/backend/privacy/extraction and Q12/Q29 work is not accepted here.
+Complete native verifier, private source and child contracts remain mandatory.
+No new challenge, absorb, loss, profile, cut or weight pass. H/signature/evidence
+accounting and NC-0804/0805/1201/1203..1206 remain real-consumer gates.
+Derivation/verification is T_misc/registration work without a measured constant.
+Affected tasks: E5-03b, E6, E8, E12-05/06 and E14.

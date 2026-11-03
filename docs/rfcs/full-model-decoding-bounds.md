@@ -1,6 +1,6 @@
 # RFC-0025 decoding static records
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 The [sampling policy](full-model-decoding.md) fixes the numerical semantics.
 These records use the [complete arithmetic frame and word predicates](full-model-bounds.md),
 fixed p=2^31-1 and radix 256. Every source, whole-word range, zero/Boolean/index

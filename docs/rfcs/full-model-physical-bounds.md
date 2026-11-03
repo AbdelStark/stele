@@ -1,6 +1,6 @@
 # RFC-0025 physical record bounds
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 Schema 19 covers canonical physical tensor coordinates, packed payload addresses,
 signed codes and matrix scale words. It complements the arithmetic schemas; it
 does not authenticate a source or replace the complete Bounds collection.

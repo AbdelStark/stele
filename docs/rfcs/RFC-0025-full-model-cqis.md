@@ -1,12 +1,12 @@
 # RFC-0025 — Canonical full-model CQIS and checkpoint conversion
 
-Status: Draft · Version: 0.1.0 · Depends: RFC-0004, RFC-0005, RFC-0011, RFC-0017, RFC-0021, RFC-0022
+Status: Accepted · Version: 0.1.0 · Depends: RFC-0004, RFC-0005, RFC-0011, RFC-0017, RFC-0021, RFC-0022
 
-Task: E5-03b. Question Q26. This draft is the complete-model work item, not an
-admission of another bounded proof example. Acceptance requires §7 to be closed.
-No core implementation may cite this draft. Existing accepted contracts and all
-original implementation, privacy, profile, fidelity and benchmark criteria remain.
-Review: [draft findings and all twelve answers](../../agents/reviews/full-model-cqis-draft.md).
+Task: E5-03b. Question Q26. This accepts the complete numerical/source contract
+and its outer identity definitions. Native implementations must also satisfy
+their complete governing child contracts before proof or passport admission.
+All original implementation, privacy, profile, fidelity and benchmark criteria remain.
+Review: [skill sign-offs and all twelve answers](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
 
 ## 1. Statement and authority
 
@@ -33,7 +33,7 @@ operations, fallback on overflow, or model-specific hidden defaults. A named
 target must use its actual layers, vocabulary, dimensions and physical roles;
 changing them defines a different model, even if a smaller example executes.
 
-This draft covers positive context capacity at most 2^20, vocabulary at most
+This contract covers positive context capacity at most 2^20, vocabulary at most
 2^20, 1..128 layers, residual/FFN widths 1..16384, 1..128 query heads, positive
 KV groups dividing the head count, and head width with h*d_h<=16384. These
 domains include both targets. Hardware allocation limits are checked separately;
@@ -134,7 +134,7 @@ Its only nonlinear component is the existing fixed rsqrt table.
 
 ### 2.4 Attention, rotary positions and complete row scope
 
-Use RFC-0004 A6's proposed restored-value definition, made explicit here. Q/K
+Use the restored-value definition from RFC-0004 A6, made explicit here. Q/K
 projections are int16 in configured fractions fq/fk. Optional RoPE rotates each
 configured adjacent or split pair with public Q14 coefficients and a single
 signed rounding per rotated output; unrotated channels are unchanged. Require
@@ -173,7 +173,7 @@ or angle is rounded before the trigonometric evaluation. GPT-2 selects absence
 of RoPE and a learned-position source. Llama-3.1-8B selects theta=500000,
 factor8, thresholds1/4, original length8192 and its actual source pairing.
 Native certified generation, scalable data/registry identities and public-MLE
-consumption remain explicit acceptance/delivery work, not supplied table authority.
+consumption remain mandatory native delivery work, not supplied table authority.
 
 ### 2.5 Complete decoder blocks and model boundaries
 
@@ -226,11 +226,11 @@ fixes exact request/token-I/O bytes, stop arithmetic and original source joins.
 Every returned token, including EOS, is evaluated when checking full/cache parity.
 The [numerical execution appendix](full-model-execution.md) describes the complete
 Artifact-backed research composition and its internal full-prefix cache boundary.
-Sampled decoding has the same prompt/limit/EOS semantics. Its proposed exact
+Sampled decoding has the same prompt/limit/EOS semantics. Its exact
 policy, byte identity and required hash/selection consumers are in the
 [decoding appendix](full-model-decoding.md). Independent numerical evidence and
-coordinated accounting/consumer review remain acceptance requirements; greedy
-alone does not complete the original RFC-0004 §7 requirement.
+the coordinated accounting/consumer review are recorded in §7. Actual sampled
+consumers remain required; greedy alone cannot complete RFC-0004 §7.
 
 ### 2.7 Canonical configuration, artifact and source identities
 
@@ -251,9 +251,9 @@ one physical record; numerical equality does not authorize arbitrary aliasing.
 
 The encoding appendix fixes physical roles, source transforms, runtime numerical
 configuration and preparation/artifact frames. The Registry and
-[Bounds collection](full-model-bound-collection.md) have closed Draft schemas;
-the full cqis_id/passport join is still required by §7 before acceptance. This paragraph
-does not promote the research model digest to a complete canonical identity.
+[Bounds collection](full-model-bound-collection.md) have complete closed schemas.
+Encoding §6 and the public-input/passport appendices fix the complete identity
+join. A structural Model digest alone is not the complete numerical identity.
 Single-file SHA-256 and the typed indexed-shard bundle identity remain distinct;
 hash original file bytes, never reconstructed JSON. Selection and ignored entries
 are explicit and checked against the mandatory model role set.
@@ -264,7 +264,7 @@ The [source-architecture appendix](full-model-source-architecture.md) binds the
 explicit adapter and original config to Model/Map/Assets, including all norm
 epsilons, rotary layouts and physical source-role transforms. It does not
 establish tokenizer execution or the generation/stop-policy join.
-RFC-0011 A4 proposes the corresponding complete physical Artifact/Preparation
+RFC-0011 A8 accepts the corresponding complete physical Artifact/Preparation
 binding. Structural streaming validation of those bytes is separate from
 reproducible source conversion and the proven commitment-to-Artifact hash join.
 The [public-input appendix](full-model-public-input.md) fixes the complete outer
@@ -348,8 +348,8 @@ words, including addresses larger than p. Canonical Artifact and source owners
 must still consume these bounds and their original bytes.
 The [collection appendix](full-model-bound-collection.md) fixes all nineteen
 schemas' slot order, Model/Scales/Registry parameter joins and complete bytes.
-Its qualification and actual consuming-reduction mapping remain acceptance
-items in §7. The old twelve-family numerical record
+Its qualification and consuming-reduction mapping are recorded in §7;
+the actual native consumers remain delivery work. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;
 neither DPA nor a new advice cut is an implicit fallback.
 
@@ -378,7 +378,7 @@ The proof remains subject to one online pass over each original physical weight
 source. A tied embedding/head must share the physical source and satisfy both
 functional consumers without a second source pass. Exact source ordering,
 retained-row use and private/virtual source closure belong to the full plan.
-This draft adds no committed tensor, proof bypass, fitted constant or measured
+This contract adds no committed tensor, proof bypass, fitted constant or measured
 performance result. Its new numerical relations cannot authorize a new advice cut.
 
 ## 4. Verification algorithm and cost
@@ -399,7 +399,7 @@ not just the scalar formulas or numerical prototype's retained arrays.
 
 ## 5. Soundness and numerical error
 
-No probabilistic soundness term changes in this draft. The integer derivations
+No probabilistic soundness term changes in this contract. The integer derivations
 are deterministic, conditional on their enforced ranges and source relations.
 RFC-0012 still accounts for every actual SC/RLC/LU/PCS/MASK/FS/H event. There is
 no new profile admission: standard and treaty remain subject to their complete
@@ -455,7 +455,14 @@ NC-0108 still covers the wrong seed, NC-0700 the final passport root and
 NC-0412..0414 the configured function/representation/table data. Their existing
 scope remains; the added reservations cannot mark any original control done.
 
-## 7. Open questions and acceptance gate — Q26 / E5-03b
+## 7. Acceptance record and remaining native delivery — Q26 / E5-03b
+
+The [coordinated review](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs)
+closes these five specification requirements. The source-pinned independent
+evidence is in [REPORT.md](../../research/cqis-model-contract/REPORT.md), with the
+[identity/consumer/DAG review](../../agents/reviews/full-model-delivery-closure.md).
+The task still requires all local and selected hosted gates before normal merge.
+The requirements are retained here so their scope stays explicit:
 
 1. Complete the exact binary model/source-map/quantiser/artifact/bound schemas and
    their cqis_id/passport/public-statement join, including partitioned/transposed
@@ -473,25 +480,24 @@ scope remains; the added reservations cannot mark any original control done.
    E5-03/04/05, E6, E7, E8 and benchmark tasks. No accepted parent requirement is
    removed, weakened or reclassified as numerical-replay completion.
 
-Only after these items and required skill reviews close may this RFC become
-Accepted. Native implementation, named-model fidelity, private PCS/ZK, profile
+These specification items and required skill reviews are closed. Native
+implementation, named-model fidelity, private PCS/ZK, profile
 admission and complete end-to-end proof delivery remain required after acceptance.
 
 ### 7.1 Coordinated amendment disposition
 
-This is the exact proposed package; every entry remains Draft until the §7
-review, control reservations, implementation DAG and required gates close.
-No old text or evidence is deleted and no code may cite this package yet.
+The following accepted append-only entries adopt the reviewed package.
+Historical Draft entries and evidence remain unchanged; supersession is explicit.
 
-| Existing proposal | Authority when this package is accepted | Disposition |
+| Existing proposal | Accepted authority | Disposition |
 |---|---|---|
-| RFC-0003 A2/A3 | RFC-0003 A4 and this RFC's complete Bounds definitions | Retain strict integer endpoints and actual source enforcement; use full wide gated records. |
-| RFC-0004 A3/A6–A11 | RFC-0004 A12, §§1–6 and linked canonical appendices | Supersede partial numerical descriptors and the old gated u16 restriction; preserve all original native completion gates. |
-| RFC-0009 A2 | RFC-0009 A3 and §2.4 | Complete configured source/scale/block semantics; actual reverse reductions remain mandatory. |
-| RFC-0011 A3 | RFC-0011 A7 and exact Source/Assets/SourceConfig/Preparation frames | Replace candidate framing; require native streaming and source controls at their native delivery tasks. |
-| RFC-0017 A1 | RFC-0017 A2 and complete model/source definitions | Fix both mandatory families; preserve every other architecture target. |
-| RFC-0021 A1 | RFC-0021 A2 and §2.3/encoding §6 | Adopt the exact LayerNorm definition/identity; native descriptor, evaluator and source consumers remain required. |
-| RFC-0001 A1/A2, RFC-0005 A4, RFC-0011 A4/A5/A6, RFC-0016 A2/A3 | Those exact coordinated entries and their linked request/public-input/passport frames | Retain the exact policy, numerical identity, model-wide template, request instance and acyclic attestation order. |
+| RFC-0003 A2/A3/A4 | RFC-0003 A5 and this RFC's complete Bounds definitions | Retain strict integer endpoints and actual source enforcement; use full wide gated records. |
+| RFC-0004 A3/A6–A12 | RFC-0004 A13, §§1–6 and linked canonical appendices | Supersede partial numerical descriptors and the old gated u16 restriction; preserve all original native completion gates. |
+| RFC-0009 A2/A3 | RFC-0009 A4 and §2.4 | Complete configured source/scale/block semantics; actual reverse reductions remain mandatory. |
+| RFC-0011 A3–A7 | RFC-0011 A8 and exact source/passport appendices | Require original source, complete physical Artifact and acyclic attestation joins; native children remain mandatory. |
+| RFC-0017 A1/A2 | RFC-0017 A3 and complete model/source definitions | Fix both mandatory families; preserve every other architecture target. |
+| RFC-0021 A1/A2 | RFC-0021 A3 and §2.3/encoding §6 | Adopt the exact LayerNorm definition/identity; native descriptor, evaluator and source consumers remain required. |
+| RFC-0001 A1/A2, RFC-0005 A4, RFC-0016 A2/A3 | RFC-0001 A3, RFC-0005 A5, RFC-0016 A4 and their linked frames | Retain the exact policy, model-wide template, request instance and acyclic evidence/statement order. |
 
 Accepted RFC-0004 A1/A4/A5, existing function bytes and existing native proofs
 are unchanged. The package defines numerical/source contracts and the outer
@@ -506,7 +512,7 @@ metadata success may bypass them. Their absence prevents native proof/passport
 admission, not definition of the numerical computation that they must prove.
 The [identity review](../../agents/reviews/full-model-delivery-closure.md#5-final-outer-identity-and-authority-review)
 checks this exact join and every owning task. Its definition grants no native
-child-validation or admission credit; coordinated acceptance and gates still apply.
+child-validation or admission credit; complete task qualification still applies.
 
 Native Rust/NumPy parity, NC-0109, full named inference/fidelity, actual private
 proofs, profiles and W8 remain completion criteria of their original tasks.
@@ -518,4 +524,7 @@ the prerequisite artifacts and moved edges. No Draft protocol or placeholder pro
 
 ## 8. Amendment log
 
-No accepted amendments. Initial complete-model draft for E5-03b/Q26.
+Initial acceptance: the complete numerical/source/outer-identity definitions and
+all nineteen linked appendices are Accepted with the §7.1 companion entries.
+Review: the same-author skill and crate-owner sign-offs linked above; ADR-051.
+This does not complete any native implementation, privacy, profile or workload task.

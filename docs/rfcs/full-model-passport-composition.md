@@ -1,6 +1,6 @@
 # RFC-0025 passport composition and identity order
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This fixes outer composition, referenced artifact roles and attestation preimages.
 Complete child schemas, approved signature suites/authority policy, private
 commitment/proof consumers and profile admission remain mandatory before a
@@ -139,7 +139,8 @@ Every actual consumer must reject single-value changes to source/artifact,
 numeric/configuration, plan/commitment/table, evidence subject, registrant/key,
 message, signature or final-root bindings. NC-0700..0703 and all original
 source/PCS/wrapper controls remain mandatory; research tests earn no NC credit.
-Complete typed child codecs and their authentication are acceptance work.
+Complete typed child contracts and actual authentication remain prerequisites
+of native passport admission at the owners in RFC-0025 §7.1.
 Q12/Q29, private tokens/weights, named GPT-2/Llama/W8 and profile goals remain.
 
 This adds explicit deterministic hash preimages, without a Fiat-Shamir challenge,

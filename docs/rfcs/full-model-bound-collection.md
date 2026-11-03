@@ -1,6 +1,6 @@
 # RFC-0025 Bounds collection
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This closes the collection of the nineteen numerical/physical record schemas.
 It does not supply a proof plan, source ownership or passport authority. Every
 actual consumer in the [inventory](full-model-consumers.md) remains required.

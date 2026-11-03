@@ -1,6 +1,6 @@
 # RFC-0025 static arithmetic appendix
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 Expected parameters come from the independently authenticated Model, Scales and
 Registry. All bounds below use exact integers, p=2^31-1 and radix 256. Supplied
 records, runtime maxima and self-selected fields never choose expected bounds.
@@ -186,7 +186,7 @@ The remaining roles are exactly §3 ids 6–13 with this Umax,D. Position absenc
 removes its role/term; no inactive source or arbitrary zero placeholder is legal.
 
 Here the exponent difference can be 2123. Thus a legal aligned numerator can
-exceed 2^2145 even though its final int16 output may reject. The proposed static
+exceed 2^2145 even though its final int16 output may reject. The complete static
 record must retain those exact high bits; RFC-0022's u160 is insufficient. A
 byte-word implementation can use a 2304-bit bounded arithmetic container for
 these closed derivations: every scalar/product is below 2^2150 and every column

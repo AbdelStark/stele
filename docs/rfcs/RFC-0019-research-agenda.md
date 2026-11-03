@@ -1178,3 +1178,11 @@ static/range/branch/index/source expansion, complete model-flow evidence,
 sampled decoding and coordinated review/implementation DAG. No tiny-model,
 research or conditional proof result discharges the original full native
 inference, fidelity, private PCS/ZK, profile or W8 requirements.
+
+Q26 specification disposition: Accepted RFC-0025 and its exact §7.1 companion
+amendments resolve the canonical quantiser, zero-scale, complete numerical/source/
+artifact identity and nineteen-schema static-bound questions for both mandatory
+families. The coordinated review and ADR-051 state the acceptance boundary.
+E5-03/04/05, E6, E7, E8, E12/E14 and the original full workload/benchmark tasks
+still owe every native consumer, actual control, private proof and named-model
+result. Specification acceptance does not finish E5-03 or resolve Q12/Q29.

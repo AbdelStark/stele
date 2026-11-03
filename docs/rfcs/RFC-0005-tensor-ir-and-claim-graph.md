@@ -119,3 +119,24 @@ This amendment supplies no operator, cut, challenge, profile or consumer bypass.
 Existing accounting and NC-1201/statement/source controls remain required.
 Derivation contributes T_misc; no measured constant or weight-pass change.
 Affected tasks: E5-03b, E6, E8, E12-05 and E14, with all original criteria retained.
+
+### A5 — Accept template and request-instance separation
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: a model-wide passport and actual request geometry have different lifetimes.
+Exact replacement for §5's plan dependency: adopt A4's complete template/instance
+distinction under [RFC-0025's public-input contract](full-model-public-input.md).
+Derive actual/padded geometry and the instance from the complete earlier template,
+Model, RequestBoundary, g, reason, I/O mode and approved profile configuration.
+Retain static context bounds, absolute positions and original physical ordering.
+Neither the instance nor ledger embeds its own digest or the later identities
+excluded by that contract. Supplied roots do not select owned source contexts.
+A4's Draft proposal is superseded by this entry.
+
+E6 still owes complete codecs, owned claim/point/source and transcript schedules,
+private commitment contracts and actual consumers before native admission.
+No new reduction, cut, challenge, loss, profile or weight pass is defined.
+Derivation is T_misc without a measured constant. All original controls plus
+NC-1204 remain required. Affected tasks: E5-03b, E6, E8, E12-05 and E14.

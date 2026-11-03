@@ -1,8 +1,10 @@
 # E5-03b contract acceptance and native delivery audit
 
-Status: Draft. Same-author rfc-author and soundness-auditor review by codex-root.
+Status: Accepted specification review. Same-author rfc-author and soundness-auditor review by codex-root.
 This audit adds prerequisite tasks and edges, retaining every original task
-status and acceptance criterion. It changes no Accepted protocol or admission rule. It accompanies
+status and acceptance criterion during prerequisite repair. Coordinated acceptance
+now unblocks only E5-03; its dependencies and every completion criterion remain.
+This audit grants no native admission. It accompanies
 [the twelve review answers](full-model-cqis-draft.md).
 The authoritative task definitions remain [graph.yaml](../tasks/graph.yaml).
 
@@ -29,17 +31,17 @@ Accepted parent requirements and original native acceptance lines stay intact.
 
 ## 2. Contract closure checklist
 
-These are review states, not declarations that an acceptance item is complete.
-Existing evidence is in [REPORT.md](../../research/cqis-model-contract/REPORT.md).
+The coordinated specification review is complete; native completion remains
+separate. Evidence is in [REPORT.md](../../research/cqis-model-contract/REPORT.md).
 
-| E5-03b requirement | Available evidence | Remaining acceptance work |
+| E5-03b requirement | Available evidence | Review disposition |
 |---|---|---|
-| Complete GPT-2/Llama arithmetic, full/cache and decoding definitions | Exact whole-model execution, activation-tail regression, source preparation and decoding checks; original named dimensions retained | Finish coordinated numerical amendments and review every operation against the consumer inventory. Generic source cases provide no named fidelity. |
-| Canonical Model, Scales, Registry, Bounds, Preparation, Source, Assets, SourceConfig and Artifact | Closed frames, full numerical identity, exact original-file conversion and stored Artifact checks | Review all identity and authority edges through the public-input and passport contracts; no caller-supplied digest becomes authority. |
-| Complete static arithmetic and consumer dependencies | Nineteen-schema collection and [operation inventory](../../docs/rfcs/full-model-consumers.md) | Put all missing consumers into the acceptance DAG, including wide affine/position arithmetic, LayerNorm, GPT-2 activation, sampled decoding and actual source joins. |
-| Independent evidence for newly specified numerical choices | Pinned exact arithmetic, framing, boundary and malformed-input results | Review the evidence-to-contract mapping and preserve earlier receipts. Re-run a campaign only for a relevant change or unresolved failure. |
-| Coordinated amendments and controls | Draft amendments and all twelve review answers | Resolve the Draft dispositions, reserve actual new NC ids and update the reservation snapshot. Complete deterministic hash-use and eventual consumer accounting obligations. |
-| Sequential native delivery | Original workloads retained; four prerequisite tasks separate earlier artifacts from final delivery | Review the complete DAG and run required local and selected hosted gates; no dependency alone proves native completion. |
+| Complete GPT-2/Llama arithmetic, full/cache and decoding definitions | Exact whole-model execution, activation-tail regression, source preparation and decoding checks; original named dimensions retained | Accepted numerical definitions and operation/consumer mapping. Generic cases provide no named fidelity. |
+| Canonical Model, Scales, Registry, Bounds, Preparation, Source, Assets, SourceConfig and Artifact | Closed frames, full numerical identity, exact original-file conversion and stored Artifact checks | Section 5 checks the complete outer join and each native owner; no supplied digest becomes authority. |
+| Complete static arithmetic and consumer dependencies | Nineteen-schema collection and [operation inventory](../../docs/rfcs/full-model-consumers.md) | DAG explicitly includes wide affine/position arithmetic, LayerNorm, GPT-2 activation, sampled decoding and actual source joins. |
+| Independent evidence for newly specified numerical choices | Pinned exact arithmetic, framing, boundary and malformed-input results | Evidence mapping reviewed; prior qualified Python and receipts retained. Bounded CI adds regression coverage without rerunning historical mains. |
+| Coordinated amendments and controls | Accepted §7.1 entries and all twelve review answers | Exact supersession, 27 todo reservations and deterministic hash-use inventory recorded. Actual consumer accounting/controls remain mandatory. |
+| Sequential native delivery | Original workloads retained; four prerequisite tasks separate earlier artifacts from final delivery | DAG review complete. Required local and selected hosted gates remain before merge; no dependency alone proves native completion. |
 
 Outer PlanTemplate, PlanInstance, ledger, private WeightBindings, TableBindings,
 certificate, checkpoint-proof, fidelity and registration artifacts still require
@@ -72,7 +74,7 @@ original obligations. No traffic-provenance claim is added to the base statement
 
 The explicit YAML graph remains acyclic. Four prerequisite tasks now separate
 earlier artifacts from final workload delivery. All original acceptance lines
-and statuses remain; the missing numerical consumers have explicit added criteria.
+remain; acceptance unblocks E5-03 only. Missing numerical consumers have explicit criteria.
 
 1. E5-03 now depends on E5-03b as well as E5-03a, requiring the
    complete accepted numerical contract before unblocking E5-03.
@@ -149,17 +151,19 @@ The eventual child specifications must preserve this order.
 The review found one stale inventory paragraph describing the old E7-03/E7-05
 titles; it now names the explicit LayerNorm/GPT-2 criteria already in the DAG.
 No numerical definition, identity preimage or qualified oracle changed.
-This is same-author review, with no external review claimed. The remaining
-coordinated acceptance and full local/selected hosted qualification still apply.
+This is same-author review, with no external review claimed. The coordinated
+sign-offs approve the specification; full local/selected hosted qualification
+still applies before task delivery.
 
-## 6. Next contract work
+## 6. Qualification and native delivery
 
-The coordinated Draft dispositions are now explicit in RFC-0025 §7.1, and
+The coordinated accepted dispositions are explicit in RFC-0025 §7.1, and
 27 new NC ids are reserved as `todo` with the exact catalogue snapshot updated.
 The accounting document enumerates deterministic hash-use families without
 claiming actual query bounds. The four prerequisite tasks and their consumer
 edges are now in graph.yaml. The outer identity/authority review is complete.
-Review the resulting specification and all twelve answers before acceptance.
+All twelve answers and required skill/owner passes approve this specification.
+Complete local and selected hosted qualification before normal task merge.
 Keep complete child-protocol work assigned to its actual consumers and forbid
 production use until their own contracts and gates are satisfied. This audit
 adds no challenge, cut, weight pass, cost constant or native completion credit.

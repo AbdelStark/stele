@@ -381,3 +381,25 @@ and actual NC-0110..0112/0412..0414 gates remain mandatory before native admissi
 Specification acceptance supplies no implemented registry entry or proof record.
 No new table, challenge, loss, cut or profile; extra statistics/affine arithmetic
 retain c_a/T_witness and validation T_misc, without a measured constant change.
+
+### A3 — Accept exact-mean affine LayerNorm definition
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: complete Model/Registry/Bounds identities now select the missing norm.
+Exact additions to §§2.3,4: adopt layernorm_q from A1 and
+[RFC-0025 §2.3](RFC-0025-full-model-cqis.md), with the encoding appendix's version-1
+parameters u16 d, u8 F/G/E/Gb, u32 en/ed and representation mode 4.
+It uses exact rational centering/variance, the same rsqrt component, original
+gain/bias sources and one affine output rounding. It cannot substitute for
+rmsnorm_q. Existing FunctionIds, RepresentationIds, data bytes and modes are unchanged.
+
+A2's implementation-order disposition replaces A1's native-before-acceptance
+condition: E5-03/04 and E3-08 owe complete native descriptors/evaluation/registry,
+and E7-03 owes real statistic/affine/range/lookup/source consumers. Exact bytes,
+whole-table checks, Rust/NumPy parity and NC-0110..0112/0412..0414 remain native
+completion gates. A1/A2's proposals are superseded by this entry; no native
+registry entry or proof record is supplied by specification acceptance.
+No new table, challenge, loss, cut or profile. Statistics/affine work is
+c_a/T_witness and validation T_misc, without a measured constant or pass change.

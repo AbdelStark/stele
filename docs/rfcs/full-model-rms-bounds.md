@@ -1,6 +1,6 @@
 # RFC-0025 RMSNorm bound record
 
-Status: Draft. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md)
+Status: Accepted. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md)
 §2.8. Schema 14 integrates the existing RFC-0021 §2.3 RMSNorm requirements
 into the [static arithmetic frame](full-model-bounds.md), with radix 256,
 p=2^31-1 and unchanged complete word predicates. It changes no RMSNorm

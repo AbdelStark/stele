@@ -161,3 +161,25 @@ Soundness uses the existing initial transcript absorb and complete H/query work;
 no challenge or loss line changes here. Parsing contributes T_misc without a
 measured constant. Affected tasks: E5-03b, E6, E7-08, E8, E12-05 and E14. Actual
 statement substitution, profile downgrade and source controls remain required.
+
+### A3 — Accept complete token-domain public input
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: A1/A2 now have complete numerical, request and outer identity definitions.
+Exact replacement for §3's request/policy/I/O/public-input encoding: use
+[RFC-0025's request](full-model-request.md) and
+[public-input](full-model-public-input.md) contracts in full. This supersedes
+A1/A2's Draft proposals. The full policy and TokenIO or distinct owned token
+references, public length/reason, four identities and expected profile must
+reach their actual consumers before the existing initial transcript absorb.
+No text/traffic provenance, hidden length or private commitment construction
+is inferred from that envelope. Complete child contracts and native validation
+remain prerequisites under RFC-0025 §7.1.
+
+No challenge, loss formula, cut, profile admission or weight pass changes.
+The deterministic hash-use inventory remains required in complete H accounting;
+boundary/derivation work contributes T_witness/c_a/T_misc without a measured constant.
+Affected tasks: E5-03b/04, E6, E7-08, E8, E12, E13-04/05 and E14.
+All original controls and NC-1204..1206 remain actual-consumer gates.

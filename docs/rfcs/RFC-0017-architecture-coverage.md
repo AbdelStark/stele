@@ -64,3 +64,23 @@ E5-04/05 retain full native parity and fidelity; E8 retains W8 and E9 retains
 the complete 8B workload. NC-0110/0113..0121 cover the new family/source edges.
 No challenge, profile, cut, measured constant or proof weight-pass change.
 Preparation and additional arithmetic retain T_misc/T_witness/c_a costs.
+
+### A3 — Accept both mandatory model contracts
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: both mandatory families now have complete numerical/source definitions.
+Exact replacement for their architecture descriptions: adopt A2's complete
+GPT-2-small and Llama-3.1-8B contract through
+[RFC-0025](RFC-0025-full-model-cqis.md). A1/A2's partial proposals are superseded.
+Every named dimension, physical role, configured norm/activation/position/
+attention choice and original source join is mandatory; a smaller fixture
+cannot claim either named result.
+
+All other feature-table entries and E13 extensions remain required. Rejecting
+unsupported features does not complete their tasks. Full native parity/fidelity,
+W8, 8B, top-k/chaining and all original source controls remain. No new challenge,
+profile, cut, loss, measured constant or online weight pass. Preparation and
+arithmetic retain T_misc/T_witness/c_a costs. Affected tasks: E5-03b/03/04/05,
+E6, E7, E8, E9 and E13.

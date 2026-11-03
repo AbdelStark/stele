@@ -318,3 +318,33 @@ No challenge, commitment construction, security budget, cut or proof pass change
 Exact reference/source hash uses remain in complete H/query accounting, and
 preparation/evidence/signature checks contribute T_misc/registration work.
 No measured constant changes. Affected tasks: E5-03/04/05, E6, E8, E12 and E14.
+
+### A8 — Accept complete source and outer passport contracts
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: complete original-source and outer attestation identities now replace
+the earlier partial proposals. Exact replacement for the RFC-0025 families in
+§§1,2,5: apply A4–A7's complete physical/source/template/attestation definitions
+as fixed by Accepted RFC-0025's [encoding](full-model-encoding.md),
+[source](full-model-source.md), [source architecture](full-model-source-architecture.md),
+[conversion](full-model-conversion.md), [public input](full-model-public-input.md)
+and [passport composition](full-model-passport-composition.md).
+A3's candidate framing is superseded by A7's exact disposition; A4–A7's
+conditional proposals take effect through this entry, without rewriting them.
+Kind-0 SHA-256 and kind-1 H(Source), complete Preparation/Artifact, original
+Assets/SourceConfig and every fixed Subject reference retain actual authority
+and source checks. Evidence and signatures bind the earlier subject/evidence/
+registration identities; the public statement binds the final signed root.
+
+Complete private PlanTemplate/WeightBindings/TableBindings, certificate/proof,
+fidelity and approved key/suite/authority/timestamp contracts and native validators
+remain prerequisites of E12-05a/05/06 and E14-02. Their absence forbids passport
+admission. A7's assignment of native streaming/controls to E5-03/E12-05 is effective.
+A2's original table binding and every confidentiality/profile/fidelity criterion
+remain. This does not accept A1's unresolved privacy proposal or resolve Q12/Q29.
+NC-0700..0710 remain actual-consumer gates. Deterministic reference/source/signature
+hashes retain full H accounting; validation remains T_misc/registration work.
+No new challenge, loss theorem, private construction, cut, profile, measured
+constant or online weight pass. Affected tasks: E5-03/04/05, E6, E8, E12 and E14.

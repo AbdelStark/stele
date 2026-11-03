@@ -1,6 +1,6 @@
 # RFC-0025 rotary and attention-input bounds
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 These records use the [static appendix](full-model-bounds.md) §1's exact words,
 columns, whole ranges and zero predicates and §5's frame, with schema ids 7–9.
 They retain its fixed p=2^31-1, radix 256, u2304 words and 128 KiB cap. Actual
@@ -195,8 +195,9 @@ bytes, establishing the score frame cap; K=5 roles are at most 2143 bytes,
 establishing the rotary and maximum caps. These are static capacity bounds,
 not benchmark results or claims of full coefficient-table materialization.
 
-Full exp/weighted/block/global normalization, activation/decoding, collection
-identity and actual proof-plan closure remain acceptance work. Charge source,
+The other RFC-0025 appendices define full exp/weighted/block/global normalization,
+activation/decoding and collection identity. Actual proof-plan closure remains
+mandatory native work under its complete Accepted contract. Charge source,
 index/range, arithmetic and lookup work to T_witness/c_a/c_lu; generation and
 static derivation are T_misc. No challenge, loss, cut, weight-pass change,
 native negative-control credit or profile admission is introduced here.

@@ -1,7 +1,7 @@
 # RFC-0025 encoding appendix
 
-Status: Draft. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md).
-Its closed fields are a proposed numerical/preparation contract, not an accepting
+Status: Accepted. This appendix belongs to [RFC-0025](RFC-0025-full-model-cqis.md).
+Its closed fields are the numerical/preparation contract, not an accepting
 proof-plan or passport parser. The full proof consumers remain separately required.
 
 ## 1. Framing and physical role order
@@ -49,7 +49,7 @@ cannot supply a different role map or remove a required tensor.
 ## 2. Source map and exact transforms
 
 Source containers retain the complete safetensors structural checks and the
-typed single-file/indexed-shard distinction in RFC-0011 A3. The
+typed single-file/indexed-shard distinction adopted by RFC-0011 A8. The
 [source appendix](full-model-source.md) fixes canonical Source/Assets framing,
 complete file/selection checks and immutable original-byte slices. Their
 authenticated passport join and semantic adapter consumers remain required.
@@ -346,7 +346,7 @@ The ordered neural function roles are first norm, attention exp, second norm,
 activation for each layer, then final norm, then sampling exp if selected.
 There are exactly 4*L+1+[sampled] roles. Every role retains its FunctionId and
 RepresentationId even when functions repeat. The inner Manifest uses the exact
-RFC-0021 frame and its complete regenerated table-data digests, with the proposed
+RFC-0021 frame and its complete regenerated table-data digests, with the
 LayerNorm mode from §4. Include the unique union, sorted by raw FunctionId/TableId;
 no caller-supplied additional/unused function or component is allowed here.
 
@@ -394,7 +394,7 @@ Model/Scales/Registry hashes, never cqis_id itself; this avoids an identity cycl
 The [collection appendix](full-model-bound-collection.md) specifies the exact
 nineteen-schema frame, fixed operation expansion and complete parameter joins.
 Full outer authentication and actual consuming-reduction closure remain required;
-this proposed identity join is not a complete passport or proof implementation.
+this numerical identity join is not a complete passport or proof implementation.
 
 The passport must jointly authenticate the exact Model, Scales, Registry, Bounds,
 cqis_id, Preparation/quantiser_id, typed original source identity, digest_cqis,
@@ -414,13 +414,14 @@ and complete role transforms. The passport must authenticate this record with
 those same inputs; tokenizer/generation semantics and actual source/proof
 consumers remain separate requirements.
 
-## 7. Remaining acceptance work
+## 7. Outer identities and native delivery
 
 The [request contract](full-model-request.md) fixes request/stop/token-I/O
-subrecords with the exact Model decoding descriptor in public policy. It does
-not replace the complete typed public-input/passport/commitment frame.
-The complete passport/public-statement field schemas and actual source/collection
-consumers still require the contracts in RFC-0025 §7. Sections 3–6 need
-independent complete-codec/config/flow evidence before acceptance. This appendix
-specifies no generic operator extension, successful proof record or profile.
-It remains Draft until the entire acceptance gate closes.
+subrecords with the exact Model decoding descriptor in public policy. The
+[public-input](full-model-public-input.md) and
+[passport-composition](full-model-passport-composition.md) appendices fix their
+complete outer frames. RFC-0025 §7 records independent complete-codec/config/flow
+evidence and the coordinated review. Actual source/collection, commitment,
+proof-plan, evidence and authority consumers retain their complete Accepted
+child-contract and native-delivery requirements. This appendix supplies no
+generic operator extension, successful proof record or profile admission.

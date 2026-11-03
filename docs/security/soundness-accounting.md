@@ -1801,3 +1801,10 @@ separate signature/evidence/proximity/extraction obligations remain mandatory.
 No new loss formula or MASK theorem follows from this deterministic inventory.
 Hashing and validation contribute T_misc/registration work, with no measured
 constant, profile admission or additional online weight pass.
+
+RFC-0025 acceptance disposition: the deterministic preimage families above are
+now governed by its Accepted definitions and §7.1 companion entries. No native
+challenge, loss record, numerical security budget or profile is added by that
+status change. E6/E8-05a/E12/E14 must account for the complete actual consumer
+schedule and all hash/signature/evidence queries before admission, including
+Q12/Q29 and fixed-passport lifetime requirements. All original ledger gates remain.

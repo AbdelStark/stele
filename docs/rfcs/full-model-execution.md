@@ -1,6 +1,6 @@
 # RFC-0025 numerical model execution
 
-Status: Draft. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
+Status: Accepted. Part of [RFC-0025](RFC-0025-full-model-cqis.md), Q26/E5-03b.
 This describes the research composition of its existing numerical definitions.
 It does not add a proof protocol, native source handle or accepted passport.
 

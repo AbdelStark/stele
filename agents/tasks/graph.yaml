@@ -813,24 +813,20 @@ tasks:
   - RFC-0004 §2,§6
   - RFC-0004 A1
   - RFC-0003 §4
-  - RFC-0003 A2
-  - RFC-0004 A3
+  - RFC-0003 A5
+  - RFC-0004 A13
   - RFC-0004 A4
   - RFC-0021 §2.3
   - RFC-0004 A5
   - RFC-0022 §§2-6
-  - RFC-0011 A3
-  - RFC-0004 A6
-  - RFC-0009 A2
-  - RFC-0004 A7
-  - RFC-0004 A8
-  - RFC-0003 A3
-  - RFC-0004 A9
-  - RFC-0004 A10
+  - RFC-0011 A8
+  - RFC-0009 A4
+  - RFC-0017 A3
+  - RFC-0021 A3
   - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-cqis
-  status: blocked(RFC-0003 A2; RFC-0004 A3; RFC-0011 A3; RFC-0004 A6; RFC-0004 A7; RFC-0004 A8; RFC-0004 A9; RFC-0004 A10)
+  status: ready
   agent: codex-root
   branch: task/E5-03-attention-normalization-consumer
   acceptance:
@@ -865,14 +861,16 @@ tasks:
   - E5-02
   - E5-03a
   rfc:
-  - RFC-0001 A1
-  - RFC-0004 A3
-  - RFC-0004 A6
-  - RFC-0004 A7
-  - RFC-0004 A8
-  - RFC-0004 A9
-  - RFC-0004 A10
-  - RFC-0017
+  - RFC-0001 A3
+  - RFC-0003 A5
+  - RFC-0004 A13
+  - RFC-0005 A5
+  - RFC-0009 A4
+  - RFC-0011 A8
+  - RFC-0016 A4
+  - RFC-0017 A3
+  - RFC-0021 A3
+  - RFC-0025 §§1-7
   skill: rfc-author
   crate: stele-cqis+stele-ir
   status: in_progress
