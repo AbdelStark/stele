@@ -522,3 +522,31 @@ specification only. E7-01f still owes native consumers/controls, complete parity
 and resource ledgers. Full plan/source ownership, scales, wider/packed dots,
 private/virtual sources, Q12/Q29, both profiles and W8 remain open. No measured
 constant or generic auxiliary cut changes. Status: Accepted.
+
+## ADR-049: Use the checked test profile for the native lookup corpus
+
+Context: the lookup parity caller still built its ordinary native example with
+the unoptimized dev profile. The existing test profile retains debug assertions,
+overflow checks and default features. Decision: select that profile at this
+caller after a frozen-source comparison produced identical complete outputs
+for all 88 requests and reduced the measured validation cost. The independent
+oracle, digests, rejection paths and every surrounding gate remain unchanged.
+
+The E0-10 micro ledger separates cold build, native execution and reference
+generation, and records the measurement-driver recovery without discarding a
+native sample. This changes validation execution only; no inference cost term,
+protocol, profile admission, CI routing or parent-task requirement changes.
+Status: Accepted.
+
+## ADR-050: Preserve frozen oracle sources when selecting lookup optimisation
+
+Context: complete E0-10 validation rejected ADR-049's direct launcher edit
+because the integer-linear manifest pins the entire lookup oracle source.
+Decision: restore that source byte-for-byte and apply optimization level 2,
+debug assertions and overflow checks through Cargo's dev-profile environment
+settings at the gate's lookup subprocess only. This supersedes ADR-049's
+launcher choice. Preserve every frozen manifest, payload, source pin and
+historical receipt; no compatibility exception or evidence regeneration is
+introduced. An existing gate test checks override values and isolation from
+the parent and other commands. Actual compiler/output qualification and the
+complete gates remain required before E0-10 delivery. Status: Accepted.
