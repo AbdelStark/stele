@@ -745,14 +745,22 @@ the research controls rejected them. Signature/proof admission remains unimpleme
 
 ## Findings still preventing acceptance
 
-Actual consuming-reduction closure, authenticated outer
-passport/request schemas, complete passport codecs, actual native conversion
-consumers, actual named source/config admission and tokenizer/generation adapters,
-native GPT-2/Llama full/cache execution, sampling's native exp/request/
-seed source bindings, coordinated accounting/control amendments, and sequential native
-implementation DAG remain open. All twelve answers must be revisited against
-the final contract before acceptance. Full local and selected hosted gates are
-still required before a normal PR merge. No task status is changed to done here.
+Contract acceptance still requires the final identity/authority and consuming
+dependency review, coordinated amendment dispositions, accounting/control
+reservations and a complete sequential native implementation DAG. The
+[delivery-closure audit](full-model-delivery-closure.md) separates these from
+native delivery, adds the E5-03b/E7-07 prerequisites to their consumers and
+identifies the remaining completion cycles.
+All twelve answers must be revisited against the final contract before acceptance.
+Full local and selected hosted gates remain required before a normal PR merge.
+No task status is changed to done here.
+
+Native conversion, complete plan/passport/child validators, named source/config
+and tokenizer adapters, full GPT-2/Llama forward/cache execution, actual sampled
+exp/request/seed source consumers, private proof/profile admission and fidelity
+remain required implementation work. RFC-0025 §7 places native delivery after
+specification acceptance; neither step completes the other. Explicit conditions
+in older Draft amendments still need coordinated resolution before acceptance.
 
 The operation inventory is now explicit for both full families, including the
 missing LayerNorm, GPT-2 activation and wide affine/position delivery work that
