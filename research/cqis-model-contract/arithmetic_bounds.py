@@ -90,20 +90,20 @@ def _signed(value):
     return value.to_bytes(2, 'little', signed=True)
 
 
-def _caps(maximum):
+def _caps(maximum, bits=8):
     integer(maximum, 0, (1 << (8*WORD_BYTES))-1, 'Capacity')
-    width = max(1, (maximum.bit_length()+7)//8)
-    return tuple(min(255, maximum >> (8*i)) for i in range(width))
+    width = max(1, (maximum.bit_length()+(bits-1))//bits)
+    return tuple(min((1 << bits)-1, maximum >> (bits*i)) for i in range(width))
 
 
-def _column(terms):
+def _column(terms, bits=8):
     """Private derivation from closed roles; never trusted caller-supplied terms."""
     z = sum(n*a*c for n, a, c in terms)
-    operands = tuple((n, a, c, _caps(a), _caps(c)) for n, a, c in terms)
-    size = max(len(_caps(z)), *(len(a)+len(c)-1 for _, _, _, a, c in operands))
+    operands = tuple((n, a, c, _caps(a, bits), _caps(c, bits)) for n, a, c in terms)
+    size = max(len(_caps(z, bits)), *(len(a)+len(c)-1 for _, _, _, a, c in operands))
     if size > 269:
         raise ValueError('Capacity')
-    result = tuple(min(255, z >> (8*i)) for i in range(size))
+    result = tuple(min((1 << bits)-1, z >> (bits*i)) for i in range(size))
     raw = [0]*size
     for n, _, _, a, c in operands:
         for i, left in enumerate(a):
@@ -111,10 +111,10 @@ def _column(terms):
                 raw[i+j] += n*left*right
     carries = [0]
     for value in raw[:-1]:
-        carries.append((value+carries[-1])//256)
+        carries.append((value+carries[-1])//(1 << bits))
     carries.append(0)
     left = tuple(raw[i]+carries[i] for i in range(size))
-    right = tuple(result[i]+256*carries[i+1] for i in range(size))
+    right = tuple(result[i]+(1 << bits)*carries[i+1] for i in range(size))
     if any(2*side >= P for side in left+right):
         raise ValueError('FieldBound')
     return operands, z, result, tuple(carries), left, right
@@ -248,10 +248,10 @@ def encode(parameters):
     return _encode_record(params, *record)
 
 
-def _encode_record(params, schema, scalars, shifts, roles):
+def _encode_record(params, schema, scalars, shifts, roles, *, bits=8):
     """Shared private framing; public callers derive only their closed schemas."""
     chunks = [PREFIX, _unsigned(1, 4), bytes((schema,)), _unsigned(len(params), 2), params,
-              _unsigned(P, 4), bytes((8, len(scalars)))]
+              _unsigned(P, 4), bytes((bits, len(scalars)))]
     chunks.extend(_unsigned(value, WORD_BYTES) for value in scalars)
     chunks.append(bytes((len(shifts),)))
     chunks.extend(_signed(value) for value in shifts)

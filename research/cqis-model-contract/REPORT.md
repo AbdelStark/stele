@@ -392,3 +392,65 @@ are unchanged; prior receipts retain their exact source scope. No historical
 proof campaign is rerun. Weighted/block/global normalization, decoding bounds,
 the full collection and outer identities, native consumers/parity, named-model
 fidelity and complete private inference proving/verification remain open.
+
+## Complete weighted attention and normalization records
+
+The [weighted appendix](../../docs/rfcs/full-model-weighted-bounds.md) adds
+schemas 12/13 with fixed radix 16. The full context domain remains 1..2^20,
+with complete V-row policies and GQA coordinates. Exact sums retain the actual
+S*Z offset. Block mode retains RFC-0004 A6's full 1024-slot static bound, every
+absolute block, signed rounding, global probability/total joins and all raw
+work when rounding erases a block. Normalization consumes the same total/sign/Z
+with exact variable division, strict remainder, half ties and int16 output.
+
+Run `python3 -B research/cqis-model-contract/check_weighted_bounds.py`.
+Seed 2678 checks 10000 records per schema against independent rational policy/
+rounding formulas, polynomial columns and complete framing. Actual maximal
+operands exercise every column/carry. Another 1664 block configurations fail
+the independent full-block bound and reject in the candidate. The accepted
+configurations contain 5820 exact and 4180 block cases; 2723 block records
+have static rounded bound zero. These are configuration/arithmetic checks,
+not actual proof acceptance.
+
+Dense numerical cases represent every configured key slot with constant
+intervals split at the real-request, causal-mask, capacity and block boundaries.
+Full V rows use a repeated three-coordinate pattern whose first coordinate
+attains the complete-row magnitude, before selecting the actual GQA coordinate.
+Interior identical blocks use counted runs; boundary blocks are checked
+separately and all block counts feed the global sums. No keys or zero blocks
+are removed. The probability vectors are conditional in-range inputs with an
+allowed Q entry, not authenticated score/exp outputs. Thus this evidence does
+not discharge actual function or model-source consumers.
+
+Across these cases, 132868 nonzero blocks round to zero while retaining their
+raw/source/remainder checks. Normalization produces 8630 int16 outputs and
+1370 range failures. The checker also covers exact half ties, conditional
+int16 endpoints/rejections, the full context/width endpoint, Dmax=2^64 and
+drop=62 with a zero global bound. Capacity one still rejects a drop that fails
+the full 1024-slot rule. A reachable boundary uses one allowed P=1 and original
+V=127: block rounding R(127/8)=16 gives normalized output 128. Bounding its
+quotient by Umax/Dmax=127 would reject it; the specified Dmin bound admits it.
+
+Randomized record maxima are 37705/23185 bytes and 16/23 nibble columns for
+weighted/normalization. The appendix proves separate complete-domain bounds
+below 64000/36000 bytes and strict M31 column faithfulness. Byte mutations,
+truncations, suffixes, changed valid source/output fractions, invalid GQA
+groups, inactive drop and Boolean fractions reject. No native NC credit is
+claimed. Corpus SHA-256:
+`a61fdf5a04e69ba50abd391c255e534829b9754132e7e01a5825a17130284581`.
+Weighted candidate SHA-256: `839e8b164432e0990e1997361cf0dfe886f258d397f85fc8a1e7e5b607463da5`.
+Checker SHA-256: `153c2a7b34eb3f7a1d521df7e085f8057ad1a778f963354e9c73d24cff71ae85`.
+
+The private cap/column/encoder helpers now accept the fixed radix selected by
+their closed callers. Their default remains eight bits. Against `19cfdc2`,
+exact syntax-tree comparison preserves every other declaration/body; replacing
+the new default parameter with 8 and folding its constant expressions recovers
+all three prior helper bodies exactly. Sixteen independently encoded boundary
+records cover every earlier schema 1–11, with corpus SHA-256
+`4480dc009f311424a9b77829304dcd8cc8308b6957c756f4fa2dc1d83f8b6477`.
+Shared arithmetic SHA-256 is now
+`cba19049f1775e8e193a932568af2873cf1373754873178d058df1776f8f35aa`.
+Earlier full-corpus receipts retain their original hashes; no historical proof
+campaign is rerun or presented as a current-source rerun. Original RMS-family
+integration, decoding bounds, the full collection/outer identities, native
+consumers, full named-model inference/proving/verification and benchmarks remain.

@@ -155,7 +155,8 @@ P_hat_j is that exp output and Z=sum_j P_hat_j>0. A restored value is
 D_jc=sv_j*v_jc in units 2^-fv. Exact mode uses T_c=sum_j P_hat_j*D_jc and c=0.
 Block mode uses absolute blocks [1024b,1024b+1023],
 B_bc=R(sum_(j in block b) P_hat_j*D_jc/2^c), T_c=sum_b B_bc. The configured
-c in [0,62] must statically guarantee int16 B_bc. Masked slots contribute zero;
+c in [0,62] must satisfy R(1024*2^E*S/2^c)<=32767 using A6's full
+restored-value bound S, even for a shorter request/capacity. Masked slots contribute zero;
 keys are not compacted and blocks are not selected from the current length.
 
 For output fraction fo, the wide result is R(T_c*2^(fo-fv+c)/Z), requiring
@@ -305,6 +306,9 @@ complete inclusive exponential indices.
 The [function-bound appendix](full-model-function-bounds.md) covers selected exp
 recombination, complete component addresses and activation source/lookup words;
 all canonical table definitions must still pass before operation admission.
+The [weighted attention appendix](full-model-weighted-bounds.md) covers complete
+probability/value sums, every fixed block and variable normalization, with
+radix-16 columns through the full context domain.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

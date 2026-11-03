@@ -69,6 +69,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    words. Selected certified point evaluations exercise recombination and
    overflow; they do not admit an entire table. A bounded activation record
    for invalid full-table parameters grants no execution authority.
+   Weighted/normalization records each have 10000-configuration checks. Fixed
+   radix-16 columns cover context 2^20; full-block admission remains mandatory
+   even at capacity one. The exact offset uses the actual probability sum.
+   Variable division uses Dmin to bound its quotient; a reachable output 128
+   demonstrates why using Umax/Dmax=127 would reject a valid result.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
@@ -83,12 +88,17 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    padding. Masked values/remainders/corrections are zero. Activation operation
    padding has zero source words and a disabled lookup, not a real sigmoid(0)
    evaluation. The original selector and actual input/output joins remain.
+   Weighted cases retain complete real/masked/padded key spans and all absolute
+   block ids. A block rounded to zero retains its raw/source/remainder work.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
    raw transforms and the new static records match independent algorithms.
    Extracting the private shared encoder preserves the complete derivation and
    serialization syntax trees, with nine boundary records checked independently.
+   The radix extension separately preserves all nonhelper syntax and exactly
+   specializes to the prior three helper bodies at the default eight bits.
+   Sixteen boundary encodings cover all earlier eleven schemas unchanged.
    Complete runtime/artifact/
    registry/passport codecs and full/cache model flows still need their checks.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
