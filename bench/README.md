@@ -255,6 +255,46 @@ small runtime probes also rejected a false debug assertion and integer overflow.
 These checks are outside the timed commands. The micro record's proof, verifier
 and controls fields remain zero; no proof-system cost-model constant changes.
 
+## Lookup corpus profile (E0-10)
+
+The [paired ledger](ledger/e0-10-lookup-corpus-profile.json) measures the ordinary
+native lookup example from clean commit
+`f2dfd917baf00b8419dbf264c5f3cbdafa052d46`. The caller now selects the existing
+Cargo test profile, with optimization level 2, default features, debug assertions
+and overflow checks. Compiler artifacts verify those settings in the example
+and its runtime dependencies; these are ordinary binaries without `cfg(test)`.
+
+| Cargo profile | Cold build (s) | Complete native corpus (s) | Sum (s) |
+|---|---:|---:|---:|
+| dev | 20.043 | 49.681 | 69.724 |
+| test | 37.540 | 4.387 | 41.927 |
+
+Both binaries consumed the same 88 requests and produced byte-identical output:
+10 produced proofs, two production errors, 12 accepted verifications and 64
+rejections. The unchanged independent oracle checked every result, including
+proof bytes, registration, records, failure usage and continuation. All three
+existing corpus digests remain unchanged.
+
+This is one dev-then-test pair on a shared Apple M1 Max. Each cold build used a
+separate empty target directory. Direct execution includes process launch,
+input transfer and output capture; it excludes Cargo launch and compilation.
+The driver stopped after the completed dev sample because it intercepted its
+own source-check command. Recovery retained that sample, regenerated the exact
+same reference requests, and ran only the missing test sample. Both reference
+generation costs and the initial failure are retained separately in the ledger.
+No native sample was warmed up, repeated or discarded. Host contention was not
+controlled, so this pair establishes no confidence interval or full-CI speedup.
+
+To reproduce, use the measured commit and the embedded measurement driver with
+fresh output/target paths. Forward non-corpus subprocess calls to the original
+runner, as in the embedded recovery driver. Generate the complete current
+lookup corpus, build its ordinary `lookup_corpus` example with `--profile dev`
+and `--profile test`, and feed both binaries the identical saved input. Compare
+their complete outputs and run the unchanged independent expectations. The
+ledger preserves both drivers, commands, compiler metadata, source/binary hashes
+and raw-artifact hashes. Its proof, verifier and controls slots are zero; no
+inference cost-model constant or coverage count changes.
+
 ## Control coverage profile (E0-09)
 
 The [paired ledger](ledger/e0-09-control-profile.json) measures the ordinary

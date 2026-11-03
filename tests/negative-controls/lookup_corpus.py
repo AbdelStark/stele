@@ -308,7 +308,7 @@ def main():
     assert range_digest == 'edfd2629223cacc9320e84637e63c2de252e8b6b915e8cc41caca82c6b50af28', range_digest
     assert len(range_expected) == 4 and len(range_verified) == 36
     assert sum(v['decision'] == 'accept' for v in range_verified) == 4
-    native = subprocess.run(['cargo', 'run', '-q', '-p', 'stele-negative-controls', '--example', 'lookup_corpus', '--locked', '--offline'],
+    native = subprocess.run(['cargo', 'run', '-q', '--profile', 'test', '-p', 'stele-negative-controls', '--example', 'lookup_corpus', '--locked', '--offline'],
         cwd=ROOT, input=''.join(json.dumps(case)+'\n' for case in inputs+closed_inputs+range_inputs+range_closed), text=True, capture_output=True)
     assert native.returncode == 0, native.stderr
     actual = [json.loads(line) for line in native.stdout.splitlines()]

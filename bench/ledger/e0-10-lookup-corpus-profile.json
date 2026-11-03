@@ -1,0 +1,852 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/lookup-corpus-profile",
+  "commit": "f2dfd917baf00b8419dbf264c5f3cbdafa052d46",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8; cargo 1.90.0 (840b83a10 2025-07-30)",
+  "device": "Apple M1 Max",
+  "driver": "not-applicable: CPU; macOS-15.6.1-arm64-arm-64bit",
+  "model_config": {
+    "plan": {
+      "task": "E0-10",
+      "source_commit": "f2dfd917baf00b8419dbf264c5f3cbdafa052d46",
+      "source_tree": "40a363a22c7f2826b41763f2a213a51cea6624f8",
+      "source_sha256": {
+        "Cargo.toml": "5502aa507d82246125e99388cd6d69ce8cafb396766faa0e91fb80e2ff335965",
+        "Cargo.lock": "5b09a23e8935aa29ecd720d314ad425229e01dc1b21f9558b6acf3745ddf3fe3",
+        "rust-toolchain.toml": "0484a3d0d7267e43e09b8b0e76a799bed558037d7ccd6046dd70fdd0cc1b6ef9",
+        "tests/negative-controls/lookup_corpus.py": "c9fe856aa87195ab11b386f09c6bc5d4e6e926059a45ab4a34f96d05ec245527",
+        "tests/negative-controls/lookup_closed.py": "6d9301c50e13f76ab5054a7e97b0800dbda841fa5fb49daf8f760d28ef6d4c39",
+        "tests/negative-controls/lookup_corpus.py.lock": "f988e8c821c00b1f0eb3a8c1c87a8d723dd157f666d4d2193dbdc641b6087dd3",
+        "tests/negative-controls/examples/lookup_corpus.rs": "aa2de76ad5e53818e3eeca52640fa3bcda31a95949aa00c4e177a9b73a8388be"
+      },
+      "order": [
+        "dev",
+        "test"
+      ],
+      "repetitions": 1,
+      "requests": 88,
+      "build": "Separate empty Cargo target directories; ordinary example, locked/offline.",
+      "execution": "One direct complete stdin batch per binary; build and execution disjoint.",
+      "oracle": "Unchanged lookup_corpus.main generates expected inputs/results once and checks every result.",
+      "qualifications": [
+        "Shared macOS host; original workers neither inspected nor manipulated.",
+        "One ordered screening pair, without warmups, retries or discarded results.",
+        "No statistical, whole-CI, GPU or inference speedup claim.",
+        "Reference generation, native compilation and native execution are separate work.",
+        "The parent native gate and historical Requant campaigns are not rerun by this measurement."
+      ],
+      "controller_sha256": "d21dbf1234de12a9eb8ed7fccc6479182ea9ce74344aa2977f63b138b4688e7e",
+      "started_at": "2026-11-03T08:51:46.577233+00:00"
+    },
+    "measurement": {
+      "plan": {
+        "task": "E0-10",
+        "source_commit": "f2dfd917baf00b8419dbf264c5f3cbdafa052d46",
+        "source_tree": "40a363a22c7f2826b41763f2a213a51cea6624f8",
+        "source_sha256": {
+          "Cargo.toml": "5502aa507d82246125e99388cd6d69ce8cafb396766faa0e91fb80e2ff335965",
+          "Cargo.lock": "5b09a23e8935aa29ecd720d314ad425229e01dc1b21f9558b6acf3745ddf3fe3",
+          "rust-toolchain.toml": "0484a3d0d7267e43e09b8b0e76a799bed558037d7ccd6046dd70fdd0cc1b6ef9",
+          "tests/negative-controls/lookup_corpus.py": "c9fe856aa87195ab11b386f09c6bc5d4e6e926059a45ab4a34f96d05ec245527",
+          "tests/negative-controls/lookup_closed.py": "6d9301c50e13f76ab5054a7e97b0800dbda841fa5fb49daf8f760d28ef6d4c39",
+          "tests/negative-controls/lookup_corpus.py.lock": "f988e8c821c00b1f0eb3a8c1c87a8d723dd157f666d4d2193dbdc641b6087dd3",
+          "tests/negative-controls/examples/lookup_corpus.rs": "aa2de76ad5e53818e3eeca52640fa3bcda31a95949aa00c4e177a9b73a8388be"
+        },
+        "order": [
+          "dev",
+          "test"
+        ],
+        "repetitions": 1,
+        "requests": 88,
+        "build": "Separate empty Cargo target directories; ordinary example, locked/offline.",
+        "execution": "One direct complete stdin batch per binary; build and execution disjoint.",
+        "oracle": "Unchanged lookup_corpus.main generates expected inputs/results once and checks every result.",
+        "qualifications": [
+          "Shared macOS host; original workers neither inspected nor manipulated.",
+          "One ordered screening pair, without warmups, retries or discarded results.",
+          "No statistical, whole-CI, GPU or inference speedup claim.",
+          "Reference generation, native compilation and native execution are separate work.",
+          "The parent native gate and historical Requant campaigns are not rerun by this measurement."
+        ],
+        "controller_sha256": "d21dbf1234de12a9eb8ed7fccc6479182ea9ce74344aa2977f63b138b4688e7e",
+        "started_at": "2026-11-03T08:51:46.577233+00:00"
+      },
+      "python": "3.12.12 (main, Feb 12 2026, 00:42:34) [Clang 21.1.4 ]",
+      "host": "macOS-15.6.1-arm64-arm-64bit",
+      "cpu": "Apple M1 Max",
+      "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+      "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)",
+      "configurations": [
+        {
+          "profile": "dev",
+          "env": {
+            "CARGO_TARGET_DIR": "/tmp/stele-lookup-profile-f2dfd91/target-dev",
+            "CARGO_TERM_COLOR": "never"
+          },
+          "build": {
+            "label": "dev-build",
+            "argv": [
+              "cargo",
+              "build",
+              "--profile",
+              "dev",
+              "-p",
+              "stele-negative-controls",
+              "--example",
+              "lookup_corpus",
+              "--locked",
+              "--offline",
+              "--verbose",
+              "--message-format=json"
+            ],
+            "cwd": "/tmp/stele-post278-frontier",
+            "started_at": "2026-11-03T08:53:18.073904+00:00",
+            "load_before": [
+              "10.40869140625",
+              "9.5615234375",
+              "9.734375"
+            ],
+            "wall_ns": 20042871916,
+            "exit_code": 0,
+            "ended_at": "2026-11-03T08:53:38.116760+00:00",
+            "load_after": [
+              "10.796875",
+              "9.70263671875",
+              "9.7802734375"
+            ],
+            "stdout": "/tmp/stele-lookup-profile-f2dfd91/dev-build.stdout",
+            "stdout_sha256": "c98b4fdabbbb8a1017831fc20a577b1db77069a540c01e687092d2c8bf73ab2e",
+            "stdout_bytes": 24588,
+            "stderr": "/tmp/stele-lookup-profile-f2dfd91/dev-build.stderr",
+            "stderr_sha256": "2163b43959960963ebfda93e7b3c75c011bee138e3d7fa2c48cb80d6c53fce2d",
+            "stderr_bytes": 35969
+          },
+          "artifact": {
+            "reason": "compiler-artifact",
+            "package_id": "path+file:///private/tmp/stele-post278-frontier/tests/negative-controls#stele-negative-controls@0.1.0",
+            "manifest_path": "/private/tmp/stele-post278-frontier/tests/negative-controls/Cargo.toml",
+            "target": {
+              "kind": [
+                "example"
+              ],
+              "crate_types": [
+                "bin"
+              ],
+              "name": "lookup_corpus",
+              "src_path": "/private/tmp/stele-post278-frontier/tests/negative-controls/examples/lookup_corpus.rs",
+              "edition": "2021",
+              "doc": false,
+              "doctest": false,
+              "test": false
+            },
+            "profile": {
+              "opt_level": "0",
+              "debuginfo": 2,
+              "debug_assertions": true,
+              "overflow_checks": true,
+              "test": false
+            },
+            "features": [],
+            "filenames": [
+              "/tmp/stele-lookup-profile-f2dfd91/target-dev/debug/examples/lookup_corpus"
+            ],
+            "executable": "/tmp/stele-lookup-profile-f2dfd91/target-dev/debug/examples/lookup_corpus",
+            "fresh": false
+          },
+          "executable_sha256": "8ec82de6521884392787f45d6d8c68f59d28be0abc233adde24a6278e5399c58",
+          "runtime_artifacts": [
+            {
+              "name": "stele_field",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_simd",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_poly",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_hash",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_code",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_pcs",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_ir",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_sumcheck",
+              "features": [
+                "std"
+              ],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_cqis",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_gkr",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_lookup",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_reductions",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_negative_controls",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "lookup_corpus",
+              "features": [],
+              "profile": {
+                "opt_level": "0",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            }
+          ],
+          "corpus": {
+            "label": "dev-corpus",
+            "argv": [
+              "/private/tmp/stele-lookup-profile-f2dfd91/target-dev/debug/examples/lookup_corpus"
+            ],
+            "cwd": "/tmp/stele-post278-frontier",
+            "started_at": "2026-11-03T08:53:38.125662+00:00",
+            "load_before": [
+              "10.796875",
+              "9.70263671875",
+              "9.7802734375"
+            ],
+            "wall_ns": 49681239125,
+            "exit_code": 0,
+            "ended_at": "2026-11-03T08:54:27.806604+00:00",
+            "load_after": [
+              "11.7294921875",
+              "10.06689453125",
+              "9.90625"
+            ],
+            "stdout": "/tmp/stele-lookup-profile-f2dfd91/dev-corpus.stdout",
+            "stdout_sha256": "696c8d334a774911085800745243056a35e529938345e3e065144cbeba95bab2",
+            "stdout_bytes": 11988695,
+            "stderr": "/tmp/stele-lookup-profile-f2dfd91/dev-corpus.stderr",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_bytes": 0
+          }
+        },
+        {
+          "profile": "test",
+          "env": {
+            "CARGO_TARGET_DIR": "/tmp/stele-lookup-profile-f2dfd91/target-test",
+            "CARGO_TERM_COLOR": "never"
+          },
+          "build": {
+            "label": "test-build",
+            "argv": [
+              "cargo",
+              "build",
+              "--profile",
+              "test",
+              "-p",
+              "stele-negative-controls",
+              "--example",
+              "lookup_corpus",
+              "--locked",
+              "--offline",
+              "--verbose",
+              "--message-format=json"
+            ],
+            "cwd": "/tmp/stele-post278-frontier",
+            "started_at": "2026-11-03T08:57:02.304656+00:00",
+            "load_before": [
+              "10.8125",
+              "10.6279296875",
+              "10.17626953125"
+            ],
+            "wall_ns": 37540235583,
+            "exit_code": 0,
+            "ended_at": "2026-11-03T08:57:39.844920+00:00",
+            "load_after": [
+              "19.3017578125",
+              "12.73095703125",
+              "10.95703125"
+            ],
+            "stdout": "/tmp/stele-lookup-profile-f2dfd91/test-build.stdout",
+            "stdout_sha256": "2d15c86b19a0e76a0ead379c264d14ec915616577e974319c5cd3447b3416dbc",
+            "stdout_bytes": 24649,
+            "stderr": "/tmp/stele-lookup-profile-f2dfd91/test-build.stderr",
+            "stderr_sha256": "819aef5c443bb84c0043559f70e1eee8e9327136ff4e007461d62d588d982c26",
+            "stderr_bytes": 36996
+          },
+          "artifact": {
+            "reason": "compiler-artifact",
+            "package_id": "path+file:///private/tmp/stele-post278-frontier/tests/negative-controls#stele-negative-controls@0.1.0",
+            "manifest_path": "/private/tmp/stele-post278-frontier/tests/negative-controls/Cargo.toml",
+            "target": {
+              "kind": [
+                "example"
+              ],
+              "crate_types": [
+                "bin"
+              ],
+              "name": "lookup_corpus",
+              "src_path": "/private/tmp/stele-post278-frontier/tests/negative-controls/examples/lookup_corpus.rs",
+              "edition": "2021",
+              "doc": false,
+              "doctest": false,
+              "test": false
+            },
+            "profile": {
+              "opt_level": "2",
+              "debuginfo": 2,
+              "debug_assertions": true,
+              "overflow_checks": true,
+              "test": false
+            },
+            "features": [],
+            "filenames": [
+              "/tmp/stele-lookup-profile-f2dfd91/target-test/debug/examples/lookup_corpus"
+            ],
+            "executable": "/tmp/stele-lookup-profile-f2dfd91/target-test/debug/examples/lookup_corpus",
+            "fresh": false
+          },
+          "executable_sha256": "33425ac768cab7b175a55cfda8e2b7dd0984e52212511245b9d616dce9e40cf5",
+          "runtime_artifacts": [
+            {
+              "name": "stele_field",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_poly",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_simd",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_hash",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_code",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_pcs",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_ir",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_sumcheck",
+              "features": [
+                "std"
+              ],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_gkr",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_lookup",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_cqis",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_reductions",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "stele_negative_controls",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            },
+            {
+              "name": "lookup_corpus",
+              "features": [],
+              "profile": {
+                "opt_level": "2",
+                "debuginfo": 2,
+                "debug_assertions": true,
+                "overflow_checks": true,
+                "test": false
+              }
+            }
+          ],
+          "corpus": {
+            "label": "test-corpus",
+            "argv": [
+              "/private/tmp/stele-lookup-profile-f2dfd91/target-test/debug/examples/lookup_corpus"
+            ],
+            "cwd": "/tmp/stele-post278-frontier",
+            "started_at": "2026-11-03T08:57:39.851221+00:00",
+            "load_before": [
+              "19.3017578125",
+              "12.73095703125",
+              "10.95703125"
+            ],
+            "wall_ns": 4386687375,
+            "exit_code": 0,
+            "ended_at": "2026-11-03T08:57:44.238032+00:00",
+            "load_after": [
+              "18.556640625",
+              "12.685546875",
+              "10.951171875"
+            ],
+            "stdout": "/tmp/stele-lookup-profile-f2dfd91/test-corpus.stdout",
+            "stdout_sha256": "696c8d334a774911085800745243056a35e529938345e3e065144cbeba95bab2",
+            "stdout_bytes": 11988695,
+            "stderr": "/tmp/stele-lookup-profile-f2dfd91/test-corpus.stderr",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_bytes": 0
+          }
+        }
+      ],
+      "complete": true,
+      "reference_generation_ns": 90811479875,
+      "request_sha256": "6df18bfbdba186d52a14f6f1f7b6ca066f8a08d4aac635246885e1e3344e95aa",
+      "request_bytes": 130132174,
+      "request_names": [
+        "scalar-4",
+        "partial-4",
+        "signed-4",
+        "late-failure-4",
+        "scalar-8",
+        "partial-8",
+        "signed-8",
+        "late-failure-8",
+        "closed-scalar-4",
+        "closed-partial-4",
+        "truncated-4",
+        "trailing-4",
+        "header-4",
+        "identity-4",
+        "piece-4",
+        "row-4",
+        "tree-4",
+        "noncanonical-tree-4",
+        "noncanonical-piece-4",
+        "noncanonical-row-4",
+        "unauthenticated-column-4",
+        "mu-path-4",
+        "import-path-4",
+        "import-cap-4",
+        "import-shape-4",
+        "context-4",
+        "tail-4",
+        "closed-signed-4",
+        "closed-scalar-8",
+        "closed-partial-8",
+        "truncated-8",
+        "trailing-8",
+        "header-8",
+        "identity-8",
+        "piece-8",
+        "row-8",
+        "tree-8",
+        "noncanonical-tree-8",
+        "noncanonical-piece-8",
+        "noncanonical-row-8",
+        "unauthenticated-column-8",
+        "mu-path-8",
+        "import-path-8",
+        "import-cap-8",
+        "import-shape-8",
+        "context-8",
+        "tail-8",
+        "closed-signed-8",
+        "byte-range-4-0",
+        "byte-range-4-2",
+        "byte-range-8-0",
+        "byte-range-8-2",
+        "closed-byte-range-4-0",
+        "closed-byte-range-4-2",
+        "truncated-4",
+        "trailing-4",
+        "header-4",
+        "identity-4",
+        "piece-4",
+        "row-4",
+        "tree-4",
+        "noncanonical-tree-4",
+        "noncanonical-piece-4",
+        "noncanonical-row-4",
+        "unauthenticated-column-4",
+        "mu-path-4",
+        "import-path-4",
+        "import-cap-4",
+        "import-shape-4",
+        "context-4",
+        "closed-byte-range-8-0",
+        "closed-byte-range-8-2",
+        "truncated-8",
+        "trailing-8",
+        "header-8",
+        "identity-8",
+        "piece-8",
+        "row-8",
+        "tree-8",
+        "noncanonical-tree-8",
+        "noncanonical-piece-8",
+        "noncanonical-row-8",
+        "unauthenticated-column-8",
+        "mu-path-8",
+        "import-path-8",
+        "import-cap-8",
+        "import-shape-8",
+        "context-8"
+      ],
+      "caller_command": [
+        "cargo",
+        "run",
+        "-q",
+        "-p",
+        "stele-negative-controls",
+        "--example",
+        "lookup_corpus",
+        "--locked",
+        "--offline"
+      ],
+      "controller_recovery": {
+        "initial_driver": "/tmp/stele-lookup-profile-measure.py",
+        "initial_sha256": "d21dbf1234de12a9eb8ed7fccc6479182ea9ce74344aa2977f63b138b4688e7e",
+        "resume_driver": "/tmp/stele-lookup-profile-resume.py",
+        "resume_sha256": "43bb734030a5c8a2fbdbfe77289032a7e0342ec455d6ba8163ed735e0b2fa46e",
+        "failure": "Original driver intercepted its own git check after the completed dev sample. Preserve dev; run only missing test sample; repeat independent reference generation for final comparison.",
+        "initial_log_sha256": "b6dbf0640687108b93d5806e5b2532567341054b4fde7cc5114de11df1da9b03"
+      },
+      "reference_regeneration_ns": 90224262834,
+      "exact_native_output_equal": true,
+      "safety_and_features_equal": true,
+      "independent_receipt": "lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\nlookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41\nbyte range corpus: 4 complete proofs, 4 accepts and 32 rejects; QM31/OM31; fixed prefix, bytes, records, imports and usage; SHA256 edfd2629223cacc9320e84637e63c2de252e8b6b915e8cc41caca82c6b50af28\n",
+      "independent_receipt_sha256": "f0614f643cbc8521f555e9ebd1702b6d4bef3c37d17d51211650176bc5436ffe",
+      "ended_at": "2026-11-03T08:57:44.749393+00:00"
+    },
+    "raw_artifacts": {
+      "requests.jsonl": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/requests.jsonl",
+        "bytes": 130132174,
+        "sha256": "6df18bfbdba186d52a14f6f1f7b6ca066f8a08d4aac635246885e1e3344e95aa"
+      },
+      "independent.stdout": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/independent.stdout",
+        "bytes": 621,
+        "sha256": "f0614f643cbc8521f555e9ebd1702b6d4bef3c37d17d51211650176bc5436ffe"
+      },
+      "plan.json": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/plan.json",
+        "bytes": 1863,
+        "sha256": "71067eb76a55b57f053f9bec43fe32515d6e9aab54d8f97855283a33396659ff"
+      },
+      "results.json": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/results.json",
+        "bytes": 21160,
+        "sha256": "baed2ad60f12d25053485139db32572a87775b1cf860a7c7f321e8f476c91fbf"
+      },
+      "dev-build.stdout": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/dev-build.stdout",
+        "bytes": 24588,
+        "sha256": "c98b4fdabbbb8a1017831fc20a577b1db77069a540c01e687092d2c8bf73ab2e"
+      },
+      "dev-build.stderr": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/dev-build.stderr",
+        "bytes": 35969,
+        "sha256": "2163b43959960963ebfda93e7b3c75c011bee138e3d7fa2c48cb80d6c53fce2d"
+      },
+      "dev-corpus.stdout": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/dev-corpus.stdout",
+        "bytes": 11988695,
+        "sha256": "696c8d334a774911085800745243056a35e529938345e3e065144cbeba95bab2"
+      },
+      "dev-corpus.stderr": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/dev-corpus.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "test-build.stdout": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/test-build.stdout",
+        "bytes": 24649,
+        "sha256": "2d15c86b19a0e76a0ead379c264d14ec915616577e974319c5cd3447b3416dbc"
+      },
+      "test-build.stderr": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/test-build.stderr",
+        "bytes": 36996,
+        "sha256": "819aef5c443bb84c0043559f70e1eee8e9327136ff4e007461d62d588d982c26"
+      },
+      "test-corpus.stdout": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/test-corpus.stdout",
+        "bytes": 11988695,
+        "sha256": "696c8d334a774911085800745243056a35e529938345e3e065144cbeba95bab2"
+      },
+      "test-corpus.stderr": {
+        "path": "/tmp/stele-lookup-profile-f2dfd91/test-corpus.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "measurement_receipt_sha256": "baed2ad60f12d25053485139db32572a87775b1cf860a7c7f321e8f476c91fbf",
+    "measurement_driver_source": "\"\"\"E0-10: one frozen-source dev/test pair on the real 88-request corpus.\"\"\"\nfrom contextlib import redirect_stdout\nfrom datetime import datetime, timezone\nimport hashlib\nimport importlib.util\nimport io\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport subprocess\nimport sys\nimport time\nimport tomllib\n\nROOT = Path('/tmp/stele-post278-frontier')\nOUT = Path('/tmp/stele-lookup-profile-f2dfd91')\nHEAD = 'f2dfd917baf00b8419dbf264c5f3cbdafa052d46'\nTREE = '40a363a22c7f2826b41763f2a213a51cea6624f8'\noriginal_run = subprocess.run\n\ndef sha(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\n\ndef stamp():\n    return datetime.now(timezone.utc).isoformat()\n\ndef read(args):\n    return subprocess.check_output(args, cwd=ROOT, text=True).strip()\n\ndef clean_source():\n    assert read(['git', 'rev-parse', 'HEAD']) == HEAD\n    assert read(['git', 'rev-parse', 'HEAD^{tree}']) == TREE\n    assert not read(['git', 'status', '--porcelain'])\n\nclean_source()\noverrides = [k for k, v in os.environ.items() if v and (\n    k.startswith('CARGO_PROFILE_') or k in {'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS',\n    'CARGO_BUILD_RUSTFLAGS', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTC',\n    'CARGO_BUILD_TARGET', 'CARGO_TARGET_DIR'})]\nassert not overrides, ('Unexpected compiler override names', overrides)\nconfig = tomllib.loads((ROOT/'Cargo.toml').read_text())\nassert config['profile']['test'] == {\n    'opt-level': 2, 'debug-assertions': True, 'overflow-checks': True}\nassert 'dev' not in config['profile']\nOUT.mkdir()\npaths = ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml',\n    'tests/negative-controls/lookup_corpus.py', 'tests/negative-controls/lookup_closed.py',\n    'tests/negative-controls/lookup_corpus.py.lock',\n    'tests/negative-controls/examples/lookup_corpus.rs']\nplan = dict(task='E0-10', source_commit=HEAD, source_tree=TREE,\n    source_sha256={p: sha(ROOT/p) for p in paths},\n    order=['dev', 'test'], repetitions=1, requests=88,\n    build='Separate empty Cargo target directories; ordinary example, locked/offline.',\n    execution='One direct complete stdin batch per binary; build and execution disjoint.',\n    oracle='Unchanged lookup_corpus.main generates expected inputs/results once and checks every result.',\n    qualifications=['Shared macOS host; original workers neither inspected nor manipulated.',\n        'One ordered screening pair, without warmups, retries or discarded results.',\n        'No statistical, whole-CI, GPU or inference speedup claim.',\n        'Reference generation, native compilation and native execution are separate work.',\n        'The parent native gate and historical Requant campaigns are not rerun by this measurement.'],\n    controller_sha256=sha(Path(__file__)), started_at=stamp())\n(OUT/'plan.json').write_text(json.dumps(plan, indent=2)+'\\n')\nresults = dict(plan=plan, python=sys.version, host=platform.platform(),\n    cpu=read(['sysctl', '-n', 'machdep.cpu.brand_string']),\n    rustc=read(['rustc', '--version', '--verbose']), cargo=read(['cargo', '--version']),\n    configurations=[], complete=False)\n\ndef save():\n    (OUT/'results.json').write_text(json.dumps(results, indent=2)+'\\n')\n\ndef run(label, argv, env, request=None):\n    stdout, stderr = OUT/(label+'.stdout'), OUT/(label+'.stderr')\n    record = dict(label=label, argv=argv, cwd=str(ROOT), started_at=stamp(),\n        load_before=[str(x) for x in os.getloadavg()])\n    print(json.dumps({'start': label}), file=sys.__stdout__, flush=True)\n    start = time.monotonic_ns()\n    with stdout.open('xb') as out, stderr.open('xb') as err:\n        completed = original_run(argv, cwd=ROOT, env=env, input=request, stdout=out, stderr=err)\n    record.update(wall_ns=time.monotonic_ns()-start, exit_code=completed.returncode,\n        ended_at=stamp(), load_after=[str(x) for x in os.getloadavg()],\n        stdout=str(stdout), stdout_sha256=sha(stdout), stdout_bytes=stdout.stat().st_size,\n        stderr=str(stderr), stderr_sha256=sha(stderr), stderr_bytes=stderr.stat().st_size)\n    print(json.dumps({'finish': label, 'exit_code': record['exit_code'],\n        'wall_ns': record['wall_ns']}), file=sys.__stdout__, flush=True)\n    return record\n\nsave()\ncalls = 0\nstarted = time.monotonic_ns()\n\ndef native_pair(command, **kwargs):\n    global calls\n    calls += 1\n    assert calls == 1\n    assert command == ['cargo', 'run', '-q', '-p', 'stele-negative-controls',\n        '--example', 'lookup_corpus', '--locked', '--offline']\n    assert kwargs['cwd'] == ROOT.resolve() and kwargs['text'] is True and kwargs['capture_output'] is True\n    request = kwargs['input'].encode()\n    inputs = [json.loads(line) for line in request.splitlines()]\n    assert len(inputs) == 88\n    (OUT/'requests.jsonl').write_bytes(request)\n    results.update(reference_generation_ns=time.monotonic_ns()-started,\n        request_sha256=sha(OUT/'requests.jsonl'), request_bytes=len(request),\n        request_names=[case['name'] for case in inputs], caller_command=command)\n    save()\n    outputs, features = [], []\n    for profile, level in [('dev', '0'), ('test', '2')]:\n        target = OUT/('target-'+profile)\n        target.mkdir()\n        env_options = {'CARGO_TARGET_DIR': str(target), 'CARGO_TERM_COLOR': 'never'}\n        env = dict(os.environ, **env_options)\n        item = dict(profile=profile, env=env_options)\n        results['configurations'].append(item)\n        argv = ['cargo', 'build', '--profile', profile, '-p', 'stele-negative-controls',\n            '--example', 'lookup_corpus', '--locked', '--offline', '--verbose', '--message-format=json']\n        item['build'] = run(profile+'-build', argv, env)\n        save()\n        assert item['build']['exit_code'] == 0\n        messages = [json.loads(line) for line in Path(item['build']['stdout']).read_text().splitlines()]\n        assert any(m['reason'] == 'build-finished' and m['success'] for m in messages)\n        artifacts = [m for m in messages if m['reason'] == 'compiler-artifact']\n        selected = [m for m in artifacts if m['target']['name'] == 'lookup_corpus'\n                    and m['target']['kind'] == ['example'] and m['executable']]\n        assert len(selected) == 1\n        artifact = selected[0]\n        executable = Path(artifact['executable']).resolve()\n        assert executable.is_relative_to(target.resolve()) and executable.is_file()\n        item.update(artifact=artifact, executable_sha256=sha(executable))\n        runtime = [m for m in artifacts if m['target']['name'].startswith('stele_')\n                   or m['target']['name'] == 'lookup_corpus']\n        assert len(runtime) >= 10\n        for m in runtime:\n            p = m['profile']\n            assert p['opt_level'] == level and p['debug_assertions'] and p['overflow_checks']\n            assert p['test'] is False\n        graph = {m['target']['name']: sorted(m['features']) for m in runtime}\n        assert len(graph) == len(runtime)\n        features.append(graph)\n        item['runtime_artifacts'] = [dict(name=m['target']['name'], features=m['features'],\n            profile=m['profile']) for m in runtime]\n        save()\n        item['corpus'] = run(profile+'-corpus', [str(executable)], env, request)\n        save()\n        assert item['corpus']['exit_code'] == 0\n        output = Path(item['corpus']['stdout']).read_bytes()\n        assert Path(item['corpus']['stderr']).read_bytes() == b''\n        assert len(output.splitlines()) == 88\n        outputs.append(output)\n        assert sha(executable) == item['executable_sha256']\n        clean_source()\n    assert outputs[0] == outputs[1] and features[0] == features[1]\n    results.update(exact_native_output_equal=True, safety_and_features_equal=True)\n    save()\n    return subprocess.CompletedProcess(command, 0, stdout=outputs[1].decode(), stderr='')\n\nsys.path.insert(0, str(ROOT/'tests/negative-controls'))\nspec = importlib.util.spec_from_file_location('e010_lookup', ROOT/'tests/negative-controls/lookup_corpus.py')\nmodule = importlib.util.module_from_spec(spec)\nsys.modules[spec.name] = module\nspec.loader.exec_module(module)\nreceipt = io.StringIO()\nsubprocess.run = native_pair\ntry:\n    with redirect_stdout(receipt):\n        module.main()\nfinally:\n    subprocess.run = original_run\nassert calls == 1\noutput = receipt.getvalue()\nassert len(output.splitlines()) == 3\n(OUT/'independent.stdout').write_text(output)\nclean_source()\nassert plan['source_sha256'] == {p: sha(ROOT/p) for p in paths}\nresults.update(complete=True, independent_receipt=output,\n    independent_receipt_sha256=sha(OUT/'independent.stdout'), ended_at=stamp())\nsave()\nprint(json.dumps({'complete': True, 'receipt': str(OUT/'results.json'),\n    'sha256': sha(OUT/'results.json')}), flush=True)\n",
+    "recovery_driver_source": "\"\"\"E0-10: one frozen-source dev/test pair on the real 88-request corpus.\"\"\"\nfrom contextlib import redirect_stdout\nfrom datetime import datetime, timezone\nimport hashlib\nimport importlib.util\nimport io\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport subprocess\nimport sys\nimport time\nimport tomllib\n\nROOT = Path('/tmp/stele-post278-frontier')\nOUT = Path('/tmp/stele-lookup-profile-f2dfd91')\nHEAD = 'f2dfd917baf00b8419dbf264c5f3cbdafa052d46'\nTREE = '40a363a22c7f2826b41763f2a213a51cea6624f8'\noriginal_run = subprocess.run\n\ndef sha(path):\n    return hashlib.sha256(path.read_bytes()).hexdigest()\n\ndef stamp():\n    return datetime.now(timezone.utc).isoformat()\n\ndef read(args):\n    return subprocess.check_output(args, cwd=ROOT, text=True).strip()\n\ndef clean_source():\n    assert read(['git', 'rev-parse', 'HEAD']) == HEAD\n    assert read(['git', 'rev-parse', 'HEAD^{tree}']) == TREE\n    assert not read(['git', 'status', '--porcelain'])\n\nclean_source()\noverrides = [k for k, v in os.environ.items() if v and (\n    k.startswith('CARGO_PROFILE_') or k in {'RUSTFLAGS', 'CARGO_ENCODED_RUSTFLAGS',\n    'CARGO_BUILD_RUSTFLAGS', 'RUSTC_WRAPPER', 'RUSTC_WORKSPACE_WRAPPER', 'RUSTC',\n    'CARGO_BUILD_TARGET', 'CARGO_TARGET_DIR'})]\nassert not overrides, ('Unexpected compiler override names', overrides)\nconfig = tomllib.loads((ROOT/'Cargo.toml').read_text())\nassert config['profile']['test'] == {\n    'opt-level': 2, 'debug-assertions': True, 'overflow-checks': True}\nassert 'dev' not in config['profile']\nassert OUT.is_dir()\npaths = ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml',\n    'tests/negative-controls/lookup_corpus.py', 'tests/negative-controls/lookup_closed.py',\n    'tests/negative-controls/lookup_corpus.py.lock',\n    'tests/negative-controls/examples/lookup_corpus.rs']\nplan = dict(task='E0-10', source_commit=HEAD, source_tree=TREE,\n    source_sha256={p: sha(ROOT/p) for p in paths},\n    order=['dev', 'test'], repetitions=1, requests=88,\n    build='Separate empty Cargo target directories; ordinary example, locked/offline.',\n    execution='One direct complete stdin batch per binary; build and execution disjoint.',\n    oracle='Unchanged lookup_corpus.main generates expected inputs/results once and checks every result.',\n    qualifications=['Shared macOS host; original workers neither inspected nor manipulated.',\n        'One ordered screening pair, without warmups, retries or discarded results.',\n        'No statistical, whole-CI, GPU or inference speedup claim.',\n        'Reference generation, native compilation and native execution are separate work.',\n        'The parent native gate and historical Requant campaigns are not rerun by this measurement.'],\n    controller_sha256=sha(Path(__file__)), started_at=stamp())\nplan = json.loads((OUT/'plan.json').read_bytes())\nresults = dict(plan=plan, python=sys.version, host=platform.platform(),\n    cpu=read(['sysctl', '-n', 'machdep.cpu.brand_string']),\n    rustc=read(['rustc', '--version', '--verbose']), cargo=read(['cargo', '--version']),\n    configurations=[], complete=False)\n\ndef save():\n    (OUT/'results.json').write_text(json.dumps(results, indent=2)+'\\n')\n\ndef run(label, argv, env, request=None):\n    stdout, stderr = OUT/(label+'.stdout'), OUT/(label+'.stderr')\n    record = dict(label=label, argv=argv, cwd=str(ROOT), started_at=stamp(),\n        load_before=[str(x) for x in os.getloadavg()])\n    print(json.dumps({'start': label}), file=sys.__stdout__, flush=True)\n    start = time.monotonic_ns()\n    with stdout.open('xb') as out, stderr.open('xb') as err:\n        completed = original_run(argv, cwd=ROOT, env=env, input=request, stdout=out, stderr=err)\n    record.update(wall_ns=time.monotonic_ns()-start, exit_code=completed.returncode,\n        ended_at=stamp(), load_after=[str(x) for x in os.getloadavg()],\n        stdout=str(stdout), stdout_sha256=sha(stdout), stdout_bytes=stdout.stat().st_size,\n        stderr=str(stderr), stderr_sha256=sha(stderr), stderr_bytes=stderr.stat().st_size)\n    print(json.dumps({'finish': label, 'exit_code': record['exit_code'],\n        'wall_ns': record['wall_ns']}), file=sys.__stdout__, flush=True)\n    return record\n\nresults = json.loads((OUT/'results.json').read_bytes())\nassert not results['complete'] and len(results['configurations']) == 1\nassert results['configurations'][0]['corpus']['exit_code'] == 0\nresults['controller_recovery'] = dict(initial_driver='/tmp/stele-lookup-profile-measure.py', initial_sha256=plan['controller_sha256'], resume_driver=str(Path(__file__)), resume_sha256=sha(Path(__file__)), failure='Original driver intercepted its own git check after the completed dev sample. Preserve dev; run only missing test sample; repeat independent reference generation for final comparison.', initial_log_sha256=sha(Path('/tmp/stele-lookup-profile-measure.log')))\nsave()\ncalls = 0\nstarted = time.monotonic_ns()\n\ndef native_pair(command, **kwargs):\n    global calls\n    if command != ['cargo', 'run', '-q', '-p', 'stele-negative-controls', '--example', 'lookup_corpus', '--locked', '--offline']:\n        return original_run(command, **kwargs)\n    calls += 1\n    assert calls == 1\n    assert command == ['cargo', 'run', '-q', '-p', 'stele-negative-controls',\n        '--example', 'lookup_corpus', '--locked', '--offline']\n    assert kwargs['cwd'] == ROOT.resolve() and kwargs['text'] is True and kwargs['capture_output'] is True\n    request = kwargs['input'].encode()\n    inputs = [json.loads(line) for line in request.splitlines()]\n    assert len(inputs) == 88\n    assert (OUT/'requests.jsonl').read_bytes() == request\n    results.update(reference_regeneration_ns=time.monotonic_ns()-started,\n        request_sha256=sha(OUT/'requests.jsonl'), request_bytes=len(request),\n        request_names=[case['name'] for case in inputs], caller_command=command)\n    save()\n    dev = results['configurations'][0]\n    assert sha(Path(dev['artifact']['executable'])) == dev['executable_sha256']\n    for phase in ('build', 'corpus'):\n        for stream in ('stdout', 'stderr'):\n            assert sha(Path(dev[phase][stream])) == dev[phase][stream+'_sha256']\n    clean_source()\n    outputs = [Path(dev['corpus']['stdout']).read_bytes()]\n    features = [{row['name']: sorted(row['features']) for row in dev['runtime_artifacts']}]\n    for profile, level in [('test', '2')]:\n        target = OUT/('target-'+profile)\n        target.mkdir()\n        env_options = {'CARGO_TARGET_DIR': str(target), 'CARGO_TERM_COLOR': 'never'}\n        env = dict(os.environ, **env_options)\n        item = dict(profile=profile, env=env_options)\n        results['configurations'].append(item)\n        argv = ['cargo', 'build', '--profile', profile, '-p', 'stele-negative-controls',\n            '--example', 'lookup_corpus', '--locked', '--offline', '--verbose', '--message-format=json']\n        item['build'] = run(profile+'-build', argv, env)\n        save()\n        assert item['build']['exit_code'] == 0\n        messages = [json.loads(line) for line in Path(item['build']['stdout']).read_text().splitlines()]\n        assert any(m['reason'] == 'build-finished' and m['success'] for m in messages)\n        artifacts = [m for m in messages if m['reason'] == 'compiler-artifact']\n        selected = [m for m in artifacts if m['target']['name'] == 'lookup_corpus'\n                    and m['target']['kind'] == ['example'] and m['executable']]\n        assert len(selected) == 1\n        artifact = selected[0]\n        executable = Path(artifact['executable']).resolve()\n        assert executable.is_relative_to(target.resolve()) and executable.is_file()\n        item.update(artifact=artifact, executable_sha256=sha(executable))\n        runtime = [m for m in artifacts if m['target']['name'].startswith('stele_')\n                   or m['target']['name'] == 'lookup_corpus']\n        assert len(runtime) >= 10\n        for m in runtime:\n            p = m['profile']\n            assert p['opt_level'] == level and p['debug_assertions'] and p['overflow_checks']\n            assert p['test'] is False\n        graph = {m['target']['name']: sorted(m['features']) for m in runtime}\n        assert len(graph) == len(runtime)\n        features.append(graph)\n        item['runtime_artifacts'] = [dict(name=m['target']['name'], features=m['features'],\n            profile=m['profile']) for m in runtime]\n        save()\n        item['corpus'] = run(profile+'-corpus', [str(executable)], env, request)\n        save()\n        assert item['corpus']['exit_code'] == 0\n        output = Path(item['corpus']['stdout']).read_bytes()\n        assert Path(item['corpus']['stderr']).read_bytes() == b''\n        assert len(output.splitlines()) == 88\n        outputs.append(output)\n        assert sha(executable) == item['executable_sha256']\n        clean_source()\n    assert outputs[0] == outputs[1] and features[0] == features[1]\n    results.update(exact_native_output_equal=True, safety_and_features_equal=True)\n    save()\n    return subprocess.CompletedProcess(command, 0, stdout=outputs[1].decode(), stderr='')\n\nsys.path.insert(0, str(ROOT/'tests/negative-controls'))\nspec = importlib.util.spec_from_file_location('e010_lookup', ROOT/'tests/negative-controls/lookup_corpus.py')\nmodule = importlib.util.module_from_spec(spec)\nsys.modules[spec.name] = module\nspec.loader.exec_module(module)\nreceipt = io.StringIO()\nsubprocess.run = native_pair\ntry:\n    with redirect_stdout(receipt):\n        module.main()\nfinally:\n    subprocess.run = original_run\nassert calls == 1\noutput = receipt.getvalue()\nassert len(output.splitlines()) == 3\n(OUT/'independent.stdout').write_text(output)\nclean_source()\nassert plan['source_sha256'] == {p: sha(ROOT/p) for p in paths}\nresults.update(complete=True, independent_receipt=output,\n    independent_receipt_sha256=sha(OUT/'independent.stdout'), ended_at=stamp())\nsave()\nprint(json.dumps({'complete': True, 'receipt': str(OUT/'results.json'),\n    'sha256': sha(OUT/'results.json')}), flush=True)\n",
+    "initial_driver_failure": "{\"start\": \"dev-build\"}\n{\"finish\": \"dev-build\", \"exit_code\": 0, \"wall_ns\": 20042871916}\n{\"start\": \"dev-corpus\"}\n{\"finish\": \"dev-corpus\", \"exit_code\": 0, \"wall_ns\": 49681239125}\nTraceback (most recent call last):\n  File \"/tmp/stele-lookup-profile-measure.py\", line 166, in <module>\n    module.main()\n  File \"/tmp/stele-post278-frontier/tests/negative-controls/lookup_corpus.py\", line 311, in main\n    native = subprocess.run(['cargo', 'run', '-q', '-p', 'stele-negative-controls', '--example', 'lookup_corpus', '--locked', '--offline'],\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/stele-lookup-profile-measure.py\", line 151, in native_pair\n    clean_source()\n  File \"/tmp/stele-lookup-profile-measure.py\", line 32, in clean_source\n    assert read(['git', 'rev-parse', 'HEAD']) == HEAD\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/stele-lookup-profile-measure.py\", line 29, in read\n    return subprocess.check_output(args, cwd=ROOT, text=True).strip()\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/abdel/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/subprocess.py\", line 466, in check_output\n    return run(*popenargs, stdout=PIPE, timeout=timeout, check=True,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/stele-lookup-profile-measure.py\", line 95, in native_pair\n    assert calls == 1\n           ^^^^^^^^^^\nAssertionError\n",
+    "verification_source": "\"\"\"E0-10: verify saved same-source measurements and export the micro ledger.\"\"\"\nfrom collections import Counter\nimport hashlib\nimport json\nfrom pathlib import Path\nimport subprocess\n\nROOT = Path('/tmp/stele-post278-frontier')\nOUT = Path('/tmp/stele-lookup-profile-f2dfd91')\n\ndef sha(raw):\n    return hashlib.sha256(raw).hexdigest()\n\nraw = (OUT/'results.json').read_bytes()\ndata = json.loads(raw)\nplan = data['plan']\nassert data['complete'] and data['exact_native_output_equal'] and data['safety_and_features_equal']\nassert plan == json.loads((OUT/'plan.json').read_bytes())\ncontroller = Path('/tmp/stele-lookup-profile-measure.py').read_bytes()\nassert sha(controller) == plan['controller_sha256']\nrecovery = data['controller_recovery']\nresume = Path(recovery['resume_driver']).read_bytes()\nassert sha(resume) == recovery['resume_sha256']\ninitial_log = Path('/tmp/stele-lookup-profile-measure.log').read_bytes()\nassert sha(initial_log) == recovery['initial_log_sha256'] and b'AssertionError' in initial_log\nassert subprocess.check_output(['git','rev-parse',plan['source_commit']+'^{tree}'],\n    cwd=ROOT,text=True).strip() == plan['source_tree']\nfor path, digest in plan['source_sha256'].items():\n    assert sha(subprocess.check_output(['git','show',plan['source_commit']+':'+path],cwd=ROOT)) == digest\nrequest = (OUT/'requests.jsonl').read_bytes()\nassert sha(request) == data['request_sha256'] and len(request) == data['request_bytes']\nassert len(request.splitlines()) == 88\nartifacts = {name:dict(path=str(OUT/name), bytes=(OUT/name).stat().st_size,\n    sha256=sha((OUT/name).read_bytes())) for name in ('requests.jsonl','independent.stdout','plan.json','results.json')}\ntimes, outputs, graphs = {}, [], []\nassert [c['profile'] for c in data['configurations']] == ['dev','test']\nfor item, level in zip(data['configurations'], ['0','2']):\n    graph = {}\n    for runtime in item['runtime_artifacts']:\n        p=runtime['profile']\n        assert p['opt_level']==level and p['debug_assertions'] and p['overflow_checks'] and not p['test']\n        graph[runtime['name']]=sorted(runtime['features'])\n    graphs.append(graph)\n    assert sha(Path(item['artifact']['executable']).read_bytes()) == item['executable_sha256']\n    for phase in ('build','corpus'):\n        record=item[phase]\n        assert record['exit_code']==0\n        times[item['profile']+'_'+phase]=record['wall_ns']\n        for stream in ('stdout','stderr'):\n            path=Path(record[stream]); content=path.read_bytes()\n            assert path.parent==OUT and path.name not in artifacts\n            assert len(content)==record[stream+'_bytes'] and sha(content)==record[stream+'_sha256']\n            artifacts[path.name]=dict(path=str(path),bytes=len(content),sha256=sha(content))\n    assert not Path(item['corpus']['stderr']).read_bytes()\n    outputs.append(Path(item['corpus']['stdout']).read_bytes())\nassert outputs[0]==outputs[1] and graphs[0]==graphs[1]\nrows=[json.loads(line) for line in outputs[0].splitlines()]\nassert len(rows)==88\ndecisions=Counter(row['outcome'] if 'outcome' in row else\n    ('accept' if row['decision']=='accept' else 'reject') for row in rows)\nassert decisions=={'produced':10,'error':2,'accept':12,'reject':64}, decisions\nassert sha((OUT/'independent.stdout').read_bytes())==data['independent_receipt_sha256']\nassert (OUT/'independent.stdout').read_text()==data['independent_receipt']\nassert len(data['independent_receipt'].splitlines())==3\nledger=dict(schema_version=1,kind='micro',workload='micro/lookup-corpus-profile',\n    commit=plan['source_commit'],toolchain=data['rustc']+'; '+data['cargo'],\n    device=data['cpu'],driver='not-applicable: CPU; '+data['host'],\n    model_config=dict(plan=plan,measurement=data,raw_artifacts=artifacts,\n        measurement_receipt_sha256=sha(raw),measurement_driver_source=controller.decode(),\n        recovery_driver_source=resume.decode(),initial_driver_failure=initial_log.decode(),\n        verification_source=Path(__file__).read_text(),decisions_per_run=dict(decisions),\n        rejection_reasons=dict(Counter(row['decision'] for row in rows\n            if 'decision' in row and row['decision']!='accept')),\n        qualification='One dev-then-test screening pair on a shared host. Separate empty target directories; actual cold builds and direct complete native executions. A driver bookkeeping failure after dev required a second independent reference generation, which matched the saved 88-request input exactly. The dev sample was retained; only the missing test sample ran on resume. The unchanged oracle then checked all results. Raw native outputs are byte-identical; no native warmups, retries or discarded samples.'),\n    plan_digest=sha(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()),\n    profile='standard',bindings_all_on=True,batch_size=1,prompt_tokens=0,generated_tokens=0,\n    prover_time_ns=sum(times.values()),witness_recompute_ns=0,stage_times_ns=times,\n    kernel_counters=dict(cold_builds=2,complete_native_corpus_runs=2,requests_per_run=88,\n        produced_per_run=10,production_errors_per_run=2,accepted_per_run=12,rejected_per_run=64,\n        independent_reference_generations=2,complete_reference_comparisons=1,checked_profile_configurations=2),\n    proof_size_bytes=0,verifier_time_ns=dict(rust=0,python=0),controls=dict(total=0,passed=0,failed=0),\n    note='RFC-0020 section 5 / RFC-0018 section 1, E0-10. Validation cost only. The standard tag and zero proof/verifier/control slots are micro-schema fields, not inference/profile admission or new control coverage. prover_time_ns sums only the four disjoint native build/execution phases; reference generation is separately recorded and is not an end-to-end Python verifier benchmark. Default features, debug assertions and overflow checks stay enabled. No original worker or historical campaign was touched. Shared-host single-pair evidence supplies no confidence interval, whole-CI latency result, inference cost constant or GPU result.')\npath=ROOT/'bench/ledger/e0-10-lookup-corpus-profile.json'\nassert not path.exists()\npath.write_text(json.dumps(ledger,indent=2)+'\\n')\nassert path.stat().st_size < 1<<20\nprint(json.dumps({'ledger':str(path),'sha256':sha(path.read_bytes()),'bytes':path.stat().st_size,\n    'stage_times_ns':times,'decisions_per_run':dict(decisions)}))\n",
+    "decisions_per_run": {
+      "produced": 10,
+      "error": 2,
+      "accept": 12,
+      "reject": 64
+    },
+    "rejection_reasons": {
+      "ProofShape": 20,
+      "CertificateIdentity": 4,
+      "PieceSumMismatch": 4,
+      "Pcs(ValueMismatch)": 4,
+      "Fraction(Sumcheck(FinalEvaluationMismatch))": 4,
+      "Fraction(NoncanonicalField)": 4,
+      "Pcs(NoncanonicalField)": 4,
+      "Pcs(Merkle(RootMismatch))": 12,
+      "ResourceLimit": 4,
+      "CertificateContext": 4
+    },
+    "qualification": "One dev-then-test screening pair on a shared host. Separate empty target directories; actual cold builds and direct complete native executions. A driver bookkeeping failure after dev required a second independent reference generation, which matched the saved 88-request input exactly. The dev sample was retained; only the missing test sample ran on resume. The unchanged oracle then checked all results. Raw native outputs are byte-identical; no native warmups, retries or discarded samples."
+  },
+  "plan_digest": "de1dad871c6096a196b6516f08587846cea693fd563ddb6a617d73ca7fa45365",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 111651033999,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "dev_build": 20042871916,
+    "dev_corpus": 49681239125,
+    "test_build": 37540235583,
+    "test_corpus": 4386687375
+  },
+  "kernel_counters": {
+    "cold_builds": 2,
+    "complete_native_corpus_runs": 2,
+    "requests_per_run": 88,
+    "produced_per_run": 10,
+    "production_errors_per_run": 2,
+    "accepted_per_run": 12,
+    "rejected_per_run": 64,
+    "independent_reference_generations": 2,
+    "complete_reference_comparisons": 1,
+    "checked_profile_configurations": 2
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "RFC-0020 section 5 / RFC-0018 section 1, E0-10. Validation cost only. The standard tag and zero proof/verifier/control slots are micro-schema fields, not inference/profile admission or new control coverage. prover_time_ns sums only the four disjoint native build/execution phases; reference generation is separately recorded and is not an end-to-end Python verifier benchmark. Default features, debug assertions and overflow checks stay enabled. No original worker or historical campaign was touched. Shared-host single-pair evidence supplies no confidence interval, whole-CI latency result, inference cost constant or GPU result."
+}
