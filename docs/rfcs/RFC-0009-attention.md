@@ -105,3 +105,52 @@ original raw-score matmul is insufficient for these restored units. GQA uses
 floor(t/(h/g)); cached positions select the same public rotation and absolute
 accumulation block as full evaluation. All new source/scale/rotation/comparison
 consumers, static schemas and accounting remain mandatory before admission.
+
+### A3 — Complete configured attention semantics
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12.
+Motivation: A2's source/unit correction needs the complete model configuration
+and static collection rather than the earlier research descriptor.
+
+For RFC-0025 models, replace §§1,2,6's numerical definitions with
+[RFC-0025 §2.4](RFC-0025-full-model-cqis.md) and its attention, function and
+weighted-bound appendices. Preserve the existing reverse claim flow, attained
+maximum, selected exponential representation, actual mask/lookup consumers and
+uncommitted attention intermediates. Numerical schemas do not instantiate those
+reductions or add an advice cut.
+
+Q/K/V conversions cover their complete projection rows before head/group views.
+Each view retains the same row scale and units. Restore V scales in every
+weighted product, retain absolute 1024-key blocks including masked zero slots,
+and restore the configured block drop in the final single rounding. Assemble
+all heads before the O-input whole-row conversion. Static score and block bounds
+use the full configured domains; actual request length cannot tighten them.
+
+E7-06/07 retain complete claim/point/source schedules, integer and field range
+checks, full-context memory gates, original NC-0500..0506 and the measured c_x
+ledger. NC-0123/0124 add complete-row scope and absolute-block controls. E5-04/05
+retain full/cache native parity and named fidelity after contract acceptance.
+A2 is superseded only on acceptance of this package; no loss is waived and no
+profile or challenge is added. Charge all restored-scale/rounding/source work to
+c_a/c_x/T_misc; no measured constant or online weight-pass change.
+
+### A4 — Accept complete configured attention numerics
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: restored units and whole-row scope now have a complete model contract.
+Exact replacement for §§1,2,6's RFC-0025 numerical definitions: adopt A3's
+complete configured semantics under
+[RFC-0025 §2.4 and its bound appendices](RFC-0025-full-model-cqis.md).
+A2/A3's Draft proposals are superseded in this scope. Full-row Q/K/V scales,
+restored V values, absolute 1024-key blocks, configured drop restoration and
+head assembly before one O-input conversion are mandatory. Full configured
+static admission cannot be tightened by a shorter request or observed values.
+
+The existing reverse claim flow, source/point/mask/lookup ownership and
+uncommitted intermediates remain. E7-06/07 retain all native relations,
+full-context memory gates, NC-0500..0506/0123/0124 and the measured c_x ledger.
+E5-04/05 retain native parity and named fidelity. No new challenge, loss,
+cut, profile or weight pass; actual work remains c_a/c_x/T_misc without a
+measured constant change. Affected tasks: E5-03b/04/05, E6 and E7-06/07.

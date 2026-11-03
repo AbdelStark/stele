@@ -1764,3 +1764,47 @@ The [complete component ledger](../../bench/ledger/e7-01f-integer-linear.json)
 records all 28 same-execution native/independent resource samples; the
 [production review](integer-linear-production-review.md) states their scope.
 All parent and Q12/Q29 gaps remain.
+
+## Draft RFC-0025 deterministic hash-use inventory
+
+This inventory reserves the complete-model identity uses for E5-03b. It adds no
+implemented challenge, ledger record, profile budget or cryptographic theorem.
+The exact preimages are in [RFC-0025's appendices](../rfcs/RFC-0025-full-model-cqis.md).
+The existing transcript constructor still absorbs the complete PublicInput once.
+Seed/draw hashes are deterministic data relations, never Fiat-Shamir challenges.
+
+| Hash/preimage | Required enumeration | Actual consuming owners |
+|---|---|---|
+| SHA-256 of original checkpoint/index/config/tokenizer/generation files | Every exact original File, including structurally checked ignored payloads; retain each complete byte length | E5-03, E5-05, E12-05 and original source authority |
+| BLAKE3 of Model, Scales, Registry, Bounds and the numerical identity frame | Complete child bytes and the exact four-hash cqis_id preimage, with all semantic derivations | E5-03, E6, E8-02, E12-05 |
+| Preparation, Source, Assets and SourceConfig identities | Complete canonical frames; kind-0 original SHA-256 stays distinct from kind-1 H(Source) | E5-03, E6, E12-05 |
+| Complete Artifact digest | Every canonical metadata/payload byte, with reproducible original-source conversion and actual committed-plaintext hash relation | E5-03, E12-05, E14-02 |
+| Function/Representation/Table/rotation identities and data digests | Complete regenerated Registry component closure, existing prefixes, data and code/layout/Merkle contexts | E3-08, E6, E12-05, E14-03 |
+| Content references and Subject/Evidence/Registration/final Passport | Every present child reference and exact framed identity; no omitted role, optional-present payload, signer or signature reference | E12-05/06, E14-02, E8-02 |
+| Signature-suite internal hashes and external registry anchoring | Complete approved suite, authority, timestamp and lifecycle; separate anchoring receipt if used | E12-05 and the separately Accepted registration contract |
+| PlanTemplate, request-specific PlanInstance and recomputed ledger | Complete independently derived bytes under each child contract; no supplied hash as authority | E6, E8-02/05, E12-05 |
+| sample-seed and sample-draw domain preimages | One required seed relation even at g=0; one draw relation for each absolute generated-token position | E7-08, E8/E14 private seed/source consumers |
+| Complete TokenIO preimage | Exact prompt/continuation, q/g/reason and all original token bytes in digest mode | E6, E8/E14 input/output/hash consumers |
+
+These are semantic relations, not a bound on actual hash invocations or adversary
+queries. Count repeated validation, retries, failed attempts, recomputation,
+registration, certificate generation, openings, wrapper use and fixed-passport
+lifetime work under the eventual accepted accounting convention. Verified cache
+reuse requires the same immutable owned context; an unchecked digest match does
+not eliminate a relation. Commitment-mode token roots retain all actual PCS,
+Merkle, empty-source and private-lifetime accounting rather than a TokenIO shortcut.
+
+Q12 must compose the actual SHA-256/BLAKE3/signature/transcript/wrapper query
+domains and assumptions, including quantum adversaries and grinding. Honest
+frame counts cannot be substituted for those resource bounds. Q29 and the
+separate signature/evidence/proximity/extraction obligations remain mandatory.
+No new loss formula or MASK theorem follows from this deterministic inventory.
+Hashing and validation contribute T_misc/registration work, with no measured
+constant, profile admission or additional online weight pass.
+
+RFC-0025 acceptance disposition: the deterministic preimage families above are
+now governed by its Accepted definitions and §7.1 companion entries. No native
+challenge, loss record, numerical security budget or profile is added by that
+status change. E6/E8-05a/E12/E14 must account for the complete actual consumer
+schedule and all hash/signature/evidence queries before admission, including
+Q12/Q29 and fixed-passport lifetime requirements. All original ledger gates remain.

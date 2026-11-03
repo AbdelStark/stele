@@ -1779,3 +1779,123 @@ root. One degree-two A1 consumes both actual source projections after all
 roots and child states; every carry plane remains ranged. This is revealing
 research, with actual value/probability preparation and full composition still
 required. Accepted cuts, semantics and original task criteria are unchanged.
+
+### A11 — Complete named-model CQIS contract
+
+Status: Draft. Question Q26; task E5-03b. Proposed coordinated replacement and
+completion of A3/A6–A10: [RFC-0025](RFC-0025-full-model-cqis.md). The numerical
+contract must cover the original GPT-2-small and Llama-3.1-8B architectures,
+including exact-mean affine LayerNorm, learned positions, biases, both FFN
+forms, complete source/configuration/quantiser identity and every static
+arithmetic/range/branch/index/source obligation. Numerical evidence is in the
+[complete-model study](../../research/cqis-model-contract/REPORT.md).
+
+No prior Draft becomes Accepted through this entry. RFC-0025 §7 requires its
+remaining byte/consumer/decoding contracts and coordinated reviews before
+acceptance. Original E5-03/04/05, E6, E7 and E8 criteria remain intact, including
+actual native consumers, full named-model parity/fidelity and W8. Numerical
+agreement is not a private proof, profile, passport or full bound certificate.
+No challenge, ledger term, new cut or weight pass changes. Added numerical work
+belongs to T_witness/c_a/T_misc, with no measured constant or performance claim.
+
+The [RFC-0025 request contract](full-model-request.md) specifies A11's full
+generation boundary: an explicit sorted nonempty EOS set, generated EOS retained,
+prompt EOS ignored, and eos reason taking precedence at the token limit. It
+also defines the original prompt/token/hash/absolute-position obligations and
+schema 18, with no inherited small research entry-product cap. RFC-0001 A1
+proposes the corresponding canonical public-policy and token-I/O subrecords.
+Both remain Draft; full outer identity, source/hash, private-token and native
+consumer gates are unchanged.
+
+The [physical record bounds](full-model-physical-bounds.md) add A11's schema 19
+for every canonical tensor role, packed payload coordinate and original code/
+scale word. Complete integer addresses can exceed M31 and retain all byte
+columns. Source-container transforms and Artifact-global offsets remain separate
+obligations. This Draft addition changes no challenge, cut, measured constant or
+weight pass, and grants no native source or proof admission.
+
+The [Bounds collection](full-model-bound-collection.md) specifies the fixed
+physical and operation slots for all nineteen numerical schemas. Parameters
+come from checked Model/Scales/Registry, with complete table regeneration and
+static score/full-block admission. The header binds those three objects and
+avoids a cqis_id cycle. This Draft framing does not replace Artifact/source,
+owned-view, actual consuming-reduction or passport obligations.
+
+### A12 — Consolidated full-model semantics and delivery prerequisites
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0003 A4, RFC-0009 A3,
+RFC-0011 A7, RFC-0017 A2 and RFC-0021 A2.
+Motivation: the successive A3/A6–A11 studies use different partial descriptors
+and scale domains. Native implementation needs one complete numerical authority.
+
+Proposed replacement for §§1–3,5.2–5.8,6,7,9 for the two RFC-0025 families:
+use [RFC-0025 §§1–6 and its linked definitions](RFC-0025-full-model-cqis.md).
+The exact source conversion, role order, single-round affine/residual/position
+arithmetic, two norm kinds, both FFNs, complete-row conversions, restored
+attention units, rotary coefficients and generation rules are mandatory.
+Other architecture work retains RFC-0017 and its own complete contracts.
+Accepted A1 scalar arithmetic, A4 function definitions and A5's two native
+static schemas remain unchanged; they are not substitutes for the wider model
+operations or complete Bounds collection.
+
+In particular, static gated-row scales span 1..8454661 and use u32 in Model;
+wide int16-row scales span 1..65535. This replaces A8's u16 gated restriction.
+No int16 narrowing occurs between SiLU/up multiplication and gated conversion.
+Exact/block1024 attention is explicitly configured, with whole-row scales,
+absolute blocks and full configured static admission even for shorter requests.
+All supported source tensors and all operation slots remain in their prescribed
+order. Dense cache execution retains the full prefix and evaluates returned EOS.
+
+cqis_id is exactly the encoding appendix §6's numerical identity over complete
+Model, Scales, Registry and Bounds. This replaces §1's hash sketch and A10's
+proposal to include plan/commitment data in that identity. The complete passport
+separately binds Preparation, original Source/Assets/SourceConfig, Artifact,
+plan template, commitments and evidence; PublicInput binds its final root and
+request-specific plan/ledger identities. Every actual authority and child check
+remains required. No numerical digest authenticates its own expected value.
+
+The A7 displayed base/linear/llama3 frequency definitions are incorporated by
+RFC-0025 §2.4; the complete encoding appendix replaces the earlier candidate
+descriptor/data framing. This retains the exact functions without adopting
+the research materialization limit as a model limit.
+
+The disposition in RFC-0025 §7.1 replaces A3/A6–A11's partial numerical proposals
+when this coordinated package is accepted; their source histories and evidence
+remain. A3 item 6's Rust/NumPy parity and NC-0109, A6's native parity/fidelity,
+and A7–A10's native/source/consumer requirements are mandatory completion gates
+of E5-03/04/05, E6 and E7. They do not authorize code before specification
+acceptance or count as completed by it. The original §8 fidelity protocol and
+every parent acceptance criterion are unchanged.
+
+NC-0110..0126 reserve the newly explicit numerical/source relations alongside
+NC-0100..0109 and all attention/PCS controls. The actual consumers must earn
+coverage. No challenge, cut, profile, loss formula or online weight pass changes.
+Complete deterministic hash-use accounting and all original Q12/Q29/private
+PCS/ZK obligations remain. New arithmetic and preparation retain the explicit
+T_witness/c_a/c_lu/c_x/T_misc costs; no measured constant is claimed.
+
+### A13 — Accept canonical full-model semantics
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: native implementation needs one complete numerical contract.
+Exact replacement for §§1–3,5.2–5.8,6,7,9 for the two mandatory families:
+apply A12's complete replacement as defined by Accepted
+[RFC-0025 §§1–6 and its appendices](RFC-0025-full-model-cqis.md).
+A12's disposition of A3/A6–A11 is now effective. Its wide gated scale domain,
+complete-row conversions, configured attention, exact source/role ordering,
+full-prefix cache/EOS behavior and four-artifact cqis_id are mandatory.
+RFC-0025 §2.4 incorporates A7's exact frequency definitions without its
+research materialization cap. A1/A4/A5, existing native scalar/function/static
+schemas, §8's fidelity protocol and every original task criterion are preserved.
+
+The numerical specification precedes native implementation. Every native parity,
+source/control, named fidelity, private PCS/ZK, Q12/Q29/profile, W8 and full 8B
+criterion remains required at the owner in RFC-0025 §7.1. This accepts no partial
+proof plan, missing child validator or admission based on metadata alone.
+NC-0110..0126 remain reservations until their actual consumers reject tampering.
+No new challenge, probabilistic loss, committed cut or online weight pass.
+All deterministic hashes retain full H accounting; numerical/source work retains
+T_witness/c_a/c_lu/c_x/T_misc costs, with no measured constant change.
+Affected tasks: E5-03b/03/04/05, E6, E7, E8, E12 and E14.

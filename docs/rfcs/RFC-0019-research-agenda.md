@@ -1142,3 +1142,47 @@ both centered bounds, the actual A3-tail equality event and affine raw-source
 openings before native delivery. E7-01e/f retain full source/plan/quantiser,
 wider/packed, scale, private/virtual, W8 and Q12/Q29 obligations. No algebra
 check, contract acceptance or registration receipt completes those parents.
+
+Q26 full-model contract: E5-03b and [RFC-0025](RFC-0025-full-model-cqis.md)
+require the complete original GPT-2-small/Llama-3.1-8B numerical, source,
+quantiser, configuration and static-consumer contract. The existing model
+candidate cannot express GPT-2's mean-centering LayerNorm, learned positions,
+biases and tanh-GeLU FFN, and its storage caps cannot run the named models.
+The [new exact evidence](../../research/cqis-model-contract/REPORT.md) checks
+exact-mean affine LayerNorm, one-round projection/position addition, complete
+physical role/source-map transforms and exact temperature/top-p/CDF arithmetic.
+The static continuation checks closed affine/position/LayerNorm records with
+complete high bytes, sign/division/comparison columns and independent exact encoding;
+LayerNorm retains the same exponent in every factor and its actual branch offset.
+The flow continuation covers the full gated row scale domain, canonical first
+attainment and zero rows, one-round residuals and exact gated products. Shared
+word ranges retain all bytes and the final zero carry; zero predicates retain
+the first nonzero byte and its original source.
+The attention-input continuation retains full rotary table addressing, the
+existing static score admissibility rule, causal first maxima and inclusive
+exp indices without M31 aliases. Canonical coefficient generation and the
+actual complete attention/lookup/source consumers remain separate obligations.
+The function continuation covers selected exp recombination, full component
+addresses and signed activation source words, conditional on whole-table
+admission. Selected successful inputs never excuse another table row's overflow.
+The weighted continuation derives full-context nibble columns, retains actual
+probability offsets and every absolute block, and checks wide variable division.
+Full 1024-slot block admission and all sources survive shorter requests and
+rounded-zero blocks. The byte-radix defaults retain their prior exact semantics.
+The RMSNorm continuation integrates its unchanged full statistic, exact
+remainder, shared exponent tuple, reciprocal lookup and signed output into the
+new frame. Actual source/lookup consumers remain required for this original family.
+The full operation inventory retains both architectures and every source edge.
+Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
+static/range/branch/index/source expansion, complete model-flow evidence,
+sampled decoding and coordinated review/implementation DAG. No tiny-model,
+research or conditional proof result discharges the original full native
+inference, fidelity, private PCS/ZK, profile or W8 requirements.
+
+Q26 specification disposition: Accepted RFC-0025 and its exact §7.1 companion
+amendments resolve the canonical quantiser, zero-scale, complete numerical/source/
+artifact identity and nineteen-schema static-bound questions for both mandatory
+families. The coordinated review and ADR-051 state the acceptance boundary.
+E5-03/04/05, E6, E7, E8, E12/E14 and the original full workload/benchmark tasks
+still owe every native consumer, actual control, private proof and named-model
+result. Specification acceptance does not finish E5-03 or resolve Q12/Q29.

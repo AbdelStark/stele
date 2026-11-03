@@ -104,3 +104,73 @@ Cost: T_misc / explicit outer preparation/proving work, source reads, retained
 proof and peak state. No measured constant or extra weight pass is introduced.
 Affected tasks: E14-01 (blocked on A1), E14-02/E14-03; E12-01/Q29 if an eventual
 privacy architecture selects this path. All original acceptance criteria remain.
+
+### A2 — Exact public input before transcript construction
+
+Status: Draft. Question Q26; task E5-03b. Motivation: §1's header sketch does
+not determine complete policy bytes, actual request geometry or I/O mode.
+Companions: RFC-0001 A2, RFC-0005 A4 and RFC-0011 A5.
+
+Proposed addition to §§1,2: the complete externally expected public statement
+has the [RFC-0025 public-input bytes](full-model-public-input.md). A proof's copy
+must match them exactly. Validate the complete passport, derive its numerical
+identity and request-specific plan/ledger, and enforce the expected profile
+before constructing the transcript. Its existing constructor absorbs those full
+bytes once; no separately serialized subset, supplied plan or accept bit suffices.
+Public generated length and stop reason reach the same actual token sources,
+selectors and stop/inference relations. Both I/O modes retain private proof and
+source obligations. The outer wrapper, if used, binds this same complete input.
+
+This does not select a wrapper/ZK architecture or instantiate missing plan,
+passport, private commitment, ledger or native verifier contracts. A1/Q12/Q29,
+all original source checks and full native/W8 requirements remain. No challenge,
+additional absorb, profile or loss line changes; existing complete H/query
+accounting remains mandatory. Parsing/derivation contributes T_misc without a
+measured constant or weight-pass change. Affected tasks: E5-03b, E6, E8,
+E12-05 and E14. NC-0804/0805 and NC-1201/1203 remain actual-consumer gates.
+
+### A3 — Checkpoint evidence binds the pre-evidence subject
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0011 A6 and the
+[passport composition contract](full-model-passport-composition.md).
+Motivation: a checkpoint-binding proof included in a passport cannot depend on
+the final root that includes that proof's own bytes or digest.
+
+Proposed clarification of §6: checkpoint evidence binds the exact subject_id
+and the same complete original Artifact, numeric/source, commitment/layout/code
+and plan/table fields in that subject. Its actual relation proves the required
+commitment-to-Artifact hash binding; repeating subject_id establishes nothing.
+Its complete proof/public-input codec and private source consumers remain
+mandatory. The resulting evidence is referenced before registration/signing and
+the final passport root are formed. Proximity evidence follows the same identity
+order under its own complete certificate contract.
+
+This supplies no wrapper/backend, new proof acceptance path, challenge or
+profile. Complete H/query and signature/evidence composition remains required;
+Q12/Q29 and A1's actual verifier/privacy/extraction obligations remain unchanged.
+No cut, online weight pass or measured constant changes. Evidence generation
+and verification remain T_misc/registration work. Affected tasks: E5-03b,
+E12-05/06 and E14, with actual wrong-subject/root/source controls still required.
+
+### A4 — Accept statement and checkpoint-subject identity order
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: full statement bytes and checkpoint evidence need acyclic identities.
+Exact additions to §§1,2,6: adopt A2/A3's complete statement and pre-evidence
+subject rules under [RFC-0025 public input](full-model-public-input.md) and
+[passport composition](full-model-passport-composition.md).
+A2/A3's Draft proposals are superseded. Validate the externally expected
+complete statement, real passport children, instance/ledger and profile before
+the existing transcript constructor absorbs the public bytes once.
+Checkpoint/proximity evidence must establish its real relation for the same
+earlier Subject and original private sources; repeating subject_id proves nothing.
+No evidence or signing preimage contains the later final passport root.
+
+A1's wrapper/backend/privacy/extraction and Q12/Q29 work is not accepted here.
+Complete native verifier, private source and child contracts remain mandatory.
+No new challenge, absorb, loss, profile, cut or weight pass. H/signature/evidence
+accounting and NC-0804/0805/1201/1203..1206 remain real-consumer gates.
+Derivation/verification is T_misc/registration work without a measured constant.
+Affected tasks: E5-03b, E6, E8, E12-05/06 and E14.

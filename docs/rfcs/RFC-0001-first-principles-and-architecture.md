@@ -109,3 +109,77 @@ NC-0004 (use a different passport), NC-0005 (prompt prefix mismatch). Full catal
 
 ## 7. Open questions
 Q1 Is residual-only cutting optimal for MoE routers (RFC-0017 §4)? Q2 Octic extension vs double-α for treaty lookups (RFC-0019 R-OCTIC).
+
+## 8. Amendment log
+
+### A1 — Canonical request and token-I/O boundaries
+
+Status: Draft. Question Q26; task E5-03b. Motivation: §3's concatenated token
+digest and stop-policy sketch need exact byte boundaries, EOS-set semantics,
+mode-specific seed fields and source consumers for full-model delivery.
+
+Proposed replacement for §3's io_digest/policy encodings: use the complete
+[RFC-0025 request contract](full-model-request.md). Digest-mode io_digest is
+BLAKE3-256 of its exact TokenIO frame, including prompt/generated lengths and
+stop reason. The public policy subrecord is B(Decoding) || B(RequestBoundary),
+with Decoding byte-equal to the independently validated Model descriptor.
+The same cqis_id/passport/profile and original token sources must reach every
+consumer. EOS is membership in the explicit sorted nonempty request set;
+its first generated occurrence is included, and eos reason takes precedence
+over limit on coincidence. No prompt EOS terminates generation.
+
+Private-token commitments and RFC-0011 §5 hooks remain required when selected;
+this does not publish their openings or substitute plaintext evaluation for
+a proof. Full typed public-input/passport/commitment codecs, complete hash/query
+accounting, source joins and actual NC-0001/0005/0107/0108 controls remain
+acceptance work. No challenge, probabilistic loss, cut or profile is added.
+Boundary/hash work belongs to T_witness/c_a/T_misc without a measured constant.
+Affected tasks are E5-03b/E5-04, E6, E7-08, E8, E13-04/05 and E14; all original
+full-model, private PCS/ZK and benchmark requirements remain.
+
+### A2 — Complete public-input envelope and request geometry
+
+Status: Draft. Question Q26; task E5-03b. Motivation: the public tuple needs exact
+bytes and actual request geometry; a token digest alone does not expose the
+length required to derive the proof's source shapes and selectors.
+
+Proposed replacement for §3's public-input encoding: use the exact
+[RFC-0025 public-input frame](full-model-public-input.md). It binds the complete
+numerical identity, passport, request-specific plan and ledger identities,
+profile, full policy, generated length and stop reason. I/O mode is explicit:
+either the exact TokenIO digest or separate plan-owned prompt/output commitment
+references. Externally expected values are checked before transcript construction.
+Actual token/source relations must establish public length/reason and the same
+full causal sequence; structural metadata cannot establish inference or stopping.
+
+The statement remains token-domain. Length/reason are public metadata; tokens
+may remain private. Commitment references do not define a private PCS, and no
+profile, plaintext fallback or new cut is admitted. Complete passport, plan,
+ledger, private source and proof consumers remain prerequisites. Preserve Q12/Q29,
+all original named-model/fidelity/W8 requirements and the one online weight pass.
+Soundness uses the existing initial transcript absorb and complete H/query work;
+no challenge or loss line changes here. Parsing contributes T_misc without a
+measured constant. Affected tasks: E5-03b, E6, E7-08, E8, E12-05 and E14. Actual
+statement substitution, profile downgrade and source controls remain required.
+
+### A3 — Accept complete token-domain public input
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: A1/A2 now have complete numerical, request and outer identity definitions.
+Exact replacement for §3's request/policy/I/O/public-input encoding: use
+[RFC-0025's request](full-model-request.md) and
+[public-input](full-model-public-input.md) contracts in full. This supersedes
+A1/A2's Draft proposals. The full policy and TokenIO or distinct owned token
+references, public length/reason, four identities and expected profile must
+reach their actual consumers before the existing initial transcript absorb.
+No text/traffic provenance, hidden length or private commitment construction
+is inferred from that envelope. Complete child contracts and native validation
+remain prerequisites under RFC-0025 §7.1.
+
+No challenge, loss formula, cut, profile admission or weight pass changes.
+The deterministic hash-use inventory remains required in complete H accounting;
+boundary/derivation work contributes T_witness/c_a/T_misc without a measured constant.
+Affected tasks: E5-03b/04, E6, E7-08, E8, E12, E13-04/05 and E14.
+All original controls and NC-1204..1206 remain actual-consumer gates.

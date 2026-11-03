@@ -342,3 +342,64 @@ they are not silently admitted as lookup components by this closed registry.
 Initial contract. Companion amendments preserve the full inference objective and
 all original downstream acceptance criteria. No model-fidelity default, completed
 native task, independent audit or production inference claim follows from adoption.
+
+### A1 — Exact-mean affine LayerNorm function
+
+Status: Draft. Question Q26; companion RFC-0004 A11 / RFC-0025 §2.3, task E5-03b.
+Proposed addition to §§2.3/4: layernorm_q uses the exact rational centered
+variance, shared normalization/rsqrt definition and one affine output rounding
+specified by [RFC-0025](RFC-0025-full-model-cqis.md). Its complete parameters
+include the bias fraction Gb; its operation binds both learned gain and bias
+sources. It reuses rsqrt_q data and cannot substitute for rmsnorm_q.
+
+The [encoding appendix](full-model-encoding.md) specifies version 1 parameters
+u16 d, u8 F/G/E/Gb, u32 en/ed and mode 4 with the existing rsqrt component.
+Native generator/evaluator admission, consumer/control mapping and coordinated
+reviews remain required before acceptance. Existing FunctionIds and modes are unchanged. The new
+[independent numerical evidence](../../research/cqis-model-contract/REPORT.md)
+does not admit a new registry entry or native API. No challenge or loss term
+changes; extra row statistics and affine division contribute c_a/T_witness,
+with no new table, cut, fitted constant or profile admission.
+
+### A2 — LayerNorm definition and native implementation order
+
+Status: Draft. Question Q26; task E5-03b. Companion RFC-0004 A12.
+Motivation: A1's proposed function/representation bytes are now exercised by the
+complete Registry and numerical identity, but its native API does not yet exist.
+
+Adopt A1's exact layernorm_q definition and version-1 parameter/mode bytes only
+with the coordinated RFC-0025 package. Complete Registry validation derives its
+rsqrt component from that definition; it cannot substitute rmsnorm_q or omit the
+learned bias source. All previously Accepted FunctionIds, RepresentationIds,
+table bytes and native modes stay unchanged.
+
+Replace A1's native-before-acceptance condition with these explicit delivery
+dependencies: native descriptor/evaluator/registry support belongs to E5-03/04
+and E3-08, and actual LayerNorm source/statistic/affine/lookup consumers belong
+to E7-03's expanded work. Their exact-codec, Rust/NumPy, whole-table validation
+and actual NC-0110..0112/0412..0414 gates remain mandatory before native admission.
+Specification acceptance supplies no implemented registry entry or proof record.
+No new table, challenge, loss, cut or profile; extra statistics/affine arithmetic
+retain c_a/T_witness and validation T_misc, without a measured constant change.
+
+### A3 — Accept exact-mean affine LayerNorm definition
+
+Status: Accepted. Question Q26; task E5-03b.
+Review: [coordinated skill sign-offs](../../agents/reviews/full-model-cqis-draft.md#coordinated-acceptance-sign-offs).
+
+Motivation: complete Model/Registry/Bounds identities now select the missing norm.
+Exact additions to §§2.3,4: adopt layernorm_q from A1 and
+[RFC-0025 §2.3](RFC-0025-full-model-cqis.md), with the encoding appendix's version-1
+parameters u16 d, u8 F/G/E/Gb, u32 en/ed and representation mode 4.
+It uses exact rational centering/variance, the same rsqrt component, original
+gain/bias sources and one affine output rounding. It cannot substitute for
+rmsnorm_q. Existing FunctionIds, RepresentationIds, data bytes and modes are unchanged.
+
+A2's implementation-order disposition replaces A1's native-before-acceptance
+condition: E5-03/04 and E3-08 owe complete native descriptors/evaluation/registry,
+and E7-03 owes real statistic/affine/range/lookup/source consumers. Exact bytes,
+whole-table checks, Rust/NumPy parity and NC-0110..0112/0412..0414 remain native
+completion gates. A1/A2's proposals are superseded by this entry; no native
+registry entry or proof record is supplied by specification acceptance.
+No new table, challenge, loss, cut or profile. Statistics/affine work is
+c_a/T_witness and validation T_misc, without a measured constant or pass change.
