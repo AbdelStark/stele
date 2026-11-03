@@ -949,3 +949,62 @@ Complete Preparation/Artifact corpus SHA-256:
 `05006736baf5f1ea1699c2eb93dc659b6200d5ab1bf0b99e165633fdbf8ccbe1`.
 Candidate SHA-256: `7774d96e92ebf8d33c2153e5a930000d9b0795e45161fe103f841e23855bffe3`.
 Checker SHA-256: `9c522dc2057eda893b34f478361e37136354a293816b7c6c5d2d5d6c38898fb2`.
+
+## Typed source and auxiliary-file codecs
+
+The [source appendix](../../docs/rfcs/full-model-source.md) now specifies complete
+Source/Assets frames and immutable original-byte tensor slices. Source binds the
+exact file set, raw index bytes/name, shard names/lengths/SHA-256 values and typed
+single-file/bundle distinction. Assets separately binds original config,
+tokenizer and optional generation bytes. Expected manifests need independent
+authority; describing supplied files does not provide it.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with safetensors==0.6.2 python -B research/cqis-model-contract/check_source_codec.py`.
+Seed 2688 checks 10000 complete packages, 5000 per family: 3334 single-file and
+6666 indexed sources across 277640 tensors. Complete Source/Assets bytes and
+hashes match independent struct framing. Every source tensor agrees with pinned
+safetensors 0.6.2 decoding; transformed physical bytes match the independent
+source-map fixture. The largest randomized Source/Assets frames are 341/263
+bytes. Config/tokenizer payloads are synthetic, without named-adapter claims.
+
+Every one-bit actual-file mutation rejects at the expected SHA-256 comparison.
+Focused controls reject missing/extra files, changed lengths, mutable buffers,
+unsorted/duplicate roles, hostile counts, malformed containers, wrong shard
+locations, duplicate tensors, wrong total_size, changed selection/dtype and
+alias bytes under updated file digests. Repartitioning preserves tensor bytes
+but changes typed source identity. Raw index whitespace likewise changes bundle
+identity. Renaming a single file preserves its SHA-256 but changes Source;
+this is why the complete Source frame remains a passport binding.
+
+Every returned tensor slice retains its original immutable backing file. Clearing
+the caller's dictionary after validation cannot replace those bytes. Structural
+boundary checks cover all nineteen dtype tags in nonempty/empty tensors, one
+scalar, and six additional malformed shape/alignment/coverage/metadata cases
+against the unchanged earlier structural helper. No old study main or proof
+campaign is executed. The index is grouped once by shard before location checks.
+
+A complete generated source file of 9603336 bytes includes a 4800000-element
+token tensor and 4800896 selected elements overall. It passes without inheriting
+the old 2^22-element research cap or copying its tensor payload. A separate
+metadata-only File descriptor retains u64::MAX length; this does not claim such
+a file was allocated. The complete package still retains all input file bytes,
+so these results do not establish native bounded-memory loading.
+
+The previous smoke session's result was unavailable after context compaction;
+a focused boundary rerun with a saved log passed before the complete campaign.
+The implementation snapshots the file dictionary before validating immutable
+values and hashes. Native loaders must preserve those same bytes through every
+consumer pass. A read-only view over mutable backing storage is insufficient.
+
+RFC-0011 A3/A4's appended Draft continuation retains complete Source/Assets joins.
+Source conversion, minimal scales/codes, semantic config/tokenizer/generation
+adapters, the outer authenticated passport/public statement, commitment/hash
+proof, full numerical/cache execution and native resource/consumer gates remain
+required. This evidence grants no NC, fidelity, privacy, profile, proof parity
+or performance credit. No production dependency or online weight pass changes.
+
+Complete Source/Assets/Map corpus SHA-256:
+`89f149a71806a728ac1ea158fdcae7c6fde6b91b708121fe089c9130b9afdc68`.
+Candidate SHA-256: `81abfcd818557e07586337e0ce263bcf11b14f2c34abe40e860efbcaa2862115`.
+Checker SHA-256: `abe9a2be5678aaa2d3926e58b715634d911c3da37d8b228647aec454679092ae`.

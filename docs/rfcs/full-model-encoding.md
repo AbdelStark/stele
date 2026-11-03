@@ -49,8 +49,10 @@ cannot supply a different role map or remove a required tensor.
 ## 2. Source map and exact transforms
 
 Source containers retain the complete safetensors structural checks and the
-typed single-file/indexed-shard distinction in RFC-0011 A3. Their production
-byte framing and source-to-passport join remain RFC-0025 acceptance work.
+typed single-file/indexed-shard distinction in RFC-0011 A3. The
+[source appendix](full-model-source.md) fixes canonical Source/Assets framing,
+complete file/selection checks and immutable original-byte slices. Their
+authenticated passport join and semantic adapter consumers remain required.
 This section specifies the new role-to-source transform unambiguously.
 
 `Map = ASCII("stele/v0.1/cqis/source-map") || B(Shape) || Entry[record_count]
@@ -398,8 +400,10 @@ The passport must jointly authenticate the exact Model, Scales, Registry, Bounds
 cqis_id, Preparation/quantiser_id, typed original source identity, digest_cqis,
 complete plan, commitment/layout/source and table bindings, certificate, fidelity
 and registration fields. The source map comes from Preparation and the physical
-C_i must equal Model's. Original source-config/tokenizer files need exact-byte
-identities at their actual adapter/traffic consumers. No content hash authenticates
+C_i must equal Model's. The complete Source frame and its derived typed identity,
+plus Assets/assets_id, bind original checkpoint/config/tokenizer/generation bytes
+under the [source appendix](full-model-source.md). Their actual adapter/traffic
+consumers must check all used parameters. No content hash authenticates
 its own expected value. The numerical identity contains no private tensor payload
 or public proof-admission flag and does not instantiate the complete passport.
 

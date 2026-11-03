@@ -32,6 +32,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Model/Scales/Registry parameter selection, with exact outer framing.
    Encoding §3 now closes Preparation and streaming Artifact parsing. RFC-0011
    A4 proposes their passport/commitment binding while preserving Accepted text.
+   The source appendix now specifies complete typed Source/Assets frames and
+   original-byte container/selection checks, under Draft RFC-0011 A3/A4.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -46,6 +49,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    content joins still require independently authenticated expected inputs.
    Artifact digest comparison also requires an independently expected value;
    complete byte hashing cannot authenticate its own source or passport.
+   Source and Assets identities also require independent expected authority.
+   The complete Source frame remains bound even when a kind-0 filename change
+   leaves its single-file SHA-256 unchanged.
+
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
    branch/point obligation remains. The §2.8 inventory does not instantiate
@@ -63,6 +70,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    shared record retains its separate probability/block/global consumers.
    The Artifact codec retains exact record/scale/payload association. Source
    regeneration and actual commitment-to-Artifact hash consumers remain required.
+   Source verification returns immutable original-byte slices after all files,
+   shard locations, selection metadata and permitted alias bytes pass. It does
+   not create an E6 source handle or discharge conversion/text-adapter semantics.
+
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -95,6 +106,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    reads, excluded codes, odd packed tails and changed canonical payload hashes.
    All 10000 byte mutations reject: 7352 structurally and 2648 at expected
    digest identity. Bad codes beyond the stream chunk boundary reject as well.
+   Source controls reject file/hash/index/selection/alias changes, malformed
+   containers and mutable inputs. Canonical index whitespace or partition
+   changes alter the bundle identity even when selected tensor bytes agree.
+   These are research controls, with no native NC coverage.
+
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -109,6 +125,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Collection hashing adds no native loss line here; complete H accounting
    remains part of the coordinated acceptance work.
    Preparation/Artifact identities instantiate no native H/query schedule here.
+   Source/Assets SHA-256 and BLAKE3 uses remain part of the pending complete
+   identity accounting; this research codec adds no native loss or query line.
+
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -181,6 +200,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Model dimensions/formats with checked u64 arithmetic and a bound below 2^39.
    All named/maximal layout offsets match independent derivation; the largest
    Artifact is 274919947094 bytes without allocating its weight payloads.
+   Source file lengths, aggregate lengths and tensor offsets retain checked
+   u64 values. Index length bounds shard count and total filename bytes before
+   descriptor allocation; the frame cap is independent of checkpoint payloads.
+
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -218,6 +241,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    supplied collection count or from the static context capacity alone.
    Artifact payloads have no per-row int4 padding; an odd final high nibble is
    zero. Both real nibbles and all int8 bytes retain symmetric code ranges.
+   Source containers require dense exact coverage, including ignored tensors.
+   Their allowed raw scalar/empty/sub-byte formats do not change the selected
+   physical role shapes, packed Artifact tails or permitted alias rules.
+
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -235,7 +262,7 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    complete frames and both maximal domains. Registry derives sorted unique
    definitions and preserves every ordered function/layer reference. Digest
    caches contain only regenerated data; rotation parameters validate before
-   lookup so Boolean fields cannot alias integer keys. Typed source/passport
+   lookup so Boolean fields cannot alias integer keys. Complete passport
    codecs, source regeneration and full/cache model flows still need their checks.
    Registry's final run matches 15 complete component and 53 complete rotation
    definitions against independent real-data oracles. Expanded tests exposed a
@@ -248,6 +275,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    parameters. It has no caller-selected role list or hash-only Registry path.
    Preparation binds the exact Map and physical C_i, independently of unrelated
    runtime fractions. Artifact includes every exact configured scale/payload byte.
+   Source/Assets frames preserve exact UTF-8 names and original file bytes.
+   Returned slices keep the immutable bytes whose hashes passed; dictionary
+   replacement cannot substitute data after verification. Source conversion
+   and complete passport/cache flows still require their own evidence.
+
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -264,6 +296,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    they do not regenerate named Registry data or execute checkpoint inference.
    Artifact layout fixtures likewise retain full shapes without allocating
    named weight payloads or claiming source conversion/fidelity/native parity.
+   Source containers are compared with pinned safetensors 0.6.2 decoding.
+   The large generated source fixture is not a named checkpoint, native parity
+   or a model-fidelity result.
+
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -279,6 +315,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     the actual E7 weight schedule or establish a runtime speed claim.
     Artifact syntax validation scans its complete bytes during preparation;
     it does not alter the one-pass inference schedule or wrapper hash obligation.
+    Source hashing/parsing is preparation T_misc. The index is grouped once
+    by shard; this supplies no measured speed result or online weight-pass change.
+
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -308,6 +347,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     resource admission still require their own implementation qualification.
     The 16 MiB Map boundary round-trips, and complete Artifact bytes/hashes
     agree under three-byte short reads and payloads crossing 64 KiB chunks.
+    Source retains complete immutable input files and returns read-only slices
+    without whole-tensor copies. This is not native bounded-memory admission.
+    Native loading must preserve the same bytes through every consuming pass.
+
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -320,6 +363,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     A structurally valid Artifact remains distinct from reproducible conversion
     and the proven binding between committed plaintext and digest_cqis.
 
+    A typed file identity or Assets digest remains distinct from publisher
+    authority, semantic configuration/tokenizer validation and a proof source.
+
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
 That result is limited to the research mapper and does not approve a protocol.
@@ -327,7 +373,8 @@ That result is limited to the research mapper and does not approve a protocol.
 ## Findings still preventing acceptance
 
 Actual consuming-reduction closure, authenticated outer
-passport/request schemas, complete typed source/passport codecs and source regeneration,
+passport/request schemas, complete passport codecs, source regeneration and
+semantic config/tokenizer/generation adapters,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against

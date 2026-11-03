@@ -181,3 +181,22 @@ table commitment binding, A1/Q29 confidentiality, private PCS/ZK, fidelity,
 certificates, registration and encrypted-to-verifiers scales remain required.
 Preparation/Artifact scans are one-time T_misc/hash work; this proposal adds no
 online inference weight pass, cut, challenge, profile or measured constant.
+
+Draft continuation of A3/A4. The RFC-0025 [source appendix](full-model-source.md)
+fixes canonical Source and Assets frames. Source includes exact file names,
+lengths and SHA-256 values, including the original index name and bytes.
+Its typed identity remains the actual single-file SHA-256 for kind 0 and a
+distinct H(Source) bundle identity for kind 1. Authenticate the complete Source
+as well as that derived identity: a kind-0 filename is not in the file digest.
+Assets binds the exact config, tokenizer and optional generation files under
+a separate assets_id. The passport must authenticate these alongside A4's
+Preparation, Model, Scales and Artifact, without treating supplied hashes as
+their own authority. Actual config/text adapters must consume the same original
+bytes and check all used parameters. Exact hashes alone cannot prove that join.
+
+Before returning source slices, check every actual file, complete container and
+index coverage, selected/alias/ignored union, raw dtype/shape and permitted alias
+bytes. Retain immutable backing bytes through conversion; hashing a file before
+reading an unchecked mutable replacement does not suffice. Native resource
+admission, reproducible conversion, commitment/hash consumers and all existing
+privacy/profile/fidelity/accounting/control requirements remain unchanged.
