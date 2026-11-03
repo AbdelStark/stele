@@ -1797,3 +1797,12 @@ actual native consumers, full named-model parity/fidelity and W8. Numerical
 agreement is not a private proof, profile, passport or full bound certificate.
 No challenge, ledger term, new cut or weight pass changes. Added numerical work
 belongs to T_witness/c_a/T_misc, with no measured constant or performance claim.
+
+The [RFC-0025 request contract](full-model-request.md) specifies A11's full
+generation boundary: an explicit sorted nonempty EOS set, generated EOS retained,
+prompt EOS ignored, and eos reason taking precedence at the token limit. It
+also defines the original prompt/token/hash/absolute-position obligations and
+schema 18, with no inherited small research entry-product cap. RFC-0001 A1
+proposes the corresponding canonical public-policy and token-I/O subrecords.
+Both remain Draft; full outer identity, source/hash, private-token and native
+consumer gates are unchanged.

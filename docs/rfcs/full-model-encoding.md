@@ -293,6 +293,9 @@ or public proof-admission flag and does not instantiate the complete passport.
 
 ## 7. Remaining acceptance work
 
+The [request contract](full-model-request.md) fixes request/stop/token-I/O
+subrecords with the exact Model decoding descriptor in public policy. It does
+not replace the complete typed public-input/passport/commitment frame.
 The static bound collection and complete passport/public-statement field schemas
 and consumers still require the contracts in RFC-0025 §7. Sections 3–6 need
 independent complete-codec/config/flow evidence before acceptance. This appendix

@@ -553,3 +553,56 @@ Checker SHA-256: `9809815ff5600acd58524233b85b42bcb4767be48d68f22e24ade42669efb4
 All shared helpers and earlier numerical sources are unchanged. Exact stopping
 and outer request schemas, the full collection/consumer plan, native controls,
 full model parity and original proving/verification/benchmark delivery remain.
+
+## Request boundaries and exact stopping
+
+The [request appendix](../../docs/rfcs/full-model-request.md) adds schema 18,
+canonical RequestBoundary/TokenIO frames and an explicit sorted EOS set. It
+retains the first generated stop token, ignores prompt EOS, gives EOS precedence
+at the limit and requires limit reason for zero requested tokens. The same
+original token sources, full previous-position logits, seed/draw hashes and
+complete returned-token model states remain required consumers.
+
+The multiple-EOS choice follows Meta's pinned tokenizer/generation sources;
+GPT-2 retains its named singleton EOS. The appendix cites those exact sources.
+TokenIO's length/reason framing and public-policy subrecord are proposed through
+RFC-0001 A1, without editing Accepted text. The complete public-input/passport/
+private-commitment frames remain separate acceptance work.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11 python -B
+research/cqis-model-contract/check_request_bounds.py`.
+Seed 2681 checks 10000 configurations across the full vocabulary/context domains,
+using short complete prompt/continuation witnesses per randomized request.
+Independent replay, struct framing and polynomial byte-column arithmetic agree.
+There are 4965 greedy and 5035 sampled requests, 4426 limit stops and 5574 EOS
+stops. In 7958 cases the prompt contains EOS; 397 terminate at EOS exactly at the
+token limit. No numerical logits, seed preimage or model are evaluated by this
+boundary checker; valid sampled metadata does not authorize a sampled token.
+
+The sparse public EOS-mask formula matches an independent dense-table fold on
+10000 random M31 points, with non-power-of-two vocabulary padding included.
+Singleton and full-vocabulary Boolean endpoints are checked separately. This
+does not implement a native public-source handle or establish extension-field
+and profile parity. The full context fixture round-trips 1048576 tokens; the
+full EOS-set fixture round-trips 1048576 ids. Their exact maximum frames are
+4194337 and 4194381 bytes respectively, without the old entry-product cap.
+
+Controls reject altered prompt prefixes, early limits, continuation after EOS,
+wrong stop reason, Boolean pseudo-integers, invalid EOS sets, inactive/missing
+seed data, every truncation of the selected fixtures, suffixes, malformed
+counts and a u32 token change congruent modulo M31. Splitting the same flat
+tokens at a different prompt boundary changes io_digest. Changing a limit while
+retaining an earlier valid EOS changes RequestBoundary even when TokenIO is
+identical; the public statement must bind both objects. BLAKE3 is shared with
+the independent framing check, not independently implemented here.
+
+The record reaches 28231 bytes and four columns. The appendix proves an analytic
+capacity below 40000 bytes and strict field faithfulness. The first complete
+run passed; a parser review then moved prompt/limit validation before EOS
+materialization. The repeated focused run retains the same corpus and counts.
+Corpus SHA-256: `68af41d1ddae474998d25fd99feb1ab0991b90742e8f2ef21ec0af4146a3588c`.
+Final candidate SHA-256: `4f995ff7f0356a718f52755084d97e6e902bd840aa90a2cbc4034dcc8c1a246e`.
+Checker SHA-256: `781d29115d5fe649e3a6160c4e33dae9f4a0e3e9d1a28900f81c32439efd689f`.
+No historical proof campaign or shared helper is changed or rerun. The complete
+bound collection, runtime/outer identity codecs, native model/proof consumers,
+full-model fidelity, private PCS/ZK and benchmark delivery remain required.

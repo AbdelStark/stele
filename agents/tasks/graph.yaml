@@ -859,6 +859,7 @@ tasks:
   - E5-02
   - E5-03a
   rfc:
+  - RFC-0001 A1
   - RFC-0004 A3
   - RFC-0004 A6
   - RFC-0004 A7

@@ -392,8 +392,9 @@ weighted/block/global normalization with fixed radix-16 records. The
 [RMSNorm appendix](full-model-rms-bounds.md) integrates the original statistic,
 joint factors, lookup and output chain. The [decoding-bound appendix](full-model-decoding-bounds.md)
 specifies full logit maxima, temperature and sampled selection, including the
-inclusive 2^32 CDF endpoint. Stop records and the complete collection of all source/index/range/branch obligations
-still require completion and integration into the full model collection.
+inclusive 2^32 CDF endpoint. The [request contract](full-model-request.md) adds
+the complete stop and token-byte arithmetic record. The full collection and its
+source/index/range/branch expansion still require completion and integration.
 The existing twelve-family numerical collection supplies evidence only; its
 scoped membership is not the final collection or proof plan. None of those
 families may disappear when the new affine/LN/position relations are added.

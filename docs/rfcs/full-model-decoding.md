@@ -70,8 +70,9 @@ conflicting function representations, inactive bytes and trailing data reject.
 Sample exp is part of Model's exact ordered function references and unique
 manifest. A different policy changes the model/CQIS identity, even if a specific
 request happens to generate the same tokens. Seed, prompt, maximum_new and EOS
-are separately authenticated request data; their complete public-statement frame
-remains RFC-0025's outer-contract acceptance work.
+are separately authenticated request data. The [request contract](full-model-request.md)
+specifies the boundary/token-I/O subrecords and exact stop cause; their complete
+public-statement frame remains RFC-0025's outer-contract acceptance work.
 
 ## Static obligations and cost
 

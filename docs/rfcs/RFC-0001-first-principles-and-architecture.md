@@ -109,3 +109,30 @@ NC-0004 (use a different passport), NC-0005 (prompt prefix mismatch). Full catal
 
 ## 7. Open questions
 Q1 Is residual-only cutting optimal for MoE routers (RFC-0017 §4)? Q2 Octic extension vs double-α for treaty lookups (RFC-0019 R-OCTIC).
+
+## 8. Amendment log
+
+### A1 — Canonical request and token-I/O boundaries
+
+Status: Draft. Question Q26; task E5-03b. Motivation: §3's concatenated token
+digest and stop-policy sketch need exact byte boundaries, EOS-set semantics,
+mode-specific seed fields and source consumers for full-model delivery.
+
+Proposed replacement for §3's io_digest/policy encodings: use the complete
+[RFC-0025 request contract](full-model-request.md). Digest-mode io_digest is
+BLAKE3-256 of its exact TokenIO frame, including prompt/generated lengths and
+stop reason. The public policy subrecord is B(Decoding) || B(RequestBoundary),
+with Decoding byte-equal to the independently validated Model descriptor.
+The same cqis_id/passport/profile and original token sources must reach every
+consumer. EOS is membership in the explicit sorted nonempty request set;
+its first generated occurrence is included, and eos reason takes precedence
+over limit on coincidence. No prompt EOS terminates generation.
+
+Private-token commitments and RFC-0011 §5 hooks remain required when selected;
+this does not publish their openings or substitute plaintext evaluation for
+a proof. Full typed public-input/passport/commitment codecs, complete hash/query
+accounting, source joins and actual NC-0001/0005/0107/0108 controls remain
+acceptance work. No challenge, probabilistic loss, cut or profile is added.
+Boundary/hash work belongs to T_witness/c_a/T_misc without a measured constant.
+Affected tasks are E5-03b/E5-04, E6, E7-08, E8, E13-04/05 and E14; all original
+full-model, private PCS/ZK and benchmark requirements remain.

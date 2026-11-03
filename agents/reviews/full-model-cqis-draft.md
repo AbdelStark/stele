@@ -6,7 +6,7 @@ The same author, codex-root, applies rfc-author, cqis-numerics, gkr-reduction-au
 and soundness-auditor. No independent human or agent review is claimed.
 
 Scope: [RFC-0025](../../docs/rfcs/RFC-0025-full-model-cqis.md), its encoding and
-decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0004/0017/0021, and
+decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0001/0004/0017/0021, and
 [the new research evidence](../../research/cqis-model-contract/REPORT.md).
 All earlier Accepted text remains an unchanged prefix. No native crate, frozen
 oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
@@ -19,6 +19,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    the proposed sampling policy. Research Python has no native consumers and
    cannot promote a Draft RFC to authority. LayerNorm's new FunctionId/mode is
    proposed through RFC-0021 A1; existing descriptors/modes are unchanged.
+   RFC-0001 A1 now proposes exact request-policy and TokenIO subrecords; the
+   request appendix specifies EOS sets and schema 18. Accepted text is preserved
+   as an exact prefix, with no production use of the Draft amendment.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -37,6 +40,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    earn no NC coverage. Reserve the new mean/bias/position/FFN/role/tie/config
    controls in the coordinated acceptance change, and retain NC-0100..0109,
    source/lookup/passport and decoding controls at their actual consumers.
+   Request research controls reject prompt substitutions, early stopping,
+   continuation after EOS, wrong cause at the limit, invalid EOS order/range,
+   inactive seed fields, malformed bytes and a field-congruent u32 token change.
+   They do not replace NC-0001/0005/0107/0108 at actual proof/hash consumers.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -86,6 +93,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The full 1048576-token boundary preserves its empty CDF bucket and final
    endpoint 2^32. All original weight, permutation/inverse, prefix, minimal
    top-p, retained-divisor and selected-bucket joins remain required consumers.
+   Schema 18 covers request length, stop membership, absolute positions and
+   original token-byte indices with shape-derived bounds. Full-domain request
+   and token-I/O frames retain context/vocabulary 2^20. The EOS public-mask
+   formula matches independent dense folding at 10000 M31 points; native E6
+   source construction and all challenge-field/profile parity remain required.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
@@ -109,6 +121,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    relation. Its inactive CDF words are zero for real unretained ranks, whose
    original prefix and weight checks remain active. Padded layouts gate complete
    equations, including constants; an output selector alone is insufficient.
+   EOS membership excludes prompt/final/padded positions from the no-earlier-EOS
+   sum. The last generated membership determines the reason, including coincidence
+   with the token limit; an empty continuation cannot inherit prompt EOS.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -138,6 +153,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     data has a separate capacity bound from Model. Research retains Python arrays
     and is not evidence for fallible streaming, full-model memory or hostile
     proof parsing. The named models cannot inherit the old research size caps.
+    Request counts and exact lengths precede entry materialization. Canonical
+    TokenIO may remain a private hash preimage; commitment-mode tokens still
+    require their own typed openings and same-source proof. The research parser
+    receives plaintext expected prompt data and supplies no privacy evidence.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.

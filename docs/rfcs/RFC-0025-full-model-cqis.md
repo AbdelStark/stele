@@ -215,9 +215,12 @@ targets retain the complete prefix; other attention policies require their own
 explicit architecture contract.
 
 Greedy chooses the least vocabulary id attaining the previous position's maximum
-logit. A nonempty prompt is followed by at most maximum_new tokens; generated EOS
-is included and stops generation, prompt EOS does not. At zero maximum_new return
-the prompt with limit reason. Prompt plus maximum_new must fit context capacity.
+logit. A nonempty prompt is followed by at most maximum_new tokens; the first
+generated member of the explicit nonempty EOS set is included and stops generation.
+Prompt EOS does not stop. At zero maximum_new return the prompt with limit reason.
+EOS takes precedence when it coincides with the token limit. Prompt plus
+maximum_new must fit context capacity. The [request contract](full-model-request.md)
+fixes exact request/token-I/O bytes, stop arithmetic and original source joins.
 Every returned token, including EOS, is evaluated when checking full/cache parity.
 Sampled decoding has the same prompt/limit/EOS semantics. Its proposed exact
 policy, byte identity and required hash/selection consumers are in the
@@ -314,7 +317,8 @@ RFC-0021 statistic, shared exponent factors, reciprocal lookup and signed output
 into a complete record, including original source and padding obligations.
 The [decoding-bound appendix](full-model-decoding-bounds.md) adds original logit
 maxima, one-round temperature and complete sampled permutation/prefix/CDF/draw
-arithmetic. Exact stop/request records and their identity joins remain required.
+arithmetic. The [request contract](full-model-request.md) adds schema 18 and exact
+stop/token-I/O subrecords; their full public-statement and source joins remain required.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;
@@ -411,7 +415,7 @@ implementations. W8 remains GPT-2-small with complete proving and verification.
    and malformed/changed identity rejection. Preserve the frozen earlier evidence.
 4. Finish the exact sampled-decoding contract required by RFC-0004 §7 and bind
    full/cache/generation stopping semantics. Greedy evidence cannot discharge it.
-5. Review coordinated append-only RFC-0003/0004/0005/0009/0011/0017/0021 changes,
+5. Review coordinated append-only RFC-0001/0003/0004/0005/0009/0011/0017/0021 changes,
    reserve actual new controls, and retain a sequential DAG through original
    E5-03/04/05, E6, E7, E8 and benchmark tasks. No accepted parent requirement is
    removed, weakened or reclassified as numerical-replay completion.

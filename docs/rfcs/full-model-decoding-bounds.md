@@ -176,8 +176,9 @@ permutation, comparison, prefix, quotient and output relations. E3-07/08 and
 the selected exp consumers retain complete table/source closure. E8/E14 request/
 hash/wrapper consumers must bind the seed and every draw, with global H/query
 accounting, all profiles, privacy and Q12/Q29 preserved. E13-04's top-k extension
-remains original work. Exact stop/request records, the complete collection and
-native controls remain open. This appendix grants no NC-0107/0108 coverage.
+remains original work. The [request contract](full-model-request.md) adds stop
+records; the complete collection, outer identity joins and native controls remain
+open. This appendix grants no NC-0107/0108 coverage.
 
 The cost remains O(v log v) sorting and O(v) full arithmetic per generated token,
 charged to T_witness, c_a/c_lu and T_misc; static derivation is T_misc. No extra
