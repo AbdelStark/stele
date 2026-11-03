@@ -217,7 +217,7 @@ tasks:
   - RFC-0018 §1
   skill: benchmark-runner
   crate: ci
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E0-10-lookup-corpus-profile
   acceptance:
@@ -851,6 +851,33 @@ tasks:
   - full canonical bytes and all column fields match independent Python on 10000 configurations per schema
   - every boundary vector, mutation, malformed length, alias, capacity and arithmetic rejection in RFC-0022 §6
   - checked no_std implementation and all required repository gates; no NC-0109 or full E5-03 credit
+- id: E5-03b
+  epic: E5
+  title: Complete canonical GPT-2 and Llama model, quantiser and static-bound contract
+  depends:
+  - E5-01
+  - E5-02
+  - E5-03a
+  rfc:
+  - RFC-0004 A3
+  - RFC-0004 A6
+  - RFC-0004 A7
+  - RFC-0004 A8
+  - RFC-0004 A9
+  - RFC-0004 A10
+  - RFC-0017
+  skill: rfc-author
+  crate: stele-cqis+stele-ir
+  status: in_progress
+  agent: codex-root
+  branch: task/E5-03b-full-model-contract
+  acceptance:
+  - exact complete numerical contracts cover GPT-2-small and Llama-3.1-8B, including LayerNorm, learned positions, affine biases, both FFN forms, all model boundaries and full/cache decoding equality; no substitute model or implicit defaults
+  - canonical checkpoint conversion, quantiser/configuration/artifact identities, role and tensor ordering, all scales and representations, errors and supported shape domains are specified without importing research code into crates
+  - every arithmetic, range, branch, index and source obligation has an explicit static-bound derivation and consuming-reduction dependency; incomplete numerical metadata never becomes a full proof plan or certificate
+  - independent exact evidence covers each newly defined numerical relation and its boundaries before acceptance; actual native parity, NC-0109, named-model fidelity and full inference remain mandatory implementation delivery gates
+  - coordinated append-only amendments and all twelve review answers close the contract gaps without weakening E3/E4/E5/E6/E7/E8, private PCS/ZK, profile, Q12/Q29, weight-pass or original GPT-2/Llama/W8 requirements
+  - accepted specification and a sequential implementation DAG connect the complete contract to native quantisation, full reference inference, canonical lowering, proving, verification and benchmark delivery; all required local and selected hosted gates pass before normal merge
 - id: E5-04
   epic: E5
   title: Bit-exact CQIS reference forward pass (Rust + NumPy) incl. attention blockwise, RMSNorm limbs, RoPE tables, decoding
