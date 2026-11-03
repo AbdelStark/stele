@@ -1169,6 +1169,9 @@ The weighted continuation derives full-context nibble columns, retains actual
 probability offsets and every absolute block, and checks wide variable division.
 Full 1024-slot block admission and all sources survive shorter requests and
 rounded-zero blocks. The byte-radix defaults retain their prior exact semantics.
+The RMSNorm continuation integrates its unchanged full statistic, exact
+remainder, shared exponent tuple, reciprocal lookup and signed output into the
+new frame. Actual source/lookup consumers remain required for this original family.
 The full operation inventory retains both architectures and every source edge.
 Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
 static/range/branch/index/source expansion, complete model-flow evidence,

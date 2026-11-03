@@ -454,3 +454,55 @@ Earlier full-corpus receipts retain their original hashes; no historical proof
 campaign is rerun or presented as a current-source rerun. Original RMS-family
 integration, decoding bounds, the full collection/outer identities, native
 consumers, full named-model inference/proving/verification and benchmarks remain.
+
+## Original RMSNorm obligations in the complete frame
+
+The [RMSNorm appendix](../../docs/rfcs/full-model-rms-bounds.md) adds schema 14
+without changing RFC-0021 §2.3 semantics. It retains complete original input/
+gain words, the full squared statistic, epsilon numerator, normalized numerator/
+denominator, exact remainder and selected reciprocal. The same original exponent
+determines every normalization/output factor. Product signs, zeros, one signed
+rounding and output range reach the subsequent complete-row conversion.
+
+Run `python3 -B research/cqis-model-contract/check_rms_bounds.py`.
+Seed 2679 checks 10000 complete records against independent rational factor
+maxima, polynomial column arithmetic and full struct-based framing. Counted
+coordinate groups represent exactly d original input/gain pairs for the
+statistic. Exact Fraction arithmetic independently selects its exponent and
+compares each represented output with signed half-away rounding. Reciprocal
+point entries satisfy the original two-sided integer isqrt inequalities;
+these point checks do not replace whole-table admission or a lookup proof.
+
+All 10000 randomized statistics have nonzero division remainder, retained
+without rounding. Among group representatives, 21412 outputs fit int16 and
+2043 overflow; any overflowing coordinate rejects its complete operation.
+The cases include 10181 zero products, 92 exact ties and 2586 negative products
+rounded to zero. These are representative-coordinate counts, not full-model
+inference results or proof acceptance counts.
+
+Randomized exponents cover -13..8. Separate original-input/epsilon boundary
+cases reach every a from -23 through 9, including the maximal-u32 epsilon
+endpoint. Further cases cover a successful exact left shift, positive/negative
+half ties, zero input with negative gain, negative input with zero gain,
+full dimension 16384 and both signed-int16 source endpoints. The maximum
+statistic side is 1073709311, retaining RFC-0022's strict M31 margin. Canonical
+table addressing retains the final byte 524349 and real mantissa row range.
+
+An explicit tuple combines individually valid factors from different exponents;
+it belongs to no joint tuple. This demonstrates the need for the original shared
+index, not rejection by a native consumer. A high-word change by p likewise
+preserves a field residue while changing the required integer. Byte mutations,
+truncations, suffixes, changed valid gain fractions, mutable/oversized frames,
+unsupported dimensions/output fractions, Boolean fields and invalid epsilon
+encodings reject in the research validator. They earn no native NC credit.
+
+Randomized maxima are 46719 bytes and 19 columns; the independent domain proof
+allows 20 columns and bounds the complete record below 76000 bytes. These
+sampled maxima do not select capacities. Corpus SHA-256:
+`f9d53fc7a240080ed463d40cd829e64888c75fb3a38bddee44e171fb8afe126e`.
+Candidate SHA-256: `b90a408989f4c5ac32f9397b5199f32166641af94498b09e0b62f71efd498402`.
+Checker SHA-256: `c4a9d7924c8d2d157b05903ef9f5e60ba93d229a30e6d8b3432fd448ba85fec5`.
+Shared arithmetic/numerical/checker helpers are unchanged from the preceding
+qualified versions. No historical proof campaign is rerun. Decoding records,
+complete collection/outer identities, actual native consumers/parity and full
+named-model inference/proving/verification/benchmark delivery remain open.

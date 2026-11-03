@@ -388,8 +388,10 @@ scaled scores and causal maximum/index records. The [function-bound appendix](fu
 covers exponential recombination, component addressing and full activation
 source words, conditional on complete canonical table admission. The
 [weighted attention appendix](full-model-weighted-bounds.md) specifies full
-weighted/block/global normalization with fixed radix-16 records. Greedy/sample/
-stop records and the complete integration of original RMS families and all source/index/range/branch obligations
+weighted/block/global normalization with fixed radix-16 records. The
+[RMSNorm appendix](full-model-rms-bounds.md) integrates the original statistic,
+joint factors, lookup and output chain. Greedy/sample/stop records and the
+complete collection of all source/index/range/branch obligations
 still require completion and integration into the full model collection.
 The existing twelve-family numerical collection supplies evidence only; its
 scoped membership is not the final collection or proof plan. None of those

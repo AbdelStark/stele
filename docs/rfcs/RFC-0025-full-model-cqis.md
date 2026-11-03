@@ -309,6 +309,9 @@ all canonical table definitions must still pass before operation admission.
 The [weighted attention appendix](full-model-weighted-bounds.md) covers complete
 probability/value sums, every fixed block and variable normalization, with
 radix-16 columns through the full context domain.
+The [RMSNorm appendix](full-model-rms-bounds.md) integrates the unchanged
+RFC-0021 statistic, shared exponent factors, reciprocal lookup and signed output
+into a complete record, including original source and padding obligations.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

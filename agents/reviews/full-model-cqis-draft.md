@@ -74,6 +74,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    even at capacity one. The exact offset uses the actual probability sum.
    Variable division uses Dmin to bound its quotient; a reachable output 128
    demonstrates why using Umax/Dmax=127 would reject a valid result.
+   The original RMSNorm chain now has a complete record checked on 10000
+   configurations, plus actual boundary cases at all 33 exponents. Original
+   input/gain signs, statistic remainders, shared normalization/output factors,
+   reciprocal indices and exact signed output remain separate obligations.
+   A mixed factor tuple can pass individual ranges without corresponding to
+   any a; only the joint original-index relation is sufficient.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
@@ -90,6 +96,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    evaluation. The original selector and actual input/output joins remain.
    Weighted cases retain complete real/masked/padded key spans and all absolute
    block ids. A block rounded to zero retains its raw/source/remainder work.
+   RMSNorm counts exactly d original statistic terms; inactive source words
+   stay zero. Neither padded reciprocal rows nor padded exponent selections
+   may become real queries. The row-wide M/J and factors retain their sources.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
