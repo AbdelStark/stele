@@ -73,3 +73,30 @@ verification, private PCS/ZK or profile delivery. Full authenticated source and
 config/tokenizer/traffic joins, Registry/Bounds consumers and outer statement
 remain required. This adds no challenge, intermediate commitment or online
 proof weight pass and reports no measured cost constant.
+
+## Original-source preparation and numerical identity
+
+`preparation_execution.prepare` snapshots the exact original-file dictionary,
+checks SourceConfig's architecture/role binding, converts the original immutable
+source tensors, then validates the stored Artifact bytes against the conversion
+digest before numerical execution. The same Model/Map/Assets and derived Scales
+flow through every stage. A complete return requires all file, alias, selected
+scalar, vector-range, Artifact and static execution checks to succeed.
+
+The helper retains complete original/output bytes in research memory. It grants
+no publisher authority or native proof handle. Original-source authority must
+come from the authenticated passport/statement, and the separate commitment to
+Artifact hash relation still needs its actual proof consumer. Tokenizer assets
+are hash-bound bytes here; this token-domain executor does not establish text
+encoding or traffic ownership. Named fidelity retains its original tokenizer
+and complete evaluation requirements.
+
+The encoding appendix's numerical identity preimage is exactly 152 bytes:
+its existing domain prefix followed by H(Model), H(Scales), H(Registry), H(Bounds).
+`identity_frame` validates the complete collection, including same-Model Scales
+and complete definition-derived Registry data, before constructing those bytes.
+Verification rederives the full preimage from independently expected inputs.
+The identity is its BLAKE3-256 digest. No field is adopted from supplied identity
+bytes, and no opaque Bounds/Registry hash can replace their required validation.
+This closes the numerical identity join only; complete passport/public-input,
+commitment/layout, profile and source consumers remain separate requirements.

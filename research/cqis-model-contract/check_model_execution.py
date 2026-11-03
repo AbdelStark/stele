@@ -119,14 +119,33 @@ def rotate(r,values,position,heads,width):
 
 @lru_cache(maxsize=65536)
 def activation(p,value):
-    with ctx.workprec(256):
-        x=arb(value)/2**p.F
-        real=x/(1+(-x).exp()) if p.kind==1 else x*(1+((arb(2)/arb.pi()).sqrt()*(x+arb(8943)/200000*x**3)).tanh())/2
-        scaled=real*2**p.E; sign=-1 if scaled<0 else 1
-        n=(sign*scaled+arb(1)/2).floor().unique_fmpz(); assert n is not None
-        value=sign*int(n)
-    if not -32768<=value<=32767: raise ValueError('Range')
-    return value
+    if value==0:return 0
+    sign=-1 if value<0 else 1; limit=Q(abs(value))*Q(2)**(p.E-p.F)
+    for precision in (256,512,1024):
+        with ctx.workprec(precision):
+            x=arb(value)/2**p.F
+            real=x/(1+(-x).exp()) if p.kind==1 else x*(1+((arb(2)/arb.pi()).sqrt()*(x+arb(8943)/200000*x**3)).tanh())/2
+            magnitude=sign*real*2**p.E
+            low=max(Q(0),Q(str(magnitude.lower().fmpq()))); high=min(limit,Q(str(magnitude.upper().fmpq())))
+        assert 0<=low<=high<=limit,'OracleInterval'
+        lower=low+Q(1,2); upper=high+Q(1,2)
+        a=lower.numerator//lower.denominator; b=upper.numerator//upper.denominator
+        # RFC-0021 §2.2: for nonzero finite x, 0<|f(x)|<|x|; the upper endpoint is open.
+        if high==limit and upper.denominator==1:b-=1
+        if a==b:
+            result=sign*a
+            if not -32768<=result<=32767:raise ValueError('Range')
+            return result
+    raise AssertionError('OraclePrecision')
+
+
+def activation_tail_boundaries():
+    cases=((4,7,6,1783,891),(1,1,0,513,256),(1,7,6,32767,16383))
+    for kind,f,e,value,expected in cases:
+        p=Activation(1,kind,f,e)
+        assert activation(p,value)==expected==c.activation(p,value)
+        assert activation(p,-value)==0==c.activation(p,-value)
+    return 2*len(cases)
 
 
 def reference(m,a,tokens):
@@ -306,7 +325,8 @@ def boundaries():
     od=c.load(om,omp,osr,oraw,blake3(oraw).digest())
     for name,layer,_ in roles(om.shape):
         record=od.record(name,layer); assert tuple(od.code(record,i) for i in range(record.elements))==oa[name,layer][-1]
-    return dict(cache_scope_controls=True,static_score_and_block_controls=True,odd_row_width=3,odd_token_elements=od.record('token').elements)
+    return dict(cache_scope_controls=True,static_score_and_block_controls=True,odd_row_width=3,odd_token_elements=od.record('token').elements,
+                activation_tail_cases=activation_tail_boundaries())
 
 
 def main():

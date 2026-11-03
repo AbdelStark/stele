@@ -48,6 +48,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The execution appendix composes both complete numerical model families from
    canonical Artifact bytes, under the existing Draft RFC-0025 definitions.
 
+   Preparation now joins those existing source/config/conversion/Artifact
+   contracts before numerical execution. The numerical identity implements the
+   existing encoding §6 preimage with complete collection validation.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -79,6 +83,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
 
    Full/cache execution adds no challenge or hash domain. Cache scope retains
    Model/Scales/Artifact identities as internal state, without protocol authority.
+
+   The 152-byte numerical identity is rederived from complete expected
+   Model/Scales/Registry/Bounds. It authenticates no publisher or supplied
+   expected value and introduces no hash domain or challenge.
 
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
@@ -116,6 +124,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Every numerical projection now reads original Artifact codes/scales and the
    declared physical role. Source/commitment provenance, Registry/Bounds admission
    and authenticated outer consumers remain required for a native proof.
+
+   The same original-file snapshot, Model/Map/Assets and derived Scales reach
+   stored-byte validation and execution. Complete collection validation
+   supplies numerical identity evidence only; native source and commitment
+   consumers remain required.
 
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
@@ -170,6 +183,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    admission, odd int4 indexing and failure before exposing new cache state. A
    selected EOS must finish evaluation before successful stopping.
 
+   Integration controls reject changed config/source bytes, missing or mutable
+   assets, rehashed epsilon substitution and wrong physical roles. Identity
+   controls reject altered fields, malformed frames, stale Model and corrupted
+   complete Registry/Bounds; none earns native NC credit.
+
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -198,6 +216,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
 
    No native accounting line is discharged by numerical execution. All original
    identity, seed/draw, source and reduction consumers retain their ledger work.
+
+   Composition reuses existing SourceConfig/conversion/Artifact and numerical
+   identity hashes. No native query or loss line is added or discharged;
+   complete passport and wrapper accounting remains required.
 
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
@@ -291,6 +313,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Every configured unit, scale and exact gated product remains intact; generic
    execution does not construct a complete native bound-certificate consumer.
 
+   Identity generation validates the complete statically derived collection
+   under the same Model/Scales/Registry. Original-source numerical failures
+   remain rejections and cannot tighten any declared bound.
+
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -348,6 +374,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Whole-row conversions precede head/group views and follow concatenation;
    learned positions and rotary data remain distinct source roles.
 
+   Source-to-execution composition preserves the existing fused partitions,
+   physical order, packed tails and absolute causal positions. It introduces no
+   padding rule or new cut.
+
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -400,6 +430,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    and append evaluation. Both FFNs, affine biases and fractional alignments use
    the same explicit Model; generation evaluates the final EOS.
 
+   All 36 original packages match independent conversion bytes and execution
+   outcomes. The activation oracle now uses the strict mathematical magnitude
+   bound at saturation; candidate execution is unchanged, and the old checker
+   is retained for evidence.
+
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -437,6 +472,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    and generation. Large addressing is exercised without named-model fidelity,
    Rust/NumPy, native proof or GPU parity credit.
 
+   Generic two-layer original-source fixtures cover three layouts, four IEEE
+   formats and one to three shards. Their exact checks and complete
+   Registry/Bounds identities provide no named-fidelity, native, proof or GPU
+   parity credit.
+
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -469,6 +509,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Numerical execution retains full Artifact bytes and O(Nv+NLd) batch arrays.
     This is research resource behavior, without a measured constant or change
     to the one online weight pass required of the prover.
+
+    Preparation retains original and complete converted bytes, with a separate
+    stored-Artifact validation scan. These offline costs do not change the
+    online proof weight-pass requirement or report a measured constant.
 
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
@@ -520,6 +564,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     authenticate caller-forged K/V provenance; native fallible allocation and
     source/state proof consumers remain required.
 
+    Prepared is a research numerical result, not a native admission handle.
+    Complete source/output bytes remain resident; publisher authority, native
+    fallible allocation and private commitment/proof resources are still
+    separate requirements.
+
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -550,6 +599,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Artifact syntax/digest checks remain distinct from publisher authority,
     private commitments, full passport verification and named fidelity.
 
+    Prepared and the numerical identity preimage remain research values. Their
+    complete validation is distinct from an authenticated passport, public input,
+    private commitment or accepted native proof.
+
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
 That result is limited to the research mapper and does not approve a protocol.
@@ -557,6 +610,11 @@ That result is limited to the research mapper and does not approve a protocol.
 I tried to break numerical execution by substituting Artifact bytes, reusing a
 different cache scope and supplying inadmissible score/block parameters, and the
 execution controls rejected it. This is research evidence, not native approval.
+
+I tried to break preparation with rehashed wrong epsilon, altered source files
+and substituted roles, and the controls rejected them. Corrupted complete
+Registry/Bounds and identity frames also rejected. These are numerical research
+checks; E5-03b remains Draft/in_progress.
 
 ## Findings still preventing acceptance
 

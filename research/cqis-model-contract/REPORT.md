@@ -1240,3 +1240,62 @@ Complete Artifact/input/execution/generation corpus SHA-256:
 `d6d4cb9d49440c7fe5ef5a5ae5d6947e47d832a658081959e8964eb476639c9a`.
 Candidate SHA-256: `3c90e3033f405b016a2071cbcab7b5a9d54985d9c5985a1b77483f9741bd9686`.
 Checker SHA-256: `d5876152845d3ae94b8d62c57aac1be53e87b741be10cca9a3c9abfcaed6d03b`.
+
+## Original-source preparation and numerical identity
+
+`preparation_execution.py` joins source architecture, exact conversion and stored
+Artifact validation before returning numerical execution data. All stages use
+the same original-file snapshot, Model, Map and Assets. The complete stored
+Artifact is read and validated against the converter's emitted digest. The
+existing numerical identity frame is rederived only after complete Scales,
+Registry and Bounds validation; opaque supplied hashes cannot replace that work.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 --with safetensors==0.6.2 python -B
+research/cqis-model-contract/check_preparation_execution.py`.
+Seed 2693 checks 36 original source packages: bare GPT-2, prefixed GPT-2 and
+Hugging Face Llama layouts, each with all four IEEE source formats and one to
+three shards. Every complete converted Artifact and Scales frame matches the
+independent rational source-conversion oracle. Full/cache/generation outcomes
+match independent rational/Arb execution: 3 EOS stops, 7 nonzero limit stops,
+7 zero-limit completions and 19 required numerical rejections.
+
+Both complete numerical identity cases regenerate Registry and Bounds. GPT-2's
+Registry/Bounds lengths are 1854/1994725 bytes; Llama's are 2127/1762104 bytes.
+Both 152-byte identity frames match independent framing. Eighteen source controls
+cover changed or missing original files, mutable assets, changed epsilon under
+recomputed asset hashes and substituted roles. Sixteen identity controls cover
+changed preimages, lengths/types, corrupted Registry/Bounds and stale Model.
+
+These are generic two-layer original-source fixtures. Their tokenizer asset is
+an identified empty JSON object, with no tokenizer behavior or named-source
+claim. The helper retains complete source/output bytes in research memory.
+It supplies no publisher authority, native admission handle, private proof,
+profile, native NC, named-fidelity or performance credit. Complete outer
+passport/public-input/commitment schemas and actual proof consumers remain
+required. No production dependency, challenge, cut or online weight pass changes.
+
+Complete source/config/Artifact/outcome corpus SHA-256:
+`def926170654e9ca22de80b94f877ce8226b08fed47666a347c366de85de73e8`.
+Candidate SHA-256: `db0c26ff7b9b90ff5c45f10590d213c5ca10e5a1dc1ad3655835d5a3c2e625bb`.
+Checker SHA-256: `583b486b640af117cb3487b7b523cc21d7762c2140f108c1d1f4fe89e7abd49b`.
+
+The first source-integration smoke exposed an ambiguity in the independent
+model activation oracle: GELU-tanh at code 1783, F=7, E=6 is strictly below
+891.5 after scaling, but the closed 256-bit Arb enclosure straddled that rounding
+boundary. For nonzero finite x, both SiLU and GELU-tanh have
+0<|f(x)|<|x|. The oracle now intersects its enclosure with that strict magnitude
+bound, yielding 891 without consulting the candidate. It tries 256,512,1024-bit
+precision and still fails on unresolved intervals. Six signed tail regressions
+cover this case and two SiLU saturation cases. The before-fix failure and original
+checker are preserved; the numerical executor and prior historical campaigns
+remain unchanged.
+
+The repaired checker requalifies the same 10000-model seed-2692 corpus. Every
+previous outcome, count, boundary, block, atomicity and large-address result is
+unchanged, including corpus SHA-256
+`d6d4cb9d49440c7fe5ef5a5ae5d6947e47d832a658081959e8964eb476639c9a`.
+All six added activation-tail cases pass. Repaired model checker SHA-256:
+`fe3c82760a4a7892866792ba1c991aa68c6fbb1dec96e31b3061e309a21e118f`.
+The earlier model section retains the original checker hash as historical evidence.
+Both new runs pin the same 58 source/document inputs and verify they are unchanged.
