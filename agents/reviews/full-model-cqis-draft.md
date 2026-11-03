@@ -45,6 +45,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    selected exponential representation and seed/absolute-position rules. No new
    numerical policy or independently accepted protocol is introduced.
 
+   The execution appendix composes both complete numerical model families from
+   canonical Artifact bytes, under the existing Draft RFC-0025 definitions.
+
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -73,6 +76,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The composition derives the existing seed/draw preimages. It accepts no
    caller-supplied draw; these deterministic hashes retain their required wrapper
    proof and accounting and do not become Transcript challenges.
+
+   Full/cache execution adds no challenge or hash domain. Cache scope retains
+   Model/Scales/Artifact identities as internal state, without protocol authority.
 
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
@@ -106,6 +112,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Sampling now consumes the actual configured exponential point values before
    top-p/CDF selection. Previous-position logits and original seed remain
    numerical inputs whose native source/commitment relations must still be proven.
+
+   Every numerical projection now reads original Artifact codes/scales and the
+   declared physical role. Source/commitment provenance, Registry/Bounds admission
+   and authenticated outer consumers remain required for a native proof.
 
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
@@ -156,6 +166,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    EOS already in the prefix, exhausted limits, bad logits and exp-domain failure.
    The zero-limit sampled seed check remains explicit and mandatory.
 
+   Execution controls cover Artifact substitution, cache scope, static score/block
+   admission, odd int4 indexing and failure before exposing new cache state. A
+   selected EOS must finish evaluation before successful stopping.
+
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -181,6 +195,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
 
    No hash domain or native query budget changes. The existing seed and per-token
    draw hashes still need their actual consumer schedule in the global ledger.
+
+   No native accounting line is discharged by numerical execution. All original
+   identity, seed/draw, source and reduction consumers retain their ledger work.
 
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
@@ -270,6 +287,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Complete vocabulary and absolute-position domains remain intact; numerical
    success never tightens a static certificate or admits the rest of the model.
 
+   Static score and full-1024-slot block bounds are checked before inference.
+   Every configured unit, scale and exact gated product remains intact; generic
+   execution does not construct a complete native bound-certificate consumer.
+
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -323,6 +344,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Prompt EOS is excluded from stop checks, and generated-prefix EOS prevents
    another choice. Actual padded native sources remain separate obligations.
 
+   Full and cached attention retain absolute block boundaries and masked zeros.
+   Whole-row conversions precede head/group views and follow concatenation;
+   learned positions and rotary data remain distinct source roles.
+
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -371,6 +396,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    first maximum; sampled ties/order and CDF boundaries use the existing exact
    rules. Certified point caches contain only definition-derived values.
 
+   Complete residual cuts, logits and K/V prefixes are compared across batch
+   and append evaluation. Both FFNs, affine biases and fractional alignments use
+   the same explicit Model; generation evaluates the final EOS.
+
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -404,6 +433,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    exponential values and independent CDF intervals. This remains numerical
    research, without Rust/NumPy, full model/cache or named-fidelity credit.
 
+   The new oracle uses independent rational/Arb arithmetic for complete models
+   and generation. Large addressing is exercised without named-model fidelity,
+   Rust/NumPy, native proof or GPU parity credit.
+
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -432,6 +465,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Decoding retains its O(v log v) sorting and O(v) arithmetic/storage costs;
     prefix validation costs O(n). This introduces no weight pass or measured
     constant. Point certificates are research work, not a native performance claim.
+
+    Numerical execution retains full Artifact bytes and O(Nv+NLd) batch arrays.
+    This is research resource behavior, without a measured constant or change
+    to the one online weight pass required of the prover.
 
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
@@ -479,6 +516,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     vocabulary arrays and a bounded derived-point cache; native fallible resources
     and the complete Registry still require validation. Failure returns no Decision.
 
+    Internal immutable caches are execution state. Structural validation cannot
+    authenticate caller-forged K/V provenance; native fallible allocation and
+    source/state proof consumers remain required.
+
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -505,16 +546,24 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     subrecord only; the complete Model identity, original token/logit sources,
     private seed and outer authenticated statement remain distinct requirements.
 
+    Numerical Data, Full, Step and Cache values are not proof-admission handles.
+    Artifact syntax/digest checks remain distinct from publisher authority,
+    private commitments, full passport verification and named fidelity.
+
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
 That result is limited to the research mapper and does not approve a protocol.
+
+I tried to break numerical execution by substituting Artifact bytes, reusing a
+different cache scope and supplying inadmissible score/block parameters, and the
+execution controls rejected it. This is research evidence, not native approval.
 
 ## Findings still preventing acceptance
 
 Actual consuming-reduction closure, authenticated outer
 passport/request schemas, complete passport codecs, actual native conversion
 consumers, actual named source/config admission and tokenizer/generation adapters,
-complete GPT-2/Llama numerical-flow integration, sampling's native exp/request/
+native GPT-2/Llama full/cache execution, sampling's native exp/request/
 seed source bindings, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against
 the final contract before acceptance. Full local and selected hosted gates are

@@ -1186,3 +1186,57 @@ Complete policy/input/decision corpus SHA-256:
 `2806088859a8ca5b0147542d234b1e9d0d7513fe912739bf6f8d269591538228`.
 Candidate SHA-256: `38ca4e497fcc9cf563a9fa18bc256d7ed5c299f52bb9517f8e52372674ec03fb`.
 Checker SHA-256: `cb9ef10b118b999a9813ad55750f718df07338670a75be2a744efcf8686f5e3d`.
+
+## Complete numerical model and cache execution
+
+The [execution appendix](../../docs/rfcs/full-model-execution.md) and
+`model_execution.py` connect canonical Artifact codes/scales to complete GPT-2
+and Llama numerical flows. The immutable reader retains original bytes and
+physical role order. Learned positions, affine biases, exact-mean LayerNorm,
+both FFNs, configured rotary/grouped attention and all fractional alignments
+reach complete vocabulary logits. No old research product cap is inherited.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 python -B research/cqis-model-contract/check_model_execution.py`.
+Seed 2692 checks 10000 model configurations, 5000 per family, against independent
+rational arithmetic and Arb point enclosures. All outcomes match: 1950 GPT-2
+and 1594 Llama configurations complete successfully; 6456 reject for the exact
+oracle reason. The successful cases compare every residual cut, every complete
+logit row and every K/V code/scale between batch and incremental evaluation.
+Random configurations include mixed fractional units, both weight widths,
+static/dynamic row policies and both attention accumulation modes.
+
+Each configuration also receives an independent generation check. Outcomes are
+701 EOS stops, 1340 nonzero limit stops, 1467 zero-limit completions and 6492
+expected rejections. Successful returned sequences, stop reasons, complete final
+evaluation and final cache agree. The earlier independent decoding oracle is
+reused with actual model logits; no historical campaign is rerun. Failure is
+an expected numerical outcome, not an omitted item or a fidelity success.
+
+Focused controls reject substituted Artifact bytes, wrong cache scope/shape and
+statically inadmissible score/block configurations. An odd-width int4 case checks
+all decoded physical values, including a 21-element token tensor. Signed attention
+checks at positions 1,1023,1024 compare full and prefix-only key arrays across a
+2048-key capacity; block and exact accumulation retain their distinct outcomes.
+A vocabulary-head overflow exposes no new cache. A selected EOS whose embedding
+overflows rejects generation before reporting a successful stop.
+
+A complete 11185793-byte generated Artifact contains 4194306 token elements and
+699051 vocabulary rows. Element 4194304 is nonzero in the token and head records.
+Full execution reads that original coordinate, retains the expected final
+residual, and emits the complete vocabulary with the independently derived
+logit 632 at its final id. All other logits are zero. The original immutable
+Artifact object is retained without a second whole-file copy.
+
+These are generic numerical configurations and generated payloads. Full named
+checkpoint/fidelity, Rust/NumPy and GPU parity, Registry/Bounds/source admission,
+native proof/verification, private PCS/ZK and profile gates remain required.
+Internal cache structure does not authenticate caller-forged K/V provenance.
+Native resource admission and complete outer passport/public-input consumers
+remain open. No production dependency, challenge, cut, online proof weight pass,
+native control credit or measured cost constant changes.
+
+Complete Artifact/input/execution/generation corpus SHA-256:
+`d6d4cb9d49440c7fe5ef5a5ae5d6947e47d832a658081959e8964eb476639c9a`.
+Candidate SHA-256: `3c90e3033f405b016a2071cbcab7b5a9d54985d9c5985a1b77483f9741bd9686`.
+Checker SHA-256: `d5876152845d3ae94b8d62c57aac1be53e87b741be10cca9a3c9abfcaed6d03b`.

@@ -224,6 +224,8 @@ EOS takes precedence when it coincides with the token limit. Prompt plus
 maximum_new must fit context capacity. The [request contract](full-model-request.md)
 fixes exact request/token-I/O bytes, stop arithmetic and original source joins.
 Every returned token, including EOS, is evaluated when checking full/cache parity.
+The [numerical execution appendix](full-model-execution.md) describes the complete
+Artifact-backed research composition and its internal full-prefix cache boundary.
 Sampled decoding has the same prompt/limit/EOS semantics. Its proposed exact
 policy, byte identity and required hash/selection consumers are in the
 [decoding appendix](full-model-decoding.md). Independent numerical evidence and
