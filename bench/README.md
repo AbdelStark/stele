@@ -301,8 +301,14 @@ bytes and all frozen manifests are preserved. The gate instead scopes
 `CARGO_PROFILE_DEV_OPT_LEVEL=2`, `CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true` and
 `CARGO_PROFILE_DEV_OVERFLOW_CHECKS=true` to the lookup child process. These are
 the same checked settings, applied outside the pinned oracle. The actual scoped
-execution is separately qualified before publication; the screening pair alone
-does not qualify that caller.
+execution has a [separate qualified ledger](ledger/e0-10-lookup-corpus-scoped-profile.json)
+from clean commit `53eebe1acd6363395367652ecf6a672e1e19db15`: cold build 36.972 s,
+complete native execution 4.287 s, sum 41.259 s. It uses the identical saved
+requests, input-transfer/output-capture method and byte-identical independently
+checked results. Actual compiler metadata confirms the three settings and the
+unchanged feature graph. All 38 frozen oracle source pins still match. This is
+one follow-up qualification on the shared host, not a new paired experiment.
+The initial samples and failure remain intact; no historical campaign reruns.
 
 ## Control coverage profile (E0-09)
 

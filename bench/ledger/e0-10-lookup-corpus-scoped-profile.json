@@ -1,0 +1,385 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/lookup-corpus-scoped-profile",
+  "commit": "53eebe1acd6363395367652ecf6a672e1e19db15",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8; cargo 1.90.0 (840b83a10 2025-07-30)",
+  "device": "Apple M1 Max",
+  "driver": "not-applicable: CPU; macOS-15.6.1-arm64-arm-64bit",
+  "model_config": {
+    "plan": {
+      "task": "E0-10",
+      "source_commit": "53eebe1acd6363395367652ecf6a672e1e19db15",
+      "source_tree": "5b95fbe8bd3c98891a27b5152ae56585d448af71",
+      "source_sha256": {
+        "scripts/gates/check.py": "9d2fb8e56932d6e48b88f5459967bed69a37bd42e8c39d1904be9c0753369faf",
+        "scripts/tests/test_field_source_gate.py": "b094381463cf45ce0cdd27efc620a5d388c44e26cffee98a73ae7546d555e5ca",
+        "tests/negative-controls/lookup_corpus.py": "c9fe856aa87195ab11b386f09c6bc5d4e6e926059a45ab4a34f96d05ec245527",
+        "tests/negative-controls/fixtures/integer-linear/manifest.json": "6636c4e707e8d4c1e7f95e2abd90ee9e289a7d065e3593430b2f9755f9722573"
+      },
+      "env": {
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "2",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_DEV_OVERFLOW_CHECKS": "true",
+        "CARGO_TARGET_DIR": "/tmp/stele-lookup-scoped-53eebe1/target",
+        "CARGO_TERM_COLOR": "never"
+      },
+      "request_sha256": "6df18bfbdba186d52a14f6f1f7b6ca066f8a08d4aac635246885e1e3344e95aa",
+      "paired_ledger": "e0-10-lookup-corpus-profile.json",
+      "paired_ledger_sha256": "57785b529f6fe80eea948dfb020dd4f2bee234a950c5bb38acde92dc3f7c8f8a",
+      "scope": "One additional cold build and complete native execution with the actual gate-scoped dev settings; immutable same-source requests and independently checked outputs from the screening pair. No historical proof campaign or independent expectation is regenerated."
+    },
+    "measurement": {
+      "task": "E0-10",
+      "head": "53eebe1acd6363395367652ecf6a672e1e19db15",
+      "tree": "5b95fbe8bd3c98891a27b5152ae56585d448af71",
+      "driver_sha256": "16e5871ab42ccfb917a502806d27b072ac3a65c93eb5aefc0e688bebf583c514",
+      "source_sha256": {
+        "scripts/gates/check.py": "9d2fb8e56932d6e48b88f5459967bed69a37bd42e8c39d1904be9c0753369faf",
+        "scripts/tests/test_field_source_gate.py": "b094381463cf45ce0cdd27efc620a5d388c44e26cffee98a73ae7546d555e5ca",
+        "tests/negative-controls/lookup_corpus.py": "c9fe856aa87195ab11b386f09c6bc5d4e6e926059a45ab4a34f96d05ec245527",
+        "tests/negative-controls/fixtures/integer-linear/manifest.json": "6636c4e707e8d4c1e7f95e2abd90ee9e289a7d065e3593430b2f9755f9722573"
+      },
+      "frozen_source_parity": "All crates, control/oracle sources, Cargo inputs and toolchain equal f2dfd917baf00b8419dbf264c5f3cbdafa052d46.",
+      "pair_receipt_sha256": "baed2ad60f12d25053485139db32572a87775b1cf860a7c7f321e8f476c91fbf",
+      "env": {
+        "CARGO_PROFILE_DEV_OPT_LEVEL": "2",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+        "CARGO_PROFILE_DEV_OVERFLOW_CHECKS": "true",
+        "CARGO_TARGET_DIR": "/tmp/stele-lookup-scoped-53eebe1/target",
+        "CARGO_TERM_COLOR": "never"
+      },
+      "profile": "dev with gate-scoped checked optimisation",
+      "request_path": "/tmp/stele-lookup-profile-f2dfd91/requests.jsonl",
+      "request_sha256": "6df18bfbdba186d52a14f6f1f7b6ca066f8a08d4aac635246885e1e3344e95aa",
+      "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+      "cargo": "cargo 1.90.0 (840b83a10 2025-07-30)",
+      "host": "macOS-15.6.1-arm64-arm-64bit",
+      "cpu": "Apple M1 Max",
+      "complete": true,
+      "build": {
+        "argv": [
+          "cargo",
+          "build",
+          "--profile",
+          "dev",
+          "-p",
+          "stele-negative-controls",
+          "--example",
+          "lookup_corpus",
+          "--locked",
+          "--offline",
+          "--verbose",
+          "--message-format=json"
+        ],
+        "cwd": "/tmp/stele-post278-frontier",
+        "started_at": "2026-11-03T09:23:03.824677+00:00",
+        "load_before": [
+          "9.01025390625",
+          "10.1884765625",
+          "12.54736328125"
+        ],
+        "exit_code": 0,
+        "wall_ns": 36971993875,
+        "ended_at": "2026-11-03T09:23:40.797055+00:00",
+        "load_after": [
+          "13.9375",
+          "11.23876953125",
+          "12.83056640625"
+        ],
+        "stdout": "/tmp/stele-lookup-scoped-53eebe1/build.stdout",
+        "stdout_sha256": "990d46cce86fc8aab9d33fe8047aecde720202fbe951af97dfa3f5e48a6029f7",
+        "stdout_bytes": 24283,
+        "stderr": "/tmp/stele-lookup-scoped-53eebe1/build.stderr",
+        "stderr_sha256": "a0e6d6ae976636ce54c9f40c8d09a127f02a8458ef07652339b59fe2687fc43f",
+        "stderr_bytes": 36071
+      },
+      "artifact": {
+        "reason": "compiler-artifact",
+        "package_id": "path+file:///private/tmp/stele-post278-frontier/tests/negative-controls#stele-negative-controls@0.1.0",
+        "manifest_path": "/private/tmp/stele-post278-frontier/tests/negative-controls/Cargo.toml",
+        "target": {
+          "kind": [
+            "example"
+          ],
+          "crate_types": [
+            "bin"
+          ],
+          "name": "lookup_corpus",
+          "src_path": "/private/tmp/stele-post278-frontier/tests/negative-controls/examples/lookup_corpus.rs",
+          "edition": "2021",
+          "doc": false,
+          "doctest": false,
+          "test": false
+        },
+        "profile": {
+          "opt_level": "2",
+          "debuginfo": 2,
+          "debug_assertions": true,
+          "overflow_checks": true,
+          "test": false
+        },
+        "features": [],
+        "filenames": [
+          "/tmp/stele-lookup-scoped-53eebe1/target/debug/examples/lookup_corpus"
+        ],
+        "executable": "/tmp/stele-lookup-scoped-53eebe1/target/debug/examples/lookup_corpus",
+        "fresh": false
+      },
+      "executable_sha256": "74856d77171c2e0b01dce0cdc165b2c97c45a46527c7412b9fefe702d83a8f3e",
+      "runtime_artifacts": [
+        {
+          "name": "stele_field",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_poly",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_simd",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_hash",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_code",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_pcs",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_ir",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_sumcheck",
+          "features": [
+            "std"
+          ],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_gkr",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_lookup",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_cqis",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_reductions",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "stele_negative_controls",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        },
+        {
+          "name": "lookup_corpus",
+          "features": [],
+          "profile": {
+            "opt_level": "2",
+            "debuginfo": 2,
+            "debug_assertions": true,
+            "overflow_checks": true,
+            "test": false
+          }
+        }
+      ],
+      "corpus": {
+        "argv": [
+          "/private/tmp/stele-lookup-scoped-53eebe1/target/debug/examples/lookup_corpus"
+        ],
+        "cwd": "/tmp/stele-post278-frontier",
+        "started_at": "2026-11-03T09:23:40.844679+00:00",
+        "load_before": [
+          "13.9375",
+          "11.23876953125",
+          "12.83056640625"
+        ],
+        "exit_code": 0,
+        "wall_ns": 4286883875,
+        "ended_at": "2026-11-03T09:23:45.131674+00:00",
+        "load_after": [
+          "14.1025390625",
+          "11.3173828125",
+          "12.84912109375"
+        ],
+        "stdout": "/tmp/stele-lookup-scoped-53eebe1/corpus.stdout",
+        "stdout_sha256": "696c8d334a774911085800745243056a35e529938345e3e065144cbeba95bab2",
+        "stdout_bytes": 11988695,
+        "stderr": "/tmp/stele-lookup-scoped-53eebe1/corpus.stderr",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_bytes": 0
+      },
+      "byte_identical_to_independently_checked_pair": true,
+      "settings_and_features_verified": true,
+      "independent_receipt": "lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\nlookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; SHA256 ce40cdb3b09cf153b6f81a4962abe2e8959c38e05f6d71b149a2f486a1574a41\nbyte range corpus: 4 complete proofs, 4 accepts and 32 rejects; QM31/OM31; fixed prefix, bytes, records, imports and usage; SHA256 edfd2629223cacc9320e84637e63c2de252e8b6b915e8cc41caca82c6b50af28\n"
+    },
+    "raw_artifacts": {
+      "build.stdout": {
+        "path": "/tmp/stele-lookup-scoped-53eebe1/build.stdout",
+        "bytes": 24283,
+        "sha256": "990d46cce86fc8aab9d33fe8047aecde720202fbe951af97dfa3f5e48a6029f7"
+      },
+      "build.stderr": {
+        "path": "/tmp/stele-lookup-scoped-53eebe1/build.stderr",
+        "bytes": 36071,
+        "sha256": "a0e6d6ae976636ce54c9f40c8d09a127f02a8458ef07652339b59fe2687fc43f"
+      },
+      "corpus.stdout": {
+        "path": "/tmp/stele-lookup-scoped-53eebe1/corpus.stdout",
+        "bytes": 11988695,
+        "sha256": "696c8d334a774911085800745243056a35e529938345e3e065144cbeba95bab2"
+      },
+      "corpus.stderr": {
+        "path": "/tmp/stele-lookup-scoped-53eebe1/corpus.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "receipt_sha256": "5ef474e9404d7d6802eca641e7e0ae0ce69ce1ad56fb5827452919d38295fafd",
+    "measurement_driver_source": "\"\"\"E0-10: qualify the actual gate-scoped profile without changing frozen sources.\"\"\"\nimport ast\nfrom datetime import datetime, timezone\nimport hashlib\nimport json\nimport os\nfrom pathlib import Path\nimport platform\nimport subprocess\nimport time\n\nROOT=Path('/tmp/stele-post278-frontier')\nOUT=Path('/tmp/stele-lookup-scoped-53eebe1')\nPAIR=Path('/tmp/stele-lookup-profile-f2dfd91')\nHEAD='53eebe1acd6363395367652ecf6a672e1e19db15'\nTREE='5b95fbe8bd3c98891a27b5152ae56585d448af71'\ndef sha(p):\n with p.open('rb') as f: return hashlib.file_digest(f,'sha256').hexdigest()\ndef git(*a): return subprocess.check_output(['git',*a],cwd=ROOT,text=True).strip()\ndef clean():\n assert git('rev-parse','HEAD')==HEAD and git('rev-parse','HEAD^{tree}')==TREE\n assert not git('status','--porcelain')\n assert not git('diff','f2dfd917baf00b8419dbf264c5f3cbdafa052d46','HEAD','--',\n  'crates','tests/negative-controls','Cargo.toml','Cargo.lock','rust-toolchain.toml','.cargo')\nclean()\nassert sha(PAIR/'results.json')=='baed2ad60f12d25053485139db32572a87775b1cf860a7c7f321e8f476c91fbf'\npair=json.loads((PAIR/'results.json').read_bytes())\nassert pair['complete'] and pair['exact_native_output_equal'] and pair['safety_and_features_equal']\ntree=ast.parse((ROOT/'scripts/gates/check.py').read_text())\nassignments=[n for n in ast.walk(tree) if isinstance(n,ast.Assign)\n and any(isinstance(t,ast.Name) and t.id=='lookup_env' for t in n.targets)]\nassert len(assignments)==1\nexpr=assignments[0].value\nassert isinstance(expr,ast.Call) and isinstance(expr.func,ast.Name) and expr.func.id=='dict'\nassert len(expr.args)==1 and ast.dump(expr.args[0])==ast.dump(ast.parse('os.environ',mode='eval').body)\nsettings={k.arg:ast.literal_eval(k.value) for k in expr.keywords}\nassert settings=={'CARGO_PROFILE_DEV_OPT_LEVEL':'2','CARGO_PROFILE_DEV_DEBUG_ASSERTIONS':'true',\n 'CARGO_PROFILE_DEV_OVERFLOW_CHECKS':'true'}\nunexpected=[k for k,v in os.environ.items() if v and (k.startswith('CARGO_PROFILE_') or k in\n {'RUSTFLAGS','CARGO_ENCODED_RUSTFLAGS','CARGO_BUILD_RUSTFLAGS','RUSTC_WRAPPER',\n  'RUSTC_WORKSPACE_WRAPPER','RUSTC','CARGO_BUILD_TARGET','CARGO_TARGET_DIR'})]\nassert not unexpected,('Unexpected compiler override names',unexpected)\nOUT.mkdir(); target=OUT/'target';target.mkdir()\nenv_values=dict(settings,CARGO_TARGET_DIR=str(target),CARGO_TERM_COLOR='never')\nenv=dict(os.environ,**env_values)\ndata=dict(task='E0-10',head=HEAD,tree=TREE,driver_sha256=sha(Path(__file__)),\n source_sha256={p:sha(ROOT/p) for p in ['scripts/gates/check.py','scripts/tests/test_field_source_gate.py',\n  'tests/negative-controls/lookup_corpus.py','tests/negative-controls/fixtures/integer-linear/manifest.json']},\n frozen_source_parity='All crates, control/oracle sources, Cargo inputs and toolchain equal f2dfd917baf00b8419dbf264c5f3cbdafa052d46.',\n pair_receipt_sha256=sha(PAIR/'results.json'),env=env_values,profile='dev with gate-scoped checked optimisation',\n request_path=str(PAIR/'requests.jsonl'),request_sha256=sha(PAIR/'requests.jsonl'),\n rustc=subprocess.check_output(['rustc','--version','--verbose'],cwd=ROOT,text=True).strip(),\n cargo=subprocess.check_output(['cargo','--version'],cwd=ROOT,text=True).strip(),host=platform.platform(),\n cpu=subprocess.check_output(['sysctl','-n','machdep.cpu.brand_string'],text=True).strip(),complete=False)\nassert data['request_sha256']==pair['request_sha256']\nassert data['rustc']==pair['rustc'] and data['cargo']==pair['cargo'] and data['host']==pair['host']\ndef save(): (OUT/'results.json').write_text(json.dumps(data,indent=2)+'\\n')\ndef run(name,args,request=None):\n out,err=OUT/(name+'.stdout'),OUT/(name+'.stderr')\n record=dict(argv=args,cwd=str(ROOT),started_at=datetime.now(timezone.utc).isoformat(),\n  load_before=[str(v) for v in os.getloadavg()])\n print(json.dumps({'start':name}),flush=True);start=time.monotonic_ns()\n with out.open('xb') as stdout,err.open('xb') as stderr:\n  result=subprocess.run(args,cwd=ROOT,env=env,input=request,stdout=stdout,stderr=stderr)\n record.update(exit_code=result.returncode,wall_ns=time.monotonic_ns()-start,\n  ended_at=datetime.now(timezone.utc).isoformat(),load_after=[str(v) for v in os.getloadavg()],\n  stdout=str(out),stdout_sha256=sha(out),stdout_bytes=out.stat().st_size,\n  stderr=str(err),stderr_sha256=sha(err),stderr_bytes=err.stat().st_size)\n print(json.dumps({'finish':name,'exit_code':result.returncode,'wall_ns':record['wall_ns']}),flush=True)\n return record\nsave()\ndata['build']=run('build',['cargo','build','--profile','dev','-p','stele-negative-controls',\n '--example','lookup_corpus','--locked','--offline','--verbose','--message-format=json'])\nsave();assert data['build']['exit_code']==0\nmessages=[json.loads(line) for line in Path(data['build']['stdout']).read_bytes().splitlines()]\nassert any(m['reason']=='build-finished' and m['success'] for m in messages)\nartifacts=[m for m in messages if m['reason']=='compiler-artifact']\nselected=[m for m in artifacts if m['target']['name']=='lookup_corpus' and m['target']['kind']==['example'] and m['executable']]\nassert len(selected)==1\nartifact=selected[0];executable=Path(artifact['executable']).resolve()\nassert executable.is_relative_to(target.resolve()) and executable.is_file()\nruntime=[m for m in artifacts if m['target']['name'].startswith('stele_') or m['target']['name']=='lookup_corpus']\nfor m in runtime:\n p=m['profile'];assert p['opt_level']=='2' and p['debug_assertions'] and p['overflow_checks'] and not p['test']\nfeatures={m['target']['name']:sorted(m['features']) for m in runtime}\nexpected={m['name']:sorted(m['features']) for m in pair['configurations'][1]['runtime_artifacts']}\nassert features==expected and len(features)==len(runtime)\ndata.update(artifact=artifact,executable_sha256=sha(executable),runtime_artifacts=[\n dict(name=m['target']['name'],features=m['features'],profile=m['profile']) for m in runtime])\nsave();request=(PAIR/'requests.jsonl').read_bytes()\ndata['corpus']=run('corpus',[str(executable)],request)\nsave();assert data['corpus']['exit_code']==0 and not Path(data['corpus']['stderr']).read_bytes()\nactual=Path(data['corpus']['stdout']);expected=Path(pair['configurations'][0]['corpus']['stdout'])\nassert sha(expected)==pair['configurations'][0]['corpus']['stdout_sha256']\nwith actual.open('rb') as a,expected.open('rb') as b:\n while chunk:=a.read(1<<20): assert chunk==b.read(len(chunk))\n assert not b.read(1)\nwith actual.open() as f: assert sum(1 for _ in f)==88\nassert sha(executable)==data['executable_sha256']\nclean();data.update(complete=True,byte_identical_to_independently_checked_pair=True,\n settings_and_features_verified=True,independent_receipt=pair['independent_receipt'])\nsave();print(json.dumps({'complete':True,'receipt':str(OUT/'results.json'),'sha256':sha(OUT/'results.json')}),flush=True)\n",
+    "verification_source": "\"\"\"Verify E0-10's actual scoped invocation and export its separate ledger.\"\"\"\nfrom collections import Counter\nimport hashlib\nimport json\nfrom pathlib import Path\nimport subprocess\n\nROOT=Path('/tmp/stele-post278-frontier')\nOUT=Path('/tmp/stele-lookup-scoped-53eebe1')\ndef sha(p):\n with p.open('rb') as f: return hashlib.file_digest(f,'sha256').hexdigest()\nreceipt=OUT/'results.json'\nassert sha(receipt)=='5ef474e9404d7d6802eca641e7e0ae0ce69ce1ad56fb5827452919d38295fafd'\nd=json.loads(receipt.read_bytes())\nassert d['complete'] and d['byte_identical_to_independently_checked_pair'] and d['settings_and_features_verified']\ndriver=Path('/tmp/stele-lookup-scoped-measure.py')\nassert sha(driver)==d['driver_sha256']\nassert subprocess.check_output(['git','rev-parse',d['head']+'^{tree}'],cwd=ROOT,text=True).strip()==d['tree']\nassert not subprocess.check_output(['git','diff','f2dfd917baf00b8419dbf264c5f3cbdafa052d46',d['head'],'--',\n 'crates','tests/negative-controls','Cargo.toml','Cargo.lock','rust-toolchain.toml','.cargo'],cwd=ROOT)\nfor p,h in d['source_sha256'].items():\n assert hashlib.sha256(subprocess.check_output(['git','show',d['head']+':'+p],cwd=ROOT)).hexdigest()==h\nmanifest=json.loads((ROOT/'tests/negative-controls/fixtures/integer-linear/manifest.json').read_bytes())\nassert sha(ROOT/'tests/negative-controls/fixtures/integer-linear/manifest.json')=='6636c4e707e8d4c1e7f95e2abd90ee9e289a7d065e3593430b2f9755f9722573'\nassert all(sha(ROOT/p)==h for p,h in manifest['current_oracle_sources'].items())\nold_path=ROOT/'bench/ledger/e0-10-lookup-corpus-profile.json'\nassert sha(old_path)=='57785b529f6fe80eea948dfb020dd4f2bee234a950c5bb38acde92dc3f7c8f8a'\nold=json.loads(old_path.read_bytes());pair=old['model_config']['measurement']\nassert d['pair_receipt_sha256']==old['model_config']['measurement_receipt_sha256']\nassert sha(Path(d['request_path']))==d['request_sha256']==pair['request_sha256']\nartifacts={}\nfor phase in ('build','corpus'):\n r=d[phase];assert r['exit_code']==0\n for stream in ('stdout','stderr'):\n  p=Path(r[stream]);assert p.parent==OUT and p.stat().st_size==r[stream+'_bytes'] and sha(p)==r[stream+'_sha256']\n  artifacts[p.name]=dict(path=str(p),bytes=p.stat().st_size,sha256=sha(p))\nassert not Path(d['corpus']['stderr']).read_bytes()\nfor runtime in d['runtime_artifacts']:\n p=runtime['profile'];assert p['opt_level']=='2' and p['debug_assertions'] and p['overflow_checks'] and not p['test']\nassert {r['name']:r['features'] for r in d['runtime_artifacts']}=={\n r['name']:r['features'] for r in pair['configurations'][1]['runtime_artifacts']}\nassert sha(Path(d['artifact']['executable']))==d['executable_sha256']\nactual=Path(d['corpus']['stdout']);baseline=Path(pair['configurations'][0]['corpus']['stdout'])\nassert sha(baseline)==pair['configurations'][0]['corpus']['stdout_sha256']\nwith actual.open('rb') as a,baseline.open('rb') as b:\n while chunk:=a.read(1<<20): assert chunk==b.read(len(chunk))\n assert not b.read(1)\nwith actual.open() as f:\n rows=[json.loads(line) for line in f]\ncounts=Counter(r['outcome'] if 'outcome' in r else ('accept' if r['decision']=='accept' else 'reject') for r in rows)\nassert len(rows)==88 and counts=={'produced':10,'error':2,'accept':12,'reject':64}\nplan=dict(task='E0-10',source_commit=d['head'],source_tree=d['tree'],\n source_sha256=d['source_sha256'],env=d['env'],request_sha256=d['request_sha256'],\n paired_ledger='e0-10-lookup-corpus-profile.json',paired_ledger_sha256=sha(old_path),\n scope='One additional cold build and complete native execution with the actual gate-scoped dev settings; immutable same-source requests and independently checked outputs from the screening pair. No historical proof campaign or independent expectation is regenerated.')\ntimes={phase:d[phase]['wall_ns'] for phase in ('build','corpus')}\nledger=dict(schema_version=1,kind='micro',workload='micro/lookup-corpus-scoped-profile',\n commit=d['head'],toolchain=d['rustc']+'; '+d['cargo'],device=d['cpu'],driver='not-applicable: CPU; '+d['host'],\n model_config=dict(plan=plan,measurement=d,raw_artifacts=artifacts,receipt_sha256=sha(receipt),\n  measurement_driver_source=driver.read_text(),verification_source=Path(__file__).read_text(),\n  decisions=dict(counts),frozen_source_pins=38,\n  qualification='The direct oracle edit failed the unchanged frozen-source guard. The final gate scopes opt-level2/debug assertions/overflow checks to only the lookup process and leaves every frozen source and payload unchanged. Actual native output is byte-identical to both independently checked screening binaries. Shared-host follow-up, no confidence interval, full-CI latency or inference claim.'),\n plan_digest=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest(),\n profile='standard',bindings_all_on=True,batch_size=1,prompt_tokens=0,generated_tokens=0,\n prover_time_ns=sum(times.values()),witness_recompute_ns=0,stage_times_ns=times,\n kernel_counters=dict(cold_builds=1,complete_native_corpus_runs=1,requests=88,produced=10,\n  production_errors=2,accepted=12,rejected=64,unchanged_frozen_source_pins=38),\n proof_size_bytes=0,verifier_time_ns=dict(rust=0,python=0),controls=dict(total=0,passed=0,failed=0),\n note='RFC-0020 section 5 / RFC-0018 section 1, E0-10. Actual scoped validation execution only. Zero proof/verifier/control slots and standard tag satisfy the micro schema; no inference/profile admission or new control coverage. Build and execution are disjoint, using an empty target directory. Input transfer/output capture follow the screening method. The baseline remains its separately qualified sample, not a new paired run. All source definitions, frozen manifests/payloads and historical receipts remain intact; every input/output comparison is exact. No cost-model fit, GPU or full-CI performance result.')\np=ROOT/'bench/ledger/e0-10-lookup-corpus-scoped-profile.json';assert not p.exists()\np.write_text(json.dumps(ledger,indent=2)+'\\n');assert p.stat().st_size<1<<20\nprint(json.dumps({'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size,'stage_times_ns':times}))\n",
+    "decisions": {
+      "produced": 10,
+      "error": 2,
+      "accept": 12,
+      "reject": 64
+    },
+    "frozen_source_pins": 38,
+    "qualification": "The direct oracle edit failed the unchanged frozen-source guard. The final gate scopes opt-level2/debug assertions/overflow checks to only the lookup process and leaves every frozen source and payload unchanged. Actual native output is byte-identical to both independently checked screening binaries. Shared-host follow-up, no confidence interval, full-CI latency or inference claim."
+  },
+  "plan_digest": "bfebbde9c5de14a4c5ec53db26a5dcb8a4f7d15573170ddce240637c1a7b35bc",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 41258877750,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "build": 36971993875,
+    "corpus": 4286883875
+  },
+  "kernel_counters": {
+    "cold_builds": 1,
+    "complete_native_corpus_runs": 1,
+    "requests": 88,
+    "produced": 10,
+    "production_errors": 2,
+    "accepted": 12,
+    "rejected": 64,
+    "unchanged_frozen_source_pins": 38
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "RFC-0020 section 5 / RFC-0018 section 1, E0-10. Actual scoped validation execution only. Zero proof/verifier/control slots and standard tag satisfy the micro schema; no inference/profile admission or new control coverage. Build and execution are disjoint, using an empty target directory. Input transfer/output capture follow the screening method. The baseline remains its separately qualified sample, not a new paired run. All source definitions, frozen manifests/payloads and historical receipts remain intact; every input/output comparison is exact. No cost-model fit, GPU or full-CI performance result."
+}
