@@ -42,6 +42,18 @@ name = "requant-verifier"
 path = "requant/verifier.rs"
 
 [[test]]
+name = "nc-0316"
+path = "requant/nc_0316.rs"
+
+[[test]]
+name = "nc-0317"
+path = "requant/nc_0317.rs"
+
+[[test]]
+name = "nc-0318"
+path = "requant/nc_0318.rs"
+
+[[test]]
 name = "nc-0609"
 path = "pcs/nc_0609.rs"
 
@@ -221,6 +233,14 @@ path = "examples/matmul_bench.rs"
 [[example]]
 name = "requant_bench"
 path = "examples/requant_bench.rs"
+
+[[example]]
+name = "integer_linear_corpus"
+path = "examples/integer_linear_corpus.rs"
+
+[[example]]
+name = "integer_linear_bench"
+path = "examples/integer_linear_bench.rs"
 
 [[test]]
 name = "nc-0308"

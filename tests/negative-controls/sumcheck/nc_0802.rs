@@ -11,3 +11,8 @@ fn rejects_nc_0802() {
     stele_negative_controls::matmul::run(802).expect("closed matmul extension");
     stele_negative_controls::requant::run(802).expect("closed Requant extension");
 }
+
+#[test]
+fn rejects_integer_linear_omitted_frames() {
+    stele_negative_controls::integer_linear::run(802).expect("closed integer-linear extension");
+}

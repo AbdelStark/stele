@@ -56,7 +56,7 @@ pub enum LabelKind {
     /// A field challenge request and its state update.
     Challenge,
 }
-/// Soundness line owned by a challenge label (RFC-0012 §4, A1).
+/// Soundness family owned by a challenge or actual point consumer (RFC-0012 §4, A14).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LossLine {
     /// One sumcheck round; instance degree/round counts are supplied by the consumer.
@@ -69,6 +69,8 @@ pub enum LossLine {
     PcsQuery,
     /// Joint grouped-lookup identity (A11); counted once per lookup, never per draw.
     Lu,
+    /// Actual-tail point equality; no separate challenge is drawn (A14).
+    Sz,
 }
 /// Registered label metadata; validation does not authorize a caller-supplied registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,7 +82,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 41] = [
+const REGISTRY: [RegistryEntry<'static>; 42] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -286,6 +288,11 @@ const REGISTRY: [RegistryEntry<'static>; 41] = [
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Rlc),
     },
+    RegistryEntry {
+        label: "stele/v0.1/integer-linear/statement",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
 ];
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
@@ -313,7 +320,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 41], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 42], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -410,6 +417,8 @@ pub enum AbsorbLabel {
     RequantConstraints,
     /// Complete ordered Requant source claims before independent weights (A13).
     RequantClaims,
+    /// Complete centered integer-linear statement before any child draw (A14).
+    LinearStatement,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -442,6 +451,7 @@ impl AbsorbLabel {
             Self::RequantStatement => 37,
             Self::RequantConstraints => 38,
             Self::RequantClaims => 39,
+            Self::LinearStatement => 41,
         }]
     }
 }

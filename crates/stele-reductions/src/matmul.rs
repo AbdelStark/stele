@@ -14,6 +14,15 @@ use stele_sumcheck::{Proof, ScRecord, Term};
 mod producer;
 pub use producer::{prove, prove_measured, Work};
 
+#[path = "matmul_centered.rs"]
+pub(crate) mod centered;
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Mode {
+    Field,
+    Centered,
+}
+
 /// Successful owned Vec capacities in the actual closed verifier (A2 §6).
 /// Excludes borrowed inputs/certificates, stack, allocator metadata and process RSS.
 /// These observations neither authorize claims nor constitute the complete ledger.
@@ -300,9 +309,23 @@ pub fn verify_measured<'cert, K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_mode(t, expected, certificates, wire, limits, Mode::Field)
+}
+
+fn verify_mode<'cert, K: ChallengeField + CodeField + Eq>(
+    t: &mut Transcript<K>,
+    expected: &Statement<'_, K>,
+    certificates: [&'cert VerifiedCertificate<K>; 2],
+    wire: &[u8],
+    limits: stacked::Limits,
+    mode: Mode,
+) -> Result<(Record<'cert, K>, Usage, VerifierWork), Failure>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let mut hashes = 0u64;
     let result = (|| {
-        let context = Context::new(expected, certificates, limits)?;
+        let context = Context::new(expected, certificates, limits, mode)?;
         let statement = context.statement();
         let prepared = stacked::Prepared::for_certified_sources(&statement, context.limits)
             .map_err(stacked_error)?;
@@ -349,16 +372,26 @@ where
             point.extend_from_slice(&reduction.point);
         }
         // The fixed A4 instance has exactly X,W plus its independently consumed coefficient.
-        let values = [reduction.claims[0].1, reduction.claims[1].1];
+        let mut values = [reduction.claims[0].1, reduction.claims[1].1];
         let mut consume = |index: usize| {
-            let result = stele_pcs::verify_point_measured(
-                t,
-                certificates[index],
-                expected.inputs[index],
-                &points[index],
-                values[index],
-                openings[index],
-            );
+            let result = match mode {
+                Mode::Field => stele_pcs::verify_point_measured(
+                    t,
+                    certificates[index],
+                    expected.inputs[index],
+                    &points[index],
+                    values[index],
+                    openings[index],
+                ),
+                Mode::Centered => centered::opening(
+                    t,
+                    certificates[index],
+                    expected.inputs[index],
+                    &points[index],
+                    &mut values[index],
+                    openings[index],
+                )?,
+            };
             let usage = match &result {
                 Ok((_, usage, _)) => usage,
                 Err(failure) => &failure.usage,
@@ -404,6 +437,7 @@ impl<'a, K: ChallengeField> Context<'a, K> {
         s: &'a Statement<'a, K>,
         certificates: [&VerifiedCertificate<K>; 2],
         mut limits: stacked::Limits,
+        mode: Mode,
     ) -> Result<Self, Error> {
         let [h, a, b, c] = s.bits.map(usize::from);
         let ids = [s.inputs[0], s.inputs[1], s.output_id, s.coefficient_id];
@@ -464,7 +498,7 @@ impl<'a, K: ChallengeField> Context<'a, K> {
         factors.extend_from_slice(&[0, 1]);
         let mut frame = Vec::new();
         reserve(&mut frame, frame_size)?;
-        frame.extend_from_slice(&[1, K::DEGREE as u8]);
+        frame.extend_from_slice(&[if mode == Mode::Centered { 2 } else { 1 }, K::DEGREE as u8]);
         for id in [s.id, s.output_id, s.coefficient_id] {
             frame.extend_from_slice(&id.to_le_bytes());
         }

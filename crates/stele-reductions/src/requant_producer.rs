@@ -1,10 +1,11 @@
 //! RFC-0023 §§2.4,3: complete untrusted production through actual A5/A3/A1/A9.
 //! Dense witness/constraint work is O((4+R+E)N); every full physical source is read.
 use super::{addressable, buffer, lookup, mul, put, sum, Descriptor, Error};
+use crate::requant::arithmetic::{fields, Capture};
 use alloc::vec::Vec;
 use stele_hash::{certificate_id, AbsorbLabel, ChallengeField, HashUsage, Transcript};
 use stele_pcs::{CodeField, Functional, PreparedSource, ProofKind};
-use stele_sumcheck::{zerocheck, Dense, Instance, Summand};
+use stele_sumcheck::{zerocheck, Dense};
 
 /// Producer admission, separate from the Descriptor's complete verifier limits.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -61,40 +62,6 @@ fn tables_bytes<K>(v: &[Vec<K>]) -> Result<usize, Error> {
     v.iter().try_fold(0, |n, row| sum(&[n, bytes(row)?]))
 }
 
-// RFC-0006 A1 owns each draw; the wrapper only retains actual fold arguments.
-struct Capture<'a, K> {
-    dense: Dense<K>,
-    point: &'a mut Vec<K>,
-}
-impl<K: ChallengeField> Summand<K> for Capture<'_, K> {
-    fn shape(&self) -> (u32, usize) {
-        self.dense.shape()
-    }
-    fn round(&self, i: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
-        self.dense.round(i)
-    }
-    fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
-        if self.point.len() == self.point.capacity() {
-            return Err(stele_sumcheck::Error::Capacity);
-        }
-        self.dense.fold(challenge)?;
-        self.point.push(challenge);
-        Ok(())
-    }
-    fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
-        self.dense.final_values()
-    }
-}
-fn fields<K: ChallengeField>(
-    out: &mut Vec<u8>,
-    rows: &[Vec<K>],
-    finals: &[K],
-) -> Result<(), Error> {
-    for v in rows.iter().flatten().chain(finals) {
-        put(out, v.to_le_bytes().as_ref())?;
-    }
-    Ok(())
-}
 fn local(hashes: &mut HashUsage, delta: HashUsage) -> Result<(), Error> {
     // The actual children use ordinary H locally; shared snapshots stay disjoint.
     hashes.hash_evaluations = hashes
@@ -248,8 +215,10 @@ where
         }
         t.absorb(AbsorbLabel::RequantConstraints, &self.encode_constraints()?)
             .map_err(Error::Transcript)?;
-        let weights = self.weights(t, 0, self.constraints.equations().len())?;
-        let aggregate = self.aggregate(weights.weights())?;
+        let weights = self
+            .arithmetic()
+            .weights(t, 0, self.constraints.equations().len())?;
+        let aggregate = self.arithmetic().aggregate(weights.weights())?;
         drop(weights);
         let n = sources[0].source().columns();
         let mut tables = buffer(self.ids.len())?;
@@ -344,7 +313,7 @@ where
         wire: &mut Vec<u8>,
         usage: &mut ProverUsage,
     ) -> Result<[usize; 3], Error> {
-        let weights = self.group_weights(t, group, point, claims)?;
+        let weights = self.arithmetic().group_weights(t, group, point, claims)?;
         let capacities = weights.owned_field_bytes()?;
         let result = source.opening(
             t,

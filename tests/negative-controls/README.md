@@ -19,9 +19,11 @@ For each protocol binding:
 `harness/nc_stub.rs` exercises the full harness sequence on a two-cell fixture. It is
 separate from protocol code and has no NC id. It establishes no inference binding.
 NC-0801 executes the production transcript registry validator and rejects one duplicated
-label with `DuplicateLabel`; it earns configuration coverage only. Including the conditional stacked, PCS, closed lookup, matmul, Requant and original byte-range variants, 52/108 controls run,
-56 remain missing, and 18/36 catalog binding categories have proof controls. NC-0315 closes the separate original range obligation; the composed integer-linear controls remain pending. Range rows expand
-to individual ids; malformed and duplicate ids fail.
+label with `DuplicateLabel`; it earns configuration coverage only. Qualified
+coverage is 55/108 controls, including that one configuration control; 53 remain
+missing. Proof controls cover 21/36 catalog binding categories, including the
+original byte-range and centered integer-linear variants. Range rows expand to
+individual ids; malformed and duplicate ids fail.
 Streaming NC-0210 uses a real prepared file: change one unused source record,
 produce the changed Streaming proof, and apply its single changed final through
 ProverHook. Both fields reject it with ClaimMismatch against the original inputs.
@@ -98,3 +100,31 @@ omit Statement, Multiplicities or the first MultiplicityClaims only while
 computing one replacement final for a following A1 proof. The submitted lookup
 proof stays honest and must close first. Genuine nonzero physical-tail proofs
 with zero selected weights are accepted through every structural consumer.
+
+RFC-0024 continuation controls use the complete native integer-linear producer
+and verifier. A control-only composer shares the actual child engines; every
+baseline must match the native proof bytes and transcript Usage. Seven independent
+frame omissions each replace one following A1 final, leaving the accepted outer
+proof fixed. The independent Python replay checks the same frame inventory using
+a fresh transcript, with an exact no-omission replay before any mutation.
+
+`integer_linear_corpus --controls K ID` exports the actual accepted and rejected
+ProverHook packets for NC-0306/0307/0312/0314/0316/0317/0318/0606/0610/0611.
+The request adapter reconstructs every original certificate and range event from
+bytes. `integer_linear_controls.py` compares its complete results with the
+independent Python consumer, including failed-prefix Usage and every import.
+It consumes identical requests once and checks every original control observation
+against that result. Exported observations never grant verification authority.
+
+Run this qualification explicitly into fresh output directories:
+
+```sh
+cargo build --profile test -p stele-negative-controls --example integer_linear_corpus
+PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.12 --with blake3==1.0.11 python -B tests/negative-controls/integer_linear_controls.py target/debug/examples/integer_linear_corpus /tmp/stele-linear-controls-k4 4
+PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.12 --with blake3==1.0.11 python -B tests/negative-controls/integer_linear_controls.py target/debug/examples/integer_linear_corpus /tmp/stele-linear-controls-k8 8
+```
+
+`--exports DIRECTORY` replays saved native exports through both consumers.
+The report records that source directory; it does not claim a new ProverHook
+execution. This campaign is outside default CI and grants no additional catalog
+IDs, independent adversarial-production credit or complete resource evidence.

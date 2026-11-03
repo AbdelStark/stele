@@ -1,5 +1,67 @@
 # Benchmark ledgers (RFC-0018 §1, task E0-05)
 
+## Centered integer-linear resource recorder (E7-01f)
+
+From a clean committed macOS arm64 checkout, run the fixed matrix in a new
+external directory:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 uv run --no-project --python 3.12 --with blake3==1.0.11 python -B bench/integer_linear.py --campaign /tmp/integer-linear-<run>
+```
+
+The controller builds the native worker with the checked test profile. It runs
+scalar and nonconstant stacked cases in both fields and both repetition counts,
+then the signed, tie, zero-factor, parameter and cap boundaries in `CASES`.
+Each cell uses fresh native and Python workers, with one sample, fixed order,
+and no warmup or retries. This is an instrumented resource campaign. It does not
+measure uninstrumented performance or fit a cost-model constant.
+
+Native stages separate forward capture, advice generation, source preparation,
+certificate production and import, original ranges, online production, closed
+verification, continuation and observation export. Range production includes
+its real multiplicity preparation and registration; outer production includes
+the advice multiplicities. Additional caller imports remain separate. The
+remainder includes unlabelled work and cleanup within the timed pipeline.
+The independent Python worker imports and consumes the same complete public
+request, including both ranges and the following A1. It receives no matrices.
+
+The native worker retains allocation markers and pauses after output.
+`malloc_history -allEvents` observes only that newly launched worker. Lossless
+compressed allocation logs preserve every event and their uncompressed digest.
+The parser tracks simultaneous live malloc requests, including caller and harness buffers;
+it does not add unrelated category maxima. Allocator metadata, anonymous VM,
+stacks and unlogged profiler internals have a separate scope. Python reports
+managed allocations from protocol setup through result projection. Both
+whole-worker peak RSS measurements include runtime and instrumentation overhead.
+Native process wall time also includes the pause for allocation collection.
+
+The sampler compares full records, imports, Usage and continuation before saving
+each completion. Assembly checks the complete matrix, source and binary pins,
+raw artifact hashes, timing partitions, allocation intervals, wire sizes and
+actual original-source visit counters. It compares full results again before
+compacting them. The raw directory retains all values omitted from the ledger.
+
+```sh
+uv run --no-project --python 3.12 python -B bench/integer_linear_ledger.py /tmp/integer-linear-<run> /tmp/integer-linear-<run>.json --host-context "describe the measurement host and concurrent work"
+cargo run -p stele-bench --locked --offline -- ledger validate /tmp/integer-linear-<run>.json
+```
+
+Assembly refuses an incomplete campaign. A completed sample can be inspected
+with `--check-sample` without producing a ledger. Component proof bytes and
+both consumer timings stay in the samples; the root inference fields remain
+zero. The `standard` schema tag grants no profile admission. Full inference,
+configured scale, virtual sources, wider or packed dots, privacy and W8 remain
+separate requirements.
+
+Recorded [E7-01f ledger](ledger/e7-01f-integer-linear.json), measured from clean
+commit `80c99acbfe3ee80a5b12cf058d43ea08160c79c4`. All 28 ordered native/Python
+pairs completed, with complete consumer agreement and one actual online visit
+per original source in every sample. The imported file is byte-identical to the
+assembled ledger, SHA256
+`d01105997b95b34dcf2d8d0e9a2304824e35d4377e1a3f3a694c8ed90f2cc056`.
+The [production review](../docs/security/integer-linear-production-review.md)
+records control, source, raw-artifact, local-validation and resource scope.
+
 ## Native Requant (E7-01d)
 
 From a clean committed macOS arm64 checkout, run:

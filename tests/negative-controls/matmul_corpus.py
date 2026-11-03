@@ -780,3 +780,5 @@ if __name__ == "__main__":
               "complete wires, actual records, imports, usage and continuation; SHA256 " + EXPECTED)
         print("matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, "
               "actual closed records, usage, retained visits and continuation")
+        from integer_linear_corpus import check as check_integer_linear
+        check_integer_linear()

@@ -224,7 +224,9 @@ class ClosedStackedGateTests(unittest.TestCase):
                       f'test crates/stele-reductions/src/requant_codec.rs - requant::codec::Descriptor (line {line}) - compile fail ... ok'
                       for line in (35,43))+'\n'+'\n'.join(
                       f'test crates/stele-reductions/src/requant_verifier.rs - requant::codec::verifier::Record (line {line}) - compile fail ... ok'
-                      for line in (85,90,103,115,127))+'\n'
+                      for line in (85,90,103,115,127))+'\n'+'\n'.join(
+                      f'test crates/stele-reductions/src/integer_linear_verifier.rs - integer_linear::verifier::Record (line {line}) - compile fail ... ok'
+                      for line in (62,67,82,97,110))+'\n'
                       'test crates/stele-reductions/src/matmul.rs - matmul::Record (line 95) ... ok',
             '\n'.join(f'test {name} ... ok' for name in ('accepts_qm31_certified_stacked_sources',
                 'accepts_om31_certified_stacked_sources', 'rejects_qm31_malformed_certified_stacked_sources',
@@ -236,6 +238,8 @@ class ClosedStackedGateTests(unittest.TestCase):
                          for field in ('qm31','om31')]
                       + ['test matmul::producer::rejects_retained_allocation_sizes ... ok',
                          'test matmul::matches_reference_owned_capacities ... ok']
+                      + [f'test matmul::centered::tests::matches_reference_{field}_centered ... ok'
+                         for field in ('qm31', 'om31')]
                       + [f'test requant::tests::{n} ... ok' for n in ('matches_reference_complete_schema',
                          'accepts_shared_tail_and_zero_caps','rejects_parameters_reader_and_capacity')]
                       + [f'test requant::constraints::tests::{n} ... ok' for n in ('matches_reference_qm31_constraints',
@@ -254,15 +258,19 @@ class ClosedStackedGateTests(unittest.TestCase):
             '\n'.join(f'test {prefix}_{field}_closed_lookup{suffix} ... ok' for field in ('qm31','om31')
                       for prefix,suffix in (('accepts',''),('rejects','_tampers')))+'\n'+'\n'.join(
                       f'test rejects_{field}_matmul_preflight ... ok' for field in ('qm31','om31'))+'\n'+'\n'.join(
-                      f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31'))+'\ntest matches_reference_complete_byte_range ... ok',
+                      f'test matches_reference_{field}_matmul_producer ... ok' for field in ('qm31','om31'))+'\ntest matches_reference_complete_byte_range ... ok\n'+'\n'.join(
+                      f'test accepts_{field}_integer_linear ... ok' for field in ('qm31', 'om31')),
             '\n'.join(f'test lookup::accepts_{field}_nonzero_lookup_tail ... ok' for field in ('qm31','om31')),
-            '\n'.join(f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315))+'\n'
+            '\n'.join(f'test rejects_nc_{i:04} ... ok' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315,316,317,318))+'\n'
                       'test rejects_wrong_coefficient_at_actual_a7 ... ok\n'
                       'test matches_reference_requant_full_wire_qm31 ... ok\n'
                       'test matches_reference_requant_full_wire_om31 ... ok\n'
                       'test rejects_requant_scoped_cqis_bindings ... ok\n'
                       'test rejects_requant_output_coefficient_at_actual_a7 ... ok\n'
-                      'test rejects_requant_producer_late_arithmetic_with_exact_usage ... ok',
+                      'test rejects_requant_producer_late_arithmetic_with_exact_usage ... ok\n'+'\n'.join(
+                      f'test rejects_integer_linear_{name} ... ok' for name in
+                      ('replaced_source_context', 'wrong_weights', 'wrong_source_point', 'wrong_original_final',
+                       'reserved_plane', 'wrong_output_plane', 'wrong_retained_row', 'omitted_frames')),
             'lookup producer corpus: 8 complete cases; QM31/OM31; bytes, registration, usage, public payloads and continuation; '
             'SHA256 cb8e5b658bbd7f5ed6c917f36605daf33331a7fa46e12eb31d7584c0d76887c9; no lookup verification credit\n'
             'lookup closed corpus: 40 complete cases; QM31/OM31; 8 accepts and 32 rejects; actual records, imports, failure usage and continuation; '
@@ -273,7 +281,10 @@ class ClosedStackedGateTests(unittest.TestCase):
             'complete wires, actual records, imports, usage and continuation; '
             'SHA256 808a85fc4d0eb81ad193aa2361ec55e0d4c14845d8b15d1b1694884c13603456\n'
             'matmul producer corpus: 2000 native proofs (1000 per field); identical complete wires, '
-            'actual closed records, usage, retained visits and continuation',
+            'actual closed records, usage, retained visits and continuation\n'
+            'integer linear corpus: 28 native complete proofs, 270 closed requests; QM31/OM31; '
+            'frozen independent bytes, imports, records, usage and continuation; '
+            'SHA256 204cb6df7bec005aaa2b0d20802d98a66ef0f5937ed928297a4bd63a532cfaf2',
         ]
 
     def run_gate(self, outputs=None, failed=None):
@@ -297,18 +308,18 @@ class ClosedStackedGateTests(unittest.TestCase):
         self.assertEqual([c for c in commands if 'stele-reductions' in c and '--lib' in c],
                          [['cargo', 'test', '-p', 'stele-reductions', '--lib', '--locked', '--offline']])
         self.assertEqual([c[i+1] for c in commands for i,arg in enumerate(c) if arg == '--test'],
-                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul','matmul_producer','byte_range']+
-                         [f'nc-{i:04}' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315)]+['requant-verifier'])
+                         ['nc-0609','stacked','stacked-certified','lookup_codec','lookup_producer','lookup_verifier','matmul','matmul_producer','byte_range','integer_linear']+
+                         [f'nc-{i:04}' for i in (400,401,402,403,415,416,417,418,419,610,802,306,307,606,611,308,309,310,311,312,313,314,315,316,317,318)]+['requant-verifier'])
 
     def test_rejects_every_broadened_requant_sibling_visibility(self):
-        crate=self.root/'crates/stele-reductions';path=crate/'src/requant_verifier.rs';saved=path.read_text()
-        occurrences=list(re.finditer(r'pub\(super\)',saved));self.assertEqual(len(occurrences),9)
-        self.assertTrue(gate.requant_verifier_api(crate))
+        crate=self.root/'crates/stele-reductions';path=crate/'src/requant_arithmetic.rs';saved=path.read_text()
+        occurrences=list(re.finditer(r'pub\(crate\)',saved));self.assertEqual(len(occurrences),28)
+        self.assertTrue(gate.integer_linear_api(crate))
         for occurrence in occurrences:
-            for replacement in ('pub(crate)','pub'):
+            for replacement in ('pub(super)','pub'):
                 path.write_text(saved[:occurrence.start()]+replacement+saved[occurrence.end():])
                 with self.subTest(offset=occurrence.start(),visibility=replacement):
-                    self.assertFalse(gate.requant_verifier_api(crate))
+                    self.assertFalse(gate.integer_linear_api(crate))
         path.write_text(saved)
 
     def test_rejects_broadened_embedded_helper_visibility(self):
@@ -323,6 +334,40 @@ class ClosedStackedGateTests(unittest.TestCase):
                     path.write_text(saved[:occurrence.start()]+replacement+saved[occurrence.end():])
                     with self.subTest(source=name,offset=occurrence.start(),visibility=replacement):
                         self.assertFalse(check(crate))
+            path.write_text(saved)
+
+    def test_rejects_integer_linear_authority_changes(self):
+        crate = self.root/'crates/stele-reductions'
+        self.assertTrue(gate.integer_linear_api(crate))
+        mutations = (
+            ('integer_linear.rs', "pub originals: [&'cert ByteRange<'cert, K>; 2]",
+             "pub originals: [&'static ByteRange<'static, K>; 2]"),
+            ('integer_linear_verifier.rs', '    point: Vec<K>,', '    pub point: Vec<K>,'),
+            ('integer_linear_verifier.rs', 'pub fn point(&self) -> &[K]',
+             'pub fn point(&mut self) -> &mut [K]'),
+            ('integer_linear_verifier.rs', "'original: 'cert,", "'cert: 'original,"),
+            ('integer_linear_verifier.rs', "Result<(Record<'cert, K>, Usage), Failure>",
+             "Result<(Record<'static, K>, Usage), Failure>"),
+            ('integer_linear_producer.rs', 'pub retained_row_entries: usize',
+             'pub retained_row_entries: bool'),
+            ('matmul_centered.rs', 'pub(crate) fn verify_measured', 'pub fn verify_measured'),
+            ('requant_arithmetic.rs', 'pub(crate) type GroupResult', 'pub type GroupResult'),
+        )
+        for name, old, new in mutations:
+            path = crate/'src'/name; saved = path.read_text()
+            self.assertIn(old, saved)
+            path.write_text(saved.replace(old, new, 1))
+            with self.subTest(source=name, changed=old):
+                self.assertFalse(gate.integer_linear_api(crate))
+            path.write_text(saved)
+        for name in ('integer_linear', 'integer_linear_producer', 'integer_linear_verifier',
+                     'matmul_centered', 'requant_arithmetic'):
+            path = crate/'src'/f'{name}.rs'; saved = path.read_text()
+            for addition in ('\npub fn from_digest() {}\n', '\nimpl From<bool> for Record {}\n',
+                             '\ninclude!("unchecked.rs");\n'):
+                path.write_text(saved+addition)
+                with self.subTest(source=name, added=addition):
+                    self.assertFalse(gate.integer_linear_api(crate))
             path.write_text(saved)
 
     def test_rejects_missing_fixture_manifest_before_execution(self):
@@ -387,11 +432,17 @@ class ClosedStackedGateTests(unittest.TestCase):
                          ('actual closed records, ', ''), ('usage, ', ''), ('retained visits and ', ''),
                          ('continuation', '')):
             lines = self.outputs[-1].splitlines()
-            self.assertEqual(len(lines), 2)
+            self.assertEqual(len(lines), 3)
             self.assertIn(old, lines[1])
             lines[1] = lines[1].replace(old, new)
             altered = self.outputs.copy(); altered[-1] = '\n'.join(lines)
             with self.subTest(producer_receipt=old), self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
+                self.run_gate(altered)
+        for line in range(3):
+            lines = self.outputs[-1].splitlines()
+            lines.pop(line)
+            altered = self.outputs.copy(); altered[-1] = '\n'.join(lines)
+            with self.subTest(missing_line=line), self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
                 self.run_gate(altered)
         altered = self.outputs.copy(); altered[-1] = '\n'.join(reversed(altered[-1].splitlines()))
         with self.assertRaisesRegex(ValueError, 'matmul corpus checks failed'):
@@ -502,10 +553,10 @@ class ClosedStackedGateTests(unittest.TestCase):
             ('requant_verifier.rs',"Result<(Record<'cert, K>, Usage, VerifierWork), Failure>","Result<(Record<'static, K>, Usage, VerifierWork), Failure>"),
             ('requant_witness.rs','pub fn owned_bytes','pub fn observed'),
             ('requant_witness.rs','pub fn input(&self) -> &[M31]','pub fn input(&mut self) -> &mut [M31]'),
-            ('requant_verifier.rs', '    phase: u8,', '    pub phase: u8,'),
-            ('requant_verifier.rs', '    point: Vec<K>,', '    pub point: Vec<K>,'),
+            ('requant_arithmetic.rs', '    phase: u8,', '    pub phase: u8,'),
+            ('requant_arithmetic.rs', '    point: Vec<K>,', '    pub point: Vec<K>,'),
             ('requant_verifier.rs', "    lookups: [LookupRecord<'cert, K>; 2],", "    pub lookups: [LookupRecord<'cert, K>; 2],"),
-            ('requant_verifier.rs', 'pub fn weights(&self) -> &[K]', 'pub fn weights(&mut self) -> &mut [K]'),
+            ('requant_arithmetic.rs', 'pub fn weights(&self) -> &[K]', 'pub fn weights(&mut self) -> &mut [K]'),
             ('requant_verifier.rs', "Result<(Record<'cert, K>, Usage), Failure>", "Result<(Record<'static, K>, Usage), Failure>"),
             ('requant_verifier.rs', "multiplicities: [&[&'cert VerifiedCertificate<K>]; 2]", "multiplicities: [&[&'static VerifiedCertificate<K>]; 2]"),
             ('requant_verifier.rs', "'original: 'cert,", "'cert: 'original,"),

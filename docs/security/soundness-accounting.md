@@ -1750,7 +1750,17 @@ payload/cap/failed-prefix Usage is RFC-0024 §§2,4. E7-01f1 implements the sepa
 §1.1 range event with the fixed constructor plus unchanged complete A5 schedule,
 actual ordered A9 imports and borrowed certificate owners. NC-0315 rejects the
 genuine fixed byte256 source for each original role, including a zero opposite
-signed factor. This adds no new challenge or loss family. There is still no
-executed SZ consumer or LinearStatement registry entry. E7-01f must supply the
-composed-operation controls and complete resource evidence; all parent and
-Q12/Q29 gaps remain.
+signed factor. This adds no new challenge or loss family. The native E7-01f
+consumer registers the absorb-only LinearStatement, retains the actual A3
+tail in PointEqualityRecord, and consumes it through the signed matmul and
+both original openings before returning a record. NC-0316..0318 exercise the
+complete accepted scalar composition in both fields and both repetition
+counts. The native gate regenerates 28 complete positive proofs and consumes
+270 distinct public requests against the [frozen independent corpus](../../tests/negative-controls/fixtures/integer-linear/README.md),
+checking complete bytes, imports, records, failed-prefix Usage and continuation.
+Actual controls also exercise original point/final/row, source identity,
+independent weights, embedded planes, reserved rows and following-A1 bindings.
+The [complete component ledger](../../bench/ledger/e7-01f-integer-linear.json)
+records all 28 same-execution native/independent resource samples; the
+[production review](integer-linear-production-review.md) states their scope.
+All parent and Q12/Q29 gaps remain.

@@ -7,7 +7,7 @@ use stele_pcs::{CodeField, VerifiedCertificate};
 use stele_reductions::matmul::{self, Error, Statement};
 use stele_sumcheck::Proof;
 #[path = "matmul_composer.rs"]
-mod composer;
+pub(crate) mod composer;
 use composer::{Artifact, LIMITS};
 
 fn checked<K: ChallengeField + CodeField + Eq + core::fmt::Debug>(
@@ -46,14 +46,14 @@ where
 }
 
 #[derive(Clone, PartialEq)]
-struct RowWitness<K> {
-    point: Vec<K>,
-    rows: [Vec<K>; 2],
+pub(crate) struct RowWitness<K> {
+    pub(crate) point: Vec<K>,
+    pub(crate) rows: [Vec<K>; 2],
 }
-struct ChangeRow {
-    id: u16,
-    side: usize,
-    coordinate: usize,
+pub(crate) struct ChangeRow {
+    pub(crate) id: u16,
+    pub(crate) side: usize,
+    pub(crate) coordinate: usize,
 }
 impl<K: ChallengeField + Eq> ProverHook<RowWitness<K>> for ChangeRow {
     fn tamper(&self, w: &mut RowWitness<K>) {
@@ -141,9 +141,9 @@ where
     .map_err(|e| format!("{e:?}"))
 }
 
-struct ChangeFinal<K> {
-    index: usize,
-    value: K,
+pub(crate) struct ChangeFinal<K> {
+    pub(crate) index: usize,
+    pub(crate) value: K,
 }
 impl<K: ChallengeField + Eq> ProverHook<Proof<K>> for ChangeFinal<K> {
     fn tamper(&self, proof: &mut Proof<K>) {

@@ -1350,7 +1350,9 @@ tasks:
   - RFC-0012 A14
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E7-01f-native-integer-linear
   acceptance:
   - implement only the Accepted E7-01e contract with actual range, arithmetic, matmul and certificate-bound source consumers in both fields and repetition counts
   - complete nonconstant stacked matrix composition, source/point/plane/alias/range/zero-factor/padding/lifetime rejection controls and exact failed-prefix usage; preserve all existing corpora

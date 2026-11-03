@@ -9,6 +9,8 @@ pub mod fraction;
 #[doc(hidden)]
 pub mod fraction_transcript;
 #[doc(hidden)]
+pub mod integer_linear;
+#[doc(hidden)]
 pub mod lookup;
 #[doc(hidden)]
 pub mod matmul;
@@ -46,6 +48,24 @@ mod nc_0801;
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
     catalog::RegisteredControl {
+        id: 316,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || integer_linear::run(316),
+    },
+    catalog::RegisteredControl {
+        id: 317,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || integer_linear::run(317),
+    },
+    catalog::RegisteredControl {
+        id: 318,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ValueMismatch",
+        run: || integer_linear::run(318),
+    },
+    catalog::RegisteredControl {
         id: 315,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
@@ -79,7 +99,10 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 312,
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
-        run: || requant::run(312),
+        run: || {
+            requant::run(312)?;
+            integer_linear::run(312)
+        },
     },
     catalog::RegisteredControl {
         id: 313,
@@ -91,25 +114,37 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         id: 314,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch / FinalEvaluationMismatch",
-        run: || requant::run(314),
+        run: || {
+            requant::run(314)?;
+            integer_linear::run(314)
+        },
     },
     catalog::RegisteredControl {
         id: 306,
         kind: catalog::ControlKind::Proof,
         expected_error: "ColumnMismatch",
-        run: || matmul::run(306),
+        run: || {
+            matmul::run(306)?;
+            integer_linear::run(306)
+        },
     },
     catalog::RegisteredControl {
         id: 307,
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
-        run: || matmul::run(307),
+        run: || {
+            matmul::run(307)?;
+            integer_linear::run(307)
+        },
     },
     catalog::RegisteredControl {
         id: 611,
         kind: catalog::ControlKind::Proof,
         expected_error: "ColumnMismatch",
-        run: || matmul::run(611),
+        run: || {
+            matmul::run(611)?;
+            integer_linear::run(611)
+        },
     },
     catalog::RegisteredControl {
         id: 400,
@@ -220,7 +255,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || {
             pcs_opening::run(610)?;
             lookup::run(610)?;
-            requant::run(610)
+            requant::run(610)?;
+            integer_linear::run(610)
         },
     },
     catalog::RegisteredControl {
@@ -240,7 +276,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             pcs::run(606)?;
             pcs_opening::run(606)?;
             matmul::run(606)?;
-            requant::run(309)
+            requant::run(309)?;
+            integer_linear::run(606)
         },
     },
     catalog::RegisteredControl {
@@ -385,7 +422,8 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
             stacked::run_continuation()?;
             lookup::run(802)?;
             matmul::run(802)?;
-            requant::run(802)
+            requant::run(802)?;
+            integer_linear::run(802)
         },
     },
     catalog::RegisteredControl {

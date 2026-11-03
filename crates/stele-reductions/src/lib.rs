@@ -6,6 +6,7 @@
 extern crate alloc;
 pub mod byte_range;
 mod field_sources;
+pub mod integer_linear;
 pub mod lookup;
 pub mod matmul;
 pub mod requant;

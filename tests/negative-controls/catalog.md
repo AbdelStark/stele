@@ -23,19 +23,19 @@
 | NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
 | NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | done |
 | NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
-| NC-0306 | matmul phases | 0007 A2 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
-| NC-0307 | matmul phases | 0007 A2 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
+| NC-0306 | matmul phases | 0007 A2, 0024 §6 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
+| NC-0307 | matmul phases | 0007 A2, 0024 §6 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
 | NC-0308 | Requant input bytes | 0023 §6 | field-congruent int32 substituted in advice/arithmetic | `ValueMismatch` | done |
 | NC-0309 | Requant advice identity | 0023 §6 | separately verified advice handle under unchanged packet | `CertificateContext` | done |
 | NC-0310 | Requant full-width result | 0023 §6 | t=65537 and q=1 retain valid low division columns | `FinalEvaluationMismatch` | done |
 | NC-0311 | Requant carry | 0023 §6 | one interior carry exceeds its cap or changes a column | `FinalEvaluationMismatch` | done |
-| NC-0312 | Requant plane mapping | 0023 §6 | one producer group row uses the wrong plane | `ValueMismatch` | done |
+| NC-0312 | Requant plane mapping | 0023 §6, 0024 §6 | one producer group row uses the wrong plane, including the embedded output group | `ValueMismatch` | done |
 | NC-0313 | Requant sign and target | 0023 §6 | s=1 at v=0 | `FinalEvaluationMismatch` | done |
-| NC-0314 | Requant padding | 0023 §6 | one padded or reserved-plane byte becomes one | `RoundSumMismatch / FinalEvaluationMismatch` | done |
+| NC-0314 | Requant padding | 0023 §6, 0024 §6 | one padded or reserved-plane byte becomes one, including an embedded physical reserved plane | `RoundSumMismatch / FinalEvaluationMismatch` | done |
 | NC-0315 | centered original bytes | 0024 §6 | one original byte256 under a zero opposite signed factor, fixed negative statement | `RootMismatch` | done |
-| NC-0316 | centered accumulator cap | 0024 §6 | one new high-cap slack A3 final becomes one | `FinalEvaluationMismatch` | todo |
-| NC-0317 | centered matmul join | 0024 §6 | one scalar signed-matmul original final changes under nonzero opposite factor | `FinalEvaluationMismatch` | todo |
-| NC-0318 | centered affine source | 0024 §6 | one scalar raw opening-row cell replaced by its signed value | `ValueMismatch` | todo |
+| NC-0316 | centered accumulator cap | 0024 §6 | one new high-cap slack A3 final becomes one | `FinalEvaluationMismatch` | done |
+| NC-0317 | centered matmul join | 0024 §6 | one scalar signed-matmul original final changes under nonzero opposite factor | `FinalEvaluationMismatch` | done |
+| NC-0318 | centered affine source | 0024 §6 | one scalar raw opening-row cell replaced by its signed value | `ValueMismatch` | done |
 | NC-0400 | lookups | 0008 §7,A5 | increment one multiplicity; rebuild actual registration and trees | `RootMismatch` | done |
 | NC-0401 | lookups | 0008 §7,A5 | one selected source tuple outside the fixed table; truthful trees | `RootMismatch` | done |
 | NC-0402 | lookups | 0008 §7,A5 | one inactive selector used as active by the prover under the unchanged expected selector | `SelectorMismatch` | done |
@@ -60,16 +60,16 @@
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
-| NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet | `RootMismatch / CertificateContext` | done |
+| NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6, 0024 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet or one original range handle with responses from the old source | `RootMismatch / CertificateContext` | done |
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
-| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
-| NC-0611 | PCS | 0010 A10, 0007 A2 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
+| NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
+| NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0800 | transcript/ledger | 0006 A1,A3, 0012 A1,A5 | one final evaluation folded at a challenge drawn before its round message | `FinalEvaluationMismatch` | done |
 | NC-0801 | transcript/ledger | 0012 A1 | configuration: replace one registered label with another | `DuplicateLabel` | done |
-| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13, 0007 A2 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns | `FinalEvaluationMismatch` | done |
+| NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13,A14, 0007 A2, 0024 §6 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns; centered LinearStatement, RequantConstraints, each RequantClaims or either original OpeningColumns | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
@@ -126,3 +126,36 @@ including full producer registration Usage and continuation. These 62 declared
 variants include two static validations; they are not 62 proof rejections or new
 catalog IDs. Complete operation resource evidence is separate from catalogue
 coverage; inference/profile admission and the broad CQIS family remain parent work.
+
+The centered integer-linear NC-0802 extension independently omits seven frames
+for scalar and nonconstant stacked matrices, in both fields and both repetition
+counts. Each accepted complete native producer matches the control composer
+byte for byte. Each omission changes one following A1 final through ProverHook;
+the unchanged closed operation accepts and the following A1 rejects with
+FinalEvaluationMismatch and its exact observed prefix. These 56 variants add
+coverage under NC-0802; they do not add catalog IDs or resource evidence.
+
+The centered NC-0610 extension swaps or omits a weight separately in each of
+the four phases. Each variant changes one encoded opening-row value through
+ProverHook after an accepted complete baseline. All 32 field/repetition/phase
+variants reach Pcs(ValueMismatch), before an affected-group query, with exact
+transcript and local-hash prefixes.
+
+The centered NC-0306/0307/0611 extensions cover both original sources, fields
+and repetition counts with a zero opposite signed factor. One changed outer
+coordinate rebuilds the retained row and dependent proof; the actual A3 join
+point stays fixed. One changed retained row reaches ColumnMismatch on the first
+authentic-path attempt. One changed final, including non-Boolean layer/inner
+restoration, reaches ValueMismatch without an affected-source query. Accepted
+complete native baselines and exact failure prefixes are required for all 32
+variants; W failures consume X first.
+
+The centered NC-0606 extension substitutes one genuinely verified original
+range handle, rebuilds dependent proof messages, and retains the old source's
+responses. Both sources, fields and repetition counts reach RootMismatch on
+the first affected path, with exact transcript and local-hash prefixes.
+The NC-0312 variant changes one opening-row value derived from a wrong output-group plane
+and reaches ValueMismatch before queries. NC-0314 changes one reserved-plane
+A3 final; exactly its physical zero equation fails, reaching
+FinalEvaluationMismatch. These 16 variants require accepted complete native
+baselines and add no catalog IDs or complete resource evidence.
