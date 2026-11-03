@@ -246,8 +246,9 @@ noncanonical encodings, inactive parameters and trailing data. Tied roles alias
 one physical record; numerical equality does not authorize arbitrary aliasing.
 
 The encoding appendix fixes physical roles, source transforms, runtime numerical
-configuration and preparation/artifact frames. Bound/registry schemas and the full
-cqis_id/passport join are still required by §7 before acceptance. This paragraph
+configuration and preparation/artifact frames. The Registry and
+[Bounds collection](full-model-bound-collection.md) have closed Draft schemas;
+the full cqis_id/passport join is still required by §7 before acceptance. This paragraph
 does not promote the research model digest to a complete canonical identity.
 Single-file SHA-256 and the typed indexed-shard bundle identity remain distinct;
 hash original file bytes, never reconstructed JSON. Selection and ignored entries
@@ -323,8 +324,10 @@ The [physical record appendix](full-model-physical-bounds.md) adds schema 19 for
 complete tensor coordinates, packed payload addresses and original code/scale
 words, including addresses larger than p. Canonical Artifact and source owners
 must still consume these bounds and their original bytes.
-The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
-acceptance items in §7. The old twelve-family numerical record
+The [collection appendix](full-model-bound-collection.md) fixes all nineteen
+schemas' slot order, Model/Scales/Registry parameter joins and complete bytes.
+Its qualification and actual consuming-reduction mapping remain acceptance
+items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;
 neither DPA nor a new advice cut is an implicit fallback.
 

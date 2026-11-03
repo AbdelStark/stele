@@ -28,6 +28,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Registry now implements §6's complete function/component/rotation set and
    compares all data digests with regeneration under the declared definitions.
    The physical appendix adds schema 19 for canonical tensor/code/scale addresses.
+   The collection appendix fixes all nineteen schemas' ordered slots and complete
+   Model/Scales/Registry parameter selection, with exact outer framing.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
@@ -38,10 +40,12 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Registry derives its expected definitions from Model, whose source/passport
    authority is still required. Its deterministic checks add no FS challenge.
    Physical address derivation adds no challenge or absorption either.
+   Bounds binds all three complete input hashes without a cqis_id cycle. These
+   content joins still require independently authenticated expected inputs.
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
-   branch/point obligation remains. The §2.8 inventory is not yet a complete
-   bound schema or an actual consuming claim graph. E6/E7/E8 closure is required;
+   branch/point obligation remains. The §2.8 inventory does not instantiate
+   an actual consuming claim graph. E6/E7/E8 closure is required;
    numerical execution cannot construct a source, PCS or proof-admission handle.
    Model's typed fields provide derivation parameters; they are not claims and
    do not discharge table validity or static score/full-block admission.
@@ -51,6 +55,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    lookup membership, point binding or a full-model certificate.
    Schema 19 supplies coordinate/byte/code/scale bounds. Artifact-global and
    original source-container joins still belong to their actual consumers.
+   Fixed collection slots preserve every physical and numerical role. Weighted's
+   shared record retains its separate probability/block/global consumers.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -75,6 +81,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Physical-record mutations and changed expected fractions reject; complete
    word examples distinguish field-congruent addresses. That distinction earns
    no native source-binding or NC coverage.
+   Collection controls target omission, duplication, source hashes, stale records
+   under changed formats, forged Registry data and static admission failures.
+   Those controls pass, including full-table overflow and block rejection at
+   n=1. The final-duplicate control expects Trailing after exact exhaustion.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
@@ -86,6 +96,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The Scales research hash joins do not instantiate native H/query accounting.
    Registry's complete data hashes remain part of the pending global accounting.
    The physical record adds deterministic word relations, with no new loss term.
+   Collection hashing adds no native loss line here; complete H accounting
+   remains part of the coordinated acceptance work.
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -134,13 +146,14 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    and token-I/O frames retain context/vocabulary 2^20. The EOS public-mask
    formula matches independent dense folding at 10000 M31 points; native E6
    source construction and all challenge-field/profile parity remain required.
-   The full model still needs remaining families, collection bytes
-   and actual consuming-reduction closure. No generic opaque certificate or
+   The full model still needs Artifact/source/view indexing and actual
+   consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
    Model parsing retains full configured domains without deriving a certificate
    or weakening static admission based on sampled values.
    Full-domain Scales retains all 16777216 channels; no observed code or
-   activation is used to tighten bounds. Collection derivation remains open.
+   activation is used to tighten bounds. Collection derivation retains the
+   complete Scales hash even when a changed channel leaves its maximum unchanged.
    Registry's derived manifest and total metadata bounds fit 256 KiB and 1 MiB.
    Its data regeneration is mandatory even when all metadata parses; this step
    still does not establish score/full-block or other arithmetic admission.
@@ -148,6 +161,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    indices cover N=2^34; all 10000 records match independent polynomial/struct
    derivation, with complete actual-word column checks. Every named/maximal
    physical role is retained. The whole record is statically below 36000 bytes.
+   Collection parameters come from full declared domains and complete checked
+   scale entries. A maximum channel mantissa bounds arithmetic; every original
+   channel still participates in Scales identity and its actual source consumer.
+   All 10000 independently expanded parameter sets agree. Twenty-two complete
+   frames and every named/maximal record match independent byte oracles.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -180,6 +198,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Physical int4 has no row padding; only the odd final high nibble is zero.
    Whole index range excludes that lane. Both source nibbles remain bound to
    the original byte; vector absence removes all matrix scale fields/roles.
+   Every expected collection slot survives even when record parameters repeat.
+   Request-dependent geometry and source selectors are not derived from a
+   supplied collection count or from the static context capacity alone.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -205,6 +226,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    regression. The unchanged candidate follows RFC-0021's floor semantics.
    Physical role order and packed addresses follow the canonical Artifact
    layout, with no alternate vector or tied-head record selection.
+   The collection's closed expansion selects all fractions/policies/matrices,
+   derives Maximum's bound from Score and retains Normalize's exact Weighted
+   parameters. It has no caller-selected role list or hash-only Registry path.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
@@ -217,6 +241,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    coefficient data or establish native/fidelity parity.
    All-role physical boundary checks likewise use metadata and coordinate words,
    without checkpoint payloads or a full-model execution.
+   Named/maximal collection fixtures likewise derive complete record sets only;
+   they do not regenerate named Registry data or execute checkpoint inference.
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
@@ -228,6 +254,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     and rotation entry. Streaming its hash makes no measured speed claim.
     Physical bound derivation is T_misc; actual byte/source consumers remain
     charged to their reductions. No constant, weight pass or cut changes.
+    Collection generation is preparation T_misc. Its stream does not alter
+    the actual E7 weight schedule or establish a runtime speed claim.
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -248,6 +276,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     The bounded Python cache is not a native admission or resource guarantee.
     Physical records retain five-byte addresses and complete parameter-derived
     lengths; no tensor payload allocation is required for their derivation.
+    The collection has at most 5005/4620 slots and a domain bound below
+    496000000 bytes, within 512 MiB. A record stream or incremental digest is
+    complete only after exhaustion; early prefixes confer no admission.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
@@ -255,6 +286,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     Legal scale values remain distinct from authenticated conversion results.
     Regenerated Registry data remains distinct from authenticated proof sources.
     A physical address or range certificate is not a source-ownership handle.
+    Complete numerical Bounds remains distinct from a complete proof plan,
+    authenticated passport or accepted inference statement.
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
@@ -262,7 +295,7 @@ That result is limited to the research mapper and does not approve a protocol.
 
 ## Findings still preventing acceptance
 
-The complete static-bound collection and consumer expansion, authenticated outer
+Actual consuming-reduction closure, authenticated outer
 passport/request schemas, independent artifact/passport codecs,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native

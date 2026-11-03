@@ -395,14 +395,16 @@ specifies full logit maxima, temperature and sampled selection, including the
 inclusive 2^32 CDF endpoint. The [request contract](full-model-request.md) adds
 the complete stop and token-byte arithmetic record. The
 [physical record appendix](full-model-physical-bounds.md) adds canonical tensor,
-packed-byte and original scale-word addressing. The full collection and its
-source/index/range/branch expansion still require completion and integration.
+packed-byte and original scale-word addressing. The
+[collection appendix](full-model-bound-collection.md) derives the complete fixed
+slot order, parameter joins and bytes for these nineteen schemas. Actual
+source/index/range/branch consumers still require completion and integration.
 The existing twelve-family numerical collection supplies evidence only; its
 scoped membership is not the final collection or proof plan. None of those
 families may disappear when the new affine/LN/position relations are added.
 
-Full canonical record/collection bytes, per-operation expansion, resource bounds
-and the consumer dependency table remain acceptance items. No ready-made proof
+Full collection qualification and actual consuming-reduction closure remain
+acceptance items. No ready-made proof
 receipt, challenge, loss, profile or committed tensor is introduced by this
 appendix. Static derivation is T_misc; actual byte/source/range/rounding work is
 charged to T_witness/c_a/c_lu at the consuming reductions. No benchmark is claimed.

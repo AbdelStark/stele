@@ -818,3 +818,70 @@ Shared helpers and previous codecs are unchanged. No historical proof campaign
 is rerun. Complete Bounds assembly, Artifact-global/source-container joins and
 native consumers remain open; named-shape address checks do not establish
 checkpoint conversion, fidelity, privacy, parity or full proof delivery.
+
+## Canonical Bounds collection
+
+The [collection appendix](../../docs/rfcs/full-model-bound-collection.md) fixes
+the nineteen schemas' complete physical/operation slots and parameter joins.
+The prototype validates Model, every Scales entry and complete regenerated
+Registry data before deriving its records. Score and full-block admission remain
+mandatory. It hashes all three complete inputs; using a maximum channel mantissa
+for a bound does not discard the other channels from identity or source checks.
+Expected ordinals and records derive from the model, with no supplied op list.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 python -B
+research/cqis-model-contract/check_bound_collection.py`.
+Seed 2686 checks 10000 complete parameter selections against a separate role
+expansion and source-policy propagation algorithm: 5000 per family, 4998 sampled,
+and 3334/3333/3333 exp representation choices. Complete Model/Scales/Registry
+inputs also match their existing independent framing/data oracles.
+
+Twenty-two selected collections compare every complete record and outer byte
+against the independent schema/struct oracles, validate, and reject a changed
+byte. Other randomized cases compare all expected parameter objects; they do
+not repeat each unchanged schema's earlier arithmetic campaign. The largest
+randomized layout has 130 records; the largest fully encoded selected frame is
+2948707 bytes. Qualified schema implementations and shared helpers are unchanged.
+
+Separate named-shape and maximal-domain fixtures retain every slot, including
+sampling. Every record matches its independent byte oracle and is hashed in
+order, without tensor payload allocation. They produce these record streams;
+the sizes exclude the fixed collection header:
+
+| Shape fixture | Records | Record-stream bytes |
+|---|---:|---:|
+| GPT-2-small dimensions | 481 | 11065815 |
+| Llama-3.1-8B dimensions | 1164 | 27386449 |
+| Maximal GPT-2 domain | 5005 | 114583459 |
+| Maximal Llama domain | 4620 | 109291214 |
+
+These fixtures use patterned scales and configured numerical parameters. They
+do not regenerate named Registry data, claim complete admission for those
+configurations, convert checkpoint payloads or establish named-model fidelity.
+Their private layout check introduces no fake Registry input or public bypass.
+
+Controls reject each omitted/duplicated slot, changed hashes/counts/ordinals/
+lengths, malformed frames and stale records under a changed matrix format even
+with a correct new header. A changed nonmaximum scale leaves derived record
+parameters unchanged but changes the full Scales hash, so the old collection
+rejects. Forged Registry data, a full activation-table overflow, an excessive
+score bound and an invalid block bound at n=1 all reject through collection
+entry points. A duplicated final record rejects as Trailing; an initial smoke
+test expected Encoding and was corrected without changing the candidate.
+
+The complete stream must be exhausted before its hash or validation can succeed.
+The separate domain proof bounds the frame below 496000000 bytes, within 512 MiB.
+No resource timing or benchmark is claimed. Full Artifact/source/view indexing,
+actual consuming reductions, outer identity/passport/private statements and
+native/full-model execution remain required. These results grant no native
+NC coverage, proof/privacy/profile/parity or performance credit.
+
+Configuration corpus SHA-256:
+`daa7ce200d54e8a5a83ec1971f86b5113c2f23fbdea0a7ad0a01cee865aa4810`.
+Selected complete-frame corpus SHA-256:
+`f202bc1ffa7a8c2d8587a190c0f6ca3756bb40bd9919357ad15002dffe811086`.
+Named/maximal record-stream corpus SHA-256:
+`ee840619777a30ee91bb9fae5d71edea9d055addd6bdc9d257d64da553cacc8e`.
+Candidate SHA-256: `daa798f6e34e4cb38821402a4071252bc5227cd3540dfae23bd524039e8ee302`.
+Checker SHA-256: `7e47fee94a985d225a27e4c7511e4eb907eb73abe1e585db5e94ba723ba49118`.

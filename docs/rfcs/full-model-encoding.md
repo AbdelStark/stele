@@ -340,8 +340,10 @@ native fallible allocation, public-MLE authentication or passport admission.
 Bounds must be the complete statically derived collection with a closed schema,
 not the existing twelve-family study or an opaque byte string. Its header binds
 Model/Scales/Registry hashes, never cqis_id itself; this avoids an identity cycle.
-Until that schema and full consumer inventory close, this is a proposed outer
-join, not a usable or complete cqis_id implementation.
+The [collection appendix](full-model-bound-collection.md) specifies the exact
+nineteen-schema frame, fixed operation expansion and complete parameter joins.
+Full outer authentication and actual consuming-reduction closure remain required;
+this proposed identity join is not a complete passport or proof implementation.
 
 The passport must jointly authenticate the exact Model, Scales, Registry, Bounds,
 cqis_id, Preparation/quantiser_id, typed original source identity, digest_cqis,
@@ -357,8 +359,8 @@ or public proof-admission flag and does not instantiate the complete passport.
 The [request contract](full-model-request.md) fixes request/stop/token-I/O
 subrecords with the exact Model decoding descriptor in public policy. It does
 not replace the complete typed public-input/passport/commitment frame.
-The static bound collection and complete passport/public-statement field schemas
-and consumers still require the contracts in RFC-0025 §7. Sections 3–6 need
+The complete passport/public-statement field schemas and actual source/collection
+consumers still require the contracts in RFC-0025 §7. Sections 3–6 need
 independent complete-codec/config/flow evidence before acceptance. This appendix
 specifies no generic operator extension, successful proof record or profile.
 It remains Draft until the entire acceptance gate closes.

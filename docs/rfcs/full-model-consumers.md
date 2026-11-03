@@ -131,9 +131,10 @@ separate authenticated boundaries; numeric token ids alone cannot prove text I/O
 
 ## 5. Acceptance and costs
 
-The final static collection must cover this entire expansion and all shapes,
-ranges, source views, branches and selectors, with canonical closed fields and
-independently derived counts. A family-name list or correct collection hash is
+The [Bounds collection](full-model-bound-collection.md) derives nineteen-schema
+records for this complete numerical/physical expansion, with closed parameters
+and counts. Actual source views, branches, selectors and complete Artifact/source
+joins remain required consumers. A family-name list or correct collection hash is
 insufficient. The complete proof plan additionally binds actual accepted consumers,
 owned sources, transcripts, conditional losses and resource schedules.
 

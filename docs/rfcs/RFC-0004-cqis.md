@@ -1813,3 +1813,10 @@ scale word. Complete integer addresses can exceed M31 and retain all byte
 columns. Source-container transforms and Artifact-global offsets remain separate
 obligations. This Draft addition changes no challenge, cut, measured constant or
 weight pass, and grants no native source or proof admission.
+
+The [Bounds collection](full-model-bound-collection.md) specifies the fixed
+physical and operation slots for all nineteen numerical schemas. Parameters
+come from checked Model/Scales/Registry, with complete table regeneration and
+static score/full-block admission. The header binds those three objects and
+avoids a cqis_id cycle. This Draft framing does not replace Artifact/source,
+owned-view, actual consuming-reduction or passport obligations.
