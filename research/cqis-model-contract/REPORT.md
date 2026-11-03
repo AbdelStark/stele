@@ -606,3 +606,52 @@ Checker SHA-256: `781d29115d5fe649e3a6160c4e33dae9f4a0e3e9d1a28900f81c32439efd68
 No historical proof campaign or shared helper is changed or rerun. The complete
 bound collection, runtime/outer identity codecs, native model/proof consumers,
 full-model fidelity, private PCS/ZK and benchmark delivery remain required.
+
+## Complete structural Model codec
+
+The [encoding appendix](../../docs/rfcs/full-model-encoding.md) now distinguishes
+structural Model parsing from complete Registry/Bounds/source admission. The
+codec checks every physical ordinal, shape and format, all norm gain/bias and
+residual-unit joins, family-specific projection/activation/rotation choices,
+complete policies and decoding metadata. It rejects conflicting representations
+for one FunctionId. Successful parsing supplies no execution or proof authority.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11 python -B
+research/cqis-model-contract/check_model_codec.py`.
+Seed 2682 checks 10000 complete Model frames, split equally between the two
+families, with 4985 sampled configurations. Independent physical-role expansion,
+struct framing and Function/Representation/TableId assembly agree byte for byte.
+The oracle shares parameter constructors and BLAKE3, but does not call the
+candidate encoder or its function-identity helpers to assemble expected bytes.
+Randomized models contain one to four layers; their largest frame has 4374
+bytes and their largest physical-role count is 68.
+
+Each randomized frame receives one bit change. Structural validation rejects
+9697; the remaining 303 decode to different canonical models and reject against
+the original expected H(Model). That digest comparison is only a content join:
+the expected value still needs authentication, and complete cqis_id also binds
+Scales, Registry and Bounds. No full table, rotary data or static arithmetic
+certificate is admitted by this codec.
+
+Separate complete GPT-2-small/Llama-3.1-8B shape fixtures retain all 196/291
+physical records and produce 11532/30619-byte Model frames. Their randomized
+numerical settings do not constitute named checkpoint presets or fidelity
+results. The Llama embedding retains all 525336576 element coordinates without
+materializing payloads. Two 128-layer boundary fixtures retain 2052/1155 records
+in 117236/121144 bytes. The appendix independently bounds every Model below
+220000 bytes, within the 1 MiB parser cap; sampled maxima do not define capacity.
+
+Targeted controls reject missing records, altered norm fractions, residual-unit
+mismatches, wrong activation families, inactive policy/drop fields, malformed
+inner lengths, field-congruent physical dimensions, changed representations,
+missing rotations and nonreduced rationals. All strict truncations of the
+selected complete fixture reject. Boundary cases retain full u64 rotation
+rationals and gated static scale 8454661. These are research checks without
+native NC, profile, parity, privacy or performance credit.
+
+Corpus SHA-256: `a80fee9a1fdce38f6c68102255ecd648238d820bac192ac08698417d68e8ca24`.
+Candidate SHA-256: `20d3649cbef3a983d42b826e2dc7ec51040840a176956462322f103e041123ef`.
+Checker SHA-256: `3076ce37404edc522324ee3ab46889a37775d89c5e9c27cfbe7d0c471df242a9`.
+Shared helpers and historical campaigns remain unchanged. Scales and Registry
+codecs, the complete bound collection, outer identity/source admission, native
+consumers and full named-model inference/proving/verification remain open.

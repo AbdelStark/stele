@@ -230,6 +230,32 @@ norm/attention-exp/second-norm/activation for every layer, then final norm and a
 sampled-decoding function. Reduction-selected range functions remain additional
 proof-plan obligations; they cannot disappear because the neural set omits them.
 
+Model parsing checks every closed field/domain, physical ordinal/shape/format,
+norm gain/bias fraction, adjacent residual unit, activation source fraction,
+head/group/rotary dimension and conflicting representation before returning
+structural metadata. No physical shape is adopted from a C_i header. GPT-2 has
+exactly six projection fractions and no rotation; Llama has seven and a present
+rotation. The up-plus-activation fraction of its gated product is at most 44.
+Policy's u32 scale retains the complete gated limit 8454661; a u16 parser would
+incorrectly narrow it. Unknown fields, inactive bytes and suffixes reject.
+
+This structural step precedes complete admission. Registry must regenerate and
+validate all selected table/rotation data; Bounds must derive and validate the
+static score, full-block and every other arithmetic certificate. A descriptor
+can parse while its full table or static bound fails. Such a configuration must
+reject before inference or proof construction. A successful Model parser is
+not an admitted operation, verified source, passport or proof record.
+
+The whole Model fits below 220000 bytes by the declared domains, independently
+of sampled fixtures: at most 2052 physical records of at most 13 bytes, 128
+blocks of at most 1494 bytes using the inner caps, and less than 800 bytes for
+the remaining header/final-norm/policy/decoding fields. The 1 MiB parser cap
+therefore covers the complete domain. Counts/inner lengths are checked before
+iteration and slicing; native fallible allocation remains required.
+Checking an independently expected H(Model) is only a content-identity join.
+It cannot replace the complete cqis_id, which additionally binds Scales,
+Registry and Bounds, or authenticate its own expected value.
+
 ## 5. Public scale parameters
 
 The quantised matrix scales are independently authenticated CQIS parameters,

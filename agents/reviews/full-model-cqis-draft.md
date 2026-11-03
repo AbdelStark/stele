@@ -22,16 +22,21 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    RFC-0001 A1 now proposes exact request-policy and TokenIO subrecords; the
    request appendix specifies EOS sets and schema 18. Accepted text is preserved
    as an exact prefix, with no production use of the Draft amendment.
+   The complete structural Model codec implements encoding appendix §4 only;
+   Registry/Bounds/source admission remains a separate required step.
 2. **Challenges and absorption.** No Transcript challenge or absorption is added.
    Seed/draw hashes are deterministic decoding data, not Fiat–Shamir draws.
    Their actual wrapper/seed/source checks and inclusion in global H/query
    accounting remain required before acceptance. A hash digest is not an
    authenticated public input merely because the caller supplies it.
+   The Model expected-digest check has exactly that content-only limitation.
 3. **Claims and consumers.** These prototypes emit numerical arrays/metadata,
    not accepted claims. Every original source/scale/gain/bias/index/table/range/
    branch/point obligation remains. The §2.8 inventory is not yet a complete
    bound schema or an actual consuming claim graph. E6/E7/E8 closure is required;
    numerical execution cannot construct a source, PCS or proof-admission handle.
+   Model's typed fields provide derivation parameters; they are not claims and
+   do not discharge table validity or static score/full-block admission.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
    metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
@@ -44,12 +49,17 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    continuation after EOS, wrong cause at the limit, invalid EOS order/range,
    inactive seed fields, malformed bytes and a field-congruent u32 token change.
    They do not replace NC-0001/0005/0107/0108 at actual proof/hash consumers.
+   Model controls reject broken physical/norm/unit/family joins and conflicting
+   representations. Of 10000 bit changes, 9697 fail structural checks; 303 are
+   changed canonical models and fail the original expected-digest join.
 5. **Ledger.** No native ledger line, challenge label or profile changes. The
    LayerNorm deterministic error and CDF approximation are not soundness losses.
    Sampling introduces proposed hash-binding uses that must join the existing
    H/query analysis when instantiated. Q12/Q29 remain unresolved. A full
    accounting/registry gate is required before the final PR; draft doc gates
    do not substitute for it.
+   Model hashing adds no native hash query here; complete identity accounting
+   remains acceptance work.
 6. **Static bounds.** The checked LayerNorm derivation depends only on shapes and
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
@@ -101,6 +111,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
+   Model parsing retains full configured domains without deriving a certificate
+   or weakening static admission based on sampled values.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. The maximum record retains every dense real key, the
@@ -124,6 +136,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    EOS membership excludes prompt/final/padded positions from the no-earlier-EOS
    sum. The last generated membership determines the reason, including coincidence
    with the token limit; an empty continuation cannot inherit prompt EOS.
+   Model physical shapes come from Shape's closed role expansion, never supplied
+   dimensions or padding. Rotation data and public-MLE masks remain unchecked here.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
@@ -136,18 +150,22 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    Decoding record validation rejects changed bytes, truncated/suffixed frames
    and different valid expected parameters. The arithmetic seed is fixed; the
    existing selection/temperature and shared bound helpers remain unchanged.
-   Complete runtime/artifact/
-   registry/passport codecs and full/cache model flows still need their checks.
+   Complete Model framing now matches independent struct and function-component
+   assembly on 10000 configurations. Scales/artifact/registry/passport codecs
+   and full/cache model flows still need their checks.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
    named checkpoint is run by these checkers; named metadata cases only expand
    all roles. The original Rust/NumPy 10000-case per-op gates and full GPT-2-small/
    Llama-3.1-8B parity remain required implementation work.
+   The complete 196/291-record Model fixtures use randomized numerical settings;
+   they do not establish named presets or checkpoint fidelity.
 10. **Cost.** No constant moves and no benchmark is reported. New norm/bias/
     position/decoding work contributes T_witness/c_a/c_lu/T_misc as specified.
     Sampling explicitly charges vocabulary sorting and prefix work. Preparation
     scans are separate from the preserved one online physical-weight pass; a
     tied embedding/head still needs a single-source plan. No extra cut is granted.
+   Model metadata parsing makes no weight-pass or runtime cost claim.
 11. **Verifier/resources.** Native no_std verifier code is unchanged. Metadata
     lengths/counts and source/scale domains are proposed explicitly; public scale
     data has a separate capacity bound from Model. Research retains Python arrays
@@ -157,9 +175,13 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
     TokenIO may remain a private hash preimage; commitment-mode tokens still
     require their own typed openings and same-source proof. The research parser
     receives plaintext expected prompt data and supplies no privacy evidence.
+   Model's analytic bound is below 220000 bytes, with a 1 MiB cap and bounded
+   inner frames. Full 128-layer fixtures parse without tensor payloads; this
+   does not establish native fallible allocation or streaming behavior.
 12. **Glossary.** The draft passes the repository glossary gate. It retains the
     distinctions between numerical metadata, bound certificate, claim, source,
     plan, passport, profile and full inference proof.
+    Structural Model identity remains distinct from full cqis_id and admission.
 
 I tried to break it by changing a fused Q/K/V part, omitting a required role and
 changing one byte of the tied-head alias, and the source-map controls rejected it.
@@ -168,7 +190,7 @@ That result is limited to the research mapper and does not approve a protocol.
 ## Findings still preventing acceptance
 
 The complete static-bound collection and consumer expansion, authenticated outer
-passport/request schemas, independent full runtime/artifact/registry codecs,
+passport/request schemas, independent Scales/artifact/registry codecs,
 complete GPT-2/Llama numerical-flow integration, sampling's actual exp/request/
 seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against
