@@ -1,4 +1,4 @@
-//! RFC-0021 §§2,4: canonical function identities and selected representations.
+//! RFC-0021 §§2,4 and A3: canonical function identities and selected representations.
 //! Metadata checks do not authenticate configuration, table contents or a proof.
 use crate::tables;
 
@@ -46,6 +46,7 @@ enum Kind {
     Product,
     Nearest,
     Norm,
+    LayerNorm,
     Component(tables::Descriptor),
 }
 
@@ -53,12 +54,12 @@ enum Kind {
 /// ```compile_fail
 /// use stele_cqis::functions::Descriptor;
 /// let mut f = Descriptor::new("range_8",1,&[]).unwrap();
-/// f.parameters = [0;13];
+/// f.parameters = [0;14];
 /// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Descriptor {
     kind: Kind,
-    parameters: [u8; 13],
+    parameters: [u8; 14],
 }
 
 fn component(name: &str, parameters: &[u8]) -> Result<tables::Descriptor, Error> {
@@ -83,13 +84,14 @@ fn norm(parameters: &[u8]) -> Result<(), Error> {
 }
 
 impl Descriptor {
-    /// Validate the closed function schema, including every canonical RMSNorm parameter.
+    /// Validate the closed function schema, including every canonical norm parameter.
     /// Valid activation metadata may still describe a table whose generation overflows.
     pub fn new(name: &str, version: u32, parameters: &[u8]) -> Result<Self, Error> {
         let kind = match name {
             "exp_q/product" => Kind::Product,
             "exp_q/nearest" => Kind::Nearest,
             "rmsnorm_q" => Kind::Norm,
+            "layernorm_q" => Kind::LayerNorm,
             "sigmoid_q" | "silu_q" | "softcap_q" | "gelu_q" | "gelu_tanh_q" | "range_8"
             | "range_12" | "range_16" => {
                 if version != 1 {
@@ -110,9 +112,20 @@ impl Descriptor {
                 component("exp_q/direct", parameters)?;
             }
             Kind::Norm => norm(parameters)?,
+            Kind::LayerNorm => {
+                let p: &[u8; 14] = parameters.try_into().map_err(|_| Error::Parameters)?;
+                if p[5] > 30 {
+                    return Err(Error::Parameters);
+                }
+                // RFC-0021 A3: Gb follows E; all other domains equal RMSNorm's.
+                let mut shared = [0; 13];
+                shared[..5].copy_from_slice(&p[..5]);
+                shared[5..].copy_from_slice(&p[6..]);
+                norm(&shared)?;
+            }
             Kind::Component(_) => {}
         }
-        let mut stored = [0; 13];
+        let mut stored = [0; 14];
         stored
             .get_mut(..parameters.len())
             .ok_or(Error::Parameters)?
@@ -129,6 +142,7 @@ impl Descriptor {
             Kind::Product => "exp_q/product",
             Kind::Nearest => "exp_q/nearest",
             Kind::Norm => "rmsnorm_q",
+            Kind::LayerNorm => "layernorm_q",
             Kind::Component(d) => d.name(),
         }
     }
@@ -142,6 +156,7 @@ impl Descriptor {
             Kind::Product => 4,
             Kind::Nearest => 3,
             Kind::Norm => 13,
+            Kind::LayerNorm => 14,
             Kind::Component(d) => d.parameters().len(),
         };
         &self.parameters[..length]
