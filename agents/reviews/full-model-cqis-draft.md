@@ -6,7 +6,7 @@ The same author, codex-root, applies rfc-author, cqis-numerics, gkr-reduction-au
 and soundness-auditor. No independent human or agent review is claimed.
 
 Scope: [RFC-0025](../../docs/rfcs/RFC-0025-full-model-cqis.md), its encoding and
-decoding appendices, coordinated Draft additions to RFC-0004/0017/0021, and
+decoding/static-arithmetic/consumer appendices, coordinated Draft additions to RFC-0004/0017/0021, and
 [the new research evidence](../../research/cqis-model-contract/REPORT.md).
 All earlier Accepted text remains an unchanged prefix. No native crate, frozen
 oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
@@ -45,9 +45,13 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    numerical parameters, including all exponent branches; the oracle checks
    intermediates even on output rejection. Runtime matrix scales are authenticated
    parameters in the proposed Scales object, not observed activation bounds.
-   The full model still needs every closed bound record, expansion order, byte/
-   sign/carry/high-plane rule and consuming-reduction mapping. No generic opaque
-   certificate or caller-selected field is accepted.
+   The new affine/embedding records retain complete sign/offset/division/
+   comparison columns and up to 269 byte positions. Rational/polynomial/struct
+   oracles check 10000 configurations per schema; the appendix separately proves
+   domain-wide widths, column side bounds and encoded capacity. The full model
+   still needs LayerNorm's column record, remaining families, collection bytes
+   and actual consuming-reduction closure. No generic opaque certificate or
+   caller-selected field is accepted.
 7. **Padding and masks.** Source records have exact shapes and no matrix-row
    padding; int4 has only its odd final high nibble. Attention retains absolute
    positions and blocks. Actual lookup/zerocheck selectors and public-source MLE
@@ -55,8 +59,8 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    not proof that padded rows are excluded.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
-   rounding, top-p ties and hash preimages are explicit. Source-map framing and
-   raw transforms match an independent algorithm. Complete runtime/artifact/
+   rounding, top-p ties and hash preimages are explicit. Source-map framing,
+   raw transforms and the new static records match independent algorithms. Complete runtime/artifact/
    registry/passport codecs and full/cache model flows still need their checks.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No
@@ -90,3 +94,10 @@ seed binding, coordinated accounting/control amendments, and sequential native
 implementation DAG remain open. All twelve answers must be revisited against
 the final contract before acceptance. Full local and selected hosted gates are
 still required before a normal PR merge. No task status is changed to done here.
+
+The operation inventory is now explicit for both full families, including the
+missing LayerNorm, GPT-2 activation and wide affine/position delivery work that
+the acceptance DAG must name. Existing E7-02 is the stacked weight phase, E7-09
+is dynamic scale attainment and E7-10 is residual/RLC glue; their scopes are
+preserved. E13-04's top-k extension remains separate original work. A dependency
+name is not proof that its current primitive closes the required source edge.

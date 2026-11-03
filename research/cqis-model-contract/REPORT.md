@@ -129,3 +129,43 @@ The weight-array helper is conditional on actual configured exp outputs; it does
 not generate those tables or supply their lookup/source proof. Full exp/model/
 request integration, seed-hash proof consumers, ledger/control review and complete
 full/cache sampled decoding remain required before native delivery or acceptance.
+
+## Affine and position static records
+
+The [static appendix](../../docs/rfcs/full-model-bounds.md) adds closed records
+for the configured affine projection and the single-round token/position sum.
+The question is whether their entire integer relation can retain exact high
+bits, including different weight exponents, cancellation, zero multipliers and
+rejected int16 results. The original static-bound kill criterion applies: a
+missed legal intermediate, supplied bound authority or lost source/branch fails.
+No old RFC-0022 record, frozen source or historical proof campaign is changed.
+
+Run `python3 -B research/cqis-model-contract/check_arithmetic_bounds.py`.
+Seed 2673 checks 10000 configurations per schema. The independent scalar oracle
+uses rational coefficients and their common denominators. The column oracle
+multiplies cap polynomials in radix 2^40 to recover nonoverlapping coefficients;
+the candidate explicitly convolves the cap arrays. A separate check constructs
+actual maximal whole-word operands and verifies every integer column/carry.
+Independent struct/word encoding matches the entire record for every case.
+
+The sampled affine inputs produce 3923 in-range rounded outputs and 6077
+out-of-range results; embedding inputs produce 3967 and 6033 respectively.
+All numerator/offset bounds are checked in both outcomes. Successful outputs
+also satisfy the quotient, strict remainder, half-tie gap and signed-output
+bounds. These are arithmetic input cases, not complete model executions or proof
+rejections. Source/row/lookup membership is still a consuming obligation.
+
+The corpus reaches 2146-bit scalar values, 269 columns and a 43758-byte record.
+A separate maximal-exponent-difference case retains those 269 columns and all
+zero extensions. The appendix supplies domain-wide analytic bounds separately:
+these observed maxima are not used as the certificate limits. Targeted byte
+changes, truncations, suffixes, changed valid expected parameters, over-capacity
+inputs, invalid shapes/exponents and Boolean aliases reject.
+
+Corpus SHA-256: `0a5e8bc2b9a7c302da9203fb46e58327ecfa622682ef58d36f67bf1dc3eb8967`.
+Candidate source SHA-256: `0c69e8e448c4d00e5e2f5367ded4a0c3f5c0560bf7f533be909ebb0d6a0b5891`.
+Checker source SHA-256: `b6b2ec4f3e27e30cfe4a1b1de1c2a773bc6ac8ad84d14b9e638b4ce1cd534882`.
+The [full operation inventory](../../docs/rfcs/full-model-consumers.md) now names
+the consumer dependencies across both architectures. LayerNorm's full column
+record, the remaining families/collection, runtime/outer codecs, native/source
+consumers and original full-model delivery remain open. No NC/profile credit.
