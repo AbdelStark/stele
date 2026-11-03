@@ -136,3 +136,28 @@ acceptance work. No challenge, probabilistic loss, cut or profile is added.
 Boundary/hash work belongs to T_witness/c_a/T_misc without a measured constant.
 Affected tasks are E5-03b/E5-04, E6, E7-08, E8, E13-04/05 and E14; all original
 full-model, private PCS/ZK and benchmark requirements remain.
+
+### A2 — Complete public-input envelope and request geometry
+
+Status: Draft. Question Q26; task E5-03b. Motivation: the public tuple needs exact
+bytes and actual request geometry; a token digest alone does not expose the
+length required to derive the proof's source shapes and selectors.
+
+Proposed replacement for §3's public-input encoding: use the exact
+[RFC-0025 public-input frame](full-model-public-input.md). It binds the complete
+numerical identity, passport, request-specific plan and ledger identities,
+profile, full policy, generated length and stop reason. I/O mode is explicit:
+either the exact TokenIO digest or separate plan-owned prompt/output commitment
+references. Externally expected values are checked before transcript construction.
+Actual token/source relations must establish public length/reason and the same
+full causal sequence; structural metadata cannot establish inference or stopping.
+
+The statement remains token-domain. Length/reason are public metadata; tokens
+may remain private. Commitment references do not define a private PCS, and no
+profile, plaintext fallback or new cut is admitted. Complete passport, plan,
+ledger, private source and proof consumers remain prerequisites. Preserve Q12/Q29,
+all original named-model/fidelity/W8 requirements and the one online weight pass.
+Soundness uses the existing initial transcript absorb and complete H/query work;
+no challenge or loss line changes here. Parsing contributes T_misc without a
+measured constant. Affected tasks: E5-03b, E6, E7-08, E8, E12-05 and E14. Actual
+statement substitution, profile downgrade and source controls remain required.

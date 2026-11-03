@@ -104,3 +104,27 @@ Cost: T_misc / explicit outer preparation/proving work, source reads, retained
 proof and peak state. No measured constant or extra weight pass is introduced.
 Affected tasks: E14-01 (blocked on A1), E14-02/E14-03; E12-01/Q29 if an eventual
 privacy architecture selects this path. All original acceptance criteria remain.
+
+### A2 — Exact public input before transcript construction
+
+Status: Draft. Question Q26; task E5-03b. Motivation: §1's header sketch does
+not determine complete policy bytes, actual request geometry or I/O mode.
+Companions: RFC-0001 A2, RFC-0005 A4 and RFC-0011 A5.
+
+Proposed addition to §§1,2: the complete externally expected public statement
+has the [RFC-0025 public-input bytes](full-model-public-input.md). A proof's copy
+must match them exactly. Validate the complete passport, derive its numerical
+identity and request-specific plan/ledger, and enforce the expected profile
+before constructing the transcript. Its existing constructor absorbs those full
+bytes once; no separately serialized subset, supplied plan or accept bit suffices.
+Public generated length and stop reason reach the same actual token sources,
+selectors and stop/inference relations. Both I/O modes retain private proof and
+source obligations. The outer wrapper, if used, binds this same complete input.
+
+This does not select a wrapper/ZK architecture or instantiate missing plan,
+passport, private commitment, ledger or native verifier contracts. A1/Q12/Q29,
+all original source checks and full native/W8 requirements remain. No challenge,
+additional absorb, profile or loss line changes; existing complete H/query
+accounting remains mandatory. Parsing/derivation contributes T_misc without a
+measured constant or weight-pass change. Affected tasks: E5-03b, E6, E8,
+E12-05 and E14. NC-0804/0805 and NC-1201/1203 remain actual-consumer gates.

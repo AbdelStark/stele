@@ -1299,3 +1299,51 @@ All six added activation-tail cases pass. Repaired model checker SHA-256:
 `fe3c82760a4a7892866792ba1c991aa68c6fbb1dec96e31b3061e309a21e118f`.
 The earlier model section retains the original checker hash as historical evidence.
 Both new runs pin the same 58 source/document inputs and verify they are unchanged.
+
+## Canonical public input and request geometry
+
+The [public-input appendix](../../docs/rfcs/full-model-public-input.md) and
+`public_input.py` fix the complete statement envelope: profile tag, CQIS,
+passport, request-plan and ledger identities, public generated length/reason,
+full Model-bound request policy, and digest or commitment-reference I/O mode.
+Draft amendments to RFC-0001/0005/0011/0016 distinguish the persistent passport's
+model-wide plan template from the per-request plan instance. The actual causal
+length is q+g; Model context remains the static bound capacity. Complete plan,
+ledger and passport codecs and all actual source/proof consumers remain required.
+
+Run `uv run --no-project --python 3.12 --with blake3==1.0.11
+--with python-flint==0.9.0 python -B research/cqis-model-contract/check_public_input.py`.
+Seed 2694 checks 10000 request envelopes across eight structural Model fixtures
+covering both families and greedy/direct/product/corrected sampling descriptors.
+Independent struct/policy framing matches every byte; decoding re-encodes exactly.
+Both I/O modes and both profile tags occur 5000 times each. All 10000 one-bit
+mutations fail the independently expected statement comparison. Digest cases
+also match the complete original prompt/sequence/stop preimage and its hash.
+
+Focused controls reject unknown profile/reason/I/O tags, malformed or mutable
+bytes, substituted policy and identity fields, field-congruent generated lengths,
+invalid stop geometry, duplicate tree references and changed token preimages.
+Zero continuation retains its output commitment reference and all prompt geometry;
+tree ids span the full u64 domain. Two complete numerical joins independently
+frame cqis_id from regenerated Model/Scales/Registry/Bounds, yielding 252/494-byte
+statements. Stale numerical identity and corrupted Registry/Bounds reject.
+
+A full-domain case retains 1048576 EOS ids and prompt positions. Digest and
+commitment-reference frames have 4194826 and 4194874 bytes, respectively, and
+match independent complete framing. All tokens are prompt tokens in this case;
+no full-domain inference or model-fidelity result is claimed. The analytic
+complete-format bound is 4194976 bytes, within the separate 8 MiB parser cap.
+
+Profile tags and commitment roots in these fixtures are structural values.
+The codec admits no security profile, passport, private source or inference proof.
+Only the complete numerical identity is rederived by its composition helper;
+other identities require their actual independently authenticated consumers.
+Plaintext TokenIO checking is boundary/hash evidence, without forward evaluation
+or private proof. No native NC, parity, named-fidelity, W8 or performance credit
+follows. All 66 pinned inputs remained unchanged; all earlier Python pins are
+unchanged, and no historical numerical/proof campaign was rerun.
+
+Complete envelope corpus SHA-256:
+`342e13562b83045b7e5f474f7aa1f7eec537d34cc31301d845e6e511de4cc0ca`.
+Candidate SHA-256: `f4c1b650ec78cc81dca0cea149db1f0402831d807f64a66c227475e8453aea8f`.
+Checker SHA-256: `b000577a17908728272f58d3528c8ac1d1476afa0975617baa731bb05c3ae40e`.

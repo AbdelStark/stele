@@ -167,3 +167,8 @@ consumer gates. E13-04 top-k and E13-05 chaining are preserved. Preparation and
 public-mask work cost O(v+|S|), sparse MLE evaluation O(|S| log v), and boundary/
 hash-source checks O(n+|S|); charge T_misc/T_witness/c_a/c_lu as applicable.
 No new challenge, probabilistic loss, cut, weight pass or profile is admitted.
+
+The [public-input appendix](full-model-public-input.md) exposes the same g/reason
+as explicit public geometry and binds the complete policy with either TokenIO's
+digest or distinct prompt/output commitment references. The actual source and
+stop consumers must establish those fields; parsing the envelope cannot do so.

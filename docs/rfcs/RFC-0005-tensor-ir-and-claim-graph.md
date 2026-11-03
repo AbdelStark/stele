@@ -93,3 +93,29 @@ No plan format or generic auxiliary cut is admitted. Soundness adds the explicit
 SZ event in RFC-0024 §5; all real child/lifetime losses remain. Advice/range costs
 change by the exact schema counts, with no measured constant. E7-01e/f own this
 contract and delivery; all original E3/E5/E6/E7 and W8 criteria remain.
+
+### A4 — Model-wide template and request-specific plan instance
+
+Status: Draft. Question Q26; task E5-03b. Motivation: §5's cqis_id-only plan
+cannot select actual causal/decode rows for requests with different lengths.
+Companion: [RFC-0025 public input](full-model-public-input.md).
+
+Proposed replacement for §5's plan dependency: the passport binds a complete
+canonical model-wide plan template, including approved lowering, source roles,
+layouts and profile configuration. Derive each complete plan instance from that
+same template, Model, RequestBoundary, generated length, stop reason, I/O mode
+and approved profile configuration. N=q+g selects real/padded causal rows;
+generated rows retain absolute previous/selected-token positions. Context n still
+governs static Bounds. A request cannot choose an operation, source or tighter
+bound from observed values. Model-wide physical ordering remains unchanged.
+
+The public input binds H of this complete instance, distinct from the passport's
+template digest. Neither hash permits an arbitrary supplied plan. To avoid cycles,
+the plan omits its own hash, passport_root, actual I/O roots and ledger_id; roots
+are checked against its prescribed role/layout/context at their actual consumers.
+The complete template/instance codecs, native derivation, claim/transcript/source
+schedule and private commitment schemas remain required E6 work before admission.
+This amendment supplies no operator, cut, challenge, profile or consumer bypass.
+Existing accounting and NC-1201/statement/source controls remain required.
+Derivation contributes T_misc; no measured constant or weight-pass change.
+Affected tasks: E5-03b, E6, E8, E12-05 and E14, with all original criteria retained.

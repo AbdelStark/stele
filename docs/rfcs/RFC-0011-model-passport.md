@@ -221,3 +221,27 @@ Closed absence rules belong to the versioned adapter, not host-library defaults
 selected during execution. Configuration metadata never authorizes remote code,
 casts or an unchecked inference backend. Tokenizer/generation consumers, original
 checkpoint authority and the commitment/hash/private-proof obligations remain.
+
+### A5 — Passport template and per-request statement references
+
+Status: Draft. Question Q26; task E5-03b. Motivation: a persistent passport's
+plan digest and a request-specific proof-plan digest have different lifetimes.
+Companions: RFC-0005 A4 and [RFC-0025 public input](full-model-public-input.md).
+
+Proposed clarification of §1 item 1 and §2: the passport binds the exact complete
+model-wide plan template. A request instantiates it with independently expected
+request fields; the resulting instance's hash is the public-input plan_id.
+Neither a new request nor a different permitted sequence length issues a new
+passport. Physical/source/layout changes still require a new passport. The same
+complete authenticated passport and CQIS records govern every instance.
+
+Proposed clarification of §5's optional I/O commitments: the public frame carries
+distinct input/output tree-id and root references. The full plan must prescribe
+their exact token sources, lengths, layout/code/context, private opening and mask
+lifecycle, including the zero-generated-token case. The envelope cannot supply
+or skip those contracts. Original traffic/chaining, complete outer passport,
+source/hash proof, fidelity, registration and Q29 requirements remain unchanged.
+No challenge, commitment construction, profile, cost constant or online weight
+pass changes. Preparation/identity checks contribute T_misc; complete H/query
+accounting and actual passport/source controls remain required. Affected tasks:
+E5-03b, E6, E8, E12-05, E13-05 and E14.

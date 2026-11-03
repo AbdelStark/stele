@@ -267,6 +267,10 @@ establish tokenizer execution or the generation/stop-policy join.
 RFC-0011 A4 proposes the corresponding complete physical Artifact/Preparation
 binding. Structural streaming validation of those bytes is separate from
 reproducible source conversion and the proven commitment-to-Artifact hash join.
+The [public-input appendix](full-model-public-input.md) fixes the complete outer
+statement envelope, actual request geometry and both I/O reference modes. Full
+passport/template/instance/ledger/private-source codecs and authenticated proof
+consumers remain required; none is replaced by a digest field in that envelope.
 
 ### 2.8 Static arithmetic and consumer inventory
 
