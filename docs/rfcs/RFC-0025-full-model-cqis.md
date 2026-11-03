@@ -294,6 +294,9 @@ These bounds describe exact integers; a single field element cannot hold them.
 
 The [static arithmetic appendix](full-model-bounds.md) specifies the new affine,
 learned-position and exact-mean LayerNorm records and their word/source obligations.
+The [flow-bound appendix](full-model-flow-bounds.md) adds complete-row conversion,
+one-round residual alignment and the exact gated product, including the full
+gated static scale range and canonical first-maximum/zero branches.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

@@ -1154,6 +1154,10 @@ physical role/source-map transforms and exact temperature/top-p/CDF arithmetic.
 The static continuation checks closed affine/position/LayerNorm records with
 complete high bytes, sign/division/comparison columns and independent exact encoding;
 LayerNorm retains the same exponent in every factor and its actual branch offset.
+The flow continuation covers the full gated row scale domain, canonical first
+attainment and zero rows, one-round residuals and exact gated products. Shared
+word ranges retain all bytes and the final zero carry; zero predicates retain
+the first nonzero byte and its original source.
 The full operation inventory retains both architectures and every source edge.
 Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
 static/range/branch/index/source expansion, complete model-flow evidence,

@@ -221,3 +221,65 @@ After adding the LayerNorm dispatch, the unchanged affine/embedding checker was
 run on the same candidate hash above. Its complete 20000-record corpus, counts,
 maxima and SHA-256 remain exactly those of the original qualification. The old
 schemas retain their bytes; the new LayerNorm schema does not reinterpret them.
+
+## Row, residual and gated flow records
+
+The [flow appendix](../../docs/rfcs/full-model-flow-bounds.md) adds schemas 4–6
+under the existing arithmetic frame. Their parameters come from independently
+expected full-model roles. The row schema covers wide int16 and the exact
+gated-product domain, with static scales through 65535 and 8454661 respectively.
+It retains the first attained maximum, complete-row index/source association,
+zero-scale semantics, strict remainder and signed output. The residual schema
+aligns both original sources and rounds their sum once. The gated schema retains
+the full signed product, including 2^30, before the same complete-row conversion.
+None supplies a native proof consumer or changes an existing advice cut.
+
+Run `python3 -B research/cqis-model-contract/check_flow_bounds.py`.
+Seed 2675 checks 10000 configurations per schema, comparing exact rational
+coefficients, polynomial column derivation and independent full-byte framing.
+Actual maximal whole operands and every column/carry are checked. Sampled row
+inputs use up to three constant groups whose exact counts sum to the configured
+dimension; endpoint coordinates cover both sides of the selected first maximum.
+Those cases retain the complete declared row, including dimension 16384.
+
+There are 8015 entirely in-range sampled rows and 1985 out-of-range static rows,
+including 535 dynamic zero rows. Sampled residual coordinates yield 3568
+in-range and 6432 out-of-range outputs. Every upstream source/offset/sign bound
+is checked in both outcomes; target-constrained division roles are checked on
+successful results. These are conditional integer cases, not native rejection
+controls or full model executions. Separate endpoint cases cover high gated
+static/dynamic scales, both half-tie signs, all-zero rows, cancellation, single
+rounding and the positive gated endpoint. A later tied maximum requires a
+negative gap at its earlier source index and cannot satisfy the specified range.
+
+The shared word-predicate study checks 10000 cases: 8329 valid bytewise range
+relations and 1671 impossible strict comparisons. Among valid ranges, 3297
+words are zero. Byte sides stay <=511, carry bits stay Boolean and the final
+carry is zero. Nonzero words retain their first nonzero byte and bounded index.
+The explicit 255+1=0+256 case demonstrates why discarding the final zero carry
+would admit an invalid bound. These arithmetic checks do not instantiate the
+actual source/range/selector reductions required by the proof plan.
+
+The randomized schema maxima are 16576/17096/7244 bytes and 5/6/5 columns for
+row/residual/gated respectively. The analytic residual domain includes seven
+columns; sampled maxima do not choose any certificate capacity. Byte mutations,
+truncations, suffixes, different valid expected dimensions, invalid scale/mode
+combinations, Boolean fractions and unsupported dimensions/fractions reject.
+Corpus SHA-256: `2930613cd1d3a64d9281124553bb015a8b84ae407227214bf69f63d7235d189f`.
+Flow candidate SHA-256: `cf644436212873df0f30e9573b0cc873cd01c476fe3a29122873ba675b2d0923`.
+Flow checker SHA-256: `f2d559ef76dac4bc1e11a0d16482b206eeab766102a741d30e48d42b6ca1c670`.
+
+The private shared encoder was extracted without changing its serialization
+body or the earlier derivations. An exact syntax-tree comparison against
+`d1477bb8350a4b9ab58d8886e134124c7719eb58` checks both properties and the complete
+parameter/argument transfer. Nine affine/embedding/LayerNorm boundary records
+also match their independent byte oracles, including extreme exponents and
+dimension 16384. Their corpus SHA-256 is
+`f8c3040b9b2bb5aa3f3958d6c2859cc966ffcf68ea6cfff60e67d67748fc0f03`.
+The shared candidate now has SHA-256
+`017a00724d79f6d25a48efc6e1bc5f66e5db0d25936a85f4068533837c3d24bb`.
+The numerical and earlier checker modules are unchanged. Prior full-corpus
+receipts retain their original source hashes; the extraction qualification is
+separate. No historical proof campaign was rerun. Remaining bound families,
+collection/runtime identities, native consumers and all original named-model
+delivery gates remain open.

@@ -31,7 +31,9 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    numerical execution cannot construct a source, PCS or proof-admission handle.
 4. **Bindings and controls.** Research controls reject wrong fused parts, partial
    partitions, aliased sources, omitted roles, alias-payload changes, invalid
-   metadata, rounding/epsilon/domain errors and CDF boundary mistakes. They
+   metadata, rounding/epsilon/domain errors and CDF boundary mistakes. The flow
+   record validator rejects byte/parameter/domain changes; first-maximum ties
+   and final-zero carries are checked as arithmetic obligations only. They
    earn no NC coverage. Reserve the new mean/bias/position/FFN/role/tie/config
    controls in the coordinated acceptance change, and retain NC-0100..0109,
    source/lookup/passport and decoding controls at their actual consumers.
@@ -53,6 +55,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    normalization branches. Its original row/variance/gain/bias relations and
    common exponent determine the actual offset Ubar; global Ucap is only a bound.
    The maximum-dimension statistic retains RFC-0022's strict field margin.
+   Row/residual/gated schemas each have 10000-configuration exact checks. Their
+   bounds include static gated scales through 8454661, first-maximum/zero
+   branches, complete aligned rounding and the positive gated endpoint 2^30.
+   Common whole-word ranges and zero predicates have explicit byte/index bounds.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
@@ -64,7 +70,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
-   raw transforms and the new static records match independent algorithms. Complete runtime/artifact/
+   raw transforms and the new static records match independent algorithms.
+   Extracting the private shared encoder preserves the complete derivation and
+   serialization syntax trees, with nine boundary records checked independently.
+   Complete runtime/artifact/
    registry/passport codecs and full/cache model flows still need their checks.
 9. **Parity.** No CPU/SIMD/CUDA proof parity is claimed. The evidence is exact
    Python arithmetic and independent framing/coordinate/rational oracles. No

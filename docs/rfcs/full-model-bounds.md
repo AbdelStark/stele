@@ -45,6 +45,22 @@ source may have a stricter positive endpoint (int16: x<=32767); enforce it.
 An offset, sign or magnitude does not authenticate the original source. Source
 joins remain mandatory even when a multiplier or an entire product is zero.
 
+Whole-word ranges have a bounded byte implementation. To enforce v<=M, bind
+the same w(M) source bytes and nonnegative gap bytes to `v+gap=M`. At byte i,
+`v_i+gap_i+c_i=M_i+256*c_(i+1)`, with Boolean carries and c_0=c_w=0. Each
+side is at most 511. For strict v<M use c_0=1 instead; the same final zero
+and side bounds establish `v+gap+1=M`. A variable upper word must have its
+own static range and original source. No whole-word field subtraction is used.
+
+A word-zero predicate binds every original byte: in its zero branch all are
+zero; in its nonzero branch the least nonzero byte index is in [0,w(M)), its
+byte is in [1,255], and every earlier byte is zero. Its index/prefix/Boolean
+consumers remain mandatory, with index comparison sides at most 2*w(M)-1 and
+byte comparison sides at most 511. This supplies the canonical zero sign and
+zero-product branches without an inverse or a missing high-byte check. These
+small bounds are derived from the recorded word width; no new random challenge
+or source authentication is implied by these deterministic predicates.
+
 ## 2. Signed rounding shared by the new affine relations
 
 For a signed numerator U, |U|<=Umax, and the configured positive D, require
@@ -365,9 +381,11 @@ challenge is authorized by this static schema.
 
 ## 7. Complete-model closure
 
-The complete model additionally requires closed rows for conversion, rotary,
-residual, attention score/max/exp/block/global normalization, activation/gated
-product, greedy/sample/stop and every source/index/range/branch obligation.
+The [flow-bound appendix](full-model-flow-bounds.md) specifies conversion,
+residual and gated-product records, using the same complete word predicates.
+Closed records for rotary, attention score/max/exp/block/global normalization,
+activation, greedy/sample/stop and their source/index/range/branch obligations
+still require completion and integration into the full model collection.
 The existing twelve-family numerical collection supplies evidence only; its
 scoped membership is not the final collection or proof plan. None of those
 families may disappear when the new affine/LN/position relations are added.

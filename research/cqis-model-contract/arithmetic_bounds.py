@@ -238,13 +238,18 @@ def derive(parameters):
 
 
 def encode(parameters):
-    schema, scalars, shifts, roles = derive(parameters)
+    record = derive(parameters)
     if type(parameters) is LayerNorm:
         p = parameters
         params = (_unsigned(p.d, 2)+bytes((p.F, p.G, p.E, p.Gb))+
                   _unsigned(p.en, 4)+_unsigned(p.ed, 4))
     else:
         params = parameters.parameters()
+    return _encode_record(params, *record)
+
+
+def _encode_record(params, schema, scalars, shifts, roles):
+    """Shared private framing; public callers derive only their closed schemas."""
     chunks = [PREFIX, _unsigned(1, 4), bytes((schema,)), _unsigned(len(params), 2), params,
               _unsigned(P, 4), bytes((8, len(scalars)))]
     chunks.extend(_unsigned(value, WORD_BYTES) for value in scalars)
