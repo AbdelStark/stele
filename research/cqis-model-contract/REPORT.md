@@ -339,3 +339,56 @@ Shared arithmetic/numerical/checker helpers are unchanged from their earlier
 qualified versions. Canonical frequency generation, exp/table/weighted/block/
 global normalization consumers, collection/runtime identities, native parity,
 named-model fidelity and complete private inference proofs remain outstanding.
+
+## Exponential and activation records
+
+The [function-bound appendix](../../docs/rfcs/full-model-function-bounds.md)
+adds closed schemas 10/11. Exp retains original difference/index words, exact
+hi/lo splitting, quotient/remainder/correction arithmetic, selected component
+order and complete real/padded table addressing. Activation retains the full
+FFN width, original signed int16 input/output words, i32 sign extension, row
+ordinal and configured function. Whole-table generation/admission and actual
+lookup/source consumers remain mandatory; these records cannot supply them.
+
+Run `python3 -B research/cqis-model-contract/check_function_bounds.py`.
+Seed 2677 checks 10000 configurations per schema against independent polynomial
+columns and complete struct-based framing. It also checks actual maximal
+operands, every carry and final zero, plus selected numerical point entries
+from the unchanged RFC-0021 rational certifiers. Those point entries supply
+data for recombination/source arithmetic, not new full-table validation.
+
+The exp cases cover 3301 direct, 3340 product and 3359 corrected records,
+including 1429 masked cases and 438 product/corrected configurations with Q=1.
+Selected corrections are -1,0,1; the complete static operand/column checks
+retain Coff up to 3 (C up to 2), independently of sampled corrections. The
+activation cases cover all five accepted definitions: 2008 sigmoid, 1976 SiLU,
+2004 softcap, 2042 GeLU and 1970 tanh-GeLU. Of the selected entries, 9397
+certify with int16 outputs and 603 overflow; no selected case reaches the
+precision limit. Successful points do not certify their complete tables.
+
+Boundary cases include B=31's complete delta/index and terminal hi/lo pair,
+all real/table-padding endpoints, masked exp(0), and the exact maximum table
+byte address 524349. A changed delta/index sum differing by p has the same
+field residue but unequal required words. Every activation kind checks both
+int16 endpoints, -1,0,1 and full width 16384. The source check compares signed
+packing with complete i32 sign extension and demonstrates why unsigned W32
+modulo p is the wrong signed lookup lift. SiLU/GeLU/tanh-GeLU configurations
+with F=0,E=14 succeed at zero yet overflow at 32767. Sigmoid(0) is nonzero
+even at E=0, so operation padding requires its disabled lookup selector.
+
+Byte mutations, truncations, suffixes, different valid fractions, mutable or
+oversized byte buffers, forbidden wide nearest/corrected domains, inactive or
+invalid splits, Boolean fractions, excessive FFN width and invalid cap/kind
+parameters reject. These are research controls and earn no native NC credit.
+Randomized maxima are 30938/12223 bytes and 5/4 columns for exp/activation;
+the appendix separately proves complete-domain capacities below 42000/16000
+bytes. No sampled maximum defines those limits.
+
+Corpus SHA-256: `a364b47658c12dceeba5eb3e0bf33f8910e3c41687b51899d530be44896a184a`.
+Candidate SHA-256: `892aedae62336ecc33ef345cd42b260e71b54fa58d9c699041de2f3a18a65805`.
+Checker SHA-256: `6c0043057afaf4f0d39606fbeea9a550881622552d85648b8a8ce183609210a8`.
+The shared framing, numerical helpers and existing certified function modules
+are unchanged; prior receipts retain their exact source scope. No historical
+proof campaign is rerun. Weighted/block/global normalization, decoding bounds,
+the full collection and outer identities, native consumers/parity, named-model
+fidelity and complete private inference proving/verification remain open.

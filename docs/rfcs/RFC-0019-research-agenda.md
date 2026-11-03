@@ -1162,6 +1162,9 @@ The attention-input continuation retains full rotary table addressing, the
 existing static score admissibility rule, causal first maxima and inclusive
 exp indices without M31 aliases. Canonical coefficient generation and the
 actual complete attention/lookup/source consumers remain separate obligations.
+The function continuation covers selected exp recombination, full component
+addresses and signed activation source words, conditional on whole-table
+admission. Selected successful inputs never excuse another table row's overflow.
 The full operation inventory retains both architectures and every source edge.
 Remaining numbered questions are RFC-0025 §7: full byte/identity joins,
 static/range/branch/index/source expansion, complete model-flow evidence,

@@ -302,6 +302,9 @@ gated static scale range and canonical first-maximum/zero branches.
 The [attention-input appendix](full-model-attention-bounds.md) covers full rotary
 source indices, statically admissible scaled scores, causal first maxima and
 complete inclusive exponential indices.
+The [function-bound appendix](full-model-function-bounds.md) covers selected exp
+recombination, complete component addresses and activation source/lookup words;
+all canonical table definitions must still pass before operation admission.
 The canonical full bound schema, expansion order and actual consuming-reduction mapping remain
 acceptance items in §7. The old twelve-family numerical record
 collection alone is insufficient. Unsupported shapes have an explicit rejection;

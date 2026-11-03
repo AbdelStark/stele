@@ -64,6 +64,11 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    score configurations reject before execution; actual zero inputs cannot
    weaken that rule. Rational unit-circle tests cover the application envelope,
    not canonical configured-frequency generation or public-MLE authentication.
+   Exp/activation records each have 10000-configuration column/byte checks.
+   They retain every component's inclusive index and complete signed source
+   words. Selected certified point evaluations exercise recombination and
+   overflow; they do not admit an entire table. A bounded activation record
+   for invalid full-table parameters grants no execution authority.
    The full model still needs remaining families, collection bytes
    and actual consuming-reduction closure. No generic opaque certificate or
    caller-selected field is accepted.
@@ -74,6 +79,10 @@ oracle, fixture, manifest, benchmark ledger or original proof campaign changes.
    masked scores still require their source/arithmetic checks. Actual lookup/zerocheck selectors and public-source MLE
    layouts remain proof-plan requirements. Raw coefficient data/zero padding is
    not proof that padded rows are excluded.
+   Exp components retain real-row membership separately from canonical table
+   padding. Masked values/remainders/corrections are zero. Activation operation
+   padding has zero source words and a disabled lookup, not a real sigmoid(0)
+   evaluation. The original selector and actual input/output joins remain.
 8. **Determinism.** Role/operation order, fused Q/K/V parts, UTF-8 ordering,
    physical payload order, rational encodings, function/representation selection,
    rounding, top-p ties and hash preimages are explicit. Source-map framing,
