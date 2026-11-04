@@ -1,0 +1,17 @@
+{
+  "seed": 50334,
+  "complete": 6,
+  "metadata_only": 4,
+  "whole_table_overflow": 1,
+  "sources": {
+    "research/cqis-model-contract/check_registry_codec.py": "6ce2c572f07f0a73554dc4a9526510a0bc6ea8abec7a77b1c7617b3f6a937f7f",
+    "research/cqis-model-contract/registry_codec.py": "8417f0e688e10fa0c78f88184673e86a2d823fd317387a5ec53a3531d4afc427",
+    "research/cqis-model-contract/model_codec.py": "20d3649cbef3a983d42b826e2dc7ec51040840a176956462322f103e041123ef",
+    "research/cqis-model-contract/check_model_codec.py": "3076ce37404edc522324ee3ab46889a37775d89c5e9c27cfbe7d0c471df242a9"
+  },
+  "fixtures": {
+    "registries.bin": "0151b97504ef57d59c6c48b6bd6c0f4fb61bce85ff2a4e8ad1fdd6469c9ab741",
+    "registry-layouts.bin": "bd45b354aac34becf3d037ada06cbf34e9ed6f660f706930be57aba184a45d40",
+    "registry-overflow.bin": "da49249f224d29f0e4712e9fba8207084612e3b839dc274bd68bd0ba0a9ddeee"
+  }
+}

@@ -92,6 +92,9 @@ impl Writer {
     pub fn finish(self) -> Vec<u8> {
         self.bytes
     }
+    pub fn position(&self) -> usize {
+        self.bytes.len()
+    }
 }
 
 pub(super) fn gcd(mut a: u64, mut b: u64) -> u64 {

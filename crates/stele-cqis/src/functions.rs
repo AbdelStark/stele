@@ -6,6 +6,7 @@ mod representation;
 pub use representation::Representation;
 mod manifest;
 pub use manifest::Manifest;
+pub(crate) use manifest::ManifestLayout;
 mod norm_row;
 pub use norm_row::{NormError, NormEvaluation};
 

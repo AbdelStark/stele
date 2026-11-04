@@ -1,5 +1,5 @@
-//! RFC-0025 encoding §§1,4,5: complete structural Model/Scales and canonical bytes.
-//! This supplies no Registry/Bounds/source authentication or inference/proof admission.
+//! RFC-0025 encoding §§1,4-6: checked Model, Scales and regenerated Registry.
+//! Source/passport authority, arithmetic Bounds and inference/proof admission are separate.
 use crate::functions::{self, Representation};
 use alloc::vec::Vec;
 mod codec;
@@ -8,8 +8,10 @@ pub use shape::{Physical, Role, Shape};
 mod rotation;
 pub use rotation::Rotation;
 mod block;
+mod registry;
 mod rotary;
 pub use block::{Block, Policy};
+pub use registry::Registry;
 mod decoding;
 use codec::{reserved, Reader, Writer};
 pub use decoding::{Decoding, Sampling};
@@ -60,6 +62,12 @@ pub enum Error {
     Read,
     /// Native coefficient/table generation could not certify a complete result.
     Generation(crate::tables::Error),
+    /// Registry length, ordered references or canonical metadata differs from Model.
+    Registry,
+    /// A component digest differs from complete native table regeneration.
+    TableData,
+    /// A rotation digest differs from complete native coefficient regeneration.
+    RotationData,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }
