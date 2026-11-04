@@ -1,6 +1,6 @@
 //! RFC-0025 encoding §3: exact Map and physical configuration Preparation join.
 use super::{
-    codec::{Reader, Writer},
+    codec::{configuration, Reader, Writer},
     source_map, Error, Model, SourceMap,
 };
 use alloc::vec::Vec;
@@ -29,17 +29,8 @@ impl<'a> Preparation<'a> {
         }
         let mut configurations = Writer::new(13 * usize::from(model.shape().record_count()))?;
         for ordinal in 0..model.shape().record_count() {
-            let physical = model.shape().physical(ordinal).ok_or(Error::Physical)?;
-            let format = model
-                .formats()
-                .get(usize::from(ordinal))
-                .ok_or(Error::Physical)?;
-            configurations.push(&ordinal.to_le_bytes())?;
-            configurations.push(&[physical.dimensions().len() as u8])?;
-            for d in physical.dimensions() {
-                configurations.push(&d.to_le_bytes())?;
-            }
-            configurations.push(&[format.bits(), format.parameter()])?;
+            let (raw, length) = configuration(model, ordinal)?;
+            configurations.push(&raw[..length])?;
         }
         let configurations = configurations.finish();
         let mut hash = blake3::Hasher::new();

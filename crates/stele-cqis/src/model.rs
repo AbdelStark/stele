@@ -1,4 +1,4 @@
-//! RFC-0025 encoding §§1,4-6 and collection §§1–4: checked preparation metadata.
+//! RFC-0025 encoding §§1–6 and collection §§1–4: checked model and preparation artifacts.
 //! Source/passport authority and inference/proof admission remain separate.
 use crate::functions::{self, Representation};
 use alloc::vec::Vec;
@@ -23,6 +23,8 @@ mod source_map;
 pub use source_map::{SourceEntry, SourceMap};
 mod preparation;
 pub use preparation::Preparation;
+mod artifact;
+pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
 const LIMIT: usize = 1 << 20;
@@ -78,7 +80,7 @@ pub enum Error {
     Bounds,
     /// A static arithmetic record cannot be derived from the checked configuration.
     ArithmeticBounds(crate::bounds::arithmetic::Error),
-    /// The Bounds output sink failed; no completed collection is returned.
+    /// The output sink failed; no completed result is returned.
     Write,
     /// A source tensor name is empty, too long, contains NUL or is invalid UTF-8.
     SourceName,
@@ -94,6 +96,12 @@ pub enum Error {
     SourceAlias,
     /// Ignored names are repeated, unsorted or overlap selected/alias names.
     SourceIgnored,
+    /// Artifact framing, expected metadata, extent or exact exhaustion differs.
+    Artifact,
+    /// An Artifact payload contains the forbidden int4 -8 or int8 -128 code.
+    ArtifactCode,
+    /// An odd int4 payload has a nonzero final high nibble.
+    ArtifactPadding,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }

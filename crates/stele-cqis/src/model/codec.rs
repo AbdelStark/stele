@@ -1,5 +1,5 @@
 //! RFC-0025 encoding §1: checked reads and fallibly reserved metadata output.
-use super::Error;
+use super::{Error, Model};
 use alloc::vec::Vec;
 
 pub(super) fn reserved<T>(count: usize) -> Result<Vec<T>, Error> {
@@ -10,6 +10,25 @@ pub(super) fn reserved<T>(count: usize) -> Result<Vec<T>, Error> {
     let mut out = Vec::new();
     out.try_reserve_exact(count).map_err(|_| Error::Capacity)?;
     Ok(out)
+}
+
+/// RFC-0025 encoding §3: C_i is selected only by its expected Model ordinal.
+pub(super) fn configuration(model: &Model, ordinal: u16) -> Result<([u8; 13], usize), Error> {
+    let physical = model.shape().physical(ordinal).ok_or(Error::Physical)?;
+    let format = model
+        .formats()
+        .get(usize::from(ordinal))
+        .ok_or(Error::Physical)?;
+    let mut raw = [0; 13];
+    raw[..2].copy_from_slice(&ordinal.to_le_bytes());
+    raw[2] = physical.dimensions().len() as u8;
+    let mut end = 3;
+    for dimension in physical.dimensions() {
+        raw[end..end + 4].copy_from_slice(&dimension.to_le_bytes());
+        end += 4;
+    }
+    raw[end..end + 2].copy_from_slice(&[format.bits(), format.parameter()]);
+    Ok((raw, end + 2))
 }
 
 pub(super) struct Reader<'a>(pub &'a [u8]);
