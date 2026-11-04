@@ -25,6 +25,8 @@ mod preparation;
 pub use preparation::Preparation;
 mod artifact;
 pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
+mod source;
+pub use source::{Assets, Source, SourceFile};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
 const LIMIT: usize = 1 << 20;
@@ -102,6 +104,22 @@ pub enum Error {
     ArtifactCode,
     /// An odd int4 payload has a nonzero final high nibble.
     ArtifactPadding,
+    /// A File label is not a nonempty exact UTF-8 basename.
+    FileName,
+    /// File labels repeat or overlap distinct required roles.
+    FileSet,
+    /// File labels are not sorted by their raw UTF-8 bytes.
+    FileOrder,
+    /// A file length or the aggregate original-file extent is inconsistent.
+    FileLength,
+    /// The Source kind is neither single-file nor indexed-shard.
+    SourceKind,
+    /// Source has no checkpoint file or a checkpoint label has the wrong suffix.
+    SourceFiles,
+    /// The original Source index label does not end in .json.
+    SourceIndex,
+    /// Config, tokenizer or generation roles in Assets are invalid.
+    Assets,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }
