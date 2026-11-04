@@ -73,6 +73,86 @@ fn encoded(model: &Model, scales: &Scales, registry: &Registry) -> (Bounds, Vec<
     .expect("complete Bounds");
     (bounds, raw)
 }
+
+#[test]
+fn matches_reference_numerical_identity_and_rejects_mixed_children() {
+    use crate::model::NumericalIdentity;
+    let mut count = 0;
+    fixtures("complete", |c, model, scales, rr| {
+        if !c["error"].is_null() {
+            return;
+        }
+        let registry = Registry::decode(&model, rr).expect("complete regenerated Registry");
+        let bounds = Bounds::new(&model, &scales, &registry).expect("complete Bounds");
+        let identity = NumericalIdentity::new(&model, &scales, &registry, &bounds)
+            .expect("complete numerical identity");
+        // Independent fixture hashes include every byte of all four artifacts.
+        let mut expected = b"stele/v0.1/cqis/identity".to_vec();
+        for field in ["model_id", "scales_id", "registry_id", "identity"] {
+            expected.extend(hex(c[field].as_str().expect("reference hash")));
+        }
+        assert_eq!(expected.len(), 152);
+        assert_eq!(identity.as_bytes(), expected);
+        assert_eq!(identity.identity(), *blake3::hash(&expected).as_bytes());
+        assert_eq!(identity.verify(&expected), Ok(()));
+        for at in 0..expected.len() {
+            let mut changed = expected.clone();
+            changed[at] ^= 1;
+            assert_eq!(identity.verify(&changed), Err(Error::Identity));
+            assert_eq!(identity.verify(&expected[..at]), Err(Error::Identity));
+        }
+        let mut extra = expected.clone();
+        extra.push(0);
+        assert_eq!(identity.verify(&extra), Err(Error::Identity));
+
+        // Change a nonmaximum mantissa; the static parameter maxima stay equal.
+        let mut changed = scales.encode().expect("Scales");
+        let first = b"stele/v0.1/cqis/scales".len() + 32 + 4;
+        assert_eq!(&changed[first..first + 2], &[1, 0]);
+        changed[first] = 2;
+        let other_scales = Scales::decode(&model, &changed).expect("different complete Scales");
+        assert_eq!(
+            NumericalIdentity::new(&model, &other_scales, &registry, &bounds),
+            Err(Error::Identity)
+        );
+        let other_bounds = Bounds::new(&model, &other_scales, &registry).expect("other Bounds");
+        assert_eq!(
+            NumericalIdentity::new(&model, &scales, &registry, &other_bounds),
+            Err(Error::Identity)
+        );
+        let other = NumericalIdentity::new(&model, &other_scales, &registry, &other_bounds)
+            .expect("internally consistent changed inputs");
+        assert_eq!(other.verify(&expected), Err(Error::Identity));
+        assert_ne!(other.identity(), identity.identity());
+
+        // One Model field changes; retain all independently expected old children.
+        let mut raw = model.encode().expect("Model");
+        let at = raw.len() - 5 - model.decoding().encode().expect("Decoding").len();
+        raw[at] = (raw[at] + 1) % 31;
+        let other_model = Model::decode(&raw).expect("one changed logits fraction");
+        assert_eq!(
+            NumericalIdentity::new(&other_model, &scales, &registry, &bounds),
+            Err(Error::Identity)
+        );
+        if count == 0 {
+            let other_registry = Registry::new(&other_model).expect("other complete Registry");
+            assert_eq!(
+                NumericalIdentity::new(&model, &scales, &other_registry, &bounds),
+                Err(Error::Identity)
+            );
+            let other_scales = Scales::decode(&other_model, &scale_bytes(&other_model))
+                .expect("other Model's Scales");
+            let other_bounds = Bounds::new(&other_model, &other_scales, &other_registry)
+                .expect("other Model's complete Bounds");
+            let other =
+                NumericalIdentity::new(&other_model, &other_scales, &other_registry, &other_bounds)
+                    .expect("all changed children remain internally consistent");
+            assert_eq!(other.verify(&expected), Err(Error::Identity));
+        }
+        count += 1;
+    });
+    assert_eq!(count, 4);
+}
 fn spans(raw: &[u8]) -> Vec<(usize, usize)> {
     let mut at = PREFIX.len() + 98;
     let mut result = Vec::new();

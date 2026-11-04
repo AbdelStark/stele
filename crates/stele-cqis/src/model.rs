@@ -19,6 +19,8 @@ mod scales;
 pub use scales::{MatrixScale, Scales};
 mod bounds;
 pub use bounds::Bounds;
+mod identity;
+pub use identity::NumericalIdentity;
 mod source_map;
 pub use source_map::{SourceEntry, SourceMap};
 mod preparation;
