@@ -826,7 +826,7 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: blocked(RFC-0025 A1; authorized original Llama source)
   agent: codex-root
   branch: task/E5-03-complete-quantiser
   acceptance:

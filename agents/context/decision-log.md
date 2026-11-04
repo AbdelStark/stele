@@ -638,3 +638,22 @@ tokenizer execution, inference/fidelity, actual production controls, passport,
 private proofs, profiles and the W8 workload remain required. Preparation affects
 T_misc only; no measured constant, challenge, cut or online weight pass changes.
 Status: Accepted.
+
+## ADR-055: Qualify original GPT-2 with explicit int4 matrices
+
+Context: E5-03 requires both int8 and int4 weight conversion. ADR-054's complete
+original-source qualification covered int8. Decision: run the same pinned
+original checkpoint and complete auxiliary files with matrix precision set to
+int4, keeping every other ADR-054 numerical parameter and original dimension.
+The manual checker accepts an explicit precision argument; its default remains
+int8 with byte-identical Model and Preparation inputs. These choices remain
+qualification inputs, not calibrated defaults or a fidelity claim.
+
+Compare every selected scalar and packed Artifact byte, every minimal scale,
+and complete SourceConfig, Registry, Bounds and identity bytes independently.
+Int4 packing crosses row boundaries and pads only a final odd high nibble.
+Retain both qualification receipts and exact executables with their complete
+output hashes; neither run substitutes for original Llama qualification or
+actual production controls. No native converter or canonical format changes.
+The affected work is offline preparation T_misc; no measured constant, online
+weight pass, cut, challenge or soundness term changes. Status: Accepted.

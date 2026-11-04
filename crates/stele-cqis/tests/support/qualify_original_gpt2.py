@@ -50,13 +50,14 @@ def digest(path):
         while raw:=stream.read(1<<20):h.update(raw)
     return h.hexdigest()
 
-def configuration():
+def configuration(weight_bits=8):
     # Explicit offline qualification parameters, not calibrated fidelity defaults.
+    assert weight_bits in (4,8)
     s=Shape(0,12,768,12,12,64,3072,50257,1024)
     norm=LayerNorm(768,7,8,7,8,1,100000)
     b=Block(norm,norm,(7,)*6,7,7,7,((0,0),)*7,1,-3,0,0,
             Exponential(1024,15,7,14,0),Activation(3072,4,7,7),None)
-    formats=tuple((8,0) if len(ds)==2 else (16,8) for _,_,ds in roles(s))
+    formats=tuple((weight_bits,0) if len(ds)==2 else (16,8) for _,_,ds in roles(s))
     model=Model(s,formats,7,(b,)*12,norm,(0,0),7,None)
     mapping=mapped(model,0,Random(50520))
     mapping=replace(mapping,entries=tuple(replace(e,dtype=3) for e in mapping.entries),aliases=())
@@ -97,6 +98,23 @@ def check_rounding():
                    np.array(es,dtype=np.int64),-32768,32767)
     assert actual.tolist()==expected
 
+def packed(codes,bits):
+    if bits==8:return codes.astype('i1').tobytes(order='C')
+    assert bits==4 and np.all((-7<=codes)&(codes<=7))
+    digits=(codes.reshape(-1)&15).astype(np.uint8)
+    if len(digits)%2:digits=np.append(digits,np.uint8(0))
+    return (digits[::2]|(digits[1::2]<<4)).tobytes()
+
+def check_packing():
+    for lo in range(-7,8):
+        assert packed(np.array([lo],dtype=np.int64),4)==bytes((lo%16,))
+        for hi in range(-7,8):
+            assert packed(np.array([lo,hi],dtype=np.int64),4)==bytes((lo%16+16*(hi%16),))
+    values=np.arange(-7,8,dtype=np.int64).reshape(3,5)
+    flat=list(range(-7,8))+[0]
+    assert packed(values,4)==bytes(flat[i]%16+16*(flat[i+1]%16) for i in range(0,16,2))
+    assert packed(values,8)==bytes(x%256 for x in range(-7,8))
+
 def verify_artifact(model,mapping,source_path,artifact_path):
     with source_path.open('rb') as stream:
         header_length=unpack('<Q',stream.read(8))[0];header=json.loads(stream.read(header_length))
@@ -117,31 +135,35 @@ def verify_artifact(model,mapping,source_path,artifact_path):
             assert values.shape==dims
             parts=[b'stele/v0.1/cqis/tensor',pack('<I',len(ci)),ci]
             if len(dims)==2:
+                q=(1<<(bits-1))-1
                 peaks=[]
                 for start in range(0,dims[0],128):
                     words=values[start:start+128];assert not np.any(((words>>23)&255)==255)
                     peaks.extend(np.max(words&0x7fffffff,axis=1).tolist())
                 maximum=exact(max(peaks));e=0
                 if maximum:
-                    e=maximum.numerator.bit_length()-maximum.denominator.bit_length()-22
-                    while maximum>127*65535*Q(2)**e:e+=1
-                    while maximum<=127*65535*Q(2)**(e-1):e-=1
+                    e=maximum.numerator.bit_length()-maximum.denominator.bit_length()-(q*65535).bit_length()+1
+                    while maximum>q*65535*Q(2)**e:e+=1
+                    while maximum<=q*65535*Q(2)**(e-1):e-=1
                 ms=[]
                 for peak in peaks:
-                    ratio=exact(peak)/(127*Q(2)**e)
+                    ratio=exact(peak)/(q*Q(2)**e)
                     ms.append(max(1,-(-ratio.numerator//ratio.denominator)))
                 assert all(1<=m<=65535 for m in ms)
                 scale=Scale(e,pack('<'+'H'*len(ms),*ms));scales.append(scale)
                 parts.extend((pack('<h',e),scale.mantissas))
-            size=int(values.size)*(bits//8);parts.append(pack('<Q',size));metadata=b''.join(parts)
+            size=(int(values.size)*bits+7)//8;parts.append(pack('<Q',size));metadata=b''.join(parts)
             emit(pack('<Q',len(metadata)+size)+metadata)
             for start in range(0,dims[0],128):
                 words=values[start:start+128]
                 if len(dims)==2:
                     mantissa=np.array(ms[start:start+128],dtype=np.uint64)[:,None]
-                    codes=rounded(words,mantissa,e,-127,127).astype('i1')
-                else:codes=rounded(words,1,-fraction,-32768,32767).astype('<i2')
-                emit(codes.tobytes(order='C'));count+=int(words.size)
+                    codes=rounded(words,mantissa,e,-q,q)
+                    # Every nonfinal 128-row chunk contains an even number of codes.
+                    assert start+len(words)==dims[0] or words.size%2==0
+                    payload=packed(codes,bits)
+                else:payload=rounded(words,1,-fraction,-32768,32767).astype('<i2').tobytes(order='C')
+                emit(payload);count+=int(words.size)
             if ordinal%16==0:print(json.dumps({'verified_physical_record':ordinal,'scalars':count}),flush=True)
         assert actual.read(1)==b'','ArtifactSuffix'
     return tuple(scales),h.hexdigest(),count
@@ -149,11 +171,12 @@ def verify_artifact(model,mapping,source_path,artifact_path):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     for name in ('source-dir','native','output-dir'):parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--weight-bits',type=int,choices=(4,8),default=8)
     args=parser.parse_args();root=args.output_dir.resolve();root.mkdir(exist_ok=False)
     inputs=root/'inputs';inputs.mkdir();native=args.native.resolve(strict=True);source_dir=args.source_dir.resolve(strict=True)
     checked={name:sc.File(name,(source_dir/name).stat().st_size,bytes.fromhex(expected)) for name,expected in PINS.items()}
     for name,expected in PINS.items():assert digest(source_dir/name)==expected,('OriginalFile',name)
-    model,mapping=configuration();mr=model_frame(model);assert mr==encode_model(model)
+    model,mapping=configuration(args.weight_bits);mr=model_frame(model);assert mr==encode_model(model)
     source=sc.Source(0,None,(checked['model.safetensors'],))
     assets=sc.Assets(checked['config.json'],tuple(checked[n] for n in sorted(PINS) if n not in ('model.safetensors','config.json','generation_config.json')),checked['generation_config.json'])
     frames={'model.bin':mr,'preparation.bin':preparation(model,mapping),'source.bin':sc.encode_source(source),'assets.bin':sc.encode_assets(assets)}
@@ -161,12 +184,13 @@ def main():
     sources=sorted((ROOT/'crates/stele-cqis/src').rglob('*.rs'))+[ROOT/'crates/stele-cqis/examples/prepare_source.rs',Path(__file__).resolve(),ROOT/'Cargo.lock']
     pins={str(p.relative_to(ROOT)):digest(p) for p in sources}
     receipt=dict(repository='openai-community/gpt2',revision=REVISION,original_files=PINS,source_pins=pins,native_sha256=digest(native),
-        head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),parameters='Explicit W8, vector G=8, activation/residual F=7, exact accumulation, greedy; no calibration/fidelity claim.')
+        head=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),weight_bits=args.weight_bits,
+        parameters=f'Explicit int{args.weight_bits} matrices, vector G=8, activation/residual F=7, exact accumulation, greedy; no calibration/fidelity claim.')
     (root/'inputs.json').write_text(json.dumps(receipt,indent=2)+'\n')
     with (root/'native.stdout').open('xb') as out,(root/'native.stderr').open('xb') as err:
         print('starting native complete original preparation',flush=True)
         subprocess.run([str(native),*(str(inputs/n) for n in frames),'0',str(source_dir),str(root/'native')],stdout=out,stderr=err,check=True)
-    result=root/'native';check_rounding()
+    result=root/'native';check_rounding();check_packing()
     scales,artifact_id,count=verify_artifact(model,mapping,source_dir/'model.safetensors',result/'artifact.bin')
     assert (result/'scales.bin').read_bytes()==scales_frame(model,scales)
     auxiliary={name:(source_dir/name).read_bytes() for name in PINS if name!='model.safetensors'}

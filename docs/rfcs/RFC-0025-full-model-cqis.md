@@ -528,3 +528,36 @@ Initial acceptance: the complete numerical/source/outer-identity definitions and
 all nineteen linked appendices are Accepted with the §7.1 companion entries.
 Review: the same-author skill and crate-owner sign-offs linked above; ADR-051.
 This does not complete any native implementation, privacy, profile or workload task.
+
+### A1 — Completion dependencies for co-owned production controls (Draft; Q32)
+
+Motivation: E5-03 requires all controls assigned to it in §6, while their actual
+plan, reduction and passport consumers depend on E5-03. The explicit YAML graph
+is acyclic, but its completion requirements cannot be executed in that order.
+The [native completion audit](../../agents/reviews/e503-completion-dependencies.md)
+records the exact paths and the separate pending original Llama source.
+
+Proposed addition immediately after the §6 owner table:
+
+> A task claiming any control in this table requires the actual owning consumer
+> to execute its honest baseline and specified rejection. The completion graph
+> must include that requirement, including when the table lists multiple owners.
+> A task whose completion requires an unfinished descendant must remain blocked
+> until an explicit dependency resolution is Accepted. Numerical preparation or
+> parsed metadata does not replace a proof consumer. A resolution must preserve
+> every original acceptance criterion and named workload, identify each earlier
+> artifact and actual later consumer, and give an executable order consistent
+> with the one-task-at-a-time workflow. It must not mark a reserved control done,
+> remove a binding, or use a partial-task PR as completed task delivery.
+
+This Draft records the necessary completion rule; it does not yet provide or
+approve a replacement task graph. Q32 remains open until a concrete order and
+its complete acceptance evidence are reviewed. No native implementation may
+use this Draft as protocol authority. The Accepted §6 requirements remain law.
+
+Soundness impact: none; no challenge, theorem, transcript, proof relation or
+ledger term changes. Cost-model impact: none; no measured constant or weight
+pass changes. Affected tasks: E5-03, E6-01/02, E7-01/02/05/08/09, E12-05a/05/06
+and E14-02, plus their transitive dependants. Required review remains Workflow
+02's soundness, RFC consistency and affected crate-owner review. No acceptance
+or control coverage is granted by this escalation.

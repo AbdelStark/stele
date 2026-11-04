@@ -94,3 +94,45 @@ The example build, Clippy, formatting, 530 Accepted RFC references, Rust policy
 and 755 local documentation links pass. ADR history remains append-only and all
 65 qualified reference/helper files remain unchanged. Full checkpoint conversion
 is an explicit manual qualification, with receipts; it is not added to routine CI.
+
+## Complete int4 qualification
+
+ADR-055 adds an explicit `--weight-bits 4` manual run. The default remains int8;
+its Model and Preparation bytes match the frozen int8 inputs. Changing only
+matrix precision leaves all source dimensions, vector fractions, source roles,
+assets and other numerical parameters unchanged. The core converter is unchanged.
+
+The independent checker derives Q from the selected precision, selects the least
+exponent and each row mantissa with exact Fraction inequalities, and compares
+every packed code. Int4 uses low nibble first across row boundaries; only the
+last odd code receives a zero high nibble. Every nonfinal chunk has 128 rows,
+so it contains an even number of codes even for an odd row width. Direct packing
+checks cover all 225 legal nibble pairs, all 15 singletons and an odd-width
+three-row tensor. The existing 10000 exact scalar rounding checks also pass.
+
+The full original-source run passes for all 124439808 selected scalars, 196
+physical records and 478 static records. Every Artifact, Scales, SourceConfig,
+Registry, Bounds and identity byte agrees with the independent checker.
+The int4 Artifact is 62680859 bytes; this is an exact extent, not a benchmark.
+Its digest_cqis is
+`ed3240bde1f76d911bb82a37bef43a184408ab3cab8871747ff46c97be6d06f2`,
+and cqis_id is
+`5508580624931d7ab8817fb360e829fc9b031fda5708150f36a1f01b4562c7f6`.
+The qualification receipt SHA-256 is
+`020ca496e657ffaf063220103ff82b52abc74532d65d748b95bb1a34d9642a56`;
+its native executable SHA-256 is
+`cec826032cb4cb7374c41caacfc03ccc0c38ad6640c66878c13185d0e56f40bc`.
+The receipt records all 77 source pins and all 11 output file hashes. Outputs
+and the exact executable are preserved read-only; the int8 run is unchanged.
+
+The twelve review answers above still apply: this change extends a manual
+checker without changing a native API, challenge, claim, certificate schema,
+verifier or online cost. It supplies original GPT-2 int4 preparation parity,
+not inference, fidelity or a production control. E5-03 remains incomplete;
+see the [completion dependency audit](e503-completion-dependencies.md).
+
+Validation for this extension: full native preparation, exact scalar/packing
+checks, unchanged default inputs, formatting, Rust policy, 533 Accepted RFC
+references, 757 local documentation targets and both existing task-graph tests
+pass. The 65 qualified reference helpers remain unchanged. Accepted RFC text and
+ADR history are preserved as prefixes; no production control is marked done.
