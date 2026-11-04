@@ -80,4 +80,4 @@ or a soundness profile. See `scripts/gates/README.md` for the gate contracts.
 
 ## License
 
-Apache‑2.0 (add full text in `LICENSE` at bootstrap).
+Apache-2.0. See [`LICENSE`](LICENSE).
