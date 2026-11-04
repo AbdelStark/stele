@@ -9,7 +9,7 @@ impl Budget {
     pub fn new(bytes: usize) -> Self {
         Self(bytes)
     }
-    fn spend(&mut self, bytes: usize) -> Result<(), Error> {
+    pub(super) fn spend(&mut self, bytes: usize) -> Result<(), Error> {
         self.0 = self.0.checked_sub(bytes).ok_or(Error::Capacity)?;
         Ok(())
     }
@@ -63,6 +63,23 @@ impl<'a> Json<'a> {
         {
             self.position += 1;
         }
+    }
+    pub fn peek(&mut self) -> Option<u8> {
+        self.whitespace();
+        self.raw.get(self.position).copied()
+    }
+    /// Borrow an unquoted scalar token; the caller validates its closed grammar.
+    pub fn atom(&mut self) -> &'a [u8] {
+        self.whitespace();
+        let start = self.position;
+        while self
+            .raw
+            .get(self.position)
+            .is_some_and(|b| !matches!(b, b' ' | b'\t' | b'\r' | b'\n' | b',' | b']' | b'}'))
+        {
+            self.position += 1;
+        }
+        &self.raw[start..self.position]
     }
     pub fn byte(&mut self, expected: u8) -> Result<(), Error> {
         self.whitespace();

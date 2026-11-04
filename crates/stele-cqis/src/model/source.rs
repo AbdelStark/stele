@@ -1,4 +1,4 @@
-//! RFC-0025 source §§1–4: typed files, checked snapshots and structural loading.
+//! RFC-0025 source and source architecture §§1–4: original bytes and config joins.
 use super::{
     codec::{reserved, Reader},
     Error,
@@ -17,6 +17,8 @@ mod index;
 pub use index::{SourceIndex, SourceIndexEntry};
 mod package;
 pub use package::{SourcePackage, SourceSlice, SourceView};
+mod config;
+pub use config::{Architecture, SourceConfig};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/source";
 const LIMIT: usize = 1 << 29;

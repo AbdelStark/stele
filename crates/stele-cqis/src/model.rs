@@ -27,8 +27,9 @@ mod artifact;
 pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
 mod source;
 pub use source::{
-    Assets, Source, SourceChunk, SourceContainer, SourceFile, SourceIndex, SourceIndexEntry,
-    SourcePackage, SourceSlice, SourceSnapshot, SourceTensor, SourceView,
+    Architecture, Assets, Source, SourceChunk, SourceConfig, SourceContainer, SourceFile,
+    SourceIndex, SourceIndexEntry, SourcePackage, SourceSlice, SourceSnapshot, SourceTensor,
+    SourceView,
 };
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
@@ -123,7 +124,7 @@ pub enum Error {
     SourceOffset,
     /// A safetensors header length, opening brace or original-file extent is invalid.
     SourceHeader,
-    /// Strict original JSON syntax, Unicode or unsigned-integer syntax is invalid.
+    /// Strict original JSON syntax, Unicode or a required scalar token is invalid.
     SourceJson,
     /// A tensor descriptor, structural dtype, shape or storage extent is invalid.
     SourceContainer,
@@ -145,6 +146,32 @@ pub enum Error {
     SourceTotalSize,
     /// Config, tokenizer or generation roles in Assets are invalid.
     Assets,
+    /// The independently selected source layout is outside the three closed adapters.
+    SourceLayout,
+    /// A config number exceeds its exact integer/decimal domain.
+    SourceNumber,
+    /// A decoded configuration string exceeds 65535 UTF-8 bytes.
+    SourceString,
+    /// Configuration JSON exceeds depth 32, including keys and array elements.
+    SourceDepth,
+    /// The closed configuration field set has an unknown or missing required field.
+    SourceFields,
+    /// The source model_type or architecture class does not match the adapter.
+    SourceFamily,
+    /// A positive exact ratio cannot fit the required reduced u32/u64 pair.
+    SourceRational,
+    /// A recognized nonarchitectural annotation has the wrong type or domain.
+    SourceMetadata,
+    /// A supplied architecture flag differs from its closed absence rule.
+    SourceFlags,
+    /// A configured BOS/EOS/pad id or the complete EOS set is invalid.
+    SourceToken,
+    /// A Model norm epsilon differs from the original configuration.
+    SourceEpsilon,
+    /// A source name, transform or part does not match its exact adapter role.
+    SourceRole,
+    /// The complete expected SourceConfig frame differs from the derived binding.
+    SourceConfig,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }
