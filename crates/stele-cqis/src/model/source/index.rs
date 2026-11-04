@@ -32,6 +32,13 @@ impl<'a> SourceIndex<'a> {
     pub fn read_from<E>(
         snapshot: &SourceSnapshot<'a>,
         max_metadata_bytes: usize,
+        read_at: impl FnMut(u64, &mut [u8]) -> Result<usize, E>,
+    ) -> Result<Self, Error> {
+        Self::read_with_budget(snapshot, &mut Budget::new(max_metadata_bytes), read_at)
+    }
+    pub(super) fn read_with_budget<E>(
+        snapshot: &SourceSnapshot<'a>,
+        budget: &mut Budget,
         mut read_at: impl FnMut(u64, &mut [u8]) -> Result<usize, E>,
     ) -> Result<Self, Error> {
         let file = *snapshot.file();
@@ -41,7 +48,6 @@ impl<'a> SourceIndex<'a> {
         if file.length() > INDEX_LIMIT {
             return Err(Error::Capacity);
         }
-        let mut budget = Budget::new(max_metadata_bytes);
         let mut raw = budget.bytes(file.length() as usize)?;
         for ordinal in 0..snapshot.chunk_count() {
             let chunk = snapshot.chunk(ordinal, &mut read_at)?;
@@ -60,7 +66,7 @@ impl<'a> SourceIndex<'a> {
         let mut total_size = None;
         let mut entries = Vec::new();
         while json.next(&mut first, b'}')? {
-            let key = json.key(&mut budget)?;
+            let key = json.key(budget)?;
             let bit = match key.as_str() {
                 "metadata" => 1,
                 "weight_map" => 2,
@@ -71,9 +77,9 @@ impl<'a> SourceIndex<'a> {
             }
             seen |= bit;
             if bit == 1 {
-                total_size = Some(metadata(&mut json, &mut budget)?);
+                total_size = Some(metadata(&mut json, budget)?);
             } else {
-                entries = mapping(&mut json, &mut budget)?;
+                entries = mapping(&mut json, budget)?;
             }
         }
         json.end()?;

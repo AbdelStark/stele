@@ -15,6 +15,8 @@ mod json;
 pub use container::{SourceContainer, SourceTensor};
 mod index;
 pub use index::{SourceIndex, SourceIndexEntry};
+mod package;
+pub use package::{SourcePackage, SourceSlice, SourceView};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/source";
 const LIMIT: usize = 1 << 29;

@@ -28,7 +28,7 @@ pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
 mod source;
 pub use source::{
     Assets, Source, SourceChunk, SourceContainer, SourceFile, SourceIndex, SourceIndexEntry,
-    SourceSnapshot, SourceTensor,
+    SourcePackage, SourceSlice, SourceSnapshot, SourceTensor, SourceView,
 };
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
@@ -97,7 +97,7 @@ pub enum Error {
     SourceTransform,
     /// Fused Q/K/V uses do not form one complete matching layer-local partition.
     SourcePartition,
-    /// A source name is reused or an optional GPT-2 token/head alias is invalid.
+    /// A source name is reused or GPT-2 token/head alias metadata or raw bytes differ.
     SourceAlias,
     /// Ignored names are repeated, unsorted or overlap selected/alias names.
     SourceIgnored,
@@ -127,7 +127,7 @@ pub enum Error {
     SourceJson,
     /// A tensor descriptor, structural dtype, shape or storage extent is invalid.
     SourceContainer,
-    /// An original JSON object repeats a decoded key.
+    /// A JSON object repeats a decoded key or a tensor name occurs in multiple shards.
     SourceDuplicate,
     /// Tensor spans do not cover the complete original payload exactly once.
     SourceCoverage,
@@ -137,6 +137,12 @@ pub enum Error {
     SourceFiles,
     /// The original index label, closed field set or required mapping/total is invalid.
     SourceIndex,
+    /// Actual tensor names differ from the selected/alias/ignored name union.
+    SourceSelection,
+    /// Index assignments or its shard set disagree with actual source containers.
+    SourceShard,
+    /// The index total_size differs from complete actual tensor payload lengths.
+    SourceTotalSize,
     /// Config, tokenizer or generation roles in Assets are invalid.
     Assets,
     /// A byte/allocation bound cannot be satisfied.

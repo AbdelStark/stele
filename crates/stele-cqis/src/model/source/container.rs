@@ -33,6 +33,13 @@ impl<'a> SourceContainer<'a> {
     pub fn read_from<E>(
         snapshot: &SourceSnapshot<'a>,
         max_metadata_bytes: usize,
+        read_at: impl FnMut(u64, &mut [u8]) -> Result<usize, E>,
+    ) -> Result<Self, Error> {
+        Self::read_with_budget(snapshot, &mut Budget::new(max_metadata_bytes), read_at)
+    }
+    pub(super) fn read_with_budget<E>(
+        snapshot: &SourceSnapshot<'a>,
+        budget: &mut Budget,
         mut read_at: impl FnMut(u64, &mut [u8]) -> Result<usize, E>,
     ) -> Result<Self, Error> {
         let file = *snapshot.file();
@@ -48,13 +55,13 @@ impl<'a> SourceContainer<'a> {
         if size > 100000000 || size > file.length() - 8 {
             return Err(Error::SourceHeader);
         }
-        let mut budget = Budget::new(max_metadata_bytes);
         let mut header = budget.bytes(size as usize)?;
         let mut copied = (first.as_bytes().len() - 8).min(header.len());
         header[..copied].copy_from_slice(&first.as_bytes()[8..8 + copied]);
         drop(first);
         while copied < header.len() {
-            let chunk = snapshot.chunk((8 + copied as u64) / 65536, &mut read_at)?;
+            let chunk =
+                snapshot.chunk((8 + copied as u64) / super::snapshot::CHUNK, &mut read_at)?;
             let n = chunk.as_bytes().len().min(header.len() - copied);
             header[copied..copied + n].copy_from_slice(&chunk.as_bytes()[..n]);
             copied += n;
@@ -68,21 +75,15 @@ impl<'a> SourceContainer<'a> {
         let mut metadata = false;
         let mut tensors = Vec::new();
         while json.next(&mut first, b'}')? {
-            let name = json.key(&mut budget)?;
+            let name = json.key(budget)?;
             if name == "__metadata__" {
                 if metadata {
                     return Err(Error::SourceDuplicate);
                 }
                 metadata = true;
-                annotations(&mut json, &mut budget)?;
+                annotations(&mut json, budget)?;
             } else {
-                let tensor = tensor(
-                    name,
-                    &mut json,
-                    &mut budget,
-                    8 + size,
-                    file.length() - 8 - size,
-                )?;
+                let tensor = tensor(name, &mut json, budget, 8 + size, file.length() - 8 - size)?;
                 budget.push(&mut tensors, tensor)?;
             }
         }
@@ -128,6 +129,9 @@ impl<'a> SourceContainer<'a> {
     /// Complete payload length, including explicitly ignored tensors.
     pub fn payload_length(&self) -> u64 {
         self.file.length() - self.payload_offset
+    }
+    pub(super) fn into_tensors(self) -> Vec<SourceTensor> {
+        self.tensors
     }
 }
 impl SourceTensor {

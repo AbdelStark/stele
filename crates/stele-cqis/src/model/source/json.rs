@@ -19,6 +19,14 @@ impl Budget {
         out.resize(length, 0);
         Ok(out)
     }
+    pub fn vector<T>(&mut self, count: usize) -> Result<Vec<T>, Error> {
+        self.spend(
+            count
+                .checked_mul(core::mem::size_of::<T>())
+                .ok_or(Error::Capacity)?,
+        )?;
+        reserved(count)
+    }
     pub fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Result<(), Error> {
         if values.len() == values.capacity() {
             let size = core::mem::size_of::<T>().max(1);

@@ -3,7 +3,7 @@ use super::{reserved, Error, SourceFile};
 use alloc::vec::Vec;
 use sha2::{Digest, Sha256};
 
-const CHUNK: u64 = 65536;
+pub(super) const CHUNK: u64 = 65536;
 
 /// Original file bytes verified against a complete File declaration.
 /// A private integrity index revalidates each later read; it is neither a
