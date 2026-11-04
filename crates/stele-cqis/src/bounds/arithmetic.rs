@@ -1,16 +1,56 @@
 //! RFC-0025 static §§1–5: closed model arithmetic records, without proof admission.
-use super::{field_bound, Error, PRIME};
+use super::PRIME;
 use alloc::vec::Vec;
 mod affine;
+mod attention;
+mod decoding;
 mod flow;
+mod function;
 mod norm;
+mod physical;
+mod request;
+mod weighted;
 mod word;
 pub use affine::{Affine, Embedding, Weight};
+pub use attention::{AttentionShape, Maximum, Rotary, Score};
+pub use decoding::{Logits, Sampling, Temperature};
 pub use flow::{Gated, Residual, Row};
+pub use function::{Activation, Exponential};
+pub use request::Request;
+pub use weighted::{Normalize, Weighted};
 use word::Word;
 
 const CAPACITY: usize = 1 << 17;
 const COLUMNS: usize = 269;
+
+/// Rejected RFC-0025 derivation; RFC-0022's existing error domain is unchanged.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Error {
+    /// Parameters are outside the closed schema domain.
+    Parameters,
+    /// Exact integer arithmetic exceeds its supported width.
+    Arithmetic,
+    /// A static equality side is not strictly below p/2.
+    FieldBound,
+    /// A bounded record, column or allocation cannot hold the result.
+    Capacity,
+    /// Supplied bytes differ from the complete regenerated expected record.
+    Encoding,
+    /// The worst-case scaled score reaches or exceeds 2^31.
+    ScoreBound,
+    /// A full 1024-slot rounded block exceeds 32767.
+    BlockBound,
+}
+
+fn field_bound(value: u64) -> Result<u32, Error> {
+    super::field_bound(value).map_err(|e| match e {
+        super::Error::Parameters => Error::Parameters,
+        super::Error::Arithmetic => Error::Arithmetic,
+        super::Error::FieldBound => Error::FieldBound,
+        super::Error::Capacity => Error::Capacity,
+        super::Error::Encoding => Error::Encoding,
+    })
+}
 
 /// Complete canonical metadata derived from separate checked parameters.
 /// This neither authenticates parameters nor enforces their arithmetic relations.

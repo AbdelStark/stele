@@ -1,8 +1,7 @@
 //! RFC-0025 static §§1–5 and flow §§1–3: exact native records from separate parameters.
 use serde_json::Value;
-use stele_cqis::bounds::{
-    arithmetic::{Affine, Embedding, Gated, Record, Residual, Row, Weight},
-    Error,
+use stele_cqis::bounds::arithmetic::{
+    Affine, Embedding, Error, Gated, Record, Residual, Row, Weight,
 };
 use stele_cqis::functions::Descriptor;
 

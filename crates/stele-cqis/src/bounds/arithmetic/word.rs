@@ -17,6 +17,12 @@ impl From<u64> for Word {
 }
 
 impl Word {
+    pub(super) fn to_u32(self) -> Result<u32, Error> {
+        if self.0[1..].iter().any(|v| *v != 0) {
+            return Err(Error::Arithmetic);
+        }
+        u32::try_from(self.0[0]).map_err(|_| Error::Arithmetic)
+    }
     fn bits(self) -> usize {
         self.0
             .iter()
@@ -225,6 +231,14 @@ mod tests {
         assert_eq!(one.quotient_cap(0.into(), 1), Err(Error::Arithmetic));
         assert_eq!(maximum.mul(0.into()), Ok(0.into()));
         assert_eq!(maximum.quotient_cap(maximum, u32::MAX), Ok(one));
+        assert_eq!(Word::from(0).to_u32(), Ok(0));
+        assert_eq!(Word::from(u64::from(u32::MAX)).to_u32(), Ok(u32::MAX));
+        for bit in [32, 63, 64, 2303] {
+            assert_eq!(
+                Word::power(bit).expect("wide").to_u32(),
+                Err(Error::Arithmetic)
+            );
+        }
         for bit in 0..8 * BYTES {
             let value = one.shl(bit).expect("bit");
             let mut bytes = [0; BYTES];
