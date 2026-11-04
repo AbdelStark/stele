@@ -26,7 +26,7 @@ pub use preparation::Preparation;
 mod artifact;
 pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
 mod source;
-pub use source::{Assets, Source, SourceFile};
+pub use source::{Assets, Source, SourceChunk, SourceFile, SourceSnapshot};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
 const LIMIT: usize = 1 << 20;
@@ -112,6 +112,12 @@ pub enum Error {
     FileOrder,
     /// A file length or the aggregate original-file extent is inconsistent.
     FileLength,
+    /// The complete original-file SHA-256 differs from its File declaration.
+    FileDigest,
+    /// A later read differs from the bytes hashed during snapshot creation.
+    SnapshotData,
+    /// A requested chunk is outside the checked original-file extent.
+    SourceOffset,
     /// The Source kind is neither single-file nor indexed-shard.
     SourceKind,
     /// Source has no checkpoint file or a checkpoint label has the wrong suffix.

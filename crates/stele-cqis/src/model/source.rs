@@ -1,4 +1,4 @@
-//! RFC-0025 source §§1,3: complete typed Source/Assets frames, not file validation.
+//! RFC-0025 source §§1,3–4: typed Source/Assets frames and checked file snapshots.
 use super::{
     codec::{reserved, Reader},
     Error,
@@ -8,6 +8,8 @@ mod file;
 pub use file::SourceFile;
 mod assets;
 pub use assets::Assets;
+mod snapshot;
+pub use snapshot::{SourceChunk, SourceSnapshot};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/source";
 const LIMIT: usize = 1 << 29;

@@ -570,3 +570,24 @@ evidence precedes final admission. Every original completion criterion remains.
 No new cut, challenge, loss theorem, measured constant or online weight pass.
 E5-03 can implement this contract after E5-03b delivery; no second task is claimed.
 Status: Accepted.
+
+## ADR-052: Revalidate original-file snapshots with pinned SHA-256
+
+Context: RFC-0025 source §4 requires immutable original bytes or validation during
+every consuming pass. Whole-file buffering cannot establish bounded native
+loading for the original checkpoints. Decision: pin RustCrypto sha2 0.11.1 with
+default features disabled, retaining registry checksums for its complete locked
+dependency graph. Its Rust 1.88 minimum fits the pinned Rust 1.90 toolchain; the
+MIT/Apache-2.0 license and shared cpufeatures dependency need no policy exception.
+Build after an explicit locked fetch, with Cargo offline.
+
+Verify the complete declared length, EOF and original SHA-256 using a bounded
+buffer. Retain private SHA-256 digests of the same 65536-byte chunks under an
+explicit metadata budget; every consuming chunk read must match that index
+before returning owned immutable bytes. These digests are local integrity state,
+never serialized source identities, tensor commitments or proof authority.
+Full package checks, exact conversion and independently expected original
+source authority remain required. Account for initial and repeated chunk hashes
+in the deterministic hash-use inventory; no new loss formula or profile credit
+follows. This remains preparation T_misc with no measured constant or additional
+online weight pass. Status: Accepted.
