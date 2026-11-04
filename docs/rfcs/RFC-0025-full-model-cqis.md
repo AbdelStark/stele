@@ -529,7 +529,7 @@ all nineteen linked appendices are Accepted with the §7.1 companion entries.
 Review: the same-author skill and crate-owner sign-offs linked above; ADR-051.
 This does not complete any native implementation, privacy, profile or workload task.
 
-### A1 — Completion dependencies for co-owned production controls (Draft; Q32)
+### A1 — Completion dependencies for co-owned production controls (Accepted; Q32)
 
 Motivation: E5-03 requires all controls assigned to it in §6, while their actual
 plan, reduction and passport consumers depend on E5-03. The explicit YAML graph
@@ -537,7 +537,7 @@ is acyclic, but its completion requirements cannot be executed in that order.
 The [native completion audit](../../agents/reviews/e503-completion-dependencies.md)
 records the exact paths and the separate pending original Llama source.
 
-Proposed addition immediately after the §6 owner table:
+Add immediately after the §6 owner table:
 
 > A task claiming any control in this table requires the actual owning consumer
 > to execute its honest baseline and specified rejection. The completion graph
@@ -550,20 +550,47 @@ Proposed addition immediately after the §6 owner table:
 > with the one-task-at-a-time workflow. It must not mark a reserved control done,
 > remove a binding, or use a partial-task PR as completed task delivery.
 
-This Draft records the necessary completion rule; it does not yet provide or
-approve a replacement task graph. Q32 remains open until a concrete order and
-its complete acceptance evidence are reviewed. No native implementation may
-use this Draft as protocol authority. The Accepted §6 requirements remain law.
+Apply the following dependency replacement. All existing task acceptance lines
+remain verbatim, and no control or task becomes complete through this amendment.
+
+| Task | Complete prerequisite list after replacement |
+|---|---|
+| E5-03 | E5-01, E5-03a, E5-03b, E5-03c, E6-01 |
+| E5-04 | E5-02, E5-03c |
+| E6-01 | E6-00, E8-02 |
+| E6-02 | E6-00 |
+| E12-05a | E5-03c, E5-05, E6-02, E3-08, E4-05, E8-05a |
+
+Add E5-03c with prerequisites E5-01/E5-03a/E5-03b, and E6-00 with prerequisites
+E5-03c/E3-08/E4-05. Their complete acceptance criteria are the two `add_tasks`
+acceptance arrays in the [pinned proposal](../../agents/reviews/e503-sequencing-proposal.json)
+at commit a9b6d0be403fd25c77fb8af6cd1669c22cd9fba2, copied into the task graph.
+The proposal's pending statuses are historical and are not acceptance criteria.
+E5-03c delivers full original GPT-2-small and Llama-3.1-8B numerical preparation,
+including both int8 and int4 matrices. E6-00 delivers complete native lowering
+with genuine source providers after all its child contracts are Accepted.
+Neither prerequisite grants the original parent's completion or any production
+control credit. The parent controls run through their actual consumers.
+
+Finish, validate and merge one complete prerequisite before starting another
+implementation task. E5-03 and E6-01 remain incomplete until all their original
+criteria pass. Final E6-01 follows E8-02, reaching all ten E7 tasks, full passport
+and checkpoint/proximity evidence, and native W8 verification. E5-03 follows
+that completion. Dependency reachability alone never executes a control.
+All other dependency lists and original completion requirements remain intact.
 
 Soundness impact: none; no challenge, theorem, transcript, proof relation or
 ledger term changes. Cost-model impact: none; no measured constant or weight
 pass changes. Affected tasks: E5-03, E6-01/02, E7-01/02/05/08/09, E12-05a/05/06
-and E14-02, plus their transitive dependants. Required review remains Workflow
-02's soundness, RFC consistency and affected crate-owner review. No acceptance
-or control coverage is granted by this escalation.
+and E14-02, plus their transitive dependants and the two named prerequisites.
+The [same-author acceptance review](../../agents/reviews/e503-sequencing-acceptance.md)
+covers soundness, RFC consistency and affected crate ownership. Q32's sequencing
+question is resolved; source access, child protocols, native delivery and actual
+control execution remain separate requirements.
 
-A1 candidate scheduling supplement (Draft): the [concrete prerequisite proposal](../../agents/reviews/e503-sequencing-proposal.md)
-retains all original task criteria and gives exact dependency edits for two
-additional complete artifact tasks. It is not applied, Accepted, or authority
-to mark the existing E5-03 work done. The task-granularity decision described
-there remains pending; original Llama source and all other blockers remain.
+Decision: the user delegated sequencing and approved the complete checkpoint.
+Adopt the [reviewed prerequisite split](../../agents/reviews/e503-sequencing-proposal.md).
+Existing implementation and frozen numerical evidence move forward on the
+E5-03c branch without rewriting the E5-03 branch or claiming it complete.
+Approval to obtain the checkpoint does not supply missing provider credentials;
+full authorized original bytes remain mandatory before E5-03c is complete.

@@ -657,3 +657,25 @@ output hashes; neither run substitutes for original Llama qualification or
 actual production controls. No native converter or canonical format changes.
 The affected work is offline preparation T_misc; no measured constant, online
 weight pass, cut, challenge or soundness term changes. Status: Accepted.
+
+## ADR-056: Separate complete prerequisites from final production-control tasks
+
+Context: E5-03 and E6-01 require actual controls whose consumers depend on those
+tasks. The user delegated the sequencing decision and approved obtaining the
+complete checkpoint. Decision: adopt RFC-0025 A1's reviewed dependency edits.
+E5-03c delivers complete original GPT-2-small/Llama-3.1-8B native numerical
+preparation; E6-00 delivers native lowering with genuine table/private-source
+providers. Each new task must finish all its criteria and merge before the next
+implementation task starts. Preserve every original acceptance line verbatim.
+
+E5-03 and E6-01 remain final completion tasks. They wait for actual consumers;
+numerical artifacts, parsed metadata and dependency reachability earn no control
+credit. No original model, fidelity, W8, privacy, profile or benchmark scope is
+reduced. Preserve existing implementation history and frozen qualification
+receipts on the old branch; continue it on task/E5-03c-native-preparation without
+rewriting history or opening a partial original-task PR.
+
+This is a scheduling decision, not a new protocol. No public API, format,
+challenge, claim, certificate, source authority, ledger or cost-model term
+changes. Approval to acquire the source remains distinct from actual provider
+authentication and complete byte validation. Status: Accepted.

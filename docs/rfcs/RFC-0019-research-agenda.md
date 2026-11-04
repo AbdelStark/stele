@@ -1193,3 +1193,11 @@ RFC-0025 A1 records the conflict and proposed completion-dependency rule.
 The native completion audit lists the exact paths. No graph replacement,
 control reclassification, partial-task delivery or weakened acceptance is
 approved. Original authorized Llama source is a separate pending input.
+
+Q32 resolution: RFC-0025 A1 accepts the reviewed two-prerequisite order after
+the user delegated the sequencing choice. E5-03c supplies complete original
+numerical preparation; E6-00 supplies complete native lowering from genuine
+providers. Every original task and acceptance line remains, including final
+E5-03/E6-01 production controls after their actual consumers. This resolves
+sequencing only. Checkpoint access, missing child contracts, Q12/Q29, full
+native delivery and all original workloads remain required.

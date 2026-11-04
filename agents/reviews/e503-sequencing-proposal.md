@@ -1,5 +1,10 @@
 # Q32: concrete sequencing proposal
 
+Disposition: accepted by RFC-0025 A1 after the user delegated the sequencing
+choice. The text below and the pinned JSON preserve the reviewed proposal;
+its pending-state statements describe that earlier proposal, not current status.
+See the [acceptance record](e503-sequencing-acceptance.md).
+
 Status: proposed, not applied or Accepted. The current task graph and all native
 admission rules remain unchanged. The [exact proposed dependency edits and new
 acceptance criteria](e503-sequencing-proposal.json) are pinned to commit

@@ -1,5 +1,9 @@
 # E5-03 completion dependency audit
 
+Disposition: RFC-0025 A1 now accepts the [reviewed prerequisite order](e503-sequencing-acceptance.md).
+The audit below records the original conflict. Final E5-03 controls remain
+required; E5-03c now owns the complete numerical-preparation prerequisite.
+
 The native quantiser cannot currently satisfy every E5-03 acceptance line while
 following the task graph. This is a completion dependency conflict, although
 the explicit YAML edges remain acyclic. No task criterion or control is waived.
