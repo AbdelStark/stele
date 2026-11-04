@@ -25,6 +25,8 @@ mod preparation;
 pub use preparation::Preparation;
 mod artifact;
 pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
+mod conversion;
+pub use conversion::Conversion;
 mod source;
 pub use source::{
     Architecture, Assets, Source, SourceChunk, SourceConfig, SourceContainer, SourceFile,
@@ -172,6 +174,10 @@ pub enum Error {
     SourceRole,
     /// The complete expected SourceConfig frame differs from the derived binding.
     SourceConfig,
+    /// A selected original IEEE scalar is a NaN or infinity.
+    SourceNonfinite,
+    /// Exact source conversion exceeds its explicitly selected signed code range.
+    ConversionOverflow,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }

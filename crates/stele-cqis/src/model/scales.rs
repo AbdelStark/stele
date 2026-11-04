@@ -46,6 +46,50 @@ pub struct Scales {
     encoded_length: usize,
 }
 impl Scales {
+    /// Internal numerical-conversion completion. All matrix values are derived
+    /// from original source; validate the full ordered shape and hash canonical
+    /// bytes without allocating a second complete Scales frame.
+    pub(super) fn from_derived(model: &Model, values: Vec<(i16, Vec<u16>)>) -> Result<Self, Error> {
+        let encoded_length = Self::encoded_length(model)?;
+        if values.len() != matrices(model).count() {
+            return Err(Error::Physical);
+        }
+        let mut entries = reserved(values.len())?;
+        let mut hash = blake3::Hasher::new();
+        hash.update(PREFIX);
+        hash.update(&model.identity());
+        let mut bytes = [0; 8192];
+        for (physical, (exponent, mantissas)) in matrices(model).zip(values) {
+            if !(-1099..=1024).contains(&exponent) {
+                return Err(Error::ScaleExponent);
+            }
+            if mantissas.len() as u64 != u64::from(physical.dimensions()[0]) {
+                return Err(Error::Physical);
+            }
+            if mantissas.contains(&0) {
+                return Err(Error::ScaleMantissa);
+            }
+            hash.update(&physical.ordinal().to_le_bytes());
+            hash.update(&exponent.to_le_bytes());
+            for chunk in mantissas.chunks(bytes.len() / 2) {
+                for (word, pair) in chunk.iter().zip(bytes.chunks_exact_mut(2)) {
+                    pair.copy_from_slice(&word.to_le_bytes());
+                }
+                hash.update(&bytes[..2 * chunk.len()]);
+            }
+            entries.push(MatrixScale {
+                ordinal: physical.ordinal(),
+                exponent,
+                mantissas,
+            });
+        }
+        Ok(Self {
+            model_identity: model.identity(),
+            matrices: entries,
+            identity: *hash.finalize().as_bytes(),
+            encoded_length,
+        })
+    }
     /// Derive exact frame length from checked geometry before reading any entry.
     pub fn encoded_length(model: &Model) -> Result<usize, Error> {
         let mut size = (PREFIX.len() + 32) as u64;

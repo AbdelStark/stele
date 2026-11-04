@@ -591,3 +591,23 @@ source authority remain required. Account for initial and repeated chunk hashes
 in the deterministic hash-use inventory; no new loss formula or profile credit
 follows. This remains preparation T_misc with no measured constant or additional
 online weight pass. Status: Accepted.
+
+## ADR-053: Bound original-source replay during native conversion
+
+Context: RFC-0025 conversion requires exact indexed source reads for transposes
+and fused Q/K/V parts, while source §4 requires the bytes from the authenticated
+snapshot. Decision: retain bounded owned SourceSlice chunks within one numerical
+conversion. Clear their relative-offset state when the physical ordinal changes.
+Use one slot for consecutive views, one per input column when a transposed raw
+row spans at least a chunk, and the complete contiguous chunk span for shorter
+raw rows. Derive and admit the full cache allowance before source I/O. Replacing
+a slot releases its old chunk before allocating and validating the next one.
+
+Only authenticated immutable original bytes are reused. Scales still requires
+two complete logical matrix scans, followed by code emission; no whole decoded
+matrix or array of row maxima is retained. Keep the full finite scalar domain,
+minimal scale rules, all selected-value checks before the first write, bounded
+output chunks and complete-emission digest. Failed output remains unusable, and
+actual stored Artifact validation is a separate obligation. Preparation T_misc
+is the affected cost term; this introduces no measured constant, protocol field,
+cut, challenge or additional online weight pass. Status: Accepted.
