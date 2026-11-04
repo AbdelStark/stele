@@ -10,6 +10,9 @@ mod assets;
 pub use assets::Assets;
 mod snapshot;
 pub use snapshot::{SourceChunk, SourceSnapshot};
+mod container;
+mod json;
+pub use container::{SourceContainer, SourceTensor};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/source";
 const LIMIT: usize = 1 << 29;

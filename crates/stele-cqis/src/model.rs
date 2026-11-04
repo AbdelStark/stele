@@ -26,7 +26,9 @@ pub use preparation::Preparation;
 mod artifact;
 pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
 mod source;
-pub use source::{Assets, Source, SourceChunk, SourceFile, SourceSnapshot};
+pub use source::{
+    Assets, Source, SourceChunk, SourceContainer, SourceFile, SourceSnapshot, SourceTensor,
+};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
 const LIMIT: usize = 1 << 20;
@@ -118,6 +120,16 @@ pub enum Error {
     SnapshotData,
     /// A requested chunk is outside the checked original-file extent.
     SourceOffset,
+    /// A safetensors header length, opening brace or original-file extent is invalid.
+    SourceHeader,
+    /// Strict original JSON syntax, Unicode or unsigned-integer syntax is invalid.
+    SourceJson,
+    /// A tensor descriptor, structural dtype, shape or storage extent is invalid.
+    SourceContainer,
+    /// An original JSON object repeats a decoded key.
+    SourceDuplicate,
+    /// Tensor spans do not cover the complete original payload exactly once.
+    SourceCoverage,
     /// The Source kind is neither single-file nor indexed-shard.
     SourceKind,
     /// Source has no checkpoint file or a checkpoint label has the wrong suffix.
