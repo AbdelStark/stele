@@ -611,3 +611,30 @@ output chunks and complete-emission digest. Failed output remains unusable, and
 actual stored Artifact validation is a separate obligation. Preparation T_misc
 is the affected cost term; this introduces no measured constant, protocol field,
 cut, challenge or additional online weight pass. Status: Accepted.
+
+## ADR-054: Pin the complete original GPT-2 preparation qualification
+
+Context: E5-03 requires original named-model source conversion, beyond numerical
+shape fixtures. Decision: qualify the complete public GPT-2-small checkpoint and
+all selected auxiliary files at revision 607a30d783dfa663caf39e06633721c8d4cfcd7e.
+Retain all 12 layers, 50257 vocabulary entries, 1024 positions, 196 physical
+records, fused Q/K/V transforms, original biases and the single tied token/head
+record. The checkpoint SHA-256 is
+248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707.
+
+Use explicit int8 matrices, int16 vectors with fraction 8, fraction 7 for all
+residual/projection/norm/activation outputs, dynamic row policies, exact weighted
+accumulation, score multiplier 1*2^-3 and direct exp with bits=15, F=7, E=14.
+Use the original 1/100000 LayerNorm epsilon and greedy decoding. These are fixed
+offline qualification inputs, not calibrated defaults or a fidelity claim; no
+overflow changes them automatically. Any later numerical choice remains explicit
+and requires its own evidence. Compare every converted value with independent
+integer/Fraction arithmetic and all Registry/Bounds bytes with complete oracles.
+
+The disk adapter rereads actual stored Artifact bytes under the emitted digest
+and leaves failed output incomplete. Its fixed resource allowances are host
+admission choices, not canonical model limits. Original Llama qualification,
+tokenizer execution, inference/fidelity, actual production controls, passport,
+private proofs, profiles and the W8 workload remain required. Preparation affects
+T_misc only; no measured constant, challenge, cut or online weight pass changes.
+Status: Accepted.
