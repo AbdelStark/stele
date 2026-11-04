@@ -10,6 +10,9 @@ extern crate alloc;
 /// Closed static arithmetic records from separate checked parameters (RFC-0022).
 pub mod bounds;
 
+/// Complete dynamic/static row conversion and static certificates (RFC-0025 §2.2/2.5).
+pub mod row;
+
 /// Canonical full-model configuration, Scales and Registry (RFC-0025 encoding §§1,4-6).
 pub mod model;
 
