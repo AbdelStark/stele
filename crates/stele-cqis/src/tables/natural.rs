@@ -18,7 +18,7 @@ const MAX_BITS: usize = 1 << 18;
 const MAX_WORDS: usize = MAX_BITS / 32;
 
 #[derive(Debug, Eq, PartialEq)]
-pub(super) struct Natural {
+pub(crate) struct Natural {
     words: Vec<u32>,
 }
 
@@ -44,43 +44,43 @@ impl Natural {
         }
         Ok(Self { words })
     }
-    pub(super) fn zero() -> Self {
+    pub(crate) fn zero() -> Self {
         Self { words: Vec::new() }
     }
-    pub(super) fn from_u64(value: u64) -> Result<Self, Error> {
+    pub(crate) fn from_u64(value: u64) -> Result<Self, Error> {
         let mut words = storage(2)?;
         words[0] = value as u32;
         words[1] = (value >> 32) as u32;
         Self::finish(words)
     }
-    pub(super) fn to_u32(&self) -> Result<u32, Error> {
+    pub(crate) fn to_u32(&self) -> Result<u32, Error> {
         match self.words.as_slice() {
             [] => Ok(0),
             [value] => Ok(*value),
             _ => Err(Error::Interval),
         }
     }
-    pub(super) fn try_clone(&self) -> Result<Self, Error> {
+    pub(crate) fn try_clone(&self) -> Result<Self, Error> {
         let mut words = storage(self.words.len())?;
         words.copy_from_slice(&self.words);
         Ok(Self { words })
     }
-    pub(super) fn bits(&self) -> usize {
+    pub(crate) fn bits(&self) -> usize {
         // finish bounds len <= 8192; every nonempty representation ends nonzero.
         self.words.last().map_or(0, |top| {
             32 * (self.words.len() - 1) + (32 - top.leading_zeros()) as usize
         })
     }
-    pub(super) fn is_zero(&self) -> bool {
+    pub(crate) fn is_zero(&self) -> bool {
         self.words.is_empty()
     }
-    pub(super) fn cmp(&self, other: &Self) -> Ordering {
+    pub(crate) fn cmp(&self, other: &Self) -> Ordering {
         self.words
             .len()
             .cmp(&other.words.len())
             .then_with(|| self.words.iter().rev().cmp(other.words.iter().rev()))
     }
-    pub(super) fn add(&self, other: &Self) -> Result<Self, Error> {
+    pub(crate) fn add(&self, other: &Self) -> Result<Self, Error> {
         let count = self.words.len().max(other.words.len());
         let mut words = storage(count.checked_add(1).ok_or(Error::Capacity)?)?;
         let mut carry = 0u64;
@@ -113,7 +113,7 @@ impl Natural {
         }
         Ok(())
     }
-    pub(super) fn sub(&self, other: &Self) -> Result<Self, Error> {
+    pub(crate) fn sub(&self, other: &Self) -> Result<Self, Error> {
         if self.cmp(other) == Ordering::Less {
             return Err(Error::Interval);
         }
@@ -121,10 +121,10 @@ impl Natural {
         result.subtract_assign(other)?;
         Ok(result)
     }
-    pub(super) fn mul_u64(&self, other: u64) -> Result<Self, Error> {
+    pub(crate) fn mul_u64(&self, other: u64) -> Result<Self, Error> {
         self.mul(&Self::from_u64(other)?)
     }
-    pub(super) fn mul(&self, other: &Self) -> Result<Self, Error> {
+    pub(crate) fn mul(&self, other: &Self) -> Result<Self, Error> {
         if self.is_zero() || other.is_zero() {
             return Ok(Self::zero());
         }
@@ -155,7 +155,7 @@ impl Natural {
         }
         Self::finish(words)
     }
-    pub(super) fn shl(&self, shift: usize) -> Result<Self, Error> {
+    pub(crate) fn shl(&self, shift: usize) -> Result<Self, Error> {
         if self.is_zero() {
             return Ok(Self::zero());
         }
@@ -180,7 +180,7 @@ impl Natural {
         }
         Self::finish(words)
     }
-    pub(super) fn shr(&self, shift: usize) -> Result<Self, Error> {
+    pub(crate) fn shr(&self, shift: usize) -> Result<Self, Error> {
         if shift >= self.bits() {
             return Ok(Self::zero());
         }
@@ -211,7 +211,7 @@ impl Natural {
             self.words.pop();
         }
     }
-    pub(super) fn div_rem(&self, other: &Self) -> Result<(Self, Self), Error> {
+    pub(crate) fn div_rem(&self, other: &Self) -> Result<(Self, Self), Error> {
         if other.is_zero() {
             return Err(Error::Interval);
         }

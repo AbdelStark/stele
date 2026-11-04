@@ -8,6 +8,7 @@ pub use shape::{Physical, Role, Shape};
 mod rotation;
 pub use rotation::Rotation;
 mod block;
+mod rotary;
 pub use block::{Block, Policy};
 mod decoding;
 use codec::{reserved, Reader, Writer};
@@ -57,6 +58,8 @@ pub enum Error {
     ScaleMantissa,
     /// The stream reader failed or returned more bytes than the supplied buffer.
     Read,
+    /// Native coefficient/table generation could not certify a complete result.
+    Generation(crate::tables::Error),
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }

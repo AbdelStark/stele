@@ -9,7 +9,7 @@ mod exp;
 mod fixed;
 mod gaussian;
 mod mle;
-mod natural;
+pub(crate) mod natural;
 pub use fixed::Table;
 pub use mle::{Evaluation, TableField};
 
