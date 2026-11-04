@@ -1,5 +1,5 @@
-//! RFC-0025 encoding §§1,4-6: checked Model, Scales and regenerated Registry.
-//! Source/passport authority, arithmetic Bounds and inference/proof admission are separate.
+//! RFC-0025 encoding §§1,4-6 and collection §§1–4: checked preparation metadata.
+//! Source/passport authority and inference/proof admission remain separate.
 use crate::functions::{self, Representation};
 use alloc::vec::Vec;
 mod codec;
@@ -17,6 +17,8 @@ use codec::{reserved, Reader, Writer};
 pub use decoding::{Decoding, Sampling};
 mod scales;
 pub use scales::{MatrixScale, Scales};
+mod bounds;
+pub use bounds::Bounds;
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
 const LIMIT: usize = 1 << 20;
@@ -68,6 +70,12 @@ pub enum Error {
     TableData,
     /// A rotation digest differs from complete native coefficient regeneration.
     RotationData,
+    /// The complete ordered Bounds frame differs from deterministic derivation.
+    Bounds,
+    /// A static arithmetic record cannot be derived from the checked configuration.
+    ArithmeticBounds(crate::bounds::arithmetic::Error),
+    /// The Bounds output sink failed; no completed collection is returned.
+    Write,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }
