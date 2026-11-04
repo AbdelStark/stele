@@ -27,7 +27,8 @@ mod artifact;
 pub use artifact::{Artifact, ArtifactLayout, ArtifactRecord};
 mod source;
 pub use source::{
-    Assets, Source, SourceChunk, SourceContainer, SourceFile, SourceSnapshot, SourceTensor,
+    Assets, Source, SourceChunk, SourceContainer, SourceFile, SourceIndex, SourceIndexEntry,
+    SourceSnapshot, SourceTensor,
 };
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
@@ -134,7 +135,7 @@ pub enum Error {
     SourceKind,
     /// Source has no checkpoint file or a checkpoint label has the wrong suffix.
     SourceFiles,
-    /// The original Source index label does not end in .json.
+    /// The original index label, closed field set or required mapping/total is invalid.
     SourceIndex,
     /// Config, tokenizer or generation roles in Assets are invalid.
     Assets,

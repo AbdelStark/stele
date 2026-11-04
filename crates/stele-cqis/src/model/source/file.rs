@@ -20,14 +20,7 @@ impl<'a> SourceFile<'a> {
             return Err(Error::FileName);
         }
         let name = core::str::from_utf8(r.take(n)?).map_err(|_| Error::FileName)?;
-        if matches!(name, "." | "..")
-            || name
-                .as_bytes()
-                .iter()
-                .any(|b| matches!(b, 0 | b'/' | b'\\'))
-        {
-            return Err(Error::FileName);
-        }
+        validate_name(name)?;
         let length = r.u64()?;
         let sha256 = r.take(32)?.try_into().map_err(|_| Error::Encoding)?;
         Ok(Self {
@@ -48,6 +41,19 @@ impl<'a> SourceFile<'a> {
     pub fn sha256(&self) -> [u8; 32] {
         *self.sha256
     }
+}
+
+pub(super) fn validate_name(name: &str) -> Result<(), Error> {
+    if !(1..=65535).contains(&name.len())
+        || matches!(name, "." | "..")
+        || name
+            .as_bytes()
+            .iter()
+            .any(|b| matches!(b, 0 | b'/' | b'\\'))
+    {
+        return Err(Error::FileName);
+    }
+    Ok(())
 }
 
 pub(super) fn files<'a>(

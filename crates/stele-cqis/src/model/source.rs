@@ -1,4 +1,4 @@
-//! RFC-0025 source §§1,3–4: typed Source/Assets frames and checked file snapshots.
+//! RFC-0025 source §§1–4: typed files, checked snapshots and structural loading.
 use super::{
     codec::{reserved, Reader},
     Error,
@@ -13,6 +13,8 @@ pub use snapshot::{SourceChunk, SourceSnapshot};
 mod container;
 mod json;
 pub use container::{SourceContainer, SourceTensor};
+mod index;
+pub use index::{SourceIndex, SourceIndexEntry};
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/source";
 const LIMIT: usize = 1 << 29;
