@@ -19,6 +19,10 @@ mod scales;
 pub use scales::{MatrixScale, Scales};
 mod bounds;
 pub use bounds::Bounds;
+mod source_map;
+pub use source_map::{SourceEntry, SourceMap};
+mod preparation;
+pub use preparation::Preparation;
 
 const PREFIX: &[u8] = b"stele/v0.1/cqis/model";
 const LIMIT: usize = 1 << 20;
@@ -76,6 +80,20 @@ pub enum Error {
     ArithmeticBounds(crate::bounds::arithmetic::Error),
     /// The Bounds output sink failed; no completed collection is returned.
     Write,
+    /// A source tensor name is empty, too long, contains NUL or is invalid UTF-8.
+    SourceName,
+    /// A selected source scalar format is outside F16/BF16/F32/F64.
+    SourceDtype,
+    /// Source rank, dimensions or full byte length disagree with the physical role.
+    SourceShape,
+    /// A source transform or fused part is not permitted at its physical role.
+    SourceTransform,
+    /// Fused Q/K/V uses do not form one complete matching layer-local partition.
+    SourcePartition,
+    /// A source name is reused or an optional GPT-2 token/head alias is invalid.
+    SourceAlias,
+    /// Ignored names are repeated, unsorted or overlap selected/alias names.
+    SourceIgnored,
     /// A byte/allocation bound cannot be satisfied.
     Capacity,
 }
