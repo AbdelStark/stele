@@ -10,6 +10,9 @@ extern crate alloc;
 /// Closed static arithmetic records from separate checked parameters (RFC-0022).
 pub mod bounds;
 
+/// Canonical full-model structural configuration and Scales (RFC-0025 encoding §§1,4,5).
+pub mod model;
+
 /// Checked function definitions and selected component schemas (RFC-0021 §4).
 pub mod functions;
 
