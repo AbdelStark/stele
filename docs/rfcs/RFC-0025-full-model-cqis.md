@@ -561,3 +561,9 @@ pass changes. Affected tasks: E5-03, E6-01/02, E7-01/02/05/08/09, E12-05a/05/06
 and E14-02, plus their transitive dependants. Required review remains Workflow
 02's soundness, RFC consistency and affected crate-owner review. No acceptance
 or control coverage is granted by this escalation.
+
+A1 candidate scheduling supplement (Draft): the [concrete prerequisite proposal](../../agents/reviews/e503-sequencing-proposal.md)
+retains all original task criteria and gives exact dependency edits for two
+additional complete artifact tasks. It is not applied, Accepted, or authority
+to mark the existing E5-03 work done. The task-granularity decision described
+there remains pending; original Llama source and all other blockers remain.

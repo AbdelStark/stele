@@ -1,0 +1,64 @@
+{
+  "status": "proposal-only-not-applied",
+  "base_commit": "eba81244ae9d87885b0f0d2d13bb6740e9458d90",
+  "base_graph_sha256": "73223e79aac8a096fef2292685edba3449cfa43ccdb35a550321013249b8bbd7",
+  "question": "Q32",
+  "add_tasks": [
+    {
+      "id": "E5-03c",
+      "epic": "E5",
+      "title": "Complete native numerical preparation from original GPT-2 and Llama sources",
+      "depends": ["E5-01", "E5-03a", "E5-03b"],
+      "skill": "cqis-numerics",
+      "crate": "stele-cqis",
+      "status": "blocked(authorized original Llama source; Q32 sequencing decision)",
+      "rfc": ["RFC-0025 sections2-6", "RFC-0022 sections2-6"],
+      "acceptance": [
+        "Complete native Model/Scales/Registry/Bounds and Source/Assets/SourceConfig/Preparation/Artifact construction and validation from the full authorized original GPT-2-small and Llama-3.1-8B files; both int8 and int4 matrix precision, every original dimension and physical role, full stored Artifact reread and every-byte independent parity.",
+        "All nineteen static schemas and LayerNorm descriptors, exact minimal source scales, all finite supported IEEE formats and role transforms, canonical packing, complete dynamic/static row conversion including gated u32 scales; randomized exact parity and all required boundary/error cases under RFC-0025 section6.",
+        "Complete immutable numerical ownership joins and numerical source/tamper rejection through the production preparation APIs; all required native, digest and reference gates pass, and evidence is pinned to the full source, executable and output bytes.",
+        "No production catalogue control is credited by numerical preparation alone. NC-0109 and every original E5-03 acceptance line remain mandatory for E5-03; this prerequisite cannot mark E5-03 done or admit a proof, passport or profile."
+      ]
+    },
+    {
+      "id": "E6-00",
+      "epic": "E6",
+      "title": "Complete native canonical lowering and original source ownership",
+      "depends": ["E5-03c", "E3-08", "E4-05"],
+      "skill": "gkr-reduction-author",
+      "crate": "stele-ir",
+      "status": "blocked(complete Accepted lowering and child contracts; Q32 sequencing decision)",
+      "rfc": ["RFC-0005 sections1-2", "RFC-0017", "RFC-0025 sections2,6,7.1"],
+      "acceptance": [
+        "Complete Accepted PlanTemplate/PlanInstance, WeightBindings and TableBindings contracts before construction; actual original source, private commitment, table, code, layout, role, view, point and lifetime ownership from completed numerical preparation and native providers.",
+        "Full deterministic canonical lowering for both original named models, all supported operation inventory and request geometry, exact token/seed/stop/scale/bias/function joins, native plan validation and original unsupported-operation errors; no opaque child reference or supplied digest grants authority.",
+        "Complete native compiler parity and malformed-source/role/geometry rejection through actual lowering APIs with all required gates. Stacking and dominating range discipline remain E6-02; full prover/verifier controls remain E6-01 and their consuming tasks.",
+        "Every original E6-01 acceptance line remains mandatory for E6-01, including actual NC-0110..0126 and NC-1204/1206 variants. This prerequisite grants no catalogue, full E6-01, inference, privacy or profile completion."
+      ]
+    }
+  ],
+  "replace_dependencies": {
+    "E5-03": {
+      "before": ["E5-01", "E5-03a", "E5-03b"],
+      "after": ["E5-01", "E5-03a", "E5-03b", "E5-03c", "E6-01"]
+    },
+    "E5-04": {
+      "before": ["E5-02", "E5-03"],
+      "after": ["E5-02", "E5-03c"]
+    },
+    "E6-01": {
+      "before": ["E5-03"],
+      "after": ["E6-00", "E8-02"]
+    },
+    "E6-02": {
+      "before": ["E6-01"],
+      "after": ["E6-00"]
+    },
+    "E12-05a": {
+      "before": ["E5-03", "E5-05", "E6-02", "E3-08", "E4-05", "E8-05a"],
+      "after": ["E5-03c", "E5-05", "E6-02", "E3-08", "E4-05", "E8-05a"]
+    }
+  },
+  "preserve": "All existing task IDs, titles, acceptance lines, RFC references, statuses, source/model sizes, original controls and workload obligations. Only the five listed dependency lists would change. No task is marked done by this proposal.",
+  "decision_needed": "Allow the two complete prerequisites to merge sequentially while the original E5-03 and E6-01 tasks remain incomplete; otherwise retain the current boundaries and block. The proposal is not permission to publish a partial original task."
+}
