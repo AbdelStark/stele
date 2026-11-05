@@ -1,0 +1,12 @@
+{
+  "seed": 50333,
+  "definitions": 66,
+  "cases": 10002,
+  "oracle_precision": 768,
+  "enclosure_grid": 128,
+  "sha256": "9e897fd3e4034c60306ddb3af40e326ff198282eb0557fc51b6573edc506cd57",
+  "sources": {
+    "research/cqis-checkpoint/check_rope.py": "4c6da1253a8da70c13dc5e41fc1d37314648750b52d7ec5b242f341cb5e01807",
+    "research/cqis-checkpoint/rope.py": "a29e3fe21e87468dd8cfd7f8e5e0b10900dfd23f1f722f91e42eb5d3afd397b1"
+  }
+}

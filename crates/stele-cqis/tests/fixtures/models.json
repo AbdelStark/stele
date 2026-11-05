@@ -1,0 +1,14 @@
+{
+  "seed": 50331,
+  "valid": 70,
+  "invalid": 25,
+  "sources": {
+    "research/cqis-model-contract/check_model_codec.py": "3076ce37404edc522324ee3ab46889a37775d89c5e9c27cfbe7d0c471df242a9",
+    "research/cqis-model-contract/model_codec.py": "20d3649cbef3a983d42b826e2dc7ec51040840a176956462322f103e041123ef",
+    "research/cqis-model-contract/source_map.py": "8e649d9767bdf3570cf0a2c326b165ebb7d4a8a06079ad7849db5be8243b3c9f"
+  },
+  "fixtures": {
+    "models.bin": "e9fe5ed554791a3bde9ebbf28cab3c2c7749727717c9d765a10733f019bd5a7b",
+    "models-invalid.bin": "e8bff6b1f09c7c53b9c384165f1c4caa0f1991bc4931aaca9c3f22fbbc9ee944"
+  }
+}

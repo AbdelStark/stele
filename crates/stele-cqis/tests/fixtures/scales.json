@@ -1,0 +1,42 @@
+{
+  "seed": 50332,
+  "small": 66,
+  "large": [
+    {
+      "case": 0,
+      "matrices": 74,
+      "channels": 134225,
+      "length": 268800,
+      "identity": "81008618fa86cc5fb8eae005ee73e630d0e4b518de662b0012255b47c3a3605d"
+    },
+    {
+      "case": 1,
+      "matrices": 226,
+      "channels": 1632768,
+      "length": 3266494,
+      "identity": "c0e8b7650da08742cfee40e787e6ec2004db824c9458b9cc9ae661adaf0f0bca"
+    },
+    {
+      "case": 2,
+      "matrices": 770,
+      "channels": 6815744,
+      "length": 13634622,
+      "identity": "2bc4ca43ef6646ee9f39a6519bcac69bf024e2f252c68e5b55d2293137cfa360"
+    },
+    {
+      "case": 3,
+      "matrices": 898,
+      "channels": 16777216,
+      "length": 33558078,
+      "identity": "0897efb4c7f7241a5efd97a4c79b76bc80dde36eda0129423983a9da5ea9980c"
+    }
+  ],
+  "sources": {
+    "research/cqis-model-contract/check_scales_codec.py": "8458e7bc1a0cd608c435f699f27d1fb441aa7d4cad3876f86500d274db7fa408",
+    "research/cqis-model-contract/scales_codec.py": "370404bf7d45ccae359799cad1d98b7cb5c97e0401d50a5640fab12b5718b634",
+    "research/cqis-model-contract/model_codec.py": "20d3649cbef3a983d42b826e2dc7ec51040840a176956462322f103e041123ef",
+    "research/cqis-model-contract/check_model_codec.py": "3076ce37404edc522324ee3ab46889a37775d89c5e9c27cfbe7d0c471df242a9"
+  },
+  "models_sha256": "e9fe5ed554791a3bde9ebbf28cab3c2c7749727717c9d765a10733f019bd5a7b",
+  "fixture_sha256": "bbc96709cdb6fe701766c34b14823f7784972f2ba6acd7609dae98edf6fda1a4"
+}

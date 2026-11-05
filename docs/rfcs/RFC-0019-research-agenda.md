@@ -1186,3 +1186,18 @@ families. The coordinated review and ADR-051 state the acceptance boundary.
 E5-03/04/05, E6, E7, E8, E12/E14 and the original full workload/benchmark tasks
 still owe every native consumer, actual control, private proof and named-model
 result. Specification acceptance does not finish E5-03 or resolve Q12/Q29.
+
+Q32: which executable completion order preserves all E5-03 requirements when
+its assigned production controls require consumers that depend on E5-03?
+RFC-0025 A1 records the conflict and proposed completion-dependency rule.
+The native completion audit lists the exact paths. No graph replacement,
+control reclassification, partial-task delivery or weakened acceptance is
+approved. Original authorized Llama source is a separate pending input.
+
+Q32 resolution: RFC-0025 A1 accepts the reviewed two-prerequisite order after
+the user delegated the sequencing choice. E5-03c supplies complete original
+numerical preparation; E6-00 supplies complete native lowering from genuine
+providers. Every original task and acceptance line remains, including final
+E5-03/E6-01 production controls after their actual consumers. This resolves
+sequencing only. Checkpoint access, missing child contracts, Q12/Q29, full
+native delivery and all original workloads remain required.

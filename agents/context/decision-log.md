@@ -570,3 +570,144 @@ evidence precedes final admission. Every original completion criterion remains.
 No new cut, challenge, loss theorem, measured constant or online weight pass.
 E5-03 can implement this contract after E5-03b delivery; no second task is claimed.
 Status: Accepted.
+
+## ADR-052: Revalidate original-file snapshots with pinned SHA-256
+
+Context: RFC-0025 source §4 requires immutable original bytes or validation during
+every consuming pass. Whole-file buffering cannot establish bounded native
+loading for the original checkpoints. Decision: pin RustCrypto sha2 0.11.1 with
+default features disabled, retaining registry checksums for its complete locked
+dependency graph. Its Rust 1.88 minimum fits the pinned Rust 1.90 toolchain; the
+MIT/Apache-2.0 license and shared cpufeatures dependency need no policy exception.
+Build after an explicit locked fetch, with Cargo offline.
+
+Verify the complete declared length, EOF and original SHA-256 using a bounded
+buffer. Retain private SHA-256 digests of the same 65536-byte chunks under an
+explicit metadata budget; every consuming chunk read must match that index
+before returning owned immutable bytes. These digests are local integrity state,
+never serialized source identities, tensor commitments or proof authority.
+Full package checks, exact conversion and independently expected original
+source authority remain required. Account for initial and repeated chunk hashes
+in the deterministic hash-use inventory; no new loss formula or profile credit
+follows. This remains preparation T_misc with no measured constant or additional
+online weight pass. Status: Accepted.
+
+## ADR-053: Bound original-source replay during native conversion
+
+Context: RFC-0025 conversion requires exact indexed source reads for transposes
+and fused Q/K/V parts, while source §4 requires the bytes from the authenticated
+snapshot. Decision: retain bounded owned SourceSlice chunks within one numerical
+conversion. Clear their relative-offset state when the physical ordinal changes.
+Use one slot for consecutive views, one per input column when a transposed raw
+row spans at least a chunk, and the complete contiguous chunk span for shorter
+raw rows. Derive and admit the full cache allowance before source I/O. Replacing
+a slot releases its old chunk before allocating and validating the next one.
+
+Only authenticated immutable original bytes are reused. Scales still requires
+two complete logical matrix scans, followed by code emission; no whole decoded
+matrix or array of row maxima is retained. Keep the full finite scalar domain,
+minimal scale rules, all selected-value checks before the first write, bounded
+output chunks and complete-emission digest. Failed output remains unusable, and
+actual stored Artifact validation is a separate obligation. Preparation T_misc
+is the affected cost term; this introduces no measured constant, protocol field,
+cut, challenge or additional online weight pass. Status: Accepted.
+
+## ADR-054: Pin the complete original GPT-2 preparation qualification
+
+Context: E5-03 requires original named-model source conversion, beyond numerical
+shape fixtures. Decision: qualify the complete public GPT-2-small checkpoint and
+all selected auxiliary files at revision 607a30d783dfa663caf39e06633721c8d4cfcd7e.
+Retain all 12 layers, 50257 vocabulary entries, 1024 positions, 196 physical
+records, fused Q/K/V transforms, original biases and the single tied token/head
+record. The checkpoint SHA-256 is
+248dfc3911869ec493c76e65bf2fcf7f615828b0254c12b473182f0f81d3a707.
+
+Use explicit int8 matrices, int16 vectors with fraction 8, fraction 7 for all
+residual/projection/norm/activation outputs, dynamic row policies, exact weighted
+accumulation, score multiplier 1*2^-3 and direct exp with bits=15, F=7, E=14.
+Use the original 1/100000 LayerNorm epsilon and greedy decoding. These are fixed
+offline qualification inputs, not calibrated defaults or a fidelity claim; no
+overflow changes them automatically. Any later numerical choice remains explicit
+and requires its own evidence. Compare every converted value with independent
+integer/Fraction arithmetic and all Registry/Bounds bytes with complete oracles.
+
+The disk adapter rereads actual stored Artifact bytes under the emitted digest
+and leaves failed output incomplete. Its fixed resource allowances are host
+admission choices, not canonical model limits. Original Llama qualification,
+tokenizer execution, inference/fidelity, actual production controls, passport,
+private proofs, profiles and the W8 workload remain required. Preparation affects
+T_misc only; no measured constant, challenge, cut or online weight pass changes.
+Status: Accepted.
+
+## ADR-055: Qualify original GPT-2 with explicit int4 matrices
+
+Context: E5-03 requires both int8 and int4 weight conversion. ADR-054's complete
+original-source qualification covered int8. Decision: run the same pinned
+original checkpoint and complete auxiliary files with matrix precision set to
+int4, keeping every other ADR-054 numerical parameter and original dimension.
+The manual checker accepts an explicit precision argument; its default remains
+int8 with byte-identical Model and Preparation inputs. These choices remain
+qualification inputs, not calibrated defaults or a fidelity claim.
+
+Compare every selected scalar and packed Artifact byte, every minimal scale,
+and complete SourceConfig, Registry, Bounds and identity bytes independently.
+Int4 packing crosses row boundaries and pads only a final odd high nibble.
+Retain both qualification receipts and exact executables with their complete
+output hashes; neither run substitutes for original Llama qualification or
+actual production controls. No native converter or canonical format changes.
+The affected work is offline preparation T_misc; no measured constant, online
+weight pass, cut, challenge or soundness term changes. Status: Accepted.
+
+## ADR-056: Separate complete prerequisites from final production-control tasks
+
+Context: E5-03 and E6-01 require actual controls whose consumers depend on those
+tasks. The user delegated the sequencing decision and approved obtaining the
+complete checkpoint. Decision: adopt RFC-0025 A1's reviewed dependency edits.
+E5-03c delivers complete original GPT-2-small/Llama-3.1-8B native numerical
+preparation; E6-00 delivers native lowering with genuine table/private-source
+providers. Each new task must finish all its criteria and merge before the next
+implementation task starts. Preserve every original acceptance line verbatim.
+
+E5-03 and E6-01 remain final completion tasks. They wait for actual consumers;
+numerical artifacts, parsed metadata and dependency reachability earn no control
+credit. No original model, fidelity, W8, privacy, profile or benchmark scope is
+reduced. Preserve existing implementation history and frozen qualification
+receipts on the old branch; continue it on task/E5-03c-native-preparation without
+rewriting history or opening a partial original-task PR.
+
+This is a scheduling decision, not a new protocol. No public API, format,
+challenge, claim, certificate, source authority, ledger or cost-model term
+changes. Approval to acquire the source remains distinct from actual provider
+authentication and complete byte validation. Status: Accepted.
+
+## ADR-057: Pin complete original Llama-3.1-8B preparation inputs
+
+Context: E5-03c requires complete original Llama preparation for both matrix
+precisions. Decision: use the authorized meta-llama/Llama-3.1-8B revision
+d04e592bb4f6aa9cfee91e2e20afa771667e1d4b, all four original BF16 safetensors
+shards and their index, config, tokenizer and generation assets. Check every
+upstream LFS SHA-256 or Git blob identity and record a complete SHA-256 manifest.
+Keep the full 32 layers, width 4096, 32 query/8 KV heads, head width 128,
+hidden width 14336, vocabulary 128256 and context 131072. No alias replaces the
+original untied head. Original epsilon and complete Llama-3 RoPE parameters stay.
+
+Use explicit int8 and int4 matrix runs with int16 vectors at fraction 8; all
+residual/projection/norm/activation fractions are 7, all row policies dynamic,
+score multiplier 46341*2^-19, exact weighted accumulation and direct exp with
+bits=15, F=7, E=14. Keep the original generation choice sampled with temperature
+3/5 and top_p 9/10. These are fixed numerical-preparation qualification inputs,
+not calibrated defaults, an inference result or a fidelity claim. Overflow
+must reject rather than silently adjust them.
+
+Compare every original scalar, minimal scale, physical role and packed byte,
+then complete SourceConfig, Registry, Bounds and numerical identity. Reuse only
+the unchanged, fully qualified independent RoPE reference for the byte-identical
+128-wide/131072-position definition; validate the pinned receipt, original
+reference files, source pins and full definition before use. Native preparation
+still regenerates all 8388608 coefficient pairs. All other reference function
+data is regenerated. No historic qualification entry point is rerun.
+
+This affects offline preparation T_misc only. No native format, challenge, cut,
+online weight pass, cost constant or production-control coverage changes. Full
+original preparation, stored Artifact reread, int8/int4 parity and all remaining
+E5-03c acceptance criteria are still required. Status: Accepted.

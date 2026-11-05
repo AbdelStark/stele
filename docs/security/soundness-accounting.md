@@ -1776,6 +1776,7 @@ Seed/draw hashes are deterministic data relations, never Fiat-Shamir challenges.
 | Hash/preimage | Required enumeration | Actual consuming owners |
 |---|---|---|
 | SHA-256 of original checkpoint/index/config/tokenizer/generation files | Every exact original File, including structurally checked ignored payloads; retain each complete byte length | E5-03, E5-05, E12-05 and original source authority |
+| SHA-256 for native snapshot integrity | For each successful initial File pass, ceil(length/65536) private chunk hashes in addition to its complete-file hash; one full chunk hash per completed replay read, including mismatches; retain actual failed/repeated work | E5-03 source §4 snapshot and every consuming pass |
 | BLAKE3 of Model, Scales, Registry, Bounds and the numerical identity frame | Complete child bytes and the exact four-hash cqis_id preimage, with all semantic derivations | E5-03, E6, E8-02, E12-05 |
 | Preparation, Source, Assets and SourceConfig identities | Complete canonical frames; kind-0 original SHA-256 stays distinct from kind-1 H(Source) | E5-03, E6, E12-05 |
 | Complete Artifact digest | Every canonical metadata/payload byte, with reproducible original-source conversion and actual committed-plaintext hash relation | E5-03, E12-05, E14-02 |
@@ -1801,6 +1802,13 @@ separate signature/evidence/proximity/extraction obligations remain mandatory.
 No new loss formula or MASK theorem follows from this deterministic inventory.
 Hashing and validation contribute T_misc/registration work, with no measured
 constant, profile admission or additional online weight pass.
+
+The native snapshot index is private local integrity state, not a canonical
+Source identity or a committed tensor. Each index entry hashes the same bytes
+fed to the initial complete-file SHA-256. Every replay returns owned immutable
+bytes only after their chunk hash matches. Those additional SHA-256 invocations
+belong in the actual query inventory; keeping the index private does not remove
+the collision-resistance assumption or supply Q12/profile admission.
 
 RFC-0025 acceptance disposition: the deterministic preimage families above are
 now governed by its Accepted definitions and §7.1 companion entries. No native

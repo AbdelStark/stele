@@ -1,5 +1,7 @@
 //! RFC-0022 §§2-6: immutable static records, without source or proof admission.
 use crate::{functions::Descriptor, Format, Requant};
+/// RFC-0025 model-arithmetic schemas; distinct from RFC-0022's existing records.
+pub mod arithmetic;
 mod schema;
 mod wide;
 use wide::U160;

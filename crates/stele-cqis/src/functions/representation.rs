@@ -1,4 +1,4 @@
-//! RFC-0021 §4: derive complete ordered component roles from the selected function.
+//! RFC-0021 §4 and A3: derive complete ordered component roles from the function.
 use super::{
     component, tables, Descriptor, Encoded, Error, Kind, Reader, MAX_ENCODING, REPRESENTATION,
 };
@@ -46,6 +46,7 @@ impl Representation {
                 &[p[0], p[1], p[2], *k],
             )?,
             (Kind::Norm, 3, []) => components(&["rsqrt_q"], &[])?,
+            (Kind::LayerNorm, 4, []) => components(&["rsqrt_q"], &[])?,
             (Kind::Component(d), 0, []) => ([d; 3], 1),
             _ => return Err(Error::Representation),
         };
@@ -63,7 +64,7 @@ impl Representation {
     pub fn function(&self) -> &Descriptor {
         &self.function
     }
-    /// Closed mode byte: direct 0, product 1, corrected nearest 2, norm 3.
+    /// Closed mode: direct 0, product 1, corrected nearest 2, RMSNorm 3, LayerNorm 4.
     pub fn mode(&self) -> u8 {
         self.mode
     }

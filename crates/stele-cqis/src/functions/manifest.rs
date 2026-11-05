@@ -78,11 +78,14 @@ pub struct Manifest {
     bytes: Vec<u8>,
 }
 
-impl Manifest {
-    /// Derive the complete closure from verifier-owned selections and regenerate
-    /// every component data digest. Any failure returns no partial record and
-    /// preserves the borrowed selections. No raw-row or table-authority hook exists.
-    pub fn new(expected: &[Representation]) -> Result<Self, Error> {
+// RFC-0025 encoding §6 requires complete outer metadata validation before table
+// generation. This crate-private layout is never an admitted public Manifest.
+pub(crate) struct ManifestLayout {
+    bytes: Vec<u8>,
+    slots: Vec<(usize, tables::Descriptor)>,
+}
+impl ManifestLayout {
+    pub(crate) fn new(expected: &[Representation]) -> Result<Self, Error> {
         let function_count = count(expected.len())?;
         let mut functions = reserved(expected.len())?;
         for r in expected {
@@ -123,20 +126,47 @@ impl Manifest {
             sized(&mut bytes, length, r.encode()?.as_bytes())?;
         }
         append(&mut bytes, length, &component_count.to_le_bytes())?;
+        let mut slots = reserved(components.len())?;
         for (_, d) in components {
-            let table = tables::Table::generate(d).map_err(Error::Table)?;
-            let data = table.encode().map_err(Error::Table)?;
             sized(
                 &mut bytes,
                 length,
                 d.encode().map_err(Error::Table)?.as_bytes(),
             )?;
-            append(&mut bytes, length, blake3::hash(&data).as_bytes())?;
+            slots.push((bytes.len(), d));
+            append(&mut bytes, length, &[0; 32])?;
         }
         if bytes.len() != length {
             return Err(Error::Manifest);
         }
-        Ok(Self { bytes })
+        Ok(Self { bytes, slots })
+    }
+    pub(crate) fn metadata(&self) -> &[u8] {
+        &self.bytes
+    }
+    pub(crate) fn data_slots(&self) -> &[(usize, tables::Descriptor)] {
+        &self.slots
+    }
+    fn generate(mut self) -> Result<Manifest, Error> {
+        for (offset, d) in self.slots {
+            let table = tables::Table::generate(d).map_err(Error::Table)?;
+            let data = table.encode().map_err(Error::Table)?;
+            let end = offset.checked_add(32).ok_or(Error::Capacity)?;
+            self.bytes
+                .get_mut(offset..end)
+                .ok_or(Error::Manifest)?
+                .copy_from_slice(blake3::hash(&data).as_bytes());
+        }
+        Ok(Manifest { bytes: self.bytes })
+    }
+}
+
+impl Manifest {
+    /// Derive the complete closure from verifier-owned selections and regenerate
+    /// every component data digest. Any failure returns no partial record and
+    /// preserves the borrowed selections. No raw-row or table-authority hook exists.
+    pub fn new(expected: &[Representation]) -> Result<Self, Error> {
+        ManifestLayout::new(expected)?.generate()
     }
 
     /// Exact canonical bytes, including all regenerated component data digests.
