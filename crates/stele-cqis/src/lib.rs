@@ -7,6 +7,11 @@
 
 extern crate alloc;
 
+mod numerics;
+
+/// Complete Artifact-backed integer model evaluation (RFC-0025 §2).
+pub mod execution;
+
 /// Closed static arithmetic records from separate checked parameters (RFC-0022).
 pub mod bounds;
 

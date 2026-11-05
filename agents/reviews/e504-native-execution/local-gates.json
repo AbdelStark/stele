@@ -1,0 +1,295 @@
+{
+  "source_head": "0fc55615820fabab878484d8d2c353edaae01cf9",
+  "status": "passed",
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/00.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "scripts/gates/rust-policy.sh"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/01.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "7fb05b23d56c78d898e15e6a0afe37a2c1a3b2e4d6bb840ad6b7f6d407645d79"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--release",
+        "--locked",
+        "--offline",
+        "-p",
+        "stele-cqis",
+        "--example",
+        "execute_model"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/02.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "90c8a1a69c0155761cff4bfe0e61bbee007961d2b96729d2127c2e0c291489dd"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--all-features",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/03.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "299af6f7bc70c948c04f0e6015b54ec6d03933061c419587ce667813b503b28f"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--all-features",
+        "--locked",
+        "--offline"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/04.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "1c012f3dea75285db6befcbf187d3f74bb4f881ebbb2ee773dd9b4f05aa58d72"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--examples",
+        "--all-features",
+        "--locked",
+        "--offline"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/05.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "e4223b0acf458514e020b6a2a06292b8ac5eaa6f59a5f0df5f8aeef331dd4ab1"
+    },
+    {
+      "command": [
+        "cargo",
+        "check",
+        "-p",
+        "stele-sumcheck",
+        "-p",
+        "stele-lookup",
+        "-p",
+        "stele-cqis",
+        "--no-default-features",
+        "--locked",
+        "--offline"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/06.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "4b3a38e428a3015cba5ba46f2dec1a3e21b593bc5238b70855bb5e5afe7e6b9a"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "stele-simd",
+        "--release",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/07.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "0f8a32b79d081b1caf63f6e9a49bb418d71ac67a2de4f2f63c3a596b9316a585"
+    },
+    {
+      "command": [
+        "scripts/gates/ledger-validate.sh"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/08.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "90b615cd9047ce282999c03ce097530d5de93f804765e0d579e5d4724fceb994"
+    },
+    {
+      "command": [
+        "scripts/gates/rfc-status.sh"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/09.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "8f6f44f392c0b2fb229fe7607dccf36a721269efb1cb9fccb8d8a73755bf8ef5"
+    },
+    {
+      "command": [
+        "scripts/gates/docs-links.sh"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/10.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "82c4114d9d751b473942686e2bc850e144efc4eed7bc2da415d007869a9285e4"
+    },
+    {
+      "command": [
+        "scripts/gates/glossary-lint.sh"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/11.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "0ef0c42394a8c626c8d8e790d414974d3daa39a10996808bc6819757f690a88c"
+    },
+    {
+      "command": [
+        "scripts/gates/native.sh"
+      ],
+      "log": "/tmp/stele-e504-local-gates-0fc5561/12.log",
+      "status": "passed",
+      "exit_code": 0,
+      "log_sha256": "d60f9b0009e9ca13be45a80246d10603987ffc5189bbda4480e98a860ca2fddf"
+    }
+  ],
+  "prior_checks": "/tmp/stele-e504-local-gates-35d5f2e/results.json",
+  "tooling_repair": {
+    "command": [
+      "python",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "scripts/tests",
+      "-p",
+      "test_glossary.py",
+      "-v"
+    ],
+    "session_id": 13176,
+    "exit_code": 0,
+    "tests": 4,
+    "boundary": "All other 86 original tooling cases passed; only the new unmerged ADR wording caused the original two glossary failures. Existing main ADRs are byte-identical."
+  },
+  "release_binary_sha256": "09485a5daa7b413c524022db1c73b5523ddb57e638e1d18e41ffaea41dff97aa",
+  "matches_qualified_binary": true,
+  "source_receipt_sha256": "fbf84041a18bddf37c321d279039b4079e3f1fbbc3c17108ee7d1ef8c6c213b3",
+  "final_code_checks": [
+    {
+      "command": "cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings",
+      "source": "6afb6c2ff1f65f5cd8c564726687be79996c25c4",
+      "status": "passed",
+      "exit_code": 0,
+      "log": "/tmp/stele-e504-final-clippy-6afb6c2.log",
+      "log_sha256": "973436af2606adc6e89a3fcb2ae00458e13b04588baaaf0d5bc10ffe18c22126"
+    },
+    {
+      "command": "cargo build --release --locked --offline -p stele-cqis --example execute_model",
+      "source": "6afb6c2ff1f65f5cd8c564726687be79996c25c4",
+      "status": "passed",
+      "exit_code": 0,
+      "log": "/tmp/stele-e504-final-build-6afb6c2.log",
+      "log_sha256": "2d5694fb348541fae3d68a033b004800c9c79f8f6edb468d5763b1d8f389597a"
+    }
+  ],
+  "focused_tests_after_workspace_gate": {
+    "source": "6afb6c2ff1f65f5cd8c564726687be79996c25c4",
+    "session_id": 50625,
+    "exit_code": 0,
+    "observed_passes": [
+      "cargo test --locked --offline -p stele-cqis --test decoding_boundaries",
+      "cargo test --locked --offline -p stele-cqis --lib execution::tests::rejects_static_overflow_before_short_zero_execution_and_capacity"
+    ],
+    "scope": "Two final test-only additions after the full workspace run; terminal output was inspected in the active task."
+  },
+  "bounded_model_contract": {
+    "command": "uv run --locked --no-project --python 3.12 --script research/cqis-model-contract/check_ci.py",
+    "source": "0fc55615820fabab878484d8d2c353edaae01cf9",
+    "exit_code": 0,
+    "log": "/tmp/stele-e504-model-contract-0fc5561.log",
+    "log_sha256": "67a1b637b2b9afbbbc1cbca62d04ecc68078a430182365c1c1586c1ff915c0d2"
+  },
+  "final_metadata_checks": {
+    "status": "passed",
+    "checks": [
+      {
+        "command": [
+          "cargo",
+          "fmt",
+          "--all",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/stele-e504-final-metadata-6afb6c2/00.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "scripts/gates/rfc-status.sh"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/stele-e504-final-metadata-6afb6c2/01.log",
+        "log_sha256": "6e019b6bae1354512368e411d309c6a6e0aafe53bacf847131a7cdc63396e3b7"
+      },
+      {
+        "command": [
+          "scripts/gates/docs-links.sh"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/stele-e504-final-metadata-6afb6c2/02.log",
+        "log_sha256": "fbfc065efccf84d322c592b882c0196978f9243288401bee96ae5eca11181b50"
+      },
+      {
+        "command": [
+          "scripts/gates/glossary-lint.sh"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/stele-e504-final-metadata-6afb6c2/03.log",
+        "log_sha256": "0ef0c42394a8c626c8d8e790d414974d3daa39a10996808bc6819757f690a88c"
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/stele-e504-final-metadata-6afb6c2/04.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--no-project",
+          "--python",
+          "3.12",
+          "python",
+          "-B",
+          "/Users/abdel/.agents/skills/humanizer-no-ai-slop/scripts/slop_scan.py",
+          "agents/reviews/e504-native-execution.md"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/stele-e504-final-metadata-6afb6c2/05.log",
+        "log_sha256": "45515404beba1214f62f7e70d7ae8d4d236d348d899c27ec7a32f28f0d26e33b"
+      }
+    ]
+  }
+}

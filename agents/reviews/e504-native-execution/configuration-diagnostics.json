@@ -1,0 +1,145 @@
+{
+  "task": "E5-04",
+  "boundary": "Configuration diagnostics only. Forward-only reference successes do not establish native parity, generation, fidelity, proof or cqis_id admission. Original preparation artifacts stay unchanged.",
+  "diagnostics": [
+    {
+      "path": "/tmp/stele-e504-gpt2-int8-11a9df8/failure.json",
+      "sha256": "99d84a83c9ab8db0e83731e53fc7d9b1d895d798c51c688163ebc23fc2d23ea0",
+      "result": {
+        "status": "rejected",
+        "reason": "Rust and NumPy both reject int16 FFN down-projection output under E5-03c F=7 preparation-only settings.",
+        "source": "/tmp/stele-e504-execution-source-11a9df8",
+        "native": "/tmp/stele-e504-native-efaabfca7633",
+        "qualification_complete": false
+      }
+    },
+    {
+      "path": "/tmp/stele-e504-gpt2-int8-f5-diagnostic.json",
+      "sha256": "e810134e40b12157e7bc42a7a6b2e9098472636cea7ca83aaa6c86a3736bb603",
+      "result": {
+        "fraction": 5,
+        "preserved_artifact": "0381c94a2ed6f017a4d8d95edb416ed8853bcbe84b1c01e376f63ac3ba688e09",
+        "model_id": "0dd2aa127bf82e3b990cbddcb67afba0ca7f617ebe0a836af55364772c27c25f",
+        "scales_id": "89c4229bd7875619020812e5413ff333a11cf96c42f2620d211bf6b1f4c1aad1",
+        "boundary": "Reference configuration diagnostic only; native/source reconfiguration qualification pending.",
+        "status": "rejected",
+        "reason": "Range"
+      }
+    },
+    {
+      "path": "/tmp/stele-e504-gpt2-int8-residual-f4-diagnostic.json",
+      "sha256": "41d1a8ef23921658e7d99b224fa8c7f81b7b9bf4ee8e79c3b015274fee58806f",
+      "result": {
+        "configuration": "residual-o-down-F4-other-fields-original",
+        "preserved_artifact": "0381c94a2ed6f017a4d8d95edb416ed8853bcbe84b1c01e376f63ac3ba688e09",
+        "model_id": "69d74373391347b3d47283515bf3569f0d07b93e3a61b569824f2b0cca6d3502",
+        "scales_id": "37a536c2981eb20d1f68b02852bd361fa495543bc290c102c7dab0b257b89947",
+        "boundary": "Reference configuration diagnostic only; native/source reconfiguration qualification pending.",
+        "status": "rejected",
+        "reason": "Range",
+        "locations": [
+          {
+            "function": "<module>",
+            "line": 23
+          },
+          {
+            "function": "full",
+            "line": 216,
+            "layer": 2,
+            "position": 0
+          },
+          {
+            "function": "linear",
+            "line": 147,
+            "layer": 2,
+            "name": "down"
+          },
+          {
+            "function": "wide",
+            "line": 89
+          }
+        ]
+      }
+    },
+    {
+      "path": "/tmp/stele-e504-gpt2-int8-residual-f0-diagnostic.json",
+      "sha256": "6ed5eb130a3c9fb3dce7e5e6da82806489dca7d74850538043371911130bb54c",
+      "result": {
+        "configuration": "residual-o-down-F0-other-fields-original",
+        "preserved_artifact": "0381c94a2ed6f017a4d8d95edb416ed8853bcbe84b1c01e376f63ac3ba688e09",
+        "model_id": "f4ec67bd2e3890c4563f7d3234424c0d5c241abc93eab6a5cbf7eb167cd05ee9",
+        "scales_id": "36b0ead970e16cd6b775aa99b831b32b0b8d35e55de88e16e8e9a12385da06a1",
+        "boundary": "Reference configuration diagnostic only; native/source reconfiguration qualification pending.",
+        "status": "reference_forward_passed",
+        "residual_rows": 39,
+        "vocabulary_rows": 3,
+        "output_digest": "c589a5ddbf5d9111dbf162f85de9692e089c085015af4c8c8dc5bddb36390fac"
+      }
+    },
+    {
+      "path": "/tmp/stele-e504-gpt2-int8-residual-f2-original-embedding-diagnostic.json",
+      "sha256": "0805be21f2a9a213bc2b682113927a8aa07cf9bcea44f68b71d638c1e740fbbb",
+      "result": {
+        "configuration": "residual-o-down-F2-original-embedding-F7",
+        "preserved_artifact": "0381c94a2ed6f017a4d8d95edb416ed8853bcbe84b1c01e376f63ac3ba688e09",
+        "model_id": "0c317e3eb1b7b0f4f20cc6e8bf37aaf2ad6c61e8150f757de89cab1e4628b326",
+        "scales_id": "a6dada1e136db1f4620c9a6a820346536969cb542423b87e4ddb90bbd1ccebbf",
+        "boundary": "Reference configuration diagnostic only; native/source reconfiguration qualification pending.",
+        "status": "reference_forward_passed",
+        "residual_rows": 39,
+        "vocabulary_rows": 3,
+        "output_digest": "8fe07320ceeb139cdf833b597895e1442681692f84614eee17b71f8300cfa0f5"
+      }
+    },
+    {
+      "path": "/tmp/stele-e504-llama-int8-original-f7-diagnostic.json",
+      "sha256": "b9757364047bc472256f6aa87cff75c6a6de2c1485035c08d963dad8d1d6061a",
+      "result": {
+        "configuration": "unchanged-original-Llama-int8-preparation-F7",
+        "preserved_artifact": "575c9164820d028d4696d613fbf4b2a3d6385bdfefe294989b1594ba7f9b195b",
+        "model_id": "aaef08463de4ff6a2189763ff410c3b1340c3841f36f53083eca8647c8a70350",
+        "scales_id": "522546ca51f9e29b552d7c7677f14ffdec6dcc8bf9a1f08ef0c72455f41556e9",
+        "boundary": "Reference-only diagnostic; native original execution qualification pending.",
+        "status": "rejected",
+        "reason": "Range",
+        "locations": [
+          {
+            "function": "<module>",
+            "line": 10
+          },
+          {
+            "function": "full",
+            "line": 216,
+            "layer": 1,
+            "position": 0
+          },
+          {
+            "function": "linear",
+            "line": 147,
+            "layer": 1,
+            "name": "down"
+          },
+          {
+            "function": "wide",
+            "line": 89
+          }
+        ]
+      }
+    },
+    {
+      "path": "/tmp/stele-e504-llama-int8-residual-f2-diagnostic.json",
+      "sha256": "94346d7e28df74a08a095bb588b4eec1b7b373c58304980c070c3127eb60850c",
+      "result": {
+        "configuration": "Llama-int8-residual-o-down-F2-original-embedding-F7",
+        "preserved_artifact": "575c9164820d028d4696d613fbf4b2a3d6385bdfefe294989b1594ba7f9b195b",
+        "model_id": "042434d1438268c1ff40ab0fe2005392f47c09205cd64f55f8637e3daaede2e6",
+        "scales_id": "e84f1afc1c23edf87d12e87aed7d702799ce79c9226f0dad6c6e68265d6132af",
+        "boundary": "Reference-only diagnostic; native original execution qualification pending.",
+        "status": "reference_forward_passed",
+        "residual_rows": 99,
+        "vocabulary_rows": 3,
+        "output_digest": "ee729b5fe49f0389beeace34db3c67aa1b767e05e544127759bcb59603dc6751"
+      }
+    }
+  ]
+}

@@ -711,3 +711,36 @@ This affects offline preparation T_misc only. No native format, challenge, cut,
 online weight pass, cost constant or production-control coverage changes. Full
 original preparation, stored Artifact reread, int8/int4 parity and all remaining
 E5-03c acceptance criteria are still required. Status: Accepted.
+
+## ADR-058: Select explicit residual units for original-model execution
+
+Context: ADR-054/055/057 fixed preparation inputs without claiming inference or
+calibration. E5-04's first complete original GPT-2 execution rejects an int16 FFN
+down output in both Rust and NumPy. The independent original Llama pass rejects
+the same operation class. Keep those failures and all original prepared bytes.
+The [configuration diagnostics](../reviews/e504-native-execution/configuration-diagnostics.json)
+record unsuccessful candidates and reference-only forward results.
+
+Decision: explicitly select fraction 2 for each block's O/down projection output,
+mid residual and output residual in both original models and matrix precisions.
+Set subsequent norm input fractions to those residual units; the first norm still
+consumes the original fraction-7 embedding. Keep every other numerical field,
+original shape, physical format, weight byte, scale mantissa/exponent, bias,
+epsilon, rotation, attention/activation/logit unit and decoding policy unchanged.
+The native executor never retries, clips or changes units after overflow.
+
+The changed Model and Scales require their own hashes. Revalidate the complete
+original SourcePackage and derive the changed SourceConfig independently in Rust
+and Python. Reuse the original Artifact only after complete stored-byte validation
+and the unchanged Preparation/physical-scale checks. The old four-artifact
+numerical identity belongs to its original preparation; it is not an identity for
+this execution configuration. Definition-only nonlinear point evaluation grants
+no new Registry/Bounds identity, proof, source authority or profile admission.
+
+Complete all original-model Rust/NumPy, full/cache, generation and stop tests before
+closing E5-04. These are numerical qualification settings, not fidelity defaults;
+E5-05's original evaluation and paired-error requirements remain. Compare original
+residual/logit/cache bytes through an anonymous pipe without persisting those rows.
+No core format, challenge, cut, online proof weight pass or measured cost constant
+changes. Full numerical execution contributes to witness construction T_witness;
+no performance claim follows. Status: Accepted.

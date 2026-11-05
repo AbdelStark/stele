@@ -129,6 +129,19 @@ pub struct QuantisedRow {
     maximum: Option<(u16, u32)>,
 }
 impl QuantisedRow {
+    pub(crate) fn try_clone(&self) -> Result<Self, Error> {
+        let mut codes = Vec::new();
+        codes
+            .try_reserve_exact(self.codes.len())
+            .map_err(|_| Error::Capacity)?;
+        codes.extend_from_slice(&self.codes);
+        Ok(Self {
+            parameters: self.parameters,
+            codes,
+            scale: self.scale,
+            maximum: self.maximum,
+        })
+    }
     /// Original configured scope, including the unchanged policy and full scale.
     pub fn parameters(&self) -> Row {
         self.parameters

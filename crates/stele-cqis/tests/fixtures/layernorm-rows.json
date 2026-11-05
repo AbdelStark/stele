@@ -1,0 +1,11 @@
+{
+  "seed": 50423,
+  "cases": 11000,
+  "accepted": 10731,
+  "overflow": 269,
+  "digest": "b0f7d9298af158f287af2a6e0601f8c7794ab665769e4150ceb6df1cf70db69a",
+  "numpy": "1.26.4",
+  "sources": {
+    "research/cqis-model-contract/numerics.py": "b110c9d7ad7025e940114b5f043c32a77d18b2c677cdc893252abe2e15908541"
+  }
+}
