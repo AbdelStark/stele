@@ -679,3 +679,35 @@ This is a scheduling decision, not a new protocol. No public API, format,
 challenge, claim, certificate, source authority, ledger or cost-model term
 changes. Approval to acquire the source remains distinct from actual provider
 authentication and complete byte validation. Status: Accepted.
+
+## ADR-057: Pin complete original Llama-3.1-8B preparation inputs
+
+Context: E5-03c requires complete original Llama preparation for both matrix
+precisions. Decision: use the authorized meta-llama/Llama-3.1-8B revision
+d04e592bb4f6aa9cfee91e2e20afa771667e1d4b, all four original BF16 safetensors
+shards and their index, config, tokenizer and generation assets. Check every
+upstream LFS SHA-256 or Git blob identity and record a complete SHA-256 manifest.
+Keep the full 32 layers, width 4096, 32 query/8 KV heads, head width 128,
+hidden width 14336, vocabulary 128256 and context 131072. No alias replaces the
+original untied head. Original epsilon and complete Llama-3 RoPE parameters stay.
+
+Use explicit int8 and int4 matrix runs with int16 vectors at fraction 8; all
+residual/projection/norm/activation fractions are 7, all row policies dynamic,
+score multiplier 46341*2^-19, exact weighted accumulation and direct exp with
+bits=15, F=7, E=14. Keep the original generation choice sampled with temperature
+3/5 and top_p 9/10. These are fixed numerical-preparation qualification inputs,
+not calibrated defaults, an inference result or a fidelity claim. Overflow
+must reject rather than silently adjust them.
+
+Compare every original scalar, minimal scale, physical role and packed byte,
+then complete SourceConfig, Registry, Bounds and numerical identity. Reuse only
+the unchanged, fully qualified independent RoPE reference for the byte-identical
+128-wide/131072-position definition; validate the pinned receipt, original
+reference files, source pins and full definition before use. Native preparation
+still regenerates all 8388608 coefficient pairs. All other reference function
+data is regenerated. No historic qualification entry point is rerun.
+
+This affects offline preparation T_misc only. No native format, challenge, cut,
+online weight pass, cost constant or production-control coverage changes. Full
+original preparation, stored Artifact reread, int8/int4 parity and all remaining
+E5-03c acceptance criteria are still required. Status: Accepted.
