@@ -740,7 +740,7 @@ no new Registry/Bounds identity, proof, source authority or profile admission.
 Complete all original-model Rust/NumPy, full/cache, generation and stop tests before
 closing E5-04. These are numerical qualification settings, not fidelity defaults;
 E5-05's original evaluation and paired-error requirements remain. Compare original
-residual/logit/cache bytes through an anonymous pipe without persisting traces.
+residual/logit/cache bytes through an anonymous pipe without persisting those rows.
 No core format, challenge, cut, online proof weight pass or measured cost constant
-changes. Full numerical execution contributes to witness construction T_misc;
+changes. Full numerical execution contributes to witness construction T_witness;
 no performance claim follows. Status: Accepted.
