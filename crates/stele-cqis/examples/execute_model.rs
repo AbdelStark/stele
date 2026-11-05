@@ -1,5 +1,5 @@
 //! RFC-0025 §2/execution: full original-Artifact numerical qualification adapter.
-//! Binary output is for exact local comparison; logs contain no weights/activations.
+//! Binary comparison uses an anonymous pipe; no weights/activations reach disk/logs.
 #![forbid(unsafe_code)]
 use std::{
     env,
@@ -11,6 +11,39 @@ use stele_cqis::{
     execution::{Cache, Decision, Executor, Full, Request},
     model::{Model, Preparation, Scales},
 };
+#[path = "support/execution_source.rs"]
+mod execution_source;
+
+#[cfg(unix)]
+fn comparison_pipe(path: &Path) -> Result<File, String> {
+    use std::os::unix::fs::FileTypeExt;
+    if path.parent() != Some(Path::new("/dev/fd"))
+        || path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .and_then(|s| s.parse::<u32>().ok())
+            .is_none()
+    {
+        return Err("comparison requires an inherited anonymous-pipe descriptor".into());
+    }
+    let file = File::options()
+        .write(true)
+        .open(path)
+        .map_err(|e| e.to_string())?;
+    if !file
+        .metadata()
+        .map_err(|e| e.to_string())?
+        .file_type()
+        .is_fifo()
+    {
+        return Err("comparison descriptor is not a pipe".into());
+    }
+    Ok(file)
+}
+#[cfg(not(unix))]
+fn comparison_pipe(_: &Path) -> Result<File, String> {
+    Err("manual comparison requires a Unix anonymous pipe".into())
+}
 
 fn frame(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
     let mut file = File::open(path).map_err(|e| e.to_string())?;
@@ -125,9 +158,9 @@ fn decision(out: &mut impl Write, d: &Decision) -> Result<(), String> {
 }
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args_os().skip(1).collect();
-    if args.len() != 4 {
+    if args.len() != 4 && args.len() != 7 {
         return Err(
-            "usage: execute_model PREPARED_DIR EXPECTED_ARTIFACT_HEX INPUT_JSON NEW_OUTPUT".into(),
+            "usage: execute_model PREPARED_DIR EXPECTED_ARTIFACT_HEX INPUT_JSON COMPARISON_PIPE [SOURCE_DIR LAYOUT EXPECTED_SOURCE_CONFIG]".into(),
         );
     }
     let directory = Path::new(&args[0]);
@@ -137,6 +170,22 @@ fn main() -> Result<(), String> {
     let model = result(Model::decode(&model_raw))?;
     let preparation = result(Preparation::decode(&model, &prep_raw))?;
     let scales = result(Scales::decode(&model, &scales_raw))?;
+    let file = comparison_pipe(Path::new(&args[3]))?;
+    if args.len() == 7 {
+        let layout = args[5]
+            .to_str()
+            .ok_or("layout")?
+            .parse::<u8>()
+            .map_err(|e| e.to_string())?;
+        execution_source::validate(
+            directory,
+            Path::new(&args[4]),
+            &model,
+            &preparation,
+            layout,
+            &frame(Path::new(&args[6]), 1 << 20)?,
+        )?;
+    }
     let artifact = frame(&directory.join("artifact.bin"), 1 << 35)?;
     let expected: [u8; 32] = hex(args[1].to_str().ok_or("expected digest")?)?
         .try_into()
@@ -189,7 +238,6 @@ fn main() -> Result<(), String> {
         return Err("full/cache K/V mismatch".into());
     }
     eprintln!("every original full/cache row and K/V byte matched");
-    let file = File::create_new(Path::new(&args[3])).map_err(|e| e.to_string())?;
     let mut out = BufWriter::new(file);
     bytes(&mut out, b"stele-e504-numerical-v1")?;
     word(&mut out, sequence.len())?;
@@ -209,7 +257,6 @@ fn main() -> Result<(), String> {
     word(&mut out, generated.cache().tokens().len())?;
     full(&mut out, &replay)?;
     out.flush().map_err(|e| e.to_string())?;
-    out.get_ref().sync_all().map_err(|e| e.to_string())?;
     eprintln!("complete generation, stop cause and final-token full/cache equality validated");
     Ok(())
 }

@@ -310,3 +310,92 @@ impl Executor<'_> {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        bounds::arithmetic::Row,
+        execution::{tests::Fixture, Request},
+        row::Quantiser,
+    };
+
+    #[test]
+    fn rejects_failed_append_without_changing_prefix_and_evaluates_eos() {
+        for name in ["early_failure", "late_failure"] {
+            let fixture = Fixture::new(name);
+            let mut executor = fixture.executor().expect("executor");
+            let original = executor.full(&[0]).expect("complete prefix");
+            assert_eq!(
+                executor
+                    .step(1, Some(original.cache()))
+                    .expect_err("range failure"),
+                Error::Range
+            );
+            assert_eq!(
+                original.cache(),
+                executor.full(&[0]).expect("unchanged replay").cache()
+            );
+            if name == "early_failure" {
+                let request = Request::new(&fixture.model, 1, 1, &[1], None).expect("request");
+                assert_eq!(
+                    executor
+                        .choose(&request, &[0], &[0], &original.logits()[0], None)
+                        .expect("chosen EOS")
+                        .token(),
+                    1
+                );
+                assert_eq!(
+                    executor
+                        .generate(&request, &[0], None)
+                        .expect_err("EOS must execute"),
+                    Error::Range
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_cache_scope_geometry_tokens_and_units() {
+        let fixture = Fixture::new("early_failure");
+        let mut executor = fixture.executor().expect("executor");
+        for index in 0..3 {
+            let mut cache = executor.full(&[0]).expect("full").into_cache();
+            cache.scope[index][0] ^= 1;
+            assert_eq!(
+                executor.step(0, Some(&cache)).expect_err("scope"),
+                Error::CacheScope
+            );
+        }
+        let mut cache = executor.full(&[0]).expect("full").into_cache();
+        cache.layers.pop();
+        assert_eq!(
+            executor.step(0, Some(&cache)).expect_err("missing layer"),
+            Error::Cache
+        );
+        let mut cache = executor.full(&[0]).expect("full").into_cache();
+        cache.layers[0].pop();
+        assert_eq!(
+            executor.step(0, Some(&cache)).expect_err("missing key"),
+            Error::Cache
+        );
+        let mut cache = executor.full(&[0]).expect("full").into_cache();
+        cache.tokens[0] = fixture.model.shape().vocabulary();
+        assert_eq!(
+            executor.step(0, Some(&cache)).expect_err("token"),
+            Error::Token
+        );
+        let mut cache = executor.full(&[0]).expect("full").into_cache();
+        let parameters = cache.layers[0][0].0.parameters();
+        let wrong = Quantiser::new(Row {
+            fraction: (parameters.fraction + 1) % 31,
+            ..parameters
+        })
+        .expect("different units");
+        cache.layers[0][0].0 = wrong.convert_wide(&[0, 0]).expect("row");
+        assert_eq!(
+            executor.step(0, Some(&cache)).expect_err("units"),
+            Error::Cache
+        );
+    }
+}

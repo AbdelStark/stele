@@ -7,6 +7,8 @@ mod data;
 mod decoding;
 mod forward;
 mod request;
+#[cfg(test)]
+mod tests;
 use data::Data;
 pub use decoding::{Decision, Generation};
 pub use forward::{Cache, Full, Step};
