@@ -930,9 +930,9 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-cqis+harness
-  status: ready
+  status: in_progress
   agent: codex-root
-  branch: task/E5-04-causal-model
+  branch: task/E5-04-native-forward
   acceptance:
   - GPT-2-small and Llama-3.1-8B forward identical Rust/NumPy
   - decode == single causal pass test
