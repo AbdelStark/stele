@@ -10,6 +10,7 @@ mod fixed;
 mod gaussian;
 mod mle;
 pub(crate) mod natural;
+pub(crate) mod points;
 pub use fixed::Table;
 pub use mle::{Evaluation, TableField};
 

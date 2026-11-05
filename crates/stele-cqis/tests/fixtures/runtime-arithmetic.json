@@ -1,0 +1,40 @@
+{
+  "seed": 50427,
+  "groups": [
+    {
+      "kind": 0,
+      "cases": 10000,
+      "accepted": 1720,
+      "rejected": 8280,
+      "digest": "51322981a32e11aabaf6cc0f4bf47072ec97af91b783167327e22ac9a340c879"
+    },
+    {
+      "kind": 1,
+      "cases": 10000,
+      "accepted": 2708,
+      "rejected": 7292,
+      "digest": "4c9d6a5703f36c860eb6936bdbbfd3cd16e46d71bbe3c9d417172062f204af4c"
+    },
+    {
+      "kind": 2,
+      "cases": 10000,
+      "accepted": 3327,
+      "rejected": 6673,
+      "digest": "1eb6a1013d5c4028cf847eb33bec97be4c50952872605e0616af8b84ed6480e0"
+    },
+    {
+      "kind": 3,
+      "cases": 10000,
+      "accepted": 5216,
+      "rejected": 4784,
+      "digest": "15ea5b71c974c847508d632c4be3f31352399324e4fa0b45dff580d7886ce6a7"
+    },
+    {
+      "kind": 4,
+      "cases": 10000,
+      "accepted": 2172,
+      "rejected": 7828,
+      "digest": "57384ab04965d3631671d12af3b3fcce57de190cd16b9b7124e26eec0ad066e5"
+    }
+  ]
+}
