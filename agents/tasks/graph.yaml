@@ -894,7 +894,7 @@ tasks:
   - E5-03b
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: done
   rfc:
   - "RFC-0025 sections2-6"
   - "RFC-0025 A1"

@@ -1,0 +1,38 @@
+{
+  "task": "E5-03c",
+  "status": "all-four-original-numerical-qualifications-passed",
+  "qualifications": {
+    "gpt2-int8": {
+      "receipt_sha256": "323dc3754ba8b4fecb10b314fa3e2ff209d89e8bb4a2ede1807fd9ae073c6b89",
+      "committed_source": "5b559be888f2aa241e87b1a825960db3960e7b3c",
+      "recorded_launch_head": "2af73010977c28fefc36af08a2e35fc8cf7cdd17",
+      "native_sha256": "088846dec4faa29763576530f51c65ec4e933086462806f297069d9663568023",
+      "outputs": 11
+    },
+    "gpt2-int4": {
+      "receipt_sha256": "020ca496e657ffaf063220103ff82b52abc74532d65d748b95bb1a34d9642a56",
+      "committed_source": "eba81244ae9d87885b0f0d2d13bb6740e9458d90",
+      "recorded_launch_head": "598c11bb894e522f4bcef262656d4f4e750efc84",
+      "native_sha256": "cec826032cb4cb7374c41caacfc03ccc0c38ad6640c66878c13185d0e56f40bc",
+      "outputs": 11
+    },
+    "llama-int8": {
+      "receipt_sha256": "b507bb9cf0e447e26cfae51af0c853eeb2d48a2d65537f01ed613b3d58ce8ba3",
+      "committed_source": "4eb778a0e8bed62325f98ff5f8cc82eac854aadf",
+      "recorded_launch_head": "4eb778a0e8bed62325f98ff5f8cc82eac854aadf",
+      "native_sha256": "cec826032cb4cb7374c41caacfc03ccc0c38ad6640c66878c13185d0e56f40bc",
+      "outputs": 11
+    },
+    "llama-int4": {
+      "receipt_sha256": "1f6454762f36258a54e65d40933b2004d2543c6bcae7ff93b788c239987cc765",
+      "committed_source": "4eb778a0e8bed62325f98ff5f8cc82eac854aadf",
+      "recorded_launch_head": "4eb778a0e8bed62325f98ff5f8cc82eac854aadf",
+      "native_sha256": "cec826032cb4cb7374c41caacfc03ccc0c38ad6640c66878c13185d0e56f40bc",
+      "outputs": 11
+    }
+  },
+  "reference_sources_sha256": "8c3c9c3aa21ba3faa0fd507dc2ca07b13884450f8d588d3c4aac43d0bae51102",
+  "llama_acquisition_sha256": "1d886093e5321dcc081f060e4a080d4213276a1267b7faa310ef4205ba811731",
+  "local_gate_receipt_sha256": "257f68e2498b2c8f1f4e021288c0ace9af548dbb3b2b084895433b56c175730c",
+  "boundary": "Numerical preparation only. Original E5-03 controls, inference, fidelity, proofs, privacy, profiles and W8 remain due."
+}
