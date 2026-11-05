@@ -86,11 +86,15 @@ fn matches_reference_signed_absolute_blocks_and_masked_suffixes() {
 
 #[test]
 fn rejects_static_overflow_before_short_zero_execution_and_capacity() {
-    for name in ["score_overflow", "block_overflow"] {
-        assert!(matches!(
-            Fixture::new(name).executor(),
-            Err(Error::Bounds(_))
-        ));
+    use crate::bounds::arithmetic::Error as BoundError;
+    for (name, reason) in [
+        ("score_overflow", BoundError::ScoreBound),
+        ("block_overflow", BoundError::BlockBound),
+    ] {
+        assert_eq!(
+            Fixture::new(name).executor().err(),
+            Some(Error::Bounds(reason))
+        );
     }
     assert!(matches!(
         Fixture::new("early_failure").with_budget(0),
