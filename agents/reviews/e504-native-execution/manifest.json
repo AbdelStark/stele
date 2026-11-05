@@ -1,0 +1,90 @@
+{
+  "task": "E5-04",
+  "status": "four_original_numerical_qualifications_passed",
+  "qualified_commit": "35d5f2ed445c514419af8c5ea5c0695056a10957",
+  "final_code_commit": "6afb6c2ff1f65f5cd8c564726687be79996c25c4",
+  "native_sha256": "09485a5daa7b413c524022db1c73b5523ddb57e638e1d18e41ffaea41dff97aa",
+  "receipts": [
+    {
+      "file": "gpt2-int8.json",
+      "sha256": "a6788bb8917ac13418d525bf19ff4bb036f983a815cc5891e5f2f4d0c307b42c",
+      "model": "openai-community/gpt2",
+      "weight_bits": 8,
+      "compared_bytes": 973360,
+      "runtime_files_sha256": {
+        "model.bin": "2d170c7709cdf6b1a3f8db63f4e4afacc52b6cebb939feb0d0d7c87fdbf3dae3",
+        "scales.bin": "8d60b194b80d416dd810285f2609d6bfbf01bd3f7ac5c85c0d9cabb414e8026a",
+        "source-config.bin": "041cfd6df5c88ba1eae6daaa2e8194724180625397d20c3ffc6a973cc5a1a74b"
+      },
+      "runtime_ids": {
+        "execution_model_id": "0c317e3eb1b7b0f4f20cc6e8bf37aaf2ad6c61e8150f757de89cab1e4628b326",
+        "execution_scales_id": "a6dada1e136db1f4620c9a6a820346536969cb542423b87e4ddb90bbd1ccebbf",
+        "execution_source_config_id": "75a787abd9aca7ed086bb4139e9774411f5c0e265b25631bf394d5ef36be25d0"
+      }
+    },
+    {
+      "file": "gpt2-int4.json",
+      "sha256": "a520d02cd7a28b1681eaab89d93bd04dcd3798f72239cfe6a5b5a9197c01758f",
+      "model": "openai-community/gpt2",
+      "weight_bits": 4,
+      "compared_bytes": 973360,
+      "runtime_files_sha256": {
+        "model.bin": "b7151614f6dc42e87e9acd32c6fb490fa079a7441bdc2bd52f76bb7f03301e74",
+        "scales.bin": "41651bce0a3a1e50dc6ea4a8a0192a95f53b00cdf9f97be5ed2c801ce4a64237",
+        "source-config.bin": "92dbdfa75aac9f2eba09b4356bd4a422c205dd20dda27440546fa8142d920602"
+      },
+      "runtime_ids": {
+        "execution_model_id": "fdf91c6b2edc932f99bf7384161f6e528f2166f0c183e235062e23aa7c72de8e",
+        "execution_scales_id": "7fa6d6332c7f7bed804a94307ce990f44e3161c61b5c52399eaeb1e79dad153e",
+        "execution_source_config_id": "6cbaa5d0dba2f413bef68ca2547740b070ac3e20cf65cf1e5138d00872588495"
+      }
+    },
+    {
+      "file": "llama-int8.json",
+      "sha256": "74f7674bed16d21cfd71e638184295f5c3d4fb663f031ccd056c103535a35e96",
+      "model": "meta-llama/Llama-3.1-8B",
+      "weight_bits": 8,
+      "compared_bytes": 7228130,
+      "runtime_files_sha256": {
+        "model.bin": "50b329c30e31c5bd7b53edd3d4d0bdb77fc6e338e1ae02f6031066a0b4546e81",
+        "scales.bin": "c3e8a8bbe43577e147e9737cc5a44ca349831ce51569065820b8aff0dac95b9c",
+        "source-config.bin": "97194d70cd840f7f8a8506f48930389f980b166a6680eab794905213e0690e32"
+      },
+      "runtime_ids": {
+        "execution_model_id": "042434d1438268c1ff40ab0fe2005392f47c09205cd64f55f8637e3daaede2e6",
+        "execution_scales_id": "e84f1afc1c23edf87d12e87aed7d702799ce79c9226f0dad6c6e68265d6132af",
+        "execution_source_config_id": "faeb221767fa45357ea3229612eb04f13905d5e318a12a1d2dfa7631df5f080f"
+      }
+    },
+    {
+      "file": "llama-int4.json",
+      "sha256": "9e609bb2ea910de3d44096ddd277e54254e873368f18156cc8818cc53e9f5152",
+      "model": "meta-llama/Llama-3.1-8B",
+      "weight_bits": 4,
+      "compared_bytes": 7239570,
+      "runtime_files_sha256": {
+        "model.bin": "0a1f984146c29e783f301fe76601fcfaeca9383068f946c99b8b32ec13db17bd",
+        "scales.bin": "ef9fc0f7727cb07d6f5e3c4cb183ee988d945a5bada3903f3f41258e424c36f9",
+        "source-config.bin": "310c2d6a1ea4ce9aab1214f1fa9a031a28f307df1e37d876b977c366a592d0ef"
+      },
+      "runtime_ids": {
+        "execution_model_id": "9e0bc3516e395586a86ab968cbae71e3ccfb613c256bc7e03242e71340d7784d",
+        "execution_scales_id": "2f35190332d47b5a598aa5d4031e157cf069dbba503ab2d284e0b1b92259172b",
+        "execution_source_config_id": "1c514f7e576ec50da76010cc586f21c247219e0b49c3e00b96d2ee9501219a66"
+      }
+    }
+  ],
+  "source_audit": {
+    "file": "source-audit.json",
+    "sha256": "ba5711aefdaa011428b21fa2dc26784ea9cec9b17cb8909da6f8090627c9d021"
+  },
+  "local_gates": {
+    "file": "local-gates.json",
+    "sha256": "2e6b4e7455ffa29fb06244ff25480926efe18a3cbc1c339f8205241e288e0008"
+  },
+  "configuration_diagnostics": {
+    "file": "configuration-diagnostics.json",
+    "sha256": "4dff614b15bc6982b328714db476acbbd03cb9855a238d33764ca57d83ac3719"
+  },
+  "boundary": "Complete original int8/int4 numerical execution on bounded requests. No full-context, fidelity, proof, privacy, benchmark, passport or profile admission. Hosted checks and current-base merge-tree verification remain required before merge."
+}

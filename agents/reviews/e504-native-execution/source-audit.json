@@ -1,0 +1,20 @@
+{
+  "status": "source_audit_passed",
+  "qualified_commit": "35d5f2ed445c514419af8c5ea5c0695056a10957",
+  "current_code_commit": "6afb6c2ff1f65f5cd8c564726687be79996c25c4",
+  "pinned_files": 139,
+  "all_four_source_pin_sets_identical": true,
+  "all_pins_match_qualified_git_objects": true,
+  "changed_pins": [
+    {
+      "path": "crates/stele-cqis/src/execution/tests.rs",
+      "qualified_sha256": "7820d492baf648ee7097b7adee4569471aa0c0a7c668f88761681224ac281934",
+      "current_sha256": "b7ebf976e5719cc87228b873ca07f63fcd74ddd1c3fbb407f6ad5d1afc256030",
+      "scope": "cfg(test) only; rebuilt release executable is byte-identical"
+    }
+  ],
+  "native_sha256": "09485a5daa7b413c524022db1c73b5523ddb57e638e1d18e41ffaea41dff97aa",
+  "rebuilt_native_identical": true,
+  "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8\n",
+  "existing_main_adrs_and_accepted_rfcs_unchanged": true
+}

@@ -930,7 +930,7 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-cqis+harness
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E5-04-native-forward
   acceptance:
