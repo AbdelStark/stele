@@ -56,6 +56,7 @@ The exact root Cargo.lock path and field/CQIS source changes select the
 two pinned checkpoint downloads. Any broad trigger selects all 76 groups instead.
 The normal inventory retains the inherited 176 commands exactly once and adds
 the bounded RFC-0024 algebra checker to `algebra` (177 inherited commands).
+E15-04 adds the R-BF16 reduction and cost checkers to `algebra` (179 commands).
 The separate model-contract inventory adds one locked regression command. This scope
 also covers deletions and both names of renamed files; it does not infer scope
 from changed lockfile entries. Both mandatory native jobs and all table rules remain.

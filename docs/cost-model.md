@@ -40,7 +40,7 @@ whatever `n`, `L` or the batch; with epoch batching (RFC‑0019 R‑EPOCH) once 
 | Model | P | n·L·N_act | N_attn | T_weights | T_act | T_attn | T_cuts | **T_proof (1×H100)** | Open SOTA (SASH) | Serving (vLLM, same request) |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Llama‑3.1‑8B | 8·10⁹ | 1.3·10¹⁰ | 1.1·10¹⁰ | 0.01 s | 0.9 s | 0.4 s | 0.01 s | **≈ 1.3 s** | 3,600–5,400 s measured | 3.4 s |
-| Llama‑3.1‑70B | 70·10⁹ | 6.2·10¹⁰ | 3.4·10¹⁰ | 0.1 s | 4.1 s | 1.2 s | 0.04 s | **≈ 5.5 s** | 5–8 h projected | ≈ 20 GPU‑s ∂ |
+| Llama‑3.1‑70B | 70·10⁹ | 6.5·10¹⁰ | 5.4·10¹⁰ | 0.1 s | 4.3 s | 2.0 s | 0.04 s | **≈ 6.5 s** | 5–8 h projected | ≈ 20 GPU‑s ∂ |
 | Llama‑3.1‑405B | 405·10⁹ | 1.9·10¹¹ | 1.7·10¹¹ | 0.5 s | 13 s | 6.3 s | 0.2 s | **≈ 20 s** | 16–24 h projected | ≈ 67 GPU‑s ∂ (8×H100, batch 1) |
 | DeepSeek‑V3 (671B MoE, all experts touched) | 671·10⁹ | 3.5·10¹⁰ | 8.3·10¹⁰ | 0.9 s | 2.3 s | 3.0 s | 0.1 s | **≈ 6.5 s** | 8–12 h projected | ≈ 25 GPU‑s ∂ |
 
