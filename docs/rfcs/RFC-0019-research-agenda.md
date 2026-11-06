@@ -30,6 +30,9 @@ with the fused opening (the first level's row vector is `B`). Deliverable: param
 Q: Cost of proving the *exact* serving arithmetic (bf16 products with fp32 accumulation in a fixed order). Method: limb
 decomposition of products (exact in int24), accumulation-order emulation via per-step rounding lookups ⇒ `Θ(MACs)` cost.
 Expected: 10³–10⁴× the CQIS cost; the deliverable is the number and a recommendation (likely: treaties mandate CQIS).
+Result (E15-04, [report](../../research/r-bf16/REPORT.md)): a validated per-MAC reduction for the binary32 FMA chain
+costs 26 lookups and 42 committed elements, projecting 2.7·10⁴–1.7·10⁵× the CQIS `T_proof` (idealised one-lookup
+floor: 5.7·10²–1.9·10³×) for Llama-3.1-8B/70B/405B. Recommendation: drop; treaties mandate CQIS, served via R-SERVE.
 
 ## R-HIDE — Hidden architecture
 Q: Prove with `plan.json` private (wrapper-only). Deliverable: cost of structure checks in-circuit.

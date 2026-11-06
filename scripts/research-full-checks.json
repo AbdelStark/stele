@@ -250,5 +250,8 @@
   ],
   "attention-value-projection-full": [
     "uv run --locked --script research/cqis-bounds/check_attention_value_projection.py --full"
+  ],
+  "r-bf16-full": [
+    "uv run --locked --script research/r-bf16/check_reduction.py --full"
   ]
 }
