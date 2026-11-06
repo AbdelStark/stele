@@ -1,5 +1,5 @@
-# Draft RFC-0010 A1 research catalog; proven means complete PCS parameters.
-# Neither family currently has an admitted PCS/profile parameter set.
+# RFC-0010 A1 code registry export, generated from stele-code CATALOG_EXPORT.
+# proven means a complete admitted PCS parameter set; neither family has one yet.
 version = 1
 
 [[code]]

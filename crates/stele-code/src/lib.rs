@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 use stele_field::{Field, M31};
 mod encoder;
 mod measurement;
+pub mod registry;
 pub use encoder::{Code, CodeField, Encoder, EncoderInfo};
 use measurement::Measurement;
 pub use measurement::{EncoderWork, MeasuredEncoding};
@@ -29,6 +30,10 @@ pub enum Error {
     InvalidCodeId,
     /// A deterministic row stream exhausted its fixed 256-word cap.
     SamplingExhausted,
+    /// No admitted PCS parameter set exists for this request (RFC-0010 A1).
+    UnsupportedParameters,
+    /// A registry export differs from the compiled catalog (RFC-0010 A1).
+    InvalidRegistry,
 }
 
 /// The fixed non-systematic M31 circle map, extended to the element field.

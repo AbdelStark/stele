@@ -116,6 +116,7 @@
     "uv run --locked --script research/code-provenance/check_certified.py",
     "uv run --locked --script research/code-provenance/check_bounded.py",
     "uv run --locked --script research/code-provenance/check_measurement.py",
+    "uv run --locked --script research/code-provenance/estimate_distance.py",
     "python3 research/circle-code/check_circle.py"
   ],
   "lookup-privacy": [
