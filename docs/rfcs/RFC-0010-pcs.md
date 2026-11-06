@@ -69,7 +69,8 @@ NC-0605 fused `u ≠ B` (cross-check with NC-0305).
 
 ### A1 — Concrete encoder identity and parameter provenance
 
-Status: Draft. Question Q23. Evidence: [code provenance study](../../research/code-provenance/REPORT.md).
+Status: Accepted. Question Q23. Review: [acceptance](../../agents/reviews/code-a1-accepted.md).
+Evidence: [code provenance study](../../research/code-provenance/REPORT.md).
 Follow-up: [finite expander bounds](../../research/code-provenance/EXPANDER.md).
 Candidate map/bytes: [recursive encoder](../../formal/recursive-code.md), using the
 Accepted A2 circle base and all twelve finite-bound degree pairs. Independent dense
@@ -183,6 +184,34 @@ research counts additions for a deliberately unspecified-for-production RAA map;
 it changes no measured constant, benchmark or weight-pass count. Affected tasks:
 E4-01, E4-03/E4-05, E10-06 and E12-04, with original criteria retained. The circle
 RS encoder E4-02 still requires its own construction/parameter evidence.
+
+Acceptance resolution (companion RFC-0012 A7). The quoted §3 addition is in force.
+The six open requirements are discharged as follows; nothing else is admitted.
+
+> Supported codes are exactly the A2 Circle identities and the A4 v2 expander
+> manifests of [code identity](../../formal/code-identity.md) §1. Their derived
+> lengths, distance lower bounds and setup errors are §2 of that note, with
+> immutable evidence IDs `rfc-0010-a2/root-bound-v1`, `rfc-0010-a1/finite-v2` and
+> `rfc-0012-a7/2^256-all-seeds-v2`. Changing any premise needs a new evidence ID.
+> The expander distance bound holds for the ideal-oracle ensemble and applies to a
+> regenerated seed only together with the A7 setup event.
+>
+> The native registry is the fixed two-entry catalog of code-identity.md §3,
+> compiled into `stele-code`. `research/code-provenance/codes.toml` is a checked
+> export of it, never an input. `proven` means a complete admitted PCS parameter
+> set; it is false for both entries. A parameter resolver takes code identity,
+> field degree and profile, rejects malformed or edited registry data as
+> `InvalidRegistry`, and returns `UnsupportedParameters` for every request until
+> an Accepted amendment admits a proximity radius, exceptional-combination bound
+> and query count for that identity (A3) together with Q12's composition.
+> Distance tuples, flags or theorem names supplied by a caller never satisfy it.
+>
+> Proximity, codeword validity and query selection stay with A3; packing with A6;
+> blinding with A7 of this RFC. The verifier binds the complete code identity and
+> field in each commitment, plan or passport descriptor that consumes a code.
+> NC-0612 reserves code-identity/evidence substitution under the first actual
+> expander PCS consumer. E4-01 delivers the catalog, resolver, linearity tests, a
+> one-sided distance-estimate script and the adds/element ledger.
 
 ### A2 — Canonical M31 circle encoder
 

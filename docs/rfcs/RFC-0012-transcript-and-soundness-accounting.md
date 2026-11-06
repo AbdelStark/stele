@@ -448,7 +448,8 @@ native implementation and controls remain required.
 
 ### A7 — Separate setup failure over the complete seed universe
 
-Status: Draft. Questions Q23/Q12. Companion to RFC-0010 A1. Candidate contract and
+Status: Accepted. Questions Q23/Q12. Companion to RFC-0010 A1.
+Review: [acceptance](../../agents/reviews/code-a1-accepted.md). Contract and
 self-contained conditional argument: [seeded setup](../../formal/seeded-setup.md).
 Motivation: a uniformly sampled code theorem does not certify a chosen seed, and
 a setup error cannot disappear into the PCS column-query term or hash loss.
@@ -489,8 +490,15 @@ The sampler is deterministic setup expansion, not a second Fiat-Shamir mechanism
 Cost impact: bounded setup hashing/preparation in T_misc/c_c, graph storage and
 regeneration copies. Stronger v2 degrees increase exact edge work/storage (9728
 versus 7424 edges at n=256); these are operation counts, not benchmarks. No measured coefficient or weight-pass count changes. Affected
-tasks: E4-01/E4-03/E4-05, E8-05, E12-04/E12-09. A1 and A7 remain Draft; this
-research does not enable a code registry, PCS parameter or treaty profile.
+tasks: E4-01/E4-03/E4-05, E8-05, E12-04/E12-09.
+
+Acceptance resolution: the quoted §4 addition is in force for the v2 expander
+identities of RFC-0010 A1, under the labelled ideal-oracle assumption on BLAKE3.
+The setup event is a separate ledger term, charged once per admitted v2 seed
+universe and never folded into a query, hash or proximity term. It enters a
+profile ledger only when that profile admits an expander PCS parameter set and
+Q12 supplies the FS/H composition; until then no profile carries it and every
+expander parameter request is unsupported. Circle identities carry zero setup loss.
 
 ### A8 — Require the characteristic and pole hypotheses of LU accounting
 

@@ -1816,3 +1816,16 @@ challenge, loss record, numerical security budget or profile is added by that
 status change. E6/E8-05a/E12/E14 must account for the complete actual consumer
 schedule and all hash/signature/evidence queries before admission, including
 Q12/Q29 and fixed-passport lifetime requirements. All original ledger gates remain.
+
+### Code setup event (RFC-0012 A7)
+
+For v2 expander identities, setup failure is its own term, not part of any query,
+hash or proximity term: Pr[some regenerated supported v2 code from any of the
+2^256 seeds lacks its stated distance] <= 200431782/2^160 < 2^-132, in the ideal
+random-oracle model for BLAKE3 setup expansion
+([seeded setup](../../formal/seeded-setup.md)). It is charged once per admitted
+seed universe and is added to the protocol error under good setup. Circle
+identities carry zero setup loss. No profile carries the term yet: it enters a
+ledger only with an admitted expander PCS parameter set (RFC-0010 A3) and Q12's
+FS/H composition. The setup sampler draws no Fiat–Shamir challenge.
+

@@ -1,7 +1,7 @@
 # Candidate v2 seeded setup and all-seed setup-loss bound (Q23)
 
 Status: §1's deterministic manifest/sampler is governed by RFC-0010 A4. The
-security/admission argument remains Draft RFC-0010 A1 / RFC-0012 A7. V2 strengthens the finite parameters
+security/admission argument is Accepted with RFC-0010 A1 / RFC-0012 A7. V2 strengthens the finite parameters
 and bounds all seeds simultaneously in an ideal random-oracle experiment. The
 setup event is independent of any seed-selection algorithm, including quantum
 selection. This is not a concrete BLAKE3 guarantee or complete profile bound.
