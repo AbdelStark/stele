@@ -949,7 +949,9 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05-fidelity
   acceptance:
   - report published
   - PRD G7 pass or ADR with knob change
@@ -1735,7 +1737,7 @@ tasks:
   - RFC-0025 §7.1
   skill: soundness-auditor
   crate: stele-verifier
-  status: blocked(RFC-0012 A7; RFC-0013 A1)
+  status: blocked(RFC-0013 A1)
   acceptance:
   - Accepted complete Q12 query/FS/hash and Q29 privacy composition before profile admission; no placeholder theorem, adversarial query cap or MASK term
   - exact canonical ledger derived from complete independently expected plan, instance geometry, actual consumer schedule and permitted profile; every challenge/query/failed-attempt/lifetime obligation retained
