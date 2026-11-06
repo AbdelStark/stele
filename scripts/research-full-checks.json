@@ -253,5 +253,8 @@
   ],
   "r-bf16-full": [
     "uv run --locked --script research/r-bf16/check_reduction.py --full"
+  ],
+  "cqis-torch-parity": [
+    "uv run --locked --script harness/eval/check_cqis_torch.py 1000"
   ]
 }
