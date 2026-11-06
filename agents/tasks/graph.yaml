@@ -2322,7 +2322,9 @@ tasks:
   - RFC-0019 R-BF16
   skill: cqis-numerics
   crate: research
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E15-04-bf16-cost
   acceptance:
   - cost number and recommendation
 - id: E15-05
