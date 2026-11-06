@@ -744,3 +744,20 @@ residual/logit/cache bytes through an anonymous pipe without persisting those ro
 No core format, challenge, cut, online proof weight pass or measured cost constant
 changes. Full numerical execution contributes to witness construction T_witness;
 no performance claim follows. Status: Accepted.
+
+## ADR-059: Accept expander code identity and its separate setup event
+
+Context: E4-01 was blocked on Draft RFC-0010 A1 and its companion RFC-0012 A7,
+although A4/E4-08 had already fixed and delivered the deterministic v2 encoder.
+The owner directed autonomous resolution of blocking amendments; Workflow 02's
+review still applies (agents/reviews/code-a1-accepted.md).
+Decision: accept A1 and A7. Supported codes are exactly the Circle and v2
+expander identities with immutable distance/setup evidence IDs; the registry is a
+compiled two-entry catalog and the parameter resolver fails closed with
+`UnsupportedParameters` until A3 admits a proximity radius and query count and
+Q12 composes FS/H. The v2 setup event, at most 200431782/2^160 under an ideal
+random-oracle assumption on BLAKE3, is a separate ledger term that is never folded
+into query or hash terms. NC-0612 reserves identity/evidence substitution under
+the first expander PCS consumer. No profile, challenge, cost constant, committed
+intermediate or weight-pass change. Status: Accepted.
+

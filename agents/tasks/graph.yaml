@@ -615,15 +615,15 @@ tasks:
   rfc:
   - RFC-0010 §3
   - RFC-0010 A1
+  - RFC-0012 A7
   skill: pcs-engineer
   crate: stele-code
-  status: blocked(RFC-0010 A1)
-  agent: codex-root
-  branch: task/E4-01-merkle-oracle-contract
+  status: ready
   acceptance:
   - linearity tests
   - distance estimate script
   - adds/element ledger
+  - compiled two-entry registry and fail-closed parameter resolver (RFC-0010 A1 acceptance resolution)
 - id: E4-02
   epic: E4
   title: Circle-group RS encoder (circle FFT) for one-time weight commitments
@@ -659,6 +659,7 @@ tasks:
   branch: task/E4-03-field-wire-oracle
   acceptance:
   - NC-0600..0603
+  - NC-0612
   - ledger PCS line
   - proof size regression test
 - id: E4-03a

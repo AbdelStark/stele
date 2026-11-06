@@ -1,7 +1,7 @@
 # Candidate code identity, registry and common encoder API (Q23)
 
-Status: Draft, RFC-0010 A1. This closes candidate identity/parameter-selection
-semantics, not PCS proximity, profile admission or the production implementation.
+Status: Accepted with RFC-0010 A1 (see its acceptance resolution). This fixes
+identity/parameter-selection semantics, not PCS proximity or profile admission.
 The research entrypoint selects an actual map from its checked identity; it never
 accepts a raw graph, caller-supplied bound or alternative implementation.
 
@@ -56,12 +56,12 @@ for Circle does not mean zero twiddle, transform or allocation work.
 Evidence IDs in the research catalog map to these precise sources:
 
 - `rfc-0010-a2/root-bound-v1`: Accepted A2 and [circle-code.md](circle-code.md).
-- `rfc-0010-a1/finite-v2`: Draft A1 and [expander-sampling.md](expander-sampling.md)
+- `rfc-0010-a1/finite-v2`: Accepted A1 and [expander-sampling.md](expander-sampling.md)
   with the v2 schedule in [recursive-code.md](recursive-code.md).
-- `rfc-0012-a7/2^256-all-seeds-v2`: Draft A7 and [seeded-setup.md](seeded-setup.md).
+- `rfc-0012-a7/2^256-all-seeds-v2`: Accepted A7 and [seeded-setup.md](seeded-setup.md).
 
-The v2 evidence is a candidate, not an Accepted parameter set. On acceptance,
-these names must identify immutable versioned hypotheses/results; a change to
+These names identify immutable versioned hypotheses/results, not an admitted PCS
+parameter set; a change to
 those semantics requires a new evidence ID and explicit registry review.
 
 ## 3. Registry authority

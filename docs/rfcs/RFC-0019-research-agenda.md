@@ -360,6 +360,10 @@ prerequisite of E4-01; all original E4-01 criteria and its A1 block remain. Actu
 registry/source/PCS consumers, setup/proximity composition, profile admission and
 Q12 remain open. The existing research checks do not complete native parity,
 malformed/fault controls, compile-fail API checks or full cost/memory ledgers.
+Q23 resolution: RFC-0010 A1 and RFC-0012 A7 are Accepted
+([review](../../agents/reviews/code-a1-accepted.md)). Identities, distance/setup
+evidence IDs and the fail-closed registry are fixed; E4-01 is ready. Proximity and
+query policy for expander identities move to Q27 (A3); profile admission to Q12.
 
 Q28: which injective packing/layout and authenticated decomposition reconcile
 RFC-0010 §8, RFC-0007 §3/§5 and RFC-0008 §5? Four unrestricted int8/two int16
