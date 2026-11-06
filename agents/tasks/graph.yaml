@@ -618,7 +618,9 @@ tasks:
   - RFC-0012 A7
   skill: pcs-engineer
   crate: stele-code
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E4-01-registry
   acceptance:
   - linearity tests
   - distance estimate script
