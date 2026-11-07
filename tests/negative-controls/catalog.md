@@ -33,7 +33,7 @@
 | NC-0132 | grouped row partition | 0004 A15 | consume the first code of a group with the preceding group's scale | `GroupPartitionMismatch` | todo |
 | NC-0133 | grouped fold | 0004 A15 | change one fold F = s*abs(q) by one with digits recomposing the changed value | `FoldMismatch` | todo |
 | NC-0134 | grouped digits | 0004 A15, 0007 A6 | replace the gated fold X's digits by the in-range alias (124,0,0,-64) of X-p, or flip one fold sign bit | `FoldSignMismatch` | todo |
-| NC-0135 | grouped recombination | 0004 A15, 0007 A6 | replace one U_t by U_t + p, with valid bytes and the same residue, so the sign join balances at A' + p | `RecombinationMismatch` | todo |
+| NC-0135 | grouped recombination | 0004 A15, 0007 A6 | replace one U_t by U_t + p, with valid bytes and the same residue, so the sign join balances at A' + p; the top-byte cap must reject it | `AccumulatorRange` | todo |
 | NC-0136 | grouped policy | 0004 A15, 0025 A2 | prove one grouped row under group size g/2 while retaining the expected Model and Bounds | `GroupSizeMismatch` | todo |
 | NC-0200 | sumcheck engine | 0006 A1 | change one round evaluation | `RoundSumMismatch` | done |
 | NC-0201 | sumcheck engine | 0006 A1 | one final evaluation folded at another instance's challenge | `FinalEvaluationMismatch` | done |

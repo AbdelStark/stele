@@ -597,7 +597,7 @@ full authorized original bytes remain mandatory before E5-03c is complete.
 
 ### A2 — Grouped activation rows (companion of RFC-0004 A15)
 
-Status: Draft. Task E5-05d. The motivation, bounds, schemas 23-25, ledger and cost are in
+Status: Accepted. Task E5-05d. ADR-063. Review: [E5-05d sign-offs](../../agents/reviews/grouped-rows-a15.md). The motivation, bounds, schemas 23-25, ledger and cost are in
 RFC-0004 A15.
 
 Exact replacements, applying only to rows whose Policy has mode 2. All other rows and

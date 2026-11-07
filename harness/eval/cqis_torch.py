@@ -129,7 +129,6 @@ class Executor:
         self.ordered = False
         self.replay = True  # False: a rejection raises its unordered reason (sweeps only)
         self.rotation = {}
-        self.split = {}  # grouped weight slices per (name, layer, g), RFC-0004 A15
 
     # ---- Artifact decoding -------------------------------------------------
     def _matrix(self, r):
@@ -179,12 +178,11 @@ class Executor:
     def linear(self, name, layer, x, fraction):
         w, mantissas, exponent = self.weights[name, layer]
         if x.scale.dim() == 2:  # RFC-0004 A15: A' = sum_k s_k*(int8 dot of group k), exact in int64 (< 2^51)
-            g = x.codes.shape[1]//x.scale.shape[1]
-            key = (name, layer, g)
-            if self.split.get(key, (None,))[0] is not w:  # one contiguous slice per group, made once
-                self.split[key] = (w, [w[:, k*g:(k+1)*g].contiguous() for k in range(x.scale.shape[1])])
-            acc = sum(self._dot(x.codes[:, k*g:(k+1)*g], part)*x.scale[:, k, None]
-                      for k, part in enumerate(self.split[key][1]))
+            groups = x.scale.shape[1]; g = x.codes.shape[1]//groups
+            # [out, n/g, g] view of w, no copy. One dot per group: a single batched dot would hold
+            # an [n/g, T, out] int64 tensor (about 13 GB for the 8B down projection at T = 1024).
+            parts, codes = w.view(w.shape[0], groups, g), x.codes.reshape(x.codes.shape[0], groups, g)
+            acc = sum(self._dot(codes[:, k], parts[:, k])*x.scale[:, k, None] for k in range(groups))
             scale = torch.ones(acc.shape[0], dtype=I64, device=acc.device)
         else:
             acc = self._dot(x.codes, w)

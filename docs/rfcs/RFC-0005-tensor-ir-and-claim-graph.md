@@ -152,7 +152,7 @@ change) and the cost impact (the cut commit/opening message count doubles; cut s
 
 ### A7 — Group scales and digit rows (companion of RFC-0004 A15)
 
-Status: Draft. Task E5-05d.
+Status: Accepted. Task E5-05d. ADR-063. Review: [E5-05d sign-offs](../../agents/reviews/grouped-rows-a15.md).
 Exact addition to §4's captured `scales`: a grouped row (RFC-0004 A15, Policy mode 2) captures
 n/g group scales and n/g local attained-maximum indices j_k in [0,g-1] (global position
 k*g+j_k). Its digit rows b_t (t < T) and the T accumulators per projection output are virtual.
@@ -164,7 +164,7 @@ reduction with an RFC-0004 A15 control:
 - code ↔ the scale of floor(i/g) (NC-0132);
 - fold F ↔ s*|q| (NC-0133);
 - digits ↔ signed fold, joined over Z in byte columns with exact digit ranges (NC-0134);
-- bounded digit-row accumulators (U_t + W_t = 2*cmax_t) ↔ signed A' recombination over Z (NC-0135);
+- digit-row accumulators in the window U_t < 2^29 ↔ signed A' recombination over Z (NC-0135);
 - group size ↔ Model Policy (NC-0136).
 
 The digit-row matmul is the existing matmul edge with the digit index in the row index

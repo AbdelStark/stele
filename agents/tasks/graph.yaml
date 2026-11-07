@@ -1011,7 +1011,7 @@ tasks:
   - RFC-0021
   skill: cqis-numerics
   crate: harness
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E5-05d-grouped-rows
   acceptance:

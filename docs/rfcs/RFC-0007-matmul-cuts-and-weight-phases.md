@@ -179,7 +179,7 @@ change) and the cost impact (the cut commit/opening message count doubles; cut s
 
 ### A6 — Digit rows of grouped inputs (companion of RFC-0004 A15)
 
-Status: Draft. Task E5-05d.
+Status: Accepted. Task E5-05d. ADR-063. Review: [E5-05d sign-offs](../../agents/reviews/grouped-rows-a15.md).
 Exact addition to §1/§5: when a projection's input row is grouped (RFC-0004 A15), X is the
 virtual signed digit tensor X[l,(t,i),k] = b_t of s_(floor(k/g))*q_(l,i,k). Here t < T, with
 T = 2 for int16 rows and 4 for the gated row, and the digit index t extends the row index i.
@@ -196,7 +196,7 @@ Step 1's A side costs T*n*d_in MACs per layer and type instead of n*d_in.
   sum_t eq(r_t, t)*X̃_t(r_i, r_k). Schema 23's consumer receives them through the RLC batch of
   RFC-0005 §3.
 - Each C_t is a virtual signed field value with |C_t| <= cmax_t. It is not an RFC-0023
-  advice source. The consuming Requant bounds U_t = C_t+cmax_t by its W_t join and recombines
+  advice source. The consuming Requant bounds U_t = C_t+cmax_t below 2^29 and recombines
   A' = sum_t 256^t*C_t in byte columns with its sign (schemas 24/25).
 
 Ungrouped inputs are unchanged. Ledger and cost impact are in RFC-0004 A15: the stacked

@@ -337,3 +337,89 @@ to [out, n/g, g] once at load.
 
 **Second verdict: accept after fixes.** B3 must be fixed and re-checked. Everything else
 is resolved.
+
+## Third review (f7c8795)
+
+Scope: B3 and N8. The same independent reviewer re-reviewed the change without relying on
+the author's summary.
+
+**Reruns.**
+- `check_grouped_rows.py` passes: affine records 54282 B, below the quoted 54 KiB.
+- `check_cqis_torch.py 200` passes: reason_mismatch 0.
+- Every pre-existing `check_ci.py` line is still byte-identical to `origin/main`.
+
+### B3: resolved
+
+The relations enforce 0 <= U_t <= 2*cmax_t over Z without any other check.
+- **The argument.** U_t and W_t are integers in [0, 2^32), because each has canonical
+  bytes. The byte column U_t + W_t = 2*cmax_t holds over Z: its sides are at most 511, far
+  below p/2, recomputed with my own RFC-0022 §2.1 implementation. So U_t = 2*cmax_t - W_t
+  <= 2*cmax_t <= 532676608.
+- **Aliases tried.**
+  - U_t + p, U_t + 2p and U_t - p for 200,000 random C_t in [-cmax, cmax] at
+    inner = 16384: every one forces W_t < 0 or W_t >= 2^32.
+  - W_t at the byte extremes (0, 1, 255, 2^31, 2^32-1): only W_t <= 2*cmax_t yields a
+    valid U_t.
+- **Interaction with V >= amax.** It is unaffected. With U_t pinned, the sign join fixes
+  A' = sum_t 256^t*C_t exactly, and |A'| <= amax <= V.
+- **The C_t binding.** The digit-row sumcheck binds the field value C_t to sum_i b_t,i*w_i
+  mod p, under the existing per-round loss. The digits are bound to [-128,128] by B1's
+  joins and the weights to their format. So the integer sum satisfies
+  |C_t| <= cmax_t <= 266338304 < p/2.
+  - The residue therefore names exactly one integer in [-cmax_t, cmax_t]. Together with
+    U_t in [0, 2*cmax_t] (window width < p), U_t = C_t + cmax_t holds over Z.
+  - The author is right that a flipped C_t with a recomputed |A'| balances the join. That
+    forgery is rejected only by the matmul claim, which is sound for the reason above.
+  - The check now models the consumer exactly as the spec states it: bytes in
+    [0, 2^32), with no hidden u <= 2m. The U_0 + p alias passes without W and fails
+    with it.
+- **NC-0135** now targets this exact forgery.
+
+### S8 (should-fix, new): a cheaper bound that is clearly sound
+
+The bound only needs U_t to lie in a window of width < p that contains [0, 2*cmax_t]. It
+does not need the exact cap 2*cmax_t.
+
+- **The alternative.** Since 2*cmax_t <= 532676608 < 2^29, drop W_t.
+  - Keep U_t's four range_8 bytes, and add one range_8 membership on 31 - u_3, where u_3
+    is the top byte. Both checks are needed: u_3 in range_8 and 31 - u_3 in range_8.
+  - Then U_t < 2^29 < p. Any U_t' = U_t + kp with k != 0 leaves [0, 2^29), which I checked
+    for 200,000 random C_t. So U_t = C_t + cmax_t holds over Z by the same uniqueness
+    argument.
+  - Role 1's operand bound becomes 2^29-1. The caps (255,255,255,31) span a full binary
+    width, so they do establish that whole-value bound, unlike RFC-0022 §2.1's (255,1)
+    example. The T U_t+W_t roles disappear.
+- **Exact numbers** (Llama-3.1-8B, g = 128, the author's counting convention):
+
+  | Item | W join (as written) | Top-byte cap (S8) |
+  |---|---|---|
+  | Accumulator memberships per token and layer | 581,632 | 204,800 + 94,208 = 299,008 |
+  | Head memberships per token | 1,551,360 | 781,824 |
+  | N_act estimate | 541,400 (6.01x, T_act ~5.4 s) | 388,064 (4.31x, T_act ~3.9 s) |
+
+  The schema 24/25 records also shrink by T roles.
+- **Fix.** Replace the W_t join with the top-byte cap, and state the window argument (the
+  matmul binding plus U_t < 2^29 < p). Update the costs, the record bound, NC-0135's
+  expected rejection point and the check's consumer model. Alternatively, keep W_t and
+  record in A15 why the costlier form was chosen.
+
+### N8: resolved, with nit N9
+
+Slices are cached per (name, layer, g), with an identity check on w. The cache holds a
+second full copy of every projection fed by a grouped row, about 7.5 GB of int8 on
+Llama-3.1-8B.
+
+- **N9 (nit), cqis_torch.py:183.** Prefer a [out, n/g, g] view of w and a batched dot,
+  or note the memory in REPORT.md for the E5-05e run.
+
+| Finding | Status |
+|---|---|
+| B3 | Resolved |
+| N8 | Resolved |
+| S8 | Should-fix (new) |
+| N9 | Nit (new) |
+| B1, S1-S7, N1-N7 | Unchanged since the second review, resolved |
+
+**Third verdict: accept after fixes.** No soundness finding remains open. S8 is cost
+only, and the W_t form is sound as written. Apply S8, or record why W_t was kept; either
+is enough to accept without another soundness review.

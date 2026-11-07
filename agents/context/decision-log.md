@@ -834,3 +834,47 @@ Decision:
   E5-05d measures it.
 
 No specification, challenge, loss or measured constant changes. Status: Accepted.
+
+## ADR-063: Accept grouped activation rows (RFC-0004 A15, RFC-0005 A7, RFC-0007 A6, RFC-0025 A2)
+
+Context: ADR-062 attributed about 1.8 of Llama-3.1-8B's +2.90% perplexity gap to per-token
+int8 activation rows. E5-05d drafted per-group activation scales. Review record (three
+independent passes, blocking findings B1-B3 resolved):
+[grouped-rows-a15](../reviews/grouped-rows-a15.md).
+
+Decision:
+- **Encoding.** Policy mode 2, `u8(2) || u32(g)`, gives one dynamic scale per g consecutive
+  features: g is a power of two, g < n and g divides n. It is admitted only on the four
+  affine-input rows (first norm output, attention row, second norm output, FFN row) and
+  Policy(final). Modes 0/1 keep their bytes, so every existing Model keeps its identity.
+  g = n rejects, so each conversion has one encoding.
+- **Semantics.** Each group is today's dynamic conversion, s_k = ceil(max|X|/127).
+  A' = sum_i s_k(i)*q_i*w_i, then the same single rounding. |A'| <= inner*X*qw < 2^51, equal
+  to schema 1's accumulator*scale at the dynamic maximum.
+- **Proof form.** Folded values s*q are written as T signed radix-256 digits (T = 2 for
+  int16 rows with last digit within 128, T = 4 for the gated row within 64). Each digit row
+  is an ordinary field matmul with 8*inner*128*qw < p (2130706432 < p at inner 16384); the
+  digit index extends the row index, so the weight pass is unchanged. Folding without
+  digits is faithful only for inner <= 257, and per-group partial sums would need 1,703,936
+  accumulators per token and layer on 8B instead of 51,200 extra.
+- **Joins over Z.** All in byte columns, never one field equality:
+  - fold sign: sum_t 256^t*o_t + 2*sigma*F = c + F, which rejects the gated X-p alias;
+  - accumulator window: U_t = C_t+cmax_t < 2^29 < p (four bytes plus a top-byte cap 31-u_3);
+  - recombination sign: sum_t 256^t*U_t + 2*tau*|A'| = V + |A'|.
+- **Records.** Schema 23 (grouped row, below 27 KiB), 24/25 (grouped affine, int16/int24
+  output, below 48 KiB). Slot order and count of the Bounds collection are unchanged.
+- **Cost.** Llama-3.1-8B, g = 128, all four rows and the head grouped, per token and layer:
+  +51,200 accumulators, 26,624 folds, 108,544 digit and 299,008 accumulator memberships.
+  The estimate (two memberships per N_act element) is N_act about 388,064 (4.3x), T_act
+  0.9 s to about 3.9 s. T_weights, the weight pass count, T_attn and the cuts are unchanged.
+  No challenge, loss, profile or measured constant changes.
+- **Narrowing of ADR-062.** ADR-062 put Q/K/V cache rows in scope. They are deferred: no
+  measurement attributes gain to them, and they feed the score/weighted/cache relations, not
+  an affine. Mode 2 on Q/K/V is reserved (it rejects). Task E5-05g owns them if E5-05e
+  leaves a G7 gap. ADR-062's "g-many scale lookups per row" is corrected to n/g group
+  scales per row.
+- **Controls.** NC-0131..0136 are reserved as todo for the actual consumers.
+- **Tasks.** E5-05d done (amendments, research reference, torch executor parity).
+  E5-05e measures G7; E5-05f adds native support; E5-05g covers Q/K/V.
+
+Status: Accepted.
