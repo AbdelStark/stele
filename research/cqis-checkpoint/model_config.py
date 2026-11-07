@@ -70,7 +70,8 @@ class Block:
     gated: tuple
 
     def __post_init__(self):
-        require(type(self.norm1) is m.b.norm.Parameters and type(self.norm2) is m.b.norm.Parameters,'Norm')
+        require(type(self.norm1) is m.b.norm.Parameters and type(self.norm2) is m.b.norm.Parameters
+                and self.norm1.version==self.norm2.version==1,'Norm')  # q26 frames carry no norm version
         d=self.norm1.d; require(self.norm2.d==d,'Shape')
         for s,n in ((self.gain1,self.norm1),(self.gain2,self.norm2)): record(s,(d,),(16,),n.G)
         require(type(self.projection) is Projection,'Config'); p=self.projection
@@ -105,7 +106,7 @@ class Config:
         if self.head is not None: record(self.head,(vocab,d),(4,8),0)
         require(type(self.blocks) is tuple and 1<=len(self.blocks)<=128 and all(type(b) is Block for b in self.blocks),'Blocks')
         require(all(b.norm1.d==d for b in self.blocks),'Shape')
-        require(type(self.final_norm) is m.b.norm.Parameters and self.final_norm.d==d,'Shape')
+        require(type(self.final_norm) is m.b.norm.Parameters and self.final_norm.d==d and self.final_norm.version==1,'Shape')
         require(all(l.fout==v.norm1.F for l,v in zip(self.blocks,self.blocks[1:])) and self.blocks[-1].fout==self.final_norm.F,'Units')
         require(all(b.projection.rotation is None or b.projection.rotation.length==self.length for b in self.blocks),'Length')
         record(self.gain,(d,),(16,),self.final_norm.G); policy(self.policy); a.integer(self.logits_fraction,0,30,'Units')

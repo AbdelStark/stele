@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-MANIFEST = '6636c4e707e8d4c1e7f95e2abd90ee9e289a7d065e3593430b2f9755f9722573'
+MANIFEST = '83bdafdeb83dbf9c0f4fea6755d6f5f8f9bec942bbbaa5c85044b31549ab8eaf'
 ARCHIVE = '204cb6df7bec005aaa2b0d20802d98a66ef0f5937ed928297a4bd63a532cfaf2'
 RECEIPT = ('integer linear corpus: 28 native complete proofs, 270 closed requests; QM31/OM31; '
            'frozen independent bytes, imports, records, usage and continuation; SHA256 '+ARCHIVE)
