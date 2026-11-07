@@ -1,5 +1,5 @@
 //! RFC-0025 §2.1–2.5/execution: immutable checked physical bytes and exact projections.
-use super::{reserved, wide, Error};
+use super::{reserved, signed, wide, Error};
 use crate::{
     functions::Representation,
     model::{Artifact, ArtifactLayout, Model, Preparation, Role, Scales},
@@ -84,6 +84,14 @@ impl<'a> Data<'a> {
             }
         }
     }
+    /// Residual-stream width: 24 for a wide Model (RFC-0004 A14), else 16.
+    pub(super) fn width(&self) -> u32 {
+        if self.model.wide() {
+            24
+        } else {
+            16
+        }
+    }
     pub(super) fn linear(
         &self,
         role: Role,
@@ -91,6 +99,27 @@ impl<'a> Data<'a> {
         row: &QuantisedRow,
         fraction: u8,
     ) -> Result<Vec<i16>, Error> {
+        self.affine(role, layer, row, fraction, wide)
+    }
+    /// O/down projections feed a residual; their outputs take the stream width.
+    pub(super) fn linear_residual(
+        &self,
+        role: Role,
+        layer: Option<u16>,
+        row: &QuantisedRow,
+        fraction: u8,
+    ) -> Result<Vec<i32>, Error> {
+        let bits = self.width();
+        self.affine(role, layer, row, fraction, |v| signed(v, bits))
+    }
+    fn affine<T>(
+        &self,
+        role: Role,
+        layer: Option<u16>,
+        row: &QuantisedRow,
+        fraction: u8,
+        output: impl Fn(i64) -> Result<T, Error>,
+    ) -> Result<Vec<T>, Error> {
         let ordinal = self.ordinal(role, layer)?;
         let r = &self.records[ordinal];
         if row.codes().len() != r.columns {
@@ -137,7 +166,7 @@ impl<'a> Data<'a> {
             let product =
                 i128::from(dot) * i128::from(scale.mantissas()[j]) * i128::from(row.scale());
             let b = bias.map_or(0, |i| self.code(i, j));
-            out.push(wide(numerics::scaled_sum(
+            out.push(output(numerics::scaled_sum(
                 product,
                 shift,
                 i128::from(b),
@@ -183,7 +212,7 @@ impl<'a> Data<'a> {
     pub(super) fn normalize(
         &self,
         r: &Representation,
-        values: &[i16],
+        values: &[i32],
         role: Role,
         layer: Option<u16>,
     ) -> Result<Vec<i16>, Error> {
@@ -193,8 +222,13 @@ impl<'a> Data<'a> {
             gains.push(self.code(gain, j));
         }
         if self.model.shape().family() == 1 {
-            let norm = r.function().evaluate_rmsnorm(values, &gains)?;
+            let norm = r.function().evaluate_rmsnorm_wide(values, &gains)?;
             return super::copy(norm.outputs());
+        }
+        // GPT-2 has no wide form: its residual stream is int16 throughout.
+        let mut narrow = reserved(values.len())?;
+        for v in values {
+            narrow.push(wide(i64::from(*v))?);
         }
         let bias = self.ordinal(
             match role {
@@ -209,6 +243,6 @@ impl<'a> Data<'a> {
         for j in 0..values.len() {
             biases.push(self.code(bias, j));
         }
-        Ok(r.function().evaluate_layernorm(values, &gains, &biases)?)
+        Ok(r.function().evaluate_layernorm(&narrow, &gains, &biases)?)
     }
 }

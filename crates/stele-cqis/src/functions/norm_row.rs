@@ -1,4 +1,4 @@
-//! RFC-0021 §2.3: exact RMSNorm row generation, without proof/certificate admission.
+//! RFC-0021 §2.3 and A4: exact RMSNorm row generation, without proof/certificate admission.
 use super::{Descriptor, Kind};
 use alloc::vec::Vec;
 
@@ -9,6 +9,8 @@ pub enum NormError {
     Function,
     /// Input/gain lengths differ from the descriptor's dimension.
     Shape,
+    /// An input lies outside the version's signed int16 (1) or int24 (2) domain.
+    Domain,
     /// The owned output allocation cannot be satisfied.
     Capacity,
     /// An exact arithmetic invariant failed; no wrapping or guessed result.
@@ -52,7 +54,7 @@ impl NormEvaluation {
     pub fn normalized_ratio(&self) -> (u128, u128, u128) {
         self.normalized
     }
-    /// Unique a with 16384<=q/4^a<65536.
+    /// Unique a with 16384<=q/4^a<65536; at most 9 (version 1) or 16 (version 2).
     pub fn exponent(&self) -> i8 {
         self.exponent
     }
@@ -85,8 +87,18 @@ fn scaled(n: u128, p: u128, a: i32) -> Result<(u128, u128), NormError> {
     }
 }
 
-fn output(product: i64, shift: i32) -> Result<i16, NormError> {
-    if product.unsigned_abs() > 1 << 44 || !(-16..=90).contains(&shift) {
+/// RFC-0021 §2.3/A4 per version: input magnitude bound, largest a, largest shift, largest |X*H*J|.
+fn limits(version: u32) -> (i64, i32, i32, u64) {
+    if version == 2 {
+        (1 << 23, 16, 97, 1 << 52)
+    } else {
+        (1 << 15, 9, 90, 1 << 44)
+    }
+}
+
+fn output(product: i64, shift: i32, version: u32) -> Result<i16, NormError> {
+    let (_, _, highest, largest) = limits(version);
+    if product.unsigned_abs() > largest || !(-16..=highest).contains(&shift) {
         return Err(NormError::Arithmetic);
     }
     let magnitude = u128::from(product.unsigned_abs());
@@ -120,6 +132,22 @@ impl Descriptor {
         input: &[i16],
         gain: &[i16],
     ) -> Result<NormEvaluation, NormError> {
+        self.rmsnorm_row(input, gain)
+    }
+    /// As `evaluate_rmsnorm`, for an int24 input row (RFC-0021 A4). Version 1
+    /// rejects any input outside int16, version 2 any input outside int24.
+    pub fn evaluate_rmsnorm_wide(
+        &self,
+        input: &[i32],
+        gain: &[i16],
+    ) -> Result<NormEvaluation, NormError> {
+        self.rmsnorm_row(input, gain)
+    }
+    fn rmsnorm_row<X: Copy + Into<i64>>(
+        &self,
+        input: &[X],
+        gain: &[i16],
+    ) -> Result<NormEvaluation, NormError> {
         if self.kind != Kind::Norm {
             return Err(NormError::Function);
         }
@@ -128,11 +156,19 @@ impl Descriptor {
         if input.len() != usize::from(d) || gain.len() != input.len() {
             return Err(NormError::Shape);
         }
+        let version = self.version();
+        let (bound, highest_a, _, _) = limits(version);
+        if input
+            .iter()
+            .any(|x| !(-bound..bound).contains(&(*x).into()))
+        {
+            return Err(NormError::Domain);
+        }
         let en = u128::from(u32::from_le_bytes([p[5], p[6], p[7], p[8]]));
         let ed = u128::from(u32::from_le_bytes([p[9], p[10], p[11], p[12]]));
         let mut statistic = 0u64;
         for x in input {
-            let magnitude = u64::from(x.unsigned_abs());
+            let magnitude = (*x).into().unsigned_abs();
             statistic = statistic
                 .checked_add(magnitude * magnitude)
                 .ok_or(NormError::Arithmetic)?;
@@ -146,9 +182,9 @@ impl Descriptor {
                     .and_then(|epsilon| s.checked_add(epsilon))
             })
             .ok_or(NormError::Arithmetic)?;
-        // Checked metadata gives N>0,P>0,N<2^107,P<2^106. For the initial
-        // a=floor((bitlen(N)-bitlen(P)-14)/2), 2^13<A/D<2^16.
-        // If a<0, A<2^16*P<2^122; otherwise A=N<2^107, D<2^124.
+        // Checked metadata gives N>0,P>0,N<2^107,P<2^106 (version 2: S<=2^59,
+        // N<2^106, P<2^105). For the initial a=floor((bitlen(N)-bitlen(P)-14)/2),
+        // 2^13<A/D<2^16. If a<0, A<2^16*P<2^122; otherwise A=N<2^107, D<A/2^13.
         // A correction multiplies A/D by four only when A/D<2^14, preserving
         // A<2^16*P in the negative-a case. Hence exact u128 is sufficient.
         if numerator == 0 || denominator == 0 {
@@ -162,7 +198,7 @@ impl Descriptor {
             (scaled_n, scaled_d) = scaled(numerator, denominator, a)?;
         }
         let m = scaled_n / scaled_d;
-        if !(-23..=9).contains(&a) || !(16384..65536).contains(&m) {
+        if !(-23..=highest_a).contains(&a) || !(16384..65536).contains(&m) {
             return Err(NormError::Arithmetic);
         }
         let mantissa = u16::try_from(m).map_err(|_| NormError::Arithmetic)?;
@@ -173,8 +209,9 @@ impl Descriptor {
         let shift = i32::from(p[2]) + i32::from(p[3]) + 21 + a - i32::from(p[4]);
         let mut outputs = reserved(input.len())?;
         for (x, h) in input.iter().zip(gain) {
-            let product = i64::from(*x) * i64::from(*h) * i64::from(reciprocal);
-            outputs.push(output(product, shift)?);
+            // |X|<=2^23, |H|<=2^15, J<=2^14: |product|<=2^52 fits i64.
+            let product = (*x).into() * i64::from(*h) * i64::from(reciprocal);
+            outputs.push(output(product, shift, version)?);
         }
         Ok(NormEvaluation {
             outputs,
@@ -195,11 +232,15 @@ mod tests {
     #[test]
     fn accepts_signed_ties_negative_shifts_and_rejects_capacity_overflow() {
         for (x, e, y) in [(-3, 1, -2), (3, 1, 2), (-3, -1, -6), (3, -1, 6), (1, 90, 0)] {
-            assert_eq!(output(x, e), Ok(y));
+            assert_eq!(output(x, e, 1), Ok(y));
         }
+        assert_eq!(output(1, 91, 1), Err(NormError::Arithmetic));
+        assert_eq!(output(1 << 52, 97, 2), Ok(0));
+        assert_eq!(output((1 << 44) + 1, 0, 1), Err(NormError::Arithmetic));
+        assert_eq!(output((1 << 52) + 1, 0, 2), Err(NormError::Arithmetic));
         assert_eq!(reserved(usize::MAX), Err(NormError::Capacity));
         assert_eq!(times_power(1 << 127, 1), Err(NormError::Arithmetic));
         assert_eq!(times_power(1, 128), Err(NormError::Arithmetic));
-        assert_eq!(output(1 << 44, -16), Err(NormError::Overflow));
+        assert_eq!(output(1 << 44, -16, 1), Err(NormError::Overflow));
     }
 }

@@ -56,7 +56,8 @@ fn matches_reference_full_rows_and_every_cached_step() {
             .iter()
             .flatten()
             .flatten()
-            .flat_map(|v| v.to_le_bytes())
+            // Version-1 Models keep an int16 residual stream (RFC-0004 A14).
+            .flat_map(|v| i16::try_from(*v).expect("narrow cut").to_le_bytes())
             .collect();
         let logits: Vec<_> = full
             .logits()

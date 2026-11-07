@@ -52,6 +52,8 @@ pub enum Error {
     Function(functions::Error),
     /// Wrong normalization kind or dimension.
     Norm,
+    /// Norm selections mix rmsnorm_q versions 1 and 2 (RFC-0004 A14).
+    Width,
     /// A gain/bias fraction differs from its consuming normalization function.
     NormSource,
     /// Unsupported or inconsistent numerical units.
@@ -267,6 +269,15 @@ impl Model {
         }
         let final_norm = block::selection(&mut r)?;
         block::norm(&final_norm, shape, current)?;
+        // RFC-0004 A14: one norm version for the whole Model selects its residual width.
+        let version = final_norm.function().version();
+        if blocks.iter().any(|b| {
+            [b.first_norm(), b.second_norm()]
+                .iter()
+                .any(|n| n.function().version() != version)
+        }) {
+            return Err(Error::Width);
+        }
         let final_policy = Policy::read(&mut r, false)?;
         let logits_fraction = block::fraction(&mut r)?;
         let decoding = Decoding::read(r.blob(345)?)?;
@@ -398,6 +409,11 @@ impl Model {
     /// Final normalization selection.
     pub fn final_norm(&self) -> &Representation {
         &self.final_norm
+    }
+    /// RFC-0004 A14: every norm is rmsnorm_q version 2, so O/down outputs, the
+    /// middle residual and R_1..R_L are int24. R_0 and all other values keep widths.
+    pub fn wide(&self) -> bool {
+        self.final_norm.function().version() == 2
     }
     /// Whole-row final conversion policy.
     pub fn final_policy(&self) -> Policy {

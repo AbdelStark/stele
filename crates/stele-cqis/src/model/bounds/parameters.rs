@@ -79,12 +79,20 @@ impl Context<'_> {
         } else {
             None
         };
-        Ok(Record::affine(Affine {
+        let affine = Affine {
             source,
             weight: self.weight(physical)?,
             output_fraction: output,
             bias_fraction,
-        })?)
+        };
+        // RFC-0004 A14: a wide Model's O/down outputs are int24 (schema 21).
+        Ok(
+            if self.model.wide() && matches!(role, Role::Output | Role::Down) {
+                Record::wide_affine(affine)?
+            } else {
+                Record::affine(affine)?
+            },
+        )
     }
 }
 

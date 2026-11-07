@@ -121,8 +121,15 @@ fn accepts_every_closed_function_and_derives_canonical_components() {
         );
         assert!(!identities.contains(&f.identity().expect("id")));
         identities.push(f.identity().expect("id"));
-        assert_eq!(Descriptor::new(name, 2, p), Err(Error::Version));
-        assert_eq!(Descriptor::new(name, 2, &[255; 14]), Err(Error::Version));
+        // RFC-0021 A4: only rmsnorm_q has a version 2, and it admits d <= 8192 only.
+        let v2 = if name == "rmsnorm_q" {
+            Error::Parameters
+        } else {
+            Error::Version
+        };
+        assert_eq!(Descriptor::new(name, 2, p), Err(v2));
+        assert_eq!(Descriptor::new(name, 2, &[255; 14]), Err(v2));
+        assert_eq!(Descriptor::new(name, 3, p), Err(Error::Version));
         for wrong in 0..=4 {
             if wrong != mode && !(name == "exp_q/nearest" && wrong == 2) {
                 assert_eq!(

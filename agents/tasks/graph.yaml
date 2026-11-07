@@ -980,7 +980,9 @@ tasks:
   - RFC-0021 A4
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E5-05c-native-wide
   acceptance:
   - native FunctionId/Registry/Model/Bounds admit rmsnorm_q version 2 and schemas 20/21/22 with byte parity to the research reference
   - native executor runs wide models with full/step/cache parity to research model_execution and harness/eval/cqis_torch.py

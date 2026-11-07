@@ -1,5 +1,5 @@
 //! RFC-0025 §2.5–2.6: complete block order and atomic immutable full-prefix caches.
-use super::{copy, reserved, wide, Error, Executor};
+use super::{copy, reserved, signed, wide, Error, Executor};
 use crate::{model::Role, numerics, row::QuantisedRow};
 use alloc::vec::Vec;
 
@@ -28,7 +28,7 @@ impl Cache {
 /// Complete causal result; every original position and configured layer is present.
 #[derive(Debug)]
 pub struct Full {
-    cuts: Vec<Vec<Vec<i16>>>,
+    cuts: Vec<Vec<Vec<i32>>>,
     logits: Vec<Vec<i16>>,
     cache: Cache,
 }
@@ -37,7 +37,8 @@ impl Full {
         self.cache
     }
     /// Initial embedding residual, then each complete layer output; cut/position/lane.
-    pub fn cuts(&self) -> &[Vec<Vec<i16>>] {
+    /// R_0 is int16; R_1..R_L are int24 in a wide Model (RFC-0004 A14), else int16.
+    pub fn cuts(&self) -> &[Vec<Vec<i32>>] {
         &self.cuts
     }
     /// Complete vocabulary outputs in original position order.
@@ -52,12 +53,12 @@ impl Full {
 /// One successful appended position, including all residual cuts and the full head.
 #[derive(Debug)]
 pub struct Step {
-    cuts: Vec<Vec<i16>>,
+    cuts: Vec<Vec<i32>>,
     logits: Vec<i16>,
 }
 impl Step {
     /// Initial residual followed by every layer output for the appended position.
-    pub fn cuts(&self) -> &[Vec<i16>] {
+    pub fn cuts(&self) -> &[Vec<i32>] {
         &self.cuts
     }
     /// Complete vocabulary output at the appended absolute position.
@@ -66,27 +67,44 @@ impl Step {
     }
 }
 
-fn residual(left: &[i16], fx: u8, right: &[i16], fy: u8, fo: u8) -> Result<Vec<i16>, Error> {
+fn residual(
+    left: &[i32],
+    fx: u8,
+    right: &[i32],
+    fy: u8,
+    fo: u8,
+    bits: u32,
+) -> Result<Vec<i32>, Error> {
     if left.len() != right.len() {
         return Err(Error::Arithmetic);
     }
     let mut out = reserved(left.len())?;
     for (x, y) in left.iter().zip(right) {
-        out.push(wide(numerics::scaled_sum(
-            i128::from(*x),
-            i32::from(fo) - i32::from(fx),
-            i128::from(*y),
-            i32::from(fo) - i32::from(fy),
-            1,
-        )?)?);
+        out.push(signed(
+            numerics::scaled_sum(
+                i128::from(*x),
+                i32::from(fo) - i32::from(fx),
+                i128::from(*y),
+                i32::from(fo) - i32::from(fy),
+                1,
+            )?,
+            bits,
+        )?);
     }
     Ok(out)
 }
 impl Executor<'_> {
+    /// R_0 stays int16 even in a wide Model; it is carried as an in-range int24 row.
+    fn embed(&self, token: u32, position: usize) -> Result<Vec<i32>, Error> {
+        let row = self.data.embed(token, position)?;
+        let mut out = reserved(row.len())?;
+        out.extend(row.into_iter().map(i32::from));
+        Ok(out)
+    }
     fn project(
         &mut self,
         layer: usize,
-        values: &[i16],
+        values: &[i32],
         position: usize,
     ) -> Result<(QuantisedRow, (QuantisedRow, QuantisedRow)), Error> {
         let b = self.data.model.blocks()[layer].clone();
@@ -118,24 +136,25 @@ impl Executor<'_> {
     fn finish_block(
         &mut self,
         layer: usize,
-        values: &[i16],
+        values: &[i32],
         position: usize,
         q: &QuantisedRow,
         keys: &[(QuantisedRow, QuantisedRow)],
-    ) -> Result<Vec<i16>, Error> {
+    ) -> Result<Vec<i32>, Error> {
         let b = self.data.model.blocks()[layer].clone();
         let f = b.projection_fractions();
         let attention = self.attend(layer, q, position, keys)?;
         let input = self.quantisers[layer][4].convert_wide(&attention)?;
         let o = self
             .data
-            .linear(Role::Output, Some(layer as u16), &input, f[3])?;
+            .linear_residual(Role::Output, Some(layer as u16), &input, f[3])?;
         let incoming = if layer == 0 {
             self.data.model.initial_fraction()
         } else {
             self.data.model.blocks()[layer - 1].output_fraction()
         };
-        let mid = residual(values, incoming, &o, f[3], b.mid_fraction())?;
+        let bits = self.data.width();
+        let mid = residual(values, incoming, &o, f[3], b.mid_fraction(), bits)?;
         let norm =
             self.data
                 .normalize(b.second_norm(), &mid, Role::SecondGain, Some(layer as u16))?;
@@ -169,10 +188,10 @@ impl Executor<'_> {
         let df = *f.last().ok_or(Error::Arithmetic)?;
         let down = self
             .data
-            .linear(Role::Down, Some(layer as u16), &down_input, df)?;
-        residual(&mid, b.mid_fraction(), &down, df, b.output_fraction())
+            .linear_residual(Role::Down, Some(layer as u16), &down_input, df)?;
+        residual(&mid, b.mid_fraction(), &down, df, b.output_fraction(), bits)
     }
-    fn finish(&self, values: &[i16]) -> Result<Vec<i16>, Error> {
+    fn finish(&self, values: &[i32]) -> Result<Vec<i16>, Error> {
         let norm =
             self.data
                 .normalize(self.data.model.final_norm(), values, Role::FinalGain, None)?;
@@ -186,7 +205,7 @@ impl Executor<'_> {
         self.tokens(tokens)?;
         let mut initial = reserved(tokens.len())?;
         for (position, token) in tokens.iter().enumerate() {
-            initial.push(self.data.embed(*token, position)?);
+            initial.push(self.embed(*token, position)?);
         }
         let mut cuts = reserved(self.data.model.blocks().len() + 1)?;
         cuts.push(initial);
@@ -285,7 +304,7 @@ impl Executor<'_> {
         }
         tokens.push(token);
         let mut cuts = reserved(self.data.model.blocks().len() + 1)?;
-        cuts.push(self.data.embed(token, position)?);
+        cuts.push(self.embed(token, position)?);
         let mut layers = reserved(self.data.model.blocks().len())?;
         for layer in 0..self.data.model.blocks().len() {
             let (q, kv) = self.project(layer, &cuts[layer], position)?;

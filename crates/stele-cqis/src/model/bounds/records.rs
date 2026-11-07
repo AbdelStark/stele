@@ -38,6 +38,14 @@ pub(super) fn records(
         context: s.context(),
     };
     let kv_width = s.groups().checked_mul(s.head_width()).ok_or(Error::Shape)?;
+    // RFC-0004 A14: a wide Model aligns both residuals in int24 (schema 22).
+    let residual = |p| {
+        if m.wide() {
+            Record::wide_residual(p)
+        } else {
+            Record::residual(p)
+        }
+    };
     let mut incoming = m.initial_fraction();
     for (layer, b) in m.blocks().iter().enumerate() {
         let layer = Some(u16::try_from(layer).map_err(|_| Error::Capacity)?);
@@ -104,7 +112,7 @@ pub(super) fn records(
         let attention = row(s.width(), 0, b.attention_fraction(), p[4]);
         emit(Record::row(attention)?)?;
         emit(c.project(Role::Output, layer, attention, f[3])?)?;
-        emit(Record::residual(Residual {
+        emit(residual(Residual {
             dimension: s.width(),
             input_fractions: [incoming, f[3]],
             output_fraction: b.mid_fraction(),
@@ -147,7 +155,7 @@ pub(super) fn records(
         emit(Record::row(ffn)?)?;
         let down_fraction = *f.last().ok_or(Error::Units)?;
         emit(c.project(Role::Down, layer, ffn, down_fraction)?)?;
-        emit(Record::residual(Residual {
+        emit(residual(Residual {
             dimension: s.width(),
             input_fractions: [b.mid_fraction(), down_fraction],
             output_fraction: b.output_fraction(),
