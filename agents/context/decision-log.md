@@ -785,3 +785,29 @@ cost-model terms (DPA lookups or wider limbs). Native, statement and prover supp
 follow that amendment. No protocol, soundness, cost constant or Artifact byte changes
 here. The E5-04 runtime and ADR-058 stay as recorded. GPQA-Diamond was inaccessible
 (gated), so ARC-Challenge substitutes until access is granted. Status: Accepted.
+
+## ADR-061: Accept the wide int24 residual (RFC-0004 A14, RFC-0021 A4)
+
+Context: ADR-060 took RFC-0004 §8's wide-residual knob after E5-05. An int16 residual
+cannot hold Llama-3.1-8B's range and precision together; int24 at fraction 10 passes the
+perplexity criterion. Review record: [wide-residual-a14](../reviews/wide-residual-a14.md).
+
+Decision:
+- **Selection.** A Llama Model is wide exactly when every norm is rmsnorm_q version 2.
+  - Version 2 means int24 X, int16 gains, d <= 8192 and a <= 16.
+  - Mixing versions rejects with `Width`.
+  - No new Model framing is needed: the version sits in the FunctionId, so H(Model),
+    H(Registry), H(Bounds) and cqis_id bind the width.
+- **Value widths.** In a wide Model, O/down outputs, the middle residual and R_1..R_L
+  are int24. R_0 and every other value keep their widths.
+- **Static records.** New schemas 20 (RMSNorm), 21 (affine) and 22 (alignment) cover
+  the wide slots.
+- **Cuts.** Cuts commit one int24 per M31 element. The companions are RFC-0005 A6,
+  RFC-0007 A5 and RFC-0010 A11.
+- **Controls.** NC-0127..0130 are reserved.
+- **Task split.** E5-05a now covers the specification and the research/harness
+  reference. Native Model/Registry/Bounds/executor support moves to the new task E5-05c.
+- **Limit.** d > 8192 (405B) needs a split statistic and is not admitted.
+
+No challenge, loss, profile, weight pass or measured constant changes.
+Status: Accepted.

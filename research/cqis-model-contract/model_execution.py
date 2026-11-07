@@ -94,6 +94,11 @@ def convert(values,fraction,policy,gated=False):
     return Row(codes,scale,fraction)
 
 
+def width(model):
+    """Residual-stream bits: 24 when every norm is rmsnorm_q version 2 (RFC-0004 A14), else 16."""
+    return 24 if model.shape.family and model.final_norm.version==2 else 16
+
+
 def linear(data,name,layer,x,fraction):
     record=data.record(name,layer); rows,columns=record.dimensions
     if len(x.codes)!=columns: raise ValueError('Shape')
@@ -101,22 +106,23 @@ def linear(data,name,layer,x,fraction):
     fb=0 if bias is None else data.model.formats[bias.ordinal][1]; result=[]
     for j in range(rows):
         dot=sum(code*data.code(record,j*columns+k) for k,code in enumerate(x.codes)); m,e=data.scale(record,j)
-        result.append(affine(dot,m,x.scale,e,x.fraction,fraction,0 if bias is None else data.code(bias,j),fb))
+        result.append(affine(dot,m,x.scale,e,x.fraction,fraction,0 if bias is None else data.code(bias,j),fb,
+                             width(data.model) if name in ('O','down') else 16))
     return tuple(result)
 
 
 def normalize(data,n,row,name,layer=-1):
     gains=data.vector(name+'.gain',layer)
     if type(n) is LayerNorm: return tuple(layer_norm(n,list(row),list(gains),list(data.vector(name+'.bias',layer)))['output'])
-    p=rms.Parameters(n.d,n.F,n.G,n.E,n.en,n.ed)
+    p=rms.Parameters(n.d,n.F,n.G,n.E,n.en,n.ed,n.version)
     try: return tuple(rms.evaluate(p,list(row),list(gains))['output'])
     except ValueError as error:
         if str(error)=='Overflow': raise ValueError('Range') from error
         raise
 
 
-def residual(left,fx,right,fy,fo):
-    return tuple(checked_output(round_ratio(*shifted_pair(x,fo-fx,y,fo-fy))) for x,y in zip(left,right))
+def residual(left,fx,right,fy,fo,bits=16):
+    return tuple(checked_output(round_ratio(*shifted_pair(x,fo-fx,y,fo-fy)),bits) for x,y in zip(left,right))
 
 
 def embed(data,token,position):
@@ -190,14 +196,14 @@ def finish_block(data,layer,row,position,projected,keys):
     m=data.model; b=m.blocks[layer]; incoming=m.f0 if layer==0 else m.blocks[layer-1].out
     values=attend(data,layer,projected[0],position,keys)
     o=linear(data,'O',layer,convert(values,b.attention,b.policies[4]),b.fractions[3])
-    mid=residual(row,incoming,o,b.fractions[3],b.mid)
+    mid=residual(row,incoming,o,b.fractions[3],b.mid,width(m))
     x=convert(normalize(data,b.norm2,mid,'norm2',layer),b.norm2.E,b.policies[5])
     up=linear(data,'up',layer,x,b.fractions[4]); gate=linear(data,'gate',layer,x,b.fractions[5]) if m.shape.family else up
     activated=tuple(activation(b.activation,t) for t in gate)
     product=tuple(a*b for a,b in zip(up,activated)) if m.shape.family else activated
     fraction=b.activation.E+(b.fractions[4] if m.shape.family else 0)
     down=linear(data,'down',layer,convert(product,fraction,b.policies[6],bool(m.shape.family)),b.fractions[-1])
-    return residual(mid,b.mid,down,b.fractions[-1],b.out)
+    return residual(mid,b.mid,down,b.fractions[-1],b.out,width(m))
 
 
 def finish(data,row):

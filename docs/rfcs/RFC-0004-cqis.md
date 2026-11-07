@@ -1899,3 +1899,140 @@ No new challenge, probabilistic loss, committed cut or online weight pass.
 All deterministic hashes retain full H accounting; numerical/source work retains
 T_witness/c_a/c_lu/c_x/T_misc costs, with no measured constant change.
 Affected tasks: E5-03b/03/04/05, E6, E7, E8, E12 and E14.
+
+### A14 — Wide int24 residual stream (§8 knob)
+
+Status: Accepted. Task E5-05a. Companion RFC-0021 A4. ADR-060/061.
+Review: [E5-05a sign-offs](../../agents/reviews/wide-residual-a14.md).
+
+**Motivation.** The [E5-05 report](../../harness/eval/REPORT.md) measured Llama-3.1-8B
+under the int16 residual. Perplexity is 178,968 against 5.85 in fp32, and ARC is at
+chance. No int16 fraction recovers either metric. An int24 residual with fraction 10
+gives +3.24% perplexity, at a plateau that is flat from fraction 8 to 12. This entry
+specifies §8's first knob, "int16 → int24 wide path", exactly.
+
+No DPA is needed. The radix-256 static-record frame (RFC-0022/RFC-0025) already
+supports three-byte words.
+
+**Exact addition to the RFC-0025 numerical contract and encoding appendix §4.**
+- **Selection.** A Llama-family Model is *wide* when every norm selection (each block's
+  first and second norm and the final norm) is rmsnorm_q version 2 (RFC-0021 A4).
+  - Mixing versions within one Model rejects with `Width`.
+  - GPT-2 (layernorm_q) has no wide form.
+  - Model framing, Shape, Scales, Preparation and every other field are unchanged.
+  - The norm version is inside the FunctionId, so H(Model), H(Registry), H(Bounds)
+    and cqis_id all bind the width.
+- **Wide values.** In a wide Model, five value classes are signed int24, in
+  [-2^23, 2^23-1]:
+  - the O projection output;
+  - the down projection output;
+  - the middle residual;
+  - every block's output residual R_l;
+  - the final-norm input.
+
+  An overflow rejects the complete operation, exactly like int16 overflow.
+- **Unchanged values.** All other values keep their RFC-0025 widths. These include:
+  - the embedding/position output R_0, which stays int16 and is consumed by a
+    version-2 norm as an in-range int24 value;
+  - norm outputs (int16);
+  - Q/K/V, attention, activation and gated values;
+  - int8 rows, the K/V cache and logits.
+- **Unchanged arithmetic.** Rounding, alignment, fractions and Policy limits are
+  unchanged.
+
+**Static records.** The new schema ids belong to the RFC-0025 static frame. Each is
+its predecessor with the substitutions below, the same parameter bytes and the same
+column, word and field checks.
+- **Schema 20 (wide RMSNorm, replaces 14 for version 2).** Let Hx = 2^23 and
+  Ox = 2^24-1.
+  - Roles 1/2 bind X with (1,Ox,1),(1,Hx,2) and (1,Hx,1),(1,Hx,1).
+  - Role 3 is (d,Hx,Hx). Role 10 is (1,Hx,H).
+  - Role 20 is (1,39,1). The index a+23 lies in 0..39 of the unchanged 64-position
+    domain.
+  - New roles 27/28 bind the int16 gain with schema 14's former role-1/2 terms.
+  - Derived values: Smax = d*Hx^2, fd_max = 2^32, XYmax = Hx*H, Tmax = XYmax*16384,
+    emax = F+G+37-E.
+  - The scalar values 32 and 33 become 39 and 40. Hx, Ox, 4Hx-1 and 2Hx are appended
+    (42 scalars). fd_max is the fixed value 2^32.
+  - d <= 8192. The statistic's largest column side is 1071628543 < p/2.
+  - Records are below 52 KiB.
+- **Schema 21 (wide affine, replaces 1 for wide O/down).** The output bound is
+  H = 2^23 instead of 32768:
+  - quotient cap min(2^23, floor(Umax/D));
+  - output scalar 2^23;
+  - output sign sides 2^25-1 and 2^24;
+  - the shared rounding roles use the same quotient cap.
+
+  Llama projections carry no bias, so a wide affine with a bias rejects.
+- **Schema 22 (wide residual alignment, replaces 5 for wide models).** Use H = 2^23 for
+  both sources and the output:
+  - scalars d-1, H, 2^24-1, L, R, D, Umax = H(L+R), min(H, floor(Umax/D)), H, 2^25-1,
+    2^24;
+  - role 1 is (1,2^24-1,L),(1,2^24-1,R).
+
+  Umax <= 2^54.
+
+The Bounds collection selects 20/21/22 for norm1, norm2 and final.norm, project.O and
+project.down, and residual.mid and residual.out of a wide Model. All other slots,
+counts and caps are unchanged. Every record stays below 52 KiB < 128 KiB.
+
+**Range discipline.**
+- Each producer checks its signed int24 target: schema 21 for O/down outputs, schema 22
+  for the middle residual and R_l.
+- Every consumer re-decomposes the original source in offset form o = x + 2^23, as three
+  unsigned bytes. o <= 2^24-1 then enforces -2^23 <= x <= 2^23-1. The consumers are the
+  norm's schema-20 roles 1/2 and the next schema-22 role 1.
+- R_0 stays int16 at its schema-2 producer and is consumed as an in-range int24 source.
+- No int16 range proof may stand in for an int24 one, and no int24 check may stand in
+  where int16 is required (norm outputs, R_0).
+
+**Soundness ledger.**
+- No challenge, transcript label, probabilistic loss or profile changes.
+- Field faithfulness is the deterministic column lemma of RFC-0022 §5 with the side
+  bounds above.
+- The number of lookup instances grows by the added byte digits. The (N+|T|)/|K| LogUp
+  term counts them with N.
+
+**Cost model.**
+- Per token and layer, about 12d extra range_8 memberships (c_lu): the third byte of
+  - four signed targets: O, down, mid and R_l;
+  - two norm-source offset/magnitude pairs;
+  - four residual-source offset words.
+- About 10d extra limb products (c_a): a 3x3 against a 2x2 statistic per element in each
+  of two norms.
+- For Llama-3.1-8B (d = 4096, L = 32) that is about 1.6M lookups per token, about 0.02%
+  of the weight-pass MACs.
+- Cuts:
+  - Wide R_l values are int24 and are committed one per M31 element. 24 < 31 bits, so
+    the map is injective. They are no longer two int16 per element, so a wide model's
+    committed cut element count is C_cut = n*d*(L+1) M31 elements, not C_cut/2.
+  - T_cuts' commit and opening message counts double for the cut term.
+  - Cut storage is 1.5x the int16 bytes; for the 8B row, 19 GB becomes about 28.5 GB.
+- No new cut, weight pass or table. PCS parameters and all measured constants are
+  unchanged.
+
+**Cross-RFC scope.** In a wide Model, these Accepted int16 statements read int24 for R_l:
+- RFC-0004 §2: residual-stream row;
+- RFC-0005 §4: harness cuts R_0..R_L, with R_0 still int16;
+- RFC-0007 §3: R_stack;
+- RFC-0010 §8: packing.
+
+The companion log entries are RFC-0005 A6, RFC-0007 A5, RFC-0010 A11 and the
+cost-model note. Unchanged for non-wide models.
+
+**Affected tasks.**
+- E5-05a: reference and harness, and this entry.
+- E5-05c: native Model/Registry/Bounds and executor support.
+- E7-03: norm consumers for schema 20.
+- E7-10: residual glue for schema 22.
+- E7-01: wide affine outputs.
+- E6-02: range discipline.
+
+**Controls.** NC-0127..0130 are reserved as `todo` for the actual consumers (E5-05c,
+E7-03, E7-10):
+- NC-0127: mixed norm versions;
+- NC-0128: a wide target of 2^23;
+- NC-0129: int16/int24 check substitution;
+- NC-0130: the gain source bound through the X roles.
+
+A parser rejection earns no proof-binding credit.

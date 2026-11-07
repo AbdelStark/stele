@@ -403,3 +403,44 @@ completion gates. A1/A2's proposals are superseded by this entry; no native
 registry entry or proof record is supplied by specification acceptance.
 No new table, challenge, loss, cut or profile. Statistics/affine work is
 c_a/T_witness and validation T_misc, without a measured constant or pass change.
+
+### A4 — rmsnorm_q version 2: int24 inputs for the wide residual stream
+
+Status: Accepted. Companion RFC-0004 A14; task E5-05a.
+Review: [E5-05a sign-offs](../../agents/reviews/wide-residual-a14.md).
+
+Motivation: RFC-0004 §8's first fidelity knob widens the residual stream to int24. Its
+norms must accept int24 inputs, and this must be a different FunctionId from the
+int16 function.
+
+Exact additions to §§2.3, 4 and 5:
+- **Version 2.** rmsnorm_q has a version 2. Its parameter bytes and every RFC-0021
+  definition are those of §2.3, with three changes:
+  - X_i is signed int24, in [-2^23, 2^23-1]. Gains H_i stay signed int16.
+  - d <= 8192.
+  - The exponent range is -23 <= a <= 16.
+- **What stays the same.** The rsqrt table, the integer normalization algorithm, the
+  output rounding and the signed int16 output range are unchanged.
+- **Versions.** §4's "all named definition versions are exactly u32 1" now reads: every
+  version is exactly 1, except that rmsnorm_q admits 1 or 2. Representation mode 3 and
+  its rsqrt component are unchanged for both versions. A version-2 descriptor is a
+  distinct FunctionId, so no version-1 identity, table byte or manifest changes.
+- **Derived bounds for version 2.**
+  - S <= d*2^46 <= 2^59.
+  - Nmax < 2^106, P < 2^105, Amax < 2^152, Dmax = P*2^32 < 2^137, MDmax < 2^153.
+  - |T| = |X_i H_i J| <= 2^52.
+  - e = F+G+21+a-E lies in [-16, 97].
+  - Left-shifted products are at most 2^68 before the int16 output check.
+  - Biased right-shift magnitudes are below 2^97.
+- **Error bound.** §5's output error bound is unchanged. Its derivation bounds
+  |X_i|/sqrt(q) independently of the input width.
+- **Faithfulness.** With three-byte X digits, the statistic column's largest side is
+  1071628543 < p/2 at d = 8192. Above d = 8208 it is not faithful. That is why version 2
+  stops at 8192; a split statistic for larger d needs a further amendment.
+
+The [static record](RFC-0004-cqis.md#a14--wide-int24-residual-stream-8-knob) is
+RFC-0004 A14's schema 20.
+
+Ledger and cost: there are no challenges or losses. Range consumers of the third input
+byte add c_lu/c_a work, which RFC-0004 A14 accounts for. No table, cut or weight pass
+changes.

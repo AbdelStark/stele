@@ -29,8 +29,11 @@ class Affine:
     policy: int
     scale: int
     bias_fraction: int | None
+    output_bits: int = 16  # 24 is RFC-0004 A14's wide O/down output, schema 21
 
     def __post_init__(self):
+        if self.output_bits not in (16, 24) or (self.output_bits == 24 and self.bias_fraction is not None):
+            raise ValueError('Width')
         integer(self.inner, 1, 16384, 'Shape')
         _weight(self.bits, self.exponent, self.mantissa)
         integer(self.kind, 0, 1, 'Kind')
@@ -120,8 +123,8 @@ def _column(terms, bits=8):
     return operands, z, result, tuple(carries), left, right
 
 
-def _rounding_roles(maximum, divisor):
-    quotient = min(32768, maximum//divisor)
+def _rounding_roles(maximum, divisor, output=32768):
+    quotient = min(output, maximum//divisor)
     return (
         ((1, 2*maximum, 1), (1, maximum, 2)),
         ((1, maximum, 1), (1, maximum, 1)),
@@ -201,16 +204,17 @@ def derive(parameters):
         maximum = total*left+32768*bias
         if 8*accumulator >= P:
             raise ValueError('FieldBound')
+        output = 1 << (p.output_bits-1)
         scalars = (weight, scale, accumulator, product, total, divisor, left, bias,
-                   maximum, min(32768, maximum//divisor), 32768, 4*accumulator, 2*accumulator,
-                   131071, 65536)
+                   maximum, min(output, maximum//divisor), output, 4*accumulator, 2*accumulator,
+                   4*output-1, 2*output)
         shifts = (le, re, shift)
         aligned = ((1, 2*total, left),)
         if bias:
             aligned += ((1, 65535, bias),)
         roles = (((1, accumulator, p.mantissa),), ((1, product, scale),),
                  ((1, 2*total, 1), (1, total, 2)), ((1, total, 1), (1, total, 1)), aligned)
-        schema = 1
+        schema = 1 if p.output_bits == 16 else 21
     elif type(parameters) is Embedding:
         p = parameters
         source = [(p.bits, p.exponent, p.mantissa)]
@@ -231,7 +235,7 @@ def derive(parameters):
         schema = 2
     else:
         raise ValueError('Parameters')
-    roles += _rounding_roles(maximum, divisor)
+    roles += _rounding_roles(maximum, divisor, output if type(parameters) is Affine else 32768)
     for scalar in scalars:
         _caps(scalar)
     return schema, tuple(scalars), shifts, tuple(_column(terms) for terms in roles)

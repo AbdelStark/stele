@@ -66,9 +66,11 @@ def function_frames(value):
         f = fn.FUNCTION+uint(len(name), 2)+name+uint(1, 4)+uint(len(params), 2)+params
         r = fn.REPRESENTATION+blake3(f).digest()+bytes((4, 0, 1))+fn.table.table_id(fn.table.Descriptor('rsqrt_q', 1, b''))
         return f, r
+    version = 1
     if type(value) is RMSNorm:
         name, mode, extra = 'rmsnorm_q', 3, b''
         params = pack('<HBBBII', value.d, value.F, value.G, value.E, value.en, value.ed)
+        version = value.version
     elif type(value) is Exponential:
         name = 'exp_q/product' if value.mode == 1 else 'exp_q/nearest'
         params = bytes((value.bits, value.F, value.E))+ (bytes((value.k,)) if value.mode == 1 else b'')
@@ -78,7 +80,7 @@ def function_frames(value):
         params = bytes((value.F, value.E))
     else:
         raise ValueError('Function')
-    f = fn.Function(name, 1, params); r = fn.Representation(f, mode, extra)
+    f = fn.Function(name, version, params); r = fn.Representation(f, mode, extra)
     return fn.encode(f), fn.encode_representation(r)
 
 
@@ -200,6 +202,9 @@ def encode(p):
                    selection(b.exp), selection(b.activation), blob(rotation)]
         selections += [b.norm1, b.exp, b.norm2, b.activation]
     _norm(p.final_norm, s, current)
+    # RFC-0004 A14: a wide (int24) residual stream is selected by rmsnorm_q version 2 in every norm.
+    if len({getattr(n, 'version', 1) for b in p.blocks for n in (b.norm1, b.norm2, p.final_norm)}) != 1:
+        raise ValueError('Width')
     chunks += [selection(p.final_norm), policy(p.final_policy), bytes((p.logits_fraction,))]
     selections.append(p.final_norm)
     if p.decoding is None:
@@ -255,7 +260,7 @@ class Reader:
             return value
         f = fn.decode(fraw); r = fn.decode_representation(f, rraw)
         if kind == 'norm' and f.name == 'rmsnorm_q':
-            return RMSNorm(*unpack('<HBBBII', f.params))
+            return RMSNorm(*unpack('<HBBBII', f.params), version=f.version)
         if kind == 'exp' and f.name in ('exp_q/product', 'exp_q/nearest'):
             return Exponential(extent, *f.params[:3], r.mode, f.params[3] if r.mode == 1 else r.params[0] if r.mode == 2 else 0)
         if kind == 'activation' and f.name in ('silu_q', 'gelu_tanh_q'):

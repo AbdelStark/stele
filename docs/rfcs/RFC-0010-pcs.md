@@ -641,3 +641,12 @@ separately. Actual one-pass and row-identity evidence is required in E7-01b;
 NC-0611 requires a real column-equation attack, not only an API rejection.
 A6/A7, E4-03/E4-04/E4-05, signed packing, short columns and joint privacy retain
 all obligations. No fitted cost, complete weight-phase or profile claim follows.
+
+### A11 — Wide int24 residual cuts (companion of RFC-0004 A14)
+
+Status: Accepted. Task E5-05a. Review: [E5-05a sign-offs](../../agents/reviews/wide-residual-a14.md).
+Exact addition to §8's packing bullet (int8 ×4 / int16 ×2 per M31): in a wide Model (RFC-0004 A14: every
+rmsnorm_q at version 2), wide cut values are int24 and use one value per M31 element; no multi-value packing of int24 is admitted. Non-wide Models are unchanged.
+RFC-0004 A14 records the motivation, the ledger impact (no challenge, loss or profile
+change) and the cost impact (the cut commit/opening message count doubles; cut storage is
+1.5x the int16 bytes). Affected tasks: E5-05c, E6-02/E6-03, E7-10.

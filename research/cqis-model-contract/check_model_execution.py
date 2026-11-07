@@ -24,7 +24,7 @@ import model_execution as c
 from check_rope import oracle as rotary_oracle
 
 
-def fixture(rng,family,layers=None,context=None,heads=None,width=None):
+def fixture(rng,family,layers=None,context=None,heads=None,width=None,version=1):
     heads=heads or rng.randint(1,2); width=width or rng.choice((2,4)); d=heads*width
     s=Shape(family,layers or rng.randint(1,3),d,heads,heads if not family else rng.choice((1,heads)),width,
             4*d if not family else rng.randint(1,8),rng.randint(2,7),context or rng.randint(2,6))
@@ -47,6 +47,9 @@ def fixture(rng,family,layers=None,context=None,heads=None,width=None):
     decoding=Sampled(1,1,1,rng.choice((1,2)),replace(exp,n=s.vocabulary)) if rng.randrange(2) else None
     formats=tuple((rng.choice((4,8)),0) if len(ds)==2 else (16,6) for _,_,ds in roles(s))
     m=replace(m,formats=formats,f0=f0,blocks=tuple(blocks),final_norm=norm(m.final_norm,incoming),final_policy=(0,0),logits_fraction=rng.randint(6,8),decoding=decoding)
+    if version==2:  # RFC-0004 A14 wide twin: same draws, every rmsnorm_q at version 2
+        v=lambda n: replace(n,version=2)
+        m=replace(m,blocks=tuple(replace(b,norm1=v(b.norm1),norm2=v(b.norm2)) for b in m.blocks),final_norm=v(m.final_norm))
     arrays={}; scales=[]; payload=[]
     for (name,layer,ds),(bits,_) in zip(roles(s),formats):
         n=ds[0]*(ds[1] if len(ds)==2 else 1)

@@ -278,3 +278,14 @@ peaks and whole-worker RSS retain their stated instrumented scopes. These
 observations leave the planning constants and inference projections unchanged.
 They establish no configured-scale, virtual-source, wider/packed-dot, privacy,
 profile or W8 result; those parent requirements remain open.
+
+## Wide residual (RFC-0004 A14)
+
+A wide Model has int24 cuts R_1..R_L, committed one per M31 element instead of two
+int16 per element. C_cut keeps its meaning (n·d·L residual cells), but the committed
+message count for cuts doubles in T_cuts. The "residual cuts (int16) 19 GB" row
+becomes about 28.5 GB of int24 bytes.
+
+Per token and layer, about 12d range_8 memberships are added to c_lu, together with
+about 10d limb products in c_a (RFC-0004 A14 gives the role-by-role count). For W1
+that is under 0.03% of the weight-pass work. No planning constant is refitted.

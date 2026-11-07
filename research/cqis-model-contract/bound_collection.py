@@ -33,10 +33,13 @@ def _records(model, scales):
     slots.append(('embedding', -1, arithmetic.Embedding(s.vocabulary, s.context, model.f0,
                                                        *weights[0], position)))
 
+    bits = 24 if s.family and model.final_norm.version == 2 else 16  # RFC-0004 A14 wide residual
+
     def projection(name, layer, kind, fraction, output, policy, *, head=False):
         i = ids[('head' if s.family else 'token', -1) if head else (name, layer)]
         bias = None if s.family or head else model.formats[ids[name+'.bias', layer]][1]
-        return arithmetic.Affine(physical_roles[i][2][1], *weights[i], kind, fraction, output, *policy, bias)
+        return arithmetic.Affine(physical_roles[i][2][1], *weights[i], kind, fraction, output, *policy, bias,
+                                 bits if name in ('O', 'down') else 16)
 
     incoming = model.f0
     for layer, b in enumerate(model.blocks):
@@ -61,7 +64,7 @@ def _records(model, scales):
                  ('attention.normalize', weighted.Normalize(value, b.attention)),
                  ('convert.attention', flow.Row(s.width, 0, b.attention, *p[4])),
                  ('project.O', projection('O', layer, 0, b.attention, f[3], p[4])),
-                 ('residual.mid', flow.Residual(s.width, incoming, f[3], b.mid)),
+                 ('residual.mid', flow.Residual(s.width, incoming, f[3], b.mid, bits)),
                  ('norm2', b.norm2), ('convert.second', flow.Row(s.width, 0, b.norm2.E, *p[5])),
                  ('project.up', projection('up', layer, 0, b.norm2.E, f[4], p[5]))]
         if s.family: rows.append(('project.gate', projection('gate', layer, 0, b.norm2.E, f[5], p[5])))
@@ -70,7 +73,7 @@ def _records(model, scales):
         fraction = b.activation.E+(f[4] if s.family else 0)
         rows += [('convert.ffn', flow.Row(s.hidden, s.family, fraction, *p[6])),
                  ('project.down', projection('down', layer, s.family, fraction, f[-1], p[6])),
-                 ('residual.out', flow.Residual(s.width, b.mid, f[-1], b.out))]
+                 ('residual.out', flow.Residual(s.width, b.mid, f[-1], b.out, bits))]
         assert len(rows) == (27 if s.family else 23)
         slots.extend((name, layer, value) for name, value in rows); incoming = b.out
     slots += [('final.norm', -1, model.final_norm),

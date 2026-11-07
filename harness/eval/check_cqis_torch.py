@@ -44,54 +44,58 @@ def reference_cache(cache):
 
 def main(n):
     rng = Random(0xE505)
-    counts = dict(accepted=[0, 0], rejected=0, reason_mismatch=0, steps=0)
+    counts = dict(accepted=[0, 0, 0, 0], rejected=0, reason_mismatch=0, steps=0)
     corpus = blake3()
     for i in range(n):
-        m, mp, sr, raw, _ = fixture(rng, i % 2)
+        seed = rng.getrandbits(64)
+        m, mp, sr, raw, _ = fixture(Random(seed), i % 2)
         tokens = tuple(rng.randrange(m.shape.vocabulary) for _ in range(rng.randint(1, m.shape.context)))
-        data = c.load(m, mp, sr, raw, blake3(raw).digest())
-        ex = ct.Executor(data)
-        try:
-            expected = c.full(data, tokens)
-        except ValueError as error:
+        # Llama fixtures also run as their RFC-0004 A14 wide twin (same draws, own Artifact identity).
+        for version in (1, 2) if i % 2 else (1,):
+            variant, mp, sr, raw, _ = fixture(Random(seed), i % 2, version=version)
+            data = c.load(variant, mp, sr, raw, blake3(raw).digest())
+            ex = ct.Executor(data)
             try:
-                ex.full(tokens)
-            except ValueError as mine:
-                counts['rejected'] += 1
-                counts["reason_mismatch"] += str(mine) != str(error)
-                if str(mine) != str(error): print("MISMATCH", i, str(error), str(mine))
-                corpus.update(json.dumps([i, str(error), str(mine)]).encode())
-                continue
-            raise AssertionError(('torch accepted a rejected case', i, str(error)))
-        cuts, logits, cache = ex.full(tokens)
-        assert tuple(rows(r) for r in cuts) == expected.cuts, ('cuts', i)
-        assert rows(logits) == expected.logits, ('logits', i)
-        assert as_cache(cache) == reference_cache(expected.cache), ('cache', i)
-        state, step_logits = None, []
-        for t in tokens:
-            _, lg, state = ex.step([t], state)
-            step_logits.append(tuple(lg[0].tolist()))
-        assert tuple(step_logits) == expected.logits and as_cache(state) == as_cache(cache), ('step', i)
-        counts['steps'] += len(tokens)
-        counts['accepted'][i % 2] += 1
-        if not any(b.accumulation for b in m.blocks):
-            prompts = [tokens[:rng.randint(1, len(tokens))] for _ in range(3)]
-            budget = m.shape.context - max(map(len, prompts))
-            eos = {m.shape.vocabulary - 1}
-            got = ex.generate([list(p) for p in prompts], budget, eos, batch=3)
-            for p, (generated, reason) in zip(prompts, got):
-                sequence, expected_reason = p, None
+                expected = c.full(data, tokens)
+            except ValueError as error:
                 try:
-                    while len(sequence) - len(p) < budget:
-                        logits = c.full(data, sequence).logits[-1]
-                        sequence += (logits.index(max(logits)),)
-                        if sequence[-1] in eos:
-                            break
-                except ValueError as error:
-                    expected_reason = str(error)
-                assert list(sequence[len(p):]) == generated and (reason is None) == (expected_reason is None), ('generate', i)
-                counts['generated'] = counts.get('generated', 0) + len(generated)
-        corpus.update(json.dumps([i, expected.logits]).encode())
+                    ex.full(tokens)
+                except ValueError as mine:
+                    counts['rejected'] += 1
+                    counts["reason_mismatch"] += str(mine) != str(error)
+                    if str(mine) != str(error): print("MISMATCH", i, str(error), str(mine))
+                    corpus.update(json.dumps([i, str(error), str(mine)]).encode())
+                    continue
+                raise AssertionError(('torch accepted a rejected case', i, str(error)))
+            cuts, logits, cache = ex.full(tokens)
+            assert tuple(rows(r) for r in cuts) == expected.cuts, ('cuts', i)
+            assert rows(logits) == expected.logits, ('logits', i)
+            assert as_cache(cache) == reference_cache(expected.cache), ('cache', i)
+            state, step_logits = None, []
+            for t in tokens:
+                _, lg, state = ex.step([t], state)
+                step_logits.append(tuple(lg[0].tolist()))
+            assert tuple(step_logits) == expected.logits and as_cache(state) == as_cache(cache), ('step', i)
+            counts['steps'] += len(tokens)
+            counts['accepted'][i % 2 + 2*(version == 2)] += 1
+            if not any(b.accumulation for b in m.blocks):
+                prompts = [tokens[:rng.randint(1, len(tokens))] for _ in range(3)]
+                budget = m.shape.context - max(map(len, prompts))
+                eos = {m.shape.vocabulary - 1}
+                got = ex.generate([list(p) for p in prompts], budget, eos, batch=3)
+                for p, (generated, reason) in zip(prompts, got):
+                    sequence, expected_reason = p, None
+                    try:
+                        while len(sequence) - len(p) < budget:
+                            logits = c.full(data, sequence).logits[-1]
+                            sequence += (logits.index(max(logits)),)
+                            if sequence[-1] in eos:
+                                break
+                    except ValueError as error:
+                        expected_reason = str(error)
+                    assert list(sequence[len(p):]) == generated and (reason is None) == (expected_reason is None), ('generate', i)
+                    counts['generated'] = counts.get('generated', 0) + len(generated)
+            corpus.update(json.dumps([i, expected.logits]).encode())
     assert counts['reason_mismatch'] == 0, counts
     # The Python-integer normalizer equals the certified one wherever the latter is defined.
     for _ in range(3000):
@@ -122,7 +126,7 @@ def main(n):
         cuts, logits, cache = ct.Executor(data).full(tokens)
         assert tuple(rows(r) for r in cuts) == expected.cuts and rows(logits) == expected.logits, 'long'
         long += 1
-    counts['wide'] = wide_checks(rng, data)
+    counts['wide'] = wide_checks(rng)
     print(json.dumps(dict(configurations=n, **counts, blocked_long_cases=long, corpus_blake3=corpus.hexdigest())))
 
 
@@ -145,11 +149,14 @@ def oracle_norm(d, F, G, E, en, ed, X, H, a_max):
     return out
 
 
-def wide_checks(rng, data):
+def wide_checks(rng):
     """Signed range endpoints at both widths, and the norm against oracle_norm on wide inputs."""
     n = 0
+    seed = rng.getrandbits(64)
     for bits in (16, 24):
-        ex = ct.Executor(data, residual_bits=bits)
+        model, mp, sr, raw, _ = fixture(Random(seed), 1, version=bits//8 - 1)
+        ex = ct.Executor(c.load(model, mp, sr, raw, blake3(raw).digest()))
+        assert ex.wide == (1 << bits - 1) - 1
         low, high = -(1 << bits - 1), (1 << bits - 1) - 1
         for v, ok in ((low, True), (high, True), (low - 1, False), (high + 1, False)):
             try:
@@ -159,7 +166,7 @@ def wide_checks(rng, data):
             n += 1
         for _ in range(400 if bits == 24 else 100):
             d = rng.choice((1, 2, 3, 8))
-            spec = SimpleNamespace(d=d, F=rng.choice((0, 1, 7, 10, 30)), G=rng.randint(0, 30), E=rng.randint(0, 14),
+            spec = SimpleNamespace(version=bits//8 - 1, d=d, F=rng.choice((0, 1, 7, 10, 30)), G=rng.randint(0, 30), E=rng.randint(0, 14),
                                    en=rng.choice((1, 3, 7)), ed=rng.choice((1, 100000, (1 << 32) - 1)))
             if gcd(spec.en, spec.ed) != 1:
                 continue
@@ -167,7 +174,7 @@ def wide_checks(rng, data):
             H = [rng.randint(-32768, 32767) for _ in range(d)]
             ex.vectors['t.gain', -1] = torch.tensor(H)
             try:
-                expected = oracle_norm(d, spec.F, spec.G, spec.E, spec.en, spec.ed, X, H, ex.a_max)
+                expected = oracle_norm(d, spec.F, spec.G, spec.E, spec.en, spec.ed, X, H, 16 if bits == 24 else 9)
             except ValueError as error:
                 expected = str(error)
             try:

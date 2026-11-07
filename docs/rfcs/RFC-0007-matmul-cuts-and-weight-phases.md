@@ -167,3 +167,12 @@ affine O(L*d) work and expanded advice/range work enter existing cost terms;
 no measured constant or extra online weight pass is authorized. Existing field
 matmul stays unchanged. Full configured phases, wider/packed dots, virtual
 sources, privacy, profiles and W8 remain E7/E4 and parent obligations.
+
+### A5 — Wide int24 residual cuts (companion of RFC-0004 A14)
+
+Status: Accepted. Task E5-05a. Review: [E5-05a sign-offs](../../agents/reviews/wide-residual-a14.md).
+Exact addition to §3's `R_stack` element format (int16, packed 2 per M31): in a wide Model (RFC-0004 A14: every
+rmsnorm_q at version 2), `R_1..R_L` are int24 and are committed one value per M31 element (C_cut = n·d·(L+1) elements, 24 < 31 bits, injective); R_0 stays int16. Non-wide Models are unchanged.
+RFC-0004 A14 records the motivation, the ledger impact (no challenge, loss or profile
+change) and the cost impact (the cut commit/opening message count doubles; cut storage is
+1.5x the int16 bytes). Affected tasks: E5-05c, E6-02/E6-03, E7-10.

@@ -92,7 +92,9 @@ def prepare():
 
 
 def _executor(device='cuda', fraction=2, residual_bits=16):
-    """The E5-04 runtime model (residual fraction 2, ADR-058) over the frozen Artifact."""
+    """The E5-04 runtime model (residual fraction 2, ADR-058) over the frozen Artifact;
+    residual_bits=24 selects the RFC-0004 A14 wide model (rmsnorm_q version 2)."""
+    assert residual_bits in (16, 24)
     _paths()
     from blake3 import blake3
     import artifact_codec
@@ -103,7 +105,7 @@ def _executor(device='cuda', fraction=2, residual_bits=16):
     import cqis_torch
     receipt = json.loads(Path(REPO, RECEIPT).read_text())
     original = model_codec.decode(Path('/vol/inputs/model.bin').read_bytes())
-    model = residual_units(original, fraction)
+    model = residual_units(original, fraction, 2 if residual_bits == 24 else 1)  # 24: RFC-0004 A14
     mapping = artifact_codec.decode_preparation(model, Path('/vol/inputs/preparation.bin').read_bytes())
     scales_raw = scales_codec.encode(model, scales_codec.decode(original, (PREPARED/'scales.bin').read_bytes()))
     execution = json.loads(Path(REPO, EXECUTION).read_text())
@@ -113,7 +115,7 @@ def _executor(device='cuda', fraction=2, residual_bits=16):
     raw = (PREPARED/'artifact.bin').read_bytes()
     expected = bytes.fromhex(receipt['native_result']['digest_cqis'])
     data = numpy_execution.load(model, mapping, scales_raw, raw, expected)
-    ex = cqis_torch.Executor(data, device, residual_bits)
+    ex = cqis_torch.Executor(data, device)
     import torch
     rotation = model.blocks[0].rotation
     assert all(b.rotation == rotation for b in model.blocks)

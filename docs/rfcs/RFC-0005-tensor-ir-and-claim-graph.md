@@ -140,3 +140,12 @@ private commitment contracts and actual consumers before native admission.
 No new reduction, cut, challenge, loss, profile or weight pass is defined.
 Derivation is T_misc without a measured constant. All original controls plus
 NC-1204 remain required. Affected tasks: E5-03b, E6, E8, E12-05 and E14.
+
+### A6 — Wide int24 residual cuts (companion of RFC-0004 A14)
+
+Status: Accepted. Task E5-05a. Review: [E5-05a sign-offs](../../agents/reviews/wide-residual-a14.md).
+Exact addition to §4's harness cuts `R_0..R_L (int16)`: in a wide Model (RFC-0004 A14: every
+rmsnorm_q at version 2), `R_1..R_L` are int24 (R_0 stays int16); captured cut tensors keep one int24 per element. Non-wide Models are unchanged.
+RFC-0004 A14 records the motivation, the ledger impact (no challenge, loss or profile
+change) and the cost impact (the cut commit/opening message count doubles; cut storage is
+1.5x the int16 bytes). Affected tasks: E5-05c, E6-02/E6-03, E7-10.

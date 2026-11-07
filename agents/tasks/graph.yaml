@@ -964,7 +964,7 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E5-05a-wide-residual
   acceptance:
