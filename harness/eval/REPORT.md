@@ -37,7 +37,15 @@ All CQIS numbers come from `cqis_torch.py`, an exact integer torch executor for 
   (7,228,130 bytes, sha256 `a1a26c5d…`). See `modal_e505.py::parity`.
 
 The wide path (`residual_bits=24`) widens the range checks on the embedding, the residual stream and the O/down
-outputs. Everything else stays as in E5-04. The wide path is exploratory semantics: no RFC defines it yet (ADR-060,
+outputs from [−2^15, 2^15−1] to [−2^23, 2^23−1]. Its norms accept int24 inputs, with the RMSNorm exponent allowed up
+to a ≤ 16 instead of 9. Everything else stays as in E5-04.
+
+`wide_checks` tests these endpoints at both widths. It also compares the norm against an independent exact-rational
+oracle on 24-bit inputs, covering extreme F/G/E and right shifts beyond 46 bits.
+
+Review found that the first version of these range checks rejected the most negative value. Because every run here
+had zero rejections, no reported number depended on that edge case. The int64 shift limits are never reached in the
+measured Llama configuration, which uses F = 10 (first layer 7), G = 8, E = 7 and a ≤ 6, so its shift is e = 32 + a. The wide path is exploratory semantics: no RFC defines it yet (ADR-060,
 follow-up E5-05a). Not one item was rejected in any configuration.
 
 ## Protocol

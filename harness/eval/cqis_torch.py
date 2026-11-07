@@ -54,9 +54,9 @@ def fmatmul(a, b):
     return torch.matmul(a.to(torch.float64), b.to(torch.float64)).to(I64)
 
 
-def normalize(d, F, en, ed, s):
+def normalize(d, F, en, ed, s, a_max=9):
     """certified_rmsnorm.normalize with Python integers, minus its s <= d*2^30 input bound
-    (which only the exploratory wide residual can exceed): returns (a, M)."""
+    (which only the exploratory wide residual can exceed; it then needs a_max=16): returns (a, M)."""
     n, den = ed*s + en*d*(1 << (2*F)), ed*d*(1 << (2*F))
     a = (n.bit_length() - den.bit_length() - 14)//2
     A, D = (n << (-2*a), den) if a < 0 else (n, den << (2*a))
@@ -64,7 +64,7 @@ def normalize(d, F, en, ed, s):
         a -= 1
         A, D = (n << (-2*a), den) if a < 0 else (n, den << (2*a))
     m = A//D
-    if not (-23 <= a <= 9 and 16384 <= m < 65536):
+    if not (-23 <= a <= a_max and 16384 <= m < 65536):
         raise ValueError('Normalization')
     return a, m
 
@@ -113,7 +113,10 @@ class Executor:
         CQIS: embedding, residual sums and O/down outputs may use that many signed bits;
         every other value and rounding is unchanged. 16 is the Accepted semantics."""
         self.data, self.model, self.device = data, data.model, torch.device(device)
+        assert residual_bits in (16, 24), residual_bits
         self.wide = (1 << (residual_bits - 1)) - 1
+        # RMSNorm exponent and shift limits: int16 inputs give a <= 9, int24 inputs a <= 16.
+        self.a_max, self.shift_max = (9, 90) if residual_bits == 16 else (16, 97)
         self.shape = s = self.model.shape
         self.int_mm = self.device.type == 'cuda' and hasattr(torch, '_int_mm')
         self.weights, self.vectors = {}, {}
@@ -199,12 +202,12 @@ class Executor:
                 q, r = divmod(abs(v), 1 << shift)
                 out[t, j] = (-1 if v < 0 else 1)*min(q + int(2*r >= (1 << shift)), 1 << 40)
         wide = self.wide if name in ('O', 'down') else 32767
-        return checked(out, 'Range', -wide, wide)
+        return checked(out, 'Range', -wide - 1, wide)
 
     def residual(self, x, fx, y, fy, fo):
         le, re = fo - fx, fo - fy
         shift = max(0, -le, -re)
-        return checked(rr((x << (le+shift)) + (y << (re+shift)), 1 << shift), 'Range', -self.wide, self.wide)
+        return checked(rr((x << (le+shift)) + (y << (re+shift)), 1 << shift), 'Range', -self.wide - 1, self.wide)
 
     def norm(self, spec, x, role, layer=-1):
         gains = self.vectors[role+'.gain', layer]
@@ -216,10 +219,10 @@ class Executor:
         d, F, G, E, en, ed = spec.d, spec.F, spec.G, spec.E, spec.en, spec.ed
         s = (x*x).sum(dim=1)
         den = ed*d*(1 << (2*F))
-        fast = ed*d*self.wide**2 + en*d*(1 << (2*F)) < (1 << 62) and den << 18 < (1 << 62)
+        fast = ed*d*(self.wide + 1)**2 + en*d*(1 << (2*F)) < (1 << 62) and den << 18 < (1 << 62)
         if fast:
             n = ed*s + en*d*(1 << (2*F))
-            a = torch.floor(torch.log2(n.to(torch.float64)/(den*16384.0))/2).to(I64).clamp(-24, 10)
+            a = torch.floor(torch.log2(n.to(torch.float64)/(den*16384.0))/2).to(I64).clamp(-24, self.a_max + 1)
             for _ in range(4):
                 big = torch.where(a < 0, n << (-2*a).clamp(min=0), n)
                 small = torch.where(a > 0, torch.full_like(a, den) << (2*a).clamp(min=0), torch.full_like(a, den))
@@ -227,14 +230,14 @@ class Executor:
                 low, high = m < 16384, m >= 65536
                 if not torch.any(low | high):
                     break
-                a = (a - low.to(I64) + high.to(I64)).clamp(-24, 10)
+                a = (a - low.to(I64) + high.to(I64)).clamp(-24, self.a_max + 1)
             if torch.any((m < 16384) | (m >= 65536)):
                 raise ValueError('Normalization')
         else:
-            pairs = [normalize(d, F, en, ed, v) for v in s.tolist()]
+            pairs = [normalize(d, F, en, ed, v, self.a_max) for v in s.tolist()]
             a = torch.tensor([w[0] for w in pairs], dtype=I64, device=x.device)
             m = torch.tensor([w[1] for w in pairs], dtype=I64, device=x.device)
-        if torch.any((a < -23) | (a > 9)):
+        if torch.any((a < -23) | (a > self.a_max)):
             raise ValueError('Normalization')
         v = (1 << 42)//m
         j = torch.sqrt(v.to(torch.float64)).to(I64)
@@ -242,12 +245,15 @@ class Executor:
         j = j + ((j+1)*(j+1) <= v).to(I64)
         j = j + ((1 << 44) >= m*(2*j+1)**2).to(I64)
         shift = F + G + 21 + a - E
-        if torch.any((shift < -16) | (shift > 90)):
+        if torch.any((shift < -16) | (shift > self.shift_max)):
             raise ValueError('Shift')
         product = x*gains[None, :]*j[:, None]
         sh = shift[:, None]
+        # |product| < 2^53; a left-shifted entry above 2^15 is out of int16 anyway (and could wrap int64).
+        if torch.any((sh < 0) & (product.abs() > 32768)):
+            raise ValueError('Range')
         left = product << (-sh).clamp(min=0)
-        right_shift = sh.clamp(min=0, max=46)
+        right_shift = sh.clamp(min=0, max=62)  # beyond 62 the rounded magnitude is 0 either way
         half = torch.where(right_shift > 0, torch.ones_like(right_shift) << (right_shift-1).clamp(min=0), torch.zeros_like(right_shift))
         magnitude = (product.abs() + half) >> right_shift
         right = torch.where(product < 0, -magnitude, magnitude)
@@ -351,12 +357,12 @@ class Executor:
         tm = mant[tokens][:, None]
         if s.family:
             le, shift = e + m.f0, max(0, -(e + m.f0))
-            return checked(rr((codes*tm) << (le+shift), 1 << shift), 'Range', -self.wide, self.wide)
+            return checked(rr((codes*tm) << (le+shift), 1 << shift), 'Range', -self.wide - 1, self.wide)
         pw, pmant, pe = self.weights['position', -1]
         pc, pm = pw[positions].to(I64), pmant[positions][:, None]
         le, re = e + m.f0, pe + m.f0
         shift = max(0, -le, -re)
-        return checked(rr(((codes*tm) << (le+shift)) + ((pc*pm) << (re+shift)), 1 << shift), 'Range', -self.wide, self.wide)
+        return checked(rr(((codes*tm) << (le+shift)) + ((pc*pm) << (re+shift)), 1 << shift), 'Range', -self.wide - 1, self.wide)
 
     def project(self, layer, rows, positions):
         b, s = self.model.blocks[layer], self.shape

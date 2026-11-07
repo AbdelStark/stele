@@ -10,9 +10,12 @@ run through both executors. Accepted cases must agree on every residual cut, log
 K/V cache byte, and incremental steps must reproduce the single pass; rejected cases
 must reject in both. Usage: uv run --locked --script harness/eval/check_cqis_torch.py [N]
 """
+from fractions import Fraction
 import json
+from math import gcd
 from random import Random
 import sys
+from types import SimpleNamespace
 
 from blake3 import blake3
 import torch
@@ -119,7 +122,63 @@ def main(n):
         cuts, logits, cache = ct.Executor(data).full(tokens)
         assert tuple(rows(r) for r in cuts) == expected.cuts and rows(logits) == expected.logits, 'long'
         long += 1
+    counts['wide'] = wide_checks(rng, data)
     print(json.dumps(dict(configurations=n, **counts, blocked_long_cases=long, corpus_blake3=corpus.hexdigest())))
+
+
+def oracle_norm(d, F, G, E, en, ed, X, H, a_max):
+    """RFC-0021 §2.3 from its definition with exact rationals, for int16 or int24 inputs."""
+    q = Fraction(ed*sum(x*x for x in X) + en*d*4**F, ed*d*4**F)
+    a = next((a for a in range(-23, a_max + 1) if 16384 <= q/Fraction(4)**a < 65536), None)
+    if a is None:
+        raise ValueError('Normalization')
+    M = int(q/Fraction(4)**a)
+    J = next(j for j in range(8192, 16385) if M*(2*j - 1)**2 <= 1 << 44 < M*(2*j + 1)**2)
+    e = F + G + 21 + a - E
+    out = []
+    for x, h in zip(X, H):
+        T = x*h*J
+        y = T << -e if e < 0 else (1 if T >= 0 else -1)*((abs(T) + (1 << e >> 1)) >> e)
+        if not -32768 <= y <= 32767:
+            raise ValueError('Range')
+        out.append(y)
+    return out
+
+
+def wide_checks(rng, data):
+    """Signed range endpoints at both widths, and the norm against oracle_norm on wide inputs."""
+    n = 0
+    for bits in (16, 24):
+        ex = ct.Executor(data, residual_bits=bits)
+        low, high = -(1 << bits - 1), (1 << bits - 1) - 1
+        for v, ok in ((low, True), (high, True), (low - 1, False), (high + 1, False)):
+            try:
+                assert ex.residual(torch.tensor([v]), 0, torch.tensor([0]), 0, 0).tolist() == [v] and ok, (bits, v)
+            except ValueError as error:
+                assert not ok and str(error) == 'Range', (bits, v)
+            n += 1
+        for _ in range(400 if bits == 24 else 100):
+            d = rng.choice((1, 2, 3, 8))
+            spec = SimpleNamespace(d=d, F=rng.choice((0, 1, 7, 10, 30)), G=rng.randint(0, 30), E=rng.randint(0, 14),
+                                   en=rng.choice((1, 3, 7)), ed=rng.choice((1, 100000, (1 << 32) - 1)))
+            if gcd(spec.en, spec.ed) != 1:
+                continue
+            X = [rng.choice((low, high, 0, rng.randint(low, high), rng.randint(-99, 99))) for _ in range(d)]
+            H = [rng.randint(-32768, 32767) for _ in range(d)]
+            ex.vectors['t.gain', -1] = torch.tensor(H)
+            try:
+                expected = oracle_norm(d, spec.F, spec.G, spec.E, spec.en, spec.ed, X, H, ex.a_max)
+            except ValueError as error:
+                expected = str(error)
+            try:
+                got = ex.norm(spec, torch.tensor([X]), 't')[0].tolist()
+            except ValueError as error:
+                got = str(error)
+            if got == 'Shift':  # outside the derived shift interval; the oracle has no such bound
+                continue
+            assert got == expected, ('wide norm', bits, spec, X, H, got, expected)
+            n += 1
+    return n
 
 
 if __name__ == '__main__':
