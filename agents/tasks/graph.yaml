@@ -1003,7 +1003,7 @@ tasks:
   - PRD G7 pass on the full protocol or an ADR recording the residual gap
 - id: E5-05d
   epic: E5
-  title: Per-group activation scales (one scale per 128 features) for affine inputs and Q/K/V rows, then G7 on the full protocol
+  title: Per-group activation scales (one scale per 128 features) for affine inputs and Q/K/V rows
   depends:
   - E5-05b
   rfc:
@@ -1011,9 +1011,24 @@ tasks:
   - RFC-0021
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05d-grouped-rows
   acceptance:
   - reviewed amendment (Workflow 02) defining grouped conversion, its bounds and its affine-cut cost, with a research reference
+  - harness/eval/cqis_torch.py executes grouped models with parity to the research reference
+- id: E5-05e
+  epic: E5
+  title: G7 on the full protocol with grouped activation rows
+  depends:
+  - E5-05d
+  - E5-05c
+  rfc:
+  - RFC-0004 §8
+  skill: cqis-numerics
+  crate: harness
+  status: ready
+  acceptance:
   - exact executor runs the grouped model and harness/eval/REPORT.md records PRD G7 on the full protocol
 - id: E5-06
   epic: E5
