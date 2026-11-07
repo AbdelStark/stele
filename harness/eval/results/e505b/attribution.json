@@ -1,0 +1,93 @@
+{
+ "fakequant/a8": {
+  "paired_se": 0.00162,
+  "ppl": 6.0685,
+  "tokens": 32760,
+  "vs_fp32": 0.01659,
+  "windows": 8
+ },
+ "fakequant/fp": {
+  "paired_se": 0.0,
+  "ppl": 5.9694,
+  "tokens": 32760,
+  "vs_fp32": 0.0,
+  "windows": 8
+ },
+ "fakequant/w8": {
+  "paired_se": 0.00047,
+  "ppl": 5.9749,
+  "tokens": 32760,
+  "vs_fp32": 0.00092,
+  "windows": 8
+ },
+ "fakequant/w8a8": {
+  "paired_se": 0.00236,
+  "ppl": 6.0776,
+  "tokens": 32760,
+  "vs_fp32": 0.01812,
+  "windows": 8
+ },
+ "fakequant/w8a8g128": {
+  "paired_se": 0.00056,
+  "ppl": 5.977,
+  "tokens": 32760,
+  "vs_fp32": 0.00127,
+  "windows": 8
+ },
+ "fakequant/w8a8g32": {
+  "paired_se": 0.00058,
+  "ppl": 5.9769,
+  "tokens": 32760,
+  "vs_fp32": 0.00125,
+  "windows": 8
+ },
+ "knobs/act88": {
+  "paired_se": 0.00191,
+  "ppl": 6.1479,
+  "tokens": 32760,
+  "vs_fp32": 0.02989,
+  "windows": 8
+ },
+ "knobs/att8": {
+  "paired_se": 0.00159,
+  "ppl": 6.1329,
+  "tokens": 32760,
+  "vs_fp32": 0.02738,
+  "windows": 8
+ },
+ "knobs/base": {
+  "paired_se": 0.00168,
+  "ppl": 6.1424,
+  "tokens": 32760,
+  "vs_fp32": 0.02897,
+  "windows": 8
+ },
+ "knobs/frac8": {
+  "paired_se": 0.00145,
+  "ppl": 6.1233,
+  "tokens": 32760,
+  "vs_fp32": 0.02577,
+  "windows": 8
+ },
+ "knobs/norm8": {
+  "paired_se": 0.00252,
+  "ppl": 6.1327,
+  "tokens": 32760,
+  "vs_fp32": 0.02736,
+  "windows": 8
+ },
+ "knobs/qk8fix": {
+  "paired_se": 0.0019,
+  "ppl": 6.1389,
+  "tokens": 32760,
+  "vs_fp32": 0.02839,
+  "windows": 8
+ },
+ "knobs/v8": {
+  "paired_se": 0.00113,
+  "ppl": 6.1288,
+  "tokens": 32760,
+  "vs_fp32": 0.0267,
+  "windows": 8
+ }
+}

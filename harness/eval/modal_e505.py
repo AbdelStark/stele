@@ -91,7 +91,7 @@ def prepare():
     print(json.dumps(dict(status='prepared', artifact_sha256=receipt['artifacts']['artifact.bin'])))
 
 
-def _executor(device='cuda', fraction=2, residual_bits=16):
+def _executor(device='cuda', fraction=2, residual_bits=16, knobs=None):
     """The E5-04 runtime model (residual fraction 2, ADR-058) over the frozen Artifact;
     residual_bits=24 selects the RFC-0004 A14 wide model (rmsnorm_q version 2)."""
     assert residual_bits in (16, 24)
@@ -106,10 +106,15 @@ def _executor(device='cuda', fraction=2, residual_bits=16):
     receipt = json.loads(Path(REPO, RECEIPT).read_text())
     original = model_codec.decode(Path('/vol/inputs/model.bin').read_bytes())
     model = residual_units(original, fraction, 2 if residual_bits == 24 else 1)  # 24: RFC-0004 A14
+    if knobs:  # E5-05b configuration fractions; the codec checks every join
+        import knobs as kn
+        # shortcut: tables are evaluated (and rejected) lazily per used input; a full
+        # registry_codec.encode takes hours in pure Python. Certify before any claim.
+        model = kn.configure(model, **knobs)
     mapping = artifact_codec.decode_preparation(model, Path('/vol/inputs/preparation.bin').read_bytes())
     scales_raw = scales_codec.encode(model, scales_codec.decode(original, (PREPARED/'scales.bin').read_bytes()))
     execution = json.loads(Path(REPO, EXECUTION).read_text())
-    if (fraction, residual_bits) == (2, 16):  # the qualified E5-04 runtime configuration
+    if (fraction, residual_bits, knobs) == (2, 16, None):  # the qualified E5-04 runtime configuration
         assert blake3(model_codec.encode(model)).hexdigest() == execution['execution_model_id']
         assert blake3(scales_raw).hexdigest() == execution['execution_scales_id']
     raw = (PREPARED/'artifact.bin').read_bytes()
@@ -254,5 +259,70 @@ def ablation(configs: str = '16:3,16:4,16:5,24:8,24:10,24:12'):
                 {'wikitext': 8, 'arc': 300}, checkpoint=volume.commit)
         del backend
         torch.cuda.empty_cache()
+        volume.commit()
+        print(json.dumps(dict(done=config)), flush=True)
+
+
+@app.function(image=image, volumes={'/vol': volume}, secrets=[secret], gpu='H100', cpu=8, memory=98304, timeout=3600)  # $50 cap: one hour per sweep
+def knob_sweep(configs: str, windows: int = 8, arc: int = 0):
+    """E5-05b attribution: wide model (int24, fraction 10) plus one configuration knob set
+    per entry of the JSON list [{"name": ..., "attention": 10, ...}], on fixed subsets."""
+    _paths()
+    import time
+    from transformers import AutoTokenizer
+    import torch
+    import fidelity as fid
+    tokenizer = AutoTokenizer.from_pretrained(SOURCE)
+    for config in json.loads(configs):
+        name, start = config.pop('name'), time.time()
+        if 'act' in config:
+            config['act'] = tuple(config['act'])
+        try:
+            executor = _executor(fraction=10, residual_bits=24, knobs=config or None)[1]
+            executor.replay = False  # an ordered replay of an 8B rejection takes hours
+            backend = fid.Cqis(executor)
+        except ValueError as error:  # an illegal configuration (e.g. a table outside int16)
+            print(json.dumps(dict(config=name, invalid=str(error))), flush=True)
+            continue
+        names, limits = ['wikitext'] + (['arc'] if arc else []), {'wikitext': windows, 'arc': arc}
+        fid.run(backend, 'cqis', tokenizer, RESULTS/'knobs'/name/'items', names, limits, checkpoint=volume.commit)
+        del backend
+        torch.cuda.empty_cache()
+        volume.commit()
+        print(json.dumps(dict(done=name, seconds=round(time.time()-start))), flush=True)
+
+
+@app.function(image=image, volumes={'/vol': volume}, secrets=[secret], gpu='H100', cpu=8, memory=98304, timeout=3600)
+def fake_quant(configs: str = 'w8,a8,w8a8', windows: int = 8):
+    """E5-05b attribution in fp32: symmetric int8 fake quantisation of every Linear's
+    weights (per output row) and/or inputs (per token, absmax/127), the row formats
+    the CQIS model uses. A simulation that splits the gap, not CQIS evidence."""
+    _paths()
+    import torch
+    from transformers import AutoTokenizer
+    import fidelity as fid
+    tokenizer = AutoTokenizer.from_pretrained(SOURCE)
+    backend = fid.Fp32(SOURCE)
+    linears = [m for m in backend.model.modules() if isinstance(m, torch.nn.Linear)]
+    original = {m: m.weight.data.cpu() for m in linears}  # host copy: two fp32 8Bs exceed 80 GB
+
+    def q8(x, dim, group=0):
+        if group:  # one scale per `group` consecutive input features
+            return q8(x.unflatten(-1, (-1, group)), -1).flatten(-2)
+        s = x.abs().amax(dim=dim, keepdim=True).clamp_min(1e-30)/127
+        return torch.round(x/s).clamp(-127, 127)*s
+
+    for config in configs.split(','):
+        hooks = []
+        for m in linears:
+            w = original[m].to(m.weight.device)
+            m.weight.data = q8(w, 1) if 'w8' in config else w
+            if 'a8' in config:
+                group = int(config.split('g')[1]) if 'g' in config else 0  # e.g. a8g128
+                hooks.append(m.register_forward_pre_hook(lambda _, a, g=group: (q8(a[0], -1, g),)))
+        fid.run(backend, 'cqis', tokenizer, RESULTS/'fakequant'/config/'items', ['wikitext'], {'wikitext': windows},
+                checkpoint=volume.commit)
+        for h in hooks:
+            h.remove()
         volume.commit()
         print(json.dumps(dict(done=config)), flush=True)

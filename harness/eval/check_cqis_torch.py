@@ -127,7 +127,33 @@ def main(n):
         assert tuple(rows(r) for r in cuts) == expected.cuts and rows(logits) == expected.logits, 'long'
         long += 1
     counts['wide'] = wide_checks(rng)
+    counts['knobs'] = knob_checks(rng)
     print(json.dumps(dict(configurations=n, **counts, blocked_long_cases=long, corpus_blake3=corpus.hexdigest())))
+
+
+def knob_checks(rng):
+    """E5-05b knobs keep every codec join and never rescale a real quantity: the score
+    shift score_e - fQ - fK + exp.F already absorbs Q/K fractions, so score_m/score_e stay."""
+    import knobs
+    import model_codec
+    n = 0
+    for _ in range(200):
+        m = fixture(rng, 1)[0]
+        k = dict(attention=rng.randint(4, 12), qk=rng.randint(4, 12), v=rng.randint(4, 12),
+                 act=rng.choice((None, (7, 7), (8, 8))), norm_e=rng.randint(4, 12))
+        k = {key: value for key, value in k.items() if rng.random() < 0.5}
+        try:
+            out = knobs.configure(m, **k)
+        except ValueError:
+            continue
+        assert model_codec.decode(model_codec.encode(out)) == out
+        for a, b in zip(m.blocks, out.blocks):
+            assert (a.score_m, a.score_e, a.exp) == (b.score_m, b.score_e, b.exp)
+            if 'qk' in k:
+                assert b.fractions[:2] == (k['qk'],)*2
+        n += 1
+    assert n > 50, n
+    return n
 
 
 def oracle_norm(d, F, G, E, en, ed, X, H, a_max):
