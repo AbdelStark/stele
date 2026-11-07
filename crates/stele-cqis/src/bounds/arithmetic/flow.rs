@@ -1,4 +1,5 @@
-//! RFC-0025 flow appendix §§1–3: row conversion, residual alignment, gated product.
+//! RFC-0025 flow appendix §§1–3: row conversion, residual alignment, gated product,
+//! plus RFC-0004 A14's schema 22 (int24 residual alignment).
 use super::{field_bound, term, Builder, Error, Record, Word};
 
 /// Complete-row parameters; all domains are checked when deriving the record.
@@ -119,6 +120,14 @@ impl Record {
     }
     /// Derive schema 5, retaining the two aligned sources and one rounding.
     pub fn residual(p: Residual) -> Result<Self, Error> {
+        Self::residual_bound(p, 1 << 15)
+    }
+    /// Derive RFC-0004 A14's schema 22: both sources and the output are int24.
+    pub fn wide_residual(p: Residual) -> Result<Self, Error> {
+        Self::residual_bound(p, 1 << 23)
+    }
+    fn residual_bound(p: Residual, bound: u32) -> Result<Self, Error> {
+        let h = u64::from(bound);
         let [fx, fy] = p.input_fractions;
         let fo = p.output_fraction;
         if !(1..=16384).contains(&p.dimension) || [fx, fy, fo].iter().any(|f| *f > 30) {
@@ -131,26 +140,27 @@ impl Record {
             Word::power(shifts[2])?,
             Word::power(shifts[3])?,
         );
-        let maximum = l.add(r)?.mul(32768.into())?;
+        let maximum = l.add(r)?.mul(h.into())?;
         let scalars = [
             u64::from(p.dimension - 1).into(),
-            32768.into(),
-            65535.into(),
+            h.into(),
+            (2 * h - 1).into(),
             l,
             r,
             d,
             maximum,
-            maximum.quotient_cap(d, 32768)?,
-            32768.into(),
-            131071.into(),
-            65536.into(),
+            maximum.quotient_cap(d, bound)?,
+            h.into(),
+            (4 * h - 1).into(),
+            (2 * h).into(),
         ];
         let mut params = [0; 5];
         params[..2].copy_from_slice(&p.dimension.to_le_bytes());
         params[2..].copy_from_slice(&[fx, fy, fo]);
-        let mut b = Builder::new(5, &params, 8, &scalars, &shifts, 9)?;
-        b.column(&[term(65535, l), term(65535, r)])?;
-        b.rounding(maximum, d)?;
+        let schema = if bound == 1 << 15 { 5 } else { 22 };
+        let mut b = Builder::new(schema, &params, 8, &scalars, &shifts, 9)?;
+        b.column(&[term(2 * h - 1, l), term(2 * h - 1, r)])?;
+        b.rounding(maximum, d, bound)?;
         b.finish()
     }
     /// Derive schema 6 with the legal positive 2^30 gated endpoint.

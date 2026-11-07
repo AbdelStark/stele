@@ -64,6 +64,17 @@ pub struct Embedding {
 impl Record {
     /// Derive schema 1; bias joins the full scaled product before rounding.
     pub fn affine(p: Affine) -> Result<Self, Error> {
+        Self::affine_output(p, 1 << 15)
+    }
+    /// Derive RFC-0004 A14's schema 21: a wide O/down output in signed int24.
+    /// A wide affine has no bias (Llama projections carry none).
+    pub fn wide_affine(p: Affine) -> Result<Self, Error> {
+        if p.bias_fraction.is_some() {
+            return Err(Error::Parameters);
+        }
+        Self::affine_output(p, 1 << 23)
+    }
+    fn affine_output(p: Affine, output: u32) -> Result<Self, Error> {
         p.source.check()?;
         p.weight.check()?;
         if p.output_fraction > 30 || p.bias_fraction.is_some_and(|f| f > 30) {
@@ -98,12 +109,12 @@ impl Record {
             left,
             bias,
             maximum,
-            maximum.quotient_cap(divisor, 32768)?,
-            32768.into(),
+            maximum.quotient_cap(divisor, output)?,
+            u64::from(output).into(),
             (4 * accumulator).into(),
             (2 * accumulator).into(),
-            131071.into(),
-            65536.into(),
+            (4 * u64::from(output) - 1).into(),
+            (2 * u64::from(output)).into(),
         ];
         let mut params = [0; 17];
         params[..2].copy_from_slice(&p.source.dimension.to_le_bytes());
@@ -118,7 +129,7 @@ impl Record {
         params[15] = u8::from(p.bias_fraction.is_some());
         params[16] = p.bias_fraction.unwrap_or(0);
         let mut b = Builder::new(
-            1,
+            if output == 1 << 15 { 1 } else { 21 },
             &params[..if p.bias_fraction.is_some() { 17 } else { 16 }],
             8,
             &scalars,
@@ -131,7 +142,7 @@ impl Record {
         b.column(&[term(total, 1), term(total, 1)])?;
         let aligned = [term(total.mul(2.into())?, left), term(65535, bias)];
         b.column(&aligned[..if p.bias_fraction.is_some() { 2 } else { 1 }])?;
-        b.rounding(maximum, divisor)?;
+        b.rounding(maximum, divisor, output)?;
         b.finish()
     }
     /// Derive schema 2; extreme token/position exponent gaps retain all high bits.
@@ -210,7 +221,7 @@ impl Record {
             term(2 * limits[1], factors[1]),
         ];
         b.column(&aligned[..count])?;
-        b.rounding(maximum, divisor)?;
+        b.rounding(maximum, divisor, 1 << 15)?;
         b.finish()
     }
 }

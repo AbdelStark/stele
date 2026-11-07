@@ -116,11 +116,14 @@ fn cache(out: &mut impl Write, c: &Cache) -> Result<(), String> {
     }
     Ok(())
 }
-fn full(out: &mut impl Write, f: &Full) -> Result<(), String> {
+fn full(out: &mut impl Write, f: &Full, wide: bool) -> Result<(), String> {
+    // Narrow cuts are checked int16, so their low two LE bytes are the exact i16
+    // encoding; wide (RFC-0004 A14) cuts are written as i32.
+    let width = if wide { 4 } else { 2 };
     for cut in f.cuts() {
         for row in cut {
             for v in row {
-                bytes(out, &v.to_le_bytes())?;
+                bytes(out, &v.to_le_bytes()[..width])?;
             }
         }
     }
@@ -241,7 +244,7 @@ fn main() -> Result<(), String> {
     let mut out = BufWriter::new(file);
     bytes(&mut out, b"stele-e504-numerical-v1")?;
     word(&mut out, sequence.len())?;
-    full(&mut out, &original)?;
+    full(&mut out, &original, model.wide())?;
     drop(original);
     drop(state);
     let generated = result(executor.generate(&request, &prompt, seed.as_deref()))?;
@@ -255,7 +258,7 @@ fn main() -> Result<(), String> {
         decision(&mut out, d)?;
     }
     word(&mut out, generated.cache().tokens().len())?;
-    full(&mut out, &replay)?;
+    full(&mut out, &replay, model.wide())?;
     out.flush().map_err(|e| e.to_string())?;
     eprintln!("complete generation, stop cause and final-token full/cache equality validated");
     Ok(())

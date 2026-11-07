@@ -213,8 +213,9 @@ impl Builder {
         self.written += 1;
         Ok(())
     }
-    fn rounding(&mut self, maximum: Word, divisor: Word) -> Result<(), Error> {
-        let quotient = maximum.quotient_cap(divisor, 32768)?;
+    /// `output` is the signed target bound H: 2^15, or 2^23 for RFC-0004 A14.
+    fn rounding(&mut self, maximum: Word, divisor: Word, output: u32) -> Result<(), Error> {
+        let quotient = maximum.quotient_cap(divisor, output)?;
         let remainder = divisor.sub(1.into())?;
         self.column(&[term(maximum.mul(2.into())?, 1), term(maximum, 2)])?;
         self.column(&[term(maximum, 1), term(maximum, 1)])?;

@@ -40,7 +40,8 @@ pub(super) fn requant(config: Requant, format: Format) -> Result<Record, Error> 
 }
 
 pub(super) fn rmsnorm(function: Descriptor) -> Result<Record, Error> {
-    if function.name() != "rmsnorm_q" {
+    // RFC-0022's record is int16-only; version 2 (RFC-0021 A4) has schema 20 only.
+    if function.name() != "rmsnorm_q" || function.version() != 1 {
         return Err(Error::Parameters);
     }
     let p = function.parameters();

@@ -1,4 +1,4 @@
-//! RFC-0021 §§2,4 and A3: canonical function identities and selected representations.
+//! RFC-0021 §§2,4, A3 and A4: canonical function identities and selected representations.
 //! Metadata checks do not authenticate configuration, table contents or a proof.
 use crate::tables;
 
@@ -21,7 +21,7 @@ const MAX_ENCODING: usize = 192;
 pub enum Error {
     /// Unknown function name, including a component used as a function.
     Name,
-    /// Only definition version 1 is supported.
+    /// Only definition version 1 is supported, plus rmsnorm_q version 2 (RFC-0021 A4).
     Version,
     /// A parameter has the wrong length, domain or canonical form.
     Parameters,
@@ -52,7 +52,8 @@ enum Kind {
     Component(tables::Descriptor),
 }
 
-/// Immutable version-1 semantic definition. Parsing does not select a representation.
+/// Immutable semantic definition: version 1, or rmsnorm_q version 2 (RFC-0021 A4).
+/// Parsing does not select a representation.
 /// ```compile_fail
 /// use stele_cqis::functions::Descriptor;
 /// let mut f = Descriptor::new("range_8",1,&[]).unwrap();
@@ -61,6 +62,7 @@ enum Kind {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Descriptor {
     kind: Kind,
+    version: u8,
     parameters: [u8; 14],
 }
 
@@ -68,12 +70,14 @@ fn component(name: &str, parameters: &[u8]) -> Result<tables::Descriptor, Error>
     tables::Descriptor::new(name, 1, parameters).map_err(|_| Error::Parameters)
 }
 
-fn norm(parameters: &[u8]) -> Result<(), Error> {
+fn norm(parameters: &[u8], version: u32) -> Result<(), Error> {
     let p: &[u8; 13] = parameters.try_into().map_err(|_| Error::Parameters)?;
     let d = u16::from_le_bytes([p[0], p[1]]);
     let mut en = u32::from_le_bytes(p[5..9].try_into().map_err(|_| Error::Parameters)?);
     let mut ed = u32::from_le_bytes(p[9..13].try_into().map_err(|_| Error::Parameters)?);
-    if !(1..=16384).contains(&d) || p[2] > 30 || p[3] > 30 || p[4] > 14 || en == 0 || ed == 0 {
+    // RFC-0021 A4: version 2 (int24 inputs) admits d <= 8192 only.
+    let widest = if version == 2 { 8192 } else { 16384 };
+    if !(1..=widest).contains(&d) || p[2] > 30 || p[3] > 30 || p[4] > 14 || en == 0 || ed == 0 {
         return Err(Error::Parameters);
     }
     while ed != 0 {
@@ -103,7 +107,7 @@ impl Descriptor {
             }
             _ => return Err(Error::Name),
         };
-        if version != 1 {
+        if version != 1 && !(kind == Kind::Norm && version == 2) {
             return Err(Error::Version);
         }
         match kind {
@@ -113,7 +117,7 @@ impl Descriptor {
             Kind::Nearest => {
                 component("exp_q/direct", parameters)?;
             }
-            Kind::Norm => norm(parameters)?,
+            Kind::Norm => norm(parameters, version)?,
             Kind::LayerNorm => {
                 let p: &[u8; 14] = parameters.try_into().map_err(|_| Error::Parameters)?;
                 if p[5] > 30 {
@@ -123,7 +127,7 @@ impl Descriptor {
                 let mut shared = [0; 13];
                 shared[..5].copy_from_slice(&p[..5]);
                 shared[5..].copy_from_slice(&p[6..]);
-                norm(&shared)?;
+                norm(&shared, 1)?;
             }
             Kind::Component(_) => {}
         }
@@ -134,6 +138,7 @@ impl Descriptor {
             .copy_from_slice(parameters);
         Ok(Self {
             kind,
+            version: version as u8,
             parameters: stored,
         })
     }
@@ -148,9 +153,9 @@ impl Descriptor {
             Kind::Component(d) => d.name(),
         }
     }
-    /// The only supported definition version.
+    /// Definition version: 1, or 2 for the int24-input rmsnorm_q (RFC-0021 A4).
     pub fn version(self) -> u32 {
-        1
+        u32::from(self.version)
     }
     /// Canonical semantic parameters; no unresolved defaults.
     pub fn parameters(&self) -> &[u8] {
@@ -203,7 +208,7 @@ impl Descriptor {
                 .map_err(|_| Error::Capacity)?
                 .to_le_bytes(),
             name,
-            &1u32.to_le_bytes(),
+            &self.version().to_le_bytes(),
             &u16::try_from(parameters.len())
                 .map_err(|_| Error::Capacity)?
                 .to_le_bytes(),

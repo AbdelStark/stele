@@ -108,6 +108,14 @@ fn copy<T: Copy>(raw: &[T]) -> Result<Vec<T>, Error> {
 fn wide(value: i64) -> Result<i16, Error> {
     i16::try_from(value).map_err(|_| Error::Range)
 }
+/// Signed `bits`-bit target: 16, or 24 for RFC-0004 A14's wide residual stream.
+fn signed(value: i64, bits: u32) -> Result<i32, Error> {
+    let bound = 1i64 << (bits - 1);
+    if !(-bound..bound).contains(&value) {
+        return Err(Error::Range);
+    }
+    i32::try_from(value).map_err(|_| Error::Range)
+}
 
 /// Checked immutable source data plus bounded, locally derived point caches.
 /// The borrowed Artifact remains immutable for the entire executor lifetime.

@@ -1,4 +1,5 @@
-//! RFC-0025 static §6 and RMSNorm §§1–3: complete closed normalization records.
+//! RFC-0025 static §6 and RMSNorm §§1–3: complete closed normalization records,
+//! plus RFC-0004 A14's schema 20 for rmsnorm_q version 2 (int24 X).
 use super::{term, Builder, Error, Record, Word};
 use crate::functions::Descriptor;
 
@@ -155,18 +156,23 @@ impl Record {
         b.column(&[term(dout, 1), term(remainder, 1)])?;
         b.finish()
     }
-    /// Derive schema 14 without changing RFC-0022's original RMSNorm record.
+    /// Derive schema 14 without changing RFC-0022's original RMSNorm record, or
+    /// schema 20 for version 2: X is int24 (Hx=2^23), gains and outputs stay int16.
     pub fn rmsnorm(function: Descriptor) -> Result<Self, Error> {
         let p = Norm::read(function, false)?;
+        let wide = function.version() == 2;
         let (h, o) = (32768u64, 65535u64);
+        let (hx, amax) = if wide { (1u64 << 23, 16) } else { (h, 9) };
+        let ox = 2 * hx - 1;
         let unit = Word::from(p.d).shl((2 * p.f) as usize)?;
-        let statistic = p.d * h * h;
+        // Version 2 has d <= 8192, so d*Hx^2 <= 2^59.
+        let statistic = p.d * hx * hx;
         let n = p.ed.mul(statistic.into())?.add(p.en.mul(unit)?)?;
         let denominator = p.ed.mul(unit)?;
-        let (fa, fd) = (Word::power(46)?, Word::power(18)?);
+        let (fa, fd) = (Word::power(46)?, Word::power(2 * amax)?);
         let (aa, dd) = (n.mul(fa)?, denominator.mul(fd)?);
-        let (md, xy, t) = (dd.mul(o.into())?, h * h, h * h * 16384);
-        let (emin, emax) = (p.f + p.g - 2 - p.e, p.f + p.g + 30 - p.e);
+        let (md, xy, t) = (dd.mul(o.into())?, hx * h, hx * h * 16384);
+        let (emin, emax) = (p.f + p.g - 2 - p.e, p.f + p.g + 21 + amax - p.e);
         let (l, dr) = (Word::power((-emin).max(0))?, Word::power(emax.max(0))?);
         let bias = if emax > 0 {
             Word::power(emax - 1)?
@@ -174,7 +180,7 @@ impl Record {
             0.into()
         };
         let (u, qd) = (l.mul(t.into())?, dr.mul(h.into())?);
-        let scalars = [
+        let mut scalars = alloc::vec![
             h.into(),
             o.into(),
             unit,
@@ -202,8 +208,8 @@ impl Record {
             (2 * p.d - 1).into(),
             131071.into(),
             65536.into(),
-            32.into(),
-            33.into(),
+            (amax as u64 + 23).into(),
+            (amax as u64 + 24).into(),
             64.into(),
             16384.into(),
             65535.into(),
@@ -214,10 +220,22 @@ impl Record {
             524350.into(),
             3.into(),
         ];
-        let mut b = Builder::new(14, function.parameters(), 8, &scalars, &[emin, emax], 26)?;
-        b.column(&[term(o, 1), term(h, 2)])?;
-        b.column(&[term(h, 1), term(h, 1)])?;
-        b.column(&[(p.d as u32, h.into(), h.into())])?;
+        if wide {
+            scalars.extend([hx, ox, 4 * hx - 1, 2 * hx].map(Word::from));
+        }
+        let (schema, roles) = if wide { (20, 28) } else { (14, 26) };
+        let mut b = Builder::new(
+            schema,
+            function.parameters(),
+            8,
+            &scalars,
+            &[emin, emax],
+            roles,
+        )?;
+        // Roles 1/2 bind X; version 2's roles 27/28 bind the int16 gain separately.
+        b.column(&[term(ox, 1), term(hx, 2)])?;
+        b.column(&[term(hx, 1), term(hx, 1)])?;
+        b.column(&[(p.d as u32, hx.into(), hx.into())])?;
         b.column(&[term(statistic, p.ed), term(unit, p.en)])?;
         b.column(&[term(n, fa)])?;
         b.column(&[term(denominator, fd)])?;
@@ -225,7 +243,7 @@ impl Record {
         let remainder = dd.sub(1.into())?;
         b.column(&[term(md, 1), term(remainder, 1)])?;
         b.column(&[term(remainder, 1), term(remainder, 1), term(1, 1)])?;
-        b.column(&[term(h, h)])?;
+        b.column(&[term(hx, h)])?;
         b.column(&[term(xy, 16384)])?;
         b.column(&[term(t, l)])?;
         b.column(&[term(u, 1), term(bias, 1)])?;
@@ -236,13 +254,17 @@ impl Record {
         b.column(&[term(o, 1), term(h, 2)])?;
         b.column(&[term(h, 1), term(h, 1)])?;
         b.column(&[term(49151, 1), term(16384, 1)])?;
-        b.column(&[term(32, 1)])?;
+        b.column(&[term(amax as u64 + 23, 1)])?;
         b.column(&[term(65535, 8)])?;
         b.column(&[term(524280, 1), term(7, 1), term(62, 1)])?;
         b.column(&[term(1, 1)])?;
         b.column(&[term(1, 1), term(1, 1)])?;
         b.column(&[term(1, 1), term(1, 2)])?;
         b.column(&[term(1, 1)])?;
+        if wide {
+            b.column(&[term(o, 1), term(h, 2)])?;
+            b.column(&[term(h, 1), term(h, 1)])?;
+        }
         b.finish()
     }
 }
