@@ -129,6 +129,7 @@ class Executor:
         self.ordered = False
         self.replay = True  # False: a rejection raises its unordered reason (sweeps only)
         self.rotation = {}
+        self.split = {}  # grouped weight slices per (name, layer, g), RFC-0004 A15
 
     # ---- Artifact decoding -------------------------------------------------
     def _matrix(self, r):
@@ -179,8 +180,11 @@ class Executor:
         w, mantissas, exponent = self.weights[name, layer]
         if x.scale.dim() == 2:  # RFC-0004 A15: A' = sum_k s_k*(int8 dot of group k), exact in int64 (< 2^51)
             g = x.codes.shape[1]//x.scale.shape[1]
-            acc = sum(self._dot(x.codes[:, k*g:(k+1)*g], w[:, k*g:(k+1)*g].contiguous())*x.scale[:, k, None]
-                      for k in range(x.scale.shape[1]))
+            key = (name, layer, g)
+            if self.split.get(key, (None,))[0] is not w:  # one contiguous slice per group, made once
+                self.split[key] = (w, [w[:, k*g:(k+1)*g].contiguous() for k in range(x.scale.shape[1])])
+            acc = sum(self._dot(x.codes[:, k*g:(k+1)*g], part)*x.scale[:, k, None]
+                      for k, part in enumerate(self.split[key][1]))
             scale = torch.ones(acc.shape[0], dtype=I64, device=acc.device)
         else:
             acc = self._dot(x.codes, w)

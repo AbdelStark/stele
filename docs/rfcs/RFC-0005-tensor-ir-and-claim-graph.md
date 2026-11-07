@@ -164,7 +164,7 @@ reduction with an RFC-0004 A15 control:
 - code ↔ the scale of floor(i/g) (NC-0132);
 - fold F ↔ s*|q| (NC-0133);
 - digits ↔ signed fold, joined over Z in byte columns with exact digit ranges (NC-0134);
-- signed digit-row accumulators ↔ signed A' recombination over Z (NC-0135);
+- bounded digit-row accumulators (U_t + W_t = 2*cmax_t) ↔ signed A' recombination over Z (NC-0135);
 - group size ↔ Model Policy (NC-0136).
 
 The digit-row matmul is the existing matmul edge with the digit index in the row index

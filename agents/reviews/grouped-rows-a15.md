@@ -248,3 +248,92 @@ unsound.**
 - **Identity:** old Models are byte-identical, and there is one encoding per conversion
   (verified).
 - **Native:** no native crate changes. The native task is still to be created (S6).
+
+## Second review (7200a94)
+
+The same independent reviewer re-reviewed commit 7200a94 adversarially, without relying
+on the author's summary.
+
+**Reruns.**
+- `check_grouped_rows.py` passes: 6030 join cases, records 48178 B and 26764 B.
+- `check_cqis_torch.py 200` passes: reason_mismatch 0, 107 grouped twins, 500 grouped
+  linears, 191 knob cases.
+- Every pre-existing `check_ci.py` line is byte-identical to `origin/main` (6/6).
+
+**Independent recomputation.** I recomputed the RFC-0022 §2.1 column sides with my own
+implementation, not `arithmetic_bounds._column`. Every new schema 23/24/25 role is below
+p/2 at every extreme of inner in {1,4096,14336,16384}, qw in {7,127} and both kinds.
+The worst side is 392191. V >= amax holds everywhere.
+
+### B1: resolved
+
+The fold sign join sum_t 256^t*o_t + 2*sigma*F = c + F is an integer identity in byte
+columns.
+- **Field faithfulness.** Both sides are column-bounded.
+- **The digit vector is unique.** The o_t have exact ranges: range_8, and the exact top
+  range. The integer is then c + s*code with c - X >= 0 and c + X <= the digit maximum, so
+  the canonical digits are unique.
+- **The X-p alias fails.** The digits (124,0,0,-64) give o-sum 8421628, while c ± X is
+  2155905275 or 8421381. F is bound by the fold column (s <= smax, |q| <= 127).
+- **A flipped sign fails** unless F = 0, and F = 0 is harmless even with schema 4's
+  negative-input/zero-code sign.
+- **NC-0134 is now a real forgery control.**
+
+### B2: not resolved, see B3
+
+The offset recombination fixes mixed signs: (-5,1) gives 251, and the honest witnesses at
+the extremes satisfy the join. The new bound is not enforced, though.
+
+**B3 (blocking). U_t's whole-value bound is not enforced.**
+- Where: RFC-0004-cqis.md:2158.
+- **The gap.** Line 2158 says "Each U_t is decomposed into four range_8 bytes, which is
+  its own canonical-digit check". The bound 0 <= U_t <= 2*cmax_t (line 2111) is stated,
+  but no consumer enforces it. Four bytes admit [0, 2^32), which contains U_t + p for
+  every honest U_t: U_t + p <= 2680160255 < 2^32.
+- **Why it matters.** RFC-0022 §2.1 says exactly this: "digit caps alone do not establish
+  that bound".
+- **Concrete forgery** (inner = 16384, qw = 127, int16 row):
+  - Take C = (1000, -3), so A' = 232.
+  - Replace U_0 by U_0 + p. Its four bytes are valid, and its residue still equals
+    C_0 + cmax_0.
+  - The integer join balances with A'' = A' + p = 2147483879 and |A''| <= amax.
+  - The output is therefore forged.
+- **The check hides it.** `check_grouped_rows.recombine_join` (line 204) enforces
+  `0 <= u <= 2*m`, a check the spec text does not require. Its "flipped C_t fails" test
+  holds |A'| at the honest value. A forger recomputes |A'|, so that test only
+  re-encodes the matmul binding.
+- **NC-0135** (catalog.md:36) still targets the old magnitude recombination and misses
+  this alias.
+- **Fix.**
+  - Enforce the whole-value bound on each U_t. Either give 2*cmax_t - U_t four range_8
+    bytes too, or use schema 1's field sign/magnitude form: 8*cmax < p already holds, with
+    an enforced v_t <= cmax_t.
+  - Add the cost: +4 range_8 per accumulator under the first option.
+  - Reword NC-0135 to "replace U_t by U_t + p, with valid bytes and equal residue".
+  - Make `check_grouped_rows` model the spec-level consumer, so the alias passes on bytes
+    only and fails the bound.
+
+### Earlier findings
+
+| Finding | Status |
+|---|---|
+| S1 | Resolved. C_t and digits are virtual. No RFC-0023 advice; RFC-0005 A7 and RFC-0007 A6 agree. |
+| S2 | Resolved. 108,544 digit and 204,800 accumulator memberships; the head is counted (128,256 / 4,096 / 525,312); the total is labelled an estimate (336,952, about 3.7x, about 3.4 s). B3's fix adds memberships. |
+| S3 | Resolved (RFC-0007 A6). |
+| S4 | Resolved. The split by eq(r_t,t) enters the existing RLC batch (RFC-0005 §3), with no new challenge. |
+| S5 | Resolved. Local index j_k, s̃ over the high bits, padded groups with s = 0. |
+| S6 | Resolved. Title narrowed; E5-05f (native) and E5-05g (Q/K/V) created; the ADR-062 correction is assigned to the acceptance ADR. |
+| S7 | Resolved (glossary). |
+| N1 | Resolved. The grid covers f in {0,30,44} and fo in {0,30}; 48178 B < 48 KiB and 26764 B < 27 KiB. |
+| N2, N3 | Resolved. |
+| N4 | Resolved (REPORT.md note). |
+| N5 | Resolved. Per-group int8 `_dot` is exact. |
+| N6 | Resolved. 191 knob cases accepted. |
+| N7 | Resolved. 200 biased and wide draws on real fixture weights. |
+
+**New nit N8.** cqis_torch.py:182 copies a weight slice with `.contiguous()` for every
+group on every call: 112 copies per down projection. Slice once per layer, or reshape w
+to [out, n/g, g] once at load.
+
+**Second verdict: accept after fixes.** B3 must be fixed and re-checked. Everything else
+is resolved.

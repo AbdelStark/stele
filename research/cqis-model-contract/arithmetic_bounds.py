@@ -207,7 +207,8 @@ def _grouped_affine(p):
 
     Each digit row t is one field matmul C_t = sum_i b_t,i*w_i with |b| <= 128 and
     |C_t| <= cmax_t, so 8*inner*128*weight < p keeps it faithful. The offsets
-    U_t = C_t+cmax_t in [0, 2*cmax_t] are recombined in byte columns with the signed join
+    U_t = C_t+cmax_t are bounded by W_t = 2*cmax_t-U_t (both four range_8 bytes, joined
+    U_t+W_t = 2*cmax_t in a byte column) and recombined in byte columns with the signed join
     sum_t 256^t*U_t + 2*sign*|A'| = V + |A'|, V = sum_t 256^t*cmax_t; then |A'| times the
     mantissa. |A'| <= amax = inner*X*weight, so the total, maximum and rounding roles equal
     schema 1/21's at the dynamic row-scale maximum."""
@@ -233,7 +234,8 @@ def _grouped_affine(p):
     if bias:
         aligned += ((1, 65535, bias),)
     offsets = tuple((1, 2*c, 1 << (8*t)) for t, c in enumerate(digits))
-    roles = (offsets, ((1, 2*v, 1), (1, amax, 2)), ((1, v, 1), (1, amax, 1)), ((1, amax, p.mantissa),),
+    bounded = tuple(((1, 2*c, 1), (1, 2*c, 1)) for c in digits)  # U_t + W_t = 2*cmax_t
+    roles = (offsets,)+bounded+(((1, 2*v, 1), (1, amax, 2)), ((1, v, 1), (1, amax, 1)), ((1, amax, p.mantissa),),
              ((1, 2*total, 1), (1, total, 2)), ((1, total, 1), (1, total, 1)), aligned)
     roles += _rounding_roles(maximum, divisor, output)
     for scalar in scalars:

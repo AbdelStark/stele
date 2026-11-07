@@ -171,7 +171,7 @@ def bound_claims():
             today = arithmetic.derive(replace(p, policy=0, scale=0))
             assert schema == (24 if out == 16 else 25) and today[0] == (1 if out == 16 else 21)
             assert scalars[8] == today[1][4] and scalars[9:15] == today[1][5:11] and shifts == today[2]
-            assert scalars[7] >= scalars[6] and roles[4:] == today[3][2:]  # V >= amax; schema 1/21's sign, alignment, rounding
+            assert scalars[7] >= scalars[6] and roles[4+scalars[3]:] == today[3][2:]  # V >= amax; schema 1/21's sign, alignment, rounding
             assert all(2*max(r[4]+r[5]) < P for r in roles) and 8*scalars[5] < P
             worst['ratio'] = max(worst['ratio'], Fraction(8*scalars[5], P))
             worst['affine'] = max(worst['affine'], len(arithmetic.encode(p)))
@@ -186,7 +186,7 @@ def bound_claims():
             assert schema == 23 and roles[:len(base[3])] == base[3] and scalars[:len(base[1])] == base[1]
             assert all(2*max(x[4]+x[5]) < P for x in roles)
             worst['row'] = max(worst['row'], len(flow.encode(r)))
-    assert worst['affine'] < 48*1024 and worst['row'] < 27*1024
+    assert worst['affine'] < 54*1024 and worst['row'] < 27*1024
     rejects(lambda: flow.Row(4, 0, 0, 2, 4), 'Scale')
     rejects(lambda: arithmetic.Affine(6, 8, 0, 1, 0, 0, 0, 2, 4, None), 'Scale')
     return dict(affine_record_bytes=worst['affine'], row_record_bytes=worst['row'],
@@ -201,11 +201,15 @@ def fold_join(d, F, b, count, top):
         sum(x << (8*t) for t, x in enumerate(o))+2*b*F == c+F
 
 
-def recombine_join(C, cmax, a, sign):
-    """Schemas 24/25's join over Z: sum_t 256^t*U_t + 2*sign*|A'| = V + |A'|, U_t = C_t+cmax_t."""
-    U = [x+m for x, m in zip(C, cmax)]
+def recombine_join(U, cmax, a, sign, W=None):
+    """Schemas 24/25's consumer as the spec states it, over Z: each U_t has four range_8 bytes,
+    sum_t 256^t*U_t + 2*sign*|A'| = V + |A'| with |A'| <= amax, and (B3) each W_t has four
+    range_8 bytes with U_t + W_t = 2*cmax_t. W=None is the pre-B3 consumer without W."""
     v = sum(m << (8*t) for t, m in enumerate(cmax))
-    return all(0 <= u <= 2*m for u, m in zip(U, cmax)) and sum(u << (8*t) for t, u in enumerate(U))+2*sign*a == v+a
+    ok = all(0 <= u < 1 << 32 for u in U) and sum(u << (8*t) for t, u in enumerate(U))+2*sign*a == v+a and a <= v
+    if W is None:
+        return ok
+    return ok and all(0 <= w < 1 << 32 and u+w == 2*m for u, w, m in zip(U, W, cmax))
 
 
 def join_cases(rng):
@@ -227,7 +231,7 @@ def join_cases(rng):
         assert all(-128 <= b <= 127 for b in d[:-1]) and abs(d[-1]) <= top  # an in-range alias exists
         assert not fold_join(d, F, 0, count, top); n += 1
     assert abs(digits(1065320318-P, 4)[-1]) > top  # and none below that magnitude
-    # Recombination: mixed signs and extremes; a magnitude sum or one flipped sign fails.
+    # Recombination: mixed signs and extremes pass; a magnitude sum gives the wrong A'.
     assert sum(abs(c) << (8*t) for t, c in enumerate((-5, 1))) == 261 != 251 == -5+256
     for kind, inner in product((0, 1), (1, 4096, 16384)):
         smax, x, count, top = arithmetic.digit_bounds(kind)
@@ -235,11 +239,25 @@ def join_cases(rng):
         draws = [[rng.choice((-m, m, 0, -5, 1, rng.randint(-m, m))) for m in cmax] for _ in range(300)]
         for C in draws+[[-5, 1]+[0]*(count-2), [-m for m in cmax], cmax]:
             a = sum(c << (8*t) for t, c in enumerate(C))
-            assert recombine_join(C, cmax, abs(a), int(a < 0)); n += 1
+            U = [c+m for c, m in zip(C, cmax)]
+            assert recombine_join(U, cmax, abs(a), int(a < 0), [2*m-u for u, m in zip(U, cmax)]); n += 1
+            # A flipped C_t with a recomputed |A'| is another consistent recombination: the join
+            # cannot catch it; the C_t <-> digit-row matmul claim does. NC-0135 targets U_t+p.
             for t, c in enumerate(C):
                 if c:
-                    flipped = C[:t]+[-c]+C[t+1:]
-                    assert not recombine_join(flipped, cmax, abs(a), int(a < 0))
+                    F = C[:t]+[-c]+C[t+1:]; b = sum(y << (8*j) for j, y in enumerate(F)); FU = [y+m for y, m in zip(F, cmax)]
+                    assert recombine_join(FU, cmax, abs(b), int(b < 0), [2*m-u for u, m in zip(FU, cmax)])
+    # B3: U_0 + p keeps valid bytes and its residue. It balances the pre-B3 join with
+    # A'' = A'+p <= amax, and fails U_t + W_t = 2*cmax_t for every W_t in byte range.
+    inner = 16384; cmax = [inner*127*128, inner*127*128]
+    amax = inner*32893*127
+    C = [1000, -3]; a = 1000-3*256; U = [c+m for c, m in zip(C, cmax)]
+    forged = [U[0]+P, U[1]]
+    assert a == 232 and forged[0] < 1 << 32 and a+P <= amax and (forged[0]-C[0]-cmax[0]) % P == 0
+    assert recombine_join(forged, cmax, a+P, 0)  # bytes only: the forgery passes
+    assert 2*cmax[0]-forged[0] < 0  # no W_0 in byte range closes U_0 + W_0 = 2*cmax_0
+    assert not recombine_join(forged, cmax, a+P, 0, [2*m-u for u, m in zip(forged, cmax)])
+    assert all(not recombine_join(forged, cmax, a+P, 0, [w, 2*cmax[1]-U[1]]) for w in (0, 1, (1 << 32)-1))
     return n
 
 
@@ -255,21 +273,21 @@ def llama_costs():
     folds = 3*d+ff
     digit_values = 2*3*d+4*ff
     digit_memberships = 3*3*d+5*ff
-    accumulator_memberships = 4*extra
+    accumulator_memberships = 4*extra+4*(base+extra)  # U bytes of added rows; W bytes of every row (B3)
     partials = sum(v*(d if k != 'down' else ff)//128 for k, v in outputs.items())
     assert (base, extra, folds, digit_values, partials) == (43008, 51200, 26624, 81920, 1703936)
-    assert (digit_memberships, accumulator_memberships) == (108544, 204800)
+    assert (digit_memberships, accumulator_memberships) == (108544, 581632)
     # Head, per token: T = 2 accumulators per logit, d folds, 3d digit memberships.
-    head = dict(accumulators=vocab, folds=d, memberships=3*d+4*vocab)
-    assert head == dict(accumulators=128256, folds=4096, memberships=525312)
+    head = dict(accumulators=vocab, folds=d, memberships=3*d+4*vocab+4*2*vocab)
+    assert head == dict(accumulators=128256, folds=4096, memberships=1551360)
     # Estimate (not a bound): an accumulator or fold is one N_act element; two memberships
     # count as one element (docs/cost-model.md assumes 1.5-3 lookups per element).
     n_act = 7*d+4*kv+4*ff
     layer = extra+folds+(digit_memberships+accumulator_memberships)//2
     per_token_head = head['accumulators']+head['folds']+head['memberships']//2
     total = n_act+layer+per_token_head//layers
-    assert (n_act, layer, per_token_head, total, 3*d//128+ff//128) == (90112, 234496, 395008, 336952, 208)
-    assert Fraction(37, 10) < Fraction(total, n_act) < Fraction(38, 10)  # T_act 0.9 s -> about 3.4 s
+    assert (n_act, layer, per_token_head, total, 3*d//128+ff//128) == (90112, 422912, 908032, 541400, 208)
+    assert Fraction(6, 1) < Fraction(total, n_act) < Fraction(61, 10)  # T_act 0.9 s -> about 5.4 s
     return dict(projection_outputs=base, extra_digit_accumulators=extra, folds=folds,
                 digit_memberships=digit_memberships, accumulator_memberships=accumulator_memberships,
                 per_group_partials=partials, n_act_estimate=total)

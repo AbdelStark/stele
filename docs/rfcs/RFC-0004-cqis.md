@@ -2108,9 +2108,12 @@ X = 1073741947. Every gated fold of magnitude at least 1065320319 has such an al
 - **Fold sign join.** Let o_t = b_t+128 for t < T-1 and o_(T-1) = b_(T-1)+Btop be the offset
   digits, c = sum_(t<T-1) 128*256^t + Btop*256^(T-1), and sigma_i the code's canonical sign
   bit from schema 4 (zero is positive). Then sum_t 256^t*o_t + 2*sigma_i*F_i = c + F_i.
-- **Recombination sign join.** Let U_t = C_t+cmax_t, so 0 <= U_t <= 2*cmax_t, and
-  V = sum_t 256^t*cmax_t. Let tau be the canonical sign of A'. Then
-  sum_t 256^t*U_t + 2*tau*|A'| = V + |A'|, with |A'| <= amax <= V.
+- **Accumulator bound.** Let U_t = C_t+cmax_t and W_t = 2*cmax_t-U_t. Each of U_t and W_t
+  has four range_8 bytes, and U_t + W_t = 2*cmax_t holds in a byte column. Then
+  0 <= U_t <= 2*cmax_t <= 532676608 < 2^30 over Z. Four bytes alone admit U_t + p, which
+  keeps the residue of C_t+cmax_t; the W_t join rejects it, because W_t would be negative.
+- **Recombination sign join.** Let V = sum_t 256^t*cmax_t and tau be the canonical sign of
+  A'. Then sum_t 256^t*U_t + 2*tau*|A'| = V + |A'|, with |A'| <= amax <= V.
 - **Product.** |A'|*m then enters schema 1/21's signed alignment and rounding with sign tau.
 
 **Static records.** The new schema ids belong to the RFC-0025 static frame and reuse its
@@ -2132,12 +2135,14 @@ parameter bytes, column, word and field checks.
     total = amax*m, then schema 1's divisor, left, bias, maximum, quotient cap, output, and
     the sides 4*cmax, 2*cmax, 2*V, 4*output-1, 2*output.
   - Role 1 is the offset recombination: one term (1, 2*cmax_t, 256^t) per digit row.
-  - Roles 2/3 are the recombination sign join's sides: (1,2V,1),(1,amax,2) and
+  - Roles 2..T+1 are the accumulator bounds, (1,2*cmax_t,1),(1,2*cmax_t,1), one per digit row.
+  - Roles T+2/T+3 are the recombination sign join's sides: (1,2V,1),(1,amax,2) and
     (1,V,1),(1,amax,1).
-  - Role 4 is (1, amax, m).
-  - Roles 5-15 are schema 1/21's sign, alignment and rounding roles, with equal values.
+  - Role T+4 is (1, amax, m).
+  - The remaining 11 roles are schema 1/21's sign, alignment and rounding roles, with equal
+    values.
   - The field check is 8*cmax < p, which replaces schema 1's 8*accumulator < p.
-  - Records are below 48 KiB.
+  - Records are below 54 KiB.
 
 The Bounds collection keeps its slot order and count. A mode-2 convert slot takes schema 23;
 a projection whose input row is grouped takes 24, or 25 for wide O/down. Q/K/V share the
@@ -2155,7 +2160,8 @@ first-norm row's policy and the head shares Policy(final). Every record is below
 **Range discipline.**
 - Each low digit is checked in offset form b+128 in range_8.
 - The last digit o = b+Btop is checked in exact form: o and 2*Btop-o both lie in range_16.
-- Each U_t is decomposed into four range_8 bytes, which is its own canonical-digit check.
+- Each U_t and each W_t is decomposed into four range_8 bytes. The bytes alone do not bound
+  U_t (RFC-0022 §2.1); the U_t + W_t = 2*cmax_t join does.
 - No digit range may stand in for a code or scale range, nor the reverse.
 - C_t and the digit rows are virtual, never cuts or RFC-0023 advice. RFC-0024's centered
   path applies only to committed physical X, so it is unavailable for a grouped input (RFC-0007 A6).
@@ -2181,8 +2187,8 @@ first-norm row's policy and the head shares Policy(final). Every record is below
   - NC-0133: a fold that is not s_k(i)*|q_i|;
   - NC-0134: an in-range digit vector equal to the signed fold mod p but not over Z (the
     gated X-p alias), or a flipped fold sign;
-  - NC-0135: one digit-row accumulator with a flipped sign while a magnitude recombination
-    still balances, or rows recombined in the wrong order;
+  - NC-0135: one U_t replaced by U_t + p, with valid bytes and the same residue, so that the
+    sign join balances at A' + p <= amax (for example C = (1000,-3) at inner = 16384);
   - NC-0136: a row proven under a group size other than the Model's.
 
   A parser rejection earns no proof-binding credit.
@@ -2192,19 +2198,20 @@ grouped at g = 128.
 
 Per token and layer:
 - Projection outputs carry T accumulators: 51,200 more than the 43,008 today (+119%). Each
-  added accumulator brings 4 range_8 memberships for its offset bytes: 204,800.
+  added accumulator brings 4 range_8 memberships for U_t, and every digit-row accumulator
+  brings 4 more for W_t: 204,800 + 376,832 = 581,632.
 - Converted values gain 26,624 folds (c_a). Their digits need 108,544 memberships: 3 per
   int16 value (one range_8, two range_16) and 5 per gated value.
 - Group scales add n/g scale witnesses per row (208 per layer). Each element still enters
   exactly one attained maximum.
 
-Per token, for the head: 128,256 extra accumulators, 4,096 folds and 525,312 memberships.
+Per token, for the head: 128,256 extra accumulators, 4,096 folds and 1,551,360 memberships.
 
 The total is an estimate, not a bound:
 - Assume each accumulator or fold is one N_act element, and two memberships are one element.
   docs/cost-model.md assumes 1.5-3 lookups per element.
-- Then N_act grows from about 90,112 to about 336,952 per layer and token (about 3.7x), with
-  the head spread over the 32 layers. T_act grows from 0.9 s to about 3.4 s in §3's
+- Then N_act grows from about 90,112 to about 541,400 per layer and token (about 6.0x), with
+  the head spread over the 32 layers. T_act grows from 0.9 s to about 5.4 s in §3's
   Llama-3.1-8B row.
 - The weight phase's A side grows by T (T*n*d_in MACs per layer and type).
 - T_weights, the weight pass count, T_attn, the residual cuts, any RFC-0023 advice cut and

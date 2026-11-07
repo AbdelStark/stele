@@ -196,8 +196,8 @@ Step 1's A side costs T*n*d_in MACs per layer and type instead of n*d_in.
   sum_t eq(r_t, t)*X̃_t(r_i, r_k). Schema 23's consumer receives them through the RLC batch of
   RFC-0005 §3.
 - Each C_t is a virtual signed field value with |C_t| <= cmax_t. It is not an RFC-0023
-  advice source. The consuming Requant recombines A' = sum_t 256^t*C_t in byte columns with
-  its sign (schemas 24/25, roles 1-3).
+  advice source. The consuming Requant bounds U_t = C_t+cmax_t by its W_t join and recombines
+  A' = sum_t 256^t*C_t in byte columns with its sign (schemas 24/25).
 
 Ungrouped inputs are unchanged. Ledger and cost impact are in RFC-0004 A15: the stacked
 Requant zerocheck gains log2 T variables, and there is no new challenge. Affected tasks:
