@@ -146,7 +146,7 @@ def knob_checks(rng):
     for _ in range(200):
         m = fixture(rng, 1)[0]
         k = dict(attention=rng.randint(4, 12), qk=rng.randint(4, 12), v=rng.randint(4, 12),
-                 act=rng.choice((None, (7, 7), (8, 8))), norm_e=rng.randint(4, 12), group=rng.choice((1, 2)))
+                 act=rng.choice((None, (7, 7), (8, 8))), norm_e=rng.randint(4, 12), group=1)  # g = 1 < every row length
         k = {key: value for key, value in k.items() if rng.random() < 0.5}
         try:
             out = knobs.configure(m, **k)
@@ -194,6 +194,25 @@ def grouped_checks(rng):
             got = str(error)
         assert got == expected, ('grouped', X, g, got, expected)
         n += 1
+    # Biased (GPT-2 up) and wide int24 (Llama O, version 2) grouped linears on real fixture weights.
+    for family, version, name in ((0, 1, 'up'), (1, 2, 'O')):
+        model, mp, sr, raw, _ = fixture(Random(rng.getrandbits(64)), family, version=version, width=4)
+        data = c.load(model, mp, sr, raw, blake3(raw).digest()); ex = ct.Executor(data)
+        size = model.shape.width
+        for _ in range(100):
+            X = [[rng.choice((-32768, 32767, 0, rng.randint(-32768, 32767))) for _ in range(size)] for _ in range(2)]
+            f, fo, g = rng.randint(0, 30), rng.randint(0, 30), rng.choice([1 << t for t in range(4) if 1 << t < size])
+            rows_ = [c.convert(tuple(r), f, (2, g)) for r in X]
+            try:
+                expected = [list(c.linear(data, name, 0, r, fo)) for r in rows_]
+            except ValueError as error:
+                expected = str(error)
+            try:
+                got = ex.linear(name, 0, ex.convert(torch.tensor(X), f, (2, g)), fo).tolist()
+            except ValueError as error:
+                got = str(error)
+            assert got == expected, ('grouped real', name, X, g, got, expected)
+            n += 1
     return n
 
 

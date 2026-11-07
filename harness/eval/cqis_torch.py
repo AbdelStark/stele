@@ -177,10 +177,10 @@ class Executor:
 
     def linear(self, name, layer, x, fraction):
         w, mantissas, exponent = self.weights[name, layer]
-        if x.scale.dim() == 2:  # RFC-0004 A15: A' = sum_i s_g(i)*q_i*w_i (|A'| < 2^51), scale folded
-            folded = x.codes*x.scale.repeat_interleave(x.codes.shape[1]//x.scale.shape[1], dim=1)
-            step = max(1, (1 << 27)//max(1, folded.shape[1]))
-            acc = torch.cat([fmatmul(folded, w[start:start+step].to(I64).t()) for start in range(0, w.shape[0], step)], dim=1)
+        if x.scale.dim() == 2:  # RFC-0004 A15: A' = sum_k s_k*(int8 dot of group k), exact in int64 (< 2^51)
+            g = x.codes.shape[1]//x.scale.shape[1]
+            acc = sum(self._dot(x.codes[:, k*g:(k+1)*g], w[:, k*g:(k+1)*g].contiguous())*x.scale[:, k, None]
+                      for k in range(x.scale.shape[1]))
             scale = torch.ones(acc.shape[0], dtype=I64, device=acc.device)
         else:
             acc = self._dot(x.codes, w)

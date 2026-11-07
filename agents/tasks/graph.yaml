@@ -1003,7 +1003,7 @@ tasks:
   - PRD G7 pass on the full protocol or an ADR recording the residual gap
 - id: E5-05d
   epic: E5
-  title: Per-group activation scales (one scale per 128 features) for affine inputs and Q/K/V rows
+  title: Per-group activation scales (one scale per 128 features) for affine-input rows; Q/K/V deferred to E5-05g
   depends:
   - E5-05b
   rfc:
@@ -1015,7 +1015,7 @@ tasks:
   agent: claude-code
   branch: task/E5-05d-grouped-rows
   acceptance:
-  - reviewed amendment (Workflow 02) defining grouped conversion, its bounds and its affine-cut cost, with a research reference
+  - reviewed amendment (Workflow 02) defining grouped conversion of affine-input rows, its bounds and its affine-cut cost, with a research reference
   - harness/eval/cqis_torch.py executes grouped models with parity to the research reference
 - id: E5-05e
   epic: E5
@@ -1030,6 +1030,34 @@ tasks:
   status: ready
   acceptance:
   - exact executor runs the grouped model and harness/eval/REPORT.md records PRD G7 on the full protocol
+- id: E5-05f
+  epic: E5
+  title: Native grouped activation rows (RFC-0004 A15) - Policy mode 2, schemas 23-25 and grouped executor
+  depends:
+  - E5-05d
+  rfc:
+  - RFC-0004 A15
+  - RFC-0025 A2
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: ready
+  acceptance:
+  - native Model/Bounds admit Policy mode 2 and schemas 23/24/25 with byte parity to the research reference
+  - native executor runs grouped models with full/step/cache parity to research model_execution and harness/eval/cqis_torch.py
+- id: E5-05g
+  epic: E5
+  title: Grouped Q/K/V rows (the reserved Policy mode 2 on policies 1-3), if E5-05e leaves a G7 gap
+  depends:
+  - E5-05e
+  rfc:
+  - RFC-0004 A15
+  - RFC-0009
+  skill: cqis-numerics
+  crate: harness
+  status: ready
+  acceptance:
+  - attribution of the Q/K/V share of the residual G7 gap on fixed subsets, or an ADR closing the task because E5-05e passes G7
+  - if grouped Q/K/V is pursued, a reviewed amendment (Workflow 02) for the score, weighted-sum and KV cache relations, with a research reference
 - id: E5-06
   epic: E5
   title: CQIS serving kernels (int8 GEMM exact accumulate, table gathers) with GPU/CPU bit reproducibility

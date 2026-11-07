@@ -2075,9 +2075,9 @@ rows that feed an affine projection. The simulation is not CQIS evidence; E5-05e
   accumulator*scale at the dynamic scale maximum. Product, alignment and rounding maxima are
   unchanged, and |A'| < 2^51 at every admitted shape.
 
-**Proof form.** A' cannot be one field value. For int16 rows, one field matmul over the
-folded row x'_i = s_k(i)*q_i is faithful only for inner <= 257 (2*inner*X*qw < p). A single
-gated folded value already exceeds p/2. Two forms were compared:
+**Proof form.** A' cannot be one field value. For int16 rows with qw = 127, one field matmul
+over the folded row x'_i = s_k(i)*q_i is faithful only for inner <= 257 (2*inner*X*qw < p).
+A single gated folded value already exceeds p/2. Two forms were compared:
 - **Per-group partial sums** A_k = sum over i in group k of q_i*w_i. Each is small, but each
   output needs n_in/g of them: 32 at d_in = 4096 and 112 at 14336, with g = 128.
 - **Digit rows (chosen).** Write each folded value in T signed radix-256 digits,
@@ -2088,51 +2088,77 @@ gated folded value already exceeds p/2. Two forms were compared:
     row (both are attained).
 
   Each digit row t is an ordinary field matmul C_t = sum_i b_t,i*w_i, with
-  |C_t| <= inner*128*qw. Then 8*inner*128*qw < p holds at inner = 16384 and qw = 127
-  (2130706432 < p). A' = sum_t 256^t*C_t is recombined exactly in byte columns, then
-  multiplied by m. The digit index t extends the matmul's row index, like positions do
-  (RFC-0007 A6). The weight tensor, B and the single weight pass are unchanged.
+  |C_t| <= cmax_t = inner*qw*(128, or Btop for the last row). Then 8*inner*128*qw < p holds
+  at inner = 16384 and qw = 127 (2130706432 < p), so every C_t is a faithful signed field
+  value. A' = sum_t 256^t*C_t is recombined exactly in byte columns with its sign (schemas
+  24/25), then |A'| is multiplied by m. The digit index t extends the matmul's row index,
+  like positions do (RFC-0007 A6). The weight tensor, B and the single weight pass are
+  unchanged.
 
 Digit rows cost T accumulators per output, against n_in/g partial sums. For Llama-3.1-8B with
 all four rows grouped at g = 128, that is 51,200 extra accumulators per token and layer,
 against 1,703,936 partial sums replacing the 43,008 accumulators.
+
+**Joins over Z.** Every relation below is an integer identity enforced in byte columns with
+canonical digits and checked zero extension (RFC-0022 §2.2). None is a single wide field
+equality. For the gated row X > p/2, so a field equality between a fold and its digits
+admits the in-range alias X-p, for example the digits (124,0,0,-64) for the fold
+X = 1073741947. Every gated fold of magnitude at least 1065320319 has such an alias.
+- **Fold.** F_i = s_k(i)*|q_i|, with F_i <= X.
+- **Fold sign join.** Let o_t = b_t+128 for t < T-1 and o_(T-1) = b_(T-1)+Btop be the offset
+  digits, c = sum_(t<T-1) 128*256^t + Btop*256^(T-1), and sigma_i the code's canonical sign
+  bit from schema 4 (zero is positive). Then sum_t 256^t*o_t + 2*sigma_i*F_i = c + F_i.
+- **Recombination sign join.** Let U_t = C_t+cmax_t, so 0 <= U_t <= 2*cmax_t, and
+  V = sum_t 256^t*cmax_t. Let tau be the canonical sign of A'. Then
+  sum_t 256^t*U_t + 2*tau*|A'| = V + |A'|, with |A'| <= amax <= V.
+- **Product.** |A'|*m then enters schema 1/21's signed alignment and rounding with sign tau.
 
 **Static records.** The new schema ids belong to the RFC-0025 static frame and reuse its
 parameter bytes, column, word and field checks.
 - **Schema 23 (grouped row, replaces 4 at a mode-2 conversion slot).**
   - Parameters are schema 4's bytes: u16(n), u8(kind, fraction, 2), u32(g).
   - It begins with schema 4's dynamic record for one group of length g: 17 scalars, 8 roles.
-  - It appends five scalars: n-1, n/g, T, X, Btop.
-  - It appends two roles: the fold (1,127,smax), and the offset digits. The offset digits are
-    (1,255,256^t) for t < T-1 and (1,2*Btop,256^(T-1)).
-  - Records are below 22 KiB.
+  - It appends six scalars: n-1, n/g, T, X, Btop, c.
+  - It appends four roles:
+    - the fold, (1,127,smax);
+    - the offset digits, (1,255,256^t) for t < T-1 and (1,2*Btop,256^(T-1));
+    - the fold sign join's left side, the offset-digit terms plus (1,X,2);
+    - its right side, (1,c,1),(1,X,1).
+  - Records are below 27 KiB.
 - **Schemas 24/25 (grouped affine, replace 1/21 when the input row is grouped).**
   - 24 has an int16 output; 25 is the wide O/down output of A14.
   - Parameters are schema 1/21's bytes, with policy byte 2 and the u32 field g.
-  - Scalars (18): qw, smax, X, T, Btop, cmax = inner*128*qw, amax = inner*X*qw,
+  - Scalars (20): qw, smax, X, T, Btop, cmax = inner*128*qw, amax = inner*X*qw, V,
     total = amax*m, then schema 1's divisor, left, bias, maximum, quotient cap, output, and
-    the sign sides 4*cmax, 2*cmax, 4*output-1, 2*output.
-  - Role 1 is the recombination: one term (1, inner*qw*b_t, 256^t) per digit row, with
-    b_t = 128 for the low digits and Btop for the last.
-  - Role 2 is (1, amax, m).
-  - Roles 3-13 are schema 1/21's sign, alignment and rounding roles, with equal values.
+    the sides 4*cmax, 2*cmax, 2*V, 4*output-1, 2*output.
+  - Role 1 is the offset recombination: one term (1, 2*cmax_t, 256^t) per digit row.
+  - Roles 2/3 are the recombination sign join's sides: (1,2V,1),(1,amax,2) and
+    (1,V,1),(1,amax,1).
+  - Role 4 is (1, amax, m).
+  - Roles 5-15 are schema 1/21's sign, alignment and rounding roles, with equal values.
   - The field check is 8*cmax < p, which replaces schema 1's 8*accumulator < p.
-  - Records are below 44 KiB.
+  - Records are below 48 KiB.
 
 The Bounds collection keeps its slot order and count. A mode-2 convert slot takes schema 23;
 a projection whose input row is grouped takes 24, or 25 for wide O/down. Q/K/V share the
 first-norm row's policy and the head shares Policy(final). Every record is below 128 KiB.
 
-**Range discipline.**
+**Group indexing.**
 - Each group's scale uses the existing dynamic-scale and row-code consumers over its g
-  values. The attained-maximum index lies in the group, never elsewhere in the row.
-- Each code i is consumed with the scale of floor(i/g).
+  values. The captured attained-maximum index is local, j_k in [0,g-1] (schema 23's scalar
+  g-1), and the global position is k*g+j_k. It is never elsewhere in the row.
+- s̃ is the MLE over the high log2(n/g) bits of the row index, which is why g is a power of
+  two. Code i is consumed with s̃ at the high bits of i, which is the scale of floor(i/g).
+- When n/g is not a power of two (Llama-3.1-8B's FFN row has 112 groups), padded groups
+  carry s = 0 and zero codes.
+
+**Range discipline.**
 - Each low digit is checked in offset form b+128 in range_8.
 - The last digit o = b+Btop is checked in exact form: o and 2*Btop-o both lie in range_16.
-  RFC-0024's offset-int8 source does not admit the int16 rows' last digit 128. Native
-  integration registers digit rows with these exact ranges.
-- Each C_t is an RFC-0023 four-byte int32 accumulator source.
+- Each U_t is decomposed into four range_8 bytes, which is its own canonical-digit check.
 - No digit range may stand in for a code or scale range, nor the reverse.
+- C_t and the digit rows are virtual, never cuts or RFC-0023 advice. RFC-0024's centered
+  path applies only to committed physical X, so it is unavailable for a grouped input (RFC-0007 A6).
 
 **Soundness ledger.**
 - No new challenge, transcript label, probabilistic loss or profile.
@@ -2140,40 +2166,63 @@ first-norm row's policy and the head shares Policy(final). Every record is below
 - The stacked Requant zerocheck that emits the digit-row claim gains log2 T variables: one
   for int16 rows, two for the gated row. Its existing per-round degree/|K| term counts
   those rounds.
+- The matmul leaves one claim on the digit tensor at ((r_t, r_i), r_k). The prover sends the
+  T values X̃_t(r_i, r_k), and the verifier checks sum_t eq(r_t, t)*X̃_t(r_i, r_k) against
+  the claim. The T claims enter schema 23's consumer over (i,k) through the existing RLC
+  batch of claims on one virtual tensor (RFC-0005 §3), whose accounted term counts claims.
+  That consumer's rounds are unchanged. This adds no challenge label and no accounting line
+  beyond the counted claims (INV-2).
 - Field faithfulness is the RFC-0022 column lemma with the sides above, plus
   8*inner*128*qw < p for each digit row.
 - Added digit, scale and accumulator lookups enter N in the (N+|T|)/|K| LogUp term.
 - New bindings, reserved as `todo` controls:
   - NC-0131: a group's scale taken from another group's (or the whole row's) maximum;
   - NC-0132: a code consumed with a neighbouring group's scale;
-  - NC-0133: a folded value that is not s_k(i)*q_i;
-  - NC-0134: a non-canonical digit vector with the same field sum (last digit out of range);
-  - NC-0135: digit-row accumulators recombined in the wrong order or weight;
+  - NC-0133: a fold that is not s_k(i)*|q_i|;
+  - NC-0134: an in-range digit vector equal to the signed fold mod p but not over Z (the
+    gated X-p alias), or a flipped fold sign;
+  - NC-0135: one digit-row accumulator with a flipped sign while a magnitude recombination
+    still balances, or rows recombined in the wrong order;
   - NC-0136: a row proven under a group size other than the Model's.
 
   A parser rejection earns no proof-binding credit.
 
-**Cost model.** Per token and layer for Llama-3.1-8B, with all four rows grouped at g = 128:
-- Projection outputs carry T accumulators: 51,200 more than the 43,008 today (+119%). This
-  covers Requant work in c_a, and RFC-0023 advice in c_c where that cut is used.
-- Converted values gain 26,624 fold products (c_a) and 81,920 digit range memberships (c_lu).
+**Cost model.** These figures are for Llama-3.1-8B, with all four rows and Policy(final)
+grouped at g = 128.
+
+Per token and layer:
+- Projection outputs carry T accumulators: 51,200 more than the 43,008 today (+119%). Each
+  added accumulator brings 4 range_8 memberships for its offset bytes: 204,800.
+- Converted values gain 26,624 folds (c_a). Their digits need 108,544 memberships: 3 per
+  int16 value (one range_8, two range_16) and 5 per gated value.
 - Group scales add n/g scale witnesses per row (208 per layer). Each element still enters
   exactly one attained maximum.
-- Counting every added item as a full N_act element is an upper bound: N_act grows from about
-  90,112 to at most 249,856 per layer and token, so T_act grows at most 2.8x. In the §3
-  Llama-3.1-8B row that is 0.9 s to at most 2.5 s.
-- The weight phase's A side grows by T (T*n*d_in MACs per layer and type).
-- T_weights, the weight pass count, T_attn, the residual cuts and every table are unchanged.
-  No planning constant is refitted.
 
-**Q/K/V deferred.** Q/K/V rows stay ungrouped in this entry:
-- No measurement attributes any gain to them. E5-05b's simulation quantised affine inputs only.
+Per token, for the head: 128,256 extra accumulators, 4,096 folds and 525,312 memberships.
+
+The total is an estimate, not a bound:
+- Assume each accumulator or fold is one N_act element, and two memberships are one element.
+  docs/cost-model.md assumes 1.5-3 lookups per element.
+- Then N_act grows from about 90,112 to about 336,952 per layer and token (about 3.7x), with
+  the head spread over the 32 layers. T_act grows from 0.9 s to about 3.4 s in §3's
+  Llama-3.1-8B row.
+- The weight phase's A side grows by T (T*n*d_in MACs per layer and type).
+- T_weights, the weight pass count, T_attn, the residual cuts, any RFC-0023 advice cut and
+  every table are unchanged. No planning constant is refitted.
+
+**Q/K/V deferred.** Q/K/V rows stay ungrouped in this entry (follow-up task E5-05g):
+- No measurement attributes any gain to them. E5-05b's simulation quantised affine inputs
+  only. REPORT.md attributes part of the remaining ~1.1 points to Q/K/V cache rows, so
+  E5-05e may still miss G7 for this reason.
 - They feed the score and weighted-sum relations (RFC-0025 §2.4, RFC-0009) and the KV cache
   (§9), not an affine. A group smaller than a head splits one score's dot product, which needs
   its own digit or partial-sum form. Whole-head groups change the cache's one scale per
   position.
 - Mode 2 on indices 1-3 is reserved: it rejects today, and a later amendment can admit it
   without changing any existing Model's bytes.
+
+The acceptance ADR must record this narrowing of ADR-062. It must also correct ADR-062's
+"g-many scale lookups per row" to n/g group scales per row; accepted ADR text is not edited.
 
 **Cross-RFC scope.** In a Model with any mode-2 Policy, these Accepted statements read
 "per group" for grouped rows:
@@ -2190,7 +2239,7 @@ meaning for ungrouped attention rows; for a grouped attention row, NC-0131/0132 
 **Affected tasks.**
 - E5-05d: this entry, the reference and the torch executor.
 - E5-05e: the G7 measurement.
-- A native task for Model/Bounds/executor support of mode 2 and schemas 23-25 is still to
-  be created; E5-05c is its precedent.
-- E7-01 family: digit-row matmul and Requant recombination.
+- E5-05f: native Model/Bounds/executor support of mode 2 and schemas 23-25.
+- E5-05g: grouped Q/K/V rows, if needed after E5-05e.
+- E7-01 family: digit-row matmul and the recombination consumer.
 - E6-02: range discipline.

@@ -165,6 +165,11 @@ Method notes:
 - **Sweep runs skip full certification.** They skip the full Registry regeneration, which takes hours in pure
   Python. Tables are evaluated lazily, and any rejected input rejects. They also skip the ordered replay of a
   rejection. Both are acceptable for attribution and are not evidence for a cqis_id.
+- **Conversion input bound (E5-05d).** These runs used a torch executor that rejected a row input of -32768
+  with `Input`. The reference `model_execution.convert` accepts it, and E5-05d aligned the executor. No result
+  is affected: every E5-05 summary in `results/e505` reports 0 rejected items, and every E5-05b entry in
+  `results/e505b/attribution.json` scores all 8 windows (32,760 tokens). The per-item files are not stored
+  locally.
 
 Evidence: `results/e505b/attribution.json` (summary) and `results/e505b/items.sha256` (per-window files on the
 `stele-e505` volume under `results/knobs` and `results/fakequant`). Reproduce with `modal_e505.py::knob_sweep` and

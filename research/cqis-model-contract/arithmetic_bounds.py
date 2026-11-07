@@ -205,10 +205,12 @@ def _layernorm(p):
 def _grouped_affine(p):
     """Schemas 24/25 (RFC-0004 A15): schema 1/21 with roles 1-2 replaced by the digit rows.
 
-    Each digit row t is one field matmul C_t = sum_i b_t,i*w_i with |b| <= 128, so
-    8*inner*128*weight < p keeps it faithful; A' = sum_t 256^t*C_t is recombined in byte
-    columns, then multiplied by the mantissa. |A'| <= inner*X*weight, so the total, maximum
-    and rounding roles equal schema 1/21's at the dynamic row-scale maximum."""
+    Each digit row t is one field matmul C_t = sum_i b_t,i*w_i with |b| <= 128 and
+    |C_t| <= cmax_t, so 8*inner*128*weight < p keeps it faithful. The offsets
+    U_t = C_t+cmax_t in [0, 2*cmax_t] are recombined in byte columns with the signed join
+    sum_t 256^t*U_t + 2*sign*|A'| = V + |A'|, V = sum_t 256^t*cmax_t; then |A'| times the
+    mantissa. |A'| <= amax = inner*X*weight, so the total, maximum and rounding roles equal
+    schema 1/21's at the dynamic row-scale maximum."""
     weight = (1 << (p.bits-1))-1
     smax, x, count, top = digit_bounds(p.kind)
     digits = tuple(p.inner*weight*(128 if t < count-1 else top) for t in range(count))
@@ -216,6 +218,7 @@ def _grouped_affine(p):
     if 8*cmax >= P:
         raise ValueError('FieldBound')
     amax = p.inner*x*weight
+    v = sum(c << (8*t) for t, c in enumerate(digits))
     total = amax*p.mantissa
     le = p.exponent-p.fraction+p.output_fraction
     re = p.output_fraction-p.bias_fraction if p.bias_fraction is not None else 0
@@ -224,12 +227,13 @@ def _grouped_affine(p):
     bias = (1 << (re+shift)) if p.bias_fraction is not None else 0
     maximum = total*left+32768*bias
     output = 1 << (p.output_bits-1)
-    scalars = (weight, smax, x, count, top, cmax, amax, total, divisor, left, bias, maximum,
-               min(output, maximum//divisor), output, 4*cmax, 2*cmax, 4*output-1, 2*output)
+    scalars = (weight, smax, x, count, top, cmax, amax, v, total, divisor, left, bias, maximum,
+               min(output, maximum//divisor), output, 4*cmax, 2*cmax, 2*v, 4*output-1, 2*output)
     aligned = ((1, 2*total, left),)
     if bias:
         aligned += ((1, 65535, bias),)
-    roles = (tuple((1, c, 1 << (8*t)) for t, c in enumerate(digits)), ((1, amax, p.mantissa),),
+    offsets = tuple((1, 2*c, 1 << (8*t)) for t, c in enumerate(digits))
+    roles = (offsets, ((1, 2*v, 1), (1, amax, 2)), ((1, v, 1), (1, amax, 1)), ((1, amax, p.mantissa),),
              ((1, 2*total, 1), (1, total, 2)), ((1, total, 1), (1, total, 1)), aligned)
     roles += _rounding_roles(maximum, divisor, output)
     for scalar in scalars:

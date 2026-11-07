@@ -181,18 +181,24 @@ change) and the cost impact (the cut commit/opening message count doubles; cut s
 
 Status: Draft. Task E5-05d.
 Exact addition to §1/§5: when a projection's input row is grouped (RFC-0004 A15), X is the
-digit tensor X[l,(t,i),k] = b_t of s_k(i)*q_k. Here t < T, with T = 2 for int16 rows and 4 for
-the gated row, and the digit index t extends the row index i. The claim is
-C̃_τ(r_l, (r_t, r_i), r_j). §5's identity, its sumcheck over (l,k), B and the fused opening
-are unchanged, so the weight pass count is unchanged (INV-7). Step 1's A side costs
-T*n*d_in MACs per layer and type instead of n*d_in.
-- Admission is 8*d_in*128*q_w < p, with every digit in [-128,128]. This is stricter than
-  RFC-0024's centered bound 2*d*128^2 < p and holds over the whole domain d_in <= 16384.
-- RFC-0024's offset-int8 source admits values in [-128,127] only. An int16 row's last digit
-  can be 128, so it needs RFC-0004 A15's exact range registration.
-- Each C_t is an RFC-0023 int32 accumulator. The consuming Requant recombines
-  A' = sum_t 256^t*C_t in byte columns (schemas 24/25, role 1).
+virtual signed digit tensor X[l,(t,i),k] = b_t of s_(floor(k/g))*q_(l,i,k). Here t < T, with
+T = 2 for int16 rows and 4 for the gated row, and the digit index t extends the row index i.
+The claim is C̃_τ(r_l, (r_t, r_i), r_j). §5's field matmul identity, its sumcheck over (l,k),
+B and the fused opening are unchanged, so the weight pass count is unchanged (INV-7).
+Step 1's A side costs T*n*d_in MACs per layer and type instead of n*d_in.
+- Faithfulness rests on 8*d_in*128*q_w < p, with every digit in [-128,128], plus RFC-0004
+  A15's digit, fold and recombination joins. The bound holds over the whole domain
+  d_in <= 16384.
+- RFC-0024's centered path applies only to committed, byte-range-verified physical X sources.
+  It excludes virtual activations, so it is unavailable for grouped inputs. A plan that would
+  otherwise use RFC-0024 for such a projection uses this field matmul instead.
+- The X-side claim at ((r_t, r_i), r_k) splits into T claims X̃_t(r_i, r_k), checked by
+  sum_t eq(r_t, t)*X̃_t(r_i, r_k). Schema 23's consumer receives them through the RLC batch of
+  RFC-0005 §3.
+- Each C_t is a virtual signed field value with |C_t| <= cmax_t. It is not an RFC-0023
+  advice source. The consuming Requant recombines A' = sum_t 256^t*C_t in byte columns with
+  its sign (schemas 24/25, roles 1-3).
 
 Ungrouped inputs are unchanged. Ledger and cost impact are in RFC-0004 A15: the stacked
 Requant zerocheck gains log2 T variables, and there is no new challenge. Affected tasks:
-E5-05d, E7-01 family, E4-04.
+E5-05d, E5-05f, E7-01 family, E4-04.

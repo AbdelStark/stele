@@ -29,3 +29,7 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 
 - **byte-range handle** — opaque completed all-one range_8 A5 result for one exact original certificate, borrowing its genuine owners and retaining its conditional event/lifetime obligations (RFC-0024 §1.1).
 - **point-equality record** — PointEqualityRecord for the fixed-polynomial SZ loss at the actual A3 tail; it introduces no new challenge or executed sumcheck (RFC-0024 §5).
+- **grouped row** — an activation row converted under Policy mode 2, with one dynamic group scale per g consecutive features (RFC-0004 A15). This is distinct from a grouped lookup (RFC-0008 A5) and from GQA key/value groups (Shape.groups).
+- **group scale** — s_k = ceil(max|X|/127) over group k of a grouped row; indexed by the high log2(n/g) row-index bits (RFC-0004 A15).
+- **fold** — the magnitude F = s_k*|q_i| of a grouped-row code times its group scale, joined to its digits in byte columns (RFC-0004 A15 schema 23).
+- **digit row** — row t of the signed radix-256 digits of the folded values; each is one field matmul input, extending the matmul row index (RFC-0004 A15, RFC-0007 A6).

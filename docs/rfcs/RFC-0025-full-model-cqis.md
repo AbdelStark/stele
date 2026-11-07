@@ -626,4 +626,4 @@ Models are unchanged.
 - Collection appendix: a grouped convert slot takes schema 23, and a projection fed by a
   grouped row takes 24, or 25 for wide O/down. Slot order and count are unchanged.
 
-Affected tasks: E5-05d, E5-05e, and native Model/Bounds support (to be created).
+Affected tasks: E5-05d, E5-05e, E5-05f (native Model/Bounds support) and E5-05g (Q/K/V).

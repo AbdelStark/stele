@@ -8,6 +8,9 @@
   text, including int16 and gated endpoints, zero groups and the one-group identity
   (a grouped row with g = n is today's conversion and today's affine).
 - The signed radix-256 digits of every folded value s*q and the per-digit matmul bound.
+- The joins over Z (review B1/B2): the fold sign join rejects the gated X-p digit alias
+  that a field equality admits, and the signed recombination rejects a flipped C_t that a
+  magnitude recombination admits, with mixed-sign and extreme accumulators.
 - Every number A15 quotes: digit counts and top digits, the fold-without-digits
   faithfulness limit, schemas 23/24/25 over extreme parameters (faithful columns,
   schema 1/21 totals, record sizes) and the Llama-3.1-8B cost counts.
@@ -158,17 +161,17 @@ def bound_claims():
     # sources), and a single gated folded value already exceeds p/2.
     assert 2*257*32893*127 < P <= 2*258*32893*127 and 2*1073741947 > P
     worst = dict(affine=0, row=0, ratio=Fraction(0))
-    for inner, bits, kind, m, e, out, bias in product((1, 2, 4096, 14336, 16384), (4, 8), (0, 1), (1, 65535),
-                                                       (-1099, 0, 1024), (16, 24), (None, 0, 30)):
-        if out == 24 and bias is not None:
+    for inner, bits, kind, m, e, out, bias, f, fo in product((1, 2, 4096, 14336, 16384), (4, 8), (0, 1), (1, 65535),
+                                                             (-1099, 0, 1024), (16, 24), (None, 0, 30), (0, 30, 44), (0, 30)):
+        if out == 24 and bias is not None or f > (44 if kind else 30):
             continue
         for g in sorted({1, 128, grouped((0, 0), inner)[1]} & {1 << t for t in range(14) if 1 << t < inner and inner % (1 << t) == 0}):
-            p = arithmetic.Affine(inner, bits, e, m, kind, 10, 30, 2, g, bias, out)
+            p = arithmetic.Affine(inner, bits, e, m, kind, f, fo, 2, g, bias, out)
             schema, scalars, shifts, roles = arithmetic.derive(p)
             today = arithmetic.derive(replace(p, policy=0, scale=0))
             assert schema == (24 if out == 16 else 25) and today[0] == (1 if out == 16 else 21)
-            assert scalars[7] == today[1][4] and scalars[8:14] == today[1][5:11] and shifts == today[2]
-            assert roles[2:] == today[3][2:]  # sign, alignment and rounding roles are schema 1/21's
+            assert scalars[8] == today[1][4] and scalars[9:15] == today[1][5:11] and shifts == today[2]
+            assert scalars[7] >= scalars[6] and roles[4:] == today[3][2:]  # V >= amax; schema 1/21's sign, alignment, rounding
             assert all(2*max(r[4]+r[5]) < P for r in roles) and 8*scalars[5] < P
             worst['ratio'] = max(worst['ratio'], Fraction(8*scalars[5], P))
             worst['affine'] = max(worst['affine'], len(arithmetic.encode(p)))
@@ -183,30 +186,93 @@ def bound_claims():
             assert schema == 23 and roles[:len(base[3])] == base[3] and scalars[:len(base[1])] == base[1]
             assert all(2*max(x[4]+x[5]) < P for x in roles)
             worst['row'] = max(worst['row'], len(flow.encode(r)))
-    assert worst['affine'] < 44*1024 and worst['row'] < 22*1024
+    assert worst['affine'] < 48*1024 and worst['row'] < 27*1024
     rejects(lambda: flow.Row(4, 0, 0, 2, 4), 'Scale')
     rejects(lambda: arithmetic.Affine(6, 8, 0, 1, 0, 0, 0, 2, 4, None), 'Scale')
     return dict(affine_record_bytes=worst['affine'], row_record_bytes=worst['row'],
                 digit_bound_over_p=float(worst['ratio']))
 
 
+def fold_join(d, F, b, count, top):
+    """Schema 23's join over Z: digit ranges and sum_t 256^t*o_t + 2*b*F = c + F."""
+    c = 128*((1 << (8*(count-1)))-1)//255+(top << (8*(count-1)))
+    o = [x+128 for x in d[:-1]]+[d[-1]+top]
+    return all(0 <= x <= 255 for x in o[:-1]) and 0 <= o[-1] <= 2*top and \
+        sum(x << (8*t) for t, x in enumerate(o))+2*b*F == c+F
+
+
+def recombine_join(C, cmax, a, sign):
+    """Schemas 24/25's join over Z: sum_t 256^t*U_t + 2*sign*|A'| = V + |A'|, U_t = C_t+cmax_t."""
+    U = [x+m for x, m in zip(C, cmax)]
+    v = sum(m << (8*t) for t, m in enumerate(cmax))
+    return all(0 <= u <= 2*m for u, m in zip(U, cmax)) and sum(u << (8*t) for t, u in enumerate(U))+2*sign*a == v+a
+
+
+def join_cases(rng):
+    """B1/B2 of the A15 review: honest witnesses satisfy both joins, and the forgeries that
+    a field equality or a magnitude recombination would admit fail them."""
+    n = 0
+    for kind in (0, 1):
+        smax, x, count, top = arithmetic.digit_bounds(kind)
+        for v in (x, -x, 0, 1, -1)+tuple(rng.randint(-x, x) for _ in range(2000)):
+            assert fold_join(digits(v, count), abs(v), int(v < 0), count, top); n += 1
+            assert not fold_join(digits(v, count), abs(v), int(v >= 0), count, top) or v == 0
+    # The gated X-p alias: in range, equal to X mod p, wrong over Z.
+    smax, x, count, top = arithmetic.digit_bounds(1)
+    alias = (124, 0, 0, -64)
+    assert sum(b << (8*t) for t, b in enumerate(alias)) == x-P and digits(x-P, 4) == list(alias)
+    assert not fold_join(alias, x, 0, count, top) and fold_join(digits(x, 4), x, 0, count, top)
+    for F in (1065320319, x)+tuple(rng.randint(1065320319, x) for _ in range(200)):
+        d = digits(F-P, 4)
+        assert all(-128 <= b <= 127 for b in d[:-1]) and abs(d[-1]) <= top  # an in-range alias exists
+        assert not fold_join(d, F, 0, count, top); n += 1
+    assert abs(digits(1065320318-P, 4)[-1]) > top  # and none below that magnitude
+    # Recombination: mixed signs and extremes; a magnitude sum or one flipped sign fails.
+    assert sum(abs(c) << (8*t) for t, c in enumerate((-5, 1))) == 261 != 251 == -5+256
+    for kind, inner in product((0, 1), (1, 4096, 16384)):
+        smax, x, count, top = arithmetic.digit_bounds(kind)
+        cmax = [inner*127*(128 if t < count-1 else top) for t in range(count)]
+        draws = [[rng.choice((-m, m, 0, -5, 1, rng.randint(-m, m))) for m in cmax] for _ in range(300)]
+        for C in draws+[[-5, 1]+[0]*(count-2), [-m for m in cmax], cmax]:
+            a = sum(c << (8*t) for t, c in enumerate(C))
+            assert recombine_join(C, cmax, abs(a), int(a < 0)); n += 1
+            for t, c in enumerate(C):
+                if c:
+                    flipped = C[:t]+[-c]+C[t+1:]
+                    assert not recombine_join(flipped, cmax, abs(a), int(a < 0))
+    return n
+
+
 def llama_costs():
-    """A15 cost counts per token and layer for Llama-3.1-8B with all four affine-input rows
-    grouped at g = 128: digit rows T per projection, folds and digits per converted value."""
-    d, ff, kv = 4096, 14336, 1024
+    """A15 cost counts for Llama-3.1-8B with all four affine-input rows and Policy(final)
+    grouped at g = 128. Per token and layer unless noted. Memberships: one range_8 per low
+    digit, two range_16 per last digit, four range_8 per added digit-row accumulator."""
+    d, ff, kv, vocab, layers = 4096, 14336, 1024, 128256, 32
     outputs = dict(Q=d, K=kv, V=kv, O=d, up=ff, gate=ff, down=d)
     T = dict(Q=2, K=2, V=2, O=2, up=2, gate=2, down=4)
     base = sum(outputs.values())
     extra = sum((T[k]-1)*v for k, v in outputs.items())
     folds = 3*d+ff
     digit_values = 2*3*d+4*ff
+    digit_memberships = 3*3*d+5*ff
+    accumulator_memberships = 4*extra
     partials = sum(v*(d if k != 'down' else ff)//128 for k, v in outputs.items())
     assert (base, extra, folds, digit_values, partials) == (43008, 51200, 26624, 81920, 1703936)
-    n_act = 7*d+4*kv+4*ff  # docs/cost-model.md
-    assert (n_act, n_act+extra+folds+digit_values, 3*d//128+ff//128) == (90112, 249856, 208)
-    assert Fraction(249856, 90112) < Fraction(28, 10) and 9*249856 < 25*90112  # 0.9 s -> < 2.5 s
+    assert (digit_memberships, accumulator_memberships) == (108544, 204800)
+    # Head, per token: T = 2 accumulators per logit, d folds, 3d digit memberships.
+    head = dict(accumulators=vocab, folds=d, memberships=3*d+4*vocab)
+    assert head == dict(accumulators=128256, folds=4096, memberships=525312)
+    # Estimate (not a bound): an accumulator or fold is one N_act element; two memberships
+    # count as one element (docs/cost-model.md assumes 1.5-3 lookups per element).
+    n_act = 7*d+4*kv+4*ff
+    layer = extra+folds+(digit_memberships+accumulator_memberships)//2
+    per_token_head = head['accumulators']+head['folds']+head['memberships']//2
+    total = n_act+layer+per_token_head//layers
+    assert (n_act, layer, per_token_head, total, 3*d//128+ff//128) == (90112, 234496, 395008, 336952, 208)
+    assert Fraction(37, 10) < Fraction(total, n_act) < Fraction(38, 10)  # T_act 0.9 s -> about 3.4 s
     return dict(projection_outputs=base, extra_digit_accumulators=extra, folds=folds,
-                digit_values=digit_values, per_group_partials=partials)
+                digit_memberships=digit_memberships, accumulator_memberships=accumulator_memberships,
+                per_group_partials=partials, n_act_estimate=total)
 
 
 def codec_cases(rng):
@@ -287,7 +353,7 @@ def collection_cases(rng):
 
 def report():
     rng = Random(0xA15)
-    return dict(conversions=conversion_cases(rng), affines=affine_cases(rng), bounds=bound_claims(),
+    return dict(conversions=conversion_cases(rng), affines=affine_cases(rng), bounds=bound_claims(), joins=join_cases(rng),
                 costs=llama_costs(), codec=codec_cases(rng), models=model_cases(rng),
                 collection=collection_cases(rng))
 
