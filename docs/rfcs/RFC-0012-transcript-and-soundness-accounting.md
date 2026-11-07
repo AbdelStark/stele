@@ -502,57 +502,39 @@ expander parameter request is unsupported. Circle identities carry zero setup lo
 
 ### A8 — Require the characteristic and pole hypotheses of LU accounting
 
-Status: Draft. Question Q31; companion RFC-0008 A2.
-Evidence: [LogUp algebra and counterexamples](../../formal/logup-characteristic.md).
+Status: Accepted. Question Q31; companion RFC-0008 A2. ADR-065.
+Review: [Workflow 02 passes](../../agents/reviews/logup-a2-acceptance.md).
+Evidence: [LogUp algebra and counterexamples](../../formal/logup-characteristic.md),
+[grouped units](../../formal/weighted-logup.md), [whole schedule](../../formal/lookup-consumers.md).
 Motivation: the N≈2^37 illustrative lookup exceeds char(M31); changing to QM31
 or OM31 does not change that characteristic. An identically zero bad-instance
 rational function has no small root-bound error to square.
 
-Proposed replacement requirements for the LU row in §4 and its use in §5:
+Exact replacement for the LU row of §4 and the lookup sentence of §5:
 
-> Derive each LU record from the exact Accepted lookup mode and static public
-> shape/selector bounds. Ordinary unit multiplicities require fewer selected
-> positions than the characteristic. Missing count/unit, source binding, pole,
-> compression or consumer hypotheses mean unsupported configuration, never a
-> zero term or admission based on the field extension size alone.
-> Include tuple compression, rational-identity, GKR and any batching/unit errors
-> under their actual challenge schedule. Square only the independent repeated
-> event justified by its theorem; shared or separately bounded errors retain
-> separate accounting. Partitioned or weighted-unit modes need their complete
-> exact formulas and registered challenges before use.
+> LU: one joint record per lookup instance, exactly A11's: numerator
+> h+N+c*t-1, denominator |K|=p^d, exponent r in {1,2}, capped at one. It
+> exists only for the RFC-0008 A2 mode with its static bound b=min(m,30),
+> h=m-b, a verifier-derived Boolean selector and A9-bound original sources.
+> A missing count, unit, source, pole, compression or consumer hypothesis
+> makes the configuration unsupported, never a zero term or an admission based
+> on |K| alone. The r*h Unit, r Beta and r Alpha draws belong to that one
+> record. Each repetition separately adds its A3 tree and leaf terms
+> [F(m)+F(k)+3m]/|K|, F(v)=3v(v-1)/2+2v, and every A9 certificate and opening
+> term; none of these is squared. Honest poles abort (completeness only).
 
-The bounded-count note gives a conditional power-compression identity bound
-min(1,(N+c*|T|-1)/|K|). It is not a complete LU record or new production schema.
-No challenge, label, verifier admission or ledger line changes in this Draft.
-Q12 and all source/PCS/ZK composition obligations remain. Cost terms include
-c_lu/T_misc, multiplicity/table work and memory, with no measured constant.
-Affected tasks: E3-07, E8-05, E12-02/E12-03 and every lookup consumer.
+§5's "N ≈ 2^37 ⇒ 2^-87 single, 2^-174 double" is read as this record with
+m=37, b=30, h=7: (7+2^37+c*t-1)/p^4 is about 2^-87, and its square for r=2
+as an interactive bound only. Grinding the Statement or free multiplicity
+bytes makes the non-interactive unit round cost about r*h/|K|; Q12 must
+derive that term and must not adopt the square. The surrounding tree, PCS
+and Fiat–Shamir terms stay separate, so neither figure is a profile total;
+Q12 and the profile ledgers (E12-02/E12-03) remain.
 
-A8 candidate continuation: [grouped-unit derivation](../../formal/weighted-logup.md)
-proposes r*h additional unit challenges before r weighted multiplicity commitments,
-then independent beta/alpha pairs. Its single rational-identity bound is
-e=min(1,(h+N+c*|T|-1)/|K|). Under the exact fixed-source, joint-commitment and
-independent-unit schedule it proves e^r for those identity events only. Sharing
-units does not establish that bound; GKR/PCS/source/FS/privacy failures stay
-separate. No production registry or ledger schema changes; complete framing,
-sampler/domain composition and actual consumers remain prerequisites.
-
-A8 fraction continuation: [candidate schedule](../../formal/fraction-reduction.md)
-names gamma and tau once per tree layer and the A1 rounds they enclose. A depth-m
-tree contributes [3m(m-1)/2+2m]/|K| conditional on its original leaf consumers;
-the selected-product leaf adds 3m/|K|. Each tree/repetition has its own terms,
-added separately from the repeated rational-identity bound. All children precede
-tau, and the next layer's P/Q claims precede gamma. These are research-local
-Transcript labels and conditional interactive losses, not production registry,
-LU admission, private consumers or Q12 composition.
-
-A8 consumer continuation: [complete event inventory](../../formal/lookup-consumers.md)
-binds all r multiplicity roots before every beta/alpha, then consumes both trees
-and all original claims. With table depth k, the conservative conditional bound
-adds r*[F(m)+F(k)+3m]/|K| to e^r, F(n)=3n(n-1)/2+2n, plus actual binding/FS terms.
-The study checks actual Transcript draw counts and ordering, not receipt fields
-alone. Full revealing Merkle openings do not instantiate private PCS or ZK;
-no production labels, ledger schema or profile admission change.
+No new challenge, label or registry entry: A11 already registers the eight
+lookup labels and classifies Unit, Beta and Alpha as LU. Cost terms are those
+of RFC-0008 A5 (c_lu/c_sc/c_c/T_misc) with no measured constant. Affected
+tasks: E3-07, E8-05, E12-02/E12-03 and every lookup consumer.
 
 ### A9 — Conditional fraction reduction labels and accounting
 
