@@ -50,11 +50,16 @@ pub struct Policy {
     scale: u32,
 }
 impl Policy {
-    pub(super) fn read(r: &mut Reader<'_>, gated: bool) -> Result<Self, Error> {
+    /// `n` is the row length of an affine-input row, which alone may be grouped:
+    /// RFC-0004 A15 mode 2 with a power-of-two g < n dividing n.
+    pub(super) fn read(r: &mut Reader<'_>, gated: bool, n: Option<u16>) -> Result<Self, Error> {
         let mode = r.u8()?;
         let scale = r.u32()?;
+        let grouped =
+            |n: u16| scale.is_power_of_two() && scale < u32::from(n) && u32::from(n) % scale == 0;
         if !((mode == 0 && scale == 0)
-            || (mode == 1 && (1..=if gated { 8454661 } else { 65535 }).contains(&scale)))
+            || (mode == 1 && (1..=if gated { 8454661 } else { 65535 }).contains(&scale))
+            || (mode == 2 && n.is_some_and(grouped)))
         {
             return Err(Error::Policy);
         }
@@ -64,11 +69,12 @@ impl Policy {
         w.push(&[self.mode])?;
         w.push(&self.scale.to_le_bytes())
     }
-    /// Dynamic=0, static=1; there is no automatic fallback.
+    /// Dynamic=0, static=1, grouped dynamic=2 (RFC-0004 A15); no automatic fallback.
     pub fn mode(self) -> u8 {
         self.mode
     }
-    /// Configured scale; dynamic configuration stores zero, not the runtime scale.
+    /// Configured scale; dynamic configuration stores zero, not the runtime scale;
+    /// grouped configuration stores the group size g.
     pub fn scale(self) -> u32 {
         self.scale
     }
@@ -108,8 +114,11 @@ impl Block {
         norm(&first_norm, s, input)?;
         norm(&second_norm, s, mid)?;
         let mut policies = [Policy { mode: 0, scale: 0 }; 7];
+        // RFC-0004 A15: only the affine-input rows 0, 4, 5, 6 may be grouped, never Q/K/V.
+        let w = Some(s.width());
+        let lengths = [w, None, None, None, w, w, Some(s.hidden())];
         for (i, p) in policies.iter_mut().enumerate() {
-            *p = Policy::read(r, s.family() == 1 && i == 6)?;
+            *p = Policy::read(r, s.family() == 1 && i == 6, lengths[i])?;
         }
         let score_m = r.u16()?;
         let score_e = r.u8()? as i8;
