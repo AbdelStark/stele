@@ -29,6 +29,12 @@
 | NC-0128 | wide residual target | 0004 A14 | set one schema-22 aligned output to 2^23 | `WideRange` | todo |
 | NC-0129 | residual width substitution | 0004 A14 | check one int24 source with an int16-only decomposition, or admit an int24 norm output | `WidthMismatch` | todo |
 | NC-0130 | wide norm gain source | 0004 A14, 0021 A4 | bind the int16 gain through the int24 X roles 1/2 instead of roles 27/28 | `SourceMismatch` | todo |
+| NC-0131 | grouped row scale | 0004 A15 | derive one group's scale from another group's or the whole row's attained maximum | `GroupScaleMismatch` | todo |
+| NC-0132 | grouped row partition | 0004 A15 | consume the first code of a group with the preceding group's scale | `GroupPartitionMismatch` | todo |
+| NC-0133 | grouped fold | 0004 A15 | change one fold F = s*abs(q) by one with digits recomposing the changed value | `FoldMismatch` | todo |
+| NC-0134 | grouped digits | 0004 A15, 0007 A6 | replace the gated fold X's digits by the in-range alias (124,0,0,-64) of X-p, or flip one fold sign bit | `FoldSignMismatch` | todo |
+| NC-0135 | grouped recombination | 0004 A15, 0007 A6 | replace one U_t by U_t + p, with valid bytes and the same residue, so the sign join balances at A' + p; the top-byte cap must reject it | `AccumulatorRange` | todo |
+| NC-0136 | grouped policy | 0004 A15, 0025 A2 | prove one grouped row under group size g/2 while retaining the expected Model and Bounds | `GroupSizeMismatch` | todo |
 | NC-0200 | sumcheck engine | 0006 A1 | change one round evaluation | `RoundSumMismatch` | done |
 | NC-0201 | sumcheck engine | 0006 A1 | one final evaluation folded at another instance's challenge | `FinalEvaluationMismatch` | done |
 | NC-0202 | sumcheck engine | 0006 A2 | omit one member/claim contribution from one round evaluation | `RoundSumMismatch` | done |

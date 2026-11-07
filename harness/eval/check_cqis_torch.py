@@ -5,12 +5,13 @@
 """E5-05: torch CQIS executor parity against the research reference executor.
 
 Random complete small models of both families (check_model_execution.fixture: int4/int8,
-static/dynamic rows, all exp modes, every RoPE family/layout, exact/blocked accumulation)
+static/dynamic/grouped rows, all exp modes, every RoPE family/layout, exact/blocked accumulation)
 run through both executors. Accepted cases must agree on every residual cut, logit and
 K/V cache byte, and incremental steps must reproduce the single pass; rejected cases
 must reject in both. Usage: uv run --locked --script harness/eval/check_cqis_torch.py [N]
 """
 from fractions import Fraction
+from itertools import product
 import json
 from math import gcd
 from random import Random
@@ -44,15 +45,16 @@ def reference_cache(cache):
 
 def main(n):
     rng = Random(0xE505)
-    counts = dict(accepted=[0, 0, 0, 0], rejected=0, reason_mismatch=0, steps=0)
+    counts = dict(accepted=[0, 0, 0, 0], grouped_accepted=0, rejected=0, reason_mismatch=0, steps=0)
     corpus = blake3()
     for i in range(n):
         seed = rng.getrandbits(64)
         m, mp, sr, raw, _ = fixture(Random(seed), i % 2)
         tokens = tuple(rng.randrange(m.shape.vocabulary) for _ in range(rng.randint(1, m.shape.context)))
-        # Llama fixtures also run as their RFC-0004 A14 wide twin (same draws, own Artifact identity).
-        for version in (1, 2) if i % 2 else (1,):
-            variant, mp, sr, raw, _ = fixture(Random(seed), i % 2, version=version)
+        # Llama fixtures also run as their RFC-0004 A14 wide twin, and every fixture as its
+        # RFC-0004 A15 grouped twin (same draws, own Artifact identity).
+        for version, group in product((1, 2) if i % 2 else (1,), (False, True)):
+            variant, mp, sr, raw, _ = fixture(Random(seed), i % 2, version=version, group=group)
             data = c.load(variant, mp, sr, raw, blake3(raw).digest())
             ex = ct.Executor(data)
             try:
@@ -77,7 +79,10 @@ def main(n):
                 step_logits.append(tuple(lg[0].tolist()))
             assert tuple(step_logits) == expected.logits and as_cache(state) == as_cache(cache), ('step', i)
             counts['steps'] += len(tokens)
-            counts['accepted'][i % 2 + 2*(version == 2)] += 1
+            if group:
+                counts['grouped_accepted'] += 1
+            else:
+                counts['accepted'][i % 2 + 2*(version == 2)] += 1
             if not any(b.accumulation for b in m.blocks):
                 prompts = [tokens[:rng.randint(1, len(tokens))] for _ in range(3)]
                 budget = m.shape.context - max(map(len, prompts))
@@ -128,6 +133,7 @@ def main(n):
         long += 1
     counts['wide'] = wide_checks(rng)
     counts['knobs'] = knob_checks(rng)
+    counts['grouped'] = grouped_checks(rng)
     print(json.dumps(dict(configurations=n, **counts, blocked_long_cases=long, corpus_blake3=corpus.hexdigest())))
 
 
@@ -140,7 +146,7 @@ def knob_checks(rng):
     for _ in range(200):
         m = fixture(rng, 1)[0]
         k = dict(attention=rng.randint(4, 12), qk=rng.randint(4, 12), v=rng.randint(4, 12),
-                 act=rng.choice((None, (7, 7), (8, 8))), norm_e=rng.randint(4, 12))
+                 act=rng.choice((None, (7, 7), (8, 8))), norm_e=rng.randint(4, 12), group=1)  # g = 1 < every row length
         k = {key: value for key, value in k.items() if rng.random() < 0.5}
         try:
             out = knobs.configure(m, **k)
@@ -151,8 +157,62 @@ def knob_checks(rng):
             assert (a.score_m, a.score_e, a.exp) == (b.score_m, b.score_e, b.exp)
             if 'qk' in k:
                 assert b.fractions[:2] == (k['qk'],)*2
+            if 'group' in k:  # Q/K/V rows are never grouped
+                assert b.policies[1:4] == a.policies[1:4]
         n += 1
     assert n > 50, n
+    return n
+
+
+def grouped_checks(rng):
+    """RFC-0004 A15 rows at int16/gated endpoints: torch convert and the folded linear (including
+    its Python-integer fallback) against the reference convert and numerics.grouped_affine."""
+    model, mp, sr, raw, _ = fixture(Random(rng.getrandbits(64)), 1)
+    ex = ct.Executor(c.load(model, mp, sr, raw, blake3(raw).digest()))
+    n = 0
+    for _ in range(300):
+        gated = rng.randrange(2); h = 1 << 30 if gated else 32768
+        size = rng.choice((2, 4, 8, 16)); g = rng.choice([1 << t for t in range(4) if 1 << t < size])
+        X = [[rng.choice((-h, h - 1 + gated, 0, rng.randint(-h, h - 1 + gated))) for _ in range(size)] for _ in range(2)]
+        w = [[rng.choice((-127, 127, rng.randint(-127, 127))) for _ in range(size)] for _ in range(3)]
+        m, e = [rng.randint(1, 65535) for _ in range(3)], rng.choice((-18, 40, rng.randint(-18, 10)))  # shift <= 62; 40: int64 fallback
+        f, fo = rng.randint(0, 44 if gated else 30), rng.randint(0, 30)
+        x = ex.convert(torch.tensor(X), f, (2, g), bool(gated))
+        rows_ = [c.convert(tuple(r), f, (2, g), bool(gated)) for r in X]
+        assert x.codes.tolist() == [list(r.codes) for r in rows_] and x.scale.tolist() == [list(r.scale) for r in rows_]
+        expected = []
+        try:
+            for r in rows_:
+                expected.append([c.grouped_affine(sum(r.scale[k//g]*q*w[j][k] for k, q in enumerate(r.codes)), m[j], e, f, fo, 0, 0)
+                                 for j in range(3)])
+        except ValueError as error:
+            expected = str(error)
+        ex.weights['t', -1] = (torch.tensor(w, dtype=torch.int8), torch.tensor(m), e)
+        try:
+            got = ex.linear('t', -1, x, fo).tolist()
+        except ValueError as error:
+            got = str(error)
+        assert got == expected, ('grouped', X, g, got, expected)
+        n += 1
+    # Biased (GPT-2 up) and wide int24 (Llama O, version 2) grouped linears on real fixture weights.
+    for family, version, name in ((0, 1, 'up'), (1, 2, 'O')):
+        model, mp, sr, raw, _ = fixture(Random(rng.getrandbits(64)), family, version=version, width=4)
+        data = c.load(model, mp, sr, raw, blake3(raw).digest()); ex = ct.Executor(data)
+        size = model.shape.width
+        for _ in range(100):
+            X = [[rng.choice((-32768, 32767, 0, rng.randint(-32768, 32767))) for _ in range(size)] for _ in range(2)]
+            f, fo, g = rng.randint(0, 30), rng.randint(0, 30), rng.choice([1 << t for t in range(4) if 1 << t < size])
+            rows_ = [c.convert(tuple(r), f, (2, g)) for r in X]
+            try:
+                expected = [list(c.linear(data, name, 0, r, fo)) for r in rows_]
+            except ValueError as error:
+                expected = str(error)
+            try:
+                got = ex.linear(name, 0, ex.convert(torch.tensor(X), f, (2, g)), fo).tolist()
+            except ValueError as error:
+                got = str(error)
+            assert got == expected, ('grouped real', name, X, g, got, expected)
+            n += 1
     return n
 
 

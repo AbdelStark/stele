@@ -289,3 +289,16 @@ becomes about 28.5 GB of int24 bytes.
 Per token and layer, about 12d range_8 memberships are added to c_lu, together with
 about 10d limb products in c_a (RFC-0004 A14 gives the role-by-role count). For W1
 that is under 0.03% of the weight-pass work. No planning constant is refitted.
+
+## Grouped activation rows (RFC-0004 A15)
+
+A Model with grouped rows (Policy mode 2) proves each grouped projection as T digit-row
+matmuls (T = 2 for int16 rows, 4 for the gated row). The weight phase's A side grows by T;
+T_weights and the one weight pass are unchanged.
+
+For Llama-3.1-8B with all four affine-input rows and the head grouped at g = 128, per token
+and layer: 51,200 extra accumulators, 26,624 folds, 108,544 digit and 299,008 accumulator
+range_8/range_16 memberships (head per token: 128,256 accumulators, 4,096 folds, 781,824
+memberships). Counting two memberships as one element, N_act rises from about 90,112 to
+about 388,064 (an estimate), so T_act for the 8B row becomes about 3.9 s instead of 0.9 s.
+No planning constant is refitted.

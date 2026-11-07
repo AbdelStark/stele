@@ -50,6 +50,27 @@ def affine(acc, mantissa, scale, exponent, fraction, output_fraction, bias, bias
     return checked_output(round_ratio(n, d), bits)
 
 
+def group(g, n, reason):
+    """RFC-0004 A15: a group size is a power of two below the row length n that divides n."""
+    integer(g, 1, n-1, reason)
+    if g & (g-1) or n % g:
+        raise ValueError(reason)
+
+
+def grouped_affine(acc, mantissa, exponent, fraction, output_fraction, bias, bias_fraction, bits=16):
+    """RFC-0004 A15: acc = sum_i s_g(i)*q_i*w_i already carries the group scales; one rounding."""
+    integer(acc, -(1 << 51), 1 << 51, 'Accumulator')  # 16384*127*127*8454661 < 2^51
+    integer(mantissa, 1, 65535, 'WeightScale')
+    integer(exponent, -1099, 1024, 'WeightExponent')
+    integer(fraction, 0, 44, 'Units')
+    for value in (output_fraction, bias_fraction):
+        integer(value, 0, 30, 'Units')
+    integer(bias, -32768, 32767, 'Input')
+    n, d = shifted_pair(acc*mantissa, exponent-fraction+output_fraction,
+                        bias, output_fraction-bias_fraction)
+    return checked_output(round_ratio(n, d), bits)
+
+
 def embedding(token, tm, te, position, pm, pe, output_fraction):
     """One rounding after token and learned-position contributions."""
     for value in (token, position):

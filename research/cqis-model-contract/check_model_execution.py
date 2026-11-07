@@ -24,7 +24,7 @@ import model_execution as c
 from check_rope import oracle as rotary_oracle
 
 
-def fixture(rng,family,layers=None,context=None,heads=None,width=None,version=1):
+def fixture(rng,family,layers=None,context=None,heads=None,width=None,version=1,group=False):
     heads=heads or rng.randint(1,2); width=width or rng.choice((2,4)); d=heads*width
     s=Shape(family,layers or rng.randint(1,3),d,heads,heads if not family else rng.choice((1,heads)),width,
             4*d if not family else rng.randint(1,8),rng.randint(2,7),context or rng.randint(2,6))
@@ -50,6 +50,9 @@ def fixture(rng,family,layers=None,context=None,heads=None,width=None,version=1)
     if version==2:  # RFC-0004 A14 wide twin: same draws, every rmsnorm_q at version 2
         v=lambda n: replace(n,version=2)
         m=replace(m,blocks=tuple(replace(b,norm1=v(b.norm1),norm2=v(b.norm2)) for b in m.blocks),final_norm=v(m.final_norm))
+    if group:  # RFC-0004 A15 grouped twin: same draws, dynamic affine-input rows grouped
+        m=replace(m,blocks=tuple(replace(b,policies=tuple(grouped(p,n) for p,n in zip(b.policies,(d,0,0,0,d,d,s.hidden)))) for b in m.blocks),
+                  final_policy=grouped(m.final_policy,d))
     arrays={}; scales=[]; payload=[]
     for (name,layer,ds),(bits,_) in zip(roles(s),formats):
         n=ds[0]*(ds[1] if len(ds)==2 else 1)
@@ -69,6 +72,11 @@ def fixture(rng,family,layers=None,context=None,heads=None,width=None,version=1)
     return m,mp,sr,raw,arrays
 
 
+def grouped(policy,n):
+    """The largest power-of-two group size below n that divides n; static and n<=1 rows stay."""
+    return (2,n&-n if n&(n-1) else n//2) if policy==(0,0) and n>1 else policy
+
+
 def wide(value):
     x=nearest(value)
     if not -32768<=x<=32767: raise ValueError('Range')
@@ -76,6 +84,9 @@ def wide(value):
 
 
 def qrow(values,fraction,policy):
+    if policy[0]==2:  # RFC-0004 A15: an independent dynamic conversion of each group of g
+        g=policy[1]; parts=[qrow(values[i:i+g],fraction,(0,0)) for i in range(0,len(values),g)]
+        return sum((p[0] for p in parts),()),tuple(p[1] for p in parts),fraction
     s=policy[1] if policy[0] else (max(map(abs,values))+126)//127
     codes=tuple(nearest(Q(x,s)) for x in values) if s else (0,)*len(values)
     if any(abs(x)>127 for x in codes): raise ValueError('RowRange')
@@ -85,7 +96,8 @@ def qrow(values,fraction,policy):
 def linear(a,name,layer,x,fo,family,head=False):
     ds,e,m,weights=a[('head' if family else 'token',-1) if head else (name,layer)]; codes,s,f=x
     bias=(0,)*ds[0] if family or head else a[name+'.bias',layer][1]
-    return tuple(wide(sum(Q(weights[j*ds[1]+k]*codes[k]*m[j]*s)*Q(2)**(e-f+fo) for k in range(ds[1]))+Q(bias[j])*Q(2)**(fo-6)) for j in range(ds[0]))
+    scale=(lambda k:s[k*len(s)//ds[1]]) if type(s) is tuple else (lambda k:s)  # grouped: s of k's group
+    return tuple(wide(sum(Q(weights[j*ds[1]+k]*codes[k]*m[j]*scale(k))*Q(2)**(e-f+fo) for k in range(ds[1]))+Q(bias[j])*Q(2)**(fo-6)) for j in range(ds[0]))
 
 
 @lru_cache(maxsize=49152)

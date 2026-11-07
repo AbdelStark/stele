@@ -1,8 +1,8 @@
 """Draft RFC-0025 flow appendix: closed row/residual/gated metadata, no proof API."""
 from dataclasses import dataclass
 
-from arithmetic_bounds import CAPACITY, P, _column, _encode_record, _rounding_roles, _unsigned
-from numerics import integer
+from arithmetic_bounds import CAPACITY, P, _column, _encode_record, _rounding_roles, _unsigned, digit_bounds
+from numerics import group, integer
 
 
 @dataclass(frozen=True)
@@ -17,9 +17,12 @@ class Row:
         integer(self.d, 1, 16384, 'Shape')
         integer(self.kind, 0, 1, 'Kind')
         integer(self.fraction, 0, 44 if self.kind else 30, 'Fraction')
-        integer(self.policy, 0, 1, 'Policy')
-        integer(self.scale, 1 if self.policy else 0,
-                (8454661 if self.kind else 65535) if self.policy else 0, 'Scale')
+        integer(self.policy, 0, 2, 'Policy')
+        if self.policy == 2:  # RFC-0004 A15 grouped dynamic row: scale carries the group size
+            group(self.scale, self.d, 'Scale')
+        else:
+            integer(self.scale, 1 if self.policy else 0,
+                    (8454661 if self.kind else 65535) if self.policy else 0, 'Scale')
 
 
 @dataclass(frozen=True)
@@ -53,6 +56,18 @@ class Gated:
 
 def derive(p):
     """All operands/counts are fixed by the checked role; no supplied bounds."""
+    if type(p) is Row and p.policy == 2:
+        # Schema 23 (RFC-0004 A15): schema 4 for one dynamic group of g, then the magnitude
+        # fold F = s*|q|, the offset radix-256 digits o (low in [0,255], top in [0,2*top]) and
+        # the signed join sum_t 256^t*o_t + 2*b*F = c + F over Z (b the code's sign bit). The
+        # join is in byte columns: for the gated row X > p/2, so no field equality suffices.
+        _, scalars, shifts, columns = derive(Row(p.scale, p.kind, p.fraction, 0, 0))
+        smax, x, count, top = digit_bounds(p.kind)
+        c = 128*((1 << (8*(count-1)))-1)//255+(top << (8*(count-1)))
+        scalars += (p.d-1, p.d//p.scale, count, x, top, c)
+        offsets = tuple((1, 255 if t < count-1 else 2*top, 1 << (8*t)) for t in range(count))
+        roles = (((1, 127, smax),), offsets, offsets+((1, x, 2),), ((1, c, 1), (1, x, 1)))
+        return 23, scalars, shifts, columns+tuple(_column(t) for t in roles)
     if type(p) is Row:
         h = 1 << 30 if p.kind else 32768
         high = h if p.kind else h-1

@@ -149,3 +149,25 @@ rmsnorm_q at version 2), `R_1..R_L` are int24 (R_0 stays int16); captured cut te
 RFC-0004 A14 records the motivation, the ledger impact (no challenge, loss or profile
 change) and the cost impact (the cut commit/opening message count doubles; cut storage is
 1.5x the int16 bytes). Affected tasks: E5-05c, E6-02/E6-03, E7-10.
+
+### A7 — Group scales and digit rows (companion of RFC-0004 A15)
+
+Status: Accepted. Task E5-05d. ADR-063. Review: [E5-05d sign-offs](../../agents/reviews/grouped-rows-a15.md).
+Exact addition to §4's captured `scales`: a grouped row (RFC-0004 A15, Policy mode 2) captures
+n/g group scales and n/g local attained-maximum indices j_k in [0,g-1] (global position
+k*g+j_k). Its digit rows b_t (t < T) and the T accumulators per projection output are virtual.
+They are recomputed from the codes, the group scales and the weights, and are never cuts or
+RFC-0023 advice.
+Addition to §3: a grouped affine adds the following claim-graph edges, each owned by a
+reduction with an RFC-0004 A15 control:
+- group scale ↔ its group's attained maximum (NC-0131);
+- code ↔ the scale of floor(i/g) (NC-0132);
+- fold F ↔ s*|q| (NC-0133);
+- digits ↔ signed fold, joined over Z in byte columns with exact digit ranges (NC-0134);
+- digit-row accumulators in the window U_t < 2^29 ↔ signed A' recombination over Z (NC-0135);
+- group size ↔ Model Policy (NC-0136).
+
+The digit-row matmul is the existing matmul edge with the digit index in the row index
+(RFC-0007 A6). Its X-side claim splits into T digit-row claims, which enter the RLC batch of
+§3 before schema 23's consumer. Ungrouped Models are unchanged. Ledger and cost impact are in
+RFC-0004 A15. Affected tasks: E5-05d, E5-05f, E6-02, E7-01 family.

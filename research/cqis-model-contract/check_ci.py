@@ -13,6 +13,7 @@ from random import Random
 
 import check_bound_collection as bounds
 import check_decoding_execution as decoding
+import check_grouped_rows as grouped
 import check_model_execution as execution
 import check_passport_composition as passport
 import check_preparation_execution as preparation
@@ -120,10 +121,14 @@ def wide_cases():
     return wide.report()
 
 
+def grouped_cases():
+    return grouped.report()
+
+
 def main():
     if not __debug__:
         raise RuntimeError('oracle assertions must be enabled')
-    for check in (bound_cases, source_cases, decoding_cases, execution_cases, identity_cases, wide_cases):
+    for check in (bound_cases, source_cases, decoding_cases, execution_cases, identity_cases, wide_cases, grouped_cases):
         print(json.dumps(dict(check=check.__name__, status='running')), flush=True)
         result = check()
         print(json.dumps(dict(check=check.__name__, status='passed', result=result), sort_keys=True), flush=True)

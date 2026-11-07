@@ -29,10 +29,10 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0001 | First principles, statement, architecture | Accepted (A3, A4); A1, A2 superseded by A3 |
 | 0002 | Threat model, security and soundness requirements | Accepted |
 | 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted (A1, A5); A2–A4 superseded by A5 for RFC-0025 |
-| 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1, A4, A5, A13, A14); A2 superseded by A4; A3, A6–A12 superseded by A13 |
-| 0005 | Tensor IR, claim graph, witness capture | Accepted (A1, A2, A3, A5, A6); A4 superseded by A5 |
+| 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1, A4, A5, A13, A14, A15); A2 superseded by A4; A3, A6–A12 superseded by A13 |
+| 0005 | Tensor IR, claim graph, witness capture | Accepted (A1, A2, A3, A5, A6, A7); A4 superseded by A5 |
 | 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3, A4, A5, A6, A7) |
-| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A2, A3, A4, A5); A1 Draft |
+| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A2, A3, A4, A5, A6); A1 Draft |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A3, A4, A5); A1, A2 Draft |
 | 0009 | Attention protocol | Accepted (A1, A4); A2, A3 superseded by A4 for RFC-0025 |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A4, A5, A8, A9, A10, A11); A3, A6, A7 Draft |
@@ -50,7 +50,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0022 | Closed static arithmetic records | Accepted |
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
-| 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1) |
+| 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1, A2) |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`

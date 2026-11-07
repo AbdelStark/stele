@@ -9,7 +9,7 @@ from blake3 import blake3
 
 from decoding import rational
 from function_bounds import Activation, Exponential
-from numerics import LayerNorm, integer
+from numerics import LayerNorm, group, integer
 from rms_bounds import RMSNorm
 from source_map import Shape, uint
 
@@ -89,12 +89,16 @@ def selection(value):
     return blob(f)+blob(r)
 
 
-def policy(value, gated=False):
+def policy(value, gated=False, n=None):
+    """n is the row length of an affine-input row, which alone may be grouped (RFC-0004 A15)."""
     if type(value) is not tuple or len(value) != 2:
         raise ValueError('Policy')
     mode, scale = value
-    integer(mode, 0, 1, 'Policy')
-    integer(scale, 1 if mode else 0, (8454661 if gated else 65535) if mode else 0, 'Policy')
+    integer(mode, 0, 1 if n is None else 2, 'Policy')
+    if mode == 2:
+        group(scale, n, 'Policy')
+    else:
+        integer(scale, 1 if mode else 0, (8454661 if gated else 65535) if mode else 0, 'Policy')
     return bytes((mode,))+uint(scale, 4)
 
 
@@ -197,7 +201,8 @@ def encode(p):
         integer(b.score_m, 1, 65535, 'Multiplier'); integer(b.score_e, -62, 30, 'Multiplier')
         integer(b.accumulation, 0, 1, 'Mode'); integer(b.drop, 0, 62 if b.accumulation else 0, 'Drop')
         chunks += [selection(b.norm1), selection(b.norm2), bytes(b.fractions), bytes((b.mid, b.out, b.attention)),
-                   b''.join(policy(v, bool(s.family and j == 6)) for j, v in enumerate(b.policies)),
+                   b''.join(policy(v, bool(s.family and j == 6), (s.width, None, None, None, s.width, s.width, s.hidden)[j])
+                            for j, v in enumerate(b.policies)),
                    uint(b.score_m, 2), b.score_e.to_bytes(1, 'little', signed=True), bytes((b.accumulation, b.drop)),
                    selection(b.exp), selection(b.activation), blob(rotation)]
         selections += [b.norm1, b.exp, b.norm2, b.activation]
@@ -205,7 +210,7 @@ def encode(p):
     # RFC-0004 A14: a wide (int24) residual stream is selected by rmsnorm_q version 2 in every norm.
     if len({getattr(n, 'version', 1) for b in p.blocks for n in (b.norm1, b.norm2, p.final_norm)}) != 1:
         raise ValueError('Width')
-    chunks += [selection(p.final_norm), policy(p.final_policy), bytes((p.logits_fraction,))]
+    chunks += [selection(p.final_norm), policy(p.final_policy, n=s.width), bytes((p.logits_fraction,))]
     selections.append(p.final_norm)
     if p.decoding is None:
         chunks.append(blob(b'\0'))
