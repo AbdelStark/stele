@@ -993,7 +993,9 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05b-knobs
   acceptance:
   - ablation on fixed subsets attributes the ARC/MMLU-Pro gap of harness/eval/REPORT.md to knobs
   - PRD G7 pass on the full protocol or an ADR recording the residual gap
