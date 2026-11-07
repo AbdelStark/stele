@@ -444,6 +444,13 @@ bounded algebra checker covers 258 cases in both fields; it supplies no native
 control or PCS execution credit. E3-07b tracks complete conditional delivery;
 E3-07, A2/A8, Q12 and Q29 retain their full private/inference obligations.
 
+Q31 count contract: Accepted RFC-0008 A2 / RFC-0012 A8 select the A5 mode for
+every lookup with plan-derived b=min(m,30), so groups stay below p, and the
+A11 joint LU record. This answers the count/unit and nonzero-denominator
+question for A9-bound original sources; E3-07 is ready. Still open: a producer
+that fixes virtual (uncommitted) tuple columns before the Unit draws (needed for
+activation lookups without commitment), private PCS/ZK (Q29) and Q12.
+
 Q26 record continuation: the [physical tensor study](../../research/cqis-checkpoint/RECORDS.md)
 defines candidate shape/dtype/channel bytes, continuous int4 packing and exact
 int16 gain conversion. Independent complete-byte and rational/NumPy checks cover

@@ -82,6 +82,8 @@
 | NC-0417 | lookups | 0008 A5 | change one multiplicity piece value under the actual unchanged table numerator | `PieceSumMismatch` | done |
 | NC-0418 | lookups | 0008 A5 | substitute a verified different-root multiplicity handle under the unchanged registration packet | `CertificateContext` | done |
 | NC-0419 | lookups | 0008 A5, 0012 A11 | one multiplicity fitted to an alpha drawn before its context binds | `RootMismatch` | done |
+| NC-0420 | lookups | 0008 A2 | plan admission with m=3 and group exponent 2 instead of min(m,30)=3 | `GroupBound` | todo |
+| NC-0421 | lookups | 0008 A2 | treaty plan admission with one repetition | `Statement` | todo |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600 | PCS | 0010 A9 | change one certificate codeword limb or opening row value under zero b; rebuild dependent responses | `ColumnMismatch` | done |
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
