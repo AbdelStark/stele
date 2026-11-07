@@ -96,7 +96,9 @@ campaign that a new native contract requires.
 
 The manual `exhaustive` workflow retains full-size research experiments in
 `scripts/research-full-checks.json`, isolated gate mutations, upstream Poseidon2
-regeneration and SIMD throughput ledgers. Run a relevant full-size experiment
+regeneration and SIMD throughput ledgers. E5-05 adds `cqis-torch-parity`: the
+1000-model torch-executor parity check, kept out of the merge path because it installs
+torch. Run a relevant full-size experiment
 before claiming its Draft task or resource criterion complete. Moving an
 experiment out of the required merge path supplies no evidence for it. Existing
 original proof processes and their source-qualified results remain valid only

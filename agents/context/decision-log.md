@@ -761,3 +761,27 @@ into query or hash terms. NC-0612 reserves identity/evidence substitution under
 the first expander PCS consumer. No profile, challenge, cost constant, committed
 intermediate or weight-pass change. Status: Accepted.
 
+
+## ADR-060: Take the RFC-0004 §8 wide residual knob after the first G7 measurement
+
+Context: E5-05 measured the E5-04 runtime (int16 residual, fraction 2, ADR-058) on
+Llama-3.1-8B against fp32. Perplexity rose from 5.85 to 178,968 and ARC-Challenge fell
+to chance. The int16 ablation (fractions 3-5) never recovered either metric. Under int24
+the result is flat across fractions 8-12, with perplexity 6.13-6.15 against fp32 5.97.
+Evidence is in [the E5-05 report](../../harness/eval/REPORT.md), produced by an exact
+torch executor with 1,000-model parity and byte-identical E5-04 output.
+
+Decision: take the first RFC-0004 §8 knob, the int16 → int24 wide residual path. The
+residual stream and the O/down outputs become int24 with 10 fractional bits; every
+other CQIS field stays the same. This is the fidelity configuration. G7 is still not
+met. Perplexity passes at +3.24% ± 0.18%. ARC −2.90 pp, MMLU-Pro −2.11 pp and IFEval
+strict +1.48 pp each exceed their paired SE. The residual is saturated, so the
+remaining knobs (per-group weight scales, dynamic scales, attention B/E bits) are
+follow-up E5-05b.
+
+The wide path exists only in the harness executor. E5-05a must specify it as an
+RFC-0004 amendment through Workflow 02, along with its range certificates and its
+cost-model terms (DPA lookups or wider limbs). Native, statement and prover support
+follow that amendment. No protocol, soundness, cost constant or Artifact byte changes
+here. The E5-04 runtime and ADR-058 stay as recorded. GPQA-Diamond was inaccessible
+(gated), so ARC-Challenge substitutes until access is granted. Status: Accepted.

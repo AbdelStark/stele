@@ -168,7 +168,7 @@ class ResearchCiTests(unittest.TestCase):
         # Migration snapshots include group names and ordered command sequences.
         for manifest, expected in (
             (ci.MANIFEST, '454f735df16fde56996a6118a4f6663933350220ea7963f753539d9ab26f349d'),
-            (ci.FULL_MANIFEST, '4d8aa7733a523451914efb2fb28d8795e4c8b7bb25e19e17e23ab0f1a1106008'),
+            (ci.FULL_MANIFEST, '0195261794103b7ebcc33aa5be6315d05d2a1a9fd43a209306aa3722cfb877ec'),
         ):
             groups = ci.load_groups(manifest)
             if manifest == ci.MANIFEST:
