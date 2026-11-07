@@ -1040,7 +1040,9 @@ tasks:
   - RFC-0025 A2
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05f-native-grouped
   acceptance:
   - native Model/Bounds admit Policy mode 2 and schemas 23/24/25 with byte parity to the research reference
   - native executor runs grouped models with full/step/cache parity to research model_execution and harness/eval/cqis_torch.py
