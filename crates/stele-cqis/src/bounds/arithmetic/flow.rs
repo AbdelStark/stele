@@ -1,6 +1,6 @@
 //! RFC-0025 flow appendix §§1–3: row conversion, residual alignment, gated product,
-//! plus RFC-0004 A14's schema 22 (int24 residual alignment).
-use super::{field_bound, term, Builder, Error, Record, Word};
+//! plus RFC-0004 A14's schema 22 (int24 residual alignment) and A15's schema 23 (grouped row).
+use super::{digits, field_bound, term, Builder, Error, Record, Word};
 
 /// Complete-row parameters; all domains are checked when deriving the record.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -11,9 +11,9 @@ pub struct Row {
     pub kind: u8,
     /// Source fraction, at most 30 for wide or 44 for gated.
     pub fraction: u8,
-    /// Dynamic=0 or static=1.
+    /// Dynamic=0, static=1 or grouped dynamic=2 (RFC-0004 A15).
     pub policy: u8,
-    /// Zero for dynamic; positive configured scale for static.
+    /// Zero for dynamic; positive configured scale for static; the group size g for grouped.
     pub scale: u32,
 }
 impl Row {
@@ -23,11 +23,20 @@ impl Row {
             || self.kind > 1
             || self.fraction > if self.kind == 0 { 30 } else { 44 }
             || !((self.policy == 0 && self.scale == 0)
-                || (self.policy == 1 && (1..=maximum).contains(&self.scale)))
+                || (self.policy == 1 && (1..=maximum).contains(&self.scale))
+                || (self.policy == 2 && group(self.scale, self.dimension)))
         {
             return Err(Error::Parameters);
         }
         Ok(())
+    }
+    /// Group size, or the whole row for policies 0/1.
+    pub(super) fn group(self) -> u16 {
+        if self.policy == 2 {
+            self.scale as u16 // check(): g < n <= 16384
+        } else {
+            self.dimension
+        }
     }
     pub(super) fn scale_bound(self) -> u64 {
         if self.policy == 1 {
@@ -38,6 +47,11 @@ impl Row {
             8454661
         }
     }
+}
+
+/// RFC-0004 A15: a group size is a power of two below the row length n that divides n.
+fn group(g: u32, n: u16) -> bool {
+    g.is_power_of_two() && g < u32::from(n) && u32::from(n) % g == 0
 }
 
 /// One-round residual alignment parameters, checked during derivation.
@@ -63,14 +77,32 @@ pub struct Gated {
 }
 
 impl Record {
-    /// Derive schema 4, including the complete gated static-scale domain.
+    /// Derive schema 4, including the complete gated static-scale domain, or
+    /// RFC-0004 A15's schema 23 for a grouped row: schema 4's dynamic record for one
+    /// group of g, then the fold, the offset digits and the fold sign join.
     pub fn row(p: Row) -> Result<Self, Error> {
         p.check()?;
+        let grouped = p.policy == 2;
+        let base = if grouped {
+            Row {
+                dimension: p.group(),
+                policy: 0,
+                scale: 0,
+                ..p
+            }
+        } else {
+            p
+        };
         let h = if p.kind == 0 { 32768u64 } else { 1 << 30 };
         let high = if p.kind == 0 { h - 1 } else { h };
-        let s = p.scale_bound();
-        let d = u64::from(p.dimension);
-        let scalars = [
+        let s = base.scale_bound();
+        let d = u64::from(base.dimension);
+        let (smax, x, count, top) = digits(p.kind);
+        // c = sum_(t<T-1) 128*256^t + Btop*256^(T-1), the offset of the signed digits.
+        let c = 128 * ((1u64 << (8 * (count - 1))) - 1) / 255 + (top << (8 * (count - 1)));
+        let mut scalars = [Word::from(0); 23];
+        let length = if grouped { 23 } else { 17 };
+        let base_scalars = [
             h,
             high,
             h + high,
@@ -88,8 +120,16 @@ impl Record {
             254,
             2 * d - 1,
             126,
-        ]
-        .map(Word::from);
+            u64::from(p.dimension - 1),
+            u64::from(p.dimension / p.group()),
+            count,
+            x,
+            top,
+            c,
+        ];
+        for (out, value) in scalars.iter_mut().zip(base_scalars) {
+            *out = value.into();
+        }
         for side in [4 * s - 1, 2 * s, 254, 127, 508, 254, 2 * d - 1] {
             field_bound(side)?;
         }
@@ -97,14 +137,20 @@ impl Record {
         params[..2].copy_from_slice(&p.dimension.to_le_bytes());
         params[2..5].copy_from_slice(&[p.kind, p.fraction, p.policy]);
         params[5..].copy_from_slice(&p.scale.to_le_bytes());
-        let dynamic = p.policy == 0;
+        let dynamic = base.policy == 0;
         let mut b = Builder::new(
-            4,
+            if grouped { 23 } else { 4 },
             &params,
             8,
-            &scalars[..if dynamic { 17 } else { 16 }],
+            &scalars[..if dynamic { length } else { 16 }],
             &[],
-            if dynamic { 8 } else { 5 },
+            if grouped {
+                12
+            } else if dynamic {
+                8
+            } else {
+                5
+            },
         )?;
         if dynamic {
             b.column(&[term(s, 127)])?;
@@ -116,6 +162,19 @@ impl Record {
         b.column(&[term(h, 2), term(s, 1)])?;
         b.column(&[term(127, 2 * s)])?;
         b.column(&[term(254 * s, 1), term(2 * s - 1, 1)])?;
+        if grouped {
+            // Offset digits o_t: low in [0,255], the last in [0,2*Btop].
+            let mut offsets = [term(0, 0); 5];
+            for (t, o) in offsets[..count as usize].iter_mut().enumerate() {
+                let range = if t + 1 < count as usize { 255 } else { 2 * top };
+                *o = term(range, 1u64 << (8 * t));
+            }
+            offsets[count as usize] = term(x, 2);
+            b.column(&[term(127, smax)])?;
+            b.column(&offsets[..count as usize])?;
+            b.column(&offsets[..count as usize + 1])?;
+            b.column(&[term(c, 1), term(x, 1)])?;
+        }
         b.finish()
     }
     /// Derive schema 5, retaining the two aligned sources and one rounding.

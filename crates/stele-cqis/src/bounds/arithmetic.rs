@@ -75,6 +75,17 @@ impl Record {
     }
 }
 
+/// RFC-0004 A15: (smax, X = 127*smax, T, Btop) for a folded value s*q of a grouped row
+/// of this kind, written in T signed radix-256 digits with the last within Btop.
+/// Btop = max |(+-X + c) >> 8(T-1)| over the balanced offset c; both are attained.
+fn digits(kind: u8) -> (u64, u64, u64, u64) {
+    if kind == 0 {
+        (259, 32893, 2, 128)
+    } else {
+        (8454661, 1073741947, 4, 64)
+    }
+}
+
 // Closed schema implementations alone can supply terms; no generic public API.
 type Term = (u32, Word, Word);
 fn term(a: impl Into<Word>, b: impl Into<Word>) -> Term {
@@ -143,7 +154,8 @@ impl Builder {
         Ok(())
     }
     fn column(&mut self, terms: &[Term]) -> Result<(), Error> {
-        if terms.is_empty() || terms.len() > 4 || self.written >= self.roles {
+        // Five terms: schema 23's gated fold sign join (RFC-0004 A15, T = 4 digits plus X).
+        if terms.is_empty() || terms.len() > 5 || self.written >= self.roles {
             return Err(Error::Capacity);
         }
         let mut z = Word::from(0);

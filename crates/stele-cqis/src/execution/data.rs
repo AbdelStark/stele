@@ -148,7 +148,41 @@ impl<'a> Data<'a> {
         let fb = bias.map_or(0, |i| self.model.formats()[i].parameter());
         let shift = i32::from(scale.exponent()) - i32::from(row.fraction()) + i32::from(fraction);
         let mut out = reserved(r.rows)?;
+        let scales = row.scales();
+        let g = r.columns / scales.len();
         for j in 0..r.rows {
+            // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
+            let product = if scales.len() > 1 {
+                let dot: i64 = row
+                    .codes()
+                    .iter()
+                    .enumerate()
+                    .map(|(k, x)| {
+                        i64::from(scales[k / g])
+                            * i64::from(*x)
+                            * i64::from(self.code(ordinal, j * r.columns + k))
+                    })
+                    .sum();
+                i128::from(dot) * i128::from(scale.mantissas()[j])
+            } else {
+                self.dot(ordinal, row, j)
+                    * i128::from(scale.mantissas()[j])
+                    * i128::from(row.scale())
+            };
+            let b = bias.map_or(0, |i| self.code(i, j));
+            out.push(output(numerics::scaled_sum(
+                product,
+                shift,
+                i128::from(b),
+                i32::from(fraction) - i32::from(fb),
+                1,
+            )?)?);
+        }
+        Ok(out)
+    }
+    fn dot(&self, ordinal: usize, row: &QuantisedRow, j: usize) -> i128 {
+        let r = &self.records[ordinal];
+        {
             // Accepted width <=16384 and symmetric int8 operands give |dot|<2^28.
             let dot: i32 = if r.bits == 8 {
                 row.codes()
@@ -163,18 +197,8 @@ impl<'a> Data<'a> {
                     .map(|(k, x)| i32::from(*x) * i32::from(self.code(ordinal, j * r.columns + k)))
                     .sum()
             };
-            let product =
-                i128::from(dot) * i128::from(scale.mantissas()[j]) * i128::from(row.scale());
-            let b = bias.map_or(0, |i| self.code(i, j));
-            out.push(output(numerics::scaled_sum(
-                product,
-                shift,
-                i128::from(b),
-                i32::from(fraction) - i32::from(fb),
-                1,
-            )?)?);
+            i128::from(dot)
         }
-        Ok(out)
     }
     pub(super) fn embed(&self, token: u32, position: usize) -> Result<Vec<i16>, Error> {
         let width = usize::from(self.model.shape().width());

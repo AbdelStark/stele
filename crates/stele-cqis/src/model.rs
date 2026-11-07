@@ -278,7 +278,7 @@ impl Model {
         }) {
             return Err(Error::Width);
         }
-        let final_policy = Policy::read(&mut r, false)?;
+        let final_policy = Policy::read(&mut r, false, Some(shape.width()))?;
         let logits_fraction = block::fraction(&mut r)?;
         let decoding = Decoding::read(r.blob(345)?)?;
         r.end()?;

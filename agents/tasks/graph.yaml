@@ -1040,7 +1040,7 @@ tasks:
   - RFC-0025 A2
   skill: cqis-numerics
   crate: stele-cqis
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E5-05f-native-grouped
   acceptance:

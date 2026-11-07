@@ -1,4 +1,5 @@
 //! RFC-0025 §2.2/2.5 and flow §1: complete-row quantisation, without proof admission.
+//! A grouped row (RFC-0004 A15, policy 2) converts each group of g values on its own.
 use crate::bounds::arithmetic::{self, Record, Row};
 use alloc::vec::Vec;
 
@@ -75,10 +76,24 @@ impl Quantiser {
             1 << 30
         };
         let high = if self.parameters.kind == 0 { h - 1 } else { h };
-        let mut maximum = (self.parameters.policy == 0).then_some((0u16, 0u32));
+        let p = self.parameters;
+        let g = usize::from(p.dimension);
+        let g = if p.policy == 2 { p.scale as usize } else { g };
+        let mut maximum = (p.policy == 0).then_some((0u16, 0u32));
+        // One magnitude per group: the whole row for policies 0/1.
+        let mut magnitudes = Vec::new();
+        magnitudes
+            .try_reserve_exact(length / g)
+            .map_err(|_| Error::Capacity)?;
         for (index, value) in input.clone().enumerate() {
             if !(-h..=high).contains(&value) {
                 return Err(Error::Input);
+            }
+            if index % g == 0 {
+                magnitudes.push(0u32);
+            }
+            if let Some(m) = magnitudes.last_mut() {
+                *m = (*m).max(value.unsigned_abs());
             }
             if let Some((first, magnitude)) = maximum.as_mut() {
                 // Flow §1: strict improvement preserves the first attained index;
@@ -89,12 +104,21 @@ impl Quantiser {
                 }
             }
         }
-        let scale = maximum.map_or(self.parameters.scale, |(_, m)| m.div_ceil(127));
+        let mut scales = Vec::new();
+        scales
+            .try_reserve_exact(magnitudes.len())
+            .map_err(|_| Error::Capacity)?;
+        if p.policy == 1 {
+            scales.push(p.scale);
+        } else {
+            scales.extend(magnitudes.iter().map(|m| m.div_ceil(127)));
+        }
         let mut codes = Vec::new();
         codes
             .try_reserve_exact(length)
             .map_err(|_| Error::Capacity)?;
-        for value in input {
+        for (index, value) in input.enumerate() {
+            let scale = scales[index / g];
             // Flow §1: floor((2*abs(x)+s)/(2*s)), with canonical zero-row branch.
             // The validated envelope and full u32 scale keep both sides below 2^33.
             let q = if scale == 0 {
@@ -110,7 +134,7 @@ impl Quantiser {
         Ok(QuantisedRow {
             parameters: self.parameters,
             codes,
-            scale,
+            scales,
             maximum,
         })
     }
@@ -125,7 +149,7 @@ impl Quantiser {
 pub struct QuantisedRow {
     parameters: Row,
     codes: Vec<i8>,
-    scale: u32,
+    scales: Vec<u32>,
     maximum: Option<(u16, u32)>,
 }
 impl QuantisedRow {
@@ -135,10 +159,15 @@ impl QuantisedRow {
             .try_reserve_exact(self.codes.len())
             .map_err(|_| Error::Capacity)?;
         codes.extend_from_slice(&self.codes);
+        let mut scales = Vec::new();
+        scales
+            .try_reserve_exact(self.scales.len())
+            .map_err(|_| Error::Capacity)?;
+        scales.extend_from_slice(&self.scales);
         Ok(Self {
             parameters: self.parameters,
             codes,
-            scale: self.scale,
+            scales,
             maximum: self.maximum,
         })
     }
@@ -151,8 +180,14 @@ impl QuantisedRow {
         &self.codes
     }
     /// Runtime row scale, up to 8454661 for gated inputs; zero only in dynamic mode.
+    /// A grouped row (policy 2) has no single scale: this is its first group's.
     pub fn scale(&self) -> u32 {
-        self.scale
+        self.scales[0]
+    }
+    /// Runtime scales, one per group of g codes (RFC-0004 A15); a single scale for
+    /// policies 0/1.
+    pub fn scales(&self) -> &[u32] {
+        &self.scales
     }
     /// Original source fraction; conversion changes no implicit units.
     pub fn fraction(&self) -> u8 {
@@ -160,6 +195,8 @@ impl QuantisedRow {
     }
     /// Dynamic mode's (first original index, attained magnitude), including (0,0)
     /// for an all-zero row. Static mode has no maximum/index witness and returns None.
+    /// shortcut: a grouped row also returns None (its per-group local witnesses j_k of
+    /// RFC-0004 A15 are not exposed); add them with the schema-23 prover consumer.
     pub fn maximum(&self) -> Option<(u16, u32)> {
         self.maximum
     }

@@ -1,5 +1,9 @@
-//! RFC-0025 static appendix §§3–5: complete affine and aligned embedding records.
-use super::{field_bound, term, Builder, Error, Record, Row, Word};
+//! RFC-0025 static appendix §§3–5: complete affine and aligned embedding records,
+//! plus RFC-0004 A15's grouped affine (schemas 24/25).
+use super::{digits, field_bound, term, Builder, Error, Record, Row, Word};
+
+/// RFC-0004 A15: the offset accumulator window U_t < 2^29 (top byte at most 31).
+const CAP: u64 = 1 << 29;
 
 /// Physical weight format and static maximum over all public channel mantissas.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -62,11 +66,13 @@ pub struct Embedding {
 }
 
 impl Record {
-    /// Derive schema 1; bias joins the full scaled product before rounding.
+    /// Derive schema 1 (24 for a grouped source row, RFC-0004 A15); bias joins the full
+    /// scaled product before rounding.
     pub fn affine(p: Affine) -> Result<Self, Error> {
         Self::affine_output(p, 1 << 15)
     }
-    /// Derive RFC-0004 A14's schema 21: a wide O/down output in signed int24.
+    /// Derive RFC-0004 A14's schema 21 (25 for a grouped source row): a wide O/down
+    /// output in signed int24.
     /// A wide affine has no bias (Llama projections carry none).
     pub fn wide_affine(p: Affine) -> Result<Self, Error> {
         if p.bias_fraction.is_some() {
@@ -81,12 +87,31 @@ impl Record {
             return Err(Error::Parameters);
         }
         let weight = p.weight.magnitude();
+        let inner = u64::from(p.source.dimension);
+        let mantissa = u64::from(p.weight.mantissa);
+        // RFC-0004 A15: a grouped input (schemas 24/25) replaces A*s by A' = sum_t 256^t*C_t,
+        // |A'| <= amax = inner*X*qw, each digit row |C_t| <= cmax_t <= cmax = inner*128*qw.
+        let grouped = p.source.policy == 2;
+        let (smax, x, count, top) = digits(p.source.kind);
         let scale = p.source.scale_bound();
-        let accumulator = 127 * weight * u64::from(p.source.dimension);
-        // The dot sign left side is 4A, so its strict field bound is 8A<p.
-        field_bound(4 * accumulator)?;
-        let product = accumulator * u64::from(p.weight.mantissa);
-        let total = Word::from(product).mul(scale.into())?;
+        let accumulator = 127 * weight * inner;
+        let cmax = 128 * weight * inner;
+        // The dot sign left side is 4A (4*cmax grouped), so its strict field bound is 8A<p.
+        field_bound(4 * if grouped { cmax } else { accumulator })?;
+        if grouped && 2 * cmax >= CAP {
+            return Err(Error::FieldBound);
+        }
+        let amax = inner * x * weight;
+        let v: u64 = (0..count)
+            .map(|t| (inner * weight * if t + 1 < count { 128 } else { top }) << (8 * t))
+            .sum();
+        let umax: u64 = (0..count).map(|t| (CAP - 1) << (8 * t)).sum();
+        let product = accumulator * mantissa;
+        let total = if grouped {
+            Word::from(amax).mul(mantissa.into())?
+        } else {
+            Word::from(product).mul(scale.into())?
+        };
         let le = p.weight.exponent - i16::from(p.source.fraction) + i16::from(p.output_fraction);
         let re = p
             .bias_fraction
@@ -99,23 +124,38 @@ impl Record {
             0.into()
         };
         let maximum = total.mul(left)?.add(bias.mul(32768.into())?)?;
-        let scalars = [
-            weight.into(),
-            scale.into(),
-            accumulator.into(),
-            product.into(),
-            total,
+        let rounding = [
             divisor,
             left,
             bias,
             maximum,
             maximum.quotient_cap(divisor, output)?,
             u64::from(output).into(),
-            (4 * accumulator).into(),
-            (2 * accumulator).into(),
+        ];
+        let sides = [
             (4 * u64::from(output) - 1).into(),
             (2 * u64::from(output)).into(),
         ];
+        let (head, tail): (&[u64], &[u64]) = if grouped {
+            (
+                &[weight, smax, x, count, top, cmax, amax, v],
+                &[4 * cmax, 2 * cmax, umax],
+            )
+        } else {
+            (
+                &[weight, scale, accumulator, product],
+                &[4 * accumulator, 2 * accumulator],
+            )
+        };
+        let mut scalars = [Word::from(0); 20];
+        let length = head.len() + tail.len() + 9;
+        let words = head.iter().map(|v| Word::from(*v)).chain([total]);
+        let words = words
+            .chain(rounding)
+            .chain(tail.iter().map(|v| Word::from(*v)));
+        for (out, value) in scalars.iter_mut().zip(words.chain(sides)) {
+            *out = value;
+        }
         let mut params = [0; 17];
         params[..2].copy_from_slice(&p.source.dimension.to_le_bytes());
         params[2..7].copy_from_slice(&p.weight.parameters());
@@ -128,16 +168,33 @@ impl Record {
         params[11..15].copy_from_slice(&p.source.scale.to_le_bytes());
         params[15] = u8::from(p.bias_fraction.is_some());
         params[16] = p.bias_fraction.unwrap_or(0);
+        let schema = match (grouped, output == 1 << 15) {
+            (false, true) => 1,
+            (false, false) => 21,
+            (true, true) => 24,
+            (true, false) => 25,
+        };
         let mut b = Builder::new(
-            if output == 1 << 15 { 1 } else { 21 },
+            schema,
             &params[..if p.bias_fraction.is_some() { 17 } else { 16 }],
             8,
-            &scalars,
+            &scalars[..length],
             &[le, re, shift],
-            13,
+            if grouped { 15 } else { 13 },
         )?;
-        b.column(&[term(accumulator, u64::from(p.weight.mantissa))])?;
-        b.column(&[term(product, scale)])?;
+        if grouped {
+            let mut offsets = [term(0, 0); 4];
+            for (t, o) in offsets[..count as usize].iter_mut().enumerate() {
+                *o = term(CAP - 1, 1u64 << (8 * t));
+            }
+            b.column(&offsets[..count as usize])?;
+            b.column(&[term(umax, 1), term(amax, 2)])?;
+            b.column(&[term(v, 1), term(amax, 1)])?;
+            b.column(&[term(amax, mantissa)])?;
+        } else {
+            b.column(&[term(accumulator, mantissa)])?;
+            b.column(&[term(product, scale)])?;
+        }
         b.column(&[term(total.mul(2.into())?, 1), term(total, 2)])?;
         b.column(&[term(total, 1), term(total, 1)])?;
         let aligned = [term(total.mul(2.into())?, left), term(65535, bias)];
