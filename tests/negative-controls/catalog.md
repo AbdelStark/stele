@@ -25,6 +25,10 @@
 | NC-0124 | absolute blocks | 0025 §2.4, 0009 A3 | change one key's absolute block index | `BlockPositionMismatch` | todo |
 | NC-0125 | request stop | 0025 §2.6 | change EOS reason to limit when EOS coincides with maximum_new | `StopMismatch` | todo |
 | NC-0126 | sampling position | 0025 §2.6 | derive one draw at another absolute position under the same seed | `DrawPositionMismatch` | todo |
+| NC-0127 | wide residual width | 0004 A14 | select rmsnorm_q version 1 for one norm of a version-2 Model | `Width` | todo |
+| NC-0128 | wide residual target | 0004 A14 | set one schema-22 aligned output to 2^23 | `WideRange` | todo |
+| NC-0129 | residual width substitution | 0004 A14 | check one int24 source with an int16-only decomposition, or admit an int24 norm output | `WidthMismatch` | todo |
+| NC-0130 | wide norm gain source | 0004 A14, 0021 A4 | bind the int16 gain through the int24 X roles 1/2 instead of roles 27/28 | `SourceMismatch` | todo |
 | NC-0200 | sumcheck engine | 0006 A1 | change one round evaluation | `RoundSumMismatch` | done |
 | NC-0201 | sumcheck engine | 0006 A1 | one final evaluation folded at another instance's challenge | `FinalEvaluationMismatch` | done |
 | NC-0202 | sumcheck engine | 0006 A2 | omit one member/claim contribution from one round evaluation | `RoundSumMismatch` | done |

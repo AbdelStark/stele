@@ -48,6 +48,11 @@ had zero rejections, no reported number depended on that edge case. The int64 sh
 measured Llama configuration, which uses F = 10 (first layer 7), G = 8, E = 7 and a ≤ 6, so its shift is e = 32 + a. The wide path is exploratory semantics: no RFC defines it yet (ADR-060,
 follow-up E5-05a). Not one item was rejected in any configuration.
 
+RFC-0004 A14 since specifies the wide path. It keeps the embedding output R_0 at
+int16, whereas this exploratory run range-checked R_0 at int24. The int16 runs use the
+same f0 and never rejected an embedding, so every R_0 was within int16 and the measured
+numbers stand under A14 as well.
+
 ## Protocol
 
 The protocol was fixed in `fidelity.py` before any score was seen.

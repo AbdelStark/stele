@@ -17,6 +17,7 @@ import check_model_execution as execution
 import check_passport_composition as passport
 import check_preparation_execution as preparation
 import check_public_input as public
+import check_wide_residual as wide
 
 
 def bound_cases():
@@ -115,10 +116,14 @@ def identity_cases():
                 passport_controls=passport.boundaries(), source_joins=passport.source_joins())
 
 
+def wide_cases():
+    return wide.report()
+
+
 def main():
     if not __debug__:
         raise RuntimeError('oracle assertions must be enabled')
-    for check in (bound_cases, source_cases, decoding_cases, execution_cases, identity_cases):
+    for check in (bound_cases, source_cases, decoding_cases, execution_cases, identity_cases, wide_cases):
         print(json.dumps(dict(check=check.__name__, status='running')), flush=True)
         result = check()
         print(json.dumps(dict(check=check.__name__, status='passed', result=result), sort_keys=True), flush=True)

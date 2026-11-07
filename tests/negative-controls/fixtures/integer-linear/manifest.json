@@ -3613,7 +3613,7 @@
     "research/cqis-bounds/requant.py": "f82221be309906f78a3b7b96c7ae59ddf9d3fb97e916ce2410372c53dd06a68c",
     "research/cqis-tables/certified_activations.py": "fb2d327ea5b9543d1fc72b523180afdf6a7a452d78b1735f95943f87669e885a",
     "research/cqis-tables/certified_exp.py": "771b97b2c0d7796c84492902b8687ee7c378d05fd1942a1d6fba6ac4c1021b18",
-    "research/cqis-tables/certified_rmsnorm.py": "4ef0b244be8d2217569781b16bcd30d42e04d6408ed3751d4bba71eaa0552b4d",
+    "research/cqis-tables/certified_rmsnorm.py": "c91a3b756e3e69f912fbfd1da8bf34d12cbc576b8bbd93bc1eaadd77e8e37b3c",
     "research/cqis-tables/table_identity.py": "df79795236a01c114f80b6cb07a9575c5c8ef844197d30586f3e97bb888eac5c",
     "research/logup-characteristic/fraction.py": "ec8f54a627a5f29380d976451ec480de89ad7be11411eb6f283cc4d91c927bb1",
     "research/logup-characteristic/weighted.py": "854c297395b8d8b8859aef8e681e362aaf7236a13d90d2c1d4696269d2be0a80",

@@ -22,8 +22,9 @@ def round_ratio(numerator, denominator):
     return (-1 if numerator < 0 else 1)*(q+int(2*r >= denominator))
 
 
-def checked_output(value):
-    integer(value, -32768, 32767, 'Range')
+def checked_output(value, bits=16):
+    """Signed int16, or int24 for RFC-0004 A14's wide residual stream and O/down outputs."""
+    integer(value, -(1 << (bits-1)), (1 << (bits-1))-1, 'Range')
     return value
 
 
@@ -32,7 +33,7 @@ def shifted_pair(left, le, right, re):
     return (left << (le+shift))+(right << (re+shift)), 1 << shift
 
 
-def affine(acc, mantissa, scale, exponent, fraction, output_fraction, bias, bias_fraction):
+def affine(acc, mantissa, scale, exponent, fraction, output_fraction, bias, bias_fraction, bits=16):
     """One rounding after the exact scaled dot and learned bias are added."""
     integer(acc, -(1 << 31), (1 << 31)-1, 'Accumulator')
     integer(mantissa, 1, 65535, 'WeightScale')
@@ -46,7 +47,7 @@ def affine(acc, mantissa, scale, exponent, fraction, output_fraction, bias, bias
         raise ValueError('ZeroScale')
     n, d = shifted_pair(acc*mantissa*scale, exponent-fraction+output_fraction,
                         bias, output_fraction-bias_fraction)
-    return checked_output(round_ratio(n, d))
+    return checked_output(round_ratio(n, d), bits)
 
 
 def embedding(token, tm, te, position, pm, pe, output_fraction):

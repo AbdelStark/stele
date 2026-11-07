@@ -5,6 +5,9 @@ from math import gcd, isqrt
 from certified_exp import require
 
 DELTA = Q(1,1 << 15)+Q(1,1 << 14)+Q(1,1 << 29)
+# Version 1: int16 inputs (RFC-0021 §2.3). Version 2: int24 inputs, d <= 8192 (RFC-0021 A4).
+# Per version: input magnitude bound, largest exponent a, largest shift, largest |X*H*J|.
+LIMITS = {1: (1 << 15,9,90,1 << 44),2: (1 << 23,16,97,1 << 52)}
 
 
 @dataclass(frozen=True)
@@ -15,8 +18,11 @@ class Parameters:
     E: int
     en: int
     ed: int
+    version: int = 1
 
     def __post_init__(self):
+        require(type(self.version) is int and self.version in LIMITS
+                and self.d <= (16384 if self.version == 1 else 8192),'Parameters')
         require(all(type(v) is int for v in self.metadata()) and 1 <= self.d <= 16384
                 and 0 <= self.F <= 30 and 0 <= self.G <= 30 and 0 <= self.E <= 14
                 and 1 <= self.en < 1 << 32 and 1 <= self.ed < 1 << 32
@@ -60,7 +66,7 @@ def scaled_ratio(n,p,a):
 
 
 def statistic_ratio(p,s):
-    require(type(s) is int and 0 <= s <= p.d*(1 << 30),'Statistic')
+    require(type(s) is int and 0 <= s <= p.d*LIMITS[p.version][0]**2,'Statistic')
     denominator = p.ed*p.d*(1 << (2*p.F))
     return p.ed*s+p.en*p.d*(1 << (2*p.F)),denominator
 
@@ -72,7 +78,7 @@ def normalize(p,s):
     if A < 16384*D:
         a -= 1;A,D = scaled_ratio(n,denominator,a)
     m,r = divmod(A,D)
-    require(-23 <= a <= 9 and 16384 <= m < 65536,'Normalization')
+    require(-23 <= a <= LIMITS[p.version][1] and 16384 <= m < 65536,'Normalization')
     return dict(S=s,N=n,P=denominator,a=a,M=m,R=r,J=rsqrt_certificate(m)['value'])
 
 
@@ -82,7 +88,7 @@ def verify_normalization(p,s,w):
     require(all(type(w[k]) is int for k in ('S','N','P'))
             and (w['S'],w['N'],w['P']) == (s,n,denominator),'Statistic')
     require(all(type(w[k]) is int for k in ('a','M','R'))
-            and -23 <= w['a'] <= 9 and 16384 <= w['M'] < 65536,'Normalization')
+            and -23 <= w['a'] <= LIMITS[p.version][1] and 16384 <= w['M'] < 65536,'Normalization')
     A,D = scaled_ratio(n,denominator,w['a'])
     require(0 <= w['R'] < D and A == w['M']*D+w['R'],'Normalization')
     j,m = w['J'],w['M']
@@ -90,9 +96,10 @@ def verify_normalization(p,s,w):
             and m*(2*j-1)**2 <= 1 << 44 < m*(2*j+1)**2,'TableCertificate')
 
 
-def round_shift(value,shift):
-    require(type(value) is int and abs(value) <= 1 << 44,'Product')
-    require(type(shift) is int and -16 <= shift <= 90,'Shift')
+def round_shift(value,shift,version=1):
+    _,_,highest,product = LIMITS[version]
+    require(type(value) is int and abs(value) <= product,'Product')
+    require(type(shift) is int and -16 <= shift <= highest,'Shift')
     if shift < 0:
         return value << -shift
     magnitude = (abs(value)+(1 << (shift-1) if shift else 0)) >> shift
@@ -101,14 +108,16 @@ def round_shift(value,shift):
 
 def inputs(p,xs,gs):
     require(type(xs) is list and type(gs) is list and len(xs) == len(gs) == p.d,'Shape')
-    require(all(type(v) is int and -32768 <= v <= 32767 for row in (xs,gs) for v in row),'Domain')
+    x = LIMITS[p.version][0]
+    require(all(type(v) is int and -x <= v < x for v in xs)
+            and all(type(v) is int and -32768 <= v <= 32767 for v in gs),'Domain')
 
 
 def evaluate(p,xs,gs):
     inputs(p,xs,gs)
     w = normalize(p,sum(x*x for x in xs))
     shift = p.F+p.G+21+w['a']-p.E
-    ys = [round_shift(x*g*w['J'],shift) for x,g in zip(xs,gs)]
+    ys = [round_shift(x*g*w['J'],shift,p.version) for x,g in zip(xs,gs)]
     require(all(-32768 <= y <= 32767 for y in ys),'Overflow')
     return dict(parameters=p.metadata(),norm=w,shift=shift,output=ys)
 
@@ -124,7 +133,7 @@ def verify(p,xs,gs,result):
             and type(result['output']) is list and len(result['output']) == p.d,'Output')
     for x,g,y in zip(xs,gs,result['output']):
         require(type(y) is int and -32768 <= y <= 32767
-                and y == round_shift(x*g*w['J'],shift),'Output')
+                and y == round_shift(x*g*w['J'],shift,p.version),'Output')
 
 
 def ceil_root(n):
@@ -134,13 +143,15 @@ def ceil_root(n):
 
 def bounds(p):
     """Research static magnitudes, not native field-faithfulness certificates."""
-    s = p.d*(1 << 30)
+    x,amax,_,product = LIMITS[p.version]
+    s = p.d*x*x
     n,denominator = statistic_ratio(p,s)
-    low,high = p.F+p.G-2-p.E,p.F+p.G+30-p.E
-    return dict(S=s,N=n,P=denominator,scaled_N=n << 46,scaled_P=denominator << 18,
-        hh=p.d*128**2,hl_abs=p.d*128*255,ll=p.d*255**2,product=1 << 44,
-        biased=(1 << 44)+(1 << (high-1) if high > 0 else 0),
-        left_product=(1 << 44) << max(0,-low),shift_min=low,shift_max=high)
+    low,high = p.F+p.G-2-p.E,p.F+p.G+21+amax-p.E
+    record = dict(S=s,N=n,P=denominator,scaled_N=n << 46,scaled_P=denominator << (2*amax),
+        hh=p.d*128**2,hl_abs=p.d*128*255,ll=p.d*255**2,product=product,
+        biased=product+(1 << (high-1) if high > 0 else 0),
+        left_product=product << max(0,-low),shift_min=low,shift_max=high)
+    return record if p.version == 1 else dict(record,version=2)
 
 
 def verify_bounds(p,record):

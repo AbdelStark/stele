@@ -24,7 +24,7 @@ ARTIFACTS = set('''request.json reference-time.txt allocation-transport.json nat
 reference.json native-allocations.txt.gz reference-stderr.txt native-time.txt
 malloc-history-stderr.txt native-stderr.txt'''.split())
 REFERENCE_MANIFEST = Path(__file__).resolve().parents[1]/'tests/negative-controls/fixtures/integer-linear/manifest.json'
-REFERENCE_DIGEST = '6636c4e707e8d4c1e7f95e2abd90ee9e289a7d065e3593430b2f9755f9722573'
+REFERENCE_DIGEST = '83bdafdeb83dbf9c0f4fea6755d6f5f8f9bec942bbbaa5c85044b31549ab8eaf'
 
 
 def invalid_number(value):

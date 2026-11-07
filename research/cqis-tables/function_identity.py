@@ -20,11 +20,12 @@ class Function:
     def __post_init__(self):
         require(type(self.name) is str and self.name in table.ACTIVATIONS+table.RANGES
                 +('exp_q/product','exp_q/nearest','rmsnorm_q'),'FunctionName')
-        require(type(self.version) is int and self.version == 1,'Version')
+        # Only rmsnorm_q has a version 2 (int24 inputs, RFC-0021 A4); parameter bytes are unchanged.
+        require(type(self.version) is int and self.version in ((1,2) if self.name == 'rmsnorm_q' else (1,)),'Version')
         require(type(self.params) is bytes,'Parameters')
         if self.name == 'rmsnorm_q':
             require(len(self.params) == 13,'Parameters')
-            NormParameters(*struct.unpack('<HBBBII',self.params))
+            NormParameters(*struct.unpack('<HBBBII',self.params),version=self.version)
         else:
             name = {'exp_q/product':'exp_q/hi','exp_q/nearest':'exp_q/direct'}.get(self.name,self.name)
             table.Descriptor(name,1,self.params)
@@ -33,7 +34,7 @@ class Function:
 def encode(f):
     require(type(f) is Function,'Function')
     name = f.name.encode('ascii')
-    return FUNCTION+struct.pack('<H',len(name))+name+struct.pack('<IH',1,len(f.params))+f.params
+    return FUNCTION+struct.pack('<H',len(name))+name+struct.pack('<IH',f.version,len(f.params))+f.params
 
 
 def decode(raw):

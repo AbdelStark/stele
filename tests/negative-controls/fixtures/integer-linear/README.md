@@ -24,3 +24,9 @@ all 270 requests through the current closed native adapter, comparing every
 record, import, failed-prefix Usage and continuation with the frozen result.
 The actual ProverHook controls remain mandatory separate native tests. Frozen
 replay adds no control count or resource, profile, privacy or inference credit.
+
+Requalification (E5-05a, RFC-0021 A4): `certified_rmsnorm.py` gained `rmsnorm_q`
+version 2. Every version-1 parameter set, evaluation, verification, bound and
+rounding shift was compared differentially against the packaged source over
+34,785 random cases (including rejections), with identical results, so the
+frozen version-1 evidence keeps its meaning. Only the pinned digest changed.

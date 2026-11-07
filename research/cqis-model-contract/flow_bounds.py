@@ -28,8 +28,12 @@ class Residual:
     fx: int
     fy: int
     fo: int
+    bits: int = 16  # 24 is RFC-0004 A14's wide residual alignment, schema 22
 
     def __post_init__(self):
+        integer(self.bits, 16, 24, 'Width')
+        if self.bits not in (16, 24):
+            raise ValueError('Width')
         integer(self.d, 1, 16384, 'Shape')
         for value in (self.fx, self.fy, self.fo):
             integer(value, 0, 30, 'Fraction')
@@ -69,12 +73,13 @@ def derive(p):
     elif type(p) is Residual:
         common = max(p.fx, p.fy, p.fo)
         l, r, d = 1 << (common-p.fx), 1 << (common-p.fy), 1 << (common-p.fo)
-        maximum = 32768*(l+r)
-        scalars = (p.d-1, 32768, 65535, l, r, d, maximum, min(32768, maximum//d),
-                   32768, 131071, 65536)
+        h = 1 << (p.bits-1)
+        maximum = h*(l+r)
+        scalars = (p.d-1, h, 2*h-1, l, r, d, maximum, min(h, maximum//d),
+                   h, 4*h-1, 2*h)
         shifts = (common, common-p.fx, common-p.fy, common-p.fo)
-        roles = (((1, 65535, l), (1, 65535, r)),)+_rounding_roles(maximum, d)
-        schema = 5
+        roles = (((1, 2*h-1, l), (1, 2*h-1, r)),)+_rounding_roles(maximum, d, h)
+        schema = 5 if p.bits == 16 else 22
     elif type(p) is Gated:
         scalars = (p.fu+p.E, 32768, 65535, 65535**2, 1 << 30, 1 << 31, p.d-1, 131071, 65536)
         roles = (((1, 65535, 65535),), ((1, 65535**2, 1), (1, 1 << 31, 1)),

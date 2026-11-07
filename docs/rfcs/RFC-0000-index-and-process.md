@@ -26,16 +26,16 @@ Research RFCs carry `Research` status and never bind implementation.
 | RFC | Title | Status |
 |---|---|---|
 | 0000 | Index and RFC process | Accepted |
-| 0001 | First principles, statement, architecture | Accepted (A3); A1, A2 superseded by A3 |
+| 0001 | First principles, statement, architecture | Accepted (A3, A4); A1, A2 superseded by A3 |
 | 0002 | Threat model, security and soundness requirements | Accepted |
 | 0003 | Fields: M31, CM31, QM31, octic; dual-prime option | Accepted (A1, A5); A2–A4 superseded by A5 for RFC-0025 |
-| 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1, A4, A5, A13); A2 superseded by A4; A3, A6–A12 superseded by A13 |
-| 0005 | Tensor IR, claim graph, witness capture | Accepted (A1, A2, A3, A5); A4 superseded by A5 |
+| 0004 | CQIS — Canonical Quantised Inference Semantics | Accepted (A1, A4, A5, A13, A14); A2 superseded by A4; A3, A6–A12 superseded by A13 |
+| 0005 | Tensor IR, claim graph, witness capture | Accepted (A1, A2, A3, A5, A6); A4 superseded by A5 |
 | 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3, A4, A5, A6, A7) |
-| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A2, A3, A4); A1 Draft |
+| 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A2, A3, A4, A5); A1 Draft |
 | 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A3, A4, A5); A1, A2 Draft |
 | 0009 | Attention protocol | Accepted (A1, A4); A2, A3 superseded by A4 for RFC-0025 |
-| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A4, A5, A8, A9, A10); A3, A6, A7 Draft |
+| 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A4, A5, A8, A9, A10, A11); A3, A6, A7 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted (A2, A8); A1 Draft; A3–A7 superseded by A8 for RFC-0025 |
 | 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A7, A9, A10, A11, A12, A13, A14); A8 Draft |
 | 0013 | Zero-knowledge | Accepted; A1 Draft |
