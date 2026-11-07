@@ -964,10 +964,26 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05a-wide-residual
   acceptance:
   - Draft amendment reviewed through Workflow 02 and accepted with an ADR
-  - research reference and native executor support the wide residual with parity to harness/eval/cqis_torch.py
+  - research reference supports the wide residual with parity to harness/eval/cqis_torch.py
+- id: E5-05c
+  epic: E5
+  title: Native wide residual (RFC-0004 A14) - rmsnorm_q version 2, schemas 20-22 and int24 executor
+  depends:
+  - E5-05a
+  rfc:
+  - RFC-0004 A14
+  - RFC-0021 A4
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: ready
+  acceptance:
+  - native FunctionId/Registry/Model/Bounds admit rmsnorm_q version 2 and schemas 20/21/22 with byte parity to the research reference
+  - native executor runs wide models with full/step/cache parity to research model_execution and harness/eval/cqis_torch.py
 - id: E5-05b
   epic: E5
   title: Close the G7 benchmark gap with the remaining RFC-0004 §8 knobs (per-group weight scales, dynamic scales, attention B/E bits)
