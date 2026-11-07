@@ -70,7 +70,8 @@ def normalize(d, F, en, ed, s, a_max=9):
 
 
 class Rows:
-    """A quantised row batch: int64 codes [T, n], int64 scale [T], one fraction."""
+    """A quantised row batch: int64 codes [T, n], int64 scale [T] (or [T, n/g] for a grouped
+    row, RFC-0004 A15), one fraction."""
     __slots__ = ('codes', 'scale', 'fraction')
 
     def __init__(self, codes, scale, fraction):
@@ -159,9 +160,12 @@ class Executor:
         return out
 
     def convert(self, values, fraction, policy, gated=False):
-        limit = (1 << 30) if gated else 32767
-        checked(values, 'Input', -limit, limit)
+        checked(values, 'Input', -(1 << 30) if gated else -32768, (1 << 30) if gated else 32767)  # as model_execution.convert
         mode, static = policy
+        if mode == 2:  # RFC-0004 A15: one dynamic conversion per group of `static` values
+            t, n = values.shape
+            r = self.convert(values.reshape(t*n//static, static), fraction, (0, 0), gated)
+            return Rows(r.codes.reshape(t, n), r.scale.reshape(t, n//static), fraction)
         if mode:
             scale = torch.full((values.shape[0],), static, dtype=I64, device=values.device)
         else:
@@ -173,29 +177,36 @@ class Executor:
 
     def linear(self, name, layer, x, fraction):
         w, mantissas, exponent = self.weights[name, layer]
-        acc = self._dot(x.codes, w)
-        checked(acc, 'Accumulator', -(1 << 31), (1 << 31)-1)
-        if torch.any((x.scale == 0)[:, None] & (acc != 0)):
-            raise ValueError('ZeroScale')
+        if x.scale.dim() == 2:  # RFC-0004 A15: A' = sum_i s_g(i)*q_i*w_i (|A'| < 2^51), scale folded
+            folded = x.codes*x.scale.repeat_interleave(x.codes.shape[1]//x.scale.shape[1], dim=1)
+            step = max(1, (1 << 27)//max(1, folded.shape[1]))
+            acc = torch.cat([fmatmul(folded, w[start:start+step].to(I64).t()) for start in range(0, w.shape[0], step)], dim=1)
+            scale = torch.ones(acc.shape[0], dtype=I64, device=acc.device)
+        else:
+            acc = self._dot(x.codes, w)
+            checked(acc, 'Accumulator', -(1 << 31), (1 << 31)-1)
+            if torch.any((x.scale == 0)[:, None] & (acc != 0)):
+                raise ValueError('ZeroScale')
+            scale = x.scale
         family = self.shape.family
         bias = None if family or name == 'head' else self.vectors[name+'.bias', layer]
         fb = 0 if bias is None else self.model.formats[self.data.record(name+'.bias', layer).ordinal][1]
         k, kb = exponent - x.fraction + fraction, fraction - fb
         shift = max(0, -k, -kb if bias is not None else 0)
-        product = acc*mantissas[None, :]           # |acc| < 2^31, m < 2^16: exact
-        estimate = product.abs().to(torch.float64)*x.scale[:, None].to(torch.float64)*2.0**(k+shift)
+        # The float estimate only flags entries that may leave int64; those use Python integers.
+        estimate = acc.abs().to(torch.float64)*mantissas[None, :].to(torch.float64)*scale[:, None].to(torch.float64)*2.0**(k+shift)
         unsafe = estimate >= 2.0**61
         if bias is not None:
             unsafe |= (bias.abs().to(torch.float64)*2.0**(kb+shift) >= 2.0**61)[None, :]
-        safe = torch.where(unsafe, torch.zeros_like(product), product)
-        n = (safe*x.scale[:, None]) << (k+shift)
+        safe = torch.where(unsafe, torch.zeros_like(acc), acc)*mantissas[None, :]
+        n = (safe*scale[:, None]) << (k+shift)
         if bias is not None:
             n = n + (bias[None, :] << (kb+shift))
         out = rr(n, 1 << shift)
         if torch.any(unsafe):
             # Exact Python integers only for entries whose product could exceed int64.
             for t, j in torch.nonzero(unsafe).tolist():
-                v = ((int(product[t, j])*int(x.scale[t])) << (k+shift)) + (0 if bias is None else int(bias[j]) << (kb+shift))
+                v = ((int(acc[t, j])*int(mantissas[j])*int(scale[t])) << (k+shift)) + (0 if bias is None else int(bias[j]) << (kb+shift))
                 q, r = divmod(abs(v), 1 << shift)
                 out[t, j] = (-1 if v < 0 else 1)*min(q + int(2*r >= (1 << shift)), 1 << 40)
         wide = self.wide if name in ('O', 'down') else 32767

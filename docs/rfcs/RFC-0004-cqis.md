@@ -2036,3 +2036,161 @@ E7-03, E7-10):
 - NC-0130: the gain source bound through the X roles.
 
 A parser rejection earns no proof-binding credit.
+
+### A15 — Grouped activation rows (§8 knob)
+
+Status: Draft. Task E5-05d. Companions RFC-0005 A7, RFC-0007 A6, RFC-0025 A2. ADR-062.
+Research reference: `research/cqis-model-contract/check_grouped_rows.py` (in `check_ci.py`).
+
+**Motivation.** E5-05b ([report](../../harness/eval/REPORT.md), "Attribution", ADR-062)
+attributes about 1.8 of Llama-3.1-8B's +2.90% perplexity gap to per-token int8 activation
+rows: one outlier sets the scale of the whole row. In an fp32 simulation, one scale per 128
+input features cuts that cost to +0.13%. Today every converted row has exactly one scale
+(RFC-0025 §2.2). This entry adds one dynamic scale per group of g consecutive features for
+rows that feed an affine projection. The simulation is not CQIS evidence; E5-05e measures G7.
+
+**Exact addition to RFC-0025 §2.2 and encoding appendix §4.**
+- **Policy mode 2.** `Policy = u8(2) || u32(g)` selects a grouped dynamic conversion.
+  - g is a power of two with 1 <= g < n and g dividing n, where n is the row length.
+  - Mode 2 is admitted only for the four affine-input rows of a block (policy indices 0
+    first norm output, 4 assembled attention row, 5 second norm output, 6 FFN row) and for
+    Policy(final). On the Q, K and V rows (indices 1-3) it rejects with `Policy`.
+  - A violation rejects with `Policy`. Modes 0 and 1 and their bytes are unchanged, so every
+    existing Model keeps its bytes and identities. A single group is mode 0: mode 2 with g = n
+    rejects, so each conversion has one encoding. There is no static grouped mode; a static
+    scale is already one constant for the row.
+  - The Policy frame stays 5 bytes, so the Model size bounds are unchanged. H(Model),
+    H(Bounds) and cqis_id bind g.
+- **Conversion.** Group k covers row indices kg..kg+g-1. Each group is one §2.2 dynamic
+  conversion on its own: M_k = max |X_i| over the group, s_k = ceil(M_k/127),
+  q_i = R(X_i/s_k), and s_k = 0 with zero codes when M_k = 0. Scale limits are §2.2's: at
+  most 259 for int16 rows, at most 8454661 for the gated int32 product. The row's semantic
+  bundle is its codes, its n/g group scales and its fraction.
+- **Affine.** For a grouped input row define A' = sum_i s_k(i)*q_i*w_i with k(i) = floor(i/g),
+  exact. The projection is Y = R(A'*m*2^(e-f+fo)) or, with bias,
+  Y = R(A'*m*2^(e-f+fo)+B*2^(fo-fb)). One rounding, the same output width (int16, or int24
+  for wide O/down under A14). With one group, A' = s*A and this is §2.2's affine exactly.
+- **Magnitude.** Let X = 127*smax (32893 for int16 rows, 1073741947 for the gated row). Then
+  |s_k*q_i| <= X and |A'| <= inner*X*qw, with qw = 2^(bits-1)-1. This equals schema 1/21's
+  accumulator*scale at the dynamic scale maximum. Product, alignment and rounding maxima are
+  unchanged, and |A'| < 2^51 at every admitted shape.
+
+**Proof form.** A' cannot be one field value. For int16 rows, one field matmul over the
+folded row x'_i = s_k(i)*q_i is faithful only for inner <= 257 (2*inner*X*qw < p). A single
+gated folded value already exceeds p/2. Two forms were compared:
+- **Per-group partial sums** A_k = sum over i in group k of q_i*w_i. Each is small, but each
+  output needs n_in/g of them: 32 at d_in = 4096 and 112 at 14336, with g = 128.
+- **Digit rows (chosen).** Write each folded value in T signed radix-256 digits,
+  x' = sum_t 256^t*b_t:
+  - T = 2 for int16 rows and T = 4 for the gated row;
+  - every digit except the last lies in [-128,127];
+  - the last digit lies in [-Btop,Btop], with Btop = 128 for int16 rows and 64 for the gated
+    row (both are attained).
+
+  Each digit row t is an ordinary field matmul C_t = sum_i b_t,i*w_i, with
+  |C_t| <= inner*128*qw. Then 8*inner*128*qw < p holds at inner = 16384 and qw = 127
+  (2130706432 < p). A' = sum_t 256^t*C_t is recombined exactly in byte columns, then
+  multiplied by m. The digit index t extends the matmul's row index, like positions do
+  (RFC-0007 A6). The weight tensor, B and the single weight pass are unchanged.
+
+Digit rows cost T accumulators per output, against n_in/g partial sums. For Llama-3.1-8B with
+all four rows grouped at g = 128, that is 51,200 extra accumulators per token and layer,
+against 1,703,936 partial sums replacing the 43,008 accumulators.
+
+**Static records.** The new schema ids belong to the RFC-0025 static frame and reuse its
+parameter bytes, column, word and field checks.
+- **Schema 23 (grouped row, replaces 4 at a mode-2 conversion slot).**
+  - Parameters are schema 4's bytes: u16(n), u8(kind, fraction, 2), u32(g).
+  - It begins with schema 4's dynamic record for one group of length g: 17 scalars, 8 roles.
+  - It appends five scalars: n-1, n/g, T, X, Btop.
+  - It appends two roles: the fold (1,127,smax), and the offset digits. The offset digits are
+    (1,255,256^t) for t < T-1 and (1,2*Btop,256^(T-1)).
+  - Records are below 22 KiB.
+- **Schemas 24/25 (grouped affine, replace 1/21 when the input row is grouped).**
+  - 24 has an int16 output; 25 is the wide O/down output of A14.
+  - Parameters are schema 1/21's bytes, with policy byte 2 and the u32 field g.
+  - Scalars (18): qw, smax, X, T, Btop, cmax = inner*128*qw, amax = inner*X*qw,
+    total = amax*m, then schema 1's divisor, left, bias, maximum, quotient cap, output, and
+    the sign sides 4*cmax, 2*cmax, 4*output-1, 2*output.
+  - Role 1 is the recombination: one term (1, inner*qw*b_t, 256^t) per digit row, with
+    b_t = 128 for the low digits and Btop for the last.
+  - Role 2 is (1, amax, m).
+  - Roles 3-13 are schema 1/21's sign, alignment and rounding roles, with equal values.
+  - The field check is 8*cmax < p, which replaces schema 1's 8*accumulator < p.
+  - Records are below 44 KiB.
+
+The Bounds collection keeps its slot order and count. A mode-2 convert slot takes schema 23;
+a projection whose input row is grouped takes 24, or 25 for wide O/down. Q/K/V share the
+first-norm row's policy and the head shares Policy(final). Every record is below 128 KiB.
+
+**Range discipline.**
+- Each group's scale uses the existing dynamic-scale and row-code consumers over its g
+  values. The attained-maximum index lies in the group, never elsewhere in the row.
+- Each code i is consumed with the scale of floor(i/g).
+- Each low digit is checked in offset form b+128 in range_8.
+- The last digit o = b+Btop is checked in exact form: o and 2*Btop-o both lie in range_16.
+  RFC-0024's offset-int8 source does not admit the int16 rows' last digit 128. Native
+  integration registers digit rows with these exact ranges.
+- Each C_t is an RFC-0023 four-byte int32 accumulator source.
+- No digit range may stand in for a code or scale range, nor the reverse.
+
+**Soundness ledger.**
+- No new challenge, transcript label, probabilistic loss or profile.
+- The digit-row matmul keeps RFC-0007 §5's sumcheck over (l,k) with unchanged rounds.
+- The stacked Requant zerocheck that emits the digit-row claim gains log2 T variables: one
+  for int16 rows, two for the gated row. Its existing per-round degree/|K| term counts
+  those rounds.
+- Field faithfulness is the RFC-0022 column lemma with the sides above, plus
+  8*inner*128*qw < p for each digit row.
+- Added digit, scale and accumulator lookups enter N in the (N+|T|)/|K| LogUp term.
+- New bindings, reserved as `todo` controls:
+  - NC-0131: a group's scale taken from another group's (or the whole row's) maximum;
+  - NC-0132: a code consumed with a neighbouring group's scale;
+  - NC-0133: a folded value that is not s_k(i)*q_i;
+  - NC-0134: a non-canonical digit vector with the same field sum (last digit out of range);
+  - NC-0135: digit-row accumulators recombined in the wrong order or weight;
+  - NC-0136: a row proven under a group size other than the Model's.
+
+  A parser rejection earns no proof-binding credit.
+
+**Cost model.** Per token and layer for Llama-3.1-8B, with all four rows grouped at g = 128:
+- Projection outputs carry T accumulators: 51,200 more than the 43,008 today (+119%). This
+  covers Requant work in c_a, and RFC-0023 advice in c_c where that cut is used.
+- Converted values gain 26,624 fold products (c_a) and 81,920 digit range memberships (c_lu).
+- Group scales add n/g scale witnesses per row (208 per layer). Each element still enters
+  exactly one attained maximum.
+- Counting every added item as a full N_act element is an upper bound: N_act grows from about
+  90,112 to at most 249,856 per layer and token, so T_act grows at most 2.8x. In the §3
+  Llama-3.1-8B row that is 0.9 s to at most 2.5 s.
+- The weight phase's A side grows by T (T*n*d_in MACs per layer and type).
+- T_weights, the weight pass count, T_attn, the residual cuts and every table are unchanged.
+  No planning constant is refitted.
+
+**Q/K/V deferred.** Q/K/V rows stay ungrouped in this entry:
+- No measurement attributes any gain to them. E5-05b's simulation quantised affine inputs only.
+- They feed the score and weighted-sum relations (RFC-0025 §2.4, RFC-0009) and the KV cache
+  (§9), not an affine. A group smaller than a head splits one score's dot product, which needs
+  its own digit or partial-sum form. Whole-head groups change the cache's one scale per
+  position.
+- Mode 2 on indices 1-3 is reserved: it rejects today, and a later amendment can admit it
+  without changing any existing Model's bytes.
+
+**Cross-RFC scope.** In a Model with any mode-2 Policy, these Accepted statements read
+"per group" for grouped rows:
+- §2's matmul-input row ("per-position dynamic scale");
+- RFC-0025 §2.2/§2.5's whole-row conversions and the encoding appendix's "no per-channel
+  activation policies";
+- RFC-0007 §1/§5's X row index (digit rows, A6);
+- RFC-0005 §4's captured scales (A7).
+
+RFC-0021 is unchanged: its §2.3 already leaves the int8 conversion to this RFC. RFC-0009 and
+RFC-0010 are unchanged, because no Q/K/V row, cut or packing changes. NC-0123 keeps its
+meaning for ungrouped attention rows; for a grouped attention row, NC-0131/0132 apply.
+
+**Affected tasks.**
+- E5-05d: this entry, the reference and the torch executor.
+- E5-05e: the G7 measurement.
+- A native task for Model/Bounds/executor support of mode 2 and schemas 23-25 is still to
+  be created; E5-05c is its precedent.
+- E7-01 family: digit-row matmul and Requant recombination.
+- E6-02: range discipline.

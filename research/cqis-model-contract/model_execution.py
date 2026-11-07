@@ -14,7 +14,7 @@ import attention_input_bounds as attention
 import decoding_execution as decoding
 from flow_bounds import Row as RowSpec
 from model_codec import encode as encode_model
-from numerics import LayerNorm, affine, checked_output, embedding, integer, layer_norm, round_ratio, shifted_pair
+from numerics import LayerNorm, affine, checked_output, embedding, grouped_affine, integer, layer_norm, round_ratio, shifted_pair
 import request_bounds as request
 from rms_bounds import RMSNorm
 import scales_codec
@@ -80,14 +80,18 @@ def load(model,mapping,scales_raw,raw,expected):
 @dataclass(frozen=True)
 class Row:
     codes: tuple[int,...]
-    scale: int
+    scale: int | tuple[int,...]  # a tuple of group scales for a grouped row (RFC-0004 A15)
     fraction: int
 
 
 def convert(values,fraction,policy,gated=False):
+    """A grouped row (policy mode 2, RFC-0004 A15) has a tuple of group scales, one per g values."""
     if type(values) is not tuple: raise ValueError('Row')
     RowSpec(len(values),int(gated),fraction,*policy)
     for x in values: integer(x,-(1<<30) if gated else -32768,(1<<30) if gated else 32767,'Input')
+    if policy[0]==2:
+        g=policy[1]; parts=tuple(convert(values[i:i+g],fraction,(0,0),gated) for i in range(0,len(values),g))
+        return Row(tuple(c for part in parts for c in part.codes),tuple(part.scale for part in parts),fraction)
     scale=policy[1] if policy[0] else (max(map(abs,values))+126)//127
     codes=tuple(round_ratio(x,scale) for x in values) if scale else (0,)*len(values)
     if any(abs(x)>127 for x in codes): raise ValueError('RowRange')
@@ -104,10 +108,14 @@ def linear(data,name,layer,x,fraction):
     if len(x.codes)!=columns: raise ValueError('Shape')
     bias=None if data.model.shape.family or name=='head' else data.record(name+'.bias',layer)
     fb=0 if bias is None else data.model.formats[bias.ordinal][1]; result=[]
+    grouped=type(x.scale) is tuple; g=columns//len(x.scale) if grouped else columns
     for j in range(rows):
-        dot=sum(code*data.code(record,j*columns+k) for k,code in enumerate(x.codes)); m,e=data.scale(record,j)
-        result.append(affine(dot,m,x.scale,e,x.fraction,fraction,0 if bias is None else data.code(bias,j),fb,
-                             width(data.model) if name in ('O','down') else 16))
+        m,e=data.scale(record,j); b=0 if bias is None else data.code(bias,j); bits=width(data.model) if name in ('O','down') else 16
+        if grouped:  # RFC-0004 A15: A' = sum_i s_g(i)*q_i*w_i, then the same single rounding
+            dot=sum(x.scale[k//g]*code*data.code(record,j*columns+k) for k,code in enumerate(x.codes))
+            result.append(grouped_affine(dot,m,e,x.fraction,fraction,b,fb,bits)); continue
+        dot=sum(code*data.code(record,j*columns+k) for k,code in enumerate(x.codes))
+        result.append(affine(dot,m,x.scale,e,x.fraction,fraction,b,fb,bits))
     return tuple(result)
 
 

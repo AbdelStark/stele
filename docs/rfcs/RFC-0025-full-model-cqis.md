@@ -594,3 +594,36 @@ Existing implementation and frozen numerical evidence move forward on the
 E5-03c branch without rewriting the E5-03 branch or claiming it complete.
 Approval to obtain the checkpoint does not supply missing provider credentials;
 full authorized original bytes remain mandatory before E5-03c is complete.
+
+### A2 — Grouped activation rows (companion of RFC-0004 A15)
+
+Status: Draft. Task E5-05d. The motivation, bounds, schemas 23-25, ledger and cost are in
+RFC-0004 A15.
+
+Exact replacements, applying only to rows whose Policy has mode 2. All other rows and
+Models are unchanged.
+- §2.2, first paragraph: "A row's codes, scale and source fraction are one semantic bundle"
+  reads "A row's codes, scale (n/g group scales for a grouped row) and source fraction are
+  one semantic bundle". Each group of g consecutive values is one dynamic conversion as
+  defined there.
+- §2.2, second paragraph: for a grouped row, "A=sum_k q_k*w_k ... Y=R(A*m*s*2^(e-f+fo))"
+  reads "A'=sum_k s_(floor(k/g))*q_k*w_k, Y=R(A'*m*2^(e-f+fo))". The bias form, the single
+  rounding and the output width are unchanged.
+- §2.4: "Assemble all heads in head order, then convert that whole output row once for the
+  O projection. No per-head output conversion." becomes: "Assemble all heads in head order,
+  then convert that output row once under its Policy, per group of g values for a grouped
+  Policy. No other head-local conversion."
+- §2.5: "Dynamic conversion uses M=max |product|, s=ceil(M/127)" and each "whole-row
+  conversion" apply per group for a grouped Policy.
+- §2.8 Row conversion family: every listed obligation applies per group. The family also
+  gains the fold s*q and its exact digit ranges.
+- Encoding appendix §4:
+  - "`Policy = u8(mode) || u32(scale)`, dynamic=0/static=1" adds "grouped=2 with
+    u32 = g".
+  - "There are no per-head or per-channel activation policies" gains the prefix "Apart
+    from grouped Policies on affine-input rows (RFC-0004 A15)". Mode 2 on the Q/K/V
+    policies rejects.
+- Collection appendix: a grouped convert slot takes schema 23, and a projection fed by a
+  grouped row takes 24, or 25 for wide O/down. Slot order and count are unchanged.
+
+Affected tasks: E5-05d, E5-05e, and native Model/Bounds support (to be created).

@@ -1,7 +1,7 @@
 """Draft RFC-0025 static appendix §§1–6: closed arithmetic records, no proof API."""
 from dataclasses import dataclass
 
-from numerics import LayerNorm, integer
+from numerics import LayerNorm, group, integer
 
 P = (1 << 31)-1
 WORD_BYTES = 288
@@ -39,9 +39,12 @@ class Affine:
         integer(self.kind, 0, 1, 'Kind')
         integer(self.fraction, 0, 44 if self.kind else 30, 'Fraction')
         integer(self.output_fraction, 0, 30, 'Fraction')
-        integer(self.policy, 0, 1, 'Policy')
-        integer(self.scale, 1 if self.policy else 0,
-                (8454661 if self.kind else 65535) if self.policy else 0, 'Scale')
+        integer(self.policy, 0, 2, 'Policy')
+        if self.policy == 2:  # RFC-0004 A15 grouped dynamic row: scale carries the group size
+            group(self.scale, self.inner, 'Scale')
+        else:
+            integer(self.scale, 1 if self.policy else 0,
+                    (8454661 if self.kind else 65535) if self.policy else 0, 'Scale')
         if self.bias_fraction is not None:
             integer(self.bias_fraction, 0, 30, 'Bias')
 
@@ -123,6 +126,20 @@ def _column(terms, bits=8):
     return operands, z, result, tuple(carries), left, right
 
 
+def digit_bounds(kind):
+    """RFC-0004 A15: a folded value s*q of a grouped row has |s*q| <= X = 127*smax and is
+    written as T signed radix-256 digits, each low digit in [-128,127]; returns (smax, X, T, top),
+    top bounding the last digit. Balanced digits are the unsigned digits of s*q+c, so the top
+    digit is monotone in s*q and its extremes are at -X and X."""
+    smax = 8454661 if kind else 259
+    x, count = 127*smax, 4 if kind else 2
+    offset = 128*((1 << (8*(count-1)))-1)//255
+    top = max(abs((v+offset) >> (8*(count-1))) for v in (-x, x))
+    if top > 128:
+        raise ValueError('FieldBound')
+    return smax, x, count, top
+
+
 def _rounding_roles(maximum, divisor, output=32768):
     quotient = min(output, maximum//divisor)
     return (
@@ -185,10 +202,47 @@ def _layernorm(p):
     return 3, scalars, shifts, tuple(_column(terms) for terms in roles)
 
 
+def _grouped_affine(p):
+    """Schemas 24/25 (RFC-0004 A15): schema 1/21 with roles 1-2 replaced by the digit rows.
+
+    Each digit row t is one field matmul C_t = sum_i b_t,i*w_i with |b| <= 128, so
+    8*inner*128*weight < p keeps it faithful; A' = sum_t 256^t*C_t is recombined in byte
+    columns, then multiplied by the mantissa. |A'| <= inner*X*weight, so the total, maximum
+    and rounding roles equal schema 1/21's at the dynamic row-scale maximum."""
+    weight = (1 << (p.bits-1))-1
+    smax, x, count, top = digit_bounds(p.kind)
+    digits = tuple(p.inner*weight*(128 if t < count-1 else top) for t in range(count))
+    cmax = max(digits)
+    if 8*cmax >= P:
+        raise ValueError('FieldBound')
+    amax = p.inner*x*weight
+    total = amax*p.mantissa
+    le = p.exponent-p.fraction+p.output_fraction
+    re = p.output_fraction-p.bias_fraction if p.bias_fraction is not None else 0
+    shift = max(0, -le, -re)
+    divisor, left = 1 << shift, 1 << (le+shift)
+    bias = (1 << (re+shift)) if p.bias_fraction is not None else 0
+    maximum = total*left+32768*bias
+    output = 1 << (p.output_bits-1)
+    scalars = (weight, smax, x, count, top, cmax, amax, total, divisor, left, bias, maximum,
+               min(output, maximum//divisor), output, 4*cmax, 2*cmax, 4*output-1, 2*output)
+    aligned = ((1, 2*total, left),)
+    if bias:
+        aligned += ((1, 65535, bias),)
+    roles = (tuple((1, c, 1 << (8*t)) for t, c in enumerate(digits)), ((1, amax, p.mantissa),),
+             ((1, 2*total, 1), (1, total, 2)), ((1, total, 1), (1, total, 1)), aligned)
+    roles += _rounding_roles(maximum, divisor, output)
+    for scalar in scalars:
+        _caps(scalar)
+    return (24 if p.output_bits == 16 else 25), scalars, (le, re, shift), tuple(_column(t) for t in roles)
+
+
 def derive(parameters):
     """Static metadata only: no values, source handles, field or arbitrary ops."""
     if type(parameters) is LayerNorm:
         return _layernorm(parameters)
+    if type(parameters) is Affine and parameters.policy == 2:
+        return _grouped_affine(parameters)
     if type(parameters) is Affine:
         p = parameters
         weight = (1 << (p.bits-1))-1
