@@ -1,10 +1,10 @@
 # /// script
 # requires-python = "==3.12.*"
-# dependencies = ["lm_eval==0.4.5", "langdetect==1.0.9", "immutabledict==4.2.1", "nltk==3.9.1", "datasets==3.1.0"]
+# dependencies = ["lm_eval==0.4.5", "langdetect==1.0.9", "immutabledict==4.2.1", "nltk==3.9.1", "datasets==3.1.0", "transformers==4.46.3", "setuptools==75.6.0"]
 # ///
 """E5-05: paired fp32-vs-CQIS statistics and the PRD G7 verdict from per-item JSONL.
 
-Usage: uv run --locked --script harness/eval/summary.py RESULTS_DIR > summary.json
+Usage: uv run --locked --script harness/eval/summary.py RESULTS_DIR [TAG] > summary.json
 G7 (docs/prd.md): perplexity ratio - 1 <= 8%, and >= 3 reasoning/instruction benchmarks
 "within standard error". Primary reading: |CQIS - fp32| <= the paired standard error of
 that difference (RFC-0004 §8 asks for paired SEs). Secondary, reported alongside: the
@@ -75,11 +75,11 @@ def ifeval(f, c):
     return out
 
 
-def main(root):
+def main(root, tag='cqis'):
     items = Path(root)/'items'
     report = {}
     for name in ('wikitext', 'arc', 'mmlu_pro', 'gpqa', 'ifeval'):
-        f, c = items/f'{name}.fp32.jsonl', items/f'{name}.cqis.jsonl'
+        f, c = items/f'{name}.fp32.jsonl', items/f'{name}.{tag}.jsonl'
         if not (f.exists() and c.exists()):
             continue
         f, c = load(f), load(c)
@@ -95,4 +95,4 @@ def main(root):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(*sys.argv[1:3])

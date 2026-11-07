@@ -196,7 +196,8 @@ def parity():
 
 
 @app.function(image=image, volumes={'/vol': volume}, secrets=[secret], gpu='H100', cpu=8, memory=98304, timeout=12*3600)
-def fidelity(tag: str, benchmarks: str = 'wikitext,arc,mmlu_pro,gpqa,ifeval', limits: str = '{}'):
+def fidelity(tag: str, benchmarks: str = 'wikitext,arc,mmlu_pro,gpqa,ifeval', limits: str = '{}',
+             fraction: int = 2, residual_bits: int = 16):
     _paths()
     from transformers import AutoTokenizer
     import fidelity as fid
@@ -204,7 +205,7 @@ def fidelity(tag: str, benchmarks: str = 'wikitext,arc,mmlu_pro,gpqa,ifeval', li
     if tag == 'fp32':
         backend = fid.Fp32(SOURCE)
     else:
-        backend = fid.Cqis(_executor()[1])
+        backend = fid.Cqis(_executor(fraction=fraction, residual_bits=residual_bits)[1])
     names = benchmarks.split(',')
     if 'gpqa' in names:
         try:

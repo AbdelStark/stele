@@ -1,0 +1,40 @@
+{
+  "arc": {
+    "agreement": 0.3395904436860068,
+    "cqis": 0.23464163822525597,
+    "delta": -0.5597269624573379,
+    "fp32": 0.7943686006825939,
+    "fp32_se": 0.011805705471624314,
+    "n": 1172,
+    "paired_se": 0.017217037314212078,
+    "rejected": 0,
+    "same_prediction": 0.22525597269624573
+  },
+  "g7": {
+    "pass_primary": false,
+    "pass_secondary": false,
+    "perplexity_within_8_percent": false,
+    "within_fp32_se": [],
+    "within_paired_se": []
+  },
+  "mmlu_pro": {
+    "agreement": 0.703125,
+    "cqis": 0.09375,
+    "delta": -0.203125,
+    "fp32": 0.296875,
+    "fp32_se": 0.05711012311411502,
+    "n": 64,
+    "paired_se": 0.06369760335066812,
+    "rejected": 0,
+    "same_prediction": 0.15625
+  },
+  "wikitext": {
+    "cqis": 178968.0034836748,
+    "fp32": 5.846398572054189,
+    "ratio_minus_one": 30610.66652905648,
+    "ratio_se": 2867.9253778014095,
+    "rejected": 0,
+    "tokens": 289006,
+    "windows": 71
+  }
+}

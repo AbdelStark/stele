@@ -949,12 +949,38 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: harness
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E5-05-fidelity
   acceptance:
   - report published
   - PRD G7 pass or ADR with knob change
+- id: E5-05a
+  epic: E5
+  title: RFC-0004 amendment for the int24 wide residual path (fraction 10) with range certificates and cost terms
+  depends:
+  - E5-05
+  rfc:
+  - RFC-0004 §8
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: ready
+  acceptance:
+  - Draft amendment reviewed through Workflow 02 and accepted with an ADR
+  - research reference and native executor support the wide residual with parity to harness/eval/cqis_torch.py
+- id: E5-05b
+  epic: E5
+  title: Close the G7 benchmark gap with the remaining RFC-0004 §8 knobs (per-group weight scales, dynamic scales, attention B/E bits)
+  depends:
+  - E5-05
+  rfc:
+  - RFC-0004 §8
+  skill: cqis-numerics
+  crate: harness
+  status: ready
+  acceptance:
+  - ablation on fixed subsets attributes the ARC/MMLU-Pro gap of harness/eval/REPORT.md to knobs
+  - PRD G7 pass on the full protocol or an ADR recording the residual gap
 - id: E5-06
   epic: E5
   title: CQIS serving kernels (int8 GEMM exact accumulate, table gathers) with GPU/CPU bit reproducibility
