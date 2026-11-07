@@ -126,6 +126,7 @@ class Executor:
         self.exp = {}
         self.activation = {}
         self.ordered = False
+        self.replay = True  # False: a rejection raises its unordered reason (sweeps only)
         self.rotation = {}
 
     # ---- Artifact decoding -------------------------------------------------
@@ -410,6 +411,8 @@ class Executor:
         try:
             return self._full(t, keep_cuts, head_rows)
         except ValueError:
+            if not self.replay:
+                raise
             self.ordered = True
             try:
                 self._full(t, keep_cuts, head_rows)

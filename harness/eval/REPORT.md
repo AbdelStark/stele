@@ -12,9 +12,11 @@ revision. The CQIS side is the E5-04 prepared Artifact, executed exactly.
 
 The wide residual knob turns a catastrophic failure into a model that passes the perplexity criterion. The model
 stays within a few points on every benchmark, but G7's benchmark criterion is still not met. The residual path is no
-longer the limiting factor: the ablation below shows saturation from fraction 8. The remaining gap must come from the
-int8 weight, activation and K/V codes. These are the other knobs RFC-0004 §8 names: per-group weight scales,
-dynamic scales and attention `B/E` bits. They are follow-up task E5-05b.
+longer the limiting factor: the ablation below shows saturation from fraction 8.
+
+E5-05b attributes the remaining gap (see "Attribution" below). Per-token int8 activation rows cause about 60% of
+it, and per-group activation scales remove that part in simulation. No knob inside the current specification
+closes the gap, so G7 stays open until the row format admits per-group scales (ADR-062, task E5-05d).
 
 ## Exactness evidence (prerequisite for every number below)
 
@@ -111,6 +113,62 @@ ARC 81.0%.
 No configuration rejected an item. An int16 residual cannot hold both the range and the precision Llama needs. With
 24 bits the remaining loss stays flat from fraction 8 to 12, so it lies elsewhere. Fraction 10 was chosen because it is
 the middle of the plateau and leaves 13 integer bits of headroom.
+
+## Attribution (E5-05b)
+
+The subset is the same 8 WikiText windows (32,760 scored tokens) as the ablation; fp32 scores 5.9694. The
+baseline is the wide model above (int24, fraction 10). Paired SE is over the 8 windows against fp32.
+
+**Exact CQIS, configuration knobs.** These are Model fractions that RFC-0025's encoding already lets a
+configuration choose (`knobs.py`). Each is executed exactly with `cqis_torch`.
+
+| Configuration | ppl | vs fp32 | paired SE |
+|---|---|---|---|
+| wide baseline (all intermediate fractions 7) | 6.1424 | +2.90% | 0.17% |
+| attention row fraction 8 | 6.1329 | +2.74% | 0.16% |
+| V fraction 8 | 6.1288 | +2.67% | 0.11% |
+| norm output E = 8 | 6.1327 | +2.74% | 0.25% |
+| Q/K fraction 8 | 6.1389 | +2.84% | 0.19% |
+| SiLU F = E = 8 | 6.1479 | +2.99% | 0.19% |
+| attention, Q/K, V and norm E all 8 | 6.1233 | +2.58% | 0.15% |
+
+At fraction 10 every window rejects with `Range`. That run used the defective Q/K knob described below, so its
+cause is not attributed. Raising intermediate fractions recovers at most 0.3 points of the 2.9.
+
+**fp32 simulation, row quantisation.** Every `nn.Linear` of the fp32 model gets symmetric int8 fake quantisation:
+weights per output row, inputs per token (absmax/127) or per group of input features. These are the row formats
+CQIS converts to before each projection. This is a simulation that splits the gap, not CQIS evidence.
+
+| Simulation | ppl | vs fp32 | paired SE |
+|---|---|---|---|
+| int8 weights only | 5.9749 | +0.09% | 0.05% |
+| int8 activations only, per token | 6.0685 | +1.66% | 0.16% |
+| int8 weights and activations, per token | 6.0776 | +1.81% | 0.24% |
+| same, activation scale per 128 features | 5.9770 | +0.13% | 0.06% |
+| same, activation scale per 32 features | 5.9769 | +0.13% | 0.06% |
+
+Reading:
+- **Per-token int8 activation rows: about 1.8 of the 2.9 points.** Llama-3.1's activation outliers set one scale for the whole row. One
+  scale per 128 features removes 93% of it. Weight rows cost under 0.1 point, so per-group *weight* scales would
+  not help.
+- **The rest, about 1.1 points**, is CQIS-specific: int8 Q/K/V cache rows (also per-token), the attention
+  probabilities, and the exp, SiLU and norm tables. Fraction knobs recover about 0.3 of it.
+- **No admitted knob reaches G7.** RFC-0004 §8's per-group weight scales target the wrong operand. Activation rows
+  have exactly one scale per row (RFC-0021 conversion), so per-group activation scales are a format amendment. That
+  amendment is task E5-05d, recorded in ADR-062.
+
+Method notes:
+- **A defect caught by the sweep itself.** The first `qk` knob also moved `score_e`, but the score shift
+  `score_e − fQ − fK + exp.F` already absorbs the fractions. That defect rescaled every score: ppl 1,313 at fraction
+  8. `check_cqis_torch.knob_checks` now asserts that no knob changes `score_m`, `score_e` or `exp`. Runs made with
+  the defective knob (the Q/K and combined sweeps at 8, 9 and 10) are excluded from the tables.
+- **Sweep runs skip full certification.** They skip the full Registry regeneration, which takes hours in pure
+  Python. Tables are evaluated lazily, and any rejected input rejects. They also skip the ordered replay of a
+  rejection. Both are acceptable for attribution and are not evidence for a cqis_id.
+
+Evidence: `results/e505b/attribution.json` (summary) and `results/e505b/items.sha256` (per-window files on the
+`stele-e505` volume under `results/knobs` and `results/fakequant`). Reproduce with `modal_e505.py::knob_sweep` and
+`::fake_quant`. Modal billed about $16 for E5-05b. The run total is about $40 of the $50 cap.
 
 ## Reproduction and evidence
 

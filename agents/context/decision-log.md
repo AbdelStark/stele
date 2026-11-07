@@ -811,3 +811,26 @@ Decision:
 
 No challenge, loss, profile, weight pass or measured constant changes.
 Status: Accepted.
+
+## ADR-062: G7 gap attributed to per-token activation rows; per-group activation scales next
+
+Context: E5-05 left Llama-3.1-8B (wide residual, ADR-061) at +2.90% perplexity with
+ARC/MMLU-Pro outside the paired SE. E5-05b had to attribute this gap to RFC-0004 §8 knobs
+on fixed subsets. Evidence: harness/eval/REPORT.md "Attribution" and results/e505b.
+
+Decision:
+- **Attribution.** Measured on 8 windows:
+  - Per-token int8 activation rows explain +1.81 of the +2.90 points (fp32 simulation).
+  - One scale per 128 input features cuts that to +0.13.
+  - Weight rows cost +0.09.
+  - Intermediate fractions recover at most 0.3 points in exact CQIS.
+- **No admitted knob closes G7.** The per-group *weight* scales of RFC-0004 §8 target an
+  operand that costs under 0.1 point. Raising fractions saturates.
+- **Next step.** E5-05d drafts per-group activation scales: a conversion with one scale per
+  g input features (g = 128), threaded through the affine cut. Its proof cost is g-many
+  scale lookups per row instead of one. It then re-measures G7 on the full protocol.
+  Q/K/V cache rows are in scope, because they share the format.
+- **G7 is not claimed.** The residual gap stays recorded here and in the report until
+  E5-05d measures it.
+
+No specification, challenge, loss or measured constant changes. Status: Accepted.

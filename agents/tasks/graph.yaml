@@ -993,10 +993,26 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E5-05b-knobs
   acceptance:
   - ablation on fixed subsets attributes the ARC/MMLU-Pro gap of harness/eval/REPORT.md to knobs
   - PRD G7 pass on the full protocol or an ADR recording the residual gap
+- id: E5-05d
+  epic: E5
+  title: Per-group activation scales (one scale per 128 features) for affine inputs and Q/K/V rows, then G7 on the full protocol
+  depends:
+  - E5-05b
+  rfc:
+  - RFC-0004 §8
+  - RFC-0021
+  skill: cqis-numerics
+  crate: harness
+  status: ready
+  acceptance:
+  - reviewed amendment (Workflow 02) defining grouped conversion, its bounds and its affine-cut cost, with a research reference
+  - exact executor runs the grouped model and harness/eval/REPORT.md records PRD G7 on the full protocol
 - id: E5-06
   epic: E5
   title: CQIS serving kernels (int8 GEMM exact accumulate, table gathers) with GPU/CPU bit reproducibility
