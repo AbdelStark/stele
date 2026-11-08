@@ -171,3 +171,36 @@ fn rejects_all_metadata_mutations_before_digest_generation_and_whole_table_overf
         Err(Error::Generation(crate::tables::Error::Overflow))
     );
 }
+
+/// E3-08a audit: every configured component's TableId preimage (its canonical
+/// descriptor) and regenerated data digest sit inside the Registry bytes that
+/// cqis_id hashes; flipping that digest makes the complete Registry reject.
+#[test]
+fn rejects_registry_with_changed_component_data_digest() {
+    let mut r = Reader(include_bytes!("../../../tests/fixtures/registries.bin"));
+    let find = |hay: &[u8], needle: &[u8]| hay.windows(needle.len()).position(|w| w == needle);
+    for _ in 0..r.u32() {
+        let model = Model::decode(r.blob()).expect("Model");
+        let raw = r.blob();
+        r.take(32);
+        r.slots();
+        let registry = Registry::decode(&model, raw).expect("complete Registry");
+        let mut checked = 0;
+        for role in model.function_roles() {
+            let representation = role.identity().expect("RepresentationId");
+            assert!(find(registry.as_bytes(), &representation).is_some());
+            for d in role.components() {
+                let mut entry = d.encode().expect("descriptor").as_bytes().to_vec();
+                let data = crate::tables::Table::generate(*d).expect("generated");
+                entry.extend(blake3::hash(&data.encode().expect("data")).as_bytes());
+                let at = find(raw, &entry).expect("descriptor and data digest in Registry");
+                let mut changed = raw.to_vec();
+                changed[at + entry.len() - 1] ^= 1;
+                assert_eq!(Registry::decode(&model, &changed), Err(Error::TableData));
+                checked += 1;
+            }
+        }
+        assert!(checked > 0);
+    }
+    assert!(r.0.is_empty());
+}
