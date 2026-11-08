@@ -204,7 +204,7 @@ admitted and no prover-chosen parameter. Each finding was closed on this branch.
     - E7-10 gains RFC-0007 A7/RFC-0010 A3. Its counter criterion now counts one
       certificate per proof and one opening per row-17 claim.
     - Cost: at least two R_stack openings per dense layer stack. Recorded in RFC-0007
-      A7, the cost model and ADR-067.
+      A7, the cost model and ADR-068.
   - Also observed: the RFC-0000 index already listed RFC-0001 "A4" before this
     change, with no such entry. A4 now exists, so the index is correct.
 - **S2: the H row.**
