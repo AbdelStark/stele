@@ -101,6 +101,7 @@
 | NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0612 | PCS | 0010 A1, A3, 0012 A7 | under the actual v2 source consumer: offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | todo |
 | NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | todo |
+| NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
 | NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
@@ -121,6 +122,8 @@
 | NC-1204 | request plan | 0005 A4, 0016 A2 | substitute one plan instance from a different request under the same model template | `PlanInstanceMismatch` | todo |
 | NC-1205 | profile minimum | 0016 A2, 0025 §2.7 | change treaty to standard below the passport's minimum profile | `ProfileMismatch` | todo |
 | NC-1206 | token source | 0016 A2, 0025 §2.6 | substitute one prompt/output source context while retaining the expected tokens and I/O mode | `TokenSourceMismatch` | todo |
+| NC-1207 | message embedding | 0010 A6 | plan whose consumers name two embeddings (signed and offset) for one source context | `EmbeddingMismatch` | todo |
+| NC-1208 | message embedding | 0010 A6 | plan whose consumers name no embedding for a committed source context | `MissingEmbedding` | todo |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206

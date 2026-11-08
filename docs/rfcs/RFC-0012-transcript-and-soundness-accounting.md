@@ -703,7 +703,7 @@ controls, with no new challenge family or duplicated transcript snapshots.
 This specification adds no executable registry or profile admission. Complete
 FS/H/query bounds, masking and conditional source hypotheses remain unchanged.
 
-### A15 — Exact PCS ledger line (companion of RFC-0010 A3)
+### A15 — Exact PCS and H ledger lines (companion of RFC-0010 A3)
 
 Status: Accepted. Review: [A3/A6 acceptance](../../agents/reviews/pcs-a3-a6-acceptance.md).
 Motivation: §4's PCS row `ε_gap + (1−δ)^q + ε_Merkle` names no concrete radius or
@@ -715,8 +715,20 @@ Exact replacement for §4's PCS row:
 |---|---|---|
 | PCS | each certificate attempt; each opening; once per ledger for v2 setup | certificate `2·ell·(e+1)/|K| + ((N−e−1)/N)^q_c`; opening `((N−D+e)/N)^q_o`; setup `200431782/2^160` if any v2 source with J≥4 is present, else 0 |
 
+Exact replacement for §4's H row:
+
+| Line | Term | Formula |
+|---|---|---|
+| H | collisions and late preimages of frozen digests (RFC-0010 A8) | `min(1, [C(Q_total,2) + Σ_{r=1..R_max} (1+2·Q_pre,r)·Q_after,r] / 2^λ)` |
+
+Q_total is the cap on all modeled hash calls; R_max, Q_pre,r and Q_after,r are A8's
+deterministic registration and per-registration query caps, fixed before execution
+and covering failed and abandoned attempts; λ is the hash output length in bits
+(256, or 192 where §3 lets standard truncate Merkle). C(Q,2) <= Q²/2, so the old
+`Q²/2²⁵⁶` is the R_max=0 case up to that factor.
+
 N, D, e, q_c and q_o are RFC-0010 A3's verifier-derived values. The A8 Merkle term
-moves to the H line; it is a hash event, not a proximity term. Each record is an
+moves to the H line above; it is a hash event, not a proximity term. Each record is an
 interactive bound. Replay never removes a certificate term, and every fresh attempt
 is charged (RFC-0010 A9 §9). Version-2 sources reuse A10's nine labels; no label,
 challenge or registry entry is added.

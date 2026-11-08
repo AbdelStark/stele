@@ -322,6 +322,10 @@ message count therefore equals its value count. For non-wide int16 cuts this dou
 the committed message count in T_cuts, as the wide int24 section already does; raw
 int16/int8 storage bytes are unchanged.
 
+R_stack is no longer one batched opening (RFC-0007 A7): each claim reaching row 17
+is its own opening, at least two per dense layer stack. Each adds one u row of C
+K-elements, one encoding and q_o column responses to T_cuts's opening term.
+
 A v2 expander source sends q_c=13472 certificate and q_o=6714 opening responses at
 J=14 (Policy 1), each 4R+32·log2(N) bytes, against 314 and 130 for Circle rate 1/4.
 Verifying encodes t and u with full v2 regeneration. These are exact counts, not

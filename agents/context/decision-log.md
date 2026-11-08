@@ -1061,9 +1061,16 @@ Decision:
   original criteria plus NC-0613. E4-04 stays blocked on RFC-0007 A1. E4-05 inherits
   the FS finding.
 
-Consequences: non-wide int16 cut message counts double, and v2 openings send
-about 50 times the query responses of Circle rate 1/4. No measured constant moves.
-int16/int24 committed sources have no range consumer yet; E5/E6 must specify one
-before relying on their width.
+- **Independent-review fixes.** Every "one batched opening" sentence is replaced:
+  RFC-0007 A7 row 17 and RFC-0001 A4 make each R_stack claim its own A3 opening
+  with its own q_o term (RFC-0008 §6's was already withdrawn by A2). RFC-0012 A15
+  also gives the exact H row with A8's frontier sum. Cut width is unproven until a
+  whole-source lookup or a qualifying limb split is specified; E6-02 must reject
+  without one. NC-0614 (expansion) and NC-1207/1208 (embedding, E8-02) are reserved.
+
+Consequences: non-wide int16 cut message counts double. A dense layer opens
+R_stack at least twice instead of once. v2 openings send about 50 times the query
+responses of Circle rate 1/4. No measured constant moves. int16/int24 committed
+sources have no range consumer yet; E6-02 makes that a plan rejection.
 
 Status: Accepted.

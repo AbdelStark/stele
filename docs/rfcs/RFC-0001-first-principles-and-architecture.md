@@ -183,3 +183,11 @@ The deterministic hash-use inventory remains required in complete H accounting;
 boundary/derivation work contributes T_witness/c_a/T_misc without a measured constant.
 Affected tasks: E5-03b/04, E6, E7-08, E8, E12, E13-04/05 and E14.
 All original controls and NC-1204..1206 remain actual-consumer gates.
+
+### A4 — Separate R_stack openings (companion of RFC-0010 A3 and RFC-0007 A7)
+
+Status: Accepted. Review: [A3/A6 acceptance](../../agents/reviews/pcs-a3-a6-acceptance.md).
+Exact replacement in §4.1: "All claims on committed `R_·` go to one batched opening"
+becomes "Each claim on committed `R_·` that reaches RFC-0007 §4 row 17 is its own
+RFC-0010 A3 opening". No challenge, label or loss family changes; cost and tasks are
+those of RFC-0007 A7.

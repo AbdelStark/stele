@@ -379,7 +379,10 @@ Acceptance resolution. The following is in force; the proposed text above is not
    defence in depth; RFC-0007 A2/A10 already open certified sources); §2's batched
    `a = Σ_t γ_t eq(ℓ_t,·)⊗eq(…)` as one opening (each claim is a separate opening
    with its own q_o term, unless an Accepted consumer RFC first reduces the claims
-   to one (a,b,v) and charges that reduction). Not admitted, and usable only after
+   to one (a,b,v) and charges that reduction). The same holds for every other
+   Accepted "one batched opening" sentence: RFC-0007 §4 row 17 and RFC-0001 §4.1
+   (replaced by RFC-0007 A7 and RFC-0001 A4); RFC-0008 §6's was already withdrawn
+   by RFC-0008 A2 item 8. Not admitted, and usable only after
    a new amendment: the certificate-free fresh-tensor mode, the batch and grouping
    protocols of certified-functional-opening.md §3, and §7 Ligerito mode (Q27).
 2. **Code identities and source bytes.** Source version 1 is A9's Circle source,
@@ -625,16 +628,17 @@ Acceptance resolution. Exact replacement for §8's packing bullet:
 > source value. No packing of several int8, int16, int24 or other values into one
 > M31 element is admitted: four int8 or two int16 values carry 32 bits, and no map
 > from them into M31 is injective (formal/packed-commitments.md §1). Raw source
-> storage, such as int8 or int16 bytes, is a separate physical format; registration
-> expands it to field messages.
+> storage, such as int8 or int16 bytes, is a separate physical format whose byte
+> layout belongs to RFC-0011. The message expansion takes typed signed values, not
+> bytes, and emits one canonical element per value.
 >
 > A signed w-bit value x, w in {8,16,24}, has one of two message embeddings:
-> signed, the field image of x (RFC-0007 §2), or offset, x+2^(w-1) in [0,2^w)
-> (RFC-0024 §1 at w=8). The consuming Accepted RFC names the embedding in its
-> expected statement. Every consumer of one source context uses the same
-> embedding; the plan fixes it once per source. A source whose consumers name no
-> embedding is unsupported. Both embeddings are injective without reduction,
-> because |x| <= 2^23 and 2^24 < p. The layout is A9's row-major layout 0, with
+> signed, the field image of x (x for x>=0, p+x for x<0; RFC-0007 §2), or offset,
+> x+2^(w-1) in [0,2^w) (RFC-0024 §1 at w=8). The consuming Accepted RFC names the
+> embedding in its expected statement. Every consumer of one source context uses
+> the same embedding; the plan fixes it once per source. A plan whose consumers
+> name two embeddings for one source, or none, is rejected. Both embeddings are
+> injective on [-2^(w-1), 2^(w-1)) because 2^24 < p. The layout is A9's row-major layout 0, with
 > logical and padded extents equal. The original-value MLE is the message MLE for
 > signed, and the message MLE minus 2^(w-1) for offset, at every point.
 >
@@ -644,6 +648,14 @@ Acceptance resolution. Exact replacement for §8's packing bullet:
 > No Accepted whole-source range consumer exists yet for w=16, w=24 or the signed
 > embedding; a consumer that needs one must specify it first. A width tag, codec,
 > honest decoder or digest proves nothing.
+>
+> For residual cuts, RFC-0008 §5's "RMSNorm's limb split enforces int16" satisfies
+> this rule only if every limb column it looks up is an A9-bound source (RFC-0008
+> A2), its recombination to the cut value is an Accepted identity checked against
+> openings of the same cut certificate, and its selectors cover every cut message
+> entry. No Accepted RFC yet specifies such a split for R_stack, so a cut's width
+> is currently unproven; E6-02's checker must reject any plan whose committed cut or
+> signed-embedding weight source lacks one of these two width proofs.
 
 How each requirement above is closed:
 
@@ -669,16 +681,22 @@ How each requirement above is closed:
    one adjacent pair (x0,x1) with x1>=1 by (x0+256, x1-1), which keeps the withdrawn
    packed word x0+256·x1. Commit and certify the tampered source honestly; the
    actual RFC-0024 §1.1 byte-range verifier must reject it (RootMismatch, as for
-   NC-0401). NC-0605 stays with E4-04.
+   NC-0401). NC-0614 (todo, E4-03) exercises the new expansion itself: one value
+   expanded into two message elements under the expected one-element context
+   (ColumnMismatch at the actual certificate), and an expanded row containing the
+   limb p (NoncanonicalField). NC-1207 and NC-1208 (todo, E8-02): a plan whose
+   consumers name two embeddings for one source context, and one whose consumers
+   name none, are rejected by the plan verifier (EmbeddingMismatch,
+   MissingEmbedding). NC-0605 stays with E4-04.
 
 Soundness: no new challenge, label or loss. The range lookup's LU and A9 terms are
 the consuming RFC's. Cost: the committed message count equals the number of values
 (the withdrawn text claimed 1/4 for int8 and 1/2 for int16). Non-wide int16 cut
 messages double, as wide int24 cuts already did (A11); raw storage is unchanged.
 No measured constant moves. Affected tasks: E4-03 (ready), E4-04 (still blocked on
-RFC-0007 A1), E5/E6 range lowering (int16/int24 committed-source range consumers),
+RFC-0007 A1), E6-02 (cut and signed-weight width in the range-discipline checker),
 E7 weight/cut consumers and E8-02 (the plan verifier enforces one embedding per
-source), each with original criteria.
+source, NC-1207/1208), each with original criteria plus the lines named here.
 
 ### A7 — Separate column privacy from row-combination masking
 

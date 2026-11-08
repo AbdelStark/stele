@@ -11,7 +11,7 @@ Total error ε = Σ SC + Σ SZ + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC
 | PCS | each certificate attempt; each opening; v2 setup once per ledger (RFC-0012 A15) | certificate `2·ell·(e+1)/|K|+((N−e−1)/N)^q_c`; opening `((N−D+e)/N)^q_o`; setup `200431782/2^160` if a v2 source with J≥4 is present; Merkle lift under H | conditional interactive, proven terms only (RFC-0010 A3: Diamond–Posen Thm 2 at e≤(D−1)/3; no Johnson/capacity conjecture); no profile admitted, FS per Q12 |
 | MASK | per masked instance | `≤ 1/|K|` | yes |
 | FS | adaptive queries `Q` + grinding | ROM bound | assumption A2 |
-| H | hash collisions | `Q²/2²⁵⁶` | assumption A1 |
+| H | collisions and late preimages of frozen digests (RFC-0012 A15, RFC-0010 A8) | `min(1,[C(Q_total,2)+Σ_{r=1..R_max}(1+2·Q_pre,r)·Q_after,r]/2^λ)`, A8's deterministic caps, λ=256 (192 for truncated standard Merkle) | assumption A1 |
 
 Illustrative treaty budget for W4 appears in RFC-0012 §5; the generator must reproduce it. The gate
 `scripts/gates/soundness-accounting.sh` diffs the generator's instance enumeration against the transcript labels actually

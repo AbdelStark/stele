@@ -1,9 +1,6 @@
 # Conditional native Circle field openings
 
-Status: Accepted under RFC-0010 A9. RFC-0010 A3 item 2 adds source version 2
-(v2 expander, 55-byte manifest, J=3..14) with its own N, C, D and query table;
-everything else here applies verbatim.
-This contract closes a general field
+Status: Accepted under RFC-0010 A9. This contract closes a general field
 functional against the unique near-message interpretation of a certified
 Circle commitment. A separate adapter closes every original claim returned
 by native RFC-0006 A1. It does not admit an inference proof or either profile.

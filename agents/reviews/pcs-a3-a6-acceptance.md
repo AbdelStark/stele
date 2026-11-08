@@ -12,8 +12,13 @@ Reviewers:
   drafting agent. It checked consistency with Accepted text, the glossary, the claim
   graph, task statuses and implementability against A9 and E4-03a.
 
-Both passes are by the author. Neither is independent; an independent review of the
-PR is still wanted, as for PR #293.
+- **Pass 3, independent cryptography review** of PR #296 at 11377e8, by a reviewer
+  outside this drafting session. It is recorded under "Independent pass" below.
+
+Passes 1 and 2 are by the author; neither is independent. Pass 3 is the independent
+sign-off, including the owner sign-off for the crates whose tasks this change
+newly affects: stele-ir (E8-02, E6-02), stele-verifier (E8-05) and
+stele-reductions (E7-10). Pass 2 is the same-author stele-pcs owner pass.
 
 **Verdict: accept after fixes.** All blocking findings are closed on this branch.
 No soundness gap remains in the interactive argument. No profile is admitted: under
@@ -173,10 +178,69 @@ Findings:
     `Encoder::from_code_id` for v2.
   - The A1 adapter's fixed-length assumption becomes per-version.
   - No new label, error kind or crate dependency is needed.
-- **Catalog.** 152 rows, 60/152 controls, 92 MISSING, 21/61 bindings unchanged.
+- **Catalog.** After the independent-pass fixes: 155 rows, 60/155 controls, 95 MISSING, 21/62 bindings (new "message embedding" binding, NC-1207/1208).
   `cargo test -p stele-negative-controls --test catalog` passes.
 - **Research inventory.** One stdlib command added to `algebra`: 182 commands, of
   which 181 inherited. The test counts and the inventory digests are updated.
+
+## Independent pass
+
+Verdict at 11377e8: fix, then merge. The cryptography is sound. The reviewer
+recomputed the v2 query table exactly, and found the bounds proven-only, no profile
+admitted and no prover-chosen parameter. Each finding was closed on this branch.
+
+- **S1 (significant): conflicting "one batched opening" text, and a ready task.**
+  - Problem: A3 withdrew the batched opening, but RFC-0007 §4 row 17, RFC-0008 §6
+    and RFC-0001 §4.1 still described one. E7-10 is ready and asks for a "single
+    R_stack opening counter".
+  - Closed by choosing the smallest sound option: separate rank-one openings. This
+    adds no reduction, challenge or label.
+    - RFC-0007 A7 replaces row 17. There is one A3 opening per claim reaching row 17
+      (rows 9 and 15, plus any row-16 R_0/R_L claim), each with its own q_o term.
+      Claims an Accepted RLC batch has already merged open once.
+    - RFC-0001 A4 replaces the §4.1 sentence. RFC-0008 §6's sentence was already
+      withdrawn by RFC-0008 A2 item 8 ("§6's single batched opening is withdrawn"),
+      so RFC-0008 is not edited; A3 item 1 cites it.
+    - E7-10 gains RFC-0007 A7/RFC-0010 A3. Its counter criterion now counts one
+      certificate per proof and one opening per row-17 claim.
+    - Cost: at least two R_stack openings per dense layer stack. Recorded in RFC-0007
+      A7, the cost model and ADR-067.
+  - Also observed: the RFC-0000 index already listed RFC-0001 "A4" before this
+    change, with no such entry. A4 now exists, so the index is correct.
+- **S2: the H row.**
+  - Problem: A15 moved the Merkle term into H, but the H row still read Q²/2²⁵⁶,
+    without A8's frontier sum.
+  - Closed: A15 gives the exact replacement
+    `min(1,[C(Q_total,2)+Σ_r(1+2·Q_pre,r)·Q_after,r]/2^λ)`, with caps and λ defined.
+    soundness-accounting.md matches, so E8-05 implements the full term.
+- **S3: who owns cut width.**
+  - Problem: A6 requires a whole-source range lookup, while RFC-0008 §5 credits
+    RMSNorm's limb split, and no task owned the gap.
+  - Closed: A6 states normatively when a limb split qualifies. Every limb column
+    must be A9-bound, the recombination must be an Accepted identity against the
+    same certificate's openings, and the selectors must cover every entry. No
+    Accepted RFC yet specifies such a split, so cut width is currently unproven.
+  - E6-02 gains a criterion: its checker rejects any committed cut or signed-weight
+    source without an A6 width proof.
+- **S4: the embedding binding had no control.**
+  - Closed: NC-1207 (two embeddings, EmbeddingMismatch) and NC-1208 (none,
+    MissingEmbedding) are reserved as todo and owned by E8-02. A6 now says that plan
+    is rejected. Catalog test counts are updated.
+- **Minor: "injective without reduction" was wrong for the signed embedding.**
+  - Closed: A6 now says signed maps x<0 to p+x, and both embeddings are injective
+    on [-2^(w-1),2^(w-1)) because 2^24 < p.
+- **Minor: NC-0603 does not exercise the new expansion.**
+  - Closed: NC-0614 (todo, E4-03) is reserved. It covers one value expanded into two
+    elements (ColumnMismatch) and an expanded limb equal to p (NoncanonicalField).
+- **Minor: the raw storage format was unspecified.**
+  - Closed: the expansion takes typed signed values. The byte layout belongs to
+    RFC-0011. E4-03's criterion now says typed values.
+- **Minor: in-place edit of an Accepted contract.**
+  - Closed: the v2 note in native-field-pcs.md is reverted to origin/main. It lives
+    only in A3 item 2.
+- **Minor: review honesty.**
+  - Closed: the header now labels passes 1 and 2 as same-author and this pass as
+    the independent and crate sign-off.
 
 ## Concrete attacks the accepted text rejects
 
