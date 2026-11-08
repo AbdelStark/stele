@@ -535,8 +535,10 @@ tasks:
   - RFC-0008 A5
   - RFC-0012 A8
   skill: gkr-reduction-author
-  crate: stele-lookup
-  status: ready
+  crate: stele-reductions
+  status: done
+  agent: claude-code
+  branch: task/E3-07-logup-gkr
   acceptance:
   - NC-0400..0403
   - c_lu measured
@@ -1780,6 +1782,7 @@ tasks:
   - NC-1200/1201/1202
   - no panics under fuzz 1h
   - LoC budget
+  - plan derivation calls lookup::admit for every RFC-0023/0024 lookup consumer before the first transcript absorb; NC-0420..0424 run through the verifier entry point and fail if the call is removed
 - id: E8-03
   epic: E8
   title: Python differential verifier

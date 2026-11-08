@@ -159,6 +159,17 @@ where
             input: &input,
         };
         let d = Descriptor::new(s, &advice, LIMITS).expect("valid fixture");
+        // RFC-0008 A2 item 2: r and d come from the profile; both lookups admit together.
+        for (profile, derived) in [
+            (crate::lookup::Profile::Standard, (1, 4)),
+            (crate::lookup::Profile::Treaty, (2, 8)),
+        ] {
+            assert_eq!(
+                d.admit(profile).err(),
+                (derived != (r, <K as CodeField>::DEGREE as u64))
+                    .then_some(Error::Lookup(crate::lookup::Error::Statement))
+            );
+        }
         assert_eq!(d.encode().expect("valid fixture"), expected);
         assert_eq!(d.statement_size(), expected.len());
         let constraints = hex(fixture[2]);

@@ -137,6 +137,17 @@ where
         };
         let descriptor =
             linear::Descriptor::new(statement, &ca, LIMITS, MATMUL).expect("valid fixed fixture");
+        // RFC-0008 A2 item 2: r and d come from the profile, never from the caller.
+        for (profile, derived) in [
+            (lookup::Profile::Standard, (1, 4)),
+            (lookup::Profile::Treaty, (2, 8)),
+        ] {
+            assert_eq!(
+                descriptor.admit(profile).err(),
+                (derived != (repetitions, <K as CodeField>::DEGREE as usize))
+                    .then_some(linear::Error::Lookup(lookup::Error::Statement))
+            );
+        }
         let transcript = || {
             Transcript::<K>::new(b"complete centered integer linear").expect("valid fixed fixture")
         };

@@ -1,0 +1,318 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/lookup-clu",
+  "commit": "32f55d3b9814341f936d942749a7b330e5b905dc",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "profile": "standard",
+      "field_degree": 4,
+      "repetitions": 1,
+      "m": [
+        12,
+        14,
+        16,
+        18
+      ],
+      "samples": 3,
+      "build": "release",
+      "table": "range_8",
+      "columns": 1,
+      "selector": "all positions real",
+      "original": "id41 ell=m//2 blowup1, outside timer",
+      "multiplicities": "ids 81,82 ell=4 blowup1",
+      "m31_unit": "chained M31 multiplication, 2^24 per sample, black_box per result (as e1-02)",
+      "order": "m ascending, samples consecutive, fresh process per sample; no warmup or discarded samples",
+      "c_lu": "prove_ns*m31_multiplications/(positions*m31_chain_ns); prove includes mu preparation/registration, trees, SelectedProduct and every A9 opening"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit",
+    "binary_sha256": "0b8da5f8a453ac64ff59eb38b7f33624b4f8862e4b4ddb35057b33d22e6b5b38",
+    "samples": [
+      {
+        "field_degree": 4,
+        "m": 12,
+        "m31_multiplications": 16777216,
+        "positions": 4096,
+        "profile": "Standard",
+        "proof_bytes": 319013,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1938458,
+          "m31_chain": 49774167,
+          "prove": 15242000,
+          "verify": 2717167
+        },
+        "c_lu_numerator": 255718326272000,
+        "c_lu_denominator": 203874988032
+      },
+      {
+        "field_degree": 4,
+        "m": 12,
+        "m31_multiplications": 16777216,
+        "positions": 4096,
+        "profile": "Standard",
+        "proof_bytes": 319013,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1091500,
+          "m31_chain": 37490958,
+          "prove": 7637916,
+          "verify": 1593958
+        },
+        "c_lu_numerator": 128142966521856,
+        "c_lu_denominator": 153562963968
+      },
+      {
+        "field_degree": 4,
+        "m": 12,
+        "m31_multiplications": 16777216,
+        "positions": 4096,
+        "profile": "Standard",
+        "proof_bytes": 319013,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1073208,
+          "m31_chain": 36180125,
+          "prove": 7048000,
+          "verify": 1533833
+        },
+        "c_lu_numerator": 118245818368000,
+        "c_lu_denominator": 148193792000
+      },
+      {
+        "field_degree": 4,
+        "m": 14,
+        "m31_multiplications": 16777216,
+        "positions": 16384,
+        "profile": "Standard",
+        "proof_bytes": 385573,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1090333,
+          "m31_chain": 36156125,
+          "prove": 22478375,
+          "verify": 2319916
+        },
+        "c_lu_numerator": 377124552704000,
+        "c_lu_denominator": 592381952000
+      },
+      {
+        "field_degree": 4,
+        "m": 14,
+        "m31_multiplications": 16777216,
+        "positions": 16384,
+        "profile": "Standard",
+        "proof_bytes": 385573,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1078042,
+          "m31_chain": 36163208,
+          "prove": 22202792,
+          "verify": 2318667
+        },
+        "c_lu_numerator": 372501037187072,
+        "c_lu_denominator": 592497999872
+      },
+      {
+        "field_degree": 4,
+        "m": 14,
+        "m31_multiplications": 16777216,
+        "positions": 16384,
+        "profile": "Standard",
+        "proof_bytes": 385573,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1076458,
+          "m31_chain": 36413916,
+          "prove": 22229042,
+          "verify": 2334125
+        },
+        "c_lu_numerator": 372941439107072,
+        "c_lu_denominator": 596605599744
+      },
+      {
+        "field_degree": 4,
+        "m": 16,
+        "m31_multiplications": 16777216,
+        "positions": 65536,
+        "profile": "Standard",
+        "proof_bytes": 511301,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1115167,
+          "m31_chain": 36415584,
+          "prove": 85402542,
+          "verify": 4728875
+        },
+        "c_lu_numerator": 1432816894083072,
+        "c_lu_denominator": 2386531713024
+      },
+      {
+        "field_degree": 4,
+        "m": 16,
+        "m31_multiplications": 16777216,
+        "positions": 65536,
+        "profile": "Standard",
+        "proof_bytes": 511301,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1116000,
+          "m31_chain": 36716250,
+          "prove": 85120750,
+          "verify": 4782875
+        },
+        "c_lu_numerator": 1428089208832000,
+        "c_lu_denominator": 2406236160000
+      },
+      {
+        "field_degree": 4,
+        "m": 16,
+        "m31_multiplications": 16777216,
+        "positions": 65536,
+        "profile": "Standard",
+        "proof_bytes": 511301,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1095584,
+          "m31_chain": 36818208,
+          "prove": 85378833,
+          "verify": 4797958
+        },
+        "c_lu_numerator": 1432419123068928,
+        "c_lu_denominator": 2412918079488
+      },
+      {
+        "field_degree": 4,
+        "m": 18,
+        "m31_multiplications": 16777216,
+        "positions": 262144,
+        "profile": "Standard",
+        "proof_bytes": 752229,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1121416,
+          "m31_chain": 36060000,
+          "prove": 337324792,
+          "verify": 12724083
+        },
+        "c_lu_numerator": 5659370897539072,
+        "c_lu_denominator": 9452912640000
+      },
+      {
+        "field_degree": 4,
+        "m": 18,
+        "m31_multiplications": 16777216,
+        "positions": 262144,
+        "profile": "Standard",
+        "proof_bytes": 752229,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1123791,
+          "m31_chain": 36475625,
+          "prove": 337089000,
+          "verify": 13054750
+        },
+        "c_lu_numerator": 5655414964224000,
+        "c_lu_denominator": 9561866240000
+      },
+      {
+        "field_degree": 4,
+        "m": 18,
+        "m31_multiplications": 16777216,
+        "positions": 262144,
+        "profile": "Standard",
+        "proof_bytes": 752229,
+        "repetitions": 1,
+        "stages_ns": {
+          "import_multiplicities": 1100750,
+          "m31_chain": 36231791,
+          "prove": 336940000,
+          "verify": 13144959
+        },
+        "c_lu_numerator": 5652915159040000,
+        "c_lu_denominator": 9497946619904
+      }
+    ],
+    "c_lu_floor_largest_m": [
+      598,
+      591,
+      595
+    ]
+  },
+  "plan_digest": "6c1272822552eef37a41d00f99f4650c9ebb0397059f15ab46e08b194505dd0c",
+  "profile": "standard",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 1364094042,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "m12/0/import_multiplicities": 1938458,
+    "m12/0/m31_chain": 49774167,
+    "m12/0/prove": 15242000,
+    "m12/0/verify": 2717167,
+    "m12/1/import_multiplicities": 1091500,
+    "m12/1/m31_chain": 37490958,
+    "m12/1/prove": 7637916,
+    "m12/1/verify": 1593958,
+    "m12/2/import_multiplicities": 1073208,
+    "m12/2/m31_chain": 36180125,
+    "m12/2/prove": 7048000,
+    "m12/2/verify": 1533833,
+    "m14/0/import_multiplicities": 1090333,
+    "m14/0/m31_chain": 36156125,
+    "m14/0/prove": 22478375,
+    "m14/0/verify": 2319916,
+    "m14/1/import_multiplicities": 1078042,
+    "m14/1/m31_chain": 36163208,
+    "m14/1/prove": 22202792,
+    "m14/1/verify": 2318667,
+    "m14/2/import_multiplicities": 1076458,
+    "m14/2/m31_chain": 36413916,
+    "m14/2/prove": 22229042,
+    "m14/2/verify": 2334125,
+    "m16/0/import_multiplicities": 1115167,
+    "m16/0/m31_chain": 36415584,
+    "m16/0/prove": 85402542,
+    "m16/0/verify": 4728875,
+    "m16/1/import_multiplicities": 1116000,
+    "m16/1/m31_chain": 36716250,
+    "m16/1/prove": 85120750,
+    "m16/1/verify": 4782875,
+    "m16/2/import_multiplicities": 1095584,
+    "m16/2/m31_chain": 36818208,
+    "m16/2/prove": 85378833,
+    "m16/2/verify": 4797958,
+    "m18/0/import_multiplicities": 1121416,
+    "m18/0/m31_chain": 36060000,
+    "m18/0/prove": 337324792,
+    "m18/0/verify": 12724083,
+    "m18/1/import_multiplicities": 1123791,
+    "m18/1/m31_chain": 36475625,
+    "m18/1/prove": 337089000,
+    "m18/1/verify": 13054750,
+    "m18/2/import_multiplicities": 1100750,
+    "m18/2/m31_chain": 36231791,
+    "m18/2/prove": 336940000,
+    "m18/2/verify": 13144959
+  },
+  "kernel_counters": {
+    "lookup_positions": 1044480,
+    "m31_chain_multiplications": 201326592
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Plan-admitted A5 lookup (RFC-0008 A2) on CPU, every binding on; c_lu in chained-M31-multiplication units from the same process. Original commitment excluded (c_c); timings inclusive of mu commitment and all openings. Per-sample proof bytes and verifier times are in model_config.samples. No planning-constant fit, GPU, inference or Fiat-Shamir claim."
+}

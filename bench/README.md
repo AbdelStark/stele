@@ -1061,6 +1061,36 @@ observations establish neither a fitted constant nor a comparative speed result.
 The parent E3-07 private source/plan, c_lu and profile obligations remain;
 Q12, joint ZK, inference admission and weight-pass claims are unchanged.
 
+## Lookup c_lu (E3-07)
+
+`clu.py` measures c_lu for one RFC-0008 A2 plan-admitted lookup from clean committed
+source, one profile per ledger:
+
+```sh
+python3 bench/clu.py standard bench/ledger/e3-07-clu-standard.json
+python3 bench/clu.py treaty /tmp/e3-07-clu-treaty.json  # the tree must stay clean
+```
+
+Each sample is a fresh release `lookup_bench clu <profile> <m>` process with range_8,
+one column and every position real, for m=12,14,16,18 and three samples each. The
+original source is prepared and registered outside the timer, because its commitment
+is c_c. The timed `prove` covers mu preparation and registration, both trees,
+SelectedProduct and every A9 opening. c_lu = prove_ns * 2^24 / (positions *
+m31_chain_ns), where m31_chain_ns times 2^24 chained M31 multiplications with
+`black_box` per result, as in E1-02, in the same process.
+
+Source `32f55d3`, Apple M4 Max:
+
+| profile | field, r | m=12 | m=14 | m=16 | m=18 |
+|---|---|---|---|---|---|
+| [standard](ledger/e3-07-clu-standard.json) | QM31, 1 | 797–1254 | 625–636 | 593–600 | 591–598 |
+| [treaty](ledger/e3-07-clu-treaty.json) | OM31, 2 | 4141–5288 | 3513–3626 | 3473–3537 | 3491–3529 |
+
+Small m carry the fixed table-tree and opening cost. From m=16 the per-position cost
+is flat. The first sample of each profile includes cold-process effects. Treaty
+costs about six times standard: two repetitions over a field twice as wide. These are
+CPU observations. They do not refit c_a or c_x and make no GPU claim.
+
 ## Conditional matmul measurement workers
 
 The native worker runs actual source preparation, certificate

@@ -4,8 +4,8 @@ use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, HashUsage};
 use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind, VerifiedCertificate};
 use stele_reductions::lookup::{
-    Descriptor, Error, Layout, Limits, ProducerLimits, Statement, Table, TableDescriptor,
-    TableField,
+    admit, Descriptor, Error, Layout, Limits, ProducerLimits, Profile, Statement, Table,
+    TableDescriptor, TableField,
 };
 
 #[path = "lookup_byte_range.rs"]
@@ -14,6 +14,8 @@ mod byte_range;
 mod composer;
 use composer::{compose, transcript, Attack, Packet};
 
+/// Internal accepted nonzero-tail case; not a catalog control (NC-0420 is plan admission).
+const TAIL: u16 = 9420;
 const LIMITS: Limits = Limits {
     positions: 16,
     public_bytes: 16_000_000,
@@ -91,7 +93,7 @@ fn exercise<K: ChallengeField + CodeField + TableField + Eq + core::fmt::Debug>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let partial = matches!(id, 417 | 610 | 802 | 420);
+    let partial = matches!(id, 417 | 610 | 802 | TAIL);
     let table = if partial {
         Table::generate(TableDescriptor::new("exp_q/hi", 1, &[7, 0, 0, 6]).expect("shape"))
             .expect("partial table")
@@ -99,7 +101,7 @@ where
         Table::range(8).expect("range")
     };
     let (m, b, r) = if partial {
-        (2, 0, if id == 420 { 2 } else { 1 })
+        (2, 0, if id == TAIL { 2 } else { 1 })
     } else {
         (0, 0, if id == 403 { 2 } else { 1 })
     };
@@ -120,7 +122,7 @@ where
             .map(|a| {
                 (0..1 << m)
                     .map(|i| {
-                        M31::from_i64(if id == 420 {
+                        M31::from_i64(if id == TAIL {
                             256
                         } else if partial {
                             i64::from(table.entries()[(i % 3) * c + a])
@@ -149,7 +151,7 @@ where
             .collect();
         let originals: Vec<_> = certificates.iter().collect();
         let material: Vec<_> = prepared.iter().collect();
-        let selector = vec![u8::from(!matches!(id, 402 | 420)); 1 << m];
+        let selector = vec![u8::from(!matches!(id, 402 | TAIL)); 1 << m];
         let layouts = [
             Layout {
                 id: 20,
@@ -258,7 +260,7 @@ where
             .expect("static group bound");
             assert_eq!(rejected, Error::GroupBound);
             assert_eq!(transcript::<K>().usage(), before);
-        } else if id == 420 {
+        } else if id == TAIL {
             let packet = compose(&descriptor, s, &material, Attack::Tail);
             let mu: Vec<_> = packet.handles.iter().collect();
             let (record, usage) = descriptor
@@ -451,8 +453,132 @@ where
     }
     Ok(())
 }
+/// RFC-0008 A2 item 2 candidate Statement fields; the plan/profile derive the honest one.
+#[derive(Clone, PartialEq)]
+struct Admitted {
+    degree: usize,
+    m: u8,
+    b: u8,
+    r: usize,
+    selector: Vec<u8>,
+}
+struct Plan(u16);
+impl ProverHook<Admitted> for Plan {
+    fn tamper(&self, a: &mut Admitted) {
+        match self.0 {
+            420 => a.b -= 1,
+            421 => a.r = 1,
+            422 => a.degree = 4,
+            423 => {
+                a.m += 1;
+                a.b = a.m.min(30);
+                a.selector.resize(1 << a.m, 0);
+            }
+            424 => {
+                let padded = a.selector.iter().position(|v| *v == 0).expect("padding");
+                a.selector[padded] = 1;
+            }
+            _ => unreachable!("plan admission control"),
+        }
+    }
+}
+fn derived(positions: u64, profile: Profile) -> Admitted {
+    let m = positions.next_power_of_two().trailing_zeros() as u8;
+    let (r, degree) = match profile {
+        Profile::Standard => (1, 4),
+        Profile::Treaty => (2, 8),
+    };
+    Admitted {
+        degree,
+        m,
+        b: m.min(30),
+        r,
+        selector: (0..1u64 << m).map(|i| u8::from(i < positions)).collect(),
+    }
+}
+// Admission, then the complete actual A5 producer, registration and closed verifier.
+fn decide<K: ChallengeField + CodeField + TableField + Eq>(
+    a: &Admitted,
+    positions: u64,
+    profile: Profile,
+) -> Result<(), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let table = Table::range(8).expect("range");
+    let message: Vec<_> = (0..1i64 << a.m)
+        .map(|i| M31::from_i64((37 * i + 11) % 256))
+        .collect();
+    let prepared = PreparedSource::<K>::new(10, 0, a.m, 1, &message, &mut HashUsage::default())
+        .expect("actual original preparation");
+    let original = verify_certificate(
+        *prepared.source(),
+        &prepared.certificate().expect("actual certificate").0,
+    )
+    .expect("actual original registration")
+    .0;
+    let layouts = [(20, 1), (21, 2)].map(|(id, blowup)| Layout { id, ell: 4, blowup });
+    let s = Statement {
+        id: 7,
+        m: a.m,
+        b: a.b,
+        table: &table,
+        selector: &a.selector,
+        originals: &[&original],
+        multiplicities: &layouts[..a.r],
+    };
+    let mut t = transcript::<K>();
+    let before = t.usage();
+    if let Err(e) = admit(&s, positions, profile) {
+        assert_eq!(t.usage(), before, "admission precedes the transcript");
+        return Err(e);
+    }
+    let d = Descriptor::new(s, LIMITS)?;
+    let limits = ProducerLimits {
+        public_bytes: d.producer_public_bytes()?,
+        dense_elements: d.producer_dense_elements()?,
+    };
+    let (proof, _) = d.prove(&mut t, &[&prepared], limits).map_err(|f| f.cause)?;
+    let cap = (limits.public_bytes - d.public_bytes()) / 2;
+    let (mu, _) = d
+        .register_multiplicities(&proof, cap)
+        .map_err(|f| f.cause)?;
+    let mu: Vec<_> = mu.iter().collect();
+    d.verify(&mut transcript(), &mu, &proof)
+        .map(|_| ())
+        .map_err(|f| f.cause)
+}
+fn admission(id: u16) -> Result<(), String> {
+    let cases: &[(Profile, u64)] = match id {
+        421 | 422 => &[(Profile::Treaty, 8)],
+        424 => &[(Profile::Standard, 5), (Profile::Treaty, 5)],
+        _ => &[(Profile::Standard, 8), (Profile::Treaty, 8)],
+    };
+    let expected = if id == 420 {
+        Error::GroupBound
+    } else {
+        Error::Statement
+    };
+    for &(profile, positions) in cases {
+        check_control(
+            &derived(positions, profile),
+            &Plan(id),
+            |a| Ok::<_, String>(a.clone()),
+            |a: &Admitted| match a.degree {
+                4 => decide::<QM31>(a, positions, profile),
+                _ => decide::<OM31>(a, positions, profile),
+            },
+            expected,
+        )
+        .map_err(|e| format!("{e:?}"))?;
+    }
+    Ok(())
+}
 /// Conditional lookup variants and the existing composed PCS/transcript controls.
 pub fn run(id: u16) -> Result<(), String> {
+    if (420..=424).contains(&id) {
+        return admission(id);
+    }
     if id == 315 {
         byte_range::exercise::<QM31>();
         byte_range::exercise::<OM31>();
@@ -464,9 +590,9 @@ pub fn run(id: u16) -> Result<(), String> {
 
 #[test]
 fn accepts_qm31_nonzero_lookup_tail() {
-    exercise::<QM31>(420).expect("actual projected tail");
+    exercise::<QM31>(TAIL).expect("actual projected tail");
 }
 #[test]
 fn accepts_om31_nonzero_lookup_tail() {
-    exercise::<OM31>(420).expect("actual projected tail");
+    exercise::<OM31>(TAIL).expect("actual projected tail");
 }

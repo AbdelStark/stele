@@ -359,21 +359,29 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
         Ok(d)
     }
     // Each descriptor borrows existing owner storage; there is no self-reference.
-    fn lookup(&self, group: usize) -> Result<lookup::Descriptor<'_, 'cert, K>, Error> {
+    fn statement(&self, group: usize) -> lookup::Statement<'_, 'cert, K> {
         let m = self.selectors[group].len().trailing_zeros() as u8;
-        lookup::Descriptor::new(
-            lookup::Statement {
-                id: self.base / 16 + 8 + group as u64,
-                m,
-                b: m.min(30),
-                table: &self.table,
-                selector: &self.selectors[group],
-                originals: &self.originals[group],
-                multiplicities: &self.layouts[group][..usize::from(self.statement.repetitions)],
-            },
-            self.limits,
-        )
-        .map_err(Error::Lookup)
+        lookup::Statement {
+            id: self.base / 16 + 8 + group as u64,
+            m,
+            b: m.min(30),
+            table: &self.table,
+            selector: &self.selectors[group],
+            originals: &self.originals[group],
+            multiplicities: &self.layouts[group][..usize::from(self.statement.repetitions)],
+        }
+    }
+    /// RFC-0008 A2 item 2: plan admission of both lookups over their complete
+    /// physical input/advice cubes (RFC-0023 §2.3); r and d come from the profile.
+    pub fn admit(&self, profile: lookup::Profile) -> Result<(), Error> {
+        for (group, selector) in self.selectors.iter().enumerate() {
+            lookup::admit(&self.statement(group), selector.len() as u64, profile)
+                .map_err(Error::Lookup)?;
+        }
+        Ok(())
+    }
+    fn lookup(&self, group: usize) -> Result<lookup::Descriptor<'_, 'cert, K>, Error> {
+        lookup::Descriptor::new(self.statement(group), self.limits).map_err(Error::Lookup)
     }
     /// Exact expected RequantStatement payload length.
     pub fn statement_size(&self) -> usize {

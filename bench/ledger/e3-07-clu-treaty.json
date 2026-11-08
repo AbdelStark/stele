@@ -1,0 +1,318 @@
+{
+  "schema_version": 1,
+  "kind": "micro",
+  "workload": "micro/lookup-clu",
+  "commit": "32f55d3b9814341f936d942749a7b330e5b905dc",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: aarch64-apple-darwin\nrelease: 1.90.0\nLLVM version: 20.1.8",
+  "device": "arm64 Apple M4 Max",
+  "driver": "not-applicable",
+  "model_config": {
+    "plan": {
+      "profile": "treaty",
+      "field_degree": 8,
+      "repetitions": 2,
+      "m": [
+        12,
+        14,
+        16,
+        18
+      ],
+      "samples": 3,
+      "build": "release",
+      "table": "range_8",
+      "columns": 1,
+      "selector": "all positions real",
+      "original": "id41 ell=m//2 blowup1, outside timer",
+      "multiplicities": "ids 81,82 ell=4 blowup1",
+      "m31_unit": "chained M31 multiplication, 2^24 per sample, black_box per result (as e1-02)",
+      "order": "m ascending, samples consecutive, fresh process per sample; no warmup or discarded samples",
+      "c_lu": "prove_ns*m31_multiplications/(positions*m31_chain_ns); prove includes mu preparation/registration, trees, SelectedProduct and every A9 opening"
+    },
+    "os": "macOS-26.6.2-arm64-arm-64bit",
+    "binary_sha256": "0b8da5f8a453ac64ff59eb38b7f33624b4f8862e4b4ddb35057b33d22e6b5b38",
+    "samples": [
+      {
+        "field_degree": 8,
+        "m": 12,
+        "m31_multiplications": 16777216,
+        "positions": 4096,
+        "profile": "Treaty",
+        "proof_bytes": 722440,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3361750,
+          "m31_chain": 38612458,
+          "prove": 49855125,
+          "verify": 5882791
+        },
+        "c_lu_numerator": 836430200832000,
+        "c_lu_denominator": 158156627968
+      },
+      {
+        "field_degree": 8,
+        "m": 12,
+        "m31_multiplications": 16777216,
+        "positions": 4096,
+        "profile": "Treaty",
+        "proof_bytes": 722440,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3103459,
+          "m31_chain": 36177375,
+          "prove": 36643042,
+          "verify": 5475000
+        },
+        "c_lu_numerator": 614768230531072,
+        "c_lu_denominator": 148182528000
+      },
+      {
+        "field_degree": 8,
+        "m": 12,
+        "m31_multiplications": 16777216,
+        "positions": 4096,
+        "profile": "Treaty",
+        "proof_bytes": 722440,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3073875,
+          "m31_chain": 36117666,
+          "prove": 36519000,
+          "verify": 5427583
+        },
+        "c_lu_numerator": 612687151104000,
+        "c_lu_denominator": 147937959936
+      },
+      {
+        "field_degree": 8,
+        "m": 14,
+        "m31_multiplications": 16777216,
+        "positions": 16384,
+        "profile": "Treaty",
+        "proof_bytes": 861384,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3018333,
+          "m31_chain": 37390625,
+          "prove": 128295083,
+          "verify": 9920041
+        },
+        "c_lu_numerator": 2152434319228928,
+        "c_lu_denominator": 612608000000
+      },
+      {
+        "field_degree": 8,
+        "m": 14,
+        "m31_multiplications": 16777216,
+        "positions": 16384,
+        "profile": "Treaty",
+        "proof_bytes": 861384,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3114875,
+          "m31_chain": 36206084,
+          "prove": 128222417,
+          "verify": 10097000
+        },
+        "c_lu_numerator": 2151215186051072,
+        "c_lu_denominator": 593200480256
+      },
+      {
+        "field_degree": 8,
+        "m": 14,
+        "m31_multiplications": 16777216,
+        "positions": 16384,
+        "profile": "Treaty",
+        "proof_bytes": 861384,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3109625,
+          "m31_chain": 36425750,
+          "prove": 127997125,
+          "verify": 10055584
+        },
+        "c_lu_numerator": 2147435413504000,
+        "c_lu_denominator": 596799488000
+      },
+      {
+        "field_degree": 8,
+        "m": 16,
+        "m31_multiplications": 16777216,
+        "positions": 65536,
+        "profile": "Treaty",
+        "proof_bytes": 1121224,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3079333,
+          "m31_chain": 36752208,
+          "prove": 500490917,
+          "verify": 25249166
+        },
+        "c_lu_numerator": 8396844220547072,
+        "c_lu_denominator": 2408592703488
+      },
+      {
+        "field_degree": 8,
+        "m": 16,
+        "m31_multiplications": 16777216,
+        "positions": 65536,
+        "profile": "Treaty",
+        "proof_bytes": 1121224,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3080625,
+          "m31_chain": 36775125,
+          "prove": 499039375,
+          "verify": 25210083
+        },
+        "c_lu_numerator": 8372491386880000,
+        "c_lu_denominator": 2410094592000
+      },
+      {
+        "field_degree": 8,
+        "m": 16,
+        "m31_multiplications": 16777216,
+        "positions": 65536,
+        "profile": "Treaty",
+        "proof_bytes": 1121224,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3090667,
+          "m31_chain": 36162959,
+          "prove": 499700417,
+          "verify": 25012875
+        },
+        "c_lu_numerator": 8383581831299072,
+        "c_lu_denominator": 2369975681024
+      },
+      {
+        "field_degree": 8,
+        "m": 18,
+        "m31_multiplications": 16777216,
+        "positions": 262144,
+        "profile": "Treaty",
+        "proof_bytes": 1616072,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3057208,
+          "m31_chain": 36206625,
+          "prove": 1996769791,
+          "verify": 78778667
+        },
+        "c_lu_numerator": 33500238085881856,
+        "c_lu_denominator": 9491349504000
+      },
+      {
+        "field_degree": 8,
+        "m": 18,
+        "m31_multiplications": 16777216,
+        "positions": 262144,
+        "profile": "Treaty",
+        "proof_bytes": 1616072,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3135209,
+          "m31_chain": 36472584,
+          "prove": 1989640208,
+          "verify": 78419208
+        },
+        "c_lu_numerator": 33380623531900928,
+        "c_lu_denominator": 9561069060096
+      },
+      {
+        "field_degree": 8,
+        "m": 18,
+        "m31_multiplications": 16777216,
+        "positions": 262144,
+        "profile": "Treaty",
+        "proof_bytes": 1616072,
+        "repetitions": 2,
+        "stages_ns": {
+          "import_multiplicities": 3103083,
+          "m31_chain": 36224417,
+          "prove": 1991244666,
+          "verify": 78599417
+        },
+        "c_lu_numerator": 33407541870329856,
+        "c_lu_denominator": 9496013570048
+      }
+    ],
+    "c_lu_floor_largest_m": [
+      3529,
+      3491,
+      3518
+    ]
+  },
+  "plan_digest": "43eece7c389313df293db9ec319db55d29fe4ea4533e1a6c25fd9978474cee49",
+  "profile": "treaty",
+  "bindings_all_on": true,
+  "batch_size": 1,
+  "prompt_tokens": 0,
+  "generated_tokens": 0,
+  "prover_time_ns": 7984417166,
+  "witness_recompute_ns": 0,
+  "stage_times_ns": {
+    "m12/0/import_multiplicities": 3361750,
+    "m12/0/m31_chain": 38612458,
+    "m12/0/prove": 49855125,
+    "m12/0/verify": 5882791,
+    "m12/1/import_multiplicities": 3103459,
+    "m12/1/m31_chain": 36177375,
+    "m12/1/prove": 36643042,
+    "m12/1/verify": 5475000,
+    "m12/2/import_multiplicities": 3073875,
+    "m12/2/m31_chain": 36117666,
+    "m12/2/prove": 36519000,
+    "m12/2/verify": 5427583,
+    "m14/0/import_multiplicities": 3018333,
+    "m14/0/m31_chain": 37390625,
+    "m14/0/prove": 128295083,
+    "m14/0/verify": 9920041,
+    "m14/1/import_multiplicities": 3114875,
+    "m14/1/m31_chain": 36206084,
+    "m14/1/prove": 128222417,
+    "m14/1/verify": 10097000,
+    "m14/2/import_multiplicities": 3109625,
+    "m14/2/m31_chain": 36425750,
+    "m14/2/prove": 127997125,
+    "m14/2/verify": 10055584,
+    "m16/0/import_multiplicities": 3079333,
+    "m16/0/m31_chain": 36752208,
+    "m16/0/prove": 500490917,
+    "m16/0/verify": 25249166,
+    "m16/1/import_multiplicities": 3080625,
+    "m16/1/m31_chain": 36775125,
+    "m16/1/prove": 499039375,
+    "m16/1/verify": 25210083,
+    "m16/2/import_multiplicities": 3090667,
+    "m16/2/m31_chain": 36162959,
+    "m16/2/prove": 499700417,
+    "m16/2/verify": 25012875,
+    "m18/0/import_multiplicities": 3057208,
+    "m18/0/m31_chain": 36206625,
+    "m18/0/prove": 1996769791,
+    "m18/0/verify": 78778667,
+    "m18/1/import_multiplicities": 3135209,
+    "m18/1/m31_chain": 36472584,
+    "m18/1/prove": 1989640208,
+    "m18/1/verify": 78419208,
+    "m18/2/import_multiplicities": 3103083,
+    "m18/2/m31_chain": 36224417,
+    "m18/2/prove": 1991244666,
+    "m18/2/verify": 78599417
+  },
+  "kernel_counters": {
+    "lookup_positions": 1044480,
+    "m31_chain_multiplications": 201326592
+  },
+  "proof_size_bytes": 0,
+  "verifier_time_ns": {
+    "rust": 0,
+    "python": 0
+  },
+  "controls": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0
+  },
+  "note": "Plan-admitted A5 lookup (RFC-0008 A2) on CPU, every binding on; c_lu in chained-M31-multiplication units from the same process. Original commitment excluded (c_c); timings inclusive of mu commitment and all openings. Per-sample proof bytes and verifier times are in model_config.samples. No planning-constant fit, GPU, inference or Fiat-Shamir claim."
+}

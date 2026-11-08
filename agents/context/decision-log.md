@@ -945,3 +945,49 @@ Decision:
   NC-0420..0424. No cost-model constant changes; c_lu is measured by E3-07.
 
 Status: Accepted.
+
+## ADR-066: Plan admission is a pure check against plan/profile-derived lookup fields (RFC-0008 A2, task E3-07)
+
+Context: RFC-0008 A2 item 2 says the verifier derives N, b, sigma, r and d from the plan
+and profile and rejects anything else before the first transcript absorb. It does not
+fix the code shape, the order of the checks, or which plan count the RFC-0023/RFC-0024
+consumers use. These are implementation choices with no soundness effect: the A5
+Statement, its bytes, labels and order are unchanged, and sigma stays bound in Statement.
+
+Decision:
+- **Shape.** `lookup::admit(statement, positions, profile)` is a pure check of a
+  candidate A5 Statement. It does not build one. `lookup::Profile` is a local two-value
+  enum (standard: r=1, d=4; treaty: r=2, d=8). The PCS registry's `Profile` lives in
+  stele-code, which deny.toml lets only stele-pcs depend on, so it is not reused.
+- **Order.** r and d first, then N (positions in 1..=2^59, m = log2 of the least covering
+  power of two), then b=min(m,30), then sigma. Only b reports GroupBound; the rest report
+  Statement, as A2 item 2 lists.
+- **Selector layout.** Real positions are the prefix 0..positions; the padding tail up to
+  2^m is unselected. A2 item 3 says positions are "padded up to 2^m", and RFC-0023 already
+  uses sigma(i)=1[i<n]. No admitted consumer has masked interior entries.
+- **Consumer counts.** RFC-0023 §2.3 and RFC-0024 §§1.1, 2.3 select every physical message
+  entry, so the plan count of each of their lookups is the full physical cube.
+  `requant::Descriptor::admit`, `integer_linear::Descriptor::admit` and
+  `byte_range::Descriptor::admit` run `lookup::admit` on every A5 Statement they build.
+  These checks are opt-in. The operation-level verifiers stay profile-free, as
+  RFC-0023 §§1, 2.3 and RFC-0024 §1 require: they fix K and r independently, select no
+  profile, and must deliver both fields and both repetition counts. A5 primitive tests
+  and existing corpora keep working. The plan verifier (E8-02) calls `admit` before the
+  first transcript absorb.
+- **Controls.** NC-0420..0424 are conditional controls. They run `lookup::admit` on a
+  candidate whose honest form is fully proved and verified, not through a production
+  verifier entry point. E8-02 carries the obligation to route them through its verifier
+  entry point so that they fail if the call is removed.
+- **c_lu unit.** c_lu is the time to produce one plan-admitted lookup position, divided by
+  the time of one chained M31 multiplication measured in the same process (the e1-02
+  method). Original-source commitment is c_c and is not timed. The mu commitment and
+  every A9 opening are included. This is a CPU observation and does not refit the GPU
+  planning constant.
+
+Consequences: until E8-02 lands, a caller that uses an operation verifier (requant,
+integer_linear, byte_range or the A5 descriptor) directly without calling `admit` gets no
+A2 item-2 enforcement: it accepts any r in {1,2}, either field, and for the A5 descriptor
+any b<=min(m,30), m or selector. Only the E8-02 plan verifier closes this; see its
+acceptance line.
+
+Status: Accepted.

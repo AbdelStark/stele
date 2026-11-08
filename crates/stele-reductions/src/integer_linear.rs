@@ -400,21 +400,25 @@ impl<'a, 'cert, K: ChallengeField> Descriptor<'a, 'cert, K> {
         d.local_hashes = hashes;
         Ok(d)
     }
-    fn lookup(&self) -> Result<lookup::Descriptor<'_, 'cert, K>, Error> {
+    fn statement(&self) -> lookup::Statement<'_, 'cert, K> {
         let m = self.selector.len().trailing_zeros() as u8;
-        lookup::Descriptor::new(
-            lookup::Statement {
-                id: self.base / 16 + 9,
-                m,
-                b: m.min(30),
-                table: &self.table,
-                selector: &self.selector,
-                originals: &self.advice,
-                multiplicities: &self.layouts[..usize::from(self.statement.repetitions)],
-            },
-            self.limits,
-        )
-        .map_err(Error::Lookup)
+        lookup::Statement {
+            id: self.base / 16 + 9,
+            m,
+            b: m.min(30),
+            table: &self.table,
+            selector: &self.selector,
+            originals: &self.advice,
+            multiplicities: &self.layouts[..usize::from(self.statement.repetitions)],
+        }
+    }
+    /// RFC-0008 A2 item 2: plan admission of the whole-advice lookup over every
+    /// physical advice entry (RFC-0024 §2.3). The byte-range originals share r and K.
+    pub fn admit(&self, profile: lookup::Profile) -> Result<(), Error> {
+        lookup::admit(&self.statement(), self.selector.len() as u64, profile).map_err(Error::Lookup)
+    }
+    fn lookup(&self) -> Result<lookup::Descriptor<'_, 'cert, K>, Error> {
+        lookup::Descriptor::new(self.statement(), self.limits).map_err(Error::Lookup)
     }
     fn arithmetic(&self) -> requant::arithmetic::Arithmetic<'_, 'cert, K> {
         requant::arithmetic::Arithmetic {

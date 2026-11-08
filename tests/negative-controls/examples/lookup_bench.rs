@@ -7,8 +7,8 @@ use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_lookup::fraction::{Reduction, Work};
 use stele_pcs::{CertificateRecord, CodeField, PreparationWork, PreparedSource, ProofKind, Usage};
 use stele_reductions::lookup::{
-    Descriptor, Layout, Limits, ProducerLimits, ProverWork, Statement, Table, TableDescriptor,
-    TableField,
+    admit, Descriptor, Layout, Limits, ProducerLimits, Profile, ProverWork, Statement, Table,
+    TableDescriptor, TableField,
 };
 
 const PUBLIC: &[u8] = b"stele complete lookup measurement v1";
@@ -389,8 +389,110 @@ where
     out
     // Protocol objects drop before returning to the inclusive timer; JSON serialization follows it.
 }
+// RFC-0008 A2/§3: c_lu receipt for one plan-admitted range_8 lookup with every position
+// real. Originals are prepared and registered outside the timer (their commitment is c_c);
+// prove includes mu preparation/registration, both trees, SelectedProduct and every A9
+// opening. The M31 unit is e1-02's chained multiplication, timed in the same process.
+fn clu<K: ChallengeField + CodeField + TableField + Eq>(profile: Profile, m: u8) -> Value
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let table = Table::range(8).expect("range_8");
+    let n = 1usize << m;
+    let message: Vec<_> = (0..n)
+        .map(|i| M31::from_i64(((37 * i + 11) % 256) as i64))
+        .collect();
+    let ell = m / 2;
+    let prepared =
+        PreparedSource::<K>::new(41, ell, m - ell, 1, &message, &mut HashUsage::default())
+            .expect("original preparation");
+    let original = stele_pcs::verify_certificate(
+        *prepared.source(),
+        &prepared.certificate().expect("original certificate").0,
+    )
+    .expect("original registration")
+    .0;
+    let layouts = [81, 82].map(|id| Layout {
+        id,
+        ell: 4,
+        blowup: 1,
+    });
+    let r = if profile == Profile::Standard { 1 } else { 2 };
+    let selector = vec![1u8; n];
+    let s = Statement {
+        id: 71,
+        m,
+        b: m.min(30),
+        table: &table,
+        selector: &selector,
+        originals: &[&original],
+        multiplicities: &layouts[..r],
+    };
+    admit(&s, n as u64, profile).expect("plan admission");
+    let descriptor = Descriptor::new(
+        s,
+        Limits {
+            positions: 1 << 20,
+            public_bytes: 1 << 30,
+            proof_bytes: 1 << 30,
+        },
+    )
+    .expect("descriptor");
+    let limits = ProducerLimits {
+        public_bytes: descriptor.producer_public_bytes().expect("producer bytes"),
+        dense_elements: descriptor
+            .producer_dense_elements()
+            .expect("dense elements"),
+    };
+    let mut times = Times::new();
+    let mut pt = Transcript::<K>::new(PUBLIC).expect("producer transcript");
+    let (proof, _) = timed(&mut times, "prove", || {
+        descriptor
+            .prove(&mut pt, &[&prepared], limits)
+            .expect("complete producer")
+    });
+    let cap = (limits.public_bytes - descriptor.public_bytes()) / 2;
+    let (mu, _) = timed(&mut times, "import_multiplicities", || {
+        descriptor
+            .register_multiplicities(&proof, cap)
+            .expect("standalone imports")
+    });
+    let mu: Vec<_> = mu.iter().collect();
+    let mut vt = Transcript::<K>::new(PUBLIC).expect("verifier transcript");
+    let record = timed(&mut times, "verify", || {
+        descriptor
+            .verify(&mut vt, &mu, &proof)
+            .expect("closed verifier")
+    });
+    assert_eq!(record.0.repetitions().len(), r);
+    const MULS: u64 = 1 << 24;
+    let factor = M31::from_i64(7919);
+    let mut x = M31::from_i64(1729);
+    timed(&mut times, "m31_chain", || {
+        for _ in 0..MULS {
+            x = std::hint::black_box(x * factor);
+        }
+    });
+    json!({"profile":format!("{profile:?}"),"field_degree":<K as CodeField>::DEGREE,"m":m,
+        "positions":n,"repetitions":r,"proof_bytes":proof.len(),"m31_multiplications":MULS,
+        "stages_ns":times})
+}
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
+    if args.len() == 3 && args[0] == "clu" {
+        let m: u8 = args[2].parse().expect("m");
+        assert!((1..=20).contains(&m), "m in 1..=20");
+        let out = match args[1].as_str() {
+            "standard" => clu::<QM31>(Profile::Standard, m),
+            "treaty" => clu::<OM31>(Profile::Treaty, m),
+            _ => {
+                eprintln!("profile must be standard or treaty");
+                std::process::exit(2);
+            }
+        };
+        println!("{}", serde_json::to_string(&out).expect("receipt"));
+        return;
+    }
     assert!(
         args.len() == 3
             && ["scalar", "grouped", "signed", "zero"].contains(&args[0].as_str())
