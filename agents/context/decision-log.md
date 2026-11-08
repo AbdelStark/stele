@@ -991,3 +991,35 @@ any b<=min(m,30), m or selector. Only the E8-02 plan verifier closes this; see i
 acceptance line.
 
 Status: Accepted.
+
+## ADR-067: Split E3-08a from E3-08 and move E3-08's controls to their consumers (RFC-0025 A3, task E3-08a)
+
+Context: E3-08 requires NC-0404/0405 and actual NC-0412/0413/0414 consumers. Those
+consumers are the RFC-0011 A2 TableBindings record (E12-05a), the RFC-0005 A1
+operation references in the lowered plan (E6-00), and the exp recombination at the
+attention exp (E7-06) and the sampled-decoding exp (E7-08). E12-05a and E6-00
+depended on E3-08; E7-06 and E7-08 are blocked. Building the consumers in E3-08
+would mean inventing the plan operation codec and the TableBindings tree ids, which
+no Accepted contract specifies. The numerical work (≤2^16 components, the closed
+representation mode table in stele-cqis including LayerNorm mode 4, the complete
+regenerated Registry, table descriptors and data digests under cqis_id) was already
+merged in E5-02/E5-03/E5-04 work.
+
+Decision: accept RFC-0025 A3 under the owner's delegated acceptance (review plus
+ADR), following A1's E5-03/E5-03c precedent. Add prerequisite E3-08a, done on the
+[audit](../reviews/e308-registry-audit.md); repoint E6-00, E7-05, E12-05a and
+E15-07 to it. Keep all three E3-08 acceptance lines verbatim; E3-08 depends on
+E3-08a, E6-00, E12-05a, E7-06 and E7-08 and stays blocked. Those owners carry the
+controls, quoted verbatim with their expected errors: NC-0404 and NC-0414 at E12-05a
+and E6-00, NC-0405 at E7-06 and E7-08, NC-0412/0413 at E6-00. The audit adds one
+test that flips each configured component's data digest inside the Registry and
+requires `TableData` rejection. No table-binding API is added; stele-lookup is
+unchanged.
+
+Consequences: all five catalogue rows stay `todo`, and E3-08 cannot be done before
+its consumers run them. Until E6-00 lands, a lookup's Table is not checked against
+its configured role; the caller chooses it. No challenge, ledger line or cost term
+changes. E6-00 stays blocked on its own contracts and E4-05. The same-author review
+and the independent review recorded in the audit sign off A3 and this ADR.
+
+Status: Accepted.

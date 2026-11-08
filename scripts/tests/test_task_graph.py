@@ -57,7 +57,9 @@ class TaskGraphTests(unittest.TestCase):
 
         required = {
             'E5-03': {'E5-03c', 'E6-01', 'E8-02', 'E12-05', 'E14-02'},
-            'E6-00': {'E5-03c', 'E3-08', 'E4-05'},
+            # RFC-0025 A3: E3-08a replaces E3-08 here; E3-08 waits on its control consumers.
+            'E6-00': {'E5-03c', 'E3-08a', 'E4-05'},
+            'E3-08': {'E3-08a', 'E6-00', 'E12-05a', 'E7-06', 'E7-08'},
             'E6-01': {'E6-00', 'E8-02'},
             'E8-01': {'E6-03', 'E8-05a', 'E12-01a', 'E12-05', 'E12-06', 'E14-02'}
                      | {f'E7-{i:02}' for i in range(1, 11)},

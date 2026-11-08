@@ -627,3 +627,52 @@ Models are unchanged.
   grouped row takes 24, or 25 for wide O/down. Slot order and count are unchanged.
 
 Affected tasks: E5-05d, E5-05e, E5-05f (native Model/Bounds support) and E5-05g (Q/K/V).
+
+### A3 — E3-08 prerequisite split and control ownership (Q32)
+
+Status: Accepted. Task E3-08a. Review: [E3-08 audit, same-author and independent reviews](../../agents/reviews/e308-registry-audit.md).
+
+Motivation: E3-08 requires NC-0404/0405 and actual NC-0412/0413/0414 consumers.
+Each control's owning consumer is a task that depends on E3-08 or is blocked:
+the passport TableBindings record (RFC-0011 A2) belongs to E12-05a and needs
+plan tree ids; operation FunctionId/RepresentationId references (RFC-0005 A1)
+belong to E6-00's lowering; the exact exp recombination P=floor(H*L/Q) (plus
+C for corrected nearest) is consumed at the attention exp (E7-06, per the
+[consumer inventory](full-model-consumers.md)) and at the sampled-decoding exp,
+which `Model::function_roles` includes and which may select modes 1/2 (E7-08).
+A1's rule makes such a task unexecutable without a dependency resolution.
+
+Disposition, following A1 and its E5-03/E5-03c precedent. All existing task
+acceptance lines remain verbatim, including all three E3-08 lines. Add
+prerequisite E3-08a, "Registry/decomposition numerics (delivered)", with
+prerequisites E3-07/E5-02. It is done on the
+[audit](../../agents/reviews/e308-registry-audit.md) of already merged work:
+every registered component has at most 2^16 padded rows; the closed
+representation mode table in stele-cqis (`functions/representation.rs`,
+modes 0-4, including LayerNorm mode 4) derives each function's ordered
+components; the complete Registry regenerates all component data; and
+component descriptors and data digests lie inside the Registry that cqis_id
+hashes. That decomposition is a closed mode table, not a compiler, and
+stele-lookup is unchanged. E3-08a grants no lookup, plan, passport, profile
+or catalogue credit and cannot mark E3-08 done.
+
+Dependency replacement: E6-00, E7-05, E12-05a and E15-07 depend on E3-08a in
+place of E3-08. E3-08 additionally depends on E3-08a, E6-00, E12-05a, E7-06
+and E7-08, and stays blocked until those consumers execute its controls.
+The owners below add these controls to their acceptance, quoted verbatim:
+
+| Control (RFC-0008 §7 / catalogue text) | Expected error (catalogue) | Owner(s) |
+|---|---|---|
+| NC-0404 "table id mismatch with passport" | "`LogUpImbalance` etc." | E12-05a (TableBindings TableId); E6-00 (plan Table-op TableId) |
+| NC-0405 "decomposed table recombination wrong by one" | "`LogUpImbalance` etc." | E7-06 (attention exp); E7-08 (sampled-decoding exp) |
+| NC-0412 "change one configured semantic parameter while retaining the original operation binding" | `FunctionMismatch` | E6-00 |
+| NC-0413 "change one selected representation or component role" | `RepresentationMismatch` | E6-00 |
+| NC-0414 "change one canonical table-data entry under the correct descriptor" | `TableDataMismatch` | E12-05a (TableBindings data digest); E6-00 (plan side) |
+
+No control is removed, renamed or marked done; each still requires an honest
+baseline and its stated rejection at its actual consumer. E7-05 keeps its
+original configured-lookup consumers. RFC-0008 A1 (Draft) is not involved.
+
+Soundness impact: none; no challenge, theorem, transcript, relation or ledger
+term changes. Cost-model impact: none; no measured constant or weight pass changes.
+Affected tasks: E3-08, E3-08a, E6-00, E7-05, E7-06, E7-08, E12-05a, E15-07.

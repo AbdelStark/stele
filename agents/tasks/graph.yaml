@@ -595,6 +595,11 @@ tasks:
   depends:
   - E3-07
   - E5-02
+  - E3-08a
+  - E6-00
+  - E12-05a
+  - E7-06
+  - E7-08
   rfc:
   - RFC-0008 §4
   - RFC-0004 §4
@@ -603,11 +608,30 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: cqis-numerics
   crate: stele-lookup
-  status: ready
+  status: blocked(RFC-0025 A3 control consumers in E6-00, E12-05a, E7-06, E7-08)
   acceptance:
   - NC-0404/0405
   - table ids in cqis_id
   - complete configured Registry and LayerNorm mode support, regenerated component data and actual NC-0412/0413/0414 consumers under the full-model contract
+- id: E3-08a
+  epic: E3
+  title: Registry/decomposition numerics (delivered)
+  depends:
+  - E3-07
+  - E5-02
+  rfc:
+  - RFC-0008 A4
+  - RFC-0021 §§4,6
+  - RFC-0025 §2,§6,§7.1
+  - RFC-0025 A3
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: done
+  agent: claude-code
+  branch: task/E3-08-table-registry
+  acceptance:
+  - "Audit (agents/reviews/e308-registry-audit.md) maps to merged code and tests: every registered component has at most 2^16 padded rows; the closed representation mode table (stele-cqis functions/representation.rs, modes 0-4 including LayerNorm mode 4) derives each function's ordered components; the complete Registry regenerates all component data; component descriptors and data digests are inside the Registry that cqis_id hashes."
+  - "No catalogue control is credited. NC-0404/0405/0412/0413/0414 and every original E3-08 acceptance line remain mandatory for E3-08; this prerequisite cannot mark E3-08 done or admit a lookup, plan, passport or profile."
 - id: E4-01
   epic: E4
   title: Code trait + codes.toml with proven flags; RAA/expander linear-time encoder
@@ -1080,7 +1104,7 @@ tasks:
   title: "Complete native canonical lowering and original source ownership"
   depends:
   - E5-03c
-  - E3-08
+  - E3-08a
   - E4-05
   skill: gkr-reduction-author
   crate: stele-ir
@@ -1095,6 +1119,7 @@ tasks:
   - "Full deterministic canonical lowering for both original named models, all supported operation inventory and request geometry, exact token/seed/stop/scale/bias/function joins, native plan validation and original unsupported-operation errors; no opaque child reference or supplied digest grants authority."
   - "Complete native compiler parity and malformed-source/role/geometry rejection through actual lowering APIs with all required gates. Stacking and dominating range discipline remain E6-02; full prover/verifier controls remain E6-01 and their consuming tasks."
   - "Every original E6-01 acceptance line remains mandatory for E6-01, including actual NC-0110..0126 and NC-1204/1206 variants. This prerequisite grants no catalogue, full E6-01, inference, privacy or profile completion."
+  - 'Actual consumers moved from E3-08 by RFC-0025 A3, each with an honest baseline and its stated rejection: NC-0412 "change one configured semantic parameter while retaining the original operation binding" → `FunctionMismatch`; NC-0413 "change one selected representation or component role" → `RepresentationMismatch`; plan-side Table-op TableId for RFC-0008 §7 "NC-0404 table id mismatch with passport", catalogue expected error "`LogUpImbalance` etc."; plan-side NC-0414 "change one canonical table-data entry under the correct descriptor" → `TableDataMismatch`.'
 - id: E6-01
   epic: E6
   title: Tensor IR + lowering from HF config/safetensors (Llama/Qwen/Gemma dense)
@@ -1648,7 +1673,7 @@ tasks:
   title: SiLU gated product and GPT-2 tanh-GeLU FFN reductions
   depends:
   - E7-01
-  - E3-08
+  - E3-08a
   rfc:
   - RFC-0004 §3
   - RFC-0021 §2.2
@@ -1678,6 +1703,7 @@ tasks:
   status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0008 Q31 virtual-column amendment)
   acceptance:
   - NC-0500..0506
+  - 'Actual exp hi/lo/correction recombination consumer moved from E3-08 by RFC-0025 A3 (attention exp): RFC-0008 §7 "NC-0405 decomposed table recombination wrong by one", catalogue expected error "`LogUpImbalance` etc.".'
   - n² never resident (memory test)
   - c_x measured
 - id: E7-07
@@ -1710,6 +1736,7 @@ tasks:
   status: blocked(RFC-0004 A9)
   acceptance:
   - NC-0107/0108
+  - 'Actual sampled-decoding exp recombination consumer moved from E3-08 by RFC-0025 A3 (co-owner with E7-06): RFC-0008 §7 "NC-0405 decomposed table recombination wrong by one", catalogue expected error "`LogUpImbalance` etc.".'
   - one pass over E
   - complete learned-position gather/alignment, identical tied token/head source and full vocabulary sampling/stop/absolute-draw consumers; actual NC-0113/0114/0119/0125/0126
 - id: E7-09
@@ -2174,7 +2201,7 @@ tasks:
   - E5-03c
   - E5-05
   - E6-02
-  - E3-08
+  - E3-08a
   - E4-05
   - E8-05a
   rfc:
@@ -2190,6 +2217,7 @@ tasks:
   - full GPT-2/8B original-source conversion and actual private commitment/table/code/layout ownership, approved profile configuration and exact fixed subject bytes
   - subject and all referenced contexts are immutable and exclude later evidence, signatures, final passport root and requests; actual source/role/reference controls reject substitutions
   - no passport admission or E12-05 completion; E12-06 and E14-02 consume this same subject, and E12-05 must validate all returned evidence and registration before final delivery
+  - 'Actual RFC-0011 A2 TableBindings consumers moved from E3-08 by RFC-0025 A3: RFC-0008 §7 "NC-0404 table id mismatch with passport", catalogue expected error "`LogUpImbalance` etc."; NC-0414 "change one canonical table-data entry under the correct descriptor" → `TableDataMismatch`.'
 - id: E12-06
   epic: E12
   title: Proximity certificate generation and verification
@@ -2469,7 +2497,7 @@ tasks:
   epic: E15
   title: R-TABLES structured tables for exp_q/rsqrt_q
   depends:
-  - E3-08
+  - E3-08a
   rfc:
   - RFC-0019 R-TABLES
   skill: cqis-numerics
