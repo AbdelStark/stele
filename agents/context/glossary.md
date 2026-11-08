@@ -24,6 +24,9 @@
 - source context: the verifier-owned field, code, dimensions, layout, policy, identity and root of RFC-0010 A9.
 - registration certificate: the full proximity proof verified for one source context.
 - verified certificate: an opaque handle created only by complete registration-certificate verification; it retains the original conditional loss record.
+- source version: the field-source byte format of RFC-0010 A9/A3; version 1 is a Circle source, version 2 a v2 expander source.
+- query policy: the verifier-derived rule fixing a source's certificate and opening query counts q_c, q_o (Policy 1, RFC-0010 A3); it is not a profile parameter set.
+- message embedding: the injective map from one original source value to its one committed M31 message element, signed or offset (RFC-0010 A6).
 Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is traced), "gadget", "constraint system",
 "prover-side randomness".
 

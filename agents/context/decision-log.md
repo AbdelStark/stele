@@ -1022,4 +1022,48 @@ its configured role; the caller chooses it. No challenge, ledger line or cost te
 changes. E6-00 stays blocked on its own contracts and E4-05. The same-author review
 and the independent review recorded in the audit sign off A3 and this ADR.
 
+## ADR-068: Accept certified openings with v2 sources and one message element per value (RFC-0010 A3/A6, RFC-0012 A15, RFC-0007 A7)
+
+Context: E4-03 was blocked on Draft RFC-0010 A3 (proximity and query parameters) and
+A6 (packing). A9 already delivered a conditional Circle certificate and general
+functional openings (E4-03a). §8's "4 int8 / 2 int16 per M31" is impossible: 32 bits
+do not fit injectively in M31. Review record:
+[pcs-a3-a6-acceptance](../reviews/pcs-a3-a6-acceptance.md).
+
+Decision:
+- **One opening mode.** Every functional opening is A9's general opening on a
+  certified source. The certificate is required. The certificate-free fresh-tensor
+  mode, the batch/grouping protocols and Ligerito are not admitted. Each claim is a
+  separate opening unless an Accepted consumer reduces claims first.
+- **v2 expander sources.** Source version 2 carries the 55-byte v2 manifest, J=3..14
+  (N up to 2^29, inside the A10 sampler). Everything else is A9 verbatim. D comes from
+  code-identity.md §2 and holds outside the A7 setup event; the setup term is charged
+  once per ledger. Policy 1 (least q at 2^-130 per query round) gives v2 tables up to
+  q_c=13472, q_o=6714, checked by check_expander_policy.py.
+- **Proven terms only.** Diamond–Posen Theorem 2 at e<=(D-1)/3, plus the proven
+  query and near-message lemmas. §6's Johnson and capacity options are withdrawn.
+  Soundness is relative to the unique near message; no extractor is claimed.
+- **No profile.** Under RFC-0012 §4's Q times the largest round error (hand
+  derivation for Q12), Policy 1's query rounds give 2^-30 at treaty and 2^-50 at
+  standard. The certificate tensor round fails every profile in QM31, and fails
+  treaty in OM31 once ell*(e+1) reaches 2^19. E4-05/E12-04 must fix both before
+  any profile carries a PCS line; at 2^-228 the treaty counts are q_c=550, q_o=228
+  for Circle rate 1/4.
+- **One message element per value.** Packing is withdrawn. Values use the signed or
+  offset message embedding named by their consumer, one embedding per source.
+  Widths are proven only by a whole-source range lookup (RFC-0024 §1.1 for int8).
+  packed30 loses under Accepted RFC-0008 A2, because its lanes would need their own
+  commitment. RFC-0007 A7 removes the two-per-element cut packing.
+- **Ledger.** RFC-0012 A15 replaces the PCS row with the certificate, opening and
+  setup terms, and moves the Merkle lift to H. No new label, challenge or registry entry.
+- **Controls and tasks.** NC-0603 is redefined against the actual byte-range
+  verifier. NC-0612 is refined, and NC-0613 is reserved. E4-03 is ready with its
+  original criteria plus NC-0613. E4-04 stays blocked on RFC-0007 A1. E4-05 inherits
+  the FS finding.
+
+Consequences: non-wide int16 cut message counts double, and v2 openings send
+about 50 times the query responses of Circle rate 1/4. No measured constant moves.
+int16/int24 committed sources have no range consumer yet; E5/E6 must specify one
+before relying on their width.
+
 Status: Accepted.

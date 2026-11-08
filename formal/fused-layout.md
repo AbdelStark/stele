@@ -6,6 +6,8 @@ cost? Kill criterion: a compressed layout claimed to recover all original
 linear functionals without a decomposition proof, or a one-pass claim hiding
 another original source read. No production layout or profile is admitted.
 Review: [same-author skill passes](../agents/reviews/fused-layout-study.md).
+Accepted RFC-0010 A6 adopts §1's lower bound (proven) to select one message
+element per value. §§3-4's short-column fold stays with Draft RFC-0007 A1.
 
 ## 1. A lower bound for direct linear consumption
 

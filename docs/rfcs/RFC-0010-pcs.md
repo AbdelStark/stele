@@ -310,7 +310,10 @@ E4-02 and its registration/PCS consumers. A2 does not complete E4-02.
 
 ### A3 — Functional-opening proximity hypotheses and finite query parameters
 
-Status: Draft. Question Q27. Evidence: [conditional tensor opening](../../formal/tensor-opening.md)
+Status: Accepted. Question Q27. Review: [A3/A6 acceptance](../../agents/reviews/pcs-a3-a6-acceptance.md).
+Companion RFC-0012 A15. The acceptance resolution at the end of this entry replaces
+the proposed text; only the resolution is in force.
+Evidence: [conditional tensor opening](../../formal/tensor-opening.md)
 and research/code-provenance/check_proximity.py. Motivation: §2's arbitrary public
 functional is not automatically a valid random proximity test, and §6 does not
 instantiate a finite exceptional-combination bound or integer query count.
@@ -362,6 +365,114 @@ in the checked examples). Counts are exact arithmetic, not a benchmark. Addition
 proximity work, if selected for other modes, must be measured/accounted while
 preserving the one-weight-pass invariant. Affected tasks: E4-01/E4-03/E4-04/E4-05,
 E8-05 and E12-04; no production c_c/T_misc constant changes.
+
+Acceptance resolution. The following is in force; the proposed text above is not.
+
+1. **One mode.** Every functional opening is an A9 §4 general opening on a
+   source context with a verified registration certificate (A9 §3). The verifier
+   owns a in K^R, b in K^C and v; the prover sends the full u; the verifier checks
+   dot(u,b)=v and then q_o fresh column equations. Fixed, sparse, tensor and
+   sum-of-tensor a are all allowed: the certificate supplies proximity, not the
+   distribution of a ([certified-functional-opening.md §2](../../formal/certified-functional-opening.md#2-arbitrary-functionals-after-certification)).
+   Withdrawn from the Accepted text: §5's claim that a fresh tensor makes a
+   separate certificate unnecessary (the weight certificate is required, not
+   defence in depth; RFC-0007 A2/A10 already open certified sources); §2's batched
+   `a = Σ_t γ_t eq(ℓ_t,·)⊗eq(…)` as one opening (each claim is a separate opening
+   with its own q_o term, unless an Accepted consumer RFC first reduces the claims
+   to one (a,b,v) and charges that reduction). Not admitted, and usable only after
+   a new amendment: the certificate-free fresh-tensor mode, the batch and grouping
+   protocols of certified-functional-opening.md §3, and §7 Ligerito mode (Q27).
+2. **Code identities and source bytes.** Source version 1 is A9's Circle source,
+   unchanged. Source version 2 admits the v2 expander identities of A1/A4 with
+   J in 3..14. Its bytes are A9 §1's table with exactly two changes: version is
+   u8(2), and the code identity is the exact 55-byte v2 manifest, which must pass
+   `Encoder::from_code_id`. Then C=k=4^J (message exponent m=2J) and N=2k=2^(2J+1).
+   The Merkle descriptor, response format, wires, labels, order, column sampler,
+   certificate ID, opening, records and the RFC-0006 A1 adapter are A9 §§1-9
+   verbatim with these N, C, D. The version byte fixes each source's byte length,
+   so a FieldSources bundle may mix versions. J=15 (N=2^31 exceeds RFC-0012 A10's
+   sampler domain) and every other manifest reject as UnsupportedSource before any
+   transcript work. J=3 is the same map as Circle(6,1) but a different identity and
+   a different source; identities are never normalized.
+3. **Distance and setup.** Circle: D=N-C for C>=2 and D=N for C=1, deterministic
+   (`rfc-0010-a2/root-bound-v1`). v2: D=64 at J=3 and floor(k/25)+1 at J>=4
+   (`rfc-0010-a1/finite-v2`), valid outside the RFC-0012 A7 setup event
+   (`rfc-0012-a7/2^256-all-seeds-v2`). In both, e=floor((D-1)/3). Policy byte 1
+   pins these evidence IDs; a changed premise needs a new evidence ID and a new
+   policy byte. The setup term 200431782/2^160 is charged once in every ledger
+   that contains a v2 source with J>=4; J=3 and Circle sources add zero.
+4. **Query policy 1.** q_c and q_o are the least positive integers with
+   `2^130*(N-e-1)^q_c <= N^q_c` and `2^130*(N-D+e)^q_o <= N^q_o`. Circle uses
+   A9 §1's tables. v2 uses this immutable u16 table, indexed by J:
+
+   | J | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+   |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+   | q_c | 478 | 11489 | 13137 | 13377 | 13438 | 13469 | 13469 | 13471 | 13472 | 13472 | 13472 | 13472 |
+   | q_o | 221 | 5722 | 6546 | 6666 | 6697 | 6708 | 6713 | 6713 | 6713 | 6714 | 6714 | 6714 |
+
+   `research/merkle-oracle/check_expander_policy.py` checks every inequality and
+   its failure at q-1 with exact integers. The verifier derives q; no proof byte,
+   TOML flag or caller selects it. Policy 1 is a conditional interactive policy,
+   not a profile parameter set: A1's resolver still returns UnsupportedParameters
+   for every profile request, and both registry `proven` flags stay false.
+5. **Where each statement field comes from.** Purpose, version, layout and policy
+   are constants of this amendment. Field degree, tensor ID, ell, R, C and code
+   identity come from the consuming Accepted RFC's expected statement (plan or
+   passport). The root comes from the passport for registered weights (RFC-0011)
+   or from the consuming RFC's pre-challenge commitment for per-proof sources
+   (for example RFC-0023's advice cut). No proof byte supplies any of them. When
+   E4-05/E12-04 admit a profile, K and the policy derive from that profile.
+6. **Soundness terms and labels.** Per certificate attempt:
+   `2*ell*(e+1)/|K|` (Diamond–Posen Theorem 2, proven, unique-decoding regime
+   e<=(D-1)/3) plus `((N-e-1)/N)^q_c` (tensor-opening.md §3, proven). Per opening:
+   `((N-D+e)/N)^q_o` (certified-functional-opening.md §2, proven). Adaptive reuse
+   is the union bound adopted by A9. The Merkle lift is A8's hash event, charged
+   under H. The setup term is item 3's. No Johnson-radius, list-decoding or
+   capacity conjecture is used anywhere. §6's RS Johnson-radius option and its
+   standard-profile capacity option are withdrawn; a larger radius needs its own
+   amendment with a proven theorem. These are interactive bounds. They establish
+   soundness relative to the unique near message of A8's frozen oracle, not a
+   knowledge extractor; a consumer that needs knowledge soundness (RFC-0016
+   recursion) must supply it.
+7. **Fiat–Shamir, hand derivation for Q12 (not a theorem).** The rounds are
+   CertificateWeight (re-rolled by changing the root), with error
+   `2*ell*(e+1)/|K|`; CertificateColumn (re-rolled by changing t), at most 2^-130;
+   and OpeningColumn (re-rolled by changing u), at most 2^-130. Under RFC-0012 §4's
+   charge of Q times the largest round error:
+   - Policy 1's query rounds give 2^-30 at treaty Q=2^100 and 2^-50 at standard
+     Q=2^80, so they fail both profiles.
+   - The tensor round fails both profiles in QM31 for every ell>=1. In OM31 it
+     passes standard but fails treaty unless `2^229*ell*(e+1) <= p^8`: ell*(e+1)=2^18
+     passes and 2^19 fails, so it fails at almost every real weight source.
+   A profile parameter set (E4-05, E12-04) must bring every query round to at most
+   2^-(target+log2 Q), or use RFC-0012 §2's counted grinding nonce, and must change
+   the certificate's tensor round (for example independent repetitions) or rest on
+   a Q12 theorem. At treaty's 2^-228 the least counts are q_c=550, q_o=228 (Circle
+   rate 1/4, m>=20), q_c=867, q_o=390 (rate 1/2) and q_c=23627, q_o=11774 (v2, J=14).
+   Policy 1 cannot be admitted to either profile.
+8. **Errors.** A9 §8's errors apply unchanged. A v2 manifest or J outside item 2,
+   or a policy byte other than 1, is UnsupportedSource. A verified handle whose
+   context names a different code identity is CertificateContext. An edited
+   registry evidence ID is A1's InvalidRegistry.
+9. **Controls.** NC-0612 (todo, E4-03) runs under the actual v2 consumer and has
+   three variants: a verified certificate for another seed's v2 source, or for
+   Circle(6,1), offered for the expected v2 source (CertificateContext); a
+   certificate for the expected context whose rows were encoded under another seed
+   (ColumnMismatch); and an edited registry evidence ID (InvalidRegistry).
+   NC-0613 (todo, E4-03): a v2 source context with J=15, or with policy byte 2,
+   rejects as UnsupportedSource before any transcript work.
+10. **Cost.** Circle is unchanged from A9. A v2 certificate sends q_c responses of
+    4R+32*log2(N) bytes and an opening sends q_o of them; at J=14 that is 13472 and
+    6714 responses, against 314 and 130 for Circle rate 1/4. Verifying encodes t
+    and u with full v2 regeneration (A4), O(N) work. This is the price of
+    linear-time encoding in c_c; no measured constant moves. E4-03's proof-size
+    regression test must pin these counts. Because the certificate is required,
+    every per-proof source (cuts, multiplicities, advice) is certified within its
+    proof: one more R·C row combination, one encoding of t and q_c responses each,
+    charged in c_c/T_misc, as RFC-0023/0024 sources already are.
+11. **Tasks.** E4-03 becomes ready with its original criteria plus NC-0613.
+    E4-05 inherits item 7. E8-05's ledger generator uses RFC-0012 A15's PCS line.
+    E4-04 stays blocked on RFC-0007 A1. A6, A7 and Q12 keep their own obligations.
 
 
 ### A4 — Native deterministic v2 encoder and closed identity factory
@@ -456,7 +567,10 @@ is supplied here. No committed tensor or matmul weight pass changes.
 
 ### A6 — Injective packing and authenticated original-value functionals
 
-Status: Draft. Question Q28. Evidence: [packing and fused-row study](../../formal/packed-commitments.md)
+Status: Accepted. Question Q28. Review: [A3/A6 acceptance](../../agents/reviews/pcs-a3-a6-acceptance.md).
+Companion RFC-0007 A7. The acceptance resolution at the end of this entry replaces
+the proposed text; only the resolution is in force.
+Evidence: [packing and fused-row study](../../formal/packed-commitments.md)
 and [executable report](../../research/packing/REPORT.md).
 Review: [same-author skill passes](../../agents/reviews/packing-contract-study.md).
 Continuation: [fused layout derivation](../../formal/fused-layout.md) proves a
@@ -504,6 +618,67 @@ Cost: message/encoded counts, c_c, decomposition in c_a/T_misc, state and query
 work. No measured constant, benchmark or extra weight pass is introduced.
 Affected tasks: E4-03 (blocked on A3/A6), E4-04, E5-03/E6 range lowering, E7 weight/
 cut consumers and E10/E12 passport/inference work. Original criteria remain.
+
+Acceptance resolution. Exact replacement for §8's packing bullet:
+
+> Committed field messages hold exactly one canonical M31 element per original
+> source value. No packing of several int8, int16, int24 or other values into one
+> M31 element is admitted: four int8 or two int16 values carry 32 bits, and no map
+> from them into M31 is injective (formal/packed-commitments.md §1). Raw source
+> storage, such as int8 or int16 bytes, is a separate physical format; registration
+> expands it to field messages.
+>
+> A signed w-bit value x, w in {8,16,24}, has one of two message embeddings:
+> signed, the field image of x (RFC-0007 §2), or offset, x+2^(w-1) in [0,2^w)
+> (RFC-0024 §1 at w=8). The consuming Accepted RFC names the embedding in its
+> expected statement. Every consumer of one source context uses the same
+> embedding; the plan fixes it once per source. A source whose consumers name no
+> embedding is unsupported. Both embeddings are injective without reduction,
+> because |x| <= 2^23 and 2^24 < p. The layout is A9's row-major layout 0, with
+> logical and padded extents equal. The original-value MLE is the message MLE for
+> signed, and the message MLE minus 2^(w-1) for offset, at every point.
+>
+> A commitment proves no width. A consumer that relies on a width runs an actual
+> whole-source range lookup on the same certificate, with an all-one selector over
+> every message entry: for offset int8 this is RFC-0024 §1.1's byte-range handle.
+> No Accepted whole-source range consumer exists yet for w=16, w=24 or the signed
+> embedding; a consumer that needs one must specify it first. A width tag, codec,
+> honest decoder or digest proves nothing.
+
+How each requirement above is closed:
+
+1. Layout: one element per value, selected over packed30. Direct linear
+   consumption of every original coordinate needs at least one message element
+   per value ([fused-layout.md §1](../../formal/fused-layout.md#1-a-lower-bound-for-direct-linear-consumption)).
+   packed30 commits w/30 elements per value, but its lanes need a range proof.
+   Accepted RFC-0008 A2 looks up only A9-bound columns (virtual columns are open
+   in Q31), so the lanes would have to be committed too: at least 1+w/30 elements
+   per value, more than this layout. Packing cannot save message symbols until a
+   virtual-column amendment and a decomposition reduction exist (RFC-0008 A1 stays
+   Draft for such a future format; Q28).
+2. Reduction: none needed. There is no decomposition, fragment, sign or padding
+   relation; the range lookup's all-one selector is the dominating check. Messages
+   stay below 2^24 < p, so no new integer identity or bound certificate arises.
+   Privacy stays with A7 and RFC-0013 A1.
+3. Fused row: at a=eq(·,r_j), A9's row aᵀM is the original row functional B
+   (signed) or B plus 2^(w-1)·Σa (offset), with no decomposition; RFC-0007 A2/A4/A10
+   already consume it in one weight pass. RFC-0007 A7 removes §3's two-per-element
+   cut packing. Short-column splits (u_s ≠ B) and the complete fused schedule stay
+   with RFC-0007 A1 and E4-04.
+4. Controls: NC-0603 is redefined (todo, E4-03). In an offset int8 source, replace
+   one adjacent pair (x0,x1) with x1>=1 by (x0+256, x1-1), which keeps the withdrawn
+   packed word x0+256·x1. Commit and certify the tampered source honestly; the
+   actual RFC-0024 §1.1 byte-range verifier must reject it (RootMismatch, as for
+   NC-0401). NC-0605 stays with E4-04.
+
+Soundness: no new challenge, label or loss. The range lookup's LU and A9 terms are
+the consuming RFC's. Cost: the committed message count equals the number of values
+(the withdrawn text claimed 1/4 for int8 and 1/2 for int16). Non-wide int16 cut
+messages double, as wide int24 cuts already did (A11); raw storage is unchanged.
+No measured constant moves. Affected tasks: E4-03 (ready), E4-04 (still blocked on
+RFC-0007 A1), E5/E6 range lowering (int16/int24 committed-source range consumers),
+E7 weight/cut consumers and E8-02 (the plan verifier enforces one embedding per
+source), each with original criteria.
 
 ### A7 — Separate column privacy from row-combination masking
 

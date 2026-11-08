@@ -202,3 +202,17 @@ Step 1's A side costs T*n*d_in MACs per layer and type instead of n*d_in.
 Ungrouped inputs are unchanged. Ledger and cost impact are in RFC-0004 A15: the stacked
 Requant zerocheck gains log2 T variables, and there is no new challenge. Affected tasks:
 E5-05d, E5-05f, E7-01 family, E4-04.
+
+### A7 — One message element per residual-cut value (companion of RFC-0010 A6)
+
+Status: Accepted. Review: [A3/A6 acceptance](../../agents/reviews/pcs-a3-a6-acceptance.md).
+Motivation: §3's "packed 2 per M31 for commitment" puts 32 bits in one M31 element,
+and no injective map allows that (RFC-0010 A6).
+Exact replacement in §3: "packed 2 per M31 for commitment, RFC-0010 §8" becomes
+"one M31 message element per value under the signed embedding of §2, RFC-0010 A6".
+This applies to non-wide int16 cuts; wide int24 cuts already follow A5. A cut's
+width proof is its consumer's whole-source range lookup (RFC-0010 A6), which E5/E6
+range lowering must specify. No challenge, label or loss changes. The non-wide cut
+commit and opening message count doubles to C_cut=n·d·(L+1) elements; raw int16
+storage is unchanged. A1 stays Draft for short columns and the complete fused
+schedule. Affected tasks: E5/E6 range lowering and E7-10, with original criteria.

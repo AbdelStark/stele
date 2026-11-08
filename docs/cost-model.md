@@ -313,3 +313,16 @@ range_8/range_16 memberships (head per token: 128,256 accumulators, 4,096 folds,
 memberships). Counting two memberships as one element, N_act rises from about 90,112 to
 about 388,064 (an estimate), so T_act for the 8B row becomes about 3.9 s instead of 0.9 s.
 No planning constant is refitted.
+
+## One message element per value and v2 queries (RFC-0010 A3/A6, RFC-0007 A7)
+
+Committed messages hold one M31 element per original value; the two-int16 and
+four-int8 per-element packing is withdrawn as non-injective. Every cut and weight
+message count therefore equals its value count. For non-wide int16 cuts this doubles
+the committed message count in T_cuts, as the wide int24 section already does; raw
+int16/int8 storage bytes are unchanged.
+
+A v2 expander source sends q_c=13472 certificate and q_o=6714 opening responses at
+J=14 (Policy 1), each 4R+32·log2(N) bytes, against 314 and 130 for Circle rate 1/4.
+Verifying encodes t and u with full v2 regeneration. These are exact counts, not
+measurements; no planning constant is refitted.
