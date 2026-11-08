@@ -969,13 +969,25 @@ Decision:
   entry, so the plan count of each of their lookups is the full physical cube.
   `requant::Descriptor::admit`, `integer_linear::Descriptor::admit` and
   `byte_range::Descriptor::admit` run `lookup::admit` on every A5 Statement they build.
-  These checks are opt-in: the constructors still accept caller-chosen r and fields, so
-  A5 primitive tests and existing corpora keep working. A future plan executor must call
-  `admit` before any transcript work.
+  These checks are opt-in. The operation-level verifiers stay profile-free, as
+  RFC-0023 §§1, 2.3 and RFC-0024 §1 require: they fix K and r independently, select no
+  profile, and must deliver both fields and both repetition counts. A5 primitive tests
+  and existing corpora keep working. The plan verifier (E8-02) calls `admit` before the
+  first transcript absorb.
+- **Controls.** NC-0420..0424 are conditional controls. They run `lookup::admit` on a
+  candidate whose honest form is fully proved and verified, not through a production
+  verifier entry point. E8-02 carries the obligation to route them through its verifier
+  entry point so that they fail if the call is removed.
 - **c_lu unit.** c_lu is the time to produce one plan-admitted lookup position, divided by
   the time of one chained M31 multiplication measured in the same process (the e1-02
   method). Original-source commitment is c_c and is not timed. The mu commitment and
   every A9 opening are included. This is a CPU observation and does not refit the GPU
   planning constant.
+
+Consequences: until E8-02 lands, a caller that uses an operation verifier (requant,
+integer_linear, byte_range or the A5 descriptor) directly without calling `admit` gets no
+A2 item-2 enforcement: it accepts any r in {1,2}, either field, and for the A5 descriptor
+any b<=min(m,30), m or selector. Only the E8-02 plan verifier closes this; see its
+acceptance line.
 
 Status: Accepted.

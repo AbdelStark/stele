@@ -1782,6 +1782,7 @@ tasks:
   - NC-1200/1201/1202
   - no panics under fuzz 1h
   - LoC budget
+  - plan derivation calls lookup::admit for every RFC-0023/0024 lookup consumer before the first transcript absorb; NC-0420..0424 run through the verifier entry point and fail if the call is removed
 - id: E8-03
   epic: E8
   title: Python differential verifier

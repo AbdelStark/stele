@@ -99,6 +99,9 @@ Each control's honest candidate passes admission and then the actual producer,
 mu registration and closed verifier; the one changed field (b, r, d, m or one
 padded selector byte) rejects in admission before any transcript absorb.
 NC-0420/0423/0424 run under both profiles; NC-0421/0422 are treaty-only.
+These are conditional controls: they exercise the admission function, not the
+production verifier entry point, which no plan verifier calls yet. E8-02 must route
+them through the plan verifier so that removing the call fails them (ADR-066).
 
 The closed lookup controls also execute NC-0400/0402/0403/0416/0417/0418,
 retaining exact failure prefixes. The composed NC-0610 variant changes one mu

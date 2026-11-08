@@ -146,9 +146,14 @@ do not complete E3-06's resource evidence or admit inference/privacy profiles.
 
 The conditional lookup runtime executes NC-0400..0403 and NC-0415..0419
 through genuine registrations and the unchanged closed verifier in both fields.
-The NC-0402 variant checks the unchanged literal selector. NC-0420..0424 check
-RFC-0008 A2 plan admission: the selector, N, b, r and d must be the ones the plan
-and profile derive, before any transcript work. The lookup extensions of
+The NC-0402 variant checks the unchanged literal selector. NC-0420..0424 are
+conditional controls of RFC-0008 A2 plan admission: they run `lookup::admit`
+against real proofs (the honest candidate is fully proved and verified), and the
+selector, N, b, r or d must be the ones the plan and profile derive, before any
+transcript work. They do not reach a production verifier entry point: the
+RFC-0023/0024 operation verifiers stay profile-free, and the call through the plan
+verifier is an E8-02 obligation (ADR-066). Like the other conditional controls they
+count as executed rows, not as production plan-verifier coverage. The lookup extensions of
 the NC-0610 and NC-0802 controls execute the actual mu consumer and following A1 verifier.
 They add composed coverage under those existing IDs, not extra controls or a
 Fiat–Shamir theorem. Full private lookup and inference remain unadmitted.
