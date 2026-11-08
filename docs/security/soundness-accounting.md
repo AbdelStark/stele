@@ -7,7 +7,7 @@ Total error ε = Σ SC + Σ SZ + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC
 | SC | stacked reductions per stage (≈ 10²/proof) | `m·δ/|K|` | yes (Schwartz–Zippel) |
 | SZ | RFC-0024 actual-tail equality | `m/p^d`, zero at m=0 | conditional interactive (RFC-0012 A14) |
 | RLC | RLC batch reductions | `t/|K|` | yes |
-| LU | one per (table, challenge pair) | `(N+|T|)/|K|`, squared with double challenge | yes (Haböck 2022) |
+| LU | one joint record per lookup instance (RFC-0012 A8/A11) | `min(1,(h+N+c·t−1)/|K|)^r`, b=min(m,30), h=m−b; tree/PCS terms separate; the r-th power is interactive only, FS term per Q12 | conditional interactive (RFC-0008 A2/A5) |
 | PCS | one per opening (R_stack, 7–9 weight types, multiplicities, aux) | `ε_gap(ρ,δ)+(1−δ)^q+ε_Merkle` | treaty: proven only (BCIKS20, DP23/24, Khatam) |
 | MASK | per masked instance | `≤ 1/|K|` | yes |
 | FS | adaptive queries `Q` + grinding | ROM bound | assumption A2 |
@@ -157,6 +157,10 @@ extension-size root bound or squaring can justify it. Actual LU admission also
 needs nonzero bound denominators, selector/padding, tuple compression and full
 consumer/composition accounting. The [research note](../../formal/logup-characteristic.md)
 changes no production record or challenge and supplies no profile admission.
+Accepted RFC-0008 A2 / RFC-0012 A8 now close this: the only LU record is A11's
+joint record for the A5 mode with plan-derived b=min(m,30), so each group holds
+at most 2^30<p positions; any other shape is unsupported. No label or loss is
+added; Q12, private PCS and ZK composition remain open.
 
 The [Q31 fraction candidate](../../formal/fraction-reduction.md) proposes these
 research-local lines per depth-m tree (denominator |K|): lookup/gamma has m

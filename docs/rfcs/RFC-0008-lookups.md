@@ -70,96 +70,157 @@ E7/E10 packed consumers; all original acceptance criteria remain.
 
 ### A2 — Characteristic-safe multiplicities and nonzero denominators
 
-Status: Draft. Question Q31. Companion RFC-0012 A8.
-Evidence: [algebra and sources](../../formal/logup-characteristic.md),
-[exact finite study](../../research/logup-characteristic/REPORT.md).
-Review: [same-author skill passes](../../agents/reviews/logup-characteristic-study.md).
+Status: Accepted. Question Q31. Companion RFC-0012 A8. ADR-065.
+Review: [Workflow 02 passes](../../agents/reviews/logup-a2-acceptance.md).
+Evidence: [algebra and counterexamples](../../formal/logup-characteristic.md),
+[grouped units](../../formal/weighted-logup.md), [fraction reduction](../../formal/fraction-reduction.md),
+[whole schedule](../../formal/lookup-consumers.md), [native contract](../../formal/native-lookup.md)
+and the [exact finite study](../../research/logup-characteristic/REPORT.md).
+Earlier research passes: [characteristic](../../agents/reviews/logup-characteristic-study.md),
+[grouped units](../../agents/reviews/weighted-logup-study.md).
 Motivation: p repetitions of an invalid tuple vanish from the ordinary LogUp
 identity in characteristic p; extension fields and repeated challenges do not
 repair it. The cited LogUp-GKR theorem has a characteristic hypothesis absent
 from §§1–2. Cross multiplication also needs nonzero bound denominators.
 
-Proposed replacement requirements for §§1–2 and clarification of §6, pending
-the complete selected protocol and byte contract:
+Exact replacement for the multiset-inclusion claim of §1, the acceptance
+semantics of §2 and the error statement of §6. §§2–3's tree shape and cost
+terms are realised by A3/A5 as below; §§4–5 are unchanged.
 
-> Every ordinary unit-weight lookup instance has a verifier-derived static
-> upper bound on its total selected positions strictly below char(K), not |K|.
-> All batched columns/layers and every repeated selected value count toward
-> that limit. Selectors are authenticated Boolean values with exact padding
-> semantics. A bound based on observed honest multiplicities is insufficient.
-> For larger instances, use a complete Accepted partitioned or weighted-unit
-> construction with its own authenticated layouts, challenges and consumers;
-> do not silently truncate, switch fields or reuse the ordinary formula.
->
-> Fix exact tuple compression, coefficient powers and challenge order. Bind
-> the original tuples/table before relevant challenges and multiplicities as
-> required by the chosen theorem. Account explicitly for compression collisions
-> and rational-identity error. Original source claims and table-side committed
-> multiplicities must reach their actual consumers in every selected mode.
->
-> An inactive/padded fraction leaf is the neutral (0,1), proven against the
-> same selector used by the lookup. Active leaves follow the selected identity.
-> Both root denominators must be nonzero, and all parent/leaf relations must
-> be proven against the original sources. Cross multiplication or a nonzero
-> supplied root alone is insufficient. Fix honest pole rejection and attempt/
-> retry semantics in the transcript contract; no silent challenge resampling.
->
-> If static partitions are selected, derive their exact source coverage and
-> count bounds from the public plan; authenticate each partition's multiplicity
-> table and equality independently, or use a fully accounted batching reduction.
-> Merely adding the equalities can restore the characteristic cancellation.
-> Weighted units are a distinct protocol with their own numerator/multiplicity
-> representation and commitment order. No such mode is admitted by this Draft.
->
-> Two repetitions square only an identity error under the applicable fixed-data
-> and independent-challenge hypotheses. Shared preliminary failures, GKR checks,
-> PCS, binding and Fiat-Shamir errors require their own composition. Neither
-> repetitions nor OM31 cure the ordinary p-copy counterexample.
+1. **One mode.** Every lookup runs the grouped-equality-unit protocol of A5,
+   exactly as [formal/native-lookup.md](../../formal/native-lookup.md) fixes it:
+   statement and proof bytes, the eight stele/v0.1/lookup/ labels and their
+   order, A3 trees and SelectedProduct, A9 consumers, errors, resources and
+   abort rules. The unit-multiplicity equation of §1 with error (N+|T|)/|K|
+   is withdrawn: p copies of an invalid tuple cancel in it. Also withdrawn:
+   §1's "virtual or committed" tuples and F-valued multiplicities m in
+   F^{|T|} (A5's are K-valued, item 4), and §2's stacking of all instances
+   that use one table into one sumcheck (each A5 instance has its own trees).
+   No partitioned, other weighted, field-switched or truncated variant is
+   admitted.
+2. **Static count bound (bound certificate).** The verifier derives the A5
+   Statement from the public plan and profile, never from the proof:
+   - N=2^m with 2^m the least power of two at least the plan's lookup
+     positions for this instance, counted over every stacked layer, head and
+     repeated value; a c-column tuple is one position; m<=59;
+   - b=min(m,30), so each group holds at most 2^b<=2^30<p positions;
+   - r=1 and d=4 (QM31) for standard; r=2 and d=8 (OM31) for treaty
+     (RFC-0002 §8 with item 8: treaty needs both under Fiat–Shamir);
+   - sigma as in item 3, from the plan's real positions, never supplied.
+   Every other Statement field (lookup id, multiplicity ids and layouts
+   (ell, blowup), source order and certificates, Table) comes from the
+   consuming operation's Accepted RFC, today RFC-0023 §2.3 and RFC-0024
+   §§1.1, 2.3. A consumer without such an RFC is not admitted.
+   For m<=30 this is the ordinary unit-weight lookup over N<p positions (h=0,
+   no Unit draw). For m>30 every group still has fewer than p positions and
+   h=m-30 Unit draws weight the groups. Observed honest multiplicities never
+   enter the bound. Plan admission rejects any other b with GroupBound, and
+   any other r, d, N or sigma with Statement, before the first transcript
+   absorb. A5's wider
+   conditional range b<=min(m,30) stays available to its own primitive tests;
+   no plan lookup may use it.
+3. **Selectors and padding.** sigma is the verifier's Boolean indicator of
+   the plan's real lookup positions; positions padded up to 2^m and masked
+   entries are 0. Inactive leaves are the neutral (0,1) through
+   1-sigma+sigma*(alpha-z_beta(x)), proven against that same sigma by A3
+   SelectedProduct. Table rows beyond t are (0,1) leaves with logical-prefix
+   multiplicities (A5 §2). Which positions are real is plan semantics
+   (RFC-0005); this amendment binds the proof to the verifier's sigma.
+4. **Sources.** Each tuple column is an original source with a verified A9
+   certificate whose context is in Statement, bound before every Unit, Beta
+   and Alpha draw. Every SelectedProduct column claim is consumed by an actual
+   A9 point opening. Virtual (uncommitted) tuple columns are not admitted:
+   the grouped theorem needs each column fixed before the Unit draws, and no
+   Accepted claim-graph producer establishes that. Admitting one needs its own
+   amendment; this replaces §2's "virtual → further reductions". A2 adds no
+   cut and no committed tensor: multiplicities are A5's registered table-side
+   sources, one per lookup instance and repetition (not once per table).
+5. **Compression and order.** z_beta(x)=sum_a beta^a*x_a with c in {1,2}
+   and t<=65536 real table rows. Order: Statement (sources, Table, sigma),
+   then all r Unit vectors, all r multiplicity contexts, all r (Beta, Alpha)
+   pairs, then trees and consumers, per A5 §4.
+6. **Poles and retries.** Both root denominators must be nonzero (A3
+   check_roots) before cross multiplication; any pole, sampler exhaustion or
+   other failure aborts the whole attempt. The honest prover is deterministic
+   (INV-8) and no protocol path resamples: no retry with fresh challenges,
+   salt, fallback or partial acceptance. An honest attempt meets a
+   pole only when some alpha_j equals a compressed table row, with probability
+   at most r*t/|K| (inactive and padding leaves have Q=1; products of nonzero
+   children are nonzero). This is a completeness failure, not a soundness term.
+7. **Degrees and rounds.** Per repetition: lookup tree depth m, table tree
+   depth k=log2(n), SelectedProduct m rounds; every A1 round has degree 3.
+   Rounds r*[m(m-1)/2+k(k-1)/2+m]; draws r*h Unit, r Beta, r Alpha, r*(m+k)
+   Gamma and r*(m+k) Fold (A5 §5).
+8. **§6 errors.** The interactive identity term is e_LU^r with
+   e_LU=min(1,(h+N+c*t-1)/|K|), under A5's schedule only. Tree, leaf, PCS,
+   binding and Fiat–Shamir terms are charged as A5 §5 lists, never squared.
+   e_LU^r is not a Fiat–Shamir bound. Hand derivation, for Q12 to
+   formalise: all r Unit vectors come from one transcript state and all r
+   (Beta, Alpha) pairs from another. Grinding the Statement re-rolls the
+   unit round, whose error is about r*h/|K|; grinding free multiplicity
+   bytes (e.g. physical tails) re-rolls the pair round, whose error is about
+   e_LU^r, because one state cannot be split across repetitions. Under
+   RFC-0012 §4's charge Q times the largest round error, with treaty Q=2^100
+   and target 2^-128: r=1 on OM31 gives about 2^-108 at m=40 and 2^-114 at
+   m=34, and fails; r=2 on OM31 gives about 2^-144 (unit round) and passes;
+   d=4 gives a unit round near 2^-20 and fails. So treaty requires both
+   r=2 and OM31. No standard-profile Fiat–Shamir bound is claimed: under
+   the same charge with Q=2^80, QM31 at r=1 fails at real shapes (pair round
+   near 2^-10); E12-02 and Q12 own that. Each repetition opens its own multiplicity source (A5); §6's
+   single batched opening is withdrawn. OM31 changes |K|, not the
+   characteristic, so it never replaces the count bound. Profile admission
+   (totals, Q12) stays with RFC-0012.
 
-Before acceptance: select the full protocol, layouts/bytes/transcript labels,
-static certificates, selectors/poles, tuple bound, exact GKR degrees/rounds,
-source/table/committed consumers, privacy and all actual negative controls.
-Preserve original NC-0400..0403 and c_lu gates; add real count-bound, zero-root,
-padding/partition-coverage and mode-substitution controls with the implementation.
+Interfaces consumed, not provided here:
 
-Soundness: no production record or challenge changes. The note proves conditional
-bounded-count residue and power-compression bounds; it does not instantiate GKR,
-PCS, ZK or Q12. Existing LU formulas must not admit an unsupported shape. Cost:
-c_lu/T_misc, multiplicity/table work, commitments and peak state; no measured
-constant or weight-pass change. E3-07 is blocked on A2; E12-02/E12-03 and lookup
-consumers are affected. All original acceptance criteria remain.
+- **PCS.** A9 is binding but reveals row combinations. A private PCS (RFC-0010
+  A3/A6) may replace it only through an amendment that keeps: a unique fixed
+  near message bound before the Unit draws; point openings for every source
+  column and the one or two prefix-mask functionals for each multiplicity
+  vector; each with its own accounted loss, at the same transcript positions.
+  The identity argument above uses only these properties.
+- **Zero knowledge.** None is claimed. RFC-0013 A1 owns masking of sources,
+  multiplicities and sumchecks; A2's soundness does not depend on hiding.
+- **Ownership.** The proof is bound to the A9 certificates in its Statement.
+  That those are the same handles the tensor's producer and consumers use is
+  plan/claim-graph work (RFC-0005, E5), not discharged here. Values at
+  positions with sigma=0 are unconstrained; no consumer may rely on them.
+- **Fiat–Shamir.** Q12. **Integer ranges.** Membership is of field tuples;
+  integer range discipline stays with §5, A1 and RFC-0021's canonical lift.
 
-A2 candidate continuation: [grouped equality units](../../formal/weighted-logup.md)
-and [reproducible evidence](../../research/logup-characteristic/WEIGHTED.md),
-reviewed in the [same-author record](../../agents/reviews/weighted-logup-study.md).
-This proposes public groups of B=2^b<p positions, with canonical MSB-first group
-ids and equality-basis units sampled after sources/selectors are fixed. One or
-two K-valued multiplicity vectors are committed after the unit vectors and before
-every alpha/beta. The lookup tree is ordinary within groups and weighted above
-them; the table tree is ordinary. No correction divides by a unit. The derivation
-accounts for compression and unit failures and distinguishes independent from
-shared-unit repetitions. It also identifies the actual selector/source reduction
-needed for neutral denominator leaves. These are candidate requirements, not
-admitted bytes, challenge labels, K-valued commitment formats or implementations.
-The original actual consumer, privacy, native controls and complete c_lu gates
-remain required; E3-07 stays blocked on A2.
+Real shapes (planning projections of docs/cost-model.md §3, 1.5–3 lookups per
+activation element, one per attention score): stacked Llama-3.1-8B activation and exp lookups are
+1.1–3.9·10^10 positions (N/p about 5–18, m=34..36); 405B reaches 5.7·10^11
+(m=40). Ordinary unit weight cannot take one such instance. With b=30 they
+need h=4..10 Unit draws; at c=2, t=2^16, the interactive log2 e_LU is
+-84..-90 for QM31 and -208..-214 for OM31 at r=1. These shapes are not yet
+runnable: tuple columns must be committed A9 sources of N entries (2N
+committed elements for c=2), the Statement carries N selector bytes and the
+verifier builds O(N) scratch. They need either a committed-source producer
+or a virtual-column amendment, plus a succinct structured selector. Under
+b=min(m,30) the weighted path (h>0) starts at m=31; practical positive tests
+of it stay A5 primitive tests with b<m, which plans may not use.
 
-A2 fraction continuation: [conditional reduction](../../formal/fraction-reduction.md)
-and [executable evidence](../../research/logup-characteristic/FRACTION.md) fix a
-candidate descriptor, per-layer P/Q combination, all-child Final absorption and
-canonical child-coordinate fold. A separate selected-product sumcheck consumes
-the lookup denominator and exports every original tuple column. Exact public
-consumers close the research computations; committed K-valued multiplicities,
-private source consumers, full plan/bytes, native controls and costs remain
-required. No new intermediate commitment or Accepted protocol is introduced.
+Controls: NC-0400..0403 and NC-0415..0419 keep their A5 consumers (NC-0415 is
+the count-bound control, NC-0416 the zero-root control, NC-0402 the padding
+selector). Reserve as todo, without coverage credit: NC-0420, plan admission
+with m=3 and b=2 instead of 3 rejects GroupBound; NC-0421, a treaty admission
+with r=1 rejects Statement; NC-0422, a treaty admission with d=4 rejects
+Statement; NC-0423, m one above the plan's least power of two rejects
+Statement; NC-0424, one padded position marked selected rejects Statement.
+All reject before the transcript; E3-07 implements them.
 
-A2 consumer continuation: [whole schedule](../../formal/lookup-consumers.md) and
-[exact study](../../research/logup-characteristic/LOOKUP.md) connect the two trees
-to source roots, pre-challenge K-valued mu roots and exact table padding. A
-revealing Merkle adapter authenticates full original vectors and consumes every
-derived claim. It is research evidence for binding/composition, not the required
-private PCS, ZK, native control or c_lu implementation. The full private consumers,
-plan/wire admission and all original E3-07 criteria remain prerequisites.
+Soundness: no new challenge, label or loss; the LU record is RFC-0012 A11's
+joint record, now required by RFC-0012 A8. The capped/wide/limb A2 evidence
+continuations below remain Draft research evidence. Cost: A5's terms, which
+include committing every tuple column and the O(N) selector; for m<=30 no
+Unit draw or weighting occurs. c_lu, measured by E3-07, includes the A9
+source openings. No constant or weight pass changes. Affected tasks: E3-07
+becomes ready with all original criteria; E3-08, E8-05, E12-02/E12-03 and
+lookup consumers must use this mode within the limits above. E7-05 (silu_q),
+E7-06 and E7-07 (attention exp lookups) look up virtual tensors (RFC-0001
+§3, RFC-0009 §1 step 4 and A4, RFC-0007 silu_q), so they are also blocked
+on the Q31 virtual-column amendment.
 
 ### A3 — Conditional fraction-tree and selected-product reductions
 

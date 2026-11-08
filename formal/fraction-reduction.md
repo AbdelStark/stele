@@ -1,5 +1,7 @@
 # Fraction-tree reduction and original-source obligations (Q31)
 
+Adopted by RFC-0008 A3/A2 (Accepted): tree and selected-product reductions, proven interactive conditional on original-leaf consumers; no Fiat–Shamir bound (Q12).
+
 Candidate for Draft RFC-0008 A2 / RFC-0012 A8, not an admitted lookup protocol.
 Question: can the grouped-unit tree reduce both root values to the actual leaf
 arrays, including the selected-product denominator? Kill criterion: an unchecked

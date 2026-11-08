@@ -1,5 +1,7 @@
 # LogUp characteristic, poles and partition obligations (Q31)
 
+Adopted by RFC-0008 A2 (Accepted): the p-copy counterexample and bounded-count/compression lemmas, proven (exact algebra); not a protocol by itself.
+
 Status: Draft, RFC-0008 A2 / RFC-0012 A8. Question: which count and denominator
 contract makes the proposed lookup valid at the specified inference sizes?
 Kill criterion: an out-of-table value satisfies the claimed rational identity,

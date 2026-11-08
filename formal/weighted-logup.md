@@ -1,5 +1,7 @@
 # Candidate grouped equality units for LogUp (Q31)
 
+Adopted by RFC-0008 A2/A5 (Accepted): §§1–3 with b=min(m,30), proven as an interactive argument under its fixed-data hypotheses; no Fiat–Shamir bound (Q12).
+
 Status: Draft, RFC-0008 A2 / RFC-0012 A8. Question: can bounded repetition of
 public units repair the characteristic failure with one table-sized multiplicity
 vector per repetition and bounded preparation state? Kill criteria: a fixed bad
