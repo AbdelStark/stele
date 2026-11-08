@@ -201,6 +201,36 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || lookup::run(419),
     },
     catalog::RegisteredControl {
+        id: 420,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GroupBound",
+        run: || lookup::run(420),
+    },
+    catalog::RegisteredControl {
+        id: 421,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Statement",
+        run: || lookup::run(421),
+    },
+    catalog::RegisteredControl {
+        id: 422,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Statement",
+        run: || lookup::run(422),
+    },
+    catalog::RegisteredControl {
+        id: 423,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Statement",
+        run: || lookup::run(423),
+    },
+    catalog::RegisteredControl {
+        id: 424,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Statement",
+        run: || lookup::run(424),
+    },
+    catalog::RegisteredControl {
         id: 211,
         kind: catalog::ControlKind::Proof,
         expected_error: "ClaimMismatch / ValueMismatch",

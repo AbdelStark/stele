@@ -211,6 +211,26 @@ name = "nc-0419"
 path = "lookup/nc_0419.rs"
 
 [[test]]
+name = "nc-0420"
+path = "lookup/nc_0420.rs"
+
+[[test]]
+name = "nc-0421"
+path = "lookup/nc_0421.rs"
+
+[[test]]
+name = "nc-0422"
+path = "lookup/nc_0422.rs"
+
+[[test]]
+name = "nc-0423"
+path = "lookup/nc_0423.rs"
+
+[[test]]
+name = "nc-0424"
+path = "lookup/nc_0424.rs"
+
+[[test]]
 name = "nc-0306"
 path = "matmul/nc_0306.rs"
 

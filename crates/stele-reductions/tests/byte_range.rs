@@ -42,6 +42,21 @@ where
         let ids = [20, 21];
         let d = byte_range::Descriptor::new(&original, 7, &ids[..r], LIMITS)
             .expect("valid fixed fixture");
+        // RFC-0008 A2 item 2: only (standard, QM31, r=1) and (treaty, OM31, r=2) admit.
+        for profile in [lookup::Profile::Standard, lookup::Profile::Treaty] {
+            let derived = match profile {
+                lookup::Profile::Standard => (1, 4),
+                lookup::Profile::Treaty => (2, 8),
+            };
+            assert_eq!(
+                d.admit(profile),
+                if derived == (r, usize::from(<K as CodeField>::DEGREE)) {
+                    Ok(())
+                } else {
+                    Err(lookup::Error::Statement)
+                }
+            );
+        }
         let table = lookup::Table::range(8).expect("valid fixed fixture");
         let selector = vec![1; message.len()];
         let originals = [&original];

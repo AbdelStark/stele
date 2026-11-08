@@ -6,7 +6,7 @@ use stele_pcs::{
     verify_certificate, CodeField, PreparedSource, ProofKind, Source, VerifiedCertificate,
 };
 use stele_reductions::lookup::{
-    Descriptor, Error, Layout, Limits, Statement, Table, TableDescriptor,
+    Descriptor, Error, Layout, Limits, Profile, Statement, Table, TableDescriptor,
 };
 
 const LIMITS: Limits = Limits {
@@ -446,4 +446,57 @@ fn rejects_qm31_lookup_shape_and_limits() {
 #[test]
 fn rejects_om31_lookup_shape_and_limits() {
     malformed::<OM31>();
+}
+
+// RFC-0008 A2 item 2: plan admission edges beyond NC-0420..0424; pure, no certificates.
+fn admission<K: ChallengeField>(profile: Profile, r: usize) {
+    use stele_reductions::lookup::admit;
+    let table = Table::range(8).expect("range");
+    let layouts = [20, 21].map(|id| Layout {
+        id,
+        ell: 0,
+        blowup: 1,
+    });
+    for positions in [1u64, 2, 3, 5, 8, 9] {
+        let m = positions.next_power_of_two().trailing_zeros() as u8;
+        let selector: Vec<u8> = (0..1u64 << m).map(|i| u8::from(i < positions)).collect();
+        let s = Statement::<K> {
+            id: 7,
+            m,
+            b: m,
+            table: &table,
+            selector: &selector,
+            originals: &[],
+            multiplicities: &layouts[..r],
+        };
+        assert_eq!(admit(&s, positions, profile), Ok(()));
+        // Zero, overflow, m>59, another m, or the same m with another sigma.
+        for wrong in [0, positions + 1, u64::MAX, (1 << 59) + 1] {
+            assert_eq!(admit(&s, wrong, profile), Err(Error::Statement), "{wrong}");
+        }
+        let mut other = selector.clone();
+        other[0] = 2;
+        assert_eq!(
+            admit(
+                &Statement {
+                    selector: &other,
+                    ..s
+                },
+                positions,
+                profile
+            ),
+            Err(Error::Statement)
+        );
+        if m > 0 {
+            assert_eq!(
+                admit(&Statement { b: m - 1, ..s }, positions, profile),
+                Err(Error::GroupBound)
+            );
+        }
+    }
+}
+#[test]
+fn accepts_profile_derived_lookup_admission() {
+    admission::<QM31>(Profile::Standard, 1);
+    admission::<OM31>(Profile::Treaty, 2);
 }

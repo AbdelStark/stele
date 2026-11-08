@@ -257,14 +257,15 @@ def requant_codec_api(crate):
         code = code.replace(signature, signature.replace('pub(super)', '', 1), 1)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     fields = ['stage','n','schema','repetitions','advice_blowup','point','value','input']
-    methods = ['advice_source','new','statement_size','constraints_size','proof_size',
+    methods = ['advice_source','new','admit','statement_size','constraints_size','proof_size',
                'public_bytes','max_local_hashes','encode','encode_constraints','preflight']
     expected = [('struct','Statement')]+[('',n) for n in fields]+[('struct','Descriptor')]+[('fn',n) for n in methods]
     return (declarations == expected and len(declarations) == len(re.findall(r'\bpub\b',code))
         and [compact(v) for v in re.findall(r'\bpub\s+fn\b[^\{]*\{',code)] == [
             'pubfnadvice_source<K:ChallengeField>(&self,stage:u32,n:u64,blowup:u8,root:[u8;32],)->Result<Source<K>,Error>{',
             "pubfnnew(statement:Statement<'a,'cert,K>,advice:&'certVerifiedCertificate<K>,limits:Limits,)->Result<Self,Error>{",
-            *[f'pubfn{n}(&self)->usize{{' for n in methods[2:6]],
+            'pubfnadmit(&self,profile:lookup::Profile)->Result<(),Error>{',
+            *[f'pubfn{n}(&self)->usize{{' for n in methods[3:7]],
             'pubfnmax_local_hashes(&self)->u64{',
             'pubfnencode(&self)->Result<Vec<u8>,Error>{',
             'pubfnencode_constraints(&self)->Result<Vec<u8>,Error>{',
@@ -405,7 +406,7 @@ def byte_range_api(crate):
     code = re.sub(r'//[^\n]*', '', path.read_text())
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     return (declarations == [('struct', 'Descriptor'), ('struct', 'ByteRange')]
-        + [('fn', name) for name in ('lookup', 'original', 'multiplicities', 'limits', 'usage', 'new',
+        + [('fn', name) for name in ('lookup', 'original', 'multiplicities', 'limits', 'usage', 'new', 'admit',
             'public_bytes', 'proof_size', 'producer_public_bytes', 'producer_dense_elements',
             'prove', 'register_multiplicities', 'verify')]
         and len(declarations) == len(re.findall(r'\bpub\b', code))
@@ -470,11 +471,13 @@ def field_sources(root):
         ('struct', 'Statement'), ('', 'id'), ('', 'm'), ('', 'b'), ('', 'table'), ('', 'selector'),
         ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'new'),
         ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
-        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('use', 'producer'), ('use', 'verifier')]
+        ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('enum', 'Profile'), ('fn', 'admit'), ('use', 'producer'), ('use', 'verifier')]
         and len(lookup_declarations) == len(re.findall(r'\bpub\b', lookup))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
             == ["impl<'input,'cert,K:ChallengeField>Descriptor<'input,'cert,K>{"]
         and 'pubusestele_cqis::tables::{DescriptorasTableDescriptor,Table,TableField};' in re.sub(r'\s+', '', lookup)
+        and 'pubenumProfile{Standard,Treaty,}' in re.sub(r'\s+', '', lookup)
+        and "pubfnadmit<K:ChallengeField>(s:&Statement<'_,'_,K>,positions:u64,profile:Profile,)->Result<(),Error>{" in re.sub(r'\s+', '', lookup)
         and 'pubuseproducer::{ProducerLimits,ProverFailure,ProverUsage,ProverWork,RegistrationUsage,RepetitionWork,};' in re.sub(r'\s+', '', lookup)
         and 'pubuseverifier::{Failure,LookupParameters,LookupRecord,RegisteredMultiplicities,RegistrationFailure,RepetitionRecord,};' in re.sub(r'\s+', '', lookup)
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', lookup))

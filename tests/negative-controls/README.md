@@ -93,6 +93,13 @@ unchanged closed verifier's RootMismatch. Never transfer source7 authority or
 claim an accepted baseline for source256. NC-0415 separately checks the static
 GroupBound admission boundary, without allocating a fictitious huge witness.
 
+RFC-0008 A2 item 2 plan admission (NC-0420..0424) derives m, b=min(m,30),
+the prefix selector, r and d from the plan's position count and the profile.
+Each control's honest candidate passes admission and then the actual producer,
+mu registration and closed verifier; the one changed field (b, r, d, m or one
+padded selector byte) rejects in admission before any transcript absorb.
+NC-0420/0423/0424 run under both profiles; NC-0421/0422 are treaty-only.
+
 The closed lookup controls also execute NC-0400/0402/0403/0416/0417/0418,
 retaining exact failure prefixes. The composed NC-0610 variant changes one mu
 opening row value and reaches actual PCS ValueMismatch. The NC-0802 variants

@@ -526,6 +526,49 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             })
     }
 }
+/// Inference profile that fixes a lookup's repetitions r and challenge degree d.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Profile {
+    /// r=1 over QM31 (d=4).
+    Standard,
+    /// r=2 over OM31 (d=8).
+    Treaty,
+}
+/// RFC-0008 A2 item 2 plan admission, for RFC-0023/RFC-0024 consumers only.
+/// `positions` is the plan's real lookup count; real positions are 0..positions
+/// and the 2^m-positions padding tail is unselected (A2 item 3, ADR-066). Rejects
+/// r, d, N or sigma not derived from plan/profile with Statement and any b other
+/// than min(m,30) with GroupBound. Pure: runs before the first transcript absorb.
+pub fn admit<K: ChallengeField>(
+    s: &Statement<'_, '_, K>,
+    positions: u64,
+    profile: Profile,
+) -> Result<(), Error> {
+    let (r, d) = match profile {
+        Profile::Standard => (1, 4),
+        Profile::Treaty => (2, 8),
+    };
+    if s.multiplicities.len() != r || K::DEGREE != d {
+        return Err(Error::Statement);
+    }
+    let m = positions
+        .checked_next_power_of_two()
+        .filter(|_| positions > 0)
+        .map(u64::trailing_zeros)
+        .ok_or(Error::Statement)?;
+    if m > 59 || u32::from(s.m) != m {
+        return Err(Error::Statement);
+    }
+    if s.b != s.m.min(30) {
+        return Err(Error::GroupBound);
+    }
+    if s.selector.len() as u64 != 1 << m
+        || (s.selector.iter().enumerate()).any(|(i, v)| *v != u8::from((i as u64) < positions))
+    {
+        return Err(Error::Statement);
+    }
+    Ok(())
+}
 fn take<'a>(bytes: &mut &'a [u8], count: usize) -> Result<&'a [u8], Error> {
     let out = bytes.get(..count).ok_or(Error::ProofShape)?;
     *bytes = &bytes[count..];

@@ -139,17 +139,25 @@ impl<'original, K: ChallengeField> Descriptor<'original, K> {
         d.proof_bytes = proof;
         Ok(d)
     }
+    fn statement(&self) -> lookup::Statement<'_, 'original, K> {
+        lookup::Statement {
+            id: self.id,
+            m: self.m,
+            b: self.m.min(30),
+            table: &self.table,
+            selector: &self.selector,
+            originals: &self.originals,
+            multiplicities: &self.layouts[..self.r],
+        }
+    }
+    /// RFC-0008 A2 item 2: plan admission over every physical message entry
+    /// (RFC-0024 §1.1); r and d come from the profile only.
+    pub fn admit(&self, profile: lookup::Profile) -> Result<(), Error> {
+        lookup::admit(&self.statement(), self.selector.len() as u64, profile)
+    }
     fn descriptor(&self) -> Result<lookup::Descriptor<'_, 'original, K>, Error> {
         lookup::Descriptor::new(
-            lookup::Statement {
-                id: self.id,
-                m: self.m,
-                b: self.m.min(30),
-                table: &self.table,
-                selector: &self.selector,
-                originals: &self.originals,
-                multiplicities: &self.layouts[..self.r],
-            },
+            self.statement(),
             Limits {
                 public_bytes: self.limits.public_bytes - PREFIX.len(),
                 ..self.limits

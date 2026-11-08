@@ -18,6 +18,7 @@
       "pubenumError",
       "pubstructDescriptor",
       "pubfnnew",
+      "pubfnadmit",
       "pubfnstatement_size",
       "pubfnconstraints_size",
       "pubfnproof_size",
@@ -30,6 +31,7 @@
     ],
     "functions": [
       "pubfnnew(s:Statement<'a,'cert,K>,advice:&'certVerifiedCertificate<K>,limits:lookup::Limits,matmul_limits:stacked::Limits,)->Result<Self,Error>{",
+      "pubfnadmit(&self,profile:lookup::Profile)->Result<(),Error>{",
       "pubfnstatement_size(&self)->usize{",
       "pubfnconstraints_size(&self)->usize{",
       "pubfnproof_size(&self)->usize{",
