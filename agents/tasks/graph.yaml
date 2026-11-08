@@ -535,7 +535,7 @@ tasks:
   - RFC-0008 A5
   - RFC-0012 A8
   skill: gkr-reduction-author
-  crate: stele-lookup
+  crate: stele-reductions
   status: done
   agent: claude-code
   branch: task/E3-07-logup-gkr
