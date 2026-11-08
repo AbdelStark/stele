@@ -608,6 +608,25 @@ tasks:
   - NC-0404/0405
   - table ids in cqis_id
   - complete configured Registry and LayerNorm mode support, regenerated component data and actual NC-0412/0413/0414 consumers under the full-model contract
+- id: E3-08a
+  epic: E3
+  title: Registry/decomposition numerics (delivered)
+  depends:
+  - E3-07
+  - E5-02
+  rfc:
+  - RFC-0008 A4
+  - RFC-0021 §§4,6
+  - RFC-0025 §2,§6,§7.1
+  - RFC-0025 A3
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: in_progress
+  agent: claude-code
+  branch: task/E3-08-table-registry
+  acceptance:
+  - "Audit (agents/reviews/e308-registry-audit.md) maps to merged code and tests: every registered component has at most 2^16 padded rows; the closed representation mode table (stele-cqis functions/representation.rs, modes 0-4 including LayerNorm mode 4) derives each function's ordered components; the complete Registry regenerates all component data; component descriptors and data digests are inside the Registry that cqis_id hashes."
+  - "No catalogue control is credited. NC-0404/0405/0412/0413/0414 and every original E3-08 acceptance line remain mandatory for E3-08; this prerequisite cannot mark E3-08 done or admit a lookup, plan, passport or profile."
 - id: E4-01
   epic: E4
   title: Code trait + codes.toml with proven flags; RAA/expander linear-time encoder
