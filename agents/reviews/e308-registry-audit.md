@@ -87,7 +87,7 @@ Its findings and how each was closed:
 
 | Id | Finding | Closure |
 |---|---|---|
-| B1 (blocking) | A3 claimed A1's form but rewrote E3-08's acceptance lines and used a partial-task PR as task completion. | Followed the E5-03/E5-03c precedent. Added E3-08a (done on this audit, crate stele-cqis). Repointed E6-00, E7-05, E12-05a and E15-07 to it. Restored E3-08's acceptance and rfc lines byte-for-byte from main. Made E3-08 depend on E3-08a/E6-00/E12-05a/E7-06/E7-08, with a blocked status naming them. The claim and done commits now refer to E3-08a. Cycle check repeated (section 4). |
+| B1 (blocking) | A3 claimed A1's form but rewrote E3-08's acceptance lines and used a partial-task PR as task completion. | Followed the E5-03/E5-03c precedent. Added E3-08a (done on this audit, crate stele-cqis). Repointed E6-00, E7-05, E12-05a and E15-07 to it. Restored E3-08's acceptance and rfc lines byte-for-byte from main. Made E3-08 depend on E3-08a/E6-00/E12-05a/E7-06/E7-08, with a blocked status naming them. The claim and done commits now refer to E3-08a. Cycle check repeated (section 4). `scripts/tests/test_task_graph.py` now pins E6-00 on E3-08a (in place of RFC-0025 A1's E3-08) and E3-08 on its five prerequisites. |
 | S1 | NC-0405 also has a sampled-decoding exp consumer (`Model::function_roles`, model.rs:444; modes 1/2 allowed). | Added E7-08 as co-owner in the A3 table, ADR-067 and E7-08's acceptance. |
 | S2 | Moved controls were paraphrased. | The A3 table, this audit and each owner's acceptance line quote the RFC-0008 §7 / catalogue tamper text and the catalogue expected error verbatim. |
 | M1 | E7-06 was described as independent of E3-08. | Section 3 gives the transitive path E7-06→E7-01→E6-02→E6-00→E3-08a. |
