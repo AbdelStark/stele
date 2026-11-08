@@ -182,6 +182,17 @@ preparation and registration; standalone import and closed verification have
 their own intervals. Diagnostic framing and hashes remain separate executed
 scopes. E3-07's full private/source/plan, c_lu and profile obligations remain.
 
+E3-07 measures c_lu on one plan-admitted RFC-0008 A2 lookup (range_8, one column,
+every position real) on CPU. The [standard ledger](../bench/ledger/e3-07-clu-standard.json)
+(QM31, r=1) gives c_lu of about 591–598 at m=18, and the
+[treaty ledger](../bench/ledger/e3-07-clu-treaty.json) (OM31, r=2) about 3491–3529.
+Both count time per position in units of one chained M31 multiplication timed in the same
+process. They include mu commitment and every A9 opening, and exclude the original
+source commitment (c_c). Both are above the 60–150 planning range. The planning
+constants c_a/c_x are not refitted here: this is one CPU, the unit is a latency-bound
+multiplication, and no GPU kernel exists. [bench/README.md](../bench/README.md#lookup-c_lu-e3-07)
+describes the method.
+
 ## 14. Conditional matmul implementation scope
 
 E7-01b2 implements the [original-source matmul verifier](../formal/native-matmul.md).
