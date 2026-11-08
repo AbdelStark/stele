@@ -84,6 +84,9 @@
 | NC-0419 | lookups | 0008 A5, 0012 A11 | one multiplicity fitted to an alpha drawn before its context binds | `RootMismatch` | done |
 | NC-0420 | lookups | 0008 A2 | plan admission with m=3 and group exponent 2 instead of min(m,30)=3 | `GroupBound` | todo |
 | NC-0421 | lookups | 0008 A2 | treaty plan admission with one repetition | `Statement` | todo |
+| NC-0422 | lookups | 0008 A2 | treaty plan admission with extension degree 4 | `Statement` | todo |
+| NC-0423 | lookups | 0008 A2 | plan admission with m one above the least power of two covering the positions | `Statement` | todo |
+| NC-0424 | lookups | 0008 A2 | plan admission with one padded position marked selected | `Statement` | todo |
 | NC-0500–0506 | attention | 0009 §7 | see RFC | | todo |
 | NC-0600 | PCS | 0010 A9 | change one certificate codeword limb or opening row value under zero b; rebuild dependent responses | `ColumnMismatch` | done |
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |

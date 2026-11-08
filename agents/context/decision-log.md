@@ -914,9 +914,11 @@ Decision:
   unit-multiplicity equation and its (N+|T|)/|K| error are withdrawn. No partitioned or
   other weighted mode is specified.
 - **Static count bound.** The verifier derives N=2^m, b=min(m,30) and the selector from the
-  plan, and r from the profile (standard 1, treaty 2). Each group holds at most 2^30<p
-  positions. m<=30 is the ordinary lookup with no Unit draw. Plan admission rejects other
-  b (GroupBound) and r (Statement); NC-0420/0421 are reserved.
+  plan, and r and d from the profile (standard r=1, QM31; treaty r=2, OM31). Each group
+  holds at most 2^30<p positions. m<=30 is the ordinary lookup with no Unit draw. Every
+  other Statement field comes from the consuming operation's Accepted RFC (RFC-0023,
+  RFC-0024); other consumers are not admitted. Plan admission rejects other b (GroupBound)
+  and r, d, N or sigma (Statement); NC-0420..0424 are reserved.
 - **Why grouped, not ordinary only.** Stacked Llama-3.1-8B lookups are about 1.1-3.9·10^10
   positions per table instance (5-18 times p) under the cost-model projections; ordinary
   unit weight would force splitting into many instances with their own trees and
@@ -925,16 +927,21 @@ Decision:
   is N literal bytes, so they need a committed-source producer or a virtual-column
   amendment and a succinct selector first.
 - **Sources.** Tuple columns must be A9-bound original sources. Virtual (uncommitted)
-  columns are not admitted until a producer fixes them before the Unit draws (Q31).
-- **Poles.** Any pole aborts; the transcript is a function of the statement, so there is
-  no retry. Honest pole probability is at most r*t/|K| (completeness only).
+  columns are not admitted until a producer fixes them before the Unit draws (Q31). E7-05,
+  E7-06 and E7-07 look up virtual tensors and are blocked on that amendment too.
+- **Poles.** Any pole aborts; the honest prover is deterministic and no protocol path
+  resamples. Honest pole probability is at most r*t/|K| (completeness only).
 - **Ledger.** LU = A11's joint record, min(1,(h+N+c*t-1)/|K|)^r; tree, PCS and FS terms are
-  separate and never squared. The r-th power is an interactive bound only: grinding the
-  Statement or free multiplicity bytes costs the non-interactive unit round about r*h/|K|,
-  so Q12 must not adopt it; the treaty margin comes from OM31. No new challenge, label or loss.
+  separate and never squared. The r-th power is an interactive bound only. Under
+  Fiat–Shamir (hand derivation for Q12) the unit round costs about r*h/|K| (re-rolled by
+  grinding the Statement) and the pair round about e_LU^r (re-rolled by grinding free
+  multiplicity bytes; one state cannot be split across repetitions). With treaty Q=2^100,
+  r=1 on OM31 gives about 2^-108..2^-114 and fails 2^-128; r=2 on OM31 gives about 2^-144;
+  QM31 gives a unit round near 2^-20. Treaty therefore needs both r=2 and OM31. No standard
+  Fiat–Shamir bound is claimed. No new challenge, label or loss.
 - **Deferred.** Private PCS (RFC-0010 A3/A6) may replace A9 only by keeping binding,
   pre-Unit fixation and the same openings; ZK is RFC-0013 A1; Fiat-Shamir is Q12.
 - **Tasks.** E3-07 is ready with its original criteria plus plan admission and
-  NC-0420/0421. No cost-model constant changes; c_lu is measured by E3-07.
+  NC-0420..0424. No cost-model constant changes; c_lu is measured by E3-07.
 
 Status: Accepted.

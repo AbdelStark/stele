@@ -525,9 +525,14 @@ Exact replacement for the LU row of §4 and the lookup sentence of §5:
 
 §5's "N ≈ 2^37 ⇒ 2^-87 single, 2^-174 double" is read as this record with
 m=37, b=30, h=7: (7+2^37+c*t-1)/p^4 is about 2^-87, and its square for r=2
-as an interactive bound only. Grinding the Statement or free multiplicity
-bytes makes the non-interactive unit round cost about r*h/|K|; Q12 must
-derive that term and must not adopt the square. The surrounding tree, PCS
+as an interactive bound only. Under Fiat–Shamir (hand derivation; Q12 must
+formalise it) the unit round costs about r*h/|K|, re-rolled by grinding the
+Statement, and the pair round about e_LU^r, re-rolled by grinding free
+multiplicity bytes; one state cannot be split across repetitions. With
+treaty Q=2^100 and target 2^-128, r=1 on OM31 gives about 2^-108 (m=40) to
+2^-114 (m=34) and fails, r=2 on OM31 gives about 2^-144, and QM31 gives a
+unit round near 2^-20. Treaty therefore requires r=2 and OM31 (RFC-0008 A2
+item 2); no standard-profile bound is claimed. The surrounding tree, PCS
 and Fiat–Shamir terms stay separate, so neither figure is a profile total;
 Q12 and the profile ledgers (E12-02/E12-03) remain.
 

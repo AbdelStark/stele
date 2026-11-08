@@ -8,7 +8,10 @@ Reviewers:
   text. It read A2, A3, A5, formal/native-lookup.md, formal/weighted-logup.md,
   formal/logup-characteristic.md, RFC-0012 A8/A11 and `stele-reductions/src/lookup.rs`.
 - **Pass 2, rfc-author and gkr-reduction-author (stele-lookup/stele-reductions owner).**
-  The drafting agent, checking spec completeness and implementability against A5 and E3-07.
+  A same-author pass by the drafting agent, checking spec completeness and
+  implementability against A5 and E3-07. It is not independent.
+- **Pass 3, independent cryptography review** of PR #293 at 7a14484, by a reviewer outside
+  this drafting session. Recorded under "Independent pass" below.
 
 **Verdict: accept after fixes.** All fixes are applied in this branch. No soundness gap
 was found in the interactive argument for A9-bound sources. A2 selects no new protocol.
@@ -70,8 +73,9 @@ Findings:
   - The total is about 2^120 work, against the advertised interactive 2^-176. Item 6
     also misquoted INV-8.
   - Closed: A2 item 8 and A8 now say the r-th power is interactive only, that the
-    non-interactive unit round costs about r*h/|K|, that Q12 must not adopt e_LU^r, and
-    that the treaty margin comes from OM31 (D10). "Doubled at r=2" is removed. Item 6
+    non-interactive unit round costs about r*h/|K|, and that Q12 must not adopt e_LU^r.
+    "Doubled at r=2" is removed. The first fix also said the treaty margin comes from
+    OM31 and not from r=2; pass 3 (S1) showed that is wrong, and it is corrected. Item 6
     now states prover determinism and no resampling path. Profiles were never admitted
     by A2, so this narrows a claim and leaves the protocol unchanged.
 - **N2: source ownership.**
@@ -128,6 +132,55 @@ Findings:
   - The transcript-label JSON, the accounting gate inputs and the cost-model constants
     are untouched. No pinned digest covers the edited documents. No research script was
     edited, so the bench ledgers that pin check_characteristic.py still match.
+
+## Independent pass
+
+Verdict at 7a14484: fix, then merge. No forgery was found against the interactive
+argument. Each finding was closed on this branch as follows.
+
+- **S1 (significant): "the treaty margin comes from OM31, not from r=2" was wrong.**
+  - Problem: all r Unit vectors come from one transcript state, and all r (Beta, Alpha)
+    pairs from another. Under RFC-0012 §4's charge Q times the largest round error, with
+    treaty Q=2^100 and target 2^-128:
+    - r=1 on OM31 gives about 2^-108 at m=40 and 2^-114 at m=34, and fails;
+    - r=2 gives about 2^-144 and passes.
+    The text also credited both grinding routes to the unit round. Grinding the
+    multiplicity tails re-rolls the pair round instead.
+  - Recomputed: unit round Q*r*h/|K| and pair round Q*e_LU^r for d=4/8, m=34/36/40,
+    Q=2^80/2^100. The results match the reviewer's: OM31 with r=1 gives a pair round of
+    -108 to -114; OM31 with r=2 gives a unit round of -143.7 to -145.
+  - Closed: A2 item 8, RFC-0012 A8 and ADR-065 now give the round-by-round split. The
+    unit round is about r*h/|K| and is re-rolled by grinding the Statement. The pair round
+    is about e_LU^r and is re-rolled by grinding free multiplicity bytes; one state cannot
+    be split across repetitions. All three state that treaty requires r=2 and OM31, and
+    label the split a hand derivation for Q12.
+  - Also observed: under the same charge, standard QM31 at r=1 with Q=2^80 fails at real
+    shapes (pair round about 2^-10). A2 now says no standard-profile Fiat–Shamir bound is
+    claimed; E12-02 and Q12 own it.
+- **S2: d was not derived from the profile.**
+  - Problem: a treaty plan with d=4 and r=2 passed admission, and its unit round is about
+    2^-20.
+  - Closed: A2 item 2 derives d=4 for standard and d=8 for treaty. Any other value rejects
+    with Statement. NC-0422 is reserved for that rejection.
+- **S3: incomplete plan-to-Statement mapping.**
+  - Closed: A2 item 2 says every other field comes from the consuming operation's Accepted
+    RFC (RFC-0023 §2.3, RFC-0024 §§1.1, 2.3). The fields are the lookup id, multiplicity
+    ids and layouts, source order and certificates, and the Table.
+  - A consumer without such an RFC is not admitted. E3-07's admission criterion names
+    RFC-0023/0024 consumers only. Both RFCs already use min(total_bits,30).
+- **S4: virtual columns conflict with the attention and SiLU designs.**
+  - Closed: E7-05, E7-06 and E7-07 are added to A2's affected tasks. Their graph statuses
+    gain "RFC-0008 Q31 virtual-column amendment" and keep their existing blockers.
+- **M1.** A2 item 1 now withdraws §1's "virtual or committed" tuples and F-valued m. It
+  also withdraws §2's stacking of all instances of one table.
+- **M2.** NC-0423 is reserved: m one above the least covering power of two rejects with
+  Statement. NC-0424 is reserved: one padded position marked selected rejects with
+  Statement.
+- **M3.** Adoption lines with proven/conjectural labels are added to the four formal
+  notes. No digest pins them; only Markdown links reference them.
+- **M4.** The reviewer list states that pass 2 was same-author and that pass 3 is
+  independent.
+- **Catalog.** 151 rows, 55/151 controls, 96 MISSING, 21/61 bindings unchanged.
 
 ## Concrete forgery the accepted text rejects
 

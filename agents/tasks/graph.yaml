@@ -541,7 +541,7 @@ tasks:
   - NC-0400..0403
   - c_lu measured
   - table-side sum over committed multiplicities
-  - plan admission derives N, b=min(m,30), selector and r from plan/profile; NC-0420/0421
+  - plan admission for RFC-0023/RFC-0024 consumers only derives N, b=min(m,30), selector, r and d from plan/profile; NC-0420..0424
 - id: E3-07a
   epic: E3
   title: Conditional fraction-tree and selected-product native reductions
@@ -1655,7 +1655,7 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: blocked(RFC-0004 A8; RFC-0003 A3)
+  status: blocked(RFC-0004 A8; RFC-0003 A3; RFC-0008 Q31 virtual-column amendment)
   acceptance:
   - controls for table id and product
   - full GPT-2 activation/source path and Llama exact int32 product with complete gated scales through 8454661; actual NC-0117/0122 and original configured lookup consumers
@@ -1673,7 +1673,7 @@ tasks:
   - RFC-0009 A2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: blocked(RFC-0004 A6; RFC-0009 A2)
+  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0008 Q31 virtual-column amendment)
   acceptance:
   - NC-0500..0506
   - n² never resident (memory test)
@@ -1690,7 +1690,7 @@ tasks:
   - RFC-0009 A2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: blocked(RFC-0004 A6; RFC-0009 A2)
+  status: blocked(RFC-0004 A6; RFC-0009 A2; RFC-0008 Q31 virtual-column amendment)
   acceptance:
   - NC-0505
   - certificate for n up to 2^20

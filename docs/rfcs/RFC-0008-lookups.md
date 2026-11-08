@@ -92,20 +92,31 @@ terms are realised by A3/A5 as below; §§4–5 are unchanged.
    statement and proof bytes, the eight stele/v0.1/lookup/ labels and their
    order, A3 trees and SelectedProduct, A9 consumers, errors, resources and
    abort rules. The unit-multiplicity equation of §1 with error (N+|T|)/|K|
-   is withdrawn: p copies of an invalid tuple cancel in it. No partitioned,
-   other weighted, field-switched or truncated variant is admitted.
+   is withdrawn: p copies of an invalid tuple cancel in it. Also withdrawn:
+   §1's "virtual or committed" tuples and F-valued multiplicities m in
+   F^{|T|} (A5's are K-valued, item 4), and §2's stacking of all instances
+   that use one table into one sumcheck (each A5 instance has its own trees).
+   No partitioned, other weighted, field-switched or truncated variant is
+   admitted.
 2. **Static count bound (bound certificate).** The verifier derives the A5
    Statement from the public plan and profile, never from the proof:
    - N=2^m with 2^m the least power of two at least the plan's lookup
      positions for this instance, counted over every stacked layer, head and
      repeated value; a c-column tuple is one position; m<=59;
    - b=min(m,30), so each group holds at most 2^b<=2^30<p positions;
-   - r=1 for standard and r=2 for treaty.
+   - r=1 and d=4 (QM31) for standard; r=2 and d=8 (OM31) for treaty
+     (RFC-0002 §8 with item 8: treaty needs both under Fiat–Shamir);
+   - sigma as in item 3, from the plan's real positions, never supplied.
+   Every other Statement field (lookup id, multiplicity ids and layouts
+   (ell, blowup), source order and certificates, Table) comes from the
+   consuming operation's Accepted RFC, today RFC-0023 §2.3 and RFC-0024
+   §§1.1, 2.3. A consumer without such an RFC is not admitted.
    For m<=30 this is the ordinary unit-weight lookup over N<p positions (h=0,
    no Unit draw). For m>30 every group still has fewer than p positions and
    h=m-30 Unit draws weight the groups. Observed honest multiplicities never
-   enter the bound. Plan admission rejects any other b with GroupBound and any
-   other r with Statement, before the first transcript absorb. A5's wider
+   enter the bound. Plan admission rejects any other b with GroupBound, and
+   any other r, d, N or sigma with Statement, before the first transcript
+   absorb. A5's wider
    conditional range b<=min(m,30) stays available to its own primitive tests;
    no plan lookup may use it.
 3. **Selectors and padding.** sigma is the verifier's Boolean indicator of
@@ -143,11 +154,19 @@ terms are realised by A3/A5 as below; §§4–5 are unchanged.
 8. **§6 errors.** The interactive identity term is e_LU^r with
    e_LU=min(1,(h+N+c*t-1)/|K|), under A5's schedule only. Tree, leaf, PCS,
    binding and Fiat–Shamir terms are charged as A5 §5 lists, never squared.
-   e_LU^r is not a Fiat–Shamir bound: a prover can grind the Statement or
-   free multiplicity bytes (e.g. physical tails) between rounds, so the
-   unit round alone costs about r*h/|K| non-interactively. Q12 must derive
-   the non-interactive term and must not adopt e_LU^r; the treaty margin
-   comes from OM31 (RFC-0012 §5, D10), not from r=2. Each repetition opens its own multiplicity source (A5); §6's
+   e_LU^r is not a Fiat–Shamir bound. Hand derivation, for Q12 to
+   formalise: all r Unit vectors come from one transcript state and all r
+   (Beta, Alpha) pairs from another. Grinding the Statement re-rolls the
+   unit round, whose error is about r*h/|K|; grinding free multiplicity
+   bytes (e.g. physical tails) re-rolls the pair round, whose error is about
+   e_LU^r, because one state cannot be split across repetitions. Under
+   RFC-0012 §4's charge Q times the largest round error, with treaty Q=2^100
+   and target 2^-128: r=1 on OM31 gives about 2^-108 at m=40 and 2^-114 at
+   m=34, and fails; r=2 on OM31 gives about 2^-144 (unit round) and passes;
+   d=4 gives a unit round near 2^-20 and fails. So treaty requires both
+   r=2 and OM31. No standard-profile Fiat–Shamir bound is claimed: under
+   the same charge with Q=2^80, QM31 at r=1 fails at real shapes (pair round
+   near 2^-10); E12-02 and Q12 own that. Each repetition opens its own multiplicity source (A5); §6's
    single batched opening is withdrawn. OM31 changes |K|, not the
    characteristic, so it never replaces the count bound. Profile admission
    (totals, Q12) stays with RFC-0012.
@@ -185,8 +204,11 @@ of it stay A5 primitive tests with b<m, which plans may not use.
 Controls: NC-0400..0403 and NC-0415..0419 keep their A5 consumers (NC-0415 is
 the count-bound control, NC-0416 the zero-root control, NC-0402 the padding
 selector). Reserve as todo, without coverage credit: NC-0420, plan admission
-with m=3 and b=2 instead of 3 rejects GroupBound; NC-0421, a treaty admission with r=1
-rejects Statement. Both reject before the transcript; E3-07 implements them.
+with m=3 and b=2 instead of 3 rejects GroupBound; NC-0421, a treaty admission
+with r=1 rejects Statement; NC-0422, a treaty admission with d=4 rejects
+Statement; NC-0423, m one above the plan's least power of two rejects
+Statement; NC-0424, one padded position marked selected rejects Statement.
+All reject before the transcript; E3-07 implements them.
 
 Soundness: no new challenge, label or loss; the LU record is RFC-0012 A11's
 joint record, now required by RFC-0012 A8. The capped/wide/limb A2 evidence
@@ -195,7 +217,10 @@ include committing every tuple column and the O(N) selector; for m<=30 no
 Unit draw or weighting occurs. c_lu, measured by E3-07, includes the A9
 source openings. No constant or weight pass changes. Affected tasks: E3-07
 becomes ready with all original criteria; E3-08, E8-05, E12-02/E12-03 and
-lookup consumers must use this mode within the limits above.
+lookup consumers must use this mode within the limits above. E7-05 (silu_q),
+E7-06 and E7-07 (attention exp lookups) look up virtual tensors (RFC-0001
+§3, RFC-0009 §1 step 4 and A4, RFC-0007 silu_q), so they are also blocked
+on the Q31 virtual-column amendment.
 
 ### A3 — Conditional fraction-tree and selected-product reductions
 

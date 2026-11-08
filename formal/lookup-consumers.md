@@ -1,5 +1,7 @@
 # Complete lookup schedule and committed consumers (Q31)
 
+Adopted by RFC-0008 A2/A5 (Accepted): the consumer schedule, proven interactive under its hypotheses; its revealing Merkle adapter is research only, not a PCS.
+
 Draft RFC-0008 A2 / RFC-0012 A8; [study and kill criteria](../research/logup-characteristic/LOOKUP.md).
 This composes [grouped units](weighted-logup.md) and the
 [fraction reduction](fraction-reduction.md). It closes the research computation
