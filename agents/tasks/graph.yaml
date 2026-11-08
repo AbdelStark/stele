@@ -536,7 +536,9 @@ tasks:
   - RFC-0012 A8
   skill: gkr-reduction-author
   crate: stele-lookup
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E3-07-logup-gkr
   acceptance:
   - NC-0400..0403
   - c_lu measured
