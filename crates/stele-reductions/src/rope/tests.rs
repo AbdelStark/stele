@@ -1,7 +1,7 @@
 //! RoPE module tests: executor-equivalent honest values, near misses, static shapes.
 
 use super::*;
-use stele_ir::relation::check;
+use stele_ir::relation::{check, check_except};
 
 /// Encode a Rotation descriptor (RFC-0025 encoding §4) for a fixture configuration.
 fn rotation(
@@ -219,7 +219,7 @@ impl Case {
     fn with(&self, changes: &[(ColumnId, usize, i64)]) -> Values {
         let mut values = self.values.clone();
         for &(id, index, v) in changes {
-            let mut column = self.column(id).to_vec();
+            let mut column = values.get(&self.relation, id).expect("column").to_vec();
             column[index] = v;
             values.set(&self.relation, id, column).expect("set");
         }
@@ -461,7 +461,7 @@ fn matches_reference_llama_fixture() {
     }
 }
 
-/// At a tie, flipping `β` with `L` kept and `tie = 0` is rejected (by `half`).
+/// At a tie, flipping `β` with `L` kept and `tie = 0` is rejected (by `rounding`).
 #[test]
 fn rejects_flipped_half_at_tie() {
     for negative in [false, true] {
@@ -476,7 +476,7 @@ fn rejects_flipped_half_at_tie() {
         ]);
         assert!(matches!(
             check(&case.relation, &values),
-            Err(Violation::Identity { relation, .. }) if relation.ends_with("/half")
+            Err(Violation::Identity { relation, .. }) if relation.ends_with("/rounding")
         ));
     }
 }
@@ -503,64 +503,222 @@ fn rejects_half_outside_one_bit() {
     ));
 }
 
-type Mutation = (&'static str, fn(&mut Relation));
+/// Entry `index` re-solved from numerator `n` (`out`, `L`, `β`, `ν`, `tc`, `tie`).
+fn solved(case: &Case, index: usize, n: i64) -> Vec<(ColumnId, usize, i64)> {
+    let c = case.rope.columns().expect("declared");
+    let ids = [c.output, c.low, c.half, c.negative, c.twos, c.tie];
+    ids.into_iter()
+        .zip(solve(n))
+        .map(|(id, v)| (id, index, v))
+        .collect()
+}
 
-/// Mutation table (RFC-0026 §5.2): deleting each identity or the matmul, or widening
-/// the `half` range, lets at least one near miss of this file through.
+/// The honest numerator of entry `index`.
+fn numerator(case: &Case, index: usize) -> i64 {
+    let c = case.rope.columns().expect("declared");
+    (case.column(c.output)[index] - case.column(c.half)[index]) * DIVISOR
+        + case.column(c.low)[index]
+}
+
+/// RFC-0026 §5.2 deletion survey with `check_except`: for every constraint of the module,
+/// an in-range attacker that `check` rejects and `check_except(.., [name])` accepts.
+/// The `partner` and `negative` ranges are implied by other constraints (review notes).
 #[test]
 fn rejects_relation_without_each_constraint() {
     let mut rng = Rng(79);
     let case = case(Some(&fixtures(8, 1)[0]), &rng.input(64, false), 4, 2, 8).expect("honest");
     let c = case.rope.columns().expect("declared");
-    let mut attacks: Vec<(&Case, Values)> = Vec::new();
-    for index in 0..64 {
-        let out = case.column(c.output)[index];
-        for wrong in [out + 1, out - 1] {
-            let misses = near_misses(&case, index, wrong);
-            attacks.extend(misses.into_iter().map(|v| (&case, v)));
-        }
-    }
-    let partner = case.column(c.partner)[9] + 1;
-    attacks.push((&case, case.with(&[(c.partner, 9, partner)])));
-    let ties = [tie_case(false), tie_case(true)];
-    for (tie, index) in &ties {
-        let out = tie.column(c.output)[*index];
-        let misses = near_misses(tie, *index, out - out.signum());
-        attacks.extend(misses.into_iter().map(|v| (tie, v)));
-    }
-    for (honest, values) in &attacks {
-        assert!(check(&honest.relation, values).is_err());
-    }
-    let mutations: [Mutation; 5] = [
-        ("numerator", |r| {
-            r.identities.retain(|i| !i.name.ends_with("/numerator"))
-        }),
-        ("half", |r| {
-            r.identities.retain(|i| !i.name.ends_with("/half"))
-        }),
-        ("sign", |r| {
-            r.identities.retain(|i| !i.name.ends_with("/sign"))
-        }),
-        ("partner", |r| {
-            r.matmuls.retain(|m| !m.name.ends_with("/partner"))
-        }),
-        // The declared width widens with the range, or discipline would reject it.
-        ("half range u2", |r| {
-            for range in r.ranges.iter_mut().filter(|g| g.name.ends_with("/half")) {
-                range.width = Width::unsigned(2);
-                r.columns[range.column.0 as usize].width = Width::unsigned(2);
+    let (positive, tie) = tie_case(false);
+    let (negative, ntie) = tie_case(true);
+    let entry = 17;
+    let get = |case: &Case, id: ColumnId, i: usize| case.column(id)[i];
+    let mut attacks: Vec<(&str, &Case, Values)> = Vec::new();
+
+    // numerator: out + 1 with every other column consistent with it.
+    let out = get(&case, c.output, entry) + 1;
+    let (half, nu) = (get(&case, c.half, entry), get(&case, c.negative, entry));
+    attacks.push((
+        "numerator",
+        &case,
+        case.with(&[
+            (c.output, entry, out),
+            (c.twos, entry, out - half + (nu << 16)),
+        ]),
+    ));
+    // rounding: β flipped at a tie, L kept, tie = 0.
+    let (o, h) = (get(&positive, c.output, tie), get(&positive, c.half, tie));
+    attacks.push((
+        "rounding",
+        &positive,
+        positive.with(&[
+            (c.half, tie, 1 - h),
+            (c.output, tie, o - h + (1 - h)),
+            (c.tie, tie, 0),
+        ]),
+    ));
+    // sign: at a negative tie, ν = 0 rounds up (toward zero); tc keeps its honest value.
+    let o = get(&negative, c.output, ntie);
+    attacks.push((
+        "sign",
+        &negative,
+        negative.with(&[
+            (c.negative, ntie, 0),
+            (c.half, ntie, 1),
+            (c.output, ntie, o + 1),
+            (c.tie, ntie, 0),
+        ]),
+    ));
+    // gather: P + 1 with its entry re-solved from the new numerator.
+    let row_bits = case.rope.bits().0;
+    let target = (0..64)
+        .find(|&i| {
+            (i & ((1 << row_bits) - 1)) < 8 && {
+                let (t, _, j) = case.rope.entry(i).expect("real");
+                case.rope.coefficients[t * 8 + j]
+                    .1
+                    .is_some_and(|(_, k)| k != 0)
             }
-        }),
-    ];
-    for (name, mutate) in mutations {
-        let admitted = attacks.iter().any(|(honest, values)| {
-            let mut relation = honest.relation.clone();
-            mutate(&mut relation);
-            assert!(relation != honest.relation, "{name} changed nothing");
-            check(&relation, values).is_ok()
-        });
-        assert!(admitted, "no near miss needs {name}");
+        })
+        .expect("a rotated entry");
+    let (t, _, j) = case.rope.entry(target).expect("real");
+    let k = case.rope.coefficients[t * 8 + j].1.expect("partner").1;
+    let mut patch = solved(&case, target, numerator(&case, target) + k);
+    patch.push((c.partner, target, get(&case, c.partner, target) + 1));
+    attacks.push(("gather", &case, case.with(&patch)));
+
+    // Ranges. out: an input that overflows int16, every identity and the matmul kept.
+    let r = fixtures(8, 0).remove(0);
+    let mut input = vec![0i16; 2 * 8];
+    input[8] = i16::MAX;
+    input[9] = -i16::MAX;
+    let base = case_with_values(Some(&r), 2, 1, 8);
+    let overflow = overflowing(&base, &input);
+    attacks.push(("out", &base, overflow));
+    // low: L + 2^14 with H − 1 and β = 1, on an entry with L < 2^13.
+    let small = (0..64)
+        .find(|&i| {
+            case.rope.entry(i).is_some()
+                && get(&case, c.low, i) < HALF
+                && get(&case, c.output, i) > 2
+        })
+        .expect("an entry with a small remainder");
+    let (lo, hi) = (
+        get(&case, c.low, small) + DIVISOR,
+        get(&case, c.output, small) - get(&case, c.half, small) - 1,
+    );
+    attacks.push((
+        "low",
+        &case,
+        case.with(&[
+            (c.low, small, lo),
+            (c.half, small, 1),
+            (c.negative, small, 0),
+            (c.output, small, hi + 1),
+            (c.twos, small, hi),
+            (c.tie, small, lo - HALF),
+        ]),
+    ));
+    // half: β = 2 gives out + 1.
+    let up = (0..64)
+        .find(|&i| get(&case, c.half, i) == 1)
+        .expect("an entry rounding up");
+    let (l, n) = (get(&case, c.low, up), get(&case, c.negative, up));
+    attacks.push((
+        "half",
+        &case,
+        case.with(&[
+            (c.half, up, 2),
+            (c.output, up, get(&case, c.output, up) + 1),
+            (c.tie, up, 3 * (l - HALF - n) + 1),
+        ]),
+    ));
+    // twos: at a negative tie, ν = 0 and tc = H < 0.
+    let h = get(&negative, c.output, ntie) - get(&negative, c.half, ntie);
+    attacks.push((
+        "twos",
+        &negative,
+        negative.with(&[
+            (c.negative, ntie, 0),
+            (c.half, ntie, 1),
+            (c.output, ntie, h + 1),
+            (c.tie, ntie, 0),
+            (c.twos, ntie, h),
+        ]),
+    ));
+    // tie: β flipped at a tie with the formula's tie = −1.
+    let (o, h) = (get(&positive, c.output, tie), get(&positive, c.half, tie));
+    attacks.push((
+        "tie",
+        &positive,
+        positive.with(&[
+            (c.half, tie, 1 - h),
+            (c.output, tie, o - h + (1 - h)),
+            (c.tie, tie, -1),
+        ]),
+    ));
+
+    let prefix = "L0/rope/q/";
+    let names: Vec<String> = case
+        .relation
+        .identities
+        .iter()
+        .map(|i| i.name.clone())
+        .chain(case.relation.matmuls.iter().map(|m| m.name.clone()))
+        .chain(case.relation.ranges.iter().map(|r| r.name.clone()))
+        .filter(|n| n.starts_with(prefix))
+        .collect();
+    // Implied ranges: P is a permutation of int16 x (gather); tc and the int16 out force
+    // ν ∈ {0, 1} (sign). Both stay for range discipline.
+    let implied = ["partner", "negative"];
+    for name in &names {
+        let short = &name[prefix.len()..];
+        assert!(
+            implied.contains(&short) || attacks.iter().any(|a| a.0 == short),
+            "no attacker for {name}"
+        );
     }
+    assert_eq!(names.len(), attacks.len() + implied.len());
+    for (short, honest, values) in &attacks {
+        let name = alloc::format!("{prefix}{short}");
+        assert!(
+            check(&honest.relation, values).is_err(),
+            "{name}: check rejects"
+        );
+        assert_eq!(
+            check_except(&honest.relation, values, &[name.as_str()]),
+            Ok(()),
+            "{name}: accepted without it"
+        );
+    }
+}
+
+/// A case with all-zero input (honest), to be overwritten by [`overflowing`].
+fn case_with_values(r: Option<&Rotation>, tokens: usize, heads: u16, width: u16) -> Case {
+    let len = tokens * usize::from(heads) * usize::from(width);
+    case(r, &vec![0; len], tokens, heads, width).expect("zero input")
+}
+
+/// `base` with input `input` and every module column recomputed without the int16
+/// output check: `x`, `P`, and each entry re-solved from its numerator.
+fn overflowing(base: &Case, input: &[i16]) -> Values {
+    let c = base.rope.columns().expect("declared");
+    let n = base.rope.log_len();
+    let mut patches = Vec::new();
+    let mut x = vec![0; 1 << n];
+    for (index, v) in x.iter_mut().enumerate() {
+        let Some((t, h, i)) = base.rope.entry(index) else {
+            continue;
+        };
+        *v = i64::from(input[base.rope.offset(t, h, i)]);
+        let (own, partner) = base.rope.coefficients[t * base.rope.head_width + i];
+        let p = partner.map_or(0, |(j, _)| i64::from(input[base.rope.offset(t, h, j)]));
+        let k = partner.map_or(0, |(_, k)| k);
+        patches.extend(solved(base, index, *v * own + p * k));
+        patches.push((c.partner, index, p));
+    }
+    let mut values = base.with(&patches);
+    values.set(&base.relation, ColumnId(0), x).expect("input");
+    values
 }
 
 /// The captured projection output and rotation of Q (`query`) or K.

@@ -32,10 +32,10 @@ coefficient `v ∈ [−2^14, 2^14]` is split as `v = hi + one`, `hi = min(v, 2^1
 
 Relations:
 
-1. **M** `P(t,h,i) = Σ_{i'} x(t,h,i')·perm(i,i')`. Bound `2^15 + 2^d·2^15 < p`.
+1. **M** `gather`: `P(t,h,i) = Σ_{i'} x(t,h,i')·perm(i,i')`. Bound `2^15 + 2^d·2^15 < p`.
 2. **I numerator** `x·own_hi + x·own_one + P·partner_hi + P·partner_one
    − 2^14·out + 2^14·β − L = 0`. Bound `3·2^29 + 2^16 + 2^15 − 1 < p`.
-3. **I half** `w = (2β−1)(L − 2^13 − ν) − (1−β)`. Bound below `2^17`.
+3. **I rounding** `w = (2β−1)(L − 2^13 − ν) − (1−β)`. Bound below `2^17`.
 4. **I sign** `tc = out − β + 2^16·ν`. Bound below `2^18`.
 5. **R** on every witness column with its declared width.
 
@@ -85,8 +85,8 @@ The rounding identity was also checked exhaustively in Python for
 
 ## RFC-0026 A1 (row 5 kinds)
 
-Row 5 listed kinds `I, R, P`; RFC-0026 A1 amends it to `I, R, M, P`. This module also uses one **M** per tensor (the
-`partner` gather against a public permutation) and commits `partner`. A pointwise
+Row 5 listed kinds `I, R, P`; RFC-0026 A1 amends it to `I, R, M, P`. This module also uses one **M** per tensor (`gather`, against a public permutation)
+and commits `partner`. A pointwise
 identity cannot read the paired channel. A `Ref` cannot fix or negate a bit, so
 reading `i XOR 2^k` needs an extra domain bit, and even then only works for
 `r/2` a power of two in split layout. The permutation matmul covers every layout,
@@ -110,21 +110,41 @@ rotary width and head width that the `Model` admits. It adds one sumcheck over
   `rejects_half_outside_one_bit`: `β = 2` gives `out + 1`.
 - `rejects_tampered_partner` (matmul), `rejects_wrong_pairing_and_position` (the
   other layout's, or the next position's, honest columns).
-- `rejects_relation_without_each_constraint` deletes each identity and the matmul,
-  and widens the `half` range. It asserts that some near miss is then admitted.
+- `matches_executor_capture`: the real `Executor::capture` (E16-03) on every family-1
+  model-execution fixture. Q and K of every layer, fed the captured projection
+  outputs, pass `check` and reproduce the captured rotation outputs.
 
-Mutation table: each constraint was deleted from `rope.rs` in turn and the tests run.
+### Deletion survey
 
-| Mutation | Tests that go red |
+`rejects_relation_without_each_constraint` gives one hand-made, in-range attacker
+per constraint name. It asserts that `check` rejects the attacker and that
+`check_except(.., [name])` accepts it. Every identity, matmul and range of the module
+is covered, or is listed as implied.
+
+| Constraint | Attacker |
 |---|---|
-| delete `partner` matmul | `rejects_tampered_partner`, `rejects_relation_without_each_constraint` |
-| delete `numerator` identity | `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`, `rejects_nonzero_padding`, `rejects_wrong_pairing_and_position`, `rejects_relation_without_each_constraint` |
-| delete `half` identity | `rejects_flipped_half_at_tie`, `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`, `rejects_nonzero_padding`, `rejects_relation_without_each_constraint` |
-| delete `sign` identity | `rejects_other_rounding_direction_at_ties` (negative tie), `rejects_relation_without_each_constraint` |
-| `half` declared and ranged as unsigned 2 | `rejects_half_outside_one_bit`, `rejects_output_off_by_one`, `rejects_relation_without_each_constraint` |
+| `gather` (M) | `P + 1` on a rotated entry, the entry re-solved from the new numerator |
+| `numerator` | `out + 1`, `tc` consistent |
+| `rounding` | at a tie, `β` flipped, `L` kept, `tie = 0` |
+| `sign` | at a negative tie, `ν = 0`, `β = 1` (rounds toward zero), `tc` honest |
+| `out` (range) | an input pair that overflows int16; every identity and the matmul hold |
+| `low` (range) | `L + 2^14`, `H − 1`, `β = 1`: the same `N` |
+| `half` (range) | `β = 2`, `out + 1` |
+| `twos` (range) | at a negative tie, `ν = 0`, `β = 1`, `tc = H < 0` |
+| `tie` (range) | at a tie, `β` flipped with the formula's `tie = −1` |
+| `partner` (range) | implied: `gather` makes `P` a permutation of int16 `x` or 0 |
+| `negative` (range) | implied: `tc ∈ [0, 2^16)` and `H ∈ [−2^15 − 1, 2^15)` force `ν ∈ {0, 1}` |
+
+The two implied ranges stay, because they are the columns' range discipline (§3.6).
+
+Source mutation run: deleting each relation from `rope.rs` in turn turns these red.
+
+| Deleted | Tests that go red |
+|---|---|
+| `gather` matmul | `rejects_tampered_partner`, `rejects_relation_without_each_constraint` |
+| `numerator` | `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`, `rejects_nonzero_padding`, `rejects_wrong_pairing_and_position`, `rejects_relation_without_each_constraint` |
+| `rounding` | `rejects_flipped_half_at_tie`, `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`, `rejects_nonzero_padding`, `rejects_relation_without_each_constraint` |
+| `sign` | `rejects_other_rounding_direction_at_ties` (negative tie), `rejects_relation_without_each_constraint` |
 
 - `accepts_static_validity_realistic_shapes`: Llama-3.1-8B Q/K (`dh = 128`, T = 64)
   and a `dh = 64` model validate.
-
-Executor parity uses a restatement of `Executor::rotate`. Swap it for the E16-03
-capture once that lands.

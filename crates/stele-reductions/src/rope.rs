@@ -158,6 +158,22 @@ fn split(v: i64) -> (i64, i64) {
     (hi, v - hi)
 }
 
+/// `[out, L, β, ν, tc, tie]` of numerator `N`: `out = R(N/2^14)` (no range check).
+pub(crate) fn solve(numerator: i64) -> [i64; 6] {
+    let high = numerator.div_euclid(DIVISOR);
+    let low = numerator.rem_euclid(DIVISOR);
+    let negative = i64::from(high < 0);
+    let half = i64::from(low >= HALF + negative);
+    [
+        high + half,
+        low,
+        half,
+        negative,
+        high + (negative << 16),
+        (2 * half - 1) * (low - HALF - negative) - (1 - half),
+    ]
+}
+
 fn term(coeff: i64, factors: &[&Ref]) -> Term {
     Term {
         coeff,
@@ -238,7 +254,7 @@ impl Module for Rope {
         let input_vars: Vec<u8> = (n..n + d).chain(d..n).collect();
         let perm_vars: Vec<u8> = (n..n + d).chain(0..d).collect();
         relation.matmuls.push(Matmul {
-            name: format!("{name}/partner"),
+            name: format!("{name}/gather"),
             free: n,
             summed: d,
             out: at(columns.partner),
@@ -277,7 +293,7 @@ impl Module for Rope {
         });
         // tie = (2β−1)(L − 2^13 − ν) − (1−β), expanded.
         relation.identities.push(Identity {
-            name: format!("{name}/half"),
+            name: format!("{name}/rounding"),
             vars: n,
             terms: vec![
                 term(1, &[&tie]),
@@ -329,27 +345,15 @@ impl Module for Rope {
                 None => (0, None, 0),
             };
             let (partner_value, partner_coeff) = partner.unwrap_or((0, 0));
-            let numerator = x * own + partner_value * partner_coeff;
-            let high = numerator.div_euclid(DIVISOR);
-            let low = numerator.rem_euclid(DIVISOR);
-            let negative = i64::from(high < 0);
-            let half = i64::from(low >= HALF + negative);
-            let out = high + half;
+            let [out, low, half, negative, twos, tie] =
+                solve(x * own + partner_value * partner_coeff);
             if !Width::signed(16).contains(out) {
                 return Err(Violation::Range {
                     relation: format!("{}/out", self.name),
                     index,
                 });
             }
-            let row = [
-                out,
-                partner_value,
-                low,
-                half,
-                negative,
-                high + (negative << 16),
-                (2 * half - 1) * (low - HALF - negative) - (1 - half),
-            ];
+            let row = [out, partner_value, low, half, negative, twos, tie];
             for (column, v) in cols.iter_mut().zip(row) {
                 column[index] = v;
             }
