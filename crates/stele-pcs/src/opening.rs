@@ -5,7 +5,6 @@ use crate::{
     VerifiedCertificate, VerifierWork,
 };
 use alloc::vec::Vec;
-use core::cell::Cell;
 use stele_code::{CodeField, Encoder};
 use stele_field::{Serialize, M31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeField, HashUsage, Transcript};
@@ -290,6 +289,8 @@ impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K>
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage, ProverWork), Failure> {
+        // RFC-0007 A1 item 4: every message() borrow during this call is counted.
+        let before = self.prepared.message_reads();
         if self.prepared.source().bytes() != certificate.record().source().bytes()
             || self.weights.len() != functional.a.len()
             || self
@@ -306,15 +307,11 @@ impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K>
                 },
             });
         }
-        // RFC-0007 A1 item 4: the opening reads zero message elements; only reread counts.
-        let reads = Cell::new(0);
-        self.prepared.opening_row(
-            t,
-            certificate,
-            functional,
-            self.values.iter().copied(),
-            &reads,
-        )
+        let (proof, usage, mut work) =
+            self.prepared
+                .opening_row(t, certificate, functional, self.values.iter().copied())?;
+        work.source_elements = self.prepared.message_reads() - before;
+        Ok((proof, usage, work))
     }
 }
 
@@ -342,8 +339,8 @@ fn rejects_retained_row_allocation_sizes() {
     );
 }
 
-// RFC-0007 A1 item 4 (E4-04): the opening counter is live. The ordinary A9 path
-// reads R*C message elements; the retained-row opening reads zero, same bytes.
+// RFC-0007 A1 item 4 (E4-04): reads are counted at the only message accessor.
+// The retained opening reports every borrow during the call: zero unless it rereads.
 #[cfg(test)]
 #[test]
 fn matches_reference_opening_source_reads() {
@@ -357,13 +354,11 @@ fn matches_reference_opening_source_reads() {
         .0;
     let a = [QM31::from_i64(3), QM31::from_i64(5)];
     let b = [1, 2, 3, 4].map(QM31::from_i64);
+    let start = prepared.message_reads();
     let row = RetainedRow::new(&prepared, &a).expect("valid fixture");
     assert_eq!(row.work().source_elements, message.len());
-    let value = row
-        .values()
-        .iter()
-        .zip(&b)
-        .fold(QM31::from_i64(0), |s, (u, b)| s + *u * *b);
+    assert_eq!(prepared.message_reads() - start, message.len());
+    let value = (row.values().iter().zip(&b)).fold(QM31::from_i64(0), |s, (u, b)| s + *u * *b);
     let f = Functional {
         id: 7,
         a: &a,
@@ -371,21 +366,24 @@ fn matches_reference_opening_source_reads() {
         value,
     };
     let transcript = || Transcript::<QM31>::new(b"opening source reads").expect("valid fixture");
-    let reads = Cell::new(0);
-    let (ordinary, _, reread) = prepared
-        .opening_row(
-            &mut transcript(),
-            &certificate,
-            f,
-            prepared.reread(&a, 4, &reads),
-            &reads,
-        )
-        .expect("valid fixture");
-    assert_eq!(reread.source_elements, message.len());
     let (retained, _, work) = row
         .opening_measured(&mut transcript(), &certificate, f)
         .expect("valid fixture");
-    assert_eq!((retained, work.source_elements), (ordinary, 0));
+    assert_eq!(work.source_elements, 0);
+    let before = prepared.message_reads();
+    let (ordinary, _) = prepared
+        .opening(&mut transcript(), &certificate, f)
+        .expect("valid fixture");
+    assert_eq!(ordinary, retained);
+    assert_eq!(prepared.message_reads() - before, message.len());
+    // A direct traversal is charged at the accessor; the retained call stays scoped.
+    let before = prepared.message_reads();
+    assert_eq!(prepared.message().iter().count(), message.len());
+    assert_eq!(prepared.message_reads() - before, message.len());
+    let (_, _, work) = row
+        .opening_measured(&mut transcript(), &certificate, f)
+        .expect("valid fixture");
+    assert_eq!(work.source_elements, 0);
 }
 
 impl<K: ChallengeField> PreparedSource<'_, K> {
@@ -439,29 +437,18 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage), Failure> {
-        let reads = Cell::new(0);
-        let row = self.reread(functional.a, functional.b.len(), &reads);
-        self.opening_row(t, certificate, functional, row, &reads)
-            .map(|(proof, usage, _)| (proof, usage))
-    }
-
-    // Lazy iteration preserves A9's preflight and original read/absorption order.
-    // Every original-message element read is counted into ProverWork::source_elements.
-    fn reread<'s>(
-        &'s self,
-        a: &'s [K],
-        columns: usize,
-        reads: &'s Cell<usize>,
-    ) -> impl ExactSizeIterator<Item = K> + 's {
-        (0..columns).map(move |column| {
+        // Lazy iteration preserves A9's preflight and original read/absorption order.
+        let message = self.message();
+        let row = (0..functional.b.len()).map(|column| {
             let mut value = K::from_i64(0);
-            for (row, a) in a.iter().enumerate() {
-                let limb = self.message()[row * self.source().columns() + column];
+            for (row, a) in functional.a.iter().enumerate() {
+                let limb = message[row * self.source().columns() + column];
                 value = value + *a * K::from_i64(i64::from(limb.as_u32()));
-                reads.set(reads.get() + 1);
             }
             value
-        })
+        });
+        self.opening_row(t, certificate, functional, row)
+            .map(|(proof, usage, _)| (proof, usage))
     }
 
     // A9 framing, scalar check and prepared-column responses are shared with A10.
@@ -471,7 +458,6 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
         row: I,
-        reads: &Cell<usize>,
     ) -> Result<(Vec<u8>, Usage, ProverWork), Failure> {
         let mut work = ProverWork::default();
         let result = (|| {
@@ -503,7 +489,6 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
                 work.row_values = add(work.row_values, 1)?;
                 proof.extend_from_slice(value.to_le_bytes().as_ref());
             }
-            work.source_elements = reads.get();
             t.absorb(AbsorbLabel::OpeningRow, &proof[1..])
                 .map_err(Error::Transcript)?;
             if scalar.to_le_bytes().as_ref() != functional.value.to_le_bytes().as_ref() {

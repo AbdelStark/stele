@@ -204,10 +204,12 @@ resource evidence, integer matmul and inference remain parent-task obligations.
 
 The fused weight-opening controls NC-0305/0605 (RFC-0007 A1 item 7, E4-04) run
 through the unchanged closed A2 verifier in QM31 and OM31, on a stacked phase with
-nonzero X and W. Each baseline wire equals the actual `matmul::prove` output, whose
-W opening serializes the A10 retained row. NC-0305 runs the actual A1 producer on a
-row B' that differs from eq(r_j)ᵀM_W in two coordinates with nonzero factors and an
-unchanged claimed sum; every round and the X consumer pass, and W reaches
+nonzero X and W. Each honest baseline wire equals the actual `matmul::prove` output,
+whose W opening serializes the A10 retained row. NC-0305's tampered wire comes from
+the control composer, not the production producer: the composer runs the actual
+A4/A1 kernel on a row B' that differs from eq(r_j)ᵀM_W in two coordinates with
+nonzero factors and an unchanged claimed sum, and is anchored by byte equality with
+`matmul::prove` on the honest rows. Every round and the X consumer pass, and W reaches
 ColumnMismatch on the first authentic-path attempt. NC-0605(a) replaces the W
 opening-row bytes with eq(r_j')ᵀM_W, r_j' ≠ r_j; NC-0605(b) replaces the raw offset
 row with the centered B inside the complete RFC-0024 integer-linear wire (both

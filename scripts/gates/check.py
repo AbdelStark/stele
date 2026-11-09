@@ -809,12 +809,13 @@ def field_source_codec(root):
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'source'), ('fn', 'message'),
-        ('fn', 'response'), ('fn', 'work')]
+        ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
             == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
             'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
+            'usecore::sync::atomic::{AtomicUsize,Ordering};',
             'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
@@ -865,11 +866,11 @@ def field_source_codec(root):
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
             "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",
-            "impl<K:ChallengeField>PreparedSource<'_,K>{", "implExactSizeIterator<Item=K>+'s{"]
+            "impl<K:ChallengeField>PreparedSource<'_,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', opening)] == [
             'usecrate::work::{add,bytes};',
             'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,ProverWork,Source,Usage,VerifiedCertificate,VerifierWork,};',
-            'usealloc::vec::Vec;', 'usecore::cell::Cell;', 'usestele_code::{CodeField,Encoder};',
+            'usealloc::vec::Vec;', 'usestele_code::{CodeField,Encoder};',
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,AbsorbLabel,ChallengeField,HashUsage,Transcript};',
             'usestele_field::{Field,QM31};']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', opening)] == [

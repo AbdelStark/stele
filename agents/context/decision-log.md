@@ -1223,11 +1223,14 @@ verifiers already check the signed final or RFC-0024's v_raw. The opening's
 Decision:
 - **No new API.** The fused opening is `RetainedRow::opening` called by the A2 producer
   (field and RFC-0024 centered modes). No new public item, wire byte, label or check.
-- **Live counter.** `PreparedSource`'s ordinary opening rereads the message through one
-  private iterator that counts each element read into `source_elements`. The retained
-  opening gets its own counter, which stays zero. A mutation that makes the retained
-  opening reread the message fails the stele-pcs, matmul producer and centered tests
-  in both fields.
+- **Live counter.** `PreparedSource::message()` is the only accessor of the original
+  message (the field is private to its module). Each call is charged as one full R·C
+  read in `message_reads()`, an upper bound on elements read. `RetainedRow::new`
+  borrows it once (R·C); `RetainedRow::opening_measured` reports the reads made during
+  the call as `source_elements`, which is 0. The ordinary A9 opening and certificate
+  producer borrow it once per call. A mutation that traverses `message()` inside the
+  retained opening fails the stele-pcs, matmul producer and centered tests in both
+  fields.
 - **Controls.** NC-0305 and NC-0605(a)/(b) run through the closed A2 and RFC-0024
   verifiers in QM31 and OM31. The forgeries are made in the bytes or by the control
   composer, never through the RowContext-guarded API.

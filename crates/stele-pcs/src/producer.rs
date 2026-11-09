@@ -68,12 +68,13 @@ fn produce_inner<K: ChallengeField>(
     work.weights_bytes = bytes(&weights)?;
     work.peak_owned_bytes = add(work.proof_bytes, work.weights_bytes)?;
     proof.push(1);
+    let message = prepared.message();
     for column in 0..source.columns() {
         let mut value = K::from_i64(0);
         for (row, weight) in weights.iter().enumerate() {
             // PreparedSource checked R*C and immutably borrows exactly that message.
             work.source_elements = add(work.source_elements, 1)?;
-            let limb = prepared.message()[row * source.columns() + column];
+            let limb = message[row * source.columns() + column];
             value = value + *weight * K::from_i64(i64::from(limb.as_u32()));
         }
         work.row_values = add(work.row_values, 1)?;

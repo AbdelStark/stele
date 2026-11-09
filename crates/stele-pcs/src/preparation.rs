@@ -2,6 +2,7 @@
 use crate::{Error, Source};
 use alloc::vec::Vec;
 use core::mem::size_of;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use stele_code::Encoder;
 use stele_field::{Serialize, M31};
 use stele_hash::{merkle, ChallengeField, HashUsage};
@@ -49,6 +50,7 @@ pub struct PreparedSource<'a, K: ChallengeField> {
     columns: Vec<u8>,
     tree: merkle::Tree,
     work: PreparationWork,
+    borrows: AtomicUsize,
 }
 
 fn checked_bytes<T>(count: usize) -> Result<usize, Error> {
@@ -149,6 +151,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             columns,
             tree,
             work,
+            borrows: AtomicUsize::new(0),
         })
     }
 
@@ -158,8 +161,17 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     }
 
     /// Original row-major input, retained by immutable borrow for row functionals.
+    /// This is the only accessor; each call is charged as one full R*C read.
     pub fn message(&self) -> &'a [M31] {
+        self.borrows.fetch_add(1, Ordering::Relaxed);
         self.message
+    }
+
+    /// RFC-0007 A1 item 4 counter: message() borrows times R*C, an upper bound on reads.
+    pub fn message_reads(&self) -> usize {
+        self.borrows
+            .load(Ordering::Relaxed)
+            .saturating_mul(self.message.len())
     }
 
     /// Produce a complete individual response without hashing or changing storage.
