@@ -1212,3 +1212,29 @@ unchanged. The measured treaty cost stays the E3-07 ledgers: c_lu about 3,500
 No standard-profile Fiat–Shamir bound is claimed (A2 item 8; Q12).
 
 Status: Accepted.
+
+## ADR-073: The A2 producer is the fused weight-opening API; the opening read counter is live (RFC-0007 A1, task E4-04)
+
+Context: ADR-070 accepted the full-row fused weight opening. `matmul::prove` (E7-01b3)
+already opens W from the A10 retained row, raw under the offset embedding, and the
+verifiers already check the signed final or RFC-0024's v_raw. The opening's
+`ProverWork::source_elements` was never written, so its zero proved nothing.
+
+Decision:
+- **No new API.** The fused opening is `RetainedRow::opening` called by the A2 producer
+  (field and RFC-0024 centered modes). No new public item, wire byte, label or check.
+- **Live counter.** `PreparedSource`'s ordinary opening rereads the message through one
+  private iterator that counts each element read into `source_elements`. The retained
+  opening gets its own counter, which stays zero. A mutation that makes the retained
+  opening reread the message fails the stele-pcs, matmul producer and centered tests
+  in both fields.
+- **Controls.** NC-0305 and NC-0605(a)/(b) run through the closed A2 and RFC-0024
+  verifiers in QM31 and OM31. The forgeries are made in the bytes or by the control
+  composer, never through the RowContext-guarded API.
+
+Consequences: E4-04 is done. The coverage is for the two-source A2 phase. The configured
+one-source phase (RFC-0007 A8) is not specified yet. E7-02 still owns re-running
+NC-0305 there and its one-pass counter criterion. No constant, challenge or ledger
+line moves.
+
+Status: Accepted.

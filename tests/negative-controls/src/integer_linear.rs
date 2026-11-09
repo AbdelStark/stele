@@ -73,6 +73,7 @@ where
                 ([1; 4], Some(1)),
             ],
             802 => vec![([0; 4], None), ([1; 4], None)],
+            605 => vec![([0; 4], None), ([1; 4], None)],
             _ => vec![([0; 4], None)],
         };
         for (bits, side) in cases {
@@ -242,6 +243,76 @@ where
                 .expect("valid fixed fixture")
                 .0;
             let refs: Vec<_> = mu.iter().collect();
+            if id == 605 {
+                // RFC-0007 A1 item 7 NC-0605(b): honest centered sumcheck; the W opening
+                // serializes the centered B instead of the raw retained row B + 128.
+                let packet = composer::compose(
+                    &d,
+                    &expected,
+                    &schema,
+                    [&px, &pw],
+                    &pa,
+                    &ca,
+                    &certificate,
+                    b"RFC0024/complete-control/v1",
+                    composer::Attack::Honest,
+                    None,
+                    None,
+                );
+                assert_eq!(packet.wire, honest);
+                let encode = |row: &[K]| -> Vec<u8> {
+                    row.iter()
+                        .flat_map(|v| v.to_le_bytes().as_ref().to_vec())
+                        .collect()
+                };
+                let raw = encode(&packet.rows[1]);
+                let at: Vec<_> = (0..=honest.len() - raw.len())
+                    .filter(|i| honest[*i..*i + raw.len()] == raw[..])
+                    .collect();
+                assert_eq!(at.len(), 1, "one raw W row in the wire");
+                let shift = K::from_i64(128)
+                    * stele_poly::eq_table(&packet.join_point[usize::from(h + a)..])
+                        .expect("fixture point")
+                        .iter()
+                        .fold(K::from_i64(0), |sum, e| sum + *e);
+                let centered: Vec<K> = packet.rows[1].iter().map(|u| *u - shift).collect();
+                let rejected =
+                    linear::Error::Matmul(matmul::Error::Pcs(stele_pcs::Error::ValueMismatch));
+                check_proof_control(
+                    || Ok::<_, String>(honest.clone()),
+                    &Cell {
+                        at: at[0],
+                        value: encode(&centered),
+                    },
+                    |wire| {
+                        let mut t = transcript();
+                        let result = d.verify(&mut t, &refs, wire);
+                        result.map(|_| ()).map_err(|failure| {
+                            // No W column draw and no W path: only frame and row absorbs.
+                            let mut prefix = packet.original_prefix[1][0];
+                            prefix.hash_evaluations += 2;
+                            prefix.state_updates += 2;
+                            assert_eq!(failure.usage.transcript, prefix);
+                            let source = pw.source();
+                            assert_eq!(
+                                failure.usage.non_transcript.hash_evaluations,
+                                d.max_local_hashes()
+                                    - u64::from(source.queries(ProofKind::Opening))
+                                        * (1 + source.path_height() as u64)
+                            );
+                            failure.cause
+                        })
+                    },
+                    rejected,
+                )
+                .map_err(|e| {
+                    format!(
+                        "NC-0605(b) K{}, r{repetitions}, {bits:?}: {e:?}",
+                        <K as CodeField>::DEGREE
+                    )
+                })?;
+                continue;
+            }
             if id == 606 {
                 let side = side.expect("one original source context");
                 let changed = [M31::from_i64(129)];
