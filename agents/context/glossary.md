@@ -15,6 +15,7 @@
 - **range discipline** — every committed element's range is enforced exactly once by a dominating lookup.
 - **attained** — a prover-chosen extremum (max, scale) proven to be realised by a committed index.
 - **profile** — `standard` or `treaty` parameter set (RFC-0002 §8).
+- **development profile** — the RFC-0026 parameter set: M31/QM31, no ZK, conjectural PCS, FS unproven. It is not an RFC-0002 §8 profile and claims no security level.
 - **ledger** — the soundness error accounting (RFC-0012 §4) or the bench result file (RFC-0018).
 - **control** — a negative test that must be rejected for a stated reason.
 - **digest gate** — CI check that proofs on fixed inputs are byte-identical to recorded digests.
@@ -39,3 +40,8 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 - **group scale** — s_k = ceil(max|X|/127) over group k of a grouped row; indexed by the high log2(n/g) row-index bits (RFC-0004 A15).
 - **fold** — the magnitude F = s_k*|q_i| of a grouped-row code times its group scale, joined to its digits in byte columns (RFC-0004 A15 schema 23).
 - **digit row** — row t of the signed radix-256 digits of the folded values; each is one field matmul input, extending the matmul row index (RFC-0004 A15, RFC-0007 A6).
+- **column** — a committed, weight or public vector of 2^n integers with a declared signed/unsigned width of at most 30 bits (RFC-0026 §2.1).
+- **commitment group** — witness columns of one length committed as one PCS source; a column claim is a source claim at a Boolean column index (RFC-0026 §2.3).
+- **identity** — an RFC-0026 §3.2 relation: a sum of at most-3-factor products of columns with integer coefficients that is zero at every domain point over Z.
+- **limb rule** — a value that would break the RFC-0026 §3.6 bound rule is held as range-checked radix limbs with explicit carries (RFC-0026 §3.5).
+- **plain checker** — `stele_ir::relation::check`, the integer evaluation of every relation with no proof; the specification oracle for RFC-0026 modules.

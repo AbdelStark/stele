@@ -1854,3 +1854,26 @@ identities carry zero setup loss. No profile carries the term yet: it enters a
 ledger only with an admitted expander PCS parameter set (RFC-0010 A3) and Q12's
 FS/H composition. The setup sampler draws no Fiat–Shamir challenge.
 
+## Accepted RFC-0026 development-profile inventory
+
+RFC-0026 adds no new ledger line kind. Each development proof charges the following:
+
+- **RLC**, once per identity domain size: `n/|K|` for the `relation/identity` draws
+  (RFC-0012 A16).
+- **SC**, once per zerocheck: its RFC-0006 A3 records.
+- **SZ** for each matmul's `relation/point` (`a/|K|`), plus **SC** for its
+  sumcheck of `s+k` rounds (`k` shared free bits), charged `(s+k)·δ/|K|` with
+  `δ = 2` when `k = 0` and `δ = 3` when `k > 0`. Each `Compose` is one identity
+  in its domain's RLC and zerocheck.
+- **LU**, plus tree/leaf terms, for each lookup and range, with `r = 1`.
+- **RLC** and **SC** for each source's RFC-0006 A2 mode-1 claim batch.
+- **PCS** for each certificate and opening.
+- **H** under the A15 caps.
+
+Status of the lines:
+
+- The PCS lines are printed as conjectural, and FS as unproven (Q12).
+- A development proof reports `ε_interactive` and certifies no profile. Q33 lists
+  what promotion to `standard` requires.
+- Column-of-group claims (RFC-0026 §2.3) are Boolean-point restrictions, so they
+  add no SZ term.

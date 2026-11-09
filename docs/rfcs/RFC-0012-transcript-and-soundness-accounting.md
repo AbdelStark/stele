@@ -740,3 +740,29 @@ profiles, and the certificate tensor round fails treaty even in OM31 at real
 sizes. §5's "PCS: q ≈ 300 (rate 1/4)" is therefore an interactive figure only
 (Policy 1 at rate 1/4: q_c=314, q_o<=130). No profile admits a PCS parameter set
 until E4-05/E12-04 and Q12 supply one. Affected tasks: E8-05, E4-03, E4-05, E12-04.
+
+### A16 — Development-profile relation labels (companion of RFC-0026)
+
+Status: Accepted. Review: [RFC-0026 acceptance](../../agents/reviews/rfc0026-acceptance.md).
+Motivation: the RFC-0026 relation engine needs four labels for its statement, its
+commitment-group roots, its identity combination and its matmul points. Every
+other message it sends reuses an existing label.
+
+Addition to the A1 registry, in this order after the existing entries:
+
+| Kind | Label | Line |
+|---|---|---|
+| absorb | `stele/v0.1/relation/statement` | - |
+| absorb | `stele/v0.1/relation/roots` | - |
+| challenge | `stele/v0.1/relation/identity` | RLC |
+| challenge | `stele/v0.1/relation/point` | SZ |
+
+- `relation/identity`: one draw per identity, combining the identities of one
+  domain size before their RFC-0006 A3 zerocheck. It is charged `n/|K|` once per
+  domain size, where n is the number of identities of that size.
+- `relation/point`: one draw per free variable of a matmul out-claim point. It is
+  charged `a/|K|` per matmul, as the A14 SZ line.
+- Both labels are used only under the RFC-0026 development profile. That profile
+  certifies no security level, and Q12 still blocks profile certification.
+- Cost-model terms: none. Affected tasks: E16-02 (registers the labels in
+  `stele-hash` and `docs/security/transcript-labels.json`), E16-10.
