@@ -137,6 +137,24 @@ is covered, or is listed as implied.
 
 The two implied ranges stay, because they are the columns' range discipline (§3.6).
 
+### Widen-by-one-bit survey
+
+`rejects_output_through_each_widened_range` widens each range by one bit: every other
+constraint stays as declared, and the column only has to fit the wider width. It then
+searches assignments with a different output (`out ± 1, ± 2`, `β, ν ∈ 0..=3`, and
+`L`, `tc`, `tie` solving their identities). The cases are random rows, both tie signs,
+and entries with numerator exactly `±2^13`.
+
+| Range | One bit wider | Result |
+|---|---|---|
+| `out` s16 | s17 | caught: an int16-overflowing input pair is admitted at s17 and rejected at s16 |
+| `low` u14 | u15 | caught: `N = 2^13` with `H = −1`, `ν = 1`, `L = 2^14 + 2^13` gives `out = 0` instead of 1 |
+| `half` u1 | u2 | caught: `β = 2` gives `out + 1` |
+| `twos` u16 | u17 | caught: at a positive tie, `ν = 1` (`tc = H + 2^16`) gives `β = 0`, `out − 1` |
+| `negative` u1 | u2 | safe: `tc = H + 2^16·ν ∈ [0, 2^16)` with `H ∈ [−2^15 − 1, 2^15)` forces `ν ∈ {0, 1}`; the search finds nothing |
+| `tie` u14 | u15 | safe: given `L ∈ [0, 2^14)` the formula gives `tie <= 2^13`, so only the lower bound `tie >= 0` matters; the search finds nothing |
+| `partner` s16 | — | not a remainder, limb or rounding term: `gather` fixes `P` to an int16 input entry or 0 |
+
 Source mutation run: deleting each relation from `rope.rs` in turn turns these red.
 
 | Deleted | Tests that go red |

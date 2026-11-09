@@ -786,3 +786,122 @@ fn matches_executor_capture() {
     }
     assert!(checked > 0, "no family-1 fixture");
 }
+
+/// `check` with the named range one bit wider: every other constraint as declared,
+/// and that range's column within the wider width. (A range cannot itself exceed 16
+/// bits, so the wider range is evaluated here rather than declared.)
+fn check_widened(relation: &Relation, values: &Values, name: &str) -> bool {
+    let range = relation
+        .ranges
+        .iter()
+        .find(|r| r.name == name)
+        .expect("range");
+    let wider = Width {
+        bits: range.width.bits + 1,
+        ..range.width
+    };
+    let column = values.get(relation, range.column).expect("column");
+    check_except(relation, values, &[name]).is_ok() && column.iter().all(|&v| wider.contains(v))
+}
+
+/// Every assignment of entry `index` with a different output: `out' = out ± 1, ± 2`,
+/// `β', ν' ∈ 0..=3`, and `L`, `tc`, `tie` solving their identities exactly.
+fn other_outputs(case: &Case, index: usize) -> Vec<Values> {
+    let c = case.rope.columns().expect("declared");
+    let n = numerator(case, index);
+    let out = case.column(c.output)[index];
+    let mut all = Vec::new();
+    for wrong in [out - 2, out - 1, out + 1, out + 2] {
+        for half in 0..4 {
+            for negative in 0..4 {
+                let low = n - (wrong - half) * DIVISOR;
+                all.push(case.with(&[
+                    (c.output, index, wrong),
+                    (c.half, index, half),
+                    (c.negative, index, negative),
+                    (c.low, index, low),
+                    (c.twos, index, wrong - half + (negative << 16)),
+                    (
+                        c.tie,
+                        index,
+                        (2 * half - 1) * (low - HALF - negative) - (1 - half),
+                    ),
+                ]));
+            }
+        }
+    }
+    all
+}
+
+/// A case whose entry (t = 1, channel 0) has numerator exactly `target`.
+fn numerator_case(target: i64) -> (Case, usize) {
+    let r = fixtures(8, 0).remove(0);
+    let (c, s) = r.coefficient(1, 0).expect("coefficient");
+    let (c, s) = (i64::from(c), i64::from(s));
+    // left = x·c − y·s; search y, then x = (target + y·s)/c exactly.
+    let (x, y) = (-16384..16384i64)
+        .find_map(|y| {
+            let v = target + y * s;
+            (v % c == 0 && (v / c).abs() < 16384).then_some((v / c, y))
+        })
+        .expect("an int16 input pair");
+    let mut input = vec![0i16; 2 * 8];
+    input[8] = x as i16;
+    input[9] = y as i16;
+    let case = case(Some(&r), &input, 2, 1, 8).expect("honest");
+    let index = 1 << case.rope.bits().0;
+    assert_eq!(numerator(&case, index), target);
+    (case, index)
+}
+
+/// RFC-0026 §5.2 widen-by-one-bit survey: each remainder, limb or rounding range of the
+/// module, one bit wider, admits an assignment with a different output that the true
+/// width rejects; or the range is shown safe by exhaustive search over the same space
+/// (and the written reason in the review notes).
+#[test]
+fn rejects_output_through_each_widened_range() {
+    let mut rng = Rng(80);
+    let random = case(Some(&fixtures(8, 1)[0]), &rng.input(64, false), 4, 2, 8).expect("honest");
+    let all = (0..1 << random.rope.log_len()).collect();
+    let mut cases: Vec<(Case, Vec<usize>)> = vec![(random, all)];
+    for (case, index) in [
+        tie_case(false),
+        tie_case(true),
+        numerator_case(HALF),
+        numerator_case(-HALF),
+    ] {
+        cases.push((case, vec![index]));
+    }
+    let prefix = "L0/rope/q/";
+    for (short, caught) in [
+        ("low", true),
+        ("half", true),
+        ("twos", true),
+        ("negative", false),
+        ("tie", false),
+    ] {
+        let name = alloc::format!("{prefix}{short}");
+        let mut found = false;
+        for (case, indices) in &cases {
+            for &index in indices {
+                for values in other_outputs(case, index) {
+                    if check_widened(&case.relation, &values, &name) {
+                        assert!(check(&case.relation, &values).is_err());
+                        found = true;
+                    }
+                }
+            }
+        }
+        assert_eq!(found, caught, "{name} widened by one bit");
+    }
+    // out: an int16 overflow is admitted at signed 17 and rejected at signed 16.
+    let r = fixtures(8, 0).remove(0);
+    let mut input = vec![0i16; 2 * 8];
+    input[8] = i16::MAX;
+    input[9] = -i16::MAX;
+    let base = case_with_values(Some(&r), 2, 1, 8);
+    let overflow = overflowing(&base, &input);
+    let name = alloc::format!("{prefix}out");
+    assert!(check_widened(&base.relation, &overflow, &name));
+    assert!(check(&base.relation, &overflow).is_err());
+}
