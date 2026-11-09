@@ -1486,7 +1486,38 @@ Consequences:
 
 Status: Accepted (same-author pass; soundness-auditor review requested on the PR).
 
-Status: Accepted (same-author pass; soundness-auditor review requested on the PR).
+## ADR-080: Embedding and rmsnorm_q relations through radix-256 chains and one-hot constant selection (RFC-0026 §5 rows 1-2, task E16-04)
+
+Context: RFC-0026 §5 row 2 needs `N·fa = M·D + R` with values up to about 2^153, and
+`Y = R(X·H·J/2^e)` with a row-dependent `e`. Columns are at most 30 bits, ranges at
+most 16 bits, and terms have at most three factors. Review notes:
+[e16-04-embedding-norm](../reviews/e16-04-embedding-norm.md).
+
+Decision:
+- Every wide equation is a radix-256 carry chain, one identity per byte position.
+  Carry widths are derived from the static term magnitudes.
+- The exponent `a` is a one-hot `h[t, a+23]` over the valid `a`. Each `a`-dependent
+  constant (`ed·fa`, `en·unit·fa`, `P·fd`, `g = 2^(Es−e')`, `pos·g`, `pos`) is read
+  per row, byte by byte, as `Σ_K h·c[K]`.
+- The output uses one fixed scale `Es`, a multiple of 8:
+  `Z = Y·2^Es − g·XHJ + pos·(σ−1)·g + pos·2^(Es−1) ∈ [0, 2^Es)`. This covers both
+  branches: half-away rounding when `e >= 1` and the exact multiply when `e <= 0`.
+  The shift is capped at `bits(X)+30`, where every result is already 0.
+- rmsnorm_q supports `d <= 8192` only, so its matmul row sums are disciplined by their
+  operand widths. The embedding narrows `R0` below int16 when the shift allows, so
+  that the rounding identity passes the bound rule.
+
+Consequences:
+- A version-1 model with `8192 < d <= 16384` is `UnsupportedModel` for E16.
+- The modules add no challenge, label or ledger line.
+- They reuse the E16-05 `Builder` and `Chain` (ADR-076). The module-local helpers
+  (least-width public columns, byte limbs with a Compose, the sign table) are in
+  `development/limbs.rs`.
+- Every constraint has a unique name, as `check_except` requires: Compose
+  `{column}/compose`, row sum `S{p}{q}/sum`, constant selection `{name}/select`.
+  A golden mutation survey pins the class of each constraint (RFC-0026 §5.2).
+
+Status: Accepted (same-author pass; independent review FIX-THEN-MERGE addressed).
 
 ## ADR-081: The SiLU gated product as two exact limbs, and its gated row conversion (RFC-0026 §5 row 10, §5.1, task E16-08)
 
