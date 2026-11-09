@@ -2715,7 +2715,9 @@ tasks:
   - RFC-0026 §1, §4.1, §8, §9
   skill: gkr-reduction-author
   crate: stele-prover
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-10-orchestrator
   acceptance:
   - stele_prover::development proves and verifies one prefill window of a synthetic 8-layer family-1 model (T=64) with greedy exact-match of the checked range
   - stele-dev-e2e-v1 container in stele-proof; stele verify-dev accepts the honest proof and prints the RFC-0026 §6 ledger
