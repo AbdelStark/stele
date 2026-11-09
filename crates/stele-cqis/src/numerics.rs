@@ -51,6 +51,35 @@ fn shifted(value: i128, shift: usize) -> Option<i128> {
     value.checked_mul(1i128 << shift)
 }
 
+/// Common non-negative shift and the two aligned left shifts of `scaled_sum`.
+fn exponents(le: i32, re: i32) -> Result<(usize, usize, usize), Error> {
+    let shift = 0i64.max(-i64::from(le)).max(-i64::from(re));
+    let sh = usize::try_from(shift).map_err(|_| Error::Arithmetic)?;
+    let ls = usize::try_from(i64::from(le) + shift).map_err(|_| Error::Arithmetic)?;
+    let rs = usize::try_from(i64::from(re) + shift).map_err(|_| Error::Arithmetic)?;
+    Ok((sh, ls, rs))
+}
+
+/// The exact i128 (numerator, divisor) pair `scaled_sum` rounds on its fast
+/// path, or None when it must use bounded wide scratch instead.
+pub(crate) fn scaled_parts(
+    left: i128,
+    le: i32,
+    right: i128,
+    re: i32,
+    divisor: u64,
+) -> Result<Option<(i128, u128)>, Error> {
+    let (sh, ls, rs) = exponents(le, re)?;
+    let fast = shifted(left, ls)
+        .zip(shifted(right, rs))
+        .and_then(|(l, r)| l.checked_add(r));
+    Ok(fast.zip(
+        (sh < 128)
+            .then(|| 1u128 << sh)
+            .and_then(|p| u128::from(divisor).checked_mul(p)),
+    ))
+}
+
 /// R((left*2^le + right*2^re)/divisor), with exactly one signed rounding.
 /// Closed callers bound coefficients below 2^69 and aligned words below 2^2200
 /// (the full [-1099,1024] physical exponent domain), inside Natural's fixed cap.
@@ -66,21 +95,10 @@ pub(crate) fn scaled_sum(
     if divisor == 0 {
         return Err(Error::Arithmetic);
     }
-    let shift = 0i64.max(-i64::from(le)).max(-i64::from(re));
-    let sh = usize::try_from(shift).map_err(|_| Error::Arithmetic)?;
-    let ls = usize::try_from(i64::from(le) + shift).map_err(|_| Error::Arithmetic)?;
-    let rs = usize::try_from(i64::from(re) + shift).map_err(|_| Error::Arithmetic)?;
-    let fast = shifted(left, ls)
-        .zip(shifted(right, rs))
-        .and_then(|(l, r)| l.checked_add(r));
-    if let Some(n) = fast {
-        if let Some(d) = (sh < 128)
-            .then(|| 1u128 << sh)
-            .and_then(|p| u128::from(divisor).checked_mul(p))
-        {
-            return round_ratio(n, d);
-        }
+    if let Some((n, d)) = scaled_parts(left, le, right, re, divisor)? {
+        return round_ratio(n, d);
     }
+    let (sh, ls, rs) = exponents(le, re)?;
     let l = natural(left.unsigned_abs())?.shl(ls)?;
     let r = natural(right.unsigned_abs())?.shl(rs)?;
     let (magnitude, negative) = if (left < 0) == (right < 0) {

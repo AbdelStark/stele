@@ -131,7 +131,7 @@ impl Executor<'_> {
                     Error::from(e)
                 }
             })?;
-            let weight = self.exponential(sampling.exponential(), argument)? as u32;
+            let weight = self.exponential(sampling.exponential(), argument, None)? as u32;
             arguments.push(i32::try_from(argument).map_err(|_| Error::ExpDomain)?);
             weights.push(weight);
             sum += u64::from(weight);

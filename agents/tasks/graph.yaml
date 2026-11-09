@@ -2590,7 +2590,9 @@ tasks:
   - RFC-0025 §2
   skill: cqis-numerics
   crate: stele-cqis
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E16-03-witness-capture
   acceptance:
   - stele_cqis::execution exposes a Capture of every intermediate of Executor::full per layer and op (RFC-0026 §5 rows 1-13)
   - capture logits and cuts equal Full::logits/Full::cuts on every model-execution fixture; no float arithmetic

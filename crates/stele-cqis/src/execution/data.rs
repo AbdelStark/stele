@@ -1,5 +1,8 @@
 //! RFC-0025 §2.1–2.5/execution: immutable checked physical bytes and exact projections.
-use super::{reserved, signed, wide, Error};
+use super::{
+    capture::{put, Embedding, Norm, Projection},
+    reserved, signed, wide, Error,
+};
 use crate::{
     functions::Representation,
     model::{Artifact, ArtifactLayout, Model, Preparation, Role, Scales},
@@ -18,7 +21,7 @@ struct Record<'a> {
 }
 pub(super) struct Data<'a> {
     pub(super) model: &'a Model,
-    scales: &'a Scales,
+    pub(super) scales: &'a Scales,
     records: Vec<Record<'a>>,
     pub(super) scope: [[u8; 32]; 3],
 }
@@ -58,7 +61,7 @@ impl<'a> Data<'a> {
             scope: [model.identity(), scales.identity(), artifact.identity()],
         })
     }
-    fn ordinal(&self, role: Role, layer: Option<u16>) -> Result<usize, Error> {
+    pub(super) fn ordinal(&self, role: Role, layer: Option<u16>) -> Result<usize, Error> {
         let role = if role == Role::Head && self.model.shape().family() == 0 {
             Role::Token
         } else {
@@ -69,7 +72,7 @@ impl<'a> Data<'a> {
             .position(|r| r.role == role && r.layer == layer)
             .ok_or(Error::Arithmetic)
     }
-    fn code(&self, ordinal: usize, index: usize) -> i16 {
+    pub(super) fn code(&self, ordinal: usize, index: usize) -> i16 {
         let r = &self.records[ordinal];
         match r.bits {
             16 => i16::from_le_bytes([r.raw[2 * index], r.raw[2 * index + 1]]),
@@ -98,8 +101,9 @@ impl<'a> Data<'a> {
         layer: Option<u16>,
         row: &QuantisedRow,
         fraction: u8,
+        capture: Option<&mut Projection>,
     ) -> Result<Vec<i16>, Error> {
-        self.affine(role, layer, row, fraction, wide)
+        self.affine(role, layer, row, fraction, wide, capture)
     }
     /// O/down projections feed a residual; their outputs take the stream width.
     pub(super) fn linear_residual(
@@ -108,9 +112,10 @@ impl<'a> Data<'a> {
         layer: Option<u16>,
         row: &QuantisedRow,
         fraction: u8,
+        capture: Option<&mut Projection>,
     ) -> Result<Vec<i32>, Error> {
         let bits = self.width();
-        self.affine(role, layer, row, fraction, |v| signed(v, bits))
+        self.affine(role, layer, row, fraction, |v| signed(v, bits), capture)
     }
     fn affine<T>(
         &self,
@@ -119,6 +124,7 @@ impl<'a> Data<'a> {
         row: &QuantisedRow,
         fraction: u8,
         output: impl Fn(i64) -> Result<T, Error>,
+        mut capture: Option<&mut Projection>,
     ) -> Result<Vec<T>, Error> {
         let ordinal = self.ordinal(role, layer)?;
         let r = &self.records[ordinal];
@@ -152,7 +158,7 @@ impl<'a> Data<'a> {
         let g = r.columns / scales.len();
         for j in 0..r.rows {
             // RFC-0004 A15: A' = sum_i s_k(i)*q_i*w_i (|A'| < 2^51), then one rounding.
-            let product = if scales.len() > 1 {
+            let (dot, product) = if scales.len() > 1 {
                 let dot: i64 = row
                     .codes()
                     .iter()
@@ -163,20 +169,24 @@ impl<'a> Data<'a> {
                             * i64::from(self.code(ordinal, j * r.columns + k))
                     })
                     .sum();
-                i128::from(dot) * i128::from(scale.mantissas()[j])
+                let dot = i128::from(dot);
+                (dot, dot * i128::from(scale.mantissas()[j]))
             } else {
-                self.dot(ordinal, row, j)
-                    * i128::from(scale.mantissas()[j])
-                    * i128::from(row.scale())
+                let dot = self.dot(ordinal, row, j);
+                (
+                    dot,
+                    dot * i128::from(scale.mantissas()[j]) * i128::from(row.scale()),
+                )
             };
             let b = bias.map_or(0, |i| self.code(i, j));
-            out.push(output(numerics::scaled_sum(
-                product,
-                shift,
-                i128::from(b),
-                i32::from(fraction) - i32::from(fb),
-                1,
-            )?)?);
+            let bias_shift = i32::from(fraction) - i32::from(fb);
+            let value = numerics::scaled_sum(product, shift, i128::from(b), bias_shift, 1)?;
+            if let Some(w) = capture.as_deref_mut() {
+                w.push(dot, product, b)?;
+                w.output
+                    .scaled((product, shift), (i128::from(b), bias_shift), 1, value)?;
+            }
+            out.push(output(value)?);
         }
         Ok(out)
     }
@@ -200,7 +210,12 @@ impl<'a> Data<'a> {
             i128::from(dot)
         }
     }
-    pub(super) fn embed(&self, token: u32, position: usize) -> Result<Vec<i16>, Error> {
+    pub(super) fn embed(
+        &self,
+        token: u32,
+        position: usize,
+        mut capture: Option<&mut Embedding>,
+    ) -> Result<Vec<i16>, Error> {
         let width = usize::from(self.model.shape().width());
         let t = self.ordinal(Role::Token, None)?;
         let ts = self.scales.matrix(t as u16).ok_or(Error::Arithmetic)?;
@@ -223,13 +238,15 @@ impl<'a> Data<'a> {
                 ),
                 _ => (0, 0),
             };
-            out.push(wide(numerics::scaled_sum(
-                left,
-                i32::from(ts.exponent()) + f,
-                right,
-                pe + f,
-                1,
-            )?)?);
+            let (le, re) = (i32::from(ts.exponent()) + f, pe + f);
+            let value = numerics::scaled_sum(left, le, right, re, 1)?;
+            if let Some(w) = capture.as_deref_mut() {
+                w.token = token;
+                put(&mut w.token_term, left)?;
+                put(&mut w.position_term, right)?;
+                w.output.scaled((left, le), (right, re), 1, value)?;
+            }
+            out.push(wide(value)?);
         }
         Ok(out)
     }
@@ -239,6 +256,7 @@ impl<'a> Data<'a> {
         values: &[i32],
         role: Role,
         layer: Option<u16>,
+        capture: Option<&mut Norm>,
     ) -> Result<Vec<i16>, Error> {
         let gain = self.ordinal(role, layer)?;
         let mut gains = reserved(values.len())?;
@@ -247,6 +265,9 @@ impl<'a> Data<'a> {
         }
         if self.model.shape().family() == 1 {
             let norm = r.function().evaluate_rmsnorm_wide(values, &gains)?;
+            if let Some(w) = capture {
+                w.rms(values, &gains, &norm)?;
+            }
             return super::copy(norm.outputs());
         }
         // GPT-2 has no wide form: its residual stream is int16 throughout.
@@ -267,6 +288,11 @@ impl<'a> Data<'a> {
         for j in 0..values.len() {
             biases.push(self.code(bias, j));
         }
-        Ok(r.function().evaluate_layernorm(&narrow, &gains, &biases)?)
+        let (outputs, parts) = r.function().layernorm_row(&narrow, &gains, &biases)?;
+        if let Some(w) = capture {
+            let p = r.function().parameters();
+            w.layer(&narrow, (&gains, &biases), (&parts, &outputs), (p[4], p[5]))?;
+        }
+        Ok(outputs)
     }
 }
