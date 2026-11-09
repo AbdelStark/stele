@@ -1519,6 +1519,34 @@ Consequences:
 
 Status: Accepted (same-author pass; independent review FIX-THEN-MERGE addressed).
 
+## ADR-081: The SiLU gated product as two exact limbs, and its gated row conversion (RFC-0026 §5 row 10, §5.1, task E16-08)
+
+Context: `T = U·silu_q[G]` reaches `2^30`, beyond any column width, and `U·a` alone
+has static magnitude `2^30`, so no single identity can hold it under the §3.6 bound.
+RFC-0026 assigns row 10, including the gated row conversion to down-projection codes,
+to E16-08. Review notes: [e16-08-silu](../reviews/e16-08-silu.md).
+
+Decision:
+- The `(G, silu_q[G])` lookup runs against the complete generated component table,
+  shared across layers. `new` rejects a table with an output of `−2^15`, so
+  `|T| < 2^30` and every int16 input has an assignment.
+- The product is split by bytes: `U = Ul + 2^8·Uh` (Compose), `Ul·a = 2^8·c + d`,
+  `Uh·a + c = 2^7·Th + w`, each masked so that padding is 0. The output is
+  `T = 2^15·high + low`.
+- `GatedConversion` reads those limbs and keeps every value wider than 16 bits as two
+  radix-`2^15` limbs: `|T|`, the row maximum, the scale and the division remainders.
+  Each wide identity is a low and a high identity joined by a carry. The division
+  uses the executor's form `q = floor((2|T| + s)/(2s))` directly. Its output is
+  E16-05's `RowOutput` with `scale_bound = 8454661`.
+- Only the dynamic per-row policy is supported; static and grouped gated rows are
+  `Unsupported::Policy`.
+
+Consequences: no committed column is wider than 16 bits except the Compose-disciplined
+`scale` (u24). The down projection reads the conversion through the existing
+E16-05 interface.
+
+Status: Accepted (same-author pass; independent review on the E16-08 PR).
+
 ## ADR-082: One stacked source for every commitment group (RFC-0026 A4, task E16-13)
 
 Context: after RFC-0026 A3, per-group PCS overhead dominates development proofs.

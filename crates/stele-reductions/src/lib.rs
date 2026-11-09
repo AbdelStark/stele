@@ -15,6 +15,7 @@ pub mod matmul;
 pub mod relation;
 pub mod requant;
 pub mod rope;
+pub mod silu;
 pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};
 mod stacked_sources;
 pub use stacked_sources::{
