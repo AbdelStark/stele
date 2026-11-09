@@ -1862,7 +1862,9 @@ RFC-0026 adds no new ledger line kind. Each development proof charges the follow
   (RFC-0012 A16).
 - **SC**, once per zerocheck: its RFC-0006 A3 records.
 - **SZ** for each matmul's `relation/point` (`a/|K|`), plus **SC** for its
-  `s`-round sumcheck.
+  sumcheck of `s+k` rounds (`k` shared free bits), charged `(s+k)·δ/|K|` with
+  `δ = 2` when `k = 0` and `δ = 3` when `k > 0`. Each `Compose` is one identity
+  in its domain's RLC and zerocheck.
 - **LU**, plus tree/leaf terms, for each lookup and range, with `r = 1`.
 - **RLC** and **SC** for each source's RFC-0006 A2 mode-1 claim batch.
 - **PCS** for each certificate and opening.

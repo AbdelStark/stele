@@ -2,8 +2,8 @@
 
 Status: Accepted · Version: 0.1.0 · Depends: RFC-0003, RFC-0004, RFC-0005, RFC-0006, RFC-0008, RFC-0010, RFC-0012, RFC-0021, RFC-0025
 
-Review: [same-author passes](../../agents/reviews/rfc0026-acceptance.md); an independent pass is required before merge.
-Decision: ADR-074. Tasks: E16-01..E16-11.
+Review: [same-author passes and the independent pass](../../agents/reviews/rfc0026-acceptance.md).
+Decision: ADR-074. Companions: RFC-0006 A8, RFC-0008 A6, RFC-0012 A16. Tasks: E16-01..E16-11.
 
 ## 1. Statement
 
@@ -65,7 +65,9 @@ under RFC-0002 §8, and it claims no security level.
 E16 covers the following model class:
 
 - family 1, version-1 residual stream (int16; RFC-0004 A14 wide streams are excluded);
-- non-grouped row policies (RFC-0004 A15 is excluded);
+- dynamic row policies, non-grouped or RFC-0004 A15 grouped (group size `g` from
+  the `Model`; the §5 row-conversion pattern runs once per group of `g` features,
+  and the projection uses `A' = Σ s_k(i)·q_i·w_i` through limbs, `|A'| < 2^51`);
 - int4 or int8 weights;
 - no GQA, or GQA with the K/V rows committed once per key/value group and read
   through a `Ref` (§3.2);
@@ -116,6 +118,11 @@ A column has one of three kinds (`stele_ir::relation::Kind`):
   Weight columns are matched to the model-commitment roots in order of first
   declaration, and that order must equal the plan order above. A tied head reuses
   the embedding's `ColumnId`.
+- **Plan obligation.** `Relation::validate` does not see roots, so it cannot check
+  this order. The E16-10 verifier checks it before step 1 of §4: it compares the
+  sequence of `Kind::Weight` columns, by declaration order, with the plan's weight
+  list, and rejects any difference in count, order or padded shape with
+  `StatementMismatch`.
 
 ### 2.3 Commitment groups
 
@@ -154,6 +161,9 @@ this section are normative: `stele_ir::relation::check` implements them as state
   subsets of variables.
 - In MLE terms, the column's multilinear extension is evaluated at the domain point
   restricted to `vars`. A permuted or broadcast read costs nothing and adds no error term.
+- `MAX_VARS = 30` caps every domain. In particular, a single matmul has
+  `log(batch) + log(out) + log(d) <= 30`. A larger shape is split into row blocks
+  at module level, and the plan fixes the split; the engine never splits a relation.
 
 ### 3.2 Identity
 
@@ -171,6 +181,8 @@ this section are normative: `stele_ir::relation::check` implements them as state
 (every `x` when there is no selector), `(tuple_1(x), …, tuple_k(x))` is a row of `table`.
 
 - A selector must be a public 0/1 column.
+- The tuple has `c ∈ {1, 2}` columns, and a table has at most `2^16` real rows
+  (RFC-0008 A2 item 5). A wider tuple is split into several lookups by the module.
 - Tables are public, with declared widths for each table column. CQIS tables come
   from `stele_cqis::tables::Table::generate` (RFC-0021 §4) and are converted row for row.
 
@@ -199,9 +211,22 @@ with `y` on domain bits `a..a+s`.
   and equals `out~(ρ)`. With shared bits it is not multilinear, so the proof (§4,
   step 6) sums over the shared bits too, under the factor `eq(ρ_shared, x_shared)`.
 
-**Limb rule.** Every value that does not fit the bound rule (§3.6) must be represented
-as radix-`2^b` limb columns with explicit carry columns. Each limb relation must be
-bound-checked on its own, and the whole value must never appear in a single relation.
+### 3.5a Compose
+
+`Compose { column, limbs: [(limb, shift)] }`: for every index `i`,
+`column[i] = Σ 2^shift · limb[i]` over Z. Every limb has the column's `log_len`.
+
+- In the proof it is one identity in the zerocheck of its domain size, under the
+  bound rule: `mag(column) + Σ 2^shift · mag(limb) < p`.
+- It disciplines `column` (§3.6 item 3) when every limb is disciplined and the
+  composed range `[Σ 2^shift·limb.min, Σ 2^shift·limb.max]` lies within the
+  column's width. This is how a column wider than 16 bits, up to 30, is declared:
+  a quotient, a scale or a limb-composed value.
+
+**Limb rule.** A value that does not fit the bound rule (§3.6), or is wider than 30
+bits, is represented as radix-`2^b` limb columns with explicit carry columns. Each
+limb relation is bound-checked on its own, and a value wider than 30 bits never
+appears whole in any relation.
 
 - Limbs and carries follow the LIMBS/LIMB-PRODUCT/WIDE-RANGE research consumers
   (`research/cqis-bounds/LIMBS.md`, `LIMB-PRODUCT.md`, `WIDE-RANGE.md`) and RFC-0003 A5.
@@ -218,7 +243,9 @@ It rejects the following:
    - a public column whose length or values do not fit its declaration;
    - a non-injective, out-of-domain or wrong-arity `Ref`;
    - more than 3 factors in a term, or a zero coefficient;
-   - a lookup arity that differs from the table's, or a selector that is not public 0/1;
+   - a lookup arity that differs from the table's or is outside `{1, 2}`, a table
+     with more than `2^16` rows, or a selector that is not public 0/1;
+   - a `Compose` with no limbs, a limb of another length, or a shift above 30;
    - a range wider than 16 bits, or a range on a public column;
    - a witness column whose group is missing or has a different `log_len`.
 2. **The bound rule.**
@@ -234,10 +261,20 @@ It rejects the following:
    - In the proof, the integer value of a committed entry is the centered
      representative of its M31 element, in `(−p/2, p/2)`. Range discipline places
      that representative within the declared width.
-3. **Range discipline.** Every witness and weight column must have a range check, or
-   appear in a lookup with no selector, whose width lies within the column's declared
-   width. Without that, the bound rule could not rely on the declared widths. A lookup
-   with a selector does not count, because unselected rows are left unconstrained.
+3. **Range discipline.** Every witness and weight column must be **enforced**: its
+   declared width must hold for every entry. Without that, the bound rule could not
+   rely on the declared widths. Public columns are enforced by validation. A column
+   is enforced by any of the following, applied to a fixed point:
+   - a range check whose width lies within the column's width;
+   - a lookup with no selector whose table column width lies within it. A lookup
+     with a selector does not count, because unselected rows are left unconstrained;
+   - a `Compose` (§3.5a) of enforced limbs whose composed range lies within it;
+   - being a matmul `out` whose `lhs` and `rhs` are enforced, when the worst case
+     `Bp = 2^s·mag(lhs)·mag(rhs)` satisfies `Bp <= width.max` and
+     `−Bp >= width.min`. Soundness: the true sum `V` has `|V| <= Bp`, so `V` lies in
+     the width. The matmul proof gives `out ≡ V (mod p)`, and both centered values
+     lie in `(−p/2, p/2)`, so `out = V` over Z. Identities cannot express this case,
+     because they are pointwise and cannot sum over lanes.
 
 ### 3.7 Plain checker
 
@@ -246,8 +283,9 @@ this order:
 
 1. ranges, which report a column index;
 2. lookups, which report a domain point;
-3. identities;
-4. matmuls.
+3. compositions, which report an index;
+4. identities;
+5. matmuls.
 
 It returns the first `Violation`. The checker is the specification oracle:
 
@@ -292,7 +330,8 @@ only).
    challenge. Their roots are absorbed and their certificates verified.
 4. **Identities.**
    - For each domain size `m`, in increasing order, draw one `relation/identity`
-     coefficient per identity of that size. This is the RLC line.
+     coefficient per identity of that size (each `Compose` counts as one identity
+     over its column's domain). This is the RLC line.
    - Run one RFC-0006 A3 zerocheck on the combined polynomial, using the existing
      zerocheck labels.
    - The final values become claims on columns: one per (column, `vars` map) at the
@@ -302,9 +341,14 @@ only).
    - Each emits claims on its tuple columns (through their `vars`) and on its
      multiplicity sources.
    - For public tables and selectors, the verifier evaluates the claims itself.
-   - Lookup originals are column claims (§2.3). This widens the RFC-0008 A5 consumer
-     from "whole source" to "column of a group source". The arithmetic is unchanged.
-     This is sound because each group root is fixed before every lookup challenge.
+   - Lookup originals are column claims (§2.3), read through a `Ref` and, for a
+     range, shifted by `−width.min()`. RFC-0008 A6 admits these tuples.
+   - The Statement is derived as RFC-0008 A2 item 2 requires, from the relation and
+     never from the proof: `N = 2^lookup.vars` (for a range, `2^log_len` of its
+     column), `m = log N`, `b = min(m, 30)`, `r = 1`, `d = 4` (QM31), and `σ` equal
+     to the public selector column or all ones when there is none.
+   - Multiplicity sources are opened exactly as RFC-0008 A5 specifies, with its
+     rank-one prefix-mask functional openings. They never go through `claim_batch`.
 6. **Matmuls**, in relation order, for each one:
    - draw `ρ ∈ K^a` with `relation/point` (SZ line, `a/|K|`);
    - the prover sends `out~(ρ)`;
@@ -318,10 +362,11 @@ only).
      `Table::evaluate` for tables.
    - Witness-column claims are mapped to group-source claims (§2.3). Weight claims
      target their weight source.
-   - For each source in a fixed order (groups in `GroupId` order, then multiplicity
-     sources, then weights in model order), the claims are reduced to one point with
-     RFC-0006 A2 mode 1 (`claim_batch`). That point is opened once with
-     `verify_point` (RFC-0010 A9).
+   - For each group source in `GroupId` order, then each weight source in model
+     order, the claims are reduced to one point with RFC-0006 A2 mode 1
+     (`claim_batch`), admitted for committed sources by RFC-0006 A8. That point is
+     opened once with `verify_point` (RFC-0010 A9).
+   - Multiplicity sources were opened in step 5.
 8. **Argmax.** No extra step: the greedy check is relations over committed logits
    and public data (§5, row 13).
 
@@ -363,19 +408,30 @@ Notation: `T` is the number of tokens, `d` the model width, `h` the number of he
   - a witness 0/1 one-hot `h` with `Σ h = 1` over the scope (M row sums);
   - `Σ h·(M − v) = 0`.
   - The value of `M` is then unique.
-- **limbs**: as in §3.5.
+- **limbs**: as in §3.5 and §3.5a.
+- **zero-row branch** (RFC-0025 §2.2, `s = 0` when every code is 0):
+  - a 0/1 witness `z` per row, with identities `z·M = 0` and `z·q_i = 0` for every `i`;
+  - the division by the scale uses `s + z` as its divisor, with a range check
+    `s + z − 1 >= 0`, so the divisor is at least 1;
+  - when `M > 0`, `z = 0` is forced. When `M = 0`, the ceiling below forces `s = 0`,
+    so `z = 1` and every code is 0.
+- **row-scale ceiling** `s = ceil(M/127)`: a range check on `127·s − M ∈ [0, 126]`.
+  Dynamic int16 scales stay at most 259.
+- **gated-scale ceiling**: the same for the gated conversion (RFC-0004 A8). Its scale
+  goes up to 8454661 (24 bits), so `s` is a `Compose` of range-checked limbs, and
+  `127·s − M` is checked as in the row-scale ceiling, with `M` itself in limbs.
 
 | # | Op | Integer definition | Columns (per layer unless noted) | Kinds | Task |
 |---|---|---|---|---|---|
 | 1 | embedding gather | RFC-0025 §2.5 (family 1): `R0 = R(e_{t,k}·m_t·2^(ee+f0))` | `G = onehot(x)·E` (T×d, int8); `R0` (T×d, int16) + rounding columns. `m_t` gathered as a public column from `Scales` | M (public onehot × weight), I, R, P | E16-04 |
-| 2 | rmsnorm_q (v1) | RFC-0021 §2.3 (sum of squares, exponent `a`, quotient `M`, `J = rsqrt_q[M]`, `Y = R(X·H·J/2^e)`); bounds `full-model-rms-bounds.md`, `research/cqis-bounds/NORM*.md` | `S` as limb row sums (M of limb products); `a` as a one-hot over its public range; `M`, remainder; `(M, J)`; output `Y` (T×d, int16) + rounding | M, I, L (`rsqrt_q`), R | E16-04 |
-| 3 | row conversion (every projection input) | RFC-0025 §2.2 dynamic/static rows; RFC-0004 A8 gated kind; bounds `full-model-flow-bounds.md` §1, `research/cqis-bounds/ROW*.md`, `DYNAMIC-SCALE.md`, `ATTAINED-MAGNITUDE.md` | row maximum `Mx` (attained), scale `s = ceil(Mx/127)` (one division row), codes `q` (int8) + sign/abs and division columns | I, R, M (row sums) | E16-05 |
+| 2 | rmsnorm_q (v1) | RFC-0021 §2.3 (sum of squares, exponent `a`, quotient `M`, `J = rsqrt_q[M]`, `Y = R(X·H·J/2^e)`); bounds `full-model-rms-bounds.md`, `research/cqis-bounds/NORM*.md` | `S` as limb row sums (M of limb products); `a` as a one-hot over its public range; `M`, remainder; `(M, J)`; output `Y` (T×d, int16) + rounding when `e >= 0`, or the exact multiply `Y = X·H·J·2^(−e)` when `e < 0`. The branch is selected through the `a` one-hot (`e` is affine in `a` with public `F, G, E`) | M, I, L (`rsqrt_q`), R | E16-04 |
+| 3 | row conversion (every projection input) | RFC-0025 §2.2 dynamic/static rows; RFC-0004 A8 gated kind; bounds `full-model-flow-bounds.md` §1, `research/cqis-bounds/ROW*.md`, `DYNAMIC-SCALE.md`, `ATTAINED-MAGNITUDE.md` | row maximum `Mx` (attained), scale `s` by the row-scale (or gated-scale) ceiling, the zero-row branch `z`, codes `q` (int8, from `R(2|x|/(2(s+z)))` with sign/abs) and division columns; grouped rows (RFC-0004 A15) apply this per group of `g` | I, R, M (row sums) | E16-05 |
 | 4 | Q/K/V/O/gate/up/down/head projections | RFC-0025 §2.2: `A = Σ q·w`, `Y = R(A·m_j·s·2^(e−f+fo))`, one rounding; bounds `full-model-bounds.md` §3, `SCALED-LINEAR.md`. Not RFC-0023/0024 Requant: the multiplier `m_j·s` exceeds u16 | `A = q·W` (M, witness × weight; `|A| < 2^28`); `A·m_j·s` as limb products with public `m_j`; output `Y` + rounding | M, I, R, P | E16-05 |
 | 5 | RoPE | RFC-0025 §2.4 / RFC-0004 A7 coefficients: `x' = R((x·c − y·s)/2^14)`; layout 0/1 pairs; `ROTARY.md`, `ROTARY-CONSUMER.md` | `Q'`, `K'` (int16) + rounding; `c`, `s` as public columns from `model::rotary::Rotation::coefficient` | I, R, P | E16-06 |
 | 6 | scores | RFC-0025 §2.4, RFC-0009 A4: `score = R(dot(q_i,k_j)·sq_i·sk_j·m_score·2^(e_score−fq−fk+Fexp))` over whole-row int8 codes; `ATTENTION-SCORE.md` | Q/K row conversion (pattern of row 3); `dot` (M per head, witness × witness, `Ref` head split); scaled product as limbs; `score` + rounding | M, I, R | E16-07 |
 | 7 | causal max | RFC-0025 §2.4: maximum over keys `j <= i`; `ATTENTION-MAX.md`, `ATTENTION-MAXIMUM-CONSUMER.md` | `Mx` per (head, i), attained over the causal scope (public causal mask factor) | I, R, M, P | E16-07 |
 | 8 | exp | RFC-0021 §2.1 modes 0/1/2: `t = score − Mx ∈ [−2^B, 0]`, direct, product or corrected; `ATTENTION-EXP*.md` | `t` (masked to 0 outside scope); `P̂` (unsigned `E+1` bits) via `exp_q/direct` or `exp_q/hi`, `exp_q/lo` (+ `exp_q/correction`) | L, I, R | E16-07 |
-| 9 | normaliser and P̂·V | RFC-0025 §2.4, RFC-0004 A6, RFC-0009 A4: `Z = Σ P̂_j > 0`; `D = sv_j·v_jc`; `T_c = Σ P̂·D` (exact, or block mode with `B_bc = R(Σ_block P̂D/2^c)`); output `R(T_c·2^(fo−fv+c)/Z)`; `ATTENTION-NORMALIZATION.md`, `ATTENTION-BLOCKS.md`, `ATTENTION-VALUES.md`, `ATTENTION-DIVISION.md` | V row conversion; `Z` (M with causal mask); `D`; `T` as limbs (`|T| < 2^50`); quotient, remainder; head assembly before one O-input row conversion | M, I, R, P | E16-07 |
+| 9 | normaliser and P̂·V | RFC-0025 §2.4, RFC-0004 A6, RFC-0009 A4: `Z = Σ P̂_j > 0`; `D = sv_j·v_jc`; `T_c = Σ P̂·D` (exact, or block mode with `B_bc = R(Σ_block P̂D/2^c)`); output `R(T_c·2^(fo−fv+c)/Z)`; `ATTENTION-NORMALIZATION.md`, `ATTENTION-BLOCKS.md`, `ATTENTION-VALUES.md`, `ATTENTION-DIVISION.md` | V row conversion; a committed masked `P̂m = causal·P̂` (an identity), because a matmul has only two factors; `Z` (M of `P̂m` with ones); `D`; `T` as limbs (`|T| < 2^50`); quotient, remainder; head assembly before one O-input row conversion | M, I, R, P | E16-07 |
 | 10 | SiLU gated product | RFC-0025 §2.5, RFC-0004 A8, RFC-0021 §2.2: `silu_q[t]`, `T = U·silu_q(G)` exact int32 (`|T| <= 2^30`); then gated row conversion; `GATED-PRODUCT.md`, `SILU-CONSUMER.md`, `GATED-CONSUMER.md` | `(G, silu_q(G))` lookup; `T` as limbs (`2^30` > 30-bit signed width); gated conversion → down-projection codes | L, I, R | E16-08 |
 | 11 | residual add | RFC-0025 §2.2: `c = max(fx, fy, fo)`, `R((X·2^(c−fx) + Y·2^(c−fy))/2^(c−fo))`, int16 (v1); `RESIDUAL*.md` | `R_mid`, `R_{ℓ+1}` + rounding | I, R | E16-09 |
 | 12 | final norm, head | RFC-0025 §2.5: rmsnorm_q, final row conversion, unbiased head with `fl ∈ [0,30]`, int16 logits; tied head reads the embedding source | rows 2–4 instances (global group `G/…`) | as rows 2–4 | E16-09 |
@@ -447,6 +503,11 @@ Every term is an existing RFC-0012 line. Nothing new is invented.
 - **Ledger output.** The verifier computes and prints the full ledger. A development
   proof reports `ε_interactive` (every line except FS) and states "FS unproven, PCS
   conjectural".
+- **Fiat–Shamir at r = 1 fails.** QM31 with `r = 1` fails RFC-0012 §4's FS charge
+  (Q times the largest round error) at real shapes: the LogUp pair round is near
+  `2^-10` (RFC-0008 A2 item 8). The development profile accepts this, because it
+  claims no non-interactive security; promotion needs Q12 and, at least, the
+  `treaty` lookup parameters.
 - **Integer faithfulness** follows from §3.6: the bound rule, plus range discipline
   under the LU line.
 
@@ -458,6 +519,9 @@ The development profile claims no cost-model term, and no constant moves.
   lookup or range, one sumcheck per matmul, and one opening per source.
 - **Verifier:** linear in public columns and tables. It evaluates the MLEs of public
   columns and tables directly.
+- **Shape cap.** `MAX_VARS = 30` caps each relation domain (§3.1). Matmuls with
+  `log(batch) + log(out) + log(d) > 30` are split into plan-fixed row blocks by
+  their module, which adds one matmul relation per block.
 
 E16-11 measures both against FlashProve's small route (8 layers, T = 64, d = 512) and
 records them in `bench/ledger/`.
@@ -480,7 +544,7 @@ calls it. The no_std `stele-verifier` is unchanged, and no new Cargo edge is nee
 
 ## 9. Negative controls
 
-The following controls are reserved as NC-1300..1309. Each must run through the
+The following controls are reserved as NC-1300..1310. Each must run through the
 actual E16-10 verifier.
 
 | NC | Tamper | Expected |
@@ -488,13 +552,14 @@ actual E16-10 verifier.
 | 1300 | change one checked token `x_{i+1}` | `FinalEvaluationMismatch` (margin range/identity) |
 | 1301 | change `y` | `FinalEvaluationMismatch` |
 | 1302 | +1 on one witness value of a group, recommitted honestly | `FinalEvaluationMismatch` (the identity holding it) |
-| 1303 | replace one witness `−1` by `p−1` in the message | `NoncanonicalField` / LU rejection |
+| 1303 | send one group message element as the noncanonical limb `p` | `NoncanonicalField` |
 | 1304 | prove with other weights under the expected model commitment | `RootMismatch` |
 | 1305 | change one plan parameter (one rounding exponent) on the prover side | `StatementMismatch` |
 | 1306 | swap two group roots | `RootMismatch` |
 | 1307 | +1 on one matmul `out~(ρ)` | `RoundSumMismatch` |
 | 1308 | route one column claim to the neighbouring column index of its group | `ValueMismatch` |
 | 1309 | change `[r,e)` | `StatementMismatch` |
+| 1310 | commit one ranged witness value as `2^30`, outside its declared width, with every identity recomputed | LU rejection (`FinalEvaluationMismatch` in the range lookup) |
 
 ## 10. Open questions
 

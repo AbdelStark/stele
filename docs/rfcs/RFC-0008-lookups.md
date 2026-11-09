@@ -414,3 +414,37 @@ private/full-lookup obligation. Reserve NC-0415..0419 as todo; no specification
 or research check earns execution coverage. Cost terms are c_lu/c_sc/c_c and
 T_misc, including actual registration, both trees, all openings and retained
 state. No measured constant, performance result or weight-pass change.
+
+### A6 — Development-profile tuple originals (companion of RFC-0026)
+
+Status: Accepted. Review: [RFC-0026 acceptance](../../agents/reviews/rfc0026-acceptance.md).
+Motivation: A2 item 4 requires each tuple column to be a whole original source
+with a verified A9 certificate. RFC-0026 commits columns inside commitment
+groups, offsets ranges and reads columns through variable maps.
+
+Addition to A2 item 4, under the RFC-0026 development profile only. A tuple
+column may be any of the following:
+
+1. a column of a commitment-group source. Its claim is the source claim at the
+   column's Boolean index coordinates (RFC-0026 §2.3);
+2. an affine shift `v − w` of such a column, with a public constant `w`. A range
+   check uses `w = width.min()`, and the verifier adds `w` back to the claimed
+   value;
+3. a `Ref`-mapped read over a domain of `2^m` positions. The column is evaluated
+   at the lookup point restricted to the `Ref`'s variables, and may broadcast
+   over a larger domain.
+
+Reduction: the A5 argument needs one thing from each original: a function on
+`{0,1}^m` whose multilinear extension the verifier can query through a sound
+claim, fixed before the Unit, Beta and Alpha draws. All three forms are
+multilinear in the lookup point, because a variable map is a restriction or
+permutation and a shift is affine. Each claim reduces exactly to a claim on a
+committed source whose root is absorbed before every lookup challenge (RFC-0026
+§4 steps 2 and 5). The A5 identity, the tree and leaf terms, and the LU line
+(item 8) are therefore unchanged, and no new loss arises.
+
+- Item 5 still applies: `c ∈ {1, 2}` and at most `2^16` real table rows.
+- Item 2's Statement is derived as RFC-0026 §4 step 5 states.
+- Multiplicity sources are opened exactly as A5 specifies.
+- Virtual (uncommitted) tuple columns remain not admitted.
+- Cost-model terms: none. Affected tasks: E16-02.

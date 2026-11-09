@@ -28,6 +28,10 @@ pub const MAX_RANGE_BITS: u8 = 16;
 pub const MAX_FACTORS: usize = 3;
 /// Most boolean variables of one column or relation domain.
 pub const MAX_VARS: u8 = 30;
+/// Lookup tuple arity admitted by RFC-0008 A2 item 5.
+pub const MAX_TUPLE: usize = 2;
+/// Real table rows admitted by RFC-0008 A2 item 5.
+pub const MAX_TABLE_ROWS: usize = 1 << 16;
 
 /// Index of a column in its [`Relation`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -191,6 +195,17 @@ pub struct Group {
     pub log_len: u8,
 }
 
+/// Limb composition (RFC-0026 §3.5): for every index `i`,
+/// `column[i] = sum over (limb, shift) of 2^shift * limb[i]`. Every limb has the
+/// column's length. It is an identity under the bound rule, and it disciplines
+/// `column` when the composed range of the disciplined limbs lies within its width.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Compose {
+    pub name: String,
+    pub column: ColumnId,
+    pub limbs: Vec<(ColumnId, u8)>,
+}
+
 /// Public table: rows of `widths.len()` integers.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Table {
@@ -209,6 +224,7 @@ pub struct Relation {
     pub lookups: Vec<Lookup>,
     pub ranges: Vec<Range>,
     pub matmuls: Vec<Matmul>,
+    pub composes: Vec<Compose>,
 }
 
 /// A static defect of a relation (RFC-0026 §3.6); no values are involved.
@@ -247,6 +263,10 @@ pub enum Violation {
     Matmul {
         relation: String,
         point: u64,
+    },
+    Compose {
+        relation: String,
+        index: usize,
     },
 }
 
@@ -416,6 +436,9 @@ impl Relation {
         for matmul in &self.matmuls {
             self.validate_matmul(matmul)?;
         }
+        for compose in &self.composes {
+            self.validate_compose(compose)?;
+        }
         self.validate_discipline()
     }
 
@@ -473,7 +496,11 @@ impl Relation {
             .ok_or_else(|| Invalid::Shape {
                 relation: name.clone(),
             })?;
-        if lookup.vars > MAX_VARS || lookup.tuple.len() != table.widths.len() {
+        if lookup.vars > MAX_VARS
+            || lookup.tuple.len() != table.widths.len()
+            || lookup.tuple.len() > MAX_TUPLE
+            || table.rows.len() > MAX_TABLE_ROWS
+        {
             return Err(Invalid::Shape {
                 relation: name.clone(),
             });
@@ -520,8 +547,34 @@ impl Relation {
         Ok(())
     }
 
+    fn validate_compose(&self, compose: &Compose) -> Result<(), Invalid> {
+        let shape = || Invalid::Shape {
+            relation: compose.name.clone(),
+        };
+        let column = self.column(compose.column).ok_or_else(shape)?;
+        if compose.limbs.is_empty() {
+            return Err(shape());
+        }
+        let mut bound = column.width.magnitude();
+        for &(limb, shift) in &compose.limbs {
+            let limb = self.column(limb).ok_or_else(shape)?;
+            if limb.log_len != column.log_len || shift > MAX_WIDTH_BITS {
+                return Err(shape());
+            }
+            bound = bound.saturating_add(limb.width.magnitude() << shift);
+        }
+        if bound >= MODULUS {
+            return Err(Invalid::Bound {
+                relation: compose.name.clone(),
+                bound,
+            });
+        }
+        Ok(())
+    }
+
     /// RFC-0026 §3.6 range discipline: every witness and weight column's declared
-    /// width is enforced on all of its entries by a range or an unselected lookup.
+    /// width is enforced on all of its entries by a range, an unselected lookup, or
+    /// a composition of enforced limbs whose composed range lies within it.
     fn validate_discipline(&self) -> Result<(), Invalid> {
         let mut enforced = BTreeSet::new();
         for range in &self.ranges {
@@ -538,6 +591,52 @@ impl Relation {
                 if width.within(self.width(r)) {
                     enforced.insert(r.column);
                 }
+            }
+        }
+        for (i, column) in self.columns.iter().enumerate() {
+            if matches!(column.kind, Kind::Public(_)) {
+                enforced.insert(ColumnId(i as u32));
+            }
+        }
+        // Compositions may chain, so iterate to a fixed point.
+        loop {
+            let before = enforced.len();
+            for compose in &self.composes {
+                if enforced.contains(&compose.column)
+                    || !compose.limbs.iter().all(|(l, _)| enforced.contains(l))
+                {
+                    continue;
+                }
+                let (mut low, mut high) = (0i128, 0i128);
+                for &(limb, shift) in &compose.limbs {
+                    let width = self.columns[limb.0 as usize].width;
+                    low += (width.min() as i128) << shift;
+                    high += (width.max() as i128) << shift;
+                }
+                let width = self.columns[compose.column.0 as usize].width;
+                if width.min() as i128 <= low && high <= width.max() as i128 {
+                    enforced.insert(compose.column);
+                }
+            }
+            // A matmul out is exact when its worst case 2^s*mag(lhs)*mag(rhs) lies in
+            // width(out): out = V (mod p) and both lie in (-p/2, p/2) (RFC-0026 §3.6).
+            for matmul in &self.matmuls {
+                if enforced.contains(&matmul.out.column)
+                    || !enforced.contains(&matmul.lhs.column)
+                    || !enforced.contains(&matmul.rhs.column)
+                {
+                    continue;
+                }
+                let worst = (1u128 << matmul.summed)
+                    .saturating_mul(self.width(&matmul.lhs).magnitude())
+                    .saturating_mul(self.width(&matmul.rhs).magnitude());
+                let out = self.width(&matmul.out);
+                if worst <= out.max() as u128 && worst <= out.min().unsigned_abs() as u128 {
+                    enforced.insert(matmul.out.column);
+                }
+            }
+            if enforced.len() == before {
+                break;
             }
         }
         for (i, column) in self.columns.iter().enumerate() {

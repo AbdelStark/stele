@@ -838,3 +838,25 @@ DP invariant and explicit sums prove the arithmetic identity over K. Cost impact
 is public evaluation in T_misc with the contract's per-kind bounds; no measured
 constant, benchmark or weight-pass change. Companion RFC-0020 A3 permits only
 the required direct field dependency. Production composition remains separate.
+
+### A8 — Mode-1 claim batching on committed sources (companion of RFC-0026)
+
+Status: Accepted. Review: [RFC-0026 acceptance](../../agents/reviews/rfc0026-acceptance.md).
+Motivation: A2 mode 1 batches many `(point, value)` claims on one virtual tensor.
+The RFC-0026 development profile has many claims on one committed source: on a
+commitment group (through Boolean column-index coordinates, RFC-0026 §2.3) or on
+a weight source. It needs one opening per source.
+
+Addition to A2: mode 1 is admitted with a committed source as its tensor, but only
+under the RFC-0026 development profile. Its claims are the column claims mapped
+to source claims. The batch output is one claim at the batch point, and that claim
+is consumed by exactly one RFC-0010 A9 `verify_point` opening of that source.
+
+- The schedule, coefficients and labels are A2 mode 1 unchanged. Its RLC and SC
+  lines are charged per source.
+- Soundness is A2 mode 1's argument. The source is fixed by its root before
+  any claim point is drawn (RFC-0026 §4 steps 2 and 7), so the batched tensor is
+  fixed before the batch coefficients.
+- Multiplicity sources are excluded. They keep RFC-0008 A5's own rank-one
+  prefix-mask openings.
+- Cost-model terms: none. Affected tasks: E16-02, E16-10.

@@ -2562,8 +2562,8 @@ tasks:
   agent: claude-code
   branch: rfc/RFC-0026-development-e2e
   acceptance:
-  - RFC-0026 Accepted with ADR-074, RFC-0012 A16 labels, NC-1300..1309 reserved, Q33 mirrored
-  - stele_ir::relation types, Relation::validate (bound rule, range discipline, groups) and check()
+  - RFC-0026 Accepted with ADR-074, RFC-0012 A16 labels, NC-1300..1310 reserved, RFC-0006 A8 and RFC-0008 A6, Q33 mirrored
+  - stele_ir::relation types, Relation::validate (bound rule, range discipline incl. Compose and matmul-out rules, groups, RFC-0008 A2 item 5) and check()
   - unit tests accept an honest relation of every kind and reject one tamper per kind, a wrapping identity/matmul and an undisciplined column
 - id: E16-02
   epic: E16
@@ -2579,7 +2579,7 @@ tasks:
   - stele_reductions::relation proves and verifies any validated Relation in the RFC-0026 §4 order
   - accepts exactly what stele_ir::relation::check accepts on randomised small relations; rejects one tamper per kind with the primitive error
   - RFC-0012 A16 labels registered in stele-hash and docs/security/transcript-labels.json; ledger printed per RFC-0026 §6
-  - column-of-group claims (RFC-0026 §2.3) route lookup originals and openings; NC-1302, NC-1303, NC-1306, NC-1307, NC-1308 executed
+  - column-of-group claims (RFC-0026 §2.3) route lookup originals and openings; NC-1302, NC-1303, NC-1306, NC-1307, NC-1308, NC-1310 executed
 - id: E16-03
   epic: E16
   title: Witness capture, the executor emits every intermediate column

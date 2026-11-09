@@ -335,6 +335,88 @@ fn rejects_witness_selector() {
     );
 }
 
+/// wide = lo + 2^8 * hi with only the limbs ranged; `wide` is disciplined by Compose.
+fn composed() -> (Relation, Values, ColumnId, ColumnId) {
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("L0/limbs/1", 1));
+    let lo = rel.add_column("lo", g.clone(), Width::unsigned(8), 1);
+    let hi = rel.add_column("hi", g.clone(), Width::signed(16), 1);
+    let wide = rel.add_column("wide", g, Width::signed(24), 1);
+    range(&mut rel, lo, Width::unsigned(8));
+    range(&mut rel, hi, Width::signed(16));
+    rel.composes.push(Compose {
+        name: "wide".to_string(),
+        column: wide,
+        limbs: vec![(lo, 0), (hi, 8)],
+    });
+    let mut values = Values::new(&rel);
+    values.set(&rel, lo, vec![255, 3]).expect("lo");
+    values.set(&rel, hi, vec![-32768, 32767]).expect("hi");
+    values
+        .set(&rel, wide, vec![255 - (32768 << 8), 3 + (32767 << 8)])
+        .expect("wide");
+    (rel, values, lo, wide)
+}
+
+#[test]
+fn accepts_composed_wide_column_and_rejects_tampered_limb() {
+    let (rel, mut values, lo, _) = composed();
+    assert_eq!(check(&rel, &values), Ok(()));
+    values.set(&rel, lo, vec![254, 3]).expect("lo");
+    assert_eq!(
+        check(&rel, &values),
+        Err(Violation::Compose {
+            relation: "wide".to_string(),
+            index: 0
+        })
+    );
+}
+
+#[test]
+fn rejects_composition_wider_than_its_column() {
+    let (mut rel, _, _, wide) = composed();
+    rel.columns[wide.0 as usize].width = Width::signed(23);
+    assert_eq!(rel.validate(), Err(Invalid::Undisciplined(wide)));
+}
+
+#[test]
+fn accepts_wide_matmul_out_without_range() {
+    let mut f = fixture();
+    let (x, y) = (f.relation.matmuls[0].lhs.column, f.y);
+    f.relation.columns[x.0 as usize].width = Width::signed(8);
+    f.relation
+        .ranges
+        .retain(|range| range.column != y && range.column != x);
+    range(&mut f.relation, x, Width::signed(8));
+    // 2 * 128 * 128 = 2^15 fits signed 17; out is exact without a Range.
+    f.relation.columns[y.0 as usize].width = Width::signed(17);
+    assert_eq!(check(&f.relation, &f.values), Ok(()));
+    // 2^15 exceeds the signed-16 maximum 2^15 - 1.
+    f.relation.columns[y.0 as usize].width = Width::signed(16);
+    assert_eq!(f.relation.validate(), Err(Invalid::Undisciplined(y)));
+}
+
+#[test]
+fn rejects_three_column_lookup() {
+    let mut f = fixture();
+    let (a, b, c) = (f.a, f.b, f.c);
+    let triples = f.relation.add_table(Table {
+        name: "triples".to_string(),
+        widths: vec![Width::signed(8); 3],
+        rows: vec![vec![0, 0, 0]],
+    });
+    f.relation.lookups.push(Lookup {
+        name: "triples".to_string(),
+        vars: 2,
+        selector: None,
+        tuple: vec![r(a, &[0, 1]), r(b, &[0, 1]), r(c, &[0, 1])],
+        table: triples,
+    });
+    assert!(
+        matches!(f.relation.validate(), Err(Invalid::Shape { relation }) if relation == "triples")
+    );
+}
+
 #[test]
 fn rejects_group_length_mismatch_and_duplicate_group() {
     let mut f = fixture();

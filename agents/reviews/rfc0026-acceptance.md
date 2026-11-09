@@ -11,7 +11,7 @@
 - the NC-1300..1309 reservations.
 
 **Reviewers.** Both passes were done by the drafting agent, so neither is
-independent. An independent pass is required before merge and will be recorded
+independent. The independent pass (fix-then-merge, all findings fixed) is recorded
 below. These are internal agent reviews, not an external cryptographic audit.
 - **Pass 1, soundness-auditor.** It checks what the verifier derives against what
   the prover chooses, the wrap-freedom of every relation kind, the claim-routing
@@ -74,4 +74,35 @@ below. These are internal agent reviews, not an external cryptographic audit.
 
 ## Independent pass
 
-Pending: to be recorded here before merge.
+**Reviewer.** An independent reviewer outside the drafting session reviewed PR #302
+at 8f96069.
+
+**Verdict: fix-then-merge.** The core integer model is sound. The reviewer checked:
+- the wrap-free rule;
+- discipline on narrow columns;
+- `Ref` injectivity;
+- transcript order;
+- the argmax margin;
+- the round-half pattern;
+- rmsnorm uniqueness.
+
+E16-05's builder independently reported two further findings, M1 and M2. Every
+finding below is fixed in the follow-up commit on this branch.
+
+| # | Finding | Fix |
+|---|---|---|
+| B1 (blocking) | `validate` could not discipline any witness column wider than 16 bits. A 24-bit matmul `out`, for example, was reported `Undisciplined`, so `A = q·W`, `Z`, quotients and limb-composed values could not be declared. | Added the `Compose` relation kind (RFC-0026 §3.5a). It is an identity under the bound rule, and it disciplines its column when the composed range of its enforced limbs fits the column's width. Discipline is now a fixed point. Tests: honest pass, tampered limb fails (`Violation::Compose`), and a composition wider than its column is `Undisciplined`. |
+| M1 | A matmul `out` should be enforced by its own worst case. | Added §3.6 item 3's matmul rule: `out` is enforced when `lhs` and `rhs` are enforced and `Bp = 2^s·mag(lhs)·mag(rhs)` lies within `width(out)` at both ends. Then `out ≡ V` with both values in `(−p/2, p/2)`, so `out = V`. Tests: an int8×int8 out of signed 17 validates with no range; signed 16 (`Bp = 2^15 > 2^15−1`) is `Undisciplined`. |
+| S2 | RFC-0008 A2 item 5 was not enforced: a 3-column lookup returned `Ok`. | `validate` now rejects tuple arity outside `{1, 2}` and tables with more than `2^16` rows. Test: `rejects_three_column_lookup`. |
+| S3 | The engine silently widened RFC-0006 and RFC-0008. | Workflow 02 amendments, both linked to this review: RFC-0006 A8 (mode-1 claim batching on committed sources) and RFC-0008 A6 (group-column, affine-shift and `Ref`-mapped tuple originals, with the reduction argument). RFC-0026 §4 step 5 now opens multiplicity sources exactly as A5 specifies, not through `claim_batch`, and states item 2's Statement derivation: `N = 2^vars`, `b = min(m, 30)`, `r = 1`, `d = 4`, `σ` = selector or all ones. |
+| S4 | Row 3 missed parts of RFC-0025 §2.2. | Added three shared patterns. Zero-row branch: `z·M = 0`, `z·q = 0`, divisor `s + z >= 1`. Row-scale ceiling: a range on `127·s − M ∈ [0, 126]`. Gated-scale ceiling: up to 8454661, through `Compose` limbs. |
+| S5 | NC-1303 was a no-op, because `−1` is already `p−1`. | Split into NC-1303 (noncanonical limb `p`, `NoncanonicalField`) and NC-1310 (value `2^30` outside its width, LU rejection). |
+| m1 | Ledger: the matmul SC line. | It has `s+k` rounds with `δ = 3` when `k > 0`, in both the RFC table and `soundness-accounting.md`. |
+| m2 | §6 did not state the FS consequence. | §6 now says explicitly that QM31 at `r = 1` fails RFC-0012 §4's FS charge at real shapes (the pair round is near `2^-10`, per RFC-0008 A2 item 8). |
+| m3 | Row 9 needed a committed masked `P̂`. | Added `P̂m = causal·P̂` as a committed column, because a matmul has only two factors. |
+| m4 | Row 2 lacked the `e < 0` branch. | Added the exact-multiply branch of RFC-0021 §2.3, selected through the `a` one-hot. |
+| m5 | §2.2's weight-root order was unchecked. | Stated as a plan obligation, checked by the E16-10 verifier before step 1 (`StatementMismatch`). |
+| M2 | RFC-0004 A15 grouped rows were excluded. | §1.3 now admits them: the row-conversion pattern runs per group of `g`, and `A'` is handled through limbs. §3.1 and §7 note that `MAX_VARS = 30` caps a matmul domain and that larger shapes split into plan-fixed row blocks. |
+
+Because RFC-0026 had not merged, its text was revised in place rather than through
+amendments. The RFC-0006 and RFC-0008 changes are proper amendments.

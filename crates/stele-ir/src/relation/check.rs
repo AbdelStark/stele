@@ -4,7 +4,7 @@ use super::{Invalid, Ref, Relation, Values, Violation};
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-/// Validate `relation`, then evaluate ranges, lookups, identities and matmuls over
+/// Validate `relation`, then evaluate ranges, lookups, compositions, identities and matmuls over
 /// the integers. Returns the first failure in that order.
 pub fn check(relation: &Relation, values: &Values) -> Result<(), Violation> {
     relation.validate()?;
@@ -51,7 +51,24 @@ pub fn check(relation: &Relation, values: &Values) -> Result<(), Violation> {
             }
         }
     }
-    // After ranges and lookups every column is within its declared width (discipline),
+    for compose in &relation.composes {
+        let column = columns[compose.column.0 as usize];
+        let wrong = (0..column.len()).find(|&i| {
+            let sum: i128 = compose
+                .limbs
+                .iter()
+                .map(|&(limb, shift)| (columns[limb.0 as usize][i] as i128) << shift)
+                .sum();
+            sum != column[i] as i128
+        });
+        if let Some(index) = wrong {
+            return Err(Violation::Compose {
+                relation: compose.name.clone(),
+                index,
+            });
+        }
+    }
+    // After ranges, lookups and compositions every column is within its declared width (discipline),
     // so the static bounds keep every sum below p; checked arithmetic is a second guard.
     for identity in &relation.identities {
         for x in 0..1u64 << identity.vars {

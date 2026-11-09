@@ -1242,7 +1242,7 @@ line moves.
 
 Status: Accepted.
 
-## ADR-074: Development-profile end-to-end proof over committed integer columns (RFC-0026, RFC-0012 A16)
+## ADR-074: Development-profile end-to-end proof over committed integer columns (RFC-0026, RFC-0006 A8, RFC-0008 A6, RFC-0012 A16)
 
 Context: the owner directed a working end-to-end prefill prover comparable to the
 FlashProve small route. E8-01 requires ZK (RFC-0013 A1) and passports, so it cannot
@@ -1260,7 +1260,7 @@ Decision:
   looked-up value is therefore committed, so this profile needs no Q31 virtual
   tuple columns.
 - **One relation model.** Each operation is expressed with four relation kinds:
-  identities, lookups, ranges and two-factor matmuls, with public columns and
+  identities, lookups, ranges, two-factor matmuls and limb compositions, with public columns and
   variable maps. One engine proves any validated relation set.
   `stele_ir::relation::check` is the integer oracle: it evaluates every relation
   over Z with no proof.
@@ -1277,7 +1277,9 @@ Decision:
   next token `y`. Each checked token is the least id attaining the maximum logit
   (RFC-0025 §2.6).
 - **Transcript.** RFC-0012 A16 adds four labels; every other message reuses an
-  existing label. NC-1300..1309 are reserved.
+  existing label. NC-1300..1310 are reserved. RFC-0006 A8 and RFC-0008 A6 admit
+  mode-1 claim batching on committed sources and group-column, shifted and
+  variable-mapped lookup tuples, under this profile only.
 
 Consequences:
 - The E16 epic (E16-01..E16-11) fans out from the stable API: the modules run in
@@ -1289,4 +1291,4 @@ Consequences:
 - The output-uniqueness lemma of each module (RFC-0026 §5.2) is the remaining
   soundness obligation. It is tested by near-miss controls, not machine-checked.
 
-Status: Accepted (same-author passes; independent review pending before merge).
+Status: Accepted (same-author passes and the independent pass; fixes recorded in the review).
