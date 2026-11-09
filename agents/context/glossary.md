@@ -7,7 +7,7 @@
 - **cut** — a committed tensor that breaks sequential dependency; the residual stream `R_ℓ` and the explicitly scoped Requant advice cut of RFC-0023 and its RFC-0024 embedded-input mode (RFC-0007 A3/A4).
 - **virtual tensor** — any tensor never committed; its claims are reduced to other tensors.
 - **weight pass** — one streaming read of a stacked weight type to compute `B[ℓ,k] = W̃(ℓ,k,r_j)`.
-- **fused opening** — PCS opening whose row vector `u` equals the weight pass output `B`.
+- **fused opening** — PCS opening whose row vector `u` is the retained row the weight pass built `B` from: `u = B` under the signed embedding, `u = B + 2^(w−1)` under offset (RFC-0007 A1).
 - **functional opening** — PCS proof of `aᵀ M b` for verifier-computable `a, b`.
 - **passport** — the registered artefact set of a model (RFC-0011).
 - **CQIS** — the canonical integer semantics; `cqis_id` identifies version + config.

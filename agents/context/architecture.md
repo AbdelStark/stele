@@ -11,7 +11,7 @@ commit R_stack (residual cuts), multiplicities, aux        → RFC-0010
   DOWN ─ silu·gate ─ UP/GATE ─ norm2 ─ O ─ attention ─ QKV ─ norm1 ─ embed/LM-head
   weight phases (DOWN, UP, GATE, O, Q, K, V, LM, EMB): one pass over that weight type, fused opening → RFC-0007 §5, RFC-0010 §5
   everything else: lookups (LogUp-GKR, RFC-0008), zerochecks, activation matmuls (RFC-0009)
-PCS openings: R_stack (1 batched functional), weights (fused), multiplicities, aux
+PCS openings: R_stack (one opening per row-17 claim, RFC-0007 A7), weights (fused), multiplicities, aux
 ```
 **What is committed:** residual stream at layer boundaries (int16), multiplicities, selection indices, scales;
 RFC-0023 §2 additionally names the byte-plane advice cut for its standalone scalar Requant reduction.

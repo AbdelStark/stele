@@ -1113,3 +1113,36 @@ The evidence-ID check compares compiled constants; it is a build-time tripwire, 
 by a unit test against stele-code's exported IDs, not a runtime check.
 
 Status: Accepted.
+
+## ADR-070: Accept the full-row fused weight opening (RFC-0007 A1, RFC-0010 A12)
+
+Context: E4-04 (fused opening API) was blocked on Draft RFC-0007 A1, which asked how
+B relates to a packed or short-column committed row. RFC-0010 A6 and RFC-0007 A7 have
+since removed packing, and RFC-0007 A2 / RFC-0010 A10 already define the full-row
+matrix and the immutable retained row. Review record:
+[rfc0007-a1-acceptance](../reviews/rfc0007-a1-acceptance.md).
+
+Decision:
+- **Layout.** A fused weight source is A2's matrix with rows j and columns (l,k),
+  full power-of-two extents, Circle code. The split index s is the constant 0, so no
+  field or proof byte selects a layout. Short columns and Ligerito are not admitted;
+  RFC-0010 A12 withdraws §4's short-column sentence.
+- **Row identity.** The opening row is the A10 retained row: u = B under the signed
+  embedding, u = B + 2^(w−1) under offset. No reduction, copy or alternate row.
+- **One visit.** R·C source reads at retained-row construction, zero in the opening;
+  column responses and registration are counted separately.
+- **No new soundness surface.** No challenge, round, label, loss or ledger line. Each
+  phase keeps A2's SC term and adds one A3 opening term. Inherited Fiat–Shamir
+  findings are recorded: QM31 sumcheck rounds fail both profiles under Q times the
+  round error, OM31 passes; Policy 1 query rounds fail both (RFC-0010 A3 item 7).
+- **RFC-0008 A1** is moot for this: no packed source exists to decompose. It stays
+  Draft for a future packed format.
+- **Controls.** NC-0305 (nonzero-factor wrong row, ColumnMismatch) and NC-0605
+  (other-point row or centered offset row, ValueMismatch) are refined, todo, E4-04.
+
+Consequences: E4-04 is ready with its original criteria plus the exact control
+variants and counter numbers. E4-06 is blocked: its short columns and Ligerito are
+not admitted, and full-u openings are about L·d K-elements per weight type (32 MB in
+OM31 at L=128, d=16384). No measured constant moves.
+
+Status: Accepted.

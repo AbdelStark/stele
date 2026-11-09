@@ -49,7 +49,8 @@
 | NC-0211 | stacked canonical point | 0006 A4 | one unused original final from the raw layer-last point | `ClaimMismatch / ValueMismatch` | done |
 | NC-0212 | stacked public coefficient source | 0006 A4 | one coefficient final from a changed expected onehot/table value | `CoefficientMismatch` | done |
 | NC-0213 | stacked original certificate | 0006 A4 | substitute one separately verified certificate for an unchanged original opening | `RootMismatch` | done |
-| NC-0300–0305 | matmul phases | 0007 §8 | see RFC | | todo |
+| NC-0300–0304 | matmul phases | 0007 §8 | see RFC | | todo |
+| NC-0305 | matmul phases | 0007 §8, A1 | honest sumcheck on a row B' differing from eq(r_j)ᵀM_W in two coordinates with nonzero X factors, chosen so the claimed sum is unchanged; the fused opening serializes B' | `ColumnMismatch` | todo |
 | NC-0306 | matmul phases | 0007 A2, 0024 §6 | one partial row uses a changed outer coordinate, fixed expected source and zero opposite factor | `ColumnMismatch` | done |
 | NC-0307 | matmul phases | 0007 A2, 0024 §6 | change one original final under a zero opposite factor; keep its opening row | `ValueMismatch` | done |
 | NC-0308 | Requant input bytes | 0023 §6 | field-congruent int32 substituted in advice/arithmetic | `ValueMismatch` | done |
@@ -92,7 +93,8 @@
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
 | NC-0603 | PCS | 0010 A6, 0024 §1.1 | in an offset int8 source replace one adjacent pair (x0,x1), x1>=1, by (x0+256,x1-1), keeping x0+256·x1; commit and certify it honestly; actual byte-range verifier | `RootMismatch` | done |
-| NC-0604–0605 | PCS | 0010 §10 | see RFC | | todo |
+| NC-0604 | PCS | 0010 §10 | see RFC | | todo |
+| NC-0605 | PCS | 0010 §10, 0007 A1 | honest sumcheck on B; the fused opening serializes the commitment-consistent row for another r_j, or, under the offset embedding, the centered B instead of the raw retained row | `ValueMismatch` | todo |
 | NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6, 0024 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet or one original range handle with responses from the old source | `RootMismatch / CertificateContext` | done |
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |

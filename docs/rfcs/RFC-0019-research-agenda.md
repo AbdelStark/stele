@@ -959,6 +959,11 @@ virtual-column amendment (Q31) and a decomposition reduction (Q28); int16/int24
 committed-source range consumers; and the Fiat–Shamir rounds of A3 item 7, which
 fail both profiles under Q times the largest round error (Q12, E4-05, E12-04).
 
+Q28 fused-row resolution: RFC-0007 A1 and RFC-0010 A12 fix the fused weight layout
+as A2's full-row matrix (s=0). The opening row is the A10 retained row, equal to B
+(signed) or B+2^(w−1) (offset). Short columns and Ligerito stay open (Q27); packed
+formats stay open as above. E4-04 is ready; E4-06 is blocked until they are admitted.
+
 Q26/Q31 full statistic continuation: the [full-row consumer](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
 uses three byte-column sums from the same verified signed16 row, closed carry
 ranges and deterministic zero-input tail columns. It retains the existing

@@ -728,14 +728,17 @@ tasks:
   - RFC-0007 §5
   - RFC-0010 A6
   - RFC-0007 A1
+  - RFC-0010 A10
+  - RFC-0010 A12
   skill: pcs-engineer
   crate: stele-pcs
-  status: blocked(RFC-0007 A1)
+  status: ready
   agent: codex-root
   branch: task/E4-04-fused-layout-study
   acceptance:
   - NC-0305/0605
   - zero extra passes asserted by counter
+  - NC-0305 and both NC-0605 variants exactly as RFC-0007 A1 item 7, in QM31 and OM31; the counter shows R·C source reads at retained-row construction and zero during the opening
 - id: E4-05
   epic: E4
   title: Blinding row (ZK) and treaty parameter set
@@ -763,9 +766,10 @@ tasks:
   - E4-04
   rfc:
   - RFC-0010 §7
+  - RFC-0007 A1
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: blocked(RFC-0010 Ligerito and short-column amendment, Q27; RFC-0010 A3 item 1, RFC-0007 A1 item 2)
   acceptance:
   - proof size <= 1 MB per weight type on W1 shapes
   - verifier cost ledger
