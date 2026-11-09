@@ -1,13 +1,14 @@
 //! Gated row conversion of the SiLU product to down-projection codes (RFC-0026 §5
 //! row 10 and the §5 gated-scale ceiling; RFC-0025 §2.5, RFC-0004 A8, flow §1).
 //!
-//! Input: `T = 2^15·high + low` from [`super::GatedProduct`], `|T| < 2^30`, one dynamic
-//! scale per row. Every value wider than 16 bits is two radix-`2^15` limbs, and every
+//! Input: `T = 2^15·high + low` from [`super::GatedProduct`], one dynamic scale per row.
+//! `|T| < 2^30` follows from the `silu_q` table restriction (no output `−2^15`,
+//! `GatedProduct::new`); the executor's gated envelope is `[−2^30, 2^30]`. Every value wider than 16 bits is two radix-`2^15` limbs, and every
 //! wide identity is a low and a high limb identity joined by a carry (RFC-0026 §3.5):
 //! - sign/abs: `mask·T = (1 − 2σ)·A`, `A = 2^15·Ah + Al`, with the borrow `κ` of the
 //!   negation, so `A = |T|` on real lanes and 0 on padding;
 //! - attained maximum: `M − A = 2^15·gh + gl >= 0` (borrow `b`), a one-hot `h` per row
-//!   (matmul row sum) with `h·gl = h·gh = 0`, so `M = max A`;
+//!   (matmul row sum) with `h·gl = 0` and `h·gh = 0`, so `M = max A`;
 //! - gated-scale ceiling: `127·s − M = slack ∈ [0, 126]` (lookup), so `s = ceil(M/127)`,
 //!   `s = 2^15·sh + sl <= 8454661`, and `scale` is their Compose (unsigned 24);
 //! - zero-row branch: Boolean `z` with `z·(Ml + Mh) = 0` and divisor `D = s + z`;
@@ -228,11 +229,9 @@ impl Module for GatedConversion {
             ],
         );
         let hit = lane(c.hit);
-        b.identity(
-            "attained",
-            n,
-            vec![term(1, vec![hit.clone(), gl]), term(1, vec![hit, gh])],
-        );
+        // One identity per limb, so each zero is a separately named constraint.
+        b.identity("attained/low", n, vec![term(1, vec![hit.clone(), gl])]);
+        b.identity("attained/high", n, vec![term(1, vec![hit, gh])]);
         b.relation.matmuls.push(Matmul {
             name: format!("{prefix}/attained/one-hot"),
             free: t,

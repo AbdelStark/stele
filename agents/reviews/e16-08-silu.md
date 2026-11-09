@@ -106,7 +106,7 @@ Relations, each wrap-free (largest bound: `division/low`, below `2^25`):
 | `sign/low` | `mask·Tl − 2σ·mask·Tl − Al + 2^15·κ = 0` |
 | `sign/high` | `mask·Th − 2σ·mask·Th − κ − Ah = 0` |
 | `gap/low`, `gap/high` | `Ml − Al − gl + 2^15·gb = 0`, `Mh − Ah − gb − gh = 0` |
-| `attained` | `h·gl + h·gh = 0` |
+| `attained/low`, `attained/high` | `h·gl = 0`, `h·gh = 0` |
 | `attained/one-hot` (M) | `Σ_j h(t, j) = 1` |
 | `ceiling/low`, `ceiling/high` | `127·sl − Ml − slack − 2^15·e = 0`, `127·sh − Mh + e = 0` |
 | `ceiling` (L) | `slack ∈ [0, 126]` |
@@ -121,6 +121,10 @@ Each low/high pair sums (low + `2^15`·high) to one wide equation over Z:
 `2D − 1 − r = p >= 0`, with `A, M, s, r, p, gap` the limb values and `D = s + z`.
 
 ## Lemma C (conversion output uniqueness)
+
+`|T| < 2^30` here follows from the `silu_q` table restriction: `GatedProduct::new`
+rejects an output of `−2^15`. The executor's gated envelope is `[−2^30, 2^30]`, and
+`−2^30` is unreachable through `silu_q`. `Ah ∈ [0, 2^15)` would reject it in any case.
 
 *For `high` in signed 16 and `low` in unsigned 15, every assignment satisfying the
 relations above has, on every real row, `scale = ceil(max|T|/127)` and codes equal to
@@ -171,8 +175,9 @@ The survey case is 3x8:
 | `sign/low` | `A + 1` on a negative lane, downstream recomputed |
 | `sign/high` | `A + 2^15` on that lane, now the row maximum, downstream recomputed |
 | `gap/low`, `gap/high` | `M + 1`, `M + 2^15` with gaps kept from the honest `M` |
-| `attained` | `M + 127`, `s + 1`, gaps from the new `M` (the hit lane has gap 127) |
-| `attained/one-hot` | as above, with no hit lane |
+| `attained/low` | `M + 127`, `s + 1`, gaps from the new `M` (the hit lane has `gl = 127`) |
+| `attained/high` | `M = 508 + 2^15`, gaps from it (the hit lane has `gl = 0`, `gh = 1`), `s = 263`: the lane with `A = 508` gets code 2 instead of 127 |
+| `attained/one-hot` | `M + 127` as above, with no hit lane |
 | `ceiling/low`, `ceiling/high` | `s + 1` (honest slack and carry), `s + 2^15` |
 | `ceiling` (lookup) | `s = 5`, slack 127 |
 | `scale` (Compose) | `scale + 1`, limbs kept |
@@ -207,6 +212,12 @@ Implied ranges. Each is still declared, because it is its column's range discipl
   and `Mh = Ah` in u15.
 - `scale/high`: the ceiling fixes `s`, and `sl ∈ [0, 2^15)` then fixes
   `sh = (s − sl)/2^15 <= 258`.
+
+Completeness at full width: `accepts_largest_remainder_and_spare_limbs` takes a row
+at the largest `|T| = 2^15·(2^15 − 1)` (`D = 8454402`), with lanes just below and just
+above a rounding tie. Its remainder and spare high limbs exceed 511, so narrowing
+either unsigned-10 range to unsigned 9 turns the test red. That was checked by
+mutation, and so was deleting `attained/high` or `attained/low` alone.
 
 ### Widen-by-one-bit survey (conversion)
 

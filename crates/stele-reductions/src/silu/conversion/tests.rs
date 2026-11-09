@@ -278,9 +278,18 @@ fn rejects_relation_without_each_constraint() {
     plan.gap_maximum[1] += 127;
     plan.scale[1] += 1;
     plan.quotient = recomputed(&plan);
-    attacks.push(("attained", case.attack(&plan, &[])));
+    attacks.push(("attained/low", case.attack(&plan, &[])));
     plan.hit[top] = 0;
     attacks.push(("attained/one-hot", case.attack(&plan, &[])));
+    // attained/high: M = 508 + 2^15 with gaps from it; the hit lane has gl = 0, gh = 1.
+    let mut plan = honest.clone();
+    plan.maximum[1] += LIMB;
+    plan.gap_maximum[1] += LIMB;
+    plan.scale[1] = (plan.maximum[1] + 126) / 127;
+    plan.slack[1] = 127 * plan.scale[1] - plan.maximum[1];
+    plan.quotient = recomputed(&plan);
+    assert_eq!((plan.scale[1], plan.quotient[top]), (263, 2));
+    attacks.push(("attained/high", case.attack(&plan, &[])));
     let honest_carry = case.column(c.ceiling_carry)[1];
     let mut plan = honest.clone();
     plan.scale[1] += 1;
@@ -597,4 +606,29 @@ fn rejects_code_through_widened_sign() {
         &values,
         "L0/gated/row/sign/range"
     ));
+}
+
+/// The widest remainder and spare high limbs (`ceil((2^31)/2^15) − 1 = 516`): a row at
+/// the largest `|T| = 2^15·(2^15 − 1)` (`D = 8454402`), a lane just below a rounding tie
+/// (`r = 2D − 2`) and one just above (`r = 0`, spare `2D − 1`). Both limbs exceed 511,
+/// so their unsigned-10 ranges are needed at full width.
+#[test]
+fn accepts_largest_remainder_and_spare_limbs() {
+    let top = 32768 * 32767;
+    let divisor = (top + 126) / 127;
+    let below = divisor / 2 - 1 + divisor % 2;
+    let above = (divisor + 1) / 2;
+    let mut product = vec![0; 8];
+    product[..3].copy_from_slice(&[top, below, above]);
+    let case = case(&product, 1, 8);
+    check(&case.relation, &case.values).expect("honest");
+    let c = case.module.columns().expect("declared");
+    assert_eq!(case.column(c.quotient)[1..3], [0, 1]);
+    let (rh, ph) = (
+        case.column(c.remainder_high)[1],
+        case.column(c.spare_high)[2],
+    );
+    assert!(rh > 511 && ph > 511, "remainder high {rh}, spare high {ph}");
+    let (reference_codes, _) = reference(&product, 8);
+    assert_eq!(&case.column(c.codes)[..8], &reference_codes[..]);
 }
