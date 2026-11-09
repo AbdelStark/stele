@@ -6,6 +6,8 @@
 extern crate alloc;
 pub mod byte_range;
 pub mod development;
+#[cfg(test)]
+mod executor_fixtures;
 mod field_sources;
 pub mod integer_linear;
 pub mod lookup;

@@ -562,3 +562,69 @@ fn rejects_relation_without_each_constraint() {
         assert!(admitted, "no near miss needs {name}");
     }
 }
+
+/// The captured projection output and rotation of Q (`query`) or K.
+fn pick(
+    b: &stele_cqis::execution::capture::Block,
+    query: bool,
+) -> (
+    &stele_cqis::execution::capture::Projection,
+    &stele_cqis::execution::capture::Rotation,
+) {
+    if query {
+        (&b.query, &b.query_rotation)
+    } else {
+        (&b.key, &b.key_rotation)
+    }
+}
+
+/// The real executor (`Executor::capture`, task E16-03) on every accepted family-1
+/// model-execution fixture: Q and K of every layer, fed the captured projection
+/// outputs, pass `check` and reproduce the captured rotation outputs.
+#[test]
+fn matches_executor_capture() {
+    let mut checked = 0;
+    for (model, capture) in crate::executor_fixtures::captures() {
+        let shape = model.shape();
+        if shape.family() != 1 {
+            continue;
+        }
+        for (layer, positions) in capture.blocks.iter().enumerate() {
+            let r = model.blocks()[layer].rotation();
+            let tokens = positions.len();
+            for (count, query) in [(shape.heads(), true), (shape.groups(), false)] {
+                let pick = |b| pick(b, query);
+                let input: Vec<i16> = positions
+                    .iter()
+                    .flat_map(|b| pick(b).0.output.quotient.iter().map(|&v| v as i16))
+                    .collect();
+                let case = case(r, &input, tokens, count, shape.head_width()).expect("honest");
+                check(&case.relation, &case.values).expect("executor values pass");
+                let out = case.column(case.rope.columns().expect("declared").output);
+                let width = usize::from(count) * usize::from(shape.head_width());
+                for (t, b) in positions.iter().enumerate() {
+                    let expected = &pick(b).1.output;
+                    let expected = if expected.is_empty() {
+                        &pick(b).0.output.quotient
+                    } else {
+                        expected
+                    };
+                    for (lane, &want) in expected.iter().enumerate().take(width) {
+                        let (h, i) = (
+                            lane / usize::from(shape.head_width()),
+                            lane % usize::from(shape.head_width()),
+                        );
+                        let (d, hb, _) = case.rope.bits();
+                        assert_eq!(
+                            out[(t << (d + hb)) | (h << d) | i],
+                            want,
+                            "layer {layer} t {t}"
+                        );
+                    }
+                }
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked > 0, "no family-1 fixture");
+}
