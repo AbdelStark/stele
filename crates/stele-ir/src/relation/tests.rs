@@ -428,3 +428,13 @@ fn rejects_group_length_mismatch_and_duplicate_group() {
         matches!(f.relation.validate(), Err(Invalid::Shape { relation }) if relation == "L0/test/2")
     );
 }
+
+#[test]
+fn accepts_only_the_skipped_violation_with_check_except() {
+    let mut f = fixture();
+    let a = f.a;
+    tamper(&mut f, a, 1, 1);
+    assert!(check(&f.relation, &f.values).is_err());
+    assert_eq!(check_except(&f.relation, &f.values, &["product"]), Ok(()));
+    assert!(check_except(&f.relation, &f.values, &["scale"]).is_err());
+}

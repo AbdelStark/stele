@@ -425,6 +425,8 @@ def field_sources(root):
                'tests/integer_linear.rs', 'src/matmul_centered.rs', 'src/matmul_centered_tests.rs',
                'src/requant_arithmetic.rs',
                'src/byte_range.rs', 'tests/byte_range.rs',
+               'src/development.rs', 'src/development/row.rs', 'src/development/projection.rs',
+               'src/development/tests.rs',
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
@@ -446,7 +448,7 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\npub mod byte_range;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\n'
+               'extern crate alloc;\npub mod byte_range;\npub mod development;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'

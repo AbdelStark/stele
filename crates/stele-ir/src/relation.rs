@@ -16,7 +16,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 mod check;
-pub use check::check;
+pub use check::{check, check_except};
 
 /// M31 modulus `p = 2^31 - 1` (RFC-0003 §1). Every identity is wrap-free below it.
 pub const MODULUS: u128 = (1 << 31) - 1;
