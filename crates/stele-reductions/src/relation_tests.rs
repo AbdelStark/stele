@@ -390,3 +390,45 @@ fn rejects_false_commitment_in_a_later_smaller_member() {
     let committed = tampered(&rel, &values, ColumnId(2), 1);
     assert_eq!(lie(&rel, &committed, &values).err(), VALUE);
 }
+
+/// Groups with the given (log_len, column count), every column range-checked.
+fn groups(shapes: &[(u8, usize)]) -> Relation {
+    let mut rel = Relation::default();
+    for (g, &(n, count)) in shapes.iter().enumerate() {
+        let kind = Kind::Witness(rel.add_group(&alloc::format!("G/layout/{g}"), n));
+        for i in 0..count {
+            let column = rel.add_column(
+                &alloc::format!("g{g}/c{i}"),
+                kind.clone(),
+                Width::signed(8),
+                n,
+            );
+            rel.ranges.push(Range {
+                name: alloc::format!("g{g}/r{i}"),
+                column,
+                width: Width::signed(8),
+            });
+        }
+    }
+    rel
+}
+
+#[test]
+fn matches_reference_stacked_layout_with_ties_and_mixed_sizes() {
+    // Block sizes 2^(n+c): g0 = 2^(2+1), g1 = 2^3, g2 = 2^1, g3 = 2^(4+1).
+    // Largest first, ties (g0, g1) in GroupId order: g3 @0, g0 @32, g1 @40, g2 @48.
+    let first = plan(&groups(&[(2, 2), (3, 1), (1, 1), (4, 2)])).expect("plan");
+    let offsets: Vec<usize> = first.groups.iter().map(|g| g.offset).collect();
+    assert_eq!(offsets, [32, 40, 48, 0]);
+    assert_eq!(first.stack.as_ref().map(|s| s.bits), Some(6));
+    // A tie in the other declaration order keeps GroupId order too.
+    let other = plan(&groups(&[(3, 1), (2, 2)])).expect("plan");
+    let offsets: Vec<usize> = other.groups.iter().map(|g| g.offset).collect();
+    assert_eq!(offsets, [0, 8]);
+}
+
+#[test]
+fn rejects_a_group_wider_than_a_source_before_shifting() {
+    // n = 30 with two columns needs 2^31 entries: rejected, never shifted or summed.
+    assert_eq!(plan(&groups(&[(30, 2)])).err(), Some(Error::Unsupported));
+}
