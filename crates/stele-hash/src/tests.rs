@@ -4,8 +4,8 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 42);
-    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 12);
+    assert_eq!(entries.len(), 46);
+    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 14);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
     assert_eq!(entries[9].loss, Some(LossLine::Sc));
@@ -25,6 +25,18 @@ fn accepts_the_fixed_registry() {
     assert_eq!(entries[41].label, "stele/v0.1/integer-linear/statement");
     assert_eq!(entries[41].kind, LabelKind::Absorb);
     assert_eq!(entries[41].loss, None);
+    for (label, index) in [
+        (AbsorbLabel::RelationStatement, 42),
+        (AbsorbLabel::RelationRoots, 43),
+    ] {
+        assert_eq!(label.entry(), &entries[index]);
+        assert_eq!(entries[index].loss, None);
+    }
+    assert_eq!(ChallengeLabel::RelationIdentity.entry(), &entries[44]);
+    assert_eq!(entries[44].loss, Some(LossLine::Rlc));
+    assert_eq!(ChallengeLabel::RelationPoint.entry(), &entries[45]);
+    assert_eq!(entries[45].label, "stele/v0.1/relation/point");
+    assert_eq!(entries[45].loss, Some(LossLine::Sz));
     for (label, index) in [(AbsorbLabel::StackSources, 26), (AbsorbLabel::Stack, 27)] {
         assert_eq!(label.entry(), &entries[index]);
         assert_eq!(entries[index].kind, LabelKind::Absorb);

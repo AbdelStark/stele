@@ -150,6 +150,16 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
     }
     /// Prove with gamma drawn only by the engine after the complete descriptor.
     pub fn prove(&self, table: Vec<K>, transcript: &mut Transcript<K>) -> Result<Proof<K>, Error> {
+        self.prove_with_point(table, transcript)
+            .map(|(proof, _)| proof)
+    }
+    /// The same producer, also returning its reduced point for the source opening.
+    /// The returned point grants no verifier authority.
+    pub fn prove_with_point(
+        &self,
+        table: Vec<K>,
+        transcript: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Vec<K>), Error> {
         self.table(&table)?;
         let (gamma, mut running) = self.start(transcript)?;
         let mut tables = Vec::new();
@@ -174,10 +184,13 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         reserve(&mut final_values, 1)?;
         final_values.push(dense.final_values()?[0]);
         self.finish(final_values[0], &point, gamma, running, transcript)?;
-        Ok(Proof {
-            rounds,
-            final_values,
-        })
+        Ok((
+            Proof {
+                rounds,
+                final_values,
+            },
+            point,
+        ))
     }
     /// Reduce to one y(r) obligation, even when A(r)=0; this is not statement acceptance.
     pub fn verify(
