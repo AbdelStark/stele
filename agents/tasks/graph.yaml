@@ -2670,7 +2670,7 @@ tasks:
   - RFC-0026 §5 row 10, §5.2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-08-silu
   acceptance:

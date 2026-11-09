@@ -1485,3 +1485,24 @@ Consequences:
 - Lemma A and the deletion survey: `agents/reviews/e16-07-attention.md`.
 
 Status: Accepted (same-author pass; soundness-auditor review requested on the PR).
+
+Status: Accepted (same-author pass; soundness-auditor review requested on the PR).
+
+## ADR-081: The SiLU gated product leaves E16-08 as two exact limbs (RFC-0026 §5 row 10, §5.1, task E16-08)
+
+Context: `T = U·silu_q[G]` reaches `2^30`, beyond any column width, and `U·a` alone
+has static magnitude `2^30`, so no single identity can hold it under the §3.6 bound.
+The gated row conversion that consumes `T` is E16-05's reusable pattern. Review notes:
+[e16-08-silu](../reviews/e16-08-silu.md).
+
+Decision:
+- The `(G, silu_q[G])` lookup runs against the complete generated component table,
+  shared across layers.
+- The product is split by bytes: `U = Ul + 2^8·Uh` (Compose), `Ul·a = 2^8·c + d`,
+  `Uh·a + c = 2^7·Th + w`. Each identity is masked so that padding is 0.
+- The interface to E16-05 is `T = 2^15·high + low`: `high` signed 16 (range),
+  `low` unsigned 15 (Compose of `d`, `w`). There is no sign or magnitude column.
+  E16-05 derives what its gated conversion needs.
+
+Consequences: no committed column wider than 16 bits. `T = 2^30` has no assignment,
+and no valid `silu_q` table can produce it.

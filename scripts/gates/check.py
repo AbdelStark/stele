@@ -441,7 +441,8 @@ def field_sources(root):
                'src/relation.rs', 'src/relation_codec.rs', 'src/relation_lookup.rs', 'src/relation_tests.rs',
                'tests/relation.rs',
                'src/rope.rs', 'src/rope/tests.rs',
-               'src/executor_fixtures.rs'}
+               'src/executor_fixtures.rs',
+               'src/silu.rs', 'src/silu/tests.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
@@ -451,7 +452,7 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod rope;\n'
+               'extern crate alloc;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod rope;\npub mod silu;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
