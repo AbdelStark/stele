@@ -36,9 +36,9 @@ fn squares() -> (Relation, Values) {
 
 fn attempt(rel: &Relation, values: &Values, plan: &Plan) -> Result<Ledger, Error> {
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, rel, plan, values, values, &[], &[])?;
+    let proof = prove_plan(&mut t, rel, plan, values, values, None)?;
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    verify(&mut t, rel, &[], &proof)
+    verify(&mut t, rel, None, &proof)
 }
 
 #[test]
@@ -81,10 +81,10 @@ fn rejects_committed_multiplicities_differing_from_the_tree() {
 fn lie(rel: &Relation, committed: &Values, values: &Values) -> Result<Ledger, Error> {
     let plan = plan(rel).expect("plan");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, rel, &plan, committed, values, &[], &[])
+    let proof = prove_plan(&mut t, rel, &plan, committed, values, None)
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    verify(&mut t, rel, &[], &proof)
+    verify(&mut t, rel, None, &proof)
 }
 const VALUE: Option<Error> = Some(Error::Pcs(stele_pcs::Error::ValueMismatch));
 
@@ -209,9 +209,18 @@ fn rejects_weight_claim_on_a_different_weight_source() {
     values.set(&rel, w, forged.to_vec()).expect("w");
     let y_of = |w: &[i64]| vec![xv[0] * w[0] + xv[2] * w[2], xv[1] * w[1] + xv[3] * w[3]];
     values.set(&rel, y, y_of(&forged)).expect("y");
-    let message: Vec<M31> = model.iter().map(|v| M31::from_i64(*v)).collect();
-    let prepared =
-        PreparedSource::<K>::new(1000, 0, 2, 1, &message, &mut HashUsage::default()).expect("w");
+    let mut owner = values.clone();
+    owner.set(&rel, w, model.to_vec()).expect("w");
+    let message = model_message(&rel, &owner).expect("model message");
+    let layout = model_layout(&rel).expect("layout").expect("weights");
+    let prepared = PreparedSource::<K>::from_code_id(
+        layout.id,
+        layout.ell,
+        &layout.code,
+        &message,
+        &mut HashUsage::default(),
+    )
+    .expect("w");
     let (bytes, _) = prepared.certificate().expect("certificate");
     let (certificate, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
     let plan = plan(&rel).expect("plan");
@@ -222,12 +231,14 @@ fn rejects_weight_claim_on_a_different_weight_source() {
         &plan,
         &values,
         &values,
-        &[&prepared],
-        &[&certificate],
+        Some((&prepared, &certificate)),
     )
     .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(verify(&mut t, &rel, &[&certificate], &proof).err(), VALUE);
+    assert_eq!(
+        verify(&mut t, &rel, Some(&certificate), &proof).err(),
+        VALUE
+    );
 }
 
 #[test]
@@ -373,11 +384,11 @@ fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
     assert_eq!(forged.checks.len(), 1);
     forged.checks[0].split = Some(committed.clone());
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, &[], &[])
+    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, None)
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, &[], &proof).err(),
+        verify(&mut t, &rel, None, &proof).err(),
         Some(Error::MemberSumMismatch)
     );
 }
@@ -431,4 +442,104 @@ fn matches_reference_stacked_layout_with_ties_and_mixed_sizes() {
 fn rejects_a_group_wider_than_a_source_before_shifting() {
     // n = 30 with two columns needs 2^31 entries: rejected, never shifted or summed.
     assert_eq!(plan(&groups(&[(30, 2)])).err(), Some(Error::Unsupported));
+}
+
+/// Weight columns of the given lengths, each range-checked.
+fn weights(lengths: &[u8]) -> Relation {
+    let mut rel = Relation::default();
+    for (i, &n) in lengths.iter().enumerate() {
+        let column = rel.add_column(&alloc::format!("w{i}"), Kind::Weight, Width::signed(8), n);
+        rel.ranges.push(Range {
+            name: alloc::format!("w{i}/r"),
+            column,
+            width: Width::signed(8),
+        });
+    }
+    rel
+}
+
+#[test]
+fn matches_reference_model_layout_with_ties_and_mixed_sizes() {
+    // Blocks 2^n: w0 = 2^3, w1 = 2^5, w2 = 2^3, w3 = 2^1. Largest first, ties (w0, w2)
+    // in ColumnId order: w1 @0, w0 @32, w2 @40, w3 @48; 50 entries, so 2^6.
+    let first = plan(&weights(&[3, 5, 3, 1])).expect("plan");
+    let offsets: Vec<usize> = first.weights.iter().map(|w| w.offset).collect();
+    assert_eq!(offsets, [32, 0, 40, 48]);
+    assert_eq!(
+        first.model.as_ref().map(|m| (m.id, m.bits)),
+        Some((MODEL, 6))
+    );
+    let layout = model_layout(&weights(&[3, 5, 3, 1]))
+        .expect("layout")
+        .expect("weights");
+    assert_eq!((layout.id, layout.bits), (MODEL, 6));
+    assert_eq!(model_layout(&squares().0).expect("layout"), None);
+}
+
+#[test]
+fn rejects_a_model_wider_than_a_source() {
+    // Two 2^30 weights need 2^31 entries.
+    assert_eq!(plan(&weights(&[30, 30])).err(), Some(Error::Unsupported));
+}
+
+#[test]
+fn rejects_a_missing_or_foreign_model_certificate() {
+    let rel = weights(&[2]);
+    let mut values = Values::new(&rel);
+    values.set(&rel, ColumnId(0), vec![1, -2, 3, 4]).expect("w");
+    let plan = plan(&rel).expect("plan");
+    let proof = Proof::default();
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify(&mut t, &rel, None, &proof).err(),
+        Some(Error::Weights)
+    );
+    // A Circle source of the right size is not the derived v2 layout.
+    let message: Vec<M31> = [1, -2, 3, 4].iter().map(|v| M31::from_i64(*v)).collect();
+    let prepared =
+        PreparedSource::<K>::new(MODEL, 0, 2, 1, &message, &mut HashUsage::default()).expect("w");
+    let (bytes, _) = prepared.certificate().expect("certificate");
+    let (foreign, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify(&mut t, &rel, Some(&foreign), &proof).err(),
+        Some(Error::Weights)
+    );
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        prove_plan(&mut t, &rel, &plan, &values, &values, None).err(),
+        Some(Error::Weights)
+    );
+}
+
+#[test]
+fn accepts_several_weights_in_one_model_source() {
+    // Three weights of different sizes, each range-checked: every claim must land in
+    // its own block of the model source (RFC-0026 A5).
+    let rel = weights(&[1, 3, 2]);
+    let mut values = Values::new(&rel);
+    values.set(&rel, ColumnId(0), vec![-128, 127]).expect("w0");
+    values
+        .set(&rel, ColumnId(1), vec![1, -2, 3, -4, 5, -6, 7, -8])
+        .expect("w1");
+    values
+        .set(&rel, ColumnId(2), vec![9, 10, -11, 12])
+        .expect("w2");
+    let message = model_message(&rel, &values).expect("message");
+    let layout = model_layout(&rel).expect("layout").expect("weights");
+    let prepared = PreparedSource::<K>::from_code_id(
+        layout.id,
+        layout.ell,
+        &layout.code,
+        &message,
+        &mut HashUsage::default(),
+    )
+    .expect("model");
+    let (bytes, _) = prepared.certificate().expect("certificate");
+    let (certificate, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let proof =
+        prove(&mut t, &rel, &values, Some((&prepared, &certificate))).expect("honest proof");
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert!(verify(&mut t, &rel, Some(&certificate), &proof).is_ok());
 }

@@ -760,3 +760,45 @@ treatment the mantissas already get. The development profile is not zero-knowled
 committed gains read as weight columns, which changes §2.2 and row 2.
 Soundness ledger: none; no challenge, line or label changes.
 Cost model: none. Affected tasks: E16-10 (statement codec and public-input file).
+- **A5 — One stacked model commitment (task E16-14).** Accepted with ADR-084.
+  - **Motivation.**
+    - On the E16-10 8-layer model each weight tensor was its own source. Weight
+      openings were 57 of the 59 opening sections, about 19 MB of a 48.6 MB proof.
+    - The model commitment carried one certificate per weight.
+    - On a 56-weight synthetic plan, the stacked model cuts openings from 5.89 MB
+      (57 sections) to 1.46 MB (2). Verification falls from 210 ms to 30 ms.
+  - **Replacement text, §2.2, "Each weight tensor" bullets.**
+    - "Every `Kind::Weight` column, in `ColumnId` order (a tied head reuses the
+      embedding's), is a block of `2^n` entries of **one** RFC-0010 v2 source, the
+      **model source**. Values are the original integer codes under the RFC-0010 A6
+      signed embedding. Blocks are placed largest first, with ties in `ColumnId`
+      order, at offsets that are multiples of their size. The message has `2^S`
+      entries with `S = max(6, ceil(log2 Σ 2^n))`, and unused entries are zero.
+      The source id is 1. The geometry is the byte-minimising `J` (as in A4). A
+      column with `n > 30`, or a model with `S > 30`, is rejected."
+    - "The model commitment is the model source's root and its one RFC-0010 A9
+      certificate, computed once per model. The verifier checks that the supplied
+      certificate's source is exactly the derived layout under its own root. If
+      not, or if the certificate is missing or unexpected, it rejects with
+      `Weights`."
+  - **Replacement text, §4 step 7, weight bullet.** "All weight claims are mapped
+    to model claims: weight `w` at block offset `o` with claim point `ρ` maps to
+    `(bits(o/2^n) ‖ ρ)`, Boolean in the leading coordinates. They are reduced with
+    one RFC-0006 A2 mode-1 batch (A8, batch id `BATCH|1`) and opened once with
+    `verify_point` against the model certificate. This comes after the stacked
+    group source."
+  - **Plan obligation (§2.2) unchanged.** The weight-order check moves from
+    comparing per-weight roots to comparing the derived layout: same order, same
+    padded shapes.
+  - **Soundness.** Unchanged:
+    - The model root is fixed by the public input before every challenge.
+    - Each weight claim becomes a model claim at a point with Boolean leading
+      coordinates, so there is no Schwartz–Zippel term.
+    - The A8 batch and the A9 opening arguments are the same.
+    - The ledger has one weight batch (RLC + SC) per proof, and the PCS line is
+      charged once for the model source.
+  - **Prover cost.** The model message (`4·2^S` bytes) is prepared once per model.
+    Each proof adds one QM31 copy for the batch (`16·2^S`).
+  - **Cost-model terms.** None.
+  - **Affected tasks.** E16-14 and E16-10. E16-10 commits `model_message` under
+    `model_layout`.

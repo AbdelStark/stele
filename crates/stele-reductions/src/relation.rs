@@ -43,7 +43,7 @@ pub enum Error {
     Unsupported,
     /// The prover has no values for a witness or weight column.
     Missing(ColumnId),
-    /// Weight certificates disagree with the relation's weight columns.
+    /// The model commitment is missing, unexpected, or not the derived layout (A5).
     Weights,
     /// Wrong proof length or trailing bytes.
     ProofShape,
@@ -175,6 +175,8 @@ const ZEROCHECK: u64 = 1 << 62;
 const MATMUL: u64 = (1 << 62) | (1 << 48);
 const BATCH: u64 = (1 << 62) | (2 << 48);
 const TUPLE: u64 = (1 << 62) | (3 << 48);
+/// Source id of the stacked model commitment (RFC-0026 A5).
+const MODEL: u64 = 1;
 /// Smallest v2 expander exponent (RFC-0010 A3 item 2): 2^(2J) message columns.
 const MIN_J: u8 = 3;
 const MAX_J: u8 = 14;
@@ -187,6 +189,13 @@ struct Group {
     columns: Vec<ColumnId>,
     n: u8,
     c: u8,
+    offset: usize,
+}
+
+/// One weight column as an aligned block of the stacked model source (RFC-0026 A5).
+struct Weight {
+    column: ColumnId,
+    n: u8,
     offset: usize,
 }
 
@@ -245,7 +254,10 @@ struct Plan {
     /// `None` when the relation has no commitment group.
     stack: Option<Stack>,
     checks: Vec<Check>,
-    weights: Vec<ColumnId>,
+    /// Weight blocks of the stacked model source, in `ColumnId` order (A5).
+    weights: Vec<Weight>,
+    /// `None` when the relation has no weight column.
+    model: Option<Stack>,
     sizes: Vec<u8>,
 }
 
@@ -436,10 +448,39 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         };
         checks.push(check(id, base + id, name, members, t, entries)?);
     }
-    let weights = (0..relation.columns.len() as u32)
+    // RFC-0026 A5: every weight column is a block of 2^n of one model source, largest
+    // first, ties in ColumnId order; the same guards as A4.
+    let mut weights: Vec<Weight> = (0..relation.columns.len() as u32)
         .map(ColumnId)
         .filter(|id| relation.columns[id.0 as usize].kind == Kind::Weight)
+        .map(|column| Weight {
+            column,
+            n: relation.columns[column.0 as usize].log_len,
+            offset: 0,
+        })
         .collect();
+    let mut order: Vec<usize> = (0..weights.len()).collect();
+    order.sort_by(|a, b| weights[*b].n.cmp(&weights[*a].n));
+    let mut total = 0usize;
+    for w in order {
+        if weights[w].n > 30 {
+            return Err(Error::Unsupported);
+        }
+        weights[w].offset = total;
+        total = total
+            .checked_add(1 << weights[w].n)
+            .ok_or(Error::Unsupported)?;
+    }
+    let model = match weights.is_empty() {
+        true => None,
+        false => {
+            let bits = ceil_log2(total);
+            if bits > 30 {
+                return Err(Error::Unsupported);
+            }
+            Some(self::stack(MODEL, bits)?)
+        }
+    };
     let composes = relation.composes.iter();
     let mut sizes: Vec<u8> = relation.identities.iter().map(|i| i.vars).collect();
     sizes.extend(composes.map(|c| relation.columns[c.column.0 as usize].log_len));
@@ -451,6 +492,7 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         stack,
         checks,
         weights,
+        model,
         sizes,
     })
 }
@@ -756,21 +798,80 @@ fn group_claims(plan: &Plan, stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)>
     out
 }
 
-fn weight_check(
+/// The stacked model commitment's derived layout (RFC-0026 A5); the model owner
+/// commits [`model_message`] with `PreparedSource::from_code_id(id, ell, &code, ..)`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelLayout {
+    pub id: u64,
+    pub ell: u8,
+    pub code: Vec<u8>,
+    /// The stacked message has `2^bits` entries.
+    pub bits: u8,
+}
+
+/// The model layout of a relation, or `None` when it has no weight column.
+pub fn model_layout(relation: &Relation) -> Result<Option<ModelLayout>, Error> {
+    Ok(plan(relation)?.model.map(|m| ModelLayout {
+        id: m.id,
+        ell: m.ell,
+        code: m.code,
+        bits: m.bits,
+    }))
+}
+
+/// The stacked model message (signed embedding; weight `w` at its block offset).
+pub fn model_message(relation: &Relation, values: &Values) -> Result<Vec<M31>, Error> {
+    let plan = plan(relation)?;
+    match &plan.model {
+        Some(model) => weights_message(relation, &plan, model, values),
+        None => Ok(Vec::new()),
+    }
+}
+
+fn weights_message(
     relation: &Relation,
     plan: &Plan,
-    certificates: &[&VerifiedCertificate<K>],
-) -> Result<(), Error> {
-    if certificates.len() != plan.weights.len() {
-        return Err(Error::Weights);
-    }
-    for (id, certificate) in plan.weights.iter().zip(certificates) {
-        let source = certificate.record().source();
-        if source.rows() * source.columns() != 1 << relation.columns[id.0 as usize].log_len {
-            return Err(Error::Weights);
+    model: &Stack,
+    values: &Values,
+) -> Result<Vec<M31>, Error> {
+    let mut message = vec![M31::from_i64(0); 1 << model.bits];
+    for weight in &plan.weights {
+        let col = column(relation, values, weight.column)?;
+        for (out, v) in message[weight.offset..].iter_mut().zip(col) {
+            *out = M31::from_i64(*v);
         }
     }
-    Ok(())
+    Ok(message)
+}
+
+/// The supplied model certificate must be the derived layout under its own root.
+fn model_check(plan: &Plan, certificate: Option<&VerifiedCertificate<K>>) -> Result<(), Error> {
+    match (&plan.model, certificate) {
+        (None, None) => Ok(()),
+        (Some(model), Some(certificate)) => {
+            let source = certificate.record().source();
+            if model.source(source.root())?.bytes() != source.bytes() {
+                return Err(Error::Weights);
+            }
+            Ok(())
+        }
+        _ => Err(Error::Weights),
+    }
+}
+
+/// Model claims: weight `w` at block offset `o` maps a claim at `ρ` to the model
+/// claim at `(bits(o/2^n) ‖ ρ)`, Boolean leading coordinates (RFC-0026 A5).
+fn weight_claims(plan: &Plan, model: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)> {
+    let mut out = Vec::new();
+    for weight in &plan.weights {
+        for (point, value) in &claims.0[weight.column.0 as usize] {
+            out.push((
+                bits_point(weight.offset >> weight.n, model.bits - weight.n, point),
+                *value,
+            ));
+        }
+    }
+    out
 }
 
 fn to_k(message: &[M31]) -> Vec<K> {
@@ -781,19 +882,19 @@ fn to_k(message: &[M31]) -> Vec<K> {
 }
 
 /// Produce a development-profile proof. `t` must be `Transcript::new(public)` with
-/// the RFC-0026 §1.1 public inputs, including the model-commitment roots that
-/// `certificates` (one per weight column, in `ColumnId` order) carry. The prover
-/// checks none of the verifier's equations; a false witness yields a rejected proof
-/// or an error from a primitive prover.
+/// the RFC-0026 §1.1 public inputs, including the model-commitment root that `model`
+/// (the prepared stacked model source of [`model_layout`] and its verified
+/// certificate; `None` without weights) carries. The prover checks none of the
+/// verifier's equations; a false witness yields a rejected proof or an error from a
+/// primitive prover.
 pub fn prove(
     t: &mut Transcript<K>,
     relation: &Relation,
     values: &Values,
-    weights: &[&PreparedSource<'_, K>],
-    certificates: &[&VerifiedCertificate<K>],
+    model: Option<(&PreparedSource<'_, K>, &VerifiedCertificate<K>)>,
 ) -> Result<Proof, Error> {
     let plan = plan(relation)?;
-    prove_plan(t, relation, &plan, values, values, weights, certificates)
+    prove_plan(t, relation, &plan, values, values, model)
 }
 
 /// The prover. `committed` fills the group messages (step 2); `values` drives every
@@ -804,16 +905,10 @@ fn prove_plan(
     plan: &Plan,
     committed: &Values,
     values: &Values,
-    weights: &[&PreparedSource<'_, K>],
-    certificates: &[&VerifiedCertificate<K>],
+    model: Option<(&PreparedSource<'_, K>, &VerifiedCertificate<K>)>,
 ) -> Result<Proof, Error> {
-    weight_check(relation, plan, certificates)?;
-    if weights.len() != certificates.len()
-        || weights
-            .iter()
-            .zip(certificates)
-            .any(|(w, c)| w.source().bytes() != c.record().source().bytes())
-    {
+    model_check(plan, model.map(|(_, c)| c))?;
+    if model.is_some_and(|(p, c)| p.source().bytes() != c.record().source().bytes()) {
         return Err(Error::Weights);
     }
     let mut proof = Proof::default();
@@ -963,22 +1058,21 @@ fn prove_plan(
                 .push(opening.prove(t, table, prepared, handle)?);
         }
     }
-    for (w, id) in plan.weights.iter().enumerate() {
-        let batch = &claims.0[id.0 as usize];
-        if batch.is_empty() {
-            continue;
+    // One claim batch and one opening of the stacked model source (A5).
+    if let (Some(stack), Some((prepared, certificate))) = (&plan.model, model) {
+        let batch = weight_claims(plan, stack, &claims);
+        if !batch.is_empty() {
+            let opening = Opening {
+                id: BATCH | 1,
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let table = to_k(&weights_message(relation, plan, stack, values)?);
+            proof
+                .openings
+                .push(opening.prove(t, table, prepared, certificate)?);
         }
-        let opening = Opening {
-            id: BATCH | (1 + w) as u64,
-            tensor: certificates[w].record().source().descriptor().id,
-            bits: relation.columns[id.0 as usize].log_len,
-            batch,
-        };
-        let column = column(relation, values, *id)?;
-        let table = column.iter().map(|v| K::from_i64(*v)).collect();
-        proof
-            .openings
-            .push(opening.prove(t, table, weights[w], certificates[w])?);
     }
     Ok(proof)
 }
@@ -1111,18 +1205,18 @@ impl Opening<'_> {
 }
 
 /// Verify a development-profile proof against the plan-derived relation. The caller
-/// creates `t` with the RFC-0026 §1.1 public inputs, which bind the model roots that
-/// `certificates` (verified, one per weight column in `ColumnId` order) carry.
+/// creates `t` with the RFC-0026 §1.1 public inputs, which bind the model root that
+/// `model` (the verified stacked model certificate, A5; `None` without weights) carries.
 /// Every section count and length is derived here: a missing, extra, short or long
 /// section rejects with `ProofShape` (RFC-0026 §4.1).
 pub fn verify(
     t: &mut Transcript<K>,
     relation: &Relation,
-    certificates: &[&VerifiedCertificate<K>],
+    model: Option<&VerifiedCertificate<K>>,
     proof: &Proof,
 ) -> Result<Ledger, Error> {
     let plan = plan(relation)?;
-    weight_check(relation, &plan, certificates)?;
+    model_check(&plan, model)?;
     let mut ledger = Ledger::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
     // Step 1.
@@ -1265,21 +1359,19 @@ pub fn verify(
             reader.end()?;
         }
     }
-    for (w, id) in plan.weights.iter().enumerate() {
-        let batch = &claims.0[id.0 as usize];
-        if batch.is_empty() {
-            continue;
+    if let (Some(stack), Some(certificate)) = (&plan.model, model) {
+        let batch = weight_claims(&plan, stack, &claims);
+        if !batch.is_empty() {
+            let opening = Opening {
+                id: BATCH | 1,
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let mut reader = sections.next()?;
+            opening.verify(t, certificate, &mut reader, &mut ledger, "model")?;
+            reader.end()?;
         }
-        let column = &relation.columns[id.0 as usize];
-        let opening = Opening {
-            id: BATCH | (1 + w) as u64,
-            tensor: certificates[w].record().source().descriptor().id,
-            bits: column.log_len,
-            batch,
-        };
-        let mut reader = sections.next()?;
-        opening.verify(t, certificates[w], &mut reader, &mut ledger, &column.name)?;
-        reader.end()?;
     }
     sections.end()?;
     // §8 step 4: public-column claims, evaluated by the verifier.

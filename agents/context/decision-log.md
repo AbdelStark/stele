@@ -1697,3 +1697,31 @@ rsqrt). The simulation quantises Q/K before RoPE while CQIS rows follow it; this
 simulation caveat, not CQIS evidence.
 
 Status: Accepted.
+
+## ADR-084: One stacked model commitment for every weight (RFC-0026 A5, task E16-14)
+
+Context: after A4, weight sources dominated the openings of the E16-10 8-layer proof
+(57 of 59 sections, about 19 MB). The model commitment also carried one
+certificate per weight.
+
+Decision:
+- Every weight column is an aligned block of one v2 model source. Blocks are placed
+  largest first, with ties in `ColumnId` order. The source id is 1 and the geometry
+  is A4's byte-minimising choice.
+- The model commitment is that source's root and one certificate, computed once.
+- `relation::model_layout` and `relation::model_message` let the model owner
+  prepare it.
+- The verifier checks the supplied certificate's source against the derived
+  layout.
+- A proof has one claim batch and one opening for all weight claims.
+- The guards match A4: `n > 30` and `S > 30` are rejected before shifting, and the
+  running total uses checked addition.
+- `prove`/`verify` now take the model as
+  `Option<(&PreparedSource, &VerifiedCertificate)>` / `Option<&VerifiedCertificate>`.
+
+Consequences:
+- On a 56-weight plan the openings go from 5.89 MB (57 sections) to 1.46 MB (2),
+  and verify time from 210 ms to 30 ms.
+- E16-10 must commit the model once with the new layout.
+
+Status: Accepted (RFC-0026 A5).
