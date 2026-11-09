@@ -4,6 +4,8 @@
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 extern crate alloc;
+// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.
+pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};
 pub mod argmax;
 pub mod byte_range;
 pub mod development;

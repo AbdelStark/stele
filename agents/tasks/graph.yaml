@@ -2715,7 +2715,7 @@ tasks:
   - RFC-0026 §1, §4.1, §8, §9
   skill: gkr-reduction-author
   crate: stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-10-orchestrator
   acceptance:

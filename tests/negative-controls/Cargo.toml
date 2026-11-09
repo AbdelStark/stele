@@ -77,6 +77,7 @@ stele-lookup = { path = "../../crates/stele-lookup" }
 stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }
 stele-field = { path = "../../crates/stele-field" }
 stele-hash = { path = "../../crates/stele-hash" }
+stele-prover = { path = "../../crates/stele-prover" }
 
 [[test]]
 name = "nc-0801"

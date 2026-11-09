@@ -304,6 +304,7 @@ dependencies = [
  "stele-lookup",
  "stele-pcs",
  "stele-poly",
+ "stele-prover",
  "stele-reductions",
  "stele-sumcheck",
 ]
@@ -347,6 +348,8 @@ dependencies = [
 name = "stele-prover"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "serde_json",
  "stele-proof",
  "stele-reductions",
 ]

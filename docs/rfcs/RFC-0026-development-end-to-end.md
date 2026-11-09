@@ -581,6 +581,10 @@ actual E16-10 verifier.
   index in the leading coordinates, as the text already said. §9 NC-1310 named
   `FinalEvaluationMismatch`; the first failing check is the A5 root equation,
   `RootMismatch`. No protocol change.
+- **E2 (erratum, task E16-10).** §9 NC-1300 and NC-1301 named
+  `FinalEvaluationMismatch`. A false checked token or `y` leaves a margin entry at
+  `-1`, outside its unsigned range, and the first failing check is that range's A5
+  root equation, `RootMismatch`, as for NC-1310 (E1). No protocol change.
 
 ### A1 — RoPE pairs through a public-permutation matmul (row 5)
 
@@ -727,3 +731,28 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
     choice (RFC-0010), which is not part of this amendment.
   - **Cost-model terms.** None.
   - **Affected tasks.** E16-13, E16-10.
+
+### A2 — The 1-D artifact records are public inputs (§1.1 item 1)
+
+Status: Accepted (owner authorisation; independent review in the E16-10 PR).
+Decision: ADR-085.
+Motivation: the rmsnorm_q module (row 2, E16-04) reads its gains `H` as public
+columns, so the verifier needs them to rebuild the relation (§8 step 2). The gains
+are 1-D artifact records (RFC-0025 §2.1: first, second and final gains). §1.1 binds
+neither them nor any commitment to them, and §2.2 commits only matrices.
+
+Replacement for §1.1 item 1:
+
+> 1. `cqis_id`, the canonical `Model`, `Scales` and `Preparation` bytes (RFC-0025
+>    §2.7), and every 1-D artifact record as its ordinal and its canonical artifact
+>    payload bytes, in artifact record order. The verifier decodes them itself.
+>    Mantissas, exponents, fractions, policies, function representations and norm
+>    gains are therefore public data, not witness.
+
+Rationale: the gains are model parameters the verifier must know to rebuild the
+relation. Binding them in the first transcript frame, before any challenge, is the
+treatment the mantissas already get. The development profile is not zero-knowledge
+(§1.2), so revealing them adds no leak. Profiles with zero-knowledge will need
+committed gains read as weight columns, which changes §2.2 and row 2.
+Soundness ledger: none; no challenge, line or label changes.
+Cost model: none. Affected tasks: E16-10 (statement codec and public-input file).

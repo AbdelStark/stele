@@ -19,6 +19,7 @@ import check_passport_composition as passport
 import check_preparation_execution as preparation
 import check_public_input as public
 import check_wide_residual as wide
+import synthetic_e2e
 
 
 def bound_cases():
@@ -125,10 +126,16 @@ def grouped_cases():
     return grouped.report()
 
 
+def synthetic_cases():
+    """RFC-0026 E16-10: the committed synthetic end-to-end fixture regenerates exactly."""
+    return synthetic_e2e.check()
+
+
 def main():
     if not __debug__:
         raise RuntimeError('oracle assertions must be enabled')
-    for check in (bound_cases, source_cases, decoding_cases, execution_cases, identity_cases, wide_cases, grouped_cases):
+    for check in (bound_cases, source_cases, decoding_cases, execution_cases, identity_cases, wide_cases, grouped_cases,
+                  synthetic_cases):
         print(json.dumps(dict(check=check.__name__, status='running')), flush=True)
         result = check()
         print(json.dumps(dict(check=check.__name__, status='passed', result=result), sort_keys=True), flush=True)

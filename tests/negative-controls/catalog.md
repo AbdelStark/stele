@@ -133,16 +133,16 @@
 | NC-1206 | token source | 0016 A2, 0025 §2.6 | substitute one prompt/output source context while retaining the expected tokens and I/O mode | `TokenSourceMismatch` | todo |
 | NC-1207 | message embedding | 0010 A6 | plan whose consumers name two embeddings (signed and offset) for one source context | `EmbeddingMismatch` | todo |
 | NC-1208 | message embedding | 0010 A6 | plan whose consumers name no embedding for a committed source context | `MissingEmbedding` | todo |
-| NC-1300 | development statement token | 0026 §5 row 13 | change one checked token | `FinalEvaluationMismatch` | todo |
-| NC-1301 | development next token | 0026 §1.1 | change the next token y | `FinalEvaluationMismatch` | todo |
+| NC-1300 | development statement token | 0026 §5 row 13 | change one checked token | `RootMismatch` | done |
+| NC-1301 | development next token | 0026 §1.1 | change the next token y | `RootMismatch` | done |
 | NC-1302 | development witness column | 0026 §3.2, §4 | +1 on one witness value, group recommitted honestly | `FinalEvaluationMismatch` | todo |
 | NC-1303 | development width | 0026 §3.6 | send one group message element as the noncanonical limb p | `NoncanonicalField` | todo |
-| NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RootMismatch` | todo |
-| NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `StatementMismatch` | todo |
+| NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RootMismatch` | done |
+| NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `StatementMismatch` | done |
 | NC-1306 | development root substitution | 0026 §2.3 | replace the stacked root with a multiplicity root | `RootMismatch` | todo |
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | todo |
 | NC-1308 | development column claim | 0026 §2.3 | route one column claim to the neighbouring column index | `ValueMismatch` | todo |
-| NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `StatementMismatch` | todo |
+| NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `StatementMismatch` | done |
 | NC-1310 | development width | 0026 §3.6 | commit one ranged witness value as 2^30, outside its width, with every identity recomputed | `RootMismatch` | todo |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
