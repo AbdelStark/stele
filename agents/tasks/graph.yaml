@@ -732,9 +732,9 @@ tasks:
   - RFC-0010 A12
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
-  agent: codex-root
-  branch: task/E4-04-fused-layout-study
+  status: in_progress
+  agent: claude-code
+  branch: task/E4-04-fused-opening
   acceptance:
   - NC-0305/0605
   - zero extra passes asserted by counter
