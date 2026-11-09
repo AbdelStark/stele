@@ -463,12 +463,155 @@ where
     .map_err(|e| format!("{e:?}"))
 }
 
+// RFC-0007 A1 item 7 (E4-04): fused weight-opening controls on the actual A2 phase.
+// Both sources are nonzero, so the W row drives the sumcheck through c = eq(l,r_l)*A[l,k].
+struct Rebalance<K> {
+    factors: Vec<K>,
+    coordinates: [usize; 2],
+}
+impl<K: ChallengeField + Eq> ProverHook<RowWitness<K>> for Rebalance<K> {
+    fn tamper(&self, w: &mut RowWitness<K>) {
+        let before = w.clone();
+        let [p, q] = self.coordinates;
+        let (cp, cq) = (self.factors[p], self.factors[q]);
+        assert!(
+            cp != K::from_i64(0) && cq != K::from_i64(0),
+            "nonzero factors"
+        );
+        w.rows[1][p] = w.rows[1][p] + cq;
+        w.rows[1][q] = w.rows[1][q] - cp;
+        let dot = |row: &[K]| {
+            row.iter()
+                .zip(&self.factors)
+                .fold(K::from_i64(0), |sum, (u, c)| sum + *u * *c)
+        };
+        assert!(
+            dot(&w.rows[1]) == dot(&before.rows[1]),
+            "claimed sum unchanged"
+        );
+        assert!(w.point == before.point && w.rows[0] == before.rows[0]);
+        let changed = before.rows[1]
+            .iter()
+            .zip(&w.rows[1])
+            .filter(|(a, b)| a != b);
+        assert_eq!(changed.count(), 2);
+    }
+}
+// Byte-level forgery of the W opening row only; every other wire byte is unchanged.
+struct ReplaceRow(Vec<u8>);
+impl<K: ChallengeField + Eq> ProverHook<Artifact<K>> for ReplaceRow {
+    fn tamper(&self, artifact: &mut Artifact<K>) {
+        let before = artifact.clone();
+        let row = &mut artifact.openings[1][1..1 + self.0.len()];
+        assert_ne!(row, &self.0[..]);
+        row.copy_from_slice(&self.0);
+        assert!(artifact.proof == before.proof && artifact.point == before.point);
+        assert_eq!(artifact.openings[0], before.openings[0]);
+        assert_eq!(
+            artifact.openings[1][1 + self.0.len()..],
+            before.openings[1][1 + self.0.len()..]
+        );
+    }
+}
+fn fused<K: ChallengeField + CodeField + Eq + core::fmt::Debug>(id: u16) -> Result<(), String>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let bits = [1, 1, 1, 2];
+    let [h, a, b, c] = bits.map(usize::from);
+    let (x, point) = composer::fixture::<K>(bits, 0);
+    let (w, _) = composer::fixture::<K>(bits, 1);
+    let messages = [x[0].clone(), w[1].clone()];
+    let sources = composer::sources::<K>(bits, &messages);
+    let certificates = sources.each_ref().map(composer::certificate);
+    let refs = sources.each_ref();
+    let certs = certificates.each_ref();
+    let rows = composer::rows(
+        &composer::statement(bits, &point, K::from_i64(0)),
+        refs,
+        &point,
+    );
+    let layer = composer::weights(&point[..h]);
+    let factors: Vec<K> = (rows[0].iter().enumerate())
+        .map(|(column, x)| layer[column >> b] * *x)
+        .collect();
+    let value = (factors.iter().zip(&rows[1])).fold(K::from_i64(0), |sum, (c, u)| sum + *c * *u);
+    let s = composer::statement(bits, &point, value);
+    let honest = composer::honest(&s, refs, certs, &rows);
+    // The production fused producer serializes exactly these retained rows as u.
+    let size = rows[0].len();
+    let (wire, _) = matmul::prove(
+        &mut composer::transcript(),
+        &s,
+        refs,
+        certs,
+        LIMITS,
+        3 * size + (1 << a) + (1 << c),
+    )
+    .map_err(|f| format!("production producer: {f:?}"))?;
+    assert_eq!(wire, honest.wire());
+    let k = <K as CodeField>::DEGREE;
+    if id == 305 {
+        let witness = RowWitness {
+            point: point.clone(),
+            rows: rows.clone(),
+        };
+        return check_control(
+            &witness,
+            &Rebalance {
+                factors,
+                coordinates: [0, size - 1],
+            },
+            |changed| -> Result<_, String> {
+                let artifact = composer::produce(&s, refs, certs, &changed.rows).0;
+                if changed == &witness {
+                    assert_eq!(artifact, honest);
+                }
+                // Every A1 round check and the X consumer pass on the wrong row B'.
+                let _ = composer::prefix(&s, certs, &artifact, 1);
+                Ok(artifact)
+            },
+            |p| {
+                checked(
+                    &s,
+                    certs,
+                    p,
+                    1,
+                    Error::Pcs(stele_pcs::Error::ColumnMismatch),
+                )
+            },
+            Error::Pcs(stele_pcs::Error::ColumnMismatch),
+        )
+        .map_err(|e| format!("NC-0305 K{k}: {e:?}"));
+    }
+    assert_eq!(id, 605);
+    // (a): the commitment-consistent row eq(r_j')^T M_W for r_j' != r_j.
+    let mut other = point.clone();
+    other[h + a] = other[h + a] + K::from_i64(1);
+    let forged = composer::rows(&s, refs, &other)[1].clone();
+    assert_ne!(forged, rows[1]);
+    let bytes = forged
+        .iter()
+        .flat_map(|v| v.to_le_bytes().as_ref().to_vec())
+        .collect();
+    check_proof_control(
+        || Ok::<_, String>(honest.clone()),
+        &ReplaceRow(bytes),
+        |p| checked(&s, certs, p, 1, Error::Pcs(stele_pcs::Error::ValueMismatch)),
+        Error::Pcs(stele_pcs::Error::ValueMismatch),
+    )
+    .map_err(|e| format!("NC-0605(a) K{k}: {e:?}"))
+}
+
 fn field<K: ChallengeField + CodeField + Eq + core::fmt::Debug>(id: u16) -> Result<(), String>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     if id == 802 {
         return continuation::<K>();
+    }
+    if id == 305 || id == 605 {
+        return fused::<K>(id);
     }
     for side in 0..2 {
         match id {

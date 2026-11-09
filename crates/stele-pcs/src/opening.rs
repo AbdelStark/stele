@@ -289,6 +289,8 @@ impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K>
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage, ProverWork), Failure> {
+        // RFC-0007 A1 item 4: every message() borrow during this call is counted.
+        let before = self.prepared.message_reads();
         if self.prepared.source().bytes() != certificate.record().source().bytes()
             || self.weights.len() != functional.a.len()
             || self
@@ -305,8 +307,11 @@ impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K>
                 },
             });
         }
-        self.prepared
-            .opening_row(t, certificate, functional, self.values.iter().copied())
+        let (proof, usage, mut work) =
+            self.prepared
+                .opening_row(t, certificate, functional, self.values.iter().copied())?;
+        work.source_elements = self.prepared.message_reads() - before;
+        Ok((proof, usage, work))
     }
 }
 
@@ -332,6 +337,53 @@ fn rejects_retained_row_allocation_sizes() {
         row_bytes::<stele_field::QM31>(2),
         Ok(2 * core::mem::size_of::<stele_field::QM31>())
     );
+}
+
+// RFC-0007 A1 item 4 (E4-04): reads are counted at the only message accessor.
+// The retained opening reports every borrow during the call: zero unless it rereads.
+#[cfg(test)]
+#[test]
+fn matches_reference_opening_source_reads() {
+    use stele_field::{Field, QM31};
+    let message: Vec<M31> = (0..8).map(|i| M31::from_i64(i + 1)).collect();
+    let prepared = PreparedSource::<QM31>::new(41, 1, 2, 1, &message, &mut HashUsage::default())
+        .expect("valid fixture");
+    let packet = prepared.certificate().expect("valid fixture").0;
+    let certificate = crate::verify_certificate(*prepared.source(), &packet)
+        .expect("valid fixture")
+        .0;
+    let a = [QM31::from_i64(3), QM31::from_i64(5)];
+    let b = [1, 2, 3, 4].map(QM31::from_i64);
+    let start = prepared.message_reads();
+    let row = RetainedRow::new(&prepared, &a).expect("valid fixture");
+    assert_eq!(row.work().source_elements, message.len());
+    assert_eq!(prepared.message_reads() - start, message.len());
+    let value = (row.values().iter().zip(&b)).fold(QM31::from_i64(0), |s, (u, b)| s + *u * *b);
+    let f = Functional {
+        id: 7,
+        a: &a,
+        b: &b,
+        value,
+    };
+    let transcript = || Transcript::<QM31>::new(b"opening source reads").expect("valid fixture");
+    let (retained, _, work) = row
+        .opening_measured(&mut transcript(), &certificate, f)
+        .expect("valid fixture");
+    assert_eq!(work.source_elements, 0);
+    let before = prepared.message_reads();
+    let (ordinary, _) = prepared
+        .opening(&mut transcript(), &certificate, f)
+        .expect("valid fixture");
+    assert_eq!(ordinary, retained);
+    assert_eq!(prepared.message_reads() - before, message.len());
+    // A direct traversal is charged at the accessor; the retained call stays scoped.
+    let before = prepared.message_reads();
+    assert_eq!(prepared.message().iter().count(), message.len());
+    assert_eq!(prepared.message_reads() - before, message.len());
+    let (_, _, work) = row
+        .opening_measured(&mut transcript(), &certificate, f)
+        .expect("valid fixture");
+    assert_eq!(work.source_elements, 0);
 }
 
 impl<K: ChallengeField> PreparedSource<'_, K> {
@@ -386,10 +438,11 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage), Failure> {
         // Lazy iteration preserves A9's preflight and original read/absorption order.
+        let message = self.message();
         let row = (0..functional.b.len()).map(|column| {
             let mut value = K::from_i64(0);
             for (row, a) in functional.a.iter().enumerate() {
-                let limb = self.message()[row * self.source().columns() + column];
+                let limb = message[row * self.source().columns() + column];
                 value = value + *a * K::from_i64(i64::from(limb.as_u32()));
             }
             value

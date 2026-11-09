@@ -809,12 +809,13 @@ def field_source_codec(root):
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'source'), ('fn', 'message'),
-        ('fn', 'response'), ('fn', 'work')]
+        ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
             == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
             'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
+            'usecore::sync::atomic::{AtomicUsize,Ordering};',
             'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
@@ -869,10 +870,11 @@ def field_source_codec(root):
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', opening)] == [
             'usecrate::work::{add,bytes};',
             'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,ProverWork,Source,Usage,VerifiedCertificate,VerifierWork,};',
-            'usealloc::vec::Vec;', 'usestele_code::{CodeField,Encoder};', 'usestele_field::{Serialize,M31};',
-            'usestele_hash::{merkle,AbsorbLabel,ChallengeField,HashUsage,Transcript};']
+            'usealloc::vec::Vec;', 'usestele_code::{CodeField,Encoder};',
+            'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,AbsorbLabel,ChallengeField,HashUsage,Transcript};',
+            'usestele_field::{Field,QM31};']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', opening)] == [
-            '#[derive(Clone,Copy)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
+            '#[derive(Clone,Copy)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]'] + ['#[cfg(test)]', '#[test]'] * 2
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', opening))
     work = re.sub(r'//[^\n]*', '', (crate / 'src/work.rs').read_text())
     work_closed = (re.findall(r'\bpub\b(?:\s*\([^)]*\))?', work) == ['pub'] * 23 + ['pub(crate)'] * 2
@@ -908,6 +910,7 @@ def field_source_codec(root):
           'test accepts_maximum_source_shape_without_domain_allocation ... ok',
           'test preparation::tests::rejects_preparation_allocation_sizes ... ok',
           'test opening::rejects_retained_row_allocation_sizes ... ok',
+          'test opening::matches_reference_opening_source_reads ... ok',
           'test work::tests::matches_reference_capacity_observations ... ok',
           'test matches_reference_qm31_prepared_columns ... ok',
           'test matches_reference_om31_prepared_columns ... ok',
