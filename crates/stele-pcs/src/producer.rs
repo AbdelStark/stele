@@ -40,10 +40,11 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
 }
 const PUBLIC: &[u8] = b"stele/v0.1/pcs-certificate/public";
 fn transcript<K: ChallengeField>(source: &Source<K>) -> Result<Transcript<K>, Error> {
-    let mut public = [0; PUBLIC.len() + 105];
+    let (bytes, mut public) = (source.bytes(), [0; PUBLIC.len() + 139]);
+    let end = PUBLIC.len() + bytes.len();
     public[..PUBLIC.len()].copy_from_slice(PUBLIC);
-    public[PUBLIC.len()..].copy_from_slice(&source.bytes());
-    Transcript::new(&public).map_err(Error::Transcript)
+    public[PUBLIC.len()..end].copy_from_slice(&bytes);
+    Transcript::new(&public[..end]).map_err(Error::Transcript)
 }
 fn produce_inner<K: ChallengeField>(
     prepared: &PreparedSource<'_, K>,

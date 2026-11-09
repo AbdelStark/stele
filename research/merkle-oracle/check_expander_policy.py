@@ -67,7 +67,28 @@ def check_fs_findings():
     assert fs_round_exceeds(q_treaty, 128, 2*(1 << 19), P**8)
 
 
+def check_native():
+    """Compare the native verifier-derived values with the exact rows checked above."""
+    from pathlib import Path
+    import subprocess
+    result = subprocess.run(['cargo', 'run', '-q', '-p', 'stele-pcs', '--example',
+                             'expander_policy', '--locked', '--offline'],
+                            cwd=Path(__file__).resolve().parents[2], check=True,
+                            capture_output=True, text=True)
+    native = [[int(value) for value in line.split()] for line in result.stdout.splitlines()]
+    # A3 item 3 / RFC-0012 A15: the setup term applies exactly at J>=4.
+    expected = [[j, *geometry(j), cert, opening, int(j >= 4)]
+                for j, cert, opening in zip(range(3, 15), CERT, OPEN, strict=True)]
+    assert native == expected, 'native v2 geometry/query policy differs from checked values'
+
+
 if __name__ == '__main__':
+    import sys
     check_policy()
     check_fs_findings()
+    if sys.argv[1:] == ['--native']:
+        check_native()
+        print('12 native v2 query pairs match exact independently checked minima')
+    else:
+        assert not sys.argv[1:], 'unknown arguments'
     print('12 minimal v2 query pairs; J=15 unsupported; FS round findings hold')

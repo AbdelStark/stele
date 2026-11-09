@@ -31,7 +31,7 @@ fn corpus<K: ChallengeField>() {
             root,
         )
         .expect("valid fixture source");
-        assert_eq!(source.bytes().as_slice(), expected);
+        assert_eq!(&source.bytes()[..], expected);
         for (key, kind) in [
             ("certificate", ProofKind::Certificate),
             ("opening", ProofKind::Opening),

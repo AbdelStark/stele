@@ -215,11 +215,7 @@ fn mu_source<K: ChallengeField>(layout: Layout, k: u8, root: [u8; 32]) -> Result
 }
 fn opening_cost<K: ChallengeField>(source: &Source<K>) -> Result<(usize, u64), Error> {
     // Actual verifier coefficient/row/encoder allocations; no message matrix is built.
-    for count in [
-        source.rows(),
-        source.columns(),
-        source.code().codeword_len(),
-    ] {
+    for count in [source.rows(), source.columns(), source.codeword_len()] {
         addressable::<K>(count)?;
     }
     let frame = source.opening_frame_size().map_err(Error::Pcs)?;
@@ -516,7 +512,7 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
                 sum(&[
                     total,
                     b"stele/v0.1/pcs-certificate/public".len(),
-                    105,
+                    source.bytes().len(),
                     source
                         .proof_size(ProofKind::Certificate)
                         .map_err(Error::Pcs)?

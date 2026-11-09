@@ -19,6 +19,8 @@ pub mod pcs;
 #[doc(hidden)]
 pub mod pcs_a1;
 #[doc(hidden)]
+pub mod pcs_expander;
+#[doc(hidden)]
 pub mod pcs_opening;
 #[doc(hidden)]
 pub mod pcs_opening_continuation;
@@ -324,6 +326,30 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
         run: || pcs::run(608),
+    },
+    catalog::RegisteredControl {
+        id: 603,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || lookup::run(603),
+    },
+    catalog::RegisteredControl {
+        id: 612,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CertificateContext / ColumnMismatch / InvalidRegistry",
+        run: || pcs_expander::run(612),
+    },
+    catalog::RegisteredControl {
+        id: 613,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "UnsupportedSource",
+        run: || pcs_expander::run(613),
+    },
+    catalog::RegisteredControl {
+        id: 614,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ColumnMismatch / NoncanonicalField",
+        run: || pcs_expander::run(614),
     },
     catalog::RegisteredControl {
         id: 411,

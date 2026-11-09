@@ -112,7 +112,7 @@ where
                 .map_err(|_| "FixtureRoot")?,
         )
         .map_err(|e| format!("{e:?}"))?;
-        assert_eq!(source.bytes().as_slice(), unhex(&info["bytes"])?);
+        assert_eq!(source.bytes().to_vec(), unhex(&info["bytes"])?);
         let bytes = unhex(&info["certificate"])?;
         match verify_certificate(source, &bytes) {
             Ok((c, _)) => {
@@ -189,7 +189,7 @@ where
             &mut HashUsage::default(),
         )
         .map_err(|e| format!("producer source: {e:?}"))?;
-        assert_eq!(source.source().bytes().as_slice(), unhex(&info["bytes"])?);
+        assert_eq!(source.source().bytes().to_vec(), unhex(&info["bytes"])?);
         let (bytes, _) = source
             .certificate()
             .map_err(|e| format!("producer certificate: {e:?}"))?;

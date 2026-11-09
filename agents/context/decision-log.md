@@ -1074,3 +1074,42 @@ responses of Circle rate 1/4. No measured constant moves. int16/int24 committed
 sources have no range consumer yet; E6-02 makes that a plan rejection.
 
 Status: Accepted.
+
+## ADR-069: Native version-2 sources, expected-statement parsing and A6 expansion (RFC-0010 A3/A6, RFC-0012 A15, task E4-03)
+
+Context: ADR-068 accepted version-2 expander sources, Policy 1 tables and one message
+element per value. E4-03 implements them on the E4-03a Circle consumer.
+
+Decision:
+- **One source type.** `Source::from_code_id` admits the 21-byte Circle ID (version 1)
+  and the 55-byte v2 manifest with J=3..14 (version 2). Every other identity, including
+  J=15, is UnsupportedSource before any transcript work. `Source::new` is the Circle
+  shorthand. `bytes()` returns `SourceBytes` (105 or 139 bytes). Certificate public
+  bytes, opening frames and the RFC-0006 A1 bundle size use the actual length.
+- **Expected-statement bytes.** `Source::from_bytes` parses the exact bytes and accepts
+  them only if re-serialization is identical. Version, degree, R, C, layout 0 and
+  policy 1 are therefore never read from the bytes; anything else is UnsupportedSource.
+- **Evidence pin.** Construction checks that the registry's distance and setup evidence
+  IDs are the ones policy byte 1 pins (A3 item 3). A mismatch is
+  `Encoder(InvalidRegistry)`. `stele_pcs::registry` re-exports the A1 validator because
+  deny.toml lets only stele-pcs depend on stele-code.
+- **Context check.** `CertificateRecord::check_source` is the A3 item 8 comparison a
+  consumer runs before verify_point (CertificateContext). No Accepted consumer takes a
+  v2 source yet, so the NC-0612 handle variant is conditional until E8-02 calls it.
+- **Ledger PCS line.** `Parameters` now carries `setup_term` (v2, J>=4). Together with
+  N, D, e, q_c, q_o, ell and the field degree, every RFC-0012 A15 PCS-line input comes
+  from a verifier-derived record. E8-05 owns the ledger arithmetic.
+- **Expansion.** `expand` maps typed i8/i16 values to one M31 element each, under the
+  signed or offset embedding. int24 (A11) has no native typed input here and is left
+  to the wide-cut consumer task.
+- **Research oracle.** The v2 byte oracle is a separate `expander_wire.py`. It reuses
+  field_wire.py, which other evidence pins by digest, unchanged.
+
+Consequences: no new label, challenge, loss or profile. Circle bytes, proofs and fixtures
+are unchanged. NC-0603 and NC-0612..0614 are done (two NC-0612 variants are
+conditional, see the catalog note). `check_source` has no production caller yet:
+E8-02 gains the criterion that its plan verifier calls it, so NC-0612 runs through it.
+The evidence-ID check compares compiled constants; it is a build-time tripwire, held
+by a unit test against stele-code's exported IDs, not a runtime check.
+
+Status: Accepted.

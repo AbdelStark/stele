@@ -55,6 +55,15 @@ impl<K: ChallengeField> CertificateRecord<K> {
     pub fn kind(&self) -> ProofKind {
         ProofKind::Certificate
     }
+    /// RFC-0010 A3 item 8: a handle whose context (version, code identity, shape,
+    /// field or root) differs from the consumer's expected source is CertificateContext.
+    pub fn check_source(&self, expected: &Source<K>) -> Result<(), Error> {
+        if self.source.bytes() == expected.bytes() {
+            Ok(())
+        } else {
+            Err(Error::CertificateContext)
+        }
+    }
 }
 /// Created only after full verification, including final absorption and ID hashing.
 /// ```compile_fail
@@ -73,10 +82,11 @@ impl<K: ChallengeField> VerifiedCertificate<K> {
 
 const PUBLIC: &[u8] = b"stele/v0.1/pcs-certificate/public";
 fn transcript<K: ChallengeField>(source: &Source<K>) -> Result<Transcript<K>, Error> {
-    let mut public = [0; PUBLIC.len() + 105];
+    let (bytes, mut public) = (source.bytes(), [0; PUBLIC.len() + 139]);
+    let end = PUBLIC.len() + bytes.len();
     public[..PUBLIC.len()].copy_from_slice(PUBLIC);
-    public[PUBLIC.len()..].copy_from_slice(&source.bytes());
-    Transcript::new(&public).map_err(Error::Transcript)
+    public[PUBLIC.len()..end].copy_from_slice(&bytes);
+    Transcript::new(&public[..end]).map_err(Error::Transcript)
 }
 /// Reparse and fully verify imported bytes against the caller's expected source.
 /// Every error aborts this attempt; observations never authorize continuation.
@@ -152,7 +162,7 @@ where
     }
     t.absorb(AbsorbLabel::CertificateRow, wire.row_bytes())
         .map_err(Error::Transcript)?;
-    let encoded = Encoder::from_code_id(&source.code().code_id())
+    let encoded = Encoder::from_code_id(source.code_id())
         .map_err(Error::Encoder)?
         .encode_measured(&row)
         .map_err(Error::Encoder)?;

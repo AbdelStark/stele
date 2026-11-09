@@ -91,7 +91,7 @@
 | NC-0600 | PCS | 0010 A9 | change one certificate codeword limb or opening row value under zero b; rebuild dependent responses | `ColumnMismatch` | done |
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
-| NC-0603 | PCS | 0010 A6, 0024 §1.1 | in an offset int8 source replace one adjacent pair (x0,x1), x1>=1, by (x0+256,x1-1), keeping x0+256·x1; commit and certify it honestly; actual byte-range verifier | `RootMismatch` | todo |
+| NC-0603 | PCS | 0010 A6, 0024 §1.1 | in an offset int8 source replace one adjacent pair (x0,x1), x1>=1, by (x0+256,x1-1), keeping x0+256·x1; commit and certify it honestly; actual byte-range verifier | `RootMismatch` | done |
 | NC-0604–0605 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6, 0024 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet or one original range handle with responses from the old source | `RootMismatch / CertificateContext` | done |
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
@@ -99,9 +99,9 @@
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
-| NC-0612 | PCS | 0010 A1, A3, 0012 A7 | under the actual v2 source consumer: offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | todo |
-| NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | todo |
-| NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | todo |
+| NC-0612 | PCS | 0010 A1, A3, 0012 A7 | conditional until E8-02 calls `check_source` (rows 2-3 run the actual certificate verifier and A1 registry validator): offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | done |
+| NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | done |
+| NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
 | NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
@@ -139,6 +139,23 @@ RFC-0010 A2 specifies a circle encoder only. Its research order/normalization an
 distance counterexamples add no PCS binding or NC coverage. NC-0603..0605 still
 require the actual commitment/opening consumers; E4-02 encoder tests cannot mark
 them done or admit a PCS profile.
+
+E4-03 (RFC-0010 A3/A6) executes NC-0603 and NC-0612..0614 in QM31 and OM31.
+The NC-0603 control commits and certifies the offset int8 pair (261,2) honestly;
+the actual RFC-0024 §1.1 byte-range verifier rejects it. NC-0613 and both NC-0614 variants
+run the actual certificate verifier: J=15 or policy byte 2 is rejected when the
+expected statement bytes are parsed, and NC-0614 splits one value into two
+elements, or sends the limb p in t (R=1). NC-0612's ColumnMismatch variant uses
+J=4, because at J=3 the base-only map ignores the seed. Two NC-0612 variants are
+conditional. The CertificateContext variant runs `CertificateRecord::check_source`,
+which is the expected-context check of A3 item 8 that a consumer calls before
+verify_point; no Accepted consumer takes a v2 source yet (E8-02). The
+InvalidRegistry variant runs the A1 registry validator on an edited export, so it
+is a configuration check, not proof-statement coverage. Like NC-0420..0424, NC-0612
+counts as an executed row, not as production consumer coverage, until the E8-02
+plan verifier calls `check_source` before accepting a PCS opening. NC-0614's
+ColumnMismatch variant is a generic tampered-t control of NC-0600's class; it does
+not test `expand` itself. NC-0604/0605 stay todo.
 
 The public stacked runtime executes NC-0203, both source variants of NC-0212,
 and both Stack/StackSources extensions of NC-0802 in QM31 and OM31.

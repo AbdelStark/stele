@@ -9,10 +9,12 @@ import json
 from pathlib import Path
 import struct
 
+from blake3 import blake3
 from field_wire import (P, Transcript, commit, certify, verify_certificate,
                         open_functional, verify_opening, eq, scalar, dot, row,
                         encode, field_bytes, bind_sources, sc, flip, rejects)
 import field_wire as wire
+import expander_wire as v2
 
 
 def exercise():
@@ -52,6 +54,46 @@ def exercise():
                 'b': field_bytes(b).hex(), 'value': encode(value).hex(), 'opening': proof.hex(),
                 'continuation': verifier.state.hex()})
     return vectors
+
+
+def digest(source, proof):
+    # The A9 certificate-ID framing, reused as a byte digest the native test recomputes.
+    public = source.bytes()
+    return blake3(b'stele/v0.1/pcs-certificate/id'+struct.pack('<Q', len(public))
+                  +public+struct.pack('<Q', len(proof))+proof).digest()
+
+
+def expander_vectors():
+    """RFC-0010 A3 item 2: version-2 sources reuse every A9 wire, label and order."""
+    lines = []
+    for j, ell, degree in ((3, 1, 4), (4, 1, 8)):
+        seed, m = bytes(range(j, j+32)), 2*j
+        matrix = [[(i+2)*(k+3) for k in range(1 << m)] for i in range(1 << ell)]
+        source, witness = v2.commit(matrix, ell, j, degree, 41, seed)
+        assert len(source.bytes()) == 139 and source.bytes()[23] == 2
+        certificate = v2.certify(source, witness)
+        verified = v2.verify_certificate(source, certificate)
+        point = [tuple((i+1)*(k+2) for k in range(degree)) for i in range(ell+m)]
+        a, b = eq(point[:ell], degree), eq(point[ell:], degree)
+        value = dot(row(matrix, a, degree), b, degree)
+        prover = Transcript(b'field wire oracle', degree)
+        proof = v2.open_functional(prover, 12, verified, witness, a, b, value)
+        verifier = Transcript(b'field wire oracle', degree)
+        v2.verify_opening(verifier, 12, verified, a, b, value, proof)
+        continuation = verifier.challenge()[0]
+        assert prover.challenge()[0] == continuation
+        # Another seed is another context, even at J=3 where the map is identical.
+        other = replace(source, seed=bytes(32))
+        assert other.bytes() != source.bytes()
+        rejects('RootMismatch', lambda: v2.verify_certificate(other, certificate))
+        lines.append(json.dumps({'degree': degree, 'ell': ell, 'j': j, 'seed': seed.hex(),
+            'source': source.bytes().hex(), 'certificate_id': verified.identity.hex(),
+            'certificate_bytes': len(certificate), 'value': encode(value).hex(),
+            'opening_digest': digest(source, proof).hex(), 'opening_bytes': len(proof),
+            'continuation': continuation.hex()}, separators=(',', ':')))
+    for j in (2, 15):
+        rejects('UnsupportedSource', lambda: v2.Source(4, 41, 0, 2*j, 1, bytes(32), bytes(32)).bytes())
+    return ('\n'.join(lines)+'\n').encode()
 
 
 def certificate_continuations(vectors):
@@ -212,4 +254,7 @@ if __name__ == '__main__':
     continuation = certificate_continuations(vectors)
     assert core.with_name('certificate-continuation.txt').read_bytes() == continuation
     assert core.with_name('opening-continuation.txt').read_bytes() == opening_continuations(vectors)
+    expander = expander_vectors()
+    assert core.with_name('expander-wire.jsonl').read_bytes() == expander, 'native v2 fixture drift'
     print('6 certificate/opening cases; reference A1 unused-original controls;', sha256(raw).hexdigest())
+    print('2 version-2 source cases;', sha256(expander).hexdigest())

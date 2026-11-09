@@ -430,7 +430,7 @@ where
             t.absorb(AbsorbLabel::OpeningRow, parsed.row_bytes())
                 .expect("actual opening row");
             for _ in 0..certificate.record().source().queries(ProofKind::Opening) {
-                t.opening_column(certificate.record().source().code().codeword_len() as u64)
+                t.opening_column(certificate.record().source().codeword_len() as u64)
                     .expect("actual query draw");
             }
             if attack == Attack::ReplayResponses {

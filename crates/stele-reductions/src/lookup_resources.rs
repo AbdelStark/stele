@@ -56,11 +56,7 @@ pub(super) fn elements<K: ChallengeField + CodeField>(
     let mut base = mul(r, mul(n, degree)?)?; // All stable record-major mu limbs.
     let mut local_hashes = 1u64; // Actual Table encoding plus actual preparation only.
     for (j, source) in dsc.mu[..r].iter().enumerate() {
-        let (rows, columns, length) = (
-            source.rows(),
-            source.columns(),
-            source.code().codeword_len(),
-        );
+        let (rows, columns, length) = (source.rows(), source.columns(), source.codeword_len());
         let suffix = columns / degree;
         let nodes = mul(2, length)?.checked_sub(1).ok_or(Error::Capacity)?;
         for count in [rows, columns, length, suffix] {

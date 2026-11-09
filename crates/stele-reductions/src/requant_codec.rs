@@ -136,11 +136,7 @@ pub(super) fn term<K: ChallengeField>(coefficient: K, factors: &[u32]) -> Result
     })
 }
 fn opening_cost<K: ChallengeField>(source: &Source<K>) -> Result<(usize, u64), Error> {
-    for n in [
-        source.rows(),
-        source.columns(),
-        source.code().codeword_len(),
-    ] {
+    for n in [source.rows(), source.columns(), source.codeword_len()] {
         addressable::<K>(n)?;
     }
     let proof = source.proof_size(ProofKind::Opening).map_err(Error::Pcs)?;

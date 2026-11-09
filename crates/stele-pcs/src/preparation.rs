@@ -70,6 +70,18 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
         let source = Source::<K>::new(id, ell, m, blowup, [0; 32])?;
+        Self::from_code_id(id, ell, source.code_id(), message, usage)
+    }
+
+    /// Same preparation for any identity `Source::from_code_id` admits (RFC-0010 A3 item 2).
+    pub fn from_code_id(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: &'a [M31],
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::from_code_id(id, ell, code, [0; 32])?;
         let count = source
             .rows()
             .checked_mul(source.columns())
@@ -77,7 +89,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         if message.len() != count {
             return Err(Error::MessageShape);
         }
-        let length = source.code().codeword_len();
+        let length = source.codeword_len();
         let width = usize::try_from(source.descriptor().width).map_err(|_| Error::Capacity)?;
         let bytes = checked_bytes::<u8>(width.checked_mul(length).ok_or(Error::Capacity)?)?;
         let refs = checked_bytes::<&[u8]>(length)?;
@@ -95,7 +107,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             borrowed_message_bytes: checked_bytes::<M31>(count)?,
             ..PreparationWork::default()
         };
-        let encoder = Encoder::from_code_id(&source.code().code_id()).map_err(Error::Encoder)?;
+        let encoder = Encoder::from_code_id(source.code_id()).map_err(Error::Encoder)?;
         let mut columns = Vec::new();
         columns
             .try_reserve_exact(bytes)
@@ -130,7 +142,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
                 ),
             )
             .ok_or(Error::Capacity)?;
-        let source = Source::new(id, ell, m, blowup, tree.root())?;
+        let source = Source::from_code_id(id, ell, code, tree.root())?;
         Ok(Self {
             source,
             message,

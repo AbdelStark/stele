@@ -145,18 +145,14 @@ impl Schema {
                 .map_err(Error::Pcs)?;
             if sum(&[
                 b"stele/v0.1/pcs-certificate/public".len(),
-                105,
+                source.bytes().len(),
                 bytes.checked_sub(1).ok_or(Error::Capacity)?,
             ])? > max_public_bytes
             {
                 return Err(Error::ResourceLimit);
             }
             addressable::<u8>(bytes)?;
-            for count in [
-                source.rows(),
-                source.columns(),
-                source.code().codeword_len(),
-            ] {
+            for count in [source.rows(), source.columns(), source.codeword_len()] {
                 addressable::<K>(count)?;
             }
             source

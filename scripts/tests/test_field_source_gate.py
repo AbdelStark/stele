@@ -99,6 +99,8 @@ class FieldSourceGateTests(unittest.TestCase):
                      'certificate::tests::matches_reference_qm31_certificates',
                      'certificate::tests::matches_reference_om31_certificates',
                      'matches_reference_qm31_openings', 'matches_reference_om31_openings',
+                     'matches_reference_qm31_v2_wire', 'matches_reference_v2_policy_and_proof_sizes',
+                     'expansion::tests::matches_reference_signed_and_offset_embeddings',
                      'crates/stele-pcs/src/certificate.rs', 'crates/stele-pcs/src/source.rs',
                      'crates/stele-pcs/src/preparation.rs'):
             self.assertIn(name, actual.stdout)
@@ -127,9 +129,10 @@ class FieldSourceGateTests(unittest.TestCase):
                     gate.field_source_codec(ROOT)
         # The scoped oracle still runs in native and fails closed on failure/missing output.
         policy = subprocess.CompletedProcess([], 0, '59 native query pairs match exact independently checked minima', '')
+        expander = subprocess.CompletedProcess([], 0, '12 native v2 query pairs match exact independently checked minima', '')
         for code, output in [(1, 'failure'), (0, ''), (2, 'missing checker')]:
             result = subprocess.CompletedProcess([], code, output, '')
-            with mock.patch.object(gate.subprocess, 'run', side_effect=[actual, policy, result]) as run:
+            with mock.patch.object(gate.subprocess, 'run', side_effect=[actual, policy, expander, result]) as run:
                 with self.assertRaisesRegex(ValueError, 'checks failed'):
                     gate.field_source_codec(ROOT)
                 self.assertEqual(run.call_args.args[0],

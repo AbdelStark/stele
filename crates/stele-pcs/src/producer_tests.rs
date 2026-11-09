@@ -64,7 +64,7 @@ fn corpus<K: ChallengeField>() {
             work.responses * source.path_height() * 32
         );
         assert_eq!(
-            source.bytes().as_slice(),
+            &source.bytes()[..],
             unhex(v["source"].as_str().expect("source"))
         );
         let queries = u64::from(source.queries(ProofKind::Certificate));

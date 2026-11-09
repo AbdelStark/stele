@@ -683,7 +683,9 @@ tasks:
   - RFC-0012 A15
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E4-03-pcs
   acceptance:
   - NC-0600..0603
   - NC-0612
@@ -1817,6 +1819,7 @@ tasks:
   - LoC budget
   - plan derivation calls lookup::admit for every RFC-0023/0024 lookup consumer before the first transcript absorb; NC-0420..0424 run through the verifier entry point and fail if the call is removed
   - plan derivation fixes one RFC-0010 A6 message embedding per source context and rejects a plan whose consumers name two or none (NC-1207/1208)
+  - the plan verifier calls `check_source` (or obtains the handle via `verify_certificate(expected)`) before accepting any PCS opening; NC-0612 runs through it and fails if the call is removed
 - id: E8-03
   epic: E8
   title: Python differential verifier

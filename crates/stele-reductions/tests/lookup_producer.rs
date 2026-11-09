@@ -348,7 +348,6 @@ where
                 2 * descriptor
                     .multiplicity_source(j, [0; 32])
                     .expect("shape")
-                    .code()
                     .codeword_len() as u64
                     - 1
             })

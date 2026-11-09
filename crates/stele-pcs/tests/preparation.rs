@@ -32,7 +32,7 @@ fn corpus<K: ChallengeField>() {
             PreparedSource::<K>::new(41, ell, m, b, &message, &mut usage).expect("source");
         let source = prepared.source();
         let expected = unhex(v["source"].as_str().expect("source bytes"));
-        assert_eq!(source.bytes().as_slice(), expected);
+        assert_eq!(&source.bytes()[..], expected);
         assert!(core::ptr::eq(prepared.message(), message.as_slice()));
         let root: [u8; 32] = expected[73..].try_into().expect("root");
         let n = source.descriptor().count;
