@@ -800,7 +800,49 @@ fn explanation(name: &str) -> Option<&'static str> {
 /// full checker rejects and the mutated one accepts. `forged(skip, phase)` lists
 /// candidates; phase 0 lies at one step and completes the rest, phase 1 also keeps
 /// one later step frozen (tried only when phase 0 changes no output).
-fn survey<F>(
+/// What a survey does to each constraint.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    /// Delete it (`check_except`).
+    Delete,
+    /// Widen a range or range lookup by one bit (RFC-0026 §5.2 follow-up).
+    Widen,
+}
+
+/// The constraint `name` one bit wider: `values` pass every other constraint and
+/// the column lies in the wider width (a range's width plus one bit; a range
+/// lookup's table `[0, t]` grown to `[0, 2t + 1]`). This evaluates the wider range
+/// over Z directly, so 16-bit ranges, which the API cannot declare at 17 bits, are
+/// surveyed too.
+fn accepts_widened(relation: &Relation, values: &Values, name: &str) -> bool {
+    let wider = if let Some(range) = relation.ranges.iter().find(|r| r.name == name) {
+        let w = Width {
+            bits: range.width.bits + 1,
+            ..range.width
+        };
+        Some((range.column, w.min(), w.max()))
+    } else {
+        relation
+            .lookups
+            .iter()
+            .find(|l| l.name == name)
+            .map(|lookup| {
+                let table = &relation.tables[lookup.table.0 as usize];
+                let top = table.rows.iter().map(|row| row[0]).max().unwrap_or(0);
+                (lookup.tuple[0].column, 0, 2 * top + 1)
+            })
+    };
+    let Some((column, low, high)) = wider else {
+        return false;
+    };
+    check_except(relation, values, &[name]).is_ok()
+        && values
+            .get(relation, column)
+            .is_some_and(|v| v.iter().all(|x| (low..=high).contains(x)))
+}
+
+fn survey_mode<F>(
+    mode: Mode,
     relation: &Relation,
     prefix: &str,
     honest: &Values,
@@ -812,30 +854,46 @@ where
 {
     let truth = outputs(honest);
     let plain = forged(None, 0);
-    constraints(relation, prefix)
+    let frozen = core::cell::OnceCell::new();
+    let names: Vec<String> = match mode {
+        Mode::Delete => constraints(relation, prefix),
+        Mode::Widen => relation
+            .ranges
+            .iter()
+            .map(|r| &r.name)
+            .chain(relation.lookups.iter().map(|l| &l.name))
+            .filter(|n| n.starts_with(prefix))
+            .cloned()
+            .collect(),
+    };
+    names
         .into_iter()
         .map(|name| {
             let skip = [name.as_str()];
-            let position = chain_position(&name).filter(|(chain, _)| {
-                relation
-                    .identities
-                    .iter()
-                    .any(|i| i.name.starts_with(&alloc::format!("{chain}/")) && *chain != prefix)
-            });
+            let position = chain_position(&name)
+                .filter(|_| mode == Mode::Delete)
+                .filter(|(chain, _)| {
+                    relation.identities.iter().any(|i| {
+                        i.name.starts_with(&alloc::format!("{chain}/")) && *chain != prefix
+                    })
+                });
             let mut outcome = Outcome::Survived;
             'phases: for phase in 0..2 {
                 let fresh;
                 let candidates = match (position, phase) {
                     (None, 0) => &plain,
+                    (None, _) => frozen.get_or_init(|| forged(None, 1)),
                     (skip, phase) => {
                         fresh = forged(skip, phase);
                         &fresh
                     }
                 };
                 for c in candidates {
-                    if check(relation, &c.values).is_ok()
-                        || check_except(relation, &c.values, &skip).is_err()
-                    {
+                    let mutated_accepts = match mode {
+                        Mode::Delete => check_except(relation, &c.values, &skip).is_ok(),
+                        Mode::Widen => accepts_widened(relation, &c.values, &name),
+                    };
+                    if check(relation, &c.values).is_ok() || !mutated_accepts {
                         continue;
                     }
                     if c.rejected || outputs(&c.values) != truth {
@@ -853,6 +911,13 @@ where
 }
 
 fn report(rows: &[(String, Outcome)]) -> Vec<String> {
+    report_with(rows, explanation)
+}
+
+fn report_with(
+    rows: &[(String, Outcome)],
+    explanation: fn(&str) -> Option<&'static str>,
+) -> Vec<String> {
     let mut table = String::from("| constraint | result |\n|---|---|\n");
     let mut unexplained = Vec::new();
     for (name, outcome) in rows {
@@ -899,7 +964,7 @@ fn assert_covered(tables: &[Vec<(String, Outcome)>]) {
 const ROW_DELTAS: [i64; 12] = [1, -1, 2, -2, 127, -127, 128, -128, 256, -256, 32768, -32768];
 const FROZEN_DELTAS: [i64; 6] = [1, -1, 2, 127, 128, -128];
 
-fn row_survey(policy: Policy) -> Vec<(String, Outcome)> {
+fn row_survey(policy: Policy, mode: Mode) -> Vec<(String, Outcome)> {
     let case = row_case(policy, &row_inputs_for(policy));
     let c = case.conversion.columns.expect("declared");
     let outputs = |v: &Values| {
@@ -968,7 +1033,14 @@ fn row_survey(policy: Policy) -> Vec<(String, Outcome)> {
         }
         all
     };
-    survey(&case.relation, "L0/row/", &case.values, outputs, forged)
+    survey_mode(
+        mode,
+        &case.relation,
+        "L0/row/",
+        &case.values,
+        outputs,
+        forged,
+    )
 }
 
 const PROJECTION_DELTAS: [i64; 10] = [1, -1, 2, -2, 255, -255, 256, -256, 65536, -65536];
@@ -979,6 +1051,7 @@ fn projection_survey(
     weights: &[Vec<i64>],
     m: &[u16],
     shift: i32,
+    mode: Mode,
 ) -> Vec<(String, Outcome)> {
     std::println!("projection, {policy:?}, l = {shift}");
     let case = projection_case(policy, inputs, weights, m, shift);
@@ -1085,6 +1158,48 @@ fn projection_survey(
                     });
                 }
             }
+            // |Y| - 1 with rho + 2^K packed greedily into limbs whose limb `r` may use one
+            // more bit: in range only once that limb's range is widened.
+            for r in 0..case.honest.remainder.len() {
+                let widths: Vec<u8> = case
+                    .projection
+                    .columns
+                    .as_ref()
+                    .expect("declared")
+                    .remainder
+                    .iter()
+                    .map(|id| case.relation.columns[id.0 as usize].width.bits)
+                    .collect();
+                let lie = move |w: &mut ProjectionWitness| {
+                    let rho: i128 = w
+                        .remainder
+                        .iter()
+                        .enumerate()
+                        .map(|(i, l)| i128::from(l[x]) << (8 * i))
+                        .sum();
+                    w.magnitude[x] -= 1;
+                    let mut rest = rho + (1i128 << k_bits);
+                    for i in (0..w.remainder.len()).rev() {
+                        let bits = widths[i] + u8::from(i == r);
+                        let limb = (rest >> (8 * i)).min((1 << bits) - 1);
+                        w.remainder[i][x] = limb as i64;
+                        rest -= limb << (8 * i);
+                    }
+                };
+                let (description, values, rejected, _) = custom(
+                    alloc::format!(
+                        "Magnitude[{x}] -1, rho + 2^K packed with limb {r} one bit wider"
+                    ),
+                    &lie,
+                    Some(PStep::Output),
+                    skip,
+                );
+                all.push(Candidate {
+                    description,
+                    values,
+                    rejected,
+                });
+            }
             // tau flipped, (1 - 2 tau) |V| = V carried whole by byte `b`.
             for b in 0..case.honest.bytes.len() {
                 let lie = move |w: &mut ProjectionWitness| {
@@ -1143,23 +1258,71 @@ fn projection_survey(
         }
         all
     };
-    survey(&case.relation, "L0/q/", &case.values, outputs, forged)
+    survey_mode(mode, &case.relation, "L0/q/", &case.values, outputs, forged)
 }
 
 fn kept(frozen: Option<PStep>) -> String {
     frozen.map_or(String::new(), |f| alloc::format!(", {f:?} kept"))
 }
 
+/// Why widening a range or range lookup by one bit changes no output over Z.
+fn widen_reason(name: &str) -> Option<&'static str> {
+    let rules: [(&str, &str); 21] = [
+        ("/carry", "chain carries are fixed by their position identities; width only feeds the bound rule"),
+        ("/weight/range", "committed model data, never prover-chosen (RFC-0026 §2.2)"),
+        ("L0/row/magnitude/range", "a = |x| <= 32768 by the sign identity with sigma in {0,1}"),
+        ("L0/row/floor/range", "q0 = q - beta <= 127 by the quotient range"),
+        ("L0/row/remainder/range", "rho <= D - 1 by spare >= 0; the lower bound 0 is unchanged"),
+        ("L0/row/spare/range", "spare = D - 1 - rho <= D - 1 since rho >= 0; the lower bound is unchanged"),
+        ("L0/row/half_gap/range", "half_gap <= D by its identity; only the unchanged lower bound 0 matters"),
+        ("L0/row/codes/range", "c = (1 - 2 sigma) q with |q| <= 127"),
+        ("L0/row/scale/range", "127 s = M + slack <= 32768 + 126, so s <= 259"),
+        ("L0/row/zero/range", "z only matters where M = 0, where a = 0 gives q = 0 for any divisor"),
+        ("L0/row/maximum/range", "M = a_j <= 32768 at a hit lane"),
+        ("L0/row/gap/range", "gap = M - a; only the unchanged lower bound 0 matters"),
+        ("L0/row/hit/range", "sum h = 1 over nonnegative h forces exactly one h = 1"),
+        ("L0/row/quotient/range", "dynamic: q <= 127 since a <= M <= 127 s; static: killed by an overflowing input"),
+        ("L0/q/digit/", "the fold fixes b0 + 256 b1 = q*s; V depends only on that sum"),
+        ("L0/q/byte/", "bytes stay nonnegative, so (1 - 2 tau) sum 256^k v_k = V fixes tau and the sum; P uses only the sum"),
+        ("L0/q/scale/", "s = sum 256^c s_c is fixed by the scale identity; P uses only the sum"),
+        ("L0/q/magnitude/range", "Ymag is fixed by the rounding chain; |Y| is bounded by the output range"),
+        ("L0/q/sign/range", "UNUSED"),
+        ("L0/q/output/range", "UNUSED"),
+        ("L0/row/sign/range", "UNUSED"),
+    ];
+    rules
+        .iter()
+        .filter(|(_, reason)| *reason != "UNUSED")
+        .find(|(pattern, _)| name.contains(pattern))
+        .map(|(_, reason)| *reason)
+}
+
+/// Every unexplained widening survivor must be killed in some table.
+fn assert_widening_covered(tables: &[Vec<(String, Outcome)>]) {
+    let killed: Vec<&String> = tables
+        .iter()
+        .flatten()
+        .filter(|(_, o)| matches!(o, Outcome::Killed(_)))
+        .map(|(n, _)| n)
+        .collect();
+    let mut open: Vec<String> = tables
+        .iter()
+        .flat_map(|t| report_with(t, widen_reason))
+        .filter(|n| !killed.contains(&n))
+        .collect();
+    open.dedup();
+    assert!(open.is_empty(), "unexplained widening survivors: {open:?}");
+}
+
 #[test]
 fn survey_row_conversion_constraints() {
     for policy in [Policy::Dynamic, Policy::Grouped(2), Policy::Static(5)] {
         std::println!("row conversion, {policy:?}");
-        assert_covered(&[row_survey(policy)]);
+        assert_covered(&[row_survey(policy, Mode::Delete)]);
     }
 }
 
-#[test]
-fn survey_projection_constraints() {
+fn projection_tables(mode: Mode) -> Vec<Vec<(String, Outcome)>> {
     let (inputs, weights, m) = projection_inputs();
     let tie = |v: i64| vec![vec![v, 0], vec![-v, 0]];
     // The least right shift that keeps every output inside int16.
@@ -1170,14 +1333,22 @@ fn survey_projection_constraints() {
             .find(|&l| affine(&rows.codes, &rows.scales, &weights, &m, l).is_some())
             .expect("shift")
     };
-    let tables = [
-        projection_survey(Policy::Dynamic, &inputs, &weights, &m, fit(Policy::Dynamic)),
+    vec![
+        projection_survey(
+            Policy::Dynamic,
+            &inputs,
+            &weights,
+            &m,
+            fit(Policy::Dynamic),
+            mode,
+        ),
         projection_survey(
             Policy::Grouped(2),
             &inputs,
             &weights,
             &m,
             fit(Policy::Grouped(2)),
+            mode,
         ),
         projection_survey(
             Policy::Static(300),
@@ -1185,8 +1356,9 @@ fn survey_projection_constraints() {
             &weights,
             &m,
             fit(Policy::Static(300)),
+            mode,
         ),
-        projection_survey(Policy::Dynamic, &inputs, &weights, &m, -200),
+        projection_survey(Policy::Dynamic, &inputs, &weights, &m, -200, mode),
         // l = 9 >= 0 with small codes; a code of 127 overflows int16.
         projection_survey(
             Policy::Static(1),
@@ -1194,16 +1366,20 @@ fn survey_projection_constraints() {
             &[vec![1, 1, 0, 0], vec![1, 0, 0, 0]],
             &[1, 3],
             9,
+            mode,
         ),
         // Exact ties: P = 2^(K-1) with V = 1 (K = 1) and V = 256 (K = 9), and with
         // three and four sign-chain bytes (4 lanes; grouped digit rows).
-        projection_survey(Policy::Static(1), &tie(1), &[vec![1, 0]], &[1], -1),
+        projection_survey(Policy::Static(1), &tie(1), &[vec![1, 0]], &[1], -1, mode),
+        // V = -3: a sign bit widened to 2 bits admits tau = 2, (1 - 2 tau) = -3.
+        projection_survey(Policy::Static(1), &tie(3), &[vec![1, 0]], &[1], -1, mode),
         projection_survey(
             Policy::Static(1),
             &[vec![1, 0, 0, 0], vec![-1, 0, 0, 0]],
             &[vec![1, 0, 0, 0]],
             &[1],
             -1,
+            mode,
         ),
         projection_survey(
             Policy::Grouped(2),
@@ -1211,6 +1387,7 @@ fn survey_projection_constraints() {
             &[vec![1, 0, 0, 0]],
             &[1],
             -1,
+            mode,
         ),
         projection_survey(
             Policy::Static(1),
@@ -1218,9 +1395,31 @@ fn survey_projection_constraints() {
             &[vec![2, 2]],
             &[1],
             -9,
+            mode,
         ),
-    ];
-    assert_covered(&tables);
+    ]
+}
+
+#[test]
+fn survey_projection_constraints() {
+    assert_covered(&projection_tables(Mode::Delete));
+}
+
+#[test]
+fn survey_projection_range_widening() {
+    assert_widening_covered(&projection_tables(Mode::Widen));
+}
+
+#[test]
+fn survey_row_conversion_range_widening() {
+    let tables: Vec<_> = [Policy::Dynamic, Policy::Grouped(2), Policy::Static(5)]
+        .into_iter()
+        .map(|policy| {
+            std::println!("row conversion widening, {policy:?}");
+            row_survey(policy, Mode::Widen)
+        })
+        .collect();
+    assert_widening_covered(&tables);
 }
 
 // ---------- bound rule on realistic shapes ----------
