@@ -1180,4 +1180,35 @@ Consequences: a response carries S paths instead of one (about 0.64 MB more per
 Circle rate 1/4 opening at N=2^22, S=8). s=0 sources, proofs and fixtures are
 unchanged. Different s values are different commitments, as A3 already states.
 
+## ADR-072: Treaty LU ledger line from the verified lookup record (RFC-0008 A2, RFC-0012 A8/A11, task E12-02)
+
+Context: E12-02 asks for the treaty LU ledger line squared and NC-0403. E3-07b/E3-07
+already deliver the A5 engine at r=2 (independent Unit and (Beta, Alpha) draws per
+repetition, one multiplicity source each, A11 labels and order), treaty admission
+(`lookup::admit`, r=2/d=8, NC-0421/0422) and NC-0403 through the closed verifier.
+`LookupParameters` already carries the numerator, d and r, but nothing turns them
+into A8's line. ADR-069 left ledger sums to E8-05.
+
+Decision:
+- **Line shape.** `LookupParameters::identity_term(profile)` returns `(numerator^r, d*r)`,
+  the exact ratio numerator^r/p^(d*r). Integers, no floats. numerator<2^64, so the
+  square fits u128 and is below p^4: A8's cap at one never binds and is not coded.
+  It returns None unless (r, d) is the profile's own pair, (1,4) standard or (2,8)
+  treaty. That pair comes from the same private helper `admit` uses, so there is one
+  mapping.
+- **Source.** The inputs come from the record the verifier returns, so the line follows
+  the verified r and d. E8-05a gains the criterion that it uses this line and nothing
+  recomputed from proof bytes.
+- **Interactive only.** The line is A8's interactive record. Q12 owns the Fiat–Shamir
+  unit round (about r*h/|K|) and pair round (about e_LU^r).
+- **Evidence.** `accepts_treaty_lu_ledger_squared` runs plan admission and the actual
+  producer and verifier for eight range_8 positions under both profiles: standard
+  (263, 4), treaty (263^2, 16). The OM31 NC-0403 Statement now also passes treaty
+  admission, so the control runs at treaty parameters.
+
+Consequences: no new label, challenge, loss, NC row or proof byte. Catalog counts are
+unchanged. The measured treaty cost stays the E3-07 ledgers: c_lu about 3,500
+(treaty) against about 595 (standard) at m=18, roughly 5.9x. E12-03 needs that ratio.
+No standard-profile Fiat–Shamir bound is claimed (A2 item 8; Q12).
+
 Status: Accepted.

@@ -1899,6 +1899,7 @@ tasks:
   - exact canonical ledger derived from complete independently expected plan, instance geometry, actual consumer schedule and permitted profile; every challenge/query/failed-attempt/lifetime obligation retained
   - native no_std derivation/checking and independent exact enumeration with actual NC-0804/0805 and NC-1205 rejection, including missing or substituted child losses
   - no final passport or accepted inference proof is a derivation input; E8-05 retains both-profile full W8 ledger delivery and original budget criteria
+  - every LU line is `LookupParameters::identity_term` of an actual verified lookup record (E12-02, ADR-072), never recomputed from proof bytes or applied as a Fiat-Shamir bound
 - id: E8-06
   epic: E8
   title: Digest gate with recorded W8 digests
@@ -2162,10 +2163,15 @@ tasks:
   depends:
   - E3-07
   rfc:
-  - RFC-0008 §6
+  - RFC-0008 A2
+  - RFC-0008 A5
+  - RFC-0012 A8
+  - RFC-0012 A11
   skill: gkr-reduction-author
-  crate: stele-lookup
-  status: ready
+  crate: stele-reductions
+  status: done
+  agent: claude-code
+  branch: task/E12-02-double-challenge-logup
   acceptance:
   - ledger LU squared
   - NC-0403

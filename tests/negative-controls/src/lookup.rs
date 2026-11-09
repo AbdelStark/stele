@@ -4,8 +4,8 @@ use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, HashUsage};
 use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind, VerifiedCertificate};
 use stele_reductions::lookup::{
-    admit, Descriptor, Error, Layout, Limits, ProducerLimits, Profile, Statement, Table,
-    TableDescriptor, TableField,
+    admit, Descriptor, Error, Layout, Limits, LookupParameters, ProducerLimits, Profile, Statement,
+    Table, TableDescriptor, TableField,
 };
 
 #[path = "lookup_byte_range.rs"]
@@ -173,6 +173,10 @@ where
             originals: &originals,
             multiplicities: &layouts[..r],
         };
+        if id == 403 && <K as CodeField>::DEGREE == 8 {
+            // E12-02: the OM31 NC-0403 Statement is exactly a treaty-admitted one (r=2, d=8).
+            admit(&s, 1, Profile::Treaty).expect("treaty plan admission");
+        }
         let descriptor = Descriptor::new(s, LIMITS).expect("expected descriptor");
         if source == 256 {
             let mut attack = Attack::Honest;
@@ -501,7 +505,7 @@ fn decide<K: ChallengeField + CodeField + TableField + Eq>(
     a: &Admitted,
     positions: u64,
     profile: Profile,
-) -> Result<(), Error>
+) -> Result<LookupParameters, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -545,7 +549,7 @@ where
         .map_err(|f| f.cause)?;
     let mu: Vec<_> = mu.iter().collect();
     d.verify(&mut transcript(), &mu, &proof)
-        .map(|_| ())
+        .map(|(record, _)| *record.parameters())
         .map_err(|f| f.cause)
 }
 fn admission(id: u16) -> Result<(), String> {
@@ -565,8 +569,8 @@ fn admission(id: u16) -> Result<(), String> {
             &Plan(id),
             |a| Ok::<_, String>(a.clone()),
             |a: &Admitted| match a.degree {
-                4 => decide::<QM31>(a, positions, profile),
-                _ => decide::<OM31>(a, positions, profile),
+                4 => decide::<QM31>(a, positions, profile).map(|_| ()),
+                _ => decide::<OM31>(a, positions, profile).map(|_| ()),
             },
             expected,
         )
@@ -600,4 +604,42 @@ fn accepts_qm31_nonzero_lookup_tail() {
 #[test]
 fn accepts_om31_nonzero_lookup_tail() {
     exercise::<OM31>(TAIL).expect("actual projected tail");
+}
+#[test]
+fn accepts_treaty_lu_ledger_squared() {
+    // E12-02, RFC-0012 A8: plan-admitted 8 positions of range_8, so h=0, N=8, c=1,
+    // t=256 and the joint numerator is 263; treaty squares it over p^16.
+    let standard = decide::<QM31>(&derived(8, Profile::Standard), 8, Profile::Standard);
+    let treaty = decide::<OM31>(&derived(8, Profile::Treaty), 8, Profile::Treaty);
+    let standard = standard.expect("admitted standard lookup");
+    let treaty = treaty.expect("admitted treaty lookup");
+    assert_eq!(
+        (standard.repetitions, standard.identity_numerator),
+        (1, 263)
+    );
+    assert_eq!((treaty.repetitions, treaty.identity_numerator), (2, 263));
+    assert_eq!(standard.identity_term(Profile::Standard), Some((263, 4)));
+    assert_eq!(treaty.identity_term(Profile::Treaty), Some((263 * 263, 16)));
+    // A record is only charged under its own profile.
+    assert_eq!(standard.identity_term(Profile::Treaty), None);
+    assert_eq!(treaty.identity_term(Profile::Standard), None);
+    let max = LookupParameters {
+        identity_numerator: u64::MAX,
+        ..treaty
+    };
+    assert_eq!(
+        max.identity_term(Profile::Treaty),
+        Some((u128::from(u64::MAX) * u128::from(u64::MAX), 16))
+    );
+    // Every (r, d) other than the profile's own pair, under both profiles.
+    for (degree, repetitions) in [(4, 2), (8, 1), (4, 0), (8, 3), (6, 1)] {
+        let bad = LookupParameters {
+            degree,
+            repetitions,
+            ..treaty
+        };
+        for profile in [Profile::Standard, Profile::Treaty] {
+            assert_eq!(bad.identity_term(profile), None);
+        }
+    }
 }

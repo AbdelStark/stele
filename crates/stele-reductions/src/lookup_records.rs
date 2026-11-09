@@ -4,6 +4,8 @@ use stele_hash::ChallengeField;
 use stele_lookup::fraction::{LeafReduction, Reduction};
 use stele_pcs::OpeningRecord;
 
+use super::super::{profile_parameters, Profile};
+
 /// Descriptive fixed parameters; constructing this metadata certifies nothing.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LookupParameters {
@@ -25,6 +27,26 @@ pub struct LookupParameters {
     pub repetitions: u8,
     /// Joint identity numerator h+N+c*t-1 over |K|, before clipping and exponent r.
     pub identity_numerator: u64,
+}
+impl LookupParameters {
+    /// RFC-0012 A8/A11 LU line as the exact ratio numerator^r / p^(d*r), returned as
+    /// (numerator^r, d*r): squared under treaty (r=2, d=8). Interactive only (RFC-0008
+    /// A2 item 8); never a Fiat-Shamir bound. The cap at one never binds, since
+    /// numerator < 2^64 < p^4. None unless (r, d) is the profile's own pair, as
+    /// `admit` derives it: (1, 4) standard, (2, 8) treaty.
+    pub fn identity_term(&self, profile: Profile) -> Option<(u128, u8)> {
+        let (r, d) = profile_parameters(profile);
+        if usize::from(self.repetitions) != r || self.degree != d {
+            return None;
+        }
+        let numerator = u128::from(self.identity_numerator);
+        let power = if self.repetitions == 2 {
+            numerator * numerator
+        } else {
+            numerator
+        };
+        Some((power, self.degree * self.repetitions))
+    }
 }
 /// Actual tree, selected-product and ordered opening records for one repetition.
 pub struct RepetitionRecord<'cert, K: ChallengeField> {

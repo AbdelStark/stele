@@ -504,13 +504,14 @@ def field_sources(root):
              ('struct','RegistrationFailure'), ('','cause'), ('','registrations'),
              ('type','RegisteredMultiplicities'), ('fn','register_multiplicities'), ('fn','verify')],
          ["impl<'input,'original,K:ChallengeField+CodeField+TableField+Eq>Descriptor<'input,'original,K>wherefor<'a>K::Bytes:TryFrom<&'a[u8]>,{"]),
-        ('records', ['pub']*11+['pub(super)']*5+['pub']*6+['pub(super)']*2+['pub']*2,
+        ('records', ['pub']*12+['pub(super)']*5+['pub']*6+['pub(super)']*2+['pub']*2,
          [('struct','LookupParameters'), ('','id'), ('','degree'), ('','positions'), ('','table_rows'),
           ('','columns'), ('','group_bits'), ('','unit_bits'), ('','repetitions'), ('','identity_numerator'),
-          ('struct','RepetitionRecord'), ('','lookup'), ('','table'), ('','selected'), ('','originals'), ('','multiplicities'),
+          ('fn','identity_term'), ('struct','RepetitionRecord'), ('','lookup'), ('','table'), ('','selected'), ('','originals'), ('','multiplicities'),
           ('fn','lookup_tree'), ('fn','table_tree'), ('fn','selected_product'), ('fn','originals'), ('fn','multiplicities'),
           ('struct','LookupRecord'), ('','parameters'), ('','repetitions'), ('fn','parameters'), ('fn','repetitions')],
-         ["impl<K:ChallengeField>RepetitionRecord<'_,K>{", "impl<K:ChallengeField>LookupRecord<'_,K>{"]),
+         ["implLookupParameters{", "impl<K:ChallengeField>RepetitionRecord<'_,K>{",
+          "impl<K:ChallengeField>LookupRecord<'_,K>{"]),
     ):
         source = re.sub(r'//[^\n]*', '', (crate / f'src/lookup_{name}.rs').read_text())
         # Private helpers may expose only the explicitly reviewed parent interface.
