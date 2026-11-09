@@ -2165,7 +2165,9 @@ tasks:
   - RFC-0008 §6
   skill: gkr-reduction-author
   crate: stele-lookup
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-02-double-challenge-logup
   acceptance:
   - ledger LU squared
   - NC-0403
