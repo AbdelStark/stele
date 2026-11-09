@@ -2607,7 +2607,7 @@ tasks:
   - RFC-0026 §5 rows 1-2, §5.2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-04-embedding-norm
   acceptance:
