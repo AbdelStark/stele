@@ -16,13 +16,18 @@ use stele_ir::relation::{
 };
 
 pub mod attention;
+pub mod embedding;
+mod limbs;
 pub mod projection;
+pub mod rmsnorm;
 pub mod row;
 
 pub use attention::{Attention, AttentionCapture, AttentionPlan, PositionCapture};
 pub use projection::{Projection, ProjectionCapture, ProjectionPlan};
 pub use row::{ConversionCapture, Policy, RowConversion, RowOutput};
 
+#[cfg(test)]
+mod norm_embedding_tests;
 #[cfg(test)]
 mod tests;
 
