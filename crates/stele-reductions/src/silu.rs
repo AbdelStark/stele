@@ -3,7 +3,7 @@
 //!
 //! Integer definition (RFC-0025 §2.5, RFC-0004 A8, RFC-0021 §2.2): for gate `G` and up
 //! `U` (int16, E16-05 outputs), `a = silu_q[G]` and the exact product `T = U·a`, with
-//! no rounding. Units are `fu + E`. `T` feeds the E16-05 gated row conversion.
+//! no rounding. Units are `fu + E`. `T` feeds [`GatedConversion`].
 //!
 //! `|T|` approaches `2^30`, beyond any column width, and `U·a` alone already has static
 //! magnitude `2^30` under the §3.6 bound rule. So the product is a byte-split limb
@@ -15,8 +15,13 @@
 //!
 //! Then `T = 2^15·Th + Tl` exactly. Both product identities carry a public mask that is
 //! 0 on padding, which pins `Th = Tl = 0` there (RFC-0026 §2.1).
-//! The output-uniqueness lemma is in `agents/reviews/e16-08-silu.md`.
+//! The output-uniqueness lemma is in `agents/reviews/e16-08-silu.md`. The gated row
+//! conversion of `T` to down-projection codes is [`GatedConversion`].
 
+mod conversion;
+pub use conversion::{ConversionColumns, GatedConversion, GATED_SCALE};
+
+use crate::development::log2_ceil;
 use alloc::format;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -29,16 +34,12 @@ use stele_ir::relation::{
 /// Radix of the high product limb: `T = 2^15·high + low`.
 pub const LOW_BITS: u8 = 15;
 
-fn log2_ceil(n: usize) -> u8 {
-    n.next_power_of_two().trailing_zeros() as u8
-}
-
 /// Column ids allocated by [`GatedProduct::declare`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GatedColumns {
-    /// `Th`, signed 16: the high limb of `T`, consumed by E16-05.
+    /// `Th`, signed 16: the high limb of `T`, consumed by [`GatedConversion`].
     pub high: ColumnId,
-    /// `Tl`, unsigned 15: the low limb of `T`, consumed by E16-05.
+    /// `Tl`, unsigned 15: the low limb of `T`, consumed by [`GatedConversion`].
     pub low: ColumnId,
     /// `silu_q[G]`, signed 16.
     pub activation: ColumnId,

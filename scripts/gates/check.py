@@ -442,7 +442,8 @@ def field_sources(root):
                'tests/relation.rs',
                'src/rope.rs', 'src/rope/tests.rs',
                'src/executor_fixtures.rs',
-               'src/silu.rs', 'src/silu/tests.rs'}
+               'src/silu.rs', 'src/silu/tests.rs',
+               'src/silu/conversion.rs', 'src/silu/conversion/tests.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
