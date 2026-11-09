@@ -656,11 +656,10 @@ fn rejects_noncanonical_field_element() {
 }
 
 #[test]
-fn rejects_swapped_group_roots() {
-    // NC-1306.
+fn rejects_swapped_stacked_and_multiplicity_roots() {
+    // NC-1306 under RFC-0026 A4: the one stacked root, swapped with a multiplicity root.
     let (f, mut proof, messages) = honest();
-    let (a, b) = proof.groups.split_at_mut(1);
-    a[0][..32].swap_with_slice(&mut b[0][..32]);
+    proof.groups[0][..32].swap_with_slice(&mut proof.multiplicities[0][..32]);
     assert_eq!(
         check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::Pcs(stele_pcs::Error::Merkle(
@@ -883,5 +882,50 @@ fn measures_lookup_heavy_relation() {
         size(&proof.identities),
         size(&proof.matmuls),
         size(&proof.openings),
+    );
+}
+
+/// Many commitment groups, as one per (layer, module, length) in a model plan.
+#[test]
+#[ignore = "measurement; run with --ignored --nocapture"]
+fn measures_many_groups_relation() {
+    let mut rel = Relation::default();
+    let mut rng = Rng(8);
+    let mut sets = Vec::new();
+    for layer in 0..8 {
+        for (module, log) in [(0u8, 6u8), (1, 8), (2, 10), (3, 8), (4, 6)] {
+            let g = Kind::Witness(rel.add_group(&format!("L{layer}/m{module}/{log}"), log));
+            for i in 0..6 {
+                let w = [Width::signed(8), Width::signed(16)][i % 2];
+                let id = rel.add_column(&format!("L{layer}/m{module}/c{i}"), g.clone(), w, log);
+                range(&mut rel, id, w);
+                sets.push((id, rng.vec(1 << log, w)));
+            }
+        }
+    }
+    let mut f = Fixture {
+        values: Values::new(&rel),
+        rel,
+    };
+    for (id, v) in sets {
+        f.set(id, v);
+    }
+    let start = std::time::Instant::now();
+    let (proof, messages) = produce(&f.rel, &f.values).expect("proof");
+    let proved = start.elapsed();
+    let start = std::time::Instant::now();
+    check_proof(&f.rel, &messages, &proof).expect("verify");
+    let verified = start.elapsed();
+    let size = |s: &Vec<Vec<u8>>| s.iter().map(Vec::len).sum::<usize>();
+    println!(
+        "groups={} prove={proved:?} verify={verified:?} total={} group_certs={} ({} sections) multiplicities={} lookups={} openings={} ({} sections)",
+        f.rel.groups.len(),
+        proof.encode().len(),
+        size(&proof.groups),
+        proof.groups.len(),
+        size(&proof.multiplicities),
+        size(&proof.lookups),
+        size(&proof.openings),
+        proof.openings.len(),
     );
 }
