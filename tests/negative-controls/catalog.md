@@ -180,7 +180,8 @@ do not complete E3-06's resource evidence or admit inference/privacy profiles.
 
 The conditional lookup runtime executes NC-0400..0403 and NC-0415..0419
 through genuine registrations and the unchanged closed verifier in both fields.
-The NC-0402 variant checks the unchanged literal selector. NC-0420..0424 are
+The NC-0402 variant checks the unchanged literal selector. The OM31 NC-0403
+Statement (r=2, d=8) also passes treaty `lookup::admit` (E12-02). NC-0420..0424 are
 conditional controls of RFC-0008 A2 plan admission: they run `lookup::admit`
 against real proofs (the honest candidate is fully proved and verified), and the
 selector, N, b, r or d must be the ones the plan and profile derive, before any

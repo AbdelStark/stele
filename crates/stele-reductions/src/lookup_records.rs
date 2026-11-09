@@ -26,6 +26,24 @@ pub struct LookupParameters {
     /// Joint identity numerator h+N+c*t-1 over |K|, before clipping and exponent r.
     pub identity_numerator: u64,
 }
+impl LookupParameters {
+    /// RFC-0012 A8/A11 LU line as the exact ratio numerator^r / p^(d*r), returned as
+    /// (numerator^r, d*r): squared under treaty (r=2, d=8). Interactive only (RFC-0008
+    /// A2 item 8); never a Fiat-Shamir bound. The cap at one never binds, since
+    /// numerator < 2^64 < p^4. None outside d in {4,8} and r in {1,2}.
+    pub fn identity_term(&self) -> Option<(u128, u8)> {
+        if !matches!(self.degree, 4 | 8) || !matches!(self.repetitions, 1 | 2) {
+            return None;
+        }
+        let numerator = u128::from(self.identity_numerator);
+        let power = if self.repetitions == 2 {
+            numerator * numerator
+        } else {
+            numerator
+        };
+        Some((power, self.degree * self.repetitions))
+    }
+}
 /// Actual tree, selected-product and ordered opening records for one repetition.
 pub struct RepetitionRecord<'cert, K: ChallengeField> {
     pub(super) lookup: Reduction<K>,

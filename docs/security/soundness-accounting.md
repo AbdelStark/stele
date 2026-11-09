@@ -1657,6 +1657,13 @@ lookup-frame NC-0802 continuations execute through the unchanged real verifier.
 Their exact failure prefixes add execution evidence for the existing bindings,
 not a new loss term or a concrete Fiat–Shamir theorem.
 
+E12-02 (ADR-072): `LookupParameters::identity_term` returns this line exactly as
+(numerator^r, d*r), the ratio numerator^r/p^(d*r); the cap at one never binds
+because numerator<2^64<p^4. A treaty-admitted record (r=2, OM31) gives the square
+over p^16, e.g. 263^2/p^16 for eight range_8 positions; standard gives 263/p^4.
+It is the interactive A8 record only. The Fiat–Shamir unit and pair rounds stay
+with Q12, and E8-05a sums the line; no standard-profile FS bound is claimed.
+
 No profile flag, integer/plan/source ownership, Q12 theorem or joint ZK follows.
 E3-07b still requires complete registration/proving/verification resource ledgers;
 E3-07 and Draft A2/A8 retain their full original requirements.
