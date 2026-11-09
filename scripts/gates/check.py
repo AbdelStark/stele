@@ -426,6 +426,7 @@ def field_sources(root):
                'src/requant_arithmetic.rs',
                'src/byte_range.rs', 'tests/byte_range.rs',
                'src/development.rs', 'src/development/row.rs', 'src/development/projection.rs',
+               'src/development/attention.rs', 'src/development/attention/tests.rs',
                'src/development/tests.rs',
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
