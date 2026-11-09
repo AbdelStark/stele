@@ -337,8 +337,15 @@ def fake_quant(configs: str = 'w8,a8,w8a8', windows: int = 8):
             w = original[m].to(m.weight.device)
             m.weight.data = q8(w, 1) if 'w8' in config else w
             if 'a8' in config:
-                group = int(config.split('g')[1]) if 'g' in config else 0  # e.g. a8g128
+                group = int(config.split('+')[0].split('g')[1]) if 'g' in config.split('+')[0] else 0  # e.g. a8g128
                 hooks.append(m.register_forward_pre_hook(lambda _, a, g=group: (q8(a[0], -1, g),)))
+        if '+qkv' in config:  # E5-05g: int8 Q/K/V rows per token, or per group with +qkvgN (e.g. N = head width)
+            # shortcut: quantises the projection outputs, i.e. Q/K before RoPE; CQIS rows follow RoPE.
+            tail = config.split('+qkv')[1]
+            g = int(tail[1:]) if tail.startswith('g') else 0
+            for name, m in backend.model.named_modules():
+                if name.endswith(('q_proj', 'k_proj', 'v_proj')):
+                    hooks.append(m.register_forward_hook(lambda _, __, out, g=g: q8(out, -1, g)))
         fid.run(backend, 'cqis', tokenizer, RESULTS/'fakequant'/config/'items', ['wikitext'], {'wikitext': windows},
                 checkpoint=volume.commit)
         for h in hooks:
