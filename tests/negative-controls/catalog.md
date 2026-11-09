@@ -99,7 +99,7 @@
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
-| NC-0612 | PCS | 0010 A1, A3, 0012 A7 | under the actual v2 source consumer: offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | done |
+| NC-0612 | PCS | 0010 A1, A3, 0012 A7 | conditional until E8-02 calls `check_source` (rows 2-3 run the actual certificate verifier and A1 registry validator): offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | done |
 | NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | done |
 | NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | done |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
@@ -151,7 +151,11 @@ conditional. The CertificateContext variant runs `CertificateRecord::check_sourc
 which is the expected-context check of A3 item 8 that a consumer calls before
 verify_point; no Accepted consumer takes a v2 source yet (E8-02). The
 InvalidRegistry variant runs the A1 registry validator on an edited export, so it
-is a configuration check, not proof-statement coverage. NC-0604/0605 stay todo.
+is a configuration check, not proof-statement coverage. Like NC-0420..0424, NC-0612
+counts as an executed row, not as production consumer coverage, until the E8-02
+plan verifier calls `check_source` before accepting a PCS opening. NC-0614's
+ColumnMismatch variant is a generic tampered-t control of NC-0600's class; it does
+not test `expand` itself. NC-0604/0605 stay todo.
 
 The public stacked runtime executes NC-0203, both source variants of NC-0212,
 and both Stack/StackSources extensions of NC-0802 in QM31 and OM31.

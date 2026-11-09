@@ -791,7 +791,7 @@ def field_source_codec(root):
                       "implExactSizeIterator<Item=Response<'a>>+'_{"]
         and derives == ['#[derive(Clone,Copy,Debug,Eq,PartialEq)]']*3
             + ['#[derive(Clone,Copy,Debug)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]']
-            + ['#[derive(Clone,Copy,Debug)]']*2
+            + ['#[derive(Clone,Copy,Debug)]']*2 + ['#[cfg(test)]', '#[test]']
         and imports == ['usecore::marker::PhantomData;', 'usestele_code::{registry,Circle,Code,Encoder};',
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
@@ -921,7 +921,8 @@ def field_source_codec(root):
           'test matches_reference_om31_v2_wire ... ok',
           'test matches_reference_v2_policy_and_proof_sizes ... ok',
           'test rejects_unsupported_v2_contexts_before_transcript_work ... ok',
-          'test expansion::tests::matches_reference_signed_and_offset_embeddings ... ok']),
+          'test expansion::tests::matches_reference_signed_and_offset_embeddings ... ok',
+          'test source::matches_reference_pinned_evidence_ids ... ok']),
         (['python3', 'research/merkle-oracle/check_native_policy.py', '--native'],
          ['59 native query pairs match exact independently checked minima']),
         (['python3', 'research/merkle-oracle/check_expander_policy.py', '--native'],

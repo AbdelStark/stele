@@ -1107,6 +1107,9 @@ Decision:
 
 Consequences: no new label, challenge, loss or profile. Circle bytes, proofs and fixtures
 are unchanged. NC-0603 and NC-0612..0614 are done (two NC-0612 variants are
-conditional, see the catalog note).
+conditional, see the catalog note). `check_source` has no production caller yet:
+E8-02 gains the criterion that its plan verifier calls it, so NC-0612 runs through it.
+The evidence-ID check compares compiled constants; it is a build-time tripwire, held
+by a unit test against stele-code's exported IDs, not a runtime check.
 
 Status: Accepted.

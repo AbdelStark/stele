@@ -31,6 +31,8 @@ const OPEN_V2: [u16; 12] = [
     221, 5722, 6546, 6666, 6697, 6708, 6713, 6713, 6713, 6714, 6714, 6714,
 ];
 // A3 item 3: policy byte 1 pins these evidence IDs; a changed premise needs a new policy byte.
+// Build-time tripwire: both sides are compiled constants, so the construction check
+// below cannot fail at runtime; the test at the end of this file fails on any edit.
 const CIRCLE_EVIDENCE: &str = "rfc-0010-a2/root-bound-v1";
 const EXPANDER_EVIDENCE: &str = "rfc-0010-a1/finite-v2";
 const SETUP_EVIDENCE: &str = "rfc-0012-a7/2^256-all-seeds-v2";
@@ -389,4 +391,12 @@ impl<'a> Wire<'a> {
             siblings: &bytes[self.width..],
         })
     }
+}
+
+#[cfg(test)]
+#[test]
+fn matches_reference_pinned_evidence_ids() {
+    assert_eq!(CIRCLE_EVIDENCE, registry::CIRCLE_DISTANCE_EVIDENCE);
+    assert_eq!(EXPANDER_EVIDENCE, registry::EXPANDER_DISTANCE_EVIDENCE);
+    assert_eq!(SETUP_EVIDENCE, registry::EXPANDER_SETUP_EVIDENCE);
 }
