@@ -1,6 +1,6 @@
 //! rmsnorm_q attackers for the mutation survey (see `mutation.rs`).
 //!
-//! Instance: `F = G = 0`, `E = 12`, epsilon `1e-5`, `d = 4`, `T = 4`. Row 0 holds an exact
+//! Instance: `F = G = 0`, `E = 12`, epsilon `1/100`, `d = 4`, `T = 4`. Row 0 holds an exact
 //! rounding tie at feature 0 (`H_0 = 2^(e−1)`, `J` odd), row 1 is zero (the exact-multiply
 //! branch), and gains `H_2 = H_3 = 0` let the attacker choose `S` freely. A large `X_0`
 //! overflows int16, which reaches the output positions above `Y`.
@@ -43,7 +43,8 @@ const CHAINS: &[ChainSpec] = &[
 ];
 
 fn params() -> Vec<u8> {
-    parameters(4, 0, 0, 12, 1, 100_000)
+    // ed = 100, en·unit = 4: remainders R = 100·j + 4 reach both edges of [0, D).
+    parameters(4, 0, 0, 12, 1, 100)
 }
 
 /// The executor's intermediates of `x` (independent of the gains) and its true outputs,
@@ -243,7 +244,8 @@ impl NormAttack<'_> {
             || self.exponent(c, &base, found)
             || self.overflow(c, found)
             || self.quotient(c, &base, found)
-            || self.statistic(c, &base, found);
+            || self.statistic(c, &base, found)
+            || self.near_edges(c, found);
     }
 
     /// Single-cell tampers of the constraint's own columns, then attacker repairs.
@@ -337,6 +339,178 @@ impl NormAttack<'_> {
             )
     }
 
+    /// Byte attacks on attacker-chosen rows near an edge, each in range one bit wider:
+    /// - `X0`: the negative tie `X = −1` written as `X0 = −1`, `X1 = 0`, `σX = 0`, so `Y`
+    ///   rounds toward zero;
+    /// - `Z_i`: a row whose `Z >= 2^Es − 256^(i+1)` takes `Y − 1` with `Z − 2^Es` held
+    ///   from byte `i` up;
+    /// - `R_i` (`gap_i`): a row whose `R >= D − 256^(i+1)` (`R < 256^(i+1)`) takes
+    ///   `M + 1` (`M − 1`) with the negative remainder (gap) held from byte `i` up, and
+    ///   `J`, `Y` following.
+    fn near_edges(&self, c: Constraint, found: &mut dyn FnMut(Attack) -> bool) -> bool {
+        let r = self.r;
+        let Constraint::Range(k) = c else {
+            return false;
+        };
+        let name = r.ranges[k]
+            .name
+            .strip_prefix(&format!("{SCOPE}/"))
+            .unwrap_or("");
+        let name = name.strip_suffix("/range").unwrap_or(name);
+        let (prefix, i) = match name.find(|ch: char| ch.is_ascii_digit()) {
+            Some(at) => (&name[..at], name[at..].parse::<u32>().unwrap_or(u32::MAX)),
+            None => return false,
+        };
+        let column = r.ranges[k].column;
+        match prefix {
+            "X" if i == 0 => {
+                let mut inputs = self.inputs.to_vec();
+                inputs[0][0] = -1;
+                let mut v = self.fresh(&inputs);
+                let base = self.y(&v);
+                set(r, &mut v, self.col("X0"), 0, -1);
+                set(r, &mut v, self.col("X1"), 0, 0);
+                set(r, &mut v, self.col("sigmaX"), 0, 0);
+                recompute_matmuls(r, &mut v, c);
+                self.solver.solve(&mut v, c).is_some()
+                    && self.emit(
+                        "tie at X = -1: X0 = -1, X1 = 0, sigmaX = 0, solved".into(),
+                        v,
+                        &base,
+                        found,
+                    )
+            }
+            "Z" => {
+                let es = 8
+                    * (0..)
+                        .take_while(|j| self.try_col(&format!("Z{j}")).is_some())
+                        .count() as u32;
+                for (t, x) in self.edge_rows() {
+                    let mut inputs = self.inputs.to_vec();
+                    inputs[t] = x.clone();
+                    let v = self.fresh(&inputs);
+                    let base = self.y(&v);
+                    for e in 0..4 {
+                        let at = 4 * t + e;
+                        let z: i128 = (0..es / 8)
+                            .map(|j| get(r, &v, self.col(&format!("Z{j}")), at) << (8 * j))
+                            .sum();
+                        let target = z - (1i128 << es);
+                        if target < -(1i128 << (8 * (i + 1))) {
+                            continue;
+                        }
+                        let mut w = v.clone();
+                        set(r, &mut w, column, at, target.div_euclid(1 << (8 * i)));
+                        self.solver.keep.set(Some(column));
+                        let ok = self.solver.solve(&mut w, c);
+                        self.solver.keep.set(None);
+                        if ok.is_some()
+                            && self.emit(
+                                format!(
+                                    "row {x:?}: Z near 2^Es, Y - 1, Z{i} = {}",
+                                    target.div_euclid(1 << (8 * i))
+                                ),
+                                w,
+                                &base,
+                                found,
+                            )
+                        {
+                            return true;
+                        }
+                    }
+                }
+                false
+            }
+            "R" | "gap" => {
+                let up = prefix == "R";
+                let window = 1i128 << (8 * (i + 1));
+                // Screen rows with the executor first; build assignments only near the edge.
+                let rows = self.edge_rows_n(1 << 18).filter(|(_, x)| {
+                    let (row, exact) = evaluate(x, &self.norm.gains);
+                    let honest = exact.iter().all(|&y| i16::try_from(y).is_ok());
+                    let near = if up {
+                        row.remainder >= row.divisor - window
+                    } else {
+                        row.remainder < window
+                    };
+                    // J must move for Y to move: M ± 1 off the reciprocal's plateau, on a
+                    // row with a gain-carrying feature.
+                    let m = i64::from(row.mantissa) + if up { 1 } else { -1 };
+                    let moves = (16384..65536).contains(&m)
+                        && self.rsqrt[(m - 16384) as usize] != i64::from(row.reciprocal)
+                        && (x[0] != 0 || x[1] != 0);
+                    near && moves && honest
+                });
+                for (t, x) in rows.take(64) {
+                    let mut inputs = self.inputs.to_vec();
+                    inputs[t] = x.clone();
+                    let mut v = self.fresh(&inputs);
+                    let base = self.y(&v);
+                    let (rem, d) = (self.sum_bytes(&v, "R", t), self.sum_bytes(&v, "gamma", t));
+                    let near = if up { rem >= d - window } else { rem < window };
+                    let m = get(r, &v, self.col("M"), t) + if up { 1 } else { -1 };
+                    if !near || !(16384..65536).contains(&m) {
+                        continue;
+                    }
+                    let j = i128::from(self.rsqrt[(m - 16384) as usize]);
+                    for (n, value) in [
+                        ("M", m),
+                        ("M0", m & 255),
+                        ("M1", m >> 8),
+                        ("J", j),
+                        ("J0", j & 255),
+                        ("J1", j >> 8),
+                    ] {
+                        set(r, &mut v, self.col(n), t, value);
+                    }
+                    // The other byte column follows; this one holds the edge from byte i up.
+                    let edge = if up { rem - d } else { d - 1 - (rem + d) };
+                    set(r, &mut v, column, t, edge.div_euclid(1 << (8 * i)));
+                    self.solver.keep.set(Some(column));
+                    let ok = self.solver.solve(&mut v, c);
+                    self.solver.keep.set(None);
+                    if ok.is_some()
+                        && self.emit(
+                            format!(
+                                "row {x:?}: R near {}, M {}1, J and Y follow",
+                                if up { "D" } else { "0" },
+                                if up { "+" } else { "-" }
+                            ),
+                            v,
+                            &base,
+                            found,
+                        )
+                    {
+                        return true;
+                    }
+                }
+                false
+            }
+            _ => false,
+        }
+    }
+
+    /// Attacker rows `[x0, x1, x2, x3]` (row 3, or row 0 for large `X0`), deterministic:
+    /// small and large statistics, with gain-carrying features so `Y` can move.
+    fn edge_rows(&self) -> impl Iterator<Item = (usize, Vec<i32>)> + '_ {
+        self.edge_rows_n(4096)
+    }
+
+    fn edge_rows_n(&self, count: usize) -> impl Iterator<Item = (usize, Vec<i32>)> + '_ {
+        let mut rng = Rng(0x0e16_0004);
+        (0..count).map(move |n| {
+            let big = n % 2 == 0;
+            let wide = if big { 32767 } else { 300 };
+            let x = vec![
+                rng.range(-3, 3) as i32,
+                rng.range(-3, 3) as i32,
+                rng.range(-wide, wide) as i32,
+                rng.range(-wide, wide) as i32,
+            ];
+            (3, x)
+        })
+    }
+
     /// Overflowing rows `X = [1, 0, x2, 0]`, `Y_0 = R(X·H·J/2^e) ∈ [2^15, 2^27)`: the int16
     /// range of `Y` alone rejects the true output, and an output position above `Y`
     /// alone rejects the output wrapped modulo `256^(i − top)`.
@@ -365,7 +539,8 @@ impl NormAttack<'_> {
             return false;
         }
         let mut tries = 0;
-        for (x0, x2) in (1..=16).flat_map(|x0| (1..=32767).step_by(3).map(move |x2| (x0, x2))) {
+        for (x0, x2) in (1..=16).flat_map(|x0| (1..=32767).rev().step_by(3).map(move |x2| (x0, x2)))
+        {
             let mut inputs = self.inputs.to_vec();
             inputs[0] = vec![x0, 0, x2, 0];
             let truth = evaluate(&inputs[0], &self.norm.gains).1[0];

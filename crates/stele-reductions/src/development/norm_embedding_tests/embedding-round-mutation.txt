@@ -12,3 +12,11 @@ matmul G/embedding/gather0 | output
 matmul G/embedding/gather1 | output
 matmul G/embedding/gather2 | output
 matmul G/embedding/gather3 | output
+widen-signed range G/embedding/E | aux
+widen-signed range G/embedding/G0/range | none
+widen-signed range G/embedding/G1/range | none
+widen-signed range G/embedding/G2/range | none
+widen-signed range G/embedding/G3/range | none
+widen-signed range G/embedding/R0/range | output
+widen-up range G/embedding/rho0/range | output
+widen-signed range G/embedding/rho0/range | output

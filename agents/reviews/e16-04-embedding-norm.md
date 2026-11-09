@@ -3,7 +3,7 @@
 Code: `crates/stele-reductions/src/development/{embedding,rmsnorm,limbs}.rs`.
 Tests: `development/norm_embedding_tests.rs` (random, extreme, exact-branch, version-2, near-miss, static
 validity) and `tests/dev_modules.rs` (every family-1 model-execution fixture).
-Decision: ADR-077. Same-author pass; an independent soundness-auditor pass is requested.
+Decision: ADR-080. Same-author pass; an independent soundness-auditor pass is requested.
 
 ## Shared mechanism: radix-256 chains
 
@@ -109,9 +109,8 @@ Deleting any constraint from a module changes the table, so a test fails. The CI
 searches only until it reaches the golden class. The `#[ignore]` test runs the
 exhaustive search that produced the table.
 
-The rmsnorm_q instance has 187 constraints: 55 `output`, 48 `aux` and 84 `none`. Its
-setup:
-- `F = G = 0`, `E = 12`, `d = 4`, `T = 4`;
+The rmsnorm_q instance has 187 constraints. Its setup:
+- `F = G = 0`, `E = 12`, `ed = 100`, `d = 4`, `T = 4`;
 - an exact tie in row 0, with `H_0 = 2^(e−1)` and `J` odd;
 - a zero row on the exact-multiply branch;
 - gains that let `X` overflow int16 and let `S` be chosen freely.
@@ -196,6 +195,52 @@ the exact branch, and gather block ranges.**
 
 These constraints bind auxiliary or unused cells. They stay, because each one is part
 of the lemma's integer argument or of the bound rule.
+
+### Widen-by-one-bit pass
+
+Every range is also surveyed one bit wider:
+- `widen-up`: one more bit at the top, for unsigned ranges;
+- `widen-signed`: one more bit as a sign.
+
+The attacker witness must lie inside the wider width, change an output, and still be
+rejected at the true width. Those rows are pinned in the same golden tables.
+
+The rmsnorm_q instance uses `ed = 100`. Remainders are then `R = 100·j + 4`, so both
+edges of `[0, D)` are reachable. With `ed = 10^5`, the `R ∈ [D − 2^16, D)` edge cannot
+be reached.
+
+**Widened ranges with an output attack**:
+- `X0`, up: the positive tie with `X0 = 257`.
+- `X0`, signed: the negative tie written as `X0 = −1`, `X1 = 0`, `σX = 0`.
+- `Y`, signed: an overflow with true `Y = −32772`.
+- Every `Z` byte, up: `Z + 256` and `Y + 1` at a row with small `Z`.
+- Every `Z` byte, signed: a row with `Z >= 2^Es − 256^(i+1)`, then `Y − 1`.
+- Every `R` byte, signed: a row with `R >= D − 256^(i+1)`, then `M + 1`, with `J` and `Y` following.
+- Every `gap` byte, signed: a row with `R < 256^(i+1)`, then `M − 1`.
+- Embedding `R0`, signed: a code under a multiplier in `[2^15, 2^16)`.
+- Embedding `ρ`, up and signed: `R0 ± 1` with `ρ ± 2^h`.
+
+**Widened ranges that are safe, and why**:
+- **Carries** (every chain). Bottom-up from `c_(−1) = 0`, each carry is
+  `(T_i + c_(i−1) − b_i)/256`. The free byte `b_i` is range-checked at its true width,
+  or the position has none, so the carry is unique whatever width it is declared at.
+- **Selected bytes and `pos`**. The selection matmul with the one-hot gives the exact
+  byte of a public constant.
+- **`h`, up.** `h >= 0`, `Σ_K h·valid = 1` and `h·invalid = 0` together force a one-hot.
+- **Limbs and bytes of a pinned value** (`S_pq` limbs, `M0`/`M1`, `J0`/`J1`, `S` bytes,
+  `Jg` bytes). The value is pinned by a matmul, a lookup or a chain, and every consumer
+  reads only that value. A wider limb only redistributes the value (`aux`).
+- **`R` bytes and `gap` bytes, up.** The other column's bytes keep their true widths,
+  so `R >= 0` and `D − 1 − R >= 0` still hold, and `M = floor(A/D)` is unchanged.
+- **Embedding `E` and `G_b`.** A wider weight on a gathered row, or a wider block entry,
+  reaches `G`, and the `G` sign lookup rejects it. An ungathered row changes nothing.
+
+**Not demonstrated**:
+- **`h`, signed** (`h ∈ {−2, …, 1}`). Combinations such as `1 + 1 − 1` keep
+  `Σ h·valid = 1`. The survey tried `2/−1` pairs and moved entries at every exponent
+  and found no witness with every selected byte in range and `M` in the table.
+- The true-width `u1` range keeps `h >= 0`, which lemma step 2 uses. This row is left
+  open: no proof is given either way.
 
 ## Limits
 

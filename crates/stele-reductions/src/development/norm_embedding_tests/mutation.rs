@@ -448,24 +448,40 @@ pub(super) fn survey(
         .lines()
         .filter_map(|l| l.rsplit_once(" | "))
         .collect();
-    // Each pool attack is charged to the single constraint it violates, if any.
-    let mut charged: BTreeMap<Constraint, usize> = BTreeMap::new();
-    for (i, a) in pool.iter().enumerate() {
-        if let [c] = eval.violations(&a.values, 1)[..] {
-            let better = charged.get(&c).is_none_or(|&j| !pool[j].output && a.output);
-            if better {
-                charged.insert(c, i);
+    // `widen`: for a range, the attack must also lie within the range widened by one
+    // bit, so a range declared one bit too wide would accept it (RFC-0026 §5.2).
+    // `signed` picks the widening: one more bit at the top (`false`, unsigned ranges)
+    // or one more bit as a sign (`true`).
+    let attack_for = |c: Constraint, name: &str, widen: Option<bool>| -> (String, String, String) {
+        let fits = |v: &Values| match (widen, c) {
+            (Some(signed), Constraint::Range(i)) => {
+                let g = &r.ranges[i];
+                let wide = stele_ir::relation::Width {
+                    signed,
+                    bits: g.width.bits + 1,
+                };
+                v.get(r, g.column)
+                    .expect("assigned")
+                    .iter()
+                    .all(|&x| wide.contains(x))
             }
-        }
-    }
-    let mut rows = Vec::new();
-    for (c, name) in constraints(r) {
-        let mut best: Option<Attack> = charged.get(&c).map(|&i| Attack {
-            how: pool[i].how.clone(),
-            values: pool[i].values.clone(),
-            output: pool[i].output,
-        });
-        let class = golden.get(name.as_str()).copied();
+            _ => true,
+        };
+        let label = match widen {
+            None => name.to_string(),
+            Some(false) => format!("widen-up {name}"),
+            Some(true) => format!("widen-signed {name}"),
+        };
+        let mut best: Option<Attack> = pool
+            .iter()
+            .filter(|a| eval.violations(&a.values, 1) == [c] && fits(&a.values))
+            .max_by_key(|a| a.output)
+            .map(|a| Attack {
+                how: a.how.clone(),
+                values: a.values.clone(),
+                output: a.output,
+            });
+        let class = golden.get(label.as_str()).copied();
         let enough = |b: &Option<Attack>| match class {
             Some("none") => true,
             Some("aux") => b.is_some(),
@@ -473,7 +489,7 @@ pub(super) fn survey(
         };
         if !enough(&best) {
             search(c, &mut |a: Attack| {
-                if eval.violations(&a.values, 1) != [c] {
+                if eval.violations(&a.values, 1) != [c] || !fits(&a.values) {
                     return false;
                 }
                 if best.as_ref().is_none_or(|b| !b.output && a.output) {
@@ -482,29 +498,40 @@ pub(super) fn survey(
                 enough(&best)
             });
         }
-        let row = match best {
+        match best {
             Some(a) => {
                 // The relation's own oracle: `check` rejects the attack and accepts it once
                 // this one constraint (by its unique name) is skipped.
-                let raw = name.split_once(' ').map_or(name.as_str(), |n| n.1);
+                let raw = name.split_once(' ').map_or(name, |n| n.1);
                 assert!(
                     check(r, &a.values).is_err(),
-                    "{name}: the full relation rejects the attack"
+                    "{label}: the full relation rejects the attack"
                 );
                 assert_eq!(
                     check_except(r, &a.values, &[raw]),
                     Ok(()),
-                    "{name}: only this constraint rejects the attack"
+                    "{label}: only this constraint rejects the attack"
                 );
                 (
-                    name,
+                    label,
                     (if a.output { "output" } else { "aux" }).to_string(),
                     a.how,
                 )
             }
-            None => (name, "none".to_string(), String::new()),
-        };
-        rows.push(row);
+            None => (label, "none".to_string(), String::new()),
+        }
+    };
+    let mut rows = Vec::new();
+    for (c, name) in constraints(r) {
+        rows.push(attack_for(c, &name, None));
+    }
+    for (c, name) in constraints(r) {
+        if let Constraint::Range(i) = c {
+            if !r.ranges[i].width.signed {
+                rows.push(attack_for(c, &name, Some(false)));
+            }
+            rows.push(attack_for(c, &name, Some(true)));
+        }
     }
     rows
 }

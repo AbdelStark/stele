@@ -131,16 +131,19 @@ impl EmbeddingAttack<'_> {
             // Token 3 has a zero row and a large multiplier: one nonzero code (a different
             // model) makes the true R0 leave int16, which the executor rejects.
             if t == 3 && i % 8 < 6 {
-                let code = if self.shift < 0 { 127 } else { 1 };
-                let mut v = self.honest.clone();
-                let k = i & 7;
-                set(r, &mut v, self.col("E"), (3 << 3) + k, code);
-                set(r, &mut v, self.col("G"), i, code);
-                if self.blocks {
-                    set(r, &mut v, self.col("G3"), k, code);
+                // 127 (or 1) overshoots far; 9 (or 1 at m·2^s = 40000) lands in [2^15, 2^16),
+                // inside a range one bit too wide.
+                for code in if self.shift < 0 { [127, 9] } else { [1, 1] } {
+                    let mut v = self.honest.clone();
+                    let k = i & 7;
+                    set(r, &mut v, self.col("E"), (3 << 3) + k, code);
+                    set(r, &mut v, self.col("G"), i, code);
+                    if self.blocks {
+                        set(r, &mut v, self.col("G3"), k, code);
+                    }
+                    self.settle(&mut v, i);
+                    emit(format!("E[3,{k}] = {code}: true R0 outside int16"), v);
                 }
-                self.settle(&mut v, i);
-                emit(format!("E[3,{k}] = {code}: true R0 outside int16"), v);
             }
             // A weight entry outside int8 on a row no token gathers.
             let mut v = self.honest.clone();
@@ -193,7 +196,8 @@ fn rejects_every_embedding_constraint_alone_rounding() {
 
 #[test]
 fn rejects_every_embedding_constraint_alone_exact() {
-    let mut mantissas = vec![8, 3, 60, 16384];
+    // Token 3: m·2^s = 40000 lies in [2^15, 2^16) (the 2^16 cap is in `accepts_embedding_row_blocks`).
+    let mut mantissas = vec![8, 3, 60, 10000];
     mantissas.extend([5; 7]);
     embedding_survey(
         &instance(-4, mantissas, Some(3)),
