@@ -2574,7 +2574,9 @@ tasks:
   - RFC-0026 §2-4, §6
   skill: sumcheck-prover-engineer
   crate: stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-02-relation-engine
   acceptance:
   - stele_reductions::relation proves and verifies any validated Relation in the RFC-0026 §4 order
   - accepts exactly what stele_ir::relation::check accepts on randomised small relations; rejects one tamper per kind with the primitive error
