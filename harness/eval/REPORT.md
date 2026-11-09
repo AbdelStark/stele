@@ -9,6 +9,7 @@ revision. The CQIS side is the E5-04 prepared Artifact, executed exactly.
 |---|---|---|---|
 | int16 residual, fraction 2 (E5-04 / ADR-058 runtime) | +3,061,000% | 0 of 2 measured | **fail** |
 | int24 residual, fraction 10 (RFC-0004 §8 wide-path knob; ADR-060) | **+3.24% ± 0.18%** | 0 of 3 | **fail** |
+| int24 residual, fraction 10, grouped rows g = 128 (RFC-0004 A15; E5-05e) | **+1.57% ± 0.11%** | 1 of 3 (IFEval) | **fail** |
 
 The wide residual knob turns a catastrophic failure into a model that passes the perplexity criterion. The model
 stays within a few points on every benchmark, but G7's benchmark criterion is still not met. The residual path is no
@@ -185,6 +186,44 @@ items, statistics and G7 reading are exactly those of "Protocol" above. The fp32
 existing E5-05 run (its per-item files match `results/e505/items.sha256`). Results go to tag
 `cqis-r24-f10-g128`. The run uses the knob path (lazy table evaluation, as in E5-05b); grouped rows
 change no table.
+
+**Results** (full protocol, 0 rejections on every benchmark; `results/e505e/summary.r24-f10-g128.json`):
+
+| Benchmark | n | fp32 | grouped CQIS | Δ (wide baseline → grouped) | paired SE | agreement |
+|---|---|---|---|---|---|---|
+| WikiText-2 ppl | 71 windows | 5.8464 | 5.9383 | +3.24% → +1.57% | 0.11% | — |
+| ARC-Challenge | 1,172 | 79.44% | 77.90% | −2.90 → −1.54 pp | 0.75 pp | 93.3% |
+| MMLU-Pro | 12,032 | 35.46% | 34.05% | −2.11 → −1.40 pp | 0.30 pp | 89.1% |
+| IFEval prompt strict | 541 | 8.13% | 8.69% | +1.48 → +0.55 pp | 0.89 pp | 95.8% |
+
+Grouped rows roughly halve every gap, and IFEval now lies within its paired SE. ARC and MMLU-Pro do
+not, so G7 still fails (1 of the 3 measurable benchmarks; GPQA remains gated). On the same 8-window
+subset as the ablation, exact grouped CQIS scores 6.0510 (+1.37%), against 5.9770 (+0.13%) for the
+fp32 simulation with the same grouped int8 rows.
+
+**Where the residual gap lies** (8 windows, `results/e505e/items.sha256`; exact runs use the grouped model):
+
+| Configuration | ppl | vs fp32 |
+|---|---|---|
+| fp32 simulation: int8 rows grouped 128 | 5.9770 | +0.13% |
+| + int8 Q/K/V rows per token (simulation) | 5.9911 | +0.36% |
+| + int8 Q/K/V rows per head (simulation) | 5.9835 | +0.24% |
+| exact grouped CQIS | 6.0510 | +1.37% |
+| exact, attention row fraction 10 | 6.0324 | +1.05% |
+| exact, V fraction 10 | 6.0425 | +1.22% |
+| exact, attention, Q/K, V and norm E all 9 | 6.0251 | +0.93% |
+| exact, Q/K 10, norm E 10, or all four at 10 | — | every window rejects `Range` |
+| exact, SiLU F = E = 10 | — | 2 of 8 windows reject |
+
+- **Q/K/V rows are a small share.** Per-token int8 Q/K/V costs about 0.23 point in simulation, and grouping
+  them per head recovers about 0.1. Grouped Q/K/V (E5-05g) is therefore not worth an amendment.
+- **Fractions recover at most about 0.45 point** before int16 ranges reject, leaving +0.93%.
+- **About 0.6 point remains unattributed** beyond what every int8 row explains. It lies in the exact-only
+  numerics: the exp and normaliser tables, the attention probability rows and rsqrt. That is the next
+  fidelity lever. The Q/K/V simulation quantises before RoPE, while CQIS rows follow it.
+
+Ran on one rented H100 (Vast) with `host_setup.sh` and the plain-host entry point of `modal_e505.py`.
+The executor reproduced the native E5-04 output byte for byte on that machine (7,228,130 bytes).
 
 ## Reproduction and evidence
 
