@@ -1424,3 +1424,31 @@ Decision:
 Consequences: one extra M relation and one extra witness column per rotated tensor,
 recorded as RFC-0026 A1 (row 5 kinds `I, R, M, P`). The output-uniqueness lemma is in
 the review notes.
+
+## ADR-078: One A5 statement per table in the development profile (RFC-0026 A3, task E16-12)
+
+Context: the E16-10 integration showed per-source PCS overhead dominating
+development proofs. On the 8-layer d=64, T=64 model, 3,755 per-check multiplicity
+sources accounted for 945 MB and the lookup proofs for 469 MB, out of 2.1 GB.
+
+Decision:
+- Every lookup into one `TableId`, and every range of one `width.bits`, forms one
+  check: one RFC-0008 A5 statement, one multiplicity source and one pair of trees.
+- Members are concatenated, largest domain first, into `2^m` aligned positions, with
+  the padding unselected. The Statement is A2 item 2 over that domain. `m > 30` is
+  rejected, so `h = 0` and every count stays below `p`.
+- The prover sends each member's tuple evaluations at the low coordinates of the
+  selected-product point. The verifier checks their eq-weighted sum against the
+  concatenated claim (`MemberSumMismatch`) and routes each value as an RFC-0008 A6
+  column claim.
+- Member values are bound by the step-7 batch descriptors that absorb them. No new
+  label is introduced.
+
+Consequences:
+- The lookup-heavy synthetic relation (80 checks, 3 tables) shrinks from 38.2 MB to
+  5.6 MB. Its multiplicity bytes go from 22.8 to 0.97 MB and its lookup bytes from
+  11.2 to 0.49 MB. Proving drops from 2.2 s to 0.22 s.
+- The LU line is charged once per check, with the concatenated `N`.
+- Stacking group and multiplicity sources into one commitment is E16-13.
+
+Status: Accepted (RFC-0026 A3).

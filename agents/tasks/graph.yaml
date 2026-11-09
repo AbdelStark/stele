@@ -2720,7 +2720,7 @@ tasks:
   - RFC-0026 A3
   skill: sumcheck-prover-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-12-lookup-batching
   acceptance:

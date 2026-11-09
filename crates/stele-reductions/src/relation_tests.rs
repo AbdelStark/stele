@@ -263,3 +263,120 @@ fn rejects_zero_tuple_that_is_only_table_padding() {
     values.set(&rel, y, vec![2, 4, 6, 6]).expect("y");
     assert!(lie(&rel, &values, &values).is_ok());
 }
+
+/// RFC-0026 A3: lookups of different domain sizes into one table (one with a selector
+/// and a broadcast read) and ranges of one width over columns of three lengths and
+/// both signednesses each batch into a single A5 statement.
+fn batched() -> (Relation, Values) {
+    let mut rel = Relation::default();
+    let g3 = Kind::Witness(rel.add_group("G/batch/3", 3));
+    let g2 = Kind::Witness(rel.add_group("G/batch/2", 2));
+    let g1 = Kind::Witness(rel.add_group("G/batch/1", 1));
+    let a = rel.add_column("a", g3.clone(), Width::signed(8), 3);
+    let b = rel.add_column("b", g2.clone(), Width::unsigned(8), 2);
+    let c = rel.add_column("c", g1, Width::signed(8), 1);
+    let x = rel.add_column("x", g3, Width::signed(4), 3);
+    let y = rel.add_column("y", g2, Width::signed(4), 2);
+    let sel = rel.add_column(
+        "sel",
+        Kind::Public(vec![1, 0, 1, 1, 0, 1, 1, 0]),
+        Width::unsigned(1),
+        3,
+    );
+    for (column, width) in [
+        (a, Width::signed(8)),
+        (b, Width::unsigned(8)),
+        (c, Width::signed(8)),
+        (x, Width::signed(4)),
+        (y, Width::signed(4)),
+    ] {
+        rel.ranges.push(Range {
+            name: alloc::format!("r{}", column.0),
+            column,
+            width,
+        });
+    }
+    let table = rel.add_table(Table {
+        name: "small".to_string(),
+        widths: vec![Width::signed(4)],
+        rows: vec![vec![-3], vec![0], vec![2], vec![5], vec![7]],
+    });
+    rel.lookups.push(Lookup {
+        name: "x".to_string(),
+        vars: 3,
+        selector: Some(Ref::identity(sel, 3)),
+        tuple: vec![Ref::identity(x, 3)],
+        table,
+    });
+    // y broadcast over a 3-bit domain (read on bits 1, 2).
+    rel.lookups.push(Lookup {
+        name: "y".to_string(),
+        vars: 3,
+        selector: None,
+        tuple: vec![Ref {
+            column: y,
+            vars: vec![1, 2],
+        }],
+        table,
+    });
+    let mut values = Values::new(&rel);
+    values
+        .set(&rel, a, vec![-128, 127, 0, 5, -7, 9, 100, -1])
+        .expect("a");
+    values.set(&rel, b, vec![0, 255, 17, 3]).expect("b");
+    values.set(&rel, c, vec![-128, 127]).expect("c");
+    values
+        .set(&rel, x, vec![2, -8, 5, 7, 6, 0, -3, 1])
+        .expect("x");
+    values.set(&rel, y, vec![0, 2, 5, -3]).expect("y");
+    (rel, values)
+}
+
+#[test]
+fn accepts_batched_lookups_and_ranges_per_table() {
+    let (rel, values) = batched();
+    assert!(stele_ir::relation::check(&rel, &values).is_ok());
+    let plan = plan(&rel).expect("plan");
+    // One check for the table, one for 8-bit ranges, one for 4-bit ranges.
+    assert_eq!(plan.checks.len(), 3);
+    assert_eq!(
+        plan.checks
+            .iter()
+            .map(|c| (c.members.len(), c.m))
+            .collect::<Vec<_>>(),
+        [(2, 4), (3, 4), (2, 4)]
+    );
+    assert!(lie(&rel, &values, &values).is_ok());
+}
+
+#[test]
+fn rejects_batched_tuple_outside_the_table() {
+    // y[3] = 6 is in no row; the shared statement still rejects it.
+    let (rel, mut values) = batched();
+    values.set(&rel, ColumnId(4), vec![0, 2, 5, 6]).expect("y");
+    assert!(stele_ir::relation::check(&rel, &values).is_err());
+    assert_eq!(
+        lie(&rel, &values, &values).err(),
+        Some(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+    );
+}
+
+#[test]
+fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
+    // The prover commits sq[0] = 50, runs the lookup on the true 49, and reports the
+    // member evaluation of what it committed. Only the A3 member sum can reject.
+    let (rel, values) = squares();
+    let committed = tampered(&rel, &values, ColumnId(1), 0);
+    let mut forged = plan(&rel).expect("plan");
+    for check in &mut forged.checks {
+        check.split = Some(committed.clone());
+    }
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, &[], &[])
+        .expect("a lying prover still produces bytes");
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify(&mut t, &rel, &[], &proof).err(),
+        Some(Error::MemberSumMismatch)
+    );
+}

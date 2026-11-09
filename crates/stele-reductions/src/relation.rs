@@ -2,7 +2,7 @@
 //!
 //! [`prove`] and [`verify`] run the RFC-0026 §4 transcript order on any validated
 //! [`Relation`]: group roots, multiplicity roots, one zerocheck per identity domain
-//! size, one A5 lookup per lookup/range, one sumcheck per matmul, then one claim
+//! size, one A5 lookup per table or range width (A3), one sumcheck per matmul, then one claim
 //! batch and one point opening per group and weight source. The verifier derives
 //! every size, source, identity and lookup statement from the relation alone; proof
 //! bytes carry only messages. QM31 challenges throughout (RFC-0026 §1.2).
@@ -57,6 +57,8 @@ pub enum Error {
     Lookup(crate::lookup::Error),
     /// A certificate or opening rejected.
     Pcs(stele_pcs::Error),
+    /// A batched lookup's member evaluations do not sum to its tuple claim (A3).
+    MemberSumMismatch,
     /// A matmul's shared-bit equality factor disagrees with eq(ρ, r).
     EqMismatch,
     /// A public column claim disagrees with the public values.
@@ -197,13 +199,23 @@ impl Group {
     }
 }
 
-/// A lookup or range as an A5 statement with Ref-mapped, shifted originals.
-pub(crate) struct Check {
-    id: u64,
-    name: String,
+/// One lookup or range inside its table's batched A5 statement (RFC-0026 A3).
+pub(crate) struct Member {
     m: u8,
     tuple: Vec<(Ref, i64)>,
     selector: Option<Ref>,
+    /// Start of this member's block in the concatenated domain; a multiple of 2^m.
+    offset: usize,
+}
+
+/// Every lookup into one table, or every range of one width, as one A5 statement
+/// with concatenated Ref-mapped, shifted originals (RFC-0026 A3, RFC-0008 A6).
+pub(crate) struct Check {
+    id: u64,
+    name: String,
+    /// Concatenated domain bits: 2^m >= Σ 2^m_i.
+    m: u8,
+    members: Vec<Member>,
     entries: Vec<i64>,
     c: usize,
     t: usize,
@@ -212,6 +224,9 @@ pub(crate) struct Check {
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
+    /// Test-only malicious-prover seam: member evaluations taken from these values.
+    #[cfg(test)]
+    split: Option<Values>,
 }
 impl Check {
     fn tuple_id(&self, i: usize) -> u64 {
@@ -268,26 +283,41 @@ fn group(id: u64, n: u8, columns: Vec<ColumnId>) -> Result<Group, Error> {
     })
 }
 
-#[allow(clippy::too_many_arguments)]
+/// The table a lookup or range targets: ranges are keyed by width bits, because
+/// `v − width.min()` reads the same table `[0, 2^bits)` for either signedness.
+#[derive(PartialEq)]
+enum Target {
+    Table(u32),
+    Range(u8),
+}
+
 fn check(
     id: u64,
     source_id: u64,
-    name: &str,
-    m: u8,
-    tuple: Vec<(Ref, i64)>,
-    selector: Option<Ref>,
+    name: String,
+    mut members: Vec<Member>,
     t: usize,
     mut entries: Vec<i64>,
 ) -> Result<Check, Error> {
-    let c = tuple.len();
+    let c = members[0].tuple.len();
     // RFC-0008 A2 item 5: arity 1..=2 and at most 2^16 table rows.
-    if !(1..=2).contains(&c) || !(1..=1 << 16).contains(&t) {
+    if !(1..=2).contains(&c) || !(1..=1 << 16).contains(&t) || entries.len() != c * t {
+        return Err(Error::Unsupported);
+    }
+    // Largest first keeps every block aligned to its own size.
+    members.sort_by(|a, b| b.m.cmp(&a.m));
+    let mut total = 0usize;
+    for member in &mut members {
+        member.offset = total;
+        total += 1 << member.m;
+    }
+    let m = ceil_log2(total);
+    // b = min(m, 30) = m keeps h = 0, so multiplicities precede every challenge and
+    // each count stays at most 2^30 < p (RFC-0008 A2 item 2).
+    if m > 30 {
         return Err(Error::Unsupported);
     }
     let k = ceil_log2(t);
-    if entries.len() != c * t {
-        return Err(Error::Unsupported);
-    }
     entries.resize(c << k, 0);
     let layout = Layout {
         id: source_id,
@@ -296,10 +326,9 @@ fn check(
     };
     Ok(Check {
         id,
-        name: name.into(),
+        name,
         m,
-        tuple,
-        selector,
+        members,
         entries,
         c,
         t,
@@ -307,6 +336,8 @@ fn check(
         layout,
         #[cfg(test)]
         skew: 0,
+        #[cfg(test)]
+        split: None,
     })
 }
 
@@ -324,42 +355,53 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         groups.push(group(2 + g as u64, group_meta.log_len, columns)?);
     }
     let base = 2 + groups.len() as u64;
-    let mut checks = Vec::new();
+    // RFC-0026 A3: one check per table, in order of first use (lookups, then ranges);
+    // members keep relation order before the size sort.
+    let mut targets: Vec<(Target, Vec<Member>)> = Vec::new();
+    let mut add =
+        |target: Target, member: Member| match targets.iter_mut().find(|(t, _)| *t == target) {
+            Some((_, members)) => members.push(member),
+            None => targets.push((target, vec![member])),
+        };
     for lookup in &relation.lookups {
-        let table = &relation.tables[lookup.table.0 as usize];
-        let id = checks.len() as u64;
-        let tuple = lookup.tuple.iter().map(|r| (r.clone(), 0)).collect();
-        let entries = table.rows.iter().flatten().copied().collect();
-        let selector = lookup.selector.clone();
-        let t = table.rows.len();
-        checks.push(check(
-            id,
-            base + id,
-            &lookup.name,
-            lookup.vars,
-            tuple,
-            selector,
-            t,
-            entries,
-        )?);
+        add(
+            Target::Table(lookup.table.0),
+            Member {
+                m: lookup.vars,
+                tuple: lookup.tuple.iter().map(|r| (r.clone(), 0)).collect(),
+                selector: lookup.selector.clone(),
+                offset: 0,
+            },
+        );
     }
     for range in &relation.ranges {
         let log_len = relation.columns[range.column.0 as usize].log_len;
-        let id = checks.len() as u64;
         // RFC-0026 §3.4: v - min into 2^bits consecutive integers.
-        let tuple = vec![(Ref::identity(range.column, log_len), -range.width.min())];
-        let t = 1usize << range.width.bits;
-        let entries = (0..t as i64).collect();
-        checks.push(check(
-            id,
-            base + id,
-            &range.name,
-            log_len,
-            tuple,
-            None,
-            t,
-            entries,
-        )?);
+        add(
+            Target::Range(range.width.bits),
+            Member {
+                m: log_len,
+                tuple: vec![(Ref::identity(range.column, log_len), -range.width.min())],
+                selector: None,
+                offset: 0,
+            },
+        );
+    }
+    let mut checks = Vec::new();
+    for (id, (target, members)) in targets.into_iter().enumerate() {
+        let id = id as u64;
+        let (name, t, entries) = match target {
+            Target::Table(table) => {
+                let table = &relation.tables[table as usize];
+                let entries = table.rows.iter().flatten().copied().collect();
+                (table.name.clone(), table.rows.len(), entries)
+            }
+            Target::Range(bits) => {
+                let t = 1usize << bits;
+                (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
+            }
+        };
+        checks.push(check(id, base + id, name, members, t, entries)?);
     }
     let weights = (0..relation.columns.len() as u32)
         .map(ColumnId)
