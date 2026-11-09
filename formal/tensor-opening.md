@@ -6,6 +6,9 @@ arbitrary-functional opening theorem or a Fiat-Shamir/profile certificate.
 
 RFC-0010 A9 incorporates only §§1-3 for its conditional field primitive.
 The broader scope and outstanding obligations in this study remain Draft.
+Accepted RFC-0010 A3 adopts the same §§1-3 (proven: Diamond–Posen Theorem 2 at
+e<=(D-1)/3 and the query/near-matrix lemma) for Circle and v2 sources. It does
+not adopt the certificate-free fresh-tensor mode of §2; that stays Draft.
 
 ## 1. Imported theorem and its hypotheses
 

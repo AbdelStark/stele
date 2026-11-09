@@ -680,16 +680,16 @@ tasks:
   - RFC-0010 §1-2,§4,§8
   - RFC-0010 A3
   - RFC-0010 A6
+  - RFC-0012 A15
   skill: pcs-engineer
   crate: stele-pcs
-  status: blocked(RFC-0010 A3; RFC-0010 A6)
-  agent: codex-root
-  branch: task/E4-03-field-wire-oracle
+  status: ready
   acceptance:
   - NC-0600..0603
   - NC-0612
   - ledger PCS line
   - proof size regression test
+  - NC-0613/0614; v2 query table checked by an independent checker against native values; typed int8/int16 values expanded to one message element each under the A6 embeddings
 - id: E4-03a
   epic: E4
   title: Conditional Circle field-source PCS and closed RFC-0006 A1 adapter
@@ -728,7 +728,7 @@ tasks:
   - RFC-0007 A1
   skill: pcs-engineer
   crate: stele-pcs
-  status: blocked(RFC-0010 A6; RFC-0007 A1)
+  status: blocked(RFC-0007 A1)
   agent: codex-root
   branch: task/E4-04-fused-layout-study
   acceptance:
@@ -744,6 +744,7 @@ tasks:
   - RFC-0013 §3.2
   - RFC-0010 A7
   - RFC-0013 A1
+  - RFC-0010 A3
   skill: pcs-engineer
   crate: stele-pcs
   status: blocked(RFC-0010 A7; RFC-0013 A1)
@@ -752,6 +753,7 @@ tasks:
   acceptance:
   - NC-0604
   - proven-only params enforced in treaty
+  - treaty set resolves RFC-0010 A3 item 7 (query rounds and certificate tensor round under Q12 or the Q-times-round charge)
 - id: E4-06
   epic: E4
   title: Ligerito mode (succinct u, short columns, recursion levels)
@@ -1150,11 +1152,13 @@ tasks:
   - RFC-0005 §2
   - RFC-0008 §5
   - RFC-0008 A4
+  - RFC-0010 A6
   skill: gkr-reduction-author
   crate: stele-ir
   status: ready
   acceptance:
   - checker rejects plan with unchecked committed element
+  - checker rejects any committed cut or signed-embedding weight source without an RFC-0010 A6 width proof (whole-source range lookup or qualifying limb split)
 - id: E6-03
   epic: E6
   title: Witness capture (cuts, scales, indices, multiplicities, limbs) and recompute-from-cuts engine
@@ -1761,12 +1765,14 @@ tasks:
   - RFC-0007 §4 rows 0,1,8,9
   - RFC-0010 §2
   - RFC-0025 §2,§6,§7.1
+  - RFC-0007 A7
+  - RFC-0010 A3
   skill: gkr-reduction-author
   crate: stele-reductions
   status: ready
   acceptance:
   - NC-0002
-  - single R_stack opening counter
+  - R_stack opening counter (RFC-0007 A7 replaces "single"); reports one R_stack certificate per proof and one A3 opening per row-17 claim, each charging its q_o term
   - one-round aligned residual source arithmetic and every virtual/cut point join from the complete model inventory
 - id: E8-01
   epic: E8
@@ -1810,6 +1816,7 @@ tasks:
   - no panics under fuzz 1h
   - LoC budget
   - plan derivation calls lookup::admit for every RFC-0023/0024 lookup consumer before the first transcript absorb; NC-0420..0424 run through the verifier entry point and fail if the call is removed
+  - plan derivation fixes one RFC-0010 A6 message embedding per source context and rejects a plan whose consumers name two or none (NC-1207/1208)
 - id: E8-03
   epic: E8
   title: Python differential verifier
@@ -1844,6 +1851,7 @@ tasks:
   - E8-05a
   rfc:
   - RFC-0012 §4-5
+  - RFC-0012 A15
   skill: soundness-auditor
   crate: stele-verifier
   status: ready

@@ -202,3 +202,30 @@ Step 1's A side costs T*n*d_in MACs per layer and type instead of n*d_in.
 Ungrouped inputs are unchanged. Ledger and cost impact are in RFC-0004 A15: the stacked
 Requant zerocheck gains log2 T variables, and there is no new challenge. Affected tasks:
 E5-05d, E5-05f, E7-01 family, E4-04.
+
+### A7 — One message element per cut value and separate R_stack openings (companion of RFC-0010 A3/A6)
+
+Status: Accepted. Review: [A3/A6 acceptance](../../agents/reviews/pcs-a3-a6-acceptance.md).
+Motivation: §3's "packed 2 per M31 for commitment" puts 32 bits in one M31 element,
+and no injective map allows that (RFC-0010 A6). §4 row 17's "one batched functional"
+for R_stack is not one rank-one opening when the claim points differ (RFC-0010 A3).
+
+Exact replacement in §3: "packed 2 per M31 for commitment, RFC-0010 §8" becomes
+"one M31 message element per value under the signed embedding of §2, RFC-0010 A6".
+This applies to non-wide int16 cuts; wide int24 cuts already follow A5. A cut's
+width proof is RFC-0010 A6's (whole-source range lookup or a qualifying limb split);
+none is yet specified for R_stack, and E6-02's checker must reject a plan without one.
+
+Exact replacement in §4 row 17: "`R_stack` (one batched functional)" becomes
+"`R_stack`: one RFC-0010 A3 opening per distinct claim reaching row 17 (rows 9 and
+15, and any row-16 R_0/R_L claim), each with its own q_o term". This is the smallest
+sound choice: it adds no reduction, challenge or label. Claims already merged by an
+Accepted RLC batch (RFC-0005 §3) before row 17 open once, as that batch emits one claim.
+
+No new loss family: each opening adds its A3 term ((N-D+e)/N)^q_o to the PCS line,
+and R_stack keeps one certificate per proof. Cost: the non-wide cut commit and
+opening message count doubles to C_cut=n·d·(L+1) elements; raw int16 storage is
+unchanged. A dense layer now has at least two R_stack openings instead of one: two
+u rows of C elements, two encodings and 2·q_o column responses. A1 stays Draft for
+short columns and the complete fused schedule. Affected tasks: E6-02 and E7-10
+(the opening counter counts one opening per row-17 claim), with original criteria.

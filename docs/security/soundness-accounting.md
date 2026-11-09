@@ -8,10 +8,10 @@ Total error ε = Σ SC + Σ SZ + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC
 | SZ | RFC-0024 actual-tail equality | `m/p^d`, zero at m=0 | conditional interactive (RFC-0012 A14) |
 | RLC | RLC batch reductions | `t/|K|` | yes |
 | LU | one joint record per lookup instance (RFC-0012 A8/A11) | `min(1,(h+N+c·t−1)/|K|)^r`, b=min(m,30), h=m−b; tree/PCS terms separate; the r-th power is interactive only, FS term per Q12 | conditional interactive (RFC-0008 A2/A5) |
-| PCS | one per opening (R_stack, 7–9 weight types, multiplicities, aux) | `ε_gap(ρ,δ)+(1−δ)^q+ε_Merkle` | treaty: proven only (BCIKS20, DP23/24, Khatam) |
+| PCS | each certificate attempt; each opening; v2 setup once per ledger (RFC-0012 A15) | certificate `2·ell·(e+1)/|K|+((N−e−1)/N)^q_c`; opening `((N−D+e)/N)^q_o`; setup `200431782/2^160` if a v2 source with J≥4 is present; Merkle lift under H | conditional interactive, proven terms only (RFC-0010 A3: Diamond–Posen Thm 2 at e≤(D−1)/3; no Johnson/capacity conjecture); no profile admitted, FS per Q12 |
 | MASK | per masked instance | `≤ 1/|K|` | yes |
 | FS | adaptive queries `Q` + grinding | ROM bound | assumption A2 |
-| H | hash collisions | `Q²/2²⁵⁶` | assumption A1 |
+| H | collisions and late preimages of frozen digests (RFC-0012 A15, RFC-0010 A8) | `min(1,[C(Q_total,2)+Σ_{r=1..R_max}(1+2·Q_pre,r)·Q_after,r]/2^λ)`, A8's deterministic caps, λ=256 (192 for truncated standard Merkle) | assumption A1 |
 
 Illustrative treaty budget for W4 appears in RFC-0012 §5; the generator must reproduce it. The gate
 `scripts/gates/soundness-accounting.sh` diffs the generator's instance enumeration against the transcript labels actually
@@ -704,6 +704,12 @@ RFC-0010 A9/RFC-0012 A10, retains the certificate tensor term
 its SC record and consumes every original, including unused inputs. A8's
 global collision and bounded registration-lifetime frontier terms remain;
 certificate digest identity also relies on that global hash accounting.
+
+Accepted RFC-0010 A3/RFC-0012 A15 keep these terms and add version-2 sources for
+the v2 expander (J=3..14), with D from code-identity.md §2 and the fixed A3 query
+table, plus the v2 setup term once per ledger. The round-by-round FS hand
+derivation (A3 item 7) shows Policy 1 fails both profiles under Q times the
+largest round error; no profile carries a PCS line until E4-05/E12-04 and Q12.
 
 The specified sampler draws full K challenges and uses only the first limb
 for a rejection-sampled index. With at most 64 attempts per index, PCS-only abort

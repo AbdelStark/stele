@@ -951,6 +951,14 @@ Both-field fixture parity and all 59 native parameter tuples are checked.
 No accepting PCS API, certificate handle, new control coverage or profile follows;
 continue E4-03a with actual registration and opening consumers.
 
+Q27/Q28 acceptance: RFC-0010 A3/A6, RFC-0012 A15 and RFC-0007 A7 admit A9's
+certified opening as the one mode, version-2 v2 expander sources with Policy 1
+tables, and one message element per value. Still open here: the certificate-free
+fresh-tensor mode, batch/grouping and Ligerito (Q27); packed formats, which need a
+virtual-column amendment (Q31) and a decomposition reduction (Q28); int16/int24
+committed-source range consumers; and the Fiat–Shamir rounds of A3 item 7, which
+fail both profiles under Q times the largest round error (Q12, E4-05, E12-04).
+
 Q26/Q31 full statistic continuation: the [full-row consumer](../../research/cqis-bounds/NORM-STATISTIC-FULL.md)
 uses three byte-column sums from the same verified signed16 row, closed carry
 ranges and deterministic zero-input tail columns. It retains the existing

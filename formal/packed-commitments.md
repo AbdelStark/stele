@@ -8,6 +8,8 @@ Kill criterion: a collision among supported source values, a noncanonical altern
 decomposition, or a claim that packed and original row vectors are the same.
 This note proposes a codec and identifies the missing proof consumer. It does
 not enable a commitment format, admit a profile or complete E4-03/E4-04.
+Accepted RFC-0010 A6 adopts §1 (proven: the cardinality and collision facts)
+and withdraws packing. The packed30 codec of §§2-4 is not admitted.
 
 ## 1. The existing 32-bit-to-M31 statement is impossible
 

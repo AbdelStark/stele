@@ -91,14 +91,17 @@
 | NC-0600 | PCS | 0010 A9 | change one certificate codeword limb or opening row value under zero b; rebuild dependent responses | `ColumnMismatch` | done |
 | NC-0601 | PCS | 0010 A9 | replace one derived query index and its response/path, retaining all other draws | `RootMismatch` | done |
 | NC-0602 | PCS | 0010 §10, 0012 A3 | wrong leaf payload or sibling for fixed root/index, both tree kinds | `RootMismatch` | done |
-| NC-0603–0605 | PCS | 0010 §10 | see RFC | | todo |
+| NC-0603 | PCS | 0010 A6, 0024 §1.1 | in an offset int8 source replace one adjacent pair (x0,x1), x1>=1, by (x0+256,x1-1), keeping x0+256·x1; commit and certify it honestly; actual byte-range verifier | `RootMismatch` | todo |
+| NC-0604–0605 | PCS | 0010 §10 | see RFC | | todo |
 | NC-0606 | PCS | 0010 A9, 0007 A2, 0023 §6, 0024 §6 | replace the expected certificate root or use a separately verified certificate for one unchanged opening; substitute one genuine Requant advice handle under its unchanged packet or one original range handle with responses from the old source | `RootMismatch / CertificateContext` | done |
 | NC-0607 | PCS | 0010 A9 | authenticate a leaf containing the M31 modulus at the certificate and opening consumers, including zero a | `NoncanonicalField` | done |
 | NC-0608 | PCS | 0010 A9 | after valid verification, import certificate bytes with one changed leaf; cached context cannot replace re-verification | `RootMismatch` | done |
 | NC-0609 | PCS | 0010 A9 | change an unused RFC-0006 A1 final; regenerate preceding openings so rejection reaches its terminal source | `ValueMismatch` | done |
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
-| NC-0612 | PCS | 0010 A1, 0012 A7 | substitute a different v2 seed, Circle identity or evidence ID for the committed expander identity under the first actual expander PCS consumer | `CodeIdentityMismatch` | todo |
+| NC-0612 | PCS | 0010 A1, A3, 0012 A7 | under the actual v2 source consumer: offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | todo |
+| NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | todo |
+| NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
 | NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
@@ -119,6 +122,8 @@
 | NC-1204 | request plan | 0005 A4, 0016 A2 | substitute one plan instance from a different request under the same model template | `PlanInstanceMismatch` | todo |
 | NC-1205 | profile minimum | 0016 A2, 0025 §2.7 | change treaty to standard below the passport's minimum profile | `ProfileMismatch` | todo |
 | NC-1206 | token source | 0016 A2, 0025 §2.6 | substitute one prompt/output source context while retaining the expected tokens and I/O mode | `TokenSourceMismatch` | todo |
+| NC-1207 | message embedding | 0010 A6 | plan whose consumers name two embeddings (signed and offset) for one source context | `EmbeddingMismatch` | todo |
+| NC-1208 | message embedding | 0010 A6 | plan whose consumers name no embedding for a committed source context | `MissingEmbedding` | todo |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206

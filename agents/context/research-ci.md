@@ -58,6 +58,7 @@ The normal inventory retains the inherited 176 commands exactly once and adds
 the bounded RFC-0024 algebra checker to `algebra` (177 inherited commands).
 E15-04 adds the R-BF16 reduction and cost checkers to `algebra` (179 commands).
 E4-01 adds the one-sided v2 distance estimate to `code` (180 commands).
+RFC-0010 A3 adds the exact v2 expander query-policy checker to `algebra` (181 commands).
 The separate model-contract inventory adds one locked regression command. This scope
 also covers deletions and both names of renamed files; it does not infer scope
 from changed lockfile entries. Both mandatory native jobs and all table rules remain.
