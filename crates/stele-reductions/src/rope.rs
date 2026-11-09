@@ -235,8 +235,8 @@ impl Module for Rope {
 
         let at = |c: ColumnId| Ref::identity(c, n);
         // P(t, head, i) = Σ_{i'} x(t, head, i')·Perm(i, i'); i' on domain bits n..n+d.
-        let input_vars = (n..n + d).chain(d..n).collect();
-        let perm_vars = (n..n + d).chain(0..d).collect();
+        let input_vars: Vec<u8> = (n..n + d).chain(d..n).collect();
+        let perm_vars: Vec<u8> = (n..n + d).chain(0..d).collect();
         relation.matmuls.push(Matmul {
             name: format!("{name}/partner"),
             free: n,

@@ -215,35 +215,54 @@ fn matches_reference_extreme_rows() {
     accepts(true);
 }
 
-/// Replace output entry `index` by `out` and re-solve every auxiliary column that the
-/// identities determine, for each of the four `(β, ν)` choices: the strongest
-/// assignment with that output. The checker must reject all of them.
-fn rejects_output(case: &Case, index: usize, out: i64) {
+impl Case {
+    fn with(&self, changes: &[(ColumnId, usize, i64)]) -> Values {
+        let mut values = self.values.clone();
+        for &(id, index, v) in changes {
+            let mut column = self.column(id).to_vec();
+            column[index] = v;
+            values.set(&self.relation, id, column).expect("set");
+        }
+        values
+    }
+}
+
+/// The strongest assignments with output `out` at `index`: for every `β, ν ∈ {0,1,2}`
+/// (2 probes the bit ranges), `L` either solves the numerator or keeps its honest
+/// value, and `L`, `tc`, `tie` take their formula values clamped into their ranges. Each fails exactly the constraint whose
+/// value had to be clamped, so deleting any one constraint admits one of them.
+fn near_misses(case: &Case, index: usize, out: i64) -> Vec<Values> {
     let c = case.rope.columns().expect("declared");
     let get = |id| case.column(id)[index];
     let numerator = (get(c.output) - get(c.half)) * DIVISOR + get(c.low);
-    for half in 0..2 {
-        for negative in 0..2 {
-            let low = numerator - (out - half) * DIVISOR;
-            let row = [
-                (c.output, out),
-                (c.half, half),
-                (c.negative, negative),
-                (c.low, low),
-                (c.twos, out - half + (negative << 16)),
-                (c.tie, (2 * half - 1) * (low - HALF - negative) - (1 - half)),
-            ];
-            let mut values = case.values.clone();
-            for (id, v) in row {
-                let mut column = case.column(id).to_vec();
-                column[index] = v;
-                values.set(&case.relation, id, column).expect("set");
+    let mut all = Vec::new();
+    for half in 0..3 {
+        for negative in 0..3 {
+            // `L` solving the numerator (clamped), or the honest `L` kept.
+            let solved = (numerator - (out - half) * DIVISOR).clamp(0, DIVISOR - 1);
+            for low in [solved, get(c.low)] {
+                let twos = (out - half + (negative << 16)).clamp(0, (1 << 16) - 1);
+                let tie = (2 * half - 1) * (low - HALF - negative) - (1 - half);
+                all.push(case.with(&[
+                    (c.output, index, out),
+                    (c.half, index, half),
+                    (c.negative, index, negative),
+                    (c.low, index, low),
+                    (c.twos, index, twos),
+                    (c.tie, index, tie.clamp(0, DIVISOR - 1)),
+                ]));
             }
-            assert!(
-                matches!(check(&case.relation, &values), Err(Violation::Range { .. })),
-                "accepted output {out} at {index} with β={half} ν={negative}"
-            );
         }
+    }
+    all
+}
+
+fn rejects_output(case: &Case, index: usize, out: i64) {
+    for values in near_misses(case, index, out) {
+        assert!(
+            check(&case.relation, &values).is_err(),
+            "accepted output {out} at {index}"
+        );
     }
 }
 
@@ -439,5 +458,107 @@ fn matches_reference_llama_fixture() {
                 })
         });
         assert!(honest);
+    }
+}
+
+/// At a tie, flipping `β` with `L` kept and `tie = 0` is rejected (by `half`).
+#[test]
+fn rejects_flipped_half_at_tie() {
+    for negative in [false, true] {
+        let (case, index) = tie_case(negative);
+        let c = case.rope.columns().expect("declared");
+        let (out, half) = (case.column(c.output)[index], case.column(c.half)[index]);
+        let flipped = 1 - half;
+        let values = case.with(&[
+            (c.half, index, flipped),
+            (c.output, index, out - half + flipped),
+            (c.tie, index, 0),
+        ]);
+        assert!(matches!(
+            check(&case.relation, &values),
+            Err(Violation::Identity { relation, .. }) if relation.ends_with("/half")
+        ));
+    }
+}
+
+/// `β = 2` where the honest `β` is 1 gives `out + 1` and satisfies every identity; only
+/// the unsigned-1 range of `half` rejects it.
+#[test]
+fn rejects_half_outside_one_bit() {
+    let mut rng = Rng(78);
+    let case = case(Some(&fixtures(8, 1)[0]), &rng.input(64, false), 4, 2, 8).expect("honest");
+    let c = case.rope.columns().expect("declared");
+    let index = (0..64)
+        .find(|&i| case.column(c.half)[i] == 1)
+        .expect("an entry rounding up");
+    let (low, negative) = (case.column(c.low)[index], case.column(c.negative)[index]);
+    let values = case.with(&[
+        (c.half, index, 2),
+        (c.output, index, case.column(c.output)[index] + 1),
+        (c.tie, index, 3 * (low - HALF - negative) + 1),
+    ]);
+    assert!(matches!(
+        check(&case.relation, &values),
+        Err(Violation::Range { relation, .. }) if relation.ends_with("/half")
+    ));
+}
+
+type Mutation = (&'static str, fn(&mut Relation));
+
+/// Mutation table (RFC-0026 §5.2): deleting each identity or the matmul, or widening
+/// the `half` range, lets at least one near miss of this file through.
+#[test]
+fn rejects_relation_without_each_constraint() {
+    let mut rng = Rng(79);
+    let case = case(Some(&fixtures(8, 1)[0]), &rng.input(64, false), 4, 2, 8).expect("honest");
+    let c = case.rope.columns().expect("declared");
+    let mut attacks: Vec<(&Case, Values)> = Vec::new();
+    for index in 0..64 {
+        let out = case.column(c.output)[index];
+        for wrong in [out + 1, out - 1] {
+            let misses = near_misses(&case, index, wrong);
+            attacks.extend(misses.into_iter().map(|v| (&case, v)));
+        }
+    }
+    let partner = case.column(c.partner)[9] + 1;
+    attacks.push((&case, case.with(&[(c.partner, 9, partner)])));
+    let ties = [tie_case(false), tie_case(true)];
+    for (tie, index) in &ties {
+        let out = tie.column(c.output)[*index];
+        let misses = near_misses(tie, *index, out - out.signum());
+        attacks.extend(misses.into_iter().map(|v| (tie, v)));
+    }
+    for (honest, values) in &attacks {
+        assert!(check(&honest.relation, values).is_err());
+    }
+    let mutations: [Mutation; 5] = [
+        ("numerator", |r| {
+            r.identities.retain(|i| !i.name.ends_with("/numerator"))
+        }),
+        ("half", |r| {
+            r.identities.retain(|i| !i.name.ends_with("/half"))
+        }),
+        ("sign", |r| {
+            r.identities.retain(|i| !i.name.ends_with("/sign"))
+        }),
+        ("partner", |r| {
+            r.matmuls.retain(|m| !m.name.ends_with("/partner"))
+        }),
+        // The declared width widens with the range, or discipline would reject it.
+        ("half range u2", |r| {
+            for range in r.ranges.iter_mut().filter(|g| g.name.ends_with("/half")) {
+                range.width = Width::unsigned(2);
+                r.columns[range.column.0 as usize].width = Width::unsigned(2);
+            }
+        }),
+    ];
+    for (name, mutate) in mutations {
+        let admitted = attacks.iter().any(|(honest, values)| {
+            let mut relation = honest.relation.clone();
+            mutate(&mut relation);
+            assert!(relation != honest.relation, "{name} changed nothing");
+            check(&relation, values).is_ok()
+        });
+        assert!(admitted, "no near miss needs {name}");
     }
 }

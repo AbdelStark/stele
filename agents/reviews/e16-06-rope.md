@@ -83,9 +83,9 @@ The rounding identity was also checked exhaustively in Python for
   `t` is row `t`, the absolute position in the prefill window.
 - Group: `L{ℓ}/rope/{n}`, shared by Q and K when their lengths agree.
 
-## Deviation to note in RFC-0026 row 5
+## RFC-0026 A1 (row 5 kinds)
 
-Row 5 lists kinds `I, R, P`. This module also uses one **M** per tensor (the
+Row 5 listed kinds `I, R, P`; RFC-0026 A1 amends it to `I, R, M, P`. This module also uses one **M** per tensor (the
 `partner` gather against a public permutation) and commits `partner`. A pointwise
 identity cannot read the paired channel. A `Ref` cannot fix or negate a bit, so
 reading `i XOR 2^k` needs an extra domain bit, and even then only works for
@@ -100,12 +100,29 @@ rotary width and head width that the `Model` admits. It adds one sumcheck over
   over 32 heads and 8 groups. Shapes cover full, partial, odd head count and
   non-power-of-two head width, both layouts, base/linear/llama3 and no rotation.
   The output matches the executor-equivalent reference, and `check` accepts.
-- `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`,
-  `rejects_nonzero_padding`: for the tampered `out`, all four `(β, ν)` choices,
-  with `L`, `tc`, `w` re-solved so that every identity holds, are rejected by a
-  range.
+- `near_misses` builds, for a tampered output, the strongest in-range assignments:
+  every `β, ν ∈ {0, 1, 2}`; `L` either solving the numerator or kept honest; and
+  `L`, `tc`, `tie` at their formula values clamped into their ranges. Each fails
+  exactly the constraint whose value had to be clamped.
+  `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties` (both
+  signs) and `rejects_nonzero_padding` use it.
+- `rejects_flipped_half_at_tie`: `β` flipped with `L` kept and `tie = 0`.
+  `rejects_half_outside_one_bit`: `β = 2` gives `out + 1`.
 - `rejects_tampered_partner` (matmul), `rejects_wrong_pairing_and_position` (the
   other layout's, or the next position's, honest columns).
+- `rejects_relation_without_each_constraint` deletes each identity and the matmul,
+  and widens the `half` range. It asserts that some near miss is then admitted.
+
+Mutation table: each constraint was deleted from `rope.rs` in turn and the tests run.
+
+| Mutation | Tests that go red |
+|---|---|
+| delete `partner` matmul | `rejects_tampered_partner`, `rejects_relation_without_each_constraint` |
+| delete `numerator` identity | `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`, `rejects_nonzero_padding`, `rejects_wrong_pairing_and_position`, `rejects_relation_without_each_constraint` |
+| delete `half` identity | `rejects_flipped_half_at_tie`, `rejects_output_off_by_one`, `rejects_other_rounding_direction_at_ties`, `rejects_nonzero_padding`, `rejects_relation_without_each_constraint` |
+| delete `sign` identity | `rejects_other_rounding_direction_at_ties` (negative tie), `rejects_relation_without_each_constraint` |
+| `half` declared and ranged as unsigned 2 | `rejects_half_outside_one_bit`, `rejects_output_off_by_one`, `rejects_relation_without_each_constraint` |
+
 - `accepts_static_validity_realistic_shapes`: Llama-3.1-8B Q/K (`dh = 128`, T = 64)
   and a `dh = 64` model validate.
 

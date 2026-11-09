@@ -1293,7 +1293,7 @@ Consequences:
 
 Status: Accepted (same-author passes and the independent pass; fixes recorded in the review).
 
-## ADR-077: Relation engine wire, source geometry and derivation order (RFC-0026 §§2-4, RFC-0006 A8, RFC-0008 A6, task E16-02)
+## ADR-075: Relation engine wire, source geometry and derivation order (RFC-0026 §§2-4, RFC-0006 A8, RFC-0008 A6, task E16-02)
 
 Context: RFC-0026 §4 fixes the transcript order of the development-profile engine,
 and RFC-0006 A8 and RFC-0008 A6 admit its claim batching and tuple originals. Several
@@ -1421,6 +1421,6 @@ Decision:
 - Ties go away from zero through `ν = [out − β < 0]` (two's-complement column) and
   the §5 `β` pattern, `tie = (2β−1)(L − 2^13 − ν) − (1−β) >= 0`.
 
-Consequences: one extra M relation and one extra witness column per rotated tensor.
-RFC-0026 row 5 should list kinds `I, R, M, P`. The output-uniqueness lemma is in
+Consequences: one extra M relation and one extra witness column per rotated tensor,
+recorded as RFC-0026 A1 (row 5 kinds `I, R, M, P`). The output-uniqueness lemma is in
 the review notes.

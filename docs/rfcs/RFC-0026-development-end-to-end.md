@@ -581,3 +581,25 @@ actual E16-10 verifier.
   index in the leading coordinates, as the text already said. §9 NC-1310 named
   `FinalEvaluationMismatch`; the first failing check is the A5 root equation,
   `RootMismatch`. No protocol change.
+
+### A1 — RoPE pairs through a public-permutation matmul (row 5)
+
+Status: Accepted. Decision: ADR-077. Review: [E16-06 notes](../../agents/reviews/e16-06-rope.md)
+and the independent review of the E16-06 PR.
+Motivation: row 5 lists kinds `I, R, P`, but an identity is pointwise. A `Ref` can
+permute or drop domain bits, but cannot flip or fix one, so no identity can read
+the paired channel `i XOR 2^k` (§3.1). An extra domain bit would work only for
+layout 0, or for layout 1 with `r/2` a power of two.
+
+Replacement for row 5, columns "Columns" and "Kinds":
+
+> `Q'`, `K'` (int16) + rounding; `c`, `s` as public columns from
+> `model::rotary::Rotation::coefficient`; the paired input `P = x·Perm` (int16) by
+> one matmul per tensor with a public 0/1 permutation `Perm` over the head
+> channels | I, R, M, P
+
+Soundness ledger: one M per rotated tensor (Q and K per layer), with the existing
+§6 lines: SZ `a/|K|` and SC `2d/|K|` with `d = log dh` (no free bit is shared). No new
+line or label.
+Cost model: none; the development profile claims no cost term.
+Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger).
