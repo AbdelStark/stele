@@ -181,21 +181,25 @@ const MAX_J: u8 = 14;
 /// Fixed public v2 seed; RFC-0012 A7 bounds hold for every seed.
 const SEED: [u8; 32] = [0; 32];
 
-/// A commitment group as one v2 source (RFC-0026 §2.3).
+/// A commitment group: its columns occupy one aligned block of the stacked source
+/// source, column `j` at `offset + j·2^n` (RFC-0026 §2.3 as amended by A4).
 struct Group {
-    id: u64,
     columns: Vec<ColumnId>,
     n: u8,
     c: u8,
+    offset: usize,
+}
+
+/// The stacked source: every group of the proof in one v2 source (RFC-0026 A4).
+struct Stack {
+    id: u64,
+    bits: u8,
     ell: u8,
     code: Vec<u8>,
 }
-impl Group {
+impl Stack {
     fn source(&self, root: [u8; 32]) -> Result<Source<K>, Error> {
         Source::from_code_id(self.id, self.ell, &self.code, root).map_err(Error::Pcs)
-    }
-    fn bits(&self) -> u8 {
-        self.n + self.c
     }
 }
 
@@ -238,6 +242,8 @@ impl Check {
 struct Plan {
     digest: [u8; 32],
     groups: Vec<Group>,
+    /// `None` when the relation has no commitment group.
+    stack: Option<Stack>,
     checks: Vec<Check>,
     weights: Vec<ColumnId>,
     sizes: Vec<u8>,
@@ -253,11 +259,10 @@ fn v2_code(j: u8) -> Vec<u8> {
     code
 }
 
-/// Group geometry: zero columns pad the count to 2^c with n+c >= 2·MIN_J, and the
-/// expander exponent J minimises certificate plus opening bytes (ties: smallest J).
-fn group(id: u64, n: u8, columns: Vec<ColumnId>) -> Result<Group, Error> {
-    let c = ceil_log2(columns.len().max(1)).max((2 * MIN_J).saturating_sub(n));
-    let bits = n + c;
+/// Stack geometry: at least 2·MIN_J variables, and the expander exponent J that
+/// minimises certificate plus opening bytes (ties: smallest J).
+fn stack(id: u64, bits: u8) -> Result<Stack, Error> {
+    let bits = bits.max(2 * MIN_J);
     let mut best: Option<(usize, u8)> = None;
     for j in MIN_J..=MAX_J.min(bits / 2) {
         let ell = bits - 2 * j;
@@ -273,11 +278,9 @@ fn group(id: u64, n: u8, columns: Vec<ColumnId>) -> Result<Group, Error> {
         }
     }
     let (_, j) = best.ok_or(Error::Unsupported)?;
-    Ok(Group {
+    Ok(Stack {
         id,
-        columns,
-        n,
-        c,
+        bits,
         ell: bits - 2 * j,
         code: v2_code(j),
     })
@@ -345,16 +348,46 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
     let mut groups = Vec::new();
     for (g, group_meta) in relation.groups.iter().enumerate() {
-        let columns = (0..relation.columns.len() as u32)
+        let columns: Vec<ColumnId> = (0..relation.columns.len() as u32)
             .map(ColumnId)
             .filter(|id| {
                 relation.columns[id.0 as usize].kind
                     == Kind::Witness(stele_ir::relation::GroupId(g as u32))
             })
             .collect();
-        groups.push(group(2 + g as u64, group_meta.log_len, columns)?);
+        let c = ceil_log2(columns.len().max(1));
+        groups.push(Group {
+            columns,
+            n: group_meta.log_len,
+            c,
+            offset: 0,
+        });
     }
-    let base = 2 + groups.len() as u64;
+    // RFC-0026 A4: blocks of 2^(n+c), largest first so each is aligned to its size;
+    // ties keep GroupId order.
+    let mut order: Vec<usize> = (0..groups.len()).collect();
+    order.sort_by(|a, b| (groups[*b].n + groups[*b].c).cmp(&(groups[*a].n + groups[*a].c)));
+    let mut total = 0usize;
+    for g in order {
+        // Reject before shifting: n + c > 30 cannot fit a source (RFC-0026 A4).
+        let bits = u32::from(groups[g].n) + u32::from(groups[g].c);
+        if bits > 30 {
+            return Err(Error::Unsupported);
+        }
+        groups[g].offset = total;
+        total = total.checked_add(1 << bits).ok_or(Error::Unsupported)?;
+    }
+    let stack = match groups.is_empty() {
+        true => None,
+        false => {
+            let bits = ceil_log2(total);
+            if bits > 30 {
+                return Err(Error::Unsupported);
+            }
+            Some(self::stack(2, bits)?)
+        }
+    };
+    let base = 3;
     // RFC-0026 A3: one check per table, in order of first use (lookups, then ranges);
     // members keep relation order before the size sort.
     let mut targets: Vec<(Target, Vec<Member>)> = Vec::new();
@@ -415,6 +448,7 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
     Ok(Plan {
         digest: codec::digest(relation),
         groups,
+        stack,
         checks,
         weights,
         sizes,
@@ -706,12 +740,17 @@ fn bits_point(index: usize, c: u8, tail: &[K]) -> Vec<K> {
         .collect()
 }
 
-/// Source claims of group `g`: column `j` at `(bits(j) ‖ ρ)` (RFC-0026 §2.3).
-fn group_claims(group: &Group, claims: &Claims) -> Vec<(Vec<K>, K)> {
+/// Stack claims: column `j` of a group at block offset `o` is the stack claim at
+/// `(bits(o/2^n + j) ‖ ρ)`, with the block and column index in the leading
+/// coordinates (RFC-0026 §2.3, A4). Exact: Boolean coordinates only.
+fn group_claims(plan: &Plan, stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)> {
     let mut out = Vec::new();
-    for (j, column) in group.columns.iter().enumerate() {
-        for (point, value) in &claims.0[column.0 as usize] {
-            out.push((bits_point(j, group.c, point), *value));
+    for group in &plan.groups {
+        for (j, column) in group.columns.iter().enumerate() {
+            let index = (group.offset >> group.n) + j;
+            for (point, value) in &claims.0[column.0 as usize] {
+                out.push((bits_point(index, stack.bits - group.n, point), *value));
+            }
         }
     }
     out
@@ -781,38 +820,40 @@ fn prove_plan(
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
-    // Step 2: group messages, signed embedding, column index in the high bits.
-    let message = |group: &Group, values: &Values| -> Result<Vec<M31>, Error> {
-        let mut message = vec![M31::from_i64(0); 1 << group.bits()];
-        for (j, id) in group.columns.iter().enumerate() {
-            let col = column(relation, values, *id)?;
-            for (out, v) in message[j << group.n..].iter_mut().zip(col) {
-                *out = M31::from_i64(*v);
+    // Step 2: the stacked source (A4), signed embedding; group blocks largest first,
+    // column `j` of a group at `offset + j·2^n`.
+    let message = |stack: &Stack, values: &Values| -> Result<Vec<M31>, Error> {
+        let mut message = vec![M31::from_i64(0); 1 << stack.bits];
+        for group in &plan.groups {
+            for (j, id) in group.columns.iter().enumerate() {
+                let col = column(relation, values, *id)?;
+                let start = group.offset + (j << group.n);
+                for (out, v) in message[start..].iter_mut().zip(col) {
+                    *out = M31::from_i64(*v);
+                }
             }
         }
         Ok(message)
     };
-    let mut messages = Vec::new();
-    for group in &plan.groups {
-        messages.push(message(group, committed)?);
-    }
+    let committed_message = match &plan.stack {
+        Some(stack) => message(stack, committed)?,
+        None => Vec::new(),
+    };
     let mut usage = HashUsage::default();
-    let mut prepared = Vec::new();
-    let mut handles = Vec::new();
-    for (group, message) in plan.groups.iter().zip(&messages) {
+    let mut stacked = None;
+    if let Some(stack) = &plan.stack {
         let p = PreparedSource::<K>::from_code_id(
-            group.id,
-            group.ell,
-            &group.code,
-            message,
+            stack.id,
+            stack.ell,
+            &stack.code,
+            &committed_message,
             &mut usage,
         )
         .map_err(Error::Pcs)?;
         let (section, handle) = register(&p)?;
         t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
         proof.groups.push(section);
-        prepared.push(p);
-        handles.push(handle);
+        stacked = Some((p, handle));
     }
     // Step 3: multiplicity sources, independent of every challenge.
     let mut mu_messages = Vec::new();
@@ -906,22 +947,21 @@ fn prove_plan(
         shape.route(mm, &sc, &sp.final_values, out_value, &mut claims);
         proof.matmuls.push(out);
     }
-    // Step 7: one claim batch and one opening per group, then per weight source.
-    for (s, group) in plan.groups.iter().enumerate() {
-        let batch = group_claims(group, &claims);
-        if batch.is_empty() {
-            continue;
+    // Step 7: one claim batch and one opening of the stack, then per weight source.
+    if let (Some(stack), Some((prepared, handle))) = (&plan.stack, &stacked) {
+        let batch = group_claims(plan, stack, &claims);
+        if !batch.is_empty() {
+            let opening = Opening {
+                id: BATCH,
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let table = to_k(&message(stack, values)?);
+            proof
+                .openings
+                .push(opening.prove(t, table, prepared, handle)?);
         }
-        let opening = Opening {
-            id: BATCH | s as u64,
-            tensor: group.id,
-            bits: group.bits(),
-            batch: &batch,
-        };
-        let table = to_k(&message(group, values)?);
-        proof
-            .openings
-            .push(opening.prove(t, table, &prepared[s], &handles[s])?);
     }
     for (w, id) in plan.weights.iter().enumerate() {
         let batch = &claims.0[id.0 as usize];
@@ -929,7 +969,7 @@ fn prove_plan(
             continue;
         }
         let opening = Opening {
-            id: BATCH | (plan.groups.len() + w) as u64,
+            id: BATCH | (1 + w) as u64,
             tensor: certificates[w].record().source().descriptor().id,
             bits: relation.columns[id.0 as usize].log_len,
             batch,
@@ -1088,12 +1128,12 @@ pub fn verify(
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
     // Step 2: each certificate on its own transcript, then its root here.
-    let mut handles = Vec::new();
     let mut sections = Sections(proof.groups.iter());
-    for group in &plan.groups {
+    let mut stacked = None;
+    if let Some(stack) = &plan.stack {
         let mut reader = sections.next()?;
         let root = reader.root()?;
-        let source = group.source(root)?;
+        let source = stack.source(root)?;
         let size = source
             .proof_size(ProofKind::Certificate)
             .map_err(Error::Pcs)?;
@@ -1101,7 +1141,7 @@ pub fn verify(
             verify_certificate(source, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
         reader.end()?;
         t.absorb(AbsorbLabel::RelationRoots, &root)?;
-        handles.push(handle);
+        stacked = Some(handle);
     }
     sections.end()?;
     // Step 3: multiplicity layouts are A5's, derived from each check.
@@ -1211,21 +1251,19 @@ pub fn verify(
     sections.end()?;
     // Step 7.
     let mut sections = Sections(proof.openings.iter());
-    for (s, group) in plan.groups.iter().enumerate() {
-        let batch = group_claims(group, &claims);
-        if batch.is_empty() {
-            continue;
+    if let (Some(stack), Some(handle)) = (&plan.stack, &stacked) {
+        let batch = group_claims(&plan, stack, &claims);
+        if !batch.is_empty() {
+            let opening = Opening {
+                id: BATCH,
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let mut reader = sections.next()?;
+            opening.verify(t, handle, &mut reader, &mut ledger, "stack")?;
+            reader.end()?;
         }
-        let opening = Opening {
-            id: BATCH | s as u64,
-            tensor: group.id,
-            bits: group.bits(),
-            batch: &batch,
-        };
-        let name = &relation.groups[s].name;
-        let mut reader = sections.next()?;
-        opening.verify(t, &handles[s], &mut reader, &mut ledger, name)?;
-        reader.end()?;
     }
     for (w, id) in plan.weights.iter().enumerate() {
         let batch = &claims.0[id.0 as usize];
@@ -1234,7 +1272,7 @@ pub fn verify(
         }
         let column = &relation.columns[id.0 as usize];
         let opening = Opening {
-            id: BATCH | (plan.groups.len() + w) as u64,
+            id: BATCH | (1 + w) as u64,
             tensor: certificates[w].record().source().descriptor().id,
             bits: column.log_len,
             batch,

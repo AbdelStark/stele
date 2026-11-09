@@ -1546,3 +1546,32 @@ Consequences: no committed column is wider than 16 bits except the Compose-disci
 E16-05 interface.
 
 Status: Accepted (same-author pass; independent review on the E16-08 PR).
+
+## ADR-082: One stacked source for every commitment group (RFC-0026 A4, task E16-13)
+
+Context: after RFC-0026 A3, per-group PCS overhead dominates development proofs.
+On the 8-layer E16-10 model, 255 group certificates took 469 MB and 313 openings
+took 232 MB.
+
+Decision:
+- All commitment groups of a proof are aligned blocks of one RFC-0010 v2 stacked source
+  source. Blocks are placed largest first, with ties in `GroupId` order.
+- A column claim maps to the stacked source point with its block and column index as the
+  leading Boolean coordinates.
+- There is one certificate, one RFC-0006 A8 batch and one opening for the stacked source.
+- The geometry (`J`, `ell`) is the byte-minimising choice over the stacked source size,
+  `S >= 6`.
+- Multiplicity sources keep A5's own layout. There is one per table after A3.
+- Weight sources stay the model commitment.
+- One stacked source was chosen over one source per `log_len` class. Under Policy 1
+  a source costs about `c·sqrt(N)` at large `N`, so `Σ sqrt(N_i) >= sqrt(Σ N_i)`.
+  Measured on 40 groups: group certificates went from 7.5 MB to 4.0 MB and openings
+  from 3.5 MB to 1.9 MB.
+
+Consequences:
+- NC-1306 becomes root substitution: "replace the stacked root with a multiplicity root".
+- What remains is the stacked source's own certificate and opening, which grow with the
+  stacked source size under the RFC-0010 Policy 1 query counts. Single-digit-MB proofs at the
+  8-layer scale need a PCS parameter change outside RFC-0026.
+
+Status: Accepted (RFC-0026 A4).

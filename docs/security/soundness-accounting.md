@@ -1870,6 +1870,8 @@ RFC-0026 adds no new ledger line kind. Each development proof charges the follow
   `(2^m + c·t − 1)/|K|` over the concatenated domain of `2^m >= Σ 2^m_i`
   positions. The member split is an exact linear identity and adds no term.
 - **RLC** and **SC** for each source's RFC-0006 A2 mode-1 claim batch.
+  Under RFC-0026 A4 every group is one stacked source, so there is one
+  group batch per proof plus one per weight source.
 - **PCS** for each certificate and opening.
 - **H** under the A15 caps.
 

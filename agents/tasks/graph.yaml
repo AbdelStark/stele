@@ -2733,6 +2733,22 @@ tasks:
   - one RFC-0008 A5 statement and one multiplicity source per table or range width, with members concatenated and the A3 member split checked
   - multiplicity and lookup proof bytes cut by at least 10x on a lookup-heavy relation, measured before and after
   - binding, padding and member-split controls green under the mutation campaign
+- id: E16-13
+  epic: E16
+  title: One stacked commitment for every group of a development proof
+  depends:
+  - E16-12
+  rfc:
+  - RFC-0026 A4
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  status: done
+  agent: claude-code
+  branch: task/E16-13-stacked-commitment
+  acceptance:
+  - every commitment group is a block of one stacked v2 source with one certificate, one claim batch and one opening
+  - group certificate and opening bytes measured before and after on a many-group plan
+  - binding, padding, member-split and block-routing controls green under the mutation campaign
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run
