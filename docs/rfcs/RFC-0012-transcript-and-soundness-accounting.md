@@ -299,6 +299,7 @@ below govern every internal node, including a root-of-roots tree root:
 > The root binds this ordered logical partition; it is not invariant under changing
 > its descriptor/list and need not equal a flat-tree root. Q17 must resolve E4-07
 > shard/digest semantics before distributed implementation.
+> [Annotation: Q17 is resolved by RFC-0010 A13 and RFC-0015 A1.]
 >
 > **Opening and verification.** An opening consists of the w-byte payload and
 > exactly h sibling digests in bottom-up order. Its index is a separate

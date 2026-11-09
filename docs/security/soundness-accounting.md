@@ -711,6 +711,14 @@ table, plus the v2 setup term once per ledger. The round-by-round FS hand
 derivation (A3 item 7) shows Policy 1 fails both profiles under Q times the
 largest round error; no profile carries a PCS line until E4-05/E12-04 and Q12.
 
+Accepted RFC-0010 A13 (Q17) adds plan-fixed row shards under a root of roots.
+It adds no challenge, label or ledger line: the PCS terms are those of the same
+context with s=0, and the H line keeps its formula. Its deterministic caps must
+include the child-tree and root-of-roots hashes: the verifier computes exactly
+S·(1+log2 N) hashes per response, plus 2S−1 per certificate for the root of
+roots, where s=0 computes 1+log2 N per response. A13 item 11 extends A8's frozen
+oracle to the two-level tree with the same `1+2*Q_pre` frontier bound.
+
 The specified sampler draws full K challenges and uses only the first limb
 for a rejection-sampled index. With at most 64 attempts per index, PCS-only abort
 is bounded by `q_total*2^-64+(ell_total+64*q_total)*2^-1703`. This is

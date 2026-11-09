@@ -27,6 +27,9 @@
 - source version: the field-source byte format of RFC-0010 A9/A3; version 1 is a Circle source, version 2 a v2 expander source.
 - query policy: the verifier-derived rule fixing a source's certificate and opening query counts q_c, q_o (Policy 1, RFC-0010 A3); it is not a profile parameter set.
 - message embedding: the injective map from one original source value to its one committed M31 message element, signed or offset (RFC-0010 A6).
+- shard exponent: s in a source context's layout byte; the source has 2^s row shards of consecutive rows, fixed by the plan and never by the device count (RFC-0010 A13); not the split index s of RFC-0007 A1 item 2.
+- child root: the root of one row shard's byte-column tree, in shard-index order (RFC-0010 A13).
+- root of roots: the RFC-0012 A3 kind-2 root over a source's ordered child roots; it is that source's expected root when s>=1 (RFC-0010 A13).
 Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is traced), "gadget", "constraint system",
 "prover-side randomness".
 

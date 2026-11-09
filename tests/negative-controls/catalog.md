@@ -104,6 +104,13 @@
 | NC-0612 | PCS | 0010 A1, A3, 0012 A7 | conditional until E8-02 calls `check_source` (rows 2-3 run the actual certificate verifier and A1 registry validator): offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | done |
 | NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | done |
 | NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | done |
+| NC-0615 | sharded commitment | 0010 A13 | replace one child root by the root of a different shard; actual certificate verifier | `RootMismatch` | todo |
+| NC-0616 | sharded commitment | 0010 A13 | swap two distinct child roots and their segments in every response; actual certificate verifier | `RootMismatch` | todo |
+| NC-0617 | sharded commitment | 0010 A13 | omit one child root and its segments, or append one extra; actual certificate and opening verifiers | `ProofShape` | todo |
+| NC-0618 | sharded commitment | 0010 A13 | commitment and proof built honestly at s+1 offered under the expected context with s; a context with s > min(ell, 8) | `ProofShape / UnsupportedSource` | todo |
+| NC-0619 | sharded commitment | 0010 A13 | a valid segment of shard σ sent in shard σ' 's slot, authenticated under child root σ'; actual certificate and opening verifiers | `RootMismatch` | todo |
+| NC-0620 | sharded commitment | 0010 A13 | one shard committed off-code, or t/u inconsistent with one shard's segment, all paths valid; actual certificate and opening verifiers | `ColumnMismatch` | todo |
+| NC-0621 | sharded commitment | 0010 A13 | one payload byte changed in a segment of a shard whose row coefficients are all zero; actual opening verifier | `RootMismatch` | todo |
 | NC-0700–0703 | passport | 0011 §6 | see RFC | | todo |
 | NC-0704 | passport | 0011 A6/A7, 0025 §2.7 | alter one length or digest in each fixed child-reference role, one variant at a time | `ReferenceMismatch` | todo |
 | NC-0705 | passport | 0011 A4/A7 | substitute one Preparation mapping under the original Artifact/source relation | `PreparationMismatch` | todo |
@@ -134,6 +141,9 @@ typed native consumers, not implemented error variants. The exact owner mapping
 is RFC-0025 §6. Each reference-role variant retains full actual child validation;
 outer byte comparison alone cannot earn a cryptographic source/evidence control.
 These reservations add no coverage and change no existing control or registration.
+
+RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
+through the actual certificate or opening verifier; a reservation adds no coverage.
 
 The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.
 

@@ -852,3 +852,151 @@ Withdrawn from §4: "Short-column variant: rows = `j_hi`, columns = `(j_lo, ℓ,
 RFC-0007 A1 item 2's full-row layout (rows j, s=0), and §5's u is RFC-0007 A1 item 3's
 retained row: u = B (signed) or B + 2^(w−1) (offset). A split layout needs a new
 amendment. No challenge, label or loss changes. Cost and tasks are RFC-0007 A1's.
+
+### A13 — Plan-fixed row shards under a root of roots (Q17)
+
+Status: Accepted. Question Q17. Task E4-07. Companions RFC-0015 A1 and the Q17
+resolution in RFC-0019. Review: [sharding Q17 acceptance](../../agents/reviews/sharding-q17-acceptance.md).
+Motivation: §9 names a root of roots but no bytes, partition or opening. It also
+contradicts itself: it shards rows, yet says a column opening touches one device.
+E4-07 asks for the same digest on 1 and N shards, which RFC-0012 A3 cannot give
+if the logical partition follows the device count. This amendment fixes the
+partition in the statement, so the device count never enters any byte.
+
+Exact replacement for §9 (the Accepted §9 text is withdrawn):
+
+1. **Shard exponent.** A source context carries a shard exponent s, written in
+   the layout byte of A9 §1 (and of A3 item 2's version 2): layout `u8(s)`.
+   s=0 is the existing single-tree source, unchanged byte for byte. For s>=1 the
+   source has S=2^s row shards. Admitted range: `1 <= s <= min(ell, 8)`; any
+   other layout byte is UnsupportedSource before any transcript work. Like ell, R
+   and C, s comes from the consuming Accepted RFC's expected statement (plan or
+   passport), never from a proof byte, a device count, a rank or a topology.
+   Every Accepted consumer today fixes s=0. A consumer that wants s>=1 states s
+   as a function of public plan data in its own Accepted text (RFC-0015 A1).
+   This shard exponent is unrelated to the split index s of
+   formal/fused-layout.md §3, which RFC-0007 A1 item 2 fixes at 0.
+2. **Shard index.** Shard σ, 0 <= σ < S, holds the R_s=R/S consecutive message
+   rows `σ·R_s .. (σ+1)·R_s − 1`, that is, the rows whose top s row-index bits
+   equal σ (A9 §1: point coordinate zero is the highest bit). The message M,
+   the code, N, D, e, q_c and q_o are those of the same context with s=0.
+   Sharding changes only how encoded columns are authenticated.
+3. **Child trees.** Each shard encodes its own rows with the source's code and
+   commits its N encoded column segments as an RFC-0012 A3 byte-column tree with
+   descriptor `{kind: Columns, id, count: N, width: 4·R_s}`. id is the source's
+   tensor/tree id. A payload is R_s canonical u32le M31 elements in row order.
+   Its root is child root σ.
+4. **Root of roots.** The source's expected root (the 32-byte root field of the
+   source bytes) is the root of the RFC-0012 A3 kind-2 tree with descriptor
+   `{kind: Roots, id, count: S, width: 32}` whose payload σ is child root σ.
+   Children are ordered by σ only; arrival order or device rank cannot reorder
+   them. Different s give different commitments (RFC-0012 A3); the same s gives
+   the same bytes for any device count.
+5. **Transcript.** The root of roots takes the flat root's place in every
+   existing absorption, with no new label: the consumer's pre-challenge
+   commitment, the certificate public input, absorb(Opening) and
+   absorb(FieldSources), all through the source bytes. There is no new round
+   and no new challenge.
+6. **Certificate (A9 §3 for s>=1).** The certificate wire is
+   `u8(1) || child_roots || t_bytes || response_block`, where child_roots is the
+   S child roots in σ order (32·S bytes). Before creating the transcript the
+   verifier parses the complete wire, then rebuilds the kind-2 root from
+   child_roots and requires equality with the expected root (RootMismatch).
+   The certificate public input is
+   `ASCII(stele/v0.1/pcs-certificate/public) || source_bytes || child_roots`.
+   So the child roots are bound before CertificateWeight. The certificate ID of
+   A9 §3 hashes the full certificate bytes, child roots included.
+7. **Responses (A9 §§3-4 for s>=1).** A response to draw c is S segments in σ
+   order. Segment σ is `4·R_s` payload bytes followed by `log2(N)` siblings,
+   authenticated at index c against child root σ under item 3's descriptor.
+   The column is the concatenation of the S decoded segments, which is R
+   elements in row order. The column equation, query counts, duplicate rule,
+   response-block absorption and error order of A9 are unchanged. Every segment
+   is required, including segments whose row coefficients are zero.
+8. **Opening.** The opening wire is A9 §4's with item 7's responses. It sends no
+   child roots: the verifier takes them from the verified certificate, whose ID
+   absorb(Opening) already binds. The certificate record retains them.
+9. **Row functional.** Device d computes `Σ_{r in its shards} a_r·M[r,·]` for
+   its shards. The prover adds these partial rows in K and sends one t or u.
+   Partial rows are not prover messages and are never absorbed or verified.
+   Addition in K is exact, so the sum, and every proof byte, is independent of
+   device count and reduction order.
+10. **What a column opening touches.** With row shards every queried column
+    touches every shard: each shard owner returns its segment and path. The
+    §9 sentence "column openings touch only the device owning the column shard"
+    is withdrawn. Column sharding of one code is not admitted, because an
+    encoded column depends on the whole message row.
+11. **Frozen oracle (extends A8).** A8's traversal starts at the root of roots.
+    A matching kind-2 internal frame fixes two child digests. A matching kind-2
+    leaf frame at position σ fixes child root σ, and traversal continues in child
+    tree σ under item 3's descriptor. A matching column frame fixes the segment
+    of rows of shard σ at its index. Unresolved or malformed subtrees complete with
+    zero segments, as in A8. Each recorded input still fixes at most two child
+    digests, so `|F| <= 1+2·Q_pre` and the A8 lifetime bound hold unchanged. An
+    accepted column equals the frozen W's column outside BadCollision and
+    BadLate, by A8 §3's argument applied along the two-level path.
+12. **Accepted text that pinned layout 0.** Exact replacements, each in force
+    from this amendment:
+    - A3 item 2, "Its bytes are A9 §1's table with exactly two changes: version
+      is u8(2), and the code identity is the exact 55-byte v2 manifest" becomes
+      "Its bytes are A9 §1's table with exactly two changes: version is u8(2),
+      and the code identity is the exact 55-byte v2 manifest; the layout byte is
+      the same row-major; layout byte u8(s) with s=0 unless the consumer's
+      Accepted text fixes s per RFC-0010 A13".
+    - A3 item 5, "Purpose, version, layout and policy are constants of this
+      amendment." becomes "Purpose, version and policy are constants of this
+      amendment. Layout is row-major; layout byte u8(s) with s=0 unless the
+      consumer's Accepted text fixes s per RFC-0010 A13."
+    - A6, "The layout is A9's row-major layout 0, with logical and padded extents
+      equal." becomes "The layout is row-major; layout byte u8(s) with s=0 unless
+      the consumer's Accepted text fixes s per RFC-0010 A13, with logical and
+      padded extents equal." A6 cut sources may use s>=1 only where their
+      consuming Accepted text fixes s; today none does (RFC-0015 A1). The message
+      embedding and expansion are per value and do not depend on s.
+    - [native-field-pcs.md §1](../../formal/native-field-pcs.md#1-expected-source-and-exact-parameters),
+      layout row "u8(0), canonical row-major field elements" becomes "row-major;
+      layout byte u8(s) with s=0 unless the consumer's Accepted text fixes s per
+      RFC-0010 A13", and "Other layouts or logical extents reject as
+      UnsupportedSource" becomes "Layout bytes outside RFC-0010 A13 item 1, or
+      other logical extents, reject as UnsupportedSource". For s>=1 the Merkle
+      descriptor sentence of that section is replaced by items 3-4.
+    - [native-lookup.md §1](../../formal/native-lookup.md#1-statement-and-expected-data), "field, policy=1,
+      layout=0 and canonical code identity are not proof choices" stays in force:
+      multiplicity sources are always s=0.
+
+Soundness impact. Same N, D, e, q_c, q_o and the same proven PCS terms as the s=0
+context (RFC-0012 A15 PCS line, unchanged). No challenge, round, label or registry
+entry is added, so no FS term is added. The certificate transcript is still
+re-rolled only by changing the root of roots; given that root, child roots are
+fixed up to an H event. The H line keeps its formula; its deterministic caps
+Q_total, Q_pre,r and Q_after,r must cover the extra child-tree hashes. Item 11 is
+the A8 classical ideal-hash argument, conditional in the same way; no conjectured
+bound is used. Q12 is unchanged.
+
+Cost impact. Payload bytes hashed are unchanged (N·4R per source). Commitment
+hashes S·N leaf frames and S·(N−1) internal frames instead of N and N−1, plus
+2S−1 for the root of roots (c_c). A response grows from `4R + 32·log2 N` to
+`4R + 32·S·log2 N` bytes; a certificate also carries 32·S bytes of child roots.
+Verifier work per response is S leaf and S·log2 N internal hashes, plus 2S−1
+hashes once per certificate (T_misc). At Circle rate 1/4 with N=2^22, S=8 and
+q_o=130, an opening grows by 130·7·22·32 bytes, about 0.64 MB. No weight pass,
+measured constant or fit moves.
+
+Errors and controls. Wire lengths follow from the context, so a wrong number of
+child roots or segments is ProofShape before any transcript work; a layout byte
+outside item 1 is UnsupportedSource. Reserved todo, owned by E4-07, each through
+the actual certificate or opening verifier: NC-0615 one child root replaced by the
+root of a different shard (RootMismatch); NC-0616 two distinct child roots swapped,
+with their segments swapped in every response (RootMismatch); NC-0617 one child
+root and its segments omitted, or one extra appended (ProofShape); NC-0618 a
+commitment and proof built honestly at s+1, offered under the expected context
+with s (ProofShape), and a context with s > min(ell, 8) (UnsupportedSource);
+NC-0619 a valid segment of shard σ placed in shard σ' 's slot (RootMismatch);
+NC-0620 one shard committed off-code, or t/u inconsistent with one shard's
+segment, with all paths valid (ColumnMismatch); NC-0621 one payload byte changed
+in a segment of a shard whose row coefficients are all zero (RootMismatch).
+All run at s>=1.
+
+Affected tasks. E4-07 implements items 1-12 with controls NC-0615..0621. E11-01
+inherits RFC-0015 A1's plan obligation. E11-02 is unaffected: weight sources stay
+s=0 (RFC-0015 A1).
