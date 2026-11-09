@@ -2711,6 +2711,22 @@ tasks:
   - stele-dev-e2e-v1 container in stele-proof; stele verify-dev accepts the honest proof and prints the RFC-0026 §6 ledger
   - NC-1300, NC-1301, NC-1304, NC-1305, NC-1309 executed through the actual verifier; deterministic proof bytes across two runs
   - owns E16-05's Unsupported::Domain gaps: the plan-fixed row-block split of projection matmuls with log(T)+log(out)+log(d) > 30, and A15 digit rows at padded d = 16384 (three digit rows)
+- id: E16-12
+  epic: E16
+  title: Per-table lookup batching in the relation engine
+  depends:
+  - E16-02
+  rfc:
+  - RFC-0026 A3
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  status: done
+  agent: claude-code
+  branch: task/E16-12-lookup-batching
+  acceptance:
+  - one RFC-0008 A5 statement and one multiplicity source per table or range width, with members concatenated and the A3 member split checked
+  - multiplicity and lookup proof bytes cut by at least 10x on a lookup-heavy relation, measured before and after
+  - binding, padding and member-split controls green under the mutation campaign
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run

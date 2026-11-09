@@ -813,3 +813,75 @@ fn measures_mid_size_relation() {
         );
     }
 }
+
+/// Lookup-heavy shape like a model layer: many ranged columns of a few sizes and
+/// widths, plus repeated lookups into one two-column table.
+fn lookup_heavy() -> Fixture {
+    let mut rel = Relation::default();
+    let mut rng = Rng(7);
+    let mut sets: Vec<(ColumnId, Vec<i64>)> = Vec::new();
+    let squares = rel.add_table(Table {
+        name: "squares".into(),
+        widths: vec![Width::signed(8), Width::unsigned(15)],
+        rows: (-128..128).map(|v| vec![v, v * v]).collect(),
+    });
+    for (log, count) in [(10u8, 24usize), (8, 24), (6, 16)] {
+        let g = Kind::Witness(rel.add_group(&format!("G/heavy/{log}"), log));
+        let n = 1usize << log;
+        for i in 0..count {
+            let w = [Width::signed(8), Width::unsigned(8), Width::signed(16)][i % 3];
+            let id = rel.add_column(&format!("c{log}/{i}"), g.clone(), w, log);
+            range(&mut rel, id, w);
+            sets.push((id, rng.vec(n, w)));
+        }
+        for i in 0..count / 4 {
+            let x = rel.add_column(&format!("x{log}/{i}"), g.clone(), Width::signed(8), log);
+            let sq = rel.add_column(&format!("s{log}/{i}"), g.clone(), Width::unsigned(15), log);
+            let xv = rng.vec(n, Width::signed(8));
+            let all: Vec<u8> = (0..log).collect();
+            rel.lookups.push(Lookup {
+                name: format!("sq{log}/{i}"),
+                vars: log,
+                selector: None,
+                tuple: vec![r(x, &all), r(sq, &all)],
+                table: squares,
+            });
+            sets.push((sq, xv.iter().map(|v| v * v).collect()));
+            sets.push((x, xv));
+        }
+    }
+    let mut f = Fixture {
+        values: Values::new(&rel),
+        rel,
+    };
+    for (id, v) in sets {
+        f.set(id, v);
+    }
+    f
+}
+
+#[test]
+#[ignore = "measurement; run with --ignored --nocapture"]
+fn measures_lookup_heavy_relation() {
+    let f = lookup_heavy();
+    assert_eq!(check(&f.rel, &f.values), Ok(()));
+    let start = std::time::Instant::now();
+    let (proof, messages) = produce(&f.rel, &f.values).expect("proof");
+    let proved = start.elapsed();
+    let start = std::time::Instant::now();
+    check_proof(&f.rel, &messages, &proof).expect("verify");
+    let verified = start.elapsed();
+    let size = |s: &Vec<Vec<u8>>| s.iter().map(Vec::len).sum::<usize>();
+    println!(
+        "checks={} prove={proved:?} verify={verified:?} total={} groups={} multiplicities={} ({} sources) lookups={} identities={} matmuls={} openings={}",
+        f.rel.lookups.len() + f.rel.ranges.len(),
+        proof.encode().len(),
+        size(&proof.groups),
+        size(&proof.multiplicities),
+        proof.multiplicities.len(),
+        size(&proof.lookups),
+        size(&proof.identities),
+        size(&proof.matmuls),
+        size(&proof.openings),
+    );
+}

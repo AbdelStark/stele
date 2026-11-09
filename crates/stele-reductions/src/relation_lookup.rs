@@ -1,5 +1,8 @@
-//! RFC-0026 §4 step 5: one RFC-0008 A5 grouped LogUp per lookup or range, with the
-//! A2 item 2 derivation N = 2^vars, b = min(m,30) (so h = 0 units), r = 1, d = 4.
+//! RFC-0026 §4 step 5 (A3): one RFC-0008 A5 grouped LogUp per table. Every lookup
+//! into a table, or every range of one width, is a member; the members' position
+//! sets are concatenated, largest first, into one original domain of `2^m >= Σ 2^m_i`
+//! positions with the padding unselected. The A2 item 2 derivation is N = 2^m,
+//! b = min(m,30) (so h = 0 units), r = 1, d = 4.
 //!
 //! The message schedule, labels, trees, selected product and rank-two multiplicity
 //! prefix functionals are A5's (`lookup_verifier.rs`). Only the originals differ:
@@ -7,7 +10,7 @@
 //! possibly shifted by `-width.min()` (RFC-0026 §3.4), so the selected-product claims
 //! are routed to RFC-0026 §4 step 7 instead of being opened here (RFC-0008 A2
 //! as amended for RFC-0026; every root is fixed before the first lookup draw).
-use super::{column, Check, Claims, Error, Ledger, Line, Reader, K};
+use super::{column, put, Check, Claims, Error, Ledger, Line, Reader, K};
 use crate::lookup::{functionals, phase};
 use alloc::vec::Vec;
 use stele_field::{Field, Serialize, M31};
@@ -29,38 +32,82 @@ fn statement(check: &Check) -> Vec<u8> {
     out.push(check.k);
     out.extend_from_slice(&check.layout.id.to_le_bytes());
     out.extend_from_slice(&[check.layout.ell, check.layout.blowup]);
+    out.extend_from_slice(&(check.members.len() as u32).to_le_bytes());
+    for member in &check.members {
+        out.push(member.m);
+    }
     for i in 0..check.c {
         out.extend_from_slice(&check.tuple_id(i).to_le_bytes());
     }
     out
 }
 
+/// The concatenated selector: each member's public selector (or ones) on its block,
+/// zero on the padding.
 fn sigma(check: &Check, relation: &Relation) -> Vec<K> {
-    let n = 1u64 << check.m;
-    match &check.selector {
-        None => (0..n).map(|_| K::from_i64(1)).collect(),
-        // Validated public 0/1 column (RFC-0026 §3.3).
-        Some(r) => {
-            let values = match &relation.columns[r.column.0 as usize].kind {
-                stele_ir::relation::Kind::Public(v) => v,
-                _ => return Vec::new(),
+    let mut out = alloc::vec![K::from_i64(0); 1 << check.m];
+    for member in &check.members {
+        let block = &mut out[member.offset..member.offset + (1 << member.m)];
+        for (x, s) in block.iter_mut().enumerate() {
+            *s = match &member.selector {
+                None => K::from_i64(1),
+                // Validated public 0/1 column (RFC-0026 §3.3).
+                Some(r) => match &relation.columns[r.column.0 as usize].kind {
+                    stele_ir::relation::Kind::Public(v) => K::from_i64(v[r.index(x as u64)]),
+                    _ => K::from_i64(0),
+                },
             };
-            (0..n).map(|x| K::from_i64(values[r.index(x)])).collect()
         }
     }
+    out
 }
 
-/// Tuple entries as field elements, `x_i(pos) = column(ref.index(pos)) + offset`.
+/// Concatenated tuple column `i`: on each member block,
+/// `x_i(local) = column(ref.index(local)) + offset`; zero on the padding.
 fn originals(check: &Check, relation: &Relation, values: &Values) -> Result<Vec<Vec<K>>, Error> {
+    let mut out = alloc::vec![alloc::vec![K::from_i64(0); 1 << check.m]; check.c];
+    for member in &check.members {
+        for (x, (r, offset)) in out.iter_mut().zip(&member.tuple) {
+            let col = column(relation, values, r.column)?;
+            let shift = K::from_i64(*offset);
+            let block = &mut x[member.offset..member.offset + (1 << member.m)];
+            for (local, v) in block.iter_mut().enumerate() {
+                *v = K::from_i64(col[r.index(local as u64)]) + shift;
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// eq(z_high, bits(block index)) of a member, with z MSB-first over the whole domain.
+fn block_weight(check: &Check, member: &super::Member, z: &[K]) -> K {
+    let high = usize::from(check.m - member.m);
+    let block = member.offset >> member.m;
+    let one = K::from_i64(1);
+    z[..high].iter().enumerate().fold(one, |w, (j, x)| {
+        w * if (block >> (high - 1 - j)) & 1 == 1 {
+            *x
+        } else {
+            one - *x
+        }
+    })
+}
+
+/// Each member's tuple evaluations at the low coordinates of `z`, member-major.
+fn split(check: &Check, xs: &[Vec<K>], z: &[K]) -> Result<Vec<K>, Error> {
     let mut out = Vec::new();
-    for (r, offset) in &check.tuple {
-        let col = column(relation, values, r.column)?;
-        let shift = K::from_i64(*offset);
-        out.push(
-            (0..1u64 << check.m)
-                .map(|x| K::from_i64(col[r.index(x)]) + shift)
-                .collect(),
-        );
+    for member in &check.members {
+        let low = &z[usize::from(check.m - member.m)..];
+        let eq = stele_poly::eq_table(low).map_err(|_| Error::Capacity)?;
+        for x in xs {
+            let block = &x[member.offset..member.offset + (1 << member.m)];
+            out.push(
+                block
+                    .iter()
+                    .zip(&eq)
+                    .fold(K::from_i64(0), |s, (v, w)| s + *v * *w),
+            );
+        }
     }
     Ok(out)
 }
@@ -86,25 +133,29 @@ fn counts(check: &Check, relation: &Relation, values: &Values) -> Result<Vec<i64
         .map(|(i, row)| (key(row), i))
         .collect();
     index.sort_unstable();
-    let mut xs = Vec::new();
-    for (r, offset) in &check.tuple {
-        let col = column(relation, values, r.column)?;
-        let shift = M31::from_i64(*offset);
-        xs.push((r, col, shift));
-    }
     let selected = sigma(check, relation);
     let mut mu = alloc::vec![0i64; 1 << check.k];
-    for (pos, s) in selected.iter().enumerate() {
-        if *s == K::from_i64(0) {
-            continue;
+    for member in &check.members {
+        let mut xs = Vec::new();
+        for (r, offset) in &member.tuple {
+            xs.push((
+                r,
+                column(relation, values, r.column)?,
+                M31::from_i64(*offset),
+            ));
         }
-        let mut k = [0u32; 2];
-        for (k, (r, col, shift)) in k.iter_mut().zip(&xs) {
-            *k = (M31::from_i64(col[r.index(pos as u64)]) + *shift).as_u32();
-        }
-        // Unmatched tuples stay in the lookup leaves; the roots decide (A5 producer).
-        if let Ok(p) = index.binary_search_by_key(&k, |e| e.0) {
-            mu[index[p].1] += 1;
+        for local in 0..1usize << member.m {
+            if selected[member.offset + local] == K::from_i64(0) {
+                continue;
+            }
+            let mut k = [0u32; 2];
+            for (k, (r, col, shift)) in k.iter_mut().zip(&xs) {
+                *k = (M31::from_i64(col[r.index(local as u64)]) + *shift).as_u32();
+            }
+            // Unmatched tuples stay in the lookup leaves; the roots decide (A5 producer).
+            if let Ok(p) = index.binary_search_by_key(&k, |e| e.0) {
+                mu[index[p].1] += 1;
+            }
         }
     }
     Ok(mu)
@@ -221,9 +272,37 @@ fn claims_payload(check: &Check, point: &[K], numerator: K, pieces: &[(u8, K)]) 
     out
 }
 
-fn route(check: &Check, selected: &stele_lookup::fraction::LeafReduction<K>, claims: &mut Claims) {
-    for ((r, offset), (_, value)) in check.tuple.iter().zip(&selected.claims) {
-        claims.push(r, &selected.point, *value - K::from_i64(*offset));
+/// RFC-0026 A3: the concatenated claim is `Σ_i eq_i · v_i` exactly, because each
+/// member block is the sub-cube selected by its high coordinates.
+fn check_members(
+    check: &Check,
+    selected: &stele_lookup::fraction::LeafReduction<K>,
+    members: &[K],
+) -> Result<(), Error> {
+    let z = &selected.point;
+    for (col, (_, value)) in selected.claims.iter().enumerate() {
+        let total = check
+            .members
+            .iter()
+            .zip(members.chunks_exact(check.c))
+            .fold(K::from_i64(0), |s, (member, v)| {
+                s + block_weight(check, member, z) * v[col]
+            });
+        if total != *value {
+            return Err(Error::MemberSumMismatch);
+        }
+    }
+    Ok(())
+}
+
+/// Route each member value to its column at the member's low coordinates (minus its
+/// shift), as RFC-0008 A6 column claims.
+fn route(check: &Check, z: &[K], members: &[K], claims: &mut Claims) {
+    for (member, v) in check.members.iter().zip(members.chunks_exact(check.c)) {
+        let low = &z[usize::from(check.m - member.m)..];
+        for ((r, offset), value) in member.tuple.iter().zip(v) {
+            claims.push(r, low, *value - K::from_i64(*offset));
+        }
     }
 }
 
@@ -272,7 +351,14 @@ pub(super) fn prove(
         .prove(&xs, t)
         .map_err(FRACTION)?;
     out.extend_from_slice(&leaf.encode(&proof).map_err(FRACTION)?);
-    route(check, &selected, claims);
+    #[allow(unused_mut)]
+    let mut members = split(check, &xs, &selected.point)?;
+    #[cfg(test)]
+    if let Some(other) = &check.split {
+        members = split(check, &originals(check, relation, other)?, &selected.point)?;
+    }
+    put(out, &members);
+    route(check, &selected.point, &members, claims);
     let pieces =
         functionals::pieces(mu.0.source(), &table.point, check.t).map_err(Error::Lookup)?;
     let values: Vec<(u8, K)> = pieces.iter().map(|q| (q.id, q.value(message))).collect();
@@ -327,7 +413,9 @@ pub(super) fn verify(
         .map_err(FRACTION)?
         .verify(&leaf_proof, t)
         .map_err(FRACTION)?;
-    route(check, &selected, claims);
+    let members = reader.ks(check.members.len() * check.c)?;
+    check_members(check, &selected, &members)?;
+    route(check, &selected.point, &members, claims);
     let source: &Source<K> = mu.record().source();
     let pieces = functionals::pieces(source, &table.point, check.t).map_err(Error::Lookup)?;
     let mut values = Vec::new();

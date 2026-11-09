@@ -603,3 +603,73 @@ Soundness ledger: one M per rotated tensor (Q and K per layer), with the existin
 line or label.
 Cost model: none; the development profile claims no cost term.
 Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger).
+
+- **A3 — One A5 statement per table (task E16-12).** Accepted with ADR-078.
+  - **Motivation.** One A5 instance per lookup or range gave each check its own
+    multiplicity source, certificate and pair of trees. On the E16-10 8-layer model
+    (d=64, T=64), 3,755 multiplicity sources took 945 MB of a 2.1 GB proof, and the
+    lookup proofs another 469 MB. On a lookup-heavy synthetic relation (80 checks
+    into 3 tables), batching cuts the multiplicity bytes from 22.8 MB to 0.97 MB and
+    the lookup bytes from 11.2 MB to 0.49 MB.
+  - **Replacement text, §4 step 3.** "For each **check**, in check order, the prover
+    commits the RFC-0008 A5 multiplicity source, which depends on no challenge. Its
+    root is absorbed with `relation/roots` and its certificate verified. A check is
+    the set of every lookup with the same `TableId`, or every range with the same
+    `width.bits`; ranges of either signedness read the same table `[0, 2^bits)`
+    through the shift `−width.min()`. Checks are ordered by first use, with lookups in
+    relation order first, then ranges in relation order."
+  - **Replacement text, §4 step 5, first bullet and Statement bullet.**
+    - "One RFC-0008 A5 grouped lookup per check, in check order, with the existing
+      lookup labels."
+    - "**Concatenation.** The members of a check are its lookups and ranges, in
+      relation order, then stably sorted by domain size `m_i`, largest first. Member
+      `i` occupies positions `[o_i, o_i + 2^m_i)` of one original domain of `2^m`
+      positions, with `o_i = Σ_{j<i} 2^m_j` (a multiple of `2^m_i`) and
+      `m = ceil(log2 Σ 2^m_i)`.
+      - On member `i`'s block, tuple column `c` reads `x_c(o_i + u) =
+        tuple_{i,c}(u)`, shifted by `−width.min()` for a range.
+      - `σ` is the member's public selector, or all ones, on its block, and 0 on the
+        padding.
+      - Padding positions read 0.
+      - The Statement is RFC-0008 A2 item 2 over this domain: `N = 2^m`,
+        `b = min(m, 30)`, `r = 1`, `d = 4`. A check with `m > 30` is rejected
+        (`Unsupported`), so `h = 0`, multiplicities precede every challenge, and each
+        count is at most `2^30 < p`."
+    - "**Member split.** At the selected-product point `z ∈ K^m` (MSB-first), the
+      prover sends `v_{i,c} = tuple_{i,c}~(z_low_i)` for each member and column, where
+      `z_low_i` is the last `m_i` coordinates of `z`. The verifier checks
+      `Σ_i eq(z_high_i, bits(o_i / 2^m_i))·v_{i,c} = x_c~(z)` for each column, and
+      rejects with `MemberSumMismatch` otherwise. Each `v_{i,c}` (plus `width.min()`
+      for a range) then becomes a column claim through the member's `Ref` at
+      `z_low_i`."
+  - **Soundness.**
+    - *Unchanged arithmetic.* A3 is the A5 argument on one original with
+      RFC-0008 A6 tuples. The concatenation is a fixed public interleaving of
+      committed columns. Every group root is absorbed before the check's Beta and
+      Alpha draws.
+    - *Split is exact.* For an aligned block,
+      `x_c~(z) = Σ_i eq(z_high_i, bits(o_i/2^m_i))·tuple_{i,c}~(z_low_i)`, because the
+      padding reads 0. So the split check has no Schwartz–Zippel loss.
+    - *Split values bound.* The member values are not absorbed when sent. Each one is
+      then a claim on a committed source. That source's RFC-0006 A8 batch descriptor
+      absorbs it before the batch coefficient, and no draw in between depends on it.
+    - *Ledger.* The LU line becomes `(2^m + c·t − 1)/|K|` once per check, instead of
+      once per lookup. The A3 tree and leaf lines are charged once per check.
+  - **Prover cost.** Per check, the honest prover holds `c + 1` dense tables of `2^m`
+    QM31 values (originals and selector) plus `2^m` leaf pairs: about
+    `16·(c + 3)·2^m` bytes. Its time is `O(2^m + 2^k)` field operations, plus
+    `O(c·Σ 2^m_i)` for the split.
+    - Rounding `Σ 2^m_i` up to `2^m` can nearly double the padded `N` of a check.
+      The LU numerator and the dense tables grow with it.
+    - Batching every same-width range into one domain makes `m > 30` reachable on
+      large models, and such a check is rejected (`Unsupported`) rather than split.
+      A check-splitting rule would be a further amendment.
+    - Field work summed over all checks is about the same as one check per lookup,
+      up to the padding factor. Peak prover memory is not: it is set by the largest
+      check, about `16·(c + 3)·2^m` bytes, where it used to be the largest single
+      lookup.
+  - **Cost-model terms.** None (the development profile claims none).
+  - **Affected tasks.** E16-12, E16-10.
+  - **Control.** `rejects_member_values_that_do_not_sum_to_the_batched_claim`. A
+    lying prover commits one witness, proves the lookup on another, and reports the
+    member values of what it committed. Only the split check rejects it.

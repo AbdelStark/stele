@@ -1865,7 +1865,10 @@ RFC-0026 adds no new ledger line kind. Each development proof charges the follow
   sumcheck of `s+k` rounds (`k` shared free bits), charged `(s+k)·δ/|K|` with
   `δ = 2` when `k = 0` and `δ = 3` when `k > 0`. Each `Compose` is one identity
   in its domain's RLC and zerocheck.
-- **LU**, plus tree/leaf terms, for each lookup and range, with `r = 1`.
+- **LU**, plus tree/leaf terms, for each lookup and range, with `r = 1`. Under
+  RFC-0026 A3 this is once per check (one table, or one range width):
+  `(2^m + c·t − 1)/|K|` over the concatenated domain of `2^m >= Σ 2^m_i`
+  positions. The member split is an exact linear identity and adds no term.
 - **RLC** and **SC** for each source's RFC-0006 A2 mode-1 claim batch.
 - **PCS** for each certificate and opening.
 - **H** under the A15 caps.
