@@ -15,9 +15,11 @@ use stele_ir::relation::{
     ColumnId, Identity, Kind, Range, Ref, Relation, Term, Values, Violation, Width,
 };
 
+pub mod attention;
 pub mod projection;
 pub mod row;
 
+pub use attention::{Attention, AttentionCapture, AttentionPlan, PositionCapture};
 pub use projection::{Projection, ProjectionCapture, ProjectionPlan};
 pub use row::{ConversionCapture, Policy, RowConversion, RowOutput};
 
@@ -73,6 +75,11 @@ pub(crate) struct Builder<'a> {
 impl<'a> Builder<'a> {
     pub(crate) fn new(relation: &'a mut Relation, prefix: &'a str) -> Self {
         Self { relation, prefix }
+    }
+
+    /// The module prefix of every name this builder issues.
+    pub(crate) fn prefix(&self) -> &str {
+        self.prefix
     }
 
     fn name(&self, name: &str) -> String {

@@ -1452,3 +1452,36 @@ Consequences:
 - Stacking group and multiplicity sources into one commitment is E16-13.
 
 Status: Accepted (RFC-0026 A3).
+
+## ADR-079: Attention relations: byte chains, attained causal maximum, re-divided output (RFC-0026 §5 rows 6-9, task E16-07)
+
+Context: RFC-0026 §5 rows 6–9 name the integer definitions (RFC-0025 §2.4,
+RFC-0009 A4, RFC-0004 A6, RFC-0021 §2.1) and relation kinds, not the encoding. The
+score numerator `|dot|·sq·sk·m` reaches 2^55, `T` 2^50, and the output divides by a
+committed `Z`.
+
+Decision:
+- **Layout.** Score domain `(j, head, i)`, output domain `(c, head, i)` (the O-input
+  row layout, so head assembly is the identity). GQA reads K/V through the high
+  `log g` bits of `head`, which requires `dh` and `h/g` to be powers of two.
+- **Wide values** use E16-05's byte `Chain`: `W = sq·sk` on `(j,i)`, then one chain
+  `A·W·m + 2^(k−1) = Q·2^k + ρ`; `Pm·sv` in byte rows with one matmul per byte row;
+  sign chains give `|X|` as bytes. The score itself is never committed.
+- **Causal max** is the attained pattern over the public `causal = [j <= i < n]`:
+  the one-hot matmul writes into the public `real(i)`, and the difference `u` is
+  the exp lookup input, so its sign and the exp domain come from the tables.
+- **Exp** looks up RFC-0021 components converted on their real rows only; canonical
+  zero padding rows are excluded, so `(0, 0)` never becomes a spurious row.
+- **Division** by `Z` is `2^(E2+1)·n + Z = 2Zq + r` with `0 <= r <= 2Z − 1` on real
+  rows (so `Z >= 1`); for `E2 < 0` the numerator is split at `2^(−E2)` and only the
+  half bit enters (`floor((2nh + Z + bit)/(2Z))`), so no shifted product appears.
+- **Block mode** rounds each absolute 1024-key block sum and adds the blocks by a
+  matmul over the block bits.
+
+Consequences:
+- No challenge, label, cut or cost-model term moves.
+- `Unsupported::Domain` until amended: matmul domains past 30 variables (no
+  row-block split), width-based score bounds of 2^28 or more, mode-1 `B > 29`.
+- Lemma A and the deletion survey: `agents/reviews/e16-07-attention.md`.
+
+Status: Accepted (same-author pass; soundness-auditor review requested on the PR).
