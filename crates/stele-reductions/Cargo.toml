@@ -6,6 +6,7 @@ license = "Apache-2.0"
 description = "Stele — stele-reductions (see RFC-0007 RFC-0008 RFC-0009 RFC-0017)"
 
 [dependencies]
+blake3 = { version = "=1.8.7", default-features = false }
 stele-cqis = { path = "../stele-cqis" }
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }

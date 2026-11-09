@@ -2574,7 +2574,7 @@ tasks:
   - RFC-0026 §2-4, §6
   skill: sumcheck-prover-engineer
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-02-relation-engine
   acceptance:

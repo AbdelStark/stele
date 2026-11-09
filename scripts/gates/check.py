@@ -434,15 +434,19 @@ def field_sources(root):
                'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
                'src/requant_codec.rs', 'src/requant_codec_tests.rs', 'tests/fixtures/requant-codec.txt',
                'src/requant_verifier.rs', 'src/requant_witness.rs', 'src/requant_witness_tests.rs', 'src/requant_producer.rs',
-               'src/requant_embedded.rs','src/requant_embedded_tests.rs','tests/fixtures/embedded-requant.txt'}
+               'src/requant_embedded.rs','src/requant_embedded_tests.rs','tests/fixtures/embedded-requant.txt',
+               'src/relation.rs', 'src/relation_codec.rs', 'src/relation_lookup.rs', 'src/relation_tests.rs',
+               'tests/relation.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
                     for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
+    # RFC-0026 §4 step 1: the relation statement digest is BLAKE3 (workspace pin).
+    dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\npub mod byte_range;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod requant;\n'
+               'extern crate alloc;\npub mod byte_range;\nmod field_sources;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -464,6 +468,16 @@ def field_sources(root):
     internal = re.findall(r'pub\(crate\)\s+fn\s+registration_bytes\s*\(&self\)\s*->\s*Result<usize,\s*Error>\s*\{',lookup)
     if len(internal)==1:
         lookup=lookup.replace(internal[0],internal[0].replace('pub(crate)',''),1)
+    # RFC-0026 §4 step 5 (RFC-0008 A6): the relation engine reuses A5's phase bytes,
+    # multiplicity layout and prefix functionals; nothing else is crate-visible.
+    shared = [re.findall(pattern, lookup) for pattern in (
+        r'pub\(crate\)\s+fn\s+phase\s*\(', r'pub\(crate\)\s+fn\s+mu_source\s*<',
+        r'pub\(crate\)\s+mod\s+functionals\s*;')]
+    if [len(found) for found in shared] != [1, 1, 1]:
+        internal = []
+    for found in shared:
+        for item in found:
+            lookup = lookup.replace(item, item.replace('pub(crate)', '', 1), 1)
     lookup_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', lookup)
     lookup_closed = (len(internal)==1 and lookup_declarations == [
         ('use', 'stele_cqis'), ('enum', 'Error'), ('struct', 'Layout'), ('', 'id'), ('', 'ell'), ('', 'blowup'),
@@ -498,7 +512,7 @@ def field_sources(root):
           ('','local_peak_observed_bytes'), ('','peak_observed_bytes'), ('','preparations'), ('','repetitions'),
           ('fn','bytes'), ('fn','vectors'), ('fn','proof'), ('fn','tree'), ('fn','local'), ('fn','child'), ('fn','wire')],
          ['implProverWork{']),
-        ('functionals', 'pub(super)', [('struct','Piece'), ('','id'), ('','a'), ('','b'),
+        ('functionals', 'pub(crate)', [('struct','Piece'), ('','id'), ('','a'), ('','b'),
              ('fn','value'), ('fn','pieces')], ['impl<K:ChallengeField>Piece<K>{']),
         ('verifier', 'pub', [('use','records'), ('struct','Failure'), ('','cause'), ('','usage'),
              ('struct','RegistrationFailure'), ('','cause'), ('','registrations'),
@@ -516,7 +530,7 @@ def field_sources(root):
         source = re.sub(r'//[^\n]*', '', (crate / f'src/lookup_{name}.rs').read_text())
         # Private helpers may expose only the explicitly reviewed parent interface.
         public = re.findall(r'\bpub\b(?:\s*\([^)]*\))?', source)
-        normalized = source.replace('pub(super)', 'pub')
+        normalized = source.replace('pub(super)', 'pub').replace('pub(crate)', 'pub')
         found = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', normalized)
         expected_visibility = visibility if isinstance(visibility, list) else [visibility] * len(expected)
         producer_closed &= (public == expected_visibility and found == expected

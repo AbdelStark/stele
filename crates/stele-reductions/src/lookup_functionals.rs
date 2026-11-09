@@ -5,14 +5,14 @@ use stele_field::M31;
 use stele_hash::ChallengeField;
 use stele_pcs::Source;
 
-pub(super) struct Piece<K> {
-    pub(super) id: u8,
-    pub(super) a: Vec<K>,
-    pub(super) b: Vec<K>,
+pub(crate) struct Piece<K> {
+    pub(crate) id: u8,
+    pub(crate) a: Vec<K>,
+    pub(crate) b: Vec<K>,
 }
 impl<K: ChallengeField> Piece<K> {
     // Actual producer scalar, computed before binding/querying any piece.
-    pub(super) fn value(&self, message: &[M31]) -> K {
+    pub(crate) fn value(&self, message: &[M31]) -> K {
         let mut sum = K::from_i64(0);
         for (row, a) in message.chunks_exact(self.b.len()).zip(&self.a) {
             for (limb, b) in row.iter().zip(&self.b) {
@@ -22,7 +22,7 @@ impl<K: ChallengeField> Piece<K> {
         sum
     }
 }
-pub(super) fn pieces<K: ChallengeField>(
+pub(crate) fn pieces<K: ChallengeField>(
     source: &Source<K>,
     point: &[K],
     real: usize,

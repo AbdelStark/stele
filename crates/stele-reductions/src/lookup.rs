@@ -154,7 +154,7 @@ fn absorb<K: ChallengeField>(
 fn draw<K: ChallengeField>(t: &mut Transcript<K>, label: ChallengeLabel) -> Result<K, Error> {
     t.challenge(label).map_err(Error::Transcript)
 }
-fn phase(id: u64, j: usize, phase: u8) -> [u8; 10] {
+pub(crate) fn phase(id: u64, j: usize, phase: u8) -> [u8; 10] {
     let mut out = [0; 10];
     out[..8].copy_from_slice(&id.to_le_bytes());
     out[8] = j as u8;
@@ -203,7 +203,11 @@ fn leaf_payload(m: usize, h: usize, c: usize, w: usize) -> Result<usize, Error> 
         mul(w, sum(&[h, mul(5, m)?, mul(2, c)?, 7])?)?,
     ])
 }
-fn mu_source<K: ChallengeField>(layout: Layout, k: u8, root: [u8; 32]) -> Result<Source<K>, Error> {
+pub(crate) fn mu_source<K: ChallengeField>(
+    layout: Layout,
+    k: u8,
+    root: [u8; 32],
+) -> Result<Source<K>, Error> {
     if layout.ell > k || !matches!(layout.blowup, 1 | 2) {
         return Err(Error::Statement);
     }
@@ -588,7 +592,7 @@ fn canonical(bytes: &[u8], error: Error) -> Result<(), Error> {
 mod sizes_tests;
 
 #[path = "lookup_functionals.rs"]
-mod functionals;
+pub(crate) mod functionals;
 #[path = "lookup_producer.rs"]
 mod producer;
 pub use producer::{

@@ -1292,3 +1292,52 @@ Consequences:
   soundness obligation. It is tested by near-miss controls, not machine-checked.
 
 Status: Accepted (same-author passes and the independent pass; fixes recorded in the review).
+
+## ADR-075: Relation engine wire, source geometry and derivation order (RFC-0026 §§2-4, RFC-0006 A8, RFC-0008 A6, task E16-02)
+
+Context: RFC-0026 §4 fixes the transcript order of the development-profile engine,
+and RFC-0006 A8 and RFC-0008 A6 admit its claim batching and tuple originals. Several
+deterministic choices that both sides must derive from the relation are left to
+E16-02: the relation codec, the group source geometry, identifiers, the order of
+checks within a step, and the engine's proof bytes. None changes a ledger line.
+
+Decision:
+- **Codec.** `stele_reductions::relation::encode` writes every relation field in
+  declaration order (fixed-width little endian, u32 length prefixes), after the tag
+  `stele/v0.1/relation/encoding/v1`; `digest` is its BLAKE3 hash, absorbed under
+  `relation/statement`. `stele-reductions` gains the workspace `blake3 =1.8.7` pin.
+- **Group geometry.** A group is one RFC-0010 A3 v2 source with the fixed public seed
+  of 32 zero bytes (RFC-0012 A7 holds for every seed). Zero columns pad the count to
+  `2^c` with `n + c >= 6`, the smallest v2 message. The expander exponent `J` is the
+  one in `3..=min(14, (n+c)/2)` with the fewest certificate-plus-opening bytes (ties:
+  smallest `J`), and `ell = n + c − 2J`. Column `j` sits at message offset `j·2^n`,
+  so its Boolean index is the leading (high) point coordinates.
+- **Identifiers.** Group `g` is source `2 + g`; check `i` (lookups in relation order,
+  then ranges in relation order) has A5 identity `i` and multiplicity source
+  `2 + #groups + i` with layout `ell = k/2`, blowup 1. Zerocheck, matmul and batch
+  instances use disjoint `2^62`-tagged namespaces.
+- **Order inside steps.** Multiplicity roots follow group roots under
+  `relation/roots`. Within one domain size, identities come first and each `Compose`
+  follows as one identity, both in relation order. Lookups precede ranges in step 5.
+  A source with no claims is neither batched nor opened. Public-column claims are
+  evaluated after the last opening (§8 step 4).
+- **A5 statement bytes.** The `lookup/statement` payload is the identity, `m`, `b`,
+  `r = 1`, `c`, `t`, `k`, the multiplicity layout and the tuple tensor ids. Table
+  rows and tuple maps are bound by the relation digest.
+- **Weights.** The caller supplies one verified certificate per `Kind::Weight` column
+  in `ColumnId` order; its source must hold `2^log_len` entries. The model roots are
+  bound by the caller's `Transcript::new(public)` (RFC-0026 §4 step 1).
+- **Proof bytes.** Sections in §4.1 order are concatenated without prefixes; the
+  verifier derives every length and rejects trailing bytes with `ProofShape`. E16-10
+  frames them in `stele-dev-e2e-v1`.
+- **Producer seam.** `claim_batch::Batch::prove_with_point` returns the reduced point
+  that the producer already computes, so the prover can open it; verification is
+  unchanged.
+
+Consequences:
+- Changing any of the above changes proofs and needs a new ADR.
+- NC-1300..1310 still need the E16-10 harness: `stele-negative-controls` may not
+  import `stele-ir` (deny.toml), so the E16-02 controls are engine tests in
+  `crates/stele-reductions/tests/relation.rs` and earn no catalog credit.
+
+Status: Accepted.

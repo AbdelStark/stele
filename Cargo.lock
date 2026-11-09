@@ -363,6 +363,7 @@ dependencies = [
 name = "stele-reductions"
 version = "0.1.0"
 dependencies = [
+ "blake3",
  "stele-cqis",
  "stele-field",
  "stele-gkr",
