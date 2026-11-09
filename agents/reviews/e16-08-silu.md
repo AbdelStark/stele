@@ -54,11 +54,21 @@ derives the ones it needs from the limbs.
 
 ## Lemma (output uniqueness)
 
-*For any `G`, `U` with entries in signed 16, every assignment that satisfies
-relations 1–6 has `2^15·Th + Tl = U·silu_q[G]` on real entries and `Th = Tl = 0` on
-padding. All auxiliary columns are unique too. If `U·silu_q[G] = 2^30`, no assignment
-exists. That case needs `U = silu_q[G] = −32768`, which no valid `silu_q` table
-contains: for `E <= F` its negative outputs have magnitude below `2^14` (SILU-CONSUMER).*
+*For any `G`, `U` with entries in signed 16, every assignment satisfying relations
+1–6 has `2^15·Th + Tl = U·silu_q[G]` on real entries and `Th = Tl = 0` on padding.
+All auxiliary columns are unique.*
+
+**Padding.** The padding claim relies only on the public `mask`, not on the
+producer pinning `U = 0` there: whatever `G` and `U` hold on padding, the masked
+product terms vanish. Only the honest assignment (`a = silu_q[0]`, `Ul = Uh = 0`)
+assumes the producer's zero padding. The lookup and the `up` Compose still constrain
+padding entries; neither affects `T`.
+
+**Totality.** `GatedProduct::new` rejects a table with an output outside
+`(−2^15, 2^15)` (`silu_outputs`). So `|a| <= 2^15 − 1`, `|U·a| < 2^30`, and an
+assignment exists for every int16 `G`, `U`. Generated `silu_q` tables satisfy this:
+for `E <= F` their negative outputs stay above `−2^14` (SILU-CONSUMER), and `E > F`
+fails generation.
 
 Proof.
 
@@ -74,8 +84,8 @@ Proof.
 - (5) `Tl = d + 256·w`. Then `2^15·Th + Tl = 256·(128·Th + w) + d
   = 256·(Uh·a + c) + d = 256·Uh·a + Ul·a = U·a` on real entries. On padding,
   `128·Th + w = 0` with `w ∈ [0, 128)` gives `Th = w = 0`, so `Tl = 0`.
-- The value `Th = floor(U·a/2^15)` lies in `[−2^15, 2^15)` exactly when
-  `U·a ∈ [−2^30, 2^30)`. For int16 factors only `U·a = 2^30` falls outside.
+- The value `Th = floor(U·a/2^15)` lies in `[−2^15, 2^15)`, because `|U·a| < 2^30`
+  (totality).
 
 The honest split was also checked in Python on 200000 random pairs plus every endpoint
 pair (`U ∈ {−32768, …, 32767}` endpoints, `a ∈ [−16383, 32767]` endpoints).
@@ -86,13 +96,35 @@ pair (`U ∈ {−32768, …, 32767}` endpoints, `a ∈ [−16383, 32767]` endpoi
   `silu_q` with `(F, E) ∈ {(8,8), (12,4), (14,14)}`, at shapes including `f = 1`,
   odd `T`, and `f = 100`. The Llama-3.1-8B fixture's block-0 SiLU uses `f = 14336`.
   `T` equals the executor product `U·silu_q[G]`, and `check` accepts.
-- `rejects_product_off_by_one`: `T ± 1` with canonical limbs, with the carry chosen
-  to satisfy the low product wherever it can.
-- `rejects_wrong_table_entry`: `a + 1`, with every limb recomputed honestly.
-  Rejected by the lookup.
-- `rejects_wrong_limb`: one radix unit moved between `Th`/`w`/`Tl`, `c`/`d`/`w` and
-  `Uh`/`Ul`. Every identity and composed value is kept, and a range rejects.
-- `rejects_nonzero_padding`.
+- `rejects_product_near_misses`: at every entry, each of these fails one constraint:
+  - `T ± 1` through `Tl` alone (`low` Compose);
+  - `T ± 1` through `d`, with `c` honest (`low_product`) or with the best carry
+    (`high_product`);
+  - `T ± 2^8` and `T ± 2^15`, with `c`, `d` honest and `Th`, `w`, `Tl` recomputed
+    (`high_product`, and the high limb E16-05 consumes);
+  - a forged split `Ul ± 1`, `Ul + 256·Uh ≠ U`, with every downstream limb
+    recomputed (`up` Compose);
+  - `a ± 1` with every limb recomputed (lookup).
+- `rejects_wrong_table_entry`, `rejects_wrong_limb` (one radix unit moved between
+  adjacent limbs, rejected by a range), `rejects_nonzero_padding`.
+- `rejects_table_with_minimum_output`: a `−2^15` output or a short table is rejected.
+- `rejects_relation_without_each_constraint` deletes each identity, Compose and the
+  lookup inside the test. It ranges the column the deleted relation disciplined, so
+  the relation stays valid. It asserts that some near miss is then admitted.
+
+Mutation table: each constraint was deleted from `silu.rs` in turn and the tests run.
+Deleting the lookup or the `low` Compose also leaves `a` or `Tl` undisciplined, so
+`validate` fails as well. The in-test mutation above shows that each is still
+load-bearing once validity is restored.
+
+| Mutation | Tests that go red |
+|---|---|
+| delete `silu` lookup | `rejects_wrong_table_entry`, `rejects_wrong_limb`, `rejects_relation_without_each_constraint`, every `matches_reference_*`, `accepts_static_validity_realistic_shapes` |
+| delete `up` Compose | `rejects_product_near_misses`, `rejects_relation_without_each_constraint` |
+| delete `low` Compose | `rejects_wrong_table_entry`, `rejects_wrong_limb`, `rejects_relation_without_each_constraint`, every `matches_reference_*`, `accepts_static_validity_realistic_shapes` |
+| delete `low_product` identity | `rejects_product_near_misses`, `rejects_relation_without_each_constraint` |
+| delete `high_product` identity | `rejects_product_near_misses`, `rejects_nonzero_padding`, `rejects_relation_without_each_constraint` |
+
 - `accepts_static_validity_realistic_shapes`: two layers at `f = 14336`, T = 64,
   sharing one table.
 

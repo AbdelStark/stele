@@ -171,31 +171,88 @@ fn matches_reference_llama_fixture() {
     assert!((0..2 * hidden).all(|k| product[((k / hidden) << 14) | (k % hidden)] == expected[k]));
 }
 
-/// For `T' = T ± 1`: the canonical limbs of `T'` with the carry chosen to satisfy the
-/// low product wherever it can. The checker must reject.
+/// Every limb downstream of `(Ul, Uh, a)` recomputed honestly at `index`.
+fn limbs(case: &Case, index: usize, ul: i64, uh: i64, a: i64) -> Vec<(ColumnId, usize, i64)> {
+    let c = case.module.columns().expect("declared");
+    let low = ul * a;
+    let middle = uh * a + (low >> 8);
+    vec![
+        (c.up_low, index, ul),
+        (c.up_high, index, uh),
+        (c.activation, index, a),
+        (c.carry, index, low >> 8),
+        (c.byte, index, low & 0xff),
+        (c.middle, index, middle & 0x7f),
+        (c.high, index, middle >> 7),
+        (c.low, index, ((middle & 0x7f) << 8) | (low & 0xff)),
+    ]
+}
+
+/// Strongest near misses at `index`, each failing one constraint:
+/// - `T ± 1` through `Tl` alone (the `low` Compose);
+/// - `T ± 1` through `d` with `c` honest (`low_product`), and with the carry chosen to
+///   satisfy `low_product` (`high_product`);
+/// - `T ± 2^8` and `T ± 2^15` with `c`, `d` honest and `Th`, `w`, `Tl` recomputed
+///   (`high_product`, and the high limb E16-05 consumes);
+/// - a forged split `Ul ± 1` with every downstream limb recomputed (the `up` Compose);
+/// - `a ± 1` with every limb recomputed (the lookup).
+fn near_misses(case: &Case, index: usize) -> Vec<Values> {
+    let c = case.module.columns().expect("declared");
+    let get = |id| case.column(id)[index];
+    let (ul, uh, a, carry, byte) = (
+        get(c.up_low),
+        get(c.up_high),
+        get(c.activation),
+        get(c.carry),
+        get(c.byte),
+    );
+    let product = (get(c.high) << LOW_BITS) + get(c.low);
+    let mut all = Vec::new();
+    for sign in [1, -1] {
+        let low = get(c.low) + sign;
+        if (0..1 << LOW_BITS).contains(&low) {
+            all.push(case.with(&[(c.low, index, low)]));
+        }
+        let wrong = product + sign;
+        let (d, w) = (wrong & 0xff, (wrong >> 8) & 0x7f);
+        for carry in [carry, (ul * a - d).div_euclid(256)] {
+            all.push(case.with(&[
+                (c.high, index, wrong >> LOW_BITS),
+                (c.low, index, wrong & 0x7fff),
+                (c.byte, index, d),
+                (c.middle, index, w),
+                (c.carry, index, carry),
+            ]));
+        }
+        for shift in [8, 15] {
+            let wrong = product + sign * (1 << shift);
+            assert_eq!(wrong & 0xff, byte, "the byte is unchanged");
+            all.push(case.with(&[
+                (c.high, index, wrong >> LOW_BITS),
+                (c.low, index, wrong & 0x7fff),
+                (c.middle, index, (wrong >> 8) & 0x7f),
+            ]));
+        }
+        let forged = ul + sign;
+        if (0..256).contains(&forged) {
+            all.push(case.with(&limbs(case, index, forged, uh, a)));
+        }
+        all.push(case.with(&limbs(case, index, ul, uh, a + sign)));
+    }
+    all
+}
+
 #[test]
-fn rejects_product_off_by_one() {
+fn rejects_product_near_misses() {
     let mut rng = Rng(21);
     let table = silu(8, 8);
     let case = case(&table, &rng.capture(4 * 8, false), 4, 8);
-    let c = case.module.columns().expect("declared");
-    for index in [0, 7, 13, 31] {
-        let product = case.product()[index];
-        let (ul, a) = (
-            case.column(c.up_low)[index],
-            case.column(c.activation)[index],
-        );
-        for wrong in [product + 1, product - 1] {
-            let (byte, middle) = (wrong & 0xff, (wrong >> 8) & 0x7f);
-            let carry = (ul * a - byte).div_euclid(256);
-            let values = case.with(&[
-                (c.high, index, wrong >> LOW_BITS),
-                (c.low, index, wrong & 0x7fff),
-                (c.byte, index, byte),
-                (c.middle, index, middle),
-                (c.carry, index, carry),
-            ]);
-            assert!(check(&case.relation, &values).is_err(), "accepted {wrong}");
+    for index in 0..32 {
+        for values in near_misses(&case, index) {
+            assert!(
+                check(&case.relation, &values).is_err(),
+                "accepted at {index}"
+            );
         }
     }
 }
@@ -306,4 +363,61 @@ fn accepts_static_validity_realistic_shapes() {
     }
     assert_eq!(relation.tables.len(), 1);
     relation.validate().expect("valid");
+}
+
+#[test]
+fn rejects_table_with_minimum_output() {
+    let table = silu(8, 8);
+    let mut entries = table.entries().to_vec();
+    assert!(silu_outputs(&entries).is_ok());
+    // A row reaching −2^15 would allow T = 2^30, which has no signed-16 high limb.
+    entries[1] = -32768;
+    assert_eq!(silu_outputs(&entries), Err(TableError::Shape));
+    entries.pop();
+    assert_eq!(silu_outputs(&entries), Err(TableError::Parameters));
+}
+
+type Mutation = (&'static str, fn(&mut Relation));
+
+/// Mutation table (RFC-0026 §5.2): deleting each identity, Compose or the lookup lets
+/// at least one near miss of `near_misses` through.
+#[test]
+fn rejects_relation_without_each_constraint() {
+    let mut rng = Rng(25);
+    let table = silu(12, 4);
+    let case = case(&table, &rng.capture(4 * 8, false), 4, 8);
+    let attacks: Vec<Values> = (0..32).flat_map(|i| near_misses(&case, i)).collect();
+    assert!(attacks.iter().all(|v| check(&case.relation, v).is_err()));
+    let mutations: [Mutation; 5] = [
+        ("low_product", |r| {
+            r.identities.retain(|i| !i.name.ends_with("/low_product"))
+        }),
+        ("high_product", |r| {
+            r.identities.retain(|i| !i.name.ends_with("/high_product"))
+        }),
+        ("up", |r| r.composes.retain(|c| !c.name.ends_with("/up"))),
+        ("low", |r| r.composes.retain(|c| !c.name.ends_with("/low"))),
+        ("silu", |r| r.lookups.retain(|l| !l.name.ends_with("/silu"))),
+    ];
+    for (name, mutate) in mutations {
+        let mut relation = case.relation.clone();
+        mutate(&mut relation);
+        assert!(relation != case.relation, "{name} changed nothing");
+        // Deleting a disciplining relation also needs its column ranged to stay valid.
+        for id in [
+            case.module.columns().expect("declared").activation,
+            case.module.columns().expect("declared").low,
+        ] {
+            let width = relation.columns[id.0 as usize].width;
+            relation.ranges.push(Range {
+                name: "mutation".into(),
+                column: id,
+                width,
+            });
+        }
+        assert!(
+            attacks.iter().any(|v| check(&relation, v).is_ok()),
+            "no near miss needs {name}"
+        );
+    }
 }

@@ -5,7 +5,7 @@
 //! `U` (int16, E16-05 outputs), `a = silu_q[G]` and the exact product `T = U·a`, with
 //! no rounding. Units are `fu + E`. `T` feeds the E16-05 gated row conversion.
 //!
-//! `T` reaches `2^30`, beyond any column width, and `U·a` alone already has static
+//! `|T|` approaches `2^30`, beyond any column width, and `U·a` alone already has static
 //! magnitude `2^30` under the §3.6 bound rule. So the product is a byte-split limb
 //! product with explicit carries (RFC-0026 §3.5):
 //! - `U = 2^8·Uh + Ul`, `Ul` in unsigned 8, `Uh` in signed 8 (a `Compose`);
@@ -82,20 +82,10 @@ impl GatedProduct {
         hidden: usize,
         table: &CqisTable,
     ) -> Result<Self, TableError> {
-        let entries = table.entries();
-        if table.descriptor().name() != "silu_q" || entries.len() != 2 << 16 {
+        if table.descriptor().name() != "silu_q" {
             return Err(TableError::Parameters);
         }
-        let silu = entries
-            .chunks_exact(2)
-            .enumerate()
-            .map(|(i, row)| {
-                // Row `i` is input `i − 32768`; the output must fit int16.
-                let ok = i64::from(row[0]) == i as i64 - 32768
-                    && Width::signed(16).contains(i64::from(row[1]));
-                ok.then_some(i64::from(row[1])).ok_or(TableError::Shape)
-            })
-            .collect::<Result<_, _>>()?;
+        let silu = silu_outputs(table.entries())?;
         Ok(Self {
             layer,
             gate,
@@ -122,6 +112,25 @@ impl GatedProduct {
         let (j, t) = (index & ((1 << h) - 1), index >> h);
         (j < self.hidden && t < self.tokens).then_some((t, j))
     }
+}
+
+/// The outputs of a complete `silu_q` table, row `i` being input `i − 2^15`.
+///
+/// Every output must lie in `(−2^15, 2^15)`, so `|U·a| < 2^30` and the high limb of `T`
+/// always fits signed 16 (totality). Generated `silu_q` tables satisfy this (their
+/// negative outputs stay above `−2^14`, SILU-CONSUMER); anything else is rejected.
+fn silu_outputs(entries: &[i32]) -> Result<Vec<i64>, TableError> {
+    if entries.len() != 2 << 16 {
+        return Err(TableError::Parameters);
+    }
+    entries
+        .chunks_exact(2)
+        .enumerate()
+        .map(|(i, row)| {
+            let ok = i64::from(row[0]) == i as i64 - 32768 && (-32767..=32767).contains(&row[1]);
+            ok.then_some(i64::from(row[1])).ok_or(TableError::Shape)
+        })
+        .collect()
 }
 
 fn term(coeff: i64, factors: &[&Ref]) -> Term {
@@ -256,13 +265,6 @@ impl Module for GatedProduct {
             let (c, d) = (low >> 8, low & 0xff);
             let middle = uh * a * m + c;
             let (th, w) = (middle >> 7, middle & 0x7f);
-            // T = 2^30 (only U = a = −32768) has no int16 high limb.
-            if !Width::signed(16).contains(th) {
-                return Err(Violation::Range {
-                    relation: format!("L{}/gated/high", self.layer),
-                    index,
-                });
-            }
             let row = [th, (w << 8) | d, a, ul, uh, c, d, w];
             for (column, v) in cols.iter_mut().zip(row) {
                 column[index] = v;

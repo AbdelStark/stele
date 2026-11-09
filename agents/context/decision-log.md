@@ -1504,5 +1504,5 @@ Decision:
   `low` unsigned 15 (Compose of `d`, `w`). There is no sign or magnitude column.
   E16-05 derives what its gated conversion needs.
 
-Consequences: no committed column wider than 16 bits. `T = 2^30` has no assignment,
-and no valid `silu_q` table can produce it.
+Consequences: no committed column wider than 16 bits. `new` rejects a table with an
+output of `−2^15`, so `|T| < 2^30` and every int16 input has an assignment.
