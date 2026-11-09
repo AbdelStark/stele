@@ -719,7 +719,7 @@ tasks:
   - complete registration/opening runtime, memory and proof-size ledger evidence
 - id: E4-04
   epic: E4
-  title: Fused opening API (takes sumcheck B as u)
+  title: Fused opening API (retained row as u; u = B signed, B + 2^(w-1) offset)
   depends:
   - E4-03
   - E3-06
@@ -1640,9 +1640,12 @@ tasks:
   - E4-04
   rfc:
   - RFC-0007 §2,§5
+  - RFC-0007 A1
+  - RFC-0007 A2
+  - RFC-0010 A10
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: blocked(RFC-0007 A8)
   acceptance:
   - exactly one pass counter
   - NC-0301/0304/0305

@@ -131,9 +131,12 @@ Acceptance resolution. The following is in force; the proposed text above is not
    the A10 retained row, the immutable object the stage's A4 fold scratch is derived
    from. "The prover sends u = B" (RFC-0010 §5, §5 step 4 here) means exactly this.
    The verifier is A2's: it derives a from the expected stage point and
-   b = eq(s_l‖r_k) from the A1 final point, checks dot(u,b) against the A1 W final,
-   then checks q_o column equations (RFC-0010 A3 item 1). B, r_j and the embedding
-   never come from the proof.
+   b = eq(s_l‖r_k) from the A1 final point, and checks dot(u,b) against the expected
+   scalar, then q_o column equations (RFC-0010 A3 item 1). Under the signed embedding
+   the expected scalar is the A1 W final. Under the offset embedding it is RFC-0024
+   §2.2's v_raw = v_signed + 2^(w−1)·Σa·Σb, with v_signed the A1 W final and the
+   actual sums of the row and column weights. B, r_j and the embedding never come
+   from the proof.
 4. **One source visit.** Per weight type and proof, the only online read of the
    original message is the A10 retained-row constructor: R·C element reads, row-major,
    once. The A4 sumcheck folds copies of that row. The opening reads zero message
@@ -143,9 +146,10 @@ Acceptance resolution. The following is in force; the proposed text above is not
    counter asserts R·C source reads at construction and zero during the opening. Each
    phase consumes its single W claim (§5) by exactly one RFC-0010 A3 opening on the
    certified source. A plan that emits two W_τ claims at different r_j needs two
-   phases and breaks INV-7; E7-02's existing one-pass counter criterion forbids it. Virtual X
-   (§5 step 4, A6) and the configured stacked phase stay with E7-02. A2's two-source
-   statement is the only Accepted consumer; this entry adds none.
+   phases and breaks INV-7; E7-02's existing one-pass counter criterion forbids it.
+   A2's two-source statement is the only Accepted consumer, and this entry adds none.
+   The configured phase whose X is virtual (§5 step 4, A6) has no Accepted statement,
+   bytes or labels; Draft A8 owns it, and E7-02 is blocked on A8.
 5. **Statement fields.** None is added. Stage point, ids, dimensions, sources and
    certificates are A2's expected statement. Root and code identity come from the
    passport for registered weights (RFC-0010 A3 item 5). The embedding comes from
@@ -153,8 +157,11 @@ Acceptance resolution. The following is in force; the proposed text above is not
    A6's width rule stands: until a signed whole-source range consumer exists, only
    offset int8 weights (RFC-0024 §1.1) pass E6-02's plan check.
 6. **Soundness.** No challenge, label, round, loss family or ledger line is added.
-   Per phase the ledger keeps A2's SC term `3·(log2 L + log2 d)/|K|` and adds one
-   PCS opening term `((N−D+e)/N)^q_o` for W (RFC-0012 A15). The weight certificate is
+   The per-phase line of an A2 phase is unchanged:
+   `3·(log2 L + log2 d)/|K| + ((N_X−D_X+e_X)/N_X)^q_o,X + ((N_W−D_W+e_W)/N_W)^q_o,W`,
+   the SC term plus X's and W's openings (RFC-0012 A15), each with its own source's
+   verifier-derived N, D, e and q_o. RFC-0024 phases keep their m/|K| and advice
+   and range terms unchanged. The weight certificate is
    charged once over its registration lifetime with every opening, by A9's adaptive
    reuse union bound. The Merkle lift is under H. All terms are proven and
    conditional interactive. Fiat–Shamir hand derivation (RFC-0012 §4, Q times the
@@ -177,13 +184,34 @@ Acceptance resolution. The following is in force; the proposed text above is not
      rejected with ValueMismatch before any column draw.
    NC-0300..0304, NC-0306/0307 and NC-0611 are unchanged. No binding is added.
 8. **Cost.** No constant moves. Per weight type and proof, the opening sends u of
-   L·d K-elements (4·[K:M31]·L·d bytes; 2^21 elements, 32 MB in OM31, for L=128 and
-   d=16384), plus q_o columns of m elements each. This full-u size is why E4-06's
+   L·d K-elements (4·[K:M31]·L·d bytes). For L=128 and d=16384 that is 2^21 elements:
+   2^25 bytes (32 MiB) in QM31 and 2^26 bytes (64 MiB) in OM31. Add q_o columns of
+   m elements each. This full-u size is why E4-06's
    ≤1 MB criterion needs a future Ligerito or short-column amendment.
 9. **Tasks.** E4-04 becomes ready with its original criteria plus item 7's variants.
    E4-06 becomes blocked: Ligerito is not admitted (RFC-0010 A3 item 1), and neither
-   are short columns (item 2). E7-02 is unchanged. This resolution supersedes the
-   closing sentence of formal/native-matmul.md that RFC-0007 A1 remains Draft.
+   are short columns (item 2). E7-02 is blocked on A8, with its acceptance lines
+   unchanged. E4-04 owns NC-0305; E7-02's verbatim NC-0305 line re-runs
+   that control at the composed phase and is not a second owner.
+10. **Superseded Draft references.** Each of the following Accepted sentences that
+   calls this entry Draft or open is superseded by this resolution: A2's "A1 remains
+   Draft for packed/signed and complete fused integration"; A7's "A1 stays Draft for
+   short columns and the complete fused schedule"; RFC-0010 A3 item 11's "E4-04 stays
+   blocked on RFC-0007 A1"; RFC-0010 A6's item 3 short-column sentence and its
+   "E4-04 (still blocked on RFC-0007 A1)"; and the closing sentence of
+   formal/native-matmul.md. RFC-0010 §10's NC-0605 "fused u ≠ B" reads, for an honest
+   offset row, as item 3's identity: u = B + 2^(w−1) is not a violation, and NC-0605
+   is item 7's two variants. Short columns stay unadmitted (item 2), not open here.
+
+### A8 — One-source stacked weight phase with virtual X
+
+Status: Draft. Question Q28. Follow-up of A1 item 4.
+Motivation: §5 emits a virtual X claim and opens only W, but the only Accepted phase
+statement (A2) opens two committed sources. A configured phase needs its own
+expected statement, proof bytes, labels and transcript order, the hand-off of the X
+claim to the next reduction (A6 digit split included), its per-phase ledger line,
+the A1 fused W opening, and controls (NC-0301/0304/0305 at the composed phase).
+No text is proposed yet. E7-02 is blocked on this entry; all its criteria remain.
 
 ### A2 — Conditional stacked matmul with original field sources
 

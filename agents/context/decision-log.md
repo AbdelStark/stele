@@ -1128,7 +1128,8 @@ Decision:
   field or proof byte selects a layout. Short columns and Ligerito are not admitted;
   RFC-0010 A12 withdraws §4's short-column sentence.
 - **Row identity.** The opening row is the A10 retained row: u = B under the signed
-  embedding, u = B + 2^(w−1) under offset. No reduction, copy or alternate row.
+  embedding, u = B + 2^(w−1) under offset, checked against RFC-0024 §2.2's v_raw.
+  No reduction, copy or alternate row.
 - **One visit.** R·C source reads at retained-row construction, zero in the opening;
   column responses and registration are counted separately.
 - **No new soundness surface.** No challenge, round, label, loss or ledger line. Each
@@ -1142,7 +1143,8 @@ Decision:
 
 Consequences: E4-04 is ready with its original criteria plus the exact control
 variants and counter numbers. E4-06 is blocked: its short columns and Ligerito are
-not admitted, and full-u openings are about L·d K-elements per weight type (32 MB in
-OM31 at L=128, d=16384). No measured constant moves.
+not admitted, and full-u openings are L·d K-elements per weight type (at L=128,
+d=16384: 32 MiB in QM31, 64 MiB in OM31). E7-02 is blocked on Draft RFC-0007 A8,
+the one-source phase with virtual X, which no Accepted text specifies. No measured constant moves.
 
 Status: Accepted.

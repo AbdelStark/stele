@@ -11,8 +11,11 @@ Reviewers:
   drafting agent. It checked consistency with Accepted text, the glossary, tasks,
   controls and implementability against E7-01b1's retained row.
 
-Neither pass is independent. An independent review is required before merge and will
-be recorded under "Independent pass" below.
+- **Pass 3, independent review** of PR #298 at d9e044d, by a reviewer outside this
+  drafting session. It is recorded under "Independent pass" below.
+
+Passes 1 and 2 are by the author; neither is independent. Pass 3 is the independent
+sign-off of the soundness-auditor and of the stele-pcs owner.
 
 **Verdict: accept after fixes.** All blocking findings below are closed on this
 branch. A1 admits no new protocol: it fixes a layout constant and names an existing
@@ -130,6 +133,44 @@ Findings:
     updated (Draft study, not normative).
 - **S10: cost.**
   - No constant moves. Item 8 states the full-u size per weight type.
+
+## Independent pass
+
+Verdict at d9e044d: fix, then merge. No soundness break: u is bound before the column
+draws, no opening parameter is prover-chosen, the text matches RFC-0010 A3/A7/A9, the
+Fiat–Shamir arithmetic checks out and the NC-0305 forgery argument holds. This pass is
+the soundness-auditor and stele-pcs owner sign-off. Each finding was closed on this
+branch.
+
+- **S1 (significant): wrong expected scalar under the offset embedding.**
+  - Problem: item 3 compared dot(u,b) with the A1 W final, which is the signed value.
+    An honest raw offset row would fail with ValueMismatch.
+  - Closed: item 3 now compares with RFC-0024 §2.2's v_raw = v_signed + 2^(w−1)·Σa·Σb
+    under offset, and with the A1 W final under signed. ADR-070 says the same.
+- **S2: "adds one PCS opening term" undercounts.**
+  - Problem: an A2 phase opens X and W, and RFC-0024 phases carry m/|K| and advice terms.
+  - Closed: item 6 gives the exact unchanged A2 line
+    `3·(log2 L + log2 d)/|K| + ((N_X−D_X+e_X)/N_X)^q_o,X + ((N_W−D_W+e_W)/N_W)^q_o,W`
+    and keeps RFC-0024's terms unchanged. A1 adds no term.
+- **S3: the virtual-X configured phase had no owner text.**
+  - Problem: item 4 sent it to E7-02 and item 9 said E7-02 was unchanged, but A2 is
+    two-source only, and no Accepted text gives that phase's statement, bytes or labels.
+  - Closed: Draft RFC-0007 A8 (Q28) names the obligation. E7-02 is blocked on A8, its
+    acceptance lines are verbatim, and its rfc list gains RFC-0007 A1/A2 and RFC-0010 A10.
+    RFC-0019 Q28 and the RFC-0000 index record A8.
+- **S4: cost figure.**
+  - Problem: 4·8·2^21 = 2^26 bytes is 64 MiB in OM31; 32 MiB is QM31.
+  - Closed: item 8, ADR-070 and the PR body give both.
+- **M5: Accepted text still called A1 Draft.**
+  - Closed: item 10 lists every superseded sentence: RFC-0007 A2 and A7, RFC-0010 A3
+    item 11, A6 (item 3 and its task line), formal/native-matmul.md's closing sentence,
+    and RFC-0010 §10's NC-0605 "fused u ≠ B", which an honest offset row does not violate.
+- **M6: NC-0305 had two owners (E4-04 and E7-02).**
+  - Closed: E4-04 owns it. E7-02's verbatim line re-runs the control at the composed
+    phase and is not a second owner (item 9).
+- **M7: the E4-04 title said "takes sumcheck B as u".**
+  - Closed: the title now names the retained row and both relations. Acceptance lines
+    are verbatim.
 
 ## Not reviewed
 
