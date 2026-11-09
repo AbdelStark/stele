@@ -843,3 +843,12 @@ rmsnorm_q at version 2), wide cut values are int24 and use one value per M31 ele
 RFC-0004 A14 records the motivation, the ledger impact (no challenge, loss or profile
 change) and the cost impact (the cut commit/opening message count doubles; cut storage is
 1.5x the int16 bytes). Affected tasks: E5-05c, E6-02/E6-03, E7-10.
+
+### A12 — Full-row fused weight layout (companion of RFC-0007 A1)
+
+Status: Accepted. Review: [RFC-0007 A1 acceptance](../../agents/reviews/rfc0007-a1-acceptance.md).
+Withdrawn from §4: "Short-column variant: rows = `j_hi`, columns = `(j_lo, ℓ, k)`;
+`B[ℓ,k] = Σ_{j_lo} eq(j_lo, r_j,lo)·u'[j_lo, ℓ, k]`." A fused weight source uses
+RFC-0007 A1 item 2's full-row layout (rows j, s=0), and §5's u is RFC-0007 A1 item 3's
+retained row: u = B (signed) or B + 2^(w−1) (offset). A split layout needs a new
+amendment. No challenge, label or loss changes. Cost and tasks are RFC-0007 A1's.

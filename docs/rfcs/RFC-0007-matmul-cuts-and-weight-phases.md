@@ -74,7 +74,10 @@ NC-0305 fused opening with a row vector that is not the sumcheck's `B`.
 
 ### A1 — Packed sources and the fused row identity
 
-Status: Draft. Question Q28. Companion RFC-0010 A6; evidence:
+Status: Accepted. Question Q28. Companions RFC-0010 A6 and A12.
+Review: [A1 acceptance](../../agents/reviews/rfc0007-a1-acceptance.md).
+The acceptance resolution at the end of this entry replaces the proposed text;
+only the resolution is in force. Evidence:
 [packing and fused-row study](../../formal/packed-commitments.md).
 Continuation: [signed and split layout derivation](../../formal/fused-layout.md).
 The direct equal-vector contract requires the signed original message row;
@@ -102,6 +105,113 @@ this Draft authorizes no alternate weight pass or commitment. E4-04 and E7
 criteria, NC-0300..0305/0605 and static certificates remain unchanged. Any future
 challenges/losses require explicit accounting. Message counts, c_w/c_c/T_misc,
 decomposition and memory need actual ledgers; no measured constant changes here.
+
+Acceptance resolution. The following is in force; the proposed text above is not.
+
+1. **Packing.** The proposed §3 text is superseded by A5/A7 and RFC-0010 A6: one
+   canonical M31 message element per source value, under the one message embedding
+   the plan fixes for that source. No packed weight or cut source is admitted, so no
+   decomposition reduction has anything to consume, and RFC-0008 A1 is not a
+   prerequisite of this entry. RFC-0008 A1 stays Draft for a future packed format.
+2. **Layout.** The source of a §5 weight phase is A2's physical matrix
+   `M_W[j, l·d+k] = embed(W[l,k,j])` (formal/native-matmul.md §1). Rows are the m output
+   features, message columns are (l,k), every extent is a full power of two, and the
+   code is the source's expected A9 Circle identity. The split index s of
+   formal/fused-layout.md §3 is the constant 0. No statement field or proof byte
+   selects a layout. Short columns (rows j_hi, a row u_s ≠ B, a low fold to B) and
+   §7 Ligerito are not admitted. RFC-0010 A12 withdraws RFC-0010 §4's short-column
+   sentence. A future amendment that admits a split must make s a verifier-derived
+   passport or plan field and specify the fold's pass-count evidence. The verifier
+   never reads B: its W claim is a rank-one functional of whichever layout is
+   registered, so the fold is a prover and pass-count obligation, not a new check.
+3. **Fused row identity.** For a = eq(·, r_j), A9's row aᵀM_W is B itself under the
+   signed embedding. Under the offset embedding it is B + 2^(w−1), because
+   Σ_j a_j = 1 over full extents; this is A4's raw retained row, centered only in A4
+   scratch. No other relation, reduction or copy is admitted. The opening serializes
+   the A10 retained row, the immutable object the stage's A4 fold scratch is derived
+   from. "The prover sends u = B" (RFC-0010 §5, §5 step 4 here) means exactly this.
+   The verifier is A2's: it derives a from the expected stage point and
+   b = eq(s_l‖r_k) from the A1 final point, and checks dot(u,b) against the expected
+   scalar, then q_o column equations (RFC-0010 A3 item 1). Under the signed embedding
+   the expected scalar is the A1 W final. Under the offset embedding it is RFC-0024
+   §2.2's v_raw = v_signed + 2^(w−1)·Σa·Σb, with v_signed the A1 W final and the
+   actual sums of the row and column weights. B, r_j and the embedding never come
+   from the proof.
+4. **One source visit.** Per weight type and proof, the only online read of the
+   original message is the A10 retained-row constructor: R·C element reads, row-major,
+   once. The A4 sumcheck folds copies of that row. The opening reads zero message
+   elements. Its column responses read q_o encoded columns of the prepared
+   commitment; they are counted separately in T_misc. Registration and the weight
+   certificate belong to the passport and are outside the online counter (A2). E4-04's
+   counter asserts R·C source reads at construction and zero during the opening. Each
+   phase consumes its single W claim (§5) by exactly one RFC-0010 A3 opening on the
+   certified source. A plan that emits two W_τ claims at different r_j needs two
+   phases and breaks INV-7; E7-02's existing one-pass counter criterion forbids it.
+   A2's two-source statement is the only Accepted consumer, and this entry adds none.
+   The configured phase whose X is virtual (§5 step 4, A6) has no Accepted statement,
+   bytes or labels; Draft A8 owns it, and E7-02 is blocked on A8.
+5. **Statement fields.** None is added. Stage point, ids, dimensions, sources and
+   certificates are A2's expected statement. Root and code identity come from the
+   passport for registered weights (RFC-0010 A3 item 5). The embedding comes from
+   the plan (RFC-0010 A6; NC-1207/1208, E8-02). The opening proves no width. RFC-0010
+   A6's width rule stands: until a signed whole-source range consumer exists, only
+   offset int8 weights (RFC-0024 §1.1) pass E6-02's plan check.
+6. **Soundness.** No challenge, label, round, loss family or ledger line is added.
+   The per-phase line of an A2 phase is unchanged:
+   `3·(log2 L + log2 d)/|K| + ((N_X−D_X+e_X)/N_X)^q_o,X + ((N_W−D_W+e_W)/N_W)^q_o,W`,
+   the SC term plus X's and W's openings (RFC-0012 A15), each with its own source's
+   verifier-derived N, D, e and q_o. RFC-0024 phases keep their m/|K| and advice
+   and range terms unchanged. The weight certificate is
+   charged once over its registration lifetime with every opening, by A9's adaptive
+   reuse union bound. The Merkle lift is under H. All terms are proven and
+   conditional interactive. Fiat–Shamir hand derivation (RFC-0012 §4, Q times the
+   largest round error; not a theorem): each phase sumcheck round has error 3/|K|.
+   In QM31 that gives about 2^-22.4 at treaty Q=2^100 and 2^-42.4 at standard Q=2^80,
+   failing both profiles. In OM31 it gives about 2^-146.4 and 2^-166.4, passing both.
+   The OpeningColumn round fails both profiles under Policy 1 (RFC-0010 A3 item 7).
+   Both findings are inherited from A2 and A3; this entry adds no round.
+7. **Controls.** NC-0305 and NC-0605 are refined. Both are todo, owned by E4-04, and
+   run in QM31 and OM31. The forged wires are built at byte level; the A10 API's
+   RowContext rejection is a separate test and earns no credit.
+   - NC-0305: the A1 sumcheck runs honestly on a row B' that differs from aᵀM_W in
+     two coordinates with nonzero factors c = eq(l,r_l)·A[l,k], chosen so that
+     Σ c·B' still equals v. Every round check passes, and the fused opening serializes
+     that same B' with its responses. Rejected with ColumnMismatch. Unlike NC-0611,
+     no factor is zero: the wrong row drives the sumcheck itself.
+   - NC-0605: the sumcheck runs on the honest B, and the opening serializes either
+     (a) the commitment-consistent row eq(r_j')ᵀM_W for some r_j' ≠ r_j, or (b) under
+     the offset embedding, the centered B instead of the raw retained row. Both are
+     rejected with ValueMismatch before any column draw.
+   NC-0300..0304, NC-0306/0307 and NC-0611 are unchanged. No binding is added.
+8. **Cost.** No constant moves. Per weight type and proof, the opening sends u of
+   L·d K-elements (4·[K:M31]·L·d bytes). For L=128 and d=16384 that is 2^21 elements:
+   2^25 bytes (32 MiB) in QM31 and 2^26 bytes (64 MiB) in OM31. Add q_o columns of
+   m elements each. This full-u size is why E4-06's
+   ≤1 MB criterion needs a future Ligerito or short-column amendment.
+9. **Tasks.** E4-04 becomes ready with its original criteria plus item 7's variants.
+   E4-06 becomes blocked: Ligerito is not admitted (RFC-0010 A3 item 1), and neither
+   are short columns (item 2). E7-02 is blocked on A8, with its acceptance lines
+   unchanged. E4-04 owns NC-0305; E7-02's verbatim NC-0305 line re-runs
+   that control at the composed phase and is not a second owner.
+10. **Superseded Draft references.** Each of the following Accepted sentences that
+   calls this entry Draft or open is superseded by this resolution: A2's "A1 remains
+   Draft for packed/signed and complete fused integration"; A7's "A1 stays Draft for
+   short columns and the complete fused schedule"; RFC-0010 A3 item 11's "E4-04 stays
+   blocked on RFC-0007 A1"; RFC-0010 A6's item 3 short-column sentence and its
+   "E4-04 (still blocked on RFC-0007 A1)"; and the closing sentence of
+   formal/native-matmul.md. RFC-0010 §10's NC-0605 "fused u ≠ B" reads, for an honest
+   offset row, as item 3's identity: u = B + 2^(w−1) is not a violation, and NC-0605
+   is item 7's two variants. Short columns stay unadmitted (item 2), not open here.
+
+### A8 — One-source stacked weight phase with virtual X
+
+Status: Draft. Question Q28. Follow-up of A1 item 4.
+Motivation: §5 emits a virtual X claim and opens only W, but the only Accepted phase
+statement (A2) opens two committed sources. A configured phase needs its own
+expected statement, proof bytes, labels and transcript order, the hand-off of the X
+claim to the next reduction (A6 digit split included), its per-phase ledger line,
+the A1 fused W opening, and controls (NC-0301/0304/0305 at the composed phase).
+No text is proposed yet. E7-02 is blocked on this entry; all its criteria remain.
 
 ### A2 — Conditional stacked matmul with original field sources
 
