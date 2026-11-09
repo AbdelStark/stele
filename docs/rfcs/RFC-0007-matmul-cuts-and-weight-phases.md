@@ -143,7 +143,7 @@ Acceptance resolution. The following is in force; the proposed text above is not
    counter asserts R·C source reads at construction and zero during the opening. Each
    phase consumes its single W claim (§5) by exactly one RFC-0010 A3 opening on the
    certified source. A plan that emits two W_τ claims at different r_j needs two
-   phases and breaks INV-7; E7-02's existing one-pass counter rejects it. Virtual X
+   phases and breaks INV-7; E7-02's existing one-pass counter criterion forbids it. Virtual X
    (§5 step 4, A6) and the configured stacked phase stay with E7-02. A2's two-source
    statement is the only Accepted consumer; this entry adds none.
 5. **Statement fields.** None is added. Stage point, ids, dimensions, sources and

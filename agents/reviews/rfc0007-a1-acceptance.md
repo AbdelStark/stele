@@ -83,7 +83,7 @@ Findings:
   - §5's single claim depends on the stacked requant zerocheck. A plan with two r_j
     for one type would be sound (two openings) but would read W twice.
   - Closed: item 4 states that this breaks INV-7 and that E7-02's existing one-pass
-    counter rejects it. No new criterion.
+    counter criterion forbids it. No new criterion.
 - **P8: NC-0305 with a nonzero factor.**
   - Problem: a first draft of NC-0305 changed one coordinate of B with a nonzero X
     factor. Then the round-one sum no longer equals v and the sumcheck rejects,
