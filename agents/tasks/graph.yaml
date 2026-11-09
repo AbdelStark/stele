@@ -1098,7 +1098,9 @@ tasks:
   - RFC-0009
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05g-close
   acceptance:
   - attribution of the Q/K/V share of the residual G7 gap on fixed subsets, or an ADR closing the task because E5-05e passes G7
   - if grouped Q/K/V is pursued, a reviewed amendment (Workflow 02) for the score, weighted-sum and KV cache relations, with a research reference
