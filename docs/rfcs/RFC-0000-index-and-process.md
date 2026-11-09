@@ -37,7 +37,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0009 | Attention protocol | Accepted (A1, A4); A2, A3 superseded by A4 for RFC-0025 |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A3, A4, A5, A6, A8, A9, A10, A11, A12, A13); A7 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted (A2, A8); A1 Draft; A3–A7 superseded by A8 for RFC-0025 |
-| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15) |
+| 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16) |
 | 0013 | Zero-knowledge | Accepted; A1 Draft |
 | 0014 | GPU prover architecture | Accepted (A1) |
 | 0015 | Distributed proving | Accepted (A1) |
@@ -51,6 +51,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
 | 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1, A2, A3) |
+| 0026 | Development-profile end-to-end prefill proof | Accepted |
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`

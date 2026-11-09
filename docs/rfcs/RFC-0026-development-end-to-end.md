@@ -1,0 +1,513 @@
+# RFC-0026 — Development-profile end-to-end prefill proof
+
+Status: Accepted · Version: 0.1.0 · Depends: RFC-0003, RFC-0004, RFC-0005, RFC-0006, RFC-0008, RFC-0010, RFC-0012, RFC-0021, RFC-0025
+
+Review: [same-author passes](../../agents/reviews/rfc0026-acceptance.md); an independent pass is required before merge.
+Decision: ADR-074. Tasks: E16-01..E16-11.
+
+## 1. Statement
+
+### 1.1 What is proven
+
+One proof covers one **prefill window** of a CQIS family-1 (Llama-style) model, as
+evaluated by the RFC-0025 §2.6 full causal evaluation. The statement follows FlashProve's
+small route: the prover shows the window was evaluated correctly and that each
+checked token is the greedy choice.
+
+Public inputs, in the order they are absorbed (§4):
+
+1. `cqis_id` and the canonical `Model`, `Scales` and `Preparation` bytes (RFC-0025 §2.7).
+   The verifier decodes them itself. Mantissas, exponents, fractions, policies and
+   function representations are therefore public data, not witness.
+2. The **model commitment**: one PCS root per weight source (§2.2).
+3. `T`, a power of two, and the tokens `x_0..x_{T-1}`.
+4. The checked range `[r, e)` with `0 <= r < e <= T`, and the next token `y`.
+   `y` is required exactly when `e = T`.
+
+Claim: there is an assignment of every witness column (§2.3) for which every relation
+of §3, as derived from the plan (§5), holds over the integers. Every weight column then
+equals the committed weights. By the encoding obligation (§5.2), the logits are the
+logits that `stele_cqis::execution::Executor::full(x)` computes under those weights.
+For each checked position `i`, the token `c_i` (that is `x_{i+1}` when `i < T-1`, and
+`y` when `i = T-1`) is the least vocabulary id that attains the maximum logit in row
+`i` (RFC-0025 §2.6 greedy rule).
+
+### 1.2 Development profile
+
+The **development profile** is the parameter set of this RFC. It is not a profile
+under RFC-0002 §8, and it claims no security level.
+
+- **Arithmetic.** The base field is M31 (RFC-0003). Every challenge is a QM31 element
+  drawn from `stele_hash::Transcript<QM31>`.
+- **Lookups.** LogUp follows RFC-0008 A5 with `r = 1`, the `standard` choice.
+- **Fiat–Shamir.** Q12 is open: RFC-0012's FS line is still a placeholder. The ledger
+  of §6 therefore reports the interactive error terms only, and labels FS as unproven.
+- **PCS.** No PCS parameter set is admitted for any profile (RFC-0012 A15, Q12).
+  Development proofs use RFC-0010 A3 Policy 1 v2 sources and print their PCS terms
+  as conjectural. They make no admitted proximity claim.
+- **No zero-knowledge.** There is no masking (RFC-0013 does not apply). The proof
+  reveals claimed evaluations, PCS opening rows and query columns of witness and
+  weight sources, as the RFC-0010 openings define them. It reveals no other witness
+  value. Even so, opening rows and columns leak linear combinations of witness and
+  weights. Treat every proof as disclosing the model and the activations.
+- **Not proved.** The proof does not bind a passport or checkpoint (RFC-0011): the
+  model commitment is taken as given. It makes no claim about floating-point fidelity
+  (RFC-0004 §7). It proves no decoding beyond the checked greedy tokens, and nothing
+  about sampling. It makes no cost claim, so INV-7's one-pass weight phases and the
+  RFC-0007 four-phase schedule are not used. It does not cover treaty/standard
+  admission or GPU parity before E16-11.
+- **Cuts (INV-6).** In the development profile every witness column of §2.3 is a
+  named committed tensor, that is a cut, and this RFC is the RFC that names them.
+  The `standard` and `treaty` plans are unchanged.
+
+### 1.3 Model class
+
+E16 covers the following model class:
+
+- family 1, version-1 residual stream (int16; RFC-0004 A14 wide streams are excluded);
+- non-grouped row policies (RFC-0004 A15 is excluded);
+- int4 or int8 weights;
+- no GQA, or GQA with the K/V rows committed once per key/value group and read
+  through a `Ref` (§3.2);
+- any RFC-0021 exponential mode and SiLU representation that the `Model` names.
+
+An unsupported `Model` is rejected before proving, with `UnsupportedModel`. Extending
+the class is an amendment to this RFC.
+
+## 2. Commitments and layout
+
+### 2.1 Columns
+
+A **column** is a vector of `2^n` integers with a declared **width**:
+
+- signed `b`: values in `[-2^(b-1), 2^(b-1))`;
+- unsigned `b`: values in `[0, 2^b)`;
+- in both cases `1 <= b <= 30`.
+
+Tensors are flattened row-major. Each dimension is padded to a power of two, so a
+tensor of shape `(a, b)` uses `log a + log b` index bits, with the row index in the
+high bits. Padding entries are ordinary data. The plain checker and the proof both
+check them, so a module must state what its padding holds, which is usually 0, and
+its relations must hold there too. Selectors (§3.3) and public masks are the only way
+to exempt a row.
+
+Every module pins the padding entries of its output columns to 0, using an identity
+with a public mask. Results therefore never depend on the padded entries of a weight
+tensor, which the model commitment fixes but the executor never reads.
+
+A column has one of three kinds (`stele_ir::relation::Kind`):
+
+- **Witness**: committed for this proof, in a commitment group.
+- **Weight**: committed once, in the model commitment.
+- **Public**: values known to the verifier. It is evaluated by the verifier, never
+  committed or opened.
+
+### 2.2 Model commitment
+
+- Each weight tensor of RFC-0025 §2.1, for each layer and role, is one PCS source.
+  Its values are the original integer codes (int4/int8) under the RFC-0010 A6 signed
+  embedding.
+- The model commitment is the ordered list of their roots. The order is plan order:
+  embedding, then for each layer ℓ the roles Q, K, V, O, gate, up and down, then the head.
+- A tied head reads the embedding source and has no root of its own.
+- Every weight column must still pass a range check (§3.6). In the development
+  profile that check is run in every proof.
+- Each `Kind::Weight` column is exactly one weight source, padded as in §2.1.
+  Weight columns are matched to the model-commitment roots in order of first
+  declaration, and that order must equal the plan order above. A tied head reuses
+  the embedding's `ColumnId`.
+
+### 2.3 Commitment groups
+
+- A **commitment group** is a named set of witness columns that all have the same
+  `log_len`. It is one RFC-0010 v2 source.
+- The source message is the group's columns in `ColumnId` order, padded with zero
+  columns to a power-of-two count `2^c`, in the signed embedding.
+- **Column claim.** Column `k` of a group with `n`-bit columns and claim point
+  `ρ ∈ K^n` maps to the source claim at `(ρ ‖ bits(k))`. The column-index bits are
+  the high variables, and `bits(k)` is a Boolean vector known to the verifier.
+  Converting a column claim into a source claim is therefore exact, with no
+  Schwartz–Zippel loss.
+- **Group naming.** A module creates its groups with `Relation::add_group`. Names
+  follow `L{ℓ}/{module}/{n}`, or `G/{module}/{n}` outside layers, so groups are
+  deterministic from the plan.
+- **Order.** Groups are committed in `GroupId` order.
+
+### 2.4 Multiplicity sources
+
+Every lookup and every range check (§3.3–3.4) has its RFC-0008 A5 multiplicity
+sources. Their roots are absorbed after all group roots (§4, step 3).
+
+## 3. Relations
+
+The types are those of `crates/stele-ir/src/relation.rs`. The integer semantics in
+this section are normative: `stele_ir::relation::check` implements them as stated.
+
+### 3.1 Domain and references
+
+- A relation has a **domain** `{0,1}^m`.
+- A `Ref { column, vars }` reads the column at index `Σ_j bit(x, vars[j]) · 2^j` for
+  a domain point `x`. `vars` must be injective and have length equal to the column's
+  `log_len`.
+- One mechanism therefore expresses broadcast (a column uses fewer bits than the
+  domain), tiling, transposition and head splitting. All of them are permutations or
+  subsets of variables.
+- In MLE terms, the column's multilinear extension is evaluated at the domain point
+  restricted to `vars`. A permuted or broadcast read costs nothing and adds no error term.
+
+### 3.2 Identity
+
+`Identity { vars: m, terms }`: for every `x ∈ {0,1}^m`, `Σ_t c_t · Π_f f(x) = 0` over Z.
+
+- Each term has at most 3 factors, so the zerocheck degree with `eq` is at most 4
+  (RFC-0006 A3).
+- `c_t` is a nonzero i64.
+- A factor may be a public column, which gives public coefficient vectors, masks and
+  selectors.
+
+### 3.3 Lookup
+
+`Lookup { vars, selector, tuple, table }`: for every `x` where the selector equals 1
+(every `x` when there is no selector), `(tuple_1(x), …, tuple_k(x))` is a row of `table`.
+
+- A selector must be a public 0/1 column.
+- Tables are public, with declared widths for each table column. CQIS tables come
+  from `stele_cqis::tables::Table::generate` (RFC-0021 §4) and are converted row for row.
+
+### 3.4 Range
+
+`Range { column, width }`: every entry of the column lies in `width`, where
+`width.bits <= 16`.
+
+- Proof: a lookup of `v − width.min()` into a public table of `2^bits` consecutive
+  integers.
+- A wider value is split into limbs (§3.5).
+
+### 3.5 Matmul (two-factor contraction)
+
+`Matmul { free: a, summed: s, out, lhs, rhs }`: for every `x ∈ {0,1}^a`,
+
+`out(x) = Σ_{y ∈ {0,1}^s} lhs(x,y) · rhs(x,y)`
+
+with `y` on domain bits `a..a+s`.
+
+- `out` reads free bits only.
+- `lhs` and `rhs` are columns of any kind: witness × weight is a projection,
+  witness × witness is `QKᵀ` or `P̂V`, and public × weight is the embedding gather.
+- A free bit read by both `lhs` and `rhs` is a **shared** bit, for example a batch
+  or head bit. Without shared bits, `Σ_y lhs~(ρ,y)·rhs~(ρ,y)` is multilinear in `ρ`
+  and equals `out~(ρ)`. With shared bits it is not multilinear, so the proof (§4,
+  step 6) sums over the shared bits too, under the factor `eq(ρ_shared, x_shared)`.
+
+**Limb rule.** Every value that does not fit the bound rule (§3.6) must be represented
+as radix-`2^b` limb columns with explicit carry columns. Each limb relation must be
+bound-checked on its own, and the whole value must never appear in a single relation.
+
+- Limbs and carries follow the LIMBS/LIMB-PRODUCT/WIDE-RANGE research consumers
+  (`research/cqis-bounds/LIMBS.md`, `LIMB-PRODUCT.md`, `WIDE-RANGE.md`) and RFC-0003 A5.
+- Each limb has a range check, and the final carry is pinned to zero.
+
+### 3.6 Static validity, bound rule and range discipline
+
+`Relation::validate` is the bound certificate of INV-5 for this profile. Prover and
+verifier both run it on the plan-derived relation, before any proof message is read.
+It rejects the following:
+
+1. **Malformed shapes**:
+   - a width outside `1..=30`;
+   - a public column whose length or values do not fit its declaration;
+   - a non-injective, out-of-domain or wrong-arity `Ref`;
+   - more than 3 factors in a term, or a zero coefficient;
+   - a lookup arity that differs from the table's, or a selector that is not public 0/1;
+   - a range wider than 16 bits, or a range on a public column;
+   - a witness column whose group is missing or has a different `log_len`.
+2. **The bound rule.**
+   - For an identity: `B = Σ_t |c_t| · Π_f mag(width_f) < p`, where
+     `mag(w) = max(|w.min|, |w.max|)`.
+   - For a matmul: `B = mag(out) + 2^s · mag(lhs) · mag(rhs) < p`.
+   - Why this is enough: when every column lies within its width, the integer value
+     `V` of the relation at any point satisfies `|V| <= B < p`. So `V ≡ 0 (mod p)`
+     implies `V = 0`. RFC-0022's column lemma (each side `< p/2`) is the same argument
+     with the positive and negative parts kept separate.
+   - Lookup tuples need no extra rule. Every width is at most 30 bits, so distinct
+     integers have distinct residues, and field membership implies integer membership.
+   - In the proof, the integer value of a committed entry is the centered
+     representative of its M31 element, in `(−p/2, p/2)`. Range discipline places
+     that representative within the declared width.
+3. **Range discipline.** Every witness and weight column must have a range check, or
+   appear in a lookup with no selector, whose width lies within the column's declared
+   width. Without that, the bound rule could not rely on the declared widths. A lookup
+   with a selector does not count, because unselected rows are left unconstrained.
+
+### 3.7 Plain checker
+
+`check(relation, values)` runs `validate`, then evaluates every relation over Z in
+this order:
+
+1. ranges, which report a column index;
+2. lookups, which report a domain point;
+3. identities;
+4. matmuls.
+
+It returns the first `Violation`. The checker is the specification oracle:
+
+- Every module's honest witness must pass it.
+- Every tamper control must fail it, for the same reason the proof rejects.
+- The proof engine (E16-02) must accept exactly the `(relation, values)` pairs the
+  checker accepts, except with the error of §6.
+
+### 3.8 Module contract
+
+The `Module` trait has two methods:
+
+- `declare(&mut self, &mut Relation)`. It allocates columns, groups, tables and
+  relations from plan data only, and keeps the ids it needs. Prover and verifier
+  both run it.
+- `assign(&self, &Relation, &Capture, &mut Values)`. It fills only the module's own
+  witness columns.
+
+How modules connect:
+
+- Modules are wired by passing `ColumnId`s of upstream outputs into downstream
+  constructors. A module never reads values another module assigned.
+- Each module defines its own `Capture` type. E16-03's capture supplies every
+  intermediate the executor computes, and E16-10 maps the capture onto each
+  module's type.
+
+## 4. Protocol (transcript order)
+
+Every challenge is drawn from one `Transcript<QM31>` (FS from the transcript object
+only).
+
+1. **Statement.** `Transcript::new(public)`, where `public` is the canonical encoding
+   of the §1.1 public inputs. Then absorb `relation/statement`: the BLAKE3 digest of
+   the canonical relation encoding (E16-02 fixes the codec), which both sides derive
+   from the plan. The verifier rejects with `StatementMismatch` if the plan, `T`,
+   `[r,e)` or the model class do not match.
+2. **Group roots.** For each group in `GroupId` order, absorb `relation/roots` with
+   the group's root. Each group's RFC-0010 A9 certificate is verified on its own
+   transcript, as A9 specifies. The model-commitment roots were already bound in step 1.
+3. **Multiplicity roots.** For each lookup and range check in relation order, the
+   prover commits the RFC-0008 A5 multiplicity sources, which do not depend on any
+   challenge. Their roots are absorbed and their certificates verified.
+4. **Identities.**
+   - For each domain size `m`, in increasing order, draw one `relation/identity`
+     coefficient per identity of that size. This is the RLC line.
+   - Run one RFC-0006 A3 zerocheck on the combined polynomial, using the existing
+     zerocheck labels.
+   - The final values become claims on columns: one per (column, `vars` map) at the
+     zerocheck point restricted to `vars`.
+5. **Lookups and ranges.** One RFC-0008 A5 grouped lookup per lookup/range, in
+   relation order, with the existing lookup labels.
+   - Each emits claims on its tuple columns (through their `vars`) and on its
+     multiplicity sources.
+   - For public tables and selectors, the verifier evaluates the claims itself.
+   - Lookup originals are column claims (§2.3). This widens the RFC-0008 A5 consumer
+     from "whole source" to "column of a group source". The arithmetic is unchanged.
+     This is sound because each group root is fixed before every lookup challenge.
+6. **Matmuls**, in relation order, for each one:
+   - draw `ρ ∈ K^a` with `relation/point` (SZ line, `a/|K|`);
+   - the prover sends `out~(ρ)`;
+   - run one RFC-0006 A1 sumcheck over the `s` summed bits and the `k` shared free
+     bits (§3.5) of `eq(ρ_shared, x_shared)·lhs~·rhs~`. Its degree is 2 when
+     `k = 0` and 3 otherwise. This emits claims on `out`, `lhs` and `rhs`.
+   - The existing matmul reduction (RFC-0007 A2) may replace this sumcheck when both
+     operands are whole sources. The claim semantics are identical.
+7. **Openings.**
+   - Public-column and table claims are evaluated by the verifier, with
+     `Table::evaluate` for tables.
+   - Witness-column claims are mapped to group-source claims (§2.3). Weight claims
+     target their weight source.
+   - For each source in a fixed order (groups in `GroupId` order, then multiplicity
+     sources, then weights in model order), the claims are reduced to one point with
+     RFC-0006 A2 mode 1 (`claim_batch`). That point is opened once with
+     `verify_point` (RFC-0010 A9).
+8. **Argmax.** No extra step: the greedy check is relations over committed logits
+   and public data (§5, row 13).
+
+### 4.1 Proof container
+
+`stele-dev-e2e-v1` is defined in `stele-proof`; E16-10 fixes its exact codec. It is
+the following sequence of length-prefixed sections:
+
+- header: magic, version, `cqis_id`;
+- statement digest;
+- the group certificates, each a root plus a certificate;
+- the multiplicity certificates;
+- for each domain size, its zerocheck proof;
+- for each lookup, its proof;
+- for each matmul, `out~(ρ)` and its sumcheck proof;
+- for each source, its claim-batch proof and opening.
+
+There is no compression or optional section. The verifier rejects trailing bytes
+with `ProofShape`.
+
+## 5. Operation map
+
+Each row names the integer definition it must reproduce, the columns a module commits,
+and the relation kinds it uses (I identity, L lookup, R range, M matmul, P public).
+
+Notation: `T` is the number of tokens, `d` the model width, `h` the number of heads,
+`dh` the head width, `f` the FFN width and `V` the vocabulary size.
+
+**Shared patterns.** Each module states which of these it uses:
+
+- **sign/abs**: `X = (1−2σ)·A`, with `σ` a 0/1 column and `A ≥ 0` range-checked.
+- **round-half-away division** `R(n/d)`, RFC-0025 §2 (applies to a public or committed `d`):
+  - `|n| = q·d + ρ`, with `0 <= ρ < d` enforced by range checks on `ρ` and `d−1−ρ`;
+  - a 0/1 column `β` that is 1 exactly when `2ρ >= d`, enforced by a range check on
+    `(2β−1)(2ρ−d) − (1−β)`;
+  - `y = (1−2σ)(q+β)`.
+- **attained maximum** (glossary "attained"):
+  - `M − v_j >= 0` for every `j` in scope, by a range check on a masked difference;
+  - a witness 0/1 one-hot `h` with `Σ h = 1` over the scope (M row sums);
+  - `Σ h·(M − v) = 0`.
+  - The value of `M` is then unique.
+- **limbs**: as in §3.5.
+
+| # | Op | Integer definition | Columns (per layer unless noted) | Kinds | Task |
+|---|---|---|---|---|---|
+| 1 | embedding gather | RFC-0025 §2.5 (family 1): `R0 = R(e_{t,k}·m_t·2^(ee+f0))` | `G = onehot(x)·E` (T×d, int8); `R0` (T×d, int16) + rounding columns. `m_t` gathered as a public column from `Scales` | M (public onehot × weight), I, R, P | E16-04 |
+| 2 | rmsnorm_q (v1) | RFC-0021 §2.3 (sum of squares, exponent `a`, quotient `M`, `J = rsqrt_q[M]`, `Y = R(X·H·J/2^e)`); bounds `full-model-rms-bounds.md`, `research/cqis-bounds/NORM*.md` | `S` as limb row sums (M of limb products); `a` as a one-hot over its public range; `M`, remainder; `(M, J)`; output `Y` (T×d, int16) + rounding | M, I, L (`rsqrt_q`), R | E16-04 |
+| 3 | row conversion (every projection input) | RFC-0025 §2.2 dynamic/static rows; RFC-0004 A8 gated kind; bounds `full-model-flow-bounds.md` §1, `research/cqis-bounds/ROW*.md`, `DYNAMIC-SCALE.md`, `ATTAINED-MAGNITUDE.md` | row maximum `Mx` (attained), scale `s = ceil(Mx/127)` (one division row), codes `q` (int8) + sign/abs and division columns | I, R, M (row sums) | E16-05 |
+| 4 | Q/K/V/O/gate/up/down/head projections | RFC-0025 §2.2: `A = Σ q·w`, `Y = R(A·m_j·s·2^(e−f+fo))`, one rounding; bounds `full-model-bounds.md` §3, `SCALED-LINEAR.md`. Not RFC-0023/0024 Requant: the multiplier `m_j·s` exceeds u16 | `A = q·W` (M, witness × weight; `|A| < 2^28`); `A·m_j·s` as limb products with public `m_j`; output `Y` + rounding | M, I, R, P | E16-05 |
+| 5 | RoPE | RFC-0025 §2.4 / RFC-0004 A7 coefficients: `x' = R((x·c − y·s)/2^14)`; layout 0/1 pairs; `ROTARY.md`, `ROTARY-CONSUMER.md` | `Q'`, `K'` (int16) + rounding; `c`, `s` as public columns from `model::rotary::Rotation::coefficient` | I, R, P | E16-06 |
+| 6 | scores | RFC-0025 §2.4, RFC-0009 A4: `score = R(dot(q_i,k_j)·sq_i·sk_j·m_score·2^(e_score−fq−fk+Fexp))` over whole-row int8 codes; `ATTENTION-SCORE.md` | Q/K row conversion (pattern of row 3); `dot` (M per head, witness × witness, `Ref` head split); scaled product as limbs; `score` + rounding | M, I, R | E16-07 |
+| 7 | causal max | RFC-0025 §2.4: maximum over keys `j <= i`; `ATTENTION-MAX.md`, `ATTENTION-MAXIMUM-CONSUMER.md` | `Mx` per (head, i), attained over the causal scope (public causal mask factor) | I, R, M, P | E16-07 |
+| 8 | exp | RFC-0021 §2.1 modes 0/1/2: `t = score − Mx ∈ [−2^B, 0]`, direct, product or corrected; `ATTENTION-EXP*.md` | `t` (masked to 0 outside scope); `P̂` (unsigned `E+1` bits) via `exp_q/direct` or `exp_q/hi`, `exp_q/lo` (+ `exp_q/correction`) | L, I, R | E16-07 |
+| 9 | normaliser and P̂·V | RFC-0025 §2.4, RFC-0004 A6, RFC-0009 A4: `Z = Σ P̂_j > 0`; `D = sv_j·v_jc`; `T_c = Σ P̂·D` (exact, or block mode with `B_bc = R(Σ_block P̂D/2^c)`); output `R(T_c·2^(fo−fv+c)/Z)`; `ATTENTION-NORMALIZATION.md`, `ATTENTION-BLOCKS.md`, `ATTENTION-VALUES.md`, `ATTENTION-DIVISION.md` | V row conversion; `Z` (M with causal mask); `D`; `T` as limbs (`|T| < 2^50`); quotient, remainder; head assembly before one O-input row conversion | M, I, R, P | E16-07 |
+| 10 | SiLU gated product | RFC-0025 §2.5, RFC-0004 A8, RFC-0021 §2.2: `silu_q[t]`, `T = U·silu_q(G)` exact int32 (`|T| <= 2^30`); then gated row conversion; `GATED-PRODUCT.md`, `SILU-CONSUMER.md`, `GATED-CONSUMER.md` | `(G, silu_q(G))` lookup; `T` as limbs (`2^30` > 30-bit signed width); gated conversion → down-projection codes | L, I, R | E16-08 |
+| 11 | residual add | RFC-0025 §2.2: `c = max(fx, fy, fo)`, `R((X·2^(c−fx) + Y·2^(c−fy))/2^(c−fo))`, int16 (v1); `RESIDUAL*.md` | `R_mid`, `R_{ℓ+1}` + rounding | I, R | E16-09 |
+| 12 | final norm, head | RFC-0025 §2.5: rmsnorm_q, final row conversion, unbiased head with `fl ∈ [0,30]`, int16 logits; tied head reads the embedding source | rows 2–4 instances (global group `G/…`) | as rows 2–4 | E16-09 |
+| 13 | greedy argmax | RFC-0025 §2.6: least id attaining the maximum; `research/cqis-bounds/GREEDY.md` | `sel_i = Σ_v O[i,v]·L[i,v]` (M, public one-hot `O` of `c_i` on checked rows); margin `Mg[i,v] = chk[i,v]·(sel_i − L[i,v]) − lt[i,v]`, unsigned 16; public `chk[i,v]` (checked row and real vocabulary id `v < V`) and `lt[i,v] = chk[i,v]·[v < c_i]` | M, I, R, P | E16-09 |
+
+Row 13 is sound for the following reasons:
+
+- Logits are int16, so `sel − L ∈ [−65535, 65535]`.
+- `Mg >= 0` for every `v` makes `sel_i` a maximum.
+- Every `v < c_i` with `L = sel_i` would give `Mg = −1`, so `c_i` is the least id
+  attaining the maximum.
+- The one-hot `O` fixes `sel_i = L[i, c_i]`.
+- Unchecked rows and padded vocabulary ids have `Mg = 0`, because `chk = 0` and
+  `lt = 0` there. A padded logit therefore never competes.
+
+### 5.1 Interfaces between modules
+
+Only the following columns cross module boundaries. Widths are for the version-1
+stream.
+
+| Producer → consumer | Column | Width |
+|---|---|---|
+| E16-04/09 → E16-04 | residual `R_ℓ` (T×d) | int16 |
+| E16-04 → E16-05 | norm output `Y` (T×d) | int16 |
+| E16-05 → E16-06/07/08 | projection outputs Q, K, V (T×h·dh), gate and up (T×f) | int16 |
+| E16-06 → E16-07 | `Q'`, `K'` | int16 |
+| E16-07 → E16-05 | attention output (T×h·dh), before the O-input row conversion | int16 |
+| E16-08 → E16-05 | gated product `T` limbs with the gated-conversion inputs | as declared by E16-08 |
+| E16-05 → E16-09 | O and down outputs | int16 |
+| E16-09 → E16-04 | `R_{ℓ+1}`; logits (T×V) | int16 |
+
+### 5.2 Encoding obligation
+
+The plain checker shows completeness: honest values pass. It cannot show soundness.
+Each module PR must therefore also provide two things:
+
+1. **An output-uniqueness lemma.** For any input columns within their widths, every
+   assignment that satisfies the module's relations gives the same output columns.
+   Those outputs are the executor's. Auxiliary columns may be non-unique only where
+   the outputs do not depend on them, for example `σ` at `X = 0`.
+2. **Near-miss tests.** For each output, take the executor value ±1 and the other
+   rounding direction, together with the strongest auxiliary assignment the author
+   can construct. The plain checker must reject each of them.
+
+Soundness of the whole statement is these lemmas composed along §5.1, together with
+the proof error of §6.
+
+## 6. Soundness
+
+Every term is an existing RFC-0012 line. Nothing new is invented.
+
+| Source | Line | Formula | Status |
+|---|---|---|---|
+| identity combination (one per domain size) | RLC | `(#identities of that size)/|K|` | proven |
+| zerocheck per domain size | SC | RFC-0006 A3 `m·δ/|K|`, `δ <= 4` | proven |
+| matmul point `ρ` | SZ | `a/|K|` per matmul (RFC-0012 A14) | proven |
+| matmul sumcheck | SC | `(s+k)·δ/|K|` per matmul, with `δ = 2` if `k = 0` and 3 otherwise | proven |
+| lookups and ranges | LU | RFC-0012 A8/A11 per lookup, `r = 1`, plus tree/leaf terms | proven |
+| claim batching per source | RLC + SC | RFC-0006 A2 mode 1 | proven |
+| certificates and openings | PCS | RFC-0012 A15 per source | conjectural; not admitted (Q12) |
+| Merkle/hash | H | RFC-0012 A15 | proven under its caps |
+| Fiat–Shamir | FS | placeholder | unproven (Q12) |
+
+- **Transcript labels.** Steps 1, 2, 4 and 6 add four labels, through RFC-0012 A16:
+  - absorb `stele/v0.1/relation/statement`;
+  - absorb `stele/v0.1/relation/roots`;
+  - challenge `stele/v0.1/relation/identity` (RLC);
+  - challenge `stele/v0.1/relation/point` (SZ).
+- **Ledger output.** The verifier computes and prints the full ledger. A development
+  proof reports `ε_interactive` (every line except FS) and states "FS unproven, PCS
+  conjectural".
+- **Integer faithfulness** follows from §3.6: the bound rule, plus range discipline
+  under the LU line.
+
+## 7. Prover and verifier cost
+
+The development profile claims no cost-model term, and no constant moves.
+
+- **Prover:** one commitment per group, one zerocheck per domain size, one LogUp per
+  lookup or range, one sumcheck per matmul, and one opening per source.
+- **Verifier:** linear in public columns and tables. It evaluates the MLEs of public
+  columns and tables directly.
+
+E16-11 measures both against FlashProve's small route (8 layers, T = 64, d = 512) and
+records them in `bench/ledger/`.
+
+## 8. Verifier algorithm
+
+1. Decode and check the public inputs. Reject an unsupported model class.
+2. Run every module's `declare` from the plan, then `Relation::validate`. On any
+   `Invalid`, reject with `StatementMismatch`.
+3. Replay §4: verify certificates, zerochecks, lookups, matmul sumchecks, claim
+   batches and openings, in that order.
+4. Evaluate every public-column and table claim. Reject on the first mismatch, with
+   the primitive's typed error.
+5. Accept, and print the ledger.
+
+Placement: the development verifier sits in `stele_reductions::relation` (the engine)
+and `stele_prover::development` (container and orchestration). `stele verify-dev`
+calls it. The no_std `stele-verifier` is unchanged, and no new Cargo edge is needed:
+`stele-cli` already wraps `stele-prover`, which wraps `stele-reductions`.
+
+## 9. Negative controls
+
+The following controls are reserved as NC-1300..1309. Each must run through the
+actual E16-10 verifier.
+
+| NC | Tamper | Expected |
+|---|---|---|
+| 1300 | change one checked token `x_{i+1}` | `FinalEvaluationMismatch` (margin range/identity) |
+| 1301 | change `y` | `FinalEvaluationMismatch` |
+| 1302 | +1 on one witness value of a group, recommitted honestly | `FinalEvaluationMismatch` (the identity holding it) |
+| 1303 | replace one witness `−1` by `p−1` in the message | `NoncanonicalField` / LU rejection |
+| 1304 | prove with other weights under the expected model commitment | `RootMismatch` |
+| 1305 | change one plan parameter (one rounding exponent) on the prover side | `StatementMismatch` |
+| 1306 | swap two group roots | `RootMismatch` |
+| 1307 | +1 on one matmul `out~(ρ)` | `RoundSumMismatch` |
+| 1308 | route one column claim to the neighbouring column index of its group | `ValueMismatch` |
+| 1309 | change `[r,e)` | `StatementMismatch` |
+
+## 10. Open questions
+
+- **Q33** (mirrored in RFC-0019). The development profile depends on three things:
+  - a per-module output-uniqueness lemma (§5.2), which is written and tested but not
+    machine-checked;
+  - a conjectural PCS;
+  - an unproven FS line (Q12).
+
+  What would promote a development proof to `standard`? At minimum: Q12; a PCS
+  parameter set admitted under RFC-0012 A15; formal statements of the uniqueness
+  lemmas (R-FORMAL); and the RFC-0011 passport binding.
+
+## 11. Amendment log
+
+None.

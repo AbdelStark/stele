@@ -1241,3 +1241,52 @@ NC-0305 there and its one-pass counter criterion. No constant, challenge or ledg
 line moves.
 
 Status: Accepted.
+
+## ADR-074: Development-profile end-to-end proof over committed integer columns (RFC-0026, RFC-0012 A16)
+
+Context: the owner directed a working end-to-end prefill prover comparable to the
+FlashProve small route. E8-01 requires ZK (RFC-0013 A1) and passports, so it cannot
+be the first end-to-end path. The primitives exist (sumcheck, zerocheck, LogUp A5,
+PCS A9), but there are no native proofs for most CQIS operations and no witness
+capture. Review record: [rfc0026-acceptance](../reviews/rfc0026-acceptance.md).
+
+Decision:
+- **Separate parameter set.** The development profile is a non-ZK parameter set
+  that certifies no security level. Its PCS lines are conjectural and its FS line
+  is unproven (Q12, Q33). It is not an RFC-0002 §8 profile, and `standard` and
+  `treaty` are unchanged.
+- **Commit everything.** Every intermediate the executor computes is a witness
+  column, named as a cut by RFC-0026 for this profile only (INV-6). Every
+  looked-up value is therefore committed, so this profile needs no Q31 virtual
+  tuple columns.
+- **One relation model.** Each operation is expressed with four relation kinds:
+  identities, lookups, ranges and two-factor matmuls, with public columns and
+  variable maps. One engine proves any validated relation set.
+  `stele_ir::relation::check` is the integer oracle: it evaluates every relation
+  over Z with no proof.
+- **Static bound rule.** The bound rule `Σ|c|Π mag < p`, together with range
+  discipline, is the INV-5 bound certificate for this profile. Values that would
+  break it are held as limbs with explicit carries.
+- **Placement.**
+  - The API lives in `stele-ir`, with no new crate and no new Cargo edge.
+  - The engine and the modules live in `stele-reductions`.
+  - The orchestration and the development verifier live in
+    `stele-prover::development`, behind `stele verify-dev`.
+  - The no_std `stele-verifier` is unchanged.
+- **Statement.** One prefill window: `T` tokens, a checked range `[r, e)` and the
+  next token `y`. Each checked token is the least id attaining the maximum logit
+  (RFC-0025 §2.6).
+- **Transcript.** RFC-0012 A16 adds four labels; every other message reuses an
+  existing label. NC-1300..1309 are reserved.
+
+Consequences:
+- The E16 epic (E16-01..E16-11) fans out from the stable API: the modules run in
+  parallel, and E16-10 integrates them.
+- Development proofs disclose model and activation information through openings,
+  and are not admissible as `standard` or `treaty` evidence.
+- Matmuls whose operands share a free bit sum over it with an `eq` factor
+  (RFC-0026 §3.5).
+- The output-uniqueness lemma of each module (RFC-0026 §5.2) is the remaining
+  soundness obligation. It is tested by near-miss controls, not machine-checked.
+
+Status: Accepted (same-author passes; independent review pending before merge).

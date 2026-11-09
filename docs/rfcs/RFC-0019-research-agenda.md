@@ -1236,3 +1236,17 @@ providers. Every original task and acceptance line remains, including final
 E5-03/E6-01 production controls after their actual consumers. This resolves
 sequencing only. Checkpoint access, missing child contracts, Q12/Q29, full
 native delivery and all original workloads remain required.
+
+Q31 development note: the RFC-0026 development profile commits every looked-up
+column as a column of a commitment group, so that profile needs no virtual tuple
+columns. This does not resolve Q31 for `standard` or `treaty`.
+
+Q33: what promotes an RFC-0026 development proof to `standard`? The profile rests
+on three things:
+- per-module output-uniqueness lemmas (RFC-0026 §5.2), which are written and
+  tested but not machine-checked;
+- a PCS parameter set that is not admitted;
+- the FS placeholder.
+
+Required at minimum: Q12, an admitted RFC-0012 A15 PCS parameter set, R-FORMAL
+statements of the uniqueness lemmas, and RFC-0011 passport binding.
