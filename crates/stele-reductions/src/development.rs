@@ -29,7 +29,7 @@ pub use row::{ConversionCapture, Policy, RowConversion, RowOutput};
 #[cfg(test)]
 mod norm_embedding_tests;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 /// A plan the development profile cannot express; rejected before proving
 /// (RFC-0026 §1.3 `UnsupportedModel`).

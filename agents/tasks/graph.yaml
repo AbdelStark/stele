@@ -2688,7 +2688,7 @@ tasks:
   - RFC-0026 §5 rows 11-13, §5.2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-09-residual-head-argmax
   acceptance:
