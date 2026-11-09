@@ -564,6 +564,27 @@ fn configs() -> Vec<(&'static str, Cfg)> {
                 heads: 4,
                 groups: 1,
                 head_width: 2,
+                ..base.clone()
+            },
+        ),
+        // True GQA: several groups, several heads per group (group = high head bits).
+        (
+            "gqa-2x2",
+            Cfg {
+                rows: 3,
+                heads: 4,
+                groups: 2,
+                head_width: 2,
+                ..base.clone()
+            },
+        ),
+        (
+            "gqa-3x2",
+            Cfg {
+                rows: 3,
+                heads: 6,
+                groups: 3,
+                head_width: 2,
                 ..base
             },
         ),
@@ -1089,7 +1110,7 @@ fn local<'a>(case: &'a Case, columns: &[ColumnId]) -> impl Iterator<Item = (Stri
         .collect();
     ids.into_iter().flat_map(move |id| {
         let len = 1usize << case.relation.columns[id.0 as usize].log_len;
-        let stride = len.div_ceil(48).max(1);
+        let stride = len.div_ceil(128).max(1);
         (0..len).step_by(stride).flat_map(move |x| {
             [1i64, -1, 2, -2, 256, -256, 1 << 16, -(1 << 16)]
                 .into_iter()
@@ -1265,7 +1286,7 @@ fn around(case: &Case, name: &str) -> Option<String> {
                 continue;
             }
             let len = 1usize << c.log_len;
-            for x in (0..len).step_by(len.div_ceil(48).max(1)) {
+            for x in (0..len).step_by(len.div_ceil(128).max(1)) {
                 for d in [1i64, -1] {
                     let mut v = case.values.clone();
                     let mut column = v.get(&case.relation, f.column).expect("c").to_vec();
@@ -1360,6 +1381,8 @@ fn redundant(name: &str) -> &'static str {
         "a carry is fixed over Z by its positions' values; its range keeps the position identity below p (bound rule)"
     } else if ["output", "block", "block/quotient"].contains(&name) {
         "int16/u16 executor range (`wide`); test inputs never reach it, a reachable overflow is exactly an executor Range rejection"
+    } else if name.starts_with("output/low/") {
+        "the split's remainder bound nl < 2^(j-1) makes the split unique; widening it is killed in rejects_every_remainder_range_widening"
     } else if name == "exp/slack" {
         "u <= 2^B (executor ExpDomain); reachable only for score spreads past 2^B, which admitted test inputs never have"
     } else if ["exp/p", "exp/masked", "exp/rr"].contains(&name) {
@@ -1372,7 +1395,8 @@ fn redundant(name: &str) -> &'static str {
 /// For every constraint of the module: deleting it admits an attacker assignment
 /// that the full relation rejects (or makes the relation statically invalid).
 fn sweep(case: &Case) -> Vec<(String, String)> {
-    let semantic = semantic(case);
+    let mut semantic = semantic(case);
+    semantic.extend(split_bit(case));
     for (name, v) in &semantic {
         assert!(check(&case.relation, v).is_err(), "{name} accepted");
     }
@@ -1430,6 +1454,14 @@ fn rejects_every_constraint_deletion() {
                 ..small((1, 7, 2, 12, 3))
             },
         ),
+        (
+            "gqa-2x2",
+            Cfg {
+                heads: 4,
+                groups: 2,
+                ..small((1, 7, 2, 12, 3))
+            },
+        ),
     ];
     let mut survived = Vec::new();
     for (label, cfg) in configs {
@@ -1443,6 +1475,135 @@ fn rejects_every_constraint_deletion() {
         }
     }
     assert!(survived.is_empty(), "constraints not needed: {survived:#?}");
+}
+
+/// Remainder-like ranges are exact bounds: widening one by a single bit admits an
+/// attacker witness (a wrong quotient, or a non-canonical split), except where a
+/// recorded sibling relation already bounds the value.
+#[test]
+fn rejects_every_remainder_range_widening() {
+    let configs = [
+        ("product", small((1, 7, 2, 12, 3))),
+        (
+            "block",
+            Cfg {
+                accumulation: 1,
+                drop: 18,
+                fractions: [8, 8, 8, 7],
+                ..small((1, 7, 2, 12, 3))
+            },
+        ),
+        (
+            "negative-e2",
+            Cfg {
+                fractions: [8, 8, 20, 8],
+                policy: [Policy::Static(17), Policy::Dynamic, Policy::Static(3)],
+                ..small((1, 7, 2, 12, 3))
+            },
+        ),
+    ];
+    let mut unkilled = Vec::new();
+    for (label, cfg) in configs {
+        let case = case_with(&cfg, 7, false);
+        let mut attacks = semantic(&case);
+        attacks.extend(split_bit(&case));
+        // score - 1 wherever Q >= 1: rho gains 2^k, one bit past its range.
+        let (n, q) = (cfg.rows, case.column(&case.values, "score/quotient"));
+        for (i, j) in (0..n).flat_map(|i| (0..n).map(move |j| (i, j))) {
+            if q[case.s(j, 0, i)] >= 1 {
+                let mut v = case
+                    .attacked(&move |s, k, v| v - i128::from(s == Stage::Score && k == (i, 0, j)));
+                rebalance(&case, &mut v);
+                attacks.push((format!("score({i},{j})-1"), v));
+            }
+        }
+        for (k, range) in case.relation.ranges.iter().enumerate() {
+            let name = range.name.trim_start_matches("L0/attention/");
+            let family = [
+                "score/remainder/",
+                "block/remainder/",
+                "output/low/",
+                "output/remainder/",
+            ];
+            if !(family.iter().any(|f| name.starts_with(f)) || name == "exp/rr/range") {
+                continue;
+            }
+            let mut widened = case.relation.clone();
+            widened.ranges[k].width.bits += 1;
+            widened.columns[range.column.0 as usize].width.bits += 1;
+            let accepted =
+                |v: &Values| check(&widened, v).is_ok() && check(&case.relation, v).is_err();
+            let killer = attacks
+                .iter()
+                .find(|(_, v)| accepted(v))
+                .map(|(n, _)| n.clone())
+                .or_else(|| {
+                    shifts(&case, &[range.column])
+                        .find(|(_, v)| accepted(v))
+                        .map(|(n, _)| n)
+                });
+            let killer = killer.unwrap_or_else(|| {
+                if name.starts_with("output/remainder/") {
+                    "bounded: r <= 2Z - 1 by the output/spare chain".into()
+                } else {
+                    "SURVIVED".into()
+                }
+            });
+            extern crate std;
+            std::println!("| {label} | `{name}` widened | {killer} |");
+            if killer == "SURVIVED" {
+                unkilled.push(format!("{label}: {name}"));
+            }
+        }
+    }
+    assert!(
+        unkilled.is_empty(),
+        "widenings admitted no attack: {unkilled:#?}"
+    );
+}
+
+/// `E2 < 0`: the split's half bit moved into `nl` (`bit 1 -> 0`, `nl += 2^(j-1)`),
+/// the division re-solved. Only `nl < 2^(j-1)` rejects it.
+fn split_bit(case: &Case) -> Vec<(String, Values)> {
+    if !case
+        .relation
+        .columns
+        .iter()
+        .any(|c| c.name == "L0/attention/output/bit")
+    {
+        return Vec::new();
+    }
+    let j = -(i32::from(case.cfg.fractions[3]) - i32::from(case.cfg.fractions[2])
+        + i32::from(case.cfg.drop));
+    let ids = byte_ids(case, "output/low");
+    let bits = case.column(&case.values, "output/bit");
+    let chains = &case.attention.columns.as_ref().expect("declared").chains;
+    let split = &chains
+        .iter()
+        .find(|(n, _)| *n == "output/split")
+        .expect("split")
+        .1;
+    let mut out = Vec::new();
+    for (x, _) in bits.iter().enumerate().filter(|(_, b)| **b == 1) {
+        let mut v = case.values.clone();
+        case.set(&mut v, "output/bit", x, 0);
+        let mut low: Vec<i128> = (0..bits.len())
+            .map(|y| {
+                ids.iter()
+                    .enumerate()
+                    .map(|(i, id)| (v.get(&case.relation, *id).expect("nl")[y] as i128) << (8 * i))
+                    .sum()
+            })
+            .collect();
+        low[x] += 1i128 << (j - 1);
+        set_bytes(case, &mut v, &ids, &low);
+        rebalance_except(case, &mut v, Some("output/split"), true);
+        split
+            .assign_around(&case.relation, &mut v, None)
+            .expect("carries");
+        out.push((format!("output bit[{x}] 1->0 into nl"), v));
+    }
+    out
 }
 
 // ---- RFC-0026 §5.2 near misses ------------------------------------------------
@@ -1615,7 +1776,7 @@ fn matches_reference_executor_capture_on_fixtures() {
             include_bytes!("../../../../stele-cqis/tests/fixtures/grouped-rows.bin"),
         ),
     ];
-    let (mut checked, mut modes) = (0, [0usize; 3]);
+    let (mut checked, mut modes, mut blocks) = (0, [0usize; 3], 0);
     for (json, raw) in corpora {
         for case_json in json.split("{\"model\":").skip(1) {
             let case_json = format!("\"model\":{case_json}");
@@ -1706,12 +1867,14 @@ fn matches_reference_executor_capture_on_fixtures() {
                 let case = build(&cfg, inputs, attention, false);
                 assert_eq!(check(&case.relation, &case.values), Ok(()), "layer {layer}");
                 modes[usize::from(cfg.exp.0)] += 1;
+                blocks += usize::from(cfg.accumulation == 1);
                 checked += 1;
             }
         }
     }
+    // Block mode is covered with one key block; T > 1024 (several blocks) is not.
     assert!(
-        checked > 10 && modes.iter().all(|m| *m > 0),
-        "{checked} {modes:?}"
+        checked > 10 && modes.iter().all(|m| *m > 0) && blocks > 0,
+        "{checked} {modes:?} {blocks}"
     );
 }

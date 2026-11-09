@@ -33,7 +33,8 @@ Row 6 (scores), with `e = e_score − fq − fk + F`, `k = −e` when `e < 0`:
 
 Row 7 (causal max): I `u = causal·(Mx − score)` through the exp columns (below);
 R one-hot `h ∈ {0,1}`; M `Σ_j h·causal = real(i)` (output is the public `real`);
-I `h·u = 0`; I `Mx·(1 − real) = 0`.
+I `h·u = 0`; I `Mx·(1 − real) = 0`, which pins an auxiliary column on padded rows
+(no output depends on `Mx` there, because `causal = 0`).
 
 Row 8 (exp, RFC-0021 §2.1): mode 0 L `(t, P)` in `exp_q/direct`, `t = −u`;
 modes 1/2 L `(hi, H)` in `exp_q/hi`, L `(lo, L)` in `exp_q/lo`,
@@ -97,34 +98,47 @@ Auxiliary columns are unique except σ at `dot = 0`, `σ'`/`τ` at a zero total,
 
 ## Tests
 
-- `accepts_honest_executor_values`: eight configurations (product, direct,
-  corrected, MHA with static scales, block mode, `E2 < 0`, `e >= 0`, GQA 4:1) on
+- `accepts_honest_executor_values`: ten configurations (product, direct,
+  corrected, MHA with static scales, block mode, `E2 < 0`, `e >= 0`, `h = 4, g = 1`,
+  and true GQA `h = 4, g = 2` and `h = 6, g = 3`) on
   random int16 Q'/K'/V converted by `Quantiser`, with the E16-05 conversions and
   the O-input conversion on the output (head assembly).
 - `matches_reference_executor_capture_on_fixtures`: every family-1 layer of the
   `model-execution` and `grouped-rows` corpora, honest values from
   `Executor::capture` (all three exp modes, exact and block mode, static and
-  dynamic scales, GQA); the executor-equivalent reference used by the other tests
-  equals the capture there.
+  dynamic scales; the only grouped fixtures have `h = 2, g = 1`, so true GQA with
+  `g >= 2` comes from the random configurations). Block mode is asserted present,
+  with one key block only: the multi-block sum (`T > 1024`) is not exercised. The
+  executor-equivalent reference used by the other tests equals the capture there.
+- GQA routing: reading the group from the low head bits instead of the high ones
+  turns `accepts_honest_executor_values` and the deletion survey red (checked by
+  hand against the `h = 4, g = 2` and `h = 6, g = 3` configurations).
 - `rejects_near_miss_outputs`, `rejects_score_other_rounding_direction`: score,
   masked score, dot, exp, `Mx`, `Z`, block and output off by ±1 with downstream
   re-solved as an attacker would; every one is rejected.
 - `rejects_every_constraint_deletion`: the deletion survey (below).
+- `rejects_every_remainder_range_widening`: each remainder-like range (`score/remainder`,
+  `block/remainder`, `output/low`, `output/remainder`, `exp/rr`) widened by one bit
+  admits an attacker witness: a wrong score, block or exp (quotient minus one with
+  the remainder one bit past its bound), a limb carry shift, or for `output/low`
+  the split's half bit moved into `nl` (`bit 1 → 0`, `nl += 2^(j−1)`, division
+  re-solved). The exception is the top byte of `output/remainder`, which
+  `output/spare` already bounds by `r <= 2Z − 1`.
 - `accepts_static_validity_realistic_shapes`, `rejects_unsupported_plans_before_declaring`.
 
 ## Deletion survey
 
 For each module constraint (identity, chain position, lookup, range, matmul,
-Compose) in five small configurations, the survey deletes it and looks for an
+Compose) in six small configurations (including GQA `h = 4, g = 2`), the survey deletes it and looks for an
 in-range attacker witness that `check` rejects and the relation without that
 constraint accepts (`stele_ir::relation::check_except`). Witnesses
 are built as an attacker would: the semantic near misses above; a value moved at a
 deleted chain position with the carries re-solved around it; a primary moved by
 `256^k` with downstream re-solved (re-division, re-split); single-entry edits; and
-limb carry shifts (`limb_i ± 2^w`, `limb_(i+1) ∓ 1`). 334 of 490 deletions have a
-witness. The other 156 are all ranges, and each is also rejected statically (the
+limb carry shifts (`limb_i ± 2^w`, `limb_(i+1) ∓ 1`). 402 of 588 deletions have a
+witness. The other 186 are all ranges, and each is also rejected statically (the
 column becomes undisciplined, §3.6). Each has a recorded reason:
-- carries (≈100): fixed over Z by the position values; the range is what keeps the
+- carries (112): fixed over Z by the position values; the range is what keeps the
   position identity below p;
 - top or sole limbs of `|dot|`, `sq·sk`, `Q`, `Pm·sv`, `|T|`, `Z`, `q`, `s`, `Mx`, `|T|` in block mode: the
   value is fixed over Z by its composition or producer; the width feeds the bound rule;
@@ -141,7 +155,7 @@ column becomes undisciplined, §3.6). Each has a recorded reason:
   copies (an E16-01 API question). Validated here: T = 64/128 at d = 512 (h = 8,
   dh = 64, MHA and GQA, exact and block mode), T = 1024 (h = 8, dh = 64) and
   T = 512 (h = 8, g = 2, dh = 128).
-- Block mode with more than one key block (`T > 1024`) is declared and validated
-  but no executor case reaches it in tests (needs `T > 1024`).
+- Block mode with more than one key block (`T > 1024`, the `block/total` matmul)
+  is declared and validated, but no test exercises it.
 - Score magnitude bound `2^28` (by declared widths) and mode-1 `B <= 29`;
   larger plans are `Unsupported::Domain`.
