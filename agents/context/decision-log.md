@@ -1147,4 +1147,37 @@ not admitted, and full-u openings are L·d K-elements per weight type (at L=128,
 d=16384: 32 MiB in QM31, 64 MiB in OM31). E7-02 is blocked on Draft RFC-0007 A8,
 the one-source phase with virtual X, which no Accepted text specifies. No measured constant moves.
 
+## ADR-071: Plan-fixed row shards under a root of roots (RFC-0010 A13, RFC-0015 A1, Q17)
+
+Context: E4-07 asks for the same digest on 1 and N shards. RFC-0012 A3 binds a
+root of roots to its ordered child list, so the digest can only be stable if the
+partition does not follow the device count. RFC-0010 §9 also mixed row and column
+sharding. Review record: [sharding-q17-acceptance](../reviews/sharding-q17-acceptance.md).
+
+Decision:
+- **Partition in the statement.** The shard exponent s is the source context's
+  layout byte; s=0 is the existing source. For 1 <= s <= min(ell, 8) there are 2^s
+  shards of consecutive rows, indexed by the top s row bits. s comes from the
+  consuming RFC's plan or passport, never from a device count or a proof byte.
+  Devices own whole shards, so 1 and N devices produce identical bytes.
+- **Row shards only.** Each shard commits its encoded column segments in an A3
+  column tree; the expected root is the A3 kind-2 root over the child roots in
+  shard order. Every column draw returns one authenticated segment per shard.
+  Column sharding of one code is not admitted.
+- **Binding order.** Child roots travel once, in the certificate. The verifier
+  rebuilds the root of roots before creating the transcript and puts the child
+  roots in the certificate public input. Openings use the certificate's child roots.
+- **No new message for partial rows.** Devices' partial rows are summed in K by the
+  prover; only t and u are sent.
+- **Soundness.** Same N, D, e, q and proven PCS terms as s=0. No challenge, round,
+  label or ledger line. A8's frozen oracle extends to the two-level tree with the
+  same frontier bound; H caps must count the extra hashes.
+- **Controls and tasks.** NC-0615..0621 reserved for E4-07 under a new binding.
+  E4-07 stays ready. E11-01 must add an Accepted plan field for s before any cut
+  uses s>=1. Weight sources stay s=0, so E11-02 is unchanged.
+
+Consequences: a response carries S paths instead of one (about 0.64 MB more per
+Circle rate 1/4 opening at N=2^22, S=8). s=0 sources, proofs and fixtures are
+unchanged. Different s values are different commitments, as A3 already states.
+
 Status: Accepted.

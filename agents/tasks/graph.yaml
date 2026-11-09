@@ -780,11 +780,14 @@ tasks:
   - E4-03
   rfc:
   - RFC-0010 §9
+  - RFC-0010 A13
   skill: distributed-systems-engineer
   crate: stele-pcs
   status: ready
   acceptance:
-  - digest identical for 1 and N shards
+  - digest identical for 1 and N shards (shards = devices holding the plan's fixed partition; RFC-0010 A13 item 4)
+  - root of roots, certificate and opening bytes identical for 1 and N devices at fixed s (RFC-0010 A13)
+  - NC-0615..0621 at s>=1 through the actual certificate and opening verifiers
 - id: E4-08
   epic: E4
   title: Native v2 expander encoder and closed code identity API
@@ -2055,12 +2058,14 @@ tasks:
   - E4-07
   rfc:
   - RFC-0015 §1,§4
+  - RFC-0015 A1
   skill: distributed-systems-engineer
   crate: stele-dist
   status: ready
   acceptance:
   - digest identical 1 vs 8 GPUs on W1
   - efficiency ledger
+  - cuts with shard exponent s>=1 only after an Accepted plan field derives s from public plan data (RFC-0015 A1)
 - id: E11-02
   epic: E11
   title: Sharded weight pass and fused opening across devices
@@ -2068,6 +2073,7 @@ tasks:
   - E11-01
   rfc:
   - RFC-0015 §2
+  - RFC-0015 A1
   skill: distributed-systems-engineer
   crate: stele-dist
   status: ready

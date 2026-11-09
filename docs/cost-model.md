@@ -330,3 +330,14 @@ A v2 expander source sends q_c=13472 certificate and q_o=6714 opening responses 
 J=14 (Policy 1), each 4R+32·log2(N) bytes, against 314 and 130 for Circle rate 1/4.
 Verifying encodes t and u with full v2 regeneration. These are exact counts, not
 measurements; no planning constant is refitted.
+
+## Plan-fixed row shards (RFC-0010 A13)
+
+A source with shard exponent s>=1 hashes the same N·4R payload bytes as s=0, but
+S=2^s times as many leaf and internal frames, plus 2S−1 frames for the root of
+roots (c_c). Each query response carries S paths instead of one:
+`4R + 32·S·log2 N` bytes, and a certificate carries 32·S bytes of child roots.
+Verifier hashing per response is S·(1+log2 N), plus 2S−1 once per certificate
+(T_misc). Example: Circle rate 1/4, N=2^22, S=8, q_o=130 adds about 0.64 MB per
+opening. These are exact counts, not measurements; no weight pass or planning
+constant moves. Every Accepted consumer still uses s=0.

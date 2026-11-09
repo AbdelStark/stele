@@ -135,6 +135,12 @@ Q16 resolution: RFC-0012 A3 Accepted with linked same-author skill reviews and
 candidate byte checks. E2-02 is ready for production implementation and actual
 NC-0602; research checks earn no control credit. Q12 and Q17 remain open.
 
+Q17 resolution: RFC-0010 A13 and RFC-0015 A1 Accepted with the linked same-author
+skill reviews. The shard exponent s is part of the source context, fixed by the
+plan and never by the device count, so 1 and N devices produce the same root of
+roots and the same proof bytes. Different s are different commitments, as
+RFC-0012 A3 states. E4-07 is ready; E11-01 owns the plan field for cuts with s>=1.
+
 Q18: which coefficient schedule, zero-extension semantics, final obligations and
 message encoding complete both RFC-0006 §2 instance batching and §4 virtual-tensor
 claim batching? Candidate: RFC-0006 A2 and RFC-0012 A4. E3-02 is blocked on their

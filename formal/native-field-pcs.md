@@ -40,6 +40,8 @@ or signed-integer interpretation is introduced. Let N=2^(m+b). The Merkle
 descriptor is exactly `{kind: Columns, id, count: N, width: 4R}`. Every
 payload is R canonical u32le M31 elements in row order. Reject limbs >=p.
 The code ID determines m,b and must pass the existing Circle factory.
+RFC-0010 A13 item 12 replaces this section's layout row and layout rejection
+sentence: the layout byte is u8(s), and s>=1 sources use A13's row shards.
 
 Derive D=N for C=1 and D=N-C otherwise; e=floor((D-1)/3). Policy 1 selects
 the least positive q_c,q_o satisfying, respectively,
