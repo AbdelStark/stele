@@ -673,3 +673,57 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
   - **Control.** `rejects_member_values_that_do_not_sum_to_the_batched_claim`. A
     lying prover commits one witness, proves the lookup on another, and reports the
     member values of what it committed. Only the split check rejects it.
+- **A4 — One stacked source (task E16-13).** Accepted with ADR-082.
+  - **Motivation.** Each commitment group used to be its own RFC-0010 v2 source, so
+    every group paid for its own certificate and opening. On the E16-10 8-layer model
+    the 255 group certificates came to 469 MB and the 313 openings to 232 MB. On a
+    40-group synthetic plan, stacking cuts the certificate bytes from 7.5 MB to
+    4.0 MB and the opening bytes from 3.5 MB to 1.9 MB.
+  - **Replacement text, §2.3 (first two bullets and "Order").**
+    - **Layout.** "Each commitment group's columns form a block of `2^(n+c)`
+      entries, with the column count padded with zero columns to `2^c`. The blocks
+      of every group in a proof form **one** RFC-0010 v2 source, the **stacked source**.
+      Blocks are placed largest first (ties in `GroupId` order) at offsets that are
+      multiples of their size. The message has `2^S` entries with
+      `S = max(6, ceil(log2 Σ 2^(n+c)))`, and unused entries are zero."
+    - **Column claim.** "Column `k` of a group with `n`-bit columns at block offset
+      `o` maps a claim at `ρ` to the stacked-source claim at the MSB-first point
+      `(bits(o/2^n + k) ‖ ρ)`, where the index has `S − n` Boolean coordinates. The
+      conversion is exact."
+    - **Geometry.** "The v2 expander exponent `J ∈ 3..=min(14, S/2)` is the one
+      that minimises certificate plus opening bytes (ties: smallest `J`), with
+      `ell = S − 2J`. A stacked source with `S > 30` is rejected."
+  - **Replacement text, §4 step 2.** "If the relation has a commitment group, absorb
+    `relation/roots` with the stacked root. The stacked source's RFC-0010 A9 certificate is
+    verified on its own transcript."
+  - **Replacement text, §4 step 7, group bullet.** "All group claims are mapped to
+    stacked-source claims and reduced with one RFC-0006 A2 mode-1 batch (A8), then opened once
+    with `verify_point`. Weight sources follow, each as before."
+  - **Replacement text, §4.1.** "The group certificates are replaced by **one**
+    stacked-source certificate, a root plus a certificate. There is at most one group opening,
+    for the stacked source."
+  - **Replacement text, §9 NC-1306.** "Swap the stacked root with a multiplicity root:
+    `RootMismatch`."
+  - **Soundness.** Unchanged:
+    - The stacked root is fixed (step 2) before every challenge.
+    - Every column claim is a stacked-source claim at a point whose leading coordinates are
+      Boolean and known to the verifier, so the conversion adds no Schwartz–Zippel
+      term.
+    - The A8 batch and A9 opening arguments are the same, on one source.
+    - The ledger loses one RLC and SC batch line per removed source, and the PCS
+      line is charged once for the stacked source.
+  - **Not stacked.**
+    - *Multiplicity sources* keep RFC-0008 A5's own layout and prefix-mask openings.
+      After A3 there is one per table, so few remain.
+    - *Weight sources* stay the model commitment, one source per weight.
+  - **Prover cost.** One `2^S` M31 message, plus one QM31 copy of it for the batch.
+    Peak memory is about `20·2^S` bytes, against about `20·Σ 2^(n+c)` before. Under
+    the stated layout, padding `Σ` up to `2^S` costs at most a factor of 2.
+  - **Limit.** The certificate and opening still grow with the stacked source. Under Policy 1
+    query counts, a source of `2^S` entries costs about `16·4^J + Q·(4·2^(S−2J) +
+    32·(2J+1))` bytes at its best `J`. That is roughly `44·2^S` bytes at `J = 3`,
+    and about `2^(S/2 + 11)` bytes at large `S`. Stacking removes the per-group terms,
+    but proofs well below about `2^(S/2 + 12)` bytes need a different PCS parameter
+    choice (RFC-0010), which is not part of this amendment.
+  - **Cost-model terms.** None.
+  - **Affected tasks.** E16-13, E16-10.

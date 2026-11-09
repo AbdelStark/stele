@@ -139,7 +139,7 @@
 | NC-1303 | development width | 0026 §3.6 | send one group message element as the noncanonical limb p | `NoncanonicalField` | todo |
 | NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RootMismatch` | todo |
 | NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `StatementMismatch` | todo |
-| NC-1306 | development group order | 0026 §2.3 | swap two group roots | `RootMismatch` | todo |
+| NC-1306 | development group order | 0026 §2.3 | swap the stacked root with a multiplicity root | `RootMismatch` | todo |
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | todo |
 | NC-1308 | development column claim | 0026 §2.3 | route one column claim to the neighbouring column index | `ValueMismatch` | todo |
 | NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `StatementMismatch` | todo |
