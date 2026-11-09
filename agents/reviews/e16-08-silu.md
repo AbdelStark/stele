@@ -155,32 +155,78 @@ folds need a plan that uses them).
 
 ### Deletion survey (conversion)
 
-`rejects_relation_without_each_constraint` builds one in-range attacker per relation.
+`rejects_relation_without_each_constraint` (in `silu/conversion/tests.rs`) builds one
+hand-made, in-range attacker per constraint name, covering relations and ranges.
 Each is a `Plan` with every other column derived from it, plus explicit cell patches.
-It asserts that `check` rejects the attacker and that the relation set without that one
-relation accepts it. The same deletions in `conversion.rs` turn that test red (source
-mutation run).
+The test asserts that `check` rejects the attacker and that
+`check_except(.., [name])` accepts it.
 
-| Constraint | Attacker (row 1 has `M = 508 = 127·4`; lane 8 is a tie `6/4`) |
+The survey case is 3x8:
+- row 0: `M = 127·2^15` and a runner-up `M − 1`;
+- row 1: `M = 508 = 127·4`, attained at lanes 9 and 13, with a tie `6/4` at lane 8;
+- row 2: all zero.
+
+| Constraint | Attacker |
 |---|---|
 | `sign/low` | `A + 1` on a negative lane, downstream recomputed |
 | `sign/high` | `A + 2^15` on that lane, now the row maximum, downstream recomputed |
-| `gap/low` | `M + 1` with gaps kept from the honest `M` |
-| `gap/high` | `M + 2^15` with gaps kept from the honest `M` |
+| `gap/low`, `gap/high` | `M + 1`, `M + 2^15` with gaps kept from the honest `M` |
 | `attained` | `M + 127`, `s + 1`, gaps from the new `M` (the hit lane has gap 127) |
 | `attained/one-hot` | as above, with no hit lane |
-| `ceiling/low` | `s + 1` with the honest slack and carry |
-| `ceiling/high` | `s + 2^15` |
+| `ceiling/low`, `ceiling/high` | `s + 1` (honest slack and carry), `s + 2^15` |
 | `ceiling` (lookup) | `s = 5`, slack 127 |
 | `scale` (Compose) | `scale + 1`, limbs kept |
 | `zero` | `z = 1` on a nonzero row, `D = s + 1` |
-| `division/low` | `rl + 1`, `pl − 1` at the tie |
-| `division/high` | `rh + 1`, `ph − 1` on a lane with `D > 2^15` (row 0) |
+| `division/low`, `division/high` | `rl + 1, pl − 1` at the tie; `rh + 1, ph − 1` where `ph >= 1` |
 | `spare/low`, `spare/high` | `pl + 1`, `ph + 1` |
 | `code` | code + 1 |
+| `sign/range` | `σ = 2` on a zero lane (`A = q = code = 0` for any `σ`) |
+| `magnitude/low/range` | the row-0 maximum as `Al = 2^15`, `Ah = 126`, borrows and carry moved |
+| `magnitude/high/range` | `σ = 1` on `T = 5`: `A = −5` (`Ah = −1`), `q = 0` |
+| `gap/low/range` | the zero lane's gap as `gl = 2^15`, `gb = 1`, `gh − 1` |
+| `gap/high/range` | `M` = the runner-up; the maximum lane's gap is −1 |
+| `hit/range` | `h = 2` and `h = −1` on the two attained lanes |
+| `remainder/low/range` | `rl + 2^15`, `rh − 1`, both carries moved |
+| `remainder/high/range` | `q + 1`, so `r < 0` (code 1 instead of 0) |
+| `spare/low/range` | `pl + 2^15`, `ph − 1`, spare carry moved |
+| `spare/high/range` | `q − 1`, so the spare is negative (code 0 instead of 1) |
+| `maximum/low/range` | row 1 as `Ml = M − 2^15`, `Mh = 1`, every gap borrow 1, ceiling carry + 1 |
+| `scale/low/range` | row 0 (`s = 2^15`) as `sl = 2^15`, `sh = 0`, carries moved |
+| `zero/range` | `z = 2` on the zero row (`D = 2`) |
 
-No relation survives. Range checks are not surveyed: each is the only discipline of
-its column (RFC-0026 §3.6), so deleting one makes `validate` fail.
+Implied ranges. Each is still declared, because it is its column's range discipline
+(§3.6):
+- `borrow`, `gap/borrow`: the low identity puts the limb at `Tl(1 − 2σ) + 2^15·κ`
+  (or `Ml − Al + 2^15·gb`). With the limb in `[0, 2^15)`, the borrow is fixed in
+  `{0, 1}`.
+- `quotient`, `codes`: `0 <= r <= 2D − 1` fixes `q = floor((2A + D)/(2D))`, and
+  `A <= M <= 127·s` gives `q <= 127`. Then `c = (1 − 2σ)·q`.
+- `remainder/carry`, `spare/carry`, `ceiling/carry`: each low identity with its
+  ranged low limb (or `slack ∈ [0, 126]`) fixes the carry as a floor.
+- `maximum/high`: at the hit lane `gl = gh = 0`. With `Ml >= 0`, that gives `gb = 0`
+  and `Mh = Ah` in u15.
+- `scale/high`: the ceiling fixes `s`, and `sl ∈ [0, 2^15)` then fixes
+  `sh = (s − sl)/2^15 <= 258`.
+
+### Widen-by-one-bit survey (conversion)
+
+Each range is widened by one bit: every other constraint stays as declared, and the
+column only has to fit the wider width.
+
+| Range | Result one bit wider |
+|---|---|
+| `sign` u1 → u2 | **caught** (`rejects_code_through_widened_sign`): `σ = 2` on `T = −32668` takes `A = −3T`, giving code −9 instead of −1 |
+| `magnitude/low`, `magnitude/high` | safe: the sign identities give `A = (1 − 2σ)·T` as a value, and `A >= 0` needs only the lower bounds; wider limbs are only non-canonical |
+| `gap/low`, `gap/high` | safe: only `gap >= 0` (the lower bounds) is used |
+| `maximum/low`, `maximum/high` | safe: `M = max A` follows from `gap >= 0` and `attained` as values |
+| `scale/low`, `scale/high` | safe: the ceiling fixes `s` as a value |
+| `remainder/low`, `remainder/high`, `spare/low`, `spare/high` | safe: `q` needs only `r >= 0` and `2D − 1 − r >= 0`, the lower bounds of nonnegative limbs |
+| `quotient`, `codes` | safe: `q` and `c` are fixed by the division (above) |
+| carries | safe: each is fixed as a floor by its low identity |
+| `borrow`, `gap/borrow` | safe: a borrow of 2 puts the low limb at `>= 2^15 + 1` |
+| `hit` u2 | safe: nonnegative `h` with `Σ h = 1` is still one-hot |
+| `zero` u2 | safe: `z·M = 0` keeps `z > 0` to all-zero rows, whose codes are 0 |
+| `slack` (lookup `0..=126`) | **caught**: one more value (127) admits `s + 1` when `127 | M` (the `ceiling` attacker: `M = 508`, `s = 5`), which changes every code of the row |
 
 ## Tests
 
@@ -200,26 +246,50 @@ its column (RFC-0026 §3.6), so deleting one makes `validate` fail.
 - `rejects_wrong_table_entry`, `rejects_wrong_limb` (one radix unit moved between
   adjacent limbs, rejected by a range), `rejects_nonzero_padding`.
 - `rejects_table_with_minimum_output`: a `−2^15` output or a short table is rejected.
-- `rejects_relation_without_each_constraint` deletes each identity, Compose and the
-  lookup inside the test. It ranges the column the deleted relation disciplined, so
-  the relation stays valid. It asserts that some near miss is then admitted.
+### Deletion survey (product)
 
-Mutation table: each constraint was deleted from `silu.rs` in turn and the tests run.
-Deleting the lookup or the `low` Compose also leaves `a` or `Tl` undisciplined, so
-`validate` fails as well. The in-test mutation above shows that each is still
-load-bearing once validity is restored.
+`rejects_relation_without_each_constraint` (in `silu/tests.rs`) works the same way
+as the conversion survey: `check` rejects and `check_except(.., [name])` accepts.
 
-| Mutation | Tests that go red |
+| Constraint | Attacker |
 |---|---|
-| delete `silu` lookup | `rejects_wrong_table_entry`, `rejects_wrong_limb`, `rejects_relation_without_each_constraint`, every `matches_reference_*`, `accepts_static_validity_realistic_shapes` |
-| delete `up` Compose | `rejects_product_near_misses`, `rejects_relation_without_each_constraint` |
-| delete `low` Compose | `rejects_wrong_table_entry`, `rejects_wrong_limb`, `rejects_relation_without_each_constraint`, every `matches_reference_*`, `accepts_static_validity_realistic_shapes` |
-| delete `low_product` identity | `rejects_product_near_misses`, `rejects_relation_without_each_constraint` |
-| delete `high_product` identity | `rejects_product_near_misses`, `rejects_nonzero_padding`, `rejects_relation_without_each_constraint` |
+| `low_product` | `T + 1` through `d`, `c` honest |
+| `high_product` | `T + 2^8` with `c`, `d` honest |
+| `up` (Compose) | `Ul + 1` with every downstream limb recomputed |
+| `low` (Compose) | `Tl + 1` alone |
+| `silu` (lookup) | `a + 1` with every limb recomputed |
+| `up_low` (range) | `Ul + 256`, `Uh − 1`, `c + a`: the same `U` and `T` |
+| `byte` (range) | `d + 256`, `c − 1`, `w − 1`: the same `T` and `Tl` |
+| `middle` (range) | `w + 128`, `Th − 1`, `Tl + 2^15`: the same `T` |
+| `high` (range) | implied: `T = U·a` with `|T| < 2^30` puts `Th` in s16 |
+| `up_high` (range) | implied: `Ul ∈ [0, 256)` and `U` in int16 put `Uh` in s8 |
+| `carry` (range) | implied: `d ∈ [0, 256)` fixes `c = floor(Ul·a/256) ∈ [−32640, 32639]` |
+
+### Widen-by-one-bit survey (product)
+
+Every limb range is safe one bit wider. The four identities telescope to
+`2^15·Th + Tl = 256·(Uh·a + c) + d = U·a` for any limb values that satisfy them, so a
+wider limb only allows a non-canonical split of the same `T`. A wider `byte` or `middle`
+also breaks the `low` Compose discipline (`Tl` u15), which `validate` rejects. The
+consumer needs `Tl` in u15 and `Th` in s16, and both hold for the canonical split,
+which the true widths force.
+
+Source mutation run: each relation was deleted from `silu.rs` in turn and the tests
+run. Deleting the lookup or the `low` Compose also leaves `a` or `Tl` undisciplined,
+so `validate` fails as well; the survey shows that each is still load-bearing once
+validity is restored.
+
+| Deleted | Tests that go red |
+|---|---|
+| `silu` lookup | `rejects_wrong_table_entry`, `rejects_wrong_limb`, `rejects_relation_without_each_constraint`, every `matches_reference_*`, `accepts_static_validity_realistic_shapes` |
+| `up` Compose | `rejects_product_near_misses`, `rejects_relation_without_each_constraint` |
+| `low` Compose | `rejects_wrong_table_entry`, `rejects_wrong_limb`, `rejects_relation_without_each_constraint`, every `matches_reference_*`, `accepts_static_validity_realistic_shapes` |
+| `low_product` | `rejects_product_near_misses`, `rejects_relation_without_each_constraint` |
+| `high_product` | `rejects_product_near_misses`, `rejects_nonzero_padding`, `rejects_relation_without_each_constraint` |
 
 - `accepts_static_validity_realistic_shapes`: two layers at `f = 14336`, T = 64,
   sharing one table.
 
-Executor parity uses the generated component table. `Executor` reads the same
-certified points (`activation::certify`), and swaps to the E16-03 capture once
-that lands.
+Executor parity: the conversion is checked against the real `Executor::capture`. The
+product uses the generated component table, which `Executor` reads through the same
+certified points (`activation::certify`).

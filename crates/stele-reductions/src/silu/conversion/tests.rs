@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::development::{Projection, ProjectionPlan};
-use stele_ir::relation::{check, Kind, Range};
+use stele_ir::relation::{check, check_except, Kind, Range};
 
 struct Case {
     relation: Relation,
@@ -173,14 +173,18 @@ fn matches_executor_capture() {
     assert!(checked > 0, "no dynamic family-1 gated row");
 }
 
-/// A 2x8 case: row 0 has a scale above `2^15` (high remainder and spare limbs); row 1
-/// has `M = 127·4`, a lane at `A = 6` (a tie: `6/4 = 1.5`) and a negative lane, so every
-/// constraint has an in-range attacker.
+/// A 3x8 case built so that every constraint has an in-range attacker:
+/// - row 0: `M = 127·2^15` (`s = 2^15`, `sl = 0`, `e = 0`), a runner-up `M − 1`, a zero
+///   lane, a small lane, a negative lane past `2^15` and lanes with high remainder and
+///   spare limbs;
+/// - row 1: `M = 127·4` attained twice (lanes 9 and 13), a tie `6/4` at lane 8 and a
+///   negative non-maximum lane 11;
+/// - row 2: all zero, and row 3 is padding.
 fn survey_case() -> (Case, usize) {
-    let mut product = vec![0; 16];
-    product[..8].copy_from_slice(&[1000, -77, 5, 0, 5_000_000, -2, 9, 12]);
-    product[8..].copy_from_slice(&[6, -508, 300, -45, 2, 0, 7, 100]);
-    let case = case(&product, 2, 8);
+    let mut product = vec![0; 24];
+    product[..8].copy_from_slice(&[1000, -77, 5, 0, 4161536, -32668, 4161535, 20000]);
+    product[8..16].copy_from_slice(&[6, -508, 300, -45, 2, 508, 7, 100]);
+    let case = case(&product, 3, 8);
     check(&case.relation, &case.values).expect("honest");
     (case, 8)
 }
@@ -231,8 +235,9 @@ fn recomputed(plan: &Plan) -> Vec<i64> {
         .collect()
 }
 
-/// RFC-0026 §5.2 deletion survey: for every relation of the module, an in-range
-/// attacker that `check` rejects and that the relation set without it accepts.
+/// RFC-0026 §5.2 deletion survey with `check_except`: for every constraint of the
+/// module (relations and ranges), an in-range attacker that `check` rejects and
+/// `check_except(.., [name])` accepts, or the range is listed as implied.
 #[test]
 fn rejects_relation_without_each_constraint() {
     let (case, tie) = survey_case();
@@ -341,6 +346,8 @@ fn rejects_relation_without_each_constraint() {
         "code",
         case.attack(honest, &[(c.codes, tie, get(c.codes) + 1)]),
     ));
+    attacks.extend(range_attacks(&case));
+    let prefix = "L0/gated/row/";
     let names: Vec<String> = case
         .relation
         .identities
@@ -349,51 +356,160 @@ fn rejects_relation_without_each_constraint() {
         .chain(case.relation.lookups.iter().map(|l| l.name.clone()))
         .chain(case.relation.matmuls.iter().map(|m| m.name.clone()))
         .chain(case.relation.composes.iter().map(|m| m.name.clone()))
-        .filter(|name| name.starts_with("L0/gated/row/"))
+        .chain(case.relation.ranges.iter().map(|r| r.name.clone()))
+        .filter(|name| name.starts_with(prefix))
         .collect();
-    assert_eq!(names.len(), attacks.len(), "one attacker per relation");
-    for (name, values) in &attacks {
-        let full = alloc::format!("L0/gated/row/{name}");
-        assert!(names.contains(&full), "{full} is a relation");
+    for name in &names {
+        let short = &name[prefix.len()..];
+        assert!(
+            IMPLIED.contains(&short) || attacks.iter().any(|a| a.0 == short),
+            "no attacker for {name}"
+        );
+    }
+    assert_eq!(names.len(), attacks.len() + IMPLIED.len());
+    for (short, values) in &attacks {
+        let name = alloc::format!("{prefix}{short}");
         assert!(
             check(&case.relation, values).is_err(),
-            "{name} attacker rejected"
+            "{name}: check rejects"
         );
         assert_eq!(
-            check(&without(&case.relation, &full), values),
+            check_except(&case.relation, values, &[name.as_str()]),
             Ok(()),
-            "{name} attacker accepted without it"
+            "{name}: accepted without it"
         );
     }
 }
 
-/// `relation` with the named identity, lookup, matmul or Compose removed, its column
-/// ranged when the removed relation was its only discipline.
-fn without(relation: &Relation, name: &str) -> Relation {
-    let mut out = relation.clone();
-    out.identities.retain(|i| i.name != name);
-    out.matmuls.retain(|m| m.name != name);
-    for lookup in relation.lookups.iter().filter(|l| l.name == name) {
-        let column = lookup.tuple[0].column;
-        let width = relation.columns[column.0 as usize].width;
-        out.ranges.push(Range {
-            name: name.into(),
-            column,
-            width,
-        });
+/// Ranges implied by the other constraints (reasons in the review notes).
+const IMPLIED: [&str; 9] = [
+    "borrow/range",
+    "gap/borrow/range",
+    "quotient/range",
+    "codes/range",
+    "remainder/carry/range",
+    "spare/carry/range",
+    "ceiling/carry/range",
+    "maximum/high/range",
+    "scale/high/range",
+];
+
+/// One in-range attacker per range that is not implied; each keeps every relation.
+fn range_attacks(case: &Case) -> Vec<(&'static str, Values)> {
+    let c = case.module.columns().expect("declared");
+    let honest = &case.plan;
+    let get = |id: ColumnId, i: usize| case.column(id)[i];
+    let mut attacks = Vec::new();
+    // sign: σ = 2 on a zero lane (row 0 lane 3), where A = q = code = 0 for any σ.
+    attacks.push(("sign/range", case.attack(honest, &[(c.sign, 3, 2)])));
+    // magnitude/low: the row-0 maximum (Al = 0, Ah = 127) as Al = 2^15, Ah = 126.
+    attacks.push((
+        "magnitude/low/range",
+        case.attack(
+            honest,
+            &[
+                (c.magnitude_low, 4, get(c.magnitude_low, 4) + LIMB),
+                (c.magnitude_high, 4, get(c.magnitude_high, 4) - 1),
+                (c.borrow, 4, 1),
+                (c.gap_borrow, 4, 1),
+                (c.remainder_carry, 4, get(c.remainder_carry, 4) + 2),
+            ],
+        ),
+    ));
+    // magnitude/high: σ = 1 on the positive lane T = 5, so A = −5 (Ah = −1), q = 0.
+    let mut plan = honest.clone();
+    plan.sign[2] = 1;
+    plan.magnitude[2] = -5;
+    plan.quotient = recomputed(&plan);
+    attacks.push(("magnitude/high/range", case.attack(&plan, &[])));
+    // gap/low: the zero lane's gap 127·2^15 as gl = 2^15, gb = 1, gh = 126.
+    attacks.push((
+        "gap/low/range",
+        case.attack(
+            honest,
+            &[
+                (c.gap_low, 3, get(c.gap_low, 3) + LIMB),
+                (c.gap_borrow, 3, 1),
+                (c.gap_high, 3, get(c.gap_high, 3) - 1),
+            ],
+        ),
+    ));
+    // gap/high: M = the runner-up 4161535, hit there; the maximum lane has gap −1.
+    let mut plan = honest.clone();
+    plan.maximum[0] = 4161535;
+    plan.gap_maximum[0] = 4161535;
+    plan.hit[4] = 0;
+    plan.hit[6] = 1;
+    plan.slack[0] = 127 * plan.scale[0] - plan.maximum[0];
+    plan.quotient = recomputed(&plan);
+    attacks.push(("gap/high/range", case.attack(&plan, &[])));
+    // hit: 2 and −1 on the two attained lanes of row 1.
+    attacks.push((
+        "hit/range",
+        case.attack(honest, &[(c.hit, 9, 2), (c.hit, 13, -1)]),
+    ));
+    // remainder/low: lane 4 (r = 2^15) as rl = 2^15, rh = 0, carries moved.
+    attacks.push((
+        "remainder/low/range",
+        case.attack(
+            honest,
+            &[
+                (c.remainder_low, 4, get(c.remainder_low, 4) + LIMB),
+                (c.remainder_high, 4, get(c.remainder_high, 4) - 1),
+                (c.remainder_carry, 4, get(c.remainder_carry, 4) - 1),
+                (c.spare_carry, 4, get(c.spare_carry, 4) - 1),
+            ],
+        ),
+    ));
+    // remainder/high: q + 1 on lane 0, so r < 0 (code 1 instead of 0).
+    let mut plan = honest.clone();
+    plan.quotient[0] += 1;
+    attacks.push(("remainder/high/range", case.attack(&plan, &[])));
+    // spare/low: lane 7 (ph = 1) as pl + 2^15, ph = 0, spare carry moved.
+    attacks.push((
+        "spare/low/range",
+        case.attack(
+            honest,
+            &[
+                (c.spare_low, 7, get(c.spare_low, 7) + LIMB),
+                (c.spare_high, 7, get(c.spare_high, 7) - 1),
+                (c.spare_carry, 7, get(c.spare_carry, 7) - 1),
+            ],
+        ),
+    ));
+    // spare/high: q − 1 on lane 7 (code 0 instead of 1), so the spare is negative.
+    let mut plan = honest.clone();
+    plan.quotient[7] -= 1;
+    attacks.push(("spare/high/range", case.attack(&plan, &[])));
+    // maximum/low: row 1 (M < 2^15, every gap borrow 0) as Ml = M − 2^15, Mh = 1.
+    let mut patches = vec![
+        (c.maximum_low, 1, get(c.maximum_low, 1) - LIMB),
+        (c.maximum_high, 1, 1),
+        (c.ceiling_carry, 1, get(c.ceiling_carry, 1) + 1),
+    ];
+    patches.extend((8..16).map(|lane| (c.gap_borrow, lane, 1)));
+    attacks.push(("maximum/low/range", case.attack(honest, &patches)));
+    // scale/low: row 0 (s = 2^15) as sl = 2^15, sh = 0, carries moved.
+    let mut patches = vec![
+        (c.scale_low, 0, LIMB),
+        (c.scale_high, 0, 0),
+        (c.ceiling_carry, 0, get(c.ceiling_carry, 0) + 127),
+    ];
+    for lane in 0..8 {
+        let q = get(c.quotient, lane);
+        patches.push((
+            c.remainder_carry,
+            lane,
+            get(c.remainder_carry, lane) + 1 - 2 * q,
+        ));
+        patches.push((c.spare_carry, lane, get(c.spare_carry, lane) + 2));
     }
-    out.lookups.retain(|l| l.name != name);
-    for compose in relation.composes.iter().filter(|c| c.name == name) {
-        // A 24-bit column cannot take one range; its limbs keep it in width here.
-        out.columns[compose.column.0 as usize].width = Width::unsigned(16);
-        out.ranges.push(Range {
-            name: name.into(),
-            column: compose.column,
-            width: Width::unsigned(16),
-        });
-    }
-    out.composes.retain(|c| c.name != name);
-    out
+    attacks.push(("scale/low/range", case.attack(honest, &patches)));
+    // zero: z = 2 on the zero row 2, D = 2.
+    let mut plan = honest.clone();
+    plan.zero[2] = 2;
+    attacks.push(("zero/range", case.attack(&plan, &[])));
+    attacks
 }
 
 /// Realistic shapes validate, and E16-05's down projection accepts the output: the
@@ -440,4 +556,45 @@ fn rejects_unsupported_policy() {
             Some(Unsupported::Policy)
         );
     }
+}
+
+/// `check` with the named range one bit wider: every other constraint as declared, and
+/// that range's column within the wider width.
+fn check_widened(relation: &Relation, values: &Values, name: &str) -> bool {
+    let range = relation
+        .ranges
+        .iter()
+        .find(|r| r.name == name)
+        .expect("range");
+    let wider = Width {
+        bits: range.width.bits + 1,
+        ..range.width
+    };
+    let column = values.get(relation, range.column).expect("column");
+    check_except(relation, values, &[name]).is_ok() && column.iter().all(|&v| wider.contains(v))
+}
+
+/// RFC-0026 §5.2 widen-by-one-bit survey, the one range it catches: `σ` in `0..=3`
+/// lets `σ = 2` take `A = −3T` on a negative lane past `2^15` (code −9 instead of −1).
+/// Every other range is safe one bit wider (written reasons in the review notes).
+#[test]
+fn rejects_code_through_widened_sign() {
+    let (case, _) = survey_case();
+    let c = case.module.columns().expect("declared");
+    let lane = 5;
+    assert_eq!(case.plan.product[lane], -32668);
+    assert_eq!(case.column(c.codes)[lane], -1);
+    let mut plan = case.plan.clone();
+    plan.sign[lane] = 2;
+    plan.magnitude[lane] = 3 * 32668;
+    plan.quotient = recomputed(&plan);
+    let values = case.attack(&plan, &[(c.borrow, lane, 1)]);
+    let codes = values.get(&case.relation, c.codes).expect("codes");
+    assert_eq!(codes[lane], -9);
+    assert!(check(&case.relation, &values).is_err());
+    assert!(check_widened(
+        &case.relation,
+        &values,
+        "L0/gated/row/sign/range"
+    ));
 }

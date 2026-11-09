@@ -1,8 +1,9 @@
 //! SiLU gated product tests: executor-equivalent honest values, near misses, shapes.
 
 use super::*;
+use alloc::string::String;
 use stele_cqis::tables::Descriptor;
-use stele_ir::relation::check;
+use stele_ir::relation::{check, check_except};
 
 fn silu(fraction: u8, output: u8) -> CqisTable {
     let descriptor = Descriptor::new("silu_q", 1, &[fraction, output]).expect("descriptor");
@@ -377,47 +378,121 @@ fn rejects_table_with_minimum_output() {
     assert_eq!(silu_outputs(&entries), Err(TableError::Parameters));
 }
 
-type Mutation = (&'static str, fn(&mut Relation));
-
-/// Mutation table (RFC-0026 §5.2): deleting each identity, Compose or the lookup lets
-/// at least one near miss of `near_misses` through.
+/// RFC-0026 §5.2 deletion survey with `check_except`: for every constraint of the
+/// product, an in-range attacker that `check` rejects and `check_except(.., [name])`
+/// accepts. The `high`, `up_high` and `carry` ranges are implied (review notes).
 #[test]
 fn rejects_relation_without_each_constraint() {
     let mut rng = Rng(25);
     let table = silu(12, 4);
     let case = case(&table, &rng.capture(4 * 8, false), 4, 8);
-    let attacks: Vec<Values> = (0..32).flat_map(|i| near_misses(&case, i)).collect();
-    assert!(attacks.iter().all(|v| check(&case.relation, v).is_err()));
-    let mutations: [Mutation; 5] = [
-        ("low_product", |r| {
-            r.identities.retain(|i| !i.name.ends_with("/low_product"))
-        }),
-        ("high_product", |r| {
-            r.identities.retain(|i| !i.name.ends_with("/high_product"))
-        }),
-        ("up", |r| r.composes.retain(|c| !c.name.ends_with("/up"))),
-        ("low", |r| r.composes.retain(|c| !c.name.ends_with("/low"))),
-        ("silu", |r| r.lookups.retain(|l| !l.name.ends_with("/silu"))),
+    let c = case.module.columns().expect("declared");
+    let get = |id: ColumnId, i: usize| case.column(id)[i];
+    let product = |i: usize| (get(c.high, i) << LOW_BITS) + get(c.low, i);
+    // A real lane whose limbs leave room for every move below.
+    let i = (0..32)
+        .find(|&i| {
+            let (ul, uh, a, w, d) = (
+                get(c.up_low, i),
+                get(c.up_high, i),
+                get(c.activation, i),
+                get(c.middle, i),
+                get(c.byte, i),
+            );
+            (1..255).contains(&ul)
+                && uh > -127
+                && (get(c.carry, i) + a).abs() < 32000
+                && (1..127).contains(&w)
+                && d < 255
+                && get(c.high, i) > -32000
+        })
+        .expect("a lane with slack in every limb");
+    let (ul, uh, a, carry, d, w, th) = (
+        get(c.up_low, i),
+        get(c.up_high, i),
+        get(c.activation, i),
+        get(c.carry, i),
+        get(c.byte, i),
+        get(c.middle, i),
+        get(c.high, i),
+    );
+    let wrong = product(i) + 1;
+    let attacks: Vec<(&str, Values)> = vec![
+        // T + 1 through d, with c honest.
+        (
+            "low_product",
+            case.with(&[(c.byte, i, d + 1), (c.low, i, get(c.low, i) + 1)]),
+        ),
+        // T + 2^8 with c and d honest.
+        (
+            "high_product",
+            case.with(&[
+                (c.middle, i, w + 1),
+                (c.low, i, get(c.low, i) + 256),
+                (c.high, i, (wrong - 1 + 256) >> LOW_BITS),
+            ]),
+        ),
+        ("up", case.with(&limbs(&case, i, ul + 1, uh, a))),
+        ("low", case.with(&[(c.low, i, get(c.low, i) + 1)])),
+        ("silu", case.with(&limbs(&case, i, ul, uh, a + 1))),
+        // Ul + 256 with Uh − 1: the same U; the carry absorbs a.
+        (
+            "up_low",
+            case.with(&[
+                (c.up_low, i, ul + 256),
+                (c.up_high, i, uh - 1),
+                (c.carry, i, carry + a),
+            ]),
+        ),
+        // d + 256 with c − 1 and w − 1: the same T and Tl.
+        (
+            "byte",
+            case.with(&[
+                (c.byte, i, d + 256),
+                (c.carry, i, carry - 1),
+                (c.middle, i, w - 1),
+            ]),
+        ),
+        // w + 128 with Th − 1: the same T, Tl moved by 2^15.
+        (
+            "middle",
+            case.with(&[
+                (c.middle, i, w + 128),
+                (c.high, i, th - 1),
+                (c.low, i, get(c.low, i) + (1 << LOW_BITS)),
+            ]),
+        ),
     ];
-    for (name, mutate) in mutations {
-        let mut relation = case.relation.clone();
-        mutate(&mut relation);
-        assert!(relation != case.relation, "{name} changed nothing");
-        // Deleting a disciplining relation also needs its column ranged to stay valid.
-        for id in [
-            case.module.columns().expect("declared").activation,
-            case.module.columns().expect("declared").low,
-        ] {
-            let width = relation.columns[id.0 as usize].width;
-            relation.ranges.push(Range {
-                name: "mutation".into(),
-                column: id,
-                width,
-            });
-        }
+    let prefix = "L0/gated/";
+    let names: Vec<String> = case
+        .relation
+        .identities
+        .iter()
+        .map(|i| i.name.clone())
+        .chain(case.relation.lookups.iter().map(|l| l.name.clone()))
+        .chain(case.relation.composes.iter().map(|c| c.name.clone()))
+        .chain(case.relation.ranges.iter().map(|r| r.name.clone()))
+        .filter(|n| n.starts_with(prefix))
+        .collect();
+    let implied = ["high", "up_high", "carry"];
+    for name in &names {
+        let short = &name[prefix.len()..];
         assert!(
-            attacks.iter().any(|v| check(&relation, v).is_ok()),
-            "no near miss needs {name}"
+            implied.contains(&short) || attacks.iter().any(|a| a.0 == short),
+            "no attacker for {name}"
+        );
+    }
+    assert_eq!(names.len(), attacks.len() + implied.len());
+    for (short, values) in &attacks {
+        let name = alloc::format!("{prefix}{short}");
+        assert!(
+            check(&case.relation, values).is_err(),
+            "{name}: check rejects"
+        );
+        assert_eq!(
+            check_except(&case.relation, values, &[name.as_str()]),
+            Ok(()),
+            "{name}: accepted without it"
         );
     }
 }
