@@ -1067,7 +1067,9 @@ tasks:
   - RFC-0004 §8
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E5-05e-g7-grouped
   acceptance:
   - exact executor runs the grouped model and harness/eval/REPORT.md records PRD G7 on the full protocol
 - id: E5-05f
