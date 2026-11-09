@@ -229,3 +229,37 @@ fn rejects_weight_claim_on_a_different_weight_source() {
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(verify(&mut t, &rel, &[&certificate], &proof).err(), VALUE);
 }
+
+#[test]
+fn rejects_zero_tuple_that_is_only_table_padding() {
+    // A 3-row table pads to 4 rows of zeros; (0, 0) is not a real row. Padded rows
+    // carry numerator 0 and denominator 1 and lie outside the prefix multiplicity
+    // functional, so padding admits no tuple (RFC-0008 A5 §2).
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/pad/2", 2));
+    let x = rel.add_column("x", g.clone(), Width::signed(4), 2);
+    let y = rel.add_column("y", g, Width::signed(4), 2);
+    let table = rel.add_table(Table {
+        name: "pairs".to_string(),
+        widths: vec![Width::signed(4), Width::signed(4)],
+        rows: vec![vec![1, 2], vec![3, 4], vec![5, 6]],
+    });
+    rel.lookups.push(Lookup {
+        name: "pairs".to_string(),
+        vars: 2,
+        selector: None,
+        tuple: vec![Ref::identity(x, 2), Ref::identity(y, 2)],
+        table,
+    });
+    let mut values = Values::new(&rel);
+    values.set(&rel, x, vec![1, 3, 5, 0]).expect("x");
+    values.set(&rel, y, vec![2, 4, 6, 0]).expect("y");
+    assert!(stele_ir::relation::check(&rel, &values).is_err());
+    assert_eq!(
+        lie(&rel, &values, &values).err(),
+        Some(Error::Fraction(stele_lookup::fraction::Error::RootMismatch))
+    );
+    values.set(&rel, x, vec![1, 3, 5, 5]).expect("x");
+    values.set(&rel, y, vec![2, 4, 6, 6]).expect("y");
+    assert!(lie(&rel, &values, &values).is_ok());
+}
