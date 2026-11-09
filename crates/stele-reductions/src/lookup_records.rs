@@ -4,6 +4,8 @@ use stele_hash::ChallengeField;
 use stele_lookup::fraction::{LeafReduction, Reduction};
 use stele_pcs::OpeningRecord;
 
+use super::super::{profile_parameters, Profile};
+
 /// Descriptive fixed parameters; constructing this metadata certifies nothing.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LookupParameters {
@@ -30,9 +32,11 @@ impl LookupParameters {
     /// RFC-0012 A8/A11 LU line as the exact ratio numerator^r / p^(d*r), returned as
     /// (numerator^r, d*r): squared under treaty (r=2, d=8). Interactive only (RFC-0008
     /// A2 item 8); never a Fiat-Shamir bound. The cap at one never binds, since
-    /// numerator < 2^64 < p^4. None outside d in {4,8} and r in {1,2}.
-    pub fn identity_term(&self) -> Option<(u128, u8)> {
-        if !matches!(self.degree, 4 | 8) || !matches!(self.repetitions, 1 | 2) {
+    /// numerator < 2^64 < p^4. None unless (r, d) is the profile's own pair, as
+    /// `admit` derives it: (1, 4) standard, (2, 8) treaty.
+    pub fn identity_term(&self, profile: Profile) -> Option<(u128, u8)> {
+        let (r, d) = profile_parameters(profile);
+        if usize::from(self.repetitions) != r || self.degree != d {
             return None;
         }
         let numerator = u128::from(self.identity_numerator);

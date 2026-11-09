@@ -530,6 +530,13 @@ pub enum Profile {
     /// r=2 over OM31 (d=8).
     Treaty,
 }
+/// RFC-0008 A2 item 2: the profile's repetitions r and extension degree d.
+fn profile_parameters(profile: Profile) -> (usize, u8) {
+    match profile {
+        Profile::Standard => (1, 4),
+        Profile::Treaty => (2, 8),
+    }
+}
 /// RFC-0008 A2 item 2 plan admission, for RFC-0023/RFC-0024 consumers only.
 /// `positions` is the plan's real lookup count; real positions are 0..positions
 /// and the 2^m-positions padding tail is unselected (A2 item 3, ADR-066). Rejects
@@ -540,11 +547,8 @@ pub fn admit<K: ChallengeField>(
     positions: u64,
     profile: Profile,
 ) -> Result<(), Error> {
-    let (r, d) = match profile {
-        Profile::Standard => (1, 4),
-        Profile::Treaty => (2, 8),
-    };
-    if s.multiplicities.len() != r || K::DEGREE != d {
+    let (r, d) = profile_parameters(profile);
+    if s.multiplicities.len() != r || K::DEGREE != usize::from(d) {
         return Err(Error::Statement);
     }
     let m = positions

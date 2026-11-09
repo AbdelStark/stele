@@ -1190,10 +1190,12 @@ repetition, one multiplicity source each, A11 labels and order), treaty admissio
 into A8's line. ADR-069 left ledger sums to E8-05.
 
 Decision:
-- **Line shape.** `LookupParameters::identity_term()` returns `(numerator^r, d*r)`,
+- **Line shape.** `LookupParameters::identity_term(profile)` returns `(numerator^r, d*r)`,
   the exact ratio numerator^r/p^(d*r). Integers, no floats. numerator<2^64, so the
   square fits u128 and is below p^4: A8's cap at one never binds and is not coded.
-  Values outside d in {4,8} and r in {1,2} return None.
+  It returns None unless (r, d) is the profile's own pair, (1,4) standard or (2,8)
+  treaty. That pair comes from the same private helper `admit` uses, so there is one
+  mapping.
 - **Source.** The inputs come from the record the verifier returns, so the line follows
   the verified r and d. E8-05a gains the criterion that it uses this line and nothing
   recomputed from proof bytes.

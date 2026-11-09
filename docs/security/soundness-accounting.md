@@ -1657,8 +1657,8 @@ lookup-frame NC-0802 continuations execute through the unchanged real verifier.
 Their exact failure prefixes add execution evidence for the existing bindings,
 not a new loss term or a concrete Fiat–Shamir theorem.
 
-E12-02 (ADR-072): `LookupParameters::identity_term` returns this line exactly as
-(numerator^r, d*r), the ratio numerator^r/p^(d*r); the cap at one never binds
+E12-02 (ADR-072): `LookupParameters::identity_term(profile)` returns this line
+exactly as (numerator^r, d*r), and None unless (r, d) is that profile's pair; the ratio numerator^r/p^(d*r); the cap at one never binds
 because numerator<2^64<p^4. A treaty-admitted record (r=2, OM31) gives the square
 over p^16, e.g. 263^2/p^16 for eight range_8 positions; standard gives 263/p^4.
 It is the interactive A8 record only. The Fiat–Shamir unit and pair rounds stay

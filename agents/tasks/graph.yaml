@@ -2163,9 +2163,12 @@ tasks:
   depends:
   - E3-07
   rfc:
-  - RFC-0008 §6
+  - RFC-0008 A2
+  - RFC-0008 A5
+  - RFC-0012 A8
+  - RFC-0012 A11
   skill: gkr-reduction-author
-  crate: stele-lookup
+  crate: stele-reductions
   status: done
   agent: claude-code
   branch: task/E12-02-double-challenge-logup

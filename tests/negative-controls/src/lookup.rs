@@ -618,22 +618,28 @@ fn accepts_treaty_lu_ledger_squared() {
         (1, 263)
     );
     assert_eq!((treaty.repetitions, treaty.identity_numerator), (2, 263));
-    assert_eq!(standard.identity_term(), Some((263, 4)));
-    assert_eq!(treaty.identity_term(), Some((263 * 263, 16)));
+    assert_eq!(standard.identity_term(Profile::Standard), Some((263, 4)));
+    assert_eq!(treaty.identity_term(Profile::Treaty), Some((263 * 263, 16)));
+    // A record is only charged under its own profile.
+    assert_eq!(standard.identity_term(Profile::Treaty), None);
+    assert_eq!(treaty.identity_term(Profile::Standard), None);
     let max = LookupParameters {
         identity_numerator: u64::MAX,
         ..treaty
     };
     assert_eq!(
-        max.identity_term(),
+        max.identity_term(Profile::Treaty),
         Some((u128::from(u64::MAX) * u128::from(u64::MAX), 16))
     );
-    for (degree, repetitions) in [(4, 0), (8, 3), (6, 1)] {
+    // Every (r, d) other than the profile's own pair, under both profiles.
+    for (degree, repetitions) in [(4, 2), (8, 1), (4, 0), (8, 3), (6, 1)] {
         let bad = LookupParameters {
             degree,
             repetitions,
             ..treaty
         };
-        assert_eq!(bad.identity_term(), None);
+        for profile in [Profile::Standard, Profile::Treaty] {
+            assert_eq!(bad.identity_term(profile), None);
+        }
     }
 }
