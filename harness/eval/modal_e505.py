@@ -7,6 +7,10 @@ torch/native parity on the E5-04 receipt, then score fp32 and CQIS on the same i
   modal run harness/eval/modal_e505.py::fidelity --tag fp32|cqis [--benchmarks ...]
   modal volume get stele-e505 results <local dir>
 
+Without Modal installed (e.g. a rented GPU host with the repository at /root/stele and a
+/vol directory), the same functions run in-process:
+  python harness/eval/modal_e505.py fidelity --tag cqis-r24-f10-g128 --fraction 10 --residual_bits 24 --group 128
+
 Every input is pinned: the original files by the E5-03c receipt hashes, the Artifact by
 its receipt SHA-256, and the native execution by the E5-04 output SHA-256.
 """
@@ -14,25 +18,38 @@ import json
 import os
 from pathlib import Path
 
-import modal
+try:
+    import modal
+except ImportError:  # plain host: the decorators are no-ops and /vol is a local directory
+    modal = None
 
 _here = Path(__file__).resolve()
 ROOT = _here.parents[2] if len(_here.parents) > 2 else _here.parent  # container imports from /root
 REPO = '/root/stele'
-app = modal.App('stele-e505')
-volume = modal.Volume.from_name('stele-e505', create_if_missing=True)
-secret = modal.Secret.from_dict({'HF_TOKEN': os.environ.get('HF_TOKEN', '')})
-image = (
-    modal.Image.debian_slim(python_version='3.12')
-    .apt_install('curl', 'build-essential', 'pkg-config', 'git')
-    .run_commands('curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.90.0 --profile minimal')
-    .pip_install('torch==2.5.1', 'numpy==1.26.4', 'blake3==1.0.11', 'python-flint==0.9.0',
-                 'safetensors==0.6.2', 'transformers==4.46.3', 'accelerate==1.1.1', 'datasets==3.1.0',
-                 'huggingface_hub==0.26.2', 'lm_eval==0.4.5', 'langdetect==1.0.9', 'immutabledict==4.2.1',
-                 'nltk==3.9.1', 'pyarrow==17.0.0')
-    .env({'HF_HOME': '/vol/hf', 'PYTHONUNBUFFERED': '1'})
-    .add_local_dir(ROOT, REPO, ignore=['target', '.git', '.env', '**/__pycache__', 'bench/out'])
-)
+if modal is None:
+    class _Local:
+        def function(self, **_):
+            return lambda f: f
+
+        def commit(self):
+            pass
+    app = volume = _Local()
+    secret = image = None
+else:
+    app = modal.App('stele-e505')
+    volume = modal.Volume.from_name('stele-e505', create_if_missing=True)
+    secret = modal.Secret.from_dict({'HF_TOKEN': os.environ.get('HF_TOKEN', '')})
+    image = (
+        modal.Image.debian_slim(python_version='3.12')
+        .apt_install('curl', 'build-essential', 'pkg-config', 'git')
+        .run_commands('curl -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.90.0 --profile minimal')
+        .pip_install('torch==2.5.1', 'numpy==1.26.4', 'blake3==1.0.11', 'python-flint==0.9.0',
+                     'safetensors==0.6.2', 'transformers==4.46.3', 'accelerate==1.1.1', 'datasets==3.1.0',
+                     'huggingface_hub==0.26.2', 'lm_eval==0.4.5', 'langdetect==1.0.9', 'immutabledict==4.2.1',
+                     'nltk==3.9.1', 'pyarrow==17.0.0')
+        .env({'HF_HOME': '/vol/hf', 'PYTHONUNBUFFERED': '1'})
+        .add_local_dir(ROOT, REPO, ignore=['target', '.git', '.env', '**/__pycache__', 'bench/out'])
+    )
 SOURCE, PREPARED, RESULTS = Path('/vol/llama'), Path('/vol/prepared'), Path('/vol/results')
 RECEIPT = 'agents/reviews/e503c-original-preparation/llama-int8.json'
 EXECUTION = 'agents/reviews/e504-native-execution/llama-int8.json'
@@ -204,7 +221,8 @@ def parity():
 
 @app.function(image=image, volumes={'/vol': volume}, secrets=[secret], gpu='H100', cpu=8, memory=98304, timeout=12*3600)
 def fidelity(tag: str, benchmarks: str = 'wikitext,arc,mmlu_pro,gpqa,ifeval', limits: str = '{}',
-             fraction: int = 2, residual_bits: int = 16):
+             fraction: int = 2, residual_bits: int = 16, group: int = 0):
+    """group > 0 runs grouped activation rows (RFC-0004 A15) on every eligible row."""
     _paths()
     from transformers import AutoTokenizer
     import fidelity as fid
@@ -212,7 +230,8 @@ def fidelity(tag: str, benchmarks: str = 'wikitext,arc,mmlu_pro,gpqa,ifeval', li
     if tag == 'fp32':
         backend = fid.Fp32(SOURCE)
     else:
-        backend = fid.Cqis(_executor(fraction=fraction, residual_bits=residual_bits)[1])
+        knobs = {'group': group} if group else None
+        backend = fid.Cqis(_executor(fraction=fraction, residual_bits=residual_bits, knobs=knobs)[1])
     names = benchmarks.split(',')
     if 'gpqa' in names:
         try:
@@ -326,3 +345,12 @@ def fake_quant(configs: str = 'w8,a8,w8a8', windows: int = 8):
             h.remove()
         volume.commit()
         print(json.dumps(dict(done=config)), flush=True)
+
+
+if __name__ == '__main__':  # plain host: python modal_e505.py <function> [--name value ...]
+    import inspect
+    import sys
+    fn, args = globals()[sys.argv[1]], sys.argv[2:]
+    params = inspect.signature(fn).parameters
+    kwargs = {k[2:]: params[k[2:]].annotation(v) for k, v in zip(args[::2], args[1::2])}
+    fn(**kwargs)

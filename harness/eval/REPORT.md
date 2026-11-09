@@ -175,6 +175,17 @@ Evidence: `results/e505b/attribution.json` (summary) and `results/e505b/items.sh
 `stele-e505` volume under `results/knobs` and `results/fakequant`). Reproduce with `modal_e505.py::knob_sweep` and
 `::fake_quant`. Modal billed about $16 for E5-05b. The run total is about $40 of the $50 cap.
 
+## Grouped activation rows (E5-05e)
+
+**Pre-registration** (committed before any grouped score was seen). The model is the wide
+baseline (int24 residual, fraction 10) with RFC-0004 A15 grouped activation rows of g = 128 on
+every eligible row: the four affine-input rows of each block and the final row. Q/K/V rows stay
+per-token (mode 2 is reserved there). g = 128 is the E5-05b simulation's setting. The protocol,
+items, statistics and G7 reading are exactly those of "Protocol" above. The fp32 side is the
+existing E5-05 run (its per-item files match `results/e505/items.sha256`). Results go to tag
+`cqis-r24-f10-g128`. The run uses the knob path (lazy table evaluation, as in E5-05b); grouped rows
+change no table.
+
 ## Reproduction and evidence
 
 - `results/e505/summary.r24-f10.json` and `results/e505/summary.r16-f2.json` hold the `summary.py` output.
