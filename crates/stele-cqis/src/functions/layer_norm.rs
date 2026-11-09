@@ -17,6 +17,20 @@ fn table_error(value: crate::tables::Error) -> NormError {
     numerics::Error::from(value).into()
 }
 
+/// Scalar pieces of one exact-mean LayerNorm row (RFC-0021 A3), in its symbols:
+/// S, Q, V=dQ-S^2, (N,P), a, M=floor(A/D), J=rsqrt(M) and e.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct LayerParts {
+    pub sum: i64,
+    pub squares: u64,
+    pub variance: u64,
+    pub ratio: (u128, u128),
+    pub exponent: i32,
+    pub mantissa: u32,
+    pub reciprocal: i128,
+    pub shift: i32,
+}
+
 impl Descriptor {
     /// Evaluate one complete exact-mean affine LayerNorm row under this descriptor.
     /// Gain and bias retain their original fractions. The mean is never rounded;
@@ -29,6 +43,15 @@ impl Descriptor {
         gain: &[i16],
         bias: &[i16],
     ) -> Result<Vec<i16>, NormError> {
+        Ok(self.layernorm_row(input, gain, bias)?.0)
+    }
+    /// As `evaluate_layernorm`, also returning the row's scalar pieces.
+    pub(crate) fn layernorm_row(
+        &self,
+        input: &[i16],
+        gain: &[i16],
+        bias: &[i16],
+    ) -> Result<(Vec<i16>, LayerParts), NormError> {
         if self.kind != Kind::LayerNorm {
             return Err(NormError::Function);
         }
@@ -52,11 +75,10 @@ impl Descriptor {
             .checked_sub(s.unsigned_abs().pow(2))
             .ok_or(NormError::Arithmetic)?;
         let unit = u128::from(d).pow(2) << (2 * u32::from(p[2]));
-        let n = ed * u128::from(v) + en * unit;
-        let den = ed * unit;
+        let (n0, den0) = (ed * u128::from(v) + en * unit, ed * unit);
         // N<2^121 and P<2^120, but normalized A/D can exceed u128. Retain
         // exact wide words through the mantissa division; no discarded remainder.
-        let (n, den) = (natural(n)?, natural(den)?);
+        let (n, den) = (natural(n0)?, natural(den0)?);
         let mut a = (n.bits() as i32 - den.bits() as i32 - 14).div_euclid(2);
         let scaled = |a: i32| -> Result<_, NormError> {
             Ok((
@@ -95,6 +117,16 @@ impl Descriptor {
             )?;
             outputs.push(i16::try_from(value).map_err(|_| NormError::Overflow)?);
         }
-        Ok(outputs)
+        let parts = LayerParts {
+            sum: s,
+            squares: q,
+            variance: v,
+            ratio: (n0, den0),
+            exponent: a,
+            mantissa: m,
+            reciprocal: j,
+            shift: e,
+        };
+        Ok((outputs, parts))
     }
 }

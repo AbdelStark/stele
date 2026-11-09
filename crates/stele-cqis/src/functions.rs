@@ -8,6 +8,7 @@ mod manifest;
 pub use manifest::Manifest;
 pub(crate) use manifest::ManifestLayout;
 mod layer_norm;
+pub(crate) use layer_norm::LayerParts;
 mod norm_row;
 pub use norm_row::{NormError, NormEvaluation};
 

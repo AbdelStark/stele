@@ -1,5 +1,8 @@
 //! RFC-0025 §2.4: complete-row Q/K/V scales and absolute 1024-key blocks.
-use super::{copy, reserved, wide, Error, Executor};
+use super::{
+    capture::{self, put},
+    copy, reserved, wide, Error, Executor,
+};
 use crate::{model::Rotation, numerics, row::QuantisedRow};
 use alloc::vec::Vec;
 
@@ -10,11 +13,28 @@ impl Executor<'_> {
         input: &[i16],
         position: usize,
         heads: u16,
+        mut w: Option<&mut capture::Rotation>,
     ) -> Result<Vec<i16>, Error> {
         let mut out = copy(input)?;
-        let Some(r) = r else {
-            return Ok(out);
-        };
+        if let Some(r) = r {
+            self.rotate_pairs(r, input, &mut out, position, heads, w.as_deref_mut())?;
+        }
+        if let Some(w) = w {
+            for v in &out {
+                put(&mut w.output, i64::from(*v))?;
+            }
+        }
+        Ok(out)
+    }
+    fn rotate_pairs(
+        &mut self,
+        r: &Rotation,
+        input: &[i16],
+        out: &mut [i16],
+        position: usize,
+        heads: u16,
+        mut w: Option<&mut capture::Rotation>,
+    ) -> Result<(), Error> {
         let width = usize::from(self.data.model.shape().head_width());
         for j in 0..r.width() / 2 {
             let slot = (position * usize::from(r.width() / 2) + usize::from(j)) & 65535;
@@ -27,6 +47,11 @@ impl Executor<'_> {
                 }
             };
             let (c, s) = (i128::from(value.0), i128::from(value.1));
+            if let Some(w) = w.as_deref_mut() {
+                put(&mut w.pair, u32::from(j))?;
+                put(&mut w.cos, i64::from(value.0))?;
+                put(&mut w.sin, i64::from(value.1))?;
+            }
             for h in 0..usize::from(heads) {
                 let left = h * width
                     + if r.layout() == 0 {
@@ -41,11 +66,22 @@ impl Executor<'_> {
                         usize::from(r.width() / 2)
                     };
                 let (x, y) = (i128::from(input[left]), i128::from(input[right]));
-                out[left] = wide(numerics::round_ratio(x * c - y * s, 16384)?)?;
-                out[right] = wide(numerics::round_ratio(x * s + y * c, 16384)?)?;
+                let (a, b) = (x * c - y * s, x * s + y * c);
+                let (ra, rb) = (
+                    numerics::round_ratio(a, 16384)?,
+                    numerics::round_ratio(b, 16384)?,
+                );
+                out[left] = wide(ra)?;
+                out[right] = wide(rb)?;
+                if let Some(w) = w.as_deref_mut() {
+                    put(&mut w.left, left as u32)?;
+                    put(&mut w.right, right as u32)?;
+                    w.rounding.push(a, 16384, ra)?;
+                    w.rounding.push(b, 16384, rb)?;
+                }
             }
         }
-        Ok(out)
+        Ok(())
     }
     pub(super) fn attend(
         &mut self,
@@ -53,6 +89,7 @@ impl Executor<'_> {
         query: &QuantisedRow,
         position: usize,
         keys: &[(QuantisedRow, QuantisedRow)],
+        mut w: Option<&mut capture::Attention>,
     ) -> Result<Vec<i16>, Error> {
         let b = self.data.model.blocks()[layer].clone();
         let s = self.data.model.shape();
@@ -80,14 +117,25 @@ impl Executor<'_> {
                     * i128::from(k.scale())
                     * i128::from(b.score_multiplier().0);
                 let score = numerics::scaled_sum(product, shift, 0, 0, 1)?;
+                if let Some(w) = w.as_deref_mut() {
+                    put(&mut w.dot, i64::from(dot))?;
+                    w.score.scaled((product, shift), (0, 0), 1, score)?;
+                }
                 scores.push(i32::try_from(score).map_err(|_| Error::Range)?);
             }
             let maximum = *scores[..=position].iter().max().ok_or(Error::Arithmetic)?;
+            if let Some(w) = w.as_deref_mut() {
+                put(&mut w.maximum, i64::from(maximum))?;
+            }
             let mut weights = reserved(keys.len())?;
             let mut z = 0u128;
             for (i, score) in scores.iter().enumerate() {
                 let weight = if i <= position {
-                    self.exponential(b.exponential(), i64::from(*score) - i64::from(maximum))?
+                    self.exponential(
+                        b.exponential(),
+                        i64::from(*score) - i64::from(maximum),
+                        w.as_deref_mut().map(|w| &mut w.exp),
+                    )?
                 } else {
                     0
                 };
@@ -97,6 +145,9 @@ impl Executor<'_> {
             if z == 0 {
                 return Err(Error::Arithmetic);
             }
+            if let Some(w) = w.as_deref_mut() {
+                put(&mut w.normaliser, z)?;
+            }
             for lane in 0..width {
                 let (mut total, mut partial) = (0i128, 0i128);
                 for (j, ((_, v), p)) in keys.iter().zip(&weights).enumerate() {
@@ -104,8 +155,11 @@ impl Executor<'_> {
                         * i128::from(v.scale())
                         * i128::from(v.codes()[group * width + lane]);
                     if b.accumulation() == 1 && ((j + 1) % 1024 == 0 || j + 1 == keys.len()) {
-                        total +=
-                            i128::from(wide(numerics::round_ratio(partial, 1u128 << b.drop())?)?);
+                        let block = numerics::round_ratio(partial, 1u128 << b.drop())?;
+                        if let Some(w) = w.as_deref_mut() {
+                            w.block.push(partial, 1u128 << b.drop(), block)?;
+                        }
+                        total += i128::from(wide(block)?);
                         partial = 0;
                     }
                 }
@@ -116,13 +170,13 @@ impl Executor<'_> {
                     + i32::from(b.drop());
                 // |T|<2^50 and exponent<=92, so use exact wide scratch when
                 // necessary rather than truncating a normalized numerator.
-                out.push(wide(numerics::scaled_sum(
-                    total,
-                    exponent,
-                    0,
-                    0,
-                    u64::try_from(z).map_err(|_| Error::Arithmetic)?,
-                )?)?);
+                let z = u64::try_from(z).map_err(|_| Error::Arithmetic)?;
+                let value = numerics::scaled_sum(total, exponent, 0, 0, z)?;
+                if let Some(w) = w.as_deref_mut() {
+                    put(&mut w.total, total)?;
+                    w.output.scaled((total, exponent), (0, 0), z, value)?;
+                }
+                out.push(wide(value)?);
             }
         }
         Ok(out)

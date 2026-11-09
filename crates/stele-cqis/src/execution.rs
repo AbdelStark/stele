@@ -3,12 +3,16 @@
 use crate::{bounds::arithmetic, functions, model, numerics, row, tables};
 use alloc::vec::Vec;
 mod attention;
+pub mod capture;
+#[cfg(test)]
+mod capture_tests;
 mod data;
 mod decoding;
 mod forward;
 mod request;
 #[cfg(test)]
 mod tests;
+pub use capture::Capture;
 use data::Data;
 pub use decoding::{Decision, Generation};
 pub use forward::{Cache, Full, Step};
@@ -262,24 +266,55 @@ impl<'a> Executor<'a> {
         }
         Self::admit(self.data.model, tokens.len(), self.memory_limit)
     }
-    fn exponential(&mut self, r: &functions::Representation, input: i64) -> Result<i32, Error> {
+    fn exponential(
+        &mut self,
+        r: &functions::Representation,
+        input: i64,
+        mut record: Option<&mut capture::Exponential>,
+    ) -> Result<i32, Error> {
         let p = r.function().parameters();
         if input > 0 || input < -(1i64 << p[0]) {
             return Err(Error::ExpDomain);
         }
         let c = r.components();
-        if r.mode() == 0 {
-            return Ok(self.points.value(c[0], input as i32)?);
-        }
-        let k = c[0].parameters()[3];
-        let n = (-input) as u32;
-        let high = self.points.value(c[0], (n >> k) as i32)?;
-        let low = self.points.value(c[1], (n % (1u32 << k)) as i32)?;
-        let product = high * low / (1i32 << p[2]);
-        Ok(if r.mode() == 2 {
-            product + self.points.value(c[2], input as i32)?
+        let mut lookups = [(0, 0); 3];
+        let value = if r.mode() == 0 {
+            let value = self.points.value(c[0], input as i32)?;
+            lookups[0] = (input as i32, value);
+            value
         } else {
-            product
-        })
+            let k = c[0].parameters()[3];
+            let n = (-input) as u32;
+            lookups[0].0 = (n >> k) as i32;
+            lookups[1].0 = (n % (1u32 << k)) as i32;
+            let high = self.points.value(c[0], lookups[0].0)?;
+            let low = self.points.value(c[1], lookups[1].0)?;
+            (lookups[0].1, lookups[1].1) = (high, low);
+            let product = high * low / (1i32 << p[2]);
+            if let Some(w) = record.as_deref_mut() {
+                w.product
+                    .push(i128::from(high * low), 1u128 << p[2], i64::from(product))?;
+            }
+            if r.mode() == 2 {
+                lookups[2] = (input as i32, self.points.value(c[2], input as i32)?);
+                product + lookups[2].1
+            } else {
+                product
+            }
+        };
+        if let Some(w) = record {
+            w.product.rounding = capture::Rounding::Floor;
+            capture::put(&mut w.input, input)?;
+            capture::put(&mut w.output, i64::from(value))?;
+            if w.components.is_empty() {
+                for _ in c {
+                    capture::put(&mut w.components, capture::Lookup::default())?;
+                }
+            }
+            for (lookup, (t, v)) in w.components.iter_mut().zip(lookups) {
+                lookup.push(i64::from(t), i64::from(v))?;
+            }
+        }
+        Ok(value)
     }
 }

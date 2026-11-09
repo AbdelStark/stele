@@ -64,11 +64,13 @@ fn matches_reference_signed_absolute_blocks_and_masked_suffixes() {
                 })
                 .collect();
             for position in [1, 1023, 1024] {
-                let actual = executor.attend(0, &q, position, &keys).expect("attention");
+                let actual = executor
+                    .attend(0, &q, position, &keys, None)
+                    .expect("attention");
                 assert_eq!(
                     actual,
                     executor
-                        .attend(0, &q, position, &keys[..=position])
+                        .attend(0, &q, position, &keys[..=position], None)
                         .expect("causal prefix")
                 );
                 let expected = if name == "exact" {
@@ -191,6 +193,7 @@ fn matches_reference_twelve_thousand_rotated_rows_and_unrotated_tails() {
                 &values,
                 position as usize,
                 fixture.model.shape().heads(),
+                None,
             ) {
                 Err(Error::Range) => {
                     digest.update(&[0]);
