@@ -63,47 +63,50 @@ impl Fixture {
     }
 }
 
-/// The stacked model source (RFC-0026 A5): its message, preparation and certificate.
-fn prepare<'a>(rel: &Relation, message: &'a [M31]) -> Option<PreparedSource<'a, QM31>> {
-    let layout = relation::model_layout(rel).ok().flatten()?;
-    Some(
-        PreparedSource::from_code_id(
-            layout.id,
-            layout.ell,
-            &layout.code,
-            message,
-            &mut HashUsage::default(),
-        )
-        .expect("model source"),
-    )
+/// The model sources (RFC-0026 A5): messages, preparations and certificates.
+fn prepare<'a>(rel: &Relation, messages: &'a [Vec<M31>]) -> Vec<PreparedSource<'a, QM31>> {
+    let layouts = relation::model_layout(rel).unwrap_or_default();
+    layouts
+        .iter()
+        .zip(messages)
+        .map(|(layout, message)| {
+            PreparedSource::from_code_id(
+                layout.id,
+                layout.ell,
+                &layout.code,
+                message,
+                &mut HashUsage::default(),
+            )
+            .expect("model source")
+        })
+        .collect()
 }
-fn certify(prepared: &Option<PreparedSource<'_, QM31>>) -> Option<VerifiedCertificate<QM31>> {
-    prepared.as_ref().map(|p| {
-        let (bytes, _) = p.certificate().expect("certificate");
-        verify_certificate(*p.source(), &bytes)
-            .expect("model certificate")
-            .0
-    })
+fn certify(prepared: &[PreparedSource<'_, QM31>]) -> Vec<VerifiedCertificate<QM31>> {
+    prepared
+        .iter()
+        .map(|p| {
+            let (bytes, _) = p.certificate().expect("certificate");
+            verify_certificate(*p.source(), &bytes)
+                .expect("model certificate")
+                .0
+        })
+        .collect()
 }
 
-fn produce(rel: &Relation, values: &Values) -> Result<(Proof, Vec<M31>), Error> {
-    let message = relation::model_message(rel, values)?;
-    let prepared = prepare(rel, &message);
-    let certificate = certify(&prepared);
+fn produce(rel: &Relation, values: &Values) -> Result<(Proof, Vec<Vec<M31>>), Error> {
+    let messages = relation::model_messages(rel, values)?;
+    let prepared = prepare(rel, &messages);
+    let certificates = certify(&prepared);
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = relation::prove(
-        &mut t,
-        rel,
-        values,
-        prepared.as_ref().zip(certificate.as_ref()),
-    )?;
-    Ok((proof, message))
+    let proof = relation::prove(&mut t, rel, values, &model)?;
+    Ok((proof, messages))
 }
-fn check_proof(rel: &Relation, message: &[M31], proof: &Proof) -> Result<Ledger, Error> {
-    let prepared = prepare(rel, message);
-    let certificate = certify(&prepared);
+fn check_proof(rel: &Relation, messages: &[Vec<M31>], proof: &Proof) -> Result<Ledger, Error> {
+    let prepared = prepare(rel, messages);
+    let certificates = certify(&prepared);
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    relation::verify(&mut t, rel, certificate.as_ref(), proof)
+    relation::verify(&mut t, rel, &certificates.iter().collect::<Vec<_>>(), proof)
 }
 fn run(f: &Fixture) -> Result<Ledger, Error> {
     let (proof, messages) = produce(&f.rel, &f.values)?;
@@ -516,7 +519,7 @@ fn accepts_exactly_what_the_checker_accepts() {
 }
 
 /// Honest proof sections for the combined relation.
-fn honest() -> (Fixture, Proof, Vec<M31>) {
+fn honest() -> (Fixture, Proof, Vec<Vec<M31>>) {
     let f = combined();
     let (proof, messages) = produce(&f.rel, &f.values).expect("honest proof");
     (f, proof, messages)

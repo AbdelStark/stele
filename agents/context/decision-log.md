@@ -1698,26 +1698,28 @@ simulation caveat, not CQIS evidence.
 
 Status: Accepted.
 
-## ADR-084: One stacked model commitment for every weight (RFC-0026 A5, task E16-14)
+## ADR-084: Stacked model commitment (RFC-0026 A5, task E16-14)
 
 Context: after A4, weight sources dominated the openings of the E16-10 8-layer proof
 (57 of 59 sections, about 19 MB). The model commitment also carried one
 certificate per weight.
 
 Decision:
-- Every weight column is an aligned block of one v2 model source. Blocks are placed
-  largest first, with ties in `ColumnId` order. The source id is 1 and the geometry
-  is A4's byte-minimising choice.
-- The model commitment is that source's root and one certificate, computed once.
-- `relation::model_layout` and `relation::model_message` let the model owner
-  prepare it.
-- The verifier checks the supplied certificate's source against the derived
-  layout.
-- A proof has one claim batch and one opening for all weight claims.
-- The guards match A4: `n > 30` and `S > 30` are rejected before shifting, and the
-  running total uses checked addition.
-- `prove`/`verify` now take the model as
-  `Option<(&PreparedSource, &VerifiedCertificate)>` / `Option<&VerifiedCertificate>`.
+- Weights are split in `ColumnId` order into v2 model sources of at most `2^30`
+  entries (greedy; one source for any model up to `2^30` entries).
+- Inside a source, blocks are placed largest first, with ties in `ColumnId` order.
+  Source `k` has id `2^32 + k` and A4's byte-minimising geometry.
+- The model commitment is the list of source roots, each with one certificate,
+  computed once per model. `model_layout` and `model_messages` let the model
+  owner prepare it.
+- The verifier checks every certificate against its derived layout. The engine
+  absorbs every model root right after the statement digest.
+- Each proof has one claim batch and one opening per model source.
+- The guards match A4: `n > 30` is rejected, and the cap holds per source.
+- `prove` and `verify` take the model as slices: `&[(&PreparedSource,
+  &VerifiedCertificate)]` and `&[&VerifiedCertificate]`.
+- Root-of-roots shards (RFC-0010 A13) were considered for very large models and
+  left open.
 
 Consequences:
 - On a 56-weight plan the openings go from 5.89 MB (57 sections) to 1.46 MB (2),

@@ -36,9 +36,9 @@ fn squares() -> (Relation, Values) {
 
 fn attempt(rel: &Relation, values: &Values, plan: &Plan) -> Result<Ledger, Error> {
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, rel, plan, values, values, None)?;
+    let proof = prove_plan(&mut t, rel, plan, values, values, &[])?;
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    verify(&mut t, rel, None, &proof)
+    verify(&mut t, rel, &[], &proof)
 }
 
 #[test]
@@ -81,10 +81,10 @@ fn rejects_committed_multiplicities_differing_from_the_tree() {
 fn lie(rel: &Relation, committed: &Values, values: &Values) -> Result<Ledger, Error> {
     let plan = plan(rel).expect("plan");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, rel, &plan, committed, values, None)
+    let proof = prove_plan(&mut t, rel, &plan, committed, values, &[])
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    verify(&mut t, rel, None, &proof)
+    verify(&mut t, rel, &[], &proof)
 }
 const VALUE: Option<Error> = Some(Error::Pcs(stele_pcs::Error::ValueMismatch));
 
@@ -174,71 +174,6 @@ fn rejects_matmul_out_claim_on_a_false_commitment() {
     let (rel, values) = composed();
     let committed = tampered(&rel, &values, ColumnId(4), 0);
     assert_eq!(lie(&rel, &committed, &values).err(), VALUE);
-}
-
-#[test]
-fn rejects_weight_claim_on_a_different_weight_source() {
-    // (d) The model commits W; the prover proves the matmul with W'.
-    let mut rel = Relation::default();
-    let g = Kind::Witness(rel.add_group("G/w/2", 2));
-    let g1 = Kind::Witness(rel.add_group("G/w/1", 1));
-    let x = rel.add_column("x", g, Width::signed(4), 2);
-    let w = rel.add_column("w", Kind::Weight, Width::signed(4), 2);
-    let y = rel.add_column("y", g1, Width::signed(9), 1);
-    for column in [x, w] {
-        rel.ranges.push(Range {
-            name: alloc::format!("r{}", column.0),
-            column,
-            width: Width::signed(4),
-        });
-    }
-    // y[i] = sum_k x[i,k] w[i,k] (bit 0 = i, bit 1 = k): worst case 128 fits signed 9.
-    rel.matmuls.push(stele_ir::relation::Matmul {
-        name: "xw".to_string(),
-        free: 1,
-        summed: 1,
-        out: Ref::identity(y, 1),
-        lhs: Ref::identity(x, 2),
-        rhs: Ref::identity(w, 2),
-    });
-    let model = [1i64, -2, 3, 4];
-    let forged = [1i64, -2, 3, 5];
-    let xv = [2i64, 1, -3, 2];
-    let mut values = Values::new(&rel);
-    values.set(&rel, x, xv.to_vec()).expect("x");
-    values.set(&rel, w, forged.to_vec()).expect("w");
-    let y_of = |w: &[i64]| vec![xv[0] * w[0] + xv[2] * w[2], xv[1] * w[1] + xv[3] * w[3]];
-    values.set(&rel, y, y_of(&forged)).expect("y");
-    let mut owner = values.clone();
-    owner.set(&rel, w, model.to_vec()).expect("w");
-    let message = model_message(&rel, &owner).expect("model message");
-    let layout = model_layout(&rel).expect("layout").expect("weights");
-    let prepared = PreparedSource::<K>::from_code_id(
-        layout.id,
-        layout.ell,
-        &layout.code,
-        &message,
-        &mut HashUsage::default(),
-    )
-    .expect("w");
-    let (bytes, _) = prepared.certificate().expect("certificate");
-    let (certificate, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
-    let plan = plan(&rel).expect("plan");
-    let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(
-        &mut t,
-        &rel,
-        &plan,
-        &values,
-        &values,
-        Some((&prepared, &certificate)),
-    )
-    .expect("a lying prover still produces bytes");
-    let mut t = Transcript::new(PUBLIC).expect("transcript");
-    assert_eq!(
-        verify(&mut t, &rel, Some(&certificate), &proof).err(),
-        VALUE
-    );
 }
 
 #[test]
@@ -384,11 +319,11 @@ fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
     assert_eq!(forged.checks.len(), 1);
     forged.checks[0].split = Some(committed.clone());
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, None)
+    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, &[])
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, None, &proof).err(),
+        verify(&mut t, &rel, &[], &proof).err(),
         Some(Error::MemberSumMismatch)
     );
 }
@@ -458,6 +393,44 @@ fn weights(lengths: &[u8]) -> Relation {
     rel
 }
 
+/// Deterministic in-range weight values for `weights(lengths)`.
+fn weight_values(rel: &Relation, lengths: &[u8]) -> Values {
+    let mut values = Values::new(rel);
+    for (i, &n) in lengths.iter().enumerate() {
+        let v = (0..1i64 << n)
+            .map(|x| (x * 37 + i as i64 * 11) % 251 - 125)
+            .collect();
+        values.set(rel, ColumnId(i as u32), v).expect("w");
+    }
+    values
+}
+
+/// Prepare and certify every model source of `messages`.
+fn certify_model<'a>(
+    rel: &Relation,
+    messages: &'a [Vec<M31>],
+) -> (Vec<PreparedSource<'a, K>>, Vec<VerifiedCertificate<K>>) {
+    let layouts = model_layout(rel).expect("layout");
+    let prepared: Vec<_> = layouts
+        .iter()
+        .zip(messages)
+        .map(|(l, m)| {
+            PreparedSource::<K>::from_code_id(l.id, l.ell, &l.code, m, &mut HashUsage::default())
+                .expect("model")
+        })
+        .collect();
+    let certificates = prepared
+        .iter()
+        .map(|p| {
+            let (bytes, _) = p.certificate().expect("certificate");
+            verify_certificate(*p.source(), &bytes)
+                .expect("certificate")
+                .0
+        })
+        .collect();
+    (prepared, certificates)
+}
+
 #[test]
 fn matches_reference_model_layout_with_ties_and_mixed_sizes() {
     // Blocks 2^n: w0 = 2^3, w1 = 2^5, w2 = 2^3, w3 = 2^1. Largest first, ties (w0, w2)
@@ -466,32 +439,55 @@ fn matches_reference_model_layout_with_ties_and_mixed_sizes() {
     let offsets: Vec<usize> = first.weights.iter().map(|w| w.offset).collect();
     assert_eq!(offsets, [32, 0, 40, 48]);
     assert_eq!(
-        first.model.as_ref().map(|m| (m.id, m.bits)),
-        Some((MODEL, 6))
+        first
+            .model
+            .iter()
+            .map(|m| (m.id, m.bits))
+            .collect::<Vec<_>>(),
+        [(MODEL, 6)]
     );
-    let layout = model_layout(&weights(&[3, 5, 3, 1]))
-        .expect("layout")
-        .expect("weights");
-    assert_eq!((layout.id, layout.bits), (MODEL, 6));
-    assert_eq!(model_layout(&squares().0).expect("layout"), None);
+    assert!(model_layout(&squares().0).expect("layout").is_empty());
 }
 
 #[test]
-fn rejects_a_model_wider_than_a_source() {
-    // Two 2^30 weights need 2^31 entries.
-    assert_eq!(plan(&weights(&[30, 30])).err(), Some(Error::Unsupported));
+fn matches_reference_model_split_into_capped_sources() {
+    // 2^30 + 2^29 + 2^29 + 2^2 entries in ColumnId order: the first weight fills
+    // source 0, the next two fill source 1, the last starts source 2 (RFC-0026 A5).
+    // Distinct range widths keep each weight's range check in its own A3 check.
+    let mut rel = weights(&[30, 29, 29, 2]);
+    for (i, range) in rel.ranges.iter_mut().enumerate() {
+        range.width = Width::signed(5 + i as u8);
+        rel.columns[i].width = Width::signed(5 + i as u8);
+    }
+    let plan = plan(&rel).expect("plan");
+    let layout: Vec<(usize, usize)> = plan.weights.iter().map(|w| (w.source, w.offset)).collect();
+    assert_eq!(layout, [(0, 0), (1, 0), (1, 1 << 29), (2, 0)]);
+    assert_eq!(
+        plan.model
+            .iter()
+            .map(|m| (m.id, m.bits))
+            .collect::<Vec<_>>(),
+        [(MODEL, 30), (MODEL + 1, 30), (MODEL + 2, 6)]
+    );
+}
+
+#[test]
+fn rejects_a_weight_wider_than_a_source() {
+    let mut rel = weights(&[2]);
+    // Bypass validation's MAX_VARS for the guard itself: plan() checks n <= 30.
+    rel.columns[0].log_len = 31;
+    assert!(plan(&rel).is_err());
 }
 
 #[test]
 fn rejects_a_missing_or_foreign_model_certificate() {
     let rel = weights(&[2]);
-    let mut values = Values::new(&rel);
-    values.set(&rel, ColumnId(0), vec![1, -2, 3, 4]).expect("w");
+    let values = weight_values(&rel, &[2]);
     let plan = plan(&rel).expect("plan");
     let proof = Proof::default();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, None, &proof).err(),
+        verify(&mut t, &rel, &[], &proof).err(),
         Some(Error::Weights)
     );
     // A Circle source of the right size is not the derived v2 layout.
@@ -502,44 +498,78 @@ fn rejects_a_missing_or_foreign_model_certificate() {
     let (foreign, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, Some(&foreign), &proof).err(),
+        verify(&mut t, &rel, &[&foreign], &proof).err(),
         Some(Error::Weights)
     );
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        prove_plan(&mut t, &rel, &plan, &values, &values, None).err(),
+        prove_plan(&mut t, &rel, &plan, &values, &values, &[]).err(),
         Some(Error::Weights)
     );
 }
 
 #[test]
 fn accepts_several_weights_in_one_model_source() {
-    // Three weights of different sizes, each range-checked: every claim must land in
-    // its own block of the model source (RFC-0026 A5).
-    let rel = weights(&[1, 3, 2]);
-    let mut values = Values::new(&rel);
-    values.set(&rel, ColumnId(0), vec![-128, 127]).expect("w0");
-    values
-        .set(&rel, ColumnId(1), vec![1, -2, 3, -4, 5, -6, 7, -8])
-        .expect("w1");
-    values
-        .set(&rel, ColumnId(2), vec![9, 10, -11, 12])
-        .expect("w2");
-    let message = model_message(&rel, &values).expect("message");
-    let layout = model_layout(&rel).expect("layout").expect("weights");
-    let prepared = PreparedSource::<K>::from_code_id(
-        layout.id,
-        layout.ell,
-        &layout.code,
-        &message,
-        &mut HashUsage::default(),
-    )
-    .expect("model");
-    let (bytes, _) = prepared.certificate().expect("certificate");
-    let (certificate, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
+    // Three weights of different sizes: every claim must land in its own block.
+    let lengths = [1, 3, 2];
+    let rel = weights(&lengths);
+    let values = weight_values(&rel, &lengths);
+    let messages = model_messages(&rel, &values).expect("messages");
+    let (prepared, certificates) = certify_model(&rel, &messages);
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof =
-        prove(&mut t, &rel, &values, Some((&prepared, &certificate))).expect("honest proof");
+    let proof = prove(&mut t, &rel, &values, &model).expect("honest proof");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    assert!(verify(&mut t, &rel, Some(&certificate), &proof).is_ok());
+    let certificates: Vec<_> = certificates.iter().collect();
+    assert!(verify(&mut t, &rel, &certificates, &proof).is_ok());
+}
+
+#[test]
+fn rejects_any_forged_weight_among_several() {
+    // (d) The model commits W; the prover proves with W' differing in one weight. Each
+    // weight is forged in turn: the first, a middle one that is neither first nor
+    // largest, and the last.
+    let lengths = [1, 3, 2];
+    let rel = weights(&lengths);
+    let owner = weight_values(&rel, &lengths);
+    let messages = model_messages(&rel, &owner).expect("messages");
+    let (prepared, certificates) = certify_model(&rel, &messages);
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let refs: Vec<_> = certificates.iter().collect();
+    let plan = plan(&rel).expect("plan");
+    for forged in 0..lengths.len() {
+        let values = tampered(&rel, &owner, ColumnId(forged as u32), 1);
+        let mut t = Transcript::new(PUBLIC).expect("transcript");
+        let proof = prove_plan(&mut t, &rel, &plan, &values, &values, &model)
+            .expect("a lying prover still produces bytes");
+        let mut t = Transcript::new(PUBLIC).expect("transcript");
+        assert_eq!(
+            verify(&mut t, &rel, &refs, &proof).err(),
+            VALUE,
+            "forged weight {forged}"
+        );
+    }
+}
+
+#[test]
+fn binds_the_model_root_without_it_in_the_public_input() {
+    // PUBLIC carries no model root; the engine absorbs it after the statement, so a
+    // proof made under one model never verifies under another of the same layout.
+    let lengths = [2, 1];
+    let rel = weights(&lengths);
+    let first = weight_values(&rel, &lengths);
+    let second = tampered(&rel, &first, ColumnId(0), 0);
+    let messages = model_messages(&rel, &first).expect("messages");
+    let (prepared, certificates) = certify_model(&rel, &messages);
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let proof = prove(&mut t, &rel, &first, &model).expect("honest proof");
+    let other_messages = model_messages(&rel, &second).expect("messages");
+    let (_, other) = certify_model(&rel, &other_messages);
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let other: Vec<_> = other.iter().collect();
+    assert!(verify(&mut t, &rel, &other, &proof).is_err());
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let mine: Vec<_> = certificates.iter().collect();
+    assert!(verify(&mut t, &rel, &mine, &proof).is_ok());
 }
