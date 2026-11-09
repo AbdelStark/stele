@@ -1327,9 +1327,18 @@ Decision:
 - **Weights.** The caller supplies one verified certificate per `Kind::Weight` column
   in `ColumnId` order; its source must hold `2^log_len` entries. The model roots are
   bound by the caller's `Transcript::new(public)` (RFC-0026 §4 step 1).
-- **Proof bytes.** Sections in §4.1 order are concatenated without prefixes; the
-  verifier derives every length and rejects trailing bytes with `ProofShape`. E16-10
-  frames them in `stele-dev-e2e-v1`.
+- **Proof sections.** `Proof` holds one byte string per §4.1 section, grouped by kind
+  (groups, multiplicities, identity sizes, lookups, matmuls, openings). `verify`
+  takes `&Proof`, derives the count of each kind and the exact length of every
+  section, and rejects any missing, extra, short or long section with `ProofShape`.
+  E16-10 frames each section with a length prefix in `stele-dev-e2e-v1`.
+- **Openings.** The producer opens what the source commits. It batches over the
+  committed table whenever the routed claims hold on it, and the honest prover's claims
+  always do. Otherwise it batches over its working table. A lying prover, built from
+  the test seam that separates committed values from proving values, therefore fails
+  only at the verifier's `verify_point` (`ValueMismatch`). Controls (a)-(d) in
+  `relation_tests.rs` use this to pin the identity, lookup, matmul-out and weight
+  claim routes.
 - **Producer seam.** `claim_batch::Batch::prove_with_point` returns the reduced point
   that the producer already computes, so the prover can open it; verification is
   unchanged.

@@ -131,8 +131,9 @@ impl fmt::Display for Ledger {
     }
 }
 
-/// Proof sections in RFC-0026 §4.1 order; [`Proof::encode`] concatenates them with
-/// no length prefixes because the verifier derives every length.
+/// Proof sections in RFC-0026 §4.1 order. Each inner `Vec<u8>` is one section's
+/// canonical bytes; the `stele-dev-e2e-v1` container frames each with its length.
+/// [`verify`] derives every section count and length and rejects any other.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Proof {
     /// Per group: root then certificate.
@@ -149,6 +150,7 @@ pub struct Proof {
     pub openings: Vec<Vec<u8>>,
 }
 impl Proof {
+    /// All sections concatenated, for size accounting; not a verifier input.
     pub fn encode(&self) -> Vec<u8> {
         [
             &self.groups,
@@ -434,6 +436,29 @@ impl<'a> Reader<'a> {
         self.take(32)?.try_into().map_err(|_| Error::ProofShape)
     }
 }
+impl Reader<'_> {
+    /// A section is canonical only if it is consumed exactly.
+    fn end(self) -> Result<(), Error> {
+        if self.0.is_empty() {
+            Ok(())
+        } else {
+            Err(Error::ProofShape)
+        }
+    }
+}
+/// The sections of one §4.1 kind, in order; the count is derived by the verifier.
+struct Sections<'a>(core::slice::Iter<'a, Vec<u8>>);
+impl<'a> Sections<'a> {
+    fn next(&mut self) -> Result<Reader<'a>, Error> {
+        self.0.next().map(|s| Reader(s)).ok_or(Error::ProofShape)
+    }
+    fn end(mut self) -> Result<(), Error> {
+        match self.0.next() {
+            None => Ok(()),
+            Some(_) => Err(Error::ProofShape),
+        }
+    }
+}
 fn put(out: &mut Vec<u8>, values: &[K]) {
     for v in values {
         out.extend_from_slice(&v.to_le_bytes());
@@ -686,13 +711,17 @@ pub fn prove(
     weights: &[&PreparedSource<'_, K>],
     certificates: &[&VerifiedCertificate<K>],
 ) -> Result<Proof, Error> {
-    prove_plan(t, relation, &plan(relation)?, values, weights, certificates)
+    let plan = plan(relation)?;
+    prove_plan(t, relation, &plan, values, values, weights, certificates)
 }
 
+/// The prover. `committed` fills the group messages (step 2); `values` drives every
+/// later message and claim. They differ only in malicious-prover controls.
 fn prove_plan(
     t: &mut Transcript<K>,
     relation: &Relation,
     plan: &Plan,
+    committed: &Values,
     values: &Values,
     weights: &[&PreparedSource<'_, K>],
     certificates: &[&VerifiedCertificate<K>],
@@ -711,8 +740,7 @@ fn prove_plan(
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
     // Step 2: group messages, signed embedding, column index in the high bits.
-    let mut messages = Vec::new();
-    for group in &plan.groups {
+    let message = |group: &Group, values: &Values| -> Result<Vec<M31>, Error> {
         let mut message = vec![M31::from_i64(0); 1 << group.bits()];
         for (j, id) in group.columns.iter().enumerate() {
             let col = column(relation, values, *id)?;
@@ -720,7 +748,11 @@ fn prove_plan(
                 *out = M31::from_i64(*v);
             }
         }
-        messages.push(message);
+        Ok(message)
+    };
+    let mut messages = Vec::new();
+    for group in &plan.groups {
+        messages.push(message(group, committed)?);
     }
     let mut usage = HashUsage::default();
     let mut prepared = Vec::new();
@@ -844,9 +876,10 @@ fn prove_plan(
             bits: group.bits(),
             batch: &batch,
         };
+        let table = to_k(&message(group, values)?);
         proof
             .openings
-            .push(opening.prove(t, &prepared[s], &handles[s])?);
+            .push(opening.prove(t, table, &prepared[s], &handles[s])?);
     }
     for (w, id) in plan.weights.iter().enumerate() {
         let batch = &claims.0[id.0 as usize];
@@ -859,9 +892,11 @@ fn prove_plan(
             bits: relation.columns[id.0 as usize].log_len,
             batch,
         };
+        let column = column(relation, values, *id)?;
+        let table = column.iter().map(|v| K::from_i64(*v)).collect();
         proof
             .openings
-            .push(opening.prove(t, weights[w], certificates[w])?);
+            .push(opening.prove(t, table, weights[w], certificates[w])?);
     }
     Ok(proof)
 }
@@ -916,17 +951,40 @@ impl Opening<'_> {
     fn prove(
         &self,
         t: &mut Transcript<K>,
+        table: Vec<K>,
         prepared: &PreparedSource<'_, K>,
         handle: &VerifiedCertificate<K>,
     ) -> Result<Vec<u8>, Error> {
-        let (bp, point) = self.batch().prove_with_point(to_k(prepared.message()), t)?;
+        // Batch over the committed table whenever the claims hold on it (always, for an
+        // honest prover); otherwise over the proving table, so that a lying prover's
+        // only failure is the opening of the committed source below.
+        let committed = to_k(prepared.message());
+        let consistent = table == committed
+            || self.batch.iter().all(|(point, value)| {
+                stele_poly::eq_table(point).is_ok_and(|eq| {
+                    committed
+                        .iter()
+                        .zip(eq)
+                        .fold(K::from_i64(0), |s, (v, w)| s + *v * w)
+                        == *value
+                })
+            });
+        let table = if consistent { committed } else { table };
+        let (bp, point) = self.batch().prove_with_point(table, t)?;
         let mut out = Vec::new();
         for row in &bp.rounds {
             put(&mut out, row);
         }
         put(&mut out, &bp.final_values);
+        // Open what is committed; an honest batch table equals it, so this is the
+        // batch final value. A lying prover's mismatch is left to the verifier.
+        let eq = stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?;
+        let committed = to_k(prepared.message())
+            .into_iter()
+            .zip(eq)
+            .fold(K::from_i64(0), |s, (v, w)| s + v * w);
         let (bytes, _) = prepared
-            .opening_point(t, handle, self.tensor, &point, bp.final_values[0])
+            .opening_point(t, handle, self.tensor, &point, committed)
             .map_err(|f| Error::Pcs(f.cause))?;
         out.extend_from_slice(&bytes);
         Ok(out)
@@ -973,23 +1031,25 @@ impl Opening<'_> {
 /// Verify a development-profile proof against the plan-derived relation. The caller
 /// creates `t` with the RFC-0026 §1.1 public inputs, which bind the model roots that
 /// `certificates` (verified, one per weight column in `ColumnId` order) carry.
-/// Every length is derived here; trailing bytes reject with `ProofShape`.
+/// Every section count and length is derived here: a missing, extra, short or long
+/// section rejects with `ProofShape` (RFC-0026 §4.1).
 pub fn verify(
     t: &mut Transcript<K>,
     relation: &Relation,
     certificates: &[&VerifiedCertificate<K>],
-    proof: &[u8],
+    proof: &Proof,
 ) -> Result<Ledger, Error> {
     let plan = plan(relation)?;
     weight_check(relation, &plan, certificates)?;
-    let mut reader = Reader(proof);
     let mut ledger = Ledger::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
     // Step 2: each certificate on its own transcript, then its root here.
     let mut handles = Vec::new();
+    let mut sections = Sections(proof.groups.iter());
     for group in &plan.groups {
+        let mut reader = sections.next()?;
         let root = reader.root()?;
         let source = group.source(root)?;
         let size = source
@@ -997,12 +1057,16 @@ pub fn verify(
             .map_err(Error::Pcs)?;
         let (handle, _) =
             verify_certificate(source, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
+        reader.end()?;
         t.absorb(AbsorbLabel::RelationRoots, &root)?;
         handles.push(handle);
     }
+    sections.end()?;
     // Step 3: multiplicity layouts are A5's, derived from each check.
     let mut mu = Vec::new();
+    let mut sections = Sections(proof.multiplicities.iter());
     for check in &plan.checks {
+        let mut reader = sections.next()?;
         let root = reader.root()?;
         let source = mu_source::<K>(check.layout, check.k, root).map_err(Error::Lookup)?;
         let size = source
@@ -1010,12 +1074,16 @@ pub fn verify(
             .map_err(Error::Pcs)?;
         let (handle, _) =
             verify_certificate(source, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
+        reader.end()?;
         t.absorb(AbsorbLabel::RelationRoots, &root)?;
         mu.push(handle);
         ledger.pcs_sources += 1;
     }
+    sections.end()?;
     // Step 4.
+    let mut sections = Sections(proof.identities.iter());
     for &m in &plan.sizes {
+        let mut reader = sections.next()?;
         let lambdas = identity_lambdas(t, relation, m)?;
         let (inputs, instance) = combine(relation, m, &lambdas);
         let degree = instance
@@ -1037,6 +1105,7 @@ pub fn verify(
             instance: &instance,
             skip: 0,
         };
+        reader.end()?;
         let reduction = z.verify(&zp, t)?;
         for (r, claim) in inputs.iter().zip(&reduction.claims) {
             claims.push(r, &claim.point, claim.value);
@@ -1049,8 +1118,11 @@ pub fn verify(
             reduction.sc.iter().map(|s| s.numerator).sum(),
         );
     }
+    sections.end()?;
     // Step 5.
+    let mut sections = Sections(proof.lookups.iter());
     for (check, handle) in plan.checks.iter().zip(&mu) {
+        let mut reader = sections.next()?;
         lookup::verify(
             t,
             check,
@@ -1060,9 +1132,13 @@ pub fn verify(
             &mut claims,
             &mut ledger,
         )?;
+        reader.end()?;
     }
+    sections.end()?;
     // Step 6.
+    let mut sections = Sections(proof.matmuls.iter());
     for (i, mm) in relation.matmuls.iter().enumerate() {
+        let mut reader = sections.next()?;
         let shape = MatmulShape::new(t, mm)?;
         let out_value = reader.k()?;
         let instance = shape.instance(MATMUL | i as u64, out_value);
@@ -1075,6 +1151,7 @@ pub fn verify(
             rounds,
             final_values: reader.ks(instance.inputs.len())?,
         };
+        reader.end()?;
         let reduction = stele_sumcheck::verify(&instance, &sp, t)?;
         if !shape.shared.is_empty() && sp.final_values[0] != shape.eq_at(&reduction.point) {
             return Err(Error::EqMismatch);
@@ -1089,7 +1166,9 @@ pub fn verify(
         ledger.add(Line::Sz, &mm.name, u64::from(mm.free));
         ledger.add(Line::Sc, &mm.name, reduction.sc.numerator);
     }
+    sections.end()?;
     // Step 7.
+    let mut sections = Sections(proof.openings.iter());
     for (s, group) in plan.groups.iter().enumerate() {
         let batch = group_claims(group, &claims);
         if batch.is_empty() {
@@ -1102,7 +1181,9 @@ pub fn verify(
             batch: &batch,
         };
         let name = &relation.groups[s].name;
+        let mut reader = sections.next()?;
         opening.verify(t, &handles[s], &mut reader, &mut ledger, name)?;
+        reader.end()?;
     }
     for (w, id) in plan.weights.iter().enumerate() {
         let batch = &claims.0[id.0 as usize];
@@ -1116,11 +1197,11 @@ pub fn verify(
             bits: column.log_len,
             batch,
         };
+        let mut reader = sections.next()?;
         opening.verify(t, certificates[w], &mut reader, &mut ledger, &column.name)?;
+        reader.end()?;
     }
-    if !reader.0.is_empty() {
-        return Err(Error::ProofShape);
-    }
+    sections.end()?;
     // §8 step 4: public-column claims, evaluated by the verifier.
     for (i, column) in relation.columns.iter().enumerate() {
         if let Kind::Public(values) = &column.kind {

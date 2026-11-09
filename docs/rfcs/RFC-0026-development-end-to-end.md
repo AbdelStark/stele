@@ -131,8 +131,9 @@ A column has one of three kinds (`stele_ir::relation::Kind`):
 - The source message is the group's columns in `ColumnId` order, padded with zero
   columns to a power-of-two count `2^c`, in the signed embedding.
 - **Column claim.** Column `k` of a group with `n`-bit columns and claim point
-  `ρ ∈ K^n` maps to the source claim at `(ρ ‖ bits(k))`. The column-index bits are
-  the high variables, and `bits(k)` is a Boolean vector known to the verifier.
+  `ρ ∈ K^n` maps to the source claim at the MSB-first point `(bits(k) ‖ ρ)`. The
+  column-index bits are the high (leading) variables, and `bits(k)` is a Boolean
+  vector known to the verifier.
   Converting a column claim into a source claim is therefore exact, with no
   Schwartz–Zippel loss.
 - **Group naming.** A module creates its groups with `Relation::add_group`. Names
@@ -559,7 +560,7 @@ actual E16-10 verifier.
 | 1307 | +1 on one matmul `out~(ρ)` | `RoundSumMismatch` |
 | 1308 | route one column claim to the neighbouring column index of its group | `ValueMismatch` |
 | 1309 | change `[r,e)` | `StatementMismatch` |
-| 1310 | commit one ranged witness value as `2^30`, outside its declared width, with every identity recomputed | LU rejection (`FinalEvaluationMismatch` in the range lookup) |
+| 1310 | commit one ranged witness value as `2^30`, outside its declared width, with every identity recomputed | LU rejection (`RootMismatch`, the A5 root equation of the range lookup) |
 
 ## 10. Open questions
 
@@ -575,4 +576,8 @@ actual E16-10 verifier.
 
 ## 11. Amendment log
 
-None.
+- **E1 (erratum, task E16-02).** §2.3 wrote the source point as `(ρ ‖ bits(k))`;
+  in the MSB-first point order of RFC-0005 §2 it is `(bits(k) ‖ ρ)`, with the column
+  index in the leading coordinates, as the text already said. §9 NC-1310 named
+  `FinalEvaluationMismatch`; the first failing check is the A5 root equation,
+  `RootMismatch`. No protocol change.

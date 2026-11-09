@@ -115,7 +115,7 @@ fn produce(rel: &Relation, values: &Values) -> Result<(Proof, Vec<Vec<M31>>), Er
     )?;
     Ok((proof, messages))
 }
-fn check_proof(rel: &Relation, messages: &[Vec<M31>], proof: &[u8]) -> Result<Ledger, Error> {
+fn check_proof(rel: &Relation, messages: &[Vec<M31>], proof: &Proof) -> Result<Ledger, Error> {
     let prepared = prepare(messages);
     let certs = certify(&prepared);
     let mut t = Transcript::new(PUBLIC).expect("transcript");
@@ -123,7 +123,7 @@ fn check_proof(rel: &Relation, messages: &[Vec<M31>], proof: &[u8]) -> Result<Le
 }
 fn run(f: &Fixture) -> Result<Ledger, Error> {
     let (proof, messages) = produce(&f.rel, &f.values)?;
-    check_proof(&f.rel, &messages, &proof.encode())
+    check_proof(&f.rel, &messages, &proof)
 }
 
 /// Ranges only: signed and unsigned 8 and 16 bits, plus narrow widths.
@@ -551,17 +551,49 @@ fn set_k(bytes: &mut [u8], v: QM31) {
 }
 
 #[test]
-fn rejects_trailing_and_truncated_bytes() {
+fn rejects_noncanonical_section_lengths_and_counts() {
     let (f, proof, messages) = honest();
-    let mut bytes = proof.encode();
-    assert!(check_proof(&f.rel, &messages, &bytes).is_ok());
-    bytes.push(0);
-    assert_eq!(
-        check_proof(&f.rel, &messages, &bytes).err(),
-        Some(Error::ProofShape)
-    );
-    bytes.truncate(bytes.len() - 2);
-    assert!(check_proof(&f.rel, &messages, &bytes).is_err());
+    assert!(check_proof(&f.rel, &messages, &proof).is_ok());
+    type Kind = fn(&mut Proof) -> &mut Vec<Vec<u8>>;
+    let kinds: [Kind; 6] = [
+        |p| &mut p.groups,
+        |p| &mut p.multiplicities,
+        |p| &mut p.identities,
+        |p| &mut p.lookups,
+        |p| &mut p.matmuls,
+        |p| &mut p.openings,
+    ];
+    for (k, kind) in kinds.iter().enumerate() {
+        let shape = Some(Error::ProofShape);
+        let mut long = proof.clone();
+        kind(&mut long)[0].push(0);
+        assert_eq!(
+            check_proof(&f.rel, &messages, &long).err(),
+            shape,
+            "trailing {k}"
+        );
+        let mut short = proof.clone();
+        kind(&mut short)[0].pop();
+        assert_eq!(
+            check_proof(&f.rel, &messages, &short).err(),
+            shape,
+            "short {k}"
+        );
+        let mut extra = proof.clone();
+        kind(&mut extra).push(Vec::new());
+        assert_eq!(
+            check_proof(&f.rel, &messages, &extra).err(),
+            shape,
+            "extra {k}"
+        );
+        let mut missing = proof.clone();
+        kind(&mut missing).pop();
+        assert_eq!(
+            check_proof(&f.rel, &messages, &missing).err(),
+            shape,
+            "missing {k}"
+        );
+    }
 }
 
 #[test]
@@ -569,7 +601,7 @@ fn rejects_changed_plan_and_invalid_relation() {
     let (f, proof, messages) = honest();
     let mut other = f.rel.clone();
     other.identities[0].terms[0].coeff = 2; // NC-1305 analogue: plan differs from the proof's
-    assert!(check_proof(&other, &messages, &proof.encode()).is_err());
+    assert!(check_proof(&other, &messages, &proof).is_err());
     other.identities[0].terms[0]
         .factors
         .push(r(ColumnId(0), &[0, 1, 2]));
@@ -580,7 +612,7 @@ fn rejects_changed_plan_and_invalid_relation() {
         .factors
         .push(r(ColumnId(0), &[0, 1, 2]));
     assert!(matches!(
-        check_proof(&other, &messages, &proof.encode()),
+        check_proof(&other, &messages, &proof),
         Err(Error::StatementMismatch(_))
     ));
 }
@@ -592,7 +624,7 @@ fn rejects_tampered_identity_final_value() {
     let last = proof.identities[0].len() - 16;
     add_one(&mut proof.identities[0][last..]);
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::Sumcheck(
             stele_sumcheck::Error::FinalEvaluationMismatch
         ))
@@ -611,14 +643,14 @@ fn rejects_noncanonical_field_element() {
     let (f, mut proof, messages) = honest();
     proof.identities[0][..4].copy_from_slice(&0x7fff_ffffu32.to_le_bytes());
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::NoncanonicalField)
     );
     // The same limb in a group certificate row (after root and version byte).
     let (f, mut proof, messages) = honest();
     proof.groups[0][33..37].copy_from_slice(&0x7fff_ffffu32.to_le_bytes());
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::Pcs(stele_pcs::Error::NoncanonicalField))
     );
 }
@@ -630,7 +662,7 @@ fn rejects_swapped_group_roots() {
     let (a, b) = proof.groups.split_at_mut(1);
     a[0][..32].swap_with_slice(&mut b[0][..32]);
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::Pcs(stele_pcs::Error::Merkle(
             stele_hash::merkle::Error::RootMismatch
         )))
@@ -638,12 +670,13 @@ fn rejects_swapped_group_roots() {
 }
 
 #[test]
-fn rejects_shifted_matmul_out_claim() {
-    // NC-1307.
+fn rejects_shifted_matmul_out_round_sum() {
+    // +1 on out~(ρ) breaks the first round sum; the out-claim binding (NC-1307) is
+    // relation::tests::rejects_matmul_out_claim_on_a_false_commitment.
     let (f, mut proof, messages) = honest();
     add_one(&mut proof.matmuls[0]);
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
     );
 }
@@ -653,7 +686,7 @@ fn rejects_tampered_opening_value() {
     // NC-1308 consequence: a group opening whose value is not the committed one.
     let (f, mut proof, messages) = honest();
     add_one(&mut proof.openings[0]);
-    assert!(check_proof(&f.rel, &messages, &proof.encode()).is_err());
+    assert!(check_proof(&f.rel, &messages, &proof).is_err());
 }
 
 #[test]
@@ -717,7 +750,7 @@ fn rejects_public_matmul_operands_scaled_against_each_other() {
     set_k(fin, l * two);
     set_k(&mut fin[16..], rr * two.inverse().expect("unit"));
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::PublicMismatch(lhs))
     );
 }
@@ -733,7 +766,7 @@ fn rejects_shared_bit_equality_factor_scaled() {
     set_k(fin, eq * two);
     set_k(&mut fin[16..], l * two.inverse().expect("unit"));
     assert_eq!(
-        check_proof(&f.rel, &messages, &proof.encode()).err(),
+        check_proof(&f.rel, &messages, &proof).err(),
         Some(Error::EqMismatch)
     );
 }
@@ -772,7 +805,7 @@ fn measures_mid_size_relation() {
         let proved = start.elapsed();
         let bytes = proof.encode();
         let start = std::time::Instant::now();
-        check_proof(&f.rel, &messages, &bytes).expect("verify");
+        check_proof(&f.rel, &messages, &proof).expect("verify");
         println!(
             "cells=3*2^{log} prove={proved:?} verify={:?} proof_bytes={}",
             start.elapsed(),
