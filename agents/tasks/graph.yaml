@@ -53,6 +53,9 @@ epics:
   E15:
     title: Research tracks
     goal: RFC-0019 spikes (DPA, EPOCH, OCTIC, LIGERITO, BF16, FORMAL, SUBSAMPLE, TABLES, SERVE)
+  E16:
+    title: Development-profile end-to-end
+    goal: non-ZK prefill-window proof with greedy exact-match over committed integer columns (RFC-0026)
 tasks:
 - id: E0-01
   epic: E0
@@ -2547,3 +2550,168 @@ tasks:
   status: ready
   acceptance:
   - throughput ledger vs vLLM on 8B
+- id: E16-01
+  epic: E16
+  title: RFC-0026 and the stele-ir relation API with plain checker
+  depends: []
+  rfc:
+  - RFC-0026 §1-3, §5
+  skill: rfc-author
+  crate: stele-ir
+  status: in_progress
+  agent: claude-code
+  branch: rfc/RFC-0026-development-e2e
+  acceptance:
+  - RFC-0026 Accepted with ADR-074, RFC-0012 A16 labels, NC-1300..1309 reserved, Q33 mirrored
+  - stele_ir::relation types, Relation::validate (bound rule, range discipline, groups) and check()
+  - unit tests accept an honest relation of every kind and reject one tamper per kind, a wrapping identity/matmul and an undisciplined column
+- id: E16-02
+  epic: E16
+  title: Relation engine prover/verifier (zerocheck, lookups, ranges, matmuls, batched openings)
+  depends:
+  - E16-01
+  rfc:
+  - RFC-0026 §2-4, §6
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - stele_reductions::relation proves and verifies any validated Relation in the RFC-0026 §4 order
+  - accepts exactly what stele_ir::relation::check accepts on randomised small relations; rejects one tamper per kind with the primitive error
+  - RFC-0012 A16 labels registered in stele-hash and docs/security/transcript-labels.json; ledger printed per RFC-0026 §6
+  - column-of-group claims (RFC-0026 §2.3) route lookup originals and openings; NC-1302, NC-1303, NC-1306, NC-1307, NC-1308 executed
+- id: E16-03
+  epic: E16
+  title: Witness capture, the executor emits every intermediate column
+  depends:
+  - E16-01
+  rfc:
+  - RFC-0026 §3.8, §5
+  - RFC-0025 §2
+  skill: cqis-numerics
+  crate: stele-cqis
+  status: ready
+  acceptance:
+  - stele_cqis::execution exposes a Capture of every intermediate of Executor::full per layer and op (RFC-0026 §5 rows 1-13)
+  - capture logits and cuts equal Full::logits/Full::cuts on every model-execution fixture; no float arithmetic
+- id: E16-04
+  epic: E16
+  title: Embedding and rmsnorm_q modules
+  depends:
+  - E16-01
+  rfc:
+  - RFC-0026 §5 rows 1-2, §5.2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Module declare/assign for RFC-0026 §5 rows 1-2; Relation::validate passes for the E16-10 synthetic model shapes
+  - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
+  - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+- id: E16-05
+  epic: E16
+  title: Row conversion and projection module (Q/K/V/O/gate/up/down/head)
+  depends:
+  - E16-01
+  rfc:
+  - RFC-0026 §5 rows 3-4, §5.2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Module declare/assign for RFC-0026 §5 rows 3-4; Relation::validate passes for the E16-10 synthetic model shapes
+  - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
+  - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+- id: E16-06
+  epic: E16
+  title: RoPE module
+  depends:
+  - E16-01
+  rfc:
+  - RFC-0026 §5 row 5, §5.2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Module declare/assign for RFC-0026 §5 row 5; Relation::validate passes for the E16-10 synthetic model shapes
+  - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
+  - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+- id: E16-07
+  epic: E16
+  title: Attention module (scores, causal max, exp, normaliser, P-hat V)
+  depends:
+  - E16-01
+  - E16-05
+  rfc:
+  - RFC-0026 §5 rows 6-9, §5.2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Module declare/assign for RFC-0026 §5 rows 6-9; Relation::validate passes for the E16-10 synthetic model shapes
+  - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
+  - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+- id: E16-08
+  epic: E16
+  title: SiLU gated FFN product module
+  depends:
+  - E16-01
+  rfc:
+  - RFC-0026 §5 row 10, §5.2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Module declare/assign for RFC-0026 §5 row 10; Relation::validate passes for the E16-10 synthetic model shapes
+  - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
+  - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+- id: E16-09
+  epic: E16
+  title: Residual, final norm, head and greedy argmax module
+  depends:
+  - E16-01
+  - E16-05
+  rfc:
+  - RFC-0026 §5 rows 11-13, §5.2
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  status: ready
+  acceptance:
+  - Module declare/assign for RFC-0026 §5 rows 11-13; Relation::validate passes for the E16-10 synthetic model shapes
+  - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
+  - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+- id: E16-10
+  epic: E16
+  title: Orchestrator, proof container, development verifier CLI and 8-layer end-to-end test
+  depends:
+  - E16-02
+  - E16-03
+  - E16-04
+  - E16-05
+  - E16-06
+  - E16-07
+  - E16-08
+  - E16-09
+  rfc:
+  - RFC-0026 §1, §4.1, §8, §9
+  skill: gkr-reduction-author
+  crate: stele-prover
+  status: ready
+  acceptance:
+  - stele_prover::development proves and verifies one prefill window of a synthetic 8-layer family-1 model (T=64) with greedy exact-match of the checked range
+  - stele-dev-e2e-v1 container in stele-proof; stele verify-dev accepts the honest proof and prints the RFC-0026 §6 ledger
+  - NC-1300, NC-1301, NC-1304, NC-1305, NC-1309 executed through the actual verifier; deterministic proof bytes across two runs
+- id: E16-11
+  epic: E16
+  title: Development-profile performance and a real small Llama run
+  depends:
+  - E16-10
+  rfc:
+  - RFC-0026 §7
+  - RFC-0018
+  skill: benchmark-runner
+  crate: stele-bench
+  status: ready
+  acceptance:
+  - bench/ledger entries for prove/verify time and proof size on the 8-layer synthetic model and one converted small Llama checkpoint
+  - comparison table against the FlashProve small route; GPU path only with the parity gate (INV-3)
