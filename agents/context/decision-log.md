@@ -1541,7 +1541,7 @@ Decision:
   from 3.5 MB to 1.9 MB.
 
 Consequences:
-- NC-1306 becomes "swap the stacked root with a multiplicity root".
+- NC-1306 becomes root substitution: "replace the stacked root with a multiplicity root".
 - What remains is the stacked source's own certificate and opening, which grow with the
   stacked source size under the RFC-0010 Policy 1 query counts. Single-digit-MB proofs at the
   8-layer scale need a PCS parameter change outside RFC-0026.

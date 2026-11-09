@@ -369,8 +369,13 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
     order.sort_by(|a, b| (groups[*b].n + groups[*b].c).cmp(&(groups[*a].n + groups[*a].c)));
     let mut total = 0usize;
     for g in order {
+        // Reject before shifting: n + c > 30 cannot fit a source (RFC-0026 A4).
+        let bits = u32::from(groups[g].n) + u32::from(groups[g].c);
+        if bits > 30 {
+            return Err(Error::Unsupported);
+        }
         groups[g].offset = total;
-        total += 1 << (groups[g].n + groups[g].c);
+        total = total.checked_add(1 << bits).ok_or(Error::Unsupported)?;
     }
     let stack = match groups.is_empty() {
         true => None,

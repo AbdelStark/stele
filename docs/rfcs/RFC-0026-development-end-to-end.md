@@ -702,7 +702,7 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
   - **Replacement text, §4.1.** "The group certificates are replaced by **one**
     stacked-source certificate, a root plus a certificate. There is at most one group opening,
     for the stacked source."
-  - **Replacement text, §9 NC-1306.** "Swap the stacked root with a multiplicity root:
+  - **Replacement text, §9 NC-1306.** "Root substitution: replace the stacked root with a multiplicity root:
     `RootMismatch`."
   - **Soundness.** Unchanged:
     - The stacked root is fixed (step 2) before every challenge.
@@ -717,7 +717,7 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
       After A3 there is one per table, so few remain.
     - *Weight sources* stay the model commitment, one source per weight.
   - **Prover cost.** One `2^S` M31 message, plus one QM31 copy of it for the batch.
-    Peak memory is about `20·2^S` bytes, against about `20·Σ 2^(n+c)` before. Under
+    Peak memory is about `24·2^S` bytes (the committed and proving M31 messages and one QM31 batch table), plus the encoded columns, against the same per group before. Under
     the stated layout, padding `Σ` up to `2^S` costs at most a factor of 2.
   - **Limit.** The certificate and opening still grow with the stacked source. Under Policy 1
     query counts, a source of `2^S` entries costs about `16·4^J + Q·(4·2^(S−2J) +
