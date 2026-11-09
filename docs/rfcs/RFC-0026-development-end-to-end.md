@@ -658,8 +658,16 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
   - **Prover cost.** Per check, the honest prover holds `c + 1` dense tables of `2^m`
     QM31 values (originals and selector) plus `2^m` leaf pairs: about
     `16·(c + 3)·2^m` bytes. Its time is `O(2^m + 2^k)` field operations, plus
-    `O(c·Σ 2^m_i)` for the split. The total is the same as before; there is just
-    one multiplicity source per table.
+    `O(c·Σ 2^m_i)` for the split.
+    - Rounding `Σ 2^m_i` up to `2^m` can nearly double the padded `N` of a check.
+      The LU numerator and the dense tables grow with it.
+    - Batching every same-width range into one domain makes `m > 30` reachable on
+      large models, and such a check is rejected (`Unsupported`) rather than split.
+      A check-splitting rule would be a further amendment.
+    - Field work summed over all checks is about the same as one check per lookup,
+      up to the padding factor. Peak prover memory is not: it is set by the largest
+      check, about `16·(c + 3)·2^m` bytes, where it used to be the largest single
+      lookup.
   - **Cost-model terms.** None (the development profile claims none).
   - **Affected tasks.** E16-12, E16-10.
   - **Control.** `rejects_member_values_that_do_not_sum_to_the_batched_claim`. A

@@ -363,14 +363,15 @@ fn rejects_batched_tuple_outside_the_table() {
 
 #[test]
 fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
-    // The prover commits sq[0] = 50, runs the lookup on the true 49, and reports the
-    // member evaluation of what it committed. Only the A3 member sum can reject.
-    let (rel, values) = squares();
+    // Two-column lookup only (no range on sq): the prover commits sq[0] = 50 (tuple
+    // column 1), runs the lookup on the true 49 and reports the member evaluation of
+    // what it committed. Only the A3 member sum over column 1 can reject.
+    let (mut rel, values) = squares();
+    rel.ranges.clear();
     let committed = tampered(&rel, &values, ColumnId(1), 0);
     let mut forged = plan(&rel).expect("plan");
-    for check in &mut forged.checks {
-        check.split = Some(committed.clone());
-    }
+    assert_eq!(forged.checks.len(), 1);
+    forged.checks[0].split = Some(committed.clone());
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, &[], &[])
         .expect("a lying prover still produces bytes");
@@ -379,4 +380,13 @@ fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
         verify(&mut t, &rel, &[], &proof).err(),
         Some(Error::MemberSumMismatch)
     );
+}
+
+#[test]
+fn rejects_false_commitment_in_a_later_smaller_member() {
+    // c (length 2) is the last, smallest member of the batched 8-bit range check; its
+    // committed c[1] is +1 while every message is proven from the true value.
+    let (rel, values) = batched();
+    let committed = tampered(&rel, &values, ColumnId(2), 1);
+    assert_eq!(lie(&rel, &committed, &values).err(), VALUE);
 }
