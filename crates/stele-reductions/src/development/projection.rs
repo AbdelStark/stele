@@ -14,11 +14,13 @@
 //! - rounding chain, for `l < 0` with `K = -l`:
 //!   `sum v_a*m_b*s_c*256^(a+b+c) + 2^(K-1) = Ymag*2^K + rho`, `rho` in `[0, 2^K)` as
 //!   byte limbs; for `l >= 0`: `sum v_a*m_b*s_c*256^(a+b+c+l/8) = Ymag'` and
-//!   `Ymag = 2^(l mod 8) * Ymag'`;
+//!   `Ymag = 2^(l mod 8) * Ymag'`. When `K > bits(Pmax) + 1` the rounding is
+//!   identically zero and `Ymag = 0` replaces the chain;
 //! - output: `Y = mask * (1 - 2*tau) * Ymag`, signed 16, zero on padding.
 //!
 //! `m_j` is split into two public bytes per channel; padded channels have `m = 0`.
-//! Output-uniqueness lemma P: `agents/reviews/e16-05-projections.md`.
+//! Output-uniqueness lemma P and the mutation table:
+//! `agents/reviews/e16-05-projections.md`.
 
 use super::{bit_length, log2_ceil, r, signed_for, term, Builder, Chain, RowOutput, Unsupported};
 use alloc::string::String;
@@ -62,20 +64,56 @@ pub struct ProjectionCapture {
 }
 
 #[derive(Clone, Debug)]
-struct Columns {
-    weight: ColumnId,
+pub(crate) struct Columns {
+    pub(crate) weight: ColumnId,
     /// Grouped only: digit columns `b0`, `b1`.
-    digits: Vec<ColumnId>,
+    pub(crate) digits: Vec<ColumnId>,
     /// One matmul output per digit row.
-    sums: Vec<ColumnId>,
-    bytes: Vec<ColumnId>,
-    sign: ColumnId,
+    pub(crate) sums: Vec<ColumnId>,
+    pub(crate) bytes: Vec<ColumnId>,
+    pub(crate) sign: ColumnId,
     /// Per-row only: scale bytes.
-    scale_bytes: Vec<ColumnId>,
-    magnitude: ColumnId,
-    remainder: Vec<ColumnId>,
-    output: ColumnId,
-    chains: Vec<Chain>,
+    pub(crate) scale_bytes: Vec<ColumnId>,
+    pub(crate) magnitude: ColumnId,
+    pub(crate) remainder: Vec<ColumnId>,
+    pub(crate) output: ColumnId,
+    pub(crate) chains: Vec<(String, Chain)>,
+}
+
+/// Steps of the witness dataflow, in order (see `row::Step`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Step {
+    Digits,
+    Sums,
+    Sign,
+    Bytes,
+    ScaleBytes,
+    Magnitude,
+    Remainder,
+    Output,
+}
+
+/// Values of every witness column; `inputs` are the read-only module inputs.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ProjectionWitness {
+    /// `[lane]` input codes and `[group]` input scales, padded.
+    pub(crate) codes: Vec<i64>,
+    pub(crate) scales: Vec<i64>,
+    /// `[output][lane]` weights, padded.
+    pub(crate) weights: Vec<Vec<i64>>,
+    /// `[digit][lane]`.
+    pub(crate) digits: Vec<Vec<i64>>,
+    /// `[digit][out]`.
+    pub(crate) sums: Vec<Vec<i64>>,
+    pub(crate) sign: Vec<i64>,
+    /// `[byte][out]`.
+    pub(crate) bytes: Vec<Vec<i64>>,
+    /// `[byte][row]`.
+    pub(crate) scale_bytes: Vec<Vec<i64>>,
+    pub(crate) magnitude: Vec<i64>,
+    /// `[limb][out]`.
+    pub(crate) remainder: Vec<Vec<i64>>,
+    pub(crate) output: Vec<i64>,
 }
 
 /// One projection reading a converted row (RFC-0026 §5 row 4).
@@ -84,12 +122,24 @@ pub struct Projection {
     input: RowOutput,
     weight: Option<ColumnId>,
     plan: ProjectionPlan,
-    columns: Option<Columns>,
+    pub(crate) columns: Option<Columns>,
 }
 
 /// Bytes needed for `n`.
 fn bytes(n: u128) -> usize {
     usize::from(bit_length(n)).div_ceil(8).max(1)
+}
+
+/// Positions of a wide identity, filled term by term.
+struct Positions(Vec<Vec<Term>>);
+
+impl Positions {
+    fn push(&mut self, position: usize, t: Term) {
+        if self.0.len() <= position {
+            self.0.resize(position + 1, Vec::new());
+        }
+        self.0[position].push(t);
+    }
 }
 
 impl Projection {
@@ -163,6 +213,43 @@ impl Projection {
         self.sum_bounds().into_iter().map(signed_for).collect()
     }
 
+    /// `|V| <= vmax` for every input within its declared widths.
+    fn vmax(&self) -> u128 {
+        self.sum_bounds()
+            .iter()
+            .enumerate()
+            .map(|(k, c)| c << (8 * k))
+            .sum()
+    }
+
+    /// The rounding is identically zero: `K > bits(Pmax) + 1`.
+    fn vanishing(&self) -> bool {
+        // The scale bytes bound s below 2^bits(scale_bound).
+        let u_max = if self.grouped() {
+            1
+        } else {
+            (1u128 << bit_length(u128::from(self.input.scale_bound))) - 1
+        };
+        let pmax = self.vmax() * 65535 * u_max;
+        self.shift() < 0 && (-self.shift()) as u32 > u32::from(bit_length(pmax)) + 1
+    }
+
+    /// `l`, with a left shift clamped to 16: for `l >= 16` every `P >= 1` leaves
+    /// int16 and `P = 0` stays 0, so `min(l, 16)` has the same accepted set.
+    fn shift(&self) -> i32 {
+        self.plan.shift.min(16)
+    }
+
+    /// `(offset bytes, output factor)` of a left shift.
+    fn left(&self) -> (usize, i64) {
+        let l = self.shift();
+        if l >= 0 {
+            ((l / 8) as usize, 1i64 << (l % 8))
+        } else {
+            (0, 1)
+        }
+    }
+
     /// Output column (`T x o`, signed 16); `None` before `declare`.
     pub fn output(&self) -> Option<ColumnId> {
         self.columns.as_ref().map(|c| c.output)
@@ -173,7 +260,7 @@ impl Projection {
         self.columns.as_ref().map(|c| c.weight)
     }
 
-    fn logs(&self) -> (u8, u8, u8, u8) {
+    pub(crate) fn logs(&self) -> (u8, u8, u8, u8) {
         let i = self.input;
         (
             i.log_rows,
@@ -182,17 +269,269 @@ impl Projection {
             log2_ceil(self.plan.outputs),
         )
     }
-}
 
-/// Positions of a wide identity, filled term by term.
-struct Positions(Vec<Vec<Term>>);
+    pub(crate) fn real(&self, x: usize) -> bool {
+        let (_, _, _, lo) = self.logs();
+        (x >> lo) < self.plan.rows && (x & ((1 << lo) - 1)) < self.plan.outputs
+    }
 
-impl Positions {
-    fn push(&mut self, position: usize, t: Term) {
-        if self.0.len() <= position {
-            self.0.resize(position + 1, Vec::new());
+    fn output_id(&self) -> ColumnId {
+        self.columns.as_ref().map_or(ColumnId(0), |c| c.output)
+    }
+
+    /// The capture's inputs over the padded layout; a public (static) scale column
+    /// is read as declared.
+    pub(crate) fn source(
+        &self,
+        relation: &Relation,
+        capture: &ProjectionCapture,
+    ) -> Result<ProjectionWitness, Violation> {
+        let (t, ld, lg, lo) = self.logs();
+        let plan = &self.plan;
+        let real_groups = plan.inner.div_ceil(1 << lg);
+        let ok = capture.codes.len() == plan.rows
+            && capture.codes.iter().all(|row| row.len() == plan.inner)
+            && capture.scales.len() == plan.rows
+            && capture.scales.iter().all(|row| row.len() == real_groups)
+            && capture.weights.len() == plan.outputs
+            && capture.weights.iter().all(|row| row.len() == plan.inner)
+            && capture.outputs.len() == plan.rows
+            && capture.outputs.iter().all(|row| row.len() == plan.outputs);
+        if !ok {
+            return Err(Invalid::Column(self.output_id()).into());
         }
-        self.0[position].push(t);
+        let per_row = 1usize << (ld - lg);
+        let scales = match relation.column(self.input.scale).map(|c| &c.kind) {
+            Some(Kind::Public(v)) => v.clone(),
+            _ => (0..1usize << (t + ld - lg))
+                .map(|k| {
+                    let (row, group) = (k / per_row, k % per_row);
+                    if row < plan.rows && group < real_groups {
+                        i64::from(capture.scales[row][group])
+                    } else {
+                        0
+                    }
+                })
+                .collect(),
+        };
+        let codes = (0..1usize << (t + ld))
+            .map(|x| {
+                let (row, i) = (x >> ld, x & ((1 << ld) - 1));
+                if row < plan.rows && i < plan.inner {
+                    capture.codes[row][i]
+                } else {
+                    0
+                }
+            })
+            .collect();
+        let weights = (0..1usize << lo)
+            .map(|j| {
+                let mut row = capture.weights.get(j).cloned().unwrap_or_default();
+                row.resize(1 << ld, 0);
+                row
+            })
+            .collect();
+        Ok(ProjectionWitness {
+            codes,
+            scales,
+            weights,
+            ..ProjectionWitness::default()
+        })
+    }
+
+    /// Recompute every step from `from` on (see `row::RowConversion::complete`).
+    pub(crate) fn complete(&self, w: &mut ProjectionWitness, from: Step, frozen: Option<Step>) {
+        let (t, ld, lg, lo) = self.logs();
+        let (lanes, out) = (1usize << (t + ld), 1usize << (t + lo));
+        let at = |step: Step| from <= step && frozen != Some(step);
+        let c = self.columns.as_ref();
+        let (n_bytes, n_scale, n_rem) = c.map_or((0, 0, 0), |c| {
+            (c.bytes.len(), c.scale_bytes.len(), c.remainder.len())
+        });
+        let grouped = self.grouped();
+        if at(Step::Digits) && grouped {
+            let folded: Vec<i64> = (0..lanes).map(|x| w.codes[x] * w.scales[x >> lg]).collect();
+            w.digits = vec![
+                folded.iter().map(|f| f.rem_euclid(256)).collect(),
+                folded.iter().map(|f| f.div_euclid(256)).collect(),
+            ];
+        }
+        if at(Step::Sums) {
+            let operands: Vec<&Vec<i64>> = if grouped {
+                w.digits.iter().collect()
+            } else {
+                vec![&w.codes]
+            };
+            w.sums = operands
+                .iter()
+                .map(|operand| {
+                    (0..out)
+                        .map(|x| {
+                            let (row, j) = (x >> lo, x & ((1 << lo) - 1));
+                            (0..1usize << ld)
+                                .map(|i| operand[(row << ld) | i] * w.weights[j][i])
+                                .sum()
+                        })
+                        .collect()
+                })
+                .collect();
+        }
+        let wide = |w: &ProjectionWitness, x: usize| -> i128 {
+            w.sums
+                .iter()
+                .enumerate()
+                .map(|(k, s)| i128::from(s[x]) << (8 * k))
+                .sum()
+        };
+        if at(Step::Sign) {
+            w.sign = (0..out).map(|x| i64::from(wide(w, x) < 0)).collect();
+        }
+        if at(Step::Bytes) {
+            // sum 256^t C_t = (1 - 2 tau) |V|: the bytes of V / (1 - 2 tau) where that
+            // is exact (always, for a Boolean tau).
+            let values: Vec<i128> = (0..out)
+                .map(|x| {
+                    let (odd, v) = (1 - 2 * i128::from(w.sign[x]), wide(w, x));
+                    if v % odd == 0 {
+                        v / odd
+                    } else {
+                        odd * v
+                    }
+                })
+                .collect();
+            w.bytes = (0..n_bytes)
+                .map(|k| {
+                    values
+                        .iter()
+                        .map(|v| {
+                            if k + 1 == n_bytes {
+                                (v >> (8 * k)) as i64
+                            } else {
+                                ((v >> (8 * k)) & 255) as i64
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+        }
+        if at(Step::ScaleBytes) {
+            w.scale_bytes = (0..n_scale)
+                .map(|k| {
+                    (0..1usize << t)
+                        .map(|row| {
+                            let s = w.scales[row << (ld - lg)];
+                            if k + 1 == n_scale {
+                                s >> (8 * k)
+                            } else {
+                                (s >> (8 * k)) & 255
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+        }
+        // P = |V| * m_j * u from the byte limbs actually assigned.
+        let product = |w: &ProjectionWitness, x: usize| -> i128 {
+            let (row, j) = (x >> lo, x & ((1 << lo) - 1));
+            let v: i128 = w
+                .bytes
+                .iter()
+                .enumerate()
+                .map(|(k, b)| i128::from(b[x]) << (8 * k))
+                .sum();
+            let u: i128 = if grouped {
+                1
+            } else {
+                w.scale_bytes
+                    .iter()
+                    .enumerate()
+                    .map(|(k, b)| i128::from(b[row]) << (8 * k))
+                    .sum()
+            };
+            v * self.plan.mantissas.get(j).map_or(0, |m| i128::from(*m)) * u
+        };
+        let shift = self.shift();
+        let vanishing = self.vanishing();
+        if at(Step::Magnitude) {
+            w.magnitude = (0..out)
+                .map(|x| {
+                    let p = product(w, x);
+                    if vanishing {
+                        0
+                    } else if shift >= 0 {
+                        (p << (8 * (shift / 8))) as i64
+                    } else {
+                        let k = -shift;
+                        ((p + (1i128 << (k - 1))) >> k) as i64
+                    }
+                })
+                .collect();
+        }
+        if at(Step::Remainder) && n_rem > 0 {
+            let k = (-shift).max(1) as u32;
+            let rho: Vec<i128> = (0..out)
+                .map(|x| product(w, x) + (1i128 << (k - 1)) - (i128::from(w.magnitude[x]) << k))
+                .collect();
+            w.remainder = (0..n_rem)
+                .map(|i| {
+                    rho.iter()
+                        .map(|v| {
+                            if i + 1 == n_rem {
+                                (v >> (8 * i)) as i64
+                            } else {
+                                ((v >> (8 * i)) & 255) as i64
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+        }
+        if at(Step::Output) {
+            let (_, factor) = self.left();
+            w.output = (0..out)
+                .map(|x| {
+                    if self.real(x) {
+                        factor * (1 - 2 * w.sign[x]) * w.magnitude[x]
+                    } else {
+                        0
+                    }
+                })
+                .collect();
+        }
+    }
+
+    /// Write a (possibly forged) witness. `skip` names one chain position whose
+    /// carries are assigned around it (mutation tests).
+    pub(crate) fn write(
+        &self,
+        relation: &Relation,
+        w: &ProjectionWitness,
+        values: &mut Values,
+        skip: Option<(&str, usize)>,
+    ) -> Result<(), Violation> {
+        let c = self
+            .columns
+            .as_ref()
+            .ok_or(Violation::Missing(self.output_id()))?;
+        for (ids, columns) in [
+            (&c.digits, &w.digits),
+            (&c.sums, &w.sums),
+            (&c.bytes, &w.bytes),
+            (&c.scale_bytes, &w.scale_bytes),
+            (&c.remainder, &w.remainder),
+        ] {
+            for (id, column) in ids.iter().zip(columns) {
+                values.set(relation, *id, column.clone())?;
+            }
+        }
+        values.set(relation, c.sign, w.sign.clone())?;
+        values.set(relation, c.magnitude, w.magnitude.clone())?;
+        values.set(relation, c.output, w.output.clone())?;
+        for (name, chain) in &c.chains {
+            let around = skip.filter(|(n, _)| n == name).map(|(_, k)| k);
+            chain.assign_around(relation, values, around)?;
+        }
+        Ok(())
     }
 }
 
@@ -213,14 +552,14 @@ impl Module for Projection {
                 .relation
                 .add_column(&name, Kind::Weight, self.weight_width(), lo + ld);
             b.relation.ranges.push(Range {
-                name,
+                name: alloc::format!("{name}/range"),
                 column: id,
                 width: self.weight_width(),
             });
             id
         });
         let mask = (0..1usize << out)
-            .map(|x| i64::from((x >> lo) < plan.rows && (x & ((1 << lo) - 1)) < plan.outputs))
+            .map(|x| i64::from(self.real(x)))
             .collect();
         let mask = b.public("mask", mask, Width::unsigned(1), out);
         let mantissa = |shift: u32| {
@@ -282,14 +621,8 @@ impl Module for Projection {
         }
 
         // Sign chain: sum_t 256^t C_t - (1 - 2 tau) sum_k 256^k v_k = 0.
-        let vmax = self
-            .sum_bounds()
-            .iter()
-            .enumerate()
-            .map(|(k, c)| c << (8 * k))
-            .sum::<u128>();
         let sign = b.witness("sign", Width::unsigned(1), out);
-        let v: Vec<ColumnId> = (0..bytes(vmax))
+        let v: Vec<ColumnId> = (0..bytes(self.vmax()))
             .map(|k| b.witness(&alloc::format!("byte/{k}"), Width::unsigned(8), out))
             .collect();
         let mut positions = Positions(Vec::new());
@@ -300,7 +633,10 @@ impl Module for Projection {
             positions.push(k, term(-1, vec![at(*byte)]));
             positions.push(k, term(2, vec![at(sign), at(*byte)]));
         }
-        let sign_chain = Chain::declare(&mut b, "sign", out, positions.0);
+        let mut chains = vec![(
+            alloc::format!("{prefix}/sign"),
+            Chain::declare(&mut b, "sign", out, 8, positions.0),
+        )];
 
         // Scale bytes (per-row input): s = sum_c 256^c s_c on the row domain.
         let scale_bytes: Vec<ColumnId> = if grouped {
@@ -327,21 +663,9 @@ impl Module for Projection {
 
         // Rounding chain.
         let magnitude = b.witness("magnitude", Width::unsigned(16), out);
-        let shift = plan.shift;
-        let (offset, scale) = if shift >= 0 {
-            ((shift / 8) as usize, 1i64 << (shift % 8))
-        } else {
-            (0, 1)
-        };
-        // |V*m*u| <= vmax*65535*u_max; past that many bits R(.) is identically 0.
-        // The scale bytes bound s below 2^bits(scale_bound).
-        let u_max = if grouped {
-            1
-        } else {
-            (1u128 << bit_length(u128::from(self.input.scale_bound))) - 1
-        };
-        let pmax = vmax * 65535 * u_max;
-        let vanishing = shift < 0 && (-shift) as u32 > u32::from(bit_length(pmax)) + 1;
+        let shift = self.shift();
+        let (offset, factor) = self.left();
+        let vanishing = self.vanishing();
         let mut positions = Positions(Vec::new());
         for (a, va) in v.iter().enumerate() {
             for (bi, mb) in m.iter().enumerate() {
@@ -357,7 +681,6 @@ impl Module for Projection {
             }
         }
         let mut remainder = Vec::new();
-        let mut chains = vec![sign_chain];
         if vanishing {
             b.identity("vanishing", out, vec![term(1, vec![at(magnitude)])]);
         } else if shift >= 0 {
@@ -369,24 +692,28 @@ impl Module for Projection {
             let n = k.div_ceil(8);
             for i in 0..n {
                 let bits = if i + 1 == n { k - 8 * (n - 1) } else { 8 } as u8;
-                let limb = b.witness(&alloc::format!("remainder/{i}"), Width::unsigned(bits), out);
+                let name = alloc::format!("remainder/{i}");
+                let limb = b.witness(&name, Width::unsigned(bits), out);
                 positions.push(i, term(-1, vec![at(limb)]));
                 remainder.push(limb);
             }
         }
         if !vanishing {
-            chains.push(Chain::declare(&mut b, "round", out, positions.0));
+            chains.push((
+                alloc::format!("{prefix}/round"),
+                Chain::declare(&mut b, "round", out, 8, positions.0),
+            ));
         }
 
-        // Y = mask*scale*Ymag - 2*mask*scale*tau*Ymag.
+        // Y = mask*factor*Ymag - 2*mask*factor*tau*Ymag.
         let output = b.witness("output", Width::signed(16), out);
         b.identity(
             "output",
             out,
             vec![
                 term(1, vec![at(output)]),
-                term(-scale, vec![at(mask), at(magnitude)]),
-                term(2 * scale, vec![at(mask), at(sign), at(magnitude)]),
+                term(-factor, vec![at(mask), at(magnitude)]),
+                term(2 * factor, vec![at(mask), at(sign), at(magnitude)]),
             ],
         );
         self.columns = Some(Columns {
@@ -409,144 +736,15 @@ impl Module for Projection {
         capture: &ProjectionCapture,
         values: &mut Values,
     ) -> Result<(), Violation> {
-        let c = self
-            .columns
-            .as_ref()
-            .ok_or(Violation::Missing(self.input.codes))?;
-        let (t, ld, lg, lo) = self.logs();
-        let (lanes, out) = (t + ld, t + lo);
-        let plan = &self.plan;
-        let real_groups = plan.inner.div_ceil(1 << lg);
-        let shape_ok = capture.codes.len() == plan.rows
-            && capture.codes.iter().all(|row| row.len() == plan.inner)
-            && capture.scales.len() == plan.rows
-            && capture.scales.iter().all(|row| row.len() == real_groups)
-            && capture.weights.len() == plan.outputs
-            && capture.weights.iter().all(|row| row.len() == plan.inner)
-            && capture.outputs.len() == plan.rows
-            && capture.outputs.iter().all(|row| row.len() == plan.outputs);
-        if !shape_ok {
-            return Err(Invalid::Column(c.output).into());
+        let mut w = self.source(relation, capture)?;
+        self.complete(&mut w, Step::Digits, None);
+        // The executor's outputs must be the ones the relations force.
+        let (_, _, _, lo) = self.logs();
+        let ok = (0..w.output.len())
+            .all(|x| !self.real(x) || w.output[x] == capture.outputs[x >> lo][x & ((1 << lo) - 1)]);
+        if !ok {
+            return Err(Invalid::Column(self.output_id()).into());
         }
-        // Scale per (row, group); a public (static) scale column is read as declared.
-        let public = match &relation.column(self.input.scale).map(|col| &col.kind) {
-            Some(Kind::Public(v)) => Some(v.clone()),
-            _ => None,
-        };
-        let scale = |row: usize, group: usize| -> i64 {
-            if let Some(v) = &public {
-                v[(row << (ld - lg)) | group]
-            } else if row < plan.rows && group < real_groups {
-                i64::from(capture.scales[row][group])
-            } else {
-                0
-            }
-        };
-        let code = |row: usize, i: usize| -> i64 {
-            if row < plan.rows && i < plan.inner {
-                capture.codes[row][i]
-            } else {
-                0
-            }
-        };
-        // Matmul left operands per lane: codes, or the A15 digits of q*s.
-        let operands: Vec<Vec<i64>> = if c.digits.is_empty() {
-            vec![(0..1usize << lanes)
-                .map(|x| code(x >> ld, x & ((1 << ld) - 1)))
-                .collect()]
-        } else {
-            let folded: Vec<i64> = (0..1usize << lanes)
-                .map(|x| {
-                    let (row, i) = (x >> ld, x & ((1 << ld) - 1));
-                    code(row, i) * scale(row, i >> lg)
-                })
-                .collect();
-            let low: Vec<i64> = folded.iter().map(|f| f.rem_euclid(256)).collect();
-            let high: Vec<i64> = folded.iter().map(|f| f.div_euclid(256)).collect();
-            values.set(relation, c.digits[0], low.clone())?;
-            values.set(relation, c.digits[1], high.clone())?;
-            vec![low, high]
-        };
-        let size = 1usize << out;
-        let mut sums = vec![vec![0i64; size]; c.sums.len()];
-        for x in 0..size {
-            let (row, j) = (x >> lo, x & ((1 << lo) - 1));
-            if j >= plan.outputs {
-                continue;
-            }
-            for (sum, operand) in sums.iter_mut().zip(&operands) {
-                sum[x] = (0..plan.inner)
-                    .map(|i| operand[(row << ld) | i] * capture.weights[j][i])
-                    .sum();
-            }
-        }
-        let mut sign = vec![0; size];
-        let mut bytes = vec![vec![0; size]; c.bytes.len()];
-        let mut magnitude = vec![0; size];
-        let mut remainder = vec![vec![0; size]; c.remainder.len()];
-        let mut output = vec![0; size];
-        for x in 0..size {
-            let (row, j) = (x >> lo, x & ((1 << lo) - 1));
-            let wide: i128 = sums
-                .iter()
-                .enumerate()
-                .map(|(k, s)| i128::from(s[x]) << (8 * k))
-                .sum();
-            sign[x] = i64::from(wide < 0);
-            for (k, column) in bytes.iter_mut().enumerate() {
-                column[x] = ((wide.unsigned_abs() >> (8 * k)) & 255) as i64;
-            }
-            let y = if row < plan.rows && j < plan.outputs {
-                capture.outputs[row][j]
-            } else {
-                0
-            };
-            output[x] = y;
-            let m = plan.mantissas.get(j).map_or(0, |m| i128::from(*m));
-            let u = if c.scale_bytes.is_empty() {
-                1
-            } else {
-                i128::from(scale(row, 0))
-            };
-            let product = wide.abs() * m * u;
-            magnitude[x] = y.abs();
-            if plan.shift >= 0 {
-                magnitude[x] = y.abs() >> (plan.shift % 8);
-            } else if !c.remainder.is_empty() {
-                let k = (-plan.shift) as u32;
-                // rho = P + 2^(K-1) - |Y|*2^K; out of [0,2^K) only for a wrong output.
-                let rho = product + (1i128 << (k - 1)) - (i128::from(y.abs()) << k);
-                let last = remainder.len() - 1;
-                for (i, column) in remainder.iter_mut().enumerate() {
-                    column[x] = if i == last {
-                        (rho >> (8 * i)) as i64
-                    } else {
-                        ((rho >> (8 * i)) & 255) as i64
-                    };
-                }
-            }
-        }
-        for (id, column) in c.sums.iter().zip(sums) {
-            values.set(relation, *id, column)?;
-        }
-        for (id, column) in c.bytes.iter().zip(bytes) {
-            values.set(relation, *id, column)?;
-        }
-        for (id, column) in c.remainder.iter().zip(remainder) {
-            values.set(relation, *id, column)?;
-        }
-        values.set(relation, c.sign, sign)?;
-        values.set(relation, c.magnitude, magnitude)?;
-        values.set(relation, c.output, output)?;
-        for (k, id) in c.scale_bytes.iter().enumerate() {
-            let column = (0..1usize << t)
-                .map(|row| (scale(row, 0) >> (8 * k)) & 255)
-                .collect();
-            values.set(relation, *id, column)?;
-        }
-        for chain in &c.chains {
-            chain.assign(relation, values)?;
-        }
-        Ok(())
+        self.write(relation, &w, values, None)
     }
 }

@@ -99,8 +99,9 @@ impl<'a> Builder<'a> {
     /// Witness column range-checked to exactly its declared width (at most 16 bits).
     pub(crate) fn witness(&mut self, name: &str, width: Width, log_len: u8) -> ColumnId {
         let column = self.column(name, width, log_len);
+        // Distinct from identity names, so every constraint has a unique name.
         self.relation.ranges.push(Range {
-            name: self.name(name),
+            name: self.name(&format!("{name}/range")),
             column,
             width,
         });
@@ -127,16 +128,17 @@ impl<'a> Builder<'a> {
     }
 }
 
-/// A wide identity `sum_k 256^k * E_k = 0` over one domain, proven as one small
-/// identity per position: `E_k + c_(k-1) - 256*c_k = 0`, with `c_(-1) = 0` and no
-/// carry out of the last position. Summing position `k` times `256^k` telescopes
-/// the carries away, so the small identities hold over Z exactly when the wide one
-/// does (each small identity is wrap-free by the bound rule). Carries are
-/// determined by the terms; a carry wider than 16 bits is a low unsigned 16-bit
-/// limb plus a signed high limb (RFC-0026 §3.5).
+/// A wide identity `sum_k R^k * E_k = 0` (radix `R = 2^radix`) over one domain,
+/// proven as one small identity per position: `E_k + c_(k-1) - R*c_k = 0`, with
+/// `c_(-1) = 0` and no carry out of the last position. Summing position `k` times
+/// `R^k` telescopes the carries away, so the small identities hold over Z exactly
+/// when the wide one does (each small identity is wrap-free by the bound rule).
+/// Carries are determined by the terms; a carry wider than 16 bits is a low
+/// unsigned 16-bit limb plus a signed high limb (RFC-0026 §3.5).
 #[derive(Clone, Debug)]
 pub(crate) struct Chain {
     vars: u8,
+    radix: u8,
     positions: Vec<Vec<Term>>,
     carries: Vec<Option<Carry>>,
 }
@@ -166,6 +168,7 @@ impl Chain {
         b: &mut Builder<'_>,
         name: &str,
         vars: u8,
+        radix: u8,
         positions: Vec<Vec<Term>>,
     ) -> Self {
         let mut carries = Vec::with_capacity(positions.len());
@@ -180,7 +183,7 @@ impl Chain {
                         p * b.relation.columns[f.column.0 as usize].width.magnitude()
                     })
             });
-            incoming = if k == last { 0 } else { bound / 256 };
+            incoming = if k == last { 0 } else { bound >> radix };
             carries.push(match incoming {
                 0 => None,
                 c if c < 1 << 15 => Some(Carry::One(b.witness(
@@ -200,7 +203,7 @@ impl Chain {
                 all.extend(c.terms(1, vars));
             }
             if let Some(c) = carries[k] {
-                all.extend(c.terms(-256, vars));
+                all.extend(c.terms(-(1 << radix), vars));
             }
             if !all.is_empty() {
                 b.identity(&format!("{name}/{k}"), vars, all);
@@ -208,19 +211,29 @@ impl Chain {
         }
         Self {
             vars,
+            radix,
             positions,
             carries,
         }
     }
 
-    /// Fill the carries from the already-assigned term columns.
-    pub(crate) fn assign(&self, relation: &Relation, values: &mut Values) -> Result<(), Violation> {
+    /// Fill the carries. With `skip = Some(k)`, carries below position `k` run
+    /// forward from position 0 and the others run backward from the top, so every
+    /// position identity except `k` holds whenever the terms allow it: the strongest
+    /// carries for a mutation test that removes identity `k`.
+    pub(crate) fn assign_around(
+        &self,
+        relation: &Relation,
+        values: &mut Values,
+        skip: Option<usize>,
+    ) -> Result<(), Violation> {
         let size = 1usize << self.vars;
-        let mut columns: Vec<Vec<i64>> = vec![vec![0; size]; self.carries.len()];
+        let n = self.positions.len();
+        let mut columns: Vec<Vec<i64>> = vec![vec![0; size]; n];
         for x in 0..size as u64 {
-            let mut carry = 0i128;
-            for (k, terms) in self.positions.iter().enumerate() {
-                let mut sum = carry;
+            let mut sums = Vec::with_capacity(n);
+            for terms in &self.positions {
+                let mut sum = 0i128;
                 for t in terms {
                     let mut product = t.coeff as i128;
                     for f in &t.factors {
@@ -231,8 +244,18 @@ impl Chain {
                     }
                     sum += product;
                 }
-                carry = sum.div_euclid(256);
+                sums.push(sum);
+            }
+            let split = skip.unwrap_or(n);
+            let mut carry = 0i128;
+            for (k, sum) in sums.iter().enumerate().take(split) {
+                carry = (sum + carry).div_euclid(1 << self.radix);
                 columns[k][x as usize] = carry as i64;
+            }
+            let mut carry = 0i128;
+            for k in (split + 1..n).rev() {
+                carry = (carry << self.radix) - sums[k];
+                columns[k - 1][x as usize] = carry as i64;
             }
         }
         for (carry, column) in self.carries.iter().zip(columns) {

@@ -1,28 +1,29 @@
-//! Row conversion of int16 rows to int8 codes (RFC-0026 §5 row 3; RFC-0025 §2.2,
-//! flow §1; grouped rows RFC-0004 A15).
+//! Row conversion of int16 rows to int8 codes (RFC-0026 §5 row 3 and its shared
+//! patterns; RFC-0025 §2.2, flow §1; grouped rows RFC-0004 A15). The gated
+//! conversion (RFC-0004 A8) is E16-08's; it produces the same [`RowOutput`].
 //!
 //! Per group of `g` lanes (`g = d` for a per-row policy) with scale `s`:
 //! - sign/abs: `mask*x = a - 2*sigma*a`, so `a = |x|` on real lanes and `a = 0` on
 //!   padding, which pins every padded code to 0;
 //! - attained maximum (dynamic): `gap = M - a >= 0`, one-hot `h` with `sum h = 1`
 //!   over the group (matmul row sum) and `h*gap = 0`, so `M = max a`;
-//! - ceiling (dynamic): `127*s - M` in `[0,126]` (lookup), so `s = ceil(M/127)`;
-//! - zero-row branch (dynamic): Boolean `z` with `z*M = 0`, `z*q = 0`, and divisor
-//!   `D = s + z >= 1` (from the range on `D-1-rho`), so `z = [M = 0]`;
-//! - round-half-away division `R(a/D)`: `a = q0*D + rho`, `0 <= rho <= D-1`,
-//!   `beta = [2*rho >= D]` by a range on `(2beta-1)(2rho-D) - (1-beta)`,
-//!   `q = q0 + beta <= 127`;
-//! - code `c = (1-2*sigma)*q`.
+//! - row-scale ceiling (dynamic): `slack = 127*s - M` in `[0,126]` (lookup);
+//! - zero-row branch (dynamic): Boolean `z` with `z*M = 0` and divisor `D = s + z`,
+//!   `D >= 1` by the range on `spare`. The pattern's `z*q = 0` is implied by the
+//!   division and the half bit (lemma R, step 6), so it is not declared;
+//! - round-half-away division: `a = q0*D + rho`, `spare = D - 1 - rho >= 0`,
+//!   `half_gap = (2beta-1)(2rho-D) - (1-beta) >= 0`, `q = q0 + beta <= 127`;
+//! - code `c = q - 2*sigma*q`.
 //!
-//! A static policy makes `s` a public column and `z = 0`. Output-uniqueness lemma:
-//! lemma R in `agents/reviews/e16-05-projections.md`.
+//! A static policy makes `s` a public column and `z = 0`. Output-uniqueness lemma R
+//! and the mutation survey: `agents/reviews/e16-05-projections.md`.
 
 use super::{bit_length, log2_ceil, r, term, Builder, Unsupported};
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_ir::relation::{
-    ColumnId, Invalid, Lookup, Matmul, Module, Relation, Table, Values, Violation, Width,
+    ColumnId, Invalid, Lookup, Matmul, Module, Relation, Table, Values, Violation, Width, MAX_VARS,
 };
 
 /// RFC-0025 §2.2 row policy for an int16 source row.
@@ -54,8 +55,8 @@ pub struct RowOutput {
     pub scale_bound: u32,
 }
 
-/// Executor intermediates of one row conversion over every real row:
-/// `stele_cqis::row::Quantiser::convert_wide`'s input, codes and scales.
+/// Executor intermediates of one row conversion over every real row
+/// (`stele_cqis::row::Quantiser::convert_wide`, or the capture's `Quantised`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ConversionCapture {
     /// `[row][lane]` int16 source values.
@@ -67,19 +68,105 @@ pub struct ConversionCapture {
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Columns {
-    magnitude: ColumnId,
-    sign: ColumnId,
-    floor: ColumnId,
-    remainder: ColumnId,
-    spare: ColumnId,
-    half: ColumnId,
-    half_gap: ColumnId,
-    quotient: ColumnId,
-    codes: ColumnId,
-    scale: ColumnId,
+pub(crate) struct Columns {
+    pub(crate) magnitude: ColumnId,
+    pub(crate) sign: ColumnId,
+    pub(crate) floor: ColumnId,
+    pub(crate) remainder: ColumnId,
+    pub(crate) spare: ColumnId,
+    pub(crate) half: ColumnId,
+    pub(crate) half_gap: ColumnId,
+    pub(crate) quotient: ColumnId,
+    pub(crate) codes: ColumnId,
+    pub(crate) scale: ColumnId,
     /// Dynamic only: (zero, maximum, slack, gap, hit).
-    dynamic: Option<(ColumnId, ColumnId, ColumnId, ColumnId, ColumnId)>,
+    pub(crate) dynamic: Option<(ColumnId, ColumnId, ColumnId, ColumnId, ColumnId)>,
+}
+
+/// Steps of the witness dataflow, in order. Each step solves its own defining
+/// relation from earlier values. A mutation test lies at one step and recomputes
+/// the later ones: the attacker's strongest completion of that lie.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Step {
+    Sign,
+    Magnitude,
+    Maximum,
+    Gap,
+    Hit,
+    Scale,
+    Slack,
+    Zero,
+    Floor,
+    Remainder,
+    Spare,
+    Half,
+    HalfGap,
+    Quotient,
+    Code,
+}
+
+impl Step {
+    pub(crate) const ALL: [Step; 15] = [
+        Step::Sign,
+        Step::Magnitude,
+        Step::Maximum,
+        Step::Gap,
+        Step::Hit,
+        Step::Scale,
+        Step::Slack,
+        Step::Zero,
+        Step::Floor,
+        Step::Remainder,
+        Step::Spare,
+        Step::Half,
+        Step::HalfGap,
+        Step::Quotient,
+        Step::Code,
+    ];
+}
+
+/// Values of every witness column; `input` is the read-only source.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct RowWitness {
+    pub(crate) input: Vec<i64>,
+    pub(crate) sign: Vec<i64>,
+    pub(crate) magnitude: Vec<i64>,
+    pub(crate) maximum: Vec<i64>,
+    pub(crate) hit: Vec<i64>,
+    pub(crate) gap: Vec<i64>,
+    pub(crate) scale: Vec<i64>,
+    pub(crate) slack: Vec<i64>,
+    pub(crate) zero: Vec<i64>,
+    pub(crate) floor: Vec<i64>,
+    pub(crate) remainder: Vec<i64>,
+    pub(crate) spare: Vec<i64>,
+    pub(crate) half: Vec<i64>,
+    pub(crate) half_gap: Vec<i64>,
+    pub(crate) quotient: Vec<i64>,
+    pub(crate) codes: Vec<i64>,
+}
+
+impl RowWitness {
+    /// The column a step defines.
+    pub(crate) fn column(&mut self, step: Step) -> &mut Vec<i64> {
+        match step {
+            Step::Sign => &mut self.sign,
+            Step::Magnitude => &mut self.magnitude,
+            Step::Maximum => &mut self.maximum,
+            Step::Hit => &mut self.hit,
+            Step::Gap => &mut self.gap,
+            Step::Scale => &mut self.scale,
+            Step::Slack => &mut self.slack,
+            Step::Zero => &mut self.zero,
+            Step::Floor => &mut self.floor,
+            Step::Remainder => &mut self.remainder,
+            Step::Spare => &mut self.spare,
+            Step::Half => &mut self.half,
+            Step::HalfGap => &mut self.half_gap,
+            Step::Quotient => &mut self.quotient,
+            Step::Code => &mut self.codes,
+        }
+    }
 }
 
 /// One row conversion of a `rows x dimension` int16 column (RFC-0026 §5 row 3).
@@ -90,7 +177,7 @@ pub struct RowConversion {
     rows: usize,
     dimension: usize,
     policy: Policy,
-    columns: Option<Columns>,
+    pub(crate) columns: Option<Columns>,
 }
 
 impl RowConversion {
@@ -119,7 +206,7 @@ impl RowConversion {
         if !ok {
             return Err(Unsupported::Policy);
         }
-        if log2_ceil(rows) + log2_ceil(dimension) > stele_ir::relation::MAX_VARS {
+        if log2_ceil(rows) + log2_ceil(dimension) > MAX_VARS {
             return Err(Unsupported::Domain);
         }
         Ok(Self {
@@ -132,7 +219,11 @@ impl RowConversion {
         })
     }
 
-    fn logs(&self) -> (u8, u8, u8) {
+    pub(crate) fn dynamic(&self) -> bool {
+        !matches!(self.policy, Policy::Static(_))
+    }
+
+    pub(crate) fn logs(&self) -> (u8, u8, u8) {
         let (t, ld) = (log2_ceil(self.rows), log2_ceil(self.dimension));
         let lg = match self.policy {
             Policy::Grouped(g) => g.trailing_zeros() as u8,
@@ -148,12 +239,6 @@ impl RowConversion {
         }
     }
 
-    /// Zero-branch column `z` of a dynamic policy (near-miss tests).
-    #[cfg(test)]
-    pub(crate) fn zero(&self) -> Option<ColumnId> {
-        self.columns.and_then(|c| c.dynamic).map(|d| d.0)
-    }
-
     /// Output column ids; `None` before `declare`.
     pub fn output(&self) -> Option<RowOutput> {
         let (log_rows, log_dimension, log_group) = self.logs();
@@ -166,18 +251,185 @@ impl RowConversion {
             scale_bound: self.scale_bound(),
         })
     }
+
+    pub(crate) fn real(&self, x: usize) -> bool {
+        let (_, ld, _) = self.logs();
+        (x >> ld) < self.rows && (x & ((1 << ld) - 1)) < self.dimension
+    }
+
+    fn codes_id(&self) -> ColumnId {
+        self.columns.map_or(self.input, |c| c.codes)
+    }
+
+    /// The capture's source values over the padded lanes.
+    pub(crate) fn source(&self, capture: &ConversionCapture) -> Result<RowWitness, Violation> {
+        let (t, ld, lg) = self.logs();
+        let groups = self.dimension.div_ceil(1 << lg);
+        let ok = capture.inputs.len() == self.rows
+            && capture.codes.len() == self.rows
+            && capture.scales.len() == self.rows
+            && capture.inputs.iter().all(|row| row.len() == self.dimension)
+            && capture.codes.iter().all(|row| row.len() == self.dimension)
+            && capture.scales.iter().all(|row| row.len() == groups);
+        if !ok {
+            return Err(Invalid::Column(self.codes_id()).into());
+        }
+        let input = (0..1usize << (t + ld))
+            .map(|x| {
+                if self.real(x) {
+                    capture.inputs[x >> ld][x & ((1 << ld) - 1)]
+                } else {
+                    0
+                }
+            })
+            .collect();
+        Ok(RowWitness {
+            input,
+            ..RowWitness::default()
+        })
+    }
+
+    /// Recompute every step from `from` on, each solving its own defining relation
+    /// from the values before it; a `frozen` step keeps its value (the attacker's
+    /// completion when that step's relation is deleted).
+    pub(crate) fn complete(&self, w: &mut RowWitness, from: Step, frozen: Option<Step>) {
+        let (t, ld, lg) = self.logs();
+        let lanes = 1usize << (t + ld);
+        let groups = 1usize << (t + ld - lg);
+        let width = 1usize << lg;
+        let at = |step: Step| from <= step && frozen != Some(step);
+        for step in Step::ALL {
+            let n = if matches!(step, Step::Maximum | Step::Scale | Step::Slack | Step::Zero) {
+                groups
+            } else {
+                lanes
+            };
+            w.column(step).resize(n, 0);
+        }
+        let dynamic = self.dynamic();
+        for x in 0..lanes {
+            let source = if self.real(x) { w.input[x] } else { 0 };
+            if at(Step::Sign) {
+                w.sign[x] = i64::from(source < 0);
+            }
+            if at(Step::Magnitude) {
+                // a = mask*x / (1 - 2*sigma) where that is exact, else |x|.
+                let odd = 1 - 2 * w.sign[x];
+                w.magnitude[x] = if source % odd == 0 {
+                    source / odd
+                } else {
+                    source.abs()
+                };
+            }
+        }
+        for k in 0..groups {
+            let span = k * width..(k + 1) * width;
+            if at(Step::Maximum) && dynamic {
+                w.maximum[k] = w.magnitude[span.clone()].iter().copied().max().unwrap_or(0);
+            }
+            if at(Step::Gap) && dynamic {
+                for x in span.clone() {
+                    w.gap[x] = w.maximum[k] - w.magnitude[x];
+                }
+            }
+            if at(Step::Hit) && dynamic {
+                // The first lane with gap 0 (h*gap = 0); none (h = 0) if M is not attained.
+                let first = span.clone().find(|&x| w.gap[x] == 0);
+                for x in span.clone() {
+                    w.hit[x] = i64::from(Some(x) == first);
+                }
+            }
+            if at(Step::Scale) {
+                w.scale[k] = match self.policy {
+                    Policy::Static(s) => i64::from(s),
+                    _ => (w.maximum[k] + 126).div_euclid(127),
+                };
+            }
+            if at(Step::Slack) && dynamic {
+                w.slack[k] = 127 * w.scale[k] - w.maximum[k];
+            }
+            if at(Step::Zero) && dynamic {
+                w.zero[k] = i64::from(w.maximum[k] == 0);
+            }
+        }
+        for x in 0..lanes {
+            let divisor = w.scale[x >> lg] + w.zero[x >> lg];
+            if at(Step::Floor) {
+                w.floor[x] = w.magnitude[x].checked_div(divisor).unwrap_or(0);
+            }
+            if at(Step::Remainder) {
+                w.remainder[x] = w.magnitude[x] - w.floor[x] * divisor;
+            }
+            if at(Step::Spare) {
+                w.spare[x] = divisor - 1 - w.remainder[x];
+            }
+            let rho = w.remainder[x];
+            if at(Step::Half) {
+                w.half[x] = i64::from(2 * rho >= divisor);
+            }
+            if at(Step::HalfGap) {
+                let beta = w.half[x];
+                w.half_gap[x] = (2 * beta - 1) * (2 * rho - divisor) - (1 - beta);
+            }
+            if at(Step::Quotient) {
+                w.quotient[x] = w.floor[x] + w.half[x];
+            }
+            if at(Step::Code) {
+                w.codes[x] = w.quotient[x] - 2 * w.sign[x] * w.quotient[x];
+            }
+        }
+    }
+
+    /// Write a (possibly forged) witness into this module's columns.
+    pub(crate) fn write(
+        &self,
+        relation: &Relation,
+        w: &RowWitness,
+        values: &mut Values,
+    ) -> Result<(), Violation> {
+        let c = self.columns.ok_or(Violation::Missing(self.input))?;
+        let mut columns = vec![
+            (c.magnitude, &w.magnitude),
+            (c.sign, &w.sign),
+            (c.floor, &w.floor),
+            (c.remainder, &w.remainder),
+            (c.spare, &w.spare),
+            (c.half, &w.half),
+            (c.half_gap, &w.half_gap),
+            (c.quotient, &w.quotient),
+            (c.codes, &w.codes),
+        ];
+        if let Some((zero, maximum, slack, gap, hit)) = c.dynamic {
+            columns.extend([
+                (c.scale, &w.scale),
+                (zero, &w.zero),
+                (maximum, &w.maximum),
+                (slack, &w.slack),
+                (gap, &w.gap),
+                (hit, &w.hit),
+            ]);
+        }
+        for (id, column) in columns {
+            values.set(relation, id, column.clone())?;
+        }
+        Ok(())
+    }
 }
 
 impl Module for RowConversion {
     type Capture = ConversionCapture;
 
     fn declare(&mut self, relation: &mut Relation) {
+        assert_eq!(
+            relation.column(self.input).map(|c| c.width),
+            Some(Width::signed(16)),
+            "row conversion input must be a signed-16 column (RFC-0026 §5.1)"
+        );
         let (t, ld, lg) = self.logs();
         let lanes = t + ld;
         let groups = lanes - lg;
-        let (rows, d) = (self.rows, self.dimension);
         let mask = (0..1usize << lanes)
-            .map(|x| i64::from((x >> ld) < rows && (x & ((1 << ld) - 1)) < d))
+            .map(|x| i64::from(self.real(x)))
             .collect();
         let prefix = self.prefix.clone();
         let mut b = Builder::new(relation, &prefix);
@@ -289,47 +541,38 @@ impl Module for RowConversion {
             ],
         );
         if let Some((_, maximum, slack, gap, hit)) = dynamic {
-            let m = group(maximum);
-            b.identity(
-                "zero/codes",
-                lanes,
-                vec![term(1, vec![z.clone(), lane(quotient)])],
-            );
             b.identity(
                 "gap",
                 lanes,
                 vec![
                     term(1, vec![lane(gap)]),
-                    term(-1, vec![m]),
+                    term(-1, vec![group(maximum)]),
                     term(1, vec![lane(magnitude)]),
                 ],
             );
             b.identity("attained", lanes, vec![term(1, vec![lane(hit), lane(gap)])]);
+            let at = |c: ColumnId| r(c, 0..groups);
             // slack = 127*s - M, in [0,126] by the lookup below.
             b.identity(
                 "ceiling",
                 groups,
                 vec![
-                    term(1, vec![r(slack, 0..groups)]),
-                    term(-127, vec![r(scale, 0..groups)]),
-                    term(1, vec![r(maximum, 0..groups)]),
+                    term(1, vec![at(slack)]),
+                    term(-127, vec![at(scale)]),
+                    term(1, vec![at(maximum)]),
                 ],
             );
-            b.identity(
-                "zero/maximum",
-                groups,
-                vec![term(1, vec![r(zero, 0..groups), r(maximum, 0..groups)])],
-            );
+            b.identity("zero", groups, vec![term(1, vec![at(zero), at(maximum)])]);
             let table = b.relation.add_table(Table {
                 name: "range/0..=126".into(),
                 widths: vec![Width::unsigned(7)],
                 rows: (0..=126).map(|v| vec![v]).collect(),
             });
             b.relation.lookups.push(Lookup {
-                name: alloc::format!("{prefix}/ceiling"),
+                name: alloc::format!("{prefix}/slack/range"),
                 vars: groups,
                 selector: None,
-                tuple: vec![r(slack, 0..groups)],
+                tuple: vec![at(slack)],
                 table,
             });
             // sum over the group of h = 1: summed bits are the lanes of one group.
@@ -363,117 +606,22 @@ impl Module for RowConversion {
         capture: &ConversionCapture,
         values: &mut Values,
     ) -> Result<(), Violation> {
-        let c = self.columns.ok_or(Violation::Missing(self.input))?;
-        let (t, ld, lg) = self.logs();
-        let (lanes, groups) = (t + ld, t + ld - lg);
-        let real_groups = self.dimension.div_ceil(1 << lg);
-        let shape_ok = capture.inputs.len() == self.rows
-            && capture.codes.len() == self.rows
-            && capture.scales.len() == self.rows
-            && capture.inputs.iter().all(|row| row.len() == self.dimension)
-            && capture.codes.iter().all(|row| row.len() == self.dimension)
-            && capture.scales.iter().all(|row| row.len() == real_groups);
-        if !shape_ok {
-            return Err(Invalid::Column(self.input).into());
-        }
-        let dynamic = c.dynamic.is_some();
-        let real = |x: usize| (x >> ld) < self.rows && (x & ((1 << ld) - 1)) < self.dimension;
-        let at = |rows: &Vec<Vec<i64>>, x: usize| {
-            if real(x) {
-                rows[x >> ld][x & ((1 << ld) - 1)]
-            } else {
-                0
-            }
-        };
-        let scale_of = |k: usize| -> i64 {
-            let (row, group) = (k >> (ld - lg), k & ((1 << (ld - lg)) - 1));
-            match self.policy {
-                Policy::Static(s) => i64::from(s),
-                _ if row < self.rows && group < real_groups => {
-                    i64::from(capture.scales[row][group])
-                }
-                _ => 0,
-            }
-        };
-        let scales: Vec<i64> = (0..1usize << groups).map(scale_of).collect();
-        let zeros: Vec<i64> = scales
-            .iter()
-            .map(|&s| i64::from(dynamic && s == 0))
-            .collect();
-        let lane_count = 1usize << lanes;
-        let a: Vec<i64> = (0..lane_count)
-            .map(|x| at(&capture.inputs, x).abs())
-            .collect();
-        let mut columns: [Vec<i64>; 9] = Default::default();
-        for x in 0..lane_count {
-            let input = at(&capture.inputs, x);
-            let code = at(&capture.codes, x);
-            let divisor = scales[x >> lg] + zeros[x >> lg];
-            let (floor, remainder) = (a[x] / divisor, a[x] % divisor);
-            // beta follows the captured code, so a wrong code fails only its ranges.
-            let half = code.abs() - floor;
-            let row = [
-                a[x],
-                i64::from(input < 0),
-                floor,
-                remainder,
-                divisor - 1 - remainder,
-                half,
-                (2 * half - 1) * (2 * remainder - divisor) - (1 - half),
-                code.abs(),
-                code,
-            ];
-            for (column, value) in columns.iter_mut().zip(row) {
-                column.push(value);
-            }
-        }
-        let ids = [
-            c.magnitude,
-            c.sign,
-            c.floor,
-            c.remainder,
-            c.spare,
-            c.half,
-            c.half_gap,
-            c.quotient,
-            c.codes,
-        ];
-        for (id, column) in ids.into_iter().zip(columns) {
-            values.set(relation, id, column)?;
-        }
-        if let Some((zero, maximum, slack, gap, hit)) = c.dynamic {
-            let width = 1usize << lg;
-            let maxima: Vec<i64> = a
-                .chunks(width)
-                .map(|group| group.iter().copied().max().unwrap_or(0))
-                .collect();
-            let first: Vec<usize> = a
-                .chunks(width)
-                .zip(&maxima)
-                .map(|(group, m)| group.iter().position(|v| v == m).unwrap_or(0))
-                .collect();
-            values.set(relation, c.scale, scales.clone())?;
-            values.set(relation, zero, zeros)?;
-            values.set(relation, maximum, maxima.clone())?;
-            let slacks = scales
+        let mut w = self.source(capture)?;
+        self.complete(&mut w, Step::Sign, None);
+        // The executor's codes and scales must be the ones the relations force.
+        let (_, ld, lg) = self.logs();
+        let codes_ok = (0..w.codes.len())
+            .all(|x| !self.real(x) || w.codes[x] == capture.codes[x >> ld][x & ((1 << ld) - 1)]);
+        let per_row = 1usize << (ld - lg);
+        let scales_ok = capture.scales.iter().enumerate().all(|(row, scales)| {
+            scales
                 .iter()
-                .zip(&maxima)
-                .map(|(s, m)| 127 * s - m)
-                .collect();
-            values.set(relation, slack, slacks)?;
-            values.set(
-                relation,
-                gap,
-                (0..lane_count).map(|x| maxima[x >> lg] - a[x]).collect(),
-            )?;
-            values.set(
-                relation,
-                hit,
-                (0..lane_count)
-                    .map(|x| i64::from(x & (width - 1) == first[x >> lg]))
-                    .collect(),
-            )?;
+                .enumerate()
+                .all(|(k, s)| w.scale[row * per_row + k] == i64::from(*s))
+        });
+        if !codes_ok || !scales_ok {
+            return Err(Invalid::Column(self.codes_id()).into());
         }
-        Ok(())
+        self.write(relation, &w, values)
     }
 }

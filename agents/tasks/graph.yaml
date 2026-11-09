@@ -2671,6 +2671,7 @@ tasks:
   - Module declare/assign for RFC-0026 §5 row 10; Relation::validate passes for the E16-10 synthetic model shapes
   - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
   - written output-uniqueness lemma (RFC-0026 §5.2) and near-miss tests (output +-1, other rounding direction) rejected by the plain checker
+  - owns the gated row conversion (RFC-0004 A8, T as high s16 / low u15 limbs) producing E16-05's RowOutput, including grouped gated folds, which E16-05's projection rejects with Unsupported::Policy
 - id: E16-09
   epic: E16
   title: Residual, final norm, head and greedy argmax module
@@ -2707,6 +2708,7 @@ tasks:
   - stele_prover::development proves and verifies one prefill window of a synthetic 8-layer family-1 model (T=64) with greedy exact-match of the checked range
   - stele-dev-e2e-v1 container in stele-proof; stele verify-dev accepts the honest proof and prints the RFC-0026 §6 ledger
   - NC-1300, NC-1301, NC-1304, NC-1305, NC-1309 executed through the actual verifier; deterministic proof bytes across two runs
+  - owns E16-05's Unsupported::Domain gaps: the plan-fixed row-block split of projection matmuls with log(T)+log(out)+log(d) > 30, and A15 digit rows at padded d = 16384 (three digit rows)
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run
