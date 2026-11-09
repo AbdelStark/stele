@@ -1402,3 +1402,25 @@ Consequences:
   - grouped gated folds (E16-08).
 
 Status: Accepted (same-author pass; independent review FIX-THEN-MERGE addressed).
+
+## ADR-077: RoPE gathers the paired channel by a public-permutation matmul (RFC-0026 §5 row 5, task E16-06)
+
+Context: an RFC-0026 identity is pointwise, and a `Ref` can only permute or drop
+domain bits. It cannot read the paired channel `i XOR 2^k` without an extra domain
+bit, and even with one, split layout works only when `r/2` is a power of two. The
+whole numerator `x·c − y·s` (up to `759267328`) cannot be one column, and with
+signed-16 coefficients it breaks the §3.6 bound. Review notes:
+[e16-06-rope](../reviews/e16-06-rope.md).
+
+Decision:
+- The module commits `P = x·Perm`, with one matmul against a public 0/1
+  permutation over `(i, i')`. This covers every layout, rotary width and head width
+  the `Model` admits.
+- The numerator stays uncommitted: `N = (out − β)·2^14 + L`. Coefficients are split
+  `hi + one` (signed 15 plus `{0,1}`), so the bound is `3·2^29 + 2^16 + 2^15 < p`.
+- Ties go away from zero through `ν = [out − β < 0]` (two's-complement column) and
+  the §5 `β` pattern, `tie = (2β−1)(L − 2^13 − ν) − (1−β) >= 0`.
+
+Consequences: one extra M relation and one extra witness column per rotated tensor,
+recorded as RFC-0026 A1 (row 5 kinds `I, R, M, P`). The output-uniqueness lemma is in
+the review notes.
