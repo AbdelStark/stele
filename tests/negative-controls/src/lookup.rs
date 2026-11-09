@@ -584,6 +584,11 @@ pub fn run(id: u16) -> Result<(), String> {
         byte_range::exercise::<OM31>();
         return Ok(());
     }
+    if id == 603 {
+        byte_range::exercise_0603::<QM31>();
+        byte_range::exercise_0603::<OM31>();
+        return Ok(());
+    }
     exercise::<QM31>(id)?;
     exercise::<OM31>(id)
 }

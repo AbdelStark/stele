@@ -336,7 +336,7 @@ where
             b.extend(71u64.to_le_bytes());
             b.extend(3u32.to_le_bytes());
             for c in &certificates {
-                b.extend(c.record().source().bytes());
+                b.extend_from_slice(&c.record().source().bytes());
                 b.extend(c.record().id());
             }
             b

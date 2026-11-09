@@ -75,10 +75,12 @@ where
             return Err(Error::SourceRoster);
         }
         let count = u32::try_from(certificates.len()).map_err(|_| Error::Capacity)?;
+        // RFC-0010 A3 item 2: source byte length is per version, so bundles may mix.
         let size = certificates
-            .len()
-            .checked_mul(105 + 32)
-            .and_then(|n| n.checked_add(8 + 4))
+            .iter()
+            .try_fold(8 + 4usize, |n, c| {
+                n.checked_add(c.record().source().bytes().len() + 32)
+            })
             .ok_or(Error::Capacity)?;
         let mut maximum_hashes = 0u64;
         for ((certificate, id), bytes) in certificates

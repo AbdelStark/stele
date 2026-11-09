@@ -175,7 +175,7 @@ where
                     K::from_le_bytes(K::Bytes::try_from(b).ok().expect("width")).expect("field")
                 })
                 .collect();
-            let encoded = Encoder::from_code_id(&source.code().code_id())
+            let encoded = Encoder::from_code_id(source.code_id())
                 .expect("encoder")
                 .encode_measured(&row)
                 .expect("encoding");

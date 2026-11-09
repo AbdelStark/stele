@@ -91,7 +91,7 @@ fn source<K: ChallengeField + CodeField>(v: &Value) -> Result<Source<K>, String>
         raw[73..].try_into().map_err(|_| "RequestSource")?,
     )
     .map_err(|e| format!("Source({e:?})"))?;
-    if raw != s.bytes() {
+    if raw[..] != s.bytes()[..] {
         return Err("RequestSource".into());
     }
     Ok(s)

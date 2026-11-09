@@ -258,7 +258,7 @@ where
                 "decision":format!("{cause:?}"),"imports":imports,"usage":usage(Usage::default())}))
             }
         };
-        if source.bytes().as_slice() != unhex(&info["source_hex"])? {
+        if source.bytes().to_vec() != unhex(&info["source_hex"])? {
             return Err("FixtureSourceEncoding".into());
         }
         match verify_certificate(source, &unhex(&info["certificate_hex"])?) {

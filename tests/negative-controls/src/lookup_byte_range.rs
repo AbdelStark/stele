@@ -125,3 +125,93 @@ where
         }
     }
 }
+
+/// RFC-0010 A6 item 4: the withdrawn packed word x0+256*x1 is kept by (x0+256,x1-1).
+struct WithdrawnPacking;
+impl ProverHook<[i64; 2]> for WithdrawnPacking {
+    fn tamper(&self, pair: &mut [i64; 2]) {
+        assert!(pair[1] >= 1);
+        let word = pair[0] + 256 * pair[1];
+        *pair = [pair[0] + 256, pair[1] - 1];
+        assert_eq!(pair[0] + 256 * pair[1], word);
+    }
+}
+
+/// NC-0603: an honestly committed and certified offset int8 source carrying the
+/// decomposition-preserving pair; the actual RFC-0024 §1.1 verifier rejects it.
+pub(super) fn exercise_0603<K: ChallengeField + CodeField + TableField + Eq + core::fmt::Debug>()
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    // Typed int8 (5-128, 3-128) under the offset embedding: message (5, 3).
+    let expanded = stele_pcs::expand(&[-123i8, -125], stele_pcs::Embedding::Offset)
+        .expect("valid fixed fixture");
+    let mut pair = [5, 3];
+    assert_eq!(expanded, pair.map(M31::from_i64));
+    WithdrawnPacking.tamper(&mut pair); // The only declared deviation: (261, 2).
+    for message in [[5, 3], pair] {
+        let message = message.map(M31::from_i64);
+        let p = PreparedSource::<K>::new(10, 0, 1, 1, &message, &mut HashUsage::default())
+            .expect("valid fixed fixture");
+        let c = verify_certificate(
+            *p.source(),
+            &p.certificate().expect("produce genuine certificate").0,
+        )
+        .expect("an honest certificate proves no width")
+        .0;
+        let d = byte_range::Descriptor::new(&c, 7, &[20, 21], LIMITS).expect("valid fixed fixture");
+        let table = Table::range(8).expect("valid fixed fixture");
+        let originals = [&c];
+        let layouts = [20, 21].map(|id| Layout {
+            id,
+            ell: 0,
+            blowup: 1,
+        });
+        let s = Statement {
+            id: 7,
+            m: 1,
+            b: 1,
+            table: &table,
+            selector: &[1, 1],
+            originals: &originals,
+            multiplicities: &layouts,
+        };
+        let a5 = Descriptor::new(s, LIMITS).expect("valid fixed fixture");
+        let honest = message[0] == M31::from_i64(5);
+        let packet = composer::compose_with_public_input(
+            &a5,
+            s,
+            &[&p],
+            if honest {
+                Attack::Honest
+            } else {
+                Attack::Outside
+            },
+            PREFIX,
+        );
+        let (owners, _) = d
+            .register_multiplicities(&packet.bytes, LIMITS.public_bytes)
+            .expect("valid fixed fixture");
+        let refs: Vec<_> = owners.iter().collect();
+        let result = d.verify(&refs, &packet.bytes);
+        if honest {
+            let (wire, _) = d
+                .prove(
+                    &p,
+                    ProducerLimits {
+                        public_bytes: d.producer_public_bytes().expect("public admission"),
+                        dense_elements: d.producer_dense_elements().expect("dense admission"),
+                    },
+                )
+                .expect("valid fixed fixture");
+            assert_eq!(wire, packet.bytes);
+            let _accepted = result.expect("honest offset int8 pair is in range_8");
+        } else {
+            let failure = result.err().expect("actual byte-range rejection");
+            assert_eq!(
+                failure.cause,
+                Error::Fraction(stele_lookup::fraction::Error::RootMismatch)
+            );
+        }
+    }
+}

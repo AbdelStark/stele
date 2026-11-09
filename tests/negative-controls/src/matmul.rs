@@ -262,8 +262,8 @@ impl<'a, K: ChallengeField> ProverHook<CertificateWitness<'a, K>> for ChangeCert
         let new = self.replacement.record().source();
         assert_eq!(old.descriptor().id, new.descriptor().id);
         assert_eq!(
-            (old.rows(), old.columns(), old.code().code_id()),
-            (new.rows(), new.columns(), new.code().code_id())
+            (old.rows(), old.columns(), old.code_id()),
+            (new.rows(), new.columns(), new.code_id())
         );
         assert_ne!(old.root(), new.root());
         w.certs[self.side] = self.replacement;

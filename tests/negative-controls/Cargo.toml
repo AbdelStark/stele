@@ -167,6 +167,22 @@ name = "nc-0610"
 path = "pcs/nc_0610.rs"
 
 [[test]]
+name = "nc-0603"
+path = "pcs/nc_0603.rs"
+
+[[test]]
+name = "nc-0612"
+path = "pcs/nc_0612.rs"
+
+[[test]]
+name = "nc-0613"
+path = "pcs/nc_0613.rs"
+
+[[test]]
+name = "nc-0614"
+path = "pcs/nc_0614.rs"
+
+[[test]]
 name = "stacked-public"
 path = "sumcheck/stacked_public.rs"
 

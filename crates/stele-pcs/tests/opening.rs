@@ -139,7 +139,7 @@ where
         assert_eq!(verified_work.weights_bytes, 0);
         assert!(verified_work.frame_bytes >= source.opening_frame_size().expect("frame size"));
         assert!(verified_work.row_bytes >= core::mem::size_of_val(retained.values()));
-        let encoded = stele_code::Encoder::from_code_id(&source.code().code_id())
+        let encoded = stele_code::Encoder::from_code_id(source.code_id())
             .expect("encoder")
             .encode_measured(retained.values())
             .expect("encoding");

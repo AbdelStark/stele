@@ -530,7 +530,7 @@ where
         if scalar.to_le_bytes().as_ref() != functional.value.to_le_bytes().as_ref() {
             return Err(Error::ValueMismatch);
         }
-        let encoded = Encoder::from_code_id(&source.code().code_id())
+        let encoded = Encoder::from_code_id(source.code_id())
             .map_err(Error::Encoder)?
             .encode_measured(&row)
             .map_err(Error::Encoder)?;

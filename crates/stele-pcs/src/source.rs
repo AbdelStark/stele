@@ -1,6 +1,7 @@
-//! Source context, finite query policy and unverified wire parsing, RFC-0010 A9 §§1,3,4.
+//! Source context, finite query policy and unverified wire parsing, RFC-0010 A9 §§1,3,4
+//! and A3 items 2-4 (version-2 expander sources).
 use core::marker::PhantomData;
-use stele_code::Circle;
+use stele_code::{registry, Circle, Code, Encoder};
 use stele_field::{Serialize, M31};
 use stele_hash::{merkle, ChallengeField};
 
@@ -21,6 +22,19 @@ const OPEN_QUARTER: [u16; 29] = [
     65, 92, 110, 119, 125, 128, 129, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130,
     130, 130, 130, 130, 130, 130, 130, 130, 130, 130,
 ];
+
+// RFC-0010 A3 item 4: Policy 1 for version-2 sources, indexed by J-3 for J=3..14.
+const CERT_V2: [u16; 12] = [
+    478, 11489, 13137, 13377, 13438, 13469, 13469, 13471, 13472, 13472, 13472, 13472,
+];
+const OPEN_V2: [u16; 12] = [
+    221, 5722, 6546, 6666, 6697, 6708, 6713, 6713, 6713, 6714, 6714, 6714,
+];
+// A3 item 3: policy byte 1 pins these evidence IDs; a changed premise needs a new policy byte.
+const CIRCLE_EVIDENCE: &str = "rfc-0010-a2/root-bound-v1";
+const EXPANDER_EVIDENCE: &str = "rfc-0010-a1/finite-v2";
+const SETUP_EVIDENCE: &str = "rfc-0012-a7/2^256-all-seeds-v2";
+const PURPOSE: &[u8; 23] = b"stele/v0.1/field-source";
 
 /// Rejected context, wire bytes or unrepresentable size; never partial acceptance.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -68,7 +82,7 @@ pub enum ProofKind {
 pub struct Parameters {
     /// Codeword length N.
     pub length: u64,
-    /// Accepted Circle distance lower bound D.
+    /// Accepted Circle or v2 distance lower bound D (RFC-0010 A3 item 3).
     pub distance: u64,
     /// Integer radius e=floor((D-1)/3).
     pub radius: u64,
@@ -76,6 +90,8 @@ pub struct Parameters {
     pub certificate_queries: u16,
     /// Least positive q_o for the exact 130-bit opening miss inequality.
     pub opening_queries: u16,
+    /// RFC-0012 A15: the v2 setup term 200431782/2^160 applies (J>=4), once per ledger.
+    pub setup_term: bool,
 }
 
 /// Verifier-owned canonical M31 matrix context, with QM31 or OM31 challenges.
@@ -90,46 +106,145 @@ pub struct Source<K: ChallengeField> {
     id: u64,
     ell: u8,
     rows: usize,
-    code: Circle,
+    code: [u8; 55],
+    code_len: usize,
+    columns: usize,
+    length: usize,
+    parameters: Parameters,
     root: merkle::Digest,
     field: PhantomData<K>,
 }
 
+/// Exact canonical source bytes: 105 for version 1, 139 for version 2 (A3 item 2).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SourceBytes {
+    bytes: [u8; 139],
+    len: usize,
+}
+impl core::ops::Deref for SourceBytes {
+    type Target = [u8];
+    fn deref(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+
 impl<K: ChallengeField> Source<K> {
-    /// Validate fixed dimensions and policy without allocating any matrix or proof.
+    /// Validate a version-1 Circle context without allocating any matrix or proof.
     pub fn new(id: u64, ell: u8, m: u8, blowup: u8, root: merkle::Digest) -> Result<Self, Error> {
-        if ell > 30 {
-            return Err(Error::UnsupportedSource);
-        }
-        let rows = 1usize.checked_shl(u32::from(ell)).ok_or(Error::Capacity)?;
         let code = Circle::new(u32::from(m), u32::from(blowup)).map_err(|error| match error {
             stele_code::Error::Capacity => Error::Capacity,
             _ => Error::UnsupportedSource,
         })?;
+        Self::from_code_id(id, ell, &code.code_id(), root)
+    }
+
+    /// Validate a Circle (version 1) or v2 expander (version 2, J=3..14) identity.
+    /// Every other identity, including J=15, rejects before any transcript work.
+    pub fn from_code_id(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        root: merkle::Digest,
+    ) -> Result<Self, Error> {
+        if ell > 30 {
+            return Err(Error::UnsupportedSource);
+        }
+        let rows = 1usize.checked_shl(u32::from(ell)).ok_or(Error::Capacity)?;
+        let encoder = Encoder::from_code_id(code).map_err(|error| match error {
+            stele_code::Error::Capacity => Error::Capacity,
+            _ => Error::UnsupportedSource,
+        })?;
+        // The factory validated the identity: Circle m,b or v2 J in 3..=15 exist.
+        let (certificate_queries, opening_queries, evidence, setup) = if code.len() == 21 {
+            let m = usize::from(code[19]);
+            if code[20] == 1 {
+                (CERT_HALF[m], OPEN_HALF[m], CIRCLE_EVIDENCE, None)
+            } else {
+                (CERT_QUARTER[m], OPEN_QUARTER[m], CIRCLE_EVIDENCE, None)
+            }
+        } else {
+            // A3 item 2: N=2^31 at J=15 exceeds the RFC-0012 A10 sampler domain.
+            let j = usize::from(code[22]);
+            if j > 14 {
+                return Err(Error::UnsupportedSource);
+            }
+            let setup = (j >= 4).then_some(SETUP_EVIDENCE);
+            (CERT_V2[j - 3], OPEN_V2[j - 3], EXPANDER_EVIDENCE, setup)
+        };
+        let code_parameters = registry::parameters(&encoder);
+        if code_parameters.distance_evidence != evidence || code_parameters.setup_evidence != setup
+        {
+            return Err(Error::Encoder(stele_code::Error::InvalidRegistry));
+        }
+        let info = encoder.info();
+        let distance = code_parameters.distance_lower_bound;
+        let mut code_bytes = [0; 55];
+        code_bytes[..code.len()].copy_from_slice(code);
         Ok(Self {
             id,
             ell,
             rows,
-            code,
+            code: code_bytes,
+            code_len: code.len(),
+            columns: usize::try_from(info.message_len).map_err(|_| Error::Capacity)?,
+            length: usize::try_from(info.codeword_len).map_err(|_| Error::Capacity)?,
+            parameters: Parameters {
+                length: info.codeword_len,
+                distance,
+                radius: (distance - 1) / 3,
+                certificate_queries,
+                opening_queries,
+                setup_term: setup.is_some(),
+            },
             root,
             field: PhantomData,
         })
     }
 
-    /// Exact version-1 source bytes, including expected root, layout and fixed policy.
-    pub fn bytes(&self) -> [u8; 105] {
-        let mut out = [0; 105];
-        out[..23].copy_from_slice(b"stele/v0.1/field-source");
-        out[23] = 1;
+    /// Parse exact canonical source bytes from an expected statement. Version, degree,
+    /// layout, policy and dimensions must be the derived ones; else UnsupportedSource.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        let code_len = match bytes.get(23) {
+            Some(1) => 21,
+            Some(2) => 55,
+            _ => return Err(Error::UnsupportedSource),
+        };
+        if bytes.len() != 84 + code_len || bytes[..23] != PURPOSE[..] {
+            return Err(Error::UnsupportedSource);
+        }
+        let end = 34 + code_len;
+        let id = bytes[25..33]
+            .try_into()
+            .map_err(|_| Error::UnsupportedSource)?;
+        let root = bytes[end + 18..]
+            .try_into()
+            .map_err(|_| Error::UnsupportedSource)?;
+        let source = Self::from_code_id(u64::from_le_bytes(id), bytes[33], &bytes[34..end], root)?;
+        // Re-serialization fixes version, degree, R, C, layout 0 and policy 1 exactly.
+        if *source.bytes() != *bytes {
+            return Err(Error::UnsupportedSource);
+        }
+        Ok(source)
+    }
+
+    /// Exact source bytes, including version, expected root, layout and fixed policy.
+    pub fn bytes(&self) -> SourceBytes {
+        let mut out = [0; 139];
+        let end = 34 + self.code_len;
+        out[..23].copy_from_slice(PURPOSE);
+        out[23] = if self.code_len == 21 { 1 } else { 2 };
         out[24] = K::DEGREE as u8;
         out[25..33].copy_from_slice(&self.id.to_le_bytes());
         out[33] = self.ell;
-        out[34..55].copy_from_slice(&self.code.code_id());
-        out[55..63].copy_from_slice(&(1u64 << self.ell).to_le_bytes());
-        out[63..71].copy_from_slice(&(self.columns() as u64).to_le_bytes());
-        out[72] = 1; // Layout at offset 71 stays zero; policy 1 owns the fixed counts.
-        out[73..].copy_from_slice(&self.root);
-        out
+        out[34..end].copy_from_slice(self.code_id());
+        out[end..end + 8].copy_from_slice(&(1u64 << self.ell).to_le_bytes());
+        out[end + 8..end + 16].copy_from_slice(&(self.columns as u64).to_le_bytes());
+        out[end + 17] = 1; // Layout at end+16 stays zero; policy 1 owns the fixed counts.
+        out[end + 18..end + 50].copy_from_slice(&self.root);
+        SourceBytes {
+            bytes: out,
+            len: end + 50,
+        }
     }
 
     /// Number of message rows, with no implicit logical padding.
@@ -139,12 +254,17 @@ impl<K: ChallengeField> Source<K> {
 
     /// Number of message columns, distinct from encoded leaf count.
     pub fn columns(&self) -> usize {
-        self.code.message_len()
+        self.columns
     }
 
-    /// The validated canonical Circle map, without any proximity or profile credit.
-    pub fn code(&self) -> Circle {
-        self.code
+    /// The validated exact code identity, without any proximity or profile credit.
+    pub fn code_id(&self) -> &[u8] {
+        &self.code[..self.code_len]
+    }
+
+    /// Number of encoded symbols N, which is also the Merkle leaf count.
+    pub fn codeword_len(&self) -> usize {
+        self.length
     }
 
     /// Expected full column-tree root from this caller-owned context.
@@ -154,7 +274,7 @@ impl<K: ChallengeField> Source<K> {
 
     /// Number of bottom-up siblings in each individual response.
     pub fn path_height(&self) -> usize {
-        self.code.codeword_len().trailing_zeros() as usize
+        self.length.trailing_zeros() as usize
     }
 
     /// Exact column tree descriptor; field decoding follows authentication.
@@ -162,33 +282,14 @@ impl<K: ChallengeField> Source<K> {
         merkle::Descriptor {
             kind: merkle::Kind::Columns,
             id: self.id,
-            count: self.code.codeword_len() as u64,
+            count: self.length as u64,
             width: 4u64 << self.ell,
         }
     }
 
-    /// Static parameters under RFC-0010 A9 §1; no floating-point parameter selection.
+    /// Static parameters under RFC-0010 A9 §1 and A3 items 3-4; no floating point.
     pub fn parameters(&self) -> Parameters {
-        let id = self.code.code_id();
-        let (m, b) = (id[19], id[20]);
-        let (certificate_queries, opening_queries) = if b == 1 {
-            (CERT_HALF[usize::from(m)], OPEN_HALF[usize::from(m)])
-        } else {
-            (CERT_QUARTER[usize::from(m)], OPEN_QUARTER[usize::from(m)])
-        };
-        let length = self.code.codeword_len() as u64;
-        let distance = if m == 0 {
-            length
-        } else {
-            length - self.columns() as u64
-        };
-        Parameters {
-            length,
-            distance,
-            radius: (distance - 1) / 3,
-            certificate_queries,
-            opening_queries,
-        }
+        self.parameters
     }
 
     /// Query count selected only by this expected context and operation.
@@ -228,7 +329,7 @@ impl<K: ChallengeField> Source<K> {
             .checked_add(self.columns())
             .and_then(|n| n.checked_add(1))
             .and_then(|n| n.checked_mul(4 * K::DEGREE))
-            .and_then(|n| n.checked_add(8 + 105 + 32))
+            .and_then(|n| n.checked_add(8 + self.bytes().len() + 32))
             .ok_or(Error::Capacity)
     }
 
