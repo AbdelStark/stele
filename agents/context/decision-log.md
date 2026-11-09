@@ -1350,3 +1350,39 @@ Consequences:
   `crates/stele-reductions/tests/relation.rs` and earn no catalog credit.
 
 Status: Accepted.
+
+## ADR-076: Row conversion and projection relations (RFC-0026 §5 rows 3-4, task E16-05)
+
+Context: RFC-0026 §5 rows 3–4 name the integer definitions (RFC-0025 §2.2, RFC-0004
+A8/A15) and the relation kinds, but not the column encoding. The projection value
+`V·m·s·2^l` reaches 2^77, and an A15 fold reaches 2^37, so both need the limb rule.
+The review of PR #302 added matmul-output discipline and grouped rows (§1.3).
+
+Decision:
+- **Row conversion.** Sign/abs on the masked input pins padding to 0. The attained
+  maximum uses a one-hot `h`, `h·gap = 0` and a matmul row sum. The ceiling is a
+  lookup of `127s − M` in `[0,126]`. The zero-row branch is `z` with `z·M = 0` and
+  `z·q = 0`, and divisor `s + z`. Division is RFC-0026's shared round-half-away
+  pattern, so static scales reach 65535. Per-row and A15 grouped rows share one
+  relation set; only the group bits differ.
+- **Projection.** One matmul `C = q·W`. A15 rows use digit rows `q·s = b0 + 256·b1`
+  and two matmuls. A wide value never sits in one relation: two byte chains, one
+  per-position identity with carries each, prove the sign/magnitude of `V` and
+  `|V|·m·s + 2^(K−1) = Y·2^K + ρ`. Carries wider than 16 bits are two inline
+  limbs, so the chains need no Compose column.
+- **Shifts.** `l ≥ 0` shifts chain positions by `l/8` bytes, and the output
+  identity takes the factor `2^(l mod 8)`. When `−l` exceeds `bits(Pmax) + 1`, the
+  rounding is identically 0 and `Ymag = 0` replaces the chain, so every
+  exponent in RFC-0025's domain is supported.
+- **Lemmas.** The output-uniqueness lemmas and near-miss tests live in
+  `agents/reviews/e16-05-projections.md`.
+
+Consequences:
+- No challenge, label, cut or cost-model term moves.
+- The following plans are rejected with `Unsupported` until amended:
+  - grouped gated rows (E16-08);
+  - A15 digit rows at `d = 16384`;
+  - projection domains over 30 variables. The row-block split needs `Ref`
+    constant bits, an E16-01 API change.
+
+Status: Accepted (same-author pass; soundness-auditor review requested on the PR).

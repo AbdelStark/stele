@@ -2621,7 +2621,7 @@ tasks:
   - RFC-0026 §5 rows 3-4, §5.2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-05-projections
   acceptance:
