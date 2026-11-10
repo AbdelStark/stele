@@ -2475,6 +2475,67 @@ tasks:
   - formal/zk-development.md gives the gap analysis against RFC-0026 and FlashProve, the chosen construction, proofs of its component lemmas and the exact remaining list
   - rank evidence for the Circle mask half and the systematic-expander counterexample as stele-code tests
   - two same-author review passes recorded; no RFC, label, ledger or wire change
+- id: E12-11
+  epic: E12
+  title: RFC-0013 A2 conditional hiding sources and masked A1 sumcheck (with RFC-0010 A14, RFC-0012 A17)
+  depends:
+  - E12-10
+  rfc:
+  - RFC-0013 A1
+  - RFC-0013 A2
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-11-rfc0013-a2
+  acceptance:
+  - normative bytes, labels, order, query budget, rank check, privacy statement and lifetime for the two components
+  - two same-author adversarial passes recorded; index, ADR, glossary, tasks and NC-0902..0905 reservations updated
+  - RFC-0013 A1 stays Draft with the design note's R1-R13 as its remaining list
+- id: E12-12
+  epic: E12
+  title: Hiding Circle source with salted leaves (version 3)
+  depends:
+  - E12-11
+  rfc:
+  - RFC-0013 A2 §1
+  - RFC-0010 A14
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: ready
+  acceptance:
+  - version-3 source bytes and admission; salted payloads authenticated and decoded after the salt by the actual certificate and opening verifiers
+  - prover layout, seed-derived masks and salts, and the public rank check with MaskRank abort
+  - tests that proofs verify and that opened columns and rows are masked; NC-0902 and NC-0903 executed
+- id: E12-13
+  epic: E12
+  title: Masked A1 sumcheck with the RFC-0012 A17 labels
+  depends:
+  - E12-11
+  rfc:
+  - RFC-0013 A2 §2
+  - RFC-0012 A17
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck+stele-hash
+  status: ready
+  acceptance:
+  - labels registered in stele-hash and docs/security/transcript-labels.json
+  - prover and verifier with the mask obligation returned undischarged; masked zerocheck in A1 form tested
+  - tests that proofs verify and that the round messages are masked; NC-0904 and NC-0905 executed
+- id: E12-14
+  epic: E12
+  title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
+  depends:
+  - E12-12
+  - E12-13
+  rfc:
+  - RFC-0013 A1
+  skill: soundness-auditor
+  crate: stele-reductions+stele-prover
+  status: blocked(RFC-0013 A1)
+  acceptance:
+  - RFC-0013 A1 accepted with R1-R13 of formal/zk-development.md closed
+  - dev-zk profile flag, composed simulator and NC-0900/0901 consumers
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
