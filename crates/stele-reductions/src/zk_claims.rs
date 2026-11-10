@@ -1733,8 +1733,9 @@ enum Forgery {
     Block(usize),
     /// GKR step `g`, free rounds, final `input` plus one, `μ` solved last.
     Final(usize, usize),
-    /// Relation `j`, free rounds, final `input` plus one, `μ` solved last.
-    RelationFinal(usize, usize),
+    /// Relation `j` on a false witness: the honest rounds and the true `μ`,
+    /// without the producer's own round-sum check.
+    Unchecked(usize),
     /// Lookup `l`: the true top `p, q`, but `h` shifted so that `Σ h = 0`, with the
     /// top identity `h·q − p = 0` forged (free rounds, `μ` solved last).
     Ratio(usize),
@@ -1762,43 +1763,46 @@ where
     prove_with(statement, columns, &seed.0, t, true, forgery)
 }
 
-/// NC-0928's adversary, never a verifier input: the honest prover, except that
-/// relation `relation` reveals final `input` plus one (free rounds, `μ` solved
-/// last). Only the verifier's own evaluation of that public final rejects it.
-#[doc(hidden)]
-pub fn forge_relation_final<K: ChallengeField + CodeField + Eq>(
+/// NC-0920..0926's adversary, never a verifier input: the honest prover on a
+/// false witness, except that relation `relation` sends its honest rounds and the
+/// true `μ` without the producer's own round-sum check. Only that relation's
+/// first-round check rejects it; the rest of the proof is honest.
+#[cfg(feature = "controls")]
+pub fn forge_unchecked<K: ChallengeField + CodeField + Eq>(
     statement: &Statement<K>,
     columns: &[Vec<M31>],
     seed: Seed,
     t: &mut Transcript<K>,
     relation: usize,
-    input: usize,
 ) -> Result<Proof<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let forgery = Some(Forgery::RelationFinal(relation, input));
+    let forgery = Some(Forgery::Unchecked(relation));
     prove_with(statement, columns, &seed.0, t, true, forgery)
 }
 
-/// The GKR step index and input index of lookup `lookup`'s leaf input of kind
-/// `kind` (0: the selector `S`, 1: the first member weight `W_0`, 2: `eq·Z`), for
-/// controls.
-#[doc(hidden)]
-pub fn leaf_input<K: ChallengeField + CodeField>(
-    statement: &Statement<K>,
-    lookup: usize,
-    kind: u8,
-) -> Result<(usize, usize), Error> {
-    let plan = plan(statement)?;
-    let (g, step) = plan
-        .gkr
-        .iter()
-        .enumerate()
-        .rfind(|(_, s)| s.lookup_index() == lookup)
-        .ok_or(Error::Statement)?;
-    let input = lookup::leaf_input(step, kind).ok_or(Error::Statement)?;
-    Ok((g, input))
+/// [`forge_unchecked`]'s instance: honest rounds and `μ`, no self-check.
+#[allow(clippy::type_complexity)]
+fn unchecked<K: ChallengeField + CodeField + Eq>(
+    i: &Instance<K>,
+    summand: Occurrences<K>,
+    mask: &Mask<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+) -> Result<(masked::Proof<K>, Vec<K>, Vec<K>, K), Error> {
+    #[cfg(feature = "controls")]
+    {
+        let (proof, point) =
+            masked::prove_unchecked(i, summand, mask, binding, t).map_err(Error::Sumcheck)?;
+        let (truth, mu) = (proof.final_values.clone(), proof.mask_final);
+        Ok((proof, point, truth, mu))
+    }
+    #[cfg(not(feature = "controls"))]
+    {
+        let _ = (i, summand, mask, binding, t);
+        Err(Error::Statement)
+    }
 }
 
 /// NC-0919's adversary, never a verifier input: for a false lookup, it commits the
@@ -2164,27 +2168,17 @@ where
             bound: 0,
             expand: None,
         };
-        let tweak = match forgery {
-            Some(Forgery::RelationFinal(x, input)) if x == j => Some(input),
-            _ => None,
-        };
         let here = forgery == Some(Forgery::Relation(j))
-            || tweak.is_some()
             || plan
                 .lookups
                 .iter()
                 .enumerate()
                 .any(|(l, lp)| forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j));
-        let (proof, point, truth, mu) = masked_instance(
-            &i,
-            step.degree,
-            summand,
-            &masks[j],
-            &binding,
-            here,
-            tweak,
-            t,
-        )?;
+        let (proof, point, truth, mu) = if forgery == Some(Forgery::Unchecked(j)) {
+            unchecked(&i, summand, &masks[j], &binding, t)?
+        } else {
+            masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?
+        };
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
             // A5 item 4: public aborts before the claim leaves the producer.

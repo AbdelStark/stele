@@ -508,6 +508,14 @@ changes. Item 8 still holds: dev-zk is not admitted.
   `eq(ρ_shared, ·)`), the summed variables and padding. Free variables not shared
   are fixed at `ρ`. A6 fixed bits are Boolean coordinates of the occurrence.
 - **Checks.** RFC-0008 A7's implementation notes (E12-14a).
-- **Controls.** NC-0924..0928 and NC-0932. NC-0920..0926 use a forging adversary
-  (`zk::relation::forge`). The honest producer refuses a false witness at its own
-  first round.
+- **Controls.**
+  - NC-0920..0926 are false witnesses. The adversary (`zk::relation::forge`, under
+    the `controls` feature) sends the false relation's honest rounds and the true
+    `μ`, without the producer's own round-sum check. That relation's first round
+    rejects it.
+  - NC-0928 and NC-0929 substitute one public column (`zk::relation::forge_substituted`).
+    The verifier's own evaluation of that final rejects it.
+  - Each control accepts the same adversary on the honest witness (mutation M0).
+    Each one goes red, with the false proof accepted, when its own check is removed.
+  - NC-0930..0932 are `todo` until a substitution adversary keeps the A5 statement
+    message.

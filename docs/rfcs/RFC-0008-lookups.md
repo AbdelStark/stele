@@ -590,5 +590,6 @@ form or challenge changes.
   empty unit list (`b = m`, RFC-0026 A3).
 - **Multiplicities.** Each selected entry of a member counts `2^{m' − vars}`
   times. They are committed in the witness source, before `β, α`.
-- **Controls.** NC-0920..0923 (members, selector, shift, padding) and
-  NC-0929..0931 (`S`, `W_m`, `eq·Z` finals).
+- **Controls.** NC-0920..0923 cover members, selector, shift and padding. NC-0929
+  covers the `S` final. NC-0930 (`W_m`) and NC-0931 (`eq·Z`) are `todo` (see the
+  RFC-0013 A5 E12-14a notes).

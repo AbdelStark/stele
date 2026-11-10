@@ -247,24 +247,6 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk_relation::run(929),
     },
     catalog::RegisteredControl {
-        id: 930,
-        kind: catalog::ControlKind::Proof,
-        expected_error: "ClaimMismatch",
-        run: || zk_relation::run(930),
-    },
-    catalog::RegisteredControl {
-        id: 931,
-        kind: catalog::ControlKind::Proof,
-        expected_error: "ClaimMismatch",
-        run: || zk_relation::run(931),
-    },
-    catalog::RegisteredControl {
-        id: 932,
-        kind: catalog::ControlKind::Proof,
-        expected_error: "ClaimMismatch",
-        run: || zk_relation::run(932),
-    },
-    catalog::RegisteredControl {
         id: 1300,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",

@@ -1202,16 +1202,6 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     Ok(())
 }
 
-/// The input index of a leaf's public input of `kind` (0: `S`, 1: `W_0`, 2: `eq·Z`).
-pub(super) fn leaf_input(step: &GkrStep, kind: u8) -> Option<usize> {
-    step.inputs.iter().position(|i| {
-        matches!(
-            (kind, i),
-            (0, Gin::Selector) | (1, Gin::Member(0)) | (2, Gin::Pad)
-        )
-    })
-}
-
 /// The input index of the step's `p(·, 0)` layer child (NC-0913's target).
 pub(super) fn first_layer(step: &GkrStep) -> Option<usize> {
     step.inputs

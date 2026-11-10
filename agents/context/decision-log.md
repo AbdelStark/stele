@@ -2331,6 +2331,13 @@ Decision:
   - The eight-layer window (`T = 64`) proves and verifies at the relation level
     in an ignored release test: 413 s prove and 55 s verify on one laptop. That
     timing is not a ledger number.
-- Controls NC-0920..0932 are added and executed.
+- Controls NC-0920..0929 are added and executed, with NC-0927 among them.
+  - Independent review (fix-then-merge): NC-0920..0926 and NC-0929 did not
+    discriminate. The adversaries now keep honest rounds and the true `μ`, or
+    substitute one public column. Each passes on the honest witness and goes red
+    when its own check is removed.
+  - NC-0930..0932 are `todo`.
+  - The adversaries are behind the `controls` feature of `stele-reductions` and
+    `stele-sumcheck`.
 
 Status: Proposed (development tier; independent review requested before merge).

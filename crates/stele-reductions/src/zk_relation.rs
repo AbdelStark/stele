@@ -393,10 +393,10 @@ pub fn prove(
     claims::prove(&layout.statement, &columns, seed, t)
 }
 
-/// Controls only, never a verifier input: [`prove`] with claims relation `index`
-/// forged by `claims::forge` (NC-0916's adversary: free rounds, `μ` solved last,
-/// true finals), so a false witness of that relation reaches the verifier.
-#[doc(hidden)]
+/// Controls only, never a verifier input: [`prove`] on a false witness with
+/// claims relation `index` sent by `claims::forge_unchecked` (honest rounds, true
+/// `μ`, no producer self-check). That relation's first-round check rejects it.
+#[cfg(feature = "controls")]
 pub fn forge(
     t: &mut Transcript<K>,
     relation: &Relation,
@@ -408,30 +408,26 @@ pub fn forge(
     let columns = columns(&layout, relation, values)?;
     t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
         .map_err(|e| Error::Sumcheck(e.into()))?;
-    claims::forge(&layout.statement, &columns, seed, t, index)
+    claims::forge_unchecked(&layout.statement, &columns, seed, t, index)
 }
 
-/// Controls only, never a verifier input: [`prove`] with one public final moved
-/// by one, through `claims::forge_relation_final` (`gkr = false`, relation
-/// `index`) or `claims::forge_final` (`gkr = true`, GKR step `index`).
-#[doc(hidden)]
-pub fn forge_final(
+/// Controls only, never a verifier input: an honest proof of `used` (a relation
+/// that differs from `relation` in one public column) under `relation`'s digest.
+/// Every round is honest for `used`; only the verifier's own evaluation of that
+/// public column's final rejects it (`ClaimMismatch`).
+#[cfg(feature = "controls")]
+pub fn forge_substituted(
     t: &mut Transcript<K>,
     relation: &Relation,
+    used: &Relation,
     values: &Values,
     seed: Seed,
-    gkr: bool,
-    index: usize,
-    input: usize,
 ) -> Result<Proof<K>, Error> {
-    let layout = layout(relation)?;
-    let columns = columns(&layout, relation, values)?;
+    let layout = layout(used)?;
+    let columns = columns(&layout, used, values)?;
     t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
         .map_err(|e| Error::Sumcheck(e.into()))?;
-    match gkr {
-        true => claims::forge_final(&layout.statement, &columns, seed, t, index, input),
-        false => claims::forge_relation_final(&layout.statement, &columns, seed, t, index, input),
-    }
+    claims::prove(&layout.statement, &columns, seed, t)
 }
 
 /// The claims relation index of check `l`'s `Σ h = 0` (RFC-0008 A7 item 3).

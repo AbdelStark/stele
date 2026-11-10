@@ -687,9 +687,11 @@ def field_sources(root):
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
-            # E16-15: the only feature is the opt-in prover-thread switch; no_std by default.
-            or manifest.get('features', {'std': ['stele-sumcheck/std', 'stele-pcs/std']})
-                != {'std': ['stele-sumcheck/std', 'stele-pcs/std']}
+            # E16-15: the opt-in prover-thread switch; no_std by default. E12-14a: the
+            # controls' adversaries (zk), never a verifier input.
+            or manifest.get('features', {})
+                != {'std': ['stele-sumcheck/std', 'stele-pcs/std'],
+                    'controls': ['stele-sumcheck/controls']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
@@ -1571,6 +1573,8 @@ def controls_layout(root):
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
                     for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
     dependencies['stele-sumcheck']['features'] = ['std']
+    # E12-14a: the dev-zk controls' adversaries (never a verifier input).
+    dependencies['stele-reductions']['features'] = ['controls']
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
