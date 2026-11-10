@@ -1821,3 +1821,113 @@ and runs on a GPU). No GPU path is measured; it stays behind the INV-3 parity ga
 
 Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
 review in the E16-11 PR).
+
+## ADR-090: Adopt the build program — tiers, ladder, lanes, milestones (RFC-0027, RFC-0018 A2, task E17-00)
+
+Context: the owner asked for an assessment of the project and a plan to build the
+leading prover of inference in the order "make it work, make it fast, make it right",
+in a building mode that reaches a working end-to-end system and then iterates. The
+assessment (`docs/assessment.md`, at `6441a90`) found:
+- one working end-to-end proof (RFC-0026) that commits about 1,000 cells and runs about
+  600 lookup positions per token, layer and unit of width, claims no security level and
+  runs on CPU;
+- a task graph with 4 pickable tasks out of 157, none on the path to an inference
+  proof; the prover task E8-01 has 22 unfinished prerequisites, 11 of them blocked on
+  amendments (17 tasks are blocked in all);
+- a security target no parameter set can meet (RFC-0019 Q12, RFC-0010 A3 item 7);
+- a public system with the thesis's shape (FlashProve v0.16.0, 2026-11-02): 111 tok/s
+  on a 400B mixture-of-experts model on one H100, 18.78 MB proofs, zero knowledge.
+
+Decision:
+- **RFC-0027 is Accepted by owner direction.** It changes no protocol behaviour. It
+  defines three tiers bound to the profiles (development, `standard`, `treaty`), a
+  workload ladder L0 to L6 with a generated scoreboard, seven lanes with one open
+  change each, and gates M0 to M7.
+- **RFC-0018 A2 is Accepted with it**: rung ids are workloads, records carry stage
+  times and counters once E17-01 lands, `bench/scoreboard.md` is generated.
+- **The task graph gains epics E17 to E23.** Legacy epics E3 to E15 keep their tasks
+  and acceptance text as the treaty backlog; RFC-0027 §6 records what supersedes,
+  parks or resumes each. E4-07, E5-06 and E15-07, which were pickable, are parked.
+- **The small-model gate is stories42M (rung L2).** GPT-2-small (W8) becomes
+  architecture coverage and gates nothing in E17 to E23.
+- **INV-6 and INV-7 are scoped** to `standard` and `treaty` plans, as RFC-0026 §1.2
+  already treated them. INV-14 (ladder evidence) and INV-15 (end to end stays green)
+  are added.
+- **Development-tier protocol changes take a short amendment** and one reviewer from
+  another lane. Promotion to `standard` or `treaty` keeps the full Workflow 02 path
+  and the soundness-auditor.
+- **Lines of work stopped:** new work on the v2 expander source, per-operation advice
+  cuts for new operations, double-challenge LogUp as the route to 100 bits, dual-prime
+  accumulation, and epoch beacons before M6. Delivered code stays until replaced.
+- `bench/dev_e2e.py` accepts `--counters` so a record can carry proof section bytes;
+  `bench/ledger/e17-00-dev-synthetic-8layer-4core.json` is the first record made
+  that way.
+
+Alternatives rejected:
+- *Continue the first design's graph.* Its critical path waits on at least eight
+  amendments, one of which (Q31) asks for something unsound as posed.
+- *Adopt or fork FlashProve.* Forbidden by guardrail 5; it is unmaintained, fixed to
+  one architecture and a 64-bit field, and its own report lists the optimisations it
+  left out. It is the benchmark and a reference for differential study.
+- *Rewrite from zero.* The field, transcript, sumcheck, lookup, encoder, CQIS and
+  relation-engine code is sound, tested and reusable; the plan changes what is
+  composed, not the primitives.
+- *One global queue.* It produced the present frontier of four pickable tasks.
+
+Consequences:
+- The pickable frontier is nine tasks in six lanes (E5-05h, E17-01, E18-01, E19-01,
+  E19-02, E21-01, E21-02, E22-01, E22-03).
+- No proof may claim `standard` or `treaty` before RFC-0030 is Accepted.
+- Agents read `docs/plan.md` and the lane rules before picking a task; AGENTS.md,
+  the workflows, the skills and the templates are updated in the same change.
+- No soundness ledger line, cost-model constant or proof byte changes.
+
+Status: Accepted (owner-directed; the lane, tier and gate definitions are the
+planning agent's proposal within that direction and are listed for the owner's
+confirmation in `docs/plan.md` §10).
+
+## ADR-091: Design direction recorded as Draft — commit rule, commitment scheme v3, per-round accounting, zero knowledge (RFC-0028, RFC-0029, RFC-0030, RFC-0013 A2, RFC-0026 A6/A7)
+
+Context: the plan's gains come from four protocol changes. Each needs evidence and
+review before it binds code (INV-1). Recording them as Draft RFCs gives every lane a
+precise target without admitting anything.
+
+Decision (direction, not law):
+- **Commit rule (RFC-0028).** Commit exactly the advice: outputs of rounding,
+  clamping, selection, digit splitting and tables. Arithmetic results are virtual
+  columns reduced by sumcheck. The witness is proved in segments that carry only the
+  residual boundary. This is the sound form of INV-6 and answers Q31 for virtual
+  tuples. The first design's lookups over uncommitted tensors are not pursued.
+- **Commitment scheme v3 (RFC-0029).** Interleaved circle Reed–Solomon with a
+  recursive opening; fresh mode for per-proof sources, certified mode for model
+  sources; proven unique-decoding parameters only. RFC-0026 A6 moves the development
+  engine from v2 expander sources to the circle sources that already exist.
+- **Security accounting (RFC-0030).** Round-by-round error with hash queries
+  multiplying the largest round; `standard` at 100 bits on QM31 with lookup instances
+  and commitment rows capped; `treaty` at 128 bits on a wider challenge field; no
+  grinding counted; proven bounds only in both. RFC-0026 A7 supplies the lookup
+  instance split.
+- **Zero knowledge (RFC-0013 A2).** Bounded-query encodings, mask rows and committed
+  sumcheck masks on scheme v3, with an opening budget and a published leak list; a
+  pad-and-prove construction is the alternative until task E23-01 decides.
+- **Field.** M31 with QM31 challenges stays (ADR-002). A 64-bit field with
+  random-projection range checks, as FlashProve uses, is not adopted; bet B2 of
+  `docs/plan.md` states when to revisit it.
+
+Alternatives rejected for now:
+- *WHIR or FRI openings for the weights.* Each opening hashes a codeword the size of
+  the weights; a recursive interleaved opening hashes only the row combination.
+- *A linear-time first-layer code.* Its proven radius costs several times the
+  queries; kept as the fallback of bet B3 (Q45).
+- *List-decoding parameters.* They need a wider field and a transfer lemma for the
+  circle code (Q39); unique decoding is enough for `standard`.
+- *Conjectural proximity bounds.* The capacity conjectures were disproved in 2025.
+
+Consequences:
+- Tasks E18-01, E19-01, E19-02, E20-02, E21-01 and E23-01 carry the acceptance of
+  these texts. Until then code follows the Accepted RFC-0026 and RFC-0010.
+- New control ids are proposed in the drafts (NC-0630..0635, NC-0806..0808,
+  NC-1320..1325) and enter the catalogue at acceptance.
+- Questions Q34 to Q47 are opened in RFC-0019.
+
+Status: Proposed (Draft RFCs; each is decided by its acceptance task).

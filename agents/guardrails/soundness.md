@@ -8,3 +8,9 @@
 - Bound certificates: never compute a bound from runtime data.
 - Padding rows must be excluded by selectors in every lookup and masked in every zerocheck.
 - When in doubt, write the attack as a control first; if it passes, you have found a bug, not a test problem.
+- A column is virtual only if it is a linear map, a pointwise product of at most three, or a two-factor contraction of other columns with integer coefficients. The output of a rounding, a clamp, a division, a selection or a table is advice and is committed.
+- Every claim is discharged: by an opening of a source committed before the claim's point was drawn, by a public evaluation the verifier performs, or by the reduction of a virtual column. A claim that is only compared with another prover-sent value is a bug.
+- A source's root is absorbed before any challenge that can produce a claim on it. For carried columns that means the earlier segment's root.
+- Lookup instance sizes, batch sizes and commitment row lengths come from the plan and are checked against the profile's caps; a proof byte never selects a parameter.
+- A security level is a statement about the largest round error. Never add grinding bits to it, and never report a level for a development-tier proof.
+- The first transcript absorb contains the whole statement: public input, plan digest and every model root.
