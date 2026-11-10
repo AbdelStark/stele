@@ -1575,7 +1575,7 @@ def controls_layout(root):
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
