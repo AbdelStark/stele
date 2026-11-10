@@ -2542,12 +2542,28 @@ tasks:
   - two-block mask, mask source, order and opening exactly as RFC-0013 A4; the A2 forgery rejected by the actual verifier
   - Lemma 5 written in formal/zk-development.md §4.3 with statistical evidence for the rounds and the opening row
   - NC-0907 and NC-0908 executed; the quarantine admits only stele_reductions::zk
+- id: E12-16
+  epic: E12
+  title: Masked claims and composition research note (design note R1)
+  depends:
+  - E12-15
+  rfc:
+  - RFC-0013 A1
+  - RFC-0026 §3-4
+  skill: soundness-auditor
+  crate: formal
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-16-zk-claims
+  acceptance:
+  - formal/zk-claims.md gives the construction, the hybrid simulator argument, the entropy budget under the M31 limit and the exact remaining list
+  - Lemma 6 proved; Lemma 7 and the executable small-field check listed as the gate before any implementation
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
   depends:
   - E12-12
-  - E12-15
+  - E12-16
   rfc:
   - RFC-0013 A1
   skill: soundness-auditor
