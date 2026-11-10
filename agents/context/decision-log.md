@@ -2236,5 +2236,16 @@ Decision:
   fails when its check is removed (recorded in the PR).
 - The verifier evaluates the batch weight densely, in `O(R·C)`. This is a
   `shortcut:` until sources grow.
+- Independent review (fix-then-merge, no soundness or privacy bug):
+  - Removing the relation `μ_j` from the shared batch survived every test. NC-0916
+    now runs A4's NC-0908 attack on a composed relation through `claims::forge`, a
+    documented adversary prover like `prove_weighted`. With that binding removed,
+    the forgery is accepted.
+  - A changed shared opening is now tested. Removing that opening check fails the
+    test.
+  - A statement without a fresh vanishing variable is refused instead of sharing
+    variable 0.
+  - The matmul degree is 3 here because this form has no `eq(ρ_shared, ·)`
+    factor. A5 item 3's 4 includes that factor.
 
-Status: Accepted (development tier; independent soundness-auditor review requested).
+Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).

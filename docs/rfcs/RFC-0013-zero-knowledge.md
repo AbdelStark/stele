@@ -480,3 +480,12 @@ items above leave open. None changes a label, a loss or an order.
   every source and instance id of the proof, so each mask stream is used once.
 - **Item 4's `α = 0`** is a producer abort of every masked sumcheck, including
   A4's (`MaskWeight`).
+- **Item 2's default** must find a fresh vanishing variable for every
+  occurrence. A statement that leaves none is refused (`Statement`); the
+  variable is never silently shared.
+- **Item 3's matmul degree** is 4 with the `eq(ρ_shared, ·)` factor of RFC-0026
+  A9, and 3 for a matmul without shared bits, which is the form E12-18 builds.
+- **NC-0916** (added): A4's NC-0908 attack on a composed relation over honest
+  sources. The rounds are free, `μ` is solved last and the finals are true. Only
+  binding each relation's `μ_j` in the shared batch rejects it
+  (`RoundSumMismatch`).
