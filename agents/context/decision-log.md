@@ -1673,3 +1673,27 @@ separate from the stacked witness source (RFC-0026 A4), one opening each. Gains 
 become committed weights before any zero-knowledge profile.
 
 Status: Accepted (owner authorisation for A2; independent review in the E16-10 PR).
+
+## ADR-086: Grouped Q/K/V rows are not pursued; the residual G7 gap is in exact-only numerics (RFC-0004 A15, task E5-05g)
+
+Context: E5-05e (grouped activation rows, g = 128) halved every G7 gap but left G7 failing
+(WikiText +1.57%, ARC −1.54 pp, MMLU-Pro −1.40 pp; IFEval within its paired SE). E5-05g asked
+for the Q/K/V share of the residual before any amendment to the reserved Policy mode 2 on
+policies 1–3.
+
+Decision: do not pursue grouped Q/K/V rows. On the fixed 8-window WikiText subset
+(`harness/eval/REPORT.md`, "Grouped activation rows (E5-05e)"; `results/e505e/items.sha256`):
+- per-token int8 Q/K/V rows cost about 0.23 point in fp32 simulation (+0.13% → +0.36%);
+  grouping them per head recovers about 0.1 point (+0.24%);
+- in-range fraction knobs on the exact grouped model recover at most about 0.45 point
+  (+1.37% → +0.93%) before int16 ranges reject;
+- about 0.6 point remains beyond every int8 row, in the exact-only numerics.
+A score, weighted-sum and KV-cache amendment for at most 0.1 point does not justify its
+proof and review cost.
+
+Consequences: E5-05g is done on its first acceptance branch (attribution). New task E5-05h
+owns the exact-numerics residual (exp and normaliser tables, attention probability rows,
+rsqrt). The simulation quantises Q/K before RoPE while CQIS rows follow it; this is a
+simulation caveat, not CQIS evidence.
+
+Status: Accepted.

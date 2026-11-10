@@ -1098,10 +1098,28 @@ tasks:
   - RFC-0009
   skill: cqis-numerics
   crate: harness
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E5-05g-close
   acceptance:
   - attribution of the Q/K/V share of the residual G7 gap on fixed subsets, or an ADR closing the task because E5-05e passes G7
   - if grouped Q/K/V is pursued, a reviewed amendment (Workflow 02) for the score, weighted-sum and KV cache relations, with a research reference
+- id: E5-05h
+  epic: E5
+  title: Attribute and close the exact-numerics share of the G7 gap (exp and normaliser tables, attention probability rows, rsqrt)
+  depends:
+  - E5-05g
+  rfc:
+  - RFC-0004 §8
+  - RFC-0021
+  - RFC-0009
+  skill: cqis-numerics
+  crate: harness
+  status: ready
+  acceptance:
+  - per-component attribution on the fixed 8-window subset of the ~0.6-point residual between exact grouped CQIS (+0.93% at the best in-range fractions) and the int8-row simulation (+0.36%)
+  - either a reviewed amendment (Workflow 02) that changes the responsible table or row representation with a research reference, or an ADR recording why the residual is irreducible within CQIS
+  - G7 re-measured on the full protocol if an amendment is accepted
 - id: E5-06
   epic: E5
   title: CQIS serving kernels (int8 GEMM exact accumulate, table gathers) with GPU/CPU bit reproducibility
