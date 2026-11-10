@@ -8,9 +8,11 @@
 //! Indexing convention (RFC-0026 §3.2): a column of length `2^n` is indexed by `n`
 //! bits; a [`Ref`] binds column bit `j` to domain bit `vars[j]`. Broadcast,
 //! tiling, transposition and head splitting are all variable maps, so no column
-//! is ever copied to change its layout.
+//! is ever copied to change its layout. A matmul `Ref` may also fix a column bit to
+//! [`Ref::FIXED_0`] or [`Ref::FIXED_1`], which selects a row block (RFC-0026 A6).
 
-use alloc::collections::BTreeSet;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::format;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -124,6 +126,20 @@ pub struct Ref {
 }
 
 impl Ref {
+    /// `vars` entry fixing a column bit to 0 instead of reading a domain bit (matmul refs only).
+    pub const FIXED_0: u8 = 0xFE;
+    /// `vars` entry fixing a column bit to 1 instead of reading a domain bit (matmul refs only).
+    pub const FIXED_1: u8 = 0xFF;
+
+    /// The constant a fixed `vars` entry stands for; `None` for a domain bit.
+    pub const fn fixed(var: u8) -> Option<u8> {
+        match var {
+            Self::FIXED_0 => Some(0),
+            Self::FIXED_1 => Some(1),
+            _ => None,
+        }
+    }
+
     /// Column read in its natural order on the low domain bits.
     pub fn identity(column: ColumnId, log_len: u8) -> Self {
         Self {
@@ -135,7 +151,8 @@ impl Ref {
     /// Column index selected by domain point `x`.
     pub fn index(&self, x: u64) -> usize {
         self.vars.iter().enumerate().fold(0, |index, (bit, &var)| {
-            index | ((((x >> var) & 1) as usize) << bit)
+            let value = Self::fixed(var).map_or_else(|| (x >> var) & 1, u64::from);
+            index | ((value as usize) << bit)
         })
     }
 }
@@ -366,6 +383,54 @@ impl Relation {
         TableId(index as u32)
     }
 
+    /// Push a matmul, split into plan-fixed row blocks while its domain exceeds
+    /// [`MAX_VARS`] (RFC-0026 A6). A matmul that fits is pushed unchanged.
+    pub fn add_matmul(&mut self, matmul: Matmul) {
+        self.add_matmul_within(matmul, MAX_VARS);
+    }
+
+    /// [`Relation::add_matmul`] with a smaller domain cap, so tests can force blocks.
+    ///
+    /// Each split picks the **split bit**: the highest free bit that `rhs` reads (a
+    /// row bit of the weight in a projection), or the highest free bit when `rhs`
+    /// reads none. Block 0 (name suffix `/block0`) fixes it to 0 and block 1
+    /// (`/block1`) to 1 in `out`, `lhs` and `rhs`; every bit above it moves down by
+    /// one. Together the two blocks state exactly the original matmul.
+    pub fn add_matmul_within(&mut self, matmul: Matmul, limit: u8) {
+        if matmul.free == 0 || u16::from(matmul.free) + u16::from(matmul.summed) <= u16::from(limit)
+        {
+            self.matmuls.push(matmul);
+            return;
+        }
+        let top = (0..matmul.free)
+            .rev()
+            .find(|v| matmul.rhs.vars.contains(v))
+            .unwrap_or(matmul.free - 1);
+        for (block, fixed) in [(0, Ref::FIXED_0), (1, Ref::FIXED_1)] {
+            let map = |r: &Ref| Ref {
+                column: r.column,
+                vars: r
+                    .vars
+                    .iter()
+                    .map(|&v| match v {
+                        _ if v == top => fixed,
+                        _ if Ref::fixed(v).is_some() || v < top => v,
+                        _ => v - 1,
+                    })
+                    .collect(),
+            };
+            let half = Matmul {
+                name: format!("{}/block{block}", matmul.name),
+                free: matmul.free - 1,
+                summed: matmul.summed,
+                out: map(&matmul.out),
+                lhs: map(&matmul.lhs),
+                rhs: map(&matmul.rhs),
+            };
+            self.add_matmul_within(half, limit);
+        }
+    }
+
     fn width(&self, r: &Ref) -> Width {
         self.columns[r.column.0 as usize].width
     }
@@ -443,13 +508,28 @@ impl Relation {
     }
 
     fn validate_ref(&self, r: &Ref, domain: u8, relation: &str) -> Result<(), Invalid> {
+        self.validate_ref_fixed(r, domain, relation, false)
+    }
+
+    /// `fixed`: the ref may fix column bits (matmul operands and outs, RFC-0026 A6).
+    fn validate_ref_fixed(
+        &self,
+        r: &Ref,
+        domain: u8,
+        relation: &str,
+        fixed: bool,
+    ) -> Result<(), Invalid> {
         let column = self.column(r.column).ok_or_else(|| Invalid::Ref {
             relation: relation.into(),
         })?;
-        let distinct = r.vars.iter().collect::<BTreeSet<_>>().len() == r.vars.len();
-        if r.vars.len() != column.log_len as usize
-            || !distinct
-            || r.vars.iter().any(|&v| v >= domain)
+        let read: Vec<u8> = r
+            .vars
+            .iter()
+            .copied()
+            .filter(|&v| !fixed || Ref::fixed(v).is_none())
+            .collect();
+        let distinct = read.iter().collect::<BTreeSet<_>>().len() == read.len();
+        if r.vars.len() != column.log_len as usize || !distinct || read.iter().any(|&v| v >= domain)
         {
             return Err(Invalid::Ref {
                 relation: relation.into(),
@@ -531,9 +611,9 @@ impl Relation {
         let domain = domain.ok_or_else(|| Invalid::Shape {
             relation: name.clone(),
         })?;
-        self.validate_ref(&matmul.out, matmul.free, name)?;
-        self.validate_ref(&matmul.lhs, domain, name)?;
-        self.validate_ref(&matmul.rhs, domain, name)?;
+        self.validate_ref_fixed(&matmul.out, matmul.free, name, true)?;
+        self.validate_ref_fixed(&matmul.lhs, domain, name, true)?;
+        self.validate_ref_fixed(&matmul.rhs, domain, name, true)?;
         let products = (1u128 << matmul.summed)
             .saturating_mul(self.width(&matmul.lhs).magnitude())
             .saturating_mul(self.width(&matmul.rhs).magnitude());
@@ -620,6 +700,9 @@ impl Relation {
             }
             // A matmul out is exact when its worst case 2^s*mag(lhs)*mag(rhs) lies in
             // width(out): out = V (mod p) and both lie in (-p/2, p/2) (RFC-0026 §3.6).
+            // It covers the entries its fixed bits select; the row blocks of one out
+            // column discipline it once together they cover every entry (A6).
+            let mut slices: BTreeMap<ColumnId, Vec<&Ref>> = BTreeMap::new();
             for matmul in &self.matmuls {
                 if enforced.contains(&matmul.out.column)
                     || !enforced.contains(&matmul.lhs.column)
@@ -632,7 +715,15 @@ impl Relation {
                     .saturating_mul(self.width(&matmul.rhs).magnitude());
                 let out = self.width(&matmul.out);
                 if worst <= out.max() as u128 && worst <= out.min().unsigned_abs() as u128 {
-                    enforced.insert(matmul.out.column);
+                    slices
+                        .entry(matmul.out.column)
+                        .or_default()
+                        .push(&matmul.out);
+                }
+            }
+            for (column, outs) in slices {
+                if covers(&outs) {
+                    enforced.insert(column);
                 }
             }
             if enforced.len() == before {
@@ -647,6 +738,27 @@ impl Relation {
         }
         Ok(())
     }
+}
+
+/// Every column index is selected by at least one of `outs` (refs to one column). Only
+/// fixed bits restrict a ref: its other bits are distinct domain bits, so they range
+/// over every value.
+fn covers(outs: &[&Ref]) -> bool {
+    let positions: Vec<usize> = (0..outs.first().map_or(0, |r| r.vars.len()))
+        .filter(|&j| outs.iter().any(|r| Ref::fixed(r.vars[j]).is_some()))
+        .collect();
+    // shortcut: at most 2^16 fixed-bit patterns are enumerated; a plan needing more
+    // blocks than that is reported undisciplined (no plan comes close).
+    if positions.len() > 16 {
+        return false;
+    }
+    (0..1u32 << positions.len()).all(|pattern| {
+        outs.iter().any(|r| {
+            positions.iter().enumerate().all(|(k, &j)| {
+                Ref::fixed(r.vars[j]).is_none_or(|bit| u32::from(bit) == (pattern >> k) & 1)
+            })
+        })
+    })
 }
 
 #[cfg(test)]

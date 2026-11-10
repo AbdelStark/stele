@@ -833,3 +833,85 @@ Cost model: none. Affected tasks: E16-10 (statement codec and public-input file)
   - **Cost-model terms.** None.
   - **Affected tasks.** E16-14 and E16-10. E16-10 commits each `model_messages`
     entry under the matching `model_layout` entry.
+- **A6 — Row-block split of matmuls past `MAX_VARS` (task E16-19).** Accepted with ADR-092.
+  - **Motivation.**
+    - §3.1 and §7 say that a matmul with `log(batch) + log(out) + log(d) > 30` is split
+      into plan-fixed row blocks by its module. A `Ref` could only permute or drop
+      domain bits (A1), so a block could not read one slice of a shared column. Only
+      the E16-04 embedding gather split, through per-block columns and a masked
+      recombination identity.
+    - Projections and attention therefore rejected such plans with
+      `Unsupported::Domain`. The llama2.c stories110M head (`6 + 15 + 10 = 31` bits)
+      could not be proven, and neither could `T >= 128` or `f >= 11008` shapes.
+  - **Replacement text, §3.1, new bullet after the `Ref` bullet.** "A `Ref` of a
+    matmul (`out`, `lhs` or `rhs`) may also **fix** column bit `j`: `vars[j]` is
+    `FIXED_0 = 0xFE` or `FIXED_1 = 0xFF`, and the read index has bit `j` equal to 0 or
+    1 whatever the domain point. In MLE terms the column's MLE is evaluated with
+    coordinate `j` set to that Boolean value, so a fixed bit adds no error term.
+    Identity and lookup refs never fix a bit."
+  - **Replacement text, §3.1, `MAX_VARS` bullet.** "`MAX_VARS = 30` caps every domain.
+    A matmul past it is split at declare time by `Relation::add_matmul` (§3.5,
+    **row-block split**). Identity, lookup and range domains are never split; a module
+    rejects a plan whose identity domain exceeds 30 bits with `Unsupported::Domain`.
+    The proof engine never splits a relation."
+  - **Replacement text, §3.5, new paragraph "Row-block split".**
+    - "A matmul `M` with `a + s > 30` and `a >= 1` is replaced by two **row blocks**.
+      The **split bit** `v` is the highest free bit that `rhs` reads (a row bit of the
+      weight in a projection), or `a − 1` when `rhs` reads no free bit. Block `b`, for
+      `b ∈ {0, 1}`, is named `{M.name}/block{b}`, has `free = a − 1` and `summed = s`,
+      and its `out`, `lhs` and `rhs` are `M`'s with domain bit `v` replaced by
+      `FIXED_b` and every domain bit above `v` decreased by one. The split repeats on
+      each block, block 0 before block 1, until every domain has at most 30 bits. A
+      matmul with `a = 0` is not split, and `validate` rejects it."
+    - "A matmul that fits is pushed unchanged. Plans with no matmul past 30 bits
+      therefore derive the same relation, the same digest and the same proof bytes as
+      before this amendment."
+    - "**Lemma S (exact recombination).** For every `x ∈ {0,1}^a`, let `b` be bit `v`
+      of `x` and `x'` be `x` with bit `v` removed. Block `b`'s statement at `x'` reads
+      exactly the entries `M`'s statement reads at `x`, in `out`, `lhs` and `rhs`: a
+      ref that reads bit `v` reads the constant `b`, and a ref that does not read it is
+      unchanged. The free points of the two blocks partition `{0,1}^a`, so the blocks
+      hold over Z if and only if `M` holds. Nothing is recombined: `out` is the same
+      column, and each block constrains its slice. The blocks are a function of
+      `(a, s, M's refs)`, so the verifier derives them, and the prover chooses
+      nothing."
+  - **Replacement text, §3.6 item 1, `Ref` bullet.** "a non-injective, out-of-domain or
+    wrong-arity `Ref`, or a fixed bit in an identity or lookup ref (injectivity and
+    the domain bound apply to the non-fixed entries of a matmul ref);"
+  - **Replacement text, §3.6 item 3, matmul bullet.** "being the `out` of a set of
+    matmuls whose `lhs` and `rhs` are enforced and whose worst case
+    `Bp = 2^s·mag(lhs)·mag(rhs)` satisfies `Bp <= width.max` and `−Bp >= width.min`,
+    when the slices of their `out` refs cover every entry of the column. The slice of
+    a ref is the set of indices whose fixed bits equal its constants. Soundness: each
+    entry lies in the slice of one such matmul, whose true sum `V` has `|V| <= Bp`, so
+    the argument of the unsplit case applies entry by entry."
+  - **Replacement text, §5 rows 4, 6, 7, 9 and 12, column "Kinds".** "Every matmul is
+    declared through `Relation::add_matmul` and is split into row blocks past 30
+    bits. A projection rejects `log T + log o > 30` (its output domain); attention
+    rejects `max(2·log T + log h, log dh + log h + log T + kb) > 30` (its score and
+    block-mode value domains)." Row 1 keeps its E16-04 construction: per-block public
+    one-hots, ranged block outputs and a masked recombination identity, with blocks of
+    `T` rows. It is exact and plan-fixed; moving it onto fixed bits is left open.
+  - **Soundness.**
+    - A fixed bit is a Boolean coordinate of a column point, like the column index of a
+      group claim (§2.3). It adds no Schwartz–Zippel term.
+    - Each block is an ordinary §3.5 matmul with the existing §6 lines: SZ
+      `(a − k)/|K|` and SC `(s + k_b)·δ/|K|` per block, where `k` is the number of
+      splits above it and `k_b` its shared free bits. A split adds one matmul's lines
+      per block and no new line kind, label or challenge.
+    - The relation digest (§4 step 1) encodes every `vars` byte, fixed entries
+      included, so prover and verifier bind the same blocks.
+    - Module lemmas (§5.2) are unchanged by Lemma S. Range discipline of a split `out`
+      is item 3 above.
+  - **Prover cost.** The operand table of a block skips the entries outside its slice.
+    An operand that reads the split bit is therefore read once in total across the two
+    blocks; an operand that does not read it is read once per block. The split bit
+    is chosen from `rhs` so that a projection's weight, its largest operand, is read
+    once (INV-7 shape); the activation operand is read once per block.
+  - **Cost-model terms.** None (the development profile claims none).
+  - **Affected tasks.** E16-19 (implements it); E16-20 (stories110M, whose head is
+    split into two blocks).
+  - **Controls.** `rejects_out_tamper_in_each_row_block` (engine, one tamper per
+    block), `rejects_out_covered_by_one_row_block` (discipline needs full cover),
+    `rejects_fixed_bits_outside_matmuls`, and the projection deletion survey with four
+    row blocks, where deleting any block is killed.

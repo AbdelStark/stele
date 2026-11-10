@@ -461,6 +461,18 @@ fn projection_case(
     m: &[u16],
     shift: i32,
 ) -> ProjectionCase {
+    projection_case_within(policy, inputs, weights, m, shift, 0)
+}
+
+/// [`projection_case`] with each sum matmul split `splits` times into row blocks (A6).
+fn projection_case_within(
+    policy: Policy,
+    inputs: &[Vec<i64>],
+    weights: &[Vec<i64>],
+    m: &[u16],
+    shift: i32,
+    splits: u8,
+) -> ProjectionCase {
     let rows = convert(policy, inputs).expect("rows");
     let (t, ld, lo) = (
         log2_ceil(inputs.len()),
@@ -505,7 +517,14 @@ fn projection_case(
         shift,
     };
     let mut projection = Projection::new("L0/q", input, None, plan).expect("plan");
+    projection.limit = t + lo + ld - splits;
     projection.declare(&mut relation);
+    let blocks = relation
+        .matmuls
+        .iter()
+        .filter(|mm| mm.name.starts_with("L0/q/sum/0"))
+        .count();
+    assert_eq!(blocks, 1 << splits);
     let mut values = Values::new(&relation);
     values
         .set(&relation, codes, padded(&rows.codes, t, ld))
@@ -1053,8 +1072,20 @@ fn projection_survey(
     shift: i32,
     mode: Mode,
 ) -> Vec<(String, Outcome)> {
-    std::println!("projection, {policy:?}, l = {shift}");
-    let case = projection_case(policy, inputs, weights, m, shift);
+    projection_survey_within(policy, inputs, weights, m, shift, mode, 0)
+}
+
+fn projection_survey_within(
+    policy: Policy,
+    inputs: &[Vec<i64>],
+    weights: &[Vec<i64>],
+    m: &[u16],
+    shift: i32,
+    mode: Mode,
+    splits: u8,
+) -> Vec<(String, Outcome)> {
+    std::println!("projection, {policy:?}, l = {shift}, {splits} row-block splits");
+    let case = projection_case_within(policy, inputs, weights, m, shift, splits);
     let output = case.projection.output().expect("declared");
     let outputs = |v: &Values| v.get(&case.relation, output).expect("Y").to_vec();
     let real: Vec<usize> = (0..case.honest.output.len())
@@ -1359,6 +1390,22 @@ fn projection_tables(mode: Mode) -> Vec<Vec<(String, Outcome)>> {
             mode,
         ),
         projection_survey(Policy::Dynamic, &inputs, &weights, &m, -200, mode),
+        // Row blocks of the weight (RFC-0026 A6): one real output channel per block,
+        // so deleting any block's matmul must let a forged sum through to an output.
+        {
+            let mut weights = weights.clone();
+            weights.push(vec![-9, 8, -7, 6, -5, 4]);
+            let m = [m.as_slice(), &[777]].concat();
+            projection_survey_within(
+                Policy::Dynamic,
+                &inputs,
+                &weights,
+                &m,
+                fit(Policy::Dynamic),
+                mode,
+                2,
+            )
+        },
         // l = 9 >= 0 with small codes; a code of 127 overflows int16.
         projection_survey(
             Policy::Static(1),
@@ -1501,8 +1548,8 @@ fn accepts_gated_scale_bound_under_the_bound_rule() {
 }
 
 #[test]
-fn rejects_projection_domain_over_max_vars() {
-    // T=64, d=o=8192 needs the plan-fixed row-block split (E16-10, graph.yaml).
+fn accepts_projection_domain_over_max_vars_in_row_blocks() {
+    // T=64, d=o=8192: 6 + 13 + 13 bits, so each sum matmul is four row blocks (A6).
     let mut relation = Relation::default();
     let input = Builder::new(&mut relation, "L0/norm").witness("output", Width::signed(16), 6 + 13);
     let mut conversion =
@@ -1514,6 +1561,43 @@ fn rejects_projection_domain_over_max_vars() {
         outputs: 8192,
         weight_bits: 8,
         mantissas: vec![1; 8192],
+        shift: -20,
+    };
+    let output = conversion.output().expect("declared");
+    let mut projection = Projection::new("L0/q", output, None, plan).expect("plan");
+    projection.declare(&mut relation);
+    assert_eq!(relation.validate(), Ok(()));
+    let blocks: Vec<_> = relation
+        .matmuls
+        .iter()
+        .filter(|m| m.name.starts_with("L0/q/sum/0/"))
+        .map(|m| (m.name.as_str(), m.free + m.summed))
+        .collect();
+    assert_eq!(
+        blocks,
+        [
+            ("L0/q/sum/0/block0/block0", 30),
+            ("L0/q/sum/0/block0/block1", 30),
+            ("L0/q/sum/0/block1/block0", 30),
+            ("L0/q/sum/0/block1/block1", 30),
+        ]
+    );
+}
+
+#[test]
+fn rejects_projection_output_domain_over_max_vars() {
+    // The output domain (rows, outputs) carries identities, which are never split.
+    let mut relation = Relation::default();
+    let input = Builder::new(&mut relation, "L0/norm").witness("output", Width::signed(16), 6 + 4);
+    let mut conversion =
+        RowConversion::new("L0/row", input, 64, 16, Policy::Dynamic).expect("row plan");
+    conversion.declare(&mut relation);
+    let plan = ProjectionPlan {
+        rows: 64,
+        inner: 16,
+        outputs: 1 << 25,
+        weight_bits: 8,
+        mantissas: vec![1; 1 << 25],
         shift: -20,
     };
     let output = conversion.output().expect("declared");
