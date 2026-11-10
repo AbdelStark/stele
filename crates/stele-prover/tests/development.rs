@@ -529,62 +529,62 @@ fn matches_reference_zk_claim_census_eight_layer() {
     census("eight-layer", 64);
 }
 
-/// RFC-0026 A9 (E12-14a): the one-layer window's development relation and values,
-/// proven and verified as one dev-zk claims statement (`zk::relation`). The
-/// orchestrator and CLI wiring is E12-14b.
-fn zk_relation_window(name: &str, t: usize) {
-    use stele_prover::development::prove_tampered;
-    use stele_reductions::stele_field::QM31;
-    use stele_reductions::stele_hash::Transcript;
-    use stele_reductions::stele_ir::relation::{check, Relation, Values};
-    use stele_reductions::zk::{relation as zk_relation, Seed};
+/// RFC-0013 A5, RFC-0026 A9 (E12-14b): one window proven under dev-zk through the
+/// development orchestrator and verified by the dev-zk verifier; the profile byte
+/// is bound by the transcript (a development-profile transcript rejects).
+fn zk_window(name: &str, t: usize) -> usize {
+    use stele_prover::development::zk;
     let case = load(name);
     let statement = greedy(&mut case.executor(&case.artifact), t);
     let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
-    let committed = Committed::new(&weights).expect("commitment");
-    let public = case.public(&committed, &weights);
-    let mut captured = None;
-    let mut hook = |relation: &mut Relation, values: &mut Values| {
-        captured = Some((relation.clone(), values.clone()))
+    let base = Public {
+        model: case.bytes[0].to_vec(),
+        scales: case.bytes[1].to_vec(),
+        preparation: case.bytes[2].to_vec(),
+        vectors: weights.vectors.clone(),
+        commitment: Vec::new(),
     };
-    prove_tampered(
-        &public,
+    let start = Instant::now();
+    let (public, proof) = zk::prove(
+        &base,
         &mut case.executor(&case.artifact),
         &weights,
-        &committed,
         &statement,
-        &mut hook,
+        zk::Seed::new([42; 32]),
     )
-    .expect("prove");
-    let (relation, values) = captured.expect("relation");
-    assert_eq!(check(&relation, &values), Ok(()));
-    let seed = [42u8; 32];
-    let start = Instant::now();
-    let root = zk_relation::weight_root(&relation, &values, &Seed::new(seed)).expect("root");
-    let mut tp = Transcript::<QM31>::new(b"dev-zk window").expect("transcript");
-    let proof =
-        zk_relation::prove(&mut tp, &relation, &values, Seed::new(seed)).expect("dev-zk prove");
+    .expect("dev-zk prove");
     let proved = start.elapsed();
     let start = Instant::now();
-    let mut tv = Transcript::<QM31>::new(b"dev-zk window").expect("transcript");
-    zk_relation::verify(&mut tv, &relation, root, &proof).expect("dev-zk verify");
+    let verified = zk::verify(&public, &statement, &proof).expect("dev-zk verify");
     eprintln!(
-        "dev-zk relation {name} T={t}: prove {proved:?}, verify {:?}, {} relations, {} GKR steps, {} batches",
-        start.elapsed(),
-        proof.relations.len(),
-        proof.gkr.len(),
-        proof.batches.len(),
+        "dev-zk {name} T={t}: prove {proved:?}, verify {:?}, {verified}",
+        start.elapsed()
     );
+    // The public bundle round-trips with its profile.
+    let bytes = bundle::encode_profile(&public, &statement, zk::PROFILE);
+    assert_eq!(
+        bundle::decode_profile(&bytes).expect("bundle"),
+        (public.clone(), statement.clone(), zk::PROFILE)
+    );
+    assert!(
+        bundle::decode(&bytes).is_err(),
+        "a dev-zk bundle is not development"
+    );
+    // A different window under the same public data is rejected.
+    let mut other = statement.clone();
+    other.next = other.next.map(|y| y ^ 1);
+    assert!(zk::verify(&public, &other, &proof).is_err());
+    proof.len()
 }
 
 #[test]
-fn accepts_one_layer_relation_under_dev_zk() {
-    zk_relation_window("one-layer", 4);
+fn accepts_one_layer_window_under_dev_zk() {
+    zk_window("one-layer", 4);
 }
 
-/// The E16-10 acceptance window under dev-zk at the relation level; release only.
+/// The E16-10 acceptance window under dev-zk; release build only.
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
-fn accepts_eight_layer_relation_under_dev_zk() {
-    zk_relation_window("eight-layer", 64);
+fn accepts_eight_layer_window_under_dev_zk() {
+    zk_window("eight-layer", 64);
 }

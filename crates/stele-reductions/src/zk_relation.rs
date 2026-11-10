@@ -430,6 +430,37 @@ pub fn forge_substituted(
     claims::prove(&layout.statement, &columns, seed, t)
 }
 
+/// The privacy tests' exact leak count on `relation` (`claims::leaks`), replaying
+/// the verifier from the caller's transcript.
+#[cfg(feature = "controls")]
+pub fn leaks(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    proof: &Proof<K>,
+) -> Result<(usize, usize), Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::leaks(&layout.statement, &columns, proof, t)
+}
+
+/// The privacy tests' leak control: [`prove`] through `claims::prove_unmasked`.
+#[cfg(feature = "controls")]
+pub fn prove_unmasked(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    seed: Seed,
+) -> Result<Proof<K>, Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::prove_unmasked(&layout.statement, &columns, seed, t)
+}
+
 /// The claims relation index of check `l`'s `Σ h = 0` (RFC-0008 A7 item 3).
 pub fn check_sum(layout: &Layout, l: usize) -> usize {
     layout.statement.relations.len() + 2 * l + 1

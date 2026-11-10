@@ -428,14 +428,18 @@ verifier and fixed public challenges. Nothing is proved for the composed proof.
 Following FlashProve's declared list, by design:
 
 1. The public input: the model bytes (`Model`, `Scales`, `Preparation`,
-   including mantissas and exponents chosen from the weights), `T`, the tokens,
-   `[r, e)` and `y`.
+   including mantissas and exponents chosen from the weights), every 1-D record
+   (norm gains and other vectors, RFC-0026 A2), `T`, the tokens, `[r, e)` and
+   `y`.
 2. Every shape, the plan, the source layouts and the query budgets.
 3. Whether a proof was produced: an unsupported model, an out-of-range value or
    a wrong token fails, and that depends on the weights.
 4. Time, proof size and the number of proofs made under one model commitment.
-5. The model commitment's roots (salted, but fixed): two proofs show they share
-   a model.
+5. The model commitment's roots (salted). The E12-14 implementation commits the
+   weights per proof (`P = 1`, RFC-0013 A5 item 7), so roots are not shared and a
+   proof binds no named model: it states only that some weights of the declared
+   shape produce the statement. A persistent commitment under one model, whose
+   fixed roots would show that two proofs share a model, is task E12-25.
 6. Anything the operator leaks by breaking the lifecycle: a reused seed, a lost
    counter, or a run past the budget.
 

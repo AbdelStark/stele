@@ -2633,11 +2633,41 @@ tasks:
   - RFC-0026 A9
   skill: soundness-auditor
   crate: stele-prover+stele-cli
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-14b-dev-zk-e2e
   acceptance:
   - stele prove-dev --zk and verify-dev with the profile byte in the public input; one- and eight-layer synthetic windows proven and verified
   - NC-0912 and NC-0909..0915 executed on the composed proof; chi-square, leak and same-statement privacy tests
   - bench ledger for the eight-layer window, dev against dev-zk
+- id: E12-25
+  epic: E12
+  title: Persistent hiding weight commitment for dev-zk (P·t_W claim-mask budget, lifetime counter, committed 1-D records)
+  depends:
+  - E12-14b
+  rfc:
+  - RFC-0013 A5 item 7
+  skill: soundness-auditor
+  crate: stele-prover+stele-reductions+stele-cli
+  status: ready
+  acceptance:
+  - one hiding weight source per model, published once, with P·t_W claim-mask blocks and a lifetime counter; the prover refuses past either budget
+  - the 1-D records committed in it rather than public; --expect-model pins a dev-zk proof to the published commitment
+  - gate for admitting dev-zk (RFC-0013 A5 item 8); controls for a reused block set and a run past the budget
+- id: E12-26
+  epic: E12
+  title: dev-zk soundness ledger from the verifier (SC, MASK, ZD, LU and PCS lines per instance and source)
+  depends:
+  - E12-14b
+  rfc:
+  - RFC-0013 A5
+  - RFC-0008 A7
+  - RFC-0012
+  skill: soundness-auditor
+  crate: stele-reductions+stele-prover
+  status: ready
+  acceptance:
+  - verify-dev prints an RFC-0026 §6-style ledger for dev-zk, derived by the verifier; soundness-accounting covers it
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
@@ -2646,6 +2676,7 @@ tasks:
   - E12-19
   - E12-14a
   - E12-14b
+  - E12-25
   rfc:
   - RFC-0013 A1
   - RFC-0013 A5

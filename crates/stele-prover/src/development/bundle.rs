@@ -9,6 +9,8 @@ use super::{Error, Public, Statement};
 use alloc::vec::Vec;
 
 const MAGIC: &[u8] = b"stele-dev-public-v1";
+/// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
+const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";
 
 fn blob(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
@@ -17,7 +19,15 @@ fn blob(out: &mut Vec<u8>, bytes: &[u8]) {
 
 /// Canonical bytes of the verifier's input.
 pub fn encode(public: &Public, statement: &Statement) -> Vec<u8> {
-    let mut out = MAGIC.to_vec();
+    encode_profile(public, statement, 0)
+}
+
+/// Canonical bytes of the verifier's input under `profile` (0 development, 1 dev-zk).
+pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Vec<u8> {
+    let mut out = match profile {
+        0 => MAGIC.to_vec(),
+        _ => ZK_MAGIC.to_vec(),
+    };
     blob(&mut out, &public.model);
     blob(&mut out, &public.scales);
     blob(&mut out, &public.preparation);
@@ -78,8 +88,20 @@ impl<'a> Reader<'a> {
 
 /// Parse the verifier's input; malformed bytes reject with `StatementMismatch`.
 pub fn decode(bytes: &[u8]) -> Result<(Public, Statement), Error> {
+    match decode_profile(bytes)? {
+        (public, statement, 0) => Ok((public, statement)),
+        _ => Err(Error::StatementMismatch),
+    }
+}
+
+/// [`decode`] for either profile; returns the profile byte the file names.
+pub fn decode_profile(bytes: &[u8]) -> Result<(Public, Statement, u8), Error> {
+    let (profile, magic) = match bytes.starts_with(ZK_MAGIC) {
+        true => (1, ZK_MAGIC),
+        false => (0, MAGIC),
+    };
     let mut r = Reader(bytes);
-    if r.take(MAGIC.len())? != MAGIC {
+    if r.take(magic.len())? != magic {
         return Err(Error::StatementMismatch);
     }
     let model = r.blob()?.to_vec();
@@ -132,5 +154,6 @@ pub fn decode(bytes: &[u8]) -> Result<(Public, Statement), Error> {
             end,
             next,
         },
+        profile,
     ))
 }

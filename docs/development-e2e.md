@@ -86,6 +86,47 @@ The last line of `verify-dev` is the verdict, `YES` or `NO: <reason>`. `prove-de
 with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or written,
 1 for rejected and 2 for a usage or I/O error. An option given twice is a usage error.
 
+## dev-zk (task E12-14b)
+
+`prove-dev --zk` proves the same window under the dev-zk profile (RFC-0013 A5,
+RFC-0026 A9, profile byte 1). Its admission is pending independent review
+(RFC-0013 A5 item 8).
+- The seed comes from `/dev/urandom`.
+- The public file is `stele-dev-zk-public-v1`. Its one model-commitment root is the
+  proof's hiding weight source, made for this proof only (`P = 1`).
+- `verify-dev` reads the profile from the public file and prints `profile dev-zk`
+  before the statement lines.
+- The claim is existential. A dev-zk proof shows that *some int8 weights of the
+  declared shape*, with the public 1-D records, produce the statement. No published
+  commitment pins the weights.
+  - `verify-dev` prints `weights: unbound (per-proof commitment)` instead of a
+    model digest.
+  - `--expect-model` is a usage error.
+  - A persistent commitment is task E12-25.
+- Public, not hidden: the Model, Scales and Preparation bytes, every 1-D record
+  (norm gains and other vectors), the shapes, the plan, `T`, the tokens, `[r, e)`
+  and `y`.
+- `verify-dev` reports counts of instances, steps and batches, not a soundness
+  ledger (task E12-26).
+
+```sh
+target/release/stele prove-dev --zk \
+  --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
+  --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
+  --tokens 1 --length 16 \
+  --public /tmp/dev-e2e/zk-public.bin --proof /tmp/dev-e2e/zk-proof.bin
+target/release/stele verify-dev --public /tmp/dev-e2e/zk-public.bin --proof /tmp/dev-e2e/zk-proof.bin
+```
+
+Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back
+(`bench/ledger/e12-14-synthetic-8layer-mac.json` and
+`bench/ledger/e12-14-synthetic-8layer-zk-mac.json`):
+
+| Profile | Prove | Verify | Proof bytes |
+|---|---|---|---|
+| development | 16.6 s | 3.0 s | 44,963,009 |
+| dev-zk | 389.9 s | 56.3 s | 145,252,954 |
+
 ## A real model: llama2.c `stories42M` (task E16-11)
 
 [`stories42M`](https://huggingface.co/karpathy/tinyllamas) is Karpathy's llama2.c model

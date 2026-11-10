@@ -1016,3 +1016,9 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
   - **Batching and openings.** §4 step 7 uses RFC-0013 A5 item 5 per source in
     place of RFC-0006 A2 mode 1.
   - **Controls.** NC-0909..0915 are reserved under RFC-0013 A5.
+  - **Implementation note (E12-14b, ADR-102; development tier, pending independent
+    review).** A development public input omits the profile byte instead of
+    carrying `0`. Its bytes are exactly the pre-A9 encoding, so development proofs
+    are unchanged. A dev-zk public input is the development bytes followed by `1`.
+    The two encodings are distinct, so the profile is still bound before any
+    challenge. NC-0912 covers the header and the transcript.

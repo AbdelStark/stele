@@ -2341,3 +2341,45 @@ Decision:
     `stele-sumcheck`.
 
 Status: Proposed (development tier; independent review requested before merge).
+
+## ADR-102: dev-zk through the development orchestrator and CLI; OS-RNG seed; admission proposed (RFC-0013 A5 items 7–8, RFC-0026 A9, task E12-14b)
+
+Numbered after ADR-101.
+
+Context: E12-14a proves any development relation as one dev-zk statement.
+RFC-0013 A5 item 8 asks for an ADR when the seed's source is fixed. It also admits
+dev-zk only after the implementation, NC-0909..0915, the privacy tests on the one-
+and eight-layer windows, and an independent review.
+
+Decision:
+- `stele_prover::development::zk` proves and verifies a window under dev-zk.
+  - Its public input is the development public input followed by profile byte `1`.
+    Development bytes are unchanged.
+  - Its container is `stele-dev-zk-v1`.
+  - Its public file is `stele-dev-zk-public-v1`.
+  - NC-0912 restamps a dev-zk proof with the development statement digest. The
+    verifier rejects it with `StatementMismatch`.
+- `stele prove-dev --zk` draws the seed from `/dev/urandom`. The library takes a
+  move-only `Seed`. The weights are committed per proof (`P = 1`). A persistent model
+  seed with `P > 1` block sets is left open.
+- The ledger records the eight-layer window, development against dev-zk, on one host:
+  `bench/ledger/e12-14-synthetic-8layer-mac.json` and
+  `bench/ledger/e12-14-synthetic-8layer-zk-mac.json`. Both carry
+  `profile: "development"`, because RFC-0018 A1 admits no other development-tier
+  profile. The workload name and `model_config.profile_byte` mark dev-zk.
+- Admission of profile byte 1 is not taken. The independent review
+  (fix-then-merge) holds it until E12-25 binds the model.
+- Independent review fixes:
+  - F1: The claim is existential, with `P = 1` per proof. The CLI prints
+    `weights: unbound (per-proof commitment)` and refuses `--expect-model`.
+    E12-25 gates admission.
+  - F2: 1-D records are declared public.
+  - F4: An exact leak test runs on the one-layer window, as does a two-witness
+    test. The eight-layer leak test is ignored and run locally.
+  - F5: NC-0912 gains a transcript-level half.
+  - F6: The scoreboard labels the dev-zk record.
+  - F7: The adversaries sit behind the `controls` feature.
+  - The verifier reports counts, not a soundness ledger (E12-26).
+
+Status: Proposed (development tier; independent review: fix-then-merge, fixes
+applied; dev-zk not admitted).
