@@ -10,7 +10,7 @@ blake3 = { version = "=1.8.7", default-features = false }
 stele-cqis = { path = "../stele-cqis" }
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }
-stele-sumcheck = { path = "../stele-sumcheck" }
+stele-sumcheck = { path = "../stele-sumcheck", features = ["std"] }
 stele-gkr = { path = "../stele-gkr" }
 stele-lookup = { path = "../stele-lookup" }
 stele-pcs = { path = "../stele-pcs" }

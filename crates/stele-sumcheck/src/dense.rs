@@ -1,5 +1,5 @@
 //! Dense leading-coordinate reference, RFC-0006 A1. No padding or reordering.
-use crate::{reserve, Error, Instance, Summand};
+use crate::{parallel, reserve, Error, Instance, Summand};
 use alloc::vec::Vec;
 use stele_hash::ChallengeField;
 
@@ -56,33 +56,10 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
     }
     fn round(&self, i: &Instance<K>) -> Result<Vec<K>, Error> {
         let degree = i.validate()?;
-        if self.remaining == 0 || self.tables.len() != i.inputs.len() {
-            return Err(Error::PublicShape);
-        }
         let mut result = Vec::new();
         reserve(&mut result, degree + 1)?;
-        let mut values = Vec::new();
-        reserve(&mut values, self.tables.len())?;
-        values.resize(self.tables.len(), K::from_i64(0));
-        for node in 0..=degree {
-            let x = K::from_i64(node as i64);
-            let mut sum = K::from_i64(0);
-            if self.tables.is_empty() {
-                sum = i.evaluate(&[]);
-                for _ in 1..self.remaining {
-                    sum = sum + sum;
-                }
-            } else {
-                let half = self.tables[0].len() / 2;
-                for column in 0..half {
-                    for (out, table) in values.iter_mut().zip(&self.tables) {
-                        *out = table[column] + x * (table[column + half] - table[column]);
-                    }
-                    sum = sum + i.evaluate(&values);
-                }
-            }
-            result.push(sum);
-        }
+        result.resize(degree + 1, K::from_i64(0));
+        self.round_into(i, &mut result)?;
         Ok(result)
     }
     fn fold(&mut self, challenge: K) -> Result<(), Error> {
@@ -90,11 +67,7 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
             return Err(Error::PublicShape);
         }
         for table in &mut self.tables {
-            let half = table.len() / 2;
-            for j in 0..half {
-                table[j] = table[j] + challenge * (table[j + half] - table[j]);
-            }
-            table.truncate(half);
+            parallel::fold(table, challenge);
         }
         self.remaining -= 1;
         Ok(())
@@ -117,17 +90,22 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
         if out.len() != degree + 1 {
             return Err(Error::ProofShape);
         }
-        for (node, result) in out.iter_mut().enumerate() {
-            let x = K::from_i64(node as i64);
-            *result = K::from_i64(0);
-            if self.tables.is_empty() {
-                *result = i.evaluate(&[]);
-                for _ in 1..self.remaining {
-                    *result = *result + *result;
-                }
-            } else {
-                let half = self.tables[0].len() / 2;
-                for column in 0..half {
+        if self.tables.is_empty() {
+            let mut value = i.evaluate(&[]);
+            for _ in 1..self.remaining {
+                value = value + value;
+            }
+            out.fill(value);
+            return Ok(());
+        }
+        let half = self.tables[0].len() / 2;
+        // Field addition is exact, so any split of the column range into partial sums
+        // gives the same round values as the sequential sum (RFC-0006 A1 is unchanged).
+        let partial = |range: core::ops::Range<usize>, out: &mut [K]| {
+            out.fill(K::from_i64(0));
+            for (node, result) in out.iter_mut().enumerate() {
+                let x = K::from_i64(node as i64);
+                for column in range.clone() {
                     *result = *result
                         + i.evaluate_with(|input| {
                             let table = &self.tables[input as usize];
@@ -135,7 +113,8 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
                         });
                 }
             }
-        }
+        };
+        parallel::sum_ranges(half, out, partial)?;
         Ok(())
     }
     fn final_values_into(&self, out: &mut [K]) -> Result<(), Error> {

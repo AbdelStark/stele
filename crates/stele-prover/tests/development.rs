@@ -135,8 +135,12 @@ fn run(name: &str, t: usize) {
     let ledger = verify(&public, &statement, &proof).expect("verify");
     let verify_ms = clock.elapsed().as_millis();
     eprintln!(
-        "{name}: T={t} proof {} bytes, commit {commit_ms} ms, prove {prove_ms} ms, verify {verify_ms} ms\n{ledger}",
-        proof.len()
+        "{name}: T={t} proof {} bytes (fnv {:016x}), commit {commit_ms} ms, prove {prove_ms} ms, verify {verify_ms} ms\n{ledger}",
+        proof.len(),
+        // Identity check across prover-side changes (INV-8): any byte change moves it.
+        proof
+            .iter()
+            .fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
     );
 }
 

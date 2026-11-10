@@ -1725,3 +1725,28 @@ Consequences:
 - E16-10 must commit the model once with the new layout.
 
 Status: Accepted (RFC-0026 A5).
+
+## ADR-087: Prover-side batching and threads without proof changes (RFC-0006 A1, RFC-0010 A4, task E16-15)
+
+Context: profiling the development prover found two hotspots.
+- v2 encoding regenerated every expander row by BLAKE3 once per message row.
+- Dense sumcheck rounds and folds, mostly in the A5 lookup trees, ran on one thread.
+
+Decision:
+- `stele_code::Encoder::encode_rows_measured` encodes all rows of a source at once,
+  interleaved. Each sparse row is generated once and applied to every row, so each
+  row's codeword is unchanged. `PreparedSource` uses it.
+- `stele-sumcheck` splits the column range of dense rounds, zerocheck sums and
+  folds across `std::thread::scope` workers under its existing `std` feature. Field
+  addition is exact, so the round values, transcript and proof bytes are identical.
+  `stele-reductions` enables that feature. `ChallengeField` now requires
+  `Send + Sync`, which both QM31 and OM31 satisfy.
+- There is no new crate and no protocol or RFC change. `no_std` builds keep the
+  sequential path.
+
+Consequences:
+- Proof bytes are unchanged; the bench prints a proof digest so a change is visible.
+- Prover-side speed now depends on core count. The verifier is unchanged.
+
+Status: Accepted.
+

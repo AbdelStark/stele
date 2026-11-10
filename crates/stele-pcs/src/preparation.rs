@@ -116,14 +116,33 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             .map_err(|_| Error::Capacity)?;
         columns.resize(bytes, 0);
         work.encoded_columns_bytes = columns.capacity();
-        for (row, message) in message.chunks_exact(source.columns()).enumerate() {
-            let encoded = encoder.encode_measured(message).map_err(Error::Encoder)?;
-            work.encoder_peak_bytes = work.encoder_peak_bytes.max(encoded.work.peak_owned_bytes);
-            // A9 §1: all offsets lie within the checked 4*R*N column buffer.
-            for (column, value) in encoded.values.iter().enumerate() {
-                let offset = column * width + 4 * row;
-                columns[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
-            }
+        // All rows at once, interleaved (symbol c of row r at c*R + r): the encoder
+        // generates each sparse row once (RFC-0010 A4) and its interleaved codeword
+        // is exactly the column-major 4*R*N buffer of A9 §1.
+        let rows = source.rows();
+        let mut transposed: Vec<M31> = Vec::new();
+        transposed
+            .try_reserve_exact(count)
+            .map_err(|_| Error::Capacity)?;
+        for column in 0..source.columns() {
+            transposed.extend(
+                message
+                    .iter()
+                    .skip(column)
+                    .step_by(source.columns())
+                    .copied(),
+            );
+        }
+        let encoded = encoder
+            .encode_rows_measured(&transposed, rows)
+            .map_err(Error::Encoder)?;
+        work.encoder_peak_bytes = encoded
+            .work
+            .peak_owned_bytes
+            .checked_add(checked_bytes::<M31>(count)?)
+            .ok_or(Error::Capacity)?;
+        for (out, value) in columns.chunks_exact_mut(4).zip(&encoded.values) {
+            out.copy_from_slice(&value.to_le_bytes());
         }
         let mut leaves = Vec::new();
         leaves

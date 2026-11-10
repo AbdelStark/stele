@@ -508,6 +508,8 @@ def field_sources(root):
                     for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
     # RFC-0026 §4 step 1: the relation statement digest is BLAKE3 (workspace pin).
     dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
+    # RFC-0006 A1 prover only: dense rounds/folds split across std threads (E16-15).
+    dependencies['stele-sumcheck']['features'] = ['std']
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'

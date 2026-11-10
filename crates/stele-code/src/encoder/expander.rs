@@ -90,6 +90,34 @@ fn scatter<K: CodeField>(
     }
     Ok(())
 }
+/// The same sparse rows as [`scatter`], generated once and applied to `lanes`
+/// interleaved rows: symbol `i` of lane `r` is at `i * lanes + r` (RFC-0010 A4).
+fn scatter_lanes<K: CodeField>(
+    frame: &mut [u8; 74],
+    source: &[K],
+    target: &mut [K],
+    lanes: usize,
+    degree: usize,
+    hash: &mut impl FnMut(&[u8; 74]) -> [u8; 32],
+    measured: &mut Measurement,
+) -> Result<(), Error> {
+    for (i, values) in source.chunks_exact(lanes).enumerate() {
+        frame[68..72]
+            .copy_from_slice(&u32::try_from(i).map_err(|_| Error::Capacity)?.to_le_bytes());
+        let (columns, coefficients) = row(frame, target.len() / lanes, degree, hash, measured)?;
+        measured.work.generated_rows += 1;
+        for edge in 0..degree {
+            let at = usize::try_from(columns[edge]).map_err(|_| Error::Capacity)? * lanes;
+            for (out, value) in target[at..at + lanes].iter_mut().zip(values) {
+                *out = *out + value.mul_base(coefficients[edge]);
+            }
+        }
+        let limbs = (degree * lanes) as u64 * u64::from(K::DEGREE);
+        measured.work.sparse_limb_additions += limbs;
+        measured.work.sparse_limb_products += limbs;
+    }
+    Ok(())
+}
 pub(super) struct Execution<'a, H> {
     pub(super) seed: &'a [u8],
     pub(super) hash: &'a mut H,
@@ -130,6 +158,51 @@ impl<H: FnMut(&[u8; 74]) -> [u8; 32]> Execution<'_, H> {
         self.run(level - 1, y, z, rest, depth + 1)?;
         frame[67] = 1;
         scatter(&mut frame, z, parity, b, self.hash, self.measured)
+    }
+    /// [`Self::run`] on `lanes` interleaved rows: identical per-lane output, with each
+    /// sparse row generated once for all lanes instead of once per row.
+    pub(super) fn run_lanes<K: CodeField>(
+        &mut self,
+        level: u8,
+        source: &[K],
+        output: &mut [K],
+        work: &mut [K],
+        lanes: usize,
+        depth: u8,
+    ) -> Result<(), Error> {
+        self.measured.work.max_recursive_frames =
+            self.measured.work.max_recursive_frames.max(depth);
+        if level == 3 {
+            let circle = Circle::new(6, 1)?;
+            let mut lane = self.measured.reserve(source.len() / lanes)?;
+            for r in 0..lanes {
+                lane.clear();
+                lane.extend(source.iter().skip(r).step_by(lanes).copied());
+                let base = circle.encode_recorded(&lane, self.measured)?;
+                for (c, value) in base.iter().enumerate() {
+                    output[c * lanes + r] = *value;
+                }
+                self.measured.work.copied_symbols += base.len() as u64;
+                self.measured.release(measurement::bytes(&base));
+            }
+            self.measured.release(measurement::bytes(&lane));
+            return Ok(());
+        }
+        let n = source.len() / lanes;
+        let (prefix, tail) = output.split_at_mut(n * lanes);
+        let (z, parity) = tail.split_at_mut(n / 2 * lanes);
+        let (y, rest) = work.split_at_mut(n / 4 * lanes);
+        prefix.copy_from_slice(source);
+        self.measured.work.copied_symbols += source.len() as u64;
+        let mut frame = [0; 74];
+        frame[..34].copy_from_slice(b"stele/v0.1/setup/expander/block/v2");
+        frame[34..66].copy_from_slice(self.seed);
+        frame[66] = level;
+        let (a, b) = degrees(level);
+        scatter_lanes(&mut frame, source, y, lanes, a, self.hash, self.measured)?;
+        self.run_lanes(level - 1, y, z, rest, lanes, depth + 1)?;
+        frame[67] = 1;
+        scatter_lanes(&mut frame, z, parity, lanes, b, self.hash, self.measured)
     }
 }
 
