@@ -1,5 +1,6 @@
 //! Secret mask streams, RFC-0013 A2 items 1–2. Prover-only: a stream is never
 //! transcript data, never a challenge and never verifier input.
+use crate::ChallengeField;
 use stele_field::M31;
 
 /// Context of a hiding source's mask elements (RFC-0013 A2 item 1).
@@ -38,6 +39,14 @@ impl MaskStream {
                 return M31::from_u64(u64::from(value));
             }
         }
+    }
+    /// Next uniform `K`: `D` consecutive M31 elements in limb order.
+    pub fn element<K: ChallengeField>(&mut self) -> K {
+        let mut limbs = [M31::ZERO; 8];
+        for limb in &mut limbs[..K::DEGREE] {
+            *limb = self.m31();
+        }
+        K::from_limbs(limbs)
     }
 }
 

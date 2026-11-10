@@ -45,5 +45,7 @@
   ["absorb", "stele/v0.1/relation/roots", "-"],
   ["challenge", "stele/v0.1/relation/identity", "RLC"],
   ["challenge", "stele/v0.1/relation/point", "SZ"],
-  ["grind", "stele/v0.1/grind", "-"]
+  ["grind", "stele/v0.1/grind", "-"],
+  ["absorb", "stele/v0.1/zk/mask-sum", "-"],
+  ["challenge", "stele/v0.1/zk/mask-weight", "MASK"]
 ]

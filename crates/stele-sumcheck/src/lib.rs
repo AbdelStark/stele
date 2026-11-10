@@ -17,6 +17,8 @@ mod buffers;
 pub mod claim_batch;
 mod dense;
 mod instance;
+/// Masked A1 sumcheck (RFC-0013 A2 item 2); its mask obligation has no consumer.
+pub mod masked;
 /// Prover-side work splitting with identical results (RFC-0006 A1 prover only).
 pub mod parallel;
 mod small;
