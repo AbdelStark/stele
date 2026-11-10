@@ -2323,6 +2323,25 @@ tasks:
   status: ready
   acceptance:
   - docs/security/binding-spec.md lists every edge with its control id
+- id: E12-10
+  epic: E12
+  title: 'Q12: Fiat-Shamir composition theorem and per-round (RBR) errors of every round family'
+  depends: []
+  rfc:
+  - RFC-0019 Q12
+  - RFC-0012 §2,§4
+  - RFC-0012 A15
+  - RFC-0010 A3
+  skill: soundness-auditor
+  crate: docs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-10-fs-composition
+  acceptance:
+  - formal/fs-composition.md states the ROM FS theorem with grinding, its proof and its hypotheses
+  - every round family of an RFC-0026 proof has an RBR error with its source (SC, RLC, SZ, LU, PCS tensor, PCS columns)
+  - the query-cap convention answering Q12 is stated with what it does and does not guarantee
+  - proven, conditional and open items are listed; no profile is admitted by the note
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
