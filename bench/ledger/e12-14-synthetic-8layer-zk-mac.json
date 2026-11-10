@@ -4,8 +4,8 @@
  "commit": "4a77fb3db1afa6b961bb0b22c4f402fe4f9693ce",
  "controls": {
   "failed": 0,
-  "passed": 0,
-  "total": 0
+  "passed": 2,
+  "total": 2
  },
  "device": "arm64 Apple laptop (16 hardware threads)",
  "driver": "not-applicable",
@@ -19,6 +19,10 @@
  "kind": "inference",
  "model_config": {
   "command": "stele prove-dev --zk / verify-dev",
+  "controls": {
+   "next": "StatementMismatch",
+   "token": "StatementMismatch"
+  },
   "host_context": "Apple laptop, macOS, release build of the measured commit; one run each; dev and dev-zk measured back to back on the same host with no other workload; BSD /usr/bin/time -l.",
   "model": {
    "cqis": "int8 matrices, dynamic rows, random small codes",
@@ -47,7 +51,7 @@
   },
   "threads": 16
  },
- "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1), defined and implemented, admission pending independent review (RFC-0013 A5 item 8); zero knowledge is conditional and computational (seed-derived masks), with the weights committed per proof (P = 1). Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture, plain check and proof. Verifier time is the verify-dev process wall time. CPU only, no GPU. Peak RSS is BSD time maximum resident set size. Measured as the dev against dev-zk pair of task E12-14b on one host; not comparable to the 4-vCPU E17-00 records; not a cost-model fit input.",
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1), defined and implemented, admission pending independent review (RFC-0013 A5 item 8); zero knowledge is conditional and computational (seed-derived masks), with the weights committed per proof (P = 1). Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture, plain check and proof. Verifier time is the verify-dev process wall time. CPU only, no GPU. Peak RSS is BSD time maximum resident set size. Measured as the dev against dev-zk pair of task E12-14b on one host; not comparable to the 4-vCPU E17-00 records; not a cost-model fit input. Controls are two statement tampers of the supplied public file through verify-dev (next token y and token x2 flipped), each rejected at the container statement digest.",
  "plan_digest": "3814a5fed4f176e346df232d457c3e37cf509e414f56393d5f8d3b2fe43b419d",
  "profile": "development",
  "prompt_tokens": 1,
