@@ -64,6 +64,8 @@ pub enum Error {
     Capacity,
     /// The production transcript aborted.
     Transcript(stele_hash::Error),
+    /// Producer abort: a masked sumcheck drew `α = 0` (RFC-0013 A5 item 4).
+    MaskWeight,
 }
 impl From<stele_hash::Error> for Error {
     fn from(value: stele_hash::Error) -> Self {

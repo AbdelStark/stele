@@ -5,6 +5,8 @@
 //! then one A9 opening of the mask source at `μ = G(ρ)`. The certificate runs on
 //! its own A9 transcript and is bound by the opening frame. The returned
 //! reduction keeps A1's final obligations; the mask obligation is discharged.
+//!
+//! [`claims`] composes masked claims, zero-sums and per-source batches (A5).
 use alloc::vec::Vec;
 use stele_field::{Serialize, M31};
 use stele_hash::{ChallengeField, HashUsage, Transcript};
@@ -14,6 +16,9 @@ use stele_pcs::{
 };
 use stele_sumcheck::masked::{self, Mask, MaskRecord};
 use stele_sumcheck::{Instance, Reduction, Summand};
+
+#[path = "zk_claims.rs"]
+pub mod claims;
 
 /// Log blowup of every mask source (Circle rate 1/4).
 const BLOWUP: u8 = 2;
@@ -31,6 +36,14 @@ pub enum Error {
     MaskSource,
     /// `ρ_n ∈ {0, 1/2}`: the producer aborts on this public event (A4 item 5).
     MaskPoint,
+    /// A dev-zk statement or witness outside RFC-0013 A5 / RFC-0026 A9's forms.
+    Statement,
+    /// Producer abort: a claim block's coordinates have rank `< D` (A5 item 4).
+    ClaimRank,
+    /// Producer abort: `κ(ρ_v) = 0` for a masked occurrence (A5 item 4).
+    Vanishing,
+    /// Producer abort: a batch's final point has `w* = 0` (A5 item 4).
+    BatchPoint,
 }
 
 /// One bound masked instance: source bytes, certificate, rounds and opening.
@@ -112,7 +125,8 @@ where
         }
     }
     a.resize(4 * (<K as CodeField>::DEGREE as usize), K::from_i64(0));
-    let mut b = masked::column_weights(i.num_vars, degree, point).map_err(Error::Sumcheck)?;
+    let mut b =
+        masked::column_weights(i.num_vars, degree, point, false).map_err(Error::Sumcheck)?;
     b.resize(columns, K::from_i64(0));
     Ok((a, b))
 }
@@ -137,7 +151,20 @@ pub fn prove<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let seed = &seed.0;
+    prove_at(i, summand, &seed.0, t).map(|(proof, _)| proof)
+}
+
+/// [`prove`] on borrowed seed bytes, also returning `ρ`; the A5 batch of the
+/// shared mask source opens that source at `ρ` (RFC-0013 A5 item 5a).
+fn prove_at<K: ChallengeField + CodeField + Eq>(
+    i: &Instance<K>,
+    summand: impl Summand<K>,
+    seed: &[u8; 32],
+    t: &mut Transcript<K>,
+) -> Result<(Proof<K>, Vec<K>), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let degree = masked::degree(i).map_err(Error::Sumcheck)?;
     let mask = Mask::derive(seed, i).map_err(Error::Sumcheck)?;
     let (ell, m) = layout(i, degree)?;
@@ -194,12 +221,15 @@ where
         )
         .map_err(|f| Error::Pcs(f.cause))?
         .0;
-    Ok(Proof {
-        source,
-        certificate,
-        sumcheck,
-        opening,
-    })
+    Ok((
+        Proof {
+            source,
+            certificate,
+            sumcheck,
+            opening,
+        },
+        point,
+    ))
 }
 
 /// Verify one bound masked instance. The finals remain obligations; `μ` is
