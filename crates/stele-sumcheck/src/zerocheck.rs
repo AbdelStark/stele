@@ -250,8 +250,7 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         // Exact field sums: any split of the columns gives the same value (A3 prover).
         let mut sum = [K::from_i64(0)];
         crate::parallel::sum_ranges(weights.len(), &mut sum, |range, out| {
-            let mut values: Vec<K> = Vec::with_capacity(tables.len());
-            values.resize(tables.len(), K::from_i64(0));
+            let mut values = zeros(tables.len())?;
             for column in range {
                 for (value, table) in values.iter_mut().zip(tables) {
                     *value = table[column];
@@ -261,6 +260,7 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
                 }
                 out[0] = out[0] + weights[column] * self.instance.evaluate(&values);
             }
+            Ok(())
         })?;
         Ok(sum[0])
     }

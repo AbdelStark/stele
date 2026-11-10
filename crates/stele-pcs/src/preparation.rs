@@ -141,6 +141,9 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             .peak_owned_bytes
             .checked_add(checked_bytes::<M31>(count)?)
             .ok_or(Error::Capacity)?;
+        if encoded.values.len().checked_mul(4) != Some(columns.len()) {
+            return Err(Error::MessageShape);
+        }
         for (out, value) in columns.chunks_exact_mut(4).zip(&encoded.values) {
             out.copy_from_slice(&value.to_le_bytes());
         }

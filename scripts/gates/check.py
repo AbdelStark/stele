@@ -49,7 +49,8 @@ DEVELOPMENT = {
                    '#![forbid(unsafe_code)]\n#![no_std]\n'
                    '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                    'extern crate alloc;\npub mod development;\n',
-        'dependencies': {'stele-reductions': {'path': '../stele-reductions'},
+        # E16-15: the prover opts in to stele-reductions' threaded dense rounds.
+        'dependencies': {'stele-reductions': {'path': '../stele-reductions', 'features': ['std']},
                          'stele-proof': {'path': '../stele-proof'},
                          'blake3': {'version': '=1.8.7', 'default-features': False}},
         'dev-dependencies': {'serde_json': '=1.0.154'},
@@ -508,8 +509,6 @@ def field_sources(root):
                     for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
     # RFC-0026 §4 step 1: the relation statement digest is BLAKE3 (workspace pin).
     dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
-    # RFC-0006 A1 prover only: dense rounds/folds split across std threads (E16-15).
-    dependencies['stele-sumcheck']['features'] = ['std']
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
@@ -676,7 +675,9 @@ def field_sources(root):
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
-            or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target', 'features'))
+            or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
+            # E16-15: the only feature is the opt-in prover-thread switch; no_std by default.
+            or manifest.get('features', {'std': ['stele-sumcheck/std']}) != {'std': ['stele-sumcheck/std']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),

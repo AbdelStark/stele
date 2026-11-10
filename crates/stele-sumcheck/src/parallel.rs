@@ -21,7 +21,7 @@ fn threads(len: usize) -> usize {
 pub(crate) fn sum_ranges<K: ChallengeField>(
     len: usize,
     out: &mut [K],
-    partial: impl Fn(core::ops::Range<usize>, &mut [K]) + Sync,
+    partial: impl Fn(core::ops::Range<usize>, &mut [K]) -> Result<(), Error> + Sync,
 ) -> Result<(), Error> {
     #[cfg(feature = "std")]
     {
@@ -39,11 +39,19 @@ pub(crate) fn sum_ranges<K: ChallengeField>(
             }
             let partial = &partial;
             std::thread::scope(|scope| {
-                for (t, part) in parts.iter_mut().enumerate() {
-                    let range = t * step..((t + 1) * step).min(len);
-                    scope.spawn(move || partial(range, part));
-                }
-            });
+                let handles: Vec<_> = parts
+                    .iter_mut()
+                    .enumerate()
+                    .map(|(t, part)| {
+                        let range = t * step..((t + 1) * step).min(len);
+                        scope.spawn(move || partial(range, part))
+                    })
+                    .collect();
+                // Join in chunk order; a worker panic re-raises here, an error returns.
+                handles
+                    .into_iter()
+                    .try_for_each(|h| h.join().unwrap_or_else(|p| std::panic::resume_unwind(p)))
+            })?;
             out.fill(K::from_i64(0));
             for part in &parts {
                 for (o, v) in out.iter_mut().zip(part) {
@@ -53,8 +61,7 @@ pub(crate) fn sum_ranges<K: ChallengeField>(
             return Ok(());
         }
     }
-    partial(0..len, out);
-    Ok(())
+    partial(0..len, out)
 }
 
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
@@ -105,6 +112,7 @@ mod tests {
                 out[0] = out[0] + table[i];
                 out[1] = out[1] + table[i] * table[i + len];
             }
+            Ok(())
         })
         .expect("sum");
         let mut expected = [QM31::from_i64(0); 2];

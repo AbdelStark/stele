@@ -107,7 +107,14 @@ fn greedy(executor: &mut Executor<'_>, t: usize) -> Statement {
     }
 }
 
-fn run(name: &str, t: usize) {
+/// FNV-1a of proof bytes: any byte change moves it (INV-8).
+fn fnv(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+        (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
+    })
+}
+
+fn run(name: &str, t: usize) -> u64 {
     let case = load(name);
     let mut executor = case.executor(&case.artifact);
     let statement = greedy(&mut executor, t);
@@ -138,27 +145,28 @@ fn run(name: &str, t: usize) {
         "{name}: T={t} proof {} bytes (fnv {:016x}), commit {commit_ms} ms, prove {prove_ms} ms, verify {verify_ms} ms\n{ledger}",
         proof.len(),
         // Identity check across prover-side changes (INV-8): any byte change moves it.
-        proof
-            .iter()
-            .fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
+        fnv(&proof)
     );
+    fnv(&proof)
 }
 
 #[test]
 fn accepts_one_layer_window() {
-    run("one-layer", 16);
+    // Pinned proof bytes: the T=16 window is large enough for the threaded dense
+    // rounds (E16-15), and the hash equals the sequential prover's.
+    assert_eq!(run("one-layer", 16), 0x035f_65b3_0541_72b5);
 }
 
 #[test]
 fn accepts_one_layer_grouped_window() {
-    run("one-layer-grouped", 16);
+    assert_eq!(run("one-layer-grouped", 16), 0xeacf_1ac6_dd87_6e3b);
 }
 
 /// The E16-10 acceptance window; release build only (`docs/development-e2e.md`).
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn accepts_eight_layer_window() {
-    run("eight-layer", 64);
+    assert_eq!(run("eight-layer", 64), 0x4f2a_0f00_d2d8_3acb);
 }
 
 /// One honest small window shared by the controls: T = 4, one layer.

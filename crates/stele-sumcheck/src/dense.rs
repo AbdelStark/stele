@@ -113,6 +113,7 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
                         });
                 }
             }
+            Ok(())
         };
         parallel::sum_ranges(half, out, partial)?;
         Ok(())
@@ -128,5 +129,56 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
             *value = table[0];
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Term;
+    use stele_field::{Field, QM31};
+
+    #[test]
+    fn matches_reference_split_and_sequential_dense_rounds() {
+        // 2^13 rows: with `std` the round is split across workers; the expected values
+        // are the plain sequential loop over every column.
+        let n = 1usize << 13;
+        let table = |seed: i64| -> Vec<QM31> {
+            (0..n as i64)
+                .map(|i| QM31::from_i64((i * 7919 + seed) % 2_147_483_629 - 1000))
+                .collect()
+        };
+        let tables = alloc::vec![table(1), table(2), table(3)];
+        let instance = Instance {
+            id: 9,
+            num_vars: 13,
+            inputs: alloc::vec![0, 1, 2],
+            terms: alloc::vec![
+                Term {
+                    coefficient: QM31::from_i64(3),
+                    factors: alloc::vec![0, 1, 2],
+                },
+                Term {
+                    coefficient: QM31::from_i64(-5),
+                    factors: alloc::vec![1],
+                },
+            ],
+            claimed_sum: QM31::from_i64(0),
+        };
+        let dense = Dense::new(&instance, tables.clone()).expect("dense");
+        let actual = dense.round(&instance).expect("round");
+        let half = n / 2;
+        let mut expected = alloc::vec![QM31::from_i64(0); 4];
+        for (node, value) in expected.iter_mut().enumerate() {
+            let x = QM31::from_i64(node as i64);
+            for column in 0..half {
+                let v: Vec<QM31> = tables
+                    .iter()
+                    .map(|t| t[column] + x * (t[column + half] - t[column]))
+                    .collect();
+                *value = *value + instance.evaluate(&v);
+            }
+        }
+        assert_eq!(actual, expected);
     }
 }

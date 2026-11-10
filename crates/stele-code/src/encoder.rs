@@ -283,6 +283,8 @@ impl Encoder {
         if rows == 0 || len.checked_mul(rows) != Some(message.len()) {
             return Err(Error::RowShape);
         }
+        // The same field-size and pointer-width checks as `validate`, per row.
+        self.validate(&message[..len])?;
         let (length, scratch) = self.capacity::<K>(0)?;
         let total = length.checked_mul(rows).ok_or(Error::Capacity)?;
         if self.len == 21 {
