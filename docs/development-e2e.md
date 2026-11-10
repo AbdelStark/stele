@@ -144,13 +144,17 @@ P=$D/prepared
 # Wrong next token, wrong checked token, tampered weight root, tampered gain: all rejected.
 STELE_DEV_PROOF=$P cargo test --release -p stele-prover --test development \
   rejects_tampers_on_a_supplied_proof -- --ignored --nocapture 2>&1 | tee $P/controls.log
+# The model commitment alone (Artifact decode + commitment), checked against public.bin.
+STELE_DEV_PROOF=$P cargo test --release -p stele-prover --test development \
+  matches_reference_model_commitment_of_a_supplied_proof -- --ignored --nocapture 2>&1 | tee $P/commit.log
 ```
 
 ## Benchmark ledger
 
 Development-profile numbers are recorded under RFC-0018 A1 (`profile: "development"`,
 workload `dev/<name>`, no Python verifier). `bench/dev_e2e.py` turns one run directory
-from the commands above (GNU `time -v`) into a ledger and validates it:
+from the commands above (GNU `time -v`; `commit.log` is optional) into a ledger and
+validates it:
 
 ```sh
 python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
@@ -160,20 +164,25 @@ python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
 
 ### Measured runs and the FlashProve small route
 
-Both Stele rows come from one campaign at commit `f6db15e` (E16-15) on a rented
-Intel Core Ultra 9 285K container (24 hardware threads, 188 GB), release build, one run
-each. The four statement tampers were rejected on both proofs: wrong `y` and wrong
-checked token (`RoundSumMismatch`), tampered weight root (`RootMismatch`), tampered
-gain (`RoundSumMismatch`). The controls ran this branch's
-`rejects_tampers_on_a_supplied_proof`, compiled against the measured commit. The
-real-model `proof.bin` (SHA-256 `507b52b3…5381`) is byte-identical to the one from commit
-`9d4c176` (INV-8).
+The current Stele rows come from one campaign at commit `e813ce1` (after E16-15, E16-16
+and E16-17), on a rented Intel Core Ultra 9 285K container (24 hardware threads, 188 GB).
+Each is one run of a release build (task E16-18). The four statement tampers were rejected
+on both proofs: wrong `y` and wrong checked token (`RoundSumMismatch`), tampered weight
+root (`RootMismatch`), tampered gain (`RoundSumMismatch`). The model commitment is also
+timed alone (`matches_reference_model_commitment_of_a_supplied_proof`, stage
+`model_commitment`). It is part of the prove time, and a model owner would compute it once
+per model. The stories42M `proof.bin` (SHA-256 `507b52b3…5381`) is byte-identical at
+`9d4c176`, `f6db15e` and `e813ce1` (INV-8).
 
-| Run | Model | Prove (wall) | Verify (wall) | Proof | Peak RSS prove / verify | Ledger |
-|---|---|---|---|---|---|---|
-| Stele dev, synthetic | 8 layers, d 64, V 256, T 64, checked 0..64 | 34.3 s | 5.1 s | 45.0 MB | 2.6 / 0.30 GB | [e16-11-dev-synthetic-8layer](../bench/ledger/e16-11-dev-synthetic-8layer.json) |
-| Stele dev, stories42M | 8 layers, d 512, V 32000, T 64, checked 23..64 | 719 s | 45.2 s | 113.4 MB | 37.4 / 4.8 GB | [e16-11-dev-stories42m](../bench/ledger/e16-11-dev-stories42m.json) |
-| FlashProve route 3 "small model" | 8-layer synthetic model | 23–30 s run: commit, prove and verify (build excluded) | included in the run | not stated | 10 GB RAM needed | README at `9e2bdd8` |
+| Run | Model | Prove (wall) | of which model commitment | Verify (wall) | Proof | Peak RSS prove / verify | Ledger |
+|---|---|---|---|---|---|---|---|
+| Stele dev, synthetic | 8 layers, d 64, V 256, T 64, checked 0..64 | 21.9 s | 0.19 s | 3.95 s | 45.0 MB | 3.0 / 0.30 GB | [e16-18-dev-synthetic-8layer](../bench/ledger/e16-18-dev-synthetic-8layer.json) |
+| Stele dev, stories42M | 8 layers, d 512, V 32000, T 64, checked 23..64 | 474 s | 8.7 s | 24.3 s | 113.4 MB | 38.4 / 4.8 GB | [e16-18-dev-stories42m](../bench/ledger/e16-18-dev-stories42m.json) |
+| FlashProve route 3 "small model" | 8-layer synthetic model | 23–30 s run: commit, prove and verify (build excluded) | included | included in the run | not stated | 10 GB RAM needed | README at `9e2bdd8` |
+
+The E16-11 entries at `f6db15e`, the same host type, are kept as history:
+[e16-11-dev-synthetic-8layer](../bench/ledger/e16-11-dev-synthetic-8layer.json) and
+[e16-11-dev-stories42m](../bench/ledger/e16-11-dev-stories42m.json).
 
 The FlashProve row is the figure that project reports in its
 [README](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c)
@@ -182,5 +191,4 @@ the README does not give the model's width or vocabulary; RFC-0026 records the r
 as 8 layers, T = 64, d = 512. The statements differ (RFC-0018 rule 3): FlashProve hides
 the weights (zero-knowledge) and runs on a GPU. A Stele development proof reveals the
 model and activations, claims no security level and runs on CPU threads. The Stele
-prove time includes the model commitment, which a model owner computes once per model;
-`prove-dev` recomputes it on every call. No GPU path is measured here (INV-3).
+prove time includes the model commitment, which `prove-dev` recomputes on every call. No GPU path is measured here (INV-3).
