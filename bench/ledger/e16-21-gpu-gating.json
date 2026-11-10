@@ -47,6 +47,7 @@
    "tables": "QM31 base-embedded, value_t(j) = ((j*a_t + b_t) % q_t) - q_t/2, a=(73,29,41,13), b=(19,7,3,23), q=(1048573,1048571,999983,1000003)"
   },
   "projection": {
+   "flips_if": "a stories42M profile on the target host with residual share <= 1/3 of wall time (task E16-22)",
    "gate": "GO needs projected end-to-end gain >= 3x; NO-GO otherwise (task E16-21)",
    "method": "Amdahl: T' = T * (r + (1 - r) / s). r is the residual CPU share, the main-thread self samples outside the offloaded stages over all main-thread samples; s is the device speedup of the offloaded stages, taken as the measured rounds-only ratio (CPU reference total over GPU rounds) at its lowest and highest, and unbounded.",
    "offloaded_stages": [
@@ -74,7 +75,20 @@
      "witness_layout_check": 1522,
      "zerocheck_rounds": 2809
     },
+    "main_thread_samples_outside_parallel_region": {
+     "dense_rounds": 203,
+     "encoding": 467,
+     "logup_levels": 207,
+     "lookup_counts": 737,
+     "merkle": 521,
+     "other": 8,
+     "pcs_opening_combination": 549,
+     "relation_other": 2805,
+     "witness_layout_check": 1522,
+     "zerocheck_rounds": 781
+    },
     "main_thread_samples_total": 14987,
+    "parallel_region_rule": "a sample is inside a parallel region when a rayon or thread::scope frame is on its stack",
     "scaling": "stage shares of the 8-layer fixture applied unchanged to stories42M; not measured on stories42M or on the 24-thread host",
     "workload": "dev/synthetic-8layer-t64 (crates/stele-prover/tests/fixtures, eight-layer, T = 64)"
    },
@@ -87,6 +101,7 @@
     "denominator": 14987,
     "numerator": 5822
    },
+   "stage_speedup_reference_threads": 46,
    "stage_speedup_rounds_only": {
     "k2_logn16": {
      "denominator": 5,
@@ -106,7 +121,11 @@
     }
    },
    "target": "bench/ledger/e16-18-dev-stories42m.json prover_time_ns (dev/stories42m-t64, 24 threads)",
-   "verdict": "NO-GO"
+   "unmeasured_biases": [
+    "attribution: stage_shares.py charges relation_other by the first stage pattern on the stack; field products there that belong to LogUp leaf preparation or dense rounds overstate the residual",
+    "threads: the fixture ran on 16 threads and the target on 24; the offloaded stages are mostly parallel and the residual mostly sequential, so more threads raise the residual share"
+   ],
+   "verdict": "NO-GO (provisional: fixture stage shares, stories42M unprofiled)"
   },
   "raw": "research/gpu-gating/results.txt"
  },

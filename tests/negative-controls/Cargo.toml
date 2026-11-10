@@ -346,3 +346,43 @@ path = "sumcheck/nc_0907.rs"
 [[test]]
 name = "nc-0908"
 path = "sumcheck/nc_0908.rs"
+
+[[test]]
+name = "nc-0909"
+path = "sumcheck/nc_0909.rs"
+
+[[test]]
+name = "nc-0910"
+path = "sumcheck/nc_0910.rs"
+
+[[test]]
+name = "nc-0911"
+path = "sumcheck/nc_0911.rs"
+
+[[test]]
+name = "nc-0913"
+path = "sumcheck/nc_0913.rs"
+
+[[test]]
+name = "nc-0914"
+path = "sumcheck/nc_0914.rs"
+
+[[test]]
+name = "nc-0915"
+path = "sumcheck/nc_0915.rs"
+
+[[test]]
+name = "nc-0916"
+path = "sumcheck/nc_0916.rs"
+
+[[test]]
+name = "nc-0917"
+path = "sumcheck/nc_0917.rs"
+
+[[test]]
+name = "nc-0918"
+path = "sumcheck/nc_0918.rs"
+
+[[test]]
+name = "nc-0919"
+path = "sumcheck/nc_0919.rs"

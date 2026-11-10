@@ -2205,7 +2205,98 @@ Decision:
 Status: Accepted (owner authorisation; two same-author passes in
 agents/reviews/rfc0013-a5-acceptance.md; independent review requested).
 
-## ADR-102: No development-profile GPU backend at the current stage shares (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
+## ADR-099: Masked claims and the matmul zero-sum as engine components (RFC-0013 A5, RFC-0026 A9, task E12-18)
+
+Numbered after ADR-098.
+
+Context: RFC-0013 A5 and RFC-0026 A9 fix masked occurrences, padding, the matmul
+zero-sum, the shared mask source and per-source batching. They leave open how the
+masked sumcheck learns its higher degree and how the shared source holds the
+masks. Task E12-18 builds these as components. Wiring them into the development
+prover is E12-14.
+
+Decision:
+- `stele_sumcheck::masked` takes a declared degree (`Mask::plain`,
+  `verify_degree`). The degree byte of the absorbed `Instance` is that degree. A
+  plain mask stores A2's sum of univariates as both blocks of the A4 form, since
+  `(1 − X_n)·g + X_n·g = g`. This reuses the A4 formulas unchanged.
+- `stele_reductions::zk::claims` is the one new consumer, and the quarantine
+  admits it. It proves a statement of identities and matmuls over claim sources.
+  It uses one shared mask source and one A4 source per proof. The source layout,
+  the ids and the vanishing-variable defaults are plan rules of the module. E12-14
+  may replace them with the development plan's.
+- Every A5 item-4 abort is a producer error: `ClaimRank`, `Vanishing`,
+  `BatchPoint`, `MaskWeight`, and the existing `MaskRank` and `MaskPoint`.
+- NC-0910 and NC-0911 run on the composed proof. NC-0909 and NC-0915 run through
+  the batch verifier (`claims::verify_batch`), which the composed verifier calls
+  once per source. A changed claim at the composed proof first fails its own
+  relation's final unless the cheater also re-solves `μ`. The batch-level control
+  is that consistent cheat. NC-0915's cheat is a full alternative prover,
+  `prove_weighted`, with weight `(S_q, −S_p)` on the mask rows. Each control
+  fails when its check is removed (recorded in the PR).
+- The verifier evaluates the batch weight densely, in `O(R·C)`. This is a
+  `shortcut:` until sources grow.
+- Independent review (fix-then-merge, no soundness or privacy bug):
+  - Removing the relation `μ_j` from the shared batch survived every test. NC-0916
+    now runs A4's NC-0908 attack on a composed relation through `claims::forge`, a
+    documented adversary prover like `prove_weighted`. With that binding removed,
+    the forgery is accepted.
+  - A changed shared opening is now tested. Removing that opening check fails the
+    test.
+  - A statement without a fresh vanishing variable is refused instead of sharing
+    variable 0.
+  - The matmul degree is 3 here because this form has no `eq(ρ_shared, ·)`
+    factor. A5 item 3's 4 includes that factor.
+
+Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).
+
+## ADR-100: ZK-GKR over the A5 trees as engine components (RFC-0008 A7, task E12-19)
+
+Numbered after ADR-099.
+
+Context: RFC-0008 A7 masks A5's fraction trees for dev-zk. It specifies the
+committed top, the masked layer steps with their `s = 1` half, the per-layer
+blocks in the shared mask source and the `DenominatorZero` abort. It leaves the
+step algebra, the layouts and the degree of a masked step to the implementation.
+
+Decision:
+- `stele_reductions::zk::claims` takes lookups in its statement. The tree, top,
+  steps and finals live in its child module `lookup` (`src/zk_lookup.rs`) and reuse
+  E12-18's masked occurrences, batches and shared source.
+- The order:
+  - the claim sources, multiplicities included;
+  - each lookup's `β, α`;
+  - the top source and the shared source;
+  - the relations, including each lookup's `h·q − p = 0` and `Σ h = 0`;
+  - the GKR steps;
+  - the batches.
+- The first step is a zero-sum over masked occurrences of the top columns, so no
+  top value is revealed. Later steps carry the incoming claims' mask terms in their
+  `s = 1` half, whose block finals are claims in the shared batch.
+- A masked step's SC degree is the declared one (A5 item 3), not A7 item 6's 3. The
+  A7 implementation notes amend that line.
+- Controls and tests:
+  - NC-0913 runs through `claims::forge_layer`, an adversary with free rounds and
+    `μ` solved last, so that only the next step's claimed sum rejects the change.
+  - NC-0914 changes the block row's symbol in the shared opening.
+  - `rejects_unbound_block_finals` runs `claims::forge_block`. It moves both block
+    finals and keeps the step's final check intact. Removing the block claims from
+    the shared batch makes it accepted.
+- Scope: one unselected member per lookup, with `n ≥ c_D + 1`. Selectors,
+  several members, padding and A5's statement messages are left to E12-14.
+- Independent review (fix-then-merge, test gaps only):
+  - NC-0917 and NC-0918 cover the head and selector final checks, through the
+    `claims::forge_final` adversary.
+  - NC-0919 covers the top identity `h·q − p = 0` against a false lookup, through
+    `claims::forge_ratio`. Removing the identity makes it accepted.
+  - Tests at `n = c_D + 4` run the middle layers in both fields. They assert the
+    degrees 7, 7, 5, 4, a bad tuple, and χ² of a middle layer value.
+  - The A7 notes list the degrees per step. They add the ZD line `2^{n+1}·c/|K|`
+    per lookup: A5's `e` assumes the root check, which dev-zk replaces.
+
+Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).
+
+## ADR-103: Provisional NO-GO for a development-profile GPU backend (fixture stage shares) (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
 
 Context: task E16-21 gates a development-profile GPU backend (tasks E16-21a..e) on a
 projected stories42M T = 64 prove-time gain of at least 3x, once dense and zerocheck
@@ -2225,24 +2316,39 @@ Method:
   time.
 - **Projection.** Amdahl's law on `bench/ledger/e16-18-dev-stories42m.json`, with the
   8-layer shares applied unchanged and the device speedup of the offloaded stages taken
-  as the measured rounds-only ratio at its lowest, its highest, and unbounded.
+  as the measured rounds-only ratio at its lowest, its highest, and unbounded. The
+  measured ratios are against the CPU reference at 46 threads, not the 24 threads of
+  the target record; the ceiling at unbounded speed does not depend on them.
 
-Decision: **NO-GO.** The work the scoped backend leaves on the CPU (relation
+Decision: **NO-GO (provisional: fixture stage shares, stories42M unprofiled).** The work the scoped backend leaves on the CPU (relation
 registration, lookup leaf preparation and counts, matmul table builds, the PCS row
 combination, witness and layout) bounds the projected gain below 3x even at unbounded
-device speed. No GPU binding is chosen and no RFC-0014 amendment is written.
+device speed on the fixture's shares. No GPU binding is chosen and no RFC-0014
+amendment is written.
+
+What flips it: a stories42M profile on the target host whose residual share (the work
+outside the offloaded stages) is at most one third (33.3%) of wall time. The fixture's
+residual is close to that line, and two biases are not measured:
+- *Attribution.* `stage_shares.py` charges a sample to the first stage pattern on its
+  stack; field products inside `relation_other` that belong logically to LogUp leaf
+  preparation or dense rounds count as residual. This overstates the residual.
+- *Threads.* The fixture ran on 16 threads, the target on 24. The offloaded stages are
+  mostly parallel and the residual mostly sequential, so more threads raise the
+  residual share. Model size changes the mix in ways the fixture cannot show.
 
 Alternatives rejected:
 - *Proceed on the rounds-only ratio.* It ignores the residual CPU share, which is the
   binding term.
-- *Widen the backend to the residual relation work now.* Much of that work runs on one
-  thread; making it parallel on the CPU is cheaper and helps every host. A GPU case
+- *Widen the backend to the residual relation work now.* In the fixture profile almost
+  all residual samples have no rayon frame on the stack: they ran sequentially on the
+  main thread (counts in the ledger, `main_thread_samples_outside_parallel_region`).
+  Making that work parallel on the CPU is cheaper and helps every host. A GPU case
   needs a new profile after that.
 
 Consequences:
-- Tasks E16-21a..e do not start until a stories42M profile on the target host shows the
-  offloadable share large enough for 3x (above two thirds of wall time at unbounded
-  device speed). That profile, with this ledger's device ratios, reopens this decision.
+- Tasks E16-21a..e are blocked on task E16-22, a stories42M stage-share profile on a
+  Linux host. That profile, with this ledger's device ratios, confirms or reverses this
+  decision.
 - Device upload in the micro-benchmark uses pageable memory; it does not affect the
   verdict, which holds with zero transfer cost.
 - The verifier, `no_std` builds and every CPU path are unchanged.

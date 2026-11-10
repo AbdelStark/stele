@@ -7,6 +7,11 @@
 //! final obligations and the mask obligation `(ρ, G(ρ))`. Only the RFC-0013 A4
 //! consumer (`stele_reductions::zk`) discharges it; `scripts/gates/check.py`
 //! quarantines every other use.
+//!
+//! RFC-0013 A5: a masked claim `V̇ = x̃ + κ(X_v)·r̃` raises its vanishing
+//! variable's degree by one, so the instance degree is declared by the caller
+//! ([`Mask::plain`], [`verify_degree`]); it is at least the factor count. Item 5a's
+//! shared mask source holds A2's plain sum of univariates ([`Mask::plain`]).
 use crate::{
     interpolate, interpolation_weights, message_bytes, reserve, round_payload, Error, Instance,
     ScRecord, Summand,
@@ -16,14 +21,18 @@ use stele_hash::mask::{MaskStream, SUMCHECK_MASK};
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
 
 /// The prover's secret two-block mask. `blocks[b][i]` holds `g^b_i` by its values
-/// at nodes `0..=δ` (`i < n − 1`) or `0..δ` (`i = n − 1`).
+/// at nodes `0..=δ` (`i < n − 1`) or `0..δ` (`i = n − 1`). A plain mask (A2 item 2,
+/// RFC-0013 A5 item 5a) stores `g` in both blocks with `δ + 1` nodes everywhere:
+/// `(1 − X_n)·g + X_n·g = g`, so every formula below serves both forms.
 pub struct Mask<K> {
     blocks: [Vec<Vec<K>>; 2],
+    degree: usize,
+    plain: bool,
 }
 
 /// Node count of variable `i` of an `n`-variable, degree-`δ` mask.
-fn nodes(n: usize, degree: usize, i: usize) -> usize {
-    if i + 1 == n {
+fn nodes(n: usize, degree: usize, i: usize, plain: bool) -> usize {
+    if i + 1 == n && !plain {
         degree
     } else {
         degree + 1
@@ -36,29 +45,56 @@ impl<K: ChallengeField> Mask<K> {
     /// `D` M31 elements in limb order from the `zk/sumcheck-mask` stream.
     pub fn derive(seed: &[u8; 32], i: &Instance<K>) -> Result<Self, Error> {
         let degree = shape(i)?;
-        let n = i.num_vars as usize;
-        let mut stream = MaskStream::new(seed, SUMCHECK_MASK, i.id);
+        Self::draw(seed, i.id, i.num_vars, degree, false)
+    }
+
+    /// A2 item 2's plain mask `g = Σ_i g_i(X_i)`, each `g_i` by its values at
+    /// `0..=δ`, for an instance of `num_vars` variables and declared degree `δ`
+    /// (RFC-0013 A5 items 3 and 5a). The caller binds it in the shared mask source.
+    pub fn plain(seed: &[u8; 32], id: u64, num_vars: u32, degree: usize) -> Result<Self, Error> {
+        if num_vars == 0 || !(1..=60).contains(&degree) {
+            return Err(Error::InvalidInstance);
+        }
+        Self::draw(seed, id, num_vars, degree, true)
+    }
+
+    fn draw(
+        seed: &[u8; 32],
+        id: u64,
+        num_vars: u32,
+        degree: usize,
+        plain: bool,
+    ) -> Result<Self, Error> {
+        let n = num_vars as usize;
+        let mut stream = MaskStream::new(seed, SUMCHECK_MASK, id);
         let mut block = || -> Result<Vec<Vec<K>>, Error> {
             let mut rows = Vec::new();
             reserve(&mut rows, n)?;
             for index in 0..n {
                 let mut row = Vec::new();
                 reserve(&mut row, degree + 1)?;
-                row.extend((0..nodes(n, degree, index)).map(|_| stream.element::<K>()));
+                row.extend((0..nodes(n, degree, index, plain)).map(|_| stream.element::<K>()));
                 rows.push(row);
             }
             Ok(rows)
         };
         let first = block()?;
-        let second = block()?;
+        let second = if plain { first.clone() } else { block()? };
         Ok(Self {
             blocks: [first, second],
+            degree,
+            plain,
         })
     }
 
-    /// Number of mask coefficients per block, `n(δ + 1) − 1`.
+    /// Number of mask coefficients per block: `n(δ + 1) − 1`, or `n(δ + 1)` if plain.
     pub fn width(&self) -> usize {
         self.blocks[0].iter().map(Vec::len).sum()
+    }
+
+    /// The declared degree `δ`.
+    pub fn degree(&self) -> usize {
+        self.degree
     }
 
     /// The values of block `b` in canonical column order (variables, then nodes).
@@ -103,12 +139,14 @@ fn at_one<K: ChallengeField>(row: &[K]) -> K {
     row[usize::from(row.len() > 1)]
 }
 
-/// The A4 opening weights over the `n(δ + 1) − 1` mask columns at `point`: the
-/// Lagrange weight of each column's node at its variable's coordinate.
+/// The A4 opening weights over the `n(δ + 1) − 1` mask columns at `point` (or the
+/// `n(δ + 1)` columns of a plain mask): the Lagrange weight of each column's node
+/// at its variable's coordinate. For a plain mask, `Σ weight·column = g(ρ)`.
 pub fn column_weights<K: ChallengeField>(
     num_vars: u32,
     degree: usize,
     point: &[K],
+    plain: bool,
 ) -> Result<Vec<K>, Error> {
     let n = num_vars as usize;
     if n == 0 || degree == 0 || point.len() != n {
@@ -117,7 +155,7 @@ pub fn column_weights<K: ChallengeField>(
     let mut out = Vec::new();
     reserve(&mut out, n * (degree + 1))?;
     for (index, x) in point.iter().enumerate() {
-        out.extend(interpolation_weights(nodes(n, degree, index), *x)?);
+        out.extend(interpolation_weights(nodes(n, degree, index, plain), *x)?);
     }
     Ok(out)
 }
@@ -175,14 +213,25 @@ fn power_of_two<K: ChallengeField>(exponent: usize) -> K {
     (0..exponent).fold(K::from_i64(1), |p, _| p + p)
 }
 
-/// Absorb the instance, the mask binding and `G`, then draw `α` (A4 order).
+/// The declared degree `δ`: at least the instance's factor count, `δ ≥ 1` (A2) and
+/// at most 60 (61 interpolation nodes).
+fn declared<K: ChallengeField>(i: &Instance<K>, degree: usize) -> Result<usize, Error> {
+    if degree < shape(i)? || degree > 60 {
+        return Err(Error::InvalidInstance);
+    }
+    Ok(degree)
+}
+
+/// Absorb the instance with its declared degree, the mask binding and `G`, then
+/// draw `α` (A4 order).
 fn start<K: ChallengeField>(
     i: &Instance<K>,
+    degree: usize,
     binding: &[u8],
     mask_sum: K,
     t: &mut Transcript<K>,
 ) -> Result<K, Error> {
-    t.absorb(AbsorbLabel::Instance, &i.encode()?)?;
+    t.absorb(AbsorbLabel::Instance, &i.encode_degree(degree)?)?;
     t.absorb(AbsorbLabel::FieldSources, binding)?;
     t.absorb(
         AbsorbLabel::ZkMaskSum,
@@ -261,7 +310,7 @@ pub fn prove<K: ChallengeField + Eq>(
     binding: &[u8],
     t: &mut Transcript<K>,
 ) -> Result<(Proof<K>, Vec<K>), Error> {
-    let degree = shape(i)?;
+    let degree = declared(i, mask.degree)?;
     summand.validate_instance(i)?;
     let n = i.num_vars as usize;
     if mask.blocks.iter().any(|block| {
@@ -269,12 +318,16 @@ pub fn prove<K: ChallengeField + Eq>(
             || block
                 .iter()
                 .enumerate()
-                .any(|(j, row)| row.len() != nodes(n, degree, j))
+                .any(|(j, row)| row.len() != nodes(n, degree, j, mask.plain))
     }) {
         return Err(Error::ProofShape);
     }
     let mask_sum = mask.sum();
-    let alpha = start(i, binding, mask_sum, t)?;
+    let alpha = start(i, degree, binding, mask_sum, t)?;
+    // RFC-0013 A5 item 4: Lemma 4 needs α ≠ 0. A public event; the producer aborts.
+    if alpha == K::from_i64(0) {
+        return Err(Error::MaskWeight);
+    }
     let mut prefix = [K::from_i64(0); 2];
     let mut running = i.claimed_sum + alpha * mask_sum;
     let mut point = Vec::new();
@@ -330,14 +383,26 @@ pub fn verify<K: ChallengeField + Eq>(
     binding: &[u8],
     t: &mut Transcript<K>,
 ) -> Result<Reduction<K>, Error> {
-    let degree = shape(i)?;
+    verify_degree(i, shape(i)?, proof, binding, t)
+}
+
+/// [`verify`] at a verifier-derived declared degree `δ` (RFC-0013 A5 item 3). The
+/// SC record charges `n·δ`.
+pub fn verify_degree<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    degree: usize,
+    proof: &Proof<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+) -> Result<Reduction<K>, Error> {
+    let degree = declared(i, degree)?;
     if proof.rounds.len() != i.num_vars as usize
         || proof.final_values.len() != i.inputs.len()
         || proof.rounds.iter().any(|r| r.len() != degree + 1)
     {
         return Err(Error::ProofShape);
     }
-    let alpha = start(i, binding, proof.mask_sum, t)?;
+    let alpha = start(i, degree, binding, proof.mask_sum, t)?;
     let mut running = i.claimed_sum + alpha * proof.mask_sum;
     let mut point = Vec::new();
     reserve(&mut point, proof.rounds.len())?;

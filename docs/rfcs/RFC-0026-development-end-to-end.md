@@ -1008,7 +1008,9 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     `Ȯ` is `out` broadcast over the summed bits, with its RFC-0013 A5 claim mask
     on a summed variable. No `out~(ρ)` is sent. The SZ line `a/|K|` and the SC
     line are unchanged, with the degree one higher per masked factor (RFC-0013 A5
-    item 3).
+    item 3). `s` is the inner dimension's bit count before padding. Padded bits
+    are broadcast for `lhs` and `rhs` as well, so both parts count `out` `2^pad`
+    times and the sum still vanishes (E12-18, ADR-099).
   - **Lookups.** §4 step 5 masks A5's trees per RFC-0008 A7 (ZK-GKR, committed
     top layer).
   - **Batching and openings.** §4 step 7 uses RFC-0013 A5 item 5 per source in

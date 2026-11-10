@@ -2584,22 +2584,26 @@ tasks:
   - RFC-0026 A9
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-18-masked-claims
   acceptance:
   - V-dot occurrences, padding, matmul zero-sum and per-source batching as A5; claim-block rank abort
   - tests that proofs verify and claims are masked; NC-0909, NC-0910, NC-0911, NC-0915
 - id: E12-19
   epic: E12
-  title: Committed-fraction lookups (RFC-0008 A7)
+  title: ZK-GKR over the A5 LogUp trees (RFC-0008 A7)
   depends:
   - E12-18
   rfc:
   - RFC-0008 A7
   skill: gkr-reduction-author
   crate: stele-lookup+stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-19-zk-gkr
   acceptance:
-  - fraction sources, zerochecks and sum as A7 with the zero-denominator abort; NC-0913 and NC-0914
+  - committed top (h·q = p, Σh = 0, no root revealed), masked layer steps with block claims in the shared source, the DenominatorZero abort; NC-0913 and NC-0914
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
@@ -4101,18 +4105,19 @@ tasks:
   acceptance:
   - device-resident dense sumcheck rounds measured on a rented RTX 4090 at the 8-layer and stories42M relation sizes, transfers included
   - projected stories42M prove-time gain reported; the full backend proceeds only at >= 3x
-  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-102, NO-GO)
+  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-103, provisional NO-GO)
 - id: E16-21a
   epic: E16
   title: Development-profile GPU backend infrastructure (backend trait, op table, parity harness)
   depends:
   - E16-21
+  - E16-22
   - E10-01
   rfc:
   - RFC-0014 §2,§5
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: ready
+  status: blocked(ADR-103: stories42M profile, task E16-22)
   acceptance:
   - CPU backend is the default and unchanged; GPU behind an opt-in feature with runtime-loaded CUDA
   - verifier and every --no-default-features build free of GPU code (cargo tree, CI check)
@@ -4126,7 +4131,7 @@ tasks:
   - RFC-0014 §2,§5
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: ready
+  status: blocked(ADR-103: stories42M profile, task E16-22)
   acceptance:
   - fixed-order reductions, no atomics on transcript-bound values
   - FNV proof pins identical on the GPU host
@@ -4139,7 +4144,7 @@ tasks:
   - RFC-0014 §2,§5
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: ready
+  status: blocked(ADR-103: stories42M profile, task E16-22)
   acceptance:
   - FNV proof pins identical on the GPU host
 - id: E16-21d
@@ -4151,7 +4156,7 @@ tasks:
   - RFC-0014 §2,§5
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: ready
+  status: blocked(ADR-103: stories42M profile, task E16-22)
   acceptance:
   - FNV proof pins identical on the GPU host
 - id: E16-21e
@@ -4165,6 +4170,21 @@ tasks:
   - RFC-0026 §7
   skill: benchmark-runner
   crate: stele-bench
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - GPU prove time against the 24-thread CPU run (bench/ledger/e16-18-dev-stories42m.json), with GPU model and transfer share recorded
+- id: E16-22
+  epic: E16
+  title: stories42M T = 64 prove stage shares on a Linux host
+  depends:
+  - E16-21
+  rfc:
+  - RFC-0026 §7
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-bench
   status: ready
   acceptance:
-  - GPU prove time against the 24-thread CPU run (474 s), with GPU model and transfer share recorded
+  - perf profile of one stele prove-dev run of stories42M at T = 64 on the 24-thread host class of bench/ledger/e16-18-dev-stories42m.json, release build with debuginfo
+  - wall-time shares of dense and zerocheck rounds, LogUp levels, v2 encoding, Merkle hashing and the residual, with the parallel and sequential split, recorded in a bench/ledger entry
+  - ADR-103 confirmed (residual above one third) or reversed (residual at most one third) in a new ADR

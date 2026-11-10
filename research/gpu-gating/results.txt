@@ -1,4 +1,4 @@
-E16-20 gating micro-benchmark, Vast RTX 4090 instance 60045623 (192 vCPU host, CPU ref ran 46 threads), 2026-11-10
+E16-21 gating micro-benchmark, Vast RTX 4090 instance 60045623 (192 vCPU host, CPU ref ran 46 threads), 2026-11-10
 gpu K=2 logn=16 upload_s=0.0003 rounds_s=0.0005 total_s=0.0008 fnv=5308e2dc83b22388
 gpu K=3 logn=20 upload_s=0.0053 rounds_s=0.0013 total_s=0.0066 fnv=1389bcecc7d7d29c
 gpu K=3 logn=22 upload_s=0.0192 rounds_s=0.0022 total_s=0.0214 fnv=dfc901298e711365
