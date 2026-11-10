@@ -22,30 +22,76 @@
 //!   (at `T = 0, 1` and its `s = 1` claim); rank `< 3D` aborts (`ClaimRank`).
 //! - **Leaves** (item 5): the last step's children are masked occurrences of the
 //!   committed `mult` and tuple columns and the public table.
+//! - **Checks** (E12-14, RFC-0026 A3 and A9): the lookup half concatenates the
+//!   check's members largest first, each padded to `c_D + 1` variables. Its leaf is
+//!   `(S, α − Σ β^i·S·X_i)` with `S` the public concatenated selector and
+//!   `X_i = Σ_m B_m·(V̇_{m,i} + shift_{m,i})`, `B_m` the public indicator of member
+//!   `m`'s block. The table half reads `Z·mult` with `Z = [x_high = 0]` when the
+//!   table is shorter than the tree. With several members, the instance's inputs
+//!   are `B_m` and each member's masked occurrence (so every claim is a final);
+//!   the producer folds one combined factor per tuple entry, all members sharing
+//!   one vanishing variable and mask coordinates `u` = the last `c_D` variables,
+//!   which lie in every member's block.
+//! - **Statement message** (A5): before each check's `β`, `LookupStatement`
+//!   absorbs its derived dimensions and members, and `LookupUnits` its (empty,
+//!   `b = m`) unit list.
 //!
 //! Challenges: `β, α` (`LookupBeta`, `LookupAlpha`), `r` for the first step
 //! (`ZeroWeight`), `λ` per step (`FractionGamma`), the line challenge `t*` after
 //! each non-leaf step (`FractionFold`). No new label.
 use super::{
-    dim, domain_table, full_rank, kappa, occurrence_claim, zero, Claim, Coord, Error, Factor,
-    Lookup, Occurrence, Plan, Statement,
+    bit, column_point, dim, domain_table, full_rank, kappa, occurrence_claim, zero, Claim, Coord,
+    Error, Factor, Lookup, Occurrence, Plan, Statement,
 };
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_field::M31;
-use stele_hash::{ChallengeField, ChallengeLabel, Transcript};
+use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, Transcript};
 use stele_pcs::CodeField;
 use stele_sumcheck::Term;
+
+/// One member as planned: its padded variables, block offset in the lookup half,
+/// tuple reads as x-coordinates (MSB-first index into `x`), shifts and selector.
+struct MemberPlan {
+    m: usize,
+    vars: usize,
+    offset: usize,
+    tuple: Vec<(usize, Vec<usize>)>,
+    shifts: Vec<i64>,
+    selector: Option<(Vec<i64>, Vec<usize>)>,
+}
+
+impl MemberPlan {
+    /// A column's index at lookup position `x` through x-coordinates `coords`.
+    fn index(coords: &[usize], x: usize, n: usize) -> usize {
+        coords
+            .iter()
+            .fold(0, |index, q| (index << 1) | bit(x, *q, n))
+    }
+    fn selected(&self, x: usize, n: usize) -> i64 {
+        self.selector
+            .as_ref()
+            .map_or(1, |(values, coords)| values[Self::index(coords, x, n)])
+    }
+}
 
 /// One lookup's plan.
 pub(super) struct LookupPlan {
     n: usize,
+    k: usize,
     k0: usize,
-    columns: Vec<usize>,
+    c: usize,
+    members: Vec<MemberPlan>,
     multiplicity: usize,
     table: Vec<Vec<i64>>,
     valid: usize,
     first_block: usize,
+    /// Leaf inputs: `B_m` and per-member occurrences (several members or padding).
+    expand: bool,
+    /// Leaf input `S` (a selector, or positions off the members).
+    select: bool,
+    /// Leaf input `Z` (the table is shorter than the tree).
+    pad: bool,
     /// Plan index of the top identity `h·q − p = 0` (NC-0919's adversary forges it).
     pub(super) identity: Option<usize>,
 }
@@ -58,9 +104,17 @@ impl LookupPlan {
     fn block(&self, layer: usize, poly: usize) -> usize {
         self.first_block + 2 * (layer - self.k0 - 1) + poly
     }
-    /// The tuple width `c`.
-    pub(super) fn width(&self) -> usize {
-        self.columns.len()
+    /// The member containing lookup position `x`, if any.
+    fn member_at(&self, x: usize) -> Option<&MemberPlan> {
+        self.members
+            .iter()
+            .find(|m| (m.offset..m.offset + (1 << m.m)).contains(&x))
+    }
+    /// The concatenated selector `S` over the lookup half.
+    fn selector(&self) -> Vec<i64> {
+        (0..1usize << self.n)
+            .map(|x| self.member_at(x).map_or(0, |m| m.selected(x, self.n)))
+            .collect()
     }
 }
 
@@ -81,8 +135,14 @@ enum Gin {
         v: usize,
         u: Vec<usize>,
     },
-    /// A masked occurrence of `mult` or a tuple column (leaf step).
+    /// A masked occurrence of `mult` or a member's tuple column (leaf step).
     Leaf(Occurrence),
+    /// `Z = [x_high = 0]`, public (leaf step).
+    Pad,
+    /// The concatenated selector `S`, public (leaf step).
+    Selector,
+    /// `B_m`, member `m`'s block indicator, public (leaf step).
+    Member(usize),
     /// The public table denominator `α − Σ β^i T_i(x)` (1 on padding).
     Table,
 }
@@ -112,6 +172,9 @@ impl GkrStep {
             _ => None,
         })
     }
+    fn position(&self, f: impl Fn(&Gin) -> bool) -> Option<u32> {
+        self.inputs.iter().position(f).map(|p| p as u32)
+    }
 }
 
 fn term<K: ChallengeField>(coefficient: K, factors: &[u32]) -> Term<K> {
@@ -121,13 +184,71 @@ fn term<K: ChallengeField>(coefficient: K, factors: &[u32]) -> Term<K> {
     }
 }
 
-/// The step's terms at `λ, α, β` (input 0 is the head).
-fn terms<K: ChallengeField>(
-    step: &GkrStep,
+/// Input indices of a leaf: the lead `h` of the `mult` terms (`eq` or `eq·Z`),
+/// an optional separate `Z` (compact form only), `mult`, the selector `S` of the
+/// `p0·q1` term, per tuple entry the parts `(w?, X?, coefficient)` of `S·X_i`, and
+/// the table.
+/// One part `(w?, X?, coefficient)` of a tuple entry's `S·X_i`.
+type Part<K> = (Option<u32>, Option<u32>, K);
+
+struct LeafIx<K> {
+    h: u32,
+    z: Option<u32>,
+    m: u32,
+    s: Option<u32>,
+    xs: Vec<Vec<Part<K>>>,
+    table: u32,
+}
+
+/// `F = p0·q1 + p1·q0 + λ·q0·q1` of a leaf, `p0 = S`, `q0 = α − Σ β^i·S·X_i`,
+/// `p1 = −Z·M`, `q1 = T`, at most four factors per term (RFC-0006 instances).
+fn leaf_terms<K: ChallengeField>(
+    out: &mut Vec<Term<K>>,
     lambda: K,
     alpha: K,
     beta: K,
-    c: usize,
+    ix: &LeafIx<K>,
+) {
+    let one = K::from_i64(1);
+    let flat = |f: &[Option<u32>]| -> Vec<u32> { f.iter().flatten().copied().collect() };
+    match ix.s {
+        Some(s) => {
+            out.push(term(one, &[0, s, ix.table]));
+            out.push(term(lambda * alpha, &[0, ix.table]));
+        }
+        None => out.push(term(one + lambda * alpha, &[0, ix.table])),
+    }
+    out.push(term(
+        zero::<K>() - alpha,
+        &flat(&[Some(ix.h), ix.z, Some(ix.m)]),
+    ));
+    let mut power = one;
+    for parts in &ix.xs {
+        for (w, x, coefficient) in parts {
+            let c = power * *coefficient;
+            out.push(term(c, &flat(&[Some(ix.h), ix.z, Some(ix.m), *w, *x])));
+            out.push(term(
+                zero::<K>() - lambda * c,
+                &flat(&[Some(0), *w, *x, Some(ix.table)]),
+            ));
+        }
+        power = power * beta;
+    }
+}
+
+/// Whether a leaf has a selector, padding or several members: its instance inputs
+/// then differ from the producer's compact factors (module docs).
+fn complex(step: &GkrStep, lp: &LookupPlan) -> bool {
+    step.leaf && (lp.expand || lp.select || lp.pad)
+}
+
+/// The step's instance terms at `λ, α, β` (input 0 is the head).
+fn terms<K: ChallengeField>(
+    step: &GkrStep,
+    lp: &LookupPlan,
+    lambda: K,
+    alpha: K,
+    beta: K,
 ) -> Vec<Term<K>> {
     let one = K::from_i64(1);
     let mut out = Vec::new();
@@ -141,17 +262,34 @@ fn terms<K: ChallengeField>(
         5
     };
     if step.leaf {
-        // p0 = 1, p1 = −V̇_mult, q0 = α − Σ β^i V̇_{x_i}, q1 = T:
-        // F = T − α·M + Σ β^i·M·X_i + λα·T − λ·Σ β^i·X_i·T.
-        let (m, table) = (base, base + 1 + c as u32);
-        out.push(term(one + lambda * alpha, &[0, table]));
-        out.push(term(zero::<K>() - alpha, &[0, m]));
-        let mut power = one;
-        for i in 0..c as u32 {
-            out.push(term(power, &[0, m, m + 1 + i]));
-            out.push(term(zero::<K>() - lambda * power, &[0, m + 1 + i, table]));
-            power = power * beta;
+        let at = |f: &dyn Fn(&Gin) -> bool| step.position(f);
+        let s = at(&|g| matches!(g, Gin::Selector));
+        let mut xs = vec![Vec::new(); lp.c];
+        let mut cursor = base as usize + 1 + usize::from(lp.pad) + usize::from(lp.select);
+        for member in &lp.members {
+            let w = if lp.expand {
+                cursor += 1;
+                Some(cursor as u32 - 1)
+            } else {
+                s
+            };
+            for (i, parts) in xs.iter_mut().enumerate() {
+                parts.push((w, Some(cursor as u32), one));
+                cursor += 1;
+                if member.shifts[i] != 0 {
+                    parts.push((w, None, K::from_i64(member.shifts[i])));
+                }
+            }
         }
+        let ix = LeafIx {
+            h: at(&|g| matches!(g, Gin::Pad)).unwrap_or(0),
+            z: None,
+            m: base,
+            s,
+            xs,
+            table: at(&|g| matches!(g, Gin::Table)).unwrap_or(0),
+        };
+        leaf_terms(&mut out, lambda, alpha, beta, &ix);
     } else {
         let (p0, p1, q0, q1) = (base, base + 1, base + 2, base + 3);
         out.push(term(one, &[0, p0, q1]));
@@ -159,6 +297,39 @@ fn terms<K: ChallengeField>(
         out.push(term(lambda, &[0, q0, q1]));
     }
     out
+}
+
+/// A complex leaf's compact factors: head, the `s = 1` inputs, `mult`, `Z?`, `S?`,
+/// one combined `X_i` per tuple entry (shift included), the table.
+fn compact_terms<K: ChallengeField>(
+    step: &GkrStep,
+    lp: &LookupPlan,
+    lambda: K,
+    alpha: K,
+    beta: K,
+) -> Vec<Term<K>> {
+    let mut out = terms(step, lp, lambda, alpha, beta);
+    out.truncate(2);
+    let base = if step.first { 3 } else { 5 };
+    let z = lp.pad.then_some(base + 1);
+    let s = lp.select.then_some(base + 1 + u32::from(lp.pad));
+    let x0 = base + 1 + u32::from(lp.pad) + u32::from(lp.select);
+    let ix = LeafIx {
+        h: 0,
+        z,
+        m: base,
+        s,
+        xs: (0..lp.c as u32)
+            .map(|i| vec![(s, Some(x0 + i), K::from_i64(1))])
+            .collect(),
+        table: x0 + lp.c as u32,
+    };
+    leaf_terms(&mut out, lambda, alpha, beta, &ix);
+    out
+}
+
+fn ceil_log2(n: usize) -> usize {
+    n.max(1).next_power_of_two().trailing_zeros() as usize
 }
 
 /// The lookup's GKR steps, top first (RFC-0008 A7 item 4).
@@ -171,30 +342,82 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
     c: usize,
 ) -> Result<(LookupPlan, Vec<GkrStep>), Error> {
     let k0 = c + 1;
-    let width = spec.columns.len();
-    let n = statement
-        .columns
-        .get(spec.multiplicity)
-        .ok_or(Error::Statement)?
-        .log_len as usize;
+    let width = spec.members.first().map_or(0, |m| m.tuple.len());
+    let k = ceil_log2(spec.table.len());
+    let log_len = |x: usize| statement.columns.get(x).map(|col| col.log_len as usize);
     if width == 0
-        || !(k0..=20).contains(&n)
-        || spec.columns.iter().any(|x| {
-            statement
-                .columns
-                .get(*x)
-                .is_none_or(|col| col.log_len as usize != n)
-        })
-        || spec.table.len() != 1 << n
+        || spec.table.len() != 1 << k
+        || log_len(spec.multiplicity) != Some(k)
         || spec.table.iter().any(|row| row.len() != width)
-        || spec.valid > 1 << n
+        || spec.valid > spec.table.len()
     {
         return Err(Error::Statement);
     }
+    // Members largest (padded) first, ties in relation order, each aligned.
+    let mut order: Vec<usize> = (0..spec.members.len()).collect();
+    let padded = |i: usize| (spec.members[i].vars as usize).max(k0);
+    order.sort_by_key(|i| core::cmp::Reverse(padded(*i)));
+    let total: usize = order.iter().map(|i| 1usize << padded(*i).min(40)).sum();
+    let n = k0.max(k).max(ceil_log2(total));
+    if n > 23 {
+        return Err(Error::Statement);
+    }
+    let mut members = Vec::new();
+    let mut offset = 0;
+    for i in order {
+        let spec_m = &spec.members[i];
+        let vars = spec_m.vars as usize;
+        let at = |read: &[u32]| -> Result<Vec<usize>, Error> {
+            super::distinct(read)?;
+            read.iter()
+                .map(|q| match *q as usize {
+                    q if q < vars => Ok(n - vars + q),
+                    _ => Err(Error::Statement),
+                })
+                .collect()
+        };
+        if spec_m.tuple.len() != width || spec_m.shifts.len() != width {
+            return Err(Error::Statement);
+        }
+        let mut tuple = Vec::new();
+        for read in &spec_m.tuple {
+            if log_len(read.column) != Some(read.vars.len()) {
+                return Err(Error::Statement);
+            }
+            tuple.push((read.column, at(&read.vars)?));
+        }
+        let selector = match &spec_m.selector {
+            None => None,
+            Some(p) => {
+                if p.values.len() != 1usize << p.vars.len()
+                    || p.values.iter().any(|v| !(0..=1).contains(v))
+                {
+                    return Err(Error::Statement);
+                }
+                Some((p.values.clone(), at(&p.vars)?))
+            }
+        };
+        let m = padded(i);
+        members.push(MemberPlan {
+            m,
+            vars,
+            offset,
+            tuple,
+            shifts: spec_m.shifts.clone(),
+            selector,
+        });
+        offset += 1 << m;
+    }
+    let expand = members.len() != 1 || members[0].m != n;
     let lp = LookupPlan {
         n,
+        k,
         k0,
-        columns: spec.columns.clone(),
+        c: width,
+        select: offset < 1 << n || members.iter().any(|m| m.selector.is_some()),
+        pad: k < n,
+        expand,
+        members,
         multiplicity: spec.multiplicity,
         table: spec.table.clone(),
         valid: spec.valid,
@@ -209,15 +432,15 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
         block: 0,
     };
     let mut steps = Vec::new();
-    for k in k0..=n {
-        let (first, leaf) = (k == k0, k == n);
+    for layer in k0..=n {
+        let (first, leaf) = (layer == k0, layer == n);
         let xo = usize::from(!first);
-        let y: Vec<usize> = (xo + k - k0..xo + k).collect();
+        let y: Vec<usize> = (xo + layer - k0..xo + layer).collect();
         let vars = |count: usize| (0..count).map(|j| Coord::Var(xo + j)).collect::<Vec<_>>();
         let mut inputs = vec![Gin::Head];
         if first {
-            inputs.push(Gin::Top(occurrence(top[0], vars(k))));
-            inputs.push(Gin::Top(occurrence(top[1], vars(k))));
+            inputs.push(Gin::Top(occurrence(top[0], vars(layer))));
+            inputs.push(Gin::Top(occurrence(top[1], vars(layer))));
         } else {
             for poly in 0..2 {
                 inputs.push(Gin::Select(poly));
@@ -225,9 +448,23 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
             }
         }
         if leaf {
-            inputs.push(Gin::Leaf(occurrence(spec.multiplicity, vars(n))));
-            for x in &spec.columns {
-                inputs.push(Gin::Leaf(occurrence(*x, vars(n))));
+            // `mult` reads the low `k` variables of `x`.
+            let low = (n - k..n).map(|j| Coord::Var(xo + j)).collect();
+            inputs.push(Gin::Leaf(occurrence(lp.multiplicity, low)));
+            if lp.pad {
+                inputs.push(Gin::Pad);
+            }
+            if lp.select {
+                inputs.push(Gin::Selector);
+            }
+            for (index, member) in lp.members.iter().enumerate() {
+                if lp.expand {
+                    inputs.push(Gin::Member(index));
+                }
+                for (column, coords) in &member.tuple {
+                    let coords = coords.iter().map(|q| Coord::Var(xo + q)).collect();
+                    inputs.push(Gin::Leaf(occurrence(*column, coords)));
+                }
             }
             inputs.push(Gin::Table);
         } else {
@@ -242,11 +479,11 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
                 }
             }
         }
-        let num_vars = k + xo;
+        let num_vars = layer + xo;
         let mut step = GkrStep {
             id: 0,
             lookup,
-            k,
+            k: layer,
             first,
             leaf,
             num_vars: num_vars as u32,
@@ -256,7 +493,7 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
             xo,
         };
         let one = K::from_i64(1);
-        let shape = terms(&step, one, one, one, width);
+        let shape = terms(&step, &lp, one, one, one);
         let mut masked: Vec<Option<(usize, Vec<usize>)>> = step
             .inputs
             .iter()
@@ -265,12 +502,50 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
                 _ => None,
             })
             .collect();
-        let free: Vec<bool> = step
-            .inputs
-            .iter()
-            .map(|i| matches!(i, Gin::Top(_) | Gin::Leaf(_)))
-            .collect();
-        super::vanish(num_vars, c, &shape, &mut masked, &free)?;
+        let compact = complex(&step, &lp);
+        let mut compact_masked = Vec::new();
+        if compact {
+            // The top occurrences of a one-step tree share no term with the leaf.
+            let tops: Vec<bool> = step
+                .inputs
+                .iter()
+                .map(|i| matches!(i, Gin::Top(_)))
+                .collect();
+            super::vanish(num_vars, c, &shape, &mut masked, &tops)?;
+            // `mult` takes item 2's default; every member occurrence shares one
+            // `v ≠ v_mult` and `u` = the last `c_D` variables (inside every block).
+            let mult = step.position(|g| matches!(g, Gin::Leaf(_))).unwrap_or(0) as usize;
+            let v_mult = 0;
+            let u_mult: Vec<usize> = (1..=c).collect();
+            let u: Vec<usize> = (num_vars - c..num_vars).collect();
+            let v = (0..num_vars)
+                .rev()
+                .find(|q| *q != v_mult && !u.contains(q))
+                .or_else(|| (0..num_vars).rev().find(|q| *q != v_mult))
+                .ok_or(Error::Statement)?;
+            for (index, (input, m)) in step.inputs.iter().zip(masked.iter_mut()).enumerate() {
+                if let Gin::Leaf(_) = input {
+                    *m = Some(if index == mult {
+                        (v_mult, u_mult.clone())
+                    } else {
+                        (v, u.clone())
+                    });
+                }
+            }
+            // The compact factors: `mult` at its index, then `Z?`, `S?` and one
+            // combined factor per tuple entry, all public but these.
+            compact_masked = vec![None; mult + 1 + usize::from(lp.pad) + usize::from(lp.select)];
+            compact_masked[mult] = Some((v_mult, u_mult.clone()));
+            compact_masked.extend((0..lp.c).map(|_| Some((v, u.clone()))));
+            compact_masked.push(None);
+        } else {
+            let free: Vec<bool> = step
+                .inputs
+                .iter()
+                .map(|i| matches!(i, Gin::Top(_) | Gin::Leaf(_)))
+                .collect();
+            super::vanish(num_vars, c, &shape, &mut masked, &free)?;
+        }
         for (input, m) in step.inputs.iter_mut().zip(&masked) {
             if let (Gin::Top(o) | Gin::Leaf(o), Some((v, u))) = (input, m) {
                 o.v = *v;
@@ -278,12 +553,43 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
             }
         }
         step.degree = super::degree(num_vars, &shape, &masked);
+        if compact {
+            let terms = compact_terms(&step, &lp, one, one, one);
+            step.degree = step
+                .degree
+                .max(super::degree(num_vars, &terms, &compact_masked));
+        }
         if step.degree > 60 {
             return Err(Error::Statement);
         }
         steps.push(step);
     }
     Ok((lp, steps))
+}
+
+/// A5's statement and unit messages for check `l`, before its `β` (RFC-0008 A7
+/// item 1): derived dimensions, then each member's padded size and offset.
+pub(super) fn messages<K: ChallengeField>(
+    lp: &LookupPlan,
+    l: usize,
+    t: &mut Transcript<K>,
+) -> Result<(), Error> {
+    let mut out = Vec::new();
+    out.extend_from_slice(&(l as u64).to_le_bytes());
+    for x in [lp.n, lp.k, lp.c, lp.valid, lp.members.len()] {
+        out.extend_from_slice(&(x as u32).to_le_bytes());
+    }
+    for m in &lp.members {
+        out.extend_from_slice(&(m.m as u32).to_le_bytes());
+        out.extend_from_slice(&(m.vars as u32).to_le_bytes());
+        out.extend_from_slice(&(m.offset as u64).to_le_bytes());
+    }
+    let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
+    t.absorb(AbsorbLabel::LookupStatement, &out).map_err(fail)?;
+    // `b = m`: no units (RFC-0026 A3), so the unit list is empty.
+    let mut units = (l as u64).to_le_bytes().to_vec();
+    units.push(0);
+    t.absorb(AbsorbLabel::LookupUnits, &units).map_err(fail)
 }
 
 fn compress<K: ChallengeField>(row: impl Iterator<Item = K>, beta: K) -> K {
@@ -296,22 +602,32 @@ fn compress<K: ChallengeField>(row: impl Iterator<Item = K>, beta: K) -> K {
     total
 }
 
-/// The public table denominators `α − Σ β^i T_i(x)`, 1 on padding.
+/// The public table denominators `α − Σ β^i T_i(x)` over `2^n`, 1 on padding.
 fn table<K: ChallengeField>(lp: &LookupPlan, beta: K, alpha: K) -> Vec<K> {
-    lp.table
-        .iter()
-        .enumerate()
-        .map(|(x, row)| {
-            if x < lp.valid {
+    (0..1usize << lp.n)
+        .map(|x| match lp.table.get(x) {
+            Some(row) if x < lp.valid => {
                 alpha - compress(row.iter().map(|v| K::from_i64(*v)), beta)
-            } else {
-                K::from_i64(1)
             }
+            _ => K::from_i64(1),
         })
         .collect()
 }
 
-/// The prover's tree, `layers[k]` over `k` variables for `k ≤ m` (A5, A7 item 2).
+/// The concatenated shifted tuple `X_i` over the lookup half (0 off the members).
+fn tuple<K: ChallengeField>(lp: &LookupPlan, data: &[Vec<K>]) -> Vec<Vec<K>> {
+    let mut out = vec![vec![zero::<K>(); 1 << lp.n]; lp.c];
+    for m in &lp.members {
+        for (i, ((column, coords), shift)) in m.tuple.iter().zip(&m.shifts).enumerate() {
+            for x in m.offset..m.offset + (1 << m.m) {
+                out[i][x] = data[*column][MemberPlan::index(coords, x, lp.n)] + K::from_i64(*shift);
+            }
+        }
+    }
+    out
+}
+
+/// The prover's tree, `layers[k]` over `k` variables for `k ≤ n + 1` (A5, A7 item 2).
 pub(super) fn tree<K: ChallengeField>(
     lp: &LookupPlan,
     data: &[Vec<K>],
@@ -319,11 +635,16 @@ pub(super) fn tree<K: ChallengeField>(
     alpha: K,
 ) -> Vec<Vec<[K; 2]>> {
     let q = table(lp, beta, alpha);
+    let s = lp.selector();
+    let xs = tuple(lp, data);
+    let mult = &data[lp.multiplicity];
     let mut leaves = Vec::new();
     for (x, qx) in q.iter().enumerate() {
-        let tuple = compress(lp.columns.iter().map(|c| data[*c][x]), beta);
-        leaves.push([K::from_i64(1), alpha - tuple]);
-        leaves.push([zero::<K>() - data[lp.multiplicity][x], *qx]);
+        let selected = K::from_i64(s[x]);
+        let compressed = compress(xs.iter().map(|col| col[x]), beta);
+        leaves.push([selected, alpha - selected * compressed]);
+        let count = mult.get(x).copied().unwrap_or_else(zero::<K>);
+        leaves.push([zero::<K>() - count, *qx]);
     }
     let mut layers = vec![leaves];
     while layers[layers.len() - 1].len() > 1 {
@@ -363,6 +684,7 @@ pub(super) fn top<K: ChallengeField>(
 pub(super) struct Run<K> {
     pub(super) beta: K,
     pub(super) alpha: K,
+    lambda: K,
     r: Vec<K>,
     claims: [K; 2],
     incoming: [(K, Vec<K>); 2],
@@ -375,6 +697,7 @@ impl<K: ChallengeField> Run<K> {
         Self {
             beta,
             alpha,
+            lambda: zero::<K>(),
             r: Vec::new(),
             claims: [zero::<K>(); 2],
             incoming: [(zero::<K>(), Vec::new()), (zero::<K>(), Vec::new())],
@@ -391,9 +714,9 @@ fn draw<K: ChallengeField>(t: &mut Transcript<K>, label: ChallengeLabel) -> Resu
 /// Draw the step's challenges and return its terms and claimed sum.
 pub(super) fn start<K: ChallengeField>(
     step: &GkrStep,
+    lp: &LookupPlan,
     run: &mut Run<K>,
     t: &mut Transcript<K>,
-    c: usize,
 ) -> Result<(Vec<Term<K>>, K), Error> {
     if step.first {
         run.r = (0..step.k)
@@ -401,12 +724,13 @@ pub(super) fn start<K: ChallengeField>(
             .collect::<Result<_, _>>()?;
     }
     let lambda = draw(t, ChallengeLabel::FractionGamma)?;
+    run.lambda = lambda;
     let claimed = if step.first {
         zero::<K>()
     } else {
         run.claims[0] + lambda * run.claims[1]
     };
-    Ok((terms(step, lambda, run.alpha, run.beta, c), claimed))
+    Ok((terms(step, lp, lambda, run.alpha, run.beta), claimed))
 }
 
 /// The `4D` entries of a layer block in the shared source's data message.
@@ -422,8 +746,94 @@ fn element<K: ChallengeField>(x: M31) -> K {
     K::from_i64(i64::from(x.as_u32()))
 }
 
-/// The prover's input tables over the step's domain (MSB-first, `s` first).
-#[allow(clippy::too_many_arguments)]
+/// How an expanded leaf input's final is produced from the compact fold.
+enum Expanded<K> {
+    /// A compact factor's final.
+    Compact(usize),
+    /// A product of compact finals and, when `bits` is not empty, `B_m`: `eq` of
+    /// the block bits on the leading x-coordinates.
+    Product {
+        factors: Vec<usize>,
+        bits: Vec<u8>,
+        xo: usize,
+    },
+    /// A member occurrence's masked value, from its column and block.
+    Claim {
+        column: Vec<K>,
+        coords: Vec<Coord>,
+        block: Vec<M31>,
+        v: usize,
+        u: Vec<usize>,
+    },
+}
+
+/// The expanded finals of a leaf with several members (module docs).
+pub(super) struct Expand<K> {
+    map: Vec<Expanded<K>>,
+    point: Vec<K>,
+}
+
+impl<K: ChallengeField> Expand<K> {
+    pub(super) fn inputs(&self) -> usize {
+        self.map.len()
+    }
+    pub(super) fn record(&mut self, challenge: K) {
+        self.point.push(challenge);
+    }
+    pub(super) fn finals(&self, compact: &[K]) -> Result<Vec<K>, Error> {
+        self.map
+            .iter()
+            .map(|e| match e {
+                Expanded::Compact(i) => Ok(compact[*i]),
+                Expanded::Product { factors, bits, xo } => Ok(factors
+                    .iter()
+                    .fold(weight(bits, &self.point[*xo..]), |p, i| p * compact[*i])),
+                Expanded::Claim {
+                    column,
+                    coords,
+                    block,
+                    v,
+                    u,
+                } => {
+                    let x = stele_poly::eq_table(&column_point(coords, &self.point, &[]))
+                        .map_err(|_| Error::Statement)?;
+                    let at: Vec<K> = u.iter().map(|q| self.point[*q]).collect();
+                    let r = stele_poly::eq_table(&at).map_err(|_| Error::Statement)?;
+                    let data = column
+                        .iter()
+                        .zip(&x)
+                        .fold(zero::<K>(), |s, (a, b)| s + *a * *b);
+                    let mask = block
+                        .iter()
+                        .zip(&r)
+                        .fold(zero::<K>(), |s, (a, b)| s + element::<K>(*a) * *b);
+                    Ok(data + kappa(self.point[*v]) * mask)
+                }
+            })
+            .collect()
+    }
+}
+
+/// `Π_j eq(x_j, bit_j)` over the leading coordinates of `x`.
+fn weight<K: ChallengeField>(bits: &[u8], x: &[K]) -> K {
+    let one = K::from_i64(1);
+    bits.iter()
+        .zip(x)
+        .fold(one, |w, (b, z)| w * if *b == 1 { *z } else { one - *z })
+}
+
+/// Member `m`'s block bits: its index on the leading `n − m` x-coordinates.
+fn block_bits(lp: &LookupPlan, member: &MemberPlan) -> Vec<u8> {
+    let high = lp.n - member.m;
+    let index = member.offset >> member.m;
+    (0..high)
+        .map(|j| ((index >> (high - 1 - j)) & 1) as u8)
+        .collect()
+}
+
+/// The prover's input tables over the step's domain (MSB-first, `s` first), and
+/// for a several-member leaf its compact terms and expansion.
+#[allow(clippy::type_complexity)]
 pub(super) fn factors<K: ChallengeField + CodeField>(
     plan: &Plan<K>,
     step: &GkrStep,
@@ -432,7 +842,7 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
     data: &[Vec<K>],
     shared: &[M31],
     block_of: &dyn Fn(&Occurrence) -> Vec<M31>,
-) -> Result<Vec<Factor<K>>, Error> {
+) -> Result<(Vec<Factor<K>>, Option<Vec<Term<K>>>, Option<Expand<K>>), Error> {
     let lp = &plan.lookups[step.lookup];
     let n = step.num_vars as usize;
     let half = 1usize << step.k;
@@ -448,9 +858,14 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
         r: Vec::new(),
         v: None,
     };
+    let compact = complex(step, lp);
     let mut out = Vec::new();
+    let mut map = Vec::new();
+    let mut members = Vec::new();
+    let mut seen_mult = false;
+    let mut s_index = None;
     for input in &step.inputs {
-        out.push(match input {
+        let factor = match input {
             Gin::Head => {
                 let eq = stele_poly::eq_table(&run.r).map_err(|_| Error::Statement)?;
                 if step.first {
@@ -481,11 +896,33 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
                     .collect();
                 public(both(x))
             }
-            Gin::Top(o) | Gin::Leaf(o) => Factor {
-                x: domain_table(&data[o.column], &o.coords, &[], n),
-                r: super::block_table(&block_of(o), &o.u, n),
-                v: Some(o.v),
-            },
+            Gin::Leaf(o) if compact && seen_mult => {
+                map.push(Expanded::Claim {
+                    column: data[o.column].clone(),
+                    coords: o.coords.clone(),
+                    block: block_of(o),
+                    v: o.v,
+                    u: o.u.clone(),
+                });
+                members.push(o);
+                continue;
+            }
+            Gin::Member(m) => {
+                map.push(Expanded::Product {
+                    factors: s_index.into_iter().collect(),
+                    bits: block_bits(lp, &lp.members[*m]),
+                    xo: step.xo,
+                });
+                continue;
+            }
+            Gin::Top(o) | Gin::Leaf(o) => {
+                seen_mult |= matches!(input, Gin::Leaf(_));
+                Factor {
+                    x: domain_table(&data[o.column], &o.coords, &[], n),
+                    r: super::block_table(&block_of(o), &o.u, n),
+                    v: Some(o.v),
+                }
+            }
             Gin::Layer { poly, t, v, u } => {
                 let values = &layers[step.k + 1];
                 let x = (0..half).map(|xi| values[(xi << 1) | t][*poly]).collect();
@@ -497,7 +934,94 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
                     v: Some(*v),
                 }
             }
-            Gin::Table => public(both(table(lp, run.beta, run.alpha))),
+            Gin::Pad => {
+                // The instance input is `eq·Z`; the producer folds `Z` alone.
+                map.push(Expanded::Product {
+                    factors: vec![0, out.len()],
+                    bits: Vec::new(),
+                    xo: step.xo,
+                });
+                out.push(public(both(
+                    (0..half)
+                        .map(|x| K::from_i64(i64::from(x >> lp.k == 0)))
+                        .collect(),
+                )));
+                continue;
+            }
+            Gin::Selector => {
+                s_index = Some(out.len());
+                public(both(lp.selector().into_iter().map(K::from_i64).collect()))
+            }
+            Gin::Table => {
+                if compact {
+                    out.extend(combined(step, lp, data, &members, block_of)?);
+                }
+                public(both(table(lp, run.beta, run.alpha)))
+            }
+        };
+        map.push(Expanded::Compact(out.len()));
+        out.push(factor);
+    }
+    if !compact {
+        return Ok((out, None, None));
+    }
+    let terms = compact_terms(step, lp, run.lambda, run.alpha, run.beta);
+    Ok((
+        out,
+        Some(terms),
+        Some(Expand {
+            map,
+            point: Vec::new(),
+        }),
+    ))
+}
+
+/// The combined factors `X_i = Σ_m B_m·(x̂_m + shift)` with masks `Σ_m B_m·r̂_m`
+/// over the step's domain; `members` are the member occurrences in input order
+/// (member-major), all with one `v` and `u` = the last `c_D` variables.
+fn combined<K: ChallengeField + CodeField>(
+    step: &GkrStep,
+    lp: &LookupPlan,
+    data: &[Vec<K>],
+    members: &[&Occurrence],
+    block_of: &dyn Fn(&Occurrence) -> Vec<M31>,
+) -> Result<Vec<Factor<K>>, Error> {
+    let n = step.num_vars as usize;
+    let v = members.first().map(|o| o.v).ok_or(Error::Statement)?;
+    if members.len() != lp.members.len() * lp.c {
+        return Err(Error::Statement);
+    }
+    let mask = (1usize << lp.n) - 1;
+    let owner: Vec<Option<usize>> = (0..1usize << lp.n)
+        .map(|x| {
+            lp.members
+                .iter()
+                .position(|m| (m.offset..m.offset + (1 << m.m)).contains(&x))
+        })
+        .collect();
+    let mut out = Vec::new();
+    for (i, x) in tuple(lp, data).into_iter().enumerate() {
+        let blocks: Vec<Vec<M31>> = (0..lp.members.len())
+            .map(|m| block_of(members[m * lp.c + i]))
+            .collect();
+        let entries = dim::<K>();
+        let r = (0..1usize << n)
+            .map(|index| {
+                let position = index & mask;
+                owner[position].map_or(zero::<K>(), |m| {
+                    element::<K>(blocks[m][position & (entries - 1)])
+                })
+            })
+            .collect();
+        let table = if step.first {
+            x
+        } else {
+            x.iter().chain(&x).copied().collect()
+        };
+        out.push(Factor {
+            x: table,
+            r,
+            v: Some(v),
         });
     }
     Ok(out)
@@ -529,27 +1053,35 @@ where
     let x = &point[step.xo..];
     let y: Vec<K> = step.y.iter().map(|j| point[*j]).collect();
     let eq = |a: &[K], b: &[K]| stele_poly::eq_evaluate(a, b).map_err(|_| Error::Statement);
+    let mle = |values: Vec<K>| -> Result<K, Error> {
+        let w = stele_poly::eq_table(x).map_err(|_| Error::Statement)?;
+        Ok(values
+            .iter()
+            .zip(&w)
+            .fold(zero::<K>(), |s, (a, b)| s + *a * *b))
+    };
     let mut out = Finals {
         claims: Vec::new(),
         blocks: Vec::new(),
         layers: [[zero::<K>(); 2]; 2],
     };
+    // `S(x*)`, evaluated once when the leaf has a selector.
+    let selector = match step.leaf && lp.select {
+        true => mle(lp.selector().into_iter().map(K::from_i64).collect()),
+        false => Ok(zero::<K>()),
+    };
+    if finals.len() != step.inputs.len() {
+        return Err(Error::Sumcheck(stele_sumcheck::Error::ProofShape));
+    }
     for (input, value) in step.inputs.iter().zip(finals) {
-        match input {
-            Gin::Head => {
-                let head = eq(&run.r, x)? * if step.first { one } else { one - point[0] };
-                if *value != head {
-                    return Err(mismatch);
-                }
-            }
+        let expected = match input {
+            Gin::Head => eq(&run.r, x)? * if step.first { one } else { one - point[0] },
             Gin::Select(poly) => {
                 let (k, u) = &run.incoming[*poly];
                 let rest = point[step.xo..step.y[0]]
                     .iter()
                     .fold(one, |p, z| p * (one - *z));
-                if *value != point[0] * *k * eq(u, &y)? * rest {
-                    return Err(mismatch);
-                }
+                point[0] * *k * eq(u, &y)? * rest
             }
             Gin::Block(poly) => {
                 let width = 1usize << plan.shared.1;
@@ -566,20 +1098,30 @@ where
                         .collect(),
                     value: *value,
                 });
+                continue;
             }
             Gin::Top(o) | Gin::Leaf(o) => {
                 out.claims
                     .push(occurrence_claim(plan, o, point, &[], *value)?);
+                continue;
             }
-            Gin::Layer { poly, t, .. } => out.layers[*poly][*t] = *value,
-            Gin::Table => {
-                let q = table(lp, run.beta, run.alpha);
-                let w = stele_poly::eq_table(x).map_err(|_| Error::Statement)?;
-                let expected = q.iter().zip(&w).fold(zero::<K>(), |s, (a, b)| s + *a * *b);
-                if *value != expected {
-                    return Err(mismatch);
-                }
+            Gin::Layer { poly, t, .. } => {
+                out.layers[*poly][*t] = *value;
+                continue;
             }
+            Gin::Pad => {
+                let head = eq(&run.r, x)? * if step.first { one } else { one - point[0] };
+                head * x[..lp.n - lp.k].iter().fold(one, |p, z| p * (one - *z))
+            }
+            Gin::Selector => selector?,
+            Gin::Member(m) => {
+                let s = if lp.select { selector? } else { one };
+                weight(&block_bits(lp, &lp.members[*m]), x) * s
+            }
+            Gin::Table => mle(table(lp, run.beta, run.alpha))?,
+        };
+        if *value != expected {
+            return Err(mismatch);
         }
     }
     Ok(out)
@@ -658,6 +1200,15 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     run.r = point[step.xo..].iter().copied().chain([tstar]).collect();
     run.tstar = tstar;
     Ok(())
+}
+
+/// Every masked occurrence of a step with its input index (privacy tests).
+#[cfg(feature = "controls")]
+pub(super) fn occurrences(step: &GkrStep) -> impl Iterator<Item = (usize, &Occurrence)> {
+    step.inputs.iter().enumerate().filter_map(|(i, g)| match g {
+        Gin::Top(o) | Gin::Leaf(o) => Some((i, o)),
+        _ => None,
+    })
 }
 
 /// The input index of the step's `p(·, 0)` layer child (NC-0913's target).

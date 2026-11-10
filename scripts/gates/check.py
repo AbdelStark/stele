@@ -42,6 +42,7 @@ ARTIFACTS = {
 DEVELOPMENT = {
     'prover': {
         'files': ('src/development.rs', 'src/development/plan.rs', 'src/development/bundle.rs',
+                  'src/development/zk.rs',
                   'tests/development.rs', 'tests/fixtures/synthetic-e2e.bin',
                   'tests/fixtures/synthetic-e2e.json'),
         'library': '//! stele-prover — governed by RFC-0007 §4 RFC-0014 §4 and, for `development`, '
@@ -483,6 +484,8 @@ def field_sources(root):
                'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
+               # RFC-0026 A9 (E12-14a): any development relation as one dev-zk statement.
+               'src/zk_relation.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
                'src/development/embedding.rs', 'src/development/rmsnorm.rs', 'src/development/limbs.rs',
                'src/development/norm_embedding_tests.rs', 'tests/dev_modules.rs',
@@ -685,9 +688,11 @@ def field_sources(root):
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
-            # E16-15: the only feature is the opt-in prover-thread switch; no_std by default.
-            or manifest.get('features', {'std': ['stele-sumcheck/std', 'stele-pcs/std']})
-                != {'std': ['stele-sumcheck/std', 'stele-pcs/std']}
+            # E16-15: the opt-in prover-thread switch; no_std by default. E12-14a: the
+            # controls' adversaries (zk), never a verifier input.
+            or manifest.get('features', {})
+                != {'std': ['stele-sumcheck/std', 'stele-pcs/std'],
+                    'controls': ['stele-sumcheck/controls']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
@@ -1569,11 +1574,13 @@ def controls_layout(root):
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
                     for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
     dependencies['stele-sumcheck']['features'] = ['std']
+    # E12-14a: the dev-zk controls' adversaries (never a verifier input).
+    dependencies['stele-reductions']['features'] = ['controls']
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',

@@ -32,7 +32,8 @@ def rows():
         lookups = k.get('lookup_positions', k.get('lookup_ledger_numerator_sum'))
         prove = r['prover_time_ns'] / 1e9
         out.append((ORDER.index(rung) if rung in ORDER else len(ORDER), rung, path.name, [
-            rung, r['profile'], r['device'], str(r['model_config'].get('threads', '—')),
+            rung, r['profile'] + (' (dev-zk)' if r['model_config'].get('profile_byte') == 1 else ''),
+            r['device'], str(r['model_config'].get('threads', '—')),
             f'{prove:.2f}', f'{tokens / prove:.3f}', f"{r['verifier_time_ns']['rust'] / 1e9:.2f}",
             f"{r['proof_size_bytes'] / 1e6:.1f}", f"{k['prove_peak_rss_bytes'] / 1e9:.1f}"
             if 'prove_peak_rss_bytes' in k else '—',

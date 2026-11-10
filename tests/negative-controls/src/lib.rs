@@ -44,6 +44,7 @@ pub mod sumcheck;
 pub mod zerocheck;
 #[doc(hidden)]
 pub mod zk;
+pub mod zk_relation;
 
 extern crate self as stele_negative_controls;
 #[path = "../pcs/nc_0602.rs"]
@@ -144,6 +145,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk::run(911),
     },
     catalog::RegisteredControl {
+        id: 912,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run(912),
+    },
+    catalog::RegisteredControl {
         id: 913,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
@@ -184,6 +191,66 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(919),
+    },
+    catalog::RegisteredControl {
+        id: 920,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(920),
+    },
+    catalog::RegisteredControl {
+        id: 921,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(921),
+    },
+    catalog::RegisteredControl {
+        id: 922,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(922),
+    },
+    catalog::RegisteredControl {
+        id: 923,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(923),
+    },
+    catalog::RegisteredControl {
+        id: 924,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(924),
+    },
+    catalog::RegisteredControl {
+        id: 925,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(925),
+    },
+    catalog::RegisteredControl {
+        id: 926,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk_relation::run(926),
+    },
+    catalog::RegisteredControl {
+        id: 927,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || zk_relation::run(927),
+    },
+    catalog::RegisteredControl {
+        id: 928,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk_relation::run(928),
+    },
+    catalog::RegisteredControl {
+        id: 929,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk_relation::run(929),
     },
     catalog::RegisteredControl {
         id: 1300,

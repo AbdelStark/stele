@@ -2296,6 +2296,94 @@ Decision:
 
 Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).
 
+## ADR-101: Every RFC-0026 relation kind as one dev-zk statement (RFC-0013 A5, RFC-0026 A9, RFC-0008 A7, task E12-14a)
+
+Numbered after ADR-100.
+
+Context: E12-18 and E12-19 built masked claims, zero-sums and ZK-GKR as components.
+They left selectors, several members per check, padding, A5's statement and unit
+messages, and the mapping from a development relation to E12-14. E12-14 is split:
+E12-14a maps every relation kind, and E12-14b wires the orchestrator, the CLI, the
+fixtures, the privacy tests and the ledger.
+
+Decision:
+- `stele_reductions::zk::relation` derives one `zk::claims` statement from any
+  validated relation. It proves and verifies it after `relation/statement`.
+  - Witness columns and multiplicities go in source 0. Weights go in source 1,
+    whose root is the dev-zk model commitment, with `P = 1`.
+  - There is one combined identity instance per domain size, `Compose` included.
+  - There is one contraction per matmul, with shared and fixed bits.
+  - There is one ZK-GKR check per table and per range width.
+  - Public operands are evaluated by the verifier.
+- A check's leaf takes a selector, several members, shifts and padding, as RFC-0008
+  A7's E12-14a notes state.
+  - The instance keeps every member claim as a final, with terms of at most four
+    factors.
+  - The producer folds compact combined factors. The declared degree covers both
+    forms.
+- The tree limit rises to `n ≤ 23` (the eight-layer window has `n = 22`).
+- dev-zk stays defined, not admitted (RFC-0013 A5 item 8). E12-14b wires the
+  profile byte. Admission waits for its independent review.
+- Evidence:
+  - The relation tests' seven fixtures prove and verify through the actual
+    verifier.
+  - The one-layer window (`T = 4`) proves and verifies at the relation level.
+  - The eight-layer window (`T = 64`) proves and verifies at the relation level
+    in an ignored release test: 413 s prove and 55 s verify on one laptop. That
+    timing is not a ledger number.
+- Controls NC-0920..0929 are added and executed, with NC-0927 among them.
+  - Independent review (fix-then-merge): NC-0920..0926 and NC-0929 did not
+    discriminate. The adversaries now keep honest rounds and the true `μ`, or
+    substitute one public column. Each passes on the honest witness and goes red
+    when its own check is removed.
+  - NC-0930..0932 are `todo`.
+  - The adversaries are behind the `controls` feature of `stele-reductions` and
+    `stele-sumcheck`.
+
+Status: Proposed (development tier; independent review requested before merge).
+
+## ADR-102: dev-zk through the development orchestrator and CLI; OS-RNG seed; admission proposed (RFC-0013 A5 items 7–8, RFC-0026 A9, task E12-14b)
+
+Numbered after ADR-101.
+
+Context: E12-14a proves any development relation as one dev-zk statement.
+RFC-0013 A5 item 8 asks for an ADR when the seed's source is fixed. It also admits
+dev-zk only after the implementation, NC-0909..0915, the privacy tests on the one-
+and eight-layer windows, and an independent review.
+
+Decision:
+- `stele_prover::development::zk` proves and verifies a window under dev-zk.
+  - Its public input is the development public input followed by profile byte `1`.
+    Development bytes are unchanged.
+  - Its container is `stele-dev-zk-v1`.
+  - Its public file is `stele-dev-zk-public-v1`.
+  - NC-0912 restamps a dev-zk proof with the development statement digest. The
+    verifier rejects it with `StatementMismatch`.
+- `stele prove-dev --zk` draws the seed from `/dev/urandom`. The library takes a
+  move-only `Seed`. The weights are committed per proof (`P = 1`). A persistent model
+  seed with `P > 1` block sets is left open.
+- The ledger records the eight-layer window, development against dev-zk, on one host:
+  `bench/ledger/e12-14-synthetic-8layer-mac.json` and
+  `bench/ledger/e12-14-synthetic-8layer-zk-mac.json`. Both carry
+  `profile: "development"`, because RFC-0018 A1 admits no other development-tier
+  profile. The workload name and `model_config.profile_byte` mark dev-zk.
+- Admission of profile byte 1 is not taken. The independent review
+  (fix-then-merge) holds it until E12-25 binds the model.
+- Independent review fixes:
+  - F1: The claim is existential, with `P = 1` per proof. The CLI prints
+    `weights: unbound (per-proof commitment)` and refuses `--expect-model`.
+    E12-25 gates admission.
+  - F2: 1-D records are declared public.
+  - F4: An exact leak test runs on the one-layer window, as does a two-witness
+    test. The eight-layer leak test is ignored and run locally.
+  - F5: NC-0912 gains a transcript-level half.
+  - F6: The scoreboard labels the dev-zk record.
+  - F7: The adversaries sit behind the `controls` feature.
+  - The verifier reports counts, not a soundness ledger (E12-26).
+
+Status: Proposed (development tier; independent review: fix-then-merge, fixes
+applied; dev-zk not admitted).
+
 ## ADR-103: Provisional NO-GO for a development-profile GPU backend (fixture stage shares) (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
 
 Context: task E16-21 gates a development-profile GPU backend (tasks E16-21a..e) on a

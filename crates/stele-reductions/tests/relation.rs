@@ -1204,3 +1204,295 @@ fn blake3_hex(bytes: &[u8]) -> String {
         .expect("digest");
     k.to_le_bytes().iter().map(|b| format!("{b:02x}")).collect()
 }
+
+/// RFC-0026 A9 with RFC-0013 A5 (E12-14a): every fixture above under dev-zk,
+/// through the actual dev-zk verifier, and a false witness of each kind rejected.
+mod dev_zk {
+    use super::*;
+    use stele_reductions::zk::{self, relation as zk_relation, Seed};
+
+    const ZK: &[u8] = b"stele/test/relation-engine/dev-zk";
+
+    type Proved = (zk::claims::Proof<QM31>, Option<[u8; 32]>);
+
+    fn prove(f: &Fixture, seed: u8) -> Result<Proved, zk::Error> {
+        let root = zk_relation::weight_root(&f.rel, &f.values, &Seed::new([seed; 32]))?;
+        let mut t = Transcript::new(ZK).expect("transcript");
+        let proof = zk_relation::prove(&mut t, &f.rel, &f.values, Seed::new([seed; 32]))?;
+        Ok((proof, root))
+    }
+
+    fn verify(
+        rel: &Relation,
+        root: Option<[u8; 32]>,
+        proof: &zk::claims::Proof<QM31>,
+    ) -> Result<(), zk::Error> {
+        let mut t = Transcript::new(ZK).expect("transcript");
+        zk_relation::verify(&mut t, rel, root, proof).map(|_| ())
+    }
+
+    fn fixtures() -> Vec<(&'static str, Fixture)> {
+        vec![
+            ("ranges", ranges()),
+            ("identities", identities()),
+            ("lookups", lookups()),
+            ("matmuls", matmuls()),
+            ("split matmuls", split_matmuls()),
+            ("composes", composes()),
+            ("combined", combined()),
+        ]
+    }
+
+    #[test]
+    fn accepts_each_relation_kind_under_dev_zk() {
+        for (name, f) in fixtures() {
+            assert_eq!(check(&f.rel, &f.values), Ok(()), "{name}: plain checker");
+            let proved = prove(&f, 7);
+            assert!(proved.is_ok(), "{name}: prover {:?}", proved.err());
+            let (proof, root) = proved.expect("checked");
+            assert_eq!(verify(&f.rel, root, &proof), Ok(()), "{name}: verifier");
+        }
+    }
+
+    /// One committed value of each fixture changed to a false witness (the plain
+    /// checker skipped): no accepted proof results. The honest producer refuses at
+    /// its own first round; NC-0920..0926 run a forging adversary through the
+    /// verifier instead.
+    #[test]
+    fn rejects_a_false_witness_of_each_kind_under_dev_zk() {
+        for (name, mut f) in fixtures() {
+            let committed: Vec<ColumnId> = (0..f.rel.columns.len() as u32)
+                .map(ColumnId)
+                .filter(|id| !matches!(f.rel.columns[id.0 as usize].kind, Kind::Public(_)))
+                .collect();
+            let mut rejected = 0;
+            for id in &committed {
+                let honest = f.get(*id);
+                let mut v = honest.clone();
+                // Entry 1 is a width's maximum in `ranges()`.
+                let at = 1.min(v.len() - 1);
+                v[at] += 1;
+                f.set(*id, v);
+                if check(&f.rel, &f.values).is_err() {
+                    let result =
+                        prove(&f, 9).and_then(|(proof, root)| verify(&f.rel, root, &proof));
+                    assert!(result.is_err(), "{name}: false {id:?} accepted");
+                    rejected += 1;
+                }
+                f.set(*id, honest);
+            }
+            assert!(rejected > 0, "{name}: no false witness exercised");
+        }
+    }
+
+    /// The verifier's weight-source root is the public model commitment: another
+    /// root, or none, is rejected.
+    #[test]
+    fn rejects_a_substituted_weight_commitment() {
+        let f = matmuls();
+        let (proof, root) = prove(&f, 3).expect("prove");
+        let root = root.expect("weights");
+        let mut other = root;
+        other[0] ^= 1;
+        let mismatch = Err(zk::Error::Pcs(stele_pcs::Error::Merkle(
+            stele_hash::merkle::Error::RootMismatch,
+        )));
+        assert_eq!(verify(&f.rel, Some(other), &proof), mismatch);
+        assert_eq!(verify(&f.rel, None, &proof), mismatch);
+        assert_eq!(verify(&f.rel, Some(root), &proof), Ok(()));
+    }
+}
+
+/// RFC-0013 A5 item 7 (E12-14b): statistical privacy tests of dev-zk proofs on
+/// small relations, through the actual prover and verifier. Every revealed
+/// relation and GKR final is bucketed by the low four bits of its first limb.
+mod dev_zk_privacy {
+    use super::*;
+    use stele_reductions::zk::{claims::Proof, relation as zk_relation, Seed};
+
+    const T: &[u8] = b"stele/test/dev-zk privacy";
+    const BUCKETS: usize = 16;
+    /// Ten times χ² with 15 degrees of freedom at p = 0.001 (37.7); integers only.
+    const CRITICAL_X10: u128 = 377;
+
+    fn proof(rel: &Relation, values: &Values, seed: u16, masks: bool) -> Proof<QM31> {
+        #[cfg(not(feature = "controls"))]
+        assert!(masks, "the unmasked control needs the controls feature");
+        let mut bytes = [9u8; 32];
+        bytes[..2].copy_from_slice(&seed.to_le_bytes());
+        let root = zk_relation::weight_root(rel, values, &Seed::new(bytes)).expect("root");
+        let mut t = Transcript::new(T).expect("transcript");
+        #[cfg(feature = "controls")]
+        let proof = if masks {
+            zk_relation::prove(&mut t, rel, values, Seed::new(bytes))
+        } else {
+            zk_relation::prove_unmasked(&mut t, rel, values, Seed::new(bytes))
+        }
+        .expect("prove");
+        #[cfg(not(feature = "controls"))]
+        let proof = zk_relation::prove(&mut t, rel, values, Seed::new(bytes)).expect("prove");
+        let mut t = Transcript::new(T).expect("transcript");
+        assert!(zk_relation::verify(&mut t, rel, root, &proof).is_ok());
+        proof
+    }
+
+    /// Every revealed final of the relations and GKR steps.
+    fn revealed(proof: &Proof<QM31>) -> Vec<QM31> {
+        proof
+            .relations
+            .iter()
+            .chain(&proof.gkr)
+            .flat_map(|p| p.final_values.iter().copied())
+            .collect()
+    }
+
+    fn bucket(v: QM31) -> usize {
+        (v.to_le_bytes().as_ref()[0] as usize) % BUCKETS
+    }
+
+    fn histogram(values: &[QM31]) -> Vec<u128> {
+        let mut h = vec![0; BUCKETS];
+        for v in values {
+            h[bucket(*v)] += 1;
+        }
+        h
+    }
+
+    /// Ten times the uniformity χ²: `10·(16·Σ o² / N − N)`.
+    fn chi2_uniform_x10(h: &[u128]) -> u128 {
+        let n: u128 = h.iter().sum();
+        let squares: u128 = h.iter().map(|o| o * o).sum();
+        (10 * (BUCKETS as u128 * squares)).saturating_sub(10 * n * n) / n
+    }
+
+    /// Ten times the two-sample homogeneity χ²:
+    /// `Σ (a_i·n_b − b_i·n_a)² / (n_a·n_b·(a_i + b_i))`, each term rounded down.
+    fn chi2_same_x10(a: &[u128], b: &[u128]) -> u128 {
+        let (na, nb): (u128, u128) = (a.iter().sum(), b.iter().sum());
+        a.iter()
+            .zip(b)
+            .filter(|(x, y)| **x + **y > 0)
+            .map(|(x, y)| {
+                let d = (x * nb).abs_diff(y * na);
+                10 * d * d / (na * nb * (x + y))
+            })
+            .sum()
+    }
+
+    /// `c = a·b` over three variables (`c_D + 1` for QM31: no padding), read in
+    /// natural order, so a revealed claim is at the identity's point itself.
+    fn product(a: Vec<i64>) -> Fixture {
+        let mut rel = Relation::default();
+        let g = Kind::Witness(rel.add_group("G/privacy/3", 3));
+        let x = rel.add_column("a", g.clone(), Width::signed(4), 3);
+        let y = rel.add_column("b", g.clone(), Width::signed(4), 3);
+        let z = rel.add_column("c", g, Width::signed(8), 3);
+        for (id, bits) in [(x, 4), (y, 4), (z, 8)] {
+            range(&mut rel, id, Width::signed(bits));
+        }
+        let read = |id| Ref::identity(id, 3);
+        identity(
+            &mut rel,
+            "c = a·b",
+            3,
+            vec![(1, vec![read(x), read(y)]), (-1, vec![read(z)])],
+        );
+        let mut f = Fixture {
+            values: Values::new(&rel),
+            rel,
+        };
+        let b: Vec<i64> = (0..8).map(|i| 3 - i).collect();
+        let c = a.iter().zip(&b).map(|(p, q)| p * q).collect();
+        f.set(x, a);
+        f.set(y, b);
+        f.set(z, c);
+        f
+    }
+
+    /// χ² uniformity of every revealed value across seeds, for every relation kind.
+    #[test]
+    fn accepts_uniform_revealed_values_across_seeds() {
+        for (name, f) in [("lookups", lookups()), ("matmuls", matmuls())] {
+            let values: Vec<QM31> = (0..48)
+                .flat_map(|s| revealed(&proof(&f.rel, &f.values, s, true)))
+                .collect();
+            let chi2 = chi2_uniform_x10(&histogram(&values));
+            assert!(
+                chi2 < CRITICAL_X10,
+                "{name}: 10·χ² {chi2} over {}",
+                values.len()
+            );
+        }
+    }
+
+    /// The leak control: without claim masks, the claim on `a` is exactly `ã(ρ)` at
+    /// the identity's public point, so two witnesses with the same statement are
+    /// told apart; with masks it never is.
+    #[test]
+    #[cfg(feature = "controls")]
+    fn rejects_unmasked_claims_as_witness_leak() {
+        let (f, g) = (
+            product((0..8).collect()),
+            product((0..8).map(|i| 7 - i).collect()),
+        );
+        assert_eq!(f.rel, g.rel, "same statement");
+        for masks in [true, false] {
+            for seed in 0..6 {
+                let p = proof(&f.rel, &f.values, seed, masks);
+                // Relation 0: eq(τ, ·), then the occurrences a, b, c.
+                let mut t = Transcript::new(T).expect("transcript");
+                let verified = zk_relation::verify(&mut t, &f.rel, None, &p).expect("accepted");
+                let point = &verified.reductions[0].point;
+                let eq = stele_poly::eq_table(point).expect("eq");
+                let at = |col: &[i64]| {
+                    col.iter()
+                        .zip(&eq)
+                        .fold(QM31::from_i64(0), |s, (v, e)| s + QM31::from_i64(*v) * *e)
+                };
+                let revealed = p.relations[0].final_values[1];
+                let a = f.get(ColumnId(0));
+                let other = g.get(ColumnId(0));
+                assert_eq!(revealed == at(&a), !masks, "seed {seed}");
+                assert_ne!(revealed, at(&other));
+            }
+        }
+    }
+
+    /// Two witnesses with the same public statement: proofs have the same shape and
+    /// byte length, and their revealed values are identically distributed (χ²
+    /// homogeneity across seeds).
+    #[test]
+    fn accepts_same_distribution_for_two_witnesses_of_one_statement() {
+        let (f, g) = (
+            product((0..8).collect()),
+            product((0..8).map(|i| 7 - i).collect()),
+        );
+        assert_eq!(f.rel, g.rel, "same statement");
+        let (mut a, mut b) = (Vec::new(), Vec::new());
+        for seed in 0..96 {
+            let (p, q) = (
+                proof(&f.rel, &f.values, seed, true),
+                proof(&g.rel, &g.values, 1000 + seed, true),
+            );
+            let (pe, qe) = (
+                stele_reductions::zk::claims::encode(&p),
+                stele_reductions::zk::claims::encode(&q),
+            );
+            assert_eq!(
+                pe.len(),
+                qe.len(),
+                "byte length depends only on the statement"
+            );
+            a.extend(revealed(&p));
+            b.extend(revealed(&q));
+        }
+        let chi2 = chi2_same_x10(&histogram(&a), &histogram(&b));
+        assert!(
+            chi2 < CRITICAL_X10,
+            "10·χ² {chi2} over {} + {}",
+            a.len(),
+            b.len()
+        );
+        // The unmasked control is told apart at once (previous test).
+    }
+}

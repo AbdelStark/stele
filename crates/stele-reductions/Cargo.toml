@@ -21,6 +21,8 @@ stele-ir = { path = "../stele-ir" }
 # Off by default: the crate and its verifiers stay no_std.
 [features]
 std = ["stele-sumcheck/std", "stele-pcs/std"]
+# Negative controls' and privacy tests' adversaries (never a verifier input).
+controls = ["stele-sumcheck/controls"]
 
 [lints]
 workspace = true

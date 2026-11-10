@@ -30,12 +30,13 @@ fn statement<K: ChallengeField + CodeField>(extra: u32) -> Statement<K> {
             },
         ],
         relations: Vec::new(),
-        lookups: vec![Lookup {
-            columns: vec![0],
-            multiplicity: 1,
-            table: (0..rows as i64).map(|j| vec![3 * j + 1]).collect(),
-            valid: 3 * rows / 4,
-        }],
+        lookups: vec![Lookup::single(
+            &[0],
+            n,
+            1,
+            (0..rows as i64).map(|j| vec![3 * j + 1]).collect(),
+            3 * rows / 4,
+        )],
     }
 }
 

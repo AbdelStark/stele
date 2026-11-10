@@ -564,3 +564,32 @@ Labels and the order of items 1–4 are unchanged.
   variables. Selectors (A5's selected product), several members, padding and A5's
   statement and unit messages are wired by E12-14, which composes the
   development proof.
+
+**Implementation notes (E12-14a, ADR-101; development tier, pending independent
+review).** These extend the E12-19 scope to every RFC-0026 A3 check. No label, loss
+form or challenge changes.
+- **Check tree.** The lookup half holds the check's members largest first, each
+  padded to `m' = max(vars, c_D + 1)` variables (RFC-0026 A9) and aligned to
+  `2^{m'}`. The tree has `n = max(c_D + 1, k, ⌈log₂ Σ 2^{m'}⌉)` variables, with
+  the table of `2^k` rows padded to `2^n`. Lookup leaf: `(S, α − Σ β^i·S·X_i)`.
+  `S` is the public concatenated selector, 0 off the members. `X_i` is the
+  concatenated tuple plus its shift (a range's `−width.min()`). Table leaf:
+  `(−Z·mult, T)` with `Z = [x_high = 0]` when `k < n`. An unselected position
+  has `q = α`, so the ZD line `2^{n+1}·c/|K|` per check is unchanged.
+- **Leaf instance.** With a selector, padding or several members, the leaf's
+  inputs are `eq·Z`, `S`, a weight `W_m = B_m·S` per member and every member's
+  masked occurrence. `B_m` is the public indicator of member `m`'s block. Every
+  member claim is therefore a final, and every term has at most four factors.
+  The verifier evaluates `eq·Z`, `S` and `W_m` itself (`ClaimMismatch`). The
+  producer folds one combined factor per tuple entry. All member occurrences share
+  one vanishing variable and `u` = the last `c_D` variables, which lie in every
+  member's block. The declared degree is the larger of the two forms' degrees.
+- **Statement and unit messages.** Before each check's `β`, `LookupStatement`
+  absorbs the check index, `n`, `k`, `c`, the valid row count, the member count
+  and each member's `(m', vars, offset)`. `LookupUnits` absorbs the index and an
+  empty unit list (`b = m`, RFC-0026 A3).
+- **Multiplicities.** Each selected entry of a member counts `2^{m' − vars}`
+  times. They are committed in the witness source, before `β, α`.
+- **Controls.** NC-0920..0923 cover members, selector, shift and padding. NC-0929
+  covers the `S` final. NC-0930 (`W_m`) and NC-0931 (`eq·Z`) are `todo` (see the
+  RFC-0013 A5 E12-14a notes).

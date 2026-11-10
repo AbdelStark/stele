@@ -489,3 +489,78 @@ items above leave open. None changes a label, a loss or an order.
   sources. The rounds are free, `μ` is solved last and the finals are true. Only
   binding each relation's `μ_j` in the shared batch rejects it
   (`RoundSumMismatch`).
+
+**Implementation notes (E12-14a, ADR-101; development tier, pending independent
+review).** These state how `stele_reductions::zk::relation` derives one claims
+statement from a validated RFC-0026 relation. No label, loss form or order item
+changes. Item 8 still holds: dev-zk is not admitted.
+- **Sources.** Source 0 holds every witness column in `ColumnId` order, then each
+  check's multiplicities. Source 1 holds every weight column. Its root is the
+  dev-zk model commitment (item 7 with `P = 1`): the weights and their claim masks
+  are committed from the proof's seed, for one proof. Public columns are never
+  committed. The verifier evaluates each public operand's final at its column
+  point (`ClaimMismatch`).
+- **Identities.** There is one instance per domain size, increasing. It covers
+  that size's identities in relation order, then its `Compose` identities.
+  `relation/identity` coefficients are drawn before `τ`. Each distinct
+  `(column, vars)` read is one masked occurrence (item 2).
+- **Matmuls.** The A9 zero-sum runs over the shared free variables (under
+  `eq(ρ_shared, ·)`), the summed variables and padding. Free variables not shared
+  are fixed at `ρ`. A6 fixed bits are Boolean coordinates of the occurrence.
+- **Checks.** RFC-0008 A7's implementation notes (E12-14a).
+- **Controls.**
+  - NC-0920..0926 are false witnesses. The adversary (`zk::relation::forge`, under
+    the `controls` feature) sends the false relation's honest rounds and the true
+    `μ`, without the producer's own round-sum check. That relation's first round
+    rejects it.
+  - NC-0928 and NC-0929 substitute one public column (`zk::relation::forge_substituted`).
+    The verifier's own evaluation of that final rejects it.
+  - Each control accepts the same adversary on the honest witness (mutation M0).
+    Each one goes red, with the false proof accepted, when its own check is removed.
+  - NC-0930..0932 are `todo` until a substitution adversary keeps the A5 statement
+    message.
+
+**Implementation notes (E12-14b, ADR-102; development tier, pending independent
+review).** These wire dev-zk through the development orchestrator and the CLI.
+- **Profile byte.** A dev-zk public input is the development public input followed by
+  the byte `1` (RFC-0026 A9). A development public input keeps its pre-A9 bytes, with
+  the byte implied `0`, so development proofs are unchanged. The verifier reads the
+  profile from the public file (`stele-dev-zk-public-v1`). The transcript binds the
+  public input. The container header (`stele-dev-zk-v1`, with the `cqis_id` and the
+  statement digest) fails fast (NC-0912).
+- **Seed.** `stele prove-dev --zk` draws the 32-byte seed from the OS RNG
+  (`/dev/urandom`). The library takes it move-only, for one proof.
+- **Model commitment and claim.** It is one root, the proof's hiding weight source
+  (item 7 with `P = 1`). Its certificate travels in the proof. The verifier checks
+  the proof's weight source against the public root (NC-0927). The root comes from
+  the proof's own seed, so no published commitment pins the weights.
+  - A dev-zk proof states only that *some int8 weights of the declared shape*,
+    with the public 1-D records, produce the statement. It does not state that a
+    named model ran.
+  - `verify-dev` prints `weights: unbound (per-proof commitment)` in place of the
+    model digest. `--expect-model` is a usage error.
+  - E12-25 (a persistent hiding commitment with item 7's `P·t_W` budget and a
+    lifetime counter) gates admission.
+- **Not hidden.** Besides the design note's §7 list, every 1-D record (norm gains
+  and other vectors) is public input. E12-25 commits them.
+- **Verifier output.** dev-zk verify reports counts of instances, steps and
+  batches. It does not report an RFC-0026 §6 soundness ledger; E12-26 adds one.
+- **Item 8 deliverables.** These are present:
+  - the implementation (E12-18, E12-19, E12-14a, E12-14b);
+  - NC-0909..0915, executed;
+  - on the one-layer window (`T = 4`): an exact test that no revealed occurrence
+    final equals its bare `x̃(ρ)`, and two witnesses of one statement (a moved Q
+    weight code, the same tokens and `y`) with equal byte lengths and
+    χ²-homogeneous revealed values; the exact test on the eight-layer window runs
+    ignored, locally;
+  - the privacy tests on small relations:
+    - χ² uniformity of revealed values across seeds;
+    - the leak control: without masks, a claim equals `ã(ρ)` and tells two witnesses
+      apart;
+    - two witnesses of one statement, with equal byte lengths and χ²-homogeneous
+      revealed values.
+  - The one- and eight-layer synthetic windows prove and verify under dev-zk.
+
+  The independent review (fix-then-merge) did not admit dev-zk (profile byte 1).
+  Item 8's "defined, not admitted" stands until E12-25 binds the model and a
+  further review admits it. The CLI prints the profile; it makes no privacy claim.

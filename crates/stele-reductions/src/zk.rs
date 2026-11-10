@@ -19,6 +19,8 @@ use stele_sumcheck::{Instance, Reduction, Summand};
 
 #[path = "zk_claims.rs"]
 pub mod claims;
+#[path = "zk_relation.rs"]
+pub mod relation;
 
 /// Log blowup of every mask source (Circle rate 1/4).
 const BLOWUP: u8 = 2;

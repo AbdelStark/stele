@@ -1,0 +1,71 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "c8efdc419882a37208d1a40cf888e2d30c3aebcb",
+ "controls": {
+  "failed": 0,
+  "passed": 2,
+  "total": 2
+ },
+ "device": "arm64 Apple laptop (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "prove_peak_rss_bytes": 11275468800,
+  "public_bytes": 23062,
+  "verify_peak_rss_bytes": 2677669888
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev --zk / verify-dev",
+  "controls": {
+   "next": "StatementMismatch",
+   "token": "StatementMismatch"
+  },
+  "host_context": "Apple laptop, macOS, release build of the measured commit; one run each; dev and dev-zk measured back to back on the same host with no other workload; BSD /usr/bin/time -l. Measured at 4a77fb3, which a rebase onto the reworked E12-14a controls replaced by c8efdc4: the honest prover and verifier code is the same; only controls-gated adversaries changed.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "profile_byte": 1,
+  "proof_sha256": "c382625e5ee39b9b14f359e65fded31f59b33c686032ec53b3f39d971b8289cd",
+  "public_sha256": "b827e18ea906bff35c1a2706384d2f6644570c4c37bb9dbd4885906cc70fa27e",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "a74f02d19c89fbb1427e3f6016d8c27152ac45437a5d14c120c833581e979934",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1), defined and implemented, admission pending independent review (RFC-0013 A5 item 8); zero knowledge is conditional and computational (seed-derived masks), with the weights committed per proof (P = 1). Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture, plain check and proof. Verifier time is the verify-dev process wall time. CPU only, no GPU. Peak RSS is BSD time maximum resident set size. Measured as the dev against dev-zk pair of task E12-14b on one host; not comparable to the 4-vCPU E17-00 records; not a cost-model fit input. Controls are two statement tampers of the supplied public file through verify-dev (next token y and token x2 flipped), each rejected at the container statement digest.",
+ "plan_digest": "3814a5fed4f176e346df232d457c3e37cf509e414f56393d5f8d3b2fe43b419d",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 145252954,
+ "prover_time_ns": 389890000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "prove_dev_wall": 389890000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 56330000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-zk-mac"
+}

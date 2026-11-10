@@ -528,3 +528,63 @@ fn matches_reference_zk_claim_census_eight_layer() {
     census("one-layer", 16);
     census("eight-layer", 64);
 }
+
+/// RFC-0013 A5, RFC-0026 A9 (E12-14b): one window proven under dev-zk through the
+/// development orchestrator and verified by the dev-zk verifier; the profile byte
+/// is bound by the transcript (a development-profile transcript rejects).
+fn zk_window(name: &str, t: usize) -> usize {
+    use stele_prover::development::zk;
+    let case = load(name);
+    let statement = greedy(&mut case.executor(&case.artifact), t);
+    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let base = Public {
+        model: case.bytes[0].to_vec(),
+        scales: case.bytes[1].to_vec(),
+        preparation: case.bytes[2].to_vec(),
+        vectors: weights.vectors.clone(),
+        commitment: Vec::new(),
+    };
+    let start = Instant::now();
+    let (public, proof) = zk::prove(
+        &base,
+        &mut case.executor(&case.artifact),
+        &weights,
+        &statement,
+        zk::Seed::new([42; 32]),
+    )
+    .expect("dev-zk prove");
+    let proved = start.elapsed();
+    let start = Instant::now();
+    let verified = zk::verify(&public, &statement, &proof).expect("dev-zk verify");
+    eprintln!(
+        "dev-zk {name} T={t}: prove {proved:?}, verify {:?}, {verified}",
+        start.elapsed()
+    );
+    // The public bundle round-trips with its profile.
+    let bytes = bundle::encode_profile(&public, &statement, zk::PROFILE);
+    assert_eq!(
+        bundle::decode_profile(&bytes).expect("bundle"),
+        (public.clone(), statement.clone(), zk::PROFILE)
+    );
+    assert!(
+        bundle::decode(&bytes).is_err(),
+        "a dev-zk bundle is not development"
+    );
+    // A different window under the same public data is rejected.
+    let mut other = statement.clone();
+    other.next = other.next.map(|y| y ^ 1);
+    assert!(zk::verify(&public, &other, &proof).is_err());
+    proof.len()
+}
+
+#[test]
+fn accepts_one_layer_window_under_dev_zk() {
+    zk_window("one-layer", 4);
+}
+
+/// The E16-10 acceptance window under dev-zk; release build only.
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn accepts_eight_layer_window_under_dev_zk() {
+    zk_window("eight-layer", 64);
+}

@@ -137,7 +137,7 @@
 | NC-0909 | dev-zk claim | 0013 A5 | one masked claim value changed with an honest batch, through the batch verifier the dev-zk verifier runs per source | `RoundSumMismatch` | done |
 | NC-0910 | dev-zk matmul | 0013 A5, 0026 A9 | a matmul claimed through a sent out~(ρ) instead of the zero-sum: development-form (degree-2) rounds in a composed proof | `ProofShape` | done |
 | NC-0911 | dev-zk claim | 0013 A5 | one claim-mask block of a source changed after its commitment: its row symbol in the batch opening of a composed proof | `RootMismatch` | done |
-| NC-0912 | dev-zk profile | 0013 A5, 0026 A9 | profile byte flipped between development and dev-zk | `StatementMismatch` | todo |
+| NC-0912 | dev-zk profile | 0013 A5, 0026 A9 | profile byte flipped from dev-zk to development: a dev-zk proof whose container names the development statement of the same window | `StatementMismatch` | done |
 | NC-0913 | dev-zk fraction | 0008 A7 | one masked layer value changed with the step itself intact (free rounds, μ solved last); the next step | `RoundSumMismatch` | done |
 | NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment: its row symbol in the shared opening | `RootMismatch` | done |
 | NC-0915 | dev-zk claim | 0013 A5 | batch weight on the w = 1 half made nonzero, sum-preserving, by an alternative batch prover | `FinalEvaluationMismatch` | done |
@@ -145,6 +145,19 @@
 | NC-0917 | dev-zk fraction | 0008 A7 | a later GKR step's head final (1 − s)·eq(r, x) changed, the step kept intact (free rounds, μ solved last) | `ClaimMismatch` | done |
 | NC-0918 | dev-zk fraction | 0008 A7 | a later GKR step's selector final S_p changed, the step kept intact (free rounds, μ solved last) | `ClaimMismatch` | done |
 | NC-0919 | dev-zk fraction | 0008 A7 | false lookup with the true top p, q and h ≠ p/q shifted to Σh = 0, the top identity h·q − p = 0 forged | `RoundSumMismatch` | done |
+| NC-0920 | dev-zk check member | 0026 A3, 0008 A7 | one entry of a check's first member leaves the table; the Σ h = 0 relation sent with honest rounds and the true μ, unchecked | `RoundSumMismatch` | done |
+| NC-0921 | dev-zk selector | 0026 §3.3, 0008 A7 | one selected entry of a selected member leaves the table (the same entry unselected is accepted); Σ h = 0 sent unchecked | `RoundSumMismatch` | done |
+| NC-0922 | dev-zk range shift | 0026 §3.4 | one entry of a signed range one below its width (shift −min); Σ h = 0 sent unchecked | `RoundSumMismatch` | done |
+| NC-0923 | dev-zk padding | 0026 A9 | one entry of a one-variable range member, padded to c_D + 1, one above its width; Σ h = 0 sent unchecked | `RoundSumMismatch` | done |
+| NC-0924 | dev-zk shared bit | 0026 §3.5, A9 | one out entry of a matmul with a shared bit +1; the contraction sent unchecked | `RoundSumMismatch` | done |
+| NC-0925 | dev-zk fixed bit | 0026 A6, A9 | one out entry of a row-block matmul (fixed bits) +1; the block's contraction sent unchecked | `RoundSumMismatch` | done |
+| NC-0926 | dev-zk public operand | 0026 §3.2, A9 | one entry of an identity with a public coefficient column +1; the identity sent unchecked | `RoundSumMismatch` | done |
+| NC-0927 | dev-zk model commitment | 0013 A5 item 7 | one bit of the public weight-source root changed | `RootMismatch` | done |
+| NC-0928 | dev-zk public operand final | 0026 §3.2, A9 | an honest proof of the identity with its public coefficient column substituted, under the true relation digest | `ClaimMismatch` | done |
+| NC-0929 | dev-zk leaf selector final | 0008 A7, 0026 §3.3 | an honest proof with the selected check's selector substituted (an out-of-table entry unselected), under the true relation digest | `ClaimMismatch` | done |
+| NC-0930 | dev-zk member weight final | 0026 A3, 0008 A7 | a leaf's member weight final B_m·S substituted; needs a substitution adversary that keeps the A5 statement message (reworked after review) | `ClaimMismatch` | todo |
+| NC-0931 | dev-zk table padding final | 0026 A9, 0008 A7 | a leaf's eq·Z final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
+| NC-0932 | dev-zk shared-bit final | 0026 §3.5, A9 | a contraction's eq(ρ_shared, ·) final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |

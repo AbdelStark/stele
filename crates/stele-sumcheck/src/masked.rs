@@ -305,10 +305,35 @@ fn mask_round<K: ChallengeField>(
 /// returns the proof and the challenge point `ρ`.
 pub fn prove<K: ChallengeField + Eq>(
     i: &Instance<K>,
+    summand: impl Summand<K>,
+    mask: &Mask<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+) -> Result<(Proof<K>, Vec<K>), Error> {
+    prove_checked(i, summand, mask, binding, t, true)
+}
+
+/// Controls only, never a verifier input: [`prove`] without the producer's own
+/// round-sum check, so the honest rounds of a false claimed sum reach the
+/// verifier, which rejects them at its first round (`RoundSumMismatch`).
+#[cfg(feature = "controls")]
+pub fn prove_unchecked<K: ChallengeField + Eq>(
+    i: &Instance<K>,
+    summand: impl Summand<K>,
+    mask: &Mask<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+) -> Result<(Proof<K>, Vec<K>), Error> {
+    prove_checked(i, summand, mask, binding, t, false)
+}
+
+fn prove_checked<K: ChallengeField + Eq>(
+    i: &Instance<K>,
     mut summand: impl Summand<K>,
     mask: &Mask<K>,
     binding: &[u8],
     t: &mut Transcript<K>,
+    check: bool,
 ) -> Result<(Proof<K>, Vec<K>), Error> {
     let degree = declared(i, mask.degree)?;
     summand.validate_instance(i)?;
@@ -346,7 +371,12 @@ pub fn prove<K: ChallengeField + Eq>(
             *value = *value + alpha * g;
         }
         let payload = message_bytes(i.id, index as u32, &values)?;
-        let (challenge, next) = round_payload(&values, running, &payload, t)?;
+        let checked = if check {
+            running
+        } else {
+            values[0] + values[1]
+        };
+        let (challenge, next) = round_payload(&values, checked, &payload, t)?;
         summand.fold(challenge)?;
         for (b, block) in mask.blocks.iter().enumerate() {
             prefix[b] = prefix[b] + interpolate(&block[index], challenge)?;

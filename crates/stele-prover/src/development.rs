@@ -29,6 +29,7 @@ use stele_reductions::stele_pcs::{
 
 pub mod bundle;
 mod plan;
+pub mod zk;
 pub use plan::{Layout, PlanData};
 
 /// Challenge field of the development profile.
@@ -54,6 +55,8 @@ pub enum Error {
     Commitment(stele_reductions::stele_pcs::Error),
     /// The relation engine rejected (RFC-0026 §8 step 3-4).
     Engine(relation::Error),
+    /// The dev-zk claims prover or verifier rejected (RFC-0013 A5, RFC-0026 A9).
+    Zk(stele_reductions::zk::Error),
 }
 
 /// The proven window (RFC-0026 §1.1 items 3-4).
@@ -215,8 +218,18 @@ pub fn weight_roles(model: &Model) -> Vec<(Role, Option<u16>)> {
     out
 }
 
-/// Declare the window and check the RFC-0026 §2.2 plan obligation.
+/// Declare the window and check the RFC-0026 §2.2 plan obligation. A dev-zk
+/// window has one weight source (RFC-0013 A5 item 7), bound by its proof.
 fn layout(d: &Decoded, public: &Public, statement: &Statement) -> Result<Layout, Error> {
+    layout_for(d, public, statement, false)
+}
+
+fn layout_for(
+    d: &Decoded,
+    public: &Public,
+    statement: &Statement,
+    zk: bool,
+) -> Result<Layout, Error> {
     let shape = d.model.shape();
     statement.validate(shape.vocabulary(), shape.context())?;
     let plan = PlanData {
@@ -233,9 +246,12 @@ fn layout(d: &Decoded, public: &Public, statement: &Statement) -> Result<Layout,
             && layout.weights.iter().zip(&declared).zip(&roles).all(
                 |(((id, role, layer), column), (r, l))| id == column && role == r && layer == l,
             );
-    let sources = relation::model_layout(&layout.relation)
-        .map_err(Error::Engine)?
-        .len();
+    let sources = match zk {
+        true => 1,
+        false => relation::model_layout(&layout.relation)
+            .map_err(Error::Engine)?
+            .len(),
+    };
     if !same || public.commitment.len() != sources {
         return Err(Error::StatementMismatch);
     }
@@ -556,8 +572,31 @@ pub fn prove_window(
     preparation: &[u8],
     scales: &[u8],
     artifact: &[u8],
+    statement: Statement,
+    length: usize,
+) -> Result<(Public, Statement, Vec<u8>), Error> {
+    prove_window_profile(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        None,
+    )
+}
+
+/// [`prove_window`] under dev-zk when `zk` holds the proof's seed (RFC-0013 A5
+/// item 8: the caller draws it from the OS RNG); the model is then committed by
+/// the proof's hiding weight source, for this proof only.
+pub fn prove_window_profile(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
     mut statement: Statement,
     length: usize,
+    zk: Option<stele_reductions::zk::Seed>,
 ) -> Result<(Public, Statement, Vec<u8>), Error> {
     let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
     let p = stele_reductions::stele_cqis::model::Preparation::decode(&m, preparation)
@@ -594,6 +633,17 @@ pub fn prove_window(
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
     let weights = Weights::from_artifact(&m, artifact)?;
+    if let Some(seed) = zk {
+        let base = Public {
+            model: model.to_vec(),
+            scales: scales.to_vec(),
+            preparation: preparation.to_vec(),
+            vectors: weights.vectors.clone(),
+            commitment: Vec::new(),
+        };
+        let (public, proof) = zk::prove(&base, &mut executor, &weights, &statement, seed)?;
+        return Ok((public, statement, proof));
+    }
     let committed = Committed::new(&weights)?;
     let public = Public {
         model: model.to_vec(),
