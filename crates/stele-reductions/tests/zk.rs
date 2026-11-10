@@ -44,14 +44,14 @@ where
     let (a, b) = (table::<K>(m, |n| n + 3), table::<K>(m, |n| 2 * n - 7));
     let i = product(&a, &b, m);
     let dense = || Dense::new(&i, vec![a.clone(), b.clone()]).expect("dense");
-    let proof = zk::prove(&i, dense(), &[4; 32], &mut transcript()).expect("proof");
+    let proof = zk::prove(&i, dense(), zk::Seed::new([4; 32]), &mut transcript()).expect("proof");
     let (reduction, mask) = zk::verify(&i, &proof, &mut transcript()).expect("accepted");
     assert_eq!(reduction.claims[0].1, mle(&a, &reduction.point));
     assert_eq!(reduction.claims[1].1, mle(&b, &reduction.point));
     assert_eq!(mask.id, i.id);
 
     // NC-0907 shape: another seed's mask source and certificate substituted.
-    let other = zk::prove(&i, dense(), &[5; 32], &mut transcript()).expect("proof");
+    let other = zk::prove(&i, dense(), zk::Seed::new([5; 32]), &mut transcript()).expect("proof");
     let mut swapped = proof.clone();
     swapped.source = other.source.clone();
     swapped.certificate = other.certificate.clone();
@@ -82,7 +82,7 @@ fn rejects_forged_mask_final() {
     let honest = zk::prove(
         &i,
         Dense::new(&honest_instance, vec![a, b]).expect("dense"),
-        &[6; 32],
+        zk::Seed::new([6; 32]),
         &mut transcript(),
     );
     // The honest prover cannot prove the false sum.
@@ -93,7 +93,7 @@ fn rejects_forged_mask_final() {
     let mut genuine = zk::prove(
         &genuine_instance,
         Dense::new(&genuine_instance, vec![c, d]).expect("dense"),
-        &[6; 32],
+        zk::Seed::new([6; 32]),
         &mut transcript(),
     )
     .expect("genuine");
@@ -163,7 +163,8 @@ fn accepts_masked_rounds_and_opening_row() {
             seed[0] = s;
             seed[1] = 1;
             let dense = Dense::new(&i, vec![a.clone(), b.clone()]).expect("dense");
-            let proof = zk::prove(&i, dense, &seed, &mut transcript()).expect("proof");
+            let proof =
+                zk::prove(&i, dense, zk::Seed::new(seed), &mut transcript()).expect("proof");
             let value = stele_field::Serialize::to_le_bytes(proof.sumcheck.rounds[0][2]);
             rounds.push(u32::from_le_bytes(
                 value.as_ref()[..4].try_into().expect("limb"),

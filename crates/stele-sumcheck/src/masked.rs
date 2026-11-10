@@ -157,6 +157,11 @@ pub struct MaskRecord {
     pub field_degree: u8,
 }
 
+/// The instance's validated degree `δ`, rejecting `n = 0` or `δ = 0` (A2).
+pub fn degree<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
+    shape(i)
+}
+
 fn shape<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
     let degree = i.validate()?;
     // A2: n = 0 or δ = 0 would reveal the mask and add no masking.

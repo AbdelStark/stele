@@ -76,3 +76,29 @@ the mask source (PCS line, conditional as in A9). No new label.
 - Verifier: `no_std`, no new dependency. The `stele-reductions` and `stele-pcs`
   API gates admit `zk`, `hiding_mask` and the quarantine exception.
 - Glossary: "mask source" added.
+
+## Independent review fixes (FIX-THEN-MERGE)
+
+1. **Seed reuse (MEDIUM).** Two proofs sharing `(seed, id)` reveal `B` at two
+   values of `ρ_n`. That solves for `g⁰, g¹`, and `α·G` comes off the rounds.
+   `zk::prove` now takes a move-only `zk::Seed` (no `Copy`/`Clone`) that one
+   proof consumes. `prove` and `hiding_mask` document single use per
+   `(seed, id)` and safe retry after `MaskPoint`. The proof bytes and the
+   per-object counter cannot detect reuse; this stays a duty of the caller, who
+   supplies CSPRNG bytes. No CSPRNG dependency is added (ADR-095).
+2. **Public `hiding_mask` (LOW–MED).** The PCS now enforces A3's shape:
+   - `2D` data rows;
+   - opening weights `w_b·e_d` on the two blocks and zero on the mask rows;
+   - `w_0 + w_1 = 1` and `w_1 ∉ {0, 1/2}`.
+
+   It refuses anything else with `MaskRank`, for example `a = e_0`, which would
+   reveal `g⁰`. The quarantine check rejects `hiding_mask` outside
+   `stele-pcs` and `stele_reductions::zk`.
+3. **Tests.** `rejects_mask_source_openings_outside_the_two_block_shape`, in
+   QM31 and OM31:
+   - the two-block opening verifies;
+   - a second opening gets `MaskBudget`;
+   - nonzero mask-row weight, `a = e_0` and `w_1 = 1/2` each get `MaskRank`;
+   - a non-`2D` layout is refused.
+4. **Degree.** `zk` takes `δ` from `masked::degree`, which uses
+   `Instance::validate`.

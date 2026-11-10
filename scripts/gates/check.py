@@ -1673,6 +1673,15 @@ def masked_sumcheck_quarantine(root):
                    if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
     if found:
         raise ValueError(f'masked sumcheck used outside its tests and controls: {found}')
+    # RFC-0013 A3: the mask-source constructor belongs to its one consumer.
+    mask_allowed = {'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/hiding.rs',
+                    'crates/stele-reductions/src/zk.rs'}
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   for path in (root / directory).rglob('*.rs')
+                   if re.search(r'\bhiding_mask\b', path.read_text())
+                   and str(path.relative_to(root)) not in mask_allowed)
+    if found:
+        raise ValueError(f'mask source constructed outside the A3 consumer: {found}')
     print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A3 consumer')
 
 

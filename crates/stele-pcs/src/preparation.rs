@@ -108,9 +108,20 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Self::prepare(source, rebuild, message, Some(seed), usage)
     }
 
-    /// Prepare the mask-polynomial source of RFC-0013 A3: a hiding source whose
-    /// one opening puts zero weight on the mask rows. Its row message is covered
-    /// by A3's mask lemma instead of A2's rank check; the certificate keeps it.
+    /// Prepare the mask-polynomial source of RFC-0013 A3: a hiding source with
+    /// `2D` data rows whose one opening has A3's two-block shape (enforced at the
+    /// opening; anything else is `MaskRank`). Its row message is covered by A3's
+    /// Lemma 5 instead of A2's rank check; the certificate keeps that check.
+    ///
+    /// # Security
+    ///
+    /// The seed must be fresh and used once per `(seed, id)` across all
+    /// transcripts: two openings of the same mask at different points reveal
+    /// both blocks, and with them the masked sumcheck's witness rounds. The
+    /// one-opening counter only covers this object. After a refused opening,
+    /// retry with a fresh seed only if nothing derived from this one was
+    /// published. `scripts/gates/check.py` quarantines this constructor to
+    /// `stele_reductions::zk`.
     pub fn hiding_mask(
         id: u64,
         ell: u8,
@@ -120,6 +131,9 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         seed: &[u8; 32],
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
+        if (1usize << ell) != 2 * K::DEGREE {
+            return Err(Error::UnsupportedSource);
+        }
         let mut prepared = Self::hiding(id, ell, m, blowup, message, seed, usage)?;
         prepared.mask_polynomial = true;
         Ok(prepared)

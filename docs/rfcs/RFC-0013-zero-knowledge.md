@@ -294,6 +294,14 @@ error are kept):
    coordinate of `ρ`, zero on every other column. Then `u·b = G(ρ)` exactly.
 5. **Producer abort.** The producer aborts with `MaskPoint` when `ρ_n = 0` or
    `2ρ_n = 1`. The event depends on public challenges only.
+   A mask source has exactly `2D` data rows. Its producer refuses any opening
+   that is not of item 4's shape (`MaskRank`): weights `w_b·e_d` on block `b`,
+   zero on the mask rows, `w_0 + w_1 = 1` and `w_1 ∉ {0, 1/2}`.
+   **Seed lifetime.** A seed is used once per `(seed, instance id)` across all
+   transcripts. Two proofs that share one reveal the opening row at two points,
+   which recovers both blocks and the witness rounds. The producer API takes a
+   move-only seed that is consumed by one proof. After an abort, retry with a
+   fresh seed only if nothing from the attempt was published.
 6. **Result.** The verifier returns A1's reduction (finals still obligations)
    and the MASK record; the mask obligation is discharged by the opening.
 

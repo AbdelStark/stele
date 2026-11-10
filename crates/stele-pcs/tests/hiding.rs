@@ -214,3 +214,108 @@ fn accepts_masked_opened_values_and_rejects_unmasked() {
         .unzip();
     assert!(limbs.iter().any(|s| *s != 0));
 }
+
+fn unit<K: ChallengeField + CodeField>(d: usize) -> K
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let mut limbs = vec![0u8; 4 * usize::from(<K as CodeField>::DEGREE)];
+    limbs[4 * d] = 1;
+    K::from_le_bytes(K::Bytes::try_from(&limbs[..]).ok().expect("width")).expect("canonical")
+}
+
+/// RFC-0013 A3: a mask source admits exactly one opening of the two-block shape.
+fn mask_source<K: ChallengeField + CodeField>()
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let degree = usize::from(<K as CodeField>::DEGREE);
+    let ell = (2 * degree).trailing_zeros() as u8;
+    let x: Vec<M31> = (0..(1usize << (usize::from(ell) + usize::from(M))))
+        .map(|i| M31::from_i64(i as i64 % 97))
+        .collect();
+    let seed = [21; 32];
+    let message = hiding_message(43, ell, M, &x, &seed).expect("layout");
+    let prepare = || {
+        PreparedSource::<K>::hiding_mask(43, ell, M, B, &message, &seed, &mut HashUsage::default())
+            .expect("prepare")
+    };
+    let prepared = prepare();
+    let (certificate, _) = prepared.certificate().expect("certificate");
+    let (verified, _) = verify_certificate(*prepared.source(), &certificate).expect("verified");
+    let rows = prepared.source().rows();
+    let columns = prepared.source().columns();
+    let shape = |w1: K| -> Vec<K> {
+        let w0 = K::from_i64(1) - w1;
+        let mut a: Vec<K> = (0..degree).map(|d| w0 * unit::<K>(d)).collect();
+        a.extend((0..degree).map(|d| w1 * unit::<K>(d)));
+        a.resize(rows, K::from_i64(0));
+        a
+    };
+    let b: Vec<K> = (0..columns).map(|c| element::<K>(70 + c as u64)).collect();
+    let value = |a: &[K]| {
+        message
+            .chunks_exact(columns)
+            .zip(a)
+            .fold(K::from_i64(0), |s, (row, w)| {
+                s + *w
+                    * row.iter().zip(&b).fold(K::from_i64(0), |t, (v, y)| {
+                        t + *y * K::from_i64(i64::from(v.as_u32()))
+                    })
+            })
+    };
+    let open = |p: &PreparedSource<'_, K>, a: &[K]| {
+        let mut t = Transcript::<K>::new(b"mask source").expect("transcript");
+        let functional = Functional {
+            id: 1,
+            a,
+            b: &b,
+            value: value(a),
+        };
+        p.opening(&mut t, &verified, functional)
+            .map(|(proof, _)| proof)
+            .map_err(|f| f.cause)
+    };
+    // The two-block shape opens and verifies.
+    let a = shape(element::<K>(5));
+    let proof = open(&prepared, &a).expect("two-block opening");
+    let mut t = Transcript::<K>::new(b"mask source").expect("transcript");
+    let functional = Functional {
+        id: 1,
+        a: &a,
+        b: &b,
+        value: value(&a),
+    };
+    stele_pcs::verify_opening(&mut t, &verified, functional, &proof).expect("accepted");
+    // A second opening is refused.
+    assert_eq!(open(&prepared, &a).err(), Some(Error::MaskBudget));
+    // Fresh sources: nonzero mask-row weight, a single block (a = e_0, which
+    // would reveal g0), and w_1 = 1/2 are each refused.
+    let mut masked = shape(element::<K>(5));
+    masked[rows - 1] = K::from_i64(1);
+    assert_eq!(open(&prepare(), &masked).err(), Some(Error::MaskRank));
+    let mut single = vec![K::from_i64(0); rows];
+    single[0] = K::from_i64(1);
+    assert_eq!(open(&prepare(), &single).err(), Some(Error::MaskRank));
+    let half = K::from_i64(2).inverse().expect("1/2");
+    assert_eq!(open(&prepare(), &shape(half)).err(), Some(Error::MaskRank));
+    // Any other data layout is not a mask source.
+    let doubled = [x.clone(), x.clone()].concat();
+    let wrong = hiding_message(43, ell + 1, M, &doubled, &seed).expect("layout");
+    let other = PreparedSource::<K>::hiding_mask(
+        43,
+        ell + 1,
+        M,
+        B,
+        &wrong,
+        &seed,
+        &mut HashUsage::default(),
+    );
+    assert!(other.is_err());
+}
+
+#[test]
+fn rejects_mask_source_openings_outside_the_two_block_shape() {
+    mask_source::<QM31>();
+    mask_source::<OM31>();
+}

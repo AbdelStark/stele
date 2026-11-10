@@ -67,8 +67,17 @@ fn layout<K: ChallengeField + CodeField>(
     ))
 }
 
-fn degree<K: ChallengeField>(i: &Instance<K>) -> usize {
-    i.terms.iter().map(|t| t.factors.len()).max().unwrap_or(0)
+/// A single-use secret seed for one bound masked instance.
+///
+/// It is neither `Copy` nor `Clone`, and [`prove`] consumes it, so one value
+/// cannot be used for two proofs. The caller must fill it from a CSPRNG and must
+/// never build two seeds from the same bytes (see [`prove`]'s security notes).
+pub struct Seed([u8; 32]);
+impl Seed {
+    /// Wrap 32 bytes of fresh secret randomness. Each call must use new bytes.
+    pub fn new(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
 }
 
 /// The basis element `e_d` of `K` over M31 (limb `d` set to one).
@@ -109,16 +118,27 @@ where
 }
 
 /// Prove one bound masked instance from a fresh secret seed (A3).
+///
+/// # Security
+///
+/// Use a seed once per `(seed, instance id)`, across all transcripts. Two
+/// proofs that share one reveal the mask's opening row at two points `ρ_n`.
+/// Those rows solve for both blocks `g⁰, g¹`, and subtracting `α·G` from the
+/// rounds recovers the witness rounds. Nothing in the proof bytes reveals reuse,
+/// and the per-object opening counter cannot see it. After `MaskPoint`, or any
+/// other error, retry with a fresh seed only if nothing from the failed attempt
+/// was published.
 pub fn prove<K: ChallengeField + CodeField + Eq>(
     i: &Instance<K>,
     summand: impl Summand<K>,
-    seed: &[u8; 32],
+    seed: Seed,
     t: &mut Transcript<K>,
 ) -> Result<Proof<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let degree = degree(i);
+    let seed = &seed.0;
+    let degree = masked::degree(i).map_err(Error::Sumcheck)?;
     let mask = Mask::derive(seed, i).map_err(Error::Sumcheck)?;
     let (ell, m) = layout(i, degree)?;
     let (rows, columns) = (1usize << ell, 1usize << m);
@@ -192,7 +212,7 @@ pub fn verify<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let degree = degree(i);
+    let degree = masked::degree(i).map_err(Error::Sumcheck)?;
     let (ell, m) = layout(i, degree)?;
     let source = Source::<K>::from_bytes(&proof.source).map_err(Error::Pcs)?;
     let expected = Source::<K>::hiding(i.id, ell, m, BLOWUP, source.root()).map_err(Error::Pcs)?;

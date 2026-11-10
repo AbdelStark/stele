@@ -2153,6 +2153,14 @@ Decision:
   enforced by the quarantine check.
 - No new label: `FieldSources` already means "bind the source bundle before an
   A1 sumcheck" (RFC-0010 A9 §5).
+- Independent-review fixes:
+  - Seed reuse across proofs leaks the witness rounds. `zk::prove` takes a
+    move-only `Seed` that one proof consumes, and both constructors carry
+    `# Security` notes.
+  - No CSPRNG dependency is added: the caller supplies entropy. `getrandom`
+    stays an option for a future std prover entry point.
+  - The PCS refuses any mask-source opening outside A3's two-block shape.
+  - The quarantine check also covers `hiding_mask`.
 
 Status: Accepted (owner authorisation; two same-author passes in
 agents/reviews/rfc0013-a3-acceptance.md; independent review requested).

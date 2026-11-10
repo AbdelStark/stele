@@ -297,8 +297,10 @@ fn nc_0907() -> Result<(), String> {
     let (i, a, b) = bound_instance(4, 0);
     let t = || Transcript::<QM31>::new(b"bound control").expect("transcript");
     let dense = || Dense::new(&i, vec![a.clone(), b.clone()]).expect("dense");
-    let honest = zk::prove(&i, dense(), &[1; 32], &mut t()).map_err(|e| format!("{e:?}"))?;
-    let other = zk::prove(&i, dense(), &[2; 32], &mut t()).map_err(|e| format!("{e:?}"))?;
+    let honest =
+        zk::prove(&i, dense(), zk::Seed::new([1; 32]), &mut t()).map_err(|e| format!("{e:?}"))?;
+    let other =
+        zk::prove(&i, dense(), zk::Seed::new([2; 32]), &mut t()).map_err(|e| format!("{e:?}"))?;
     let mut swapped = honest.clone();
     swapped.source = other.source;
     swapped.certificate = other.certificate;
@@ -325,7 +327,7 @@ fn nc_0908() -> Result<(), String> {
     let honest = zk::prove(
         &true_instance,
         Dense::new(&true_instance, vec![a, b]).expect("dense"),
-        &[3; 32],
+        zk::Seed::new([3; 32]),
         &mut t(),
     )
     .map_err(|e| format!("{e:?}"))?;
