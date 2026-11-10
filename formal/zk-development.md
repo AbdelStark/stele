@@ -3,7 +3,7 @@
 Status: Draft research note, task E12-10. Question Q29. Companions: RFC-0013 A1
 (Draft), RFC-0010 A7 (Draft), RFC-0026 §1.2. Prior study:
 [commitment privacy](commitment-privacy.md). Evidence:
-`crates/stele-code/tests/hiding.rs`. Review:
+`crates/stele-code/tests/hiding.rs`. Components adopted by RFC-0013 A2. Review:
 [same-author passes](../agents/reviews/zk-development-design.md).
 
 This note answers one question: what is the smallest construction that makes a

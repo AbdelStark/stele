@@ -1095,3 +1095,32 @@ Exact addition to §6, after A3:
     - E16-30 measures a development proof on Circle rate-1/4 Policy 2 sources.
     - This table is the standard-profile input to E12-04. E12-04 itself, the
       treaty codes.toml block, remains open.
+### A14 — Hiding Circle source bytes and salted leaves (companion of RFC-0013 A2)
+
+Status: Accepted, conditional scope of RFC-0013 A2. Task E12-11. Review:
+[RFC-0013 A2 acceptance](../../agents/reviews/rfc0013-a2-acceptance.md).
+Motivation: RFC-0013 A2 needs a source whose message holds masks and whose
+leaves hold salts. A9's arithmetic is reused unchanged; only the source bytes,
+the admission and the leaf payload differ.
+
+Addition to A9 §1 (version 3):
+
+1. **Bytes.** A version-3 source has A9 §1's bytes with version `u8(3)`. Its
+   row exponent is `ell + 1`, its code is Circle `(m + 1, b)` and its logical
+   rows and columns are `2R` and `2C`, where `R = 2^ell` and `C = 2^m` are the
+   data dimensions of RFC-0013 A2. Layout is `u8(0)`; any other layout is
+   UnsupportedSource. Version 3 is Circle only.
+2. **Admission.** Reject with UnsupportedSource, before any transcript work,
+   unless `R ≥ 2D` (one certificate and one opening, RFC-0013 A2 item 1) and
+   `q_c + q_o ≤ C − 1`, with `q_c`, `q_o` from A9's tables at `(m + 1, b)`.
+3. **Leaves.** The Merkle descriptor is `{kind: Columns, id, count: N,
+   width: 32 + 4·2R}`. A payload is a 32-byte salt followed by the `2R`
+   canonical u32le M31 elements of the column in row order. The verifier
+   authenticates the whole payload, then decodes and checks only the elements
+   after the salt. Response sizes grow by 32 bytes; nothing else in the wire,
+   the query policy, the column equation or the error order changes.
+4. **Losses.** The A9 certificate and opening terms apply as for version 1 at
+   the same `(m + 1, b)` and `2R`. No new challenge.
+
+NC-0902 (one changed salt byte, `RootMismatch`) and NC-0903 (admission,
+`UnsupportedSource`) are reserved. Cost: see RFC-0013 A2. Affected task: E12-12.

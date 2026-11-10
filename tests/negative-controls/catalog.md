@@ -127,6 +127,10 @@
 | NC-0806 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce with a nonce that fails the PoW predicate, every other byte unchanged | `GrindMismatch` | todo |
 | NC-0807 | transcript/grinding | 0012 A17, 0010 A14 | prove a Policy 2 source with k_q−1 grinding bits and offer it under the expected k_q context | `GrindMismatch` | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
+| NC-0902 | ZK hiding source | 0013 A2, 0010 A14 | change one salt byte of one certificate or opening response | `RootMismatch` | todo |
+| NC-0903 | ZK hiding source | 0013 A2, 0010 A14 | version-3 context with R < 2D, or with q_c + q_o > C − 1 | `UnsupportedSource` | todo |
+| NC-0904 | ZK masked sumcheck | 0013 A2, 0012 A17 | change the mask sum G after the instance absorb; regenerate the rounds honestly | `RoundSumMismatch` | todo |
+| NC-0905 | ZK masked sumcheck | 0013 A2 | change the mask final μ | `FinalEvaluationMismatch` | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
@@ -161,6 +165,9 @@ earn no control credit.
 
 RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
+
+RFC-0013 A2 reserves NC-0902..0905 for E12-12 and E12-13. Each must run through
+the actual hiding-source or masked-sumcheck verifier; a reservation adds no coverage.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit.
