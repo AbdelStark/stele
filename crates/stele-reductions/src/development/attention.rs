@@ -402,8 +402,8 @@ impl Bits {
 
 impl Attention {
     /// Rejects plans outside RFC-0026 §1.3 or the relation API: non-power-of-two head
-    /// width or GQA ratio, grouped Q/K/V rows, exp domains past 30 bits, and (no
-    /// row-block split yet) matmul domains past `MAX_VARS`.
+    /// width or GQA ratio, grouped Q/K/V rows, exp domains past 30 bits, and identity
+    /// domains past `MAX_VARS` (matmuls are split into row blocks, RFC-0026 A6).
     pub fn new(layer: usize, plan: AttentionPlan) -> Result<Self, Unsupported> {
         let (h, g, dh) = (plan.heads, plan.groups, plan.head_width);
         let shape = plan.rows > 0
@@ -437,8 +437,10 @@ impl Attention {
             columns: None,
         };
         let bits = this.bits();
-        // shortcut: no row-block split; past MAX_VARS needs Ref constant bits (E16-01).
-        if bits.s() + bits.d > MAX_VARS || this.score_bound().1 >= 1 << 28 {
+        // Matmuls past MAX_VARS are split into row blocks (RFC-0026 A6); the identity
+        // domains (scores and the block-mode values) must fit as they are.
+        let identities = bits.s().max(bits.o() + bits.kb);
+        if identities > MAX_VARS || this.score_bound().1 >= 1 << 28 {
             return Err(Unsupported::Domain);
         }
         if this.exp.mode == 1 && this.exp.domain + 1 > MAX_WIDTH_BITS {
@@ -555,7 +557,7 @@ impl Module for Attention {
         // Row 6: dot = sum_c q*k, with K read through the group bits of head.
         let worst = (128u128 * 128) << d;
         let dot = b.column("dot", signed_for(worst), sd);
-        b.relation.matmuls.push(Matmul {
+        b.relation.add_matmul(Matmul {
             name: format!("{prefix}/dot"),
             free: sd,
             summed: d,
@@ -770,7 +772,7 @@ impl Module for Attention {
         // Attained maximum: sum_j h*causal = real, h*u = 0.
         let hit = b.witness("maximum/hit", Width::unsigned(1), sd);
         let hb_t = hb + t;
-        b.relation.matmuls.push(Matmul {
+        b.relation.add_matmul(Matmul {
             name: format!("{prefix}/maximum/one-hot"),
             free: hb_t,
             summed: t,
@@ -803,7 +805,7 @@ impl Module for Attention {
         );
         let pmax = (1u128 << pwidth.bits) - 1;
         let normaliser = b.column("normaliser", signed_for(pmax << t), hb_t);
-        b.relation.matmuls.push(Matmul {
+        b.relation.add_matmul(Matmul {
             name: format!("{prefix}/normaliser"),
             free: hb_t,
             summed: t,
@@ -836,7 +838,7 @@ impl Module for Attention {
             let worst = (pw * 128) << summed;
             xmax += worst << (8 * i);
             let sum = b.column(&format!("value/sum/{i}"), signed_for(worst), obd);
-            b.relation.matmuls.push(Matmul {
+            b.relation.add_matmul(Matmul {
                 name: format!("{prefix}/value/sum/{i}"),
                 free: obd,
                 summed,
@@ -903,7 +905,7 @@ impl Module for Attention {
                 let tsum = (kb > 0).then(|| {
                     let ones = b.public("block/ones", vec![1; 1 << kb], Width::unsigned(1), kb);
                     let ts = b.column("block/total", signed_for(tmax), od);
-                    b.relation.matmuls.push(Matmul {
+                    b.relation.add_matmul(Matmul {
                         name: format!("{prefix}/block/total"),
                         free: od,
                         summed: kb,

@@ -149,6 +149,52 @@ STELE_DEV_PROOF=$P cargo test --release -p stele-prover --test development \
   matches_reference_model_commitment_of_a_supplied_proof -- --ignored --nocapture 2>&1 | tee $P/commit.log
 ```
 
+## A larger model: llama2.c `stories110M` (task E16-20)
+
+[`stories110M`](https://huggingface.co/karpathy/tinyllamas) is the next llama2.c
+TinyStories model (MIT licence): d = 768, 12 layers, 12 heads of width 64 without GQA,
+SwiGLU hidden 2048, vocabulary 32000. The CQIS configuration is that of stories42M at
+this shape. At T = 64 the head's matmul has `6 + 15 + 10 = 31` bits, one past
+`MAX_VARS`. It is split into two row blocks of the head weight (RFC-0026 A6), and the
+embedding gather into two blocks of 32 tokens (E16-04). The width pads to 1024, the head
+count to 16 and the vocabulary to 32768.
+
+`research/cqis-model-contract/stories110m.py` runs the stories42M pipeline at this shape
+and pins its own inputs and outputs by SHA-256 (the `.bin` digest is Hugging Face's LFS
+digest). The commands are those above, with `stories110M.bin` downloaded from the same
+revision and `S=research/cqis-model-contract/stories110m.py`.
+
+Fidelity ([`agents/reviews/e16-20-stories110m/fidelity.json`](../agents/reviews/e16-20-stories110m/fidelity.json),
+informative only): the original and converted fp32 forwards agree to `7.6e-6` in the
+logits. Over four 64-token TinyStories validation windows the perplexity is 2.124 in
+fp32 and 2.130 under CQIS. On the prompt the greedy continuations agree on 7 tokens and
+then diverge: fp32 continues "big, red balloon", CQIS "big tree with lots of leaves"
+(both fluent). The proof is about the CQIS continuation:
+
+```sh
+/usr/bin/time -v target/release/stele prove-dev --model $P/model.bin \
+  --preparation $P/preparation.bin --scales $P/scales.bin --artifact $P/artifact.bin \
+  --tokens 1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889 \
+  --length 64 --checked 23..64 --public $P/public.bin --proof $P/proof.bin
+```
+
+`prove-dev` extends the prompt with the CQIS continuation and `y = 940`, the same
+tokens as the torch executor.
+
+Measured once at `445c9b0` (the E16-19 branch head) on a rented AMD EPYC 7532 container
+(64 effective vCPUs, 128 hardware threads visible). Ledger:
+[e16-20-dev-stories110m](../bench/ledger/e16-20-dev-stories110m.json).
+
+- Prove: 1979 s wall, of which the model commitment alone takes 42.7 s. Peak RSS is 109.7 GB.
+- Verify: 69.4 s, with a peak RSS of 17.9 GB. The same proof also verifies on an arm64
+  laptop in 25 s.
+- Proof: 126.8 MB (SHA-256 `0cd59f67…6fbc`), with a 40.0 MB `public.bin`.
+- The four statement tampers are rejected: wrong `y`, wrong checked token and tampered
+  gain (`RoundSumMismatch`), and tampered weight root (`RootMismatch`).
+
+The host differs from the E16-18 campaign, so the times are not comparable with the
+stories42M row below.
+
 ## Benchmark ledger
 
 Development-profile numbers are recorded under RFC-0018 A1 (`profile: "development"`,
@@ -178,11 +224,20 @@ per model. The stories42M `proof.bin` (SHA-256 `507b52b3…5381`) is byte-identi
 |---|---|---|---|---|---|---|---|
 | Stele dev, synthetic | 8 layers, d 64, V 256, T 64, checked 0..64 | 21.9 s | 0.19 s | 3.95 s | 45.0 MB | 3.0 / 0.30 GB | [e16-18-dev-synthetic-8layer](../bench/ledger/e16-18-dev-synthetic-8layer.json) |
 | Stele dev, stories42M | 8 layers, d 512, V 32000, T 64, checked 23..64 | 474 s | 8.7 s | 24.3 s | 113.4 MB | 38.4 / 4.8 GB | [e16-18-dev-stories42m](../bench/ledger/e16-18-dev-stories42m.json) |
+| Stele dev, stories110M (`445c9b0`, EPYC 7532 host) | 12 layers, d 768, V 32000, T 64, checked 23..64 | 1979 s | 42.7 s | 69.4 s | 126.8 MB | 109.7 / 17.9 GB | [e16-20-dev-stories110m](../bench/ledger/e16-20-dev-stories110m.json) |
 | FlashProve route 3 "small model" | 8-layer synthetic model | 23–30 s run: commit, prove and verify (build excluded) | included | included in the run | not stated | 10 GB RAM needed | README at `9e2bdd8` |
 
 The E16-11 entries at `f6db15e`, the same host type, are kept as history:
 [e16-11-dev-synthetic-8layer](../bench/ledger/e16-11-dev-synthetic-8layer.json) and
 [e16-11-dev-stories42m](../bench/ledger/e16-11-dev-stories42m.json).
+Three records are from a 4-core host (Intel Xeon at 2.1 GHz), which is not a comparison
+with the rows above. The synthetic model proves there in 55.7 s at `6441a90`, before
+E16-17 ([e17-00-dev-synthetic-8layer-4core](../bench/ledger/e17-00-dev-synthetic-8layer-4core.json)),
+in 59.8 s at `21710de` with four threads
+([e17-00-dev-synthetic-8layer-4core-21710de](../bench/ledger/e17-00-dev-synthetic-8layer-4core-21710de.json))
+and in 103.6 s with one thread
+([e17-00-dev-synthetic-8layer-1thread-21710de](../bench/ledger/e17-00-dev-synthetic-8layer-1thread-21710de.json)).
+All three have the synthetic row's proof bytes (INV-8).
 
 The FlashProve row is the figure that project reports in its
 [README](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c)
@@ -192,3 +247,6 @@ as 8 layers, T = 64, d = 512. The statements differ (RFC-0018 rule 3): FlashProv
 the weights (zero-knowledge) and runs on a GPU. A Stele development proof reveals the
 model and activations, claims no security level and runs on CPU threads. The Stele
 prove time includes the model commitment, which `prove-dev` recomputes on every call. No GPU path is measured here (INV-3).
+
+Where the time and the bytes go, and what the build program does about it, is in
+[`docs/assessment.md`](assessment.md) §3 and [`docs/plan.md`](plan.md).

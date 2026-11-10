@@ -1,5 +1,9 @@
 # First native inference: closure plan
 
+> **Superseded as the working plan by the build program** (`docs/plan.md`, RFC-0027, ADR-095).
+> This document stays as the record of the first closure plan and of the treaty backlog's
+> integration requirements. RFC-0027 §6 says which of its tasks are superseded, parked or resumed.
+
 Integration baseline: main `516b27b1feff30d45f87a73e8bdcba67672e3c69`.
 The objective is the original W8 proof and independent verification flow,
 followed by the existing scale, privacy and performance requirements. This

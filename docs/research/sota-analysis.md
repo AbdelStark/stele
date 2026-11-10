@@ -60,3 +60,40 @@ MAC count exceeds the value count by a factor of d (10³–10⁴). That factor, 
 - FRI/WHIR openings on the hot path: they need the codeword (2–4× the data) in memory per opening and an FFT; the fused interleaved‑code opening needs the raw packed weights once.
 - bf16 lookups for nonlinearities (SASH): we use int16 fixed point; same table sizes, no rounding‑chain gadgets.
 - Trace segments as the unit of parallelism: we parallelise over *layers and heads inside one proof* (stacked GKR), which keeps one weight pass per proof instead of one per segment.
+
+## 5. Update, November 2026: FlashProve and what it settles
+
+Sources: the FlashProve repository at v0.16.0 (`README.md`, `guide/performance.md`, `guide/known-limits.md`,
+`docs/model.md`, `docs/protocol.md`, `lean/THEOREM.md`) and its technical report. All figures are *reported*.
+Its statement differs from Stele's development proofs (zero knowledge, GPU, fixed 1,024-token window).
+
+| Aspect | FlashProve |
+|---|---|
+| Statement | post-hoc prefill of an integer model; checked tokens are the greedy choice; no sampling; fixed 1,024-token window; up to 64 requests share one weight opening |
+| Model and numerics | Llama 4 Maverick (48 layers, d 5,120, 128 experts, top-1 routing); 13-bit weights from a public 4-bit file; 12-bit clamped activations; static per-layer power-of-two shifts; tables of at most 2^16 entries |
+| Field and commitment | Goldilocks with a cubic extension; interleaved Reed–Solomon (rate about 0.10), BLAKE2b Merkle columns; fold and code-switch proximity test in the list-decoding regime under a proven theorem (ePrint 2025/2055) |
+| Argument | masked sumchecks (about 2,000 per request); lookups by grand-product trees; Thaler matmul on committed weights; step values committed per segment (25 segments); approximate range checks by 128 random ternary projections |
+| Zero knowledge | bounded-query encodings with an opening budget, linked fresh copies, committed masks; Lean-checked for single requests; a declared list of what is not hidden |
+| Soundness | "about q/2^124 + 2^-101" for the Lean verifier; the C++ verifier and the CUDA prover are not covered by the theorem |
+| Performance | 17.4 tok/s for one request (58.8 s), 111 tok/s at batch 24, 123 tok/s at batch 64; proof 18.78 MB; verification 17 to 21 s; commit 39 min; 257 to 300 GB host RAM |
+| Fidelity | top token differs from the 16-bit float model at 6.81% of positions; no task benchmark; no reply served by a float engine passes exact match |
+
+What it settles for Stele:
+
+1. **The shape works at 400B on one GPU.** Sumcheck over committed step values, virtual arithmetic, one weight
+   opening per batch, segments to bound memory. §3's gap argument holds; the remaining gap is constants.
+2. **Step values are committed.** No published sound system leaves the outputs of rounding and tables
+   uncommitted. RFC-0001 §1.4 item 1 was too strong (`docs/assessment.md` §5; RFC-0028, Draft).
+3. **Reed–Solomon on the per-proof path is affordable on a GPU.** §4's rejection of FFT-based encoding for per-proof
+   commitments is withdrawn for the witness; it stands for the weights (no codeword over the weights per proof).
+4. **The field question is open, not closed.** FlashProve pays for 64-bit arithmetic to gain headroom for
+   approximate range checks. Stele keeps M31 and exact lookups; bet B2 of `docs/plan.md` states the measurement
+   that would change this.
+5. **Where it is weak is where to be strong:** single-request latency, proof size, verifier time, context length,
+   fidelity measured on tasks, sampling, multi-GPU.
+
+Other reference points since §1 was written (each self-reported; see `docs/assessment.md` §6): Attestable claims
+4 to 8 MiB proofs and sub-second verification on a dense 31B model; a public cross-system benchmark
+(inferenceproofs.ai) normalises cost per token per bit of active weights; integer-only W8A8 inference with
+equalisation and 16-bit norm and softmax inputs is reported near float perplexity on Llama-3.1-8B
+(arXiv 2609.16161).

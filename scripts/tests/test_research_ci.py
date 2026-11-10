@@ -46,11 +46,11 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_native_selection_and_command_union(self):
         groups = ci.load_groups()
         commands = [c for group in groups.values() for c in group]
-        self.assertEqual((len(groups), len(commands), len(set(commands))), (76, 182, 182))
+        self.assertEqual((len(groups), len(commands), len(set(commands))), (76, 184, 184))
         legacy = [c for name, group in groups.items() if name != 'model-contract' for c in group]
-        self.assertEqual(len(legacy), 181)
+        self.assertEqual(len(legacy), 183)
         self.assertEqual(hashlib.sha256(json.dumps(sorted(legacy), separators=(',', ':')).encode()).hexdigest(),
-                         'cb77fe969127be514fc58921a72df80b9ee97ce1746ea202599cc2a9896c1a28')
+                         '59b454166a553faff12bfd49fcb5964abb9fb3b0d05435229c5ee8e7b06230c6')
         selected = groups['native-comparisons']
         self.assertEqual(len(selected), 9)
         self.assertEqual([shlex.split(c)[4] for c in selected[:6]], [
@@ -167,7 +167,7 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_consolidated_inventories(self):
         # Migration snapshots include group names and ordered command sequences.
         for manifest, expected in (
-            (ci.MANIFEST, 'db14437c2d338fd04b33242fe1796d10b6c0a0723eb4aa1348a7820ae440288d'),
+            (ci.MANIFEST, '4560eb1b75dd642bf9bf5e44b041cd34243bccdc1d4834741f44367b90556157'),
             (ci.FULL_MANIFEST, '0195261794103b7ebcc33aa5be6315d05d2a1a9fd43a209306aa3722cfb877ec'),
         ):
             groups = ci.load_groups(manifest)

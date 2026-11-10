@@ -31,7 +31,10 @@ class HashUsageGateTests(unittest.TestCase):
                  'usage_tests::rejects_merkle_overflow_with_usage',
                  'pcs::tests::rejects_column_thresholds_exhaustion_and_invalid_domains',
                  'pcs::tests::matches_reference_full_field_column_ratchets',
-                 'pcs::tests::rejects_certificate_id_hash_overflow')
+                 'pcs::tests::rejects_certificate_id_hash_overflow',
+                 'grind_tests::matches_reference_grind_vectors',
+                 'grind_tests::rejects_invalid_grind_bits_and_nonce',
+                 'grind_tests::matches_reference_grind_usage')
         for omitted in (*names, None):
             output = '\n'.join(f'test {name} ... ok' for name in names if name != omitted)
             result = subprocess.CompletedProcess([], int(omitted is None), output, '')

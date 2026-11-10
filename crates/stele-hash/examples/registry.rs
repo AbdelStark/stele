@@ -6,6 +6,7 @@ fn main() -> Result<(), String> {
             LabelKind::Constructor => "constructor",
             LabelKind::Absorb => "absorb",
             LabelKind::Challenge => "challenge",
+            LabelKind::Grind => "grind",
         };
         let loss = match entry.loss {
             None => "-",

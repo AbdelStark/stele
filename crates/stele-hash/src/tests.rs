@@ -4,7 +4,10 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 46);
+    assert_eq!(entries.len(), 47);
+    assert_eq!(entries[46].label, "stele/v0.1/grind");
+    assert_eq!(entries[46].kind, LabelKind::Grind);
+    assert_eq!(entries[46].loss, None);
     assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 14);
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));

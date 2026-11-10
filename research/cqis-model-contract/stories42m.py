@@ -62,6 +62,7 @@ PREPARED = {
 }
 DIM, HIDDEN, LAYERS, HEADS, VOCAB, CONTEXT = 512, 1376, 8, 8, 32000, 1024
 PROMPT = 'Once upon a time, there was a little girl named Lily. She loved to play outside in the park.'
+BIN = 'stories42M.bin'
 GROUP = 128  # RFC-0004 A15 grouped rows on the d = 512 affine inputs
 
 
@@ -120,7 +121,7 @@ def convert(src, out):
     for name, digest in INPUTS.items():
         assert sha256(src/name) == digest, ('InputFile', name)
     out.mkdir(parents=True, exist_ok=True)
-    save_file(hf_tensors(load_llama2c(src/'stories42M.bin')), out/'model.safetensors')
+    save_file(hf_tensors(load_llama2c(src/BIN)), out/'model.safetensors')
     (out/'config.json').write_text(json.dumps(CONFIG, indent=2, sort_keys=True)+'\n')
     shutil.copyfile(src/'tokenizer.model', out/'tokenizer.model')
     got = {n: sha256(out/n) for n in ('config.json', 'model.safetensors', 'tokenizer.model')}
@@ -253,7 +254,7 @@ def fidelity(out, pr, downloads=None, count=4):
     valid = Path(downloads)/'TinyStories-valid.txt' if downloads else None
     assert valid is None or sha256(valid) == VALID, 'ValidationText'
     if downloads:
-        w = load_llama2c(Path(downloads)/'stories42M.bin')
+        w = load_llama2c(Path(downloads)/BIN)
         orig = {k: v for k, v in hf_tensors(w).items()}
         for i in range(LAYERS):
             p = f'model.layers.{i}.self_attn.'

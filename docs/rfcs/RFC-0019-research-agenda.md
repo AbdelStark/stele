@@ -90,6 +90,27 @@ in E8-05/E12-09; do not infer certification from a transcript KAT or a placehold
 RFC-0012 A7 proposes v2 all-seed setup accounting, independent of quantum seed
 selection in the ideal oracle. Joint composition with quantum FS/H remains required.
 
+Q12 resolution (classical ROM): RFC-0012 A17, RFC-0010 A14 and RFC-0002 A1 are
+Accepted (ADR-091). The evidence is [fs-composition.md](../../formal/fs-composition.md),
+whose Theorem 1 is the FS theorem with counted grinding, and the
+[parameter study](../../research/fs-pcs/PARAMETERS.md).
+
+- **Query-cap convention.** A per-query bound with a 2^-λ floor, for Q ≤ Q_cap.
+  2^-λ against Q_cap queries cannot be certified with 256-bit digests.
+- **Admitted.** The standard profile's PCS parameter set (Policy 2) and its FS
+  ledger.
+- **Not admitted.** Treaty.
+
+What remains is listed in fs-composition.md §7:
+
+- quantum adversaries (QROM);
+- ZK composition (Q29);
+- exact round enumeration and (C1)–(C4) checks in the native generator (E8-05);
+- the Policy 2 and grinding consumers (E12-23);
+- machine-checked statements (R-FORMAL).
+
+Q33's other promotion obligations are unchanged.
+
 Q11 resolution: RFC-0012 A1 Accepted with same-author skill reviews. E2-00
 implements the kernel; E2-01 retains every original acceptance criterion and
 waits for E3-01's real consumers. Q12 remains open and blocks profile certification.
@@ -1250,3 +1271,91 @@ on three things:
 
 Required at minimum: Q12, an admitted RFC-0012 A15 PCS parameter set, R-FORMAL
 statements of the uniqueness lemmas, and RFC-0011 passport binding.
+
+## Build-program tracks (RFC-0027; questions Q34 to Q51)
+
+Each track names its kill criterion. A track graduates by an amendment (Workflow 02)
+or ends with a report that says "drop".
+
+### R-COMMIT: the commit rule and its composition (RFC-0028)
+Q34: state and prove the composition theorem for reductions over a graph of virtual
+columns: every claim filed on a column equals the evaluation of its true multilinear
+extension except with the summed round errors. Why: it is the soundness of the whole
+protocol once accumulators stop being committed. Method: `formal/` statement, then
+Lean on top of public sumcheck libraries. Kill: none; this is an obligation, not a bet.
+
+### R-INDEXED: table outputs without commitments
+Q35: does an indexed-lookup argument that commits one table-sized vector per claim
+(the pushforward of `eq` along the index column; ePrint 2025/946) leave `silu_q`,
+`exp_q` and `rsqrt_q` outputs virtual at acceptable cost? Why: it removes the
+committed `T²·h/2` attention probabilities per layer and one cell per FFN neuron,
+moving `c_c` and `T_attn`. Method: prototype on the L1 attention module; count cells,
+lookups and extension multiplications. Kill: more than 1.5 times the prover work of
+committing the output and looking it up, or a soundness condition the relation IR
+cannot check statically.
+
+### R-NUMERICS: proof-friendly CQIS configurations
+Q36: static power-of-two scales with channel equalisation against grouped dynamic
+rows on Llama-3.1-8B. Q38: which activations need 16 bits. Why: wide scaled products
+and attained maxima are most of the remaining cells and lookups after RFC-0028.
+Method: Workflow 11 (pre-registered, fixed protocol, paired SE) with the accounting
+pair (fidelity, cells and lookups per token). Reference point from the literature:
+integer-only W8A8 with equalisation, group scales and 16-bit norm and softmax inputs
+reports perplexity 7.545 to 7.580 on Llama-3.1-8B (arXiv 2609.16161). Kill: the best
+static configuration misses the grouped-dynamic baseline by more than 0.5% perplexity
+or 1 pp on ARC or MMLU-Pro.
+
+### R-PROJECT: range checks by random projection
+Q37: FlashProve replaces most per-value range checks by 128 random ternary
+projections of a whole matrix, which is sound only up to a slack factor and needs
+field headroom. Is there any column class in a 31-bit field where the slack fits the
+bound rule? Why: `c_a`. Method: derive the slack per column class from the static
+bounds; prototype one. Kill: no class with at least 8 bits of headroom after the
+bound rule, or imperfect completeness above 2^-40.
+
+### R-RADIUS: proven radius for interleaved circle codes
+Q39: transfer the Reed–Solomon results for unique decoding to `D/2` (ePrint
+2024/1351) and for the Johnson regime with mutual correlated agreement (ePrint
+2025/2055) to the circle code, or show where the transfer fails. Why: query counts,
+hence proof bytes and verifier time (RFC-0029 §5). Method: written lemma with the
+map between the circle code and a Reed–Solomon code over CM31; exact-integer
+parameter script. Kill: none before M7; `D/3` is sufficient for `standard`.
+
+### R-MASK: zero-knowledge budget and batch coverage
+Q40: for a reused model commitment, the smallest randomiser count and link-proof
+schedule that keeps the simulator valid across batches and segments; whether masks
+defeat base-field first rounds (Q5). Method: RFC-0013 A3 task E23-01. Kill: overhead
+above 15% of prove time on L3b for candidate A triggers candidate B.
+
+### R-FLOAT: what to prove about a float-served reply
+Q41: exact match never accepts a reply produced by a floating-point engine. Options:
+serve CQIS (R-SERVE), or a gap policy with a stated meaning. Method: measure top-1
+agreement and task agreement of CQIS against bf16 serving on Llama-3.1-8B; define the
+strongest statement a gap policy supports. Kill: none; the deliverable is a PRD
+decision.
+
+### R-CONTEXT: attention at long context
+Q42: lookups per attention score, block accumulation (RFC-0009 §6) and a provable
+cutoff for probabilities that round to zero, at 16,384 positions. Why: `T_attn` is the
+only quadratic term. Method: accounting on L3 with T up to 16,384; prototype the
+cutoff with a range check in place of an `exp_q` lookup. Kill: none; W6 is an M6 gate.
+
+### Numbered questions
+
+Q34 composition theorem for the commit rule (RFC-0028 §5) · Q35 indexed lookups with
+virtual outputs · Q36 static against dynamic scales · Q37 random-projection range
+checks in M31 · Q38 activation widths by task benchmark · Q39 proven radius for
+interleaved circle codes · Q40 zero-knowledge budget and batches · Q41 float-served
+replies · Q42 long-context attention · Q43 commitment-free attained maximum (the
+product of `M − v_j` over the scope is zero; RFC-0028 §7) · Q44 column height against
+segment count (RFC-0029 §8) · Q45 linear-time first layer as a fallback (RFC-0029 §8)
+· Q46 knowledge soundness for consumers that need an extractor (RFC-0030 §7) · Q47 the
+post-quantum claim (RFC-0030 §7) · Q48 identity and version of the coefficient-form
+circle code, and migration of evaluation-form model sources (RFC-0029 §8) · Q49
+data-parallel lookup instances: shared challenges, one tree reduction, per-instance
+roots and multiplicities (RFC-0030 §7) · Q50 the challenge field of the commitment
+rounds and the per-round form of the proximity bound (RFC-0029 §8) · Q51 a reduction
+of the multiplicity sources' prefix-mask functional to a point claim (RFC-0029 §8).
+
+Q12, Q27, Q29, Q31 and Q33 are restated by RFC-0030, RFC-0029, RFC-0013 A3, RFC-0028
+and RFC-0027 §2 respectively; each stays open until its RFC is Accepted.

@@ -1,0 +1,41 @@
+diff --git a/crates/stele-pcs/src/certificate.rs b/crates/stele-pcs/src/certificate.rs
+index f5a44bb..bdd32fd 100644
+--- a/crates/stele-pcs/src/certificate.rs
++++ b/crates/stele-pcs/src/certificate.rs
+@@ -97,6 +97,7 @@ pub fn verify_certificate<K: ChallengeField + CodeField>(
+ where
+     for<'a> K::Bytes: TryFrom<&'a [u8]>,
+ {
++    { let pp = source.parameters(); ::std::eprintln!("PCSINV {{\"kind\":\"certificate\",\"code\":\"{}\",\"rows\":{},\"columns\":{},\"length\":{},\"distance\":{},\"queries\":{},\"bytes\":{}}}", if source.code_id().len()==55 {"v2"} else {"circle"}, source.rows(), source.columns(), pp.length, pp.distance, pp.certificate_queries, proof.len()); }
+     verify_certificate_measured(source, proof).map(|(record, usage, _)| (record, usage))
+ }
+ /// Full certificate import with actual owned capacities and logical query work.
+diff --git a/crates/stele-pcs/src/lib.rs b/crates/stele-pcs/src/lib.rs
+index 361e32d..134f8f1 100644
+--- a/crates/stele-pcs/src/lib.rs
++++ b/crates/stele-pcs/src/lib.rs
+@@ -29,3 +29,4 @@ pub use source::{Error, Parameters, ProofKind, Response, Source, SourceBytes, Wi
+ // A1 registry validator: stele-code is reachable only through this crate (deny.toml).
+ pub use stele_code::{registry, CodeField};
+ pub use work::{ProverWork, VerifierWork};
++extern crate std;
+diff --git a/crates/stele-pcs/src/opening.rs b/crates/stele-pcs/src/opening.rs
+index 3a5a291..071364d 100644
+--- a/crates/stele-pcs/src/opening.rs
++++ b/crates/stele-pcs/src/opening.rs
+@@ -67,6 +67,7 @@ pub fn verify_point<'cert, K: ChallengeField + CodeField>(
+ where
+     for<'a> K::Bytes: TryFrom<&'a [u8]>,
+ {
++    { let source = certificate.record().source(); let pp = source.parameters(); ::std::eprintln!("PCSINV {{\"kind\":\"opening\",\"code\":\"{}\",\"rows\":{},\"columns\":{},\"length\":{},\"distance\":{},\"queries\":{},\"bytes\":{}}}", if source.code_id().len()==55 {"v2"} else {"circle"}, source.rows(), source.columns(), pp.length, pp.distance, pp.opening_queries, proof.len()); }
+     verify_point_measured(t, certificate, id, point, value, proof)
+         .map(|(record, usage, _)| (record, usage))
+ }
+@@ -537,6 +538,7 @@ pub fn verify_opening<'cert, K: ChallengeField + CodeField>(
+ where
+     for<'a> K::Bytes: TryFrom<&'a [u8]>,
+ {
++    { let source = certificate.record().source(); let pp = source.parameters(); ::std::eprintln!("PCSINV {{\"kind\":\"opening\",\"code\":\"{}\",\"rows\":{},\"columns\":{},\"length\":{},\"distance\":{},\"queries\":{},\"bytes\":{}}}", if source.code_id().len()==55 {"v2"} else {"circle"}, source.rows(), source.columns(), pp.length, pp.distance, pp.opening_queries, proof.len()); }
+     verify_opening_measured(t, certificate, functional, proof)
+         .map(|(record, usage, _)| (record, usage))
+ }

@@ -1727,6 +1727,8 @@ fn accepts_static_validity_realistic_shapes() {
         (128, 8, 8, 64, &block),
         (1024, 8, 8, 64, &llama),
         (512, 8, 2, 128, &llama),
+        // Score and value matmuls past MAX_VARS (25 + 7 bits), in row blocks (A6).
+        (1024, 32, 8, 128, &llama),
     ] {
         assert_eq!(
             validate_shape(rows, heads, groups, dh, cfg),
@@ -1739,8 +1741,9 @@ fn accepts_static_validity_realistic_shapes() {
 #[test]
 fn rejects_unsupported_plans_before_declaring() {
     let cfg = Cfg::default();
-    // Past MAX_VARS without a row-block split (T = 1024, 32 heads, dh = 128).
-    assert!(validate_shape(1024, 32, 8, 128, &cfg).is_err());
+    // Score identities past MAX_VARS (T = 32768, 2 heads: 2*15 + 1 bits); only
+    // matmuls are split into row blocks (RFC-0026 A6).
+    assert!(validate_shape(32768, 2, 2, 4, &cfg).is_err());
     // Non-power-of-two GQA ratio.
     assert!(validate_shape(8, 3, 1, 4, &cfg).is_err());
 }

@@ -124,6 +124,8 @@
 | NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13,A14, 0007 A2, 0024 §6 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns; centered LinearStatement, RequantConstraints, each RequantClaims or either original OpeningColumns | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
+| NC-0806 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce with a nonce that fails the PoW predicate, every other byte unchanged | `GrindMismatch` | todo |
+| NC-0807 | transcript/grinding | 0012 A17, 0010 A14 | prove a Policy 2 source with k_q−1 grinding bits and offer it under the expected k_q context | `GrindMismatch` | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
@@ -152,6 +154,10 @@ typed native consumers, not implemented error variants. The exact owner mapping
 is RFC-0025 §6. Each reference-role variant retains full actual child validation;
 outer byte comparison alone cannot earn a cryptographic source/evidence control.
 These reservations add no coverage and change no existing control or registration.
+
+RFC-0012 A17 reserves NC-0806..0807 for E12-23's Policy 2 PCS consumer. Each must run
+through the actual certificate or opening verifier; the `stele-hash` grinding unit tests
+earn no control credit.
 
 RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
