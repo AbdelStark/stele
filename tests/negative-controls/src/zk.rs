@@ -369,9 +369,299 @@ fn nc_0908() -> Result<(), String> {
     }
 }
 
+/// An honest A5 item-5 batch on the NC-0902 hiding source: two linear claims,
+/// the plain mask of the batch instance and a stand-in binding.
+struct BatchCase {
+    message: Vec<M31>,
+    claims: Vec<stele_reductions::zk::claims::Claim<QM31>>,
+    mask: masked::Mask<QM31>,
+}
+const BATCH_ID: u64 = 7;
+
+fn batch_case() -> Result<BatchCase, String> {
+    use stele_reductions::zk::claims::Claim;
+    let (ell, m, _) = layout(4);
+    let message = message(4);
+    let data = |p: usize| {
+        QM31::from_i64(i64::from(
+            message[(p >> m) * (2 << m) + (p & ((1 << m) - 1))].as_u32(),
+        ))
+    };
+    let claim = |weights: Vec<(usize, QM31)>| Claim {
+        value: weights
+            .iter()
+            .fold(QM31::from_i64(0), |s, (p, w)| s + *w * data(*p)),
+        weights,
+    };
+    let claims = vec![
+        claim(vec![(3, QM31::from_i64(5)), (700, QM31::from_i64(-2))]),
+        claim(vec![(1, QM31::from_i64(1)), (4000, QM31::from_i64(9))]),
+    ];
+    let n = u32::from(ell) + 1 + u32::from(m);
+    let mask = masked::Mask::plain(&SEED, BATCH_ID, n, 2).map_err(|e| format!("{e:?}"))?;
+    Ok(BatchCase {
+        message,
+        claims,
+        mask,
+    })
+}
+
+type BatchView = (
+    Vec<stele_reductions::zk::claims::Claim<QM31>>,
+    stele_reductions::zk::claims::Batch<QM31>,
+);
+
+/// Replace the whole batch view (claims and batch).
+struct ReplaceView(BatchView);
+impl ProverHook<BatchView> for ReplaceView {
+    fn tamper(&self, view: &mut BatchView) {
+        view.clone_from(&self.0);
+    }
+}
+
+fn verify_view(
+    verified: &VerifiedCertificate<QM31>,
+    view: &BatchView,
+) -> Result<(), stele_reductions::zk::Error> {
+    stele_reductions::zk::claims::verify_batch(
+        BATCH_ID,
+        verified,
+        &view.0,
+        &view.1,
+        BINDING,
+        &mut Transcript::new(b"batch control").expect("transcript"),
+    )
+    .map(|_| ())
+}
+
+/// NC-0909 (RFC-0013 A5): one masked claim value changed while the batch is the
+/// honest one. Through the actual batch verifier (`claims::verify_batch`, which the
+/// dev-zk verifier runs per source) the public sum `Σ γ_a·c_a` moves and the
+/// batch's first round fails. At the full proof the changed final first fails its
+/// relation's final check unless `μ` is re-solved; this is that consistent cheat.
+fn nc_0909() -> Result<(), String> {
+    use stele_reductions::zk::claims;
+    let case = batch_case()?;
+    let p = prepared::<QM31>(&case.message).map_err(|e| format!("{e:?}"))?;
+    let verified = certified(&p)?;
+    let t = || Transcript::<QM31>::new(b"batch control").expect("transcript");
+    check_proof_control(
+        || {
+            claims::prove_batch(
+                BATCH_ID,
+                &p,
+                &verified,
+                &case.claims,
+                &case.mask,
+                BINDING,
+                &mut t(),
+            )
+            .map(|(batch, _)| (case.claims.clone(), batch))
+        },
+        &ChangeClaim,
+        |view| verify_view(&verified, view),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::RoundSumMismatch),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// Add one to the first claim value.
+struct ChangeClaim;
+impl ProverHook<BatchView> for ChangeClaim {
+    fn tamper(&self, view: &mut BatchView) {
+        view.0[0].value = view.0[0].value + QM31::from_i64(1);
+    }
+}
+
+/// NC-0915 (RFC-0013 A5 item 5): a prover that puts batch weight on the `w = 1`
+/// half. It picks two mask-row positions `p, q` of the face with weights
+/// `S_q, −S_p`, so the batch sum is unchanged and every round passes; the actual
+/// verifier's own weight is zero there, so the weight final fails.
+fn nc_0915() -> Result<(), String> {
+    use stele_reductions::zk::claims;
+    let case = batch_case()?;
+    let p = prepared::<QM31>(&case.message).map_err(|e| format!("{e:?}"))?;
+    let verified = certified(&p)?;
+    let t = || Transcript::<QM31>::new(b"batch control").expect("transcript");
+    let honest = claims::prove_batch(
+        BATCH_ID,
+        &p,
+        &verified,
+        &case.claims,
+        &case.mask,
+        BINDING,
+        &mut t(),
+    )
+    .map_err(|e| format!("{e:?}"))?
+    .0;
+    let mut transcript = t();
+    let gammas =
+        claims::coefficients(&mut transcript, case.claims.len()).map_err(|e| format!("{e:?}"))?;
+    let mut weights =
+        claims::weight_table(p.source(), &case.claims, &gammas).map_err(|e| format!("{e:?}"))?;
+    // Face (w, row, col): the w = 1 half is the mask rows' Y = 0 part.
+    let (half, columns) = (weights.len() / 2, p.source().columns());
+    let mask_row = |i: usize| {
+        let row = p.source().rows() / 2 + i / (columns / 2);
+        QM31::from_i64(i64::from(
+            case.message[row * columns + i % (columns / 2)].as_u32(),
+        ))
+    };
+    let (i, j) = (5, 900);
+    weights[half + i] = mask_row(j);
+    weights[half + j] = QM31::from_i64(0) - mask_row(i);
+    // The honest batch used `p`'s one opening; the cheat prepares the same source again.
+    let again = prepared::<QM31>(&case.message).map_err(|e| format!("{e:?}"))?;
+    let cheat = claims::prove_weighted(
+        BATCH_ID,
+        &again,
+        &verified,
+        &case.claims,
+        &gammas,
+        weights,
+        &case.mask,
+        BINDING,
+        &mut transcript,
+    )
+    .map_err(|e| format!("cheating batch: {e:?}"))?
+    .0;
+    check_proof_control(
+        || Ok::<_, String>((case.claims.clone(), honest)),
+        &ReplaceView((case.claims.clone(), cheat)),
+        |view| verify_view(&verified, view),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::FinalEvaluationMismatch),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// A one-source dev-zk statement: `x² = x` on a 2^9-entry column, so `x` fills
+/// data row 0 (C = 512) and its claim-mask block lies alone in data row 1; and
+/// a matmul `out = lhs·rhs` in a second source (1, 3 and 1 bits).
+fn zk_statement() -> stele_reductions::zk::claims::Statement<QM31> {
+    use stele_reductions::zk::claims::{Column, Read, Relation, Statement};
+    let term = |c: i64, factors: Vec<u32>| Term {
+        coefficient: QM31::from_i64(c),
+        factors,
+    };
+    Statement {
+        sources: 2,
+        columns: vec![
+            Column {
+                source: 0,
+                log_len: 9,
+            },
+            Column {
+                source: 1,
+                log_len: 4,
+            },
+            Column {
+                source: 1,
+                log_len: 4,
+            },
+            Column {
+                source: 1,
+                log_len: 2,
+            },
+        ],
+        relations: vec![
+            Relation::Identity {
+                num_vars: 9,
+                reads: vec![Read {
+                    column: 0,
+                    vars: (0..9).collect(),
+                }],
+                terms: vec![term(1, vec![0, 0]), term(-1, vec![0])],
+            },
+            Relation::Matmul {
+                lhs: 1,
+                rhs: 2,
+                out: 3,
+                rows: 1,
+                inner: 3,
+                cols: 1,
+            },
+        ],
+    }
+}
+
+fn zk_witness() -> Vec<Vec<M31>> {
+    let x: Vec<i64> = (0..512).map(|n| (n * 7 % 3 == 0) as i64).collect();
+    let lhs: Vec<i64> = (0..16).map(|n| n % 5 - 2).collect();
+    let rhs: Vec<i64> = (0..16).map(|n| 3 - n % 4).collect();
+    let out = (0..4)
+        .map(|ij: usize| {
+            (0..8)
+                .map(|k| lhs[(ij >> 1) * 8 + k] * rhs[k * 2 + (ij & 1)])
+                .sum()
+        })
+        .collect();
+    [x, lhs, rhs, out]
+        .into_iter()
+        .map(|v: Vec<i64>| v.into_iter().map(M31::from_i64).collect())
+        .collect()
+}
+
+/// One field of an honest dev-zk claims proof replaced, chosen by the hook.
+struct ZkProof(fn(&mut stele_reductions::zk::claims::Proof<QM31>));
+impl ProverHook<stele_reductions::zk::claims::Proof<QM31>> for ZkProof {
+    fn tamper(&self, proof: &mut stele_reductions::zk::claims::Proof<QM31>) {
+        (self.0)(proof);
+    }
+}
+
+fn zk_control(hook: &ZkProof, expected: stele_reductions::zk::Error) -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let statement = zk_statement();
+    let t = || Transcript::<QM31>::new(b"dev-zk control").expect("transcript");
+    check_proof_control(
+        || claims::prove(&statement, &zk_witness(), Seed::new([11; 32]), &mut t()),
+        hook,
+        |proof| claims::verify(&statement, proof, &mut t()).map(|_| ()),
+        expected,
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// NC-0910 (RFC-0013 A5, RFC-0026 A9): the matmul's proof in the shape of the
+/// development form, degree-2 rounds as for `Σ lhs·rhs = out~(ρ)`. The zero-sum's
+/// verifier-derived shape has degree-3 rounds (two masked factors and `Ȯ`), so the
+/// actual verifier rejects the shape before reading any value.
+fn nc_0910() -> Result<(), String> {
+    zk_control(
+        &ZkProof(|proof| {
+            let matmul = &mut proof.relations[1];
+            for round in &mut matmul.rounds {
+                round.truncate(3);
+            }
+        }),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::ProofShape),
+    )
+}
+
+/// NC-0911 (RFC-0013 A5 item 1): `x`'s claim-mask block (data row 1 of source 0)
+/// changed after the commitment: the re-encoded row's symbol in the batch
+/// opening's first queried column no longer authenticates.
+fn nc_0911() -> Result<(), String> {
+    zk_control(
+        &ZkProof(|proof| {
+            // Opening: version byte, the 2C-entry row (C = 512, 16-byte QM31), then
+            // the first response: 32 salt bytes and one 4-byte symbol per row.
+            let at = 1 + 1024 * 16 + 32 + 4;
+            let symbol = &mut proof.batches[0].opening[at..at + 4];
+            let value = u32::from_le_bytes(symbol.try_into().expect("symbol"));
+            symbol.copy_from_slice(&((value + 1) % 0x7fff_ffff).to_le_bytes());
+        }),
+        stele_reductions::zk::Error::Pcs(Error::Merkle(stele_hash::merkle::Error::RootMismatch)),
+    )
+}
+
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
+        909 => nc_0909(),
+        910 => nc_0910(),
+        911 => nc_0911(),
+        915 => nc_0915(),
         907 => nc_0907(),
         908 => nc_0908(),
         904 | 905 => nc_masked(id),

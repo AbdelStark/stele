@@ -126,6 +126,30 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk::run(908),
     },
     catalog::RegisteredControl {
+        id: 909,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk::run(909),
+    },
+    catalog::RegisteredControl {
+        id: 910,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ProofShape",
+        run: || zk::run(910),
+    },
+    catalog::RegisteredControl {
+        id: 911,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || zk::run(911),
+    },
+    catalog::RegisteredControl {
+        id: 915,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || zk::run(915),
+    },
+    catalog::RegisteredControl {
         id: 1300,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",

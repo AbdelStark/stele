@@ -479,6 +479,8 @@ def field_sources(root):
                'src/development/tests.rs',
                # RFC-0013 A4: the bound masked A1 sumcheck and its tests.
                'src/zk.rs', 'tests/zk.rs',
+               # RFC-0013 A5: masked claims, zero-sums and per-source batches.
+               'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
                'src/development/embedding.rs', 'src/development/rmsnorm.rs', 'src/development/limbs.rs',
                'src/development/norm_embedding_tests.rs', 'tests/dev_modules.rs',
@@ -1662,11 +1664,13 @@ def docs_links(root):
 
 
 def masked_sumcheck_quarantine(root):
-    """RFC-0013 A2 item 2 is unbound; only the A4 consumer (stele_reductions::zk) may use it."""
+    """RFC-0013 A2 item 2 is unbound; only the A4/A5 consumer (stele_reductions::zk) may use it."""
     allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
                'crates/stele-sumcheck/tests/masked.rs', 'tests/negative-controls/src/zk.rs',
                # RFC-0013 A4: the only admitted consumer binds the mask by a hiding source.
-               'crates/stele-reductions/src/zk.rs'}
+               'crates/stele-reductions/src/zk.rs',
+               # RFC-0013 A5 item 5a: zk::claims binds plain masks in the shared mask source.
+               'crates/stele-reductions/src/zk_claims.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
