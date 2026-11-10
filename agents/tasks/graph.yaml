@@ -2633,7 +2633,9 @@ tasks:
   - RFC-0026 A9
   skill: soundness-auditor
   crate: stele-prover+stele-cli
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-14b-dev-zk-e2e
   acceptance:
   - stele prove-dev --zk and verify-dev with the profile byte in the public input; one- and eight-layer synthetic windows proven and verified
   - NC-0912 and NC-0909..0915 executed on the composed proof; chi-square, leak and same-statement privacy tests
