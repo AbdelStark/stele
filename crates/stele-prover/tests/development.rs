@@ -467,6 +467,26 @@ fn census(name: &str, t: usize) -> (usize, usize, usize, usize) {
         .iter()
         .filter(|m| m.free + m.summed < 3)
         .count();
+    // RFC-0026 A3 checks: lookups by table, ranges by width.bits. Per check, the
+    // concatenated source length N (each member padded to a power of two, the
+    // total rounded up) and the table length |T|, for the GKR cost comparison.
+    let mut checks: BTreeMap<(u8, u32), (u64, u64)> = BTreeMap::new();
+    for lookup in &relation.lookups {
+        let rows = relation.tables[lookup.table.0 as usize].rows.len() as u64;
+        let entry = checks.entry((0, lookup.table.0)).or_insert((0, rows));
+        entry.0 += 1u64 << lookup.vars;
+    }
+    for range in &relation.ranges {
+        let log = relation.columns[range.column.0 as usize].log_len;
+        let bits = u32::from(range.width.bits);
+        let entry = checks.entry((1, bits)).or_insert((0, 1u64 << bits));
+        entry.0 += 1u64 << log;
+    }
+    let shape: Vec<(u64, u64)> = checks
+        .values()
+        .map(|&(n, t)| (n.next_power_of_two(), t.next_power_of_two()))
+        .collect();
+    eprintln!("census {name} T={t}: checks (N, |T|) = {shape:?}");
     let lookup_entries: u64 = relation.lookups.iter().map(|l| 1u64 << l.vars).sum::<u64>()
         + relation
             .ranges

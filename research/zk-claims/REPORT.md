@@ -63,6 +63,27 @@ Result over 12 draws without a public abort per case:
 The shared-block case is why each claim occurrence needs its own block
 (Lemma 6′).
 
+## ZK-GKR over the A5 trees
+
+Run `python3 research/zk-claims/check_gkr.py` (about 40 seconds).
+
+The model is two masked layers of a fraction tree (formal/zk-gkr.md):
+- `p` and `q` each have a `4D`-entry block on coordinates `(T, u1, u2)`;
+- each layer reveals its values at `t = 0, 1` and one selector-final claim;
+- the claims are batched over the shared mask source, with its certificate,
+  the opening and the queried columns.
+
+The true layer values are treated as free secrets. Over 10 draws without a
+public abort per case:
+
+| Case | Private in |
+|---|---|
+| honest | 10 of 10 |
+| masks removed | 0 |
+| mask rows removed | 0 |
+| one block shared by `t = 0` and `t = 1` | 0 |
+| a `2D` block | 0 |
+
 ## Scope
 
 These are small fixed shapes. They are not a proof of the composed protocol, and

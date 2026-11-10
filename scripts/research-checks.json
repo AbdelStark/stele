@@ -128,6 +128,7 @@
     "python3 research/commitment-privacy/check_privacy.py",
     "python3 research/zk-claims/check_view.py",
     "python3 research/zk-claims/check_two.py",
+    "python3 research/zk-claims/check_gkr.py",
     "python3 research/private-verifier/check_boundary.py",
     "python3 research/logup-characteristic/check_characteristic.py",
     "uv run --locked --script research/logup-characteristic/check_units.py",
