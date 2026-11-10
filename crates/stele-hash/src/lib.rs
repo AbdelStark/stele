@@ -14,6 +14,8 @@ use stele_hash::poseidon2::permute;
 
 extern crate alloc;
 
+/// Secret mask streams for hiding components (RFC-0013 A2).
+pub mod mask;
 /// Canonical Merkle authentication (RFC-0012 A3).
 pub mod merkle;
 mod pcs;
@@ -79,6 +81,8 @@ pub enum LossLine {
     Lu,
     /// Actual-tail point equality; no separate challenge is drawn (A14).
     Sz,
+    /// Masked-sumcheck weight, conditional on the mask binding (A18, RFC-0013 A2).
+    Mask,
 }
 /// Registered label metadata; validation does not authorize a caller-supplied registry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,7 +94,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 47] = [
+const REGISTRY: [RegistryEntry<'static>; 49] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -327,6 +331,16 @@ const REGISTRY: [RegistryEntry<'static>; 47] = [
         kind: LabelKind::Grind,
         loss: None,
     },
+    RegistryEntry {
+        label: "stele/v0.1/zk/mask-sum",
+        kind: LabelKind::Absorb,
+        loss: None,
+    },
+    RegistryEntry {
+        label: "stele/v0.1/zk/mask-weight",
+        kind: LabelKind::Challenge,
+        loss: Some(LossLine::Mask),
+    },
 ];
 const GRIND: usize = 46;
 /// Largest admitted grinding difficulty (RFC-0012 A17 item 3).
@@ -357,7 +371,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 47], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 49], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -461,6 +475,8 @@ pub enum AbsorbLabel {
     RelationStatement,
     /// One commitment-group or multiplicity root, in RFC-0026 §4 order (A16).
     RelationRoots,
+    /// Masked-sumcheck mask sum G before its weight (A18, RFC-0013 A2).
+    ZkMaskSum,
 }
 impl AbsorbLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -496,6 +512,7 @@ impl AbsorbLabel {
             Self::LinearStatement => 41,
             Self::RelationStatement => 42,
             Self::RelationRoots => 43,
+            Self::ZkMaskSum => 47,
         }]
     }
 }
@@ -530,6 +547,8 @@ pub enum ChallengeLabel {
     RelationIdentity,
     /// One coordinate of a matmul out-claim point, SZ (A16).
     RelationPoint,
+    /// Masked-sumcheck weight after the mask sum, MASK (A18, RFC-0013 A2).
+    ZkMaskWeight,
 }
 impl ChallengeLabel {
     fn entry(self) -> &'static RegistryEntry<'static> {
@@ -548,6 +567,7 @@ impl ChallengeLabel {
             Self::RequantWeight => 40,
             Self::RelationIdentity => 44,
             Self::RelationPoint => 45,
+            Self::ZkMaskWeight => 48,
         }]
     }
 }

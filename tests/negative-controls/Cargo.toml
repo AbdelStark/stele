@@ -318,3 +318,31 @@ path = "matmul/nc_0305.rs"
 [[test]]
 name = "nc-0605"
 path = "pcs/nc_0605.rs"
+
+[[test]]
+name = "nc-0902"
+path = "pcs/nc_0902.rs"
+
+[[test]]
+name = "nc-0903"
+path = "pcs/nc_0903.rs"
+
+[[test]]
+name = "nc-0906"
+path = "pcs/nc_0906.rs"
+
+[[test]]
+name = "nc-0904"
+path = "sumcheck/nc_0904.rs"
+
+[[test]]
+name = "nc-0905"
+path = "sumcheck/nc_0905.rs"
+
+[[test]]
+name = "nc-0907"
+path = "sumcheck/nc_0907.rs"
+
+[[test]]
+name = "nc-0908"
+path = "sumcheck/nc_0908.rs"

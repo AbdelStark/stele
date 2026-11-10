@@ -64,6 +64,9 @@ fn produce_inner<K: ChallengeField>(
             .map_err(Error::Transcript)?;
     }
     let weights = stele_poly::eq_table(&point[..ell]).map_err(|_| Error::Capacity)?;
+    if source.is_hiding() {
+        crate::hiding::check_mask_rank(source, &[&weights])?;
+    }
     work.proof_bytes = bytes(&proof)?;
     work.weights_bytes = bytes(&weights)?;
     work.peak_owned_bytes = add(work.proof_bytes, work.weights_bytes)?;

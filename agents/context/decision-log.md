@@ -2097,8 +2097,115 @@ Consequences:
   in the texts as recorded here. That review is not an acceptance review.
 
 Status: Proposed (Draft RFCs; each is decided by its acceptance task).
+## ADR-094: Accept the proved ZK components separately; keep the complete construction in RFC-0013 A1 (RFC-0013 A2, RFC-0010 A15, RFC-0012 A18, task E12-11)
 
-## ADR-097: No development-profile GPU backend at the current stage shares (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
+Context: the owner asked for zero-knowledge (weight hiding) for the development
+path, the property FlashProve has and RFC-0026 lacks. RFC-0013 A1 (Draft) asks for
+the complete construction: Circle and expander paths, the 5% overhead target and
+native evidence. The design note (formal/zk-development.md, task E12-10) proves
+four component lemmas but finds two leaks in the obvious claim masking and leaves
+the composition open (R1–R13).
+
+Decision:
+- A1 is the wrong vehicle for the components: accepting it would claim the whole
+  construction. A2 admits only the proved components, with exact bytes, labels,
+  order and budgets, for no profile and no consumer: hiding Circle sources
+  (version 3, mask half, mask rows, salted leaves, public rank check) and the
+  masked A1 sumcheck (`zk/mask-sum`, `zk/mask-weight`, mask obligation).
+- Expander sources are excluded: the v2 code is systematic.
+- The masked sumcheck's soundness and MASK line are conditional on binding the
+  mask before its sum; A2 leaves that open (R2), so no consumer may accept a
+  masked reduction.
+- Masks derive from a fresh secret seed with a keyed BLAKE3 stream; hiding is
+  computational with derived masks. A seed is used for one source or instance.
+- No dev-zk profile flag until A1's remaining list is accepted (INV-1).
+- A1 stays Draft, with R1–R13 of the design note as its exact remaining list.
+- Relation to ADR-096 and RFC-0013 A3 (Draft, scheme v3): A2 is the
+  development-tier instance that A3's candidate A says it starts from.
+  - A2's randomisers sit on message-domain evaluation points, so A3's
+    coefficient-slot counterexample does not apply.
+  - Scheme v3's coefficient-form rows must re-prove the rank (E23-01).
+  - A2 does not contradict A3; it decides nothing for scheme v3.
+
+Status: Accepted (owner authorisation for autonomous amendment acceptance after
+Workflow 02 review; two same-author passes in
+agents/reviews/rfc0013-a2-acceptance.md; independent review is still needed).
+
+## ADR-097: Bind the masked sumcheck's mask by a two-block hiding source (RFC-0013 A4, task E12-15)
+
+Numbered after ADR-096 on main; RFC-0013 A3 is the Draft scheme-v3 direction there,
+so this amendment is A4.
+
+Context: the independent review of RFC-0013 A2 confirmed that the masked A1
+sumcheck is unsound until its mask is bound (design note R2), and
+`accepts_forged_mask_final_for_a_false_sum` shows the forgery. A sum of
+univariates cannot be opened as one tensor functional. A row that holds all of
+`g` would reveal it, and with it `f`'s rounds.
+
+Decision:
+- The mask becomes `G = (1 − X_n)·g⁰ + X_n·g¹`, with `deg g^b_n ≤ δ − 1`. It is
+  stored as `2D` limb rows of a version-3 hiding source.
+- The mask source's bytes are absorbed (`FieldSources`) before `G`. Its
+  certificate keeps A2's rank check.
+- One A9 opening at `G(ρ)` with zero mask-row weight is admitted for this source
+  only (`PreparedSource::hiding_mask`). Its row `(1 − ρ_n)g⁰ + ρ_n g¹` is
+  covered by Lemma 5, and the producer aborts when `ρ_n ∈ {0, 1/2}`.
+- `stele_reductions::zk` is the only admitted consumer of the raw masked module,
+  enforced by the quarantine check.
+- No new label: `FieldSources` already means "bind the source bundle before an
+  A1 sumcheck" (RFC-0010 A9 §5).
+- Independent-review fixes:
+  - Seed reuse across proofs leaks the witness rounds. `zk::prove` takes a
+    move-only `Seed` that one proof consumes, and both constructors carry
+    `# Security` notes.
+  - No CSPRNG dependency is added: the caller supplies entropy. `getrandom`
+    stays an option for a future std prover entry point.
+  - The PCS refuses any mask-source opening outside A3's two-block shape.
+  - The quarantine check also covers `hiding_mask`.
+
+Status: Accepted (owner authorisation; two same-author passes in
+agents/reviews/rfc0013-a3-acceptance.md; independent review requested).
+
+## ADR-098: Masked claims, dev-zk relation forms and ZK-GKR lookups (RFC-0013 A5, RFC-0026 A9, RFC-0008 A7, task E12-17)
+
+Numbered after ADR-096 (main) and ADR-097.
+
+Context: with A2/A4, sumchecks and sources are simulatable from their final and
+opened values, but those values still reveal the witness (design-note R1). The
+research note (formal/zk-claims.md) and its exact small-field checks gave a
+construction with no leak found.
+
+Decision:
+- Each masked occurrence of a committed column gets its own claim-mask block,
+  on domain coordinates, with a vanishing factor on a summed variable.
+- Matmul becomes a zero-sum with `out` broadcast, so `out~(ρ)` is never sent.
+- Small domains are padded.
+- Lookups keep A5's GKR trees, masked layer by layer (ZK-GKR, RFC-0008 A7).
+  A first draft committed fraction columns instead. The census comparison
+  (formal/zk-gkr.md) put it about 780 times larger.
+- One shared mask source per proof holds every masked sumcheck's mask and
+  every layer block, with one batched opening, in place of one A4 source per
+  instance.
+- Each source batches its claims with a weight that is zero on the mask rows,
+  then makes one A2 opening.
+- Every rank condition is a producer abort.
+- dev-zk is profile byte 1: defined, not admitted until implemented, controlled
+  and independently reviewed.
+- Relation to ADR-096 (Draft direction): RFC-0013 A5 is the development-tier
+  form of A3's candidate A items 4 and 6. Under RFC-0028's commit rule, claims on
+  virtual columns take RFC-0008 A7's per-layer masks. E23-01 can start from this
+  stack, as its acceptance text says for E12-11..E12-13.
+- E12-14 (end-to-end dev-zk) stays the development-tier deliverable that E23-01
+  and E23-02 start from. It is not folded into them. Both now depend on E12-14 in
+  graph.yaml; their acceptance lines are unchanged.
+- Costs are recorded as a projection: about 4 times the commitment on the
+  eight-layer synthetic window, against about 20 times for committed fractions.
+  No constant moves.
+
+Status: Accepted (owner authorisation; two same-author passes in
+agents/reviews/rfc0013-a5-acceptance.md; independent review requested).
+
+## ADR-102: No development-profile GPU backend at the current stage shares (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
 
 Context: task E16-21 gates a development-profile GPU backend (tasks E16-21a..e) on a
 projected stories42M T = 64 prove-time gain of at least 3x, once dense and zerocheck

@@ -477,6 +477,8 @@ def field_sources(root):
                'src/development.rs', 'src/development/row.rs', 'src/development/projection.rs',
                'src/development/attention.rs', 'src/development/attention/tests.rs',
                'src/development/tests.rs',
+               # RFC-0013 A4: the bound masked A1 sumcheck and its tests.
+               'src/zk.rs', 'tests/zk.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
                'src/development/embedding.rs', 'src/development/rmsnorm.rs', 'src/development/limbs.rs',
                'src/development/norm_embedding_tests.rs', 'tests/dev_modules.rs',
@@ -518,7 +520,7 @@ def field_sources(root):
                'extern crate alloc;\n'
                '// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.\n'
                'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};\n'
-               'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\n'
+               'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\npub mod zk;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -834,18 +836,20 @@ def field_source_codec(root):
                'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
-               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs'}
+               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs',
+               'src/hiding.rs', 'tests/hiding.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional Circle and v2 field sources, certificates and functional openings,\n'
-               '//! RFC-0010 A3/A6/A9/A10.\n'
+               '//! RFC-0010 A3/A6/A9/A10/A15, with RFC-0013 A2 hiding sources.\n'
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
+               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod hiding;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
                'pub use certificate::{\n'
                '    verify_certificate, verify_certificate_measured, CertificateRecord, Failure, Usage,\n'
                '    VerifiedCertificate,\n};\n'
                'pub use expansion::{expand, Embedding, Value};\n'
+               'pub use hiding::hiding_message;\n'
                'pub use opening::{\n'
                '    verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,\n'
                '    OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
@@ -868,7 +872,8 @@ def field_source_codec(root):
     expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('field', 'setup_term'), ('struct', 'Source'),
-        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_bytes'), ('fn', 'bytes'),
+        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'is_hiding'),
+        ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
         ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code_id'), ('fn', 'codeword_len'), ('fn', 'root'), ('fn', 'path_height'),
         ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'), ('fn', 'opening_frame_size'),
         ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
@@ -889,7 +894,7 @@ def field_source_codec(root):
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
                        'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,'
-                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,Capacity,'),
+                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,MaskRank,MaskBudget,Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
@@ -900,15 +905,17 @@ def field_source_codec(root):
         ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'source'), ('fn', 'message'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'hiding_mask'),
+        ('fn', 'source'), ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
-        and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
+        and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
             == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
             'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
             'usecore::sync::atomic::{AtomicUsize,Ordering};',
             'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
+            'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
@@ -1562,7 +1569,7 @@ def controls_layout(root):
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
@@ -1654,6 +1661,30 @@ def docs_links(root):
     print(f'gate docs-links: checked {count} local file targets')
 
 
+def masked_sumcheck_quarantine(root):
+    """RFC-0013 A2 item 2 is unbound; only the A4 consumer (stele_reductions::zk) may use it."""
+    allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
+               'crates/stele-sumcheck/tests/masked.rs', 'tests/negative-controls/src/zk.rs',
+               # RFC-0013 A4: the only admitted consumer binds the mask by a hiding source.
+               'crates/stele-reductions/src/zk.rs'}
+    pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   for path in (root / directory).rglob('*.rs')
+                   if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
+    if found:
+        raise ValueError(f'masked sumcheck used outside its tests and controls: {found}')
+    # RFC-0013 A4: the mask-source constructor belongs to its one consumer.
+    mask_allowed = {'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/hiding.rs',
+                    'crates/stele-reductions/src/zk.rs'}
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   for path in (root / directory).rglob('*.rs')
+                   if re.search(r'\bhiding_mask\b', path.read_text())
+                   and str(path.relative_to(root)) not in mask_allowed)
+    if found:
+        raise ValueError(f'mask source constructed outside the A4 consumer: {found}')
+    print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A4 consumer')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('gate', choices=(*OWNERS, 'native', 'rfc-status', 'docs-links'))
@@ -1680,6 +1711,7 @@ def main():
             if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
+                masked_sumcheck_quarantine(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)
                 small_strategy(ROOT)

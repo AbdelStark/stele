@@ -2457,6 +2457,164 @@ tasks:
   acceptance:
   - measured prove/verify time, peak RSS and proof bytes for the synthetic 8-layer model and stories42M against the E16-18 entries
   - RFC-0026 amendment only if the measured encoding cost is accepted; projected 18.3 MB proof bytes confirmed or refuted
+- id: E12-10
+  epic: E12
+  title: Zero-knowledge design note for the development path (gap analysis, hiding sources, masked sumcheck)
+  depends:
+  - E16-10
+  rfc:
+  - RFC-0013 A1
+  - RFC-0010 A7
+  - RFC-0026 §1.2
+  skill: soundness-auditor
+  crate: formal
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-10-zk-design
+  acceptance:
+  - formal/zk-development.md gives the gap analysis against RFC-0026 and FlashProve, the chosen construction, proofs of its component lemmas and the exact remaining list
+  - rank evidence for the Circle mask half and the systematic-expander counterexample as stele-code tests
+  - two same-author review passes recorded; no RFC, label, ledger or wire change
+- id: E12-11
+  epic: E12
+  title: RFC-0013 A2 conditional hiding sources and masked A1 sumcheck (with RFC-0010 A15, RFC-0012 A18)
+  depends:
+  - E12-10
+  rfc:
+  - RFC-0013 A1
+  - RFC-0013 A2
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-11-rfc0013-a2
+  acceptance:
+  - normative bytes, labels, order, query budget, rank check, privacy statement and lifetime for the two components
+  - two same-author adversarial passes recorded; index, ADR, glossary, tasks and NC-0902..0905 reservations updated
+  - RFC-0013 A1 stays Draft with the design note's R1-R13 as its remaining list
+- id: E12-12
+  epic: E12
+  title: Hiding Circle source with salted leaves (version 3)
+  depends:
+  - E12-11
+  rfc:
+  - RFC-0013 A2 §1
+  - RFC-0010 A15
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-12-hiding-source
+  acceptance:
+  - version-3 source bytes and admission; salted payloads authenticated and decoded after the salt by the actual certificate and opening verifiers
+  - prover layout, seed-derived masks and salts, and the public rank check with MaskRank abort
+  - tests that proofs verify and that opened columns and rows are masked; NC-0902 and NC-0903 executed
+- id: E12-13
+  epic: E12
+  title: Masked A1 sumcheck with the RFC-0012 A18 labels
+  depends:
+  - E12-11
+  rfc:
+  - RFC-0013 A2 §2
+  - RFC-0012 A18
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck+stele-hash
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-13-masked-sumcheck
+  acceptance:
+  - labels registered in stele-hash and docs/security/transcript-labels.json
+  - prover and verifier with the mask obligation returned undischarged; masked zerocheck in A1 form tested
+  - tests that proofs verify and that the round messages are masked; NC-0904 and NC-0905 executed
+- id: E12-15
+  epic: E12
+  title: Bind the masked sumcheck's mask by a hiding source (RFC-0013 A4, closes R2)
+  depends:
+  - E12-13
+  rfc:
+  - RFC-0013 A4
+  skill: soundness-auditor
+  crate: stele-sumcheck+stele-pcs+stele-reductions
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-15-mask-binding
+  acceptance:
+  - two-block mask, mask source, order and opening exactly as RFC-0013 A4; the A2 forgery rejected by the actual verifier
+  - Lemma 5 written in formal/zk-development.md §4.3 with statistical evidence for the rounds and the opening row
+  - NC-0907 and NC-0908 executed; the quarantine admits only stele_reductions::zk
+- id: E12-16
+  epic: E12
+  title: Masked claims and composition research note (design note R1)
+  depends:
+  - E12-15
+  rfc:
+  - RFC-0013 A1
+  - RFC-0026 §3-4
+  skill: soundness-auditor
+  crate: formal
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-16-zk-claims
+  acceptance:
+  - formal/zk-claims.md gives the construction, the hybrid simulator argument, the entropy budget under the M31 limit and the exact remaining list
+  - Lemma 6 proved; Lemma 7 and the executable small-field check listed as the gate before any implementation
+- id: E12-17
+  epic: E12
+  title: RFC-0013 A5 masked claims and dev-zk composition (with RFC-0026 A9, RFC-0008 A7)
+  depends:
+  - E12-16
+  rfc:
+  - RFC-0013 A5
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-17-rfc0013-a4
+  acceptance:
+  - normative claim masks, relation forms, padding, batching, order, aborts, profile byte and NC-0909..0915 reservations
+  - RFC-0008 A7 completed with its carry-over argument, labels, zero-denominator rule, costs and controls
+  - census on the one- and eight-layer windows and a labelled cost projection; two same-author passes recorded
+- id: E12-18
+  epic: E12
+  title: Masked claims and matmul zero-sum in the engine (RFC-0013 A5 items 1-5)
+  depends:
+  - E12-17
+  rfc:
+  - RFC-0013 A5
+  - RFC-0026 A9
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck+stele-reductions
+  status: ready
+  acceptance:
+  - V-dot occurrences, padding, matmul zero-sum and per-source batching as A5; claim-block rank abort
+  - tests that proofs verify and claims are masked; NC-0909, NC-0910, NC-0911, NC-0915
+- id: E12-19
+  epic: E12
+  title: Committed-fraction lookups (RFC-0008 A7)
+  depends:
+  - E12-18
+  rfc:
+  - RFC-0008 A7
+  skill: gkr-reduction-author
+  crate: stele-lookup+stele-reductions
+  status: ready
+  acceptance:
+  - fraction sources, zerochecks and sum as A7 with the zero-denominator abort; NC-0913 and NC-0914
+- id: E12-14
+  epic: E12
+  title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
+  depends:
+  - E12-12
+  - E12-19
+  rfc:
+  - RFC-0013 A1
+  - RFC-0013 A5
+  skill: soundness-auditor
+  crate: stele-reductions+stele-prover
+  status: ready
+  acceptance:
+  - end-to-end dev-zk prove/verify on the one- and eight-layer synthetic windows under RFC-0013 A5, with privacy tests
+  - NC-0912 and NC-0909..0915 executed; profile byte admitted only after independent review
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
@@ -3863,6 +4021,7 @@ tasks:
   title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier
   depends:
   - E19-03
+  - E12-14
   rfc:
   - RFC-0013 A3
   - RFC-0013 A1
@@ -3880,6 +4039,7 @@ tasks:
   depends:
   - E23-01
   - E19-06
+  - E12-14
   rfc:
   - RFC-0013 A3
   skill: zk-engineer
@@ -3941,7 +4101,7 @@ tasks:
   acceptance:
   - device-resident dense sumcheck rounds measured on a rented RTX 4090 at the 8-layer and stories42M relation sizes, transfers included
   - projected stories42M prove-time gain reported; the full backend proceeds only at >= 3x
-  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-097, NO-GO)
+  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-102, NO-GO)
 - id: E16-21a
   epic: E16
   title: Development-profile GPU backend infrastructure (backend trait, op table, parity harness)

@@ -127,6 +127,20 @@
 | NC-0806 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce with a nonce that fails the PoW predicate, every other byte unchanged | `GrindMismatch` | todo |
 | NC-0807 | transcript/grinding | 0012 A17, 0010 A14 | prove a Policy 2 source with k_q−1 grinding bits and offer it under the expected k_q context | `GrindMismatch` | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
+| NC-0902 | ZK hiding source | 0013 A2, 0010 A15 | change one salt byte of one certificate or opening response | `RootMismatch` | done |
+| NC-0903 | ZK hiding source | 0013 A2, 0010 A15 | version-3 context with R < 2D, or with q_c + q_o > C − 1 | `UnsupportedSource` | done |
+| NC-0904 | ZK masked sumcheck | 0013 A2, 0012 A18 | change the mask sum G in an honest proof; the running claim moves by α·ΔG and the first round check fails | `RoundSumMismatch` | done |
+| NC-0905 | ZK masked sumcheck | 0013 A2 | change the mask final μ | `FinalEvaluationMismatch` | done |
+| NC-0906 | ZK hiding source | 0013 A2 | prover-side refusal: open one hiding source a second time, through a point opening or a retained row | `MaskBudget` | done |
+| NC-0907 | ZK bound mask | 0013 A4 | substitute another seed's mask source and certificate in an honest bound proof | `RoundSumMismatch` | done |
+| NC-0908 | ZK bound mask | 0013 A4 | false claimed sum, free rounds and μ solved last, with a genuine mask source, certificate and opening | `ValueMismatch` | done |
+| NC-0909 | dev-zk claim | 0013 A5 | one masked claim value changed in an honest proof | `RoundSumMismatch` | todo |
+| NC-0910 | dev-zk matmul | 0013 A5, 0026 A9 | a matmul claimed through a sent out~(ρ) instead of the zero-sum | `ProofShape` | todo |
+| NC-0911 | dev-zk claim | 0013 A5 | one claim-mask block of a source changed after its commitment | `RootMismatch` | todo |
+| NC-0912 | dev-zk profile | 0013 A5, 0026 A9 | profile byte flipped between development and dev-zk | `StatementMismatch` | todo |
+| NC-0913 | dev-zk fraction | 0008 A7 | one masked layer value changed | `RoundSumMismatch` | todo |
+| NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment | `RootMismatch` | todo |
+| NC-0915 | dev-zk claim | 0013 A5 | batch weight on the w = 1 half made nonzero | `FinalEvaluationMismatch` | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
@@ -161,6 +175,12 @@ earn no control credit.
 
 RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
+
+RFC-0013 A2 reserves NC-0902..0906 for E12-12 and E12-13, A4 NC-0907..0908 for E12-15,
+and A5 NC-0909..0915 for E12-18, E12-19 and E12-14. NC-0902..0905 run through
+the actual hiding-source or masked-sumcheck verifier. NC-0906 is a producer refusal,
+not a verifier binding: a second opening reveals a third row combination, so the
+producer must refuse it. A reservation adds no coverage.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit.

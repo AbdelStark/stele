@@ -448,3 +448,64 @@ committed source whose root is absorbed before every lookup challenge (RFC-0026
 - Multiplicity sources are opened exactly as A5 specifies.
 - Virtual (uncommitted) tuple columns remain not admitted.
 - Cost-model terms: none. Affected tasks: E16-02.
+
+### A7 — Zero-knowledge GKR over the A5 trees, for the dev-zk profile
+
+Status: Accepted, conditional scope only: the dev-zk profile of RFC-0013 A5.
+Question Q29. Task E12-17. Evidence:
+[ZK-GKR note](../../formal/zk-gkr.md) (construction, soundness, privacy, and the
+census cost comparison with committed fraction columns) and
+`research/zk-claims/check_gkr.py`. Companion of RFC-0013 A5. Review:
+[RFC-0013 A5 acceptance](../../agents/reviews/rfc0013-a5-acceptance.md).
+
+Motivation: A3/A5 prove the A5 identity with GKR fraction trees whose layers
+are not committed, so every layer claim and the roots are revealed values. A
+first draft of A7 committed whole fraction columns instead, at about
+`3.3·10^8` M31 entries on the eight-layer window. Masking the existing trees
+costs about `4.2·10^5` (formal/zk-gkr.md §3). A7 keeps A5's statement and trees
+and masks them.
+
+Proposed text, for the dev-zk profile only; A5 is unchanged for every other use:
+
+1. **Statement and order.** A5's grouped-unit identity, units, multiplicity
+   limbs, `θ, β, α` and error `e`, in A5's order, one statement per check
+   (RFC-0026 A3). Domains are padded per RFC-0026 A9. Multiplicities scale with
+   the padding, and the plan checks `B·2^pad < p`.
+2. **One fraction sum.** The lookup and table trees of a check are combined
+   into one fraction tree, with the table numerators negated. Its sum must be
+   zero. No root is revealed.
+3. **Committed top.** Layer `k0 = c_D + 1` is committed after `α`, as hiding
+   columns `p`, `q` and `h = p/q`. The root is absorbed with RFC-0012 A16's
+   `relation/roots`. RFC-0013 A5 relations prove `h·q − p = 0` and `Σ h = 0`. A
+   zero `q` entry at the top aborts the producer (`DenominatorZero`). Below the
+   top, a zero denominator is A5's existing nonzero-root rule.
+4. **Masked layers.** For every layer below `k0` and each of `p, q`:
+   - a `4D`-entry mask block on coordinates `(T, u)` in the proof's shared
+     mask source (RFC-0013 A5 item 5a);
+   - masked values `V̇ = Ṽ + κ(X_v)·r̃(T, X_u)`;
+   - one A1 sumcheck per step over a selector bit and the layer variables,
+     whose `s = 1` half is `κ·eq(u, y)·r̃(t*, y)`, masked by the shared source.
+
+   Its finals are four masked layer values and one block claim. The existing
+   A3 fold challenge `λ` and line challenge combine them (`FractionGamma`,
+   `FractionFold`). The producer aborts if a block's three revealed functionals
+   have M31 rank `< 3D`.
+5. **Leaves.** The last step's finals are RFC-0013 A5 masked claims on tuple
+   columns and multiplicities. Selectors and tables are public.
+6. **Losses.**
+   - A5's `e` per check.
+   - Per masked layer: SC `(k + 1)·3/|K|`, `λ` and line `2/|K|`, MASK `1/|K|`.
+   - The top's A4 identity and sum terms.
+   - The shared source's batch and opening terms (RFC-0013 A5).
+
+   A3's tree terms are replaced by these. No new label.
+7. **Cost (projection).** Eight-layer window, 21 checks, 570 layers: about
+   `1.05·10^5` M31 mask entries, `4.2·10^5` with hiding. The trees are computed
+   as today.
+8. **Controls.** Reserved `todo`:
+   - NC-0913: one masked layer value changed; the next step fails with
+     `RoundSumMismatch`.
+   - NC-0914: one mask-block entry changed after commitment; `RootMismatch`.
+
+Soundness impact: as item 6, for the dev-zk profile only. Affected tasks: E12-19
+(implements A7) and E12-14.
