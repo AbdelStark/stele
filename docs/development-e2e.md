@@ -65,5 +65,23 @@ target/release/stele verify-dev --public /tmp/dev-e2e/public.bin --proof /tmp/de
   the proof: Model, Scales, Preparation, 1-D records, model-commitment roots and
   certificates, and the statement.
 
-The last output line is the verdict, `YES` or `NO: <reason>`. Exit codes are 0 for
-accepted, 1 for rejected and 2 for a usage or I/O error.
+`verify-dev` only shows that the model named in `public.bin` produced the statement
+named in `public.bin`. A prover can write a self-consistent `public.bin` for a model of
+its own choosing. Before trusting a `YES`, compare the lines printed above the verdict
+with values you obtained independently:
+
+- `cqis_id`: the numerical identity of the Model, Scales, Registry and Bounds;
+- `model`: BLAKE3 of `stele/v0.1/dev-e2e/model`, the `cqis_id`, the weight roots and
+  the 1-D records (the norm gains). `prove-dev` prints it for the model it committed;
+- `T`, `tokens`, `checked R..E` and `next`: the window and the claimed greedy tokens.
+
+Pass `--expect-model <64 hex digits>` to reject any other model:
+
+```sh
+target/release/stele verify-dev --public /tmp/dev-e2e/public.bin \
+  --proof /tmp/dev-e2e/proof.bin --expect-model <model hex from a trusted source>
+```
+
+The last line of `verify-dev` is the verdict, `YES` or `NO: <reason>`. `prove-dev` ends
+with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or written,
+1 for rejected and 2 for a usage or I/O error. An option given twice is a usage error.

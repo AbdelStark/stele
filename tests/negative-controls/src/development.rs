@@ -6,10 +6,15 @@
 //! - NC-1300: a checked token `x_{i+1}` that is not the argmax (`RootMismatch`, E2);
 //! - NC-1301: a next token `y` that is not the argmax (`RootMismatch`, E2);
 //! - NC-1304: other weights proven under the expected model commitment (`RootMismatch`);
-//! - NC-1305: one prover-side rounding exponent (`StatementMismatch`);
-//! - NC-1309: a different checked range (`StatementMismatch`).
+//! - NC-1305: one prover-side rounding exponent (`RoundSumMismatch`);
+//! - NC-1309: a different checked range (`RoundSumMismatch`).
+//!
+//! NC-1305 and NC-1309 restamp the container's statement digest with the verifier's own,
+//! so the rejection comes from the engine transcript, not the prover-written header.
+use stele_prover::development::container;
 use stele_prover::development::{
-    artifact_id, prove, prove_tampered, verify, Committed, Error, Public, Statement, Weights,
+    artifact_id, prove, prove_tampered, statement_digest_for, verify, Committed, Error, Public,
+    Statement, Weights,
 };
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{ArtifactLayout, Model, Preparation, Role, Scales};
@@ -34,6 +39,18 @@ fn span(key: &str) -> Result<&'static [u8], String> {
         .collect::<Result<_, _>>()?;
     RAW.get(numbers[0]..numbers[0] + numbers[1])
         .ok_or_else(|| "fixture span".into())
+}
+
+/// Verify `proof` with its prover-written statement digest replaced by the verifier's
+/// own, so the rejection must come from the engine's transcript, not the header.
+fn restamped(
+    public: &Public,
+    statement: &Statement,
+    proof: &[u8],
+) -> Result<Option<Error>, String> {
+    let mut c = container::decode(proof).map_err(|e| format!("{e:?}"))?;
+    c.statement = statement_digest_for(public, statement).map_err(|e| format!("{e:?}"))?;
+    Ok(verify(public, statement, &c.encode()).err())
 }
 
 fn name(error: &Error) -> String {
@@ -161,17 +178,14 @@ pub fn run(id: u16) -> Result<(), String> {
             if !changed {
                 return Err("no tamper".into());
             }
-            ("StatementMismatch", verify(&public, &honest, &proof).err())
+            ("RoundSumMismatch", restamped(&public, &honest, &proof)?)
         }
         1309 => {
             let statement = Statement {
                 start: 1,
                 ..honest.clone()
             };
-            (
-                "StatementMismatch",
-                verify(&public, &statement, &proof).err(),
-            )
+            ("RoundSumMismatch", restamped(&public, &statement, &proof)?)
         }
         _ => return Err(format!("unknown development control {id}")),
     };

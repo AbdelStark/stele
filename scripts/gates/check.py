@@ -36,6 +36,52 @@ ARTIFACTS = {
 }
 
 
+# RFC-0026 §1.2/§8 (task E16-10): the development profile claims no profile, so it has
+# no reference digest (E8-06). Its module is admitted by exact surface; the rest of the
+# scaffold stays guarded.
+DEVELOPMENT = {
+    'prover': {
+        'files': ('src/development.rs', 'src/development/plan.rs', 'src/development/bundle.rs',
+                  'tests/development.rs', 'tests/fixtures/synthetic-e2e.bin',
+                  'tests/fixtures/synthetic-e2e.json'),
+        'library': '//! stele-prover — governed by RFC-0007 §4 RFC-0014 §4 and, for `development`, '
+                   'RFC-0026 §8. No behaviour exists here that is not specified there (INV-1).\n'
+                   '#![forbid(unsafe_code)]\n#![no_std]\n'
+                   '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+                   'extern crate alloc;\npub mod development;\n',
+        'dependencies': {'stele-reductions': {'path': '../stele-reductions'},
+                         'stele-proof': {'path': '../stele-proof'},
+                         'blake3': {'version': '=1.8.7', 'default-features': False}},
+        'dev-dependencies': {'serde_json': '=1.0.154'},
+    },
+    'proof': {
+        'files': ('src/development.rs',),
+        'library': '//! stele-proof — governed by RFC-0016 §1 and, for `development`, RFC-0026 '
+                   '§4.1. No behaviour exists here that is not specified there (INV-1).\n'
+                   '#![forbid(unsafe_code)]\n#![no_std]\n'
+                   '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+                   'extern crate alloc;\npub mod development;\n',
+        'dependencies': {'stele-field': {'path': '../stele-field'}},
+        'dev-dependencies': None,
+    },
+}
+
+
+def development_surface(crate, name, actual, expected):
+    """Strip the admitted RFC-0026 development module; anything else stays guarded."""
+    spec = DEVELOPMENT[name]
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    if ((crate / 'src/lib.rs').read_text() != spec['library']
+            or manifest.get('dependencies') != spec['dependencies']
+            or manifest.get('dev-dependencies') != spec['dev-dependencies']
+            or set(manifest) - {'package', 'dependencies', 'dev-dependencies', 'lints'}):
+        return actual
+    kept = {path: digest for path, digest in actual.items() if path not in spec['files']}
+    kept['src/lib.rs'] = expected['src/lib.rs']
+    kept['Cargo.toml'] = expected['Cargo.toml']
+    return kept
+
+
 def bootstrap_guard(root, gate):
     """An absent implementation may pass; an unvalidated implementation may not."""
     baseline = json.loads((root / 'scripts/gates/bootstrap-sources.json').read_text())
@@ -44,6 +90,8 @@ def bootstrap_guard(root, gate):
         expected = baseline[f'stele-{name}']
         actual = {str(p.relative_to(crate)): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in crate.rglob('*') if p.is_file()}
+        if gate == 'digest' and name in DEVELOPMENT:
+            actual = development_surface(crate, name, actual, expected)
         if actual != expected:
             raise ValueError(f'{gate}: validator not wired for changed {crate.relative_to(root)}; '
                              f'implement the gate with its producer (task {OWNERS[gate]})')

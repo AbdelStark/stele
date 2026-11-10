@@ -102,13 +102,13 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
     catalog::RegisteredControl {
         id: 1305,
         kind: catalog::ControlKind::Proof,
-        expected_error: "StatementMismatch",
+        expected_error: "RoundSumMismatch",
         run: || development::run(1305),
     },
     catalog::RegisteredControl {
         id: 1309,
         kind: catalog::ControlKind::Proof,
-        expected_error: "StatementMismatch",
+        expected_error: "RoundSumMismatch",
         run: || development::run(1309),
     },
     catalog::RegisteredControl {

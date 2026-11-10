@@ -584,7 +584,11 @@ actual E16-10 verifier.
 - **E2 (erratum, task E16-10).** §9 NC-1300 and NC-1301 named
   `FinalEvaluationMismatch`. A false checked token or `y` leaves a margin entry at
   `-1`, outside its unsigned range, and the first failing check is that range's A5
-  root equation, `RootMismatch`, as for NC-1310 (E1). No protocol change.
+  root equation, `RootMismatch`, as for NC-1310 (E1). NC-1305 and NC-1309 named
+  `StatementMismatch`, which is the verifier's fail-fast comparison with a header field
+  the prover writes. The binding is §4 step 1: the transcript absorbs the public input
+  and the relation digest. With the header set to the verifier's own digest, the first
+  failing check is the first zerocheck round, `RoundSumMismatch`. No protocol change.
 
 ### A1 — RoPE pairs through a public-permutation matmul (row 5)
 

@@ -4,7 +4,8 @@
 use std::time::Instant;
 use stele_proof::development as container;
 use stele_prover::development::{
-    bundle, prove, verify, Committed, Error, Public, Statement, Weights,
+    bundle, model_identity, prove, public_input, statement_digest_for, verify, Committed, Error,
+    Public, Statement, Weights,
 };
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{Model, Preparation, Scales};
@@ -182,31 +183,71 @@ fn rejects_statement_and_container_tampers() {
         Ok((public.clone(), statement.clone()))
     );
 
-    let mismatch = |s: &Statement| verify(&public, s, &proof);
+    // Each statement tamper fails fast at the prover-written header digest and, with
+    // the header restamped to the verifier's own digest, in the engine: the binding is
+    // the transcript (RFC-0026 §4 step 1), not the header.
+    let rejects = |p: &Public, s: &Statement| {
+        assert_eq!(verify(p, s, &proof).err(), Some(Error::StatementMismatch));
+        let mut c = container::decode(&proof).expect("container");
+        c.statement = statement_digest_for(p, s).expect("digest");
+        let error = verify(p, s, &c.encode()).expect_err("restamped tamper");
+        assert!(matches!(error, Error::Engine(_)), "{error:?}");
+    };
     // NC-1309: change [r, e).
     let range = Statement {
         start: 1,
         ..statement.clone()
     };
-    assert_eq!(mismatch(&range).err(), Some(Error::StatementMismatch));
+    rejects(&public, &range);
     // A different next token, and a different checked token, under the honest proof.
     let next = Statement {
         next: statement.next.map(|y| y ^ 1),
         ..statement.clone()
     };
-    assert_eq!(mismatch(&next).err(), Some(Error::StatementMismatch));
+    rejects(&public, &next);
     let mut tokens = statement.clone();
     tokens.tokens[2] ^= 1;
-    assert_eq!(mismatch(&tokens).err(), Some(Error::StatementMismatch));
+    rejects(&public, &tokens);
     // A tampered weight commitment root (a different model commitment).
     let mut other = public.clone();
     other.commitment[1].0[0] ^= 1;
     assert!(verify(&other, &statement, &proof).is_err());
-    // A tampered public gain (RFC-0026 A2).
+    // A tampered public gain (RFC-0026 A2): absorbed in the first transcript frame.
     let mut gain = public.clone();
     gain.vectors[0].1[0] ^= 1;
+    assert_ne!(
+        public_input(&gain, &[0; 32], &statement),
+        public_input(&public, &[0; 32], &statement)
+    );
+    rejects(&gain, &statement);
+    // The model identity a verifier compares with trusted values moves with a gain or root.
+    let identity = model_identity(&public).expect("identity");
+    assert_ne!(model_identity(&gain).expect("identity").1, identity.1);
+    let mut root = public.clone();
+    root.commitment[0].0[0] ^= 1;
+    assert_ne!(model_identity(&root).expect("identity").1, identity.1);
+    // Not exactly the Model's 1-D records: one dropped, one lengthened.
+    let mut short = public.clone();
+    short.vectors.pop();
     assert_eq!(
-        verify(&gain, &statement, &proof).err(),
+        verify(&short, &statement, &proof).err(),
+        Some(Error::StatementMismatch)
+    );
+    let mut long = public.clone();
+    long.vectors[0].1.push(0);
+    assert_eq!(
+        verify(&long, &statement, &proof).err(),
+        Some(Error::StatementMismatch)
+    );
+    // T beyond the Model's context.
+    let wide = Statement {
+        tokens: vec![1; 32],
+        start: 0,
+        end: 32,
+        next: Some(1),
+    };
+    assert_eq!(
+        verify(&public, &wide, &proof).err(),
         Some(Error::StatementMismatch)
     );
 

@@ -11,7 +11,9 @@
 //! Public inputs (RFC-0026 §1.1 as amended by A2) are encoded by [`public_input`].
 use alloc::string::String;
 use alloc::vec::Vec;
-use stele_proof::development::{self as container, Container};
+/// The `stele-dev-e2e-v1` codec (RFC-0026 §4.1), re-exported for verifier callers.
+pub use stele_proof::development as container;
+use stele_proof::development::Container;
 use stele_reductions::relation::{self, Ledger, Proof};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{
@@ -66,9 +68,11 @@ pub struct Statement {
 }
 
 impl Statement {
-    fn validate(&self, vocabulary: u32) -> Result<(), Error> {
+    /// `T` is a power of two within the Model's context (RFC-0025 §2.6).
+    fn validate(&self, vocabulary: u32, context: u32) -> Result<(), Error> {
         let t = self.tokens.len();
         let ok = t.is_power_of_two()
+            && t <= context as usize
             && self.start < self.end
             && self.end as usize <= t
             && (self.end as usize == t) == self.next.is_some()
@@ -105,6 +109,28 @@ fn decode(public: &Public) -> Result<Decoded, Error> {
     let scales = Scales::decode(&model, &public.scales).map_err(|_| Error::StatementMismatch)?;
     stele_reductions::stele_cqis::model::Preparation::decode(&model, &public.preparation)
         .map_err(|_| Error::StatementMismatch)?;
+    // RFC-0026 A2: exactly the Model's 1-D records, in record order, at their lengths.
+    let shape = model.shape();
+    let records: Vec<(u16, usize)> = (0..shape.record_count())
+        .filter_map(|i| shape.physical(i))
+        .filter(|p| p.dimensions().len() == 1)
+        .map(|p| (p.ordinal(), p.dimensions()[0] as usize))
+        .collect();
+    let canonical = records.len() == public.vectors.len()
+        && records
+            .iter()
+            .zip(&public.vectors)
+            .all(|(&(o, n), (ordinal, codes))| {
+                let bits = model.formats()[usize::from(o)].bits();
+                o == *ordinal
+                    && n == codes.len()
+                    && codes
+                        .iter()
+                        .all(|&c| bits >= 16 || matches!(i32::from(c) >> (bits - 1), -1 | 0))
+            });
+    if !canonical {
+        return Err(Error::StatementMismatch);
+    }
     let registry = Registry::new(&model).map_err(|_| Error::UnsupportedModel)?;
     let bounds = Bounds::new(&model, &scales, &registry).map_err(|_| Error::UnsupportedModel)?;
     let cqis_id = NumericalIdentity::new(&model, &scales, &registry, &bounds)
@@ -190,7 +216,8 @@ pub fn weight_roles(model: &Model) -> Vec<(Role, Option<u16>)> {
 
 /// Declare the window and check the RFC-0026 §2.2 plan obligation.
 fn layout(d: &Decoded, public: &Public, statement: &Statement) -> Result<Layout, Error> {
-    statement.validate(d.model.shape().vocabulary())?;
+    let shape = d.model.shape();
+    statement.validate(shape.vocabulary(), shape.context())?;
     let plan = PlanData {
         model: &d.model,
         scales: &d.scales,
@@ -227,8 +254,20 @@ impl Weights {
         for r in layout.records() {
             let start = usize::try_from(r.payload_offset()).map_err(|_| Error::Witness)?;
             let len = usize::try_from(r.payload_length()).map_err(|_| Error::Witness)?;
-            let raw = artifact.get(start..start + len).ok_or(Error::Witness)?;
-            let codes: Vec<i16> = (0..r.elements() as usize)
+            let raw = artifact
+                .get(start..start.checked_add(len).ok_or(Error::Witness)?)
+                .ok_or(Error::Witness)?;
+            let elements = usize::try_from(r.elements()).map_err(|_| Error::Witness)?;
+            // Bytes the codes need: 2, 1 or 1/2 per element.
+            let need = match r.bits() {
+                16 => elements.checked_mul(2),
+                8 => Some(elements),
+                _ => Some(elements.div_ceil(2)),
+            };
+            if need.is_none_or(|n| raw.len() < n) {
+                return Err(Error::Witness);
+            }
+            let codes: Vec<i16> = (0..elements)
                 .map(|i| match r.bits() {
                     16 => i16::from_le_bytes([raw[2 * i], raw[2 * i + 1]]),
                     8 => i16::from(raw[i] as i8),
@@ -436,6 +475,45 @@ fn prove_inner(
     Ok(sections(proof, d.cqis_id, digest).encode())
 }
 
+/// The statement digest the verifier derives for `(public, statement)`, the value an
+/// honest container carries. Controls use it to restamp a container so that a tamper
+/// must be rejected by the engine, not by this prover-written header field.
+pub fn statement_digest_for(public: &Public, statement: &Statement) -> Result<[u8; 32], Error> {
+    let d = decode(public)?;
+    let layout = layout(&d, public, statement)?;
+    let input = public_input(public, &d.cqis_id, statement);
+    Ok(statement_digest(
+        &input,
+        &relation::digest(&layout.relation),
+    ))
+}
+
+/// What a verifier must compare with trusted values, since a self-consistent
+/// [`Public`] proves only that some model ran: the `cqis_id` and the model digest,
+/// BLAKE3 of `stele/v0.1/dev-e2e/model`, `cqis_id`, the weight roots in plan order and
+/// the 1-D records (ordinal, length, int16 codes) in record order.
+pub fn model_identity(public: &Public) -> Result<([u8; 32], [u8; 32]), Error> {
+    let d = decode(public)?;
+    let mut h = blake3::Hasher::new();
+    h.update(MODEL_TAG);
+    h.update(&d.cqis_id);
+    h.update(&(public.commitment.len() as u32).to_le_bytes());
+    for (root, _) in &public.commitment {
+        h.update(root);
+    }
+    h.update(&(public.vectors.len() as u32).to_le_bytes());
+    for (ordinal, codes) in &public.vectors {
+        h.update(&ordinal.to_le_bytes());
+        h.update(&(codes.len() as u32).to_le_bytes());
+        for c in codes {
+            h.update(&c.to_le_bytes());
+        }
+    }
+    Ok((d.cqis_id, *h.finalize().as_bytes()))
+}
+
+const MODEL_TAG: &[u8] = b"stele/v0.1/dev-e2e/model";
+
 /// Verify one window (RFC-0026 §8) and return its ledger.
 pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Ledger, Error> {
     let c = container::decode(proof).map_err(Error::Container)?;
@@ -449,6 +527,8 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
         .validate()
         .map_err(|_| Error::StatementMismatch)?;
     let input = public_input(public, &d.cqis_id, statement);
+    // Fail fast only: the prover writes both header fields. The binding is the
+    // transcript, which absorbs `input` and the relation digest (RFC-0026 §4 step 1).
     if c.statement != statement_digest(&input, &relation::digest(&layout.relation)) {
         return Err(Error::StatementMismatch);
     }

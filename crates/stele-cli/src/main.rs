@@ -3,17 +3,21 @@
 //! ```text
 //! stele prove-dev --model M --preparation P --scales S --artifact A --tokens 1,2,3,4 [--length T]
 //!                 [--checked R..E] [--next Y] --public OUT --proof OUT
-//! stele verify-dev --public FILE --proof FILE
+//! stele verify-dev --public FILE --proof FILE [--expect-model HEX]
 //! ```
-//! The last line of output is the verdict: `YES`, or `NO: <reason>`.
-//! Exit codes: 0 accepted (or proof written), 1 rejected, 2 usage or I/O error.
+//! A proof shows only that the model `public.bin` names ran on the statement it names.
+//! `verify-dev` therefore prints the `cqis_id`, the model digest, `T`, the tokens,
+//! `[r, e)` and `y` before its verdict; compare them with trusted values, or pass
+//! `--expect-model`. The verdict is the last line: `YES`, or `NO: <reason>`.
+//! `prove-dev` ends with `PROOF WRITTEN`, which is not a verdict.
+//! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.
 use std::collections::BTreeMap;
 use std::process::ExitCode;
-use stele_prover::development::{bundle, prove_window, verify, Statement};
+use stele_prover::development::{bundle, model_identity, prove_window, verify, Public, Statement};
 
 const USAGE: &str = "usage: stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT | \
-stele verify-dev --public FILE --proof FILE";
+stele verify-dev --public FILE --proof FILE [--expect-model HEX]";
 
 enum Failure {
     Usage(String),
@@ -24,17 +28,27 @@ fn usage(reason: impl Into<String>) -> Failure {
     Failure::Usage(reason.into())
 }
 
-fn options(args: &[String]) -> Result<BTreeMap<&str, &str>, Failure> {
+fn reject(reason: impl core::fmt::Debug) -> Failure {
+    Failure::Reject(format!("{reason:?}"))
+}
+
+fn options<'a>(
+    args: &'a [String],
+    allowed: &[&str],
+) -> Result<BTreeMap<&'a str, &'a str>, Failure> {
     let mut out = BTreeMap::new();
     let mut it = args.iter();
     while let Some(key) = it.next() {
         let name = key
             .strip_prefix("--")
+            .filter(|n| allowed.contains(n))
             .ok_or_else(|| usage(format!("unexpected argument {key}")))?;
         let value = it
             .next()
             .ok_or_else(|| usage(format!("--{name} needs a value")))?;
-        out.insert(name, value.as_str());
+        if out.insert(name, value.as_str()).is_some() {
+            return Err(usage(format!("--{name} given twice")));
+        }
     }
     Ok(out)
 }
@@ -53,6 +67,26 @@ fn number(s: &str) -> Result<u32, Failure> {
     s.trim()
         .parse()
         .map_err(|_| usage(format!("not a number: {s}")))
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// The statement lines a user compares with trusted values; returns the model digest.
+fn identity(public: &Public, statement: &Statement) -> Result<[u8; 32], Failure> {
+    let (cqis_id, model) = model_identity(public).map_err(reject)?;
+    println!("cqis_id {}", hex(&cqis_id));
+    println!("model {}", hex(&model));
+    println!("T {}", statement.tokens.len());
+    let tokens: Vec<String> = statement.tokens.iter().map(u32::to_string).collect();
+    println!("tokens {}", tokens.join(","));
+    println!("checked {}..{}", statement.start, statement.end);
+    match statement.next {
+        Some(y) => println!("next {y}"),
+        None => println!("next none"),
+    }
+    Ok(model)
 }
 
 fn prove_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
@@ -84,39 +118,70 @@ fn prove_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
         statement,
         o.get("length").map(|t| number(t)).transpose()?.unwrap_or(0) as usize,
     )
-    .map_err(|e| Failure::Reject(format!("{e:?}")))?;
+    .map_err(reject)?;
     let write = |key: &str, bytes: &[u8]| -> Result<(), Failure> {
         let path = get(o, key)?;
         std::fs::write(path, bytes).map_err(|e| usage(format!("write {path}: {e}")))
     };
     write("public", &bundle::encode(&public, &statement))?;
     write("proof", &proof)?;
-    Ok(format!(
-        "proof {} bytes; next token {:?}",
-        proof.len(),
-        statement.next
-    ))
+    identity(&public, &statement)?;
+    println!("proof {} bytes", proof.len());
+    Ok("PROOF WRITTEN".into())
 }
 
 fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
-    let (public, statement) =
-        bundle::decode(&read(get(o, "public")?)?).map_err(|e| Failure::Reject(format!("{e:?}")))?;
-    let ledger = verify(&public, &statement, &read(get(o, "proof")?)?)
-        .map_err(|e| Failure::Reject(format!("{e:?}")))?;
-    Ok(format!("{ledger}"))
+    let expected = o
+        .get("expect-model")
+        .map(|h| {
+            let bytes: Option<Vec<u8>> = (0..h.len())
+                .step_by(2)
+                .map(|i| h.get(i..i + 2).and_then(|b| u8::from_str_radix(b, 16).ok()))
+                .collect();
+            bytes
+                .filter(|b| b.len() == 32)
+                .ok_or_else(|| usage("--expect-model is 64 hex digits"))
+        })
+        .transpose()?;
+    let (public, statement) = bundle::decode(&read(get(o, "public")?)?).map_err(reject)?;
+    let proof = read(get(o, "proof")?)?;
+    let model = identity(&public, &statement)?;
+    if expected.is_some_and(|e| e != model) {
+        return Err(Failure::Reject("model differs from --expect-model".into()));
+    }
+    let ledger = verify(&public, &statement, &proof).map_err(reject)?;
+    println!("{ledger}");
+    Ok("YES".into())
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    let rest = args.get(1..).unwrap_or_default();
     let result = match args.first().map(String::as_str) {
-        Some("prove-dev") => options(&args[1..]).and_then(|o| prove_dev(&o)),
-        Some("verify-dev") => options(&args[1..]).and_then(|o| verify_dev(&o)),
+        Some("prove-dev") => options(
+            rest,
+            &[
+                "model",
+                "preparation",
+                "scales",
+                "artifact",
+                "tokens",
+                "length",
+                "checked",
+                "next",
+                "public",
+                "proof",
+            ],
+        )
+        .and_then(|o| prove_dev(&o)),
+        Some("verify-dev") => {
+            options(rest, &["public", "proof", "expect-model"]).and_then(|o| verify_dev(&o))
+        }
         _ => Err(usage(USAGE)),
     };
     match result {
-        Ok(report) => {
-            println!("{report}");
-            println!("YES");
+        Ok(last) => {
+            println!("{last}");
             ExitCode::SUCCESS
         }
         Err(Failure::Reject(reason)) => {
