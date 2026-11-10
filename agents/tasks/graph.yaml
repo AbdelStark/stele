@@ -2378,7 +2378,7 @@ tasks:
   acceptance:
   - Workflow 02 passes and an independent review recorded; ADR-091; RFC-0000 index and Q12 resolution updated
   - Transcript::grind / verify_grind implement A17 item 5 byte for byte, with independent Python vectors (research/transcript/check_grind.py)
-  - registry entry stele/v0.1/grind mapped to FS in docs/security/transcript-labels.json and the soundness-accounting gate
+  - registry entry stele/v0.1/grind registered as kind grind with no algebraic loss line (FS factor per RFC-0012 A17 item 6), checked by the soundness-accounting gate
   - NC-0806/0807 reserved as todo for E12-23; no control credit from primitive tests
 - id: E12-23
   epic: E12
@@ -2392,6 +2392,7 @@ tasks:
   crate: stele-pcs
   status: ready
   acceptance:
+  - RFC-0008 amendment fixing the LU nonce byte offset (RFC-0012 A17 item 5) before implementation
   - policy byte 2 sources with the A14 u16 tables; resolver returns Policy 2 for standard and UnsupportedParameters otherwise
   - column-round nonce (k_q=16) and tensor-round nonce (least k) on the certificate/opening wires; LU (beta, alpha) nonce at the least k
   - independent Python wire parity; NC-0806 and NC-0807 through the actual certificate and opening verifiers

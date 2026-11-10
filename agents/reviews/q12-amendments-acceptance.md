@@ -73,4 +73,27 @@ The evidence is the two Draft notes that the amendments adopt:
 
 ## Independent pass
 
-Pending; recorded below before merge.
+A reviewer outside the drafting session worked in its own clone. It reviewed head
+5f56b66 and recomputed every A14 table entry with its own exact-integer script: 30
+Circle b=1, 29 Circle b=2 and 12 v2 entries, all matching. It also checked:
+
+- the grinding primitive, byte for byte, against A17 item 5;
+- the independent Python oracle (`check_grind.py`);
+- the registry, the gates, the research inventory and the catalog tests.
+
+It judged "Accepted" justified on the precedent of A9 and A13: the consumers are
+tracked as ready tasks and the controls are reserved without credit.
+
+**Verdict: accept after fixes.** It found nothing High. All findings are applied on
+this branch.
+
+| Id | Finding | Resolution |
+|---|---|---|
+| M1 | The tensor-nonce wire position broke s ≥ 1 sources (A13 item 6). | The nonce goes immediately before t_bytes, with both layouts given. |
+| M2 | Superseded text was incompletely named: the A3 item 8 policy-byte error, Policy 1's standing, and RFC-0012 §3's 192-bit truncation. | Each is named. Policy 1 stays unadmitted, and profiles use 256-bit digests. |
+| M3 | The LU nonce position on the wire was unspecified (INV-1). | The schedule point is fixed in A17 item 5. The byte offset needs an RFC-0008 amendment, which is an explicit E12-23 acceptance item. |
+| L4–L5 | GrindExhausted was missing from the RFC, and the A1 tag sentence was not amended. | Both are added. |
+| L6 | A14 overclaimed that E12-04 was met. | Reworded: the table is an input to E12-04, which stays open. |
+| L7 | The graph acceptance text misdescribed the label mapping. | Reworded. |
+| L8 | "Proven" lacked its qualifier. | Now "paper proof, not machine-checked". |
+| L9 | Indentation in the gate test list. | Fixed. |

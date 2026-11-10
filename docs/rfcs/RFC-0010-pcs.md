@@ -1044,8 +1044,10 @@ Exact addition to §6, after A3:
 4. **Tensor grinding.**
    - Before the ℓ CertificateWeight draws, the verifier derives
      `k_t = least k ≥ 0 with 2·ell·(e+1)·2^108 ≤ |K|·2^k`.
-   - If k_t ≥ 1, a nonce precedes the draws. Its wire position is first in the
-     certificate wire, after the version byte.
+   - If k_t ≥ 1, the u64le nonce n_t immediately precedes t_bytes:
+     `u8(1) || n_t || t_bytes || …` for s = 0, and
+     `u8(1) || child_roots || n_t || t_bytes || …` for s ≥ 1 (A13 item 6).
+     S is the state after certificate construction.
    - In OM31, k_t is 0 at every admitted size.
 5. **Soundness.**
    - Per round: Lemmas 5 and 6 of fs-composition.md, with grinding counted by
@@ -1068,7 +1070,10 @@ Exact addition to §6, after A3:
    - A3 item 7's sentence "Policy 1 cannot be admitted to either profile" and its
      query-round requirement `2^-(target+log2 Q)` are superseded by RFC-0012 A17
      for the standard profile.
-   - Policy 1 itself is unchanged.
+   - Policy 1 itself is unchanged, and it remains unadmitted to every profile
+     (item 1).
+   - A3 item 8's "a policy byte other than 1" reads "a policy byte other than 1
+     or 2".
 8. **Errors.**
    - A nonce that fails the predicate is GrindMismatch, before any column draw.
    - A missing or extra nonce is ProofShape.
@@ -1088,5 +1093,5 @@ Exact addition to §6, after A3:
     - E12-23 implements items 1–9 in `stele-pcs`, with NC-0806/0807 and Python
       parity, and the LU grinding of RFC-0012 A17 in `stele-reductions`.
     - E16-30 measures a development proof on Circle rate-1/4 Policy 2 sources.
-    - E12-04's "proven-only PCS parameters" criterion is met for standard by this
-      table. Treaty remains open.
+    - This table is the standard-profile input to E12-04. E12-04 itself, the
+      treaty codes.toml block, remains open.

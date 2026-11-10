@@ -10,8 +10,8 @@ Total error ε = Σ SC + Σ SZ + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC
 | LU | one joint record per lookup instance (RFC-0012 A8/A11) | `min(1,(h+N+c·t−1)/|K|)^r`, b=min(m,30), h=m−b; tree/PCS terms separate; the r-th power is interactive only, FS term per Q12 | conditional interactive (RFC-0008 A2/A5) |
 | PCS | each certificate attempt; each opening; v2 setup once per ledger (RFC-0012 A15) | certificate `2·ell·(e+1)/|K|+((N−e−1)/N)^q_c`; opening `((N−D+e)/N)^q_o`; setup `200431782/2^160` if a v2 source with J≥4 is present; Merkle lift under H | conditional interactive, proven terms only (RFC-0010 A3: Diamond–Posen Thm 2 at e≤(D−1)/3; no Johnson/capacity conjecture); standard admits Policy 2 with grinding (RFC-0010 A14, RFC-0012 A17); treaty not admitted |
 | MASK | per masked instance | `≤ 1/|K|` | yes |
-| FS | adaptive queries `Q` + grinding (RFC-0012 A17) | `Q·ε* + ε_floor`, ε* = max_i ε_i·2^-k_i, ε_floor = Σ over the proof's rounds | proven in the classical ROM (formal/fs-composition.md Theorem 1), assumption A2 |
-| H | collisions and late preimages of frozen digests (RFC-0012 A15, RFC-0010 A8); profile ledgers use `H*(Q_t)=[C(Q_t,2)+3·Q_t²]/2^256` (A17) | `min(1,[C(Q_total,2)+Σ_{r=1..R_max}(1+2·Q_pre,r)·Q_after,r]/2^λ)`, A8's deterministic caps, λ=256 (192 for truncated standard Merkle) | assumption A1 |
+| FS | adaptive queries `Q` + grinding (RFC-0012 A17) | `Q·ε* + ε_floor`, ε* = max_i ε_i·2^-k_i, ε_floor = Σ over the proof's rounds | proven in the classical ROM (paper proof, not machine-checked: formal/fs-composition.md Theorem 1), assumption A2 |
+| H | collisions and late preimages of frozen digests (RFC-0012 A15, RFC-0010 A8); profile ledgers use `H*(Q_t)=[C(Q_t,2)+3·Q_t²]/2^256` (A17) | `min(1,[C(Q_total,2)+Σ_{r=1..R_max}(1+2·Q_pre,r)·Q_after,r]/2^λ)`, A8's deterministic caps, λ=256 (192 for truncated Merkle in development ledgers only) | assumption A1 |
 
 Illustrative treaty budget for W4 appears in RFC-0012 §5; the generator must reproduce it. The gate
 `scripts/gates/soundness-accounting.sh` diffs the generator's instance enumeration against the transcript labels actually
@@ -1918,9 +1918,9 @@ bound with a 2^-λ floor, not 2^-λ against Q_cap queries (RFC-0002 A1).
 
 **Status of the lines under a profile.**
 
-- **PCS:** proven. Diamond–Posen Theorem 2 at e ≤ ⌊(D−1)/3⌋, the query lemmas and
+- **PCS:** proven (paper proof, not machine-checked). Diamond–Posen Theorem 2 at e ≤ ⌊(D−1)/3⌋, the query lemmas and
   Theorem 1.
-- **FS:** proven in the classical ROM.
+- **FS:** proven in the classical ROM (paper proof, not machine-checked).
 - **H:** assumption A1, with the global H*.
 
 **Development proofs (RFC-0026)** are unchanged: Policy 1, an interactive ledger, and

@@ -861,6 +861,14 @@ other RFC-0002 §8 rows.
 - **Verifier.** It makes one PoW query.
 - **Errors.** GrindMismatch rejects an invalid nonce, and InvalidGrindBits rejects
   k outside 1..=32. Both leave S unchanged and abort the attempt.
+  GrindExhausted (no valid nonce below 2^64) also aborts the attempt; it is
+  unreachable for k ≤ 32.
+- **A1 tags.** Exact addition to A1's tag sentence: 3 = proof-of-work query, which
+  never updates S.
+- **LU placement.** In each repetition, the nonce immediately follows the last
+  absorb before `lookup/beta` and precedes `lookup/beta`. Its wire position is the
+  corresponding point of the RFC-0008 consumer wire. An RFC-0008 amendment in
+  E12-23 fixes the exact byte offset before implementation.
 - **Families that may grind:**
   - PCS column rounds, with k_q from RFC-0010 A14;
   - PCS tensor (CertificateWeight) rounds;
@@ -879,7 +887,9 @@ other RFC-0002 §8 rows.
 - RFC-0010 A3 item 7: the Q·ε hand derivation and its treaty counts.
 - §5's FS illustration.
 - RFC-0026 §1.2's "Q12 is open" and "No PCS parameter set is admitted for any
-  profile". RFC-0026 development proofs are unchanged: they still use Policy 1 and
+  profile".
+- §3's "standard may truncate Merkle to 192 bits". Profiles use 256-bit digests
+  (RFC-0002 A1). RFC-0026 development proofs are unchanged: they still use Policy 1 and
   report the interactive ledger, and they certify no profile.
 
 **Soundness impact.**

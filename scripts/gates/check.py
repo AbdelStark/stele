@@ -1259,9 +1259,9 @@ def transcript_registry(root):
                 'pcs::tests::rejects_column_thresholds_exhaustion_and_invalid_domains',
                 'pcs::tests::matches_reference_full_field_column_ratchets',
                 'pcs::tests::rejects_certificate_id_hash_overflow',
-                 'grind_tests::matches_reference_grind_vectors',
-                 'grind_tests::rejects_invalid_grind_bits_and_nonce',
-                 'grind_tests::matches_reference_grind_usage')
+                'grind_tests::matches_reference_grind_vectors',
+                'grind_tests::rejects_invalid_grind_bits_and_nonce',
+                'grind_tests::matches_reference_grind_usage')
     if result.returncode or any(f'test {name} ... ok' not in result.stdout for name in required):
         raise ValueError(f'transcript primitive tests failed: {result.stdout}\n{result.stderr}')
     print(f'gate transcript: validated {len(actual)} registry entries; no profile budget certified')
