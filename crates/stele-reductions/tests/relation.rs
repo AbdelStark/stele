@@ -63,29 +63,21 @@ impl Fixture {
     }
 }
 
-/// Weight sources (Circle, one row) and their verified certificates.
-fn weights(rel: &Relation, values: &Values) -> Vec<Vec<M31>> {
-    (0..rel.columns.len() as u32)
-        .map(ColumnId)
-        .filter(|id| rel.columns[id.0 as usize].kind == Kind::Weight)
-        .map(|id| {
-            values
-                .get(rel, id)
-                .expect("weight values")
-                .iter()
-                .map(|v| M31::from_i64(*v))
-                .collect()
-        })
-        .collect()
-}
-fn prepare(messages: &[Vec<M31>]) -> Vec<PreparedSource<'_, QM31>> {
-    messages
+/// The model sources (RFC-0026 A5): messages, preparations and certificates.
+fn prepare<'a>(rel: &Relation, messages: &'a [Vec<M31>]) -> Vec<PreparedSource<'a, QM31>> {
+    let layouts = relation::model_layout(rel).unwrap_or_default();
+    layouts
         .iter()
-        .enumerate()
-        .map(|(i, m)| {
-            let n = m.len().trailing_zeros() as u8;
-            PreparedSource::new(1000 + i as u64, 0, n, 1, m, &mut HashUsage::default())
-                .expect("weight source")
+        .zip(messages)
+        .map(|(layout, message)| {
+            PreparedSource::from_code_id(
+                layout.id,
+                layout.ell,
+                &layout.code,
+                message,
+                &mut HashUsage::default(),
+            )
+            .expect("model source")
         })
         .collect()
 }
@@ -95,31 +87,26 @@ fn certify(prepared: &[PreparedSource<'_, QM31>]) -> Vec<VerifiedCertificate<QM3
         .map(|p| {
             let (bytes, _) = p.certificate().expect("certificate");
             verify_certificate(*p.source(), &bytes)
-                .expect("weight certificate")
+                .expect("model certificate")
                 .0
         })
         .collect()
 }
 
 fn produce(rel: &Relation, values: &Values) -> Result<(Proof, Vec<Vec<M31>>), Error> {
-    let messages = weights(rel, values);
-    let prepared = prepare(&messages);
-    let certs = certify(&prepared);
+    let messages = relation::model_messages(rel, values)?;
+    let prepared = prepare(rel, &messages);
+    let certificates = certify(&prepared);
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = relation::prove(
-        &mut t,
-        rel,
-        values,
-        &prepared.iter().collect::<Vec<_>>(),
-        &certs.iter().collect::<Vec<_>>(),
-    )?;
+    let proof = relation::prove(&mut t, rel, values, &model)?;
     Ok((proof, messages))
 }
 fn check_proof(rel: &Relation, messages: &[Vec<M31>], proof: &Proof) -> Result<Ledger, Error> {
-    let prepared = prepare(messages);
-    let certs = certify(&prepared);
+    let prepared = prepare(rel, messages);
+    let certificates = certify(&prepared);
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    relation::verify(&mut t, rel, &certs.iter().collect::<Vec<_>>(), proof)
+    relation::verify(&mut t, rel, &certificates.iter().collect::<Vec<_>>(), proof)
 }
 fn run(f: &Fixture) -> Result<Ledger, Error> {
     let (proof, messages) = produce(&f.rel, &f.values)?;
@@ -927,5 +914,68 @@ fn measures_many_groups_relation() {
         size(&proof.lookups),
         size(&proof.openings),
         proof.openings.len(),
+    );
+}
+
+/// Many weight matrices (8 layers x 7 roles of 2^10), each read by a projection
+/// matmul `Y[i, j] = Σ_k X[i, k] W[k, j]`.
+#[test]
+#[ignore = "measurement; run with --ignored --nocapture"]
+fn measures_many_weights_relation() {
+    let mut rel = Relation::default();
+    let mut rng = Rng(9);
+    let gx = Kind::Witness(rel.add_group("G/x/6", 6));
+    let gy = Kind::Witness(rel.add_group("G/y/8", 8));
+    let x = rel.add_column("x", gx, Width::signed(4), 6);
+    range(&mut rel, x, Width::signed(4));
+    let xv = rng.vec(64, Width::signed(4));
+    let mut sets = vec![(x, xv.clone())];
+    for i in 0..56 {
+        let w = rel.add_column(&format!("w{i}"), Kind::Weight, Width::signed(4), 10);
+        range(&mut rel, w, Width::signed(4));
+        let y = rel.add_column(&format!("y{i}"), gy.clone(), Width::signed(12), 8);
+        // Bits: 0..6 = j, 6..8 = i (free); 8..12 = k (summed).
+        rel.matmuls.push(Matmul {
+            name: format!("mm{i}"),
+            free: 8,
+            summed: 4,
+            out: r(y, &[0, 1, 2, 3, 4, 5, 6, 7]),
+            lhs: r(x, &[8, 9, 10, 11, 6, 7]),
+            rhs: r(w, &[0, 1, 2, 3, 4, 5, 8, 9, 10, 11]),
+        });
+        let wv = rng.vec(1024, Width::signed(4));
+        let yv = (0..256usize)
+            .map(|z| {
+                let (j, ii) = (z & 63, z >> 6);
+                (0..16).map(|k| xv[k | ii << 4] * wv[j | k << 6]).sum()
+            })
+            .collect();
+        sets.push((w, wv));
+        sets.push((y, yv));
+    }
+    let mut f = Fixture {
+        values: Values::new(&rel),
+        rel,
+    };
+    for (id, v) in sets {
+        f.set(id, v);
+    }
+    assert_eq!(check(&f.rel, &f.values), Ok(()));
+    let start = std::time::Instant::now();
+    let (proof, messages) = produce(&f.rel, &f.values).expect("proof");
+    let proved = start.elapsed();
+    let start = std::time::Instant::now();
+    check_proof(&f.rel, &messages, &proof).expect("verify");
+    let verified = start.elapsed();
+    let size = |s: &Vec<Vec<u8>>| s.iter().map(Vec::len).sum::<usize>();
+    println!(
+        "weights=56 prove={proved:?} verify={verified:?} total={} openings={} ({} sections) groups={} multiplicities={} lookups={} matmuls={}",
+        proof.encode().len(),
+        size(&proof.openings),
+        proof.openings.len(),
+        size(&proof.groups),
+        size(&proof.multiplicities),
+        size(&proof.lookups),
+        size(&proof.matmuls),
     );
 }

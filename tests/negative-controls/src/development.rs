@@ -5,7 +5,8 @@
 //! requires the verifier's exact rejection:
 //! - NC-1300: a checked token `x_{i+1}` that is not the argmax (`RootMismatch`, E2);
 //! - NC-1301: a next token `y` that is not the argmax (`RootMismatch`, E2);
-//! - NC-1304: other weights proven under the expected model commitment (`RootMismatch`);
+//! - NC-1304: other weights proven under the expected model commitment (`RoundSumMismatch`:
+//!   the engine absorbs the model root after the statement, RFC-0026 A5);
 //! - NC-1305: one prover-side rounding exponent (`RoundSumMismatch`);
 //! - NC-1309: a different checked range (`RoundSumMismatch`).
 //!
@@ -156,7 +157,7 @@ pub fn run(id: u16) -> Result<(), String> {
             let c = Committed::new(&w).map_err(|e| format!("{e:?}"))?;
             let proof = prove(&public, &mut other_exec, &w, &c, &honest)
                 .map_err(|e| format!("tampered prover: {e:?}"))?;
-            ("RootMismatch", verify(&public, &honest, &proof).err())
+            ("RoundSumMismatch", verify(&public, &honest, &proof).err())
         }
         1305 => {
             let mut changed = false;

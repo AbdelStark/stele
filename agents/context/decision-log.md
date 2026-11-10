@@ -1697,3 +1697,31 @@ rsqrt). The simulation quantises Q/K before RoPE while CQIS rows follow it; this
 simulation caveat, not CQIS evidence.
 
 Status: Accepted.
+
+## ADR-084: Stacked model commitment (RFC-0026 A5, task E16-14)
+
+Context: after A4, weight sources dominated the openings of the E16-10 8-layer proof.
+The model commitment also carried one certificate per weight.
+
+Decision:
+- Weights are split in `ColumnId` order into v2 model sources of at most `2^30`
+  entries (greedy; one source for any model up to `2^30` entries).
+- Inside a source, blocks are placed largest first, with ties in `ColumnId` order.
+  Source `k` has id `2^32 + k` and A4's byte-minimising geometry.
+- The model commitment is the list of source roots, each with one certificate,
+  computed once per model. `model_layout` and `model_messages` let the model
+  owner prepare it.
+- The verifier checks every certificate against its derived layout. The engine
+  absorbs every model root right after the statement digest.
+- Each proof has one claim batch and one opening per model source.
+- The guards match A4: `n > 30` is rejected, and the cap holds per source.
+- `prove` and `verify` take the model as slices: `&[(&PreparedSource,
+  &VerifiedCertificate)]` and `&[&VerifiedCertificate]`.
+- Root-of-roots shards (RFC-0010 A13) were considered for very large models and
+  left open.
+
+Consequences:
+- A proof has one weight opening per model source, where it had one per weight.
+- E16-10 must commit the model once with the new layout.
+
+Status: Accepted (RFC-0026 A5).

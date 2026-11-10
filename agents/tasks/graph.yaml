@@ -2773,6 +2773,22 @@ tasks:
   - every commitment group is a block of one stacked v2 source with one certificate, one claim batch and one opening
   - group certificate and opening bytes measured before and after on a many-group plan
   - binding, padding, member-split and block-routing controls green under the mutation campaign
+- id: E16-14
+  epic: E16
+  title: One stacked model commitment for every weight
+  depends:
+  - E16-13
+  rfc:
+  - RFC-0026 A5
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  status: done
+  agent: claude-code
+  branch: task/E16-14-stacked-model
+  acceptance:
+  - every weight column is a block of one stacked v2 model source with one certificate, one claim batch and one opening per proof
+  - layout pinned by a test with tied and mixed sizes; oversized weights rejected before shifting
+  - opening bytes measured before and after on a many-weight plan; binding controls green under the mutation campaign
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run

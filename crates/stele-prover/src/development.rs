@@ -1,8 +1,9 @@
 //! Development-profile end-to-end prefill prover and verifier (RFC-0026 §1, §4.1, §8).
 //!
 //! - [`Weights`] reads the weight codes and the public 1-D records of an Artifact.
-//! - [`Committed`] is the model commitment (RFC-0026 §2.2): one RFC-0010 v2 source per
-//!   weight tensor in plan order, prepared once and reused across proofs.
+//! - [`Committed`] is the model commitment (RFC-0026 §2.2 as amended by A5): every
+//!   weight tensor stacked, in plan order, into model sources of at most 2^30 entries,
+//!   prepared once and reused across proofs.
 //! - [`prove`] runs the executor capture, declares and assigns the relation, runs the
 //!   plain checker and the relation engine, and emits a `stele-dev-e2e-v1` container.
 //! - [`verify`] rebuilds the relation from plan data and the statement and replays the
@@ -23,7 +24,7 @@ use stele_reductions::stele_field::{Field, M31};
 use stele_reductions::stele_hash::{HashUsage, Transcript};
 use stele_reductions::stele_ir::relation::{check, Relation, Values, Violation};
 use stele_reductions::stele_pcs::{
-    verify_certificate, PreparedSource, ProofKind, Source, VerifiedCertificate,
+    verify_certificate, PreparedSource, Source, VerifiedCertificate,
 };
 
 pub mod bundle;
@@ -232,7 +233,10 @@ fn layout(d: &Decoded, public: &Public, statement: &Statement) -> Result<Layout,
             && layout.weights.iter().zip(&declared).zip(&roles).all(
                 |(((id, role, layer), column), (r, l))| id == column && role == r && layer == l,
             );
-    if !same || public.commitment.len() != roles.len() {
+    let sources = relation::model_layout(&layout.relation)
+        .map_err(Error::Engine)?
+        .len();
+    if !same || public.commitment.len() != sources {
         return Err(Error::StatementMismatch);
     }
     Ok(layout)
@@ -243,7 +247,9 @@ pub struct Weights {
     /// `[source][channel][lane]` codes.
     pub codes: Vec<Vec<Vec<i64>>>,
     pub vectors: Vec<(u16, Vec<i16>)>,
-    messages: Vec<Vec<M31>>,
+    /// The model sources and their stacked messages (RFC-0026 A5).
+    layouts: Vec<relation::ModelLayout>,
+    stacked: Vec<Vec<M31>>,
 }
 
 impl Weights {
@@ -305,46 +311,20 @@ impl Weights {
             );
             codes.push(rows);
         }
+        let lengths: Vec<u8> = messages
+            .iter()
+            .map(|m: &Vec<M31>| m.len().trailing_zeros() as u8)
+            .collect();
+        let layouts = relation::model_layout_for(&lengths).map_err(Error::Engine)?;
+        let slices: Vec<&[M31]> = messages.iter().map(Vec::as_slice).collect();
+        let stacked = relation::stack_model(&layouts, &slices).map_err(Error::Engine)?;
         Ok(Self {
             codes,
             vectors,
-            messages,
+            layouts,
+            stacked,
         })
     }
-}
-
-/// Smallest v2 expander exponent; RFC-0010 A3 item 2.
-const MIN_J: u8 = 3;
-const MAX_J: u8 = 14;
-/// Weight-source ids sit above every engine group and multiplicity id.
-const WEIGHT_ID: u64 = 1 << 40;
-
-fn v2_code(j: u8) -> Vec<u8> {
-    let mut code = b"stele/expander-seed/v2".to_vec();
-    code.push(j);
-    code.extend_from_slice(&[0; 32]);
-    code
-}
-
-/// Geometry `(id, ell, code)` of weight source `i` with `2^bits` entries: the v2
-/// exponent minimising certificate plus opening bytes (ties: smallest J).
-fn geometry(i: usize, bits: u8) -> Result<(u64, u8, Vec<u8>), Error> {
-    let id = WEIGHT_ID + i as u64;
-    let mut best: Option<(usize, u8)> = None;
-    for j in MIN_J..=MAX_J.min(bits / 2) {
-        let Ok(s) = Source::<K>::from_code_id(id, bits - 2 * j, &v2_code(j), [0; 32]) else {
-            continue;
-        };
-        let size = s
-            .proof_size(ProofKind::Certificate)
-            .and_then(|c| Ok(c + s.proof_size(ProofKind::Opening)?))
-            .map_err(Error::Commitment)?;
-        if best.is_none_or(|(b, _)| size < b) {
-            best = Some((size, j));
-        }
-    }
-    let (_, j) = best.ok_or(Error::UnsupportedModel)?;
-    Ok((id, bits - 2 * j, v2_code(j)))
 }
 
 /// The prepared model commitment, built once per model (RFC-0026 §2.2).
@@ -360,12 +340,15 @@ impl<'a> Committed<'a> {
         let mut prepared = Vec::new();
         let mut certificates = Vec::new();
         let mut commitment = Vec::new();
-        for (i, message) in weights.messages.iter().enumerate() {
-            let bits = message.len().trailing_zeros() as u8;
-            let (id, ell, code) = geometry(i, bits)?;
-            let p =
-                PreparedSource::from_code_id(id, ell, &code, message, &mut HashUsage::default())
-                    .map_err(Error::Commitment)?;
+        for (layout, message) in weights.layouts.iter().zip(&weights.stacked) {
+            let p = PreparedSource::from_code_id(
+                layout.id,
+                layout.ell,
+                &layout.code,
+                message,
+                &mut HashUsage::default(),
+            )
+            .map_err(Error::Commitment)?;
             let (bytes, _) = p
                 .certificate()
                 .map_err(|_| Error::Commitment(stele_reductions::stele_pcs::Error::Capacity))?;
@@ -383,16 +366,19 @@ impl<'a> Committed<'a> {
     }
 }
 
-/// Verify every model-commitment certificate against its plan-derived source.
+/// Verify every model-commitment certificate against its plan-derived model source.
 fn certificates(public: &Public, bits: &[u8]) -> Result<Vec<VerifiedCertificate<K>>, Error> {
+    let layouts = relation::model_layout_for(bits).map_err(Error::Engine)?;
+    if layouts.len() != public.commitment.len() {
+        return Err(Error::StatementMismatch);
+    }
     public
         .commitment
         .iter()
-        .zip(bits)
-        .enumerate()
-        .map(|(i, ((root, bytes), &b))| {
-            let (id, ell, code) = geometry(i, b)?;
-            let source = Source::from_code_id(id, ell, &code, *root).map_err(Error::Commitment)?;
+        .zip(&layouts)
+        .map(|((root, bytes), l)| {
+            let source =
+                Source::from_code_id(l.id, l.ell, &l.code, *root).map_err(Error::Commitment)?;
             verify_certificate(source, bytes)
                 .map(|(v, _)| v)
                 .map_err(|f| Error::Commitment(f.cause))
@@ -467,8 +453,11 @@ fn prove_inner(
         &mut t,
         &layout.relation,
         &values,
-        &committed.prepared.iter().collect::<Vec<_>>(),
-        &committed.certificates.iter().collect::<Vec<_>>(),
+        &committed
+            .prepared
+            .iter()
+            .zip(&committed.certificates)
+            .collect::<Vec<_>>(),
     )
     .map_err(Error::Engine)?;
     let digest = statement_digest(&input, &relation::digest(&layout.relation));

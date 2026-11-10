@@ -43,7 +43,7 @@ pub enum Error {
     Unsupported,
     /// The prover has no values for a witness or weight column.
     Missing(ColumnId),
-    /// Weight certificates disagree with the relation's weight columns.
+    /// The model commitment is missing, unexpected, or not the derived layout (A5).
     Weights,
     /// Wrong proof length or trailing bytes.
     ProofShape,
@@ -175,6 +175,10 @@ const ZEROCHECK: u64 = 1 << 62;
 const MATMUL: u64 = (1 << 62) | (1 << 48);
 const BATCH: u64 = (1 << 62) | (2 << 48);
 const TUPLE: u64 = (1 << 62) | (3 << 48);
+/// Source id of model source `k` is `MODEL + k` (RFC-0026 A5).
+const MODEL: u64 = 1 << 32;
+/// Largest model source: 2^30 entries, the per-source cap of RFC-0010 v2.
+const MODEL_CAP: usize = 1 << 30;
 /// Smallest v2 expander exponent (RFC-0010 A3 item 2): 2^(2J) message columns.
 const MIN_J: u8 = 3;
 const MAX_J: u8 = 14;
@@ -187,6 +191,14 @@ struct Group {
     columns: Vec<ColumnId>,
     n: u8,
     c: u8,
+    offset: usize,
+}
+
+/// One weight column as an aligned block of model source `source` (RFC-0026 A5).
+struct Weight {
+    column: ColumnId,
+    n: u8,
+    source: usize,
     offset: usize,
 }
 
@@ -245,7 +257,10 @@ struct Plan {
     /// `None` when the relation has no commitment group.
     stack: Option<Stack>,
     checks: Vec<Check>,
-    weights: Vec<ColumnId>,
+    /// Weight blocks of the model sources, in `ColumnId` order (A5).
+    weights: Vec<Weight>,
+    /// The model sources, in split order; empty without weight columns.
+    model: Vec<Stack>,
     sizes: Vec<u8>,
 }
 
@@ -436,9 +451,21 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         };
         checks.push(check(id, base + id, name, members, t, entries)?);
     }
-    let weights = (0..relation.columns.len() as u32)
+    let lengths: Vec<u8> = (0..relation.columns.len())
+        .filter(|i| relation.columns[*i].kind == Kind::Weight)
+        .map(|i| relation.columns[i].log_len)
+        .collect();
+    let (placement, model) = model_plan(&lengths)?;
+    let weights: Vec<Weight> = (0..relation.columns.len() as u32)
         .map(ColumnId)
         .filter(|id| relation.columns[id.0 as usize].kind == Kind::Weight)
+        .zip(placement)
+        .map(|(column, (source, offset))| Weight {
+            column,
+            n: relation.columns[column.0 as usize].log_len,
+            source,
+            offset,
+        })
         .collect();
     let composes = relation.composes.iter();
     let mut sizes: Vec<u8> = relation.identities.iter().map(|i| i.vars).collect();
@@ -451,6 +478,7 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         stack,
         checks,
         weights,
+        model,
         sizes,
     })
 }
@@ -756,21 +784,159 @@ fn group_claims(plan: &Plan, stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)>
     out
 }
 
-fn weight_check(
+/// One model source's derived layout (RFC-0026 A5); the model owner commits the
+/// matching [`model_messages`] entry with `PreparedSource::from_code_id(id, ell, &code, ..)`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModelLayout {
+    pub id: u64,
+    pub ell: u8,
+    pub code: Vec<u8>,
+    /// The stacked message has `2^bits` entries.
+    pub bits: u8,
+    /// `(weight index in ColumnId order, block offset)` of each weight in this source.
+    pub blocks: Vec<(usize, usize)>,
+}
+
+/// RFC-0026 A5 layout from the weights' lengths (`2^n` entries each, `ColumnId`
+/// order): weights are split greedily into model sources of at most 2^30 entries;
+/// inside a source, blocks go largest first, ties in order. Returns each weight's
+/// `(source, offset)` and the sources.
+type ModelPlan = (Vec<(usize, usize)>, Vec<Stack>);
+
+fn model_plan(lengths: &[u8]) -> Result<ModelPlan, Error> {
+    let mut placement = vec![(0usize, 0usize); lengths.len()];
+    let mut totals: Vec<usize> = Vec::new();
+    for (w, &n) in lengths.iter().enumerate() {
+        if n > 30 {
+            return Err(Error::Unsupported);
+        }
+        let size = 1usize << n;
+        match totals.last_mut() {
+            Some(total) if *total + size <= MODEL_CAP => *total += size,
+            _ => totals.push(size),
+        }
+        placement[w].0 = totals.len() - 1;
+    }
+    let mut model = Vec::new();
+    for (k, total) in totals.iter().enumerate() {
+        let mut order: Vec<usize> = (0..lengths.len())
+            .filter(|w| placement[*w].0 == k)
+            .collect();
+        order.sort_by(|a, b| lengths[*b].cmp(&lengths[*a]));
+        let mut offset = 0usize;
+        for w in order {
+            placement[w].1 = offset;
+            offset += 1 << lengths[w];
+        }
+        // Aligned blocks summing to at most 2^30 fit 2^ceil(log2 total) <= 2^30.
+        model.push(self::stack(MODEL + k as u64, ceil_log2(*total))?);
+    }
+    Ok((placement, model))
+}
+
+/// The model sources for weights of `2^lengths[i]` entries in `ColumnId` order (A5),
+/// for a model owner that commits before any relation is built.
+pub fn model_layout_for(lengths: &[u8]) -> Result<Vec<ModelLayout>, Error> {
+    let (placement, model) = model_plan(lengths)?;
+    Ok(model
+        .into_iter()
+        .enumerate()
+        .map(|(k, m)| ModelLayout {
+            id: m.id,
+            ell: m.ell,
+            code: m.code,
+            bits: m.bits,
+            blocks: placement
+                .iter()
+                .enumerate()
+                .filter(|(_, (source, _))| *source == k)
+                .map(|(w, (_, offset))| (w, *offset))
+                .collect(),
+        })
+        .collect())
+}
+
+/// The model sources of a relation, in split order; empty without weight columns.
+pub fn model_layout(relation: &Relation) -> Result<Vec<ModelLayout>, Error> {
+    let lengths: Vec<u8> = relation
+        .columns
+        .iter()
+        .filter(|c| c.kind == Kind::Weight)
+        .map(|c| c.log_len)
+        .collect();
+    model_layout_for(&lengths)
+}
+
+/// Place per-weight messages (`ColumnId` order, `2^n` entries each, signed
+/// embedding) into the stacked messages of `layouts`.
+pub fn stack_model(layouts: &[ModelLayout], weights: &[&[M31]]) -> Result<Vec<Vec<M31>>, Error> {
+    let mut out = Vec::new();
+    for layout in layouts {
+        let mut message = vec![M31::from_i64(0); 1 << layout.bits];
+        for &(w, offset) in &layout.blocks {
+            let weight = weights.get(w).ok_or(Error::Weights)?;
+            let block = message
+                .get_mut(offset..offset + weight.len())
+                .ok_or(Error::Weights)?;
+            block.copy_from_slice(weight);
+        }
+        out.push(message);
+    }
+    Ok(out)
+}
+
+/// The model messages (signed embedding; each weight at its block offset).
+pub fn model_messages(relation: &Relation, values: &Values) -> Result<Vec<Vec<M31>>, Error> {
+    let plan = plan(relation)?;
+    (0..plan.model.len())
+        .map(|k| weights_message(relation, &plan, k, values))
+        .collect()
+}
+
+fn weights_message(
     relation: &Relation,
     plan: &Plan,
-    certificates: &[&VerifiedCertificate<K>],
-) -> Result<(), Error> {
-    if certificates.len() != plan.weights.len() {
+    k: usize,
+    values: &Values,
+) -> Result<Vec<M31>, Error> {
+    let mut message = vec![M31::from_i64(0); 1 << plan.model[k].bits];
+    for weight in plan.weights.iter().filter(|w| w.source == k) {
+        let col = column(relation, values, weight.column)?;
+        for (out, v) in message[weight.offset..].iter_mut().zip(col) {
+            *out = M31::from_i64(*v);
+        }
+    }
+    Ok(message)
+}
+
+/// The supplied model certificates must be the derived layouts under their roots.
+fn model_check(plan: &Plan, certificates: &[&VerifiedCertificate<K>]) -> Result<(), Error> {
+    if certificates.len() != plan.model.len() {
         return Err(Error::Weights);
     }
-    for (id, certificate) in plan.weights.iter().zip(certificates) {
+    for (model, certificate) in plan.model.iter().zip(certificates) {
         let source = certificate.record().source();
-        if source.rows() * source.columns() != 1 << relation.columns[id.0 as usize].log_len {
+        if model.source(source.root())?.bytes() != source.bytes() {
             return Err(Error::Weights);
         }
     }
     Ok(())
+}
+
+/// Model claims of source `k`: weight `w` at block offset `o` maps a claim at `ρ` to
+/// the model claim at `(bits(o/2^n) ‖ ρ)`, Boolean leading coordinates (A5).
+fn weight_claims(plan: &Plan, k: usize, claims: &Claims) -> Vec<(Vec<K>, K)> {
+    let model = &plan.model[k];
+    let mut out = Vec::new();
+    for weight in plan.weights.iter().filter(|w| w.source == k) {
+        for (point, value) in &claims.0[weight.column.0 as usize] {
+            out.push((
+                bits_point(weight.offset >> weight.n, model.bits - weight.n, point),
+                *value,
+            ));
+        }
+    }
+    out
 }
 
 fn to_k(message: &[M31]) -> Vec<K> {
@@ -780,20 +946,34 @@ fn to_k(message: &[M31]) -> Vec<K> {
         .collect()
 }
 
+/// Bind every model root to the transcript right after the statement (A5), so the
+/// proof binds the model even when the caller's public input omits it.
+fn absorb_model(
+    t: &mut Transcript<K>,
+    certificates: &[&VerifiedCertificate<K>],
+) -> Result<(), Error> {
+    for certificate in certificates {
+        t.absorb(
+            AbsorbLabel::RelationRoots,
+            &certificate.record().source().root(),
+        )?;
+    }
+    Ok(())
+}
+
 /// Produce a development-profile proof. `t` must be `Transcript::new(public)` with
-/// the RFC-0026 §1.1 public inputs, including the model-commitment roots that
-/// `certificates` (one per weight column, in `ColumnId` order) carry. The prover
-/// checks none of the verifier's equations; a false witness yields a rejected proof
-/// or an error from a primitive prover.
+/// the RFC-0026 §1.1 public inputs; `model` holds each prepared model source of
+/// [`model_layout`] with its verified certificate (empty without weights). The
+/// prover checks none of the verifier's equations; a false witness yields a
+/// rejected proof or an error from a primitive prover.
 pub fn prove(
     t: &mut Transcript<K>,
     relation: &Relation,
     values: &Values,
-    weights: &[&PreparedSource<'_, K>],
-    certificates: &[&VerifiedCertificate<K>],
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
 ) -> Result<Proof, Error> {
     let plan = plan(relation)?;
-    prove_plan(t, relation, &plan, values, values, weights, certificates)
+    prove_plan(t, relation, &plan, values, values, model)
 }
 
 /// The prover. `committed` fills the group messages (step 2); `values` drives every
@@ -804,15 +984,13 @@ fn prove_plan(
     plan: &Plan,
     committed: &Values,
     values: &Values,
-    weights: &[&PreparedSource<'_, K>],
-    certificates: &[&VerifiedCertificate<K>],
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
 ) -> Result<Proof, Error> {
-    weight_check(relation, plan, certificates)?;
-    if weights.len() != certificates.len()
-        || weights
-            .iter()
-            .zip(certificates)
-            .any(|(w, c)| w.source().bytes() != c.record().source().bytes())
+    let certificates: Vec<&VerifiedCertificate<K>> = model.iter().map(|(_, c)| *c).collect();
+    model_check(plan, &certificates)?;
+    if model
+        .iter()
+        .any(|(p, c)| p.source().bytes() != c.record().source().bytes())
     {
         return Err(Error::Weights);
     }
@@ -820,6 +998,7 @@ fn prove_plan(
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
+    absorb_model(t, &certificates)?;
     // Step 2: the stacked source (A4), signed embedding; group blocks largest first,
     // column `j` of a group at `offset + j·2^n`.
     let message = |stack: &Stack, values: &Values| -> Result<Vec<M31>, Error> {
@@ -963,22 +1142,22 @@ fn prove_plan(
                 .push(opening.prove(t, table, prepared, handle)?);
         }
     }
-    for (w, id) in plan.weights.iter().enumerate() {
-        let batch = &claims.0[id.0 as usize];
-        if batch.is_empty() {
-            continue;
+    // One claim batch and one opening per model source (A5).
+    for (k, (prepared, certificate)) in model.iter().enumerate() {
+        let batch = weight_claims(plan, k, &claims);
+        if !batch.is_empty() {
+            let stack = &plan.model[k];
+            let opening = Opening {
+                id: BATCH | (1 + k as u64),
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let table = to_k(&weights_message(relation, plan, k, values)?);
+            proof
+                .openings
+                .push(opening.prove(t, table, prepared, certificate)?);
         }
-        let opening = Opening {
-            id: BATCH | (1 + w) as u64,
-            tensor: certificates[w].record().source().descriptor().id,
-            bits: relation.columns[id.0 as usize].log_len,
-            batch,
-        };
-        let column = column(relation, values, *id)?;
-        let table = column.iter().map(|v| K::from_i64(*v)).collect();
-        proof
-            .openings
-            .push(opening.prove(t, table, weights[w], certificates[w])?);
     }
     Ok(proof)
 }
@@ -1111,22 +1290,23 @@ impl Opening<'_> {
 }
 
 /// Verify a development-profile proof against the plan-derived relation. The caller
-/// creates `t` with the RFC-0026 §1.1 public inputs, which bind the model roots that
-/// `certificates` (verified, one per weight column in `ColumnId` order) carry.
+/// creates `t` with the RFC-0026 §1.1 public inputs; `model` holds the verified
+/// certificate of each model source (A5), whose roots the engine also absorbs.
 /// Every section count and length is derived here: a missing, extra, short or long
 /// section rejects with `ProofShape` (RFC-0026 §4.1).
 pub fn verify(
     t: &mut Transcript<K>,
     relation: &Relation,
-    certificates: &[&VerifiedCertificate<K>],
+    model: &[&VerifiedCertificate<K>],
     proof: &Proof,
 ) -> Result<Ledger, Error> {
     let plan = plan(relation)?;
-    weight_check(relation, &plan, certificates)?;
+    model_check(&plan, model)?;
     let mut ledger = Ledger::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
+    absorb_model(t, model)?;
     // Step 2: each certificate on its own transcript, then its root here.
     let mut sections = Sections(proof.groups.iter());
     let mut stacked = None;
@@ -1265,21 +1445,20 @@ pub fn verify(
             reader.end()?;
         }
     }
-    for (w, id) in plan.weights.iter().enumerate() {
-        let batch = &claims.0[id.0 as usize];
-        if batch.is_empty() {
-            continue;
+    for (k, certificate) in model.iter().enumerate() {
+        let batch = weight_claims(&plan, k, &claims);
+        if !batch.is_empty() {
+            let stack = &plan.model[k];
+            let opening = Opening {
+                id: BATCH | (1 + k as u64),
+                tensor: stack.id,
+                bits: stack.bits,
+                batch: &batch,
+            };
+            let mut reader = sections.next()?;
+            opening.verify(t, certificate, &mut reader, &mut ledger, "model")?;
+            reader.end()?;
         }
-        let column = &relation.columns[id.0 as usize];
-        let opening = Opening {
-            id: BATCH | (1 + w) as u64,
-            tensor: certificates[w].record().source().descriptor().id,
-            bits: column.log_len,
-            batch,
-        };
-        let mut reader = sections.next()?;
-        opening.verify(t, certificates[w], &mut reader, &mut ledger, &column.name)?;
-        reader.end()?;
     }
     sections.end()?;
     // §8 step 4: public-column claims, evaluated by the verifier.

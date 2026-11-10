@@ -760,3 +760,69 @@ treatment the mantissas already get. The development profile is not zero-knowled
 committed gains read as weight columns, which changes §2.2 and row 2.
 Soundness ledger: none; no challenge, line or label changes.
 Cost model: none. Affected tasks: E16-10 (statement codec and public-input file).
+
+- **A5 — Stacked model commitment (task E16-14).** Accepted with ADR-084.
+  - **Motivation.**
+    - On the E16-10 8-layer model each weight tensor was its own source, so weight
+      openings made up nearly all opening sections of a proof.
+    - The model commitment carried one certificate per weight.
+    - Stacking leaves one opening per model source (measurements in the E16-14 PR;
+      ledger entries belong to E16-11).
+  - **Replacement text, §1.1 item 2.** "The **model commitment**: the root of each
+    model source (§2.2), in split order. A model of at most `2^30` weight entries has
+    exactly one model source."
+  - **Replacement text, §2.2, "Each weight tensor" bullets and the "matched to the
+    model-commitment roots in order" bullet.**
+    - "Every `Kind::Weight` column belongs to a **model source**, an RFC-0010 v2
+      source, as a block of `2^n` entries. The order is `ColumnId`, and a tied head
+      reuses the embedding's column, so it adds no block. Values are the original
+      integer codes under the RFC-0010 A6 signed embedding."
+    - "**Split.** Weights are assigned in `ColumnId` order to model sources
+      `0, 1, …`. A weight starts a new source when adding it would take the current
+      source past `2^30` entries."
+    - "**Placement.** Inside a source, blocks are placed largest first, with ties in
+      `ColumnId` order, at offsets that are multiples of their size. Source `k` has
+      `2^(S_k)` entries with `S_k = max(6, ceil(log2 Σ 2^n))`, unused entries are
+      zero, and its id is `2^32 + k`. The geometry is A4's byte-minimising `J`. A
+      weight with `n > 30` is rejected."
+    - "The model commitment is the list of model-source roots, each with one
+      RFC-0010 A9 certificate, computed once per model. The verifier checks that the
+      supplied certificates match the derived layouts one for one, each under its own
+      root. On any count or layout difference it rejects with `Weights`."
+    - "**Binding.** Right after the §4 step-1 statement digest, the engine absorbs
+      every model root, in split order, with `relation/roots`. The proof therefore
+      binds the model even when a caller's public input leaves the roots out."
+  - **Replacement text, §9 NC-1304, expected error.** "`RoundSumMismatch`: the
+    model root another commitment would produce is absorbed right after the
+    statement, so the transcripts diverge before any opening."
+  - **Replacement text, §4 step 7, weight bullet.** "For each model source `k`, its
+    weight claims are mapped to model claims: weight `w` at block offset `o` with
+    claim point `ρ` maps to `(bits(o/2^n) ‖ ρ)`, Boolean in the leading coordinates.
+    They are reduced with one RFC-0006 A2 mode-1 batch (A8, batch id `BATCH|(1+k)`)
+    and opened once with `verify_point` against that source's certificate. This
+    comes after the stacked group source."
+  - **Plan obligation (§2.2) unchanged.** The weight-order check now compares the
+    derived layout: the same order and the same padded shapes.
+  - **Scale (development-profile cap).** Each source is capped at `2^30` entries,
+    which is RFC-0010 v2's own per-source cap. A model of `2^33` entries, about 8B
+    parameters, needs 8 model sources. Peak memory per model source is set by its
+    size:
+
+    | Model-source size | Message, prepared once per model | QM31 batch copy, per proof |
+    |---|---|---|
+    | `2^30` entries | 4 GiB | 16 GiB |
+
+    Weights are not split across sources; a weight above `2^30` is rejected. The
+    open alternative is RFC-0010 A13 root-of-roots shards under one root, which
+    would also shrink the per-proof batch copy. It is not adopted here.
+  - **Soundness.** Unchanged:
+    - Every model root is fixed before any challenge, both by the public input and
+      by the absorption above.
+    - Each weight claim becomes a model claim at a point with Boolean leading
+      coordinates, so there is no Schwartz–Zippel term.
+    - The A8 batch and the A9 opening arguments are the same.
+    - The ledger has one weight batch (RLC + SC) per model source per proof, and
+      the PCS line is charged once per model source.
+  - **Cost-model terms.** None.
+  - **Affected tasks.** E16-14 and E16-10. E16-10 commits each `model_messages`
+    entry under the matching `model_layout` entry.
