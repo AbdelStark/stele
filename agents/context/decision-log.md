@@ -2284,5 +2284,14 @@ Decision:
     the shared batch makes it accepted.
 - Scope: one unselected member per lookup, with `n ≥ c_D + 1`. Selectors,
   several members, padding and A5's statement messages are left to E12-14.
+- Independent review (fix-then-merge, test gaps only):
+  - NC-0917 and NC-0918 cover the head and selector final checks, through the
+    `claims::forge_final` adversary.
+  - NC-0919 covers the top identity `h·q − p = 0` against a false lookup, through
+    `claims::forge_ratio`. Removing the identity makes it accepted.
+  - Tests at `n = c_D + 4` run the middle layers in both fields. They assert the
+    degrees 7, 7, 5, 4, a bad tuple, and χ² of a middle layer value.
+  - The A7 notes list the degrees per step. They add the ZD line `2^{n+1}·c/|K|`
+    per lookup: A5's `e` assumes the root check, which dev-zk replaces.
 
-Status: Accepted (development tier; independent review requested).
+Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).
