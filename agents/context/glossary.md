@@ -57,7 +57,7 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 - **tier** — the rigour a capability has passed: T0 development, T1 `standard`, T2 `treaty` (RFC-0027 §2).
 - **ladder**, **rung** — the fixed workloads L0 to L6 that progress is measured on (RFC-0027 §3).
 - **scoreboard** — `bench/scoreboard.md`, generated from the ledgers; one row per rung and profile.
-- **lane** — a set of crates with one owner role and at most one open change (RFC-0027 §5).
+- **lane** — a set of crates with one owner role and one open line of work, a change or a stack that merges in order (RFC-0027 §5).
 - **gate** — a milestone M0 to M7, met when its ledgers and controls exist (RFC-0027 §4). Also a CI check; context decides.
 - **round-by-round error**, **λ** — the largest probability that one round's challenge rescues a false claim; a proof has λ bits when it is at most 2^-λ (RFC-0030, Draft).
 - **cells per token**, **lookups per token** — committed cells and lookup positions divided by positions in the window; the protocol-efficiency pair reported by the accounting tool (task E22-01).

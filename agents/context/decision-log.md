@@ -1953,6 +1953,12 @@ Consequences:
 - Agents read `docs/plan.md` and the lane rules before picking a task; AGENTS.md,
   the workflows, the skills and the templates are updated in the same change.
 - No soundness ledger line, cost-model constant or proof byte changes.
+- This record was merged with `main` at `21710de`. E16-17 (ADR-090) had delivered the
+  work pool, so task E20-02 keeps the parallel checks only. E16-19 (ADR-092) had
+  delivered row blocks, which task E22-03 uses. The E16-18 ledgers are the L1 and L2a
+  baseline, with two records from the planning host at `21710de`. The lane rule
+  allows a stack inside a lane, as the changes under review use. `docs/plan.md` §6
+  lists that work and how the plan absorbs it.
 
 Status: Accepted (owner-directed; the lane, tier and gate definitions are the
 planning agent's proposal within that direction and are listed for the owner's
@@ -2016,7 +2022,7 @@ Consequences:
   these texts. Until then code follows the Accepted RFC-0026 and RFC-0010. Task
   E20-09 decides Q49. Task E21-09 is the promotion of the lean protocol to
   `standard` and gates M3 and M4.
-- New control ids are proposed in the drafts (NC-0630..0635, NC-0806..0808,
+- New control ids are proposed in the drafts (NC-0630..0635, NC-0810..0812,
   NC-1320..1325) and enter the catalogue at acceptance.
 - Questions Q34 to Q51 are opened in RFC-0019.
 - The drafts were reviewed once by an independent agent and its findings are applied

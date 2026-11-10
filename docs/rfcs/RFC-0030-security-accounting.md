@@ -5,6 +5,15 @@ Status: Draft · Version: 0.1.0 · Depends: RFC-0002, RFC-0008 (A2, A5), RFC-001
 Resolves Q12 when Accepted. Until then the texts below stand and no proof is admitted
 to `standard` or `treaty`. Tasks: E21-01, E21-04, E12-03.
 
+Related work under review when this draft was merged with `main` at `21710de`: tasks
+E12-20 to E12-22 answer Q12 for the classical random-oracle model with the same
+per-round reading, a slack of 8 bits and counted grinding, as amendments to RFC-0012,
+RFC-0010 and RFC-0002. If they are Accepted first they are the law. This RFC is then
+re-based on them and keeps what they leave open: the ledger report of §1.3, the caps
+of §3 as plan validation, and the treaty field. The two differ on one point of
+substance. This draft counts no grinding and bounds each round's numerator; that
+work counts grinding in the commitment and lookup rounds.
+
 Texts this RFC proposes to replace, each by an amendment in its own RFC at acceptance:
 
 - RFC-0002 §8 (the profile table);
@@ -151,13 +160,13 @@ Items 1 and 2 are written in `formal/` for `standard` and are Lean statements fo
 ## 6. Negative controls
 
 NC-0804 (ledger total tampered) and NC-0805 (profile downgrade) keep their ids.
-Proposed, entered at acceptance:
+NC-0806 and NC-0807 are reserved by task E12-22. Proposed, entered at acceptance:
 
 | NC | Tamper | Expected |
 |---|---|---|
-| 0806 | a plan with one lookup instance above the cap, presented as `standard` | `ProfileBound` |
-| 0807 | a source whose evidence id the verifier does not know | `UnsupportedSource` |
-| 0808 | a proof that omits one model root from the first absorb | `RoundSumMismatch` at the first challenge-dependent check |
+| 0810 | a plan with one lookup instance above the cap, presented as `standard` | `ProfileBound` |
+| 0811 | a source whose evidence id the verifier does not know | `UnsupportedSource` |
+| 0812 | a proof that omits one model root from the first absorb | `RoundSumMismatch` at the first challenge-dependent check |
 
 ## 7. Open questions
 

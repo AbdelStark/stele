@@ -75,7 +75,9 @@ with a smaller `ColumnId`, so declaration order is a dependency order.
 - `Pointwise { terms }`: `v(x) = Σ_t c_t · Π_f f(x)`, at most 3 factors per term (the
   term shape of an RFC-0026 identity).
 - `Contraction { free, summed, lhs, rhs }`: `v(x) = Σ_y lhs(x,y)·rhs(x,y)`, the
-  RFC-0026 §3.5 matmul with `v` in place of the committed `out`.
+  RFC-0026 §3.5 matmul with `v` in place of the committed `out`. A contraction past
+  `MAX_VARS` is split into row blocks exactly as RFC-0026 A6 splits a matmul; each
+  block defines one slice of `v`.
 
 A `Ref` to a virtual column is allowed wherever a `Ref` to a witness column is:
 identity factors, lookup tuples, range checks, operands of other definitions.
@@ -139,7 +141,11 @@ needs to be carried.
         point. No new label is used.
       - `Contraction`: if `v` has more than one claim, reduce them to one point with
         RFC-0006 A2 mode 1 over `v`'s own table. Then run the RFC-0026 §4 step 6
-        sumcheck at that point (no fresh `relation/point` draw).
+        sumcheck at that point (no fresh `relation/point` draw). When `v` is split
+        into `2^k` row blocks, the prover first sends the `2^k` slice evaluations at
+        the point with its split coordinates removed. They are absorbed, the verifier
+        checks that they interpolate to the claim along the split coordinates, and
+        each block runs its sumcheck on its slice claim.
    5. batch the claims on segment `s − 1`'s stacked source, which are now complete,
       and open it; segment `s − 1` leaves memory.
 3. Open the last segment. Batch all weight claims per model source and open each
@@ -194,6 +200,7 @@ No new error family.
 | `Pointwise` sumcheck | SC | `m·4/|K|` | proven |
 | `Contraction` claim batch | RLC + SC | RFC-0006 A2 mode 1 | proven |
 | `Contraction` sumcheck | SC | `(s+k)·δ/|K|` | proven |
+| `Contraction` slice split (row blocks) | — | exact; a multilinear interpolation in the split coordinates | proven (multilinearity; the blocks are those of RFC-0026 A6) |
 | carried-column claims | — | the segment root precedes every challenge that produces them | by order (§2.4) |
 
 The composition argument (Q34): by reverse induction over `ColumnId`, every claim

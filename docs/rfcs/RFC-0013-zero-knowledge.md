@@ -82,7 +82,9 @@ contract, with E4-03/E4-06/E10/E12 passport and inference consumers also affecte
 
 Status: Draft. Questions Q29, Q40. Depends on RFC-0029. Tasks: E23-01..E23-04.
 A2 is not used here: it is reserved by task E12-11 (hiding Circle sources and a masked
-sumcheck for the development path), which is under review.
+sumcheck for the development path), which is under review. If that work is Accepted
+first, candidate A below starts from it and this amendment keeps only what commitment
+scheme v3 adds.
 Motivation: A1 states what a construction must provide and names none. Two
 published constructions fit a hash-only, sumcheck-based prover, and one of them has a
 machine-checked precedent for single proofs (FlashProve; ePrint 2026/391).

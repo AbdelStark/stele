@@ -51,8 +51,9 @@ bench/                    ← benchmark protocol, result ledgers, generated scor
 
 **Works today.** One prefill window of a Llama‑style model is proved and verified end to end on CPU under the
 RFC‑0026 development profile: `stele prove-dev` / `stele verify-dev` ([how to run](docs/development-e2e.md)).
-A real checkpoint (llama2.c `stories42M`, 64 tokens) proves in 719 s and verifies in 45 s with a 113 MB proof
-([ledger](bench/ledger/e16-11-dev-stories42m.json)). Proof bytes are deterministic across hosts.
+A real checkpoint (llama2.c `stories42M`, 64 tokens) proves in 474 s and verifies in 24 s with a 113 MB proof on
+24 threads ([ledger](bench/ledger/e16-18-dev-stories42m.json)). Proof bytes are the same on every host and thread
+count measured.
 
 **Does not exist yet.** A security level (the development profile claims none), zero knowledge, a GPU prover,
 the `no_std` verifier crate, a passport, a proof of Llama‑3.1‑8B.

@@ -4,6 +4,13 @@ This is the evidence base for the build program ([`docs/plan.md`](plan.md), RFC-
 Every Stele number below comes from a `bench/ledger/` record or from a command stated
 here. External numbers are quoted with their source and statement (RFC-0018 rule 3).
 
+The assessment was made at `6441a90` and merged with `main` at `21710de`. In between,
+`main` gained a rayon work pool (E16-17, ADR-090), new ledgers with the model
+commitment timed alone (E16-18) and the row-block split of matmuls past 30 bits
+(E16-19, RFC-0026 A6). Section 3 is restated at the merged tree. Sections 1, 4 and 5
+are unchanged by those three changes. Work that was under review at the merge is
+listed in [plan §6](plan.md#work-under-review-at-the-merge).
+
 ## 1. Verdict
 
 Stele has strong primitives, a rigorous integer semantics with real fidelity
@@ -40,7 +47,7 @@ Three facts decide the plan:
 | Codes and PCS | circle-RS encoder; v2 expander encoder; Ligero-style source with certificate and functional opening; retained-row fused opening | E4-01..04, E4-08 done |
 | CQIS | integer semantics for Llama and GPT-2 families; quantiser; tables; native and NumPy executors; real GPT-2-small and Llama-3.1-8B conversion | E5-01..04 done; RFC-0025 |
 | Fidelity | Llama-3.1-8B, full protocol, paired standard errors, attribution | `harness/eval/REPORT.md`; E5-05..05g |
-| End to end | one prefill window, greedy exact-match, development profile, CPU | E16-01..16 done; RFC-0026 |
+| End to end | one prefill window, greedy exact-match, development profile, CPU; matmuls past 30 bits split into row blocks | E16-01..19 merged; RFC-0026 (A1 to A6) |
 | GPU, distribution, wrapper, passport, `stele-verifier` | empty scaffolds (9 to 10 lines each) | `crates/stele-{gpu,dist,wrapper,passport,kernels,py,verifier}` |
 
 Volume (tracked files at `6441a90`, counted with `git ls-tree -r` and `wc -l`): about
@@ -60,25 +67,44 @@ rerun here.
 
 ## 3. The end-to-end prover, measured
 
-Ledgers: [`e16-11-dev-synthetic-8layer`](../bench/ledger/e16-11-dev-synthetic-8layer.json),
-[`e16-11-dev-stories42m`](../bench/ledger/e16-11-dev-stories42m.json) (24 hardware
-threads) and [`e17-00-dev-synthetic-8layer-4core`](../bench/ledger/e17-00-dev-synthetic-8layer-4core.json)
-(this assessment, 4 cores, commit `6441a90`).
+Ledgers, all for one prefill window of 64 tokens:
 
-| Run | Host | Prove | Verify | Proof | Peak RSS (prove) |
-|---|---|---|---|---|---|
-| synthetic 8-layer, d 64, V 256, T 64 | 24 threads | 34.3 s | 5.1 s | 45.0 MB | 2.6 GB |
-| same | 4 cores | 55.7 s | 7.0 s | 45.0 MB | 2.6 GB |
-| stories42M, d 512, V 32000, T 64 | 24 threads | 719 s | 45.2 s | 113.4 MB | 37.4 GB |
+- 24 hardware threads (Intel Core Ultra 9 285K), commit `e813ce1`:
+  [`e16-18-dev-synthetic-8layer`](../bench/ledger/e16-18-dev-synthetic-8layer.json),
+  [`e16-18-dev-stories42m`](../bench/ledger/e16-18-dev-stories42m.json);
+- the same host class before the work pool, commit `f6db15e`:
+  [`e16-11-dev-synthetic-8layer`](../bench/ledger/e16-11-dev-synthetic-8layer.json),
+  [`e16-11-dev-stories42m`](../bench/ledger/e16-11-dev-stories42m.json);
+- 4 cores (Intel Xeon at 2.1 GHz), this assessment:
+  [`e17-00-dev-synthetic-8layer-4core`](../bench/ledger/e17-00-dev-synthetic-8layer-4core.json)
+  at `6441a90`,
+  [`e17-00-dev-synthetic-8layer-4core-21710de`](../bench/ledger/e17-00-dev-synthetic-8layer-4core-21710de.json)
+  and
+  [`e17-00-dev-synthetic-8layer-1thread-21710de`](../bench/ledger/e17-00-dev-synthetic-8layer-1thread-21710de.json)
+  at the merged tree.
+
+| Run | Host, threads | Commit | Prove | Verify | Proof | Peak RSS (prove) |
+|---|---|---|---|---|---|---|
+| synthetic 8-layer, d 64, V 256 | Core Ultra 9, 24 | `e813ce1` | 21.9 s | 3.95 s | 45.0 MB | 3.0 GB |
+| same | Xeon, 4 | `21710de` | 59.8 s | 7.0 s | 45.0 MB | 2.6 GB |
+| same | Xeon, 1 | `21710de` | 103.6 s | 7.9 s | 45.0 MB | 2.6 GB |
+| same, before the work pool | Xeon, 4 | `6441a90` | 55.7 s | 7.0 s | 45.0 MB | 2.6 GB |
+| same, before the work pool | Core Ultra 9, 24 | `f6db15e` | 34.3 s | 5.1 s | 45.0 MB | 2.6 GB |
+| stories42M, d 512, V 32000 | Core Ultra 9, 24 | `e813ce1` | 474 s | 24.3 s | 113.4 MB | 38.4 GB |
+| same, before the work pool | Core Ultra 9, 24 | `f6db15e` | 719 s | 45.2 s | 113.4 MB | 37.4 GB |
 
 Findings:
 
-- **Determinism holds across hosts and commits.** The 4-core run at `6441a90`
-  reproduced the proof bytes of the 24-thread run at `f6db15e` (SHA-256 `478300a1…a7f4`).
-- **Threads barely help.** Six times the hardware threads bought a 1.6x shorter
-  prove on the synthetic model (the two hosts have different CPUs, so this is a
-  bound, not a scaling curve). Dense rounds spawn scoped threads per round, and the
-  750 matmul sumchecks and 21 lookup checks run one after another.
+- **Determinism holds across hosts, commits and thread counts.** The synthetic proof
+  has the same bytes (SHA-256 `478300a1…a7f4`) in all five records: two hosts, four
+  commits, and 1, 4 and 24 threads.
+- **Threads help, but not much.** On the 4-core host the merged tree proves in 59.8 s
+  with four threads and in 103.6 s with one, a factor of 1.7. The work pool of E16-17
+  cut the 24-thread time from 34.3 s to 21.9 s and stories42M from 719 s to 474 s. It
+  left the 4-core time where it was: 55.7 s before, and 59.8 s, 57.1 s and 61.0 s in
+  three runs after (the repeats are in the ledger's host context). The pool splits
+  the work inside one sumcheck or one encoding. The 750 matmul sumchecks and the 21
+  lookup checks still run one after another.
 - **The PCS is 91% of the proof.** Section bytes of the synthetic proof (ledger
   counters): stacked certificate 19.28 MB, source openings 16.05 MB, multiplicity
   certificates 5.77 MB, lookup proofs 3.48 MB, matmul sumchecks 0.29 MB, zerochecks
@@ -86,16 +112,18 @@ Findings:
   distance needs up to 13,472 certificate and 6,714 opening queries (13,469 and 6,713
   at this proof's stacked geometry). The circle code at rate 1/4 needs 314 and 130
   under the same rule (RFC-0010 A3).
-- **Lookups and the batch opening are the prover.** A sampling profile of a 4-core
-  run (22 stack samples during proving; a diagnostic, not a benchmark) put 11 samples
-  in the lookup argument and 9 in the stacked-source claim batch and opening. The other
-  2 were in a sumcheck and in building tables. Method: the release test
+- **Lookups are the largest phase of the prover.** A sampling profile at the merged
+  tree (56 stack samples during proving; a diagnostic, not a benchmark) put 23 samples
+  in the lookup argument, 9 in the stacked-source claim batch and opening, 8 in the
+  zerochecks and 4 in preparing the sources. At `6441a90` the same method put 11 of 22
+  in the lookup argument and 9 in the batch and opening, so E16-17 shrank the
+  opening's share and left the lookups. Method: the release test
   `accepts_eight_layer_window` of `stele-prover` ran while
   `gdb -p <pid> -batch -ex "thread apply all bt 14"` attached to it in a loop with a
-  one-second pause, 29 times in all. Each sample is counted under the outermost
-  `stele_reductions::relation` frame of the main thread: `lookup::prove` 11,
-  `Opening::prove` 9. Attaching slows the run (62.3 s to prove, against 55.7 s in the
-  ledger), so the counts rank the phases and do not time them. Task E17-01 replaces
+  one-second pause (29 samples at `6441a90`; 60 at the merged tree, where the loop's
+  limit ended it before verification finished). Each sample is counted under the
+  outermost `stele_reductions::relation` frame of the main thread. Attaching slows
+  the run, so the counts rank the phases and do not time them. Task E17-01 replaces
   this with phase timers in the ledger.
 - **The witness is more than an order of magnitude too large.** For 64 tokens of the synthetic
   model the proof commits one stacked source of 2^25 cells (derived from the
@@ -104,23 +132,24 @@ Findings:
   20.6 million, tables included). That is roughly 1,000 cells and 600 lookup
   positions per token, layer and unit of width.
 - **Memory is one shot.** Every column is `i64`, every sumcheck table is a dense
-  QM31 vector, and the whole window is resident. stories42M at T = 64 needs 37 GB.
-- **The verifier is linear in public data and slow.** 45 s for stories42M. On the
-  synthetic model, 3 of the 6 samples taken during verification (same method) were in
-  re-deriving the relation (table generation included); the rest were in lookup and
-  certificate checks.
+  QM31 vector, and the whole window is resident. stories42M at T = 64 needs 38 GB.
+- **The verifier is linear in public data and slow.** 24 s for stories42M on 24
+  threads. On the synthetic model, 3 of the 6 samples taken during verification at
+  `6441a90` (same method) were in re-deriving the relation (table generation
+  included); the rest were in lookup and certificate checks.
 
 What the development profile does not claim (RFC-0026 §1.2): any security level, zero
 knowledge, a passport, GPU parity, or a cost-model term.
 
 ## 4. Why the original path is stuck
 
-`agents/tasks/graph.yaml` has 157 tasks: 87 done, 53 `ready`, 17 `blocked`. Only four
-are pickable (all dependencies done): E4-07, E5-05h, E5-06 and E15-07. None is on the
-path to an inference proof. The prover task of that path, E8-01, has 22 unfinished
-prerequisites. Eleven of them are blocked on amendments: RFC-0004 A3 and A6 to A9,
-RFC-0003 A3, RFC-0007 A8, RFC-0009 A2, the Q31 virtual-column amendment, RFC-0010 A7,
-RFC-0013 A1 and the lowering contracts of E6-00.
+At `6441a90`, `agents/tasks/graph.yaml` had 157 tasks: 87 done, 53 `ready` and 17
+`blocked`. Only four were pickable (all dependencies done): E4-07, E5-05h, E5-06 and
+E15-07. None was on the path to an inference proof. The prover task of that path,
+E8-01, had 22 unfinished prerequisites. Eleven of them were blocked on amendments:
+RFC-0004 A3 and A6 to A9, RFC-0003 A3, RFC-0007 A8, RFC-0009 A2, the Q31
+virtual-column amendment, RFC-0010 A7, RFC-0013 A1 and the lowering contracts of
+E6-00.
 
 The causes are structural, not a lack of effort:
 
@@ -192,8 +221,8 @@ statement differs from Stele's (zero-knowledge, GPU, fixed 1,024-token window).
 
 | Property | FlashProve (reported) | Stele today |
 |---|---|---|
-| Throughput | 111 tok/s of prefill at 24 requests per batch; 17.4 tok/s for one request (58.8 s) | 0.09 tok/s on a 42M model, CPU |
-| Proof, verify | 18.78 MB per request; 17 to 21 s | 113 MB; 45 s |
+| Throughput | 111 tok/s of prefill at 24 requests per batch; 17.4 tok/s for one request (58.8 s) | 0.135 tok/s on a 42M model, CPU (64 tokens in 474 s) |
+| Proof, verify | 18.78 MB per request; 17 to 21 s | 113 MB; 24 s |
 | Zero knowledge | masked sumcheck and bounded-query encodings; a declared leak list; Lean proof for single requests | none |
 | Soundness | "about q/2^124 + 2^-101", machine-checked for the Lean verifier; the C++ verifier and CUDA prover are not covered | no level claimed |
 | Field, PCS | Goldilocks with a cubic extension; interleaved Reed–Solomon, fold and code-switch, list-decoding regime | M31/QM31; Ligero-style over a v2 expander |

@@ -15,5 +15,5 @@
 14. Marking advice as a virtual column (RFC-0028 §1.2), or giving a virtual column a definition that is not an integer polynomial in other columns.
 15. Merging a change that leaves rung L0 failing on `main`; patching forward instead of reverting.
 16. A performance or capability statement without a ledger on a named rung; a before/after pair from different rungs, hosts or thread counts.
-17. Stacked changes in a lane, or a second open change in a lane.
+17. A second open line of work in a lane, or a stack of changes that crosses lanes.
 18. New work on a stopped line (RFC-0027 §7) without an ADR that reopens it.

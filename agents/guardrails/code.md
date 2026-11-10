@@ -7,6 +7,6 @@
 - Performance changes must not change proof bytes (digest gate) unless an RFC amendment says so.
 - PR ≤ ~800 changed lines; one task per PR.
 - Witness values are stored at their declared width (`i8`, `i16`, `i32`); no `i64` column and no dense extension-field table before the first sumcheck fold (task E20-01 makes this true; new code follows it now).
-- Prover-side parallelism goes through one thread pool with a fixed reduction order; never spawn threads per round.
+- Prover-side parallelism goes through the one work pool (rayon behind the `std` features, ADR-090) with a fixed reduction order; never spawn threads per round; verifier and `no_std` builds stay free of it.
 - Every prover stage reports its time and its element counts through the stage counters (task E17-01).
 - A module header lists its committed columns (the advice), its virtual columns, and its output-uniqueness lemma.

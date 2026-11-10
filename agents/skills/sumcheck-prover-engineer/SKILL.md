@@ -19,7 +19,7 @@ Rules
   challenges. Independent instances each carry their own tree proofs, which costs proof bytes; the form meant for
   `standard` shares the challenges and one tree reduction across the instances of a check (Q49, task E20-09).
   Record lookup-proof bytes against instance count in every ledger that splits.
-- One thread pool; fixed partition of every sum; no spawn per round.
+- One work pool (`stele_sumcheck::parallel`, ADR-090); partial sums are added in chunk order; no spawn per round.
 - Memory: report peak bytes per instance in the ledger; stacked instances expose per-block partial round sums.
 
 Deliverables per task: code, tests, ledger entry with `c_sc(δ, small)` or `c_lu`, control(s) NC-02xx or NC-04xx.

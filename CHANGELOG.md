@@ -10,5 +10,5 @@ security accounting), RFC-0013 A3 (zero knowledge on v3), RFC-0026 A7/A8. Resear
 `docs/assessment.md`, `docs/plan.md`; task epics E17–E23 (51 tasks); legacy triage in RFC-0027 §6.
 Agent context: AGENTS.md, invariants INV-14/INV-15, architecture, glossary, reading list; workflows 09–12;
 seven new skills; templates for short amendments and experiments.
-Ledger `e17-00-dev-synthetic-8layer-4core`; `bench/dev_e2e.py --counters --rung`; `bench/scoreboard.py` and the
-generated `bench/scoreboard.md`.
+Ledgers `e17-00-dev-synthetic-8layer-4core` (at `6441a90`), `-4core-21710de` and `-1thread-21710de`;
+`bench/dev_e2e.py --counters --rung`; `bench/scoreboard.py` and the generated `bench/scoreboard.md`.

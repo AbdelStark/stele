@@ -53,8 +53,9 @@ scoreboard or retiring a named risk.
 
 ## 3. How to work (short form of `agents/workflows/01-implement-task.md`)
 
-1. **Lane.** Work in one lane (RFC‑0027 §5). A lane has at most one open change, always based on `main`.
-   No stacked changes. A change to another lane's interface goes first, alone (Workflow 12).
+1. **Lane.** Work in one lane (RFC‑0027 §5). A lane has one open line of work: one change, or a stack of
+   changes that merge in order. The bottom of a stack is based on `main`, and a stack never crosses lanes. A
+   change to another lane's interface goes first, alone (Workflow 12).
 2. **Claim** a task: `status: in_progress` in `graph.yaml` with your agent id and a branch `task/<id>-<slug>`.
 3. **Read** the task's `rfc` sections and `skill`. Read the acceptance criteria *before* writing code.
 4. **Know the tier** (RFC‑0027 §2). New capability lands in the development tier. Promotion to `standard` or

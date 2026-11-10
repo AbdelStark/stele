@@ -87,12 +87,13 @@ the milestone tasks of `agents/tasks/graph.yaml`.
 
 ## 5. Lanes
 
-A lane owns crates and directories. It has at most one open change. Every change is
-based on `main`; stacked changes are not allowed. A change that touches another
-lane's interface is made first, alone, and reviewed by that lane.
+A lane owns crates and directories. It has one open line of work at a time: one
+change based on `main`, or a stack of changes in that lane that merge in order. A
+stack never crosses lanes. A change that touches another lane's interface is made
+first, alone, and reviewed by that lane.
 
 A task may edit code another lane owns when its acceptance requires it. The change
-is then reviewed by the owning lane, counts as the editing lane's one open change,
+is then reviewed by the owning lane, counts as the editing lane's open line of work,
 and waits if the owning lane has an open change on the same files.
 
 | Lane | Epic | Owns |
@@ -142,6 +143,11 @@ table or `program.legacy_active` in `graph.yaml` says so.
 
 A superseded task is closed when its successor is done and every acceptance line that
 still applies is covered by the successor or moved to a named task.
+
+Epic E16 stays active for development-profile work. A task added to an epic of this
+table after the assessment (`6441a90`) is not triaged here. The change that adds it
+says which lane owns it, and the plan records how it is absorbed
+([`docs/plan.md`](../plan.md) §6).
 
 ## 7. Scope of earlier decisions
 

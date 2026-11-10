@@ -41,7 +41,7 @@ changes what the next should be:
 
 1. the protocol (commit less, look up less);
 2. the commitment scheme (proof bytes and verifier time);
-3. the CPU engine (typed small values, one thread pool, tight lookups);
+3. the CPU engine (typed small values, parallel checks, tight lookups);
 4. the GPU (kernels for the loops that remain hot).
 
 **Make it right.** Rigour rises with maturity. A capability lands in the development
@@ -186,7 +186,8 @@ CPU first, because the reference defines the bytes (INV-3):
 
 - typed small-value columns (`i8`, `i16`, `i32`), never `i64` or a dense QM31 table
   before the first sumcheck fold; base-field first rounds;
-- one thread pool; independent sumchecks and lookup checks in parallel;
+- the work pool of E16-17 (ADR-090) for every split, with independent sumchecks and
+  lookup checks running in parallel on it;
 - LogUp with base-field leaves, precomputed first-layer tables for small domains, and
   the instance split of RFC-0026 A8;
 - stage timers and counters in every run.
@@ -251,18 +252,18 @@ M5 needs commitment scheme v3.
 
 ## 6. Lanes and the task graph
 
-Seven lanes. A lane owns crates and directories, has at most one open change at a
-time, and bases every change on `main`. Lanes meet at stable interfaces: the relation
-IR, the source context of the commitment scheme, the backend trait, the ledger
-schema. A task that must edit another lane's code is reviewed by that lane
-(RFC-0027 §5).
+Seven lanes. A lane owns crates and directories and has one open line of work at a
+time: one change based on `main`, or a stack of changes that merge in order. Lanes
+meet at stable interfaces: the relation IR, the source context of the commitment
+scheme, the backend trait, the ledger schema. A task that must edit another lane's
+code is reviewed by that lane (RFC-0027 §5).
 
 | Lane | Epic | Owns | First tasks |
 |---|---|---|---|
 | B: bench | E17 | `stele-bench`, `bench/`, CI | stage counters, scoreboard, real gates in place of scaffold fingerprints |
 | P: protocol | E18 | `stele-ir`, the relation engine, `stele-prover` | RFC-0028, linear then contraction virtual columns, segments |
 | C: commitment | E19 | `stele-code`, `stele-pcs` | circle sources in the engine, RFC-0029, recursive opening |
-| E: engine | E20 | `stele-sumcheck`, `stele-lookup`, `stele-kernels`, `stele-gpu` | typed columns, thread pool, lookup fast path, backend trait, CUDA |
+| E: engine | E20 | `stele-sumcheck`, `stele-lookup`, `stele-kernels`, `stele-gpu` | typed columns, parallel checks, lookup fast path, backend trait, CUDA |
 | V: verifier | E21 | `stele-verifier`, `stele-proof`, Python verifier, controls, `formal/` | RFC-0030, verifier crate, Python verifier, admission |
 | N: numerics | E22 | `stele-cqis`, `harness/`, the proving modules | accounting tool, wide residual modules, first light, static-scale experiment |
 | Z: zero knowledge | E23 | masks and encodings across P, C, E | RFC-0013 A3, then implementation on v3 |
@@ -270,6 +271,7 @@ schema. A task that must edit another lane's code is reviewed by that lane
 Critical path to each gate:
 
 - **M1:** E17-01 → E22-03 (wide residual) and E18-06 (segments) → E22-04.
+  Row blocks for the 8B head and projections are in place (E16-19, RFC-0026 A6).
   Accelerators that are not required: E19-02, E18-02, E20-02.
 - **M2:** E18-01..05, E19-02..04, E20-01..02, E22-01.
 - **M3:** E21-01..05 on top of E19-02 and E20-02, then the promotion E21-09, which
@@ -280,6 +282,22 @@ Critical path to each gate:
 Legacy epics E6 to E15 stay in the graph as the treaty backlog. RFC-0027 §6 lists
 which tasks are superseded, which are parked and which resume at which gate.
 
+### Work under review at the merge
+
+Three lines of work were open against `main` when this plan was merged with it at
+`21710de`. None of it is law until it is Accepted on `main`. Each row says how the
+plan absorbs it.
+
+| Work under review | Tasks | What it decides | When it is Accepted |
+|---|---|---|---|
+| Fiat–Shamir and profile security (Q12) | E12-20, E12-21, E12-22 | A per-round bound with counted grinding and 8 bits of slack; Policy 2 query counts for `standard`; a per-query profile definition (RFC-0012 A17, RFC-0010 A14, RFC-0002 A1). | It is the law for Q12, and RFC-0030 is re-based on it. Both read security per round. They differ on grinding: RFC-0030 counts none and caps the lookup instance and the commitment row instead. Task E21-01 then keeps the ledger report, the plan validation and the treaty field. Policy 3 of RFC-0029 is restated against Policy 2. |
+| Zero knowledge on the development path | E12-10 to E12-13 | Hiding Circle sources with salted leaves and a masked sumcheck (RFC-0013 A2, RFC-0010 A15, RFC-0012 A18). | Lane Z starts from it. Task E23-01 decides only what commitment scheme v3 adds (RFC-0013 A3). |
+| stories110M | E16-20 | A second real checkpoint through the development prover, on the row blocks of RFC-0026 A6. | It becomes a rung between L2 and L3 by an RFC-0018 amendment. |
+
+Their ids are reserved (Workflow 12 step 4): ADR-091, ADR-093 and ADR-094; RFC-0013
+A2; RFC-0012 A17 and A18; RFC-0010 A14 and A15; NC-0806, NC-0807 and NC-0902 to
+NC-0906.
+
 ### First ten moves
 
 1. Stage timers and cell, lookup and byte counters in the prover and the ledger (E17-01).
@@ -288,7 +306,8 @@ which tasks are superseded, which are parked and which resume at which gate.
    `1 + 16·C + q·(4·R + 32·log2 N)` and Policy 1's 314 and 130 queries, the L1
    stacked certificate and source openings fall from 35.3 MB to about 3.3 MB (stacked
    source at `m = 15`: 1.98 MB and 1.13 MB; model opening 0.19 MB).
-3. One thread pool; parallel lookup checks and matmul sumchecks (E20-02).
+3. Lookup checks and matmul sumchecks in parallel on the work pool that E16-17 added
+   (E20-02). Four threads buy a factor of 1.7 over one today (assessment §3).
 4. Typed columns; no `i64` or dense QM31 before the first sumcheck fold (E20-01).
 5. The static accounting tool for cells and lookups per token (E22-01).
 6. Linear virtual columns (E18-02).
@@ -377,8 +396,11 @@ Mirrored as numbered questions in RFC-0019, where each track states its kill cri
 2. INV-6 and INV-7 apply as written to `standard` and `treaty` plans; the commit rule
    of RFC-0028 replaces INV-6's wording when that RFC is Accepted.
 3. Security is stated per round with hash queries multiplying the largest round error
-   (RFC-0030, Draft). `standard` becomes proven-only.
-4. Work runs in lanes with one open change each, replacing one global queue.
+   (RFC-0030, Draft). `standard` becomes proven-only. The Q12 work under review
+   (section 6) decides the same question with counted grinding; if it is Accepted
+   first it is the law and RFC-0030 is re-based on it.
+4. Work runs in lanes with one open line of work each (a change, or a stack that
+   merges in order), replacing one global queue.
 5. New work stops on the v2 expander path, per-operation advice cuts, double-challenge
    LogUp, dual-prime accumulation and epoch beacons.
 

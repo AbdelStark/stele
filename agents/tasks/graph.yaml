@@ -81,6 +81,7 @@ program:
   rfc: RFC-0027
   plan: docs/plan.md
   active_epics:
+  - E16
   - E17
   - E18
   - E19
@@ -90,7 +91,7 @@ program:
   - E23
   legacy_active:
   - E5-05h
-  rule: Tasks of epics E3 to E15 that are not done are the treaty backlog. Pick one only if it is in legacy_active. RFC-0027 §6 says what supersedes, parks or resumes each.
+  rule: E16 stays active for development-profile work. Tasks of epics E3 to E15 that are not done are the treaty backlog. Pick one only if it is in legacy_active, or if it was added after RFC-0027 by a change that says which lane owns it. RFC-0027 §6 says what supersedes, parks or resumes each.
   gates:
     M1: E22-04
     M2: E18-09
@@ -2967,8 +2968,8 @@ tasks:
   lane: B
   status: ready
   acceptance:
-  - prove-dev reports nanoseconds for witness capture, plain check, commitment, multiplicities, zerochecks, lookups, matmuls or reductions, openings, and for model commitment separately
-  - counters for committed cells, lookup positions per check, proof section bytes and weight reads; bench/dev_e2e.py writes them to stage_times_ns and kernel_counters
+  - prove-dev reports nanoseconds for witness capture, plain check, commitment, multiplicities, zerochecks, lookups, matmuls or reductions, openings, and for model commitment separately, in process; this replaces the separate-process model_commitment stage of E16-18
+  - counters for committed cells, lookup positions per check, proof section bytes and weight reads; bench/dev_e2e.py writes them to stage_times_ns and kernel_counters; none depends on the thread count (ADR-090 keeps the encoder work counters out of ledgers)
   - timers live behind the existing std feature; no_std builds and the pinned L0 and L1 proof hashes are unchanged
   - L1 and L2a ledgers re-recorded with stages on the reference host class
 - id: E17-02
@@ -3299,7 +3300,7 @@ tasks:
   - peak RSS and prove time on L1 and L2a before and after in ledgers
 - id: E20-02
   epic: E20
-  title: Lookup fast path - thread pool, parallel instances, base-field leaves, instance split
+  title: Lookup fast path - parallel checks on the work pool, base-field leaves, instance split
   depends:
   - E17-01
   rfc:
@@ -3311,7 +3312,7 @@ tasks:
   lane: E
   status: ready
   acceptance:
-  - one thread pool replaces per-round thread spawning; lookup instances and matmul sumchecks run in parallel with a fixed transcript order
+  - lookup instances and matmul sumchecks run in parallel on the work pool of E16-17 (ADR-090) with a fixed transcript order; the per-round spawning that pool replaced does not return
   - leaf layers stay in the base field; the first tree layers of small-domain tables are read from precomputed tables
   - RFC-0026 A8 Accepted; its control runs through the actual verifier; proof bytes of unsplit plans are unchanged
   - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a; lookup-proof bytes recorded against the instance count at B = 30 and B = 23
@@ -3448,9 +3449,9 @@ tasks:
   lane: V
   status: ready
   acceptance:
-  - RFC-0030 Accepted through the full Workflow 02 path with the compilation theorem and constants cited; Q12 closed in RFC-0019
+  - RFC-0030 Accepted through the full Workflow 02 path with the compilation theorem and constants cited; Q12 closed in RFC-0019. If the Q12 amendments of task E12-22 are Accepted first, they are the law; RFC-0030 is then re-based on them and keeps the per-family ledger report, the plan validation and the treaty field
   - formal/security-accounting.md states the round-by-round error of each family in RFC-0030 §2 with its state function
-  - the engine ledger reports every round record, the least bits and the five weakest rounds; NC-0804 to NC-0808 run through the actual verifier
+  - the engine ledger reports every round record, the least bits and the five weakest rounds; NC-0804, NC-0805 and NC-0810 to NC-0812 run through the actual verifier
 - id: E21-02
   epic: E21
   title: stele-verifier owns development verification
@@ -3643,7 +3644,7 @@ tasks:
   lane: N
   status: ready
   acceptance:
-  - an RFC-0026 amendment extends the model class to version-2 residual streams and the 8B shape (8 KV heads, grouped rows, head row blocks)
+  - an RFC-0026 amendment extends the model class to version-2 residual streams and the 8B shape (8 KV heads, grouped rows); matmuls past 30 bits use the row blocks of RFC-0026 A6 (E16-19)
   - the plain checker accepts executor captures on wide fixtures; near-miss tests reject output plus or minus one and the other rounding direction
   - a synthetic wide fixture proves and verifies in the end-to-end test
 - id: E22-04
@@ -3762,7 +3763,7 @@ tasks:
   lane: Z
   status: ready
   acceptance:
-  - both candidates prototyped on L1 with prover overhead, proof bytes and batch coverage measured
+  - both candidates prototyped on L1 with prover overhead, proof bytes and batch coverage measured; if the hiding sources and masked sumcheck of tasks E12-11 to E12-13 are Accepted first, candidate A starts from them
   - for candidate A, the placement of randomiser coefficients and the admissible query sets with a proof that the randomiser block has full rank on each (RFC-0013 A3 item 1)
   - RFC-0013 A3 Accepted for the development tier with the chosen construction, its transcript order and its simulator sketch
 - id: E23-02
