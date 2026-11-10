@@ -35,3 +35,19 @@ Sumcheck matmul (Thaler), GKR/LogUp‑GKR, small‑value provers, Ligero family,
 methodology (SASH), full‑sequence causal equivalence of decode. Stele's contribution is the *composition* into a
 system whose per‑proof cost is `≈ bytes(weights) + c·|nonlinear values| + commit(residual cuts)` with
 treaty‑grade soundness, and the handful of N3 items above.
+
+## Status after the assessment at `6441a90` (RFC-0027; `docs/assessment.md`)
+
+| ID | Status | Note |
+|---|---|---|
+| ST-1 | corrected | Residual-only cuts are not sound for values produced by rounding or tables. The commit rule (RFC-0028, Draft) commits advice only; stacking and layer-parallel phases stay (task E18-07). Novelty rating falls to N1–N2: FlashProve ships the same shape with segments. |
+| ST-2 | kept | Fused opening, now on commitment scheme v3 in certified mode (RFC-0029 §1.3, task E18-07). |
+| ST-3 | kept | The passport matters more: a proof about unidentified weights proves little (task E21-05). |
+| ST-4 | kept, under study | CQIS stands; the cheapest configuration at G7 fidelity is research (Q36, Q38). |
+| ST-5 | stopped | Dual-prime accumulation; RFC-0027 §7. |
+| ST-6 | superseded | Lookup instances are split to a size cap; no second challenge pair is needed for 100 bits (RFC-0030 §3, Draft). The r = 2 code remains. |
+| ST-7 | parked | Epoch beacons, until gate M6. |
+| ST-8 | kept | Streaming by segment (RFC-0028 §2.3). |
+| ST-9 | kept | Bucketed partial evaluation for int4 and int8 weights (task E20-03). |
+| ST-10 | open | Scores stay virtual. Probabilities are committed unless an indexed lookup leaves table outputs virtual (Q35). |
+| ST-11 | kept | `Relation::validate` is the static certificate for the relation engine. |

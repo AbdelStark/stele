@@ -173,6 +173,7 @@ real-model `proof.bin` (SHA-256 `507b52b3…5381`) is byte-identical to the one 
 |---|---|---|---|---|---|---|
 | Stele dev, synthetic | 8 layers, d 64, V 256, T 64, checked 0..64 | 34.3 s | 5.1 s | 45.0 MB | 2.6 / 0.30 GB | [e16-11-dev-synthetic-8layer](../bench/ledger/e16-11-dev-synthetic-8layer.json) |
 | Stele dev, stories42M | 8 layers, d 512, V 32000, T 64, checked 23..64 | 719 s | 45.2 s | 113.4 MB | 37.4 / 4.8 GB | [e16-11-dev-stories42m](../bench/ledger/e16-11-dev-stories42m.json) |
+| Stele dev, synthetic, 4-core host at `6441a90` | 8 layers, d 64, V 256, T 64, checked 0..64 | 55.7 s | 7.0 s | 45.0 MB | 2.6 / 0.30 GB | [e17-00-dev-synthetic-8layer-4core](../bench/ledger/e17-00-dev-synthetic-8layer-4core.json) |
 | FlashProve route 3 "small model" | 8-layer synthetic model | 23–30 s run: commit, prove and verify (build excluded) | included in the run | not stated | 10 GB RAM needed | README at `9e2bdd8` |
 
 The FlashProve row is the figure that project reports in its
@@ -184,3 +185,8 @@ the weights (zero-knowledge) and runs on a GPU. A Stele development proof reveal
 model and activations, claims no security level and runs on CPU threads. The Stele
 prove time includes the model commitment, which a model owner computes once per model;
 `prove-dev` recomputes it on every call. No GPU path is measured here (INV-3).
+
+The 4-core row is a different host and commit from the two rows above it; its proof
+bytes are identical to the 24-thread synthetic row's (INV-8). Where the time and the
+bytes go, and what the build program does about it, is in
+[`docs/assessment.md`](assessment.md) §3 and [`docs/plan.md`](plan.md).
