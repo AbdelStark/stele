@@ -6,15 +6,16 @@ use stele_pcs::CodeField;
 use stele_reductions::zk::claims::{self, Column, Lookup, Statement};
 use stele_reductions::zk::{Error, Seed};
 
-/// `n = c_D + 2`: one masked layer between the committed top and the leaves.
-fn bits<K: CodeField>() -> u32 {
-    (<K as CodeField>::DEGREE as u32).trailing_zeros() + 2
+/// `n = c_D + extra`: `extra = 2` puts one masked layer between the committed top
+/// and the leaves; `extra = 4` adds two middle layers.
+fn bits<K: CodeField>(extra: u32) -> u32 {
+    (<K as CodeField>::DEGREE as u32).trailing_zeros() + extra
 }
 
 /// One source: the tuple column `x` and its multiplicities, into a table of
 /// `3j + 1` with the last quarter padding.
-fn statement<K: ChallengeField + CodeField>() -> Statement<K> {
-    let n = bits::<K>();
+fn statement<K: ChallengeField + CodeField>(extra: u32) -> Statement<K> {
+    let n = bits::<K>(extra);
     let rows = 1usize << n;
     Statement {
         sources: 1,
@@ -39,8 +40,8 @@ fn statement<K: ChallengeField + CodeField>() -> Statement<K> {
 }
 
 /// Lookups of valid rows chosen by `pick`, and their counts.
-fn witness<K: CodeField>(pick: impl Fn(usize) -> usize) -> Vec<Vec<M31>> {
-    let rows = 1usize << bits::<K>();
+fn witness<K: CodeField>(extra: u32, pick: impl Fn(usize) -> usize) -> Vec<Vec<M31>> {
+    let rows = 1usize << bits::<K>(extra);
     let valid = 3 * rows / 4;
     let mut counts = vec![0i64; rows];
     let x: Vec<M31> = (0..rows)
@@ -104,8 +105,8 @@ fn round_trip<K: ChallengeField + CodeField + Eq + core::fmt::Debug>()
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let s = statement::<K>();
-    let w = witness::<K>(|i| 5 * i + 2);
+    let s = statement::<K>(2);
+    let w = witness::<K>(2, |i| 5 * i + 2);
     let proof = claims::prove(&s, &w, seed(1), &mut transcript()).expect("proof");
     let verified = claims::verify(&s, &proof, &mut transcript()).expect("accepted");
     // Two top relations, two GKR steps, two source batches and the shared batch.
@@ -118,7 +119,7 @@ where
     assert_eq!(verified.reductions[3].sc.degree, 4);
     // The first step reveals the masked layer below the top: never its true value.
     let [beta, alpha] = verified.lookups[0];
-    let k0 = bits::<K>() as usize - 1;
+    let k0 = bits::<K>(2) as usize - 1;
     let point = &verified.reductions[2].point;
     let below = layer(&s, &w, beta, alpha, k0 + 1);
     let mut at = point.clone();
@@ -141,8 +142,8 @@ fn accepts_masked_gkr_lookup() {
 /// sum is not zero and `Σ h = 0` fails in the prover's own rounds.
 #[test]
 fn rejects_tuple_outside_table() {
-    let s = statement::<QM31>();
-    let mut w = witness::<QM31>(|i| i);
+    let s = statement::<QM31>(2);
+    let mut w = witness::<QM31>(2, |i| i);
     w[0][3] = M31::from_i64(2); // not 3j + 1
     assert_eq!(
         claims::prove(&s, &w, seed(1), &mut transcript()).err(),
@@ -153,8 +154,8 @@ fn rejects_tuple_outside_table() {
 /// Wrong multiplicities are rejected the same way.
 #[test]
 fn rejects_wrong_multiplicity() {
-    let s = statement::<QM31>();
-    let mut w = witness::<QM31>(|i| i);
+    let s = statement::<QM31>(2);
+    let mut w = witness::<QM31>(2, |i| i);
     w[1][0] = w[1][0] + M31::ONE;
     assert!(claims::prove(&s, &w, seed(1), &mut transcript()).is_err());
 }
@@ -163,9 +164,9 @@ fn rejects_wrong_multiplicity() {
 /// step's public table final disagrees.
 #[test]
 fn rejects_changed_table() {
-    let s = statement::<QM31>();
+    let s = statement::<QM31>(2);
     let proof =
-        claims::prove(&s, &witness::<QM31>(|i| i), seed(1), &mut transcript()).expect("proof");
+        claims::prove(&s, &witness::<QM31>(2, |i| i), seed(1), &mut transcript()).expect("proof");
     let mut other = s.clone();
     other.lookups[0].table[1][0] += 1;
     assert_eq!(
@@ -197,9 +198,9 @@ fn first_limb(value: QM31) -> u32 {
 /// leaf step's claim on `x` are uniform (χ², 7 dof, threshold 30).
 #[test]
 fn accepts_uniform_layer_values() {
-    let s = statement::<QM31>();
+    let s = statement::<QM31>(2);
     for shift in [1usize, 7] {
-        let w = witness::<QM31>(|i| 3 * i + shift);
+        let w = witness::<QM31>(2, |i| 3 * i + shift);
         let (mut residuals, mut values, mut leaves) = (Vec::new(), Vec::new(), Vec::new());
         for n in 0..96u8 {
             let proof = claims::prove(&s, &w, seed(n), &mut transcript()).expect("proof");
@@ -224,11 +225,77 @@ fn accepts_uniform_layer_values() {
 /// keeping its final check (and `μ`) intact is rejected by the shared batch only.
 #[test]
 fn rejects_unbound_block_finals() {
-    let s = statement::<QM31>();
-    let w = witness::<QM31>(|i| i);
+    let s = statement::<QM31>(2);
+    let w = witness::<QM31>(2, |i| i);
     let forged = claims::forge_block(&s, &w, seed(3), &mut transcript(), 1).expect("forgery");
     assert_eq!(
         claims::verify(&s, &forged, &mut transcript()).err(),
         Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
     );
+}
+
+/// `n = c_D + 4`: GKR steps at `k = c_D + 1` (first), `c_D + 2`, `c_D + 3` (middle
+/// layers) and `n` (leaves), with declared degrees 7, 7, 5 and 4 (A7 implementation
+/// notes). At `k = c_D + 2`, `q`'s vanishing variable lies in `y`; from `c_D + 3` on
+/// it does not.
+fn deep_round_trip<K: ChallengeField + CodeField + Eq + core::fmt::Debug>()
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let s = statement::<K>(4);
+    let w = witness::<K>(4, |i| 7 * i + 3);
+    let proof = claims::prove(&s, &w, seed(2), &mut transcript()).expect("proof");
+    let verified = claims::verify(&s, &proof, &mut transcript()).expect("accepted");
+    assert_eq!(proof.gkr.len(), 4);
+    let degrees: Vec<u8> = verified.reductions[2..6]
+        .iter()
+        .map(|r| r.sc.degree)
+        .collect();
+    assert_eq!(degrees, [7, 7, 5, 4]);
+    // The middle step at k = c_D + 3 reveals layer n: never its true value.
+    let [beta, alpha] = verified.lookups[0];
+    let n = bits::<K>(4) as usize;
+    let mut at = verified.reductions[4].point[1..].to_vec();
+    at.push(K::from_i64(0));
+    let exact = mle(layer(&s, &w, beta, alpha, n).iter().map(|v| v[0]), &at);
+    assert_ne!(proof.gkr[2].final_values[5], exact);
+}
+
+#[test]
+fn accepts_masked_gkr_lookup_with_middle_layers() {
+    deep_round_trip::<QM31>();
+    deep_round_trip::<OM31>();
+}
+
+/// A tuple outside the table at the deeper size.
+#[test]
+fn rejects_tuple_outside_table_with_middle_layers() {
+    let s = statement::<QM31>(4);
+    let mut w = witness::<QM31>(4, |i| i);
+    w[0][17] = M31::from_i64(5); // not 3j + 1
+    assert_eq!(
+        claims::prove(&s, &w, seed(1), &mut transcript()).err(),
+        Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch))
+    );
+}
+
+/// A middle step's revealed layer value is masked: over seeds and two witnesses,
+/// `V̇ − Ṽ` of `p(x*, 0)` at the middle step `k = c_D + 3` is uniform.
+#[test]
+fn accepts_uniform_middle_layer_values() {
+    let s = statement::<QM31>(4);
+    for shift in [1usize, 9] {
+        let w = witness::<QM31>(4, |i| 5 * i + shift);
+        let mut residuals = Vec::new();
+        for n in 0..96u8 {
+            let proof = claims::prove(&s, &w, seed(n), &mut transcript()).expect("proof");
+            let verified = claims::verify(&s, &proof, &mut transcript()).expect("accepted");
+            let [beta, alpha] = verified.lookups[0];
+            let mut at = verified.reductions[4].point[1..].to_vec();
+            at.push(QM31::from_i64(0));
+            let exact = mle(layer(&s, &w, beta, alpha, 6).iter().map(|v| v[0]), &at);
+            residuals.push(first_limb(proof.gkr[2].final_values[5] - exact));
+        }
+        assert!(chi_square(&residuals) < 30, "{}", chi_square(&residuals));
+    }
 }

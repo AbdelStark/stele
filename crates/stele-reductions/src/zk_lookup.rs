@@ -46,6 +46,8 @@ pub(super) struct LookupPlan {
     table: Vec<Vec<i64>>,
     valid: usize,
     first_block: usize,
+    /// Plan index of the top identity `h·q − p = 0` (NC-0919's adversary forges it).
+    pub(super) identity: Option<usize>,
 }
 
 impl LookupPlan {
@@ -197,6 +199,7 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
         table: spec.table.clone(),
         valid: spec.valid,
         first_block,
+        identity: None,
     };
     let occurrence = |column: usize, coords: Vec<Coord>| Occurrence {
         column,

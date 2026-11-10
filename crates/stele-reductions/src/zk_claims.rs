@@ -562,6 +562,7 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
             factors,
         };
         let terms = [one(vec![0, 1], 1), one(vec![2], -1)];
+        let identity = Some(steps.len());
         steps.push(identity_step(id(steps.len()), k0, reads, &terms, c, true)?);
         let sum = [one(vec![0], 1)];
         steps.push(identity_step(
@@ -572,8 +573,9 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
             c,
             false,
         )?);
-        let (lp, steps_l) =
+        let (mut lp, steps_l) =
             lookup::plan_lookup::<K>(statement, l, spec, [top, top + 1, top + 2], blocks, c)?;
+        lp.identity = identity;
         blocks += lp.block_count();
         lookup_plans.push(lp);
         gkr.extend(steps_l);
@@ -1262,6 +1264,53 @@ enum Forgery {
     /// GKR step `g` (not the first): honest rounds, its two block finals moved so
     /// that `P(finals)` and `μ` are unchanged.
     Block(usize),
+    /// GKR step `g`, free rounds, final `input` plus one, `μ` solved last.
+    Final(usize, usize),
+    /// Lookup `l`: the true top `p, q`, but `h` shifted so that `Σ h = 0`, with the
+    /// top identity `h·q − p = 0` forged (free rounds, `μ` solved last).
+    Ratio(usize),
+}
+
+/// NC-0917 and NC-0918's adversary, never a verifier input: the honest prover,
+/// except that GKR step `step` reveals final `input` plus one, with free rounds and
+/// `μ` solved last so the step's final check passes. Input 0 is the head
+/// (`eq(r, x)` or `(1 − s)·eq(r, x)`); inputs 1 and 3 of a later step are the
+/// selectors `S_p`, `S_q`. Only the verifier's own evaluation of that public final
+/// rejects it.
+#[doc(hidden)]
+pub fn forge_final<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    step: usize,
+    input: usize,
+) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let forgery = Some(Forgery::Final(step, input));
+    prove_with(statement, columns, &seed.0, t, true, forgery)
+}
+
+/// NC-0919's adversary, never a verifier input: for a false lookup, it commits the
+/// true top `p, q` and `h = p/q` shifted at one entry so that `Σ h = 0`, then
+/// forges the top identity `h·q − p = 0` (free rounds, `μ` solved last). Every
+/// other step is honest. Only the top identity, through its `μ` in the shared
+/// batch, rejects it.
+#[doc(hidden)]
+pub fn forge_ratio<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    lookup: usize,
+) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let forgery = Some(Forgery::Ratio(lookup));
+    prove_with(statement, columns, &seed.0, t, true, forgery)
 }
 
 /// The block-claim adversary's strategy: honest rounds, then `B_p + 1` and
@@ -1527,11 +1576,16 @@ where
     // RFC-0008 A7 items 1–3: β and α after the multiplicities, then the top.
     let mut runs = Vec::new();
     let mut trees = Vec::new();
-    for lp in &plan.lookups {
+    for (l, lp) in plan.lookups.iter().enumerate() {
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         let layers = lookup::tree(lp, &data, beta, alpha);
-        data.extend(lookup::top(lp, &layers)?);
+        let [p, q, mut h] = lookup::top(lp, &layers)?;
+        if forgery == Some(Forgery::Ratio(l)) {
+            let total = h.iter().fold(zero::<K>(), |s, v| s + *v);
+            h[0] = h[0] - total;
+        }
+        data.extend([p, q, h]);
         trees.push(layers);
         runs.push(lookup::Run::new(beta, alpha));
     }
@@ -1592,7 +1646,12 @@ where
             num_vars: step.num_vars,
             bound: 0,
         };
-        let here = forgery == Some(Forgery::Relation(j));
+        let here = forgery == Some(Forgery::Relation(j))
+            || plan
+                .lookups
+                .iter()
+                .enumerate()
+                .any(|(l, lp)| forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j));
         let (proof, point, truth, mu) =
             masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?;
         let first = usize::from(step.eq);
@@ -1633,12 +1692,12 @@ where
             num_vars: step.num_vars,
             bound: 0,
         };
-        let here = forgery == Some(Forgery::Layer(g));
-        let tweak = if here {
-            lookup::first_layer(step)
-        } else {
-            None
+        let tweak = match forgery {
+            Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
+            Some(Forgery::Final(x, input)) if x == g => Some(input),
+            _ => None,
         };
+        let here = tweak.is_some();
         let (proof, point, truth, mu) = if forgery == Some(Forgery::Block(g)) {
             let lambda = i.terms[1].coefficient;
             let summand = Perturb {
