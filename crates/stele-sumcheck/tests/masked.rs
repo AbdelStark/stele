@@ -6,6 +6,9 @@ use stele_hash::{ChallengeField, Transcript};
 use stele_sumcheck::masked::{self, Mask};
 use stele_sumcheck::{prove, Dense, Error, Instance, Term};
 
+/// Stand-in mask binding; the RFC-0013 A4 consumer binds real source bytes.
+const BINDING: &[u8] = b"test mask binding";
+
 fn table<K: ChallengeField>(m: u32, f: impl Fn(i64) -> i64) -> Vec<K> {
     (0..1i64 << m).map(|n| K::from_i64(f(n))).collect()
 }
@@ -48,11 +51,13 @@ fn round_trip<K: ChallengeField + Eq + Debug>() {
         &i,
         Dense::new(&i, vec![a.clone(), b.clone()]).expect("dense"),
         &mask,
+        BINDING,
         &mut transcript(),
     )
-    .expect("proof");
+    .expect("proof")
+    .0;
     assert_eq!(proof.mask_sum, mask.sum());
-    let result = masked::verify(&i, &proof, &mut transcript()).expect("accepted");
+    let result = masked::verify(&i, &proof, BINDING, &mut transcript()).expect("accepted");
     let point = &result.reduction.point;
     assert_eq!(result.reduction.claims[0].1, mle(&a, point));
     assert_eq!(result.reduction.claims[1].1, mle(&b, point));
@@ -64,14 +69,14 @@ fn round_trip<K: ChallengeField + Eq + Debug>() {
     let mut changed = proof.clone();
     changed.mask_sum = changed.mask_sum + K::from_i64(1);
     assert_eq!(
-        masked::verify(&i, &changed, &mut transcript()).err(),
+        masked::verify(&i, &changed, BINDING, &mut transcript()).err(),
         Some(Error::RoundSumMismatch)
     );
     // NC-0905 shape: μ changed.
     let mut changed = proof.clone();
     changed.mask_final = changed.mask_final + K::from_i64(1);
     assert_eq!(
-        masked::verify(&i, &changed, &mut transcript()).err(),
+        masked::verify(&i, &changed, BINDING, &mut transcript()).err(),
         Some(Error::FinalEvaluationMismatch)
     );
     // A false claim is rejected.
@@ -82,6 +87,7 @@ fn round_trip<K: ChallengeField + Eq + Debug>() {
         &false_claim,
         Dense::new(&false_claim, vec![a, b]).expect("dense"),
         &mask,
+        BINDING,
         &mut transcript(),
     );
     assert_eq!(forged.err(), Some(Error::RoundSumMismatch));
@@ -123,10 +129,12 @@ fn accepts_masked_zerocheck_in_a1_form() {
         &i,
         Dense::new(&i, tables.clone()).expect("dense"),
         &mask,
+        BINDING,
         &mut transcript(),
     )
-    .expect("proof");
-    let result = masked::verify(&i, &proof, &mut transcript()).expect("accepted");
+    .expect("proof")
+    .0;
+    let result = masked::verify(&i, &proof, BINDING, &mut transcript()).expect("accepted");
     for (table, (_, value)) in tables.iter().zip(&result.reduction.claims) {
         assert_eq!(mle(table, &result.reduction.point), *value);
     }
@@ -137,6 +145,7 @@ fn accepts_masked_zerocheck_in_a1_form() {
         &i,
         Dense::new(&i, wrong).expect("dense"),
         &mask,
+        BINDING,
         &mut transcript(),
     );
     assert_eq!(forged.err(), Some(Error::RoundSumMismatch));
@@ -164,8 +173,9 @@ fn first_free_value(a: &[QM31], b: &[QM31], seed: Option<[u8; 32]>) -> u32 {
     let value = match seed {
         Some(seed) => {
             let mask = Mask::derive(&seed, &i).expect("mask");
-            masked::prove(&i, dense, &mask, &mut transcript())
+            masked::prove(&i, dense, &mask, BINDING, &mut transcript())
                 .expect("proof")
+                .0
                 .rounds[0][2]
         }
         None => prove(&i, dense, &mut transcript()).expect("proof").rounds[0][2],
@@ -224,6 +234,8 @@ fn accepts_forged_mask_final_for_a_false_sum() {
     let mask_sum = QM31::from_i64(11);
     t.absorb(AbsorbLabel::Instance, &i.encode().expect("instance"))
         .expect("absorb");
+    t.absorb(AbsorbLabel::FieldSources, BINDING)
+        .expect("absorb");
     t.absorb(
         AbsorbLabel::ZkMaskSum,
         &message_bytes(i.id, 0, &[mask_sum]).expect("bytes"),
@@ -253,5 +265,5 @@ fn accepts_forged_mask_final_for_a_false_sum() {
         final_values: finals,
         mask_final,
     };
-    assert!(masked::verify(&i, &forged, &mut transcript()).is_ok());
+    assert!(masked::verify(&i, &forged, BINDING, &mut transcript()).is_ok());
 }

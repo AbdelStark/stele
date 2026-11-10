@@ -472,8 +472,13 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             }
             if source.is_hiding() {
                 self.claim_opening()?;
-                let certificate = crate::hiding::certificate_weights(source)?;
-                crate::hiding::check_mask_rank(source, &[&certificate, functional.a])?;
+                if self.is_mask_polynomial() {
+                    // RFC-0013 A4: only the two-block shape; the mask lemma covers u.
+                    crate::hiding::check_mask_shape(source, functional.a)?;
+                } else {
+                    let certificate = crate::hiding::certificate_weights(source)?;
+                    crate::hiding::check_mask_rank(source, &[&certificate, functional.a])?;
+                }
             }
             let proof_size = source.proof_size(ProofKind::Opening)?;
             let frame = functional.frame(record, size)?;

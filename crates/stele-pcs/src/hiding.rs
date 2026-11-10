@@ -58,6 +58,45 @@ pub(crate) fn certificate_weights<K: ChallengeField>(source: &Source<K>) -> Resu
     stele_poly::eq_table(&point).map_err(|_| Error::Capacity)
 }
 
+/// RFC-0013 A4 item 4: the only opening a mask source admits. Its row weights
+/// are `a[b·D + d] = w_b·e_d` on the `2D` data rows (`e_d` the M31 basis of `K`),
+/// zero on the mask rows, with `w_0 + w_1 = 1` and `w_1 ∉ {0, 1/2}`. Any other
+/// functional would reveal more than Lemma 5 allows, so it is refused.
+pub(crate) fn check_mask_shape<K: ChallengeField>(
+    source: &Source<K>,
+    a: &[K],
+) -> Result<(), Error> {
+    let degree = K::DEGREE;
+    if a.len() != source.rows() || source.rows() != 4 * degree {
+        return Err(Error::MaskRank);
+    }
+    let bytes = |value: &K| value.to_le_bytes().as_ref().to_vec();
+    let zero = bytes(&K::from_i64(0));
+    if a[2 * degree..].iter().any(|value| bytes(value) != zero) {
+        return Err(Error::MaskRank);
+    }
+    let mut weights = [K::from_i64(0); 2];
+    for (block, weight) in weights.iter_mut().enumerate() {
+        // e_0 = 1, so the first entry of a block is its weight.
+        *weight = a[block * degree];
+        let inverse = weight.inverse().ok_or(Error::MaskRank)?;
+        for d in 0..degree {
+            let unit = bytes(&(a[block * degree + d] * inverse));
+            let expected: Vec<u8> = (0..degree)
+                .flat_map(|limb| u32::from(limb == d).to_le_bytes())
+                .collect();
+            if unit != expected {
+                return Err(Error::MaskRank);
+            }
+        }
+    }
+    let one = bytes(&K::from_i64(1));
+    if bytes(&(weights[0] + weights[1])) != one || bytes(&(weights[1] + weights[1])) == one {
+        return Err(Error::MaskRank);
+    }
+    Ok(())
+}
+
 /// A2's rank check: the M31 coordinates of the mask-row parts of every revealed
 /// row-coefficient vector must be linearly independent (`D` per vector).
 /// The check depends on public coefficients only; failure aborts with MaskRank.

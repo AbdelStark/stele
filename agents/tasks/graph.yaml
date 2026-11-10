@@ -2526,12 +2526,28 @@ tasks:
   - labels registered in stele-hash and docs/security/transcript-labels.json
   - prover and verifier with the mask obligation returned undischarged; masked zerocheck in A1 form tested
   - tests that proofs verify and that the round messages are masked; NC-0904 and NC-0905 executed
+- id: E12-15
+  epic: E12
+  title: Bind the masked sumcheck's mask by a hiding source (RFC-0013 A4, closes R2)
+  depends:
+  - E12-13
+  rfc:
+  - RFC-0013 A4
+  skill: soundness-auditor
+  crate: stele-sumcheck+stele-pcs+stele-reductions
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-15-mask-binding
+  acceptance:
+  - two-block mask, mask source, order and opening exactly as RFC-0013 A4; the A2 forgery rejected by the actual verifier
+  - Lemma 5 written in formal/zk-development.md §4.3 with statistical evidence for the rounds and the opening row
+  - NC-0907 and NC-0908 executed; the quarantine admits only stele_reductions::zk
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
   depends:
   - E12-12
-  - E12-13
+  - E12-15
   rfc:
   - RFC-0013 A1
   skill: soundness-auditor

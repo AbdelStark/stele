@@ -477,6 +477,8 @@ def field_sources(root):
                'src/development.rs', 'src/development/row.rs', 'src/development/projection.rs',
                'src/development/attention.rs', 'src/development/attention/tests.rs',
                'src/development/tests.rs',
+               # RFC-0013 A4: the bound masked A1 sumcheck and its tests.
+               'src/zk.rs', 'tests/zk.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
                'src/development/embedding.rs', 'src/development/rmsnorm.rs', 'src/development/limbs.rs',
                'src/development/norm_embedding_tests.rs', 'tests/dev_modules.rs',
@@ -518,7 +520,7 @@ def field_sources(root):
                'extern crate alloc;\n'
                '// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.\n'
                'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};\n'
-               'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\n'
+               'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\npub mod zk;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -903,8 +905,8 @@ def field_source_codec(root):
         ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'source'),
-        ('fn', 'message'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'hiding_mask'),
+        ('fn', 'source'), ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
@@ -1660,16 +1662,27 @@ def docs_links(root):
 
 
 def masked_sumcheck_quarantine(root):
-    """RFC-0013 A2 item 2 has no admitted consumer until the mask is bound (R2)."""
+    """RFC-0013 A2 item 2 is unbound; only the A4 consumer (stele_reductions::zk) may use it."""
     allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
-               'crates/stele-sumcheck/tests/masked.rs', 'tests/negative-controls/src/zk.rs'}
+               'crates/stele-sumcheck/tests/masked.rs', 'tests/negative-controls/src/zk.rs',
+               # RFC-0013 A4: the only admitted consumer binds the mask by a hiding source.
+               'crates/stele-reductions/src/zk.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    for path in (root / directory).rglob('*.rs')
                    if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
     if found:
         raise ValueError(f'masked sumcheck used outside its tests and controls: {found}')
-    print('gate masked quarantine: RFC-0013 A2 masked sumcheck has no consumer (R2 open)')
+    # RFC-0013 A4: the mask-source constructor belongs to its one consumer.
+    mask_allowed = {'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/hiding.rs',
+                    'crates/stele-reductions/src/zk.rs'}
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   for path in (root / directory).rglob('*.rs')
+                   if re.search(r'\bhiding_mask\b', path.read_text())
+                   and str(path.relative_to(root)) not in mask_allowed)
+    if found:
+        raise ValueError(f'mask source constructed outside the A4 consumer: {found}')
+    print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A4 consumer')
 
 
 def main():

@@ -12,6 +12,9 @@ use stele_sumcheck::{masked, Dense, Error as SumcheckError, Instance, Term};
 
 const SEED: [u8; 32] = [3; 32];
 
+/// Stand-in mask binding; the RFC-0013 A4 consumer binds real source bytes.
+const BINDING: &[u8] = b"test mask binding";
+
 fn layout(degree: u8) -> (u8, u8, u8) {
     // R >= 2D and q_c + q_o <= C - 1 at Circle (10, 2).
     if degree == 8 {
@@ -247,18 +250,130 @@ fn nc_masked(id: u16) -> Result<(), String> {
         || {
             let mask = masked::Mask::derive(&SEED, &i)?;
             let dense = Dense::new(&i, vec![a.clone(), b.clone()])?;
-            masked::prove(&i, dense, &mask, &mut transcript())
+            masked::prove(&i, dense, &mask, BINDING, &mut transcript()).map(|(proof, _)| proof)
         },
         &hook,
-        |proof| masked::verify(&i, proof, &mut transcript()).map(|_| ()),
+        |proof| masked::verify(&i, proof, BINDING, &mut transcript()).map(|_| ()),
         expected,
     )
     .map_err(|e| format!("{e:?}"))
 }
 
+/// A bound masked product instance of `m` variables and its two witness tables.
+fn bound_instance(m: u32, claim_shift: i64) -> (Instance<QM31>, Vec<QM31>, Vec<QM31>) {
+    let a: Vec<QM31> = (0..1i64 << m).map(|n| QM31::from_i64(n + 3)).collect();
+    let b: Vec<QM31> = (0..1i64 << m).map(|n| QM31::from_i64(2 * n - 7)).collect();
+    let sum = a
+        .iter()
+        .zip(&b)
+        .fold(QM31::from_i64(0), |s, (x, y)| s + *x * *y);
+    let i = Instance {
+        id: 9,
+        num_vars: m,
+        inputs: vec![11, 12],
+        terms: vec![Term {
+            coefficient: QM31::from_i64(1),
+            factors: vec![0, 1],
+        }],
+        claimed_sum: sum + QM31::from_i64(claim_shift),
+    };
+    (i, a, b)
+}
+
+/// Replace the whole bound proof.
+struct BoundProof(stele_reductions::zk::Proof<QM31>);
+impl ProverHook<stele_reductions::zk::Proof<QM31>> for BoundProof {
+    fn tamper(&self, proof: &mut stele_reductions::zk::Proof<QM31>) {
+        assert_ne!(*proof, self.0);
+        proof.clone_from(&self.0);
+    }
+}
+
+/// NC-0907: the mask source (and its certificate) of another seed substituted in
+/// an honest bound proof. The source bytes are absorbed before `G`, so `α`
+/// moves and the first round check fails.
+fn nc_0907() -> Result<(), String> {
+    use stele_reductions::zk;
+    let (i, a, b) = bound_instance(4, 0);
+    let t = || Transcript::<QM31>::new(b"bound control").expect("transcript");
+    let dense = || Dense::new(&i, vec![a.clone(), b.clone()]).expect("dense");
+    let honest =
+        zk::prove(&i, dense(), zk::Seed::new([1; 32]), &mut t()).map_err(|e| format!("{e:?}"))?;
+    let other =
+        zk::prove(&i, dense(), zk::Seed::new([2; 32]), &mut t()).map_err(|e| format!("{e:?}"))?;
+    let mut swapped = honest.clone();
+    swapped.source = other.source;
+    swapped.certificate = other.certificate;
+    check_proof_control(
+        || Ok::<_, zk::Error>(honest.clone()),
+        &BoundProof(swapped),
+        |proof| zk::verify(&i, proof, &mut t()).map(|_| ()),
+        zk::Error::Sumcheck(SumcheckError::RoundSumMismatch),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// NC-0908: the A2 forgery against the bound verifier. A false claimed sum, rounds
+/// chosen freely and `μ` solved last, with a genuine mask source, certificate and
+/// opening: the actual opening verifier rejects the row against the forged `μ`.
+fn nc_0908() -> Result<(), String> {
+    use stele_hash::{AbsorbLabel, ChallengeLabel};
+    use stele_reductions::zk;
+    use stele_sumcheck::message_bytes;
+    let m = 3;
+    let (true_instance, a, b) = bound_instance(m, 0);
+    let (i, _, _) = bound_instance(m, 5);
+    let t = || Transcript::<QM31>::new(b"bound control").expect("transcript");
+    let honest = zk::prove(
+        &true_instance,
+        Dense::new(&true_instance, vec![a, b]).expect("dense"),
+        zk::Seed::new([3; 32]),
+        &mut t(),
+    )
+    .map_err(|e| format!("{e:?}"))?;
+    let mut forged = honest.clone();
+    let mut transcript = t();
+    let draw = |r: Result<QM31, stele_hash::Error>| r.map_err(|e| format!("{e:?}"));
+    let absorb = |r: Result<(), stele_hash::Error>| r.map_err(|e| format!("{e:?}"));
+    absorb(transcript.absorb(
+        AbsorbLabel::Instance,
+        &i.encode().map_err(|e| format!("{e:?}"))?,
+    ))?;
+    absorb(transcript.absorb(AbsorbLabel::FieldSources, &forged.source))?;
+    let mask_sum = forged.sumcheck.mask_sum;
+    let bytes = message_bytes(i.id, 0, &[mask_sum]).map_err(|e| format!("{e:?}"))?;
+    absorb(transcript.absorb(AbsorbLabel::ZkMaskSum, &bytes))?;
+    let alpha = draw(transcript.challenge(ChallengeLabel::ZkMaskWeight))?;
+    let mut running = i.claimed_sum + alpha * mask_sum;
+    let half = stele_field::Inverse::inverse(QM31::from_i64(2)).ok_or("1/2")?;
+    let mut rounds = Vec::new();
+    for index in 0..m {
+        // p(t) = running·(1−t)(2−t)/2 satisfies p(0) + p(1) = running.
+        let values = vec![running, QM31::from_i64(0), QM31::from_i64(0)];
+        let bytes = message_bytes(i.id, index, &values).map_err(|e| format!("{e:?}"))?;
+        absorb(transcript.absorb(AbsorbLabel::Round, &bytes))?;
+        let r = draw(transcript.challenge(ChallengeLabel::Sumcheck))?;
+        running = running * (r - QM31::from_i64(1)) * (r - QM31::from_i64(2)) * half;
+        rounds.push(values);
+    }
+    let finals = vec![QM31::from_i64(1), QM31::from_i64(1)];
+    let inverse = stele_field::Inverse::inverse(alpha).ok_or("alpha = 0")?;
+    forged.sumcheck.rounds = rounds;
+    forged.sumcheck.final_values = finals.clone();
+    forged.sumcheck.mask_final = (running - finals[0] * finals[1]) * inverse;
+    match zk::verify(&i, &forged, &mut t()) {
+        Err(zk::Error::Pcs(Error::ValueMismatch)) => Ok(()),
+        other => Err(format!(
+            "forged mask final not rejected as ValueMismatch: {other:?}"
+        )),
+    }
+}
+
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
+        907 => nc_0907(),
+        908 => nc_0908(),
         904 | 905 => nc_masked(id),
         902 => nc_0902::<QM31>()
             .and_then(|()| nc_0902::<OM31>())

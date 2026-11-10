@@ -53,6 +53,7 @@ pub struct PreparedSource<'a, K: ChallengeField> {
     work: PreparationWork,
     borrows: AtomicUsize,
     openings: AtomicUsize,
+    mask_polynomial: bool,
 }
 
 fn checked_bytes<T>(count: usize) -> Result<usize, Error> {
@@ -105,6 +106,37 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         let source = Source::<K>::hiding(id, ell, m, blowup, [0; 32])?;
         let rebuild = |root| Source::hiding(id, ell, m, blowup, root);
         Self::prepare(source, rebuild, message, Some(seed), usage)
+    }
+
+    /// Prepare the mask-polynomial source of RFC-0013 A4: a hiding source with
+    /// `2D` data rows whose one opening has A4's two-block shape (enforced at the
+    /// opening; anything else is `MaskRank`). Its row message is covered by A4's
+    /// Lemma 5 instead of A2's rank check; the certificate keeps that check.
+    ///
+    /// # Security
+    ///
+    /// The seed must be fresh and used once per `(seed, id)` across all
+    /// transcripts: two openings of the same mask at different points reveal
+    /// both blocks, and with them the masked sumcheck's witness rounds. The
+    /// one-opening counter only covers this object. After a refused opening,
+    /// retry with a fresh seed only if nothing derived from this one was
+    /// published. `scripts/gates/check.py` quarantines this constructor to
+    /// `stele_reductions::zk`.
+    pub fn hiding_mask(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
+        if (1usize << ell) != 2 * K::DEGREE {
+            return Err(Error::UnsupportedSource);
+        }
+        let mut prepared = Self::hiding(id, ell, m, blowup, message, seed, usage)?;
+        prepared.mask_polynomial = true;
+        Ok(prepared)
     }
 
     fn prepare<F: FnOnce(merkle::Digest) -> Result<Source<K>, Error>>(
@@ -216,6 +248,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             work,
             borrows: AtomicUsize::new(0),
             openings: AtomicUsize::new(0),
+            mask_polynomial: false,
         })
     }
 
@@ -238,6 +271,11 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             return Err(Error::MaskBudget);
         }
         Ok(())
+    }
+
+    /// True for an RFC-0013 A4 mask-polynomial source.
+    pub(crate) fn is_mask_polynomial(&self) -> bool {
+        self.mask_polynomial
     }
 
     /// RFC-0007 A1 item 4 counter: message() borrows times R*C, an upper bound on reads.

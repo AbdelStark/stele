@@ -38,8 +38,9 @@ Soundness losses, statistical privacy errors and mask-generation assumptions
 must be derived separately for the eventual protocol. No production label or
 accounting record is added by the privacy study.
 RFC-0013 A2 instantiates MASK for its masked A1 sumcheck only: one
-`zk/mask-weight` draw per masked instance (RFC-0012 A18), `1/|K|`, conditional
-on a mask binding that A2 leaves open. No profile or consumer uses it, and the
+`zk/mask-weight` draw per masked instance (RFC-0012 A18), `1/|K|`. RFC-0013 A4
+binds the mask by a hiding source, which adds that source's A9 certificate and
+one opening term (PCS line). No profile or consumer uses it, and the
 `α = 0` privacy error is reported apart from this ledger.
 
 The gate also runs A2's wrapper-feature permutation KATs. This unused permutation

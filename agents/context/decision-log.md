@@ -2130,3 +2130,38 @@ Decision:
 Status: Accepted (owner authorisation for autonomous amendment acceptance after
 Workflow 02 review; two same-author passes in
 agents/reviews/rfc0013-a2-acceptance.md; independent review is still needed).
+
+## ADR-097: Bind the masked sumcheck's mask by a two-block hiding source (RFC-0013 A4, task E12-15)
+
+Numbered after ADR-096 on main; RFC-0013 A3 is the Draft scheme-v3 direction there,
+so this amendment is A4.
+
+Context: the independent review of RFC-0013 A2 confirmed that the masked A1
+sumcheck is unsound until its mask is bound (design note R2), and
+`accepts_forged_mask_final_for_a_false_sum` shows the forgery. A sum of
+univariates cannot be opened as one tensor functional. A row that holds all of
+`g` would reveal it, and with it `f`'s rounds.
+
+Decision:
+- The mask becomes `G = (1 − X_n)·g⁰ + X_n·g¹`, with `deg g^b_n ≤ δ − 1`. It is
+  stored as `2D` limb rows of a version-3 hiding source.
+- The mask source's bytes are absorbed (`FieldSources`) before `G`. Its
+  certificate keeps A2's rank check.
+- One A9 opening at `G(ρ)` with zero mask-row weight is admitted for this source
+  only (`PreparedSource::hiding_mask`). Its row `(1 − ρ_n)g⁰ + ρ_n g¹` is
+  covered by Lemma 5, and the producer aborts when `ρ_n ∈ {0, 1/2}`.
+- `stele_reductions::zk` is the only admitted consumer of the raw masked module,
+  enforced by the quarantine check.
+- No new label: `FieldSources` already means "bind the source bundle before an
+  A1 sumcheck" (RFC-0010 A9 §5).
+- Independent-review fixes:
+  - Seed reuse across proofs leaks the witness rounds. `zk::prove` takes a
+    move-only `Seed` that one proof consumes, and both constructors carry
+    `# Security` notes.
+  - No CSPRNG dependency is added: the caller supplies entropy. `getrandom`
+    stays an option for a future std prover entry point.
+  - The PCS refuses any mask-source opening outside A3's two-block shape.
+  - The quarantine check also covers `hiding_mask`.
+
+Status: Accepted (owner authorisation; two same-author passes in
+agents/reviews/rfc0013-a4-acceptance.md; independent review requested).

@@ -244,3 +244,84 @@ Soundness impact: MASK records per masked instance (RFC-0012 §4); exact terms w
 the construction. Cost impact: `c_c` for the randomisers and mask rows, `c_sc` for
 masks; the PRD G6 bound is re-stated as at most 15% at M5 and 5% at M7.
 Affected tasks: E23-01..E23-04; E4-05, E12-01 and E12-01a are superseded (RFC-0027 §6).
+
+### A4 — Bound mask polynomial for the masked A1 sumcheck (closes design note R2)
+
+Status: Accepted, conditional scope only. Question Q29. Task E12-15. Numbered A4
+because A3 is the Draft scheme-v3 direction (ADR-096); A4 is A3's candidate A
+item 3 (committed sumcheck masks, opened with the final claims) made concrete for
+the development tier, and does not decide anything for scheme v3.
+Evidence: [design note](../../formal/zk-development.md) §4.3 (Lemma 5) and
+`crates/stele-reductions/tests/zk.rs`. Companions: RFC-0010 A15 (sources),
+RFC-0012 A18 (labels). Review:
+[same-author passes](../../agents/reviews/rfc0013-a4-acceptance.md).
+Decision: ADR-097.
+
+Motivation: A2's masked sumcheck returns `μ = g(ρ)` with nothing binding `g`
+before its sum, so a prover can solve `μ` last and prove a false sum. A2 item 2
+admits no consumer for that reason. A sum of univariates is not a tensor
+functional, and an opening that sends `g`'s whole coefficient row would expose
+the rounds. A4 changes the mask's shape so that one ordinary A9 opening of a
+hiding source reveals exactly what the rounds can afford.
+
+Replacement for A2 item 2's mask and order (A2's labels, MASK line and privacy
+error are kept):
+
+1. **Mask.** `G(X) = (1 − X_n)·g⁰(X) + X_n·g¹(X)`, with
+   `g^b = Σ_{i=1}^n g^b_i(X_i)`, `deg g^b_i ≤ δ` for `i < n` and
+   `deg g^b_n ≤ δ − 1`. `G` has degree at most `δ` in every variable. Each
+   `g^b_i` is stored by its values at nodes `0..=δ` (`0..δ` for `i = n`), drawn
+   from the `zk/sumcheck-mask` stream: block 0 then block 1, variables
+   ascending, nodes ascending, each value `D` M31 elements in limb order. The
+   canonical column order of a block is the same (variables, then nodes), with
+   `n(δ + 1) − 1` columns.
+2. **Mask source.** A version-3 hiding source (RFC-0010 A15) with id equal to
+   the instance id, `R = 2D` data rows (`ell = log2(2D)`), blowup 2 and the least
+   `m ≥ 9` with `2^m ≥ n(δ + 1)`. Data row `b·D + d` holds limb `d` of block `b`
+   in canonical column order; every other data entry is zero. Masks and salts
+   use A2 item 1's streams on the same seed. The producer marks it a
+   **mask source**: its one opening has zero weight on the mask rows; the
+   certificate keeps A2's rank check, and the one-opening budget applies.
+3. **Order.** On the caller's transcript: absorb the instance (`Instance`);
+   absorb the mask source's exact bytes (`FieldSources`, root included);
+   absorb `G = Σ_{x ∈ {0,1}^n} G(x)` (`zk/mask-sum`); draw `α`
+   (`zk/mask-weight`); run the A1 rounds of `f + α·G` with claim `H + α·G`;
+   send the finals and `μ`, check `P(finals) + α·μ`, absorb `finals ‖ μ` at
+   index `k + 1` (`Final`). The mask source's A9 certificate is verified on its
+   own transcript before its handle is used; the verifier first rebuilds the
+   expected version-3 bytes from the instance and requires equality.
+4. **Opening.** One A9 functional opening of the mask source on the caller's
+   transcript, at value `μ`, with `a_(b·D+d) = ℓ_b(ρ_n)·e_d` (`ℓ_0 = 1 − X`,
+   `ℓ_1 = X`, `e_d` the M31 basis of `K`), zero on the mask rows, and
+   `b` = the Lagrange weight of each mask column's node at its variable's
+   coordinate of `ρ`, zero on every other column. Then `u·b = G(ρ)` exactly.
+5. **Producer abort.** The producer aborts with `MaskPoint` when `ρ_n = 0` or
+   `2ρ_n = 1`. The event depends on public challenges only.
+   A mask source has exactly `2D` data rows. Its producer refuses any opening
+   that is not of item 4's shape (`MaskRank`): weights `w_b·e_d` on block `b`,
+   zero on the mask rows, `w_0 + w_1 = 1` and `w_1 ∉ {0, 1/2}`.
+   **Seed lifetime.** A seed is used once per `(seed, instance id)` across all
+   transcripts. Two proofs that share one reveal the opening row at two points,
+   which recovers both blocks and the witness rounds. The producer API takes a
+   move-only seed that is consumed by one proof. After an abort, retry with a
+   fresh seed only if nothing from the attempt was published.
+6. **Result.** The verifier returns A1's reduction (finals still obligations)
+   and the MASK record; the mask obligation is discharged by the opening.
+
+Soundness: `G` is fixed by the certificate's unique near message before `G` is
+absorbed, so A2's MASK line `1/|K|` and A1's SC line hold as stated, plus the
+mask source's A9 certificate and one opening term (conditional, as A9). The
+quarantine of A2's raw module now admits exactly this consumer.
+
+Privacy (conditional): Lemma 5 of the design note. For an honest verifier, fixed
+public challenges with `α ≠ 0`, `ρ_n ∉ {0, 1/2}`, `q_c + q_o ≤ C − 1` and the
+certificate's rank check, the joint view (mask source certificate, columns,
+salts, opening row, `G`, rounds, `μ`) is the same for any two `f` with the same
+claimed sum and the same final values. The final values themselves are not
+hidden (R1).
+
+Controls: NC-0907 (another seed's mask source substituted: `α` moves,
+`RoundSumMismatch`) and NC-0908 (A2's forgery with a genuine mask opening:
+`ValueMismatch`). Cost: one mask source of `4D` rows and `2^(m+1)` columns, its
+certificate and one opening per masked instance; no constant moves.
+Affected task: E12-15. A1 stays Draft; R1 and R3–R13 remain.
