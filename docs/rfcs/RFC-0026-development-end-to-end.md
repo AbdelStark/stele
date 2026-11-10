@@ -915,3 +915,70 @@ Cost model: none. Affected tasks: E16-10 (statement codec and public-input file)
     block), `rejects_out_covered_by_one_row_block` (discipline needs full cover),
     `rejects_fixed_bits_outside_matmuls`, and the projection deletion survey with four
     row blocks, where deleting any block is killed.
+
+### A7 — Circle sources for the stacked and model commitments
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task: E19-02.
+Motivation: the stacked source (A4) and the model sources (A5) are RFC-0010 v2
+expander sources. Under Policy 1 they need up to 13,472 certificate and 6,714 opening
+responses, against 314 and 130 for the circle code at rate 1/4 (RFC-0010 A3 items 4
+and 10). On the eight-layer synthetic proof the two source kinds are 35.3 MB of
+45.0 MB (`bench/ledger/e17-00-dev-synthetic-8layer-4core.json`).
+
+Replacement text, A4 "Geometry" bullet and the A5 sentence "The geometry is A4's
+byte-minimising `J`":
+
+> "The stacked source and every model source are RFC-0010 source version 1 (Circle,
+> A9) with blow-up exponent 2. A source of `2^S` entries has `2^ell` rows of `2^m`
+> message elements, `ell + m = S`. The plan chooses the `ell` that minimises
+> certificate plus opening bytes under Policy 1 among the values A9 admits (ties: the
+> smallest `ell`). A source with no admitted `(ell, m)` is rejected (`Unsupported`).
+> A stacked source with `S > 30` is rejected, as before."
+
+Everything else in A4 and A5 stands: layout, block placement, ids, the `2^30` cap per
+model source, claim mapping, batching and one opening per source.
+
+These are version-1 sources, whose rows are evaluations (RFC-0010 A2). The recursive
+opening of RFC-0029 (Draft) needs coefficient-form rows, so task E19-03 changes the
+row map once more and proof bytes change a second time. The development tier has no
+long-lived model registration, so nothing needs migrating (RFC-0029 Q48).
+
+Soundness ledger: the PCS line of each such source becomes the Circle line of
+RFC-0012 A15 with A9's `N`, `D`, `e`, `q_c`, `q_o`. The v2 setup term leaves every
+ledger that has no v2 source. No challenge or label changes.
+Proof bytes change, so the pinned E16-10 proof hashes are re-recorded by the task.
+Cost: rows are encoded by the circle FFT (RFC-0010 A2); no cost-model term is claimed.
+Affected tasks: E19-02; E16-10 fixtures.
+Controls: NC-1303, NC-1304 and NC-1306 run unchanged against the new sources.
+
+### A8 — Plan-fixed split of lookup checks
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Task: E20-02.
+Motivation: A3 rejects a check whose concatenated domain exceeds `2^30` positions and
+names a splitting rule as a further amendment. RFC-0030 (Draft) caps a lookup
+instance for `standard`. Large models reach both limits.
+
+Replacement text, A3 "Concatenation", sentence "A check with `m > 30` is rejected":
+
+> "The plan fixes an instance bound `B` (30 in the development profile). A check is
+> an ordered list of **instances**. Members are placed in the A3 order; a new instance
+> starts when the next member would take the current one past `2^B` positions. A
+> member larger than `2^B` is first cut along its leading domain bits into aligned
+> blocks of `2^B` positions. A block is a member of its instance over the remaining
+> low bits; its value at the instance's point is the original member's column claim
+> at `(bits(block index) ‖ z_low)`, mapped through the member's `vars`. Only a
+> matmul `Ref` may fix a bit (A6); a lookup `Ref` never does. So the block is defined
+> by this claim point, not by a new `Ref`. Each instance is one RFC-0008 A5 statement
+> with its own multiplicity source, in instance order; A3's member split applies
+> inside each instance."
+
+Soundness: instances are independent A5 statements with their own draws; each keeps
+its own LU record and tree lines. Nothing is shared between them.
+Cost: one multiplicity source and one pair of trees per instance in place of one per
+check. Proof bytes grow with the instance count: each instance carries its own tree
+proofs. That is acceptable at `B = 30`, where instances are few. It is not at the
+`standard` cap of RFC-0030 (Draft), where a large proof has thousands of instances;
+the data-parallel form of RFC-0030 Q49 is needed before any `standard` proof-size
+gate. Affected tasks: E20-02, E20-09, E22-04.
+Control: a member value moved across an instance boundary without its multiplicity
+is rejected by the receiving instance's root equation (`RootMismatch`).

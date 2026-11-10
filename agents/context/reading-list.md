@@ -17,3 +17,15 @@
 | SASH research note + repo (2026) | measured costs, negative-control practice, digest gate, segment bindings |
 | DeepProve (CCS'26, 2026/1112); zkLLM (CCS'24); zkGPT (USENIX'25) | GKR zkML designs, tlookup/zkAttn, what they commit |
 | SoK: hash-based PCS and LDTs (2026/1367) | parameter and conjecture landscape |
+| FlashProve technical report and repository (Anthropic, Nov 2026; `guide/`, `docs/model.md`, `docs/protocol.md`, `lean/THEOREM.md`) | the system to beat: committed step values per segment, virtual arithmetic, one weight opening per batch, masked sumcheck, link proofs, the Lean statement and its stated gaps |
+| Novakovic–Angeris, Ligerito (2025/1187); TensorSwitch (2025/2065); WHIR (2024/1586) | recursive interleaved-code openings, code switching, proof-size reference points (RFC-0029) |
+| Diamond–Gruen, proximity gaps in interleaved codes (2024/1351); Angeris–Evans–Roh (2024/1399); Khatam (2024/1843) | proven radii for interleaved and general linear codes under tensor-structured combination (Q39) |
+| Ben-Sasson–Carmon–Haböck–Kopparty–Saraf (2025/2055); Diamond–Gruen (2025/2010); Crites–Stewart (2025/2046) | what is proven up to the Johnson bound, and why capacity conjectures are not a fallback |
+| Chiesa–Fenzi–Weissenberg (2026/391); VEIL (2026/683) | zero knowledge for hash-based sumcheck arguments: bounded-query encodings with masked sumcheck, or pad-and-prove (RFC-0013 A3) |
+| Ben-Sasson–Chiesa–Spooner (BCS16); Chiesa–Yogev, *Building Cryptographic Proofs from Hash Functions*; Block et al. (2023/1071) | round-by-round soundness and its compilation to the random-oracle model (RFC-0030) |
+| Khovratovich–Rothblum–Soukhanov (2025/118); Fenzi (2026/1838) | the Fiat–Shamir attack on proofs whose statement can encode the hash, and the statement-binding fix |
+| Soukhanov, logup* (2025/946) | indexed lookups that commit a table-sized vector and no outputs (Q35) |
+| Bagad–Dao–Domb–Thaler (2025/1117); Dao et al. (2026/587); Gruen (2024/108); Dao–Thaler (2024/1210) | small-value rounds, split-eq, univariate skip, streaming: the CPU and GPU sumcheck fast paths (E20) |
+| "LLM Inference in a Flash!" (arXiv 2609.16161); SmoothQuant; I-LLM (arXiv 2405.17849) | integer-only W8A8 with equalisation, group scales and 16-bit norm and softmax inputs (Q36) |
+| Ethereum Foundation `soundcalc` reports; inferenceproofs.ai | how deployed systems state bits of security; a public cross-system benchmark normaliser |
+| ArkLib, VCVio, CompPoly (Lean 4) | starting libraries for R-FORMAL (E21-06) |

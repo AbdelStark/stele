@@ -45,3 +45,19 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 - **identity** — an RFC-0026 §3.2 relation: a sum of at most-3-factor products of columns with integer coefficients that is zero at every domain point over Z.
 - **limb rule** — a value that would break the RFC-0026 §3.6 bound rule is held as range-checked radix limbs with explicit carries (RFC-0026 §3.5).
 - **plain checker** — `stele_ir::relation::check`, the integer evaluation of every relation with no proof; the specification oracle for RFC-0026 modules.
+- **advice** — a column whose values are not a fixed polynomial function of other columns: the output of rounding, clamping, selection, digit splitting or a table. Advice is committed (RFC-0028 §1.2, Draft).
+- **commit rule** — commit exactly the advice; everything else on the witness side is a virtual column (RFC-0028 §1.2, Draft).
+- **virtual column** — a relation-IR column defined as a linear map, a pointwise product or a two-factor contraction of other columns; claims on it are reduced, never opened (RFC-0028 §2.1, Draft). The relation-IR form of a virtual tensor.
+- **segment** — commitment groups committed, proved and dropped together, in plan order (RFC-0028 §2.3, Draft).
+- **carried column** — a witness column of one segment that the next segment may read; the residual stream at a segment boundary.
+- **sumcheck fold** — binding one variable of a dense table to a challenge (RFC-0006 A1). Write it in full wherever the grouped-row fold of RFC-0004 A15 could be meant.
+- **partial evaluation** — the table of one matmul operand with its free variables fixed at a point; the weight-side one is the weight pass.
+- **row combination** — `u = aᵀM` for a committed matrix `M` (RFC-0010 §2); in a fused opening it is the weight pass.
+- **fresh mode**, **certified mode** — openings of per-proof sources at a transcript-random point, and of registered model sources against their certificate (RFC-0029 §1.3, Draft).
+- **tier** — the rigour a capability has passed: T0 development, T1 `standard`, T2 `treaty` (RFC-0027 §2).
+- **ladder**, **rung** — the fixed workloads L0 to L6 that progress is measured on (RFC-0027 §3).
+- **scoreboard** — `bench/scoreboard.md`, generated from the ledgers; one row per rung and profile.
+- **lane** — a set of crates with one owner role and one open line of work, a change or a stack that merges in order (RFC-0027 §5).
+- **gate** — a milestone M0 to M7, met when its ledgers and controls exist (RFC-0027 §4). Also a CI check; context decides.
+- **round-by-round error**, **λ** — the largest probability that one round's challenge rescues a false claim; a proof has λ bits when it is at most 2^-λ (RFC-0030, Draft).
+- **cells per token**, **lookups per token** — committed cells and lookup positions divided by positions in the window; the protocol-efficiency pair reported by the accounting tool (task E22-01).

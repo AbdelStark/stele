@@ -49,3 +49,27 @@ is regenerated from the fit (never hand-edited numbers).
     not comparable with a W1–W8 record and is never an input to the §4 fit."
   - **Soundness ledger.** No change. **Cost model.** No term moves (RFC-0026 §7).
   - **Affected tasks.** E16-11 (validator, records).
+
+- **A2 — Ladder rungs and the scoreboard (RFC-0027 §3).** Accepted with ADR-095
+  (owner-directed).
+  - **Motivation.** §2 names W1 to W8 only. The build program measures progress on a
+    ladder that starts below W8 and ends above W1, and reads it from one generated
+    table.
+  - **Added text, §2.** "The ladder rungs of RFC-0027 §3 are workloads: `L0`, `L1`,
+    `L2a`, `L2b`, `L2c`, `L3a`, `L3b`, `L3c` (identical to W1), `L4` (W3), `L5`, `L6`. A
+    development record keeps the `dev/<name>` form of A1 and names its rung in
+    `model_config.rung`; records made before this amendment are mapped to their rung
+    by the generator. A `standard` or `treaty` record uses the rung id as its
+    workload where no W id exists."
+  - **Added text, §1 rule 6.** "6. `bench/scoreboard.md` is generated from
+    `bench/ledger/` by `stele-bench scoreboard` (until task E17-02 lands, by
+    `bench/scoreboard.py`). It lists, per rung and profile, its records: prove and verify time, proof bytes, peak memory, committed cells and
+    lookup positions per token, weight reads, λ, controls. A number in any other
+    document that the scoreboard also carries cites the scoreboard row."
+  - **Added text, §1 rule 7.** "7. From task E17-01 on, a record states `stage_times_ns` for at least:
+    witness, commitment, lookups, zerochecks, reductions, openings; and
+    `kernel_counters` for committed cells, lookup positions and proof section bytes."
+  - **Changed gate.** The E8 row of §3 is read with L2 in place of W8 for the build
+    program (RFC-0027 §3). W8 remains defined.
+  - **Soundness ledger.** No change. **Cost model.** No term moves.
+  - **Affected tasks.** E17-01 (counters), E17-02 (validator and generator).

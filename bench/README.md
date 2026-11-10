@@ -1184,3 +1184,27 @@ both original openings; standalone registration certificates are separate.
 | stacked | OM31 | 41.023 | 1.346 | 3.399 | 105.255 | 4048 | 27840 | 96627 |
 | zero | QM31 | 36.390 | 1.075 | 2.869 | 53.278 | 4128 | 28592 | 92675 |
 | zero | OM31 | 38.818 | 1.451 | 3.590 | 109.799 | 3888 | 28496 | 95155 |
+
+## Development end-to-end baseline on a 4-core host (E17-00)
+
+`bench/ledger/e17-00-dev-synthetic-8layer-4core.json` records rung L1 (the eight-layer
+synthetic fixture, T = 64, development profile) at commit `6441a90` on a 4-vCPU
+container, one run, by the commands of `docs/development-e2e.md` with GNU `time -v`.
+Its proof SHA-256 equals the E16-11 record made on a 24-thread host at `f6db15e`.
+
+`bench/dev_e2e.py --counters FILE.json` merges extra unsigned integer counters into
+`kernel_counters`. This record carries the proof section bytes printed by
+`accepts_eight_layer_window` for the same proof bytes, the number of lookup checks
+and sumcheck ledger lines, and two values derived from that proof: the padded size of
+the stacked source (from the certificate bytes under the RFC-0026 A4 geometry) and the
+sum of the verifier's LU numerators. A name that collides with a built-in counter is an
+error.
+The record is a development-profile smoke result: no security level, no cost-model
+fit input, not comparable with W1–W8 records.
+
+## Scoreboard
+
+`bench/scoreboard.md` lists every inference record by ladder rung (RFC-0027 §3,
+RFC-0018 A2). It is generated: `python3 bench/scoreboard.py --write`, and
+`--check` fails when the committed file is stale (`scripts/tests/test_scoreboard.py`).
+Task E17-02 moves the generator into `stele-bench` with the same output.

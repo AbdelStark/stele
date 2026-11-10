@@ -56,6 +56,50 @@ epics:
   E16:
     title: Development-profile end-to-end
     goal: non-ZK prefill-window proof with greedy exact-match over committed integer columns (RFC-0026)
+  E17:
+    title: Measurement and ladder (lane B)
+    goal: stage counters, scoreboard, real gates, scripted remote hosts (RFC-0027 §3)
+  E18:
+    title: Relation IR v2 (lane P)
+    goal: commit rule, virtual columns, segments, stacked weight phase; gate M2 (RFC-0028)
+  E19:
+    title: Commitment scheme v3 (lane C)
+    goal: circle sources in the engine, recursive opening, certified model sources (RFC-0029)
+  E20:
+    title: Engine and GPU (lane E)
+    goal: typed columns, lookup fast path, backend trait, CUDA kernels with parity; gate M4
+  E21:
+    title: Verifier and admission (lane V)
+    goal: security accounting, verifier crate, Python verifier, standard admission, passport, formal statements; gates M3 and M7 (RFC-0030)
+  E22:
+    title: Numerics and models (lane N)
+    goal: accounting, 8B modules and first light, proof-friendly CQIS, MoE, sampling; gates M1 and M6
+  E23:
+    title: Zero knowledge (lane Z)
+    goal: bounded-query encodings, committed masks, opening budget, leak list; gate M5 (RFC-0013 A3)
+program:
+  rfc: RFC-0027
+  plan: docs/plan.md
+  active_epics:
+  - E16
+  - E17
+  - E18
+  - E19
+  - E20
+  - E21
+  - E22
+  - E23
+  legacy_active:
+  - E5-05h
+  rule: E16 stays active for development-profile work. Tasks of epics E3 to E15 that are not done are the treaty backlog. Pick one only if it is in legacy_active, or if it was added after RFC-0027 by a change that says which lane owns it. RFC-0027 §6 says what supersedes, parks or resumes each.
+  gates:
+    M1: E22-04
+    M2: E18-09
+    M3: E21-07
+    M4: E20-08
+    M5: E23-04
+    M6: E22-09
+    M7: E21-08
 tasks:
 - id: E0-01
   epic: E0
@@ -786,7 +830,7 @@ tasks:
   - RFC-0010 A13
   skill: distributed-systems-engineer
   crate: stele-pcs
-  status: ready
+  status: blocked(RFC-0027 §6 parked until M4)
   acceptance:
   - digest identical for 1 and N shards (shards = devices holding the plan's fixed partition; RFC-0010 A13 item 4)
   - root of roots, certificate and opening bytes identical for 1 and N devices at fixed s (RFC-0010 A13)
@@ -1129,7 +1173,7 @@ tasks:
   - RFC-0014 §2 recompute_layer_int8
   skill: cuda-kernel-author
   crate: stele-kernels
-  status: ready
+  status: blocked(RFC-0027 §6 superseded by E20-07)
   acceptance:
   - digest equality CPU/GPU on 8B layer
   - throughput ledger
@@ -2555,7 +2599,7 @@ tasks:
   - RFC-0019 R-TABLES
   skill: cqis-numerics
   crate: research
-  status: ready
+  status: blocked(RFC-0027 §6 parked until M3)
   acceptance:
   - fidelity + verifier cost report
 - id: E15-08
@@ -2913,3 +2957,881 @@ tasks:
   - stories110M converted with every input and output pinned by SHA-256 and the layout permutation checked against the original fp32 forward
   - fidelity (fp32 vs CQIS) recorded as informative; the head matmul (31 bits) proven in two row blocks
   - bench/ledger entry for prove/verify time, proof size and peak memory, with the four supplied-proof tampers rejected
+- id: E17-00
+  epic: E17
+  title: Baseline reproduction on the planning host and its ledger
+  depends: []
+  rfc:
+  - RFC-0018 A1
+  - RFC-0027 §3
+  skill: benchmark-runner
+  crate: bench
+  lane: B
+  status: done
+  agent: claude-code
+  branch: claude/blissful-euler-vcv87p
+  acceptance:
+  - bench/ledger/e17-00-dev-synthetic-8layer-4core.json validates and records prove, verify, proof bytes, peak RSS and proof section bytes for L1 at commit 6441a90
+  - the proof SHA-256 equals the E16-11 record made on another host and commit (INV-8)
+  - docs/assessment.md cites only ledgers and stated commands
+- id: E17-01
+  epic: E17
+  title: Stage timers and counters in the development prover, CLI and ledger
+  depends: []
+  rfc:
+  - RFC-0018 A2
+  - RFC-0027 §1
+  skill: benchmark-runner
+  crate: stele-prover+stele-reductions+stele-bench
+  lane: B
+  status: ready
+  acceptance:
+  - prove-dev reports nanoseconds for witness capture, plain check, commitment, multiplicities, zerochecks, lookups, matmuls or reductions, openings, and for model commitment separately, in process; this replaces the separate-process model_commitment stage of E16-18
+  - counters for committed cells, lookup positions per check, proof section bytes and weight reads; bench/dev_e2e.py writes them to stage_times_ns and kernel_counters; none depends on the thread count (ADR-090 keeps the encoder work counters out of ledgers)
+  - timers live behind the existing std feature; no_std builds and the pinned L0 and L1 proof hashes are unchanged
+  - L1 and L2a ledgers re-recorded with stages on the reference host class
+- id: E17-02
+  epic: E17
+  title: Scoreboard generator and ladder workloads
+  depends:
+  - E17-01
+  rfc:
+  - RFC-0018 A2
+  - RFC-0027 §3
+  skill: benchmark-runner
+  crate: stele-bench
+  lane: B
+  status: ready
+  acceptance:
+  - stele-bench scoreboard writes bench/scoreboard.md from bench/ledger with the bytes bench/scoreboard.py writes today; CI fails when the committed file differs
+  - the validator admits the rung ids of RFC-0018 A2 and requires model_config.rung on development records made after this task
+  - the scoreboard lists every rung with a record and marks rungs with none
+- id: E17-03
+  epic: E17
+  title: Real gates in place of scaffold fingerprints on build-lane crates
+  depends:
+  - E17-01
+  rfc:
+  - RFC-0020 §5
+  - RFC-0027 §7
+  skill: integrator
+  crate: ci
+  lane: B
+  status: ready
+  acceptance:
+  - scripts/gates/digest.sh proves the L0 and L1 fixtures and compares recorded proof digests; a byte change without a recorded amendment fails
+  - L0 prove and verify run in required CI (INV-15); a failing run blocks merge
+  - the exact-surface allowlists for stele-prover and stele-proof in scripts/gates/check.py are removed in the same change, with their tests replaced by the digest gate tests
+  - every existing control, accounting and parity gate keeps its commands
+- id: E17-04
+  epic: E17
+  title: Scripted remote hosts for large CPU and GPU runs
+  depends:
+  - E17-01
+  rfc:
+  - RFC-0018 §1
+  - RFC-0027 §3
+  skill: benchmark-runner
+  crate: bench
+  lane: B
+  status: ready
+  acceptance:
+  - one command provisions a pinned image on a rented host, runs a named rung, and returns the ledger, logs and proof digest
+  - no credential, token or host name is stored in the repository; cost per run is recorded in the ledger note
+  - first use records L2a on a 24-thread host and one GPU smoke run of the parity harness when E20-04 exists
+- id: E18-01
+  epic: E18
+  title: RFC-0028 accepted for the development tier; virtual column types, validation and plain checker
+  depends: []
+  rfc:
+  - RFC-0028 §1-2
+  - RFC-0027 §2
+  skill: protocol-architect
+  crate: stele-ir
+  lane: P
+  status: ready
+  acceptance:
+  - RFC-0028 Accepted for the development tier with an ADR; NC-1320..1325 entered in the catalogue as reserved
+  - Kind::Virtual with Linear, Pointwise and Contraction; definitions read only smaller ColumnIds; derived magnitudes and the p/2 rule in Relation::validate
+  - the plain checker computes virtual columns from their definitions and ignores any supplied values
+  - unit tests accept an honest relation of each definition kind and reject one tamper per kind, an over-wide derived magnitude and a forward reference
+- id: E18-02
+  epic: E18
+  title: Linear virtual columns in the engine and the first module conversions
+  depends:
+  - E18-01
+  - E17-01
+  rfc:
+  - RFC-0028 §2.4
+  - RFC-0026 §3.5a
+  skill: protocol-architect
+  crate: stele-reductions
+  lane: P
+  status: ready
+  acceptance:
+  - prover and verifier reduce claims on Linear columns with absorbed operand evaluations and no challenge
+  - Compose targets, sign recombinations and equal-scale sums are virtual in every module; near-miss tests and the plain checker keep their outcomes
+  - NC-1320 and NC-1321 run through the actual verifier
+  - L1 ledgers before and after state committed cells and lookup positions per token
+- id: E18-03
+  epic: E18
+  title: Contraction virtual columns; no committed accumulator
+  depends:
+  - E18-02
+  rfc:
+  - RFC-0028 §2.4
+  - RFC-0006 A2
+  skill: protocol-architect
+  crate: stele-reductions
+  lane: P
+  status: ready
+  acceptance:
+  - claims on a contraction output are reduced to one point, then one sumcheck; each operand has one partial evaluation per contraction (counter)
+  - every matmul output in the embedding, projection, RoPE, attention and head modules is virtual; its limb and range columns are removed
+  - NC-1307 targets the reduction; honest and tampered runs pinned
+  - L1 and L2a ledgers before and after
+- id: E18-04
+  epic: E18
+  title: Pointwise virtual columns and lookups over virtual tuples
+  depends:
+  - E18-03
+  rfc:
+  - RFC-0028 §1.2
+  - RFC-0028 §2.2
+  - RFC-0008 A6
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  lane: P
+  status: ready
+  acceptance:
+  - rounding remainders and low limbs are virtual in every rounding pattern of RFC-0026 §5; range checks read them through Refs
+  - NC-1322 and NC-1325 run through the actual verifier
+  - each converted module restates its output-uniqueness lemma and keeps its near-miss tests
+- id: E18-05
+  epic: E18
+  title: Every module at the commit rule, with an accounting report
+  depends:
+  - E18-04
+  - E22-01
+  rfc:
+  - RFC-0028 §1.2
+  - RFC-0026 §5
+  skill: gkr-reduction-author
+  crate: stele-reductions
+  lane: P
+  status: ready
+  acceptance:
+  - for each RFC-0026 §5 row the committed columns are exactly the advice listed in the module header
+  - E22-01 reports cells and lookup positions per token on the L1, L2 and L3 shapes, before and after
+  - no module commits a column that RFC-0028 §2.1 can define
+- id: E18-06
+  epic: E18
+  title: Segments with carried residual boundaries and bounded prover memory
+  depends:
+  - E17-01
+  rfc:
+  - RFC-0026 §2.3
+  - RFC-0026 §4
+  - RFC-0027 §2
+  skill: protocol-architect
+  crate: stele-ir+stele-reductions+stele-prover
+  lane: P
+  status: ready
+  acceptance:
+  - a development-tier RFC-0026 amendment specifies segments and carried columns for committed columns (the text drafted in RFC-0028 §2.3 and §2.4, without virtual columns) and is Accepted in this task, with its control ids entered in the catalogue
+  - validate enforces the segment rule; the engine commits, proves and opens one segment at a time and holds at most two
+  - peak RSS on L2a is bounded by the two largest segments plus the model, shown by a ledger pair
+  - the two segment controls of that amendment (a read of a non-carried column of an earlier segment; two segment roots reordered) run through the actual verifier; proof bytes are deterministic across two runs and two thread counts
+- id: E18-07
+  epic: E18
+  title: Stacked weight phase with a fused opening
+  depends:
+  - E18-03
+  - E19-05
+  rfc:
+  - RFC-0007 §2
+  - RFC-0007 §5
+  - RFC-0029 §1.3
+  skill: protocol-architect
+  crate: stele-reductions+stele-pcs
+  lane: P
+  status: ready
+  acceptance:
+  - the weight-read counter is one per model source per proof on L2 and L3 shapes
+  - the weight pass of the matmul sumcheck is the row combination of the certified opening; a row combination that differs from it is rejected (NC-0305, NC-0605)
+  - T_weights before and after in ledgers
+- id: E18-08
+  epic: E18
+  title: Batches of windows and arbitrary window lengths
+  depends:
+  - E18-06
+  rfc:
+  - RFC-0026 §1.1
+  - RFC-0017 §14
+  skill: gkr-reduction-author
+  crate: stele-reductions+stele-prover
+  lane: P
+  status: ready
+  acceptance:
+  - an RFC-0026 amendment extends §1.1 to several windows per proof and to window lengths that are not powers of two, and is Accepted in this task
+  - one proof covers B windows with independent checked ranges; weight reads do not grow with B
+  - a window whose length is not a power of two is proved with public masks; padded positions are constrained to zero
+  - L2b ledger at batch 1 and batch 8
+- id: E18-09
+  epic: E18
+  title: Gate M2 - lean protocol
+  depends:
+  - E22-04
+  - E17-02
+  - E17-03
+  - E17-04
+  - E18-05
+  - E18-06
+  - E19-04
+  - E20-01
+  - E20-02
+  rfc:
+  - RFC-0027 §4
+  skill: integrator
+  crate: all
+  lane: P
+  gate: M2
+  status: ready
+  acceptance:
+  - L2a on the 24-thread reference class proves in at most 10 s, verifies in at most 2 s, with a proof of at most 4 MB and peak RSS of at most 4 GB
+  - L3b proves on at most 64 cores in at most 1800 s; its proof bytes, verify time and peak RSS are recorded
+  - committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline on L2 and L3
+  - proof bytes identical across two hosts; every control of the catalogue that the engine implements passes
+- id: E19-01
+  epic: E19
+  title: Parameter script and size model; RFC-0029 accepted for the development tier
+  depends: []
+  rfc:
+  - RFC-0029 §3
+  - RFC-0029 §5
+  - RFC-0010 A3
+  skill: pcs-engineer
+  crate: research+docs
+  lane: C
+  status: ready
+  acceptance:
+  - an exact-integer checker derives the least query count per level for Policy 3 (RFC-0029 §5) and its failure at one fewer, and prints proof bytes for sources of 2^20 to 2^34 entries
+  - it prints each size twice - without caps and under the caps of RFC-0030 §3 - and prices the wider-field alternative of Q50 at 2^32 to 2^34 entries
+  - RFC-0029 Accepted for the development tier with an ADR; NC-0630..0635 entered as reserved
+- id: E19-02
+  epic: E19
+  title: Circle sources for the stacked and model commitments
+  depends: []
+  rfc:
+  - RFC-0026 A7
+  - RFC-0010 A9
+  skill: pcs-engineer
+  crate: stele-reductions+stele-pcs
+  lane: C
+  status: ready
+  acceptance:
+  - RFC-0026 A7 Accepted; the stacked source and model sources are version-1 sources at blow-up exponent 2 with the byte-minimising row split
+  - NC-1303, NC-1304 and NC-1306 run unchanged; the pinned L0 and L1 hashes are re-recorded with the amendment
+  - L1 and L2a ledgers before and after state proof bytes per section and encode time
+- id: E19-03
+  epic: E19
+  title: Recursive opening in fresh mode - prover and verifier
+  depends:
+  - E19-01
+  - E19-02
+  rfc:
+  - RFC-0029 §2
+  - RFC-0029 §5
+  skill: pcs-engineer
+  crate: stele-pcs
+  lane: C
+  status: ready
+  acceptance:
+  - the coefficient-form circle code with its own code identity and source version; a test shows its codeword for a coefficient row equals the RFC-0010 A2 codeword of that row's evaluations on D_m
+  - levels, row combinations, queries, consistency batch and final check as RFC-0029 §2; every count from the plan
+  - an independent Python check reproduces the verifier decisions on seeded small sources in QM31
+  - NC-0630..0634 run through the actual verifier
+  - opening bytes on sources of 2^20 to 2^28 entries recorded beside the E19-01 model
+- id: E19-04
+  epic: E19
+  title: One recursion per proof
+  depends:
+  - E19-03
+  - E18-06
+  rfc:
+  - RFC-0029 §2
+  - RFC-0026 A4
+  skill: pcs-engineer
+  crate: stele-reductions+stele-pcs
+  lane: C
+  status: ready
+  acceptance:
+  - the row combinations of segments, multiplicity sources and model sources join one recursion; a segment leaves memory when its queries are answered
+  - L2a proof at most 4 MB at the development query counts of Policy 3
+  - proof bytes deterministic; controls of E19-03 pass on the composed proof
+- id: E19-05
+  epic: E19
+  title: Certified mode for model sources
+  depends:
+  - E19-03
+  rfc:
+  - RFC-0029 §1.3
+  - RFC-0010 A9
+  - RFC-0010 A10
+  skill: pcs-engineer
+  crate: stele-pcs
+  lane: C
+  status: ready
+  acceptance:
+  - a registration certificate at the plan-stated radius; openings with any verifier-computable row and column functional
+  - queried columns are recomputed from the weights; the full codeword is never resident (memory test)
+  - NC-0635 runs through the actual verifier
+- id: E19-06
+  epic: E19
+  title: Zero-knowledge reservation in the source context
+  depends:
+  - E19-03
+  rfc:
+  - RFC-0029 §7
+  skill: pcs-engineer
+  crate: stele-pcs
+  lane: C
+  status: ready
+  acceptance:
+  - randomiser and mask-row counts are fields of the source context, zero by default
+  - proof bytes with zero counts equal the bytes before this task (pinned)
+- id: E20-01
+  epic: E20
+  title: Typed small-value columns and base-field first rounds in the relation engine
+  depends:
+  - E17-01
+  rfc:
+  - RFC-0006 A5
+  - RFC-0026 §2.1
+  skill: performance-engineer
+  crate: stele-ir+stele-reductions+stele-sumcheck
+  lane: E
+  status: ready
+  acceptance:
+  - Values stores each column at its declared width; no dense extension-field table exists before the first sumcheck fold of a zerocheck, claim batch or contraction
+  - pinned L0 and L1 proof hashes unchanged
+  - peak RSS and prove time on L1 and L2a before and after in ledgers
+- id: E20-02
+  epic: E20
+  title: Lookup fast path - parallel checks on the work pool, base-field leaves, instance split
+  depends:
+  - E17-01
+  rfc:
+  - RFC-0008 A3
+  - RFC-0008 A5
+  - RFC-0026 A8
+  skill: sumcheck-prover-engineer
+  crate: stele-lookup+stele-sumcheck+stele-reductions
+  lane: E
+  status: ready
+  acceptance:
+  - lookup instances and matmul sumchecks run in parallel on the work pool of E16-17 (ADR-090) with a fixed transcript order; the per-round spawning that pool replaced does not return
+  - leaf layers stay in the base field; the first tree layers of small-domain tables are read from precomputed tables
+  - RFC-0026 A8 Accepted; its control runs through the actual verifier; proof bytes of unsplit plans are unchanged
+  - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a; lookup-proof bytes recorded against the instance count at B = 30 and B = 23
+- id: E20-03
+  epic: E20
+  title: Backend trait with CPU reference and SIMD
+  depends:
+  - E20-01
+  - E20-02
+  rfc:
+  - RFC-0014 §2
+  - RFC-0014 §5
+  skill: performance-engineer
+  crate: stele-kernels+stele-simd
+  lane: E
+  status: ready
+  acceptance:
+  - operations - dense round, sumcheck fold, small-value partial evaluation (bucketed for int4 and int8), tree level, row encode, Merkle level - behind one trait, each with a scalar reference
+  - SIMD equals scalar on 1000 seeded inputs per operation including edge values
+  - the engine calls the trait; pinned proof hashes unchanged
+- id: E20-04
+  epic: E20
+  title: CUDA backend skeleton and parity harness
+  depends:
+  - E20-03
+  - E17-04
+  rfc:
+  - RFC-0014 §2
+  - RFC-0014 §5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  lane: E
+  status: ready
+  acceptance:
+  - stele-gpu builds behind a feature with a pinned compiler; unsafe blocks carry SAFETY comments and tests
+  - dense round and sumcheck fold kernels equal the CPU reference bytes on 1000 seeded inputs including 0, 1, p-1 and lazy-range values
+  - scripts/gates/parity.sh runs the harness on a rented GPU through E17-04 and fails closed without one
+- id: E20-05
+  epic: E20
+  title: CUDA lookup kernels
+  depends:
+  - E20-04
+  rfc:
+  - RFC-0014 §2
+  - RFC-0008 A3
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  lane: E
+  status: ready
+  acceptance:
+  - tree level build and layer sumcheck kernels with byte parity
+  - c_lu on one H100 recorded on L2a and L3a
+- id: E20-06
+  epic: E20
+  title: CUDA row encoding and Merkle hashing
+  depends:
+  - E20-04
+  rfc:
+  - RFC-0014 §2
+  - RFC-0010 A2
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  lane: E
+  status: ready
+  acceptance:
+  - batched circle FFT rows and BLAKE3 column hashing with byte parity
+  - c_c on one H100 recorded
+- id: E20-07
+  epic: E20
+  title: CUDA witness generation
+  depends:
+  - E20-04
+  rfc:
+  - RFC-0014 §2
+  - RFC-0025 §2
+  skill: cuda-kernel-author
+  crate: stele-gpu+stele-cqis
+  lane: E
+  status: ready
+  acceptance:
+  - the CQIS forward pass with exact integer accumulation; capture digests equal the CPU executor on an 8B layer
+  - throughput ledger; no floating-point type in the path
+- id: E20-08
+  epic: E20
+  title: Gate M4 - GPU end to end
+  depends:
+  - E20-05
+  - E20-06
+  - E20-07
+  - E18-09
+  - E18-07
+  - E18-08
+  - E21-09
+  - E22-05
+  rfc:
+  - RFC-0027 §4
+  - RFC-0018 §3
+  skill: integrator
+  crate: all
+  lane: E
+  gate: M4
+  status: ready
+  acceptance:
+  - L3b on one H100 under standard at 230 tokens per second or more at batch 24, with a single request in at most 10 s
+  - committed cells per token at most 1/20 and lookup positions at most 1/8 of the E22-01 baseline on L3
+  - CPU and GPU proofs byte-identical on 50 seeded L1 instances and on L2a
+  - W1 recorded; cost-model constants fitted from ledgers by stele-bench fit
+- id: E20-09
+  epic: E20
+  title: Data-parallel lookup instances (Q49)
+  depends:
+  - E20-02
+  rfc:
+  - RFC-0030 §7
+  - RFC-0026 A8
+  - RFC-0008 A3
+  skill: sumcheck-prover-engineer
+  crate: stele-lookup+stele-reductions
+  lane: E
+  status: ready
+  acceptance:
+  - a development-tier amendment specifies one tree reduction over all instances of a check with shared challenges, one root pair and one multiplicity vector per instance, and states the pair round's error with its argument
+  - prover and verifier; a control with one false instance among many is rejected at that instance's root equation
+  - on L2b at B = 23 the lookup-proof bytes are at most twice those of the unsplit proof
+- id: E21-01
+  epic: E21
+  title: RFC-0030 accepted; per-round ledger
+  depends: []
+  rfc:
+  - RFC-0030
+  - RFC-0012 §4
+  skill: soundness-auditor
+  crate: docs+stele-reductions
+  lane: V
+  status: ready
+  acceptance:
+  - RFC-0030 Accepted through the full Workflow 02 path with the compilation theorem and constants cited; Q12 closed in RFC-0019. If the Q12 amendments of task E12-22 are Accepted first, they are the law; RFC-0030 is then re-based on them and keeps the per-family ledger report, the plan validation and the treaty field
+  - formal/security-accounting.md states the round-by-round error of each family in RFC-0030 §2 with its state function
+  - the engine ledger reports every round record, the least bits and the five weakest rounds; NC-0804, NC-0805 and NC-0810 to NC-0812 run through the actual verifier
+- id: E21-02
+  epic: E21
+  title: stele-verifier owns development verification
+  depends: []
+  rfc:
+  - RFC-0016 §2-3
+  - RFC-0026 §8
+  skill: verifier-engineer
+  crate: stele-verifier+stele-proof+stele-cli
+  lane: V
+  status: ready
+  acceptance:
+  - plan derivation, relation verification and the container are callable with no stele-prover in the dependency tree (checked by a test over cargo metadata)
+  - no_std; no panic on any input in a parser fuzz run; line count reported against the 15000 budget
+  - stele verify-dev calls it; the prover test suite verifies through it
+- id: E21-03
+  epic: E21
+  title: Independent Python verifier for the development container
+  depends:
+  - E21-02
+  rfc:
+  - RFC-0002 S10
+  - RFC-0026 §8
+  skill: verifier-engineer
+  crate: harness/verifier
+  lane: V
+  status: ready
+  acceptance:
+  - verifies L0 and L1 proofs with no code shared with crates
+  - agrees with the Rust verifier on 1000 seeded small proofs and on every proof of a 1000-mutation corpus
+  - runs in the exhaustive workflow; a disagreement is a release blocker
+- id: E21-04
+  epic: E21
+  title: Standard admission of the relation engine
+  depends:
+  - E21-01
+  - E21-03
+  - E19-02
+  - E20-02
+  rfc:
+  - RFC-0030 §3
+  - RFC-0027 §2
+  skill: soundness-auditor
+  crate: stele-verifier+tests
+  lane: V
+  status: ready
+  acceptance:
+  - plan validation enforces the caps of RFC-0030 §3; a configuration below 100 bits is rejected
+  - formal/ holds the written soundness argument of every admitted capability (round-by-round statements, module uniqueness lemmas) as Workflow 10 requires
+  - control coverage is complete for every implemented binding; the catalogue snapshot says so
+  - the container parser and verifier survive the fuzz campaign of Workflow 05 without a panic
+  - first standard ledger on L2a; the soundness-auditor review is recorded
+- id: E21-05
+  epic: E21
+  title: Open-weights passport
+  depends:
+  - E21-02
+  rfc:
+  - RFC-0011 §1
+  - RFC-0027 §1
+  skill: verifier-engineer
+  crate: stele-passport+stele-cli
+  lane: V
+  status: ready
+  acceptance:
+  - a passport file records the checkpoint SHA-256, the conversion identity, cqis_id and the model roots
+  - the verifier checks a proof against a passport; in open-weights mode it recomputes the commitment from the public checkpoint
+  - a control with one changed weight under the same passport is rejected
+- id: E21-06
+  epic: E21
+  title: Formal statements and a Lean project
+  depends:
+  - E18-01
+  - E21-01
+  rfc:
+  - RFC-0019 R-FORMAL
+  - RFC-0028 §5
+  - RFC-0030 §5
+  skill: formal-verifier
+  crate: formal
+  lane: V
+  status: ready
+  acceptance:
+  - formal/lean builds in its own CI job with a pinned toolchain; reused libraries are listed with licence and commit
+  - statements type-check for sumcheck round-by-round error, one lookup instance, the commit-rule composition (Q34), and the rounding and row-conversion uniqueness lemmas
+  - each statement lists its assumptions; no statement is reported as proved unless its proof checks
+- id: E21-07
+  epic: E21
+  title: Gate M3 - admitted
+  depends:
+  - E21-09
+  - E21-05
+  - E18-09
+  rfc:
+  - RFC-0027 §4
+  skill: integrator
+  crate: all
+  lane: V
+  gate: M3
+  status: ready
+  acceptance:
+  - L2 and L3 proofs under standard with the least round at 100 bits or more from proven bounds; the L3b proof is at most 8 MB and verifies in at most 5 s
+  - the Python verifier agrees on 1000 proofs and rejects every mutation; stele-verifier is no_std within budget
+  - the passport binds the checkpoint digest; control coverage is complete
+- id: E21-08
+  epic: E21
+  title: Gate M7 - treaty
+  depends:
+  - E21-07
+  - E21-06
+  - E23-04
+  - E22-09
+  rfc:
+  - RFC-0027 §4
+  - RFC-0002 §8
+  skill: integrator
+  crate: all
+  lane: V
+  gate: M7
+  status: ready
+  acceptance:
+  - the least round at 128 bits or more from proven bounds; zero knowledge covering batches
+  - a machine-checked top-level soundness statement; an external audit with no open critical finding
+  - two independent verifiers agree on 10000 proofs
+- id: E21-09
+  epic: E21
+  title: Promote the lean protocol to standard
+  depends:
+  - E21-04
+  - E18-05
+  - E18-06
+  - E19-04
+  - E19-05
+  - E20-09
+  - E22-03
+  rfc:
+  - RFC-0027 §2
+  - RFC-0028
+  - RFC-0029
+  - RFC-0030 §3
+  skill: soundness-auditor
+  crate: all
+  lane: V
+  status: ready
+  acceptance:
+  - RFC-0028, RFC-0029, their companion amendments, RFC-0026 A7 and A8 and the model-class amendment of E22-03 are Accepted on the full path of Workflow 02
+  - every step of Workflow 10 for standard is met for virtual columns, segments, the recursive opening in both modes, data-parallel lookups and the 8B model class
+  - first standard ledgers on L2b and L3b with proof bytes, verify time and the least round in bits
+- id: E22-01
+  epic: E22
+  title: Static accounting of cells and lookups per token
+  depends: []
+  rfc:
+  - RFC-0027 §3
+  - RFC-0026 §5
+  skill: fidelity-researcher
+  crate: stele-prover+stele-bench
+  lane: N
+  status: ready
+  acceptance:
+  - for any Model and window the tool prints, per module and relation kind, committed cells and lookup positions by width, without proving
+  - its totals equal the E17-01 engine counters on L1
+  - baseline tables for the L1, L2 and L3 shapes are recorded as ledgers and shown in the scoreboard
+- id: E22-02
+  epic: E22
+  title: Static-scale experiment on Llama-3.1-8B (Q36, Q38)
+  depends:
+  - E22-01
+  rfc:
+  - RFC-0019 R-NUMERICS
+  - RFC-0004 §8
+  skill: fidelity-researcher
+  crate: harness
+  lane: N
+  status: ready
+  acceptance:
+  - a pre-registered protocol (Workflow 11) fixed before any score is seen
+  - simulation and exact executor runs on the fixed 8-window subset for each candidate; the full G7 protocol for the best one
+  - a report with the accounting pair per candidate and a recommendation to amend or drop
+- id: E22-03
+  epic: E22
+  title: Wide residual and the Llama-3.1-8B configuration in the proving modules
+  depends: []
+  rfc:
+  - RFC-0004 A14
+  - RFC-0004 A15
+  - RFC-0026 §1.3
+  skill: gkr-reduction-author
+  crate: stele-reductions+stele-prover
+  lane: N
+  status: ready
+  acceptance:
+  - an RFC-0026 amendment extends the model class to version-2 residual streams and the 8B shape (8 KV heads, grouped rows); matmuls past 30 bits use the row blocks of RFC-0026 A6 (E16-19)
+  - the plain checker accepts executor captures on wide fixtures; near-miss tests reject output plus or minus one and the other rounding direction
+  - a synthetic wide fixture proves and verifies in the end-to-end test
+- id: E22-04
+  epic: E22
+  title: Gate M1 - first light on Llama-3.1-8B
+  depends:
+  - E22-03
+  - E18-06
+  - E17-01
+  rfc:
+  - RFC-0027 §4
+  - RFC-0026
+  skill: integrator
+  crate: all
+  lane: N
+  gate: M1
+  status: ready
+  acceptance:
+  - L3a - a real prompt with its greedy continuation, T = 64 - proves and verifies through the CLI under the development profile on one CPU host with at most 512 GB RAM
+  - the statement tampers and NC-1300..1310 are rejected on that proof
+  - a ledger with stage times and counters; no time or size cap
+- id: E22-05
+  epic: E22
+  title: Numerics amendments from the experiment, in executor, harness and modules
+  depends:
+  - E22-02
+  - E18-04
+  rfc:
+  - RFC-0004 §8
+  - RFC-0025
+  - RFC-0027 §2
+  skill: cqis-numerics
+  crate: stele-cqis+harness+stele-reductions
+  lane: N
+  status: ready
+  acceptance:
+  - each amendment carries a paired run on the fixed protocol and the accounting pair
+  - Rust, NumPy and torch executors agree bit for bit; a new cqis_id
+  - modules updated; cells and lookup positions per token on the L3 shape recorded
+- id: E22-06
+  epic: E22
+  title: Indexed lookups with virtual outputs (Q35)
+  depends:
+  - E18-04
+  rfc:
+  - RFC-0019 R-INDEXED
+  - RFC-0028 §7
+  skill: protocol-architect
+  crate: research
+  lane: N
+  status: ready
+  acceptance:
+  - a prototype on the L1 attention module with cells, lookups and extension multiplications counted
+  - a report that applies the kill criterion of R-INDEXED and recommends an amendment or a drop
+- id: E22-07
+  epic: E22
+  title: Mixture-of-experts routing and the Maverick shape
+  depends:
+  - E18-05
+  rfc:
+  - RFC-0017 §4
+  skill: gkr-reduction-author
+  crate: stele-reductions+stele-cqis
+  lane: N
+  status: ready
+  acceptance:
+  - top-1 routing with a committed one-hot selection; weight claims do not depend on the route
+  - a synthetic fixture of the Maverick shape at reduced width proves and verifies
+  - a memory and time projection for L5 from ledgers
+- id: E22-08
+  epic: E22
+  title: Committed-seed sampling
+  depends:
+  - E18-05
+  rfc:
+  - RFC-0004 §7
+  - RFC-0017 §15
+  skill: cqis-numerics
+  crate: stele-cqis+stele-reductions
+  lane: N
+  status: ready
+  acceptance:
+  - an amendment defines temperature and the noise drawn from a revealed seed as exact integers; the noise is a public column
+  - the statement binds seed, temperature and position; NC-0108 runs through the actual verifier
+- id: E22-09
+  epic: E22
+  title: Gate M6 - frontier
+  depends:
+  - E20-08
+  - E23-04
+  - E22-07
+  - E22-08
+  - E11-03
+  - E11-05
+  rfc:
+  - RFC-0027 §4
+  skill: integrator
+  crate: all
+  lane: N
+  gate: M6
+  status: ready
+  acceptance:
+  - L5 on one H100 at 111 tokens per second or more at batch 24, proof at most 4 MB, verification at most 2 s, single request at most 30 s
+  - W6 proved with every generated token checked; committed-seed sampling proved on L3
+  - eight-GPU efficiency of 0.8 or more on W4
+- id: E23-01
+  epic: E23
+  title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier
+  depends:
+  - E19-03
+  rfc:
+  - RFC-0013 A3
+  - RFC-0013 A1
+  skill: zk-engineer
+  crate: research+docs
+  lane: Z
+  status: ready
+  acceptance:
+  - both candidates prototyped on L1 with prover overhead, proof bytes and batch coverage measured; if the hiding sources and masked sumcheck of tasks E12-11 to E12-13 are Accepted first, candidate A starts from them
+  - for candidate A, the placement of randomiser coefficients and the admissible query sets with a proof that the randomiser block has full rank on each (RFC-0013 A3 item 1)
+  - RFC-0013 A3 Accepted for the development tier with the chosen construction, its transcript order and its simulator sketch
+- id: E23-02
+  epic: E23
+  title: Masked sumchecks and zero-knowledge encodings
+  depends:
+  - E23-01
+  - E19-06
+  rfc:
+  - RFC-0013 A3
+  skill: zk-engineer
+  crate: stele-sumcheck+stele-pcs+stele-reductions
+  lane: Z
+  status: ready
+  acceptance:
+  - every sumcheck instance and every committed source is masked as the amendment states; a proof without a mask is rejected (NC-0900)
+  - a reused mask or randomiser is detected (NC-0901, NC-0604)
+  - prover overhead on L2a and L3b recorded
+- id: E23-03
+  epic: E23
+  title: Opening budget, link proofs and the leak list
+  depends:
+  - E23-02
+  - E19-05
+  rfc:
+  - RFC-0013 A3
+  skill: zk-engineer
+  crate: stele-pcs+stele-passport+docs
+  lane: Z
+  status: ready
+  acceptance:
+  - a model source has a budget and a persistent counter written before each opening; an opening beyond the budget is refused
+  - a fresh encoding links to the registered one with a proof of equal content
+  - docs/security/leak-list.md lists everything a proof reveals; a test compares it with the proof container fields
+- id: E23-04
+  epic: E23
+  title: Gate M5 - zero knowledge
+  depends:
+  - E23-03
+  - E18-09
+  - E18-08
+  rfc:
+  - RFC-0027 §4
+  - RFC-0013
+  skill: integrator
+  crate: all
+  lane: Z
+  gate: M5
+  status: ready
+  acceptance:
+  - weight-hiding and activation-hiding proofs on L3b; prover overhead at most 15 percent
+  - the simulator argument is written in formal/ and reviewed by the soundness-auditor
+  - the budget is enforced across batches

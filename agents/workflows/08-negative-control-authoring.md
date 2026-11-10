@@ -42,3 +42,14 @@ certificate; one declared source deviation and regenerated genuine dependent
 work; actual A5 Fraction(RootMismatch). No accepted honest proof is claimed for
 that negative statement. NC-0316..0318 use ordinary accepted-baseline proof
 mutations. Range-handle API and static-bound checks earn no proof-control count.
+
+Relation-engine controls (RFC-0026 §9, RFC-0028 §6). The engine proves from two value sets: `committed` fills
+the commitments and `values` drives every message after them. An honest prover passes the same set twice. A control
+passes sets that differ in exactly the declared place, through the real prover entry point, and requires the real
+verifier's exact rejection. Three shapes cover every relation binding:
+1. commit one value, prove on another (binds a committed column to its relations);
+2. prove with a virtual column's values that differ from its definition at one index (binds a definition);
+3. change one public input or plan parameter on the prover side with the verifier's header restamped (binds the
+   statement; the rejection must come from the engine, not from the fail-fast header comparison).
+Every module change also keeps its near-miss tests on the plain checker; those are completeness and uniqueness
+evidence and earn no control credit.

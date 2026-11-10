@@ -230,6 +230,14 @@ per model. The stories42M `proof.bin` (SHA-256 `507b52b3…5381`) is byte-identi
 The E16-11 entries at `f6db15e`, the same host type, are kept as history:
 [e16-11-dev-synthetic-8layer](../bench/ledger/e16-11-dev-synthetic-8layer.json) and
 [e16-11-dev-stories42m](../bench/ledger/e16-11-dev-stories42m.json).
+Three records are from a 4-core host (Intel Xeon at 2.1 GHz), which is not a comparison
+with the rows above. The synthetic model proves there in 55.7 s at `6441a90`, before
+E16-17 ([e17-00-dev-synthetic-8layer-4core](../bench/ledger/e17-00-dev-synthetic-8layer-4core.json)),
+in 59.8 s at `21710de` with four threads
+([e17-00-dev-synthetic-8layer-4core-21710de](../bench/ledger/e17-00-dev-synthetic-8layer-4core-21710de.json))
+and in 103.6 s with one thread
+([e17-00-dev-synthetic-8layer-1thread-21710de](../bench/ledger/e17-00-dev-synthetic-8layer-1thread-21710de.json)).
+All three have the synthetic row's proof bytes (INV-8).
 
 The FlashProve row is the figure that project reports in its
 [README](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c)
@@ -239,3 +247,6 @@ as 8 layers, T = 64, d = 512. The statements differ (RFC-0018 rule 3): FlashProv
 the weights (zero-knowledge) and runs on a GPU. A Stele development proof reveals the
 model and activations, claims no security level and runs on CPU threads. The Stele
 prove time includes the model commitment, which `prove-dev` recomputes on every call. No GPU path is measured here (INV-3).
+
+Where the time and the bytes go, and what the build program does about it, is in
+[`docs/assessment.md`](assessment.md) §3 and [`docs/plan.md`](plan.md).
