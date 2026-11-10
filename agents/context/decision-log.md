@@ -2130,3 +2130,29 @@ Decision:
 Status: Accepted (owner authorisation for autonomous amendment acceptance after
 Workflow 02 review; two same-author passes in
 agents/reviews/rfc0013-a2-acceptance.md; independent review is still needed).
+
+## ADR-095: Bind the masked sumcheck's mask by a two-block hiding source (RFC-0013 A3, task E12-15)
+
+Number to be confirmed by the coordinator, as ADR-094 was.
+
+Context: the independent review of RFC-0013 A2 confirmed that the masked A1
+sumcheck is unsound until its mask is bound (design note R2), and
+`accepts_forged_mask_final_for_a_false_sum` shows the forgery. A sum of
+univariates cannot be opened as one tensor functional. A row that holds all of
+`g` would reveal it, and with it `f`'s rounds.
+
+Decision:
+- The mask becomes `G = (1 − X_n)·g⁰ + X_n·g¹`, with `deg g^b_n ≤ δ − 1`. It is
+  stored as `2D` limb rows of a version-3 hiding source.
+- The mask source's bytes are absorbed (`FieldSources`) before `G`. Its
+  certificate keeps A2's rank check.
+- One A9 opening at `G(ρ)` with zero mask-row weight is admitted for this source
+  only (`PreparedSource::hiding_mask`). Its row `(1 − ρ_n)g⁰ + ρ_n g¹` is
+  covered by Lemma 5, and the producer aborts when `ρ_n ∈ {0, 1/2}`.
+- `stele_reductions::zk` is the only admitted consumer of the raw masked module,
+  enforced by the quarantine check.
+- No new label: `FieldSources` already means "bind the source bundle before an
+  A1 sumcheck" (RFC-0010 A9 §5).
+
+Status: Accepted (owner authorisation; two same-author passes in
+agents/reviews/rfc0013-a3-acceptance.md; independent review requested).

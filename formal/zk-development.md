@@ -288,6 +288,69 @@ lemma needs `F(ρ)`, the final values of `f`; hiding them is Z5.
 structure, and Lemma 4 is not proved for them. Under dev-zk a zerocheck runs in
 A1 form, `Σ eq(τ, x)·P(x) = 0`, one degree higher, until A3 is analysed (R3).
 
+### 4.3 Lemma 5: binding the mask with one opening (RFC-0013 A3)
+
+Lemma 4 needs `μ = g(ρ)` from a `g` fixed before `G`. A sum of univariates is not
+a tensor functional, and opening a row that holds all of `g`'s coefficients
+would reveal `g` and hence `f`'s rounds. A3 uses the two-block mask
+`G(X) = (1 − X_n)·g⁰(X) + X_n·g¹(X)`, `g^b = Σ g^b_i(X_i)`,
+`deg g^b_i ≤ δ` (`i < n`), `deg g^b_n ≤ δ − 1`. Its coefficient rows (each block
+stored as `D` M31 limb rows) form the data of a hiding source, and one opening
+with `a = (ℓ_0(ρ_n)·e_d, ℓ_1(ρ_n)·e_d; 0 on mask rows)` and the Lagrange weights
+as `b` gives `u·b = G(ρ)`. The opening row's coefficient half is
+`B = (1 − ρ_n)·g⁰ + ρ_n·g¹` (as coefficient vectors).
+
+**Lemma 5.** Fix the honest verifier's public challenges with `α ≠ 0`,
+`ρ_n ∉ {0, 1/2}`, a query set with at most `C − 1` distinct positions, and a
+certificate whose mask-row coefficients have M31 rank `D`. For any two `f, f'`
+with the same claimed sum and the same final values `F(ρ)`, the joint view
+(certificate row, opening row `u`, every queried column, `G`, the rounds, `μ`)
+has the same distribution.
+
+*Proof.* We give a translation of the uniform randomness that turns the view for
+`f` into the view for `f'`. The randomness is the two blocks, the mask halves of
+all rows and the mask rows.
+
+1. *Rounds.* `p_i = F_i + α·Γ_i`, where `Γ_i` is `G`'s round polynomial. We
+   need a shift `(Δg⁰, Δg¹)` with `ΔΓ_i = (F_i − F'_i)/α` for all `i`,
+   `ΔG = 0`, `ΔG(ρ) = 0` and `ΔB = 0`. Put `Δg¹ = −τ·Δg⁰` with
+   `τ = (1 − ρ_n)/ρ_n`, which gives `ΔB = 0`. For `i < n`, summing `X_n` over
+   `{0,1}` leaves the sum of univariates with parts `Δg⁰_i + Δg¹_i =
+   (1 − τ)·Δg⁰_i`, and `1 − τ = (2ρ_n − 1)/ρ_n ≠ 0`, so these rounds follow
+   Lemma 4's argument: every non-constant part, and the first constant, is
+   reachable. In the last round,
+   `ΔΓ_n(t) = (ρ_n − t)/ρ_n · (ΔP_0 + Δg⁰_n(t))`, where
+   `ΔP_0 = Σ_{j<n} Δg⁰_j(ρ_j)`. As `Δg⁰_n` ranges over degree `≤ δ − 1`, this
+   covers every polynomial of degree `≤ δ` that vanishes at `ρ_n`. That is
+   exactly the freedom the target set leaves: the chain fixes `Γ_n(0) + Γ_n(1)`,
+   and `ΔΓ_n(ρ_n) = ΔG(ρ) = 0`. Counting gives `nδ − 1` on both sides. The
+   targets satisfy these conditions because `f, f'` share the claimed sum and
+   `F(ρ)`.
+2. *Columns.* The shift changes each block's limb rows `Δc_{b,d}`. For each
+   such row, choose a mask-half shift `Δr_{b,d}` with
+   `Enc(Δc_{b,d} ‖ Δr_{b,d})[Q] = 0` (Lemma 1). The opening row's mask half
+   then moves by `Σ ℓ_b e_d Δr_{b,d}`. Each `Δr_{b,d}` is free within a coset of
+   `V = {v : Enc(0 ‖ v)[Q] = 0}`, and `ℓ_0, ℓ_1` are not both zero, so the
+   movement ranges over a coset of `V ⊗ K`. That coset contains 0 exactly when
+   `Enc(0 ‖ Σ ℓ e Δr)[Q] = −Enc(ΔB ‖ 0)[Q] = 0`, which holds since `ΔB = 0`.
+   So the opening row is unchanged, and so is every queried column of the
+   block rows.
+3. *Certificate.* All changed rows encode to 0 on `Q`, so the certificate row's
+   change lies in `V_Q ⊗ K`. Lemma 2's translation of the mask rows cancels it,
+   using rank `D` of the certificate's mask-row coefficients. The mask rows have
+   zero opening weight, so this changes neither `u` nor the rounds.
+4. *Revealed scalars.* `G` and `μ` are unchanged by construction; `μ = u·b`.
+
+The translation is a bijection of the uniform randomness, so the two views have
+the same distribution. ∎
+
+Soundness is unchanged in form. `G` is the polynomial of the certificate's
+unique near message, fixed before `G` is absorbed, so Lemma 4's MASK line holds.
+The single opening term binds `μ = G(ρ)`. The tests are
+`crates/stele-reductions/tests/zk.rs`: round trip, the A2 forgery rejected, a
+substituted mask source rejected, and a statistical check of `p_1(2)` and of
+the opening row. The controls are NC-0907 and NC-0908.
+
 ## 5. Masked claims and composition: what is still open
 
 Lemmas 1–4 do not yet make a development proof zero-knowledge, because every
@@ -318,11 +381,8 @@ Exact remaining list, in dependency order:
   for `V̇`, separate blocks for the certificate), the resulting `rank Λ`
   condition and the degree increase in every consumer sumcheck. Prove the joint
   view of the folded tables, the openings and the certificate.
-- **R2 Binding `g`.** `μ = g(ρ)` must come from a commitment made before `G`. A
-  sum of univariates is not a tensor functional `a ⊗ b`, so a single A9 opening
-  cannot open it; a hiding opening of a fixed row combination would reveal all
-  of `g`. Needs `n` openings, a reduction, or another layout, and a proof that
-  only `μ` is revealed.
+- **R2 Binding `g`.** Closed by RFC-0013 A3 (§4.3, Lemma 5): a two-block mask in a
+  hiding source, opened once at `G(ρ)`.
 - **R3 Zerocheck.** Analyse A3 (eq-factored rounds, skip) or fix the A1 form and
   its cost.
 - **R4 LogUp.** RFC-0008 A5 grouped LogUp: the fraction-tree layers are not

@@ -132,6 +132,8 @@
 | NC-0904 | ZK masked sumcheck | 0013 A2, 0012 A18 | change the mask sum G in an honest proof; the running claim moves by α·ΔG and the first round check fails | `RoundSumMismatch` | done |
 | NC-0905 | ZK masked sumcheck | 0013 A2 | change the mask final μ | `FinalEvaluationMismatch` | done |
 | NC-0906 | ZK hiding source | 0013 A2 | prover-side refusal: open one hiding source a second time, through a point opening or a retained row | `MaskBudget` | done |
+| NC-0907 | ZK bound mask | 0013 A3 | substitute another seed's mask source and certificate in an honest bound proof | `RoundSumMismatch` | done |
+| NC-0908 | ZK bound mask | 0013 A3 | false claimed sum, free rounds and μ solved last, with a genuine mask source, certificate and opening | `ValueMismatch` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
@@ -167,7 +169,7 @@ earn no control credit.
 RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
 
-RFC-0013 A2 reserves NC-0902..0906 for E12-12 and E12-13. NC-0902..0905 run through
+RFC-0013 A2 reserves NC-0902..0906 for E12-12 and E12-13, and A3 NC-0907..0908 for E12-15. NC-0902..0905 run through
 the actual hiding-source or masked-sumcheck verifier. NC-0906 is a producer refusal,
 not a verifier binding: a second opening reveals a third row combination, so the
 producer must refuse it. A reservation adds no coverage.

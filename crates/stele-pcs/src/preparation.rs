@@ -53,6 +53,7 @@ pub struct PreparedSource<'a, K: ChallengeField> {
     work: PreparationWork,
     borrows: AtomicUsize,
     openings: AtomicUsize,
+    mask_polynomial: bool,
 }
 
 fn checked_bytes<T>(count: usize) -> Result<usize, Error> {
@@ -105,6 +106,23 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         let source = Source::<K>::hiding(id, ell, m, blowup, [0; 32])?;
         let rebuild = |root| Source::hiding(id, ell, m, blowup, root);
         Self::prepare(source, rebuild, message, Some(seed), usage)
+    }
+
+    /// Prepare the mask-polynomial source of RFC-0013 A3: a hiding source whose
+    /// one opening puts zero weight on the mask rows. Its row message is covered
+    /// by A3's mask lemma instead of A2's rank check; the certificate keeps it.
+    pub fn hiding_mask(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
+        let mut prepared = Self::hiding(id, ell, m, blowup, message, seed, usage)?;
+        prepared.mask_polynomial = true;
+        Ok(prepared)
     }
 
     fn prepare<F: FnOnce(merkle::Digest) -> Result<Source<K>, Error>>(
@@ -216,6 +234,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             work,
             borrows: AtomicUsize::new(0),
             openings: AtomicUsize::new(0),
+            mask_polynomial: false,
         })
     }
 
@@ -238,6 +257,11 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             return Err(Error::MaskBudget);
         }
         Ok(())
+    }
+
+    /// True for an RFC-0013 A3 mask-polynomial source.
+    pub(crate) fn is_mask_polynomial(&self) -> bool {
+        self.mask_polynomial
     }
 
     /// RFC-0007 A1 item 4 counter: message() borrows times R*C, an upper bound on reads.
