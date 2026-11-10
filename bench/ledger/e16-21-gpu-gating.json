@@ -1,0 +1,141 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "a9fb07eee187b189727d97748a85e203781a6018",
+ "controls": {
+  "failed": 0,
+  "passed": 0,
+  "total": 0
+ },
+ "device": "NVIDIA GeForce RTX 4090 on a rented Vast.ai container (instance 60045623, 192 vCPU x86_64 host)",
+ "driver": "NVIDIA 580.178.04, CUDA 12.6",
+ "generated_tokens": 0,
+ "kernel_counters": {
+  "cpu/k2_logn16/total_ns": 12700000,
+  "cpu/k3_logn20/total_ns": 54400000,
+  "cpu/k3_logn22/total_ns": 158200000,
+  "cpu/k4_logn24/total_ns": 608500000,
+  "k2_logn16/table_bytes": 2097152,
+  "k3_logn20/table_bytes": 50331648,
+  "k3_logn22/table_bytes": 201326592,
+  "k4_logn24/table_bytes": 1073741824
+ },
+ "kind": "micro",
+ "model_config": {
+  "cpu_reference_threads": 46,
+  "fnv_gpu_equals_cpu": {
+   "k2_logn16": "5308e2dc83b22388",
+   "k3_logn20": "1389bcecc7d7d29c",
+   "k3_logn22": "dfc901298e711365",
+   "k4_logn24": "af0cdb5c63875d90"
+  },
+  "host_context": "Rented Vast.ai container, 2026-11-10; GPU and CPU runs sequential on the same host; one run per size, no warmup; host sharing not measured. Seconds printed with 0.1 ms resolution, converted to ns here.",
+  "plan": {
+   "build": "nvcc -O3 -arch=sm_89; cargo --release",
+   "challenges": "r_i = QM31((1000003 i + 17, 7919 i + 5), (104729 i + 3, 31337 i + 11)) mod p",
+   "cpu": "research/gpu-gating/dense_cpu.rs: stele_sumcheck::Dense (feature std, rayon pool) on the same tables and challenges; timed from Dense::new to the final values",
+   "gpu": "research/gpu-gating/dense_gpu.cu: tables device-resident after one pageable cudaMemcpy upload; per round a grid-stride node-sum kernel with a fixed-order block tree, a one-thread-per-node block-order reduction, a device-to-host copy of the K+1 round values (Fiat-Shamir round trip) and a fold kernel; CUDA context created outside the timed region",
+   "operation": "dense QM31 sumcheck, one product term of K tables (degree K), all rounds and folds",
+   "output": "FNV-1a 64 over the little-endian bytes of every round value and the final values",
+   "samples": 1,
+   "sizes": [
+    "k2_logn16",
+    "k3_logn20",
+    "k3_logn22",
+    "k4_logn24"
+   ],
+   "tables": "QM31 base-embedded, value_t(j) = ((j*a_t + b_t) % q_t) - q_t/2, a=(73,29,41,13), b=(19,7,3,23), q=(1048573,1048571,999983,1000003)"
+  },
+  "projection": {
+   "gate": "GO needs projected end-to-end gain >= 3x; NO-GO otherwise (task E16-21)",
+   "method": "Amdahl: T' = T * (r + (1 - r) / s). r is the residual CPU share, the main-thread self samples outside the offloaded stages over all main-thread samples; s is the device speedup of the offloaded stages, taken as the measured rounds-only ratio (CPU reference total over GPU rounds) at its lowest and highest, and unbounded.",
+   "offloaded_stages": [
+    "logup_levels",
+    "zerocheck_rounds",
+    "dense_rounds",
+    "encoding",
+    "merkle"
+   ],
+   "profile": {
+    "classifier": "research/gpu-gating/stage_shares.py (first matching stage on the stack)",
+    "command": "target/release/stele prove-dev --tokens 1 --length 64 (docs/development-e2e.md)",
+    "commit": "87db8f56796ffb02b98f8b540f654adacc890bc4",
+    "device": "arm64 Apple M4 Max, 16 hardware threads, macOS; release build; tree differs from this commit only in agents/tasks/graph.yaml",
+    "instrument": "macOS sample, 1 ms interval, whole prove-dev process; main thread call tree",
+    "main_thread_samples": {
+     "dense_rounds": 1333,
+     "encoding": 1337,
+     "logup_levels": 3165,
+     "lookup_counts": 737,
+     "merkle": 521,
+     "other": 8,
+     "pcs_opening_combination": 549,
+     "relation_other": 3006,
+     "witness_layout_check": 1522,
+     "zerocheck_rounds": 2809
+    },
+    "main_thread_samples_total": 14987,
+    "scaling": "stage shares of the 8-layer fixture applied unchanged to stories42M; not measured on stories42M or on the 24-thread host",
+    "workload": "dev/synthetic-8layer-t64 (crates/stele-prover/tests/fixtures, eight-layer, T = 64)"
+   },
+   "projected_prover_time_ns": {
+    "speedup_highest_measured": 187870328667,
+    "speedup_lowest_measured": 195468416139,
+    "speedup_unbounded": 184060974178
+   },
+   "residual_share": {
+    "denominator": 14987,
+    "numerator": 5822
+   },
+   "stage_speedup_rounds_only": {
+    "k2_logn16": {
+     "denominator": 5,
+     "numerator": 127
+    },
+    "k3_logn20": {
+     "denominator": 13,
+     "numerator": 544
+    },
+    "k3_logn22": {
+     "denominator": 11,
+     "numerator": 791
+    },
+    "k4_logn24": {
+     "denominator": 16,
+     "numerator": 1217
+    }
+   },
+   "target": "bench/ledger/e16-18-dev-stories42m.json prover_time_ns (dev/stories42m-t64, 24 threads)",
+   "verdict": "NO-GO"
+  },
+  "raw": "research/gpu-gating/results.txt"
+ },
+ "note": "E16-21 GPU gating micro-benchmark (RFC-0014 \u00a71, \u00a75; RFC-0026 \u00a77). prover_time_ns is the sum of the GPU totals (upload plus rounds) over the four sizes; stage times are per size. CPU reference times are kernel_counters cpu/*/total_ns. GPU and CPU round values agree byte for byte (FNV). Upload uses pageable host memory. The projection in model_config applies stage shares profiled on the 8-layer fixture to the stories42M record; it is an estimate, not a measurement of a GPU prover. The `standard` schema tag grants no profile admission: micro records cannot carry `development`. Micro schema proof, verifier and control fields are zero because no inference evidence is claimed. The commit is the base the benchmark was built against; stele-sumcheck and stele-field are unchanged from it through the profiled commit. Not a cost-model fit input.",
+ "plan_digest": "faf6de5c47ca5621d5768c505f1ff9866c57006830b64f2826b37a12613db0ca",
+ "profile": "standard",
+ "prompt_tokens": 0,
+ "proof_size_bytes": 0,
+ "prover_time_ns": 237500000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "gpu/k2_logn16/rounds": 500000,
+  "gpu/k2_logn16/total": 800000,
+  "gpu/k2_logn16/upload": 300000,
+  "gpu/k3_logn20/rounds": 1300000,
+  "gpu/k3_logn20/total": 6600000,
+  "gpu/k3_logn20/upload": 5300000,
+  "gpu/k3_logn22/rounds": 2200000,
+  "gpu/k3_logn22/total": 21400000,
+  "gpu/k3_logn22/upload": 19200000,
+  "gpu/k4_logn24/rounds": 8000000,
+  "gpu/k4_logn24/total": 208700000,
+  "gpu/k4_logn24/upload": 200700000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14); nvcc cuda_12.6.r12.6/compiler.35059454_0",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 0
+ },
+ "witness_recompute_ns": 0,
+ "workload": "micro/gpu-dense-sumcheck-gating"
+}

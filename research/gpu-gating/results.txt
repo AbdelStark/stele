@@ -1,0 +1,11 @@
+E16-20 gating micro-benchmark, Vast RTX 4090 instance 60045623 (192 vCPU host, CPU ref ran 46 threads), 2026-11-10
+gpu K=2 logn=16 upload_s=0.0003 rounds_s=0.0005 total_s=0.0008 fnv=5308e2dc83b22388
+gpu K=3 logn=20 upload_s=0.0053 rounds_s=0.0013 total_s=0.0066 fnv=1389bcecc7d7d29c
+gpu K=3 logn=22 upload_s=0.0192 rounds_s=0.0022 total_s=0.0214 fnv=dfc901298e711365
+gpu K=4 logn=24 upload_s=0.2007 rounds_s=0.0080 total_s=0.2087 fnv=af0cdb5c63875d90
+cpu K=2 logn=16 threads=46 total_s=0.0127 fnv=5308e2dc83b22388
+cpu K=3 logn=20 threads=46 total_s=0.0544 fnv=1389bcecc7d7d29c
+cpu K=3 logn=22 threads=46 total_s=0.1582 fnv=dfc901298e711365
+cpu K=4 logn=24 threads=46 total_s=0.6085 fnv=af0cdb5c63875d90
+Build cuda_12.6.r12.6/compiler.35059454_0
+580.178.04

@@ -3935,13 +3935,13 @@ tasks:
   - RFC-0026 §7
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: claimed
+  status: done
   agent: claude-code
   branch: task/E16-21-gpu-gating
   acceptance:
   - device-resident dense sumcheck rounds measured on a rented RTX 4090 at the 8-layer and stories42M relation sizes, transfers included
   - projected stories42M prove-time gain reported; the full backend proceeds only at >= 3x
-  - RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading
+  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-097, NO-GO)
 - id: E16-21a
   epic: E16
   title: Development-profile GPU backend infrastructure (backend trait, op table, parity harness)

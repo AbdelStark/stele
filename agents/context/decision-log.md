@@ -2097,3 +2097,47 @@ Consequences:
   in the texts as recorded here. That review is not an acceptance review.
 
 Status: Proposed (Draft RFCs; each is decided by its acceptance task).
+
+## ADR-097: No development-profile GPU backend at the current stage shares (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
+
+Context: task E16-21 gates a development-profile GPU backend (tasks E16-21a..e) on a
+projected stories42M T = 64 prove-time gain of at least 3x, once dense and zerocheck
+rounds, LogUp levels, v2 encoding and Merkle hashing run on the device with state
+resident. The measurement and the projection are in
+`bench/ledger/e16-21-gpu-gating.json`; the sources are in `research/gpu-gating/`.
+
+Method:
+- **Device rounds.** `dense_gpu.cu` runs a dense QM31 sumcheck (one product of K tables)
+  with the tables resident on a rented RTX 4090; each round copies the K + 1 node sums
+  to the host for the Fiat–Shamir round trip and folds with the host's challenge.
+  `dense_cpu.rs` runs `stele_sumcheck::Dense` on the same inputs on the same host. The
+  round values agree byte for byte (FNV) at every size.
+- **Stage shares.** No stories42M profile exists. `stage_shares.py` charges the
+  main-thread samples of one `stele prove-dev` run of the 8-layer fixture to prover
+  stages; the main thread waits inside every parallel region, so its samples are wall
+  time.
+- **Projection.** Amdahl's law on `bench/ledger/e16-18-dev-stories42m.json`, with the
+  8-layer shares applied unchanged and the device speedup of the offloaded stages taken
+  as the measured rounds-only ratio at its lowest, its highest, and unbounded.
+
+Decision: **NO-GO.** The work the scoped backend leaves on the CPU (relation
+registration, lookup leaf preparation and counts, matmul table builds, the PCS row
+combination, witness and layout) bounds the projected gain below 3x even at unbounded
+device speed. No GPU binding is chosen and no RFC-0014 amendment is written.
+
+Alternatives rejected:
+- *Proceed on the rounds-only ratio.* It ignores the residual CPU share, which is the
+  binding term.
+- *Widen the backend to the residual relation work now.* Much of that work runs on one
+  thread; making it parallel on the CPU is cheaper and helps every host. A GPU case
+  needs a new profile after that.
+
+Consequences:
+- Tasks E16-21a..e do not start until a stories42M profile on the target host shows the
+  offloadable share large enough for 3x (above two thirds of wall time at unbounded
+  device speed). That profile, with this ledger's device ratios, reopens this decision.
+- Device upload in the micro-benchmark uses pageable memory; it does not affect the
+  verdict, which holds with zero transfer cost.
+- The verifier, `no_std` builds and every CPU path are unchanged.
+
+Status: Accepted (owner authorisation for autonomous gating decisions; independent review in the E16-21 PR).
