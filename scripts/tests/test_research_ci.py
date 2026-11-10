@@ -46,7 +46,7 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_native_selection_and_command_union(self):
         groups = ci.load_groups()
         commands = [c for group in groups.values() for c in group]
-        self.assertEqual((len(groups), len(commands), len(set(commands))), (76, 184, 184))
+        self.assertEqual((len(groups), len(commands), len(set(commands))), (76, 187, 187))
         legacy = [c for name, group in groups.items() if name != 'model-contract' for c in group]
         self.assertEqual(len(legacy), 186)
         self.assertEqual(hashlib.sha256(json.dumps(sorted(legacy), separators=(',', ':')).encode()).hexdigest(),
