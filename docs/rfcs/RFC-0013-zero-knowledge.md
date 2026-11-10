@@ -519,3 +519,33 @@ changes. Item 8 still holds: dev-zk is not admitted.
     Each one goes red, with the false proof accepted, when its own check is removed.
   - NC-0930..0932 are `todo` until a substitution adversary keeps the A5 statement
     message.
+
+**Implementation notes (E12-14b, ADR-102; development tier, pending independent
+review).** These wire dev-zk through the development orchestrator and the CLI.
+- **Profile byte.** A dev-zk public input is the development public input followed by
+  the byte `1` (RFC-0026 A9). A development public input keeps its pre-A9 bytes, with
+  the byte implied `0`, so development proofs are unchanged. The verifier reads the
+  profile from the public file (`stele-dev-zk-public-v1`). The transcript binds the
+  public input. The container header (`stele-dev-zk-v1`, with the `cqis_id` and the
+  statement digest) fails fast (NC-0912).
+- **Seed.** `stele prove-dev --zk` draws the 32-byte seed from the OS RNG
+  (`/dev/urandom`). The library takes it move-only, for one proof.
+- **Model commitment.** It is one root, the proof's hiding weight source (item 7
+  with `P = 1`). Its certificate travels in the proof. The verifier checks the
+  proof's weight source against the public root (NC-0927). A second dev-zk proof
+  needs a new commitment.
+- **Item 8 deliverables.** These are present:
+  - the implementation (E12-18, E12-19, E12-14a, E12-14b);
+  - NC-0909..0915, executed;
+  - the privacy tests, which run on small relations:
+    - χ² uniformity of revealed values across seeds;
+    - the leak control: without masks, a claim equals `ã(ρ)` and tells two witnesses
+      apart;
+    - two witnesses of one statement, with equal byte lengths and χ²-homogeneous
+      revealed values.
+  - The one- and eight-layer synthetic windows prove and verify under dev-zk.
+
+  This note proposes admitting dev-zk (profile byte 1). The admission takes effect
+  only after the independent review that item 8 requires. Until then, item 8's
+  "defined, not admitted" stands. The CLI prints the profile; it makes no privacy
+  claim.

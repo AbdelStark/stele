@@ -42,6 +42,7 @@ ARTIFACTS = {
 DEVELOPMENT = {
     'prover': {
         'files': ('src/development.rs', 'src/development/plan.rs', 'src/development/bundle.rs',
+                  'src/development/zk.rs',
                   'tests/development.rs', 'tests/fixtures/synthetic-e2e.bin',
                   'tests/fixtures/synthetic-e2e.json'),
         'library': '//! stele-prover — governed by RFC-0007 §4 RFC-0014 §4 and, for `development`, '
