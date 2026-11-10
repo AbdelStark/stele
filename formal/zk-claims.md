@@ -1,11 +1,11 @@
 # Masked claims and composition for the development path (Q29, R1)
 
 Status: Draft research note, task E12-16. Question Q29. Builds on
-[the design note](zk-development.md) (Lemmas 1–5; RFC-0013 A2/A3). Companion:
+[the design note](zk-development.md) (Lemmas 1–5; RFC-0013 A2/A4). Companion:
 RFC-0026 §§3–4. Nothing here is normative; implementation waits until this note
 survives review.
 
-The goal is the R1 item of the design note. After A2/A3, every masked sumcheck is
+The goal is the R1 item of the design note. After A2/A4, every masked sumcheck is
 simulatable from its **final values**, and every hiding source is simulatable
 from the values it opens. What still leaks is the set of final values: column
 evaluations at random points, matmul `out~(ρ)`, and lookup layer claims. This
@@ -162,7 +162,7 @@ value involves the mask rows `S`. The batch therefore runs over the full message
 
 1. Draw batch coefficients `γ_a` (existing `BatchCoefficient`). Put
    `W = Σ_a γ_a·w_a` on the data positions (`Y = 0` face).
-2. Run one bound masked A1 sumcheck (A3) over the source's row bit `w` and its
+2. Run one bound masked A1 sumcheck (A4) over the source's row bit `w` and its
    other data bits, for `Σ_{w,x} W'(w, x)·M̃'(w, x) = Σ_a γ_a·c_a`, with
    `W'(w, x) = (1 − w)·W(x)`. On the cube the `w = 1` half has weight zero, so the
    claimed sum is public, given the `c_a`. `W'` is multilinear and
@@ -187,7 +187,7 @@ and drew one more challenge. The zero weight on `w = 1` makes both unnecessary.
 3. The lookup challenges `β`, then the commitment of the fraction columns as
    hiding sources.
 4. The identity zerochecks (A1 form), the lookup zerochecks and cube sums, and
-   the matmul zero-sums. Each is a bound masked sumcheck (A3) on the `V̇`
+   the matmul zero-sums. Each is a bound masked sumcheck (A4) on the `V̇`
    polynomials.
 5. Per source: the batch of §2.3, then one opening.
 6. Weight sources: §4.3.
@@ -203,7 +203,7 @@ layer's revealed values.
 - **H0.** The real view.
 - **H1, PCS layer.** Every hiding source's roots, paths, certificate row, opening
   row and queried columns are replaced, given the source's opened value only,
-  using Lemmas 1–3. The A3 mask sources are handled the same way, given their
+  using Lemmas 1–3. The A4 mask sources are handled the same way, given their
   Lemma 5 view. Error: the salt term `N·q_H/2^256` per source, plus the
   rank-check abort events, which are public.
 - **H2, sumcheck layer.** Every bound masked sumcheck's mask commitment, `G`,
@@ -260,7 +260,7 @@ and `α ≠ 0`, a query set of at most `C − 1` distinct positions, and certifi
 and opening coefficients whose mask-row M31 coordinates have rank `2D`. Then for
 any two data messages `X, X'` with the same masked claims `c_a`, the batching
 view has the same distribution. The view is: the certificate row, the batch
-sumcheck (`G`, rounds, `μ`, its A3 mask source), the opened value, the opening
+sumcheck (`G`, rounds, `μ`, its A4 mask source), the opened value, the opening
 row and every queried column.
 
 *Proof.* The batch sumcheck's claimed sum `Σ γ_a c_a` is the same for `X` and
@@ -328,7 +328,7 @@ published. Per proof, with `|K| = p^D` and `p = 2^31 − 1`:
 | mask-row rank `< 2D` | each source (A2, Lemma 2) | `≤ 2D·(ell + 1)/p` |
 | `w* = 0` | each batch opening | `1/|K|` |
 | `α = 0` | each masked sumcheck | `1/|K|` |
-| `ρ_n ∈ {0, 1/2}` | each A3 mask source | `2/|K|` |
+| `ρ_n ∈ {0, 1/2}` | each A4 mask source | `2/|K|` |
 
 The mask-row bound comes from a degree-`2D·(ell + 1)` determinant. It is
 nonzero by the witness of Lemma 6, applied to the two points' row coordinates,
@@ -350,7 +350,7 @@ OM31) of a mask that nothing else uses.
 | `r_x` (claim mask, per column) | `t_x` masked claims, one block each | `L_x = D·t_x` rounded up (Lemma 6′) |
 | source mask half (per row) | `q_c + q_o` queried positions | `C − 1 ≥ q_c + q_o` (Lemma 1) |
 | source mask rows `S` | certificate row, opening row | `R ≥ 2D` and rank `2D` (Lemmas 2, 7) |
-| A3 mask source | `G`, rounds, `μ`, its opening row | Lemma 5 |
+| A4 mask source | `G`, rounds, `μ`, its opening row | Lemma 5 |
 
 `t_x` per column in RFC-0026 is small and plan-fixed:
 - one claim per zerocheck domain it appears in;
@@ -429,7 +429,7 @@ needed only at small `T`. Budget with §2.1a:
 | batch `W'·M'` | 2 | 2 (the batch weights are public) |
 
 Each masked factor adds 1 to the degree of its own vanishing variable only. The
-A1 instance's single degree bound is the maximum. The A3 mask polynomial has the
+A1 instance's single degree bound is the maximum. The A4 mask polynomial has the
 same degree.
 
 ## 5. Costs (counts, no measurement)
@@ -439,9 +439,9 @@ same degree.
   columns of the lookup's length, committed after `β`), in place of the GKR tree.
 - **Sumchecks.** Each relation's sumcheck gains at most one degree in the
   vanishing variables. The matmul zero-sum carries `Ȯ` as one extra factor. Every
-  sumcheck carries an A3 mask source: `4D × 2^(m+1)` with `m ≥ 9`. It is
+  sumcheck carries an A4 mask source: `4D × 2^(m+1)` with `m ≥ 9`. It is
   per-instance, so with tens of instances this is the main new fixed cost.
-  Batching the A3 masks of all instances into one mask source is an
+  Batching the A4 masks of all instances into one mask source is an
   optimization left open.
 - **Batching.** One masked batch per source and one opening, in place of the
   current claim batch.
@@ -465,10 +465,10 @@ same degree.
    draft: its relation to A5's grouped units (characteristic), and labels.
 5. **Degree and claims.** Counted for the one-layer window (§4.4), with padding
    for small domains (§2.1a). Still to recount for the 8-layer and stories42M
-   windows when the A4 text fixes the padding.
+   windows when the A5 text fixes the padding.
 6. **Weights.** `r_W`'s lifetime accounting (§4.3), and prover-side state.
 7. **Aborts.** Bounded in §3.1.
-10. **Normative text.** An RFC-0013 amendment (A4) for §§2–4, with RFC-0026 and
+10. **Normative text.** An RFC-0013 amendment (A5) for §§2–4, with RFC-0026 and
    RFC-0008 companions, NC reservations, and the dev-zk profile flag (INV-1).
 
 The note's position: §2's construction is complete for cube-sum relations and
