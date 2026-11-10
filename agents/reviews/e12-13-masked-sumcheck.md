@@ -8,7 +8,7 @@ review, and one is still needed.
 
 - `stele-hash`:
   - Registers `stele/v0.1/zk/mask-sum` (absorb) and `stele/v0.1/zk/mask-weight`
-    (challenge) as registry entries 46 and 47, with the new loss line
+    (challenge) as registry entries 47 and 48, with the new loss line
     `LossLine::Mask`.
   - `docs/security/transcript-labels.json` lists both, the second as `MASK`.
   - `MaskStream::element` samples a `K` value as `D` M31 limbs.
@@ -44,10 +44,9 @@ review, and one is still needed.
 - **Ledger.** `masked::Reduction` carries a `MaskRecord` (instance id, field
   degree) for the one `zk/mask-weight` draw, charged `1/|K|` on MASK and valid
   only once `g` is bound.
-- **Label indices.** This branch registers the two labels at indices 46 and 47.
-  The coordinator assigned this stack index 47 after the Q12 stack's entry at
-  46, so the rebase onto the merged Q12 stack moves them to 47 and 48, with the
-  registry tests and `transcript-labels.json`.
+- **Label indices.** The two labels are registry entries 47 and 48, after the
+  Q12 stack's `stele/v0.1/grind` at 46, in the registry, its tests and
+  `transcript-labels.json`.
 - **Degenerate instances.** `n = 0` and `δ = 0` are rejected with
   `InvalidInstance`.
 - **SC record.** It is unchanged (`n·δ`). The record shows `numerator = 8`
