@@ -4,11 +4,11 @@
 use crate::{check_control, check_proof_control, ProverHook};
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, HashUsage, Transcript};
-use stele_sumcheck::{masked, Dense, Error as SumcheckError, Instance, Term};
 use stele_pcs::{
     hiding_message, verify_certificate, verify_point, CodeField, Error, PreparedSource,
     RetainedRow, Source, VerifiedCertificate,
 };
+use stele_sumcheck::{masked, Dense, Error as SumcheckError, Instance, Term};
 
 const SEED: [u8; 32] = [3; 32];
 
