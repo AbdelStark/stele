@@ -2807,6 +2807,23 @@ tasks:
   - profile of the 8-layer prove with the top hotspots named
   - identical proof bytes before and after on the measured relations
   - prove time reduced on the 8-layer model, measured before and after
+- id: E16-16
+  epic: E16
+  title: Lookup prover performance (single-pass dense rounds, parallel tree levels)
+  depends:
+  - E16-15
+  rfc:
+  - RFC-0026 §7
+  - RFC-0008 A3
+  skill: sumcheck-prover-engineer
+  crate: stele-lookup
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-16-lookup-performance
+  acceptance:
+  - identical proof bytes on the pinned E16-10 fixtures
+  - lookup tree levels and dense rounds restructured; prove time measured before and after
+  - verifier unchanged and no_std builds sequential
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run
