@@ -2204,3 +2204,37 @@ Decision:
 
 Status: Accepted (owner authorisation; two same-author passes in
 agents/reviews/rfc0013-a5-acceptance.md; independent review requested).
+
+## ADR-099: Masked claims and the matmul zero-sum as engine components (RFC-0013 A5, RFC-0026 A9, task E12-18)
+
+Numbered after ADR-098.
+
+Context: RFC-0013 A5 and RFC-0026 A9 fix masked occurrences, padding, the matmul
+zero-sum, the shared mask source and per-source batching. They leave open how the
+masked sumcheck learns its higher degree and how the shared source holds the
+masks. Task E12-18 builds these as components. Wiring them into the development
+prover is E12-14.
+
+Decision:
+- `stele_sumcheck::masked` takes a declared degree (`Mask::plain`,
+  `verify_degree`). The degree byte of the absorbed `Instance` is that degree. A
+  plain mask stores A2's sum of univariates as both blocks of the A4 form, since
+  `(1 − X_n)·g + X_n·g = g`. This reuses the A4 formulas unchanged.
+- `stele_reductions::zk::claims` is the one new consumer, and the quarantine
+  admits it. It proves a statement of identities and matmuls over claim sources.
+  It uses one shared mask source and one A4 source per proof. The source layout,
+  the ids and the vanishing-variable defaults are plan rules of the module. E12-14
+  may replace them with the development plan's.
+- Every A5 item-4 abort is a producer error: `ClaimRank`, `Vanishing`,
+  `BatchPoint`, `MaskWeight`, and the existing `MaskRank` and `MaskPoint`.
+- NC-0910 and NC-0911 run on the composed proof. NC-0909 and NC-0915 run through
+  the batch verifier (`claims::verify_batch`), which the composed verifier calls
+  once per source. A changed claim at the composed proof first fails its own
+  relation's final unless the cheater also re-solves `μ`. The batch-level control
+  is that consistent cheat. NC-0915's cheat is a full alternative prover,
+  `prove_weighted`, with weight `(S_q, −S_p)` on the mask rows. Each control
+  fails when its check is removed (recorded in the PR).
+- The verifier evaluates the batch weight densely, in `O(R·C)`. This is a
+  `shortcut:` until sources grow.
+
+Status: Accepted (development tier; independent soundness-auditor review requested).

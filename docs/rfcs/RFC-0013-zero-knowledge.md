@@ -376,7 +376,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    - A2's mask-row rank failure;
    - `w* = 0` in a batch;
    - `α = 0` in a masked sumcheck;
-   - A3's `ρ_n ∈ {0, 1/2}`.
+   - A4's `ρ_n ∈ {0, 1/2}`.
 
    A retry redraws every seed, and is allowed only if nothing was published.
    The total abort probability is `≤ Σ_claims (2/|K| + D·c_D/p) +
@@ -410,7 +410,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    3. Multiplicities (A5).
    4. `θ, β, α` (A5), then the A7 fraction sources.
    5. Identities, A7 zerochecks and sums, and matmul zero-sums: each a bound
-      masked sumcheck (A3) on the `V̇` of item 2.
+      masked sumcheck (A4) on the `V̇` of item 2.
    6. Item 5 per source.
 7. **Privacy (conditional).** For an honest verifier, uniform masks and no
    abort, the view of a dev-zk proof is simulatable from the public input
@@ -432,7 +432,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
 
    The seed for a dev-zk proof is drawn by its CLI or orchestrator entry point
    from the OS RNG (an ADR at that point). The library takes a move-only seed
-   (A3).
+   (A4).
 9. **Cost (projection, not a measurement).** On the eight-layer synthetic
    window (`T = 64`, census): 4868 committed columns with 1.6·10^7 entries,
    11 547 claims, 21 lookup checks and 570 tree layers. The projected dev-zk
@@ -464,3 +464,19 @@ Soundness impact: the SC degrees of item 3; RFC-0008 A7's lines; A4's MASK and
 PCS terms per instance and per source. No new label. A1 stays Draft for the
 standard and treaty profiles: expander sources, the 5% target and GPU parity.
 Affected tasks: E12-18, E12-19, E12-14.
+
+**Implementation notes (E12-18, ADR-099).** They make three points exact that the
+items above leave open. None changes a label, a loss or an order.
+- **Declared degree.** Item 3's degree is the masked instance's degree
+  everywhere: the round length, the SC record, and the degree byte of the
+  absorbed A1 `Instance` encoding. The verifier derives it from the plan and
+  rejects a degree below the factor count.
+- **Shared mask source contents.** Item 5a's `g_j` is A2 item 2's plain sum of
+  univariates. Each `g_i` is stored by its `δ + 1` values at `0..δ`, drawn from
+  the `zk/sumcheck-mask` stream under the instance id. `μ_j = g_j(ρ_j)` is the
+  linear claim with weight `e_d·L_c(ρ_i)` on limb `d` of column `c`. The batches of
+  item 5 are masked instances too, so their `g_j` are in the shared source. The
+  shared source's own batch takes the A4 two-block source. Its id is distinct from
+  every source and instance id of the proof, so each mask stream is used once.
+- **Item 4's `α = 0`** is a producer abort of every masked sumcheck, including
+  A4's (`MaskWeight`).
