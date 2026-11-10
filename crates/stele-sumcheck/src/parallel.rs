@@ -179,6 +179,6 @@ mod tests {
     #[should_panic(expected = "worker")]
     fn propagates_worker_panics() {
         let mut out = alloc::vec![0u8; 1 << 14];
-        for_each_chunk(&mut out, |start, _| assert!(start == 0, "worker"));
+        for_each_chunk(&mut out, |_, _| panic!("worker"));
     }
 }

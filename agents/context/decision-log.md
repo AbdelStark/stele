@@ -1846,5 +1846,8 @@ Decision:
   `stele-verifier` without default features. `cargo tree` shows rayon only under
   `stele-prover`.
 - Proof bytes are unchanged; the E16-10 fixture hashes stay pinned.
+- Under `std` the encoder work counters (`generated_rows`, `hash_blocks`,
+  `peak_owned_bytes`, `encoder_peak_bytes`) depend on the thread count. They are not
+  reproducible across machines, so ledgers must not record them from `std` builds.
 
 Status: Accepted.
