@@ -528,3 +528,63 @@ fn matches_reference_zk_claim_census_eight_layer() {
     census("one-layer", 16);
     census("eight-layer", 64);
 }
+
+/// RFC-0026 A9 (E12-14a): the one-layer window's development relation and values,
+/// proven and verified as one dev-zk claims statement (`zk::relation`). The
+/// orchestrator and CLI wiring is E12-14b.
+fn zk_relation_window(name: &str, t: usize) {
+    use stele_prover::development::prove_tampered;
+    use stele_reductions::stele_field::QM31;
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::stele_ir::relation::{check, Relation, Values};
+    use stele_reductions::zk::{relation as zk_relation, Seed};
+    let case = load(name);
+    let statement = greedy(&mut case.executor(&case.artifact), t);
+    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let public = case.public(&committed, &weights);
+    let mut captured = None;
+    let mut hook = |relation: &mut Relation, values: &mut Values| {
+        captured = Some((relation.clone(), values.clone()))
+    };
+    prove_tampered(
+        &public,
+        &mut case.executor(&case.artifact),
+        &weights,
+        &committed,
+        &statement,
+        &mut hook,
+    )
+    .expect("prove");
+    let (relation, values) = captured.expect("relation");
+    assert_eq!(check(&relation, &values), Ok(()));
+    let seed = [42u8; 32];
+    let start = Instant::now();
+    let root = zk_relation::weight_root(&relation, &values, &Seed::new(seed)).expect("root");
+    let mut tp = Transcript::<QM31>::new(b"dev-zk window").expect("transcript");
+    let proof =
+        zk_relation::prove(&mut tp, &relation, &values, Seed::new(seed)).expect("dev-zk prove");
+    let proved = start.elapsed();
+    let start = Instant::now();
+    let mut tv = Transcript::<QM31>::new(b"dev-zk window").expect("transcript");
+    zk_relation::verify(&mut tv, &relation, root, &proof).expect("dev-zk verify");
+    eprintln!(
+        "dev-zk relation {name} T={t}: prove {proved:?}, verify {:?}, {} relations, {} GKR steps, {} batches",
+        start.elapsed(),
+        proof.relations.len(),
+        proof.gkr.len(),
+        proof.batches.len(),
+    );
+}
+
+#[test]
+fn accepts_one_layer_relation_under_dev_zk() {
+    zk_relation_window("one-layer", 4);
+}
+
+/// The E16-10 acceptance window under dev-zk at the relation level; release only.
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn accepts_eight_layer_relation_under_dev_zk() {
+    zk_relation_window("eight-layer", 64);
+}

@@ -699,12 +699,13 @@ fn lookup_statement() -> stele_reductions::zk::claims::Statement<QM31> {
             })
             .collect(),
         relations: Vec::new(),
-        lookups: vec![Lookup {
-            columns: vec![0],
-            multiplicity: 1,
-            table: (0..16).map(|j| vec![3 * j + 1]).collect(),
-            valid: 12,
-        }],
+        lookups: vec![Lookup::single(
+            &[0],
+            4,
+            1,
+            (0..16).map(|j| vec![3 * j + 1]).collect(),
+            12,
+        )],
     }
 }
 

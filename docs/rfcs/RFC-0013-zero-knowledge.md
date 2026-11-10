@@ -489,3 +489,33 @@ items above leave open. None changes a label, a loss or an order.
   sources. The rounds are free, `μ` is solved last and the finals are true. Only
   binding each relation's `μ_j` in the shared batch rejects it
   (`RoundSumMismatch`).
+
+**Implementation notes (E12-14a, ADR-101; development tier, pending independent
+review).** These state how `stele_reductions::zk::relation` derives one claims
+statement from a validated RFC-0026 relation. No label, loss form or order item
+changes. Item 8 still holds: dev-zk is not admitted.
+- **Sources.** Source 0 holds every witness column in `ColumnId` order, then each
+  check's multiplicities. Source 1 holds every weight column. Its root is the
+  dev-zk model commitment (item 7 with `P = 1`): the weights and their claim masks
+  are committed from the proof's seed, for one proof. Public columns are never
+  committed. The verifier evaluates each public operand's final at its column
+  point (`ClaimMismatch`).
+- **Identities.** There is one instance per domain size, increasing. It covers
+  that size's identities in relation order, then its `Compose` identities.
+  `relation/identity` coefficients are drawn before `τ`. Each distinct
+  `(column, vars)` read is one masked occurrence (item 2).
+- **Matmuls.** The A9 zero-sum runs over the shared free variables (under
+  `eq(ρ_shared, ·)`), the summed variables and padding. Free variables not shared
+  are fixed at `ρ`. A6 fixed bits are Boolean coordinates of the occurrence.
+- **Checks.** RFC-0008 A7's implementation notes (E12-14a).
+- **Controls.**
+  - NC-0920..0926 are false witnesses. The adversary (`zk::relation::forge`, under
+    the `controls` feature) sends the false relation's honest rounds and the true
+    `μ`, without the producer's own round-sum check. That relation's first round
+    rejects it.
+  - NC-0928 and NC-0929 substitute one public column (`zk::relation::forge_substituted`).
+    The verifier's own evaluation of that final rejects it.
+  - Each control accepts the same adversary on the honest witness (mutation M0).
+    Each one goes red, with the false proof accepted, when its own check is removed.
+  - NC-0930..0932 are `todo` until a substitution adversary keeps the A5 statement
+    message.

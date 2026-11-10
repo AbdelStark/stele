@@ -1204,3 +1204,101 @@ fn blake3_hex(bytes: &[u8]) -> String {
         .expect("digest");
     k.to_le_bytes().iter().map(|b| format!("{b:02x}")).collect()
 }
+
+/// RFC-0026 A9 with RFC-0013 A5 (E12-14a): every fixture above under dev-zk,
+/// through the actual dev-zk verifier, and a false witness of each kind rejected.
+mod dev_zk {
+    use super::*;
+    use stele_reductions::zk::{self, relation as zk_relation, Seed};
+
+    const ZK: &[u8] = b"stele/test/relation-engine/dev-zk";
+
+    type Proved = (zk::claims::Proof<QM31>, Option<[u8; 32]>);
+
+    fn prove(f: &Fixture, seed: u8) -> Result<Proved, zk::Error> {
+        let root = zk_relation::weight_root(&f.rel, &f.values, &Seed::new([seed; 32]))?;
+        let mut t = Transcript::new(ZK).expect("transcript");
+        let proof = zk_relation::prove(&mut t, &f.rel, &f.values, Seed::new([seed; 32]))?;
+        Ok((proof, root))
+    }
+
+    fn verify(
+        rel: &Relation,
+        root: Option<[u8; 32]>,
+        proof: &zk::claims::Proof<QM31>,
+    ) -> Result<(), zk::Error> {
+        let mut t = Transcript::new(ZK).expect("transcript");
+        zk_relation::verify(&mut t, rel, root, proof).map(|_| ())
+    }
+
+    fn fixtures() -> Vec<(&'static str, Fixture)> {
+        vec![
+            ("ranges", ranges()),
+            ("identities", identities()),
+            ("lookups", lookups()),
+            ("matmuls", matmuls()),
+            ("split matmuls", split_matmuls()),
+            ("composes", composes()),
+            ("combined", combined()),
+        ]
+    }
+
+    #[test]
+    fn accepts_each_relation_kind_under_dev_zk() {
+        for (name, f) in fixtures() {
+            assert_eq!(check(&f.rel, &f.values), Ok(()), "{name}: plain checker");
+            let proved = prove(&f, 7);
+            assert!(proved.is_ok(), "{name}: prover {:?}", proved.err());
+            let (proof, root) = proved.expect("checked");
+            assert_eq!(verify(&f.rel, root, &proof), Ok(()), "{name}: verifier");
+        }
+    }
+
+    /// One committed value of each fixture changed to a false witness (the plain
+    /// checker skipped): no accepted proof results. The honest producer refuses at
+    /// its own first round; NC-0920..0926 run a forging adversary through the
+    /// verifier instead.
+    #[test]
+    fn rejects_a_false_witness_of_each_kind_under_dev_zk() {
+        for (name, mut f) in fixtures() {
+            let committed: Vec<ColumnId> = (0..f.rel.columns.len() as u32)
+                .map(ColumnId)
+                .filter(|id| !matches!(f.rel.columns[id.0 as usize].kind, Kind::Public(_)))
+                .collect();
+            let mut rejected = 0;
+            for id in &committed {
+                let honest = f.get(*id);
+                let mut v = honest.clone();
+                // Entry 1 is a width's maximum in `ranges()`.
+                let at = 1.min(v.len() - 1);
+                v[at] += 1;
+                f.set(*id, v);
+                if check(&f.rel, &f.values).is_err() {
+                    let result =
+                        prove(&f, 9).and_then(|(proof, root)| verify(&f.rel, root, &proof));
+                    assert!(result.is_err(), "{name}: false {id:?} accepted");
+                    rejected += 1;
+                }
+                f.set(*id, honest);
+            }
+            assert!(rejected > 0, "{name}: no false witness exercised");
+        }
+    }
+
+    /// The verifier's weight-source root is the public model commitment: another
+    /// root, or none, is rejected.
+    #[test]
+    fn rejects_a_substituted_weight_commitment() {
+        let f = matmuls();
+        let (proof, root) = prove(&f, 3).expect("prove");
+        let root = root.expect("weights");
+        let mut other = root;
+        other[0] ^= 1;
+        let mismatch = Err(zk::Error::Pcs(stele_pcs::Error::Merkle(
+            stele_hash::merkle::Error::RootMismatch,
+        )));
+        assert_eq!(verify(&f.rel, Some(other), &proof), mismatch);
+        assert_eq!(verify(&f.rel, None, &proof), mismatch);
+        assert_eq!(verify(&f.rel, Some(root), &proof), Ok(()));
+    }
+}
