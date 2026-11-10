@@ -481,6 +481,8 @@ def field_sources(root):
                'src/zk.rs', 'tests/zk.rs',
                # RFC-0013 A5: masked claims, zero-sums and per-source batches.
                'src/zk_claims.rs', 'tests/zk_claims.rs',
+               # RFC-0008 A7: ZK-GKR over the A5 trees.
+               'src/zk_lookup.rs', 'tests/zk_lookup.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
                'src/development/embedding.rs', 'src/development/rmsnorm.rs', 'src/development/limbs.rs',
                'src/development/norm_embedding_tests.rs', 'tests/dev_modules.rs',

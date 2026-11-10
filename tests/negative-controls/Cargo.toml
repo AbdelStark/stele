@@ -360,6 +360,14 @@ name = "nc-0911"
 path = "sumcheck/nc_0911.rs"
 
 [[test]]
+name = "nc-0913"
+path = "sumcheck/nc_0913.rs"
+
+[[test]]
+name = "nc-0914"
+path = "sumcheck/nc_0914.rs"
+
+[[test]]
 name = "nc-0915"
 path = "sumcheck/nc_0915.rs"
 
