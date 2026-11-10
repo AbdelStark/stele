@@ -2180,16 +2180,20 @@ Decision:
   on domain coordinates, with a vanishing factor on a summed variable.
 - Matmul becomes a zero-sum with `out` broadcast, so `out~(ρ)` is never sent.
 - Small domains are padded.
-- Lookups use committed fractions (RFC-0008 A7) instead of uncommitted GKR
-  layers.
+- Lookups keep A5's GKR trees, masked layer by layer (ZK-GKR, RFC-0008 A7).
+  A first draft committed fraction columns instead. The census comparison
+  (formal/zk-gkr.md) put it about 780 times larger.
+- One shared mask source per proof holds every masked sumcheck's mask and
+  every layer block, with one batched opening, in place of one A3 source per
+  instance.
 - Each source batches its claims with a weight that is zero on the mask rows,
   then makes one A2 opening.
 - Every rank condition is a producer abort.
 - dev-zk is profile byte 1: defined, not admitted until implemented, controlled
   and independently reviewed.
-- Costs are recorded as a projection (about 20 times the commitment on the
-  eight-layer synthetic window, dominated by range fractions). No constant
-  moves.
+- Costs are recorded as a projection: about 4 times the commitment on the
+  eight-layer synthetic window, against about 20 times for committed fractions.
+  No constant moves.
 
 Status: Accepted (owner authorisation; two same-author passes in
 agents/reviews/rfc0013-a4-acceptance.md; independent review requested).

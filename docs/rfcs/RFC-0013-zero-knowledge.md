@@ -387,6 +387,16 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
      `(1 − w*)·W̃(x*)` must equal the instance's final.
 
    No other batching is used for dev-zk sources.
+
+   5a. **Shared mask source.** One hiding source per proof holds every masked
+   sumcheck's mask polynomial `g_j` (a sum of univariates, as `D` limb rows) and
+   every RFC-0008 A7 layer block. It is committed and absorbed before the first
+   masked instance. Each `μ_j = g_j(ρ_j)` and each block claim is a linear claim
+   on it, batched by item 5 and opened once. Only that batch uses an RFC-0013 A3
+   two-block mask source, one per proof. This replaces one A3 source per
+   instance. Soundness: each `g_j` is bound before its `G_j` is absorbed, and the
+   `μ_j` are bound by the batch's RLC. Privacy: Lemma 4 per instance, and
+   Lemma 7 for the batch.
 6. **Order (dev-zk).** RFC-0026 §4 with A6, as follows:
    1. Statement, including the profile byte.
    2. Every witness and weight source as a hiding source with its claim masks.
@@ -419,16 +429,15 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    (A3).
 9. **Cost (projection, not a measurement).** On the eight-layer synthetic
    window (`T = 64`, census): 4868 committed columns with 1.6·10^7 entries,
-   11 547 claims and 1.5·10^7 looked-up entries. The projected dev-zk
+   11 547 claims, 21 lookup checks and 570 tree layers. The projected dev-zk
    commitment is about
    - `4 × 1.6·10^7` for the hiding witness and weight sources;
-   - `4 × 4.6·10^4` for the claim masks;
-   - `4 × 6.0·10^7` for A7's `h_w`;
-   - about `1.3·10^7` for one A3 mask source per masked instance (about 800).
+   - `4 × (4.6·10^4 + 1.05·10^5 + ...)` for the claim masks, the ZK-GKR layer
+     masks and blocks, and the shared mask source's sumcheck masks.
 
-   That is about `3.2·10^8` M31 message entries against `1.6·10^7` today,
-   roughly 20 times. It is dominated by A7 on range checks. Merging A3 mask
-   sources and cheaper range proofs are the first optimizations. For stories42M
+   That is about `6.5·10^7` M31 message entries against `1.6·10^7` today,
+   roughly 4 times (formal/zk-gkr.md §3; the committed-fraction route would be
+   about 20 times). For stories42M
    (`d = 512`, 8 layers, 8 heads, `T = 64`), claims depend on layers and heads
    only, so the projection is about `1.2–2.3·10^4`. The entry counts scale with
    the widths and need the converted checkpoint for a census. No ledger
@@ -441,8 +450,8 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
 | NC-0910 | a matmul claimed through a sent `out~(ρ)` instead of the zero-sum | `ProofShape` |
 | NC-0911 | one claim-mask block of a source changed after its commitment | `RootMismatch` |
 | NC-0912 | profile byte flipped between development and dev-zk | `StatementMismatch` |
-| NC-0913 | RFC-0008 A7 `h_w` entry changed | `RoundSumMismatch` |
-| NC-0914 | RFC-0008 A7 `h_T` shifted on two entries, sum preserved | `RoundSumMismatch` |
+| NC-0913 | RFC-0008 A7 masked layer value changed | `RoundSumMismatch` |
+| NC-0914 | RFC-0008 A7 layer mask-block entry changed after commitment | `RootMismatch` |
 | NC-0915 | batch weight on the `w = 1` half made nonzero | `FinalEvaluationMismatch` |
 
 Soundness impact: the SC degrees of item 3; RFC-0008 A7's lines; A3's MASK and

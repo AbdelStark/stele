@@ -140,8 +140,8 @@
 | NC-0910 | dev-zk matmul | 0013 A4, 0026 A6 | a matmul claimed through a sent out~(ρ) instead of the zero-sum | `ProofShape` | todo |
 | NC-0911 | dev-zk claim | 0013 A4 | one claim-mask block of a source changed after its commitment | `RootMismatch` | todo |
 | NC-0912 | dev-zk profile | 0013 A4, 0026 A6 | profile byte flipped between development and dev-zk | `StatementMismatch` | todo |
-| NC-0913 | dev-zk fraction | 0008 A7 | one h_w entry changed, its source recommitted | `RoundSumMismatch` | todo |
-| NC-0914 | dev-zk fraction | 0008 A7 | h_T shifted on two entries with the sum preserved | `RoundSumMismatch` | todo |
+| NC-0913 | dev-zk fraction | 0008 A7 | one masked layer value changed | `RoundSumMismatch` | todo |
+| NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment | `RootMismatch` | todo |
 | NC-0915 | dev-zk claim | 0013 A4 | batch weight on the w = 1 half made nonzero | `FinalEvaluationMismatch` | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |

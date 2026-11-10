@@ -70,3 +70,25 @@ abort with its ledger line, and NC-0915 cover each.
 - Cost: projection only. No constant moves.
 - Verifier: no code yet.
 - Glossary: "claim mask" and "dev-zk" are added.
+
+## Revision: ZK-GKR in place of committed fractions
+
+The coordinator asked for a design comparison before E12-19. formal/zk-gkr.md
+gives the construction, its soundness and privacy (Lemmas 4, 6′ and 7), and the
+census cost. On the eight-layer window, masking A5's trees costs about `4.2·10^5`
+M31 entries with hiding, against `3.3·10^8` for committed fractions.
+`check_gkr.py` finds the masked two-layer view private. Removing the masks,
+removing the mask rows, sharing the `t` blocks, or a `2D` block each leaks.
+
+A7 is rewritten to ZK-GKR before merge. A4 gains item 5a: one shared mask
+source per proof, with batched `μ` openings, in place of one A3 source per
+instance. Soundness pass:
+- A5's order and `e` are unchanged.
+- Each masked step is a GKR step whose extra `s = 1` half is a claim on a block
+  committed before the step.
+- The committed top replaces the revealed root and carries its own
+  zero-denominator abort.
+
+Privacy pass:
+- The block rank `3D` is a producer abort.
+- The top and the leaves are A4 masked claims.

@@ -1007,7 +1007,8 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     on a summed variable. No `out~(ρ)` is sent. The SZ line `a/|K|` and the SC
     line are unchanged, with the degree one higher per masked factor (RFC-0013 A4
     item 3).
-  - **Lookups.** §4 step 5 uses RFC-0008 A7 per check instead of the A3 trees.
+  - **Lookups.** §4 step 5 masks A5's trees per RFC-0008 A7 (ZK-GKR, committed
+    top layer).
   - **Batching and openings.** §4 step 7 uses RFC-0013 A4 item 5 per source in
     place of RFC-0006 A2 mode 1.
   - **Controls.** NC-0909..0915 are reserved under RFC-0013 A4.
