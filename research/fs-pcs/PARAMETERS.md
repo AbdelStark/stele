@@ -21,15 +21,20 @@ research CI next to the Policy 1 checker.
   R, C, N, D, q and bytes.
   - Source: commit `e813ce1`, `proof.bin` SHA-256 `507b52b3…5381`, `public.bin`
     SHA-256 `d7f9264b…6cd6d7` ([ledger](../../bench/ledger/e16-18-dev-stories42m.json)).
-  - Captured by temporarily instrumenting `stele_pcs::verify_certificate`,
-    `verify_opening` and `verify_point`, then running `stele verify-dev` on the
-    recorded proof. The instrumentation was reverted, and no code change is part
-    of this study.
-  - The size model reproduces all 48 records byte for byte, and with them the
-    proof's 113,422,913 bytes: the records plus 994,394 non-PCS bytes.
+  - **Capture.** The records come from instrumenting `stele_pcs::verify_certificate`,
+    `verify_opening` and `verify_point` with [capture.patch](capture.patch), which
+    prints one JSON line per call to stderr.
+    - Apply it to `e813ce1`, then build `stele-cli` in release.
+    - Run `stele verify-dev --public public.bin --proof proof.bin 2>&1 >/dev/null`
+      and keep the lines that start with `PCSINV`.
+    - Revert the patch. No code change is part of this study.
+  - **Size model.** It reproduces each of the 48 records byte for byte. The
+    994,394 non-PCS bytes are defined as the remainder of the 113,422,913-byte
+    total, and are not independently checked.
   - The first record is the model certificate, which travels in `public.bin`.
-- **`stories42m-ledger.tsv`** holds the 1,792 RLC/SC/SZ/LU lines that `verify-dev`
-  printed for the same proof (RFC-0026 §6).
+- **`stories42m-ledger.tsv`** holds the 1,792 RLC/SC/SZ/LU lines of the RFC-0026 §6
+  ledger. The unpatched `verify-dev` printed them on stdout for the same proof, and
+  the first three tab-separated fields were kept.
 
 ## 2. Theorems, codes and fields
 
@@ -50,8 +55,9 @@ with |K| = p^8 ≈ 2^248.
 - **Tensor rounds.** The tensor-round error 2ℓ(e+1)/|K| grows with e, which is
   linear in N. In QM31 it is about 2^-102 for Circle rate 1/4 with N = 2^19 and
   ℓ = 12, and about 2^-98 for v2 at its largest size. Under the standard
-  per-round target of 2^-108 these rounds need up to 6 grinding bits in QM31;
-  in OM31 they need none.
+  per-round target of 2^-108 they need up to 6 grinding bits in QM31 for the
+  stories42M shapes, and up to about 11 bits at the largest v2 size. In OM31
+  they need none.
 - **Sumcheck rounds.** About 2^-122 in QM31, which passes unaided.
 - **LogUp rounds.** (N+|T|)/|K|, with N up to 2^27 for weight range checks. That
   is 2^-97 in QM31 (§4).
@@ -76,8 +82,9 @@ At rate 1/4 the Johnson radius would roughly halve the Circle certificate's
 queries. It needs three things this study does not have.
 
 1. **A proximity-gap theorem up to the Johnson radius.**
-   - BCIKS20 Thm 1.5 has an exceptional set of order n²·poly(1/η). At n = 2^30
-     that is far above |QM31|^-1·2^-100.
+   - BCIKS20 Thm 1.5 has an exceptional set of order n²·poly(1/η). At n = 2^30,
+     n² ≈ 2^60, which is far above the |QM31|·2^-108 ≈ 2^16 that a QM31 round
+     can afford.
    - BCHKS (ePrint 2025/2055) improves this to O(n) exceptional combinations.
      We have not checked its constants against M31/QM31 sizes, and FlashProve
      reports applying it "with no bits to spare" over a larger challenge field.
@@ -202,14 +209,14 @@ For comparison:
   and every PCS tensor and column round.
 - The A7 setup term is added when a v2 source is present.
 
-| policy | profile rule | stack | q_c/q_o | model | q_c/q_o | proof bytes | model cert | worst round | floor | prover grind hashes | C1 | C2 |
+| policy | profile rule | stack | q_c/q_o | model | q_c/q_o | proof bytes | model cert | worst round | floor | per-proof grind hashes | C1 | C2 |
 |---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|
-| policy1 | standard | v2 (recorded J) R=512 | 13471/6713 | v2 (recorded J) R=256 | 13469/6713 | 113,422,913 | 26,175,713 | 2^-97.0 | 2^-94.6 | 0 | FAIL | FAIL |
-| v2 | standard | v2(J=10) R=512 | 9533/4751 | v2(J=9) R=256 | 9532/4751 | 91,672,033 | 19,750,537 | 2^-108.0 | 2^-102.0 | 3,167,096 | pass | pass |
-| circle1 | standard | circle(m=17,b=1) R=4096 | 350/158 | circle(m=16,b=1) R=1024 | 350/158 | 21,908,865 | 2,672,585 | 2^-108.1 | 2^-102.0 | 3,167,132 | pass | pass |
-| circle2 | standard | circle(m=17,b=2) R=4096 | 222/92 | circle(m=16,b=2) R=1024 | 222/92 | 18,325,377 | 2,085,769 | 2^-108.0 | 2^-102.0 | 3,167,188 | pass | pass |
-| v2 | treaty | v2(J=10) R=512 | 12435/6197 | v2(J=9) R=256 | 12433/6197 | 145,451,681 | 28,679,273 | 2^-136.0 | 2^-130.3 | 3,145,728 | pass | pass |
-| circle2 | treaty | circle(m=17,b=2) R=4096 | 290/120 | circle(m=15,b=2) R=2048 | 290/120 | 26,613,889 | 3,582,025 | 2^-136.0 | 2^-130.7 | 3,145,728 | pass | pass |
+| policy1 | standard | v2 (recorded J) R=512 | 13471/6713 | v2 (recorded J) R=256 | 13469/6713 | 113,422,913 | 26,175,713 | 2^-97.0 | 2^-95.6 | 0 | FAIL | FAIL |
+| v2 | standard | v2(J=10) R=512 | 9533/4751 | v2(J=9) R=256 | 9532/4751 | 91,672,193 | 19,750,537 | 2^-108.0 | 2^-102.2 | 3,090,952 | pass | pass |
+| circle1 | standard | circle(m=17,b=1) R=4096 | 350/158 | circle(m=16,b=1) R=1024 | 350/158 | 21,909,025 | 2,672,585 | 2^-108.1 | 2^-102.2 | 3,090,980 | pass | pass |
+| circle2 | standard | circle(m=17,b=2) R=4096 | 222/92 | circle(m=16,b=2) R=1024 | 222/92 | 18,325,537 | 2,085,769 | 2^-108.0 | 2^-102.2 | 3,091,012 | pass | pass |
+| v2 | treaty | v2(J=10) R=512 | 12435/6197 | v2(J=9) R=256 | 12433/6197 | 145,451,681 | 28,679,273 | 2^-136.0 | 2^-130.3 | 3,080,192 | pass | pass |
+| circle2 | treaty | circle(m=17,b=2) R=4096 | 290/120 | circle(m=15,b=2) R=2048 | 290/120 | 26,613,889 | 3,582,025 | 2^-136.0 | 2^-130.7 | 3,080,192 | pass | pass |
 
 Treaty rows: OM31 for stack/model rows only; multiplicity rows, non-PCS bytes and the
 LU/SC numerators are carried at their recorded QM31 values over p^8. Counts only; not admitted.
@@ -219,7 +226,7 @@ Policy 1 is evaluated under the standard rule with no grinding, for comparison.
 
 - **The recorded proof fails the rule.**
   - Its worst round is LU range_8, the weight range check over 2^27 positions,
-    at 2^-97.0. Its floor is 2^-94.6.
+    at 2^-97.0. Its floor is 2^-95.6.
   - Policy 1's 2^-130 column target is wasted on the PCS while the LU rounds
     are 2^29 times weaker.
 - **v2 under Policy 2 passes at 91.7 MB**, only 19% below today. The expander's
@@ -231,11 +238,15 @@ Policy 1 is evaluated under the standard rule with no grinding, for comparison.
   - Circle rate 1/2 gives 21.9 MB.
   - The remaining bytes are mostly the 16-byte-per-column rows t and u (QM31)
     and the 21 multiplicity sources.
-- **Grinding costs the prover about 3.2·10^6 BLAKE3 calls**, and the verifier
-  one PoW call per grinding round.
-  - 48 column rounds at k_q = 16.
-  - 19 LU checks at 1 to 12 bits.
-  - Two tensor rounds at 5 and 6 bits.
+- **Grinding costs the prover about 3.1·10^6 BLAKE3 calls per proof**, and the
+  verifier one PoW call per grinding round.
+  - 47 per-proof column rounds at k_q = 16.
+  - 19 LU (β, α) rounds at 2 to 12 bits.
+  - The stack tensor round: 6 bits for Circle, none for v2.
+  - The one-time model certificate travels in `public.bin` and adds one column
+    round (2^16) and one tensor round (Circle 5 bits, v2 2 bits). These are
+    excluded from the per-proof figure.
+  - The proof-byte figures include an 8-byte nonce per grinding round.
 - **Treaty counts for OM31 (λ=128) are conditional.** They show that the rule
   scales: Circle rate 1/4 needs 290/120. Treaty admission still needs ZK (Q29)
   and its other RFC-0002 §8 rows.
@@ -248,7 +259,11 @@ Policy 1 is evaluated under the standard rule with no grinding, for comparison.
 - No cost-model constant moves in this study. The switch needs a benchmark
   ledger before RFC-0026 adopts it (proposed follow-up task E16-19).
 
-## 5. Recommendation (adopted by the amendments PR, task E12-22)
+## 5. Recommendation (proposed for adoption by task E12-22)
+
+The (C1)/(C2) columns above are not an admission. `study.py` does not compute
+(C3), the H* endpoint checks, or (C4), the grinding-family rule; the native
+verifier must check all four (E8-05).
 
 1. **Standard profile.** λ = 100, g = 8, Q_cap = 2^80, QM31 challenges.
    - Grinding k_q = 16 on every PCS column round.

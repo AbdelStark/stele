@@ -174,53 +174,66 @@ def price(inv, family, profile):
     return total, model_cert, non_pcs
 
 
+def lu_round_numerator(name, num):
+    """One (beta, alpha) round (Lemma 4): num for ranges (c=1); at most 2*num+1 for tables (c<=2).
+
+    Range checks (`range_*`, `range/...`) read one column (c=1, `Target::Range`); every other
+    check is charged as c=2, which over-charges a c=1 table and is therefore safe.
+    """
+    return num if name.startswith('range') else 2 * num + 1
+
+
 def rounds(inv, ledger, family, profile):
     """Every FS round of one stories42M verification with its exact error and grinding bits.
 
-    Per-round bounds (formal/fs-composition.md §4): SC records sum their per-round terms and every
-    single SC round is at most 30/|K|; RLC and SZ entries are single rounds; each LU check has at most
-    two LU rounds, each at most numerator+1 (Lemma 4); PCS tensor and column rounds per certificate
-    and opening. Grinding applies to LU, PCS tensor and PCS column rounds only (A17 item 4).
+    Per-round bounds (formal/fs-composition.md §4): SC records are sums of their per-round terms
+    (Lemma 2) and enter the floor as sums; RLC and SZ entries are single rounds; each LU check is one
+    (beta, alpha) round (Lemma 4); PCS tensor and column rounds per certificate and opening. Grinding
+    applies to LU, PCS tensor and PCS column rounds only (A17). Entries: (family, error, bits, where)
+    with where = 'public' for the one-time model certificate, else 'proof'.
     """
     lam, field, g, kq = PROFILES[profile]
     target = lam + g
-    out = []  # (family, error, grind bits, count)
+    ground = family != 'policy1'
+    out = []
     sc_total = sum(n for kind, _, n in ledger if kind == 'Sc')
-    out.append(('SC (sum of records)', Fraction(sc_total, field), 0, 1))
+    out.append(('SC (sum of records)', Fraction(sc_total, field), 0, 'proof'))
     for kind, name, num in ledger:
         if kind in ('Rlc', 'Sz'):
-            out.append((kind.upper(), Fraction(num, field), 0, 1))
+            out.append((kind.upper(), Fraction(num, field), 0, 'proof'))
         elif kind == 'Lu':
-            err = Fraction(num + 1, field)
-            out.append(('LU', err, grind_bits(err, target) if family != 'policy1' else 0, 2))
-    sources = configure(inv, family, profile)
-    opened = {('model',): 1, ('stack',): 1}
-    mu_open = [r for r in inv if r['code'] == 'circle' and r['kind'] == 'opening']
-    for role, code, rows, qc, qo in sources:
+            err = Fraction(lu_round_numerator(name, num), field)
+            out.append(('LU', err, grind_bits(err, target) if ground else 0, 'proof'))
+    k = kq if ground else 0
+    for role, code, rows, qc, qo in configure(inv, family, profile):
+        where = 'public' if role == 'model' else 'proof'
         terr = tensor_err(code, rows, field)
-        out.append(('PCS tensor', terr, grind_bits(terr, target) if family != 'policy1' else 0, 1))
-        k = kq if family != 'policy1' else 0
-        out.append(('PCS column', query_err(code, qc, 'certificate'), k, 1))
+        out.append(('PCS tensor', terr, grind_bits(terr, target) if ground else 0, where))
+        out.append(('PCS column', query_err(code, qc, 'certificate'), k, where))
         if role in ('model', 'stack'):
-            out.append(('PCS column', query_err(code, qo, 'opening'), k, 1))
-    for r in mu_open:
-        code = circle(r['columns'].bit_length() - 1, 1)
-        q = r['queries'] if family == 'policy1' else counts(code, lam + g - kq)[1]
-        out.append(('PCS column', query_err(code, q, 'opening'), kq if family != 'policy1' else 0, 1))
-    setup = any(s[1]['v2'] for s in sources)
+            out.append(('PCS column', query_err(code, qo, 'opening'), k, 'proof'))
+    for r in inv:
+        if r['code'] == 'circle' and r['kind'] == 'opening':
+            code = circle(r['columns'].bit_length() - 1, 1)
+            q = r['queries'] if not ground else counts(code, lam + g - kq)[1]
+            out.append(('PCS column', query_err(code, q, 'opening'), k, 'proof'))
+    setup = any(s[1]['v2'] for s in configure(inv, family, profile))
     return out, setup
 
 
 def admission(inv, ledger, family, profile):
+    """(C1) worst single round and (C2) floor; C3/C4 are not computed here (not an admission)."""
     lam, field, g, kq = PROFILES[profile]
     rs, setup = rounds(inv, ledger, family, profile)
     worst = max(err / 2**k for fam, err, k, _ in rs if not fam.startswith('SC'))
-    worst = max(worst, Fraction(30, field))
-    floor = sum(err / 2**k * c for _f, err, k, c in rs) + (SETUP if setup else 0)
-    grind = sum(2**k * c for _, _, k, c in rs if k)
+    # Every SC round is at most its record's sum (Lemma 2), so the largest record bounds C1 for SC.
+    worst = max(worst, Fraction(max(n for kind, _, n in ledger if kind == 'Sc'), field))
+    floor = sum(err / 2**k for _f, err, k, _w in rs) + (SETUP if setup else 0)
+    grind = sum(2**k for _f, _e, k, w in rs if k and w == 'proof')
+    nonces = sum(1 for f, _e, k, w in rs if k and w == 'proof' and f != 'PCS column')
     c1 = worst * 2**(lam + g) <= 1
     c2 = floor * 2**lam <= 1
-    return worst, floor, grind, c1, c2
+    return worst, floor, grind, c1, c2, nonces
 
 
 def table(bits):
@@ -260,13 +273,14 @@ def report():
         print()
     print('## stories42M development statement re-priced (proof excludes the public model certificate)\n')
     print('| policy | profile rule | stack | q_c/q_o | model | q_c/q_o | proof bytes | model cert | '
-          'worst round | floor | prover grind hashes | C1 | C2 |')
+          'worst round | floor | per-proof grind hashes | C1 | C2 |')
     print('|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|')
     for family, profile in (('policy1', 'standard'), ('v2', 'standard'), ('circle1', 'standard'),
                             ('circle2', 'standard'), ('v2', 'treaty'), ('circle2', 'treaty')):
         srcs = {s[0]: s for s in configure(inv, family, profile)}
         proof, mcert, _ = price(inv, family, profile)
-        worst, floor, grind, c1, c2 = admission(inv, ledger, family, profile)
+        worst, floor, grind, c1, c2, nonces = admission(inv, ledger, family, profile)
+        proof += 8 * nonces  # LU and tensor nonces; column-round nonces are priced in price()
         st, mo = srcs['stack'], srcs['model']
         print(f"| {family} | {profile} | {st[1]['code']} R={st[2]} | {st[3]}/{st[4]} | {mo[1]['code']} R={mo[2]} "
               f"| {mo[3]}/{mo[4]} | {proof:,} | {mcert:,} | 2^{log2(worst):.1f} | 2^{log2(floor):.1f} "
@@ -294,16 +308,16 @@ def check():
                 assert q == 1 or 2**bits * miss**(q - 1) > n**(q - 1)
     std = admission(inv, ledger, 'circle2', 'standard')
     assert std[3] and std[4], std
+    assert price(inv, 'circle2', 'standard')[0] + 8 * std[5] == 18325537
     v2s = admission(inv, ledger, 'v2', 'standard')
     assert v2s[3] and v2s[4], v2s
     p1 = admission(inv, ledger, 'policy1', 'standard')
     assert not p1[3], p1  # Policy 1 fails the per-round rule (its LU round alone is 2^-97)
-    assert price(inv, 'circle2', 'standard')[0] == 18325377, price(inv, 'circle2', 'standard')
     assert counts(circle(17, 2), 92) == (222, 92) and counts(v2(10), 92) == (9533, 4751)
     print('fs-pcs study: Policy 1 size model exact (113422913 proof bytes, 48 PCS records); '
           'Policy 2 least counts verified for all 59 Circle and 12 v2 identities at 92 and 120 bits; '
           'stories42M standard admission passes C1/C2 for v2 and Circle rate 1/4; '
-          'Circle rate 1/4 proof 18325377 bytes')
+          'Circle rate 1/4 proof 18325537 bytes')
 
 
 if __name__ == '__main__':
