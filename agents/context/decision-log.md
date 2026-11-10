@@ -1750,3 +1750,27 @@ Consequences:
 
 Status: Accepted.
 
+
+## ADR-088: Single-pass dense rounds and a public prover work-splitting module (RFC-0006 A1, RFC-0008 A3, task E16-16)
+
+Context: after E16-15, lookup trees and selected products remain the largest
+share of the development prover.
+
+Decision:
+- `Dense` rounds read each column once. They build every node value
+  `t + x·(t' − t)` by repeated addition of the difference, with no product by `x`.
+  The round values are unchanged.
+- `stele_sumcheck::parallel` becomes public, adding `for_each_chunk` beside
+  `sum_ranges` and `fold`. Callers such as `stele-lookup` get threads only when
+  some crate enables `stele-sumcheck/std`; otherwise the work runs sequentially.
+  No manifest of `stele-lookup` changes.
+- Fraction-tree level construction (each parent from its two children) and the
+  selected-product MLE dot products use it.
+- There is no protocol, transcript or proof-byte change. The E16-10 fixture hashes
+  are pinned.
+
+Consequences:
+- Pooled threads, a parallel expander encoder and a cheaper certificate
+  registration remain open.
+
+Status: Accepted.

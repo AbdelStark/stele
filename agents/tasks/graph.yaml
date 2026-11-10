@@ -2817,7 +2817,7 @@ tasks:
   - RFC-0008 A3
   skill: sumcheck-prover-engineer
   crate: stele-lookup
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-16-lookup-performance
   acceptance:

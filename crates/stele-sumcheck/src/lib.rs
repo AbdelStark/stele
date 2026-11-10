@@ -17,7 +17,8 @@ mod buffers;
 pub mod claim_batch;
 mod dense;
 mod instance;
-mod parallel;
+/// Prover-side work splitting with identical results (RFC-0006 A1 prover only).
+pub mod parallel;
 mod small;
 mod streaming;
 mod work;

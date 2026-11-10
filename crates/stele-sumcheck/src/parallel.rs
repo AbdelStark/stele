@@ -18,7 +18,7 @@ fn threads(len: usize) -> usize {
 }
 
 /// `out = Σ_chunks partial(chunk)` over `0..len`, each chunk filling a fresh `out`.
-pub(crate) fn sum_ranges<K: ChallengeField>(
+pub fn sum_ranges<K: ChallengeField>(
     len: usize,
     out: &mut [K],
     partial: impl Fn(core::ops::Range<usize>, &mut [K]) -> Result<(), Error> + Sync,
@@ -64,8 +64,28 @@ pub(crate) fn sum_ranges<K: ChallengeField>(
     partial(0..len, out)
 }
 
+/// Fill `out` chunk by chunk: `fill(start, chunk)` writes `out[start..start + len]`.
+/// Chunks are disjoint, so the result does not depend on the split.
+pub fn for_each_chunk<T: Send>(out: &mut [T], fill: impl Fn(usize, &mut [T]) + Sync) {
+    #[cfg(feature = "std")]
+    {
+        let n = threads(out.len());
+        if n > 1 {
+            let step = out.len().div_ceil(n);
+            let fill = &fill;
+            std::thread::scope(|scope| {
+                for (t, chunk) in out.chunks_mut(step).enumerate() {
+                    scope.spawn(move || fill(t * step, chunk));
+                }
+            });
+            return;
+        }
+    }
+    fill(0, out);
+}
+
 /// Fix the leading coordinate: `t[j] += r·(t[j + half] − t[j])`, then halve.
-pub(crate) fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
+pub fn fold<K: ChallengeField>(table: &mut Vec<K>, challenge: K) {
     let half = table.len() / 2;
     {
         let (low, high) = table.split_at_mut(half);

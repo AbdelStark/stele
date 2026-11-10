@@ -40,10 +40,15 @@ fn mle<K: ChallengeField>(values: &[K], point: &[K]) -> Result<K, Error> {
         return Err(Error::SourceShape);
     }
     let weights = stele_poly::eq_table(point).map_err(|_| Error::Capacity)?;
-    Ok(values
-        .iter()
-        .zip(weights)
-        .fold(K::from_i64(0), |s, (v, w)| s + *v * w))
+    // Exact field sums: any split of the dot product is identical.
+    let mut sum = [K::from_i64(0)];
+    stele_sumcheck::parallel::sum_ranges(values.len(), &mut sum, |range, out| {
+        for j in range {
+            out[0] = out[0] + values[j] * weights[j];
+        }
+        Ok(())
+    })?;
+    Ok(sum[0])
 }
 impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
     /// Validate shapes, Boolean selector and p=sigma_tilde(r) before any absorption.
