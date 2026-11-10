@@ -50,7 +50,13 @@ Markdown. 27 RFCs with 19 full-model appendices, 89 ADRs, 279 review notes, 37
 ledgers, 142 control catalogue rows (71 done).
 
 The workspace is healthy. `cargo test --workspace --locked` passed 718 tests with 0
-failures (8 ignored) on a 4-core host in 559 s, build included.
+failures (8 ignored) on a 4-core host in 559 s, build included. The quick tooling
+suite (`python3 scripts/ci_tests.py`) passes with `cargo-deny` 0.20.2 installed and
+the locked crates fetched. One defect was found in the exhaustive suite: the two
+mutation tests of the `docs-links` gate failed at `6441a90`, because their fixture did
+not copy `harness/` and RFC-0004 links into it. The fixture is fixed on the branch
+that adds this assessment. The mutation tests that rebuild Rust sources were not
+rerun here.
 
 ## 3. The end-to-end prover, measured
 
