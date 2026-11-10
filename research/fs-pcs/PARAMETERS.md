@@ -257,7 +257,7 @@ Policy 1 is evaluated under the standard rule with no grinding, for comparison.
   1/2. Circle needs O(N log N) circle-FFT work per row and twice the codeword
   length; v2 is linear.
 - No cost-model constant moves in this study. The switch needs a benchmark
-  ledger before RFC-0026 adopts it (proposed follow-up task E16-19).
+  ledger before RFC-0026 adopts it (proposed follow-up task E16-30).
 
 ## 5. Recommendation (proposed for adoption by task E12-22)
 
@@ -274,7 +274,7 @@ verifier must check all four (E8-05).
      rejected.
 2. **Treaty profile.** Record the λ = 128 tables as conditional. Not admitted.
 3. **Codes.** Prefer Circle rate 1/4 for per-proof and weight sources once
-   E16-19 measures its prover cost. v2 stays admissible, at about 5x the proof
+   E16-30 measures its prover cost. v2 stays admissible, at about 5x the proof
    bytes.
 4. **Not adopted.** Johnson-radius proximity, OOD binding, capacity
    conjectures, and any expander radius beyond ⌊(D−1)/3⌋.
