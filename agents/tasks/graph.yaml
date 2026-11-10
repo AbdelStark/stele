@@ -2876,3 +2876,22 @@ tasks:
   - new bench/ledger entries for the synthetic 8-layer model and stories42M at T = 64 on current main, with the E16-11 entries kept as history
   - model-commitment time recorded separately from prove time
   - docs/development-e2e.md cites the new entries
+- id: E16-19
+  epic: E16
+  title: Row-block split of matmuls past MAX_VARS (fixed Ref bits, one shared declare-time helper)
+  depends:
+  - E16-18
+  rfc:
+  - RFC-0026 §3.1
+  - RFC-0026 §3.5
+  - RFC-0026 §5
+  skill: sumcheck-prover-engineer
+  crate: stele-ir
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-19-row-block-split
+  acceptance:
+  - RFC-0026 amendment (Workflow 02) with an ADR; one shared split helper used by projections (head included) and attention
+  - exact recombination argued (Lemma S); block selection plan-derived; matmul-out discipline requires the blocks to cover every entry
+  - deletion survey with row blocks (check_except) kills every block; engine controls tamper each block
+  - proof bytes of the pinned E16-10 fixtures unchanged
