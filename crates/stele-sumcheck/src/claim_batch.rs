@@ -73,7 +73,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
                 start = 2 * start + usize::from(*x == one);
                 prefix += 1;
             }
-            let suffix = stele_poly::eq_table(&z[prefix..]).map_err(|_| Error::Capacity)?;
+            let suffix = crate::parallel::eq_table(&z[prefix..])?;
             // A2: start < 2^prefix and suffix.len() = 2^(m-prefix), so the block fits.
             let begin = start * suffix.len();
             for (target, value) in out[begin..begin + suffix.len()].iter_mut().zip(suffix) {

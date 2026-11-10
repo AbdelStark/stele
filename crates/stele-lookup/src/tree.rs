@@ -240,10 +240,15 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
             for (side, column) in [(0, 0), (0, 1), (1, 0), (1, 1)] {
                 let mut table = Vec::new();
                 reserve(&mut table, children.len() / 2)?;
-                table.extend(children.chunks_exact(2).map(|pair| pair[side][column]));
+                table.resize(children.len() / 2, K::from_i64(0));
+                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                    for (j, out) in chunk.iter_mut().enumerate() {
+                        *out = children[2 * (start + j) + side][column];
+                    }
+                });
                 tables.push(table);
             }
-            tables.push(stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?);
+            tables.push(stele_sumcheck::parallel::eq_table(&point)?);
             let (step, next, dense) = prove_dense(&i, tables, t)?;
             // These exact outer buffers remain unchanged across the actual A1.
             work.observe(

@@ -1064,11 +1064,13 @@ fn prove_plan(
         let mut tables = Vec::new();
         for r in &inputs {
             let col = column(relation, values, r.column)?;
-            tables.push(
-                (0..1u64 << m)
-                    .map(|x| K::from_i64(col[r.index(x)]))
-                    .collect(),
-            );
+            let mut table = vec![K::from_i64(0); 1 << m];
+            stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                for (j, out) in chunk.iter_mut().enumerate() {
+                    *out = K::from_i64(col[r.index((start + j) as u64)]);
+                }
+            });
+            tables.push(table);
         }
         let z = zerocheck::Zerocheck {
             instance: &instance,
@@ -1220,7 +1222,8 @@ impl Opening<'_> {
         // honest prover); otherwise over the proving table, so that a lying prover's
         // only failure is the opening of the committed source below.
         let committed = to_k(prepared.message());
-        let consistent = table == committed
+        let same = table == committed;
+        let consistent = same
             || self.batch.iter().all(|(point, value)| {
                 stele_poly::eq_table(point).is_ok_and(|eq| {
                     committed
@@ -1230,20 +1233,24 @@ impl Opening<'_> {
                         == *value
                 })
             });
-        let table = if consistent { committed } else { table };
-        let (bp, point) = self.batch().prove_with_point(table, t)?;
+        let batched = if consistent { committed } else { table };
+        let (bp, point) = self.batch().prove_with_point(batched, t)?;
         let mut out = Vec::new();
         for row in &bp.rounds {
             put(&mut out, row);
         }
         put(&mut out, &bp.final_values);
-        // Open what is committed; an honest batch table equals it, so this is the
-        // batch final value. A lying prover's mismatch is left to the verifier.
-        let eq = stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?;
-        let committed = to_k(prepared.message())
-            .into_iter()
-            .zip(eq)
-            .fold(K::from_i64(0), |s, (v, w)| s + v * w);
+        // Open what is committed. When the batch ran over the committed table (always,
+        // for an honest prover) that is the batch final value; otherwise evaluate it.
+        let committed = if consistent {
+            bp.final_values[0]
+        } else {
+            let eq = stele_poly::eq_table(&point).map_err(|_| Error::Capacity)?;
+            to_k(prepared.message())
+                .into_iter()
+                .zip(eq)
+                .fold(K::from_i64(0), |s, (v, w)| s + v * w)
+        };
         let (bytes, _) = prepared
             .opening_point(t, handle, self.tensor, &point, committed)
             .map_err(|f| Error::Pcs(f.cause))?;

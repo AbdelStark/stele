@@ -11,6 +11,10 @@ stele-code = { path = "../stele-code" }
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }
 
+# Prover-side parallel encoding (E16-17, ADR-090); off by default, verifiers stay no_std.
+[features]
+std = ["stele-code/std"]
+
 [dev-dependencies]
 serde_json = "=1.0.154"
 
