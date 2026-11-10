@@ -1576,6 +1576,40 @@ Consequences:
 
 Status: Accepted (RFC-0026 A4).
 
+## ADR-083: The residual add rounds in two stages, the greedy check sums the vocabulary in blocks, and the model boundary only composes (RFC-0026 §5 rows 11-13, task E16-09)
+
+**Context.** RFC-0025 §2.2 admits any residual fractions in `[0, 30]`, so the aligned
+numerator `N = X·2^(c−fx) + Y·2^(c−fy)` reaches 46 bits and the divisor `2^(c−fo)` up
+to `2^30`; the stele-cqis Llama fixture already has a 23-bit gap. One whole identity
+`N = (out − β)·D + L` meets the RFC-0026 §3.6 bound only for gaps below about 15 bits.
+Row 13's `sel_i = Σ_v O·L` meets the matmul bound only for `2^15` summed ids, and a
+Llama-3 vocabulary has 128256.
+
+**Decision.**
+- Residual: with `F` the input of smaller shift and `G` the other, take
+  `T = floor(N/2^s)` and the sticky bit `[N mod 2^s ≠ 0]` from Euclidean splits of `F`
+  and `G` (`s = max(0, k − 14)`), then round `T` by `2^(k−s) <= 2^14` with the §5
+  division pattern, comparing `2L + st` with `D2 + ν`. A shifted input that would
+  break the bound is read through a narrow copy (`G' = G`, smaller declared width),
+  which every non-overflowing execution satisfies. `k = 0` is an exact sum with the
+  common shift factored out. Every fraction triple validates.
+- Argmax: the selection matmul keeps the vocabulary block bits free (`2^15` summed
+  ids per block) and a second matmul sums the blocks. `chk[i,v]` is held as the
+  product of two broadcast public columns (checked row, real id), so no third `T×V`
+  public column exists. A checked token `>= V` is a statement error before any
+  relation.
+
+- Model boundary (row 12): `finish::Finish` adds no relation. It composes E16-04's
+  `RmsNorm`, E16-05's `RowConversion` and `Projection` (own head source, or the
+  embedding column when tied) and the argmax, wired by `ColumnId`s. `Finish::new`
+  validates every plan and the statement against a scratch copy of the caller's
+  relation, and rejects a token count that is not a power of two or not the row count.
+
+**Consequences.** All residual plans of the RFC-0026 §1.3 class are expressible
+without an amendment; wide (A14) streams stay out. Every module constraint is shown
+load-bearing by a deletion survey or has a stated redundancy reason over Z
+(`agents/reviews/e16-09-residual-argmax.md`).
+
 ## ADR-086: Grouped Q/K/V rows are not pursued; the residual G7 gap is in exact-only numerics (RFC-0004 A15, task E5-05g)
 
 Context: E5-05e (grouped activation rows, g = 128) halved every G7 gap but left G7 failing
@@ -1599,4 +1633,3 @@ rsqrt). The simulation quantises Q/K before RoPE while CQIS rows follow it; this
 simulation caveat, not CQIS evidence.
 
 Status: Accepted.
-

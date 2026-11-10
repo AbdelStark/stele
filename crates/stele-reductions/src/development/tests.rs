@@ -63,7 +63,7 @@ fn convert(policy: Policy, inputs: &[Vec<i64>]) -> Option<ConversionCapture> {
 
 /// Executor-equivalent affine output (`Data::affine`, family 1, no bias):
 /// `R(V*m*u*2^l)`, ties away from zero, int16 or `None`.
-fn affine(
+pub(crate) fn affine(
     codes: &[Vec<i64>],
     scales: &[Vec<u32>],
     weights: &[Vec<i64>],

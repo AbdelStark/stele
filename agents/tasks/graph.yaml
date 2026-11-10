@@ -2710,7 +2710,9 @@ tasks:
   - RFC-0026 §5 rows 11-13, §5.2
   skill: gkr-reduction-author
   crate: stele-reductions
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E16-09-residual-head-argmax
   acceptance:
   - Module declare/assign for RFC-0026 §5 rows 11-13; Relation::validate passes for the E16-10 synthetic model shapes
   - plain checker accepts honest values from the executor capture (or the executor-equivalent reference until E16-03 lands) on every family-1 fixture
