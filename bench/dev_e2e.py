@@ -9,7 +9,14 @@ commitment time (measured in its own process) as stage `model_commitment`.
 
   python3 bench/dev_e2e.py RUN_DIR OUT.json --workload dev/<name> --commit <sha> \
       --device "<cpu>" --toolchain "$(rustc -V)" --prompt-tokens P --threads N \
-      --model-config config.json --host-context "<host>"
+      --model-config config.json --host-context "<host>" [--rung L1] [--counters extra.json]
+
+`--rung` names the ladder rung of RFC-0027 §3 and is written to `model_config.rung`
+(RFC-0018 A2).
+
+`--counters` names a JSON object of extra unsigned integer counters (for example the
+proof section bytes that `accepts_eight_layer_window` prints). They are merged into
+`kernel_counters`; a name that collides with a built-in counter is an error.
 """
 import argparse
 import hashlib
@@ -45,6 +52,8 @@ def main():
     p.add_argument('--prompt-tokens', type=int, required=True)
     p.add_argument('--threads', type=int, required=True, help='hardware threads available to the run')
     p.add_argument('--host-context', required=True)
+    p.add_argument('--counters', type=Path, help='JSON object of extra unsigned integer counters')
+    p.add_argument('--rung', help='ladder rung, for example L1 or L2a (RFC-0018 A2)')
     a = p.parse_args()
     run = a.run
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
@@ -65,6 +74,15 @@ def main():
     t = int(s['T'])
     plan = dict(command='stele prove-dev / verify-dev', statement=s, threads=a.threads,
                 model=json.loads(Path(a.model_config).read_text()))
+    if a.rung:
+        plan['rung'] = a.rung
+    counters = {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
+                'public_bytes': len(public), 'checked_positions': end - start}
+    if a.counters:
+        extra = json.loads(a.counters.read_text())
+        assert isinstance(extra, dict) and not set(extra) & set(counters), 'CounterNames'
+        assert all(type(v) is int and v >= 0 for v in extra.values()), 'CounterValues'
+        counters.update(extra)
     ledger = {
         'schema_version': 1, 'kind': 'inference', 'workload': a.workload, 'commit': a.commit,
         'toolchain': a.toolchain, 'device': a.device, 'driver': 'not-applicable',
@@ -76,8 +94,7 @@ def main():
         'prompt_tokens': a.prompt_tokens, 'generated_tokens': t - a.prompt_tokens,
         'prover_time_ns': prove_ns, 'witness_recompute_ns': 0,
         'stage_times_ns': stages,
-        'kernel_counters': {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
-                            'public_bytes': len(public), 'checked_positions': end - start},
+        'kernel_counters': counters,
         'proof_size_bytes': len(proof), 'verifier_time_ns': {'rust': verify_ns, 'python': 0},
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
         'note': ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '

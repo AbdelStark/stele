@@ -1883,6 +1883,9 @@ Status of the lines:
   what promotion to `standard` requires.
 - Column-of-group claims (RFC-0026 §2.3) are Boolean-point restrictions, so they
   add no SZ term.
+- Under RFC-0026 A6 a matmul past 30 bits is split into row blocks. Each block is
+  one matmul with the SZ and SC lines above (no new line, label or challenge), and
+  its fixed column bits are Boolean coordinates, which add no SZ term.
 
 ## Q12: Fiat–Shamir composition and profile admission (RFC-0012 A17, RFC-0010 A14, RFC-0002 A1)
 
@@ -1931,4 +1934,3 @@ range_8), floor 2^-95.6
 **Open:** QROM; ZK composition (Q29); the native generator's exact round enumeration
 and its (C1)–(C4) checks (E8-05); and the Policy 2 and grinding consumers (E12-23,
 NC-0806/0807).
-

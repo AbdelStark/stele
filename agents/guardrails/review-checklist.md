@@ -11,3 +11,9 @@
 - [ ] Cost model: which term moved, by how much, ledger link?
 - [ ] Verifier: still `no_std`, no panics, lengths from plan?
 - [ ] Glossary: any forbidden synonyms introduced?
+- [ ] Tier: which tier is this change in, and does anything in it claim more than that tier allows?
+- [ ] Commit rule: is every committed column advice, and every virtual column a polynomial in other columns?
+- [ ] Plain checker: do the honest and near-miss cases still decide the same way? (ran it)
+- [ ] Segments: does any relation read a non-carried column of an earlier segment?
+- [ ] Proof bytes: unchanged, or changed by which amendment, with digests re-recorded?
+- [ ] Ladder: which rung ran, and are the before/after ledgers on the same rung, host class and thread count?

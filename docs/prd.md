@@ -87,3 +87,37 @@ cost and legibility. Stele exists to remove that blocker.
 | Fused‑opening soundness subtleties (structured randomness) | rely on Diamond–Posen logarithmic randomness + Khatam; optional one‑time proximity certificate; Lean statement (R‑FORMAL) |
 | Novel techniques (DPA, epoch batching) wrong | isolated in RFC‑0019 research tracks, not on the v1 critical path |
 | Agent‑introduced soundness bugs | INV‑2/INV‑4 gates, soundness‑auditor review, hostile‑review workflow, differential verifier |
+
+## 9. Amendments
+
+### A1 — Re-baseline after the first published system of this shape (RFC-0027, ADR-095)
+
+Status: Accepted (owner-directed). Evidence: [`docs/assessment.md`](assessment.md).
+Motivation: §1 lists the open state of the art at 400–1,100x overhead. FlashProve v0.16.0 (2026-11-02) proves a
+400B mixture-of-experts model at 111 tok/s on one H100 with zero knowledge, 18.78 MB proofs and 17 to 21 s
+verification, about 72 to 94x the cost of serving the same prefill (its own report; statement: greedy tokens of
+an integer model, fixed 1,024-token window). The goals below are restated against that bar. Nothing is relaxed.
+
+Added to §3:
+
+| ID | Goal | Metric | Target |
+|---|---|---|---|
+| G12 | Head-to-head | tokens per second on the published frontier workload (400B mixture-of-experts, 1,024-token windows, batch 24, one H100) | at least the published rate, with G13 and G14 met; then 2x |
+| G13 | Proof size, native | bytes per 1,024-token request | at most 8 MB at gate M3 and 4 MB at gate M6 (replaces G5's 200 MB as the working target; G5's wrapper target stands) |
+| G14 | Verification, native | seconds on commodity CPU | at most 5 s at gate M3 and 2 s at gate M6 (tightens G4's 10 s) |
+| G15 | Latency | seconds for one request, not a batch | at most 10 s on an 8B model; at most 30 s on the 400B shape |
+| G16 | Fidelity reporting | what a model passport states | task benchmarks with paired standard errors and top-1 agreement with the float model, not perplexity alone |
+
+Restated, when RFC-0030 is Accepted: G3 reads "every round at most 2^-128 (`treaty`) or 2^-100 (`standard`) from
+proven bounds, with hash queries multiplying the largest round error". FR5's `standard` becomes proven-only.
+
+Added to §7 (success criteria): the gates M1 to M7 of RFC-0027 §4 are the path to criteria 1 to 4; M4 is
+criterion 1 at 1,024 tokens, M6 extends it to the frontier workloads, M7 is criteria 3 and 4.
+
+Added to §8 (risks):
+
+| Risk | Mitigation |
+|---|---|
+| The frontier moves again before a gate is met | the ladder includes the competitor's own workload; re-baseline by amendment |
+| A proof about unidentified weights is taken as a proof about a named model | the passport binds the commitment to the published checkpoint digest (task E21-05) |
+| Replies served by a floating-point engine never match the integer model exactly | integer serving kernels (R-SERVE) or a gap policy with a stated meaning (Q41) |

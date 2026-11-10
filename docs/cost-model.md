@@ -341,3 +341,41 @@ Verifier hashing per response is S·(1+log2 N), plus 2S−1 once per certificate
 (T_misc). Example: Circle rate 1/4, N=2^22, S=8, q_o=130 adds about 0.64 MB per
 opening. These are exact counts, not measurements; no weight pass or planning
 constant moves. Every Accepted consumer still uses s=0.
+
+## Build-program accounting (RFC-0027; RFC-0028 Draft)
+
+This section adds symbols and corrections. It states no new measured constant; the
+only measurements cited are ledger records.
+
+**Committed cells.** §2 counts `C_cut = n·d·L`. A sound proof also commits one or two
+small integers per nonlinear value (`docs/assessment.md` §5), so the committed count is
+
+```
+C_adv ≈ κ_c · n · L · N_act            κ_c = committed cells per nonlinear value (target 1 to 2)
+T_commit = C_adv · c_c / R             replaces T_cuts as the commitment term
+T_act    = κ_lu · n · L · N_act · c_lu / R     κ_lu = lookup positions per nonlinear value (target 2 to 3)
+```
+
+For W1 with `κ_c = 1` that is about 1.3·10^10 cells per proof, more than the weights.
+`c_c` therefore matters as much as `c_w`, and commitments must stream by segment.
+
+**Where the development prover is.** On rung L1 it commits 2^25 cells and runs lookups
+over about 20 million positions for 64 tokens
+([ledger](../bench/ledger/e17-00-dev-synthetic-8layer-4core.json); derivation in
+`docs/assessment.md` §3). Per token, layer and unit of width that is about 1,000 cells
+and 600 lookup positions, against a floor near 20 to 45 and 45 to 65.
+
+**Two per-token numbers every ledger reports** (task E17-01, RFC-0018 A2): committed
+cells per token and lookup positions per token. They are the protocol's efficiency,
+independent of host and engine. The accounting tool (task E22-01) computes them from a
+relation without proving.
+
+**Weight reads.** The development engine reads each weight twice per proof: once for
+the matmul operand and once for the model-source claim batch and opening. The stacked
+weight phase with a fused opening (task E18-07) restores one read; the count is a
+ledger counter.
+
+**Planning throughput.** `R = 3·10^12` Mops/s in §1 is unmeasured. The one public
+data point for a system of this shape is FlashProve's marginal cost per request on one
+H100 (`docs/assessment.md` §6). `R`, `c_lu` and `c_c` are fitted from GPU ledgers at
+gate M4; until then every row of §3 is a projection.

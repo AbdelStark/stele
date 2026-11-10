@@ -5,3 +5,5 @@
 4. Lazy reduction: outputs leaving a kernel are canonical; a test feeds `[p, 2p)` inputs and checks canonical outputs.
 5. Reduction order of parallel sums is fixed (tree by block id); atomics are forbidden for anything that reaches the transcript.
 6. No `fast-math`, no tensor-core float paths for field arithmetic; int8 GEMM (CUTLASS) is allowed only for CQIS recompute with exact int32 accumulation, and its outputs are digest-checked against the CPU reference.
+7. The backend trait in `stele-kernels` is the only way the engine reaches a kernel; the scalar implementation of the trait is the reference for every other backend.
+8. No GPU runner is available in hosted CI. Parity runs on a rented GPU through the scripted host of task E17-04 and is a gate for every milestone from M4 on; until then GPU code merges only with the parity log attached to the PR.

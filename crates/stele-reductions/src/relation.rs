@@ -497,7 +497,11 @@ fn restrict(r: &Ref, domain: &[K]) -> Vec<K> {
     let (n, m) = (r.vars.len(), domain.len());
     let mut point = vec![K::from_i64(0); n];
     for (j, var) in r.vars.iter().enumerate() {
-        point[n - 1 - j] = domain[m - 1 - *var as usize];
+        // A fixed bit (RFC-0026 A6) is a Boolean coordinate: no Schwartz–Zippel term.
+        point[n - 1 - j] = match Ref::fixed(*var) {
+            Some(bit) => K::from_i64(i64::from(bit)),
+            None => domain[m - 1 - *var as usize],
+        };
     }
     point
 }
@@ -667,6 +671,11 @@ impl MatmulShape {
     fn rho_at(&self, d: u8) -> K {
         self.rho[self.rho.len() - 1 - d as usize]
     }
+    /// Coordinate of a bit outside the sumcheck: its Boolean value when fixed
+    /// (RFC-0026 A6), else the free bit's ρ coordinate.
+    fn fixed_at(&self, d: u8) -> K {
+        Ref::fixed(d).map_or_else(|| self.rho_at(d), |bit| K::from_i64(i64::from(bit)))
+    }
     fn position(&self, d: u8) -> Option<usize> {
         self.vars.iter().position(|v| *v == d)
     }
@@ -690,7 +699,7 @@ impl MatmulShape {
         for (j, d) in r.vars.iter().enumerate() {
             point[n - 1 - j] = match self.position(*d) {
                 Some(p) => sc[p],
-                None if *d < free => self.rho_at(*d),
+                None if *d < free || Ref::fixed(*d).is_some() => self.fixed_at(*d),
                 None => K::from_i64(0),
             };
         }
@@ -706,14 +715,26 @@ impl MatmulShape {
                 mask |= 1 << (nv - 1 - p);
             }
         }
+        // Entries outside a row block (RFC-0026 A6) have eq weight 0: skip them, so
+        // the blocks of a split read each operand entry once in total.
+        let (mut fixed, mut selected) = (0usize, 0usize);
+        for (j, d) in r.vars.iter().enumerate() {
+            if let Some(bit) = Ref::fixed(*d) {
+                fixed |= 1 << j;
+                selected |= usize::from(bit) << j;
+            }
+        }
         for (index, v) in col.iter().enumerate() {
+            if index & fixed != selected {
+                continue;
+            }
             let (mut z, mut w) = (0usize, K::from_i64(1));
             for (j, d) in r.vars.iter().enumerate() {
                 let bit = (index >> j) & 1;
                 match self.position(*d) {
                     Some(p) => z |= bit << (nv - 1 - p),
                     None => {
-                        let x = self.rho_at(*d);
+                        let x = self.fixed_at(*d);
                         w = w * if bit == 1 { x } else { K::from_i64(1) - x };
                     }
                 }

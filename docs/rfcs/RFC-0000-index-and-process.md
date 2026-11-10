@@ -38,12 +38,12 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A3, A4, A5, A6, A8, A9, A10, A11, A12, A13, A14); A7 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted (A2, A8); A1 Draft; A3–A7 superseded by A8 for RFC-0025 |
 | 0012 | Transcript, Fiat–Shamir, soundness accounting | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17) |
-| 0013 | Zero-knowledge | Accepted; A1 Draft |
+| 0013 | Zero-knowledge | Accepted; A1, A3 Draft |
 | 0014 | GPU prover architecture | Accepted (A1) |
 | 0015 | Distributed proving | Accepted (A1) |
 | 0016 | Verifier, proof format, recursion wrapper | Accepted (A4); A1 Draft; A2, A3 superseded by A4 |
 | 0017 | Architecture coverage: GQA, MoE, MLA, windows, sampling | Accepted (A3); A1, A2 superseded by A3 |
-| 0018 | Benchmarks, targets, cost-model protocol | Accepted |
+| 0018 | Benchmarks, targets, cost-model protocol | Accepted (A1, A2) |
 | 0019 | Research agenda | Research |
 | 0020 | Monorepo and crate architecture | Accepted (A1, A2, A3, A4, A5, A6, A7, A8, A9) |
 | 0021 | Canonical nonlinear functions, tables and representations | Accepted (A3); A1, A2 superseded by A3 |
@@ -51,7 +51,14 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
 | 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1, A2, A3) |
-| 0026 | Development-profile end-to-end prefill proof | Accepted |
+| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6); A7, A8 Draft |
+| 0027 | Build program: tiers, ladder, lanes and milestones | Accepted |
+| 0028 | Relation IR v2: the commit rule, virtual columns and segments | Draft |
+| 0029 | Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening | Draft |
+| 0030 | Security accounting: round-by-round error, Fiat–Shamir and the profiles | Draft |
+
+RFC-0027 §2 adds a shortened acceptance path for development-tier protocol changes; §2 above is unchanged for
+everything a `standard` or `treaty` proof depends on.
 
 ## 5. Notation used everywhere
 `F = F_p`, `p = 2^31 − 1`; `K = QM31 = F_{p^4}`; `x̃` = multilinear extension of the tensor `x` over `{0,1}^{log|x|}`

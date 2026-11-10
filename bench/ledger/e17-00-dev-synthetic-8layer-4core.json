@@ -1,0 +1,85 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "6441a906dc31db2f9a9651a0f36fa2bfadfdf230",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "x86_64 Intel Xeon Processor @ 2.10GHz (4 vCPU)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "ledger_lookup_checks": 21,
+  "ledger_sumcheck_lines": 820,
+  "lookup_ledger_numerator_sum": 20562538,
+  "proof_section_groups_bytes": 19279617,
+  "proof_section_identities_bytes": 94608,
+  "proof_section_lookups_bytes": 3478919,
+  "proof_section_matmuls_bytes": 289920,
+  "proof_section_multiplicities_bytes": 5767709,
+  "proof_section_openings_bytes": 16048930,
+  "proof_sections_matmuls": 750,
+  "proof_sections_multiplicities": 21,
+  "proof_sections_openings": 2,
+  "prove_peak_rss_bytes": 2609238016,
+  "public_bytes": 8455508,
+  "stacked_source_cells_padded": 33554432,
+  "verify_peak_rss_bytes": 298864640
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Merkle(RootMismatch))"
+  },
+  "host_context": "Claude Code cloud container (4 vCPU, 15 GiB RAM, no GPU); release build of the measured commit; one run; no other workload during the timed commands.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "proof_sha256": "478300a1f9f42cea94909e82c69ff930af423681f8b43cbfe8d71e6ee125a7f4",
+  "public_sha256": "b7f5bc4bd099b3727f552aafa9153b4cddd61763260f01af93f38a6e87b3a5f6",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "46027006348dd21e6a9d87bb8375483b033509a759284884ae1fc0e15e8c0c21",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 4
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is GNU time maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "8fce6aefd3145c645fc643729431ef4e1a92b7e2613376f8c2104152e1d85c1f",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 44963009,
+ "prover_time_ns": 55660000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "prove_dev_wall": 55660000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 7040000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-t64"
+}
