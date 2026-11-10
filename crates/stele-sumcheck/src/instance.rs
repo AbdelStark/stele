@@ -76,11 +76,23 @@ impl<K: ChallengeField> Instance<K> {
     }
     /// Write the canonical payload prefix without allocation; validation precedes writes.
     pub fn encode_into(&self, out: &mut [u8]) -> Result<usize, Error> {
+        self.encode_degree_into(self.validate()?, out)
+    }
+    /// The payload with a declared degree byte (RFC-0013 A5 item 3); the masked
+    /// consumer checks it is at least the factor count.
+    pub(crate) fn encode_degree(&self, degree: usize) -> Result<Vec<u8>, Error> {
+        let size = self.encoded_len()?;
+        let mut out = Vec::new();
+        reserve(&mut out, size)?;
+        out.resize(size, 0);
+        self.encode_degree_into(degree, &mut out)?;
+        Ok(out)
+    }
+    fn encode_degree_into(&self, degree: usize, out: &mut [u8]) -> Result<usize, Error> {
         let size = self.encoded_len()?;
         if out.len() < size {
             return Err(Error::Capacity);
         }
-        let degree = self.validate()?;
         let mut cursor = 0;
         put(
             out,
