@@ -1,12 +1,14 @@
 //! RFC-0013 A2 and RFC-0010 A15: hiding-source controls through the actual A9
-//! certificate verifier (NC-0902, NC-0903).
+//! certificate verifier (NC-0902, NC-0903, NC-0906), and masked-sumcheck controls
+//! through the actual masked A1 verifier (NC-0904, NC-0905).
 use crate::{check_control, check_proof_control, ProverHook};
 use stele_field::{Field, M31, OM31, QM31};
-use stele_hash::{ChallengeField, HashUsage};
+use stele_hash::{ChallengeField, HashUsage, Transcript};
 use stele_pcs::{
     hiding_message, verify_certificate, verify_point, CodeField, Error, PreparedSource,
     RetainedRow, Source, VerifiedCertificate,
 };
+use stele_sumcheck::{masked, Dense, Error as SumcheckError, Instance, Term};
 
 const SEED: [u8; 32] = [3; 32];
 
@@ -203,9 +205,61 @@ where
     Ok(())
 }
 
+/// One masked proof value replaced, chosen by the hook.
+struct MaskedValue(fn(&mut masked::Proof<QM31>));
+impl ProverHook<masked::Proof<QM31>> for MaskedValue {
+    fn tamper(&self, proof: &mut masked::Proof<QM31>) {
+        (self.0)(proof);
+    }
+}
+
+/// NC-0904 and NC-0905: an honest masked product sumcheck with `G` or `μ`
+/// changed by one; the actual verifier rejects at the first round or at the end.
+fn nc_masked(id: u16) -> Result<(), String> {
+    let a: Vec<QM31> = (0..16).map(|n| QM31::from_i64(n + 3)).collect();
+    let b: Vec<QM31> = (0..16).map(|n| QM31::from_i64(2 * n - 7)).collect();
+    let i = Instance {
+        id: 5,
+        num_vars: 4,
+        inputs: vec![11, 12],
+        terms: vec![Term {
+            coefficient: QM31::from_i64(1),
+            factors: vec![0, 1],
+        }],
+        claimed_sum: a
+            .iter()
+            .zip(&b)
+            .fold(QM31::from_i64(0), |s, (x, y)| s + *x * *y),
+    };
+    let transcript = || Transcript::<QM31>::new(b"masked control").expect("transcript");
+    let (hook, expected): (MaskedValue, SumcheckError) = if id == 904 {
+        (
+            MaskedValue(|p| p.mask_sum = p.mask_sum + QM31::from_i64(1)),
+            SumcheckError::RoundSumMismatch,
+        )
+    } else {
+        (
+            MaskedValue(|p| p.mask_final = p.mask_final + QM31::from_i64(1)),
+            SumcheckError::FinalEvaluationMismatch,
+        )
+    };
+    check_proof_control(
+        || {
+            let mask = masked::Mask::derive(&SEED, &i)?;
+            let dense = Dense::new(&i, vec![a.clone(), b.clone()])?;
+            masked::prove(&i, dense, &mask, &mut transcript())
+        },
+        &hook,
+        |proof| masked::verify(&i, proof, &mut transcript()).map(|_| ()),
+        expected,
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
+        904 | 905 => nc_masked(id),
         902 => nc_0902::<QM31>()
             .and_then(|()| nc_0902::<OM31>())
             .and_then(|()| nc_0902_opening::<QM31>())

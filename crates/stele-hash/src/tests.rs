@@ -4,11 +4,15 @@ use super::*;
 #[test]
 fn accepts_the_fixed_registry() {
     let entries = registry().expect("valid production registry");
-    assert_eq!(entries.len(), 47);
+    assert_eq!(entries.len(), 49);
     assert_eq!(entries[46].label, "stele/v0.1/grind");
     assert_eq!(entries[46].kind, LabelKind::Grind);
     assert_eq!(entries[46].loss, None);
-    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 14);
+    assert_eq!(entries.iter().filter(|e| e.loss.is_some()).count(), 15);
+    assert_eq!(AbsorbLabel::ZkMaskSum.entry(), &entries[47]);
+    assert_eq!(entries[47].label, "stele/v0.1/zk/mask-sum");
+    assert_eq!(ChallengeLabel::ZkMaskWeight.entry(), &entries[48]);
+    assert_eq!(entries[48].loss, Some(LossLine::Mask));
     assert_eq!(entries[4].loss, Some(LossLine::Sc));
     assert_eq!(entries[7].loss, Some(LossLine::Rlc));
     assert_eq!(entries[9].loss, Some(LossLine::Sc));

@@ -2519,7 +2519,9 @@ tasks:
   - RFC-0012 A18
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-hash
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-13-masked-sumcheck
   acceptance:
   - labels registered in stele-hash and docs/security/transcript-labels.json
   - prover and verifier with the mask obligation returned undischarged; masked zerocheck in A1 form tested

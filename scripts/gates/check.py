@@ -1659,6 +1659,19 @@ def docs_links(root):
     print(f'gate docs-links: checked {count} local file targets')
 
 
+def masked_sumcheck_quarantine(root):
+    """RFC-0013 A2 item 2 has no admitted consumer until the mask is bound (R2)."""
+    allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
+               'crates/stele-sumcheck/tests/masked.rs', 'tests/negative-controls/src/zk.rs'}
+    pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   for path in (root / directory).rglob('*.rs')
+                   if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
+    if found:
+        raise ValueError(f'masked sumcheck used outside its tests and controls: {found}')
+    print('gate masked quarantine: RFC-0013 A2 masked sumcheck has no consumer (R2 open)')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('gate', choices=(*OWNERS, 'native', 'rfc-status', 'docs-links'))
@@ -1685,6 +1698,7 @@ def main():
             if combined or args.gate in ('negative-controls', 'soundness-accounting'):
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
+                masked_sumcheck_quarantine(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)
                 small_strategy(ROOT)
