@@ -2592,16 +2592,18 @@ tasks:
   - tests that proofs verify and claims are masked; NC-0909, NC-0910, NC-0911, NC-0915
 - id: E12-19
   epic: E12
-  title: Committed-fraction lookups (RFC-0008 A7)
+  title: ZK-GKR over the A5 LogUp trees (RFC-0008 A7)
   depends:
   - E12-18
   rfc:
   - RFC-0008 A7
   skill: gkr-reduction-author
   crate: stele-lookup+stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-19-zk-gkr
   acceptance:
-  - fraction sources, zerochecks and sum as A7 with the zero-denominator abort; NC-0913 and NC-0914
+  - committed top (h·q = p, Σh = 0, no root revealed), masked layer steps with block claims in the shared source, the DenominatorZero abort; NC-0913 and NC-0914
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
