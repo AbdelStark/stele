@@ -2249,3 +2249,49 @@ Decision:
     factor. A5 item 3's 4 includes that factor.
 
 Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).
+
+## ADR-100: ZK-GKR over the A5 trees as engine components (RFC-0008 A7, task E12-19)
+
+Numbered after ADR-099.
+
+Context: RFC-0008 A7 masks A5's fraction trees for dev-zk. It specifies the
+committed top, the masked layer steps with their `s = 1` half, the per-layer
+blocks in the shared mask source and the `DenominatorZero` abort. It leaves the
+step algebra, the layouts and the degree of a masked step to the implementation.
+
+Decision:
+- `stele_reductions::zk::claims` takes lookups in its statement. The tree, top,
+  steps and finals live in its child module `lookup` (`src/zk_lookup.rs`) and reuse
+  E12-18's masked occurrences, batches and shared source.
+- The order:
+  - the claim sources, multiplicities included;
+  - each lookup's `β, α`;
+  - the top source and the shared source;
+  - the relations, including each lookup's `h·q − p = 0` and `Σ h = 0`;
+  - the GKR steps;
+  - the batches.
+- The first step is a zero-sum over masked occurrences of the top columns, so no
+  top value is revealed. Later steps carry the incoming claims' mask terms in their
+  `s = 1` half, whose block finals are claims in the shared batch.
+- A masked step's SC degree is the declared one (A5 item 3), not A7 item 6's 3. The
+  A7 implementation notes amend that line.
+- Controls and tests:
+  - NC-0913 runs through `claims::forge_layer`, an adversary with free rounds and
+    `μ` solved last, so that only the next step's claimed sum rejects the change.
+  - NC-0914 changes the block row's symbol in the shared opening.
+  - `rejects_unbound_block_finals` runs `claims::forge_block`. It moves both block
+    finals and keeps the step's final check intact. Removing the block claims from
+    the shared batch makes it accepted.
+- Scope: one unselected member per lookup, with `n ≥ c_D + 1`. Selectors,
+  several members, padding and A5's statement messages are left to E12-14.
+- Independent review (fix-then-merge, test gaps only):
+  - NC-0917 and NC-0918 cover the head and selector final checks, through the
+    `claims::forge_final` adversary.
+  - NC-0919 covers the top identity `h·q − p = 0` against a false lookup, through
+    `claims::forge_ratio`. Removing the identity makes it accepted.
+  - Tests at `n = c_D + 4` run the middle layers in both fields. They assert the
+    degrees 7, 7, 5, 4, a bad tuple, and χ² of a middle layer value.
+  - The A7 notes list the degrees per step. They add the ZD line `2^{n+1}·c/|K|`
+    per lookup: A5's `e` assumes the root check, which dev-zk replaces.
+
+Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).

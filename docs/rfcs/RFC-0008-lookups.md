@@ -509,3 +509,58 @@ Proposed text, for the dev-zk profile only; A5 is unchanged for every other use:
 
 Soundness impact: as item 6, for the dev-zk profile only. Affected tasks: E12-19
 (implements A7) and E12-14.
+
+**Implementation notes (E12-19, ADR-100).** These make the items above exact.
+Labels and the order of items 1–4 are unchanged.
+- **Item 6's SC line.** A masked step's degree is RFC-0013 A5 item 3's declared
+  degree, not 3. Each masked child raises its vanishing variable's degree, and both
+  children `q(·, 0)` and `q(·, 1)` share `q`'s vanishing variable in `q0·q1`. The
+  SC line is therefore `(k + 1)·δ_k`. This item replaces the `(k + 1)·3` of
+  item 6. The degrees, all asserted by tests:
+
+  | Step | `δ_k` | Why |
+  |---|---|---|
+  | first, `k = c_D + 1` | 7 | `u` is all of `x`, so `v ∈ u` |
+  | `k = c_D + 2` | 7 | `q`'s vanishing variable lies in `y` |
+  | middle, `k ≥ c_D + 3` | 5 | `v ∉ u` |
+  | leaf | 4 | |
+- **Zero-denominator line.** No root is checked under dev-zk. `h = p/q` at the top
+  is sound only when no leaf denominator vanishes. For a committed tuple or table
+  row, `α − Σ β^i x_i` is a degree-`c` polynomial in `(α, β)`, so by
+  Schwartz–Zippel some leaf vanishes with probability at most
+  `2^{n+1}·c/|K|` per lookup. This is LogUp's `(N + |T|)/|K|` pole event with the
+  compression degree.
+  - A5's `e` assumes nonzero root denominators, checked by `check_roots`. dev-zk
+    replaces that check with the top identity, so the term is charged here, as a
+    separate ZD line of `2^{n+1}·c/|K|` per lookup.
+  - The honest producer's `DenominatorZero` abort is the completeness side of the
+    same event.
+- **Tree layout.** Leaf `(x, h)` has `h` last: `(1, α − Σ β^i x_i)` for the
+  lookup and `(−mult, α − Σ β^i T_i)` for the table, padded rows `(0, 1)`. A
+  parent combines `(·, 0)` with `(·, 1)`, so the line challenge `t*` is the last
+  coordinate, as in A3.
+- **First step.** The claim on the committed top is never sent. The first step is
+  the zero-sum `Σ_x eq(r, x)·[F_λ(children) − V̇_p(x) − λ·V̇_q(x)] = 0`, on masked
+  occurrences of `p` and `q`. `r` is drawn with `ZeroWeight`.
+- **Later steps.** The `s = 1` half is `Σ_P λ^P·κ_P·eq(u_P, y)·[x̄ = 0]·r̃_P(t*, y)`.
+  `y` is `x`'s last `c_D + 1` variables, and `x̄` is the rest.
+- **Layer masks.** For a layer child, `v` is `x`'s first variable (for `p`) or
+  second (for `q`), and `u = y`. Blocks lie in the shared mask source from data
+  row `D` on, `4D` entries each, on `(T, y)`.
+- **Aborts.** The producer aborts in three cases:
+  - a layer child's `κ = 0` (`Vanishing`);
+  - a block whose three functionals have rank `< 3D` (`ClaimRank`);
+  - a zero top denominator (`DenominatorZero`).
+- **Controls added.** All go through the composed verifier, and each fails when its
+  check is removed:
+  - NC-0917: a later step's head final changed;
+  - NC-0918: a later step's selector final changed;
+  - NC-0919: a false lookup whose top `h ≠ p/q` sums to zero, with the identity
+    `h·q − p = 0` forged.
+
+  NC-0917 and NC-0918 expect `ClaimMismatch`; NC-0919 expects `RoundSumMismatch`,
+  at the shared batch.
+- **Scope of E12-19.** One unselected member per lookup with `n ≥ c_D + 1`
+  variables. Selectors (A5's selected product), several members, padding and A5's
+  statement and unit messages are wired by E12-14, which composes the
+  development proof.

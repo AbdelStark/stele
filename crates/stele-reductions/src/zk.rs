@@ -44,6 +44,9 @@ pub enum Error {
     Vanishing,
     /// Producer abort: a batch's final point has `w* = 0` (A5 item 4).
     BatchPoint,
+    /// Producer abort: a zero denominator in a lookup's committed top layer
+    /// (RFC-0008 A7 item 3).
+    DenominatorZero,
 }
 
 /// One bound masked instance: source bytes, certificate, rounds and opening.

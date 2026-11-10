@@ -144,6 +144,18 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk::run(911),
     },
     catalog::RegisteredControl {
+        id: 913,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk::run(913),
+    },
+    catalog::RegisteredControl {
+        id: 914,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || zk::run(914),
+    },
+    catalog::RegisteredControl {
         id: 915,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",
@@ -154,6 +166,24 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(916),
+    },
+    catalog::RegisteredControl {
+        id: 917,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk::run(917),
+    },
+    catalog::RegisteredControl {
+        id: 918,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk::run(918),
+    },
+    catalog::RegisteredControl {
+        id: 919,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk::run(919),
     },
     catalog::RegisteredControl {
         id: 1300,

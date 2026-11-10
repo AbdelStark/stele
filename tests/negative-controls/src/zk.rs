@@ -581,6 +581,7 @@ fn zk_statement() -> stele_reductions::zk::claims::Statement<QM31> {
                 cols: 1,
             },
         ],
+        lookups: Vec::new(),
     }
 }
 
@@ -685,6 +686,140 @@ fn nc_0916() -> Result<(), String> {
     .map_err(|e| format!("{e:?}"))
 }
 
+/// A one-lookup dev-zk statement: `x` (16 entries) into the table `3j + 1` with 12
+/// valid rows. QM31: top layer 3, one masked layer (4), leaves (5 variables).
+fn lookup_statement() -> stele_reductions::zk::claims::Statement<QM31> {
+    use stele_reductions::zk::claims::{Column, Lookup, Statement};
+    Statement {
+        sources: 1,
+        columns: (0..2)
+            .map(|_| Column {
+                source: 0,
+                log_len: 4,
+            })
+            .collect(),
+        relations: Vec::new(),
+        lookups: vec![Lookup {
+            columns: vec![0],
+            multiplicity: 1,
+            table: (0..16).map(|j| vec![3 * j + 1]).collect(),
+            valid: 12,
+        }],
+    }
+}
+
+fn lookup_witness() -> Vec<Vec<M31>> {
+    let mut counts = vec![0i64; 16];
+    let x = (0..16usize)
+        .map(|i| {
+            let j = (5 * i + 2) % 12;
+            counts[j] += 1;
+            M31::from_i64(3 * j as i64 + 1)
+        })
+        .collect();
+    vec![x, counts.into_iter().map(M31::from_i64).collect()]
+}
+
+fn lookup_control<H: ProverHook<stele_reductions::zk::claims::Proof<QM31>>>(
+    hook: &H,
+    expected: stele_reductions::zk::Error,
+) -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let statement = lookup_statement();
+    let t = || Transcript::<QM31>::new(b"dev-zk lookup control").expect("transcript");
+    check_proof_control(
+        || claims::prove(&statement, &lookup_witness(), Seed::new([13; 32]), &mut t()),
+        hook,
+        |proof| claims::verify(&statement, proof, &mut t()).map(|_| ()),
+        expected,
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// NC-0913 (RFC-0008 A7 item 4): the first GKR step reveals its masked layer value
+/// `p(x*, 0)` plus one. Its rounds are free and `μ` is solved last, so the step
+/// itself passes, and the prover continues from the true value. The next step's
+/// claimed sum is folded from the changed value, so its first round fails.
+fn nc_0913() -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let t = || Transcript::<QM31>::new(b"dev-zk lookup control").expect("transcript");
+    let forged = claims::forge_layer(
+        &lookup_statement(),
+        &lookup_witness(),
+        Seed::new([14; 32]),
+        &mut t(),
+        0,
+    )
+    .map_err(|e| format!("forger: {e:?}"))?;
+    lookup_control(
+        &ForgedProof(forged),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::RoundSumMismatch),
+    )
+}
+
+/// NC-0914 (RFC-0008 A7 item 4): one layer mask-block entry changed after the
+/// shared source's commitment. The blocks start at data row `D = 4`, so that row's
+/// symbol in the shared opening's first queried column no longer authenticates.
+fn nc_0914() -> Result<(), String> {
+    lookup_control(
+        &ZkProof(|proof| {
+            // Version byte, the 2C-entry row (C = 512, 16-byte QM31), then the first
+            // response: 32 salt bytes and one 4-byte symbol per row.
+            let at = 1 + 1024 * 16 + 32 + 4 * 4;
+            let symbol = &mut proof.shared_opening[at..at + 4];
+            let value = u32::from_le_bytes(symbol.try_into().expect("symbol"));
+            symbol.copy_from_slice(&((value + 1) % 0x7fff_ffff).to_le_bytes());
+        }),
+        stele_reductions::zk::Error::Pcs(Error::Merkle(stele_hash::merkle::Error::RootMismatch)),
+    )
+}
+
+/// NC-0917 and NC-0918 (RFC-0008 A7 item 4): the leaf step (a later step) reveals
+/// its head `(1 − s)·eq(r, x)` (input 0) or its selector `S_p` (input 1) plus one.
+/// Its rounds are free and `μ` is solved last, so the step's final check passes.
+/// The verifier's own evaluation of that public final rejects it.
+fn nc_public_final(input: usize) -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let t = || Transcript::<QM31>::new(b"dev-zk lookup control").expect("transcript");
+    let forged = claims::forge_final(
+        &lookup_statement(),
+        &lookup_witness(),
+        Seed::new([15; 32]),
+        &mut t(),
+        1,
+        input,
+    )
+    .map_err(|e| format!("forger: {e:?}"))?;
+    lookup_control(
+        &ForgedProof(forged),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::ClaimMismatch),
+    )
+}
+
+/// NC-0919 (RFC-0008 A7 item 3): a false lookup (`x = 2` once, not a table row)
+/// with the true top `p, q` committed and `h = p/q` shifted at one entry, so that
+/// `Σ h = 0` holds. The adversary forges the top identity `h·q − p = 0` (free rounds,
+/// `μ` solved last). Every other step is honest, so the shared batch, which binds
+/// that identity's `μ`, rejects it.
+fn nc_0919() -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let t = || Transcript::<QM31>::new(b"dev-zk lookup control").expect("transcript");
+    let mut false_witness = lookup_witness();
+    false_witness[0][3] = M31::from_i64(2);
+    let forged = claims::forge_ratio(
+        &lookup_statement(),
+        &false_witness,
+        Seed::new([16; 32]),
+        &mut t(),
+        0,
+    )
+    .map_err(|e| format!("forger: {e:?}"))?;
+    lookup_control(
+        &ForgedProof(forged),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::RoundSumMismatch),
+    )
+}
+
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
@@ -692,7 +827,12 @@ pub fn run(id: u16) -> Result<(), String> {
         910 => nc_0910(),
         911 => nc_0911(),
         915 => nc_0915(),
+        913 => nc_0913(),
+        914 => nc_0914(),
         916 => nc_0916(),
+        917 => nc_public_final(0),
+        918 => nc_public_final(1),
+        919 => nc_0919(),
         907 => nc_0907(),
         908 => nc_0908(),
         904 | 905 => nc_masked(id),

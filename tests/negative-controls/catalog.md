@@ -138,10 +138,13 @@
 | NC-0910 | dev-zk matmul | 0013 A5, 0026 A9 | a matmul claimed through a sent out~(ρ) instead of the zero-sum: development-form (degree-2) rounds in a composed proof | `ProofShape` | done |
 | NC-0911 | dev-zk claim | 0013 A5 | one claim-mask block of a source changed after its commitment: its row symbol in the batch opening of a composed proof | `RootMismatch` | done |
 | NC-0912 | dev-zk profile | 0013 A5, 0026 A9 | profile byte flipped between development and dev-zk | `StatementMismatch` | todo |
-| NC-0913 | dev-zk fraction | 0008 A7 | one masked layer value changed | `RoundSumMismatch` | todo |
-| NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment | `RootMismatch` | todo |
+| NC-0913 | dev-zk fraction | 0008 A7 | one masked layer value changed with the step itself intact (free rounds, μ solved last); the next step | `RoundSumMismatch` | done |
+| NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment: its row symbol in the shared opening | `RootMismatch` | done |
 | NC-0915 | dev-zk claim | 0013 A5 | batch weight on the w = 1 half made nonzero, sum-preserving, by an alternative batch prover | `FinalEvaluationMismatch` | done |
 | NC-0916 | dev-zk claim | 0013 A5 | A4's NC-0908 attack on a composed relation over honest sources: free rounds, μ solved last, true finals | `RoundSumMismatch` | done |
+| NC-0917 | dev-zk fraction | 0008 A7 | a later GKR step's head final (1 − s)·eq(r, x) changed, the step kept intact (free rounds, μ solved last) | `ClaimMismatch` | done |
+| NC-0918 | dev-zk fraction | 0008 A7 | a later GKR step's selector final S_p changed, the step kept intact (free rounds, μ solved last) | `ClaimMismatch` | done |
+| NC-0919 | dev-zk fraction | 0008 A7 | false lookup with the true top p, q and h ≠ p/q shifted to Σh = 0, the top identity h·q − p = 0 forged | `RoundSumMismatch` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
@@ -185,7 +188,9 @@ producer must refuse it. A reservation adds no coverage. E12-18 runs the control
 for 0910 and 0911 through the composed `zk::claims` verifier, and those for 0909
 and 0915 through `claims::verify_batch`, the batch verifier that the composed
 verifier calls once per source (ADR-099). Each control fails when its check is
-removed. The controls for 0912..0914 remain for E12-19 and E12-14. E12-18 also adds
+removed. E12-19 runs the controls for 0913 and 0914 through the composed verifier
+on a lookup statement; each fails when its check is removed. The control for 0912
+remains for E12-14. E12-18 also adds
 the control for 0916, from the independent review: A4's 0908 attack on a composed
 relation, rejected only by binding each relation's `μ` in the shared batch.
 

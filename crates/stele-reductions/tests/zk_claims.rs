@@ -33,6 +33,7 @@ fn rejects_statement_without_fresh_vanishing_variable() {
                 .map(|f| term(1, f))
                 .collect(),
         }],
+        lookups: Vec::new(),
     };
     let w = vec![vec![M31::ZERO; 8]; 4];
     assert_eq!(
@@ -108,6 +109,7 @@ fn statement<K: ChallengeField>() -> Statement<K> {
                 cols: 1,
             },
         ],
+        lookups: Vec::new(),
     }
 }
 
