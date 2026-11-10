@@ -1890,3 +1890,26 @@ there is no new line kind, label or challenge.
 
 Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
 review in the E16-19 PR).
+
+## ADR-093: llama2.c stories110M through the development prover (RFC-0026 A6, RFC-0018 A1, task E16-20)
+
+Context: E16-19 removed the 30-bit matmul limit that kept models larger than stories42M
+out of the development prover. stories110M (d = 768, 12 layers, V = 32000) is the next
+llama2.c checkpoint. Its head matmul has 31 bits.
+
+Decision:
+- `research/cqis-model-contract/stories110m.py` reuses the stories42M pipeline and CQIS
+  configuration at the new shape. It pins its own inputs and outputs by SHA-256; the
+  `.bin` digest equals the Hugging Face LFS digest. `stories42m.py` gains a `BIN` name,
+  and its own pinned digests are unchanged.
+- One proof at T = 64 is recorded in `bench/ledger/e16-20-dev-stories110m.json`, with the
+  four supplied-proof tampers rejected. The head is proven as two row blocks (A6).
+
+Consequences: fidelity is informative only
+(`agents/reviews/e16-20-stories110m/fidelity.json`). The validation perplexity is 2.124
+in fp32 and 2.130 under CQIS. The greedy continuations agree on 7 tokens, then diverge
+into different fluent text. The proof is about the CQIS continuation. Prove time and
+peak memory grow faster than the parameter count: 1979 s and 109.7 GB on the measured
+host. That host differs from E16-18, so the times are not compared.
+
+Status: Accepted (owner authorisation; independent review in the E16-20 PR).
