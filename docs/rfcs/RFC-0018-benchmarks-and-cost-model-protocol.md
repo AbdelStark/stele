@@ -31,3 +31,21 @@ Status: Accepted · Version: 0.1.0
 ## 4. Fitting the model
 `stele-bench fit` reads ledgers and produces `c_w, c_a, c_x, c_c, R` with confidence intervals; `docs/cost-model.md`
 is regenerated from the fit (never hand-edited numbers).
+
+## 5. Amendment log
+
+- **A1 — Development-profile records (task E16-11).** Accepted with ADR-089.
+  - **Motivation.** RFC-0026 §7 asks E16-11 to record development-profile prove/verify
+    time and proof size in `bench/ledger/`. Rule 1 names a profile and a Python verifier
+    time, but the development profile is not an RFC-0002 §8 profile, and RFC-0026 has no
+    Python verifier. Without this amendment those numbers have no admissible record.
+  - **Added text, §1 rule 5.** "5. A record of an RFC-0026 development-profile proof
+    sets `profile: "development"` and `kind: "inference"`. Its workload is
+    `dev/<name>`, with the model, `T`, tokens and checked range in `model_config`. It
+    states a Rust verifier time and a Python verifier time of 0, because RFC-0026 has no
+    Python verifier. Proof bytes and controls are required, as for any inference
+    record; the controls are tampers run through the verifier against the recorded
+    proof. A development record admits no profile and claims no security level. It is
+    not comparable with a W1–W8 record and is never an input to the §4 fit."
+  - **Soundness ledger.** No change. **Cost model.** No term moves (RFC-0026 §7).
+  - **Affected tasks.** E16-11 (validator, records).

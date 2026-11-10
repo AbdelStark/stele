@@ -110,6 +110,43 @@ fn accepts_micro_record_without_inference_evidence() {
     assert!(validate_ledger(value.to_string().as_bytes()).is_err());
 }
 
+/// RFC-0018 A1: a development record is an inference record on a `dev/` workload,
+/// with a Rust verifier time and no Python verifier time.
+#[test]
+fn accepts_development_record_without_python_verifier() {
+    let mut value: serde_json::Value = serde_json::from_str(VALID).expect("fixture JSON");
+    value["profile"] = "development".into();
+    value["workload"] = "dev/stories42m-t64".into();
+    value["verifier_time_ns"] = serde_json::json!({"rust":1,"python":0});
+    assert!(validate_ledger(value.to_string().as_bytes()).is_err());
+    value["model_config"]["statement"] =
+        serde_json::json!({"model":"ab","T":"64","tokens":"1,2","checked":"0..64"});
+    assert_eq!(validate_ledger(value.to_string().as_bytes()), Ok(()));
+    for (key, replacement) in [
+        ("verifier_time_ns", serde_json::json!({"rust":1,"python":1})),
+        ("verifier_time_ns", serde_json::json!({"rust":0,"python":0})),
+        ("workload", "W1".into()),
+        ("workload", "dev/".into()),
+        ("kind", "micro".into()),
+        (
+            "controls",
+            serde_json::json!({"total":0,"passed":0,"failed":0}),
+        ),
+        ("proof_size_bytes", 0u64.into()),
+        ("model_config", serde_json::json!({"statement":{"T":"64"}})),
+    ] {
+        let mut mutated = value.clone();
+        mutated[key] = replacement;
+        assert!(
+            validate_ledger(mutated.to_string().as_bytes()).is_err(),
+            "invalid {key}"
+        );
+    }
+    // A standard record still needs both verifiers and a W workload.
+    value["profile"] = "standard".into();
+    assert!(validate_ledger(value.to_string().as_bytes()).is_err());
+}
+
 #[test]
 fn matches_reference_documented_required_fields() {
     let schema: serde_json::Value =

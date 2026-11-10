@@ -2834,7 +2834,7 @@ tasks:
   - RFC-0018
   skill: benchmark-runner
   crate: stele-bench
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-11-real-model
   acceptance:

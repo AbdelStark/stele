@@ -86,7 +86,19 @@ pub fn validate_ledger(bytes: &[u8]) -> Result<(), String> {
         _ => return Err("unknown benchmark kind".into()),
     };
     let workload = text(&value["workload"])?;
+    // RFC-0018 A1: a development-profile record is an inference record on a `dev/` workload.
+    let development = match text(&value["profile"])? {
+        "standard" | "treaty" => false,
+        "development" => true,
+        _ => return Err("unknown profile".into()),
+    };
+    if development
+        && (!inference || !workload.starts_with("dev/") || workload[4..].trim().is_empty())
+    {
+        return Err("development record needs an inference dev/ workload".into());
+    }
     if inference
+        && !development
         && !matches!(
             workload,
             "W1" | "W2" | "W3" | "W4" | "W5" | "W6" | "W7" | "W8"
@@ -108,8 +120,12 @@ pub fn validate_ledger(bytes: &[u8]) -> Result<(), String> {
     {
         return Err("model_config must be a nonempty object".into());
     }
-    if !matches!(text(&value["profile"])?, "standard" | "treaty") {
-        return Err("unknown profile".into());
+    // RFC-0018 A1: the statement (model, `T`, tokens, checked range) is in `model_config`.
+    if development {
+        let statement = &value["model_config"]["statement"];
+        for key in ["model", "T", "tokens", "checked"] {
+            text(&statement[key])?;
+        }
     }
     if value["bindings_all_on"] != Value::Bool(true) {
         return Err("bindings_all_on must be true".into());
@@ -142,7 +158,13 @@ pub fn validate_ledger(bytes: &[u8]) -> Result<(), String> {
     if uint(&value["controls"]["failed"])? != 0 || uint(&value["controls"]["passed"])? != controls {
         return Err("controls failed or summary is inconsistent".into());
     }
-    if inference && (controls == 0 || rust == 0 || python == 0 || proof_bytes == 0) {
+    // RFC-0018 A1: RFC-0026 has no Python verifier, so a development record has none.
+    if development && python != 0 {
+        return Err("development record has no Python verifier".into());
+    }
+    if inference
+        && (controls == 0 || rust == 0 || (python == 0 && !development) || proof_bytes == 0)
+    {
         return Err("inference record needs controls, proof bytes, and both verifiers".into());
     }
     if !inference && (controls != 0 || rust != 0 || python != 0 || proof_bytes != 0) {

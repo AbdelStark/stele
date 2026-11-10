@@ -292,3 +292,59 @@ fn rejects_statement_and_container_tampers() {
         );
     }
 }
+
+/// E16-11: statement tampers against a proof written by `stele prove-dev`, for a real
+/// checkpoint (`docs/development-e2e.md`). `STELE_DEV_PROOF` names a directory holding
+/// `public.bin` and `proof.bin`. Each tamper fails fast at the header digest and, with
+/// the header restamped to the verifier's own digest, in the verifier proper.
+#[test]
+#[ignore = "needs STELE_DEV_PROOF: run with --release -- --ignored"]
+fn rejects_tampers_on_a_supplied_proof() {
+    let dir = std::path::PathBuf::from(std::env::var("STELE_DEV_PROOF").expect("STELE_DEV_PROOF"));
+    let (public, statement) =
+        bundle::decode(&std::fs::read(dir.join("public.bin")).expect("public.bin"))
+            .expect("bundle");
+    let proof = std::fs::read(dir.join("proof.bin")).expect("proof.bin");
+    let clock = Instant::now();
+    verify(&public, &statement, &proof).expect("honest proof");
+    eprintln!("honest: accepted in {} ms", clock.elapsed().as_millis());
+    let rejects = |name: &str, p: &Public, s: &Statement| {
+        assert_eq!(verify(p, s, &proof).err(), Some(Error::StatementMismatch));
+        let mut c = container::decode(&proof).expect("container");
+        c.statement = statement_digest_for(p, s).expect("digest");
+        let clock = Instant::now();
+        let error = verify(p, s, &c.encode()).expect_err(name);
+        eprintln!(
+            "{name}: rejected with {error:?} in {} ms",
+            clock.elapsed().as_millis()
+        );
+        error
+    };
+    // A wrong next token `y`, and a wrong first checked token.
+    let next = Statement {
+        next: statement.next.map(|y| y ^ 1),
+        ..statement.clone()
+    };
+    assert!(matches!(rejects("next", &public, &next), Error::Engine(_)));
+    let mut token = statement.clone();
+    token.tokens[statement.start as usize + 1] ^= 1;
+    assert!(matches!(
+        rejects("token", &public, &token),
+        Error::Engine(_)
+    ));
+    // A tampered model commitment: the first model source's root no longer matches its
+    // certificate (RFC-0026 §2.2). The other three tampers change the absorbed public input.
+    let mut weight = public.clone();
+    weight.commitment[0].0[0] ^= 1;
+    assert!(matches!(
+        rejects("weight", &weight, &statement),
+        Error::Commitment(_)
+    ));
+    // A tampered public norm gain (RFC-0026 A2).
+    let mut gain = public.clone();
+    gain.vectors[0].1[0] ^= 1;
+    assert!(matches!(
+        rejects("gain", &gain, &statement),
+        Error::Engine(_)
+    ));
+}
