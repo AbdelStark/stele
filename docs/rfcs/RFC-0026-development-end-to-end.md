@@ -850,10 +850,16 @@ byte-minimising `J`":
 > A9) with blow-up exponent 2. A source of `2^S` entries has `2^ell` rows of `2^m`
 > message elements, `ell + m = S`. The plan chooses the `ell` that minimises
 > certificate plus opening bytes under Policy 1 among the values A9 admits (ties: the
-> smallest `ell`). A source with no admitted `(ell, m)` is rejected (`Unsupported`)."
+> smallest `ell`). A source with no admitted `(ell, m)` is rejected (`Unsupported`).
+> A stacked source with `S > 30` is rejected, as before."
 
 Everything else in A4 and A5 stands: layout, block placement, ids, the `2^30` cap per
 model source, claim mapping, batching and one opening per source.
+
+These are version-1 sources, whose rows are evaluations (RFC-0010 A2). The recursive
+opening of RFC-0029 (Draft) needs coefficient-form rows, so task E19-03 changes the
+row map once more and proof bytes change a second time. The development tier has no
+long-lived model registration, so nothing needs migrating (RFC-0029 Q48).
 
 Soundness ledger: the PCS line of each such source becomes the Circle line of
 RFC-0012 A15 with A9's `N`, `D`, `e`, `q_c`, `q_o`. The v2 setup term leaves every
@@ -876,13 +882,20 @@ Replacement text, A3 "Concatenation", sentence "A check with `m > 30` is rejecte
 > an ordered list of **instances**. Members are placed in the A3 order; a new instance
 > starts when the next member would take the current one past `2^B` positions. A
 > member larger than `2^B` is first cut along its leading domain bits into aligned
-> blocks of `2^B` positions, each a member read through the same `Ref` with those bits
-> fixed. Each instance is one RFC-0008 A5 statement with its own multiplicity source,
+> blocks of `2^B` positions. A block is a member of its instance over the remaining
+> low bits; its value at the instance's point is the original member's column claim
+> at `(bits(block index) ‖ z_low)`, mapped through the member's `vars`. A `Ref`
+> cannot fix a bit (§3.1), so the block is defined by this claim point, not by a new
+> `Ref`. Each instance is one RFC-0008 A5 statement with its own multiplicity source,
 > in instance order; A3's member split applies inside each instance."
 
 Soundness: instances are independent A5 statements with their own draws; each keeps
 its own LU record and tree lines. Nothing is shared between them.
 Cost: one multiplicity source and one pair of trees per instance in place of one per
-check. Affected tasks: E20-02, E22-04.
+check. Proof bytes grow with the instance count: each instance carries its own tree
+proofs. That is acceptable at `B = 30`, where instances are few. It is not at the
+`standard` cap of RFC-0030 (Draft), where a large proof has thousands of instances;
+the data-parallel form of RFC-0030 Q49 is needed before any `standard` proof-size
+gate. Affected tasks: E20-02, E20-09, E22-04.
 Control: a member value moved across an instance boundary without its multiplicity
 is rejected by the receiving instance's root equation (`RootMismatch`).

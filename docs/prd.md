@@ -103,8 +103,8 @@ Added to §3:
 | ID | Goal | Metric | Target |
 |---|---|---|---|
 | G12 | Head-to-head | tokens per second on the published frontier workload (400B mixture-of-experts, 1,024-token windows, batch 24, one H100) | at least the published rate, with G13 and G14 met; then 2x |
-| G13 | Proof size, native | bytes per 1,024-token request | at most 4 MB (replaces G5's 200 MB as the working target; G5's wrapper target stands) |
-| G14 | Verification, native | seconds on commodity CPU | at most 2 s (tightens G4's 10 s) |
+| G13 | Proof size, native | bytes per 1,024-token request | at most 8 MB at gate M3 and 4 MB at gate M6 (replaces G5's 200 MB as the working target; G5's wrapper target stands) |
+| G14 | Verification, native | seconds on commodity CPU | at most 5 s at gate M3 and 2 s at gate M6 (tightens G4's 10 s) |
 | G15 | Latency | seconds for one request, not a batch | at most 10 s on an 8B model; at most 30 s on the 400B shape |
 | G16 | Fidelity reporting | what a model passport states | task benchmarks with paired standard errors and top-1 agreement with the float model, not perplexity alone |
 

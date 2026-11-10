@@ -3056,16 +3056,18 @@ tasks:
   depends:
   - E17-01
   rfc:
-  - RFC-0028 §2.3
-  - RFC-0028 §2.4
+  - RFC-0026 §2.3
+  - RFC-0026 §4
+  - RFC-0027 §2
   skill: protocol-architect
   crate: stele-ir+stele-reductions+stele-prover
   lane: P
   status: ready
   acceptance:
+  - a development-tier RFC-0026 amendment specifies segments and carried columns for committed columns (the text drafted in RFC-0028 §2.3 and §2.4, without virtual columns) and is Accepted in this task, with its control ids entered in the catalogue
   - validate enforces the segment rule; the engine commits, proves and opens one segment at a time and holds at most two
   - peak RSS on L2a is bounded by the two largest segments plus the model, shown by a ledger pair
-  - NC-1323 and NC-1324 run through the actual verifier; proof bytes are deterministic across two runs and two thread counts
+  - the two segment controls of that amendment (a read of a non-carried column of an earlier segment; two segment roots reordered) run through the actual verifier; proof bytes are deterministic across two runs and two thread counts
 - id: E18-07
   epic: E18
   title: Stacked weight phase with a fused opening
@@ -3097,6 +3099,7 @@ tasks:
   lane: P
   status: ready
   acceptance:
+  - an RFC-0026 amendment extends §1.1 to several windows per proof and to window lengths that are not powers of two, and is Accepted in this task
   - one proof covers B windows with independent checked ranges; weight reads do not grow with B
   - a window whose length is not a power of two is proved with public masks; padded positions are constrained to zero
   - L2b ledger at batch 1 and batch 8
@@ -3105,6 +3108,9 @@ tasks:
   title: Gate M2 - lean protocol
   depends:
   - E22-04
+  - E17-02
+  - E17-03
+  - E17-04
   - E18-05
   - E18-06
   - E19-04
@@ -3118,8 +3124,8 @@ tasks:
   gate: M2
   status: ready
   acceptance:
-  - L2a on the 24-thread reference class proves in at most 30 s, verifies in at most 2 s, with a proof of at most 4 MB and peak RSS of at most 4 GB
-  - L3b proves on at most 64 cores in at most 900 s
+  - L2a on the 24-thread reference class proves in at most 10 s, verifies in at most 2 s, with a proof of at most 4 MB and peak RSS of at most 4 GB
+  - L3b proves on at most 64 cores in at most 1800 s; its proof bytes, verify time and peak RSS are recorded
   - committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline on L2 and L3
   - proof bytes identical across two hosts; every control of the catalogue that the engine implements passes
 - id: E19-01
@@ -3135,8 +3141,8 @@ tasks:
   lane: C
   status: ready
   acceptance:
-  - an exact-integer checker derives the least query count per level for Policy 3 and its failure at one fewer, and prints proof bytes for sources of 2^20 to 2^34 entries
-  - the row-length and radius caps of RFC-0030 §3 are checked for every printed configuration
+  - an exact-integer checker derives the least query count per level for Policy 3 (RFC-0029 §5) and its failure at one fewer, and prints proof bytes for sources of 2^20 to 2^34 entries
+  - it prints each size twice - without caps and under the caps of RFC-0030 §3 - and prices the wider-field alternative of Q50 at 2^32 to 2^34 entries
   - RFC-0029 Accepted for the development tier with an ADR; NC-0630..0635 entered as reserved
 - id: E19-02
   epic: E19
@@ -3253,7 +3259,7 @@ tasks:
   - one thread pool replaces per-round thread spawning; lookup instances and matmul sumchecks run in parallel with a fixed transcript order
   - leaf layers stay in the base field; the first tree layers of small-domain tables are read from precomputed tables
   - RFC-0026 A7 Accepted; its control runs through the actual verifier; proof bytes of unsplit plans are unchanged
-  - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a
+  - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a; lookup-proof bytes recorded against the instance count at B = 30 and B = 23
 - id: E20-03
   epic: E20
   title: Backend trait with CPU reference and SIMD
@@ -3342,7 +3348,8 @@ tasks:
   - E20-07
   - E18-09
   - E18-07
-  - E21-04
+  - E18-08
+  - E21-09
   - E22-05
   rfc:
   - RFC-0027 §4
@@ -3357,6 +3364,23 @@ tasks:
   - committed cells per token at most 1/20 and lookup positions at most 1/8 of the E22-01 baseline on L3
   - CPU and GPU proofs byte-identical on 50 seeded L1 instances and on L2a
   - W1 recorded; cost-model constants fitted from ledgers by stele-bench fit
+- id: E20-09
+  epic: E20
+  title: Data-parallel lookup instances (Q49)
+  depends:
+  - E20-02
+  rfc:
+  - RFC-0030 §7
+  - RFC-0026 A7
+  - RFC-0008 A3
+  skill: sumcheck-prover-engineer
+  crate: stele-lookup+stele-reductions
+  lane: E
+  status: ready
+  acceptance:
+  - a development-tier amendment specifies one tree reduction over all instances of a check with shared challenges, one root pair and one multiplicity vector per instance, and states the pair round's error with its argument
+  - prover and verifier; a control with one false instance among many is rejected at that instance's root equation
+  - on L2b at B = 23 the lookup-proof bytes are at most twice those of the unsplit proof
 - id: E21-01
   epic: E21
   title: RFC-0030 accepted; per-round ledger
@@ -3420,6 +3444,7 @@ tasks:
   status: ready
   acceptance:
   - plan validation enforces the caps of RFC-0030 §3; a configuration below 100 bits is rejected
+  - formal/ holds the written soundness argument of every admitted capability (round-by-round statements, module uniqueness lemmas) as Workflow 10 requires
   - control coverage is complete for every implemented binding; the catalogue snapshot says so
   - the container parser and verifier survive the fuzz campaign of Workflow 05 without a panic
   - first standard ledger on L2a; the soundness-auditor review is recorded
@@ -3461,7 +3486,7 @@ tasks:
   epic: E21
   title: Gate M3 - admitted
   depends:
-  - E21-04
+  - E21-09
   - E21-05
   - E18-09
   rfc:
@@ -3472,7 +3497,7 @@ tasks:
   gate: M3
   status: ready
   acceptance:
-  - L2 and L3 proofs under standard with the least round at 100 bits or more from proven bounds
+  - L2 and L3 proofs under standard with the least round at 100 bits or more from proven bounds; the L3b proof is at most 8 MB and verifies in at most 5 s
   - the Python verifier agrees on 1000 proofs and rejects every mutation; stele-verifier is no_std within budget
   - the passport binds the checkpoint digest; control coverage is complete
 - id: E21-08
@@ -3480,6 +3505,7 @@ tasks:
   title: Gate M7 - treaty
   depends:
   - E21-07
+  - E21-06
   - E23-04
   - E22-09
   rfc:
@@ -3494,6 +3520,30 @@ tasks:
   - the least round at 128 bits or more from proven bounds; zero knowledge covering batches
   - a machine-checked top-level soundness statement; an external audit with no open critical finding
   - two independent verifiers agree on 10000 proofs
+- id: E21-09
+  epic: E21
+  title: Promote the lean protocol to standard
+  depends:
+  - E21-04
+  - E18-05
+  - E18-06
+  - E19-04
+  - E19-05
+  - E20-09
+  - E22-03
+  rfc:
+  - RFC-0027 §2
+  - RFC-0028
+  - RFC-0029
+  - RFC-0030 §3
+  skill: soundness-auditor
+  crate: all
+  lane: V
+  status: ready
+  acceptance:
+  - RFC-0028, RFC-0029, their companion amendments, RFC-0026 A6 and A7 and the model-class amendment of E22-03 are Accepted on the full path of Workflow 02
+  - every step of Workflow 10 for standard is met for virtual columns, segments, the recursive opening in both modes, data-parallel lookups and the 8B model class
+  - first standard ledgers on L2b and L3b with proof bytes, verify time and the least round in bits
 - id: E22-01
   epic: E22
   title: Static accounting of cells and lookups per token
@@ -3631,6 +3681,8 @@ tasks:
   - E23-04
   - E22-07
   - E22-08
+  - E11-03
+  - E11-05
   rfc:
   - RFC-0027 §4
   skill: integrator
@@ -3656,6 +3708,7 @@ tasks:
   status: ready
   acceptance:
   - both candidates prototyped on L1 with prover overhead, proof bytes and batch coverage measured
+  - for candidate A, the placement of randomiser coefficients and the admissible query sets with a proof that the randomiser block has full rank on each (RFC-0013 A2 item 1)
   - RFC-0013 A2 Accepted for the development tier with the chosen construction, its transcript order and its simulator sketch
 - id: E23-02
   epic: E23
@@ -3695,6 +3748,7 @@ tasks:
   depends:
   - E23-03
   - E18-09
+  - E18-08
   rfc:
   - RFC-0027 §4
   - RFC-0013

@@ -7,7 +7,10 @@ The run directory holds what `docs/development-e2e.md` ("Benchmark ledger") prod
 
   python3 bench/dev_e2e.py RUN_DIR OUT.json --workload dev/<name> --commit <sha> \
       --device "<cpu>" --toolchain "$(rustc -V)" --prompt-tokens P --threads N \
-      --model-config config.json --host-context "<host>" [--counters extra.json]
+      --model-config config.json --host-context "<host>" [--rung L1] [--counters extra.json]
+
+`--rung` names the ladder rung of RFC-0027 §3 and is written to `model_config.rung`
+(RFC-0018 A2).
 
 `--counters` names a JSON object of extra unsigned integer counters (for example the
 proof section bytes that `accepts_eight_layer_window` prints). They are merged into
@@ -48,6 +51,7 @@ def main():
     p.add_argument('--threads', type=int, required=True, help='hardware threads available to the run')
     p.add_argument('--host-context', required=True)
     p.add_argument('--counters', type=Path, help='JSON object of extra unsigned integer counters')
+    p.add_argument('--rung', help='ladder rung, for example L1 or L2a (RFC-0018 A2)')
     a = p.parse_args()
     run = a.run
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
@@ -64,6 +68,8 @@ def main():
     t = int(s['T'])
     plan = dict(command='stele prove-dev / verify-dev', statement=s, threads=a.threads,
                 model=json.loads(Path(a.model_config).read_text()))
+    if a.rung:
+        plan['rung'] = a.rung
     counters = {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
                 'public_bytes': len(public), 'checked_positions': end - start}
     if a.counters:

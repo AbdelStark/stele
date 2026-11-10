@@ -43,9 +43,11 @@ Three facts decide the plan:
 | End to end | one prefill window, greedy exact-match, development profile, CPU | E16-01..16 done; RFC-0026 |
 | GPU, distribution, wrapper, passport, `stele-verifier` | empty scaffolds (9 to 10 lines each) | `crates/stele-{gpu,dist,wrapper,passport,kernels,py,verifier}` |
 
-Volume: about 100,000 lines of Rust (a third of it tests), 65,000 lines of Python
-oracles and research checks, 63,000 lines of Markdown. 27 RFCs with 19 full-model
-appendices, 89 ADRs, 279 review notes, 37 ledgers, 142 control catalogue rows (71 done).
+Volume (tracked files at `6441a90`, counted with `git ls-tree -r` and `wc -l`): about
+100,000 lines of Rust (a third of it in test files), 74,000 lines of Python (oracles,
+research checks and tooling; 55,000 of them under `research/`) and 63,000 lines of
+Markdown. 27 RFCs with 19 full-model appendices, 89 ADRs, 279 review notes, 37
+ledgers, 142 control catalogue rows (71 done).
 
 The workspace is healthy. `cargo test --workspace --locked` passed 718 tests with 0
 failures (8 ignored) on a 4-core host in 559 s, build included.
@@ -78,10 +80,17 @@ Findings:
   distance needs up to 13,472 certificate and 6,714 opening queries (13,469 and 6,713
   at this proof's stacked geometry). The circle code at rate 1/4 needs 314 and 130
   under the same rule (RFC-0010 A3).
-- **Lookups and the batch opening are the prover.** A sampling profile of the 4-core
+- **Lookups and the batch opening are the prover.** A sampling profile of a 4-core
   run (22 stack samples during proving; a diagnostic, not a benchmark) put 11 samples
   in the lookup argument and 9 in the stacked-source claim batch and opening. The other
-  2 were in a sumcheck and in building tables.
+  2 were in a sumcheck and in building tables. Method: the release test
+  `accepts_eight_layer_window` of `stele-prover` ran while
+  `gdb -p <pid> -batch -ex "thread apply all bt 14"` attached to it in a loop with a
+  one-second pause, 29 times in all. Each sample is counted under the outermost
+  `stele_reductions::relation` frame of the main thread: `lookup::prove` 11,
+  `Opening::prove` 9. Attaching slows the run (62.3 s to prove, against 55.7 s in the
+  ledger), so the counts rank the phases and do not time them. Task E17-01 replaces
+  this with phase timers in the ledger.
 - **The witness is more than an order of magnitude too large.** For 64 tokens of the synthetic
   model the proof commits one stacked source of 2^25 cells (derived from the
   certificate size and the RFC-0026 A4 geometry rule) and runs lookups over about
@@ -91,8 +100,9 @@ Findings:
 - **Memory is one shot.** Every column is `i64`, every sumcheck table is a dense
   QM31 vector, and the whole window is resident. stories42M at T = 64 needs 37 GB.
 - **The verifier is linear in public data and slow.** 45 s for stories42M. On the
-  synthetic model, 3 of 6 verifier samples were in re-deriving the relation (table
-  generation included); the rest were in lookup and certificate checks.
+  synthetic model, 3 of the 6 samples taken during verification (same method) were in
+  re-deriving the relation (table generation included); the rest were in lookup and
+  certificate checks.
 
 What the development profile does not claim (RFC-0026 §1.2): any security level, zero
 knowledge, a passport, GPU parity, or a cost-model term.
@@ -157,11 +167,14 @@ its §3), more than the weights. Commitment cost
 
 **Security.** State soundness as "an adversary making Q hash queries wins with
 probability at most Q·ε_round + Q²/2^256", where ε_round is the largest round-by-round
-error. Then QM31 gives about 100 bits if each lookup check has at most about 2^22
-positions and each PCS row is short. A larger check is split into instances of that
-size, each with its own multiplicity source, so no second challenge pair is needed.
-128 bits needs a wider challenge field (OM31) throughout: a QM31 sumcheck round is
-already at 2^-122.
+error. Then QM31 gives 100 bits when every round's numerator is at most
+`⌊p^4/2^100⌋ = 2^24 − 1` (RFC-0030 §3, Draft). For a lookup that means instances of at
+most 2^23 positions against tables of up to 2^16 rows. A larger check is split into
+instances of that size, each with its own multiplicity source, so no second challenge
+pair is needed. The same cap applies to every commitment row and every batch. The
+split and the row cap both cost proof bytes unless RFC-0019 Q49 and Q50 are resolved
+(plan §2, bet B3). 128 bits needs a wider challenge field (OM31) throughout: a QM31
+sumcheck round is already at 2^-122.
 
 ## 6. The bar moved
 

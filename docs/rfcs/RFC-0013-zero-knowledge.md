@@ -88,9 +88,16 @@ machine-checked precedent for single proofs (FlashProve; ePrint 2026/391).
 Proposed construction (candidate A), replacing §3 on acceptance:
 
 > 1. **Encoding.** Every committed row carries `t` uniformly random coefficients
->    beside its message (RFC-0029 §7 reserves the slots). Any `t` positions of a row's
->    codeword are then uniform. The plan fixes `t` at least the number of positions
->    of that row opened over the source's lifetime.
+>    beside its message (RFC-0029 §7 reserves the slots). The construction must make
+>    every set of positions the verifier can open jointly uniform. That needs the
+>    randomiser block of the generator to have full rank on each such set. It is not
+>    automatic for the circle code, whose span is not MDS (RFC-0010 A2). Example: two
+>    randomisers in coefficient slots `C` and `C+1` use the functions `v_m` and
+>    `y·v_m`, both even in `x` for `m ≥ 2`, so the mirror positions `(x, y)` and
+>    `(−x, y)` share a randomiser row and their difference reveals the message part.
+>    The placement of the randomiser coefficients, the admissible query sets and the
+>    rank proof are part of the construction (task E23-01). The plan fixes `t` at
+>    least the number of positions of that row opened over the source's lifetime.
 > 2. **Row combinations.** Every committed source has mask rows. Each fold `u = aᵀM`
 >    includes a fresh mask row with a transcript coefficient, at every level.
 > 3. **Sumcheck messages.** Each sumcheck instance adds a committed low-degree mask

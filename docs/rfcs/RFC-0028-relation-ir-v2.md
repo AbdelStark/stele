@@ -3,8 +3,8 @@
 Status: Draft · Version: 0.1.0 · Depends: RFC-0006, RFC-0008, RFC-0012, RFC-0026, RFC-0027
 
 Scope: the development tier first (RFC-0027 §2). Nothing here is admitted to
-`standard` or `treaty` until Workflow 10 promotes it. Questions: Q31, Q34, Q35.
-Tasks: E18-01..E18-09.
+`standard` or `treaty` until Workflow 10 promotes it. Questions: Q31, Q34, Q35, Q43.
+Tasks: E18-01..E18-09. Companion amendments required at acceptance: §1.4.
 
 ## 1. Statement
 
@@ -25,9 +25,9 @@ after seeing the point, and the final check becomes one equation in a free unkno
 
 ### 1.2 The commit rule
 
-> A column is **committed** exactly when it is advice: its values are not a fixed
-> polynomial function of other columns under §2.1. Every other witness-side column is
-> **virtual** and is never committed.
+> A column is **committed** exactly when it is advice (its values are not a fixed
+> polynomial function of other columns under §2.1) or a carried segment boundary
+> (§2.3). Every other witness-side column is **virtual** and is never committed.
 
 Consequences for CQIS operations:
 
@@ -35,16 +35,33 @@ Consequences for CQIS operations:
 |---|---|---|
 | matmul `A = X·W` | — | `A` |
 | rounding `acc = 2^k·y + rem` | `y` | `rem = acc − 2^k·y` |
-| value wider than one table, `v = lo + 2^16·hi` | `hi` | `lo = v − 2^16·hi` |
+| virtual value wider than one table, `v = lo + 2^16·hi` | `hi` | `lo = v − 2^16·hi`; needs `mag(v) + 2^16·mag(hi) < p/2`, which holds for `|v| < 2^28` |
+| advice wider than one table | its limbs, each range-checked | `v = Σ 2^shift·limb` (linear in the limbs) |
 | sign and magnitude `x = (1−2σ)·a` | `σ` | `a = (1−2σ)·x` |
 | table `y = f(t)` | `y` (or neither, by an Accepted answer to Q35) | — |
-| masked or broadcast copy, residual add at equal scale | — | the copy or sum |
+| masked or broadcast copy, residual add at equal scale | — (the residual stream at a segment boundary is carried, §2.3) | the copy or sum |
 
 ### 1.3 What is unchanged
 
 The statement of RFC-0026 §1.1. The integer semantics of every relation (RFC-0026 §3).
 The plain checker as the oracle. The transcript labels. The module contract
 (`declare`, `assign`), except that a module declares which columns are virtual.
+
+### 1.4 Companion amendments required at acceptance
+
+This RFC cannot be Accepted alone. It changes what three Accepted texts say:
+
+- **RFC-0008 A7** (new). RFC-0008 A2 item 4 and A6 say virtual tuple columns are not
+  admitted, because nothing established that such a column is fixed before the Unit,
+  Beta and Alpha draws. A7 admits a tuple column that is virtual under §2.1 here: it
+  is a fixed polynomial function of columns whose roots are absorbed before those
+  draws (§2.4 steps 2.1 and 2.2 precede step 2.3).
+- **RFC-0026 A8** (new). It scopes a lookup check (A3) to one segment; it restates
+  A3's "split values bound" for a member value on a virtual column (the value is
+  absorbed when sent and then reduced under §2.4 step 4); and it carries the segment
+  rule of §2.3. Task E18-06 may accept the segment part first, for committed columns
+  only.
+- **RFC-0012 A17** (new). Ledger records for the reductions of §5; no new label.
 
 ## 2. Protocol (transcript order)
 
@@ -77,18 +94,27 @@ each virtual column's field value is the centered residue of its integer value.
 A range check or lookup whose tuple reads a virtual column is the way advice is
 constrained (for example `rem` in §1.2). The limb rule of RFC-0026 §3.5 stands: a
 range check covers at most 16 bits, so a virtual value that needs a wider one is
-split by committing its high limbs and checking the virtual low limb.
+split by committing its high limbs and checking the virtual low limb. The low limb's
+derived magnitude is `mag(v) + 2^shift·mag(hi)` and must stay below `p/2`; a virtual
+value too wide for that is restructured, never wrapped. Advice wider than 16 bits is
+committed as limbs and is itself linear in them, so its width never rests on a check
+that presumes it.
 
 ### 2.3 Segments
 
 Every commitment group belongs to a **segment**, numbered in plan order. A virtual
-column belongs to the highest segment among its operands. A relation belongs to the
-highest segment among its columns.
+column belongs to the highest segment among its operands; one whose operands are all
+weight or public columns (the embedding gather) belongs to the segment the plan
+declares it in. A relation belongs to the highest segment among its columns.
 
 A witness column may be declared **carried**. A relation or definition of segment `s`
-may read witness columns of segment `s`, carried columns of segment `s − 1`, weight
-columns and public columns. `validate` rejects anything else. The residual stream at a
-segment boundary is carried; nothing else needs to be.
+may read witness and virtual columns of segment `s`, carried columns of segment
+`s − 1`, weight columns and public columns. `validate` rejects anything else.
+
+The residual stream at a segment boundary is carried. It is a committed cut even when
+its value is arithmetic (an exact add): an identity of its segment equates it to the
+virtual expression, and the next segment reads the committed column. Nothing else
+needs to be carried.
 
 ### 2.4 Order
 
@@ -99,7 +125,10 @@ segment boundary is carried; nothing else needs to be.
    3. run the segment's zerochecks (RFC-0026 §4 step 4), its lookup checks (step 5)
       and any matmul relation that still has a committed output (step 6); each emits
       claims on columns of any kind;
-   4. **reduce.** For each virtual column of the segment, in decreasing `ColumnId`:
+   4. **reduce.** For each virtual column of the segment, in decreasing `ColumnId`
+      (columns of one definition kind and domain shape whose claims are all filed are
+      reduced together: their claim batches and their sumchecks are combined with one
+      coefficient per column, as RFC-0006 A2 batches instances):
       - `Linear`: for each claim `(z, c)` on `v`, the prover sends the operand
         evaluations `f̃(z|vars)`, which are absorbed; the verifier checks
         `c = constant + Σ c_i·f̃_i` and files each operand evaluation as a claim. No
@@ -113,7 +142,11 @@ segment boundary is carried; nothing else needs to be.
         sumcheck at that point (no fresh `relation/point` draw).
    5. batch the claims on segment `s − 1`'s stacked source, which are now complete,
       and open it; segment `s − 1` leaves memory.
-3. Open the last segment. Batch all weight claims per model source and open each once.
+3. Open the last segment. Batch all weight claims per model source and open each
+   once. This is the development form and reads each model source in the extension
+   field. The stacked weight phase (task E18-07) replaces it: one certified source
+   per weight role, one claim on it per proof, and an opening whose row combination
+   is the weight pass (RFC-0029 §1.3).
 
 For a relation with one segment and no virtual column, every engine message equals
 its RFC-0026 message; only the container framing of §2.5 differs.
@@ -129,8 +162,9 @@ or its sumcheck messages. The verifier derives every count and length.
 - `Linear`: one MLE evaluation per operand per claim (`2^n` small-by-extension
   products), no sumcheck, no commitment.
 - `Pointwise`: one batching sumcheck when the column has several claims, then one
-  degree-4 sumcheck over the column's domain. Merging the two is a possible
-  amendment once measured.
+  degree-4 sumcheck over the column's domain. Columns of one shape share both, so
+  proof bytes and verifier rounds grow with the number of shapes and levels, not with
+  the number of columns.
 - `Contraction`: one batching sumcheck over the `2^a` outputs when needed, one partial
   evaluation of each operand (`2^(a+s)` small-by-extension products each), one sumcheck over
   `2^(s+k)`. Each weight is read once per contraction it enters.

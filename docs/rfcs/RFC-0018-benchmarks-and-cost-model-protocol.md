@@ -58,7 +58,8 @@ is regenerated from the fit (never hand-edited numbers).
   - **Added text, §2.** "The ladder rungs of RFC-0027 §3 are workloads: `L0`, `L1`,
     `L2a`, `L2b`, `L3a`, `L3b`, `L3c` (identical to W1), `L4` (W3), `L5`, `L6`. A
     development record keeps the `dev/<name>` form of A1 and names its rung in
-    `model_config.rung`. A `standard` or `treaty` record uses the rung id as its
+    `model_config.rung`; records made before this amendment are mapped to their rung
+    by the generator. A `standard` or `treaty` record uses the rung id as its
     workload where no W id exists."
   - **Added text, §1 rule 6.** "6. `bench/scoreboard.md` is generated from
     `bench/ledger/` by `stele-bench scoreboard` (until task E17-02 lands, by

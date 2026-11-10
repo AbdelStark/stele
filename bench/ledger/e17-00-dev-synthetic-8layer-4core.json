@@ -54,6 +54,7 @@
   },
   "proof_sha256": "478300a1f9f42cea94909e82c69ff930af423681f8b43cbfe8d71e6ee125a7f4",
   "public_sha256": "b7f5bc4bd099b3727f552aafa9153b4cddd61763260f01af93f38a6e87b3a5f6",
+  "rung": "L1",
   "statement": {
    "T": "64",
    "checked": "0..64",
@@ -65,7 +66,7 @@
   "threads": 4
  },
  "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is GNU time maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
- "plan_digest": "cf6a9f63e44223159568b655788ab8a57edf000d6e9288f74031f5a608062e40",
+ "plan_digest": "8fce6aefd3145c645fc643729431ef4e1a92b7e2613376f8c2104152e1d85c1f",
  "profile": "development",
  "prompt_tokens": 1,
  "proof_size_bytes": 44963009,

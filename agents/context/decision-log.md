@@ -1896,22 +1896,35 @@ Decision (direction, not law):
 - **Commit rule (RFC-0028).** Commit exactly the advice: outputs of rounding,
   clamping, selection, digit splitting and tables. Arithmetic results are virtual
   columns reduced by sumcheck. The witness is proved in segments that carry only the
-  residual boundary. This is the sound form of INV-6 and answers Q31 for virtual
-  tuples. The first design's lookups over uncommitted tensors are not pursued.
+  residual boundary, which is committed even when its value is arithmetic. This is
+  the sound form of INV-6 and answers Q31 for virtual tuples. The first design's
+  lookups over uncommitted tensors are not pursued. Acceptance needs companion
+  amendments, because RFC-0008 A2 item 4 and A6 exclude virtual tuple columns today:
+  RFC-0008 A7, RFC-0026 A8 and RFC-0012 A17 (RFC-0028 §1.4).
 - **Commitment scheme v3 (RFC-0029).** Interleaved circle Reed–Solomon with a
-  recursive opening; fresh mode for per-proof sources, certified mode for model
-  sources; proven unique-decoding parameters only. Rows are in coefficient form (a
-  new code identity with the codewords of RFC-0010 A2), because the recursion needs
-  the code's evaluation functionals to be tensors. RFC-0026 A6 moves the development
-  engine from v2 expander sources to the circle sources that already exist.
+  recursive opening. Fresh mode for the stacked witness source of each segment and
+  for the recursion levels; certified mode for model sources, with one claim per
+  weight role so that the opening's row combination is the weight pass. Multiplicity
+  sources are in neither mode and keep their RFC-0010 A9 form until Q51 is answered.
+  Proven parameters only, at radius `D/3` (Policy 3: 241 queries per level at rate
+  1/4 for 100 bits). Rows are in coefficient form (a new code identity with the
+  codewords of RFC-0010 A2), because the recursion needs the code's evaluation
+  functionals to be tensors. Acceptance needs RFC-0010 A14 and RFC-0012 A17
+  (RFC-0029 §1.4). RFC-0026 A6 moves the development engine from v2 expander sources
+  to the circle sources that already exist.
 - **Security accounting (RFC-0030).** Round-by-round error with hash queries
-  multiplying the largest round; `standard` at 100 bits on QM31 with lookup instances
-  and commitment rows capped; `treaty` at 128 bits on a wider challenge field; no
-  grinding counted; proven bounds only in both. RFC-0026 A7 supplies the lookup
-  instance split.
+  multiplying the largest round; `standard` at 100 bits on QM31 with every round's
+  numerator capped at `2^24 − 1` (lookup instances, commitment rows, batches);
+  `treaty` at 128 bits on a wider challenge field; no grinding counted; proven bounds
+  only in both. RFC-0026 A7 supplies the lookup instance split. The caps cost proof
+  bytes (independent instances carry their own tree proofs; short rows mean many
+  rows) unless data-parallel instances (Q49) and the challenge field of the
+  commitment rounds (Q50) are decided first. Both are priced before promotion.
 - **Zero knowledge (RFC-0013 A2).** Bounded-query encodings, mask rows and committed
   sumcheck masks on scheme v3, with an opening budget and a published leak list; a
-  pad-and-prove construction is the alternative until task E23-01 decides.
+  pad-and-prove construction is the alternative until task E23-01 decides. The
+  encoding hides only when the randomiser block of the generator has full rank on
+  every queried set; E23-01 proves that or changes the encoding.
 - **Field.** M31 with QM31 challenges stays (ADR-002). A 64-bit field with
   random-projection range checks, as FlashProve uses, is not adopted; bet B2 of
   `docs/plan.md` states when to revisit it.
@@ -1927,9 +1940,13 @@ Alternatives rejected for now:
 
 Consequences:
 - Tasks E18-01, E19-01, E19-02, E20-02, E21-01 and E23-01 carry the acceptance of
-  these texts. Until then code follows the Accepted RFC-0026 and RFC-0010.
+  these texts. Until then code follows the Accepted RFC-0026 and RFC-0010. Task
+  E20-09 decides Q49. Task E21-09 is the promotion of the lean protocol to
+  `standard` and gates M3 and M4.
 - New control ids are proposed in the drafts (NC-0630..0635, NC-0806..0808,
   NC-1320..1325) and enter the catalogue at acceptance.
-- Questions Q34 to Q48 are opened in RFC-0019.
+- Questions Q34 to Q51 are opened in RFC-0019.
+- The drafts were reviewed once by an independent agent and its findings are applied
+  in the texts as recorded here. That review is not an acceptance review.
 
 Status: Proposed (Draft RFCs; each is decided by its acceptance task).

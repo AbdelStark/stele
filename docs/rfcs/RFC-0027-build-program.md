@@ -31,8 +31,8 @@ claim.
 | Tier | Profile | A capability enters when | A proof may claim |
 |---|---|---|---|
 | T0 | `development` (RFC-0026) | tests, plain-checker agreement, near-miss tests, determinism across two runs, a control for each new binding, a ledger for each number | nothing; the verifier prints "no security level" |
-| T1 | `standard` | T0, plus: its RFC text Accepted through Workflow 02 with the soundness-auditor sign-off; every round's error generated and checked by the verifier (RFC-0030); the independent Python verifier agrees; control coverage complete for its bindings; fuzzing of its parser | λ of at least 100 bits from proven bounds |
-| T2 | `treaty` | T1, plus: zero knowledge with a written simulator argument; proven-only bounds at 128 bits; a formal statement in `formal/` for each reduction and for the composition; external review | λ of at least 128 bits, zero knowledge |
+| T1 | `standard` | T0, plus: its RFC text Accepted through Workflow 02 with the soundness-auditor sign-off; its soundness argument written in `formal/`; every round's error generated and checked by the verifier (RFC-0030); the independent Python verifier agrees; control coverage complete for its bindings; fuzzing of its parser | λ of at least 100 bits from proven bounds |
+| T2 | `treaty` | T1, plus: zero knowledge with a written simulator argument; proven-only bounds at 128 bits; a machine-checked (Lean) statement for each reduction and for the composition; external review | λ of at least 128 bits, zero knowledge |
 
 Rules:
 
@@ -79,10 +79,10 @@ the milestone tasks of `agents/tasks/graph.yaml`.
 | M0 | Development end to end | E16-11 (done) | — |
 | M1 | First light on 8B | E22-04 | — |
 | M2 | Lean protocol | E18-09 | M1 |
-| M3 | Admitted (`standard`) | E21-07 | M2 |
-| M4 | GPU | E20-08 | M2, E21-04, E22-05 |
+| M3 | Admitted (`standard`) | E21-07 | M2, E21-09 |
+| M4 | GPU | E20-08 | M2, E21-09, E18-08, E22-05 |
 | M5 | Zero knowledge | E23-04 | M2, RFC-0029 Accepted |
-| M6 | Frontier | E22-09 | M4, M5 |
+| M6 | Frontier | E22-09 | M4, M5, E11-03, E11-05 |
 | M7 | Treaty | E21-08 | M3, M5, M6 |
 
 ## 5. Lanes
@@ -91,14 +91,18 @@ A lane owns crates and directories. It has at most one open change. Every change
 based on `main`; stacked changes are not allowed. A change that touches another
 lane's interface is made first, alone, and reviewed by that lane.
 
+A task may edit code another lane owns when its acceptance requires it. The change
+is then reviewed by the owning lane, counts as the editing lane's one open change,
+and waits if the owning lane has an open change on the same files.
+
 | Lane | Epic | Owns |
 |---|---|---|
 | B (bench) | E17 | `crates/stele-bench`, `bench/`, `.github/`, `scripts/` |
-| P (protocol) | E18 | `crates/stele-ir`, `crates/stele-reductions` (engine and modules), `crates/stele-prover` |
+| P (protocol) | E18 | `crates/stele-ir`, the relation engine (`crates/stele-reductions/src/relation*.rs`), `crates/stele-prover` |
 | C (commitment) | E19 | `crates/stele-code`, `crates/stele-pcs`, `crates/stele-hash` |
-| E (engine) | E20 | `crates/stele-sumcheck`, `crates/stele-lookup`, `crates/stele-gkr`, `crates/stele-poly`, `crates/stele-field`, `crates/stele-simd`, `crates/stele-kernels`, `crates/stele-gpu` |
-| V (verifier) | E21 | `crates/stele-verifier`, `crates/stele-proof`, `crates/stele-cli`, the Python verifier, `tests/negative-controls`, `formal/`, `docs/security/` |
-| N (numerics) | E22 | `crates/stele-cqis`, `harness/`, `research/cqis-*` |
+| E (engine) | E20 | `crates/stele-sumcheck`, `crates/stele-lookup`, `crates/stele-gkr`, `crates/stele-poly`, `crates/stele-field`, `crates/stele-simd`, `crates/stele-kernels`, `crates/stele-gpu`, `crates/stele-dist` |
+| V (verifier) | E21 | `crates/stele-verifier`, `crates/stele-proof`, `crates/stele-cli`, `crates/stele-passport`, `crates/stele-wrapper`, `crates/stele-py`, the Python verifier, `tests/negative-controls`, `formal/`, `docs/security/` |
+| N (numerics) | E22 | `crates/stele-cqis`, the proving modules (`crates/stele-reductions/src/development/` and the module files beside it), `harness/`, `research/cqis-*` |
 | Z (zero knowledge) | E23 | the masking and encoding changes inside P, C and E, by agreement with each lane |
 
 Interfaces between lanes: `stele_ir::relation` (P ↔ N, V); the source context and
@@ -162,7 +166,7 @@ and E23 task that adds a binding reserves its control id in its RFC or amendment
 
 ## 9. Open questions
 
-Q34 to Q48, mirrored in RFC-0019.
+Q34 to Q51, mirrored in RFC-0019.
 
 ## 10. Amendment log
 

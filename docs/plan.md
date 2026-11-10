@@ -22,8 +22,8 @@ The bar is set by FlashProve v0.16.0 (statement, numbers and sources in
 | Throughput, same workload | 111 tok/s, Maverick shape, one H100, batch 24 | at least that, then 2x | M6 |
 | Throughput, dense 8B | 1.25 positions/s in the open (SASH); 195 tok/s claimed at batch 4, closed and unreproduced (Attestable) | 230 tok/s on one H100 at batch 24, the frontier's rate per active weight; stretch 460 (PRD §7) | M4 |
 | Single-request latency | 58.8 s (400B MoE) | under 30 s on that shape; under 10 s on 8B | M4, M6 |
-| Proof per 1,024-token request | 18.78 MB | at most 4 MB | M2 |
-| Verify | 17 to 21 s | at most 2 s | M2 |
+| Proof per 1,024-token request | 18.78 MB | at most 8 MB under `standard`, then 4 MB | M3, M6 |
+| Verify | 17 to 21 s | at most 5 s under `standard`, then 2 s | M3, M6 |
 | Context | 1,024 fixed | 16,384, every generated token checked | M6 |
 | Soundness | "about q/2^124 + 2^-101", Lean-checked for a Lean verifier; 96 bits without grinding by its own accounting | 100 bits without grinding (standard); 128 (treaty); machine-checked statement | M3, M7 |
 | Zero knowledge | single-request proof; batches open | weights and activations hidden, batches included | M5, M7 |
@@ -58,9 +58,9 @@ Each bet has a kill criterion. A killed bet triggers its fallback, not a debate.
 |---|---|---|---|
 | B1 | **Commit only advice.** Virtual columns for every arithmetic result (accumulators, recombinations, masks, remainders) cut committed cells per token by at least 10x and lookups by at least 5x with the numerics unchanged (RFC-0028). | On L2, after E18-05, cells per token fall by less than 4x. | Keep committed accumulators where virtualisation loses; spend the effort on the engine. |
 | B2 | **A 31-bit field with exact lookups beats a 64-bit field with approximate range checks.** Small values, memory-bound sumchecks and 4-byte cells outweigh the extra lookups. | After M2, lookups exceed 70% of prove time on L3 and E20-02 cannot bring a lookup under 150 M31 multiplications. | Random-projection range checks where slack exists (Q37); revisit the field only with a ledger. |
-| B3 | **Interleaved circle-RS with a recursive succinct opening** gives at most 4 MB proofs with proven unique-decoding parameters, and the weight opening costs one row combination (RFC-0029). | The parameter script cannot reach 100 bits under 6 MB at 2^30 cells, or the recursion costs over 15% of prove time on L3. | Non-succinct circle sources (already implemented) for the witness; succinct mode for weights only. |
+| B3 | **Interleaved circle-RS with a recursive succinct opening** gives proofs of a few megabytes with proven parameters, and the weight opening costs one row combination (RFC-0029). | The parameter script (E19-01) cannot show 100 bits under 8 MB for a 2^32-cell witness under the RFC-0030 caps, with Q49 and Q50 priced, or the recursion costs over 15% of prove time on L3. | Non-succinct circle sources (already implemented) for the witness and succinct mode for weights only; or a wider challenge field for the commitment rounds. |
 | B4 | **Numerics co-designed with the proof.** Static power-of-two scales with channel equalisation and 16-bit inputs to norms and softmax hold G7 while removing attained maxima, variable division and the limb chains of wide scaled products (Q36). With B1 that reaches 1/20 of today's cells and 1/8 of today's lookups. | The best static configuration misses the grouped-dynamic baseline by more than 0.5% perplexity or 1 pp on ARC or MMLU-Pro. | Keep grouped dynamic rows; make them cheaper with a zero-product attained-max argument (Q43) and accept a lower M4 rate. |
-| B5 | **Lanes, a scoreboard and tiers.** Agents working in parallel lanes against one scoreboard deliver faster than one serial queue, without losing soundness discipline. | Two consecutive milestones slip on integration conflicts, or a control regression reaches `main`. | Fall back to one integration queue for protocol crates; keep lanes for bench, numerics and GPU. |
+| B5 | **Lanes, a scoreboard and tiers.** Agents working in parallel lanes against one scoreboard deliver faster than one serial queue, without losing soundness discipline. | Two gate runs fail on a line whose cause is an integration conflict between lanes, or `main` is reverted under INV-15 three times within one gate's work, or a control regression reaches `main`. | Fall back to one integration queue for protocol crates; keep lanes for bench, numerics and GPU. |
 
 ## 3. Target design
 
@@ -142,6 +142,8 @@ to send.
 - The row combination of the weight opening is the weight pass of the matmul
   sumcheck when the stacked phase is on (the fused opening, ST-2).
 - Segments are separate commitments opened in one batch.
+- Query counts follow Policy 3 (radius `D/3`): 241 per level at rate 1/4 for 100 bits.
+  A larger proven radius is Q39.
 - The layout reserves randomiser coefficients and mask rows from the start, empty
   until zero knowledge is on.
 
@@ -161,6 +163,15 @@ below the profile.
 | development | none claimed | printed, labelled | no | QM31 |
 | standard | at least 100, no grinding counted | proven only | optional until M5 | QM31, with lookup checks and PCS rows capped so each round clears 100 |
 | treaty | at least 128 | proven only | mandatory | a wider field for every challenge (a QM31 sumcheck round is 2^-122); E12-03 decides which |
+
+100 bits on QM31 has a price in proof bytes, in two places. A lookup check must be
+split into instances of at most 2^23 positions; with independent instances a large
+proof would carry tens of megabytes of tree proofs, so the instances must share
+challenges and one tree reduction (Q49, task E20-09). A commitment row must be
+short; a large witness then has many rows and megabytes of opened columns unless the
+commitment's own challenges come from a wider field (Q50, priced by task E19-01).
+The development tier has neither cap, so these costs appear only at admission. The
+M3 gate therefore carries its own proof-size line.
 
 ### 3.7 Zero knowledge (RFC-0013 A2, Draft)
 
@@ -230,27 +241,29 @@ commitment scheme v3.
 |---|---|---|
 | M0 | Development end to end | Done: L2a proved and verified (E16-11). |
 | M1 | **First light on 8B** | L3a: a real prompt and greedy reply through the CLI, development tier, one CPU host with at most 512 GB RAM. Statement tampers and NC-1300..1310 rejected on that proof. Ledger recorded; no time or size cap. |
-| M2 | **Lean protocol** | L2a on the 24-thread reference class: prove at most 30 s, verify at most 2 s, proof at most 4 MB, RSS at most 4 GB. L3b on at most 64 cores: at most 900 s. Committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline. Proof bytes identical across hosts. |
-| M3 | **Admitted** | L2 and L3 proofs under `standard`: λ at least 100, proven terms only, ledger generated and checked by the verifier. Python verifier agrees on 10^3 proofs and rejects every mutation. `stele-verifier` is `no_std` within budget. Control coverage 100% of implemented bindings. Passport binds the checkpoint digest. |
+| M2 | **Lean protocol** | L2a on the 24-thread reference class: prove at most 10 s, verify at most 2 s, proof at most 4 MB, RSS at most 4 GB. L3b on at most 64 cores: at most 1,800 s, with proof bytes and verify time recorded. (The two time lines ask for the same speed: L3b is about 500 times the work of L2a.) Committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline. Proof bytes identical across hosts. |
+| M3 | **Admitted** | L2 and L3 proofs under `standard`: λ at least 100, proven terms only, ledger generated and checked by the verifier. L3b proof at most 8 MB, verified in at most 5 s. Written soundness arguments in `formal/`. Python verifier agrees on 10^3 proofs and rejects every mutation. `stele-verifier` is `no_std` within budget. Control coverage 100% of implemented bindings. Passport binds the checkpoint digest. |
 | M4 | **GPU** | L3b on one H100 under `standard`: at least 230 tok/s at batch 24, single request at most 10 s, CPU and GPU proofs byte-identical. Cells at most 1/20 and lookups at most 1/8 of the baseline (needs the numerics of E22-05). W1 recorded. Constants fitted from ledgers. |
 | M5 | **Zero knowledge** | Weight-hiding and activation-hiding proofs on L3b with a published leak list, written simulator argument, opening budget enforced. Prover overhead at most 15%. |
-| M6 | **Frontier** | L5 on one H100: at least 111 tok/s at batch 24, proof at most 4 MB, verify at most 2 s, single request at most 30 s. W6 proved with every generated token checked. Committed-seed sampling. Eight-GPU efficiency at least 0.8 on W4. |
+| M6 | **Frontier** | L5 on one H100: at least 111 tok/s at batch 24, proof at most 4 MB per request, verify at most 2 s, single request at most 30 s. W6 proved with every generated token checked. Committed-seed sampling. Eight-GPU efficiency at least 0.8 on W4. |
 | M7 | **Treaty** | λ at least 128, proven only, zero knowledge covering batches. Machine-checked top-level soundness statement. External audit with no open critical finding. Two independent verifiers agree on 10^4 proofs. |
 
 ## 6. Lanes and the task graph
 
-Seven lanes. A lane owns crates, has at most one open change at a time, and bases every
-change on `main`. Lanes meet only at stable interfaces: the relation IR, the source
-context of the commitment scheme, the backend trait, the ledger schema.
+Seven lanes. A lane owns crates and directories, has at most one open change at a
+time, and bases every change on `main`. Lanes meet at stable interfaces: the relation
+IR, the source context of the commitment scheme, the backend trait, the ledger
+schema. A task that must edit another lane's code is reviewed by that lane
+(RFC-0027 §5).
 
 | Lane | Epic | Owns | First tasks |
 |---|---|---|---|
 | B: bench | E17 | `stele-bench`, `bench/`, CI | stage counters, scoreboard, real gates in place of scaffold fingerprints |
-| P: protocol | E18 | `stele-ir`, relation engine, modules | RFC-0028, linear then contraction virtual columns, segments |
+| P: protocol | E18 | `stele-ir`, the relation engine, `stele-prover` | RFC-0028, linear then contraction virtual columns, segments |
 | C: commitment | E19 | `stele-code`, `stele-pcs` | circle sources in the engine, RFC-0029, recursive opening |
 | E: engine | E20 | `stele-sumcheck`, `stele-lookup`, `stele-kernels`, `stele-gpu` | typed columns, thread pool, lookup fast path, backend trait, CUDA |
 | V: verifier | E21 | `stele-verifier`, `stele-proof`, Python verifier, controls, `formal/` | RFC-0030, verifier crate, Python verifier, admission |
-| N: numerics | E22 | `stele-cqis`, `harness/`, model modules | accounting tool, wide residual modules, first light, static-scale experiment |
+| N: numerics | E22 | `stele-cqis`, `harness/`, the proving modules | accounting tool, wide residual modules, first light, static-scale experiment |
 | Z: zero knowledge | E23 | masks and encodings across P, C, E | RFC-0013 A2, then implementation on v3 |
 
 Critical path to each gate:
@@ -258,8 +271,9 @@ Critical path to each gate:
 - **M1:** E17-01 → E22-03 (wide residual) and E18-06 (segments) → E22-04.
   Accelerators that are not required: E19-02, E18-02, E20-02.
 - **M2:** E18-01..05, E19-02..04, E20-01..02, E22-01.
-- **M3:** E21-01..05 on top of E19-02 and E20-02; E21-06 for the formal statements.
-- **M4:** E20-03..08, E18-07, E22-02 and E22-05.
+- **M3:** E21-01..05 on top of E19-02 and E20-02, then the promotion E21-09, which
+  needs E20-09 and E19-05.
+- **M4:** E20-03..08, E18-07, E18-08, E22-02 and E22-05.
 - **M5:** E23-01..03 on top of E19-05 and E19-06.
 
 Legacy epics E6 to E15 stay in the graph as the treaty backlog. RFC-0027 §6 lists
@@ -268,9 +282,11 @@ which tasks are superseded, which are parked and which resume at which gate.
 ### First ten moves
 
 1. Stage timers and cell, lookup and byte counters in the prover and the ledger (E17-01).
-2. Circle sources for the stacked and model commitments (E19-02). Projection from the
-   RFC-0010 A9 wire shape, to be measured by the task: on L1 the stacked certificate
-   and the source openings fall from 35.3 MB to about 3.4 MB.
+2. Circle sources for the stacked and model commitments (E19-02). Projection, to be
+   measured by the task: with the RFC-0010 A9 wire shape
+   `1 + 16·C + q·(4·R + 32·log2 N)` and Policy 1's 314 and 130 queries, the L1
+   stacked certificate and source openings fall from 35.3 MB to about 3.3 MB (stacked
+   source at `m = 15`: 1.98 MB and 1.13 MB; model opening 0.19 MB).
 3. One thread pool; parallel lookup checks and matmul sumchecks (E20-02).
 4. Typed columns; no `i64` or dense QM31 before the first sumcheck fold (E20-01).
 5. The static accounting tool for cells and lookups per token (E22-01).
@@ -280,9 +296,9 @@ which tasks are superseded, which are parked and which resume at which gate.
 9. Segments with residual boundaries (E18-06).
 10. Llama-3.1-8B first light (E22-04).
 
-Five lanes can start at once: B on move 1, C on move 2, N on moves 5 and 8, P on
-RFC-0028 (E18-01) and V on RFC-0030 and the verifier crate (E21-01, E21-02). Lane E
-starts when the stage counters of move 1 exist.
+Five lanes can start at once, one task each: B on move 1, C on move 2, N on move 5
+(then 8), P on RFC-0028 (E18-01) and V on the verifier crate (E21-02, then RFC-0030
+in E21-01). Lane E starts when the stage counters of move 1 exist.
 
 ## 7. Operating model
 
@@ -292,9 +308,9 @@ starts when the stage counters of move 1 exist.
    moved or a named risk retired. No task ends with "no credit".
 3. **Three tiers.** Development: tests, plain-checker agreement, determinism, controls
    for new bindings, a ledger for any number. Standard: adds the soundness-auditor
-   review, generated accounting from proven bounds, Python parity and full control
-   coverage. Treaty: adds 128 bits, zero knowledge, formal statements and an external
-   audit.
+   review, a written soundness argument in `formal/`, generated accounting from proven
+   bounds, Python parity and full control coverage. Treaty: adds 128 bits, zero
+   knowledge, machine-checked statements and an external audit.
 4. **Short specifications for the development tier.** A development-tier protocol
    change is an amendment of at most a page, accepted by one reviewer from another
    lane. Promotion to `standard` takes the full review of Workflow 02.
@@ -325,6 +341,9 @@ Mirrored as numbered questions in RFC-0019, where each track states its kill cri
 - Q46, Q47: knowledge soundness for consumers that need an extractor; the
   post-quantum claim.
 - Q48: the identity of the coefficient-form circle code.
+- Q49: data-parallel lookup instances with shared challenges.
+- Q50: the challenge field of the commitment rounds; the per-round proximity bound.
+- Q51: multiplicity-source openings under the recursive scheme.
 - Q12, restated by RFC-0030: the theorem and constants for the Fiat–Shamir step.
 
 **Machine learning**
@@ -343,6 +362,7 @@ Mirrored as numbered questions in RFC-0019, where each track states its kill cri
 |---|---|---|
 | Virtual columns hide a soundness gap | a near-miss control passes | the plain checker and controls land before each conversion; Q34 statement before `standard` |
 | Parameter choices drift from proven theorems | a ledger line without a theorem id | RFC-0030 table; the verifier rejects unknown evidence ids |
+| 100 bits on QM31 costs proof bytes (split lookups, short rows) | the first `standard` ledger on L3b exceeds 8 MB | Q49 and Q50 are decided by tasks E20-09 and E19-01 before the promotion E21-09 |
 | GPU work starts before the protocol settles | kernels rewritten twice | kernels are primitives behind a trait; the protocol composes them |
 | Fidelity regresses while chasing proof cost | G7 delta grows | every numerics amendment carries a paired run on the fixed protocol |
 | Lanes collide | repeated rebases on the relation IR | interface changes merge first; fallback in bet B5 |
