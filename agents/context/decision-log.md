@@ -1851,3 +1851,47 @@ Decision:
   reproducible across machines, so ledgers must not record them from `std` builds.
 
 Status: Accepted.
+
+## ADR-091: Q12 resolved for the classical ROM; standard PCS parameters admitted with grinding (task E12-22)
+
+Context: Q12 (RFC-0019) had blocked every profile.
+
+- The §4 FS line was a placeholder.
+- RFC-0002 §8, read as a total error of 2^-100 against 2^80 queries, could not be
+  certified by any Fiat–Shamir bound with 256-bit digests: the hash term alone is
+  about 2^-94.
+- RFC-0010 A3 item 7's hand derivation failed both profiles.
+- The stories42M development proof (113.4 MB) is dominated by v2 Policy 1 queries
+  (13,471 and 6,713), while its LogUp rounds are only 2^-97.
+
+Decision:
+
+- **FS theorem.** Adopt `formal/fs-composition.md` Theorem 1: classical ROM,
+  round-by-round, counted grinding, error `Q·ε* + ε_floor + H* + ε_setup`, with
+  Lemmas 2–6 as the per-round errors. Lemma 4 makes a LogUp (β, α) draw one round
+  and charges source-tuple collisions.
+- **Profile meaning.** It becomes per-query (RFC-0002 A1). λ = 100 (standard) or
+  128 (treaty) and g = 8. The four conditions (C1)–(C4) of RFC-0012 A17 are
+  checked by the verifier.
+- **H line.** H* replaces A15's H line for profile ledgers.
+- **Grinding.** Grinding is a transcript primitive: A1 frame tag 3, label
+  `stele/v0.1/grind`, and the least nonce. Only LU, PCS tensor and PCS column
+  rounds may grind.
+- **Policy 2** (RFC-0010 A14) is admitted for the standard profile, for Circle and
+  v2 identities: unique decoding, a column target of 2^-92 and k_q = 16. Treaty is
+  recorded only as conditional counts.
+- **Not adopted.** Johnson-radius, OOD binding and capacity conjectures.
+
+Consequences:
+
+- **Projected proof size.** The stories42M statement is projected at 91.7 MB with
+  v2 sources or 18.3 MB with Circle rate-1/4 sources, against 113.4 MB today. This
+  is a study, not a benchmark. The Circle switch waits for the E16-30 encoding
+  benchmark.
+- **Grinding cost.** About 3.1·10^6 BLAKE3 calls per proof.
+- **Development profile.** Unchanged: Policy 1, interactive ledger, no profile.
+- **Open:** QROM, ZK composition (Q29), exact native round enumeration (E8-05),
+  the consumers (E12-23) and R-FORMAL.
+
+Status: Accepted (owner authorisation for autonomous amendment acceptance, after the
+Workflow 02 passes in `agents/reviews/q12-amendments-acceptance.md`).

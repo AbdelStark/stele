@@ -2361,6 +2361,57 @@ tasks:
   - least query counts verified with exact integers for all 59 Circle and 12 v2 identities at the standard and treaty column targets
   - stories42M per-round and floor conditions computed for Policy 1, Policy 2 v2 and Policy 2 Circle, with grinding cost
   - proven, conditional and approximate figures labelled; Johnson-radius route analysed and not adopted without a theorem
+- id: E12-22
+  epic: E12
+  title: 'Q12 amendments (RFC-0012 A17, RFC-0010 A14, RFC-0002 A1) and the transcript grinding primitive'
+  depends:
+  - E12-21
+  rfc:
+  - RFC-0012 A17
+  - RFC-0010 A14
+  - RFC-0002 A1
+  skill: soundness-auditor
+  crate: stele-hash
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-22-q12-amendments
+  acceptance:
+  - Workflow 02 passes and an independent review recorded; ADR-091; RFC-0000 index and Q12 resolution updated
+  - Transcript::grind / verify_grind implement A17 item 5 byte for byte, with independent Python vectors (research/transcript/check_grind.py)
+  - registry entry stele/v0.1/grind mapped to FS in docs/security/transcript-labels.json and the soundness-accounting gate
+  - NC-0806/0807 reserved as todo for E12-23; no control credit from primitive tests
+- id: E12-23
+  epic: E12
+  title: Policy 2 and grinding consumers (stele-pcs certificate/opening, LU and tensor rounds) with controls
+  depends:
+  - E12-22
+  rfc:
+  - RFC-0010 A14
+  - RFC-0012 A17
+  skill: pcs-engineer
+  crate: stele-pcs
+  status: ready
+  acceptance:
+  - policy byte 2 sources with the A14 u16 tables; resolver returns Policy 2 for standard and UnsupportedParameters otherwise
+  - column-round nonce (k_q=16) and tensor-round nonce (least k) on the certificate/opening wires; LU (beta, alpha) nonce at the least k
+  - independent Python wire parity; NC-0806 and NC-0807 through the actual certificate and opening verifiers
+  - Policy 1 proof bytes unchanged (E16-10 fixture hashes stay pinned)
+- id: E16-30
+  epic: E16
+  title: Development proof on Circle rate-1/4 sources under Policy 2; encoding benchmark and ledger
+  depends:
+  - E12-23
+  - E16-18
+  rfc:
+  - RFC-0026 §2
+  - RFC-0010 A14
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-prover
+  status: ready
+  acceptance:
+  - measured prove/verify time, peak RSS and proof bytes for the synthetic 8-layer model and stories42M against the E16-18 entries
+  - RFC-0026 amendment only if the measured encoding cost is accepted; projected 18.3 MB proof bytes confirmed or refuted
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)

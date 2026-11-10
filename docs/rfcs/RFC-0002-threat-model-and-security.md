@@ -60,3 +60,37 @@ bound, masked-entry leakage, wrong sampling seed. Each control states the RFC se
 | ZK | optional | mandatory |
 | Merkle/hash output | 256-bit | 256-bit, leaves domain-separated |
 | grinding allowance | 2⁸⁰ | 2¹⁰⁰ |
+
+## 9. Amendment log
+
+### A1 — Profile security as a per-query bound (Q12)
+
+Status: Accepted. Question Q12. Task E12-22. Companions RFC-0012 A17 and RFC-0010 A14.
+Decision: ADR-091. Review: [Q12 acceptance](../../agents/reviews/q12-amendments-acceptance.md).
+Evidence: [fs-composition.md §5](../../formal/fs-composition.md#5-profile-condition-answer-to-q12s-query-cap-question).
+
+Motivation: §8 pairs a total error (2⁻¹⁰⁰, 2⁻¹²⁸) with a grinding allowance (2⁸⁰,
+2¹⁰⁰). Read as "total error against that many adversary queries", no bound of the
+Fiat–Shamir form with 256-bit digests can certify it: the hash term alone is about
+2^-94 at 2^80 queries. Q12 asked for a convention that can be certified.
+
+Exact replacement for §8's "total error" and "grinding allowance" rows:
+
+| | standard | treaty |
+|---|---|---|
+| security level λ, slack g (RFC-0012 A17) | λ = 100, g = 8 | λ = 128, g = 8 |
+| guarantee, for every adversary with Q ≤ Q_cap random-oracle queries | `ε(Q) ≤ Q·2^-(λ+g) + 2^-λ + H*(Q+Q_V)` | same |
+| query cap Q_cap (the old grinding allowance) | 2^80 | 2^100 |
+
+The guarantee follows from RFC-0012 A17's conditions (C1)–(C4). It is a per-query
+statement with a floor of 2^-λ. It is **not** a total error of 2^-λ against Q_cap
+queries: at standard and Q = 2^80 it is about 2^-28. This is the usual meaning of
+"λ-bit security" for hash-based arguments. It is a deliberate change of convention:
+the earlier reading could not be certified by any bound of this form with 256-bit
+digests. Merkle and transcript digests stay 256-bit in both profiles; RFC-0012 §3's
+192-bit truncation is not admitted in a profile. Every other §8 row is unchanged.
+Treaty admission still requires its other rows (ZK, LogUp challenges, proven-only
+PCS), and RFC-0012 A17 admits none of them.
+
+Soundness impact: this is a definition. RFC-0012 A17 supplies the theorem that
+meets it. Cost impact: none. Affected tasks: E8-05 (profile check), E12-22.

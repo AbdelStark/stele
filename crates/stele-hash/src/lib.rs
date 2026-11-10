@@ -45,6 +45,12 @@ pub enum Error {
     InvalidColumnDomain,
     /// All 64 outer column candidates were rejected; abort the attempt.
     ColumnSamplingExhausted,
+    /// Grinding bits must lie in 1..=MAX_GRIND_BITS (RFC-0012 A17).
+    InvalidGrindBits,
+    /// The supplied nonce fails the proof-of-work predicate; state unchanged.
+    GrindMismatch,
+    /// No nonce in the u64 range passed; abort the proof attempt.
+    GrindExhausted,
 }
 /// Operation class of a registered label (RFC-0012 A1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,6 +61,8 @@ pub enum LabelKind {
     Absorb,
     /// A field challenge request and its state update.
     Challenge,
+    /// A counted proof-of-work nonce before a round's challenges (RFC-0012 A17).
+    Grind,
 }
 /// Soundness family owned by a challenge or actual point consumer (RFC-0012 §4, A14).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -82,7 +90,7 @@ pub struct RegistryEntry<'a> {
     /// Algebraic soundness line, in addition to the existing FS/H assumptions.
     pub loss: Option<LossLine>,
 }
-const REGISTRY: [RegistryEntry<'static>; 46] = [
+const REGISTRY: [RegistryEntry<'static>; 47] = [
     RegistryEntry {
         label: "stele/v0.1/public",
         kind: LabelKind::Constructor,
@@ -313,7 +321,16 @@ const REGISTRY: [RegistryEntry<'static>; 46] = [
         kind: LabelKind::Challenge,
         loss: Some(LossLine::Sz),
     },
+    // RFC-0012 A17: grinding changes the FS line's per-round factor, no algebraic loss.
+    RegistryEntry {
+        label: "stele/v0.1/grind",
+        kind: LabelKind::Grind,
+        loss: None,
+    },
 ];
+const GRIND: usize = 46;
+/// Largest admitted grinding difficulty (RFC-0012 A17 item 3).
+pub const MAX_GRIND_BITS: u8 = 32;
 
 /// Validate names, uniqueness and accounting at the production registry boundary.
 /// The public validator supports configuration controls; callers cannot replace REGISTRY.
@@ -340,7 +357,7 @@ pub fn validate_registry(entries: &[RegistryEntry<'_>]) -> Result<(), Error> {
 
 /// Return the fixed production registry only after its validation succeeds.
 /// This is metadata, not an API for importing alternate labels or transcript state.
-pub fn registry() -> Result<&'static [RegistryEntry<'static>; 46], Error> {
+pub fn registry() -> Result<&'static [RegistryEntry<'static>; 47], Error> {
     validate_registry(&REGISTRY)?;
     Ok(&REGISTRY)
 }
@@ -609,6 +626,70 @@ impl<K: ChallengeField> Transcript<K> {
         .as_bytes();
         Ok(value)
     }
+    /// Prover: least nonce passing the A17 predicate at `bits`, then absorb it.
+    /// Deterministic (INV-8); every attempt is counted in `usage`.
+    pub fn grind(&mut self, bits: u8) -> Result<u64, Error> {
+        check_grind_bits(bits)?;
+        for nonce in 0..=u64::MAX {
+            if self.pow(bits, nonce)? {
+                self.absorb_nonce(bits, nonce)?;
+                return Ok(nonce);
+            }
+        }
+        Err(Error::GrindExhausted)
+    }
+    /// Verifier: check the proof's nonce at the expected `bits`, then absorb it.
+    /// `bits` comes from the verifier's expected context, never from the proof.
+    pub fn verify_grind(&mut self, bits: u8, nonce: u64) -> Result<(), Error> {
+        check_grind_bits(bits)?;
+        if !self.pow(bits, nonce)? {
+            return Err(Error::GrindMismatch);
+        }
+        self.absorb_nonce(bits, nonce)
+    }
+    // A17: w = u64le(first 8 bytes of H(frame(S, 3, grind, u8(k) || u64le(n)))), valid iff w mod 2^k = 0.
+    fn pow(&mut self, bits: u8, nonce: u64) -> Result<bool, Error> {
+        let payload = grind_payload(bits, nonce);
+        let digest = frame(
+            &self.state,
+            3,
+            REGISTRY[GRIND].label,
+            &payload,
+            &mut self.usage,
+        )?
+        .finalize();
+        let mut word = [0; 8];
+        word.copy_from_slice(&digest.as_bytes()[..8]);
+        Ok(u64::from_le_bytes(word).trailing_zeros() >= u32::from(bits))
+    }
+    fn absorb_nonce(&mut self, bits: u8, nonce: u64) -> Result<(), Error> {
+        let payload = grind_payload(bits, nonce);
+        self.state = *frame(
+            &self.state,
+            0,
+            REGISTRY[GRIND].label,
+            &payload,
+            &mut self.usage,
+        )?
+        .finalize()
+        .as_bytes();
+        Ok(())
+    }
+}
+
+fn check_grind_bits(bits: u8) -> Result<(), Error> {
+    if (1..=MAX_GRIND_BITS).contains(&bits) {
+        Ok(())
+    } else {
+        Err(Error::InvalidGrindBits)
+    }
+}
+
+fn grind_payload(bits: u8, nonce: u64) -> [u8; 9] {
+    let mut payload = [0; 9];
+    payload[0] = bits;
+    payload[1..].copy_from_slice(&nonce.to_le_bytes());
+    payload
 }
 
 fn frame(
@@ -623,6 +704,12 @@ fn frame(
         HashUsage {
             xof_requests: 1,
             xof_bytes: 256,
+            ..HashUsage::default()
+        }
+    } else if tag == 3 {
+        // A17 PoW attempt: an ordinary hash that updates no state.
+        HashUsage {
+            hash_evaluations: 1,
             ..HashUsage::default()
         }
     } else {
@@ -684,6 +771,9 @@ mod tests;
 
 #[cfg(test)]
 mod transcript_tests;
+
+#[cfg(test)]
+mod grind_tests;
 
 #[cfg(test)]
 mod usage_tests;

@@ -90,6 +90,27 @@ in E8-05/E12-09; do not infer certification from a transcript KAT or a placehold
 RFC-0012 A7 proposes v2 all-seed setup accounting, independent of quantum seed
 selection in the ideal oracle. Joint composition with quantum FS/H remains required.
 
+Q12 resolution (classical ROM): RFC-0012 A17, RFC-0010 A14 and RFC-0002 A1 are
+Accepted (ADR-091). The evidence is [fs-composition.md](../../formal/fs-composition.md),
+whose Theorem 1 is the FS theorem with counted grinding, and the
+[parameter study](../../research/fs-pcs/PARAMETERS.md).
+
+- **Query-cap convention.** A per-query bound with a 2^-λ floor, for Q ≤ Q_cap.
+  2^-λ against Q_cap queries cannot be certified with 256-bit digests.
+- **Admitted.** The standard profile's PCS parameter set (Policy 2) and its FS
+  ledger.
+- **Not admitted.** Treaty.
+
+What remains is listed in fs-composition.md §7:
+
+- quantum adversaries (QROM);
+- ZK composition (Q29);
+- exact round enumeration and (C1)–(C4) checks in the native generator (E8-05);
+- the Policy 2 and grinding consumers (E12-23);
+- machine-checked statements (R-FORMAL).
+
+Q33's other promotion obligations are unchanged.
+
 Q11 resolution: RFC-0012 A1 Accepted with same-author skill reviews. E2-00
 implements the kernel; E2-01 retains every original acceptance criterion and
 waits for E3-01's real consumers. Q12 remains open and blocks profile certification.

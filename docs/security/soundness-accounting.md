@@ -8,10 +8,10 @@ Total error ε = Σ SC + Σ SZ + Σ RLC + Σ LU + Σ PCS + Σ MASK + FS + H (RFC
 | SZ | RFC-0024 actual-tail equality | `m/p^d`, zero at m=0 | conditional interactive (RFC-0012 A14) |
 | RLC | RLC batch reductions | `t/|K|` | yes |
 | LU | one joint record per lookup instance (RFC-0012 A8/A11) | `min(1,(h+N+c·t−1)/|K|)^r`, b=min(m,30), h=m−b; tree/PCS terms separate; the r-th power is interactive only, FS term per Q12 | conditional interactive (RFC-0008 A2/A5) |
-| PCS | each certificate attempt; each opening; v2 setup once per ledger (RFC-0012 A15) | certificate `2·ell·(e+1)/|K|+((N−e−1)/N)^q_c`; opening `((N−D+e)/N)^q_o`; setup `200431782/2^160` if a v2 source with J≥4 is present; Merkle lift under H | conditional interactive, proven terms only (RFC-0010 A3: Diamond–Posen Thm 2 at e≤(D−1)/3; no Johnson/capacity conjecture); no profile admitted, FS per Q12 |
+| PCS | each certificate attempt; each opening; v2 setup once per ledger (RFC-0012 A15) | certificate `2·ell·(e+1)/|K|+((N−e−1)/N)^q_c`; opening `((N−D+e)/N)^q_o`; setup `200431782/2^160` if a v2 source with J≥4 is present; Merkle lift under H | conditional interactive, proven terms only (RFC-0010 A3: Diamond–Posen Thm 2 at e≤(D−1)/3; no Johnson/capacity conjecture); standard admits Policy 2 with grinding (RFC-0010 A14, RFC-0012 A17); treaty not admitted |
 | MASK | per masked instance | `≤ 1/|K|` | yes |
-| FS | adaptive queries `Q` + grinding | ROM bound | assumption A2 |
-| H | collisions and late preimages of frozen digests (RFC-0012 A15, RFC-0010 A8) | `min(1,[C(Q_total,2)+Σ_{r=1..R_max}(1+2·Q_pre,r)·Q_after,r]/2^λ)`, A8's deterministic caps, λ=256 (192 for truncated standard Merkle) | assumption A1 |
+| FS | adaptive queries `Q` + grinding (RFC-0012 A17) | `Q·ε* + ε_floor`, ε* = max_i ε_i·2^-k_i, ε_floor = Σ over the proof's rounds | proven in the classical ROM (formal/fs-composition.md Theorem 1), assumption A2 |
+| H | collisions and late preimages of frozen digests (RFC-0012 A15, RFC-0010 A8); profile ledgers use `H*(Q_t)=[C(Q_t,2)+3·Q_t²]/2^256` (A17) | `min(1,[C(Q_total,2)+Σ_{r=1..R_max}(1+2·Q_pre,r)·Q_after,r]/2^λ)`, A8's deterministic caps, λ=256 (192 for truncated standard Merkle) | assumption A1 |
 
 Illustrative treaty budget for W4 appears in RFC-0012 §5; the generator must reproduce it. The gate
 `scripts/gates/soundness-accounting.sh` diffs the generator's instance enumeration against the transcript labels actually
@@ -1883,3 +1883,52 @@ Status of the lines:
   what promotion to `standard` requires.
 - Column-of-group claims (RFC-0026 §2.3) are Boolean-point restrictions, so they
   add no SZ term.
+
+## Q12: Fiat–Shamir composition and profile admission (RFC-0012 A17, RFC-0010 A14, RFC-0002 A1)
+
+A profile ledger lists rounds, not records.
+
+- **What a round is.** A round is a maximal run of `challenge` requests with no
+  absorb between them.
+- **Per-round errors.** Each round carries its RBR error ε_i
+  ([fs-composition.md §4](../../formal/fs-composition.md#4-round-families-rbr-errors-lemmas-26))
+  and its grinding bits k_i.
+- **Records that span rounds.** An SC record (`m·δ`, `j+D+j·δ`) is the sum of its
+  rounds' errors.
+- **LU.** An LU check is one (β, α) round, charged `((c−1)(N+|T|) + N+|T|−1)/|K|`.
+- **Grinding.** The label `stele/v0.1/grind` maps to the FS line. It adds no
+  algebraic loss; it divides a round's per-query term by 2^k.
+
+A configuration is admitted to a profile with (λ, g, Q_cap) only if (C1)–(C4) hold:
+
+- (C1) every round has `ε_i·2^-k_i ≤ 2^-(λ+g)`;
+- (C2) `Σ_rounds ε_i·2^-k_i + ε_setup ≤ 2^-λ`;
+- (C3) `H*(1+Q_V) ≤ 2^-λ` and `H*(Q_cap+Q_V) ≤ (Q_cap+1)·2^-λ`;
+- (C4) grinding is used only in LU, PCS tensor and PCS column rounds, at the least
+  sufficient k.
+
+The admitted profiles are:
+
+- **Standard:** λ = 100, g = 8, Q_cap = 2^80, with PCS Policy 2 (column target
+  2^-92, k_q = 16).
+- **Treaty:** not admitted.
+
+The guarantee is `ε(Q) ≤ Q·2^-(λ+g) + 2^-λ + H*(Q+Q_V)`. That is a per-query
+bound with a 2^-λ floor, not 2^-λ against Q_cap queries (RFC-0002 A1).
+
+**Status of the lines under a profile.**
+
+- **PCS:** proven. Diamond–Posen Theorem 2 at e ≤ ⌊(D−1)/3⌋, the query lemmas and
+  Theorem 1.
+- **FS:** proven in the classical ROM.
+- **H:** assumption A1, with the global H*.
+
+**Development proofs (RFC-0026)** are unchanged: Policy 1, an interactive ledger, and
+no profile. Under the standard rule they would fail: worst round 2^-97.0 (LU
+range_8), floor 2^-95.6
+([parameter study §4](../../research/fs-pcs/PARAMETERS.md)).
+
+**Open:** QROM; ZK composition (Q29); the native generator's exact round enumeration
+and its (C1)–(C4) checks (E8-05); and the Policy 2 and grinding consumers (E12-23,
+NC-0806/0807).
+

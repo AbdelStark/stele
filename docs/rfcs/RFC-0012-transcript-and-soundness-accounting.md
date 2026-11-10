@@ -766,3 +766,148 @@ Addition to the A1 registry, in this order after the existing entries:
   certifies no security level, and Q12 still blocks profile certification.
 - Cost-model terms: none. Affected tasks: E16-02 (registers the labels in
   `stele-hash` and `docs/security/transcript-labels.json`), E16-10.
+
+### A17 — Fiat–Shamir theorem, per-query profile convention, H* and counted grinding (Q12)
+
+Status: Accepted. Question Q12. Task E12-22. Companions RFC-0010 A14 and RFC-0002 A1.
+Decision: ADR-091. Review: [Q12 acceptance](../../agents/reviews/q12-amendments-acceptance.md).
+Evidence:
+- [fs-composition.md](../../formal/fs-composition.md): Theorem 1, Lemmas 2–6 and §5,
+  with its [review](../../agents/reviews/q12-fs-composition.md);
+- [PCS parameter study](../../research/fs-pcs/PARAMETERS.md), with its
+  [review](../../agents/reviews/q12-parameter-study.md).
+
+**Motivation.** The §4 FS row, "(Q_hash + grind)·ε_round-max with Q ≤ 2^{80|100}",
+is a placeholder, and it cannot be certified as written.
+
+- Read with RFC-0002 §8's totals (2^-100 against 2^80 queries), no bound of this form
+  with 256-bit digests can meet the target. The hash term alone is about 2^-94 at
+  2^80, and every round would have to be at most 2^-180.
+- A15's H line sums late-preimage terms per registration. Under adaptive Fiat–Shamir
+  registration that sum grows like Q³.
+- RFC-0010 A3 item 7's hand derivation therefore failed both profiles, and no
+  profile could admit a PCS parameter set.
+
+**1. FS row.** Exact replacement for §4's FS row:
+
+| Line | Term | Formula |
+|---|---|---|
+| FS | Fiat–Shamir, classical random-oracle model | `Q·ε* + ε_floor`. Here `ε* = max_i ε_i·2^-k_i` over every round reachable under the admitted shapes, and `ε_floor = max_x Σ_{i∈rounds(x)} ε_i·2^-k_i` over one verification. ε_i is round i's round-by-round error and k_i its grinding bits (fs-composition.md Theorem 1). |
+
+**2. H row for profile ledgers.** Exact replacement for §4's H row, as amended by A15,
+in any ledger that admits a profile:
+
+| Line | Term | Formula |
+|---|---|---|
+| H | collisions, forward guessing and late hits of frozen digests | `H*(Q_t) = [C(Q_t,2) + 3·Q_t²]/2^256`, with Q_t = Q + Q_V; 256-bit digests only |
+
+Q is the adversary's oracle queries, every grinding attempt included. Q_V is the
+verifier's queries on the proof. A15's per-registration formula stays the
+conditional interactive record of development ledgers. It is not used for profile
+admission.
+
+**3. Rounds and their errors.**
+
+- A round is a maximal run of `challenge` requests with no absorb between them.
+- ε_i is the per-round RBR error given in the table of fs-composition.md §4.
+- A ledger record that sums rounds is split per round before the profile check: SC
+  `m·δ`, and zerocheck `j+D+j·δ`.
+- Each LU check is one round: β and then α, with no absorb between them. It is
+  charged `((c−1)(N+|T|) + N+|T|−1)/|K|`. That is the recorded numerator for c = 1,
+  and at most 2·numerator+1 for c = 2.
+
+**4. Profile condition.** Exact replacement for §4's last sentence, for the FS and H
+lines. A configuration is admitted to a profile with level λ, slack g and query cap
+Q_cap only if every one of the following holds. All are computed by the verifier from
+the expected statement with exact integers.
+
+- (C1) Every reachable round has `ε_i·2^-k_i ≤ 2^-(λ+g)`.
+- (C2) `ε_floor + ε_setup ≤ 2^-λ`, where ε_setup is A7's term when a v2 J≥4 source
+  is present.
+- (C3) `H*(1+Q_V) ≤ 2^-λ` and `H*(Q_cap+Q_V) ≤ (Q_cap+1)·2^-λ`.
+- (C4) Grinding is used only in the families of item 5, and each k_i is the least
+  value that meets (C1). Any other round that fails (C1) rejects the configuration
+  as UnsupportedParameters.
+
+Under (C1)–(C4), for every adversary with Q ≤ Q_cap queries:
+
+```
+Pr[accept a false statement] ≤ Q·2^-(λ+g) + 2^-λ + H*(Q+Q_V)
+```
+
+"False" is relative to the frozen oracles of RFC-0010 A8, as F1/F2 in
+fs-composition.md §3. The parameters are fixed by RFC-0002 A1:
+
+- standard: λ = 100, g = 8, Q_cap = 2^80;
+- treaty: λ = 128, g = 8, Q_cap = 2^100.
+
+This amendment admits no treaty configuration. Treaty also needs ZK (Q29) and its
+other RFC-0002 §8 rows.
+
+**5. Grinding.** Exact replacement for §2's grinding bullet.
+
+- **Where a nonce goes.** A round with k ≥ 1 is preceded by a prover nonce
+  `n ∈ [0, 2^64)`, written u64le in the consumer's wire immediately before the
+  round. Let S be the state after the round's last prover message.
+- **PoW predicate.** `w = u64le(first 8 bytes of BLAKE3(frame(S, 3, L, u8(k) || u64le(n))))`.
+  The nonce is valid iff `w mod 2^k = 0`. The A1 frame tag 3 is new and used only
+  here.
+- **Absorb.** On a valid nonce, `S ← H(frame(S, 0, L, u8(k) || u64le(n)))`. The
+  round's challenge requests follow.
+- **Label.** L is `stele/v0.1/grind`.
+- **Who sets k.** The verifier derives k from the expected context, never from a
+  proof byte.
+- **Prover.** It sends the least valid nonce, so the nonce is deterministic (INV-8).
+- **Verifier.** It makes one PoW query.
+- **Errors.** GrindMismatch rejects an invalid nonce, and InvalidGrindBits rejects
+  k outside 1..=32. Both leave S unchanged and abort the attempt.
+- **Families that may grind:**
+  - PCS column rounds, with k_q from RFC-0010 A14;
+  - PCS tensor (CertificateWeight) rounds;
+  - LU (β, α) rounds.
+
+  For the last two, k is the least value meeting (C1), and k = 0 means no nonce.
+
+**6. Registry.** Addition to the A1 registry, after the A16 entries:
+
+| Kind | Label | Line |
+|---|---|---|
+| grind | `stele/v0.1/grind` | FS (the per-round factor 2^-k; no algebraic loss) |
+
+**7. Accepted text superseded for the standard profile.**
+
+- RFC-0010 A3 item 7: the Q·ε hand derivation and its treaty counts.
+- §5's FS illustration.
+- RFC-0026 §1.2's "Q12 is open" and "No PCS parameter set is admitted for any
+  profile". RFC-0026 development proofs are unchanged: they still use Policy 1 and
+  report the interactive ledger, and they certify no profile.
+
+**Soundness impact.**
+
+- Proven, as paper proofs and not machine-checked: Theorem 1 in the classical ROM,
+  and Lemmas 2–6, which restate Accepted interactive lemmas round by round. The
+  imported theorem is Diamond–Posen Theorem 2, already adopted by RFC-0010 A3.
+- Conditional on: BLAKE3 as a random oracle; the A8 frozen oracle; the A7 setup
+  event; the RFC-0010 A3 item 3 distances.
+- No Johnson-radius, list-decoding or capacity statement is used.
+- **Changed convention.** "λ bits" now means a per-query bound with a 2^-λ floor. It
+  does not mean 2^-λ against Q_cap queries. At standard and Q = 2^80 the
+  guarantee is about 2^-28.
+- **Open:** quantum adversaries (QROM); ZK composition (Q29); exact round
+  enumeration in the native generator (E8-05).
+
+**Cost impact.** About 2^k BLAKE3 calls per grinding round for the prover, which is
+about 3.1·10^6 per stories42M proof. Proof bytes grow by 8 bytes per nonce, and the
+verifier makes one PoW call per round. Both are charged to T_misc. No measured
+constant moves.
+
+**Controls.** NC-0806 and NC-0807 are reserved as todo for E12-23. The `stele-hash`
+unit tests `grind_tests::*` are primitive tests and earn no control credit.
+
+**Affected tasks.**
+
+- E12-22: this amendment, and the transcript primitive in `stele-hash`, with Python
+  vectors from `research/transcript/check_grind.py`.
+- E12-23: the consumers.
+- E8-05: the generator enumerates rounds and checks (C1)–(C4).
+- E16-30.
