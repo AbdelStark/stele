@@ -370,3 +370,121 @@ fn matches_reference_model_commitment_of_a_supplied_proof() {
     );
     eprintln!("model commitment: {ns} ns");
 }
+
+/// Research census for formal/zk-claims.md §6 items 3–5 (no protocol change): per
+/// witness and weight column, the masked claims a dev-zk proof would reveal (one
+/// per distinct (zerocheck domain, column, vars map), lookup tuple ref, range,
+/// matmul role and compose entry), the identity degree, and the columns too short
+/// to carry a claim mask (log_len < c_D + 1 = 3 for QM31).
+#[test]
+fn matches_reference_zk_claim_census() {
+    use std::collections::{BTreeMap, BTreeSet};
+    use stele_prover::development::prove_tampered;
+    use stele_reductions::stele_ir::relation::{Kind, Ref, Relation};
+    let (case, statement) = honest();
+    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let public = case.public(&committed, &weights);
+    let mut captured = None;
+    let mut hook = |relation: &mut Relation, _: &mut _| captured = Some(relation.clone());
+    prove_tampered(
+        &public,
+        &mut case.executor(&case.artifact),
+        &weights,
+        &committed,
+        &statement,
+        &mut hook,
+    )
+    .expect("prove");
+    let relation = captured.expect("relation");
+    let committed_column =
+        |r: &Ref| !matches!(relation.columns[r.column.0 as usize].kind, Kind::Public(_));
+    let mut zero: BTreeSet<(u8, u32, Vec<u8>)> = BTreeSet::new();
+    let mut claims: BTreeMap<u32, usize> = BTreeMap::new();
+    let mut degree = 0;
+    for identity in &relation.identities {
+        for term in &identity.terms {
+            degree = degree.max(term.factors.len());
+            for factor in term.factors.iter().filter(|f| committed_column(f)) {
+                zero.insert((identity.vars, factor.column.0, factor.vars.clone()));
+            }
+        }
+    }
+    for compose in &relation.composes {
+        let log = relation.columns[compose.column.0 as usize].log_len;
+        for id in std::iter::once(compose.column).chain(compose.limbs.iter().map(|l| l.0)) {
+            zero.insert((log, id.0, (0..log).collect()));
+        }
+    }
+    for (_, column, _) in &zero {
+        *claims.entry(*column).or_default() += 1;
+    }
+    for lookup in &relation.lookups {
+        for r in lookup.tuple.iter().filter(|r| committed_column(r)) {
+            *claims.entry(r.column.0).or_default() += 1;
+        }
+    }
+    for range in &relation.ranges {
+        *claims.entry(range.column.0).or_default() += 1;
+    }
+    for matmul in &relation.matmuls {
+        for r in [&matmul.out, &matmul.lhs, &matmul.rhs] {
+            if committed_column(r) {
+                *claims.entry(r.column.0).or_default() += 1;
+            }
+        }
+    }
+    let committed_columns: Vec<u32> = (0..relation.columns.len() as u32)
+        .filter(|&id| !matches!(relation.columns[id as usize].kind, Kind::Public(_)))
+        .collect();
+    let max = claims.values().copied().max().unwrap_or(0);
+    let mut histogram: BTreeMap<usize, usize> = BTreeMap::new();
+    for id in &committed_columns {
+        *histogram
+            .entry(claims.get(id).copied().unwrap_or(0))
+            .or_default() += 1;
+    }
+    let short = committed_columns
+        .iter()
+        .filter(|&&id| relation.columns[id as usize].log_len < 3)
+        .count();
+    let free_out = relation.matmuls.iter().filter(|m| m.summed == 0).count();
+    // A claim mask needs c_D + 1 = 3 domain variables (one summed): count the
+    // relation domains below that, by kind.
+    let small_identities = relation.identities.iter().filter(|i| i.vars < 3).count();
+    let small_lookups = relation.lookups.iter().filter(|l| l.vars < 3).count();
+    let small_ranges = relation
+        .ranges
+        .iter()
+        .filter(|r| relation.columns[r.column.0 as usize].log_len < 3)
+        .count();
+    let small_matmuls = relation
+        .matmuls
+        .iter()
+        .filter(|m| m.free + m.summed < 3)
+        .count();
+    eprintln!(
+        "census: domains below 3 variables: {small_identities} identities, \
+         {small_lookups} lookups, {small_ranges} ranges, {small_matmuls} matmuls"
+    );
+    eprintln!(
+        "census: {} committed columns, claims/column histogram {histogram:?}, max {max}, \
+         identity factors <= {degree}, {} identities, {} lookups, {} ranges, {} matmuls \
+         ({free_out} with no summed bit), {} composes, {short} columns with log_len < 3",
+        committed_columns.len(),
+        relation.identities.len(),
+        relation.lookups.len(),
+        relation.ranges.len(),
+        relation.matmuls.len(),
+        relation.composes.len(),
+    );
+    assert!(
+        degree <= 3,
+        "RFC-0026 §3.2 bounds identity terms at three factors"
+    );
+    // Pinned for the one-layer synthetic window (T = 4); see formal/zk-claims.md §4.
+    assert_eq!(committed_columns.len(), 752);
+    assert_eq!(max, 33);
+    assert_eq!(free_out, 0);
+    assert_eq!(short, 348);
+}

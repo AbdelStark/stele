@@ -55,6 +55,64 @@ c = x̃(ρ) + λ · r̃_x(π(ρ)),   λ = κ(ρ_v),
 
 a masked **linear claim** on the pair `(x, r_x)` with public coefficient `λ`.
 
+### 2.1a One mask block per claim, on domain coordinates (item 3)
+
+The census (§4.4) changes two details of §2.1:
+
+- Many claims on one column come from one sumcheck, through different `vars`
+  maps (up to 33 claims on one column). They share a challenge vector, so their
+  points are correlated.
+- 348 of the 752 committed columns in the one-layer window have fewer than 3
+  variables, too few to carry a vanishing variable and `c_D` mask coordinates.
+
+Both are resolved by giving each **claim occurrence** its own mask block, and by
+taking the mask coordinates from the **relation domain** instead of the column:
+
+```
+V̇_{x,a}(X) = x̃(X|vars_a) + κ(X_{v_a}) · r̃_x(blk(a), X_{u_a}),
+```
+
+- `a` is the `a`-th masked occurrence of `x` in the proof, in plan order.
+- `blk(a)` is its fixed Boolean block index in `r_x`.
+- `v_a` is a summed domain variable, the vanishing variable.
+- `u_a` is a tuple of `c_D` other domain variables (`c_2 = 1`, `c_4 = 2`,
+  `c_8 = 3`).
+
+Each occurrence of `x` in a relation may use its own extension, because the
+relation needs only agreement on the domain cube, and every `V̇_{x,a}` equals `x`
+there. `v_a` need not be a variable of `x`: a broadcast read is constant in it,
+and `κ` still vanishes on the cube. `r_x` has `t_x` blocks of `2^{c_D} = D`
+entries, so `L_x = D·t_x` rounded up to a power of two.
+
+**Lemma 6′ (per-occurrence masks).** Assume `λ_a = κ(ρ_{v_a}) ≠ 0`, and that the
+`D` M31 coordinates of `eq(ρ_{u_a}, ·) ∈ K^{2^{c_D}}` have rank `D`. Then the
+revealed value
+`c_a = x̃(ρ|vars_a) + λ_a·r̃_x(blk(a), ρ_{u_a})` is uniform in `K` and independent
+of `x`, of every other claim and of every other block. The rank fails with
+probability at most `D·c_D/p` for uniform `ρ_{u_a}`.
+
+*Proof.* `r̃_x(blk(a), ·)` reads only block `blk(a)`. That block appears in no
+other claim, no source mask and no other relation, so the claims' maps are
+block-diagonal and correlations between the points of different claims do not
+matter. Within the block, the map `block ↦ λ_a·Σ_j eq(ρ_{u_a}, j)·block_j` is
+onto `K` by the rank assumption, since `λ_a ≠ 0` is invertible.
+
+For the bound, the determinant of the `D × D` coordinate matrix is a polynomial
+of degree at most `D·c_D` in the M31 coordinates of `ρ_{u_a}`. It is not zero:
+for QM31 take `ρ_{u_a} = (i, u)`, whose eq entries span
+`{1, i, u, iu}`, a basis; for OM31 add `v`. Schwartz–Zippel finishes it. ∎
+
+This removes Lemma 6's independence assumption, which was the item-9 gap. It
+also lowers the budget to `L_x = D·t_x`.
+
+A relation domain needs `c_D + 1` variables, one of them summed. Smaller domains
+(§4.4: 118 identities, 11 lookups and 324 ranges in the one-layer window) are
+padded to `c_D + 1` variables with dummy summed variables:
+- every column is read by broadcast;
+- an identity holds on the padded cube because it holds on the original one;
+- a lookup or range counts each entry `2^pad` times, so its multiplicities scale
+  by `2^pad`, which stays far below `p`.
+
 ### 2.2 Which variable carries the mask
 
 The vanishing variable must be summed in that sumcheck. Otherwise the mask term
@@ -257,6 +315,31 @@ availability, not privacy;
 
 then ZK in the programmable ROM; computational with seed-derived masks.
 
+### 3.1 Abort bounds (item 6)
+
+Every abort depends on public challenges only, so it reveals nothing. It costs
+availability: the producer retries with a fresh seed, provided nothing was
+published. Per proof, with `|K| = p^D` and `p = 2^31 − 1`:
+
+| Event | Where | Probability |
+|---|---|---|
+| `κ(ρ_{v_a}) = 0` | each claim | `2/|K|` |
+| claim-block rank `< D` | each claim (Lemma 6′) | `≤ D·c_D/p` |
+| mask-row rank `< 2D` | each source (A2, Lemma 2) | `≤ 2D·(ell + 1)/p` |
+| `w* = 0` | each batch opening | `1/|K|` |
+| `α = 0` | each masked sumcheck | `1/|K|` |
+| `ρ_n ∈ {0, 1/2}` | each A3 mask source | `2/|K|` |
+
+The mask-row bound comes from a degree-`2D·(ell + 1)` determinant. It is
+nonzero by the witness of Lemma 6, applied to the two points' row coordinates,
+with distinct Boolean patterns in the row bit beyond the `c_D` non-Boolean
+coordinates. `R = 2D` gives exactly `c_D + 1` row bits.
+
+For the one-layer census (1804 claims), the claim terms total
+`≈ 1804·8/p ≈ 2^{−17}` for QM31. Each source adds `2D·(ell + 1)/p ≈ 2^{−25}`,
+which is negligible next to them. Retries are therefore rare. A retry
+must redraw every seed, because the challenges change with the roots.
+
 ## 4. Entropy budget under the M31 limit
 
 Every revealed `K` value consumes `D` M31 dimensions (`D = 4` for QM31, 8 for
@@ -264,7 +347,7 @@ OM31) of a mask that nothing else uses.
 
 | Mask | Consumed by | Requirement |
 |---|---|---|
-| `r_x` (claim mask, per column) | `t_x` masked claims | `L_x ≥ D·t_x` with `ℓ_x ≥ log2 t_x + c_D` (Lemma 6) |
+| `r_x` (claim mask, per column) | `t_x` masked claims, one block each | `L_x = D·t_x` rounded up (Lemma 6′) |
 | source mask half (per row) | `q_c + q_o` queried positions | `C − 1 ≥ q_c + q_o` (Lemma 1) |
 | source mask rows `S` | certificate row, opening row | `R ≥ 2D` and rank `2D` (Lemmas 2, 7) |
 | A3 mask source | `G`, rounds, `μ`, its opening row | Lemma 5 |
@@ -296,6 +379,50 @@ a 2^16-entry column next to weight columns of `2^20` or more. The binding
 budget remains A2's column budget (4699 proofs at `C = 2^20`). A refresh
 mechanism (FlashProve's linked re-encodings) is still R8.
 
+### 4.4 Census of the one-layer synthetic window (item 4)
+
+`matches_reference_zk_claim_census` (in `crates/stele-prover/tests/development.rs`)
+captures the actual RFC-0026 relation of the one-layer window at `T = 4`. It
+counts one claim per:
+- distinct (zerocheck domain, column, `vars` map);
+- lookup tuple reference;
+- range;
+- matmul role;
+- compose entry.
+
+| Quantity | Value |
+|---|---|
+| committed columns (witness and weight) | 752 |
+| claims per column (histogram) | 1: 5, 2: 551, 3: 181, 4: 5, 5: 7, 33: 3 |
+| maximum `t_x` | 33 |
+| identity factors per term | ≤ 3 |
+| relations | 327 identities, 17 lookups, 701 ranges, 127 matmuls, 25 composes |
+| matmuls without a summed bit | 0 |
+| columns with `log_len < 3` | 348 |
+| domains below 3 variables | 118 identities, 11 lookups, 324 ranges, 0 matmuls |
+
+The census pins the counts for this window only. Longer windows (`T = 64`) grow
+the domains, not the per-column claim counts. Budget with §2.1a:
+- `L_x = D·t_x` rounded up: 8 or 16 entries for most columns, 256 for the three
+  columns with 33 claims (QM31).
+- About `1804 claims × 4 ≈ 7.2·10^3` M31 values of claim masks in the window,
+  against the window's own witness size.
+
+**Degrees.** With distinct vanishing variables per factor, which needs at least
+3 summed domain variables after padding:
+
+| Relation (A1 form) | Current per-variable degree | Masked |
+|---|---|---|
+| identity, `eq·(≤ 3 factors)` | 4 | 5 |
+| matmul, `eq_shared·lhs·rhs` and `Ȯ` | 3 | 4 |
+| committed-fraction lookup identity, `eq·h·(β − w)` | 3 | 4 |
+| lookup sum `Σ h_w − Σ h_T` | 1 | 2 |
+| batch `W'·M'` | 2 | 2 (the batch weights are public) |
+
+Each masked factor adds 1 to the degree of its own vanishing variable only. The
+A1 instance's single degree bound is the maximum. The A3 mask polynomial has the
+same degree.
+
 ## 5. Costs (counts, no measurement)
 
 - **Commitments.** One claim mask of `L_x` M31 per witness column (32–64
@@ -317,19 +444,17 @@ mechanism (FlashProve's linked re-encodings) is still R8.
    (`research/zk-claims/check_view.py`). Still to extend: two relations sharing a
    column (an identity and a matmul zero-sum with `Ȯ`), and correlated points
    (item 9).
-3. **Matmul with shared bits.** RFC-0026 §3.5's `eq(ρ_shared, x_shared)` sum is
+3. **Correlated points (was item 9).** Closed by §2.1a (Lemma 6′).
+3a. **Matmul with shared bits.** RFC-0026 §3.5's `eq(ρ_shared, x_shared)` sum is
    a summed variable too, so it can carry a vanishing factor. Its degree budget
    is to be checked per module.
-4. **Committed-fraction LogUp.** Fix its statement, bound and labels, and its
-   interaction with RFC-0008 A6 tuples and RFC-0026 §3.4 widths. It is an
-   RFC-0008 amendment of its own.
-5. **Degree.** Each RFC-0026 module's maximum per-variable degree with distinct
-   vanishing variables, and the resulting A1 instance degrees.
+4. **Committed-fraction LogUp.** Drafted as RFC-0008 A7 (Draft). Open in that
+   draft: its relation to A5's grouped units (characteristic), and labels.
+5. **Degree and claims.** Counted for the one-layer window (§4.4), with padding
+   for small domains (§2.1a). Still to recount for the 8-layer and stories42M
+   windows when the A4 text fixes the padding.
 6. **Weights.** `r_W`'s lifetime accounting (§4.3), and prover-side state.
-7. **Aborts.** The public events `λ_a = 0`, `ρ_n ∈ {0, 1/2}`, `α = 0` and rank
-   failures: an availability bound for each.
-9. **Correlated claim points.** Lemma 6 for claims on one column that come
-   from one sumcheck through different `vars` maps (permuted or broadcast reads).
+7. **Aborts.** Bounded in §3.1.
 10. **Normative text.** An RFC-0013 amendment (A4) for §§2–4, with RFC-0026 and
    RFC-0008 companions, NC reservations, and the dev-zk profile flag (INV-1).
 
