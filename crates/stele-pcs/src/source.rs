@@ -67,6 +67,8 @@ pub enum Error {
     RowContext,
     /// Revealed mask-row coefficients lack full M31 rank; abort (RFC-0013 A2 item 1).
     MaskRank,
+    /// A hiding source was already opened once; refuse another (RFC-0013 A2 item 1).
+    MaskBudget,
     /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }
@@ -207,7 +209,7 @@ impl<K: ChallengeField> Source<K> {
         })
     }
 
-    /// Version-3 hiding source over `2^ell × 2^m` data (RFC-0010 A14): the context
+    /// Version-3 hiding source over `2^ell × 2^m` data (RFC-0010 A15): the context
     /// is Circle `(m+1, b)` with `2R` rows and `2C` columns, salted leaves, and the
     /// admission `R >= 2D` and `q_c + q_o <= C - 1`, before any transcript work.
     pub fn hiding(
@@ -270,7 +272,7 @@ impl<K: ChallengeField> Source<K> {
             .try_into()
             .map_err(|_| Error::UnsupportedSource)?;
         let source = if bytes[23] == 3 {
-            // A14: rows and code are one step above the data; Circle (m+1, b) only.
+            // A15: rows and code are one step above the data; Circle (m+1, b) only.
             let (ell, code) = (bytes[33], &bytes[34..end]);
             if ell == 0 || code[19] == 0 || code[..19] != *b"stele/circle-m31/v1" {
                 return Err(Error::UnsupportedSource);

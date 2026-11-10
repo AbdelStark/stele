@@ -1,5 +1,5 @@
 //! Conditional Circle and v2 field sources, certificates and functional openings,
-//! RFC-0010 A3/A6/A9/A10/A14, with RFC-0013 A2 hiding sources.
+//! RFC-0010 A3/A6/A9/A10/A15, with RFC-0013 A2 hiding sources.
 //!
 //! Verification retains conditional obligations; A1 closure and profiles remain separate.
 #![forbid(unsafe_code)]

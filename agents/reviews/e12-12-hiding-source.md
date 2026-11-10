@@ -1,4 +1,4 @@
-# E12-12 hiding Circle source review (RFC-0013 A2 item 1, RFC-0010 A14)
+# E12-12 hiding Circle source review (RFC-0013 A2 item 1, RFC-0010 A15)
 
 Reviewer: claude-code, also the author. Same-author pcs-engineer and
 soundness-auditor passes; an independent review is still needed.
@@ -8,7 +8,7 @@ soundness-auditor passes; an independent review is still needed.
 - `stele-hash::mask`: the keyed BLAKE3 mask stream of A2 (contexts
   `zk/source-mask`, `zk/source-salt`, `zk/sumcheck-mask`). Prover-only.
 - `stele-pcs`:
-  - `Source::hiding` adds version-3 bytes and the A14 admission
+  - `Source::hiding` adds version-3 bytes and the A15 admission
     (`R ≥ 2D`, `q_c + q_o ≤ C − 1`).
   - The leaf width is `32 + 4·2R`, and the verifiers decode after the salt.
   - `hiding_message` builds the A2 layout.
@@ -33,6 +33,16 @@ soundness-auditor passes; an independent review is still needed.
   cannot panic.
 - The rank check sits only in the producers. Skipping it cannot make the
   verifier accept anything new.
+- Independent review finding (fixed): the first version checked rank only on
+  the certificate and the current opening, and kept no opening count, so a
+  source could be opened twice. Three revealed row combinations give `3D` rows
+  over `2D` dimensions, `S0` cancels, and functionals of `X` leak; the query
+  budget is exceeded too. `PreparedSource` now counts openings of a hiding
+  source through every path (point, functional, retained row) and refuses a
+  second with `MaskBudget`, before any transcript work. Tests cover both paths;
+  NC-0906 records the refusal (a producer control, not a verifier binding).
+- NC-0902 now also flips a salt byte of an opening response; the actual
+  opening verifier rejects it with `RootMismatch`.
 
 I tried to break it by flipping a salt byte and by offering a context outside
 admission, and the controls NC-0902 and NC-0903 rejected them. I also tried to
@@ -55,10 +65,10 @@ open at `W = 0`. The producer refused with `MaskRank`
 
 ## Checklist
 
-- RFC: RFC-0013 A2 item 1, RFC-0010 A14 items 1–4.
+- RFC: RFC-0013 A2 item 1, RFC-0010 A15 items 1–4.
 - Challenges: unchanged.
 - Claims: an opened value is a functional of `M'`; it has no consumer.
-- Controls: NC-0902 and NC-0903 are done.
+- Controls: NC-0902 (certificate and opening salts), NC-0903 and NC-0906 are done.
 - Ledger: unchanged (the A9 terms at `(m + 1, b)`).
 - Determinism: masks and salts are fixed functions of the seed and id.
 - Parity: no GPU.

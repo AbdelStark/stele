@@ -1,10 +1,11 @@
-//! RFC-0013 A2 item 1, RFC-0010 A14: hiding sources through the actual A9
+//! RFC-0013 A2 item 1, RFC-0010 A15: hiding sources through the actual A9
 //! certificate and opening verifiers, and evidence that opened values are masked.
 use stele_code::CodeField;
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, HashUsage, Transcript};
 use stele_pcs::{
-    hiding_message, verify_certificate, verify_point, Error, PreparedSource, ProofKind, Source,
+    hiding_message, verify_certificate, verify_point, Error, Functional, PreparedSource, ProofKind,
+    RetainedRow, Source,
 };
 
 // QM31 needs R >= 8 (ell = 3); Circle (10, 2) gives q_c + q_o = 444 <= C - 1 = 511.
@@ -87,11 +88,33 @@ where
         .expect("opening");
     let mut verifier = Transcript::<K>::new(b"hiding opening").expect("transcript");
     verify_point(&mut verifier, &verified, 3, &point, value, &proof).expect("accepted");
-    // The point's data part alone would reveal X; the rank check refuses W = 0.
+    // A second opening would reveal a third row combination: refused through
+    // both the point path and the retained-row path.
+    let mut prover = Transcript::<K>::new(b"second opening").expect("transcript");
+    let again = prepared.opening_point(&mut prover, &verified, 4, &point, value);
+    assert_eq!(again.err().map(|f| f.cause), Some(Error::MaskBudget));
+    let a = stele_poly::eq_table(&point[..usize::from(ell) + 1]).expect("eq");
+    let b = stele_poly::eq_table(&point[usize::from(ell) + 1..]).expect("eq");
+    let row = RetainedRow::new(&prepared, &a).expect("row");
+    let functional = Functional {
+        id: 5,
+        a: &a,
+        b: &b,
+        value,
+    };
+    let mut prover = Transcript::<K>::new(b"second opening").expect("transcript");
+    let again = row.opening(&mut prover, &verified, functional);
+    assert_eq!(again.err().map(|f| f.cause), Some(Error::MaskBudget));
+
+    // On a fresh source, the point's data part alone would reveal X; the rank
+    // check refuses W = 0.
+    let fresh =
+        PreparedSource::<K>::hiding(41, ell, m, B, &message, &seed, &mut HashUsage::default())
+            .expect("prepare");
     point[0] = K::from_i64(0);
     let value = evaluate(&message, &point);
     let mut prover = Transcript::<K>::new(b"hiding opening").expect("transcript");
-    let refused = prepared.opening_point(&mut prover, &verified, 3, &point, value);
+    let refused = fresh.opening_point(&mut prover, &verified, 3, &point, value);
     assert_eq!(refused.err().map(|f| f.cause), Some(Error::MaskRank));
 }
 

@@ -96,6 +96,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk::run(903),
     },
     catalog::RegisteredControl {
+        id: 906,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "MaskBudget",
+        run: || zk::run(906),
+    },
+    catalog::RegisteredControl {
         id: 1300,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",

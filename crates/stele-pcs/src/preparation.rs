@@ -52,6 +52,7 @@ pub struct PreparedSource<'a, K: ChallengeField> {
     tree: merkle::Tree,
     work: PreparationWork,
     borrows: AtomicUsize,
+    openings: AtomicUsize,
 }
 
 fn checked_bytes<T>(count: usize) -> Result<usize, Error> {
@@ -89,7 +90,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Self::prepare(source, rebuild, message, None, usage)
     }
 
-    /// Prepare a version-3 hiding source (RFC-0010 A14) over the full message
+    /// Prepare a version-3 hiding source (RFC-0010 A15) over the full message
     /// `M'` of [`crate::hiding_message`], with leaf salts drawn from `seed`.
     /// The seed must be the one that produced `M'`, fresh and secret (RFC-0013 A2).
     pub fn hiding(
@@ -173,7 +174,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         if encoded.values.len() != rows * length {
             return Err(Error::MessageShape);
         }
-        // A14: a hiding leaf is salt || column; other sources have no salt.
+        // A15: a hiding leaf is salt || column; other sources have no salt.
         let salt = source.salt_len();
         let mut salts = seed.map(|seed| MaskStream::new(seed, SOURCE_SALT, source.descriptor().id));
         for (leaf, symbols) in columns
@@ -214,6 +215,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             tree,
             work,
             borrows: AtomicUsize::new(0),
+            openings: AtomicUsize::new(0),
         })
     }
 
@@ -227,6 +229,15 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     pub fn message(&self) -> &'a [M31] {
         self.borrows.fetch_add(1, Ordering::Relaxed);
         self.message
+    }
+
+    /// RFC-0013 A2 item 1: a hiding source admits one opening over its lifetime.
+    /// Every attempt counts, through any opening path, even if it later fails.
+    pub(crate) fn claim_opening(&self) -> Result<(), Error> {
+        if self.source.is_hiding() && self.openings.fetch_add(1, Ordering::Relaxed) > 0 {
+            return Err(Error::MaskBudget);
+        }
+        Ok(())
     }
 
     /// RFC-0007 A1 item 4 counter: message() borrows times R*C, an upper bound on reads.

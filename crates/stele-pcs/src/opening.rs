@@ -471,6 +471,7 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
                 return Err(Error::FunctionalShape);
             }
             if source.is_hiding() {
+                self.claim_opening()?;
                 let certificate = crate::hiding::certificate_weights(source)?;
                 crate::hiding::check_mask_rank(source, &[&certificate, functional.a])?;
             }

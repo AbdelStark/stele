@@ -838,7 +838,7 @@ def field_source_codec(root):
                'src/hiding.rs', 'tests/hiding.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional Circle and v2 field sources, certificates and functional openings,\n'
-               '//! RFC-0010 A3/A6/A9/A10/A14, with RFC-0013 A2 hiding sources.\n'
+               '//! RFC-0010 A3/A6/A9/A10/A15, with RFC-0013 A2 hiding sources.\n'
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
@@ -892,7 +892,7 @@ def field_source_codec(root):
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
                        'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,'
-                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,MaskRank,Capacity,'),
+                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,MaskRank,MaskBudget,Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
@@ -906,7 +906,7 @@ def field_source_codec(root):
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'source'),
         ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
-        and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
+        and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
             == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [

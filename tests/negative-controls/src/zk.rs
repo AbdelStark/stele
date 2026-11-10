@@ -1,9 +1,12 @@
-//! RFC-0013 A2 and RFC-0010 A14: hiding-source controls through the actual A9
+//! RFC-0013 A2 and RFC-0010 A15: hiding-source controls through the actual A9
 //! certificate verifier (NC-0902, NC-0903).
 use crate::{check_control, check_proof_control, ProverHook};
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, HashUsage};
-use stele_pcs::{hiding_message, verify_certificate, CodeField, Error, PreparedSource, Source};
+use stele_pcs::{
+    hiding_message, verify_certificate, verify_point, CodeField, Error, PreparedSource,
+    RetainedRow, Source, VerifiedCertificate,
+};
 
 const SEED: [u8; 32] = [3; 32];
 
@@ -63,6 +66,103 @@ where
     .map_err(|e| format!("{e:?}"))
 }
 
+/// A masked point `(κ, ρ_row, 0, ρ_col)` for a hiding source and its value.
+fn masked_point<K: ChallengeField>(message: &[M31], source: &Source<K>) -> (Vec<K>, K) {
+    let ell = source.rows().trailing_zeros() as usize;
+    let m = source.columns().trailing_zeros() as usize;
+    // Full extension-field coordinates, so the mask-row coefficients span K.
+    let mut draws = stele_hash::Transcript::<K>::new(b"hiding point").expect("transcript");
+    let mut point: Vec<K> = (0..ell + m)
+        .map(|_| {
+            draws
+                .challenge(stele_hash::ChallengeLabel::Sumcheck)
+                .expect("draw")
+        })
+        .collect();
+    point[ell] = K::from_i64(0); // Y = 0: the data half of the columns.
+    let weights = stele_poly::eq_table(&point).expect("eq");
+    let value = message
+        .iter()
+        .zip(&weights)
+        .fold(K::from_i64(0), |s, (x, w)| {
+            s + *w * K::from_i64(i64::from(x.as_u32()))
+        });
+    (point, value)
+}
+
+fn certified<K: ChallengeField + CodeField>(
+    p: &PreparedSource<'_, K>,
+) -> Result<VerifiedCertificate<K>, String>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let proof = p.certificate().map_err(|f| format!("{:?}", f.cause))?.0;
+    verify_certificate(*p.source(), &proof)
+        .map(|(v, _)| v)
+        .map_err(|f| format!("{:?}", f.cause))
+}
+
+/// NC-0902, opening half: one salt byte of the first opening response changed.
+fn nc_0902_opening<K: ChallengeField + CodeField>() -> Result<(), String>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let message = message(<K as CodeField>::DEGREE);
+    let p = prepared::<K>(&message).map_err(|e| format!("{e:?}"))?;
+    let verified = certified(&p)?;
+    let (point, value) = masked_point(&message, p.source());
+    let salt = 1 + p.source().columns() * 4 * usize::from(<K as CodeField>::DEGREE);
+    let transcript = || stele_hash::Transcript::<K>::new(b"hiding control").expect("transcript");
+    check_proof_control(
+        || {
+            p.opening_point(&mut transcript(), &verified, 1, &point, value)
+                .map(|(proof, _)| proof)
+                .map_err(|f| f.cause)
+        },
+        &Salt(salt),
+        |proof| {
+            verify_point(&mut transcript(), &verified, 1, &point, value, proof)
+                .map(|_| ())
+                .map_err(|f| f.cause)
+        },
+        Error::Merkle(stele_hash::merkle::Error::RootMismatch),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// NC-0906: a producer refusal, not a verifier binding. After one opening, a
+/// second one through the point path or a retained row is refused.
+fn nc_0906<K: ChallengeField + CodeField>() -> Result<(), String>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let message = message(<K as CodeField>::DEGREE);
+    let p = prepared::<K>(&message).map_err(|e| format!("{e:?}"))?;
+    let verified = certified(&p)?;
+    let (point, value) = masked_point(&message, p.source());
+    let transcript = || stele_hash::Transcript::<K>::new(b"hiding control").expect("transcript");
+    p.opening_point(&mut transcript(), &verified, 1, &point, value)
+        .map_err(|f| format!("first opening: {:?}", f.cause))?;
+    let second = p.opening_point(&mut transcript(), &verified, 2, &point, value);
+    if second.err().map(|f| f.cause) != Some(Error::MaskBudget) {
+        return Err("second point opening was not refused".to_owned());
+    }
+    let ell = p.source().rows().trailing_zeros() as usize;
+    let a = stele_poly::eq_table(&point[..ell]).map_err(|e| format!("{e:?}"))?;
+    let b = stele_poly::eq_table(&point[ell..]).map_err(|e| format!("{e:?}"))?;
+    let row = RetainedRow::new(&p, &a).map_err(|e| format!("{e:?}"))?;
+    let functional = stele_pcs::Functional {
+        id: 3,
+        a: &a,
+        b: &b,
+        value,
+    };
+    match row.opening(&mut transcript(), &verified, functional) {
+        Err(f) if f.cause == Error::MaskBudget => Ok(()),
+        _ => Err("second retained-row opening was not refused".to_owned()),
+    }
+}
+
 /// Replace the expected statement bytes.
 struct Replace(Vec<u8>);
 impl ProverHook<Vec<u8>> for Replace {
@@ -106,7 +206,11 @@ where
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
-        902 => nc_0902::<QM31>().and_then(|()| nc_0902::<OM31>()),
+        902 => nc_0902::<QM31>()
+            .and_then(|()| nc_0902::<OM31>())
+            .and_then(|()| nc_0902_opening::<QM31>())
+            .and_then(|()| nc_0902_opening::<OM31>()),
+        906 => nc_0906::<QM31>().and_then(|()| nc_0906::<OM31>()),
         903 => nc_0903::<QM31>().and_then(|()| nc_0903::<OM31>()),
         _ => Err(format!("unknown control {id}")),
     }
