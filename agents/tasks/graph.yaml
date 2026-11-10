@@ -2858,3 +2858,21 @@ tasks:
   acceptance:
   - bench/ledger entries for prove/verify time and proof size on the 8-layer synthetic model and one converted small Llama checkpoint
   - comparison table against the FlashProve small route; GPU path only with the parity gate (INV-3)
+- id: E16-18
+  epic: E16
+  title: Development-profile ledger refresh after the prover-performance tasks
+  depends:
+  - E16-11
+  - E16-17
+  rfc:
+  - RFC-0026 §7
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-bench
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-18-ledger-refresh
+  acceptance:
+  - new bench/ledger entries for the synthetic 8-layer model and stories42M at T = 64 on current main, with the E16-11 entries kept as history
+  - model-commitment time recorded separately from prove time
+  - docs/development-e2e.md cites the new entries
