@@ -1,0 +1,58 @@
+{
+  "spec": "RFC-0012-A17",
+  "hash_backend": "blake3-py 1.0.11 (official Rust backend)",
+  "vectors": [
+    {
+      "degree": 4,
+      "events": [
+        {
+          "state_hex": "0dbbdf658724bbb374954303e3181703048684e152c27153beff97e40387362d"
+        },
+        {
+          "bits": 1,
+          "nonce": 2,
+          "challenge_hex": "1c7f530003f014551e7896349448225f",
+          "state_hex": "5587fabe77c5dba5dd28306c79470b800e0cc62080b80768e07e23e79301ab98"
+        },
+        {
+          "bits": 8,
+          "nonce": 323,
+          "challenge_hex": "8f0463422bb99968a9a9926ba927a934",
+          "state_hex": "23742a1881bb3d76f31c828d35572cd9c5b0ac3701068a1115899c0f99e8a3b2"
+        },
+        {
+          "bits": 12,
+          "nonce": 173,
+          "challenge_hex": "ea1df0010f0804092a99691cff1bad4d",
+          "state_hex": "06dc5d97ff3afa261e9e781946bb87c0d5359278fe2f63ce1ad4927eb41ff4cb"
+        }
+      ]
+    },
+    {
+      "degree": 8,
+      "events": [
+        {
+          "state_hex": "0dbbdf658724bbb374954303e3181703048684e152c27153beff97e40387362d"
+        },
+        {
+          "bits": 1,
+          "nonce": 2,
+          "challenge_hex": "40ad4d0e50517f6cc144732958b96c6e07507d6edc17ec7427a2907a3c1eb504",
+          "state_hex": "f3a56d15d5450ba56117835ee0279a93ef7def483b6746863f59d57fb53f0fe8"
+        },
+        {
+          "bits": 8,
+          "nonce": 202,
+          "challenge_hex": "83b67d3052c7c1260b65aa2ffa65486339d2e91e04e3933a1e107906d3f1654a",
+          "state_hex": "c54ccda10a436ade99ebc28ebcf152ff52c281e576e25121a1662ff0c799a77b"
+        },
+        {
+          "bits": 12,
+          "nonce": 1467,
+          "challenge_hex": "1942ab3c566d822cf9dda93e3a1d0979759904098c50e40cc2a06d49c3eeef17",
+          "state_hex": "aa46936d2f1fb4f933a4c19ac9214c64d99fe0e31ca23b557934f53a88d4278b"
+        }
+      ]
+    }
+  ]
+}

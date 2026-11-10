@@ -1000,3 +1000,98 @@ All run at s>=1.
 Affected tasks. E4-07 implements items 1-12 with controls NC-0615..0621. E11-01
 inherits RFC-0015 A1's plan obligation. E11-02 is unaffected: weight sources stay
 s=0 (RFC-0015 A1).
+
+### A14 — Policy 2: FS-aware query counts with grinding, admitted for the standard profile (Q12)
+
+Status: Accepted. Question Q12. Task E12-22. Companions RFC-0012 A17 and RFC-0002 A1.
+Decision: ADR-091. Review: [Q12 acceptance](../../agents/reviews/q12-amendments-acceptance.md).
+Evidence: [PCS parameter study](../../research/fs-pcs/PARAMETERS.md) and its exact
+checker `research/fs-pcs/study.py --check`.
+
+**Motivation.** Policy 1 (A3 item 4) targets 2^-130 per query round with no grinding.
+Under RFC-0012 A17's profile condition this overspends on the PCS and still fails (C1)
+and (C2) elsewhere. Today's development proof has a worst round of 2^-97 (LogUp) and a
+floor of 2^-95.6. Meanwhile the column rounds dominate proof size: 13,471 and 6,713
+responses for v2. A17 derives what a query round actually needs, which is 2^-108 after
+grinding at standard.
+
+Exact addition to §6, after A3:
+
+1. **Policy byte 2.**
+   - The source bytes are those of A3 item 2 and A9 §1, for Circle and v2
+     identities alike, with policy `u8(2)`.
+   - The verifier derives the policy from the profile: standard selects 2. RFC-0026
+     development proofs keep policy 1.
+   - Any other policy byte is UnsupportedSource. No proof byte selects the policy.
+2. **Query counts.** q_c and q_o are the least positive integers with
+   `2^92·(N−e−1)^q_c ≤ N^q_c` and `2^92·(N−D+e)^q_o ≤ N^q_o`, with N, D and e from
+   A3 item 3. The resulting immutable u16 tables, written as m (or J): q_c/q_o:
+
+   | Code | Entries |
+   |---|---|
+   | Circle b=1 | 0: 92/1; 1: 222/92; 2: 222/136; 3: 308/136; 4: 308/152; 5: 339/152; 6: 339/156; 7: 347/156; 8: 347/157; 9: 350/157; 10..29: 350/158 |
+   | Circle b=2 | 0: 92/46; 1: 222/66; 2: 222/78; 3: 222/85; 4: 222/88; 5: 222/90; 6: 222/91; 7..28: 222/92 |
+   | v2 J | 3: 339/156; 4: 8131/4050; 5: 9297/4633; 6: 9467/4718; 7: 9510/4739; 8: 9532/4748; 9: 9532/4751; 10: 9533/4751; 11..14: 9534/4751 |
+
+   `study.py --check` verifies every inequality and its failure at q−1.
+3. **Column grinding.**
+   - Every certificate column round and every opening column round grinds
+     k_q = 16 bits (RFC-0012 A17 item 5).
+   - The nonce is a u64le that follows the absorbed CertificateRow (or
+     OpeningRow) and precedes the first column draw. On the wire, the 8 bytes
+     come immediately before the response block.
+   - So each column round's error is at most `2^-92·2^-16 = 2^-108`.
+4. **Tensor grinding.**
+   - Before the ℓ CertificateWeight draws, the verifier derives
+     `k_t = least k ≥ 0 with 2·ell·(e+1)·2^108 ≤ |K|·2^k`.
+   - If k_t ≥ 1, the u64le nonce n_t immediately precedes t_bytes:
+     `u8(1) || n_t || t_bytes || …` for s = 0, and
+     `u8(1) || child_roots || n_t || t_bytes || …` for s ≥ 1 (A13 item 6).
+     S is the state after certificate construction.
+   - In OM31, k_t is 0 at every admitted size.
+5. **Soundness.**
+   - Per round: Lemmas 5 and 6 of fs-composition.md, with grinding counted by
+     Theorem 1. Each PCS round is then at most 2^-108.
+   - Proven chain: Diamond–Posen Theorem 2 at e ≤ ⌊(D−1)/3⌋ (published), the query
+     lemmas of tensor-opening.md §3 and certified-functional-opening.md §2, and
+     Theorem 1.
+   - Unique decoding only. No Johnson-radius, list-decoding or capacity statement
+     is used.
+6. **Admission.**
+   - For a standard request with QM31 or OM31 challenges, A1's resolver returns
+     these Policy 2 parameters, for both the Circle and the v2 identities.
+   - For every other profile request it returns UnsupportedParameters.
+   - The registry `proven` flag is true for standard, Policy 2 and these
+     identities. It stays false for treaty.
+   - The treaty tables at a 2^-120 column target (`PARAMETERS.md` §3) are a
+     conditional record, not an admission.
+   - The whole configuration must also pass RFC-0012 A17 (C1)–(C4).
+7. **Superseded Accepted text.**
+   - A3 item 7's sentence "Policy 1 cannot be admitted to either profile" and its
+     query-round requirement `2^-(target+log2 Q)` are superseded by RFC-0012 A17
+     for the standard profile.
+   - Policy 1 itself is unchanged, and it remains unadmitted to every profile
+     (item 1).
+   - A3 item 8's "a policy byte other than 1" reads "a policy byte other than 1
+     or 2".
+8. **Errors.**
+   - A nonce that fails the predicate is GrindMismatch, before any column draw.
+   - A missing or extra nonce is ProofShape.
+   - A9 §8's errors otherwise apply unchanged.
+9. **Controls.** NC-0806 and NC-0807 (reserved, todo, E12-23) run through the actual
+   certificate and opening verifiers.
+10. **Cost.** A response is still `4R + 32·log2 N` bytes. Each column round adds an
+    8-byte nonce and 2^16 expected prover hashes.
+    - On the stories42M statement (`PARAMETERS.md` §4, a projection and not a
+      measurement), Policy 2 gives 91.7 MB with v2 sources and 18.3 MB with
+      Circle rate-1/4 sources. Today's proof is 113.4 MB.
+    - Choosing the Circle code for witness and weight sources changes encoding
+      work in c_c (circle FFT against linear v2). That needs E16-30's benchmark
+      before RFC-0026 adopts it.
+    - No measured constant moves.
+11. **Tasks.**
+    - E12-23 implements items 1–9 in `stele-pcs`, with NC-0806/0807 and Python
+      parity, and the LU grinding of RFC-0012 A17 in `stele-reductions`.
+    - E16-30 measures a development proof on Circle rate-1/4 Policy 2 sources.
+    - This table is the standard-profile input to E12-04. E12-04 itself, the
+      treaty codes.toml block, remains open.
