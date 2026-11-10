@@ -1891,7 +1891,7 @@ there is no new line kind, label or challenge.
 Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
 review in the E16-19 PR).
 
-## ADR-092: llama2.c stories110M through the development prover (RFC-0026 A6, RFC-0018 A1, task E16-20)
+## ADR-093: llama2.c stories110M through the development prover (RFC-0026 A6, RFC-0018 A1, task E16-20)
 
 Context: E16-19 removed the 30-bit matmul limit that kept models larger than stories42M
 out of the development prover. stories110M (d = 768, 12 layers, V = 32000) is the next
