@@ -1852,7 +1852,7 @@ Decision:
 
 Status: Accepted.
 
-## ADR-091: Row-block split of matmuls past MAX_VARS through fixed Ref bits (RFC-0026 A6, task E16-19)
+## ADR-092: Row-block split of matmuls past MAX_VARS through fixed Ref bits (RFC-0026 A6, task E16-19)
 
 Context: every relation domain is capped at 30 bits (RFC-0026 §3.1). A `Ref` could
 only permute or drop domain bits, so projections and attention rejected any matmul

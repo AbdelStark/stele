@@ -833,7 +833,7 @@ Cost model: none. Affected tasks: E16-10 (statement codec and public-input file)
   - **Cost-model terms.** None.
   - **Affected tasks.** E16-14 and E16-10. E16-10 commits each `model_messages`
     entry under the matching `model_layout` entry.
-- **A6 — Row-block split of matmuls past `MAX_VARS` (task E16-19).** Accepted with ADR-091.
+- **A6 — Row-block split of matmuls past `MAX_VARS` (task E16-19).** Accepted with ADR-092.
   - **Motivation.**
     - §3.1 and §7 say that a matmul with `log(batch) + log(out) + log(d) > 30` is split
       into plan-fixed row blocks by its module. A `Ref` could only permute or drop
