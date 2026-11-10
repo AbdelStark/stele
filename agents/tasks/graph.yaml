@@ -2558,20 +2558,63 @@ tasks:
   acceptance:
   - formal/zk-claims.md gives the construction, the hybrid simulator argument, the entropy budget under the M31 limit and the exact remaining list
   - Lemma 6 proved; Lemma 7 and the executable small-field check listed as the gate before any implementation
+- id: E12-17
+  epic: E12
+  title: RFC-0013 A5 masked claims and dev-zk composition (with RFC-0026 A9, RFC-0008 A7)
+  depends:
+  - E12-16
+  rfc:
+  - RFC-0013 A5
+  skill: rfc-author
+  crate: docs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-17-rfc0013-a4
+  acceptance:
+  - normative claim masks, relation forms, padding, batching, order, aborts, profile byte and NC-0909..0915 reservations
+  - RFC-0008 A7 completed with its carry-over argument, labels, zero-denominator rule, costs and controls
+  - census on the one- and eight-layer windows and a labelled cost projection; two same-author passes recorded
+- id: E12-18
+  epic: E12
+  title: Masked claims and matmul zero-sum in the engine (RFC-0013 A5 items 1-5)
+  depends:
+  - E12-17
+  rfc:
+  - RFC-0013 A5
+  - RFC-0026 A9
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck+stele-reductions
+  status: ready
+  acceptance:
+  - V-dot occurrences, padding, matmul zero-sum and per-source batching as A5; claim-block rank abort
+  - tests that proofs verify and claims are masked; NC-0909, NC-0910, NC-0911, NC-0915
+- id: E12-19
+  epic: E12
+  title: Committed-fraction lookups (RFC-0008 A7)
+  depends:
+  - E12-18
+  rfc:
+  - RFC-0008 A7
+  skill: gkr-reduction-author
+  crate: stele-lookup+stele-reductions
+  status: ready
+  acceptance:
+  - fraction sources, zerochecks and sum as A7 with the zero-denominator abort; NC-0913 and NC-0914
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)
   depends:
   - E12-12
-  - E12-16
+  - E12-19
   rfc:
   - RFC-0013 A1
+  - RFC-0013 A5
   skill: soundness-auditor
   crate: stele-reductions+stele-prover
-  status: blocked(RFC-0013 A1)
+  status: ready
   acceptance:
-  - RFC-0013 A1 accepted with R1-R13 of formal/zk-development.md closed
-  - dev-zk profile flag, composed simulator and NC-0900/0901 consumers
+  - end-to-end dev-zk prove/verify on the one- and eight-layer synthetic windows under RFC-0013 A5, with privacy tests
+  - NC-0912 and NC-0909..0915 executed; profile byte admitted only after independent review
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
@@ -3978,6 +4021,7 @@ tasks:
   title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier
   depends:
   - E19-03
+  - E12-14
   rfc:
   - RFC-0013 A3
   - RFC-0013 A1
@@ -3995,6 +4039,7 @@ tasks:
   depends:
   - E23-01
   - E19-06
+  - E12-14
   rfc:
   - RFC-0013 A3
   skill: zk-engineer

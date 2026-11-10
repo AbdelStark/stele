@@ -66,3 +66,6 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 - **mask rows** — the lower half of a hiding-source message, uniform rows that hide the certificate and opening rows (RFC-0013 A2).
 - **masked sumcheck** — an RFC-0006 A1 sumcheck run on `f + α·g` with a uniform sum-of-univariates mask `g`, ending with the mask obligation `(ρ, g(ρ))` (RFC-0013 A2).
 - **mask source** — the hiding source of RFC-0013 A4 that holds a masked sumcheck's two-block mask as `2D` limb rows; it is opened once, at `G(ρ)`, with zero weight on its mask rows (RFC-0013 A4).
+- **mask source** — the hiding source of RFC-0013 A3 that holds a masked sumcheck's two-block mask as `2D` limb rows; it is opened once, at `G(ρ)`, with zero weight on its mask rows.
+- **claim mask** — the per-column blocks of uniform M31 values that mask each revealed claim of a dev-zk proof, one block of `D` entries per masked occurrence (RFC-0013 A5).
+- **dev-zk** — the zero-knowledge variant of the RFC-0026 development profile, profile byte 1; defined by RFC-0013 A5 and RFC-0026 A9, admitted only once implemented and reviewed.

@@ -2164,4 +2164,43 @@ Decision:
   - The quarantine check also covers `hiding_mask`.
 
 Status: Accepted (owner authorisation; two same-author passes in
-agents/reviews/rfc0013-a4-acceptance.md; independent review requested).
+agents/reviews/rfc0013-a3-acceptance.md; independent review requested).
+
+## ADR-098: Masked claims, dev-zk relation forms and ZK-GKR lookups (RFC-0013 A5, RFC-0026 A9, RFC-0008 A7, task E12-17)
+
+Numbered after ADR-096 (main) and ADR-097.
+
+Context: with A2/A4, sumchecks and sources are simulatable from their final and
+opened values, but those values still reveal the witness (design-note R1). The
+research note (formal/zk-claims.md) and its exact small-field checks gave a
+construction with no leak found.
+
+Decision:
+- Each masked occurrence of a committed column gets its own claim-mask block,
+  on domain coordinates, with a vanishing factor on a summed variable.
+- Matmul becomes a zero-sum with `out` broadcast, so `out~(ρ)` is never sent.
+- Small domains are padded.
+- Lookups keep A5's GKR trees, masked layer by layer (ZK-GKR, RFC-0008 A7).
+  A first draft committed fraction columns instead. The census comparison
+  (formal/zk-gkr.md) put it about 780 times larger.
+- One shared mask source per proof holds every masked sumcheck's mask and
+  every layer block, with one batched opening, in place of one A4 source per
+  instance.
+- Each source batches its claims with a weight that is zero on the mask rows,
+  then makes one A2 opening.
+- Every rank condition is a producer abort.
+- dev-zk is profile byte 1: defined, not admitted until implemented, controlled
+  and independently reviewed.
+- Relation to ADR-096 (Draft direction): RFC-0013 A5 is the development-tier
+  form of A3's candidate A items 4 and 6. Under RFC-0028's commit rule, claims on
+  virtual columns take RFC-0008 A7's per-layer masks. E23-01 can start from this
+  stack, as its acceptance text says for E12-11..E12-13.
+- E12-14 (end-to-end dev-zk) stays the development-tier deliverable that E23-01
+  and E23-02 start from. It is not folded into them. Both now depend on E12-14 in
+  graph.yaml; their acceptance lines are unchanged.
+- Costs are recorded as a projection: about 4 times the commitment on the
+  eight-layer synthetic window, against about 20 times for committed fractions.
+  No constant moves.
+
+Status: Accepted (owner authorisation; two same-author passes in
+agents/reviews/rfc0013-a5-acceptance.md; independent review requested).
