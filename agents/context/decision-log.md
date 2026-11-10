@@ -2120,6 +2120,12 @@ Decision:
   computational with derived masks. A seed is used for one source or instance.
 - No dev-zk profile flag until A1's remaining list is accepted (INV-1).
 - A1 stays Draft, with R1–R13 of the design note as its exact remaining list.
+- Relation to ADR-096 and RFC-0013 A3 (Draft, scheme v3): A2 is the
+  development-tier instance that A3's candidate A says it starts from.
+  - A2's randomisers sit on message-domain evaluation points, so A3's
+    coefficient-slot counterexample does not apply.
+  - Scheme v3's coefficient-form rows must re-prove the rank (E23-01).
+  - A2 does not contradict A3; it decides nothing for scheme v3.
 
 Status: Accepted (owner authorisation for autonomous amendment acceptance after
 Workflow 02 review; two same-author passes in

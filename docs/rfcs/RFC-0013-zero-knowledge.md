@@ -164,6 +164,24 @@ verifier, `(G, p_1..p_n, μ)` is simulatable from the final values alone. The
 event `α = 0` (probability `1/|K|`) is a privacy error, not a soundness term.
 The final values themselves are not hidden.
 
+**Relation to A3 (Draft, commitment scheme v3).** A3's candidate A states that it
+starts from A2 if A2 is accepted first. A2 is the development-tier instance of
+candidate A's items 1–3, on RFC-0010 version-1 Circle sources (rows in evaluation
+form).
+
+- **Item 1, the encoding.** A2 places the randomisers on evaluation points of
+  the message domain (the mask half). It does not place them in coefficient
+  slots. Lemma 1 proves full rank for every set of at most `C − 1` positions.
+  This avoids A3's mirror-position counterexample, which arises for adjacent
+  coefficient slots.
+- **Item 2, the mask rows.** A2's mask rows with the producer rank check are
+  item 2 for one fold level.
+- **Item 3, the sumcheck masks.** A2's masked sumcheck is item 3 before its
+  binding.
+- **What changes under scheme v3.** Coefficient-form rows and recursive levels
+  (RFC-0029) need Lemma 1 restated for the coefficient basis. That is task
+  E23-01. A2 claims nothing for scheme v3.
+
 **3. Not covered.** Composition into any proof, masked claims, zerocheck
 (RFC-0006 A3), LogUp, matmul, claim batching, Fiat–Shamir zero-knowledge,
 weight lifetimes, expander sources, cost and profile admission. These are
