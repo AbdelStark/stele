@@ -2584,7 +2584,9 @@ tasks:
   - RFC-0026 A9
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-18-masked-claims
   acceptance:
   - V-dot occurrences, padding, matmul zero-sum and per-source batching as A5; claim-block rank abort
   - tests that proofs verify and claims are masked; NC-0909, NC-0910, NC-0911, NC-0915
