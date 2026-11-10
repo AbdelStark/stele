@@ -75,8 +75,9 @@ Findings:
   counters): stacked certificate 19.28 MB, source openings 16.05 MB, multiplicity
   certificates 5.77 MB, lookup proofs 3.48 MB, matmul sumchecks 0.29 MB, zerochecks
   0.09 MB. The stacked and model sources use the v2 expander code. Its proven
-  distance needs 13,472 certificate and 6,714 opening queries. The circle code at
-  rate 1/4 needs 314 and 130 under the same rule (RFC-0010 A3).
+  distance needs up to 13,472 certificate and 6,714 opening queries (13,469 and 6,713
+  at this proof's stacked geometry). The circle code at rate 1/4 needs 314 and 130
+  under the same rule (RFC-0010 A3).
 - **Lookups and the batch opening are the prover.** A sampling profile of the 4-core
   run (22 stack samples during proving; a diagnostic, not a benchmark) put 11 samples
   in the lookup argument and 9 in the stacked-source claim batch and opening. The other

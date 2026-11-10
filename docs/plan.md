@@ -268,7 +268,9 @@ which tasks are superseded, which are parked and which resume at which gate.
 ### First ten moves
 
 1. Stage timers and cell, lookup and byte counters in the prover and the ledger (E17-01).
-2. Circle sources for the stacked and model commitments (E19-02).
+2. Circle sources for the stacked and model commitments (E19-02). Projection from the
+   RFC-0010 A9 wire shape, to be measured by the task: on L1 the stacked certificate
+   and the source openings fall from 35.3 MB to about 3.4 MB.
 3. One thread pool; parallel lookup checks and matmul sumchecks (E20-02).
 4. Typed columns; no `i64` or dense QM31 before the first sumcheck fold (E20-01).
 5. The static accounting tool for cells and lookups per token (E22-01).
@@ -304,7 +306,7 @@ starts when the stage counters of move 1 exist.
 
 ## 8. Research agenda
 
-Mirrored as numbered questions in RFC-0019. Each has a kill criterion in its task.
+Mirrored as numbered questions in RFC-0019, where each track states its kill criterion.
 
 **Cryptography**
 
@@ -330,7 +332,7 @@ Mirrored as numbered questions in RFC-0019. Each has a kill criterion in its tas
 - Q36: static scales with equalisation against grouped dynamic rows, on Llama-3.1-8B.
 - Q38: which activations need 16 bits, measured by task benchmarks, not perplexity alone.
 - Q41: what to prove when the served reply came from a floating-point engine. Integer
-  serving (E5-06, R-SERVE) or a gap policy with a stated meaning.
+  serving (E20-07, R-SERVE) or a gap policy with a stated meaning.
 - Q42: long-context attention. Lookups per score, block accumulation, and a provable
   cutoff for probabilities that round to zero.
 - E5-05h: the residual G7 gap in exact numerics.

@@ -11,7 +11,7 @@ RFC-0010; it withdraws nothing that is Accepted there.
 ### 1.1 Motivation
 
 - The per-proof sources of RFC-0026 use the v2 expander code, whose proven distance
-  forces 13,472 certificate and 6,714 opening queries. They are 91% of a development
+  forces up to 13,472 certificate and 6,714 opening queries. They are 91% of a development
   proof ([assessment §3](../assessment.md#3-the-end-to-end-prover-measured)).
 - An RFC-0010 opening sends the row combination `u` in full. For a model source that
   is megabytes per opening, and RFC-0010 §7 (Ligerito mode) was never admitted (Q27).
