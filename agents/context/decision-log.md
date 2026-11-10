@@ -2097,3 +2097,36 @@ Consequences:
   in the texts as recorded here. That review is not an acceptance review.
 
 Status: Proposed (Draft RFCs; each is decided by its acceptance task).
+## ADR-094: Accept the proved ZK components separately; keep the complete construction in RFC-0013 A1 (RFC-0013 A2, RFC-0010 A15, RFC-0012 A18, task E12-11)
+
+Context: the owner asked for zero-knowledge (weight hiding) for the development
+path, the property FlashProve has and RFC-0026 lacks. RFC-0013 A1 (Draft) asks for
+the complete construction: Circle and expander paths, the 5% overhead target and
+native evidence. The design note (formal/zk-development.md, task E12-10) proves
+four component lemmas but finds two leaks in the obvious claim masking and leaves
+the composition open (R1–R13).
+
+Decision:
+- A1 is the wrong vehicle for the components: accepting it would claim the whole
+  construction. A2 admits only the proved components, with exact bytes, labels,
+  order and budgets, for no profile and no consumer: hiding Circle sources
+  (version 3, mask half, mask rows, salted leaves, public rank check) and the
+  masked A1 sumcheck (`zk/mask-sum`, `zk/mask-weight`, mask obligation).
+- Expander sources are excluded: the v2 code is systematic.
+- The masked sumcheck's soundness and MASK line are conditional on binding the
+  mask before its sum; A2 leaves that open (R2), so no consumer may accept a
+  masked reduction.
+- Masks derive from a fresh secret seed with a keyed BLAKE3 stream; hiding is
+  computational with derived masks. A seed is used for one source or instance.
+- No dev-zk profile flag until A1's remaining list is accepted (INV-1).
+- A1 stays Draft, with R1–R13 of the design note as its exact remaining list.
+- Relation to ADR-096 and RFC-0013 A3 (Draft, scheme v3): A2 is the
+  development-tier instance that A3's candidate A says it starts from.
+  - A2's randomisers sit on message-domain evaluation points, so A3's
+    coefficient-slot counterexample does not apply.
+  - Scheme v3's coefficient-form rows must re-prove the rank (E23-01).
+  - A2 does not contradict A3; it decides nothing for scheme v3.
+
+Status: Accepted (owner authorisation for autonomous amendment acceptance after
+Workflow 02 review; two same-author passes in
+agents/reviews/rfc0013-a2-acceptance.md; independent review is still needed).

@@ -921,3 +921,23 @@ unit tests `grind_tests::*` are primitive tests and earn no control credit.
 - E12-23: the consumers.
 - E8-05: the generator enumerates rounds and checks (C1)–(C4).
 - E16-30.
+### A18 — Masked sumcheck labels (companion of RFC-0013 A2)
+
+Status: Accepted, conditional scope of RFC-0013 A2. Task E12-11. Review:
+[RFC-0013 A2 acceptance](../../agents/reviews/rfc0013-a2-acceptance.md).
+Motivation: the masked A1 sumcheck of RFC-0013 A2 sends one mask sum and draws
+one weight. Every other message reuses A1's labels.
+
+Addition to the A1 registry, in this order after A17's entries:
+
+| Kind | Label | Line |
+|---|---|---|
+| absorb | `stele/v0.1/zk/mask-sum` | - |
+| challenge | `stele/v0.1/zk/mask-weight` | MASK |
+
+- `zk/mask-weight`: one draw per masked instance, after `zk/mask-sum`. It is
+  charged `1/|K|` on the MASK line, conditional on the mask binding that
+  RFC-0013 A2 leaves open.
+- The labels are used only by RFC-0013 A2's component; no profile uses them.
+- Cost-model terms: none. Affected task: E12-13 (registers the labels in
+  `stele-hash` and `docs/security/transcript-labels.json`).
