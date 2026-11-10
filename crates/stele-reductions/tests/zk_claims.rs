@@ -7,6 +7,57 @@ use stele_reductions::zk::claims::{self, Column, Read, Relation, Statement};
 use stele_reductions::zk::{Error, Seed};
 use stele_sumcheck::Term;
 
+/// RFC-0013 A5 item 2: with 3 variables and terms {a,b}, {a,c}, {b,c}, {a,d},
+/// {b,d}, {c,d}, `d` shares a term with `a`, `b` and `c`, which hold variables
+/// 0, 1 and 2. No fresh vanishing variable is left, so the statement is refused.
+#[test]
+fn rejects_statement_without_fresh_vanishing_variable() {
+    let s = Statement::<QM31> {
+        sources: 1,
+        columns: (0..4)
+            .map(|_| Column {
+                source: 0,
+                log_len: 3,
+            })
+            .collect(),
+        relations: vec![Relation::Identity {
+            num_vars: 3,
+            reads: (0..4)
+                .map(|column| Read {
+                    column,
+                    vars: vec![0, 1, 2],
+                })
+                .collect(),
+            terms: [[0, 1], [0, 2], [1, 2], [0, 3], [1, 3], [2, 3]]
+                .iter()
+                .map(|f| term(1, f))
+                .collect(),
+        }],
+    };
+    let w = vec![vec![M31::ZERO; 8]; 4];
+    assert_eq!(
+        claims::prove(&s, &w, seed(1), &mut transcript()).err(),
+        Some(Error::Statement)
+    );
+}
+
+/// The shared source's opening binds the shared batch's final: one changed
+/// symbol in its first queried column does not authenticate.
+#[test]
+fn rejects_changed_shared_opening() {
+    let s = statement::<QM31>();
+    let mut proof = claims::prove(&s, &witness(1), seed(1), &mut transcript()).expect("proof");
+    // Version byte, the 2C-entry row of 16-byte values (C = 2^9), then 32 salt bytes.
+    let at = 1 + (2 << 9) * 16 + 32;
+    proof.shared_opening[at] ^= 1;
+    assert_eq!(
+        claims::verify(&s, &proof, &mut transcript()).err(),
+        Some(Error::Pcs(stele_pcs::Error::Merkle(
+            stele_hash::merkle::Error::RootMismatch
+        )))
+    );
+}
+
 fn term<K: ChallengeField>(coefficient: i64, factors: &[u32]) -> Term<K> {
     Term {
         coefficient: K::from_i64(coefficient),

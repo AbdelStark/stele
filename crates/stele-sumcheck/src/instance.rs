@@ -80,7 +80,7 @@ impl<K: ChallengeField> Instance<K> {
     }
     /// The payload with a declared degree byte (RFC-0013 A5 item 3); the masked
     /// consumer checks it is at least the factor count.
-    pub(crate) fn encode_degree(&self, degree: usize) -> Result<Vec<u8>, Error> {
+    pub fn encode_degree(&self, degree: usize) -> Result<Vec<u8>, Error> {
         let size = self.encoded_len()?;
         let mut out = Vec::new();
         reserve(&mut out, size)?;

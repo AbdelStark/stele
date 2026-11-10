@@ -242,14 +242,15 @@ impl<K: ChallengeField + CodeField> Plan<K> {
 
 /// A5 item 2's default: `v` is the lowest-index variable not used as `v` by an
 /// earlier occurrence sharing a term; `u` the `c_D` lowest-index others. The
-/// degree is the per-variable maximum over terms (item 3).
+/// degree is the per-variable maximum over terms (item 3). A statement that leaves
+/// an occurrence no fresh variable is outside item 2 and refused.
 fn assign<K>(
     num_vars: usize,
     occurrences: &mut [Occurrence],
     first: usize,
     terms: &[Term<K>],
     c: usize,
-) -> usize {
+) -> Result<usize, Error> {
     let shares = |a: usize, b: usize| {
         terms.iter().any(|t| {
             t.factors.contains(&((first + a) as u32)) && t.factors.contains(&((first + b) as u32))
@@ -260,11 +261,13 @@ fn assign<K>(
             .filter(|&b| shares(a, b))
             .map(|b| occurrences[b].v)
             .collect();
-        let v = (0..num_vars).find(|q| !used.contains(q)).unwrap_or(0);
+        let v = (0..num_vars)
+            .find(|q| !used.contains(q))
+            .ok_or(Error::Statement)?;
         occurrences[a].v = v;
         occurrences[a].u = (0..num_vars).filter(|&q| q != v).take(c).collect();
     }
-    terms
+    Ok(terms
         .iter()
         .map(|t| {
             let extra = (0..num_vars)
@@ -282,7 +285,7 @@ fn assign<K>(
         })
         .max()
         .unwrap_or(1)
-        .max(1)
+        .max(1))
 }
 
 fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<K>, Error> {
@@ -420,7 +423,7 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
         if num_vars > 24 {
             return Err(Error::Statement);
         }
-        let degree = assign(num_vars, &mut occurrences, first, &terms, c);
+        let degree = assign(num_vars, &mut occurrences, first, &terms, c)?;
         for occurrence in &mut occurrences {
             occurrence.block = counts[occurrence.column];
             counts[occurrence.column] += 1;
@@ -1034,7 +1037,93 @@ pub fn prove<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    prove_with(statement, columns, &seed.0, t, true)
+    prove_with(statement, columns, &seed.0, t, true, None)
+}
+
+/// NC-0916's adversary, never a verifier input: the honest prover, except that
+/// relation `relation` runs A4's NC-0908 attack. The sources are honest, the rounds
+/// are free (`[running, 0, …]`), and `μ` is solved last so the relation's final
+/// check passes. The finals are the true `V̇` values at the forged point, so every
+/// source batch passes. Only binding each relation's `μ_j` to the committed `g_j`
+/// in the shared batch rejects it.
+#[doc(hidden)]
+pub fn forge<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    relation: usize,
+) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    prove_with(statement, columns, &seed.0, t, true, Some(relation))
+}
+
+fn evaluate<K: ChallengeField>(terms: &[Term<K>], values: &[K]) -> K {
+    terms.iter().fold(zero::<K>(), |s, term| {
+        s + term
+            .factors
+            .iter()
+            .fold(term.coefficient, |p, f| p * values[*f as usize])
+    })
+}
+
+/// The masked sumcheck's messages (A4 order) with free rounds and `μ` solved last.
+fn forged<K: ChallengeField + CodeField + Eq>(
+    i: &Instance<K>,
+    step: &Step<K>,
+    mut summand: Occurrences<K>,
+    mask: &Mask<K>,
+    binding: &[u8],
+    t: &mut Transcript<K>,
+) -> Result<(masked::Proof<K>, Vec<K>), Error> {
+    let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
+    let sumcheck = Error::Sumcheck;
+    let mask_sum = mask.sum();
+    t.absorb(
+        AbsorbLabel::Instance,
+        &i.encode_degree(step.degree).map_err(sumcheck)?,
+    )
+    .map_err(fail)?;
+    t.absorb(AbsorbLabel::FieldSources, binding).map_err(fail)?;
+    let bytes = stele_sumcheck::message_bytes(i.id, 0, &[mask_sum]).map_err(sumcheck)?;
+    t.absorb(AbsorbLabel::ZkMaskSum, &bytes).map_err(fail)?;
+    let alpha = t.challenge(ChallengeLabel::ZkMaskWeight).map_err(fail)?;
+    let mut running = i.claimed_sum + alpha * mask_sum;
+    let (mut rounds, mut point) = (Vec::new(), Vec::new());
+    for index in 0..step.num_vars {
+        let mut values = vec![zero::<K>(); step.degree + 1];
+        values[0] = running;
+        let bytes = stele_sumcheck::message_bytes(i.id, index, &values).map_err(sumcheck)?;
+        t.absorb(AbsorbLabel::Round, &bytes).map_err(fail)?;
+        let c = t.challenge(ChallengeLabel::Sumcheck).map_err(fail)?;
+        // The polynomial with value `running` at 0 and 0 at 1..δ, at `c`.
+        for k in 1..=step.degree as i64 {
+            let inverse = K::from_i64(-k).inverse().ok_or(Error::Statement)?;
+            running = running * (c - K::from_i64(k)) * inverse;
+        }
+        summand.fold(c).map_err(sumcheck)?;
+        rounds.push(values);
+        point.push(c);
+    }
+    let finals = summand.final_values().map_err(sumcheck)?;
+    let inverse = alpha.inverse().ok_or(Error::Statement)?;
+    let mask_final = (running - evaluate(&step.terms, &finals)) * inverse;
+    let mut values = finals.clone();
+    values.push(mask_final);
+    let bytes =
+        stele_sumcheck::message_bytes(i.id, finals.len() as u32 + 1, &values).map_err(sumcheck)?;
+    t.absorb(AbsorbLabel::Final, &bytes).map_err(fail)?;
+    Ok((
+        masked::Proof {
+            mask_sum,
+            rounds,
+            final_values: finals,
+            mask_final,
+        },
+        point,
+    ))
 }
 
 fn prove_with<K: ChallengeField + CodeField + Eq>(
@@ -1043,6 +1132,7 @@ fn prove_with<K: ChallengeField + CodeField + Eq>(
     seed: &[u8; 32],
     t: &mut Transcript<K>,
     claim_masks: bool,
+    forge: Option<usize>,
 ) -> Result<Proof<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -1123,8 +1213,17 @@ where
             num_vars: step.num_vars,
             bound: 0,
         };
-        let (proof, point) =
-            masked::prove(&i, summand, &masks[j], &binding, t).map_err(Error::Sumcheck)?;
+        let (proof, point, mu) = if forge == Some(j) {
+            let (proof, point) = forged(&i, step, summand, &masks[j], &binding, t)?;
+            // The adversary batches the true g(ρ), keeping its relation's μ unbound.
+            let mu = masks[j].evaluate(&point).map_err(Error::Sumcheck)?;
+            (proof, point, mu)
+        } else {
+            let (proof, point) =
+                masked::prove(&i, summand, &masks[j], &binding, t).map_err(Error::Sumcheck)?;
+            let mu = proof.mask_final;
+            (proof, point, mu)
+        };
         let first = usize::from(step.eq);
         for (k, o) in step.occurrences.iter().enumerate() {
             // A5 item 4: public aborts before the claim leaves the producer.
@@ -1139,7 +1238,7 @@ where
             let (source, claim) = occurrence_claim(statement, &plan, o, &point, &free, value)?;
             claims[source].push(claim);
         }
-        mus.push(mask_claim(&plan, j, &point, proof.mask_final)?);
+        mus.push(mask_claim(&plan, j, &point, mu)?);
         relations.push(proof);
     }
     let mut batches = Vec::new();
@@ -1341,8 +1440,8 @@ mod tests {
         for masks in [true, false] {
             for n in 0..8u8 {
                 let t = || Transcript::<QM31>::new(b"leak").expect("transcript");
-                let proof =
-                    prove_with(&statement, &columns, &[n; 32], &mut t(), masks).expect("proof");
+                let proof = prove_with(&statement, &columns, &[n; 32], &mut t(), masks, None)
+                    .expect("proof");
                 let verified = verify(&statement, &proof, &mut t()).expect("accepted");
                 let eq = stele_poly::eq_table(&verified.reductions[0].point).expect("eq");
                 let exact = a
