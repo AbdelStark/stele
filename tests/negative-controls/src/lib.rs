@@ -150,6 +150,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk::run(915),
     },
     catalog::RegisteredControl {
+        id: 916,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || zk::run(916),
+    },
+    catalog::RegisteredControl {
         id: 1300,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",

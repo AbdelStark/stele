@@ -141,6 +141,7 @@
 | NC-0913 | dev-zk fraction | 0008 A7 | one masked layer value changed | `RoundSumMismatch` | todo |
 | NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment | `RootMismatch` | todo |
 | NC-0915 | dev-zk claim | 0013 A5 | batch weight on the w = 1 half made nonzero, sum-preserving, by an alternative batch prover | `FinalEvaluationMismatch` | done |
+| NC-0916 | dev-zk claim | 0013 A5 | A4's NC-0908 attack on a composed relation over honest sources: free rounds, μ solved last, true finals | `RoundSumMismatch` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
@@ -184,7 +185,9 @@ producer must refuse it. A reservation adds no coverage. E12-18 runs the control
 for 0910 and 0911 through the composed `zk::claims` verifier, and those for 0909
 and 0915 through `claims::verify_batch`, the batch verifier that the composed
 verifier calls once per source (ADR-099). Each control fails when its check is
-removed. The controls for 0912..0914 remain for E12-19 and E12-14.
+removed. The controls for 0912..0914 remain for E12-19 and E12-14. E12-18 also adds
+the control for 0916, from the independent review: A4's 0908 attack on a composed
+relation, rejected only by binding each relation's `μ` in the shared batch.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit.

@@ -655,6 +655,36 @@ fn nc_0911() -> Result<(), String> {
     )
 }
 
+/// Replace the whole composed proof.
+struct ForgedProof(stele_reductions::zk::claims::Proof<QM31>);
+impl ProverHook<stele_reductions::zk::claims::Proof<QM31>> for ForgedProof {
+    fn tamper(&self, proof: &mut stele_reductions::zk::claims::Proof<QM31>) {
+        proof.clone_from(&self.0);
+    }
+}
+
+/// NC-0916 (RFC-0013 A5 item 5a): A4's NC-0908 attack on a composed relation. The
+/// committed `x` is false (`x = 2` once, so `x² ≠ x`) but honestly committed. The
+/// relation's rounds are free and `μ` is solved last, the finals are the true `V̇`
+/// values, and every source batch is honest. The shared batch's public sum binds
+/// that `μ` to the committed `g`, so its first round fails.
+fn nc_0916() -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let statement = zk_statement();
+    let t = || Transcript::<QM31>::new(b"dev-zk control").expect("transcript");
+    let mut false_witness = zk_witness();
+    false_witness[0][3] = M31::from_i64(2);
+    let forged = claims::forge(&statement, &false_witness, Seed::new([12; 32]), &mut t(), 0)
+        .map_err(|e| format!("forger: {e:?}"))?;
+    check_proof_control(
+        || claims::prove(&statement, &zk_witness(), Seed::new([11; 32]), &mut t()),
+        &ForgedProof(forged),
+        |proof| claims::verify(&statement, proof, &mut t()).map(|_| ()),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::RoundSumMismatch),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
@@ -662,6 +692,7 @@ pub fn run(id: u16) -> Result<(), String> {
         910 => nc_0910(),
         911 => nc_0911(),
         915 => nc_0915(),
+        916 => nc_0916(),
         907 => nc_0907(),
         908 => nc_0908(),
         904 | 905 => nc_masked(id),
