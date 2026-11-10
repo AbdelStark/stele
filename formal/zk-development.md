@@ -71,10 +71,11 @@ covered.
   A queried position in that half is a message entry, whatever else the message
   holds. No message-side mask can hide it
   (`rejects_systematic_expander_mask`). RFC-0026 sources are v2 sources today.
-- **The Circle code is not systematic.** RFC-0010 A2 interpolates the message as
-  evaluations on `D_m` in the span of `b_0..b_{k-1}`, then evaluates on
-  `D_{m+b}`. The two domains are disjoint (their points have 2-adic orders
-  `2^{m+1}` and `2^{m+b+1}`). This is the setting of FlashProve's §5.1 and of
+- **The Circle code is not systematic.** RFC-0010 A2 interpolates a message of
+  length `k = 2^h` as evaluations on `D_h` in the span of `b_0..b_{k-1}`, then
+  evaluates on `D_{h+b}`. The two domains are disjoint (their points have 2-adic
+  orders `2^{h+1}` and `2^{h+b+1}`). §3 uses `h = m + 1`, where `C = 2^m` is
+  the data width. This is the setting of FlashProve's §5.1 and of
   [commitment privacy §5](commitment-privacy.md#5-what-a-randomized-row-encoder-can-and-cannot-establish).
 - **Openings are general functionals.** RFC-0010 A9 §4 verifies `⟨a ⊗ b, M⟩`
   for any verifier-computed `a, b`, so a change of message layout needs no new
