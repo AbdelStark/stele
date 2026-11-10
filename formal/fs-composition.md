@@ -13,7 +13,7 @@ random-oracle model (ROM).
    the hash-chain transcript of RFC-0012 A1 and counted grinding. Its error is
    `Q·ε* + ε_floor + H*(Q+Q_V) + ε_setup`.
 2. **Lemmas 2–6** (§4) give a per-round error for every round family that a
-   development proof uses: SC, RLC, SZ, LU (two rounds; Lemma 4 is new), the
+   development proof uses: SC, RLC, SZ, LU (Lemma 4 is new), the
    PCS tensor round and the PCS column rounds.
 3. **The query cap** (§5).
    - The old reading of RFC-0002 §8 asks for a total error of 2^-100 against
@@ -51,7 +51,7 @@ the treaty profile's other obligations remain open (§7).
   challenge requests with no absorb between them. Several requests in one round
   form one vector challenge. Examples: the ℓ CertificateWeight draws, the q
   column draws of one response block, the coordinates of one `relation/point`,
-  and β followed by α in a lookup.
+  and β followed by α in a lookup (no absorb between them).
 - **Oracles of the IOP.** A committed source is a Merkle root. RFC-0010 A8
   freezes the field-valued matrix W that the root determines, from the queries
   made before the root's first registration. Outside the A8 events BadCollision
@@ -204,8 +204,7 @@ uniform in K (|K| = p^4 or p^8) or uniform over column indices.
 | RLC | one batching draw over t claims | t/\|K\| (as recorded) | Lemma 3 |
 | SZ | one `relation/point` vector of a coordinates | a/\|K\| | Lemma 3 |
 | LU | units θ (h coordinates) | h/\|K\| | Lemma 4 |
-| LU | β (tuple compression, arity c) | (c−1)(N+\|T\|)/\|K\| | Lemma 4 |
-| LU | α (denominator) | (N+\|T\|−1)/\|K\| | Lemma 4 |
+| LU | β then α, one round (no absorb between; arity c) | ((c−1)(N+\|T\|) + N+\|T\|−1)/\|K\| | Lemma 4 |
 | PCS tensor | ℓ CertificateWeight draws | 2·ℓ·(e+1)/\|K\| | Lemma 5 |
 | PCS column | q_c certificate draws | ((N−e−1)/N)^q_c | Lemma 6 |
 | PCS column | q_o opening draws | ((N−D+e)/N)^q_o | Lemma 6 |
@@ -246,34 +245,41 @@ multilinear difference in a variables gives a/|K| (RFC-0012 A14/A16).
 first selected tuple in position order that is not in the table. Let S_0 be its
 exact fiber: the selected positions whose tuple equals x. Both are fixed with
 the sources, before θ. The schedule runs θ, then the multiplicity
-commitment, then β, then α. Define the states:
+commitment, then β and α. β and α are drawn with no absorb between them
+(`relation_lookup.rs`), so together they are **one** round. Define the states:
 
 1. **After θ:** doomed iff R_{S_0}(θ) ≠ 0. R_{S_0} is nonzero multilinear of
    degree at most h, so the escape probability is at most h/|K|.
-2. **After β:** doomed iff R_{S_0}(θ) ≠ 0 and z_β(x) avoids every table tuple and every other
-   distinct source tuple. Each difference `z_β(x) − z_β(y)` with y ≠ x is a
-   nonzero polynomial of degree at most c−1 in β. There are at most |T| table
-   tuples and at most N source tuples, so the escape probability is at most
-   (c−1)(N+|T|)/|K|. It is 0 for c = 1.
-   Inside this state, S_β = S_0 and R_{S_β}(θ) ≠ 0. So the rational identity
-   is false with a pole at z_β(x) outside the table.
-3. **After α:** the cleared numerator is nonzero of degree at most N+|T|−1, so
-   the escape probability is at most (N+|T|−1)/|K|.
+2. **After (β, α):** doomed iff all three of the following hold:
+   - R_{S_0}(θ) ≠ 0;
+   - z_β(x) avoids every table tuple and every other distinct source tuple;
+   - the cleared rational identity is nonzero at α.
+
+   Escaping needs one of two events:
+   - **β collides.** Each difference `z_β(x) − z_β(y)` with y ≠ x is a nonzero
+     polynomial of degree at most c−1 in β. There are at most |T| table tuples
+     and N source tuples, so this costs (c−1)(N+|T|)/|K|, which is 0 for c = 1.
+   - **β avoids, α hits a root.** Outside the collision, S_β = S_0 and
+     R_{S_β}(θ) ≠ 0. The identity is then false, with a pole at z_β(x) outside
+     the table. Its cleared numerator is nonzero of degree at most N+|T|−1, so
+     this costs (N+|T|−1)/|K|.
+
+   The round's RBR error is the sum of the two.
 
 The joint interactive bound of weighted-logup.md analyses θ and β together, in
 the sentence "the raw verifier coins β and θ are independent". That analysis is
 not RBR: under FS, P* can resample θ and keep the fiber fixed, and then β meets
 an adversarially chosen θ. A merged fiber's weight can then vanish at that θ.
 
-Lemma 4 charges the β round for collisions with source tuples as well as with
-table tuples. This closes a gap in the proof technique, not a demonstrated
+Lemma 4 charges the (β, α) round for collisions with source tuples as well as
+with table tuples. This closes a gap in the proof technique, not a demonstrated
 attack. The gap is vacuous in RFC-0026, where h = 0 and there is no θ.
 
 In every RFC-0026 check, c ∈ {1, 2}, h = 0 (b = m) and |T| ≤ 2^16
-(`relation.rs`, RFC-0008 A2 item 5). Each LU round is therefore at most N+c·|T|,
-which is at most the recorded LU numerator plus one. The sum over the two rounds
-is at most 2N+2|T|−1. That exceeds the recorded joint numerator, and the ledger
-must charge it per round.
+(`relation.rs`, RFC-0008 A2 item 5). The recorded numerator is N+c·|T|−1, so the
+(β, α) round's error is that numerator for c = 1. For c = 2 it is
+2N+2|T|−1, which is at most 2·numerator+1. That exceeds the recorded joint
+numerator, and the ledger must charge the per-round value.
 
 **Lemma 5 (PCS tensor).** The certificate chain starts doomed iff the frozen W is
 farther than e = ⌊(D−1)/3⌋ columns from the interleaved code. After the row
@@ -355,12 +361,12 @@ clone, not part of this repository).
 **Why g = 8.** g is a tuning choice, not a guarantee. (C1) alone gives only
 ε_floor ≤ (number of rounds)·2^-(λ+g), which is about 2^-93 for the roughly 2^15
 rounds of the stories42M ledger. (C2) is checked independently, on the exact
-sum. With g = 8, the stories42M sum is 2^-102 (§6), because most rounds are
+sum. With g = 8, the stories42M sum is 2^-102.2 (§6), because most rounds are
 sumcheck rounds at about 2^-122. A larger g costs queries, and a smaller g fails
 (C2) once the LU and PCS rounds are summed.
 
 **Why k_q = 16.** The honest prover pays 2^16 BLAKE3 calls per column round,
-about 3.2·10^6 calls for the whole stories42M proof. In exchange, the column
+about 3.1·10^6 calls per stories42M proof. In exchange, the column
 rounds of the PCS, which dominate the proof size, drop to a 92-bit target.
 
 **What C1–C4 need from the ledger.** The verifier or ledger generator (E8-05)
@@ -376,17 +382,19 @@ study PR (task E12-21). "Floor" is ε_floor + ε_setup.
 
 | Configuration | Worst round | Floor | (C1)/(C2) |
 |---|---:|---:|---|
-| recorded proof (Policy 1, no grinding) | 2^-97.0 (LU range_8) | 2^-94.6 | fail / fail |
-| Policy 2, v2 codes | 2^-108.0 | 2^-102.0 | pass / pass |
-| Policy 2, Circle rate 1/4 | 2^-108.0 | 2^-102.0 | pass / pass |
+| recorded proof (Policy 1, no grinding) | 2^-97.0 (LU range_8) | 2^-95.6 | fail / fail |
+| Policy 2, v2 codes | 2^-108.0 | 2^-102.2 | pass / pass |
+| Policy 2, Circle rate 1/4 | 2^-108.0 | 2^-102.2 | pass / pass |
 
 The recorded proof fails even its interactive budget. Its largest LU round, the
 weight range check over 2^27 positions, is 2^-97, and the LU sum alone exceeds
 2^-100.
 
-Under the rule, 19 of the 21 LU checks grind, at 1 to 12 bits (12 for range_8).
-The Circle stack and model tensor rounds grind at 5 and 6 bits, and each of the
-48 column rounds at k_q = 16. That is about 3.2·10^6 prover hashes in total. The
+Under the rule, each LU check is one (β, α) round (Lemma 4), and 19 of the 21
+checks grind, at 2 to 12 bits (12 for range_8). Under Circle, the stack tensor
+round grinds at 6 bits. Each of the 47 per-proof column rounds grinds at
+k_q = 16. That is about 3.1·10^6 prover hashes per proof. The one-time model
+certificate in `public.bin` adds its own rounds. The
 alternative to LU grinding is OM31 lookup challenges, which RFC-0026 does not use.
 
 ## 7. What is proven, what is conditional, what remains
@@ -431,8 +439,8 @@ keep the Johnson route out:
 2. Zero knowledge and the treaty profile (Q29, RFC-0013). Masking adds rounds
    whose RBR errors are not derived here.
 3. Exact round enumeration in the native generator (E8-05). The stories42M
-   figures use the recorded ledger plus Lemma 4's bound of two LU rounds per
-   check, each at most the numerator plus one.
+   figures use the recorded ledger, with one (β, α) LU round per check charged
+   conservatively (Lemma 4).
 4. The consumers:
    - grinding wired into the PCS column rounds and the LU and tensor rounds;
    - Policy 2 tables in `stele-pcs`;
