@@ -9,6 +9,8 @@ description = "Stele — stele-sumcheck (see RFC-0006)"
 stele-field = { path = "../stele-field" }
 stele-poly = { path = "../stele-poly" }
 stele-hash = { path = "../stele-hash" }
+# Prover-side work pool (E16-17, ADR-090); only through the opt-in `std` feature.
+rayon = { version = "=1.10.0", optional = true }
 
 [lints]
 workspace = true
@@ -17,7 +19,7 @@ workspace = true
 serde_json = "1.0"
 
 [features]
-std = []
+std = ["dep:rayon"]
 
 [[test]]
 name = "file_source"

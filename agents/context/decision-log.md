@@ -1821,3 +1821,30 @@ and runs on a GPU). No GPU path is measured; it stays behind the INV-3 parity ga
 
 Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
 review in the E16-11 PR).
+
+## ADR-090: Rayon as the prover-side work pool, behind opt-in std features (task E16-17)
+
+Context: the scoped-thread splits of E16-15/16 spawned threads on every round. The
+v2 encoder ran sequentially during source preparation. The owner chose rayon over
+redesigning the sumcheck strategy interface.
+
+Decision:
+- `rayon =1.10.0` (MIT/Apache-2.0) is an optional dependency of `stele-sumcheck` and
+  `stele-code` only. It is enabled by their `std` features. `stele-pcs` gains
+  `std = ["stele-code/std"]`. `stele-reductions`'s `std` forwards to both. Only
+  `stele-prover` turns it on.
+- `stele_sumcheck::parallel` runs on rayon's global pool: `sum_ranges` (partials
+  combined in chunk order), `fold`, `for_each_chunk` and a block-split `eq_table`.
+  Worker panics propagate.
+- Under `std`, `Encoder::encode_rows_measured` encodes contiguous row groups in
+  parallel. Each group regenerates the sparse rows, and every row's codeword is
+  unchanged.
+- `CodeField` requires `Send + Sync`, as `ChallengeField` does, and every sealed
+  implementor already satisfies it.
+- The verifier, `stele-verifier` and every `--no-default-features` build stay free
+  of rayon. CI checks `stele-code`, `stele-pcs`, `stele-reductions` and
+  `stele-verifier` without default features. `cargo tree` shows rayon only under
+  `stele-prover`.
+- Proof bytes are unchanged; the E16-10 fixture hashes stay pinned.
+
+Status: Accepted.

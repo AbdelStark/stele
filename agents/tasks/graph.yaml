@@ -2835,7 +2835,7 @@ tasks:
   - RFC-0010 A4
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-17-rayon
   acceptance:

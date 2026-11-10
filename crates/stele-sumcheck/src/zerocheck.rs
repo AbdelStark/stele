@@ -281,7 +281,7 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         check_tables(self.instance, tables)?;
         let width = 1usize.checked_shl(j).ok_or(Error::Capacity)?;
         let alpha = self.start(t, j)?;
-        let eq = stele_poly::eq_table(&alpha).map_err(|_| Error::Capacity)?;
+        let eq = crate::parallel::eq_table(&alpha)?;
         let mut skip_values = zeros(count)?;
         for (offset, value) in skip_values.iter_mut().enumerate() {
             let weights = crate::interpolation_weights(s, K::from_i64((s + offset) as i64))?;
@@ -293,7 +293,7 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         reserve(&mut rounds, j as usize)?;
         let mut point = zeros(j as usize)?;
         for h in 0..j as usize {
-            let eq = stele_poly::eq_table(&alpha[h + 1..]).map_err(|_| Error::Capacity)?;
+            let eq = crate::parallel::eq_table(&alpha[h + 1..])?;
             let mut row = zeros(degree + 1)?;
             for (node, value) in row.iter_mut().enumerate() {
                 *value = self.sum(&state, &eq, Some(K::from_i64(node as i64)))?;
