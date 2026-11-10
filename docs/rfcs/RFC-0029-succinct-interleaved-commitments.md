@@ -22,10 +22,18 @@ RFC-0010; it withdraws nothing that is Accepted there.
 ### 1.2 Object
 
 A **source** is an `R × C` matrix over M31 (level 0) or over `K` (levels 1 and up),
-`R = 2^ℓ`, `C = 2^m`. Each row is encoded with the RFC-0010 A2 circle code of blow-up
-`2^b`; the `N = 2^(m+b)` columns are leaves of an RFC-0012 A3 Merkle tree. This is
-source version 1 of RFC-0010 A9 at level 0. A `K`-valued row is encoded limb by limb,
-which is the `K`-linear extension of the code.
+`R = 2^ℓ`, `C = 2^m`. Each row is encoded with the **coefficient-form circle code** of
+blow-up `2^b`: the row's `C` entries are the coefficients in the basis `b_0..b_(C−1)`
+of RFC-0010 A2, zero-padded to `N = 2^(m+b)` and evaluated on `D_(m+b)`. The `N`
+columns are leaves of an RFC-0012 A3 Merkle tree. A `K`-valued row is encoded limb by
+limb, which is the `K`-linear extension of the code.
+
+This is not the map of RFC-0010 A2, which takes message rows as evaluations on `D_m`
+and interpolates first. The two maps have the same set of codewords, so the distance
+bound of A2 (`D = N − C` for `C ≥ 2`) holds unchanged. They differ in which message a
+codeword encodes, so the coefficient form has its own code identity and its own
+source version (3). Version 1 sources (RFC-0010 A9) keep A2's map and are not opened
+recursively. The coefficient form costs one transform per row where A2 costs two.
 
 An **opening** proves `⟨a ⊗ b, M⟩ = v` for verifier-computable `a ∈ K^R`, `b ∈ K^C`.
 Version 3 adds: the prover commits `u = aᵀM` as the next level's source in place of
@@ -70,8 +78,11 @@ For one source at level `i` with claim `⟨w_i, M_i⟩ = v_i`. At level 0 in fre
 
 The verifier never materialises `w_i`. It evaluates the multilinear extension of each
 part at the point the sumchecks produce: `eq` terms in `O(log)` field operations, and
-each `g_j` in `O(m)` because the circle FFT basis is a tensor basis
-(`g_j = ⊗_k (1, t_k(P_j))`).
+each `g_j` in `O(m)`. The second holds because rows are in coefficient form and A2's
+basis is a tensor basis in the bits of the coefficient index: with `P_j = (x, y)`,
+`g_j = (1, y) ⊗ (1, v_1(x)) ⊗ (1, v_2(x)) ⊗ …`, so its extension at a point `r` is
+`(1 − r_0 + r_0·y)·Π_h (1 − r_h + r_h·v_h(x))`. It would not hold for A2's
+evaluation-form rows.
 
 **Several sources in one recursion.** Row combinations produced at the same point of
 the transcript are stacked into one next-level source (RFC-0026 A4 layout). There is one
@@ -84,8 +95,9 @@ sources join the one recursion at the end of the proof.
 
 ## 3. Prover algorithm and cost
 
-- Commit: `R` circle FFTs of length `N` and one Merkle tree over `N` leaves of `R`
-  elements. Rows are independent; the encoder batches them.
+- Commit: `R` forward circle transforms of length `N` (no interpolation) and one
+  Merkle tree over `N` leaves of `R` elements. Rows are independent; the encoder
+  batches them.
 - Row combination: `R·C` small-by-extension products at level 0 (the weight pass when fused);
   extension arithmetic on `C_i` elements at higher levels, a geometric tail.
 - Memory: the level-0 matrix of one segment and its codeword, or the codeword
@@ -106,8 +118,8 @@ Per level: `ℓ_i` sumcheck rounds, `q_i` Merkle paths, `q_i·R_i` field product
 
 ## 5. Soundness
 
-Per level, with distance `D_i = N_i − C_i + 1`, proximity radius `e_i` and
-`e_i < D_i/3`:
+Per level, with distance `D_i = N_i − C_i` (RFC-0010 A3 item 3; `D_i = N_i` when
+`C_i = 1`), proximity radius `e_i` and `e_i < D_i/3`:
 
 | Source | Line | Formula | Status |
 |---|---|---|---|
@@ -153,6 +165,9 @@ now keeps the byte layout stable.
 ## 8. Open questions
 
 - **Q27** (restated): this RFC is the proposed answer for succinct openings.
+- **Q48**: the byte identity and version of the coefficient-form code, and whether
+  model sources registered in evaluation form (version 1) need a one-time
+  re-registration or a proved change of basis.
 - **Q39**: the largest proven radius for the interleaved circle code under tensor
   combination, and whether the Reed–Solomon results up to `D/2` and to the Johnson
   bound transfer to it.

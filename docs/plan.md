@@ -130,7 +130,8 @@ proving modules before any of this; that is on the first-light path.
 ### 3.5 Commitment scheme v3 (RFC-0029, Draft)
 
 One scheme for weights and witness: rows encoded with the circle Reed–Solomon code
-already in `stele-code`, columns hashed with BLAKE3, and a recursive opening. The
+of `stele-code` in coefficient form, columns hashed with BLAKE3, and a recursive
+opening. The
 prover combines rows once, commits the combination as a smaller matrix, and proves
 the column checks by sumcheck into the next level, until the vector is small enough
 to send.
@@ -159,7 +160,7 @@ below the profile.
 |---|---|---|---|---|
 | development | none claimed | printed, labelled | no | QM31 |
 | standard | at least 100, no grinding counted | proven only | optional until M5 | QM31, with lookup checks and PCS rows capped so each round clears 100 |
-| treaty | at least 128 | proven only | mandatory | wider than QM31 in the rounds that need it (E12-03 decides) |
+| treaty | at least 128 | proven only | mandatory | a wider field for every challenge (a QM31 sumcheck round is 2^-122); E12-03 decides which |
 
 ### 3.7 Zero knowledge (RFC-0013 A2, Draft)
 
@@ -321,6 +322,7 @@ Mirrored as numbered questions in RFC-0019. Each has a kill criterion in its tas
   fallback.
 - Q46, Q47: knowledge soundness for consumers that need an extractor; the
   post-quantum claim.
+- Q48: the identity of the coefficient-form circle code.
 - Q12, restated by RFC-0030: the theorem and constants for the Fiat–Shamir step.
 
 **Machine learning**
@@ -356,3 +358,15 @@ Mirrored as numbered questions in RFC-0019. Each has a kill criterion in its tas
 4. Work runs in lanes with one open change each, replacing one global queue.
 5. New work stops on the v2 expander path, per-operation advice cuts, double-challenge
    LogUp, dual-prime accumulation and epoch beacons.
+
+## 11. Inputs the program needs
+
+1. **Hosts.** A CPU host class with at least 64 cores and 512 GB RAM for rungs L2 and
+   L3 (gates M1 and M2), and H100 hours from task E20-04 on. Hosted CI has no GPU, so
+   parity and every GPU ledger run on rented hosts through the harness of task E17-04.
+2. **The Llama-3.1-8B Artifact.** The prepared CQIS Artifact used for the fidelity
+   report (`harness/eval/REPORT.md`) must be reachable by that harness; first light
+   proves that exact Artifact.
+3. **Reviewers.** Promotion to `standard` needs the soundness-auditor skill run by an
+   agent that did not write the change, and `treaty` needs an external review.
+4. **A decision on section 10.**

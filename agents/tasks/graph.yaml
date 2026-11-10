@@ -3167,6 +3167,7 @@ tasks:
   lane: C
   status: ready
   acceptance:
+  - the coefficient-form circle code with its own code identity and source version; a test shows its codeword for a coefficient row equals the RFC-0010 A2 codeword of that row's evaluations on D_m
   - levels, row combinations, queries, consistency batch and final check as RFC-0029 §2; every count from the plan
   - an independent Python check reproduces the verifier decisions on seeded small sources in QM31
   - NC-0630..0634 run through the actual verifier

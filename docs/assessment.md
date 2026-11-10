@@ -159,7 +159,8 @@ probability at most Q·ε_round + Q²/2^256", where ε_round is the largest roun
 error. Then QM31 gives about 100 bits if each lookup check has at most about 2^22
 positions and each PCS row is short. A larger check is split into instances of that
 size, each with its own multiplicity source, so no second challenge pair is needed.
-128 bits needs a wider challenge field (OM31) in the rounds that are short of it.
+128 bits needs a wider challenge field (OM31) throughout: a QM31 sumcheck round is
+already at 2^-122.
 
 ## 6. The bar moved
 

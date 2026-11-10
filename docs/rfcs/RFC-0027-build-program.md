@@ -162,7 +162,7 @@ and E23 task that adds a binding reserves its control id in its RFC or amendment
 
 ## 9. Open questions
 
-Q34 to Q47, mirrored in RFC-0019.
+Q34 to Q48, mirrored in RFC-0019.
 
 ## 10. Amendment log
 

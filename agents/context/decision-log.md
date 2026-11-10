@@ -1900,7 +1900,9 @@ Decision (direction, not law):
   tuples. The first design's lookups over uncommitted tensors are not pursued.
 - **Commitment scheme v3 (RFC-0029).** Interleaved circle Reed–Solomon with a
   recursive opening; fresh mode for per-proof sources, certified mode for model
-  sources; proven unique-decoding parameters only. RFC-0026 A6 moves the development
+  sources; proven unique-decoding parameters only. Rows are in coefficient form (a
+  new code identity with the codewords of RFC-0010 A2), because the recursion needs
+  the code's evaluation functionals to be tensors. RFC-0026 A6 moves the development
   engine from v2 expander sources to the circle sources that already exist.
 - **Security accounting (RFC-0030).** Round-by-round error with hash queries
   multiplying the largest round; `standard` at 100 bits on QM31 with lookup instances
@@ -1928,6 +1930,6 @@ Consequences:
   these texts. Until then code follows the Accepted RFC-0026 and RFC-0010.
 - New control ids are proposed in the drafts (NC-0630..0635, NC-0806..0808,
   NC-1320..1325) and enter the catalogue at acceptance.
-- Questions Q34 to Q47 are opened in RFC-0019.
+- Questions Q34 to Q48 are opened in RFC-0019.
 
 Status: Proposed (Draft RFCs; each is decided by its acceptance task).

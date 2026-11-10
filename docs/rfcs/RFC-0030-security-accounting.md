@@ -74,7 +74,7 @@ Proposed replacement for RFC-0002 §8:
 | `λ_min` | not claimed | at least 100 | at least 128 |
 | bounds | printed, labelled | proven only | proven only |
 | grinding | — | not counted | not counted |
-| challenge field | QM31 | QM31 | wide enough that every round clears 128 (about 151 bits under the caps below) |
+| challenge field | QM31 | QM31 | a wider field for every challenge, wide enough that every round clears 128 (about 151 bits under the caps below) |
 | zero knowledge | no | optional until RFC-0013 A2 is Accepted | mandatory |
 | hash output | 256 bits | 256 bits | 256 bits, leaves domain-separated |
 
@@ -89,9 +89,9 @@ Consequences on QM31 (`|K| ≈ 2^124`), all enforced by plan validation:
 - The caps are `2^23`, not `2^24`, because `|K| = p^4` is slightly below `2^124`.
 - Sumcheck rounds need no cap (`δ ≤ 4`).
 
-`treaty` draws from a wider field in the rounds whose QM31 error exceeds `2^-128`.
-OM31 is implemented; whether a 186-bit extension is cheaper is decided by measurement
-(task E12-03, R-OCTIC).
+No QM31 round reaches 128 bits: a degree-4 sumcheck round is already `2^-122`. So
+`treaty` draws every challenge from a wider field. OM31 is implemented; whether a
+186-bit extension is cheaper is decided by measurement (task E12-03, R-OCTIC).
 
 Grinding may be added to any query round. It is reported on its own line and adds
 nothing to `λ_min`.

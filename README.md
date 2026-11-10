@@ -59,7 +59,7 @@ the `no_std` verifier crate, a passport, a proof of Llama‑3.1‑8B.
 
 **What is solid underneath.** Fields, transcript, Merkle, sumcheck, lookup, encoder and commitment primitives
 with independent Python oracles; the CQIS integer semantics with native and NumPy executors and a fidelity
-report on Llama‑3.1‑8B ([`harness/eval/REPORT.md`](harness/eval/REPORT.md)); 71 executed negative controls.
+report on Llama‑3.1‑8B ([`harness/eval/REPORT.md`](harness/eval/REPORT.md)); 71 of 142 control catalogue rows done.
 
 **Where it is going.** [`docs/assessment.md`](docs/assessment.md) is the evidence. [`docs/plan.md`](docs/plan.md)
 is the build program (RFC‑0027): first Llama‑3.1‑8B through the existing engine (M1), then a protocol that

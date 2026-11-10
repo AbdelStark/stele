@@ -1251,7 +1251,7 @@ on three things:
 Required at minimum: Q12, an admitted RFC-0012 A15 PCS parameter set, R-FORMAL
 statements of the uniqueness lemmas, and RFC-0011 passport binding.
 
-## Build-program tracks (RFC-0027; questions Q34 to Q47)
+## Build-program tracks (RFC-0027; questions Q34 to Q48)
 
 Each track names its kill criterion. A track graduates by an amendment (Workflow 02)
 or ends with a report that says "drop".
@@ -1329,7 +1329,8 @@ replies · Q42 long-context attention · Q43 commitment-free attained maximum (t
 product of `M − v_j` over the scope is zero; RFC-0028 §7) · Q44 column height against
 segment count (RFC-0029 §8) · Q45 linear-time first layer as a fallback (RFC-0029 §8)
 · Q46 knowledge soundness for consumers that need an extractor (RFC-0030 §7) · Q47 the
-post-quantum claim (RFC-0030 §7).
+post-quantum claim (RFC-0030 §7) · Q48 identity and version of the coefficient-form
+circle code, and migration of evaluation-form model sources (RFC-0029 §8).
 
 Q12, Q27, Q29, Q31 and Q33 are restated by RFC-0030, RFC-0029, RFC-0013 A2, RFC-0028
 and RFC-0027 §2 respectively; each stays open until its RFC is Accepted.

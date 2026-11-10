@@ -76,7 +76,8 @@ each virtual column's field value is the centered residue of its integer value.
 
 A range check or lookup whose tuple reads a virtual column is the way advice is
 constrained (for example `rem` in §1.2). The limb rule of RFC-0026 §3.5 stands: a
-virtual value wider than 16 bits is split by committing its high limbs.
+range check covers at most 16 bits, so a virtual value that needs a wider one is
+split by committing its high limbs and checking the virtual low limb.
 
 ### 2.3 Segments
 
@@ -95,16 +96,18 @@ segment boundary is carried; nothing else needs to be.
 2. For each segment `s` in order:
    1. commit the segment's stacked source (RFC-0026 A4 layout); absorb its root;
    2. commit and absorb the multiplicity sources of the segment's checks;
-   3. run the segment's zerochecks (RFC-0026 §4 step 4) and lookup checks (step 5);
-      each emits claims on columns of any kind;
+   3. run the segment's zerochecks (RFC-0026 §4 step 4), its lookup checks (step 5)
+      and any matmul relation that still has a committed output (step 6); each emits
+      claims on columns of any kind;
    4. **reduce.** For each virtual column of the segment, in decreasing `ColumnId`:
       - `Linear`: for each claim `(z, c)` on `v`, the prover sends the operand
         evaluations `f̃(z|vars)`, which are absorbed; the verifier checks
         `c = constant + Σ c_i·f̃_i` and files each operand evaluation as a claim. No
         challenge is drawn.
-      - `Pointwise`: batch the claims with one `relation/identity` coefficient each,
-        then one RFC-0006 A1 sumcheck of `Σ_x E(x)·Σ_t c_t Π_f f(x)` with
-        `E = Σ_j γ_j·eq(z_j, ·)`. The verifier evaluates `E` at the final point.
+      - `Pointwise`: if `v` has more than one claim, reduce them to one point `z` with
+        RFC-0006 A2 mode 1 over `v`'s own table. Then one RFC-0006 A1 sumcheck of
+        `Σ_x eq(z, x)·Σ_t c_t Π_f f(x)`. The verifier evaluates `eq` at the final
+        point. No new label is used.
       - `Contraction`: if `v` has more than one claim, reduce them to one point with
         RFC-0006 A2 mode 1 over `v`'s own table. Then run the RFC-0026 §4 step 6
         sumcheck at that point (no fresh `relation/point` draw).
@@ -125,7 +128,9 @@ or its sumcheck messages. The verifier derives every count and length.
 
 - `Linear`: one MLE evaluation per operand per claim (`2^n` small-by-extension
   products), no sumcheck, no commitment.
-- `Pointwise`: one degree-4 sumcheck over the column's domain.
+- `Pointwise`: one batching sumcheck when the column has several claims, then one
+  degree-4 sumcheck over the column's domain. Merging the two is a possible
+  amendment once measured.
 - `Contraction`: one batching sumcheck over the `2^a` outputs when needed, one partial
   evaluation of each operand (`2^(a+s)` small-by-extension products each), one sumcheck over
   `2^(s+k)`. Each weight is read once per contraction it enters.
@@ -151,7 +156,7 @@ No new error family.
 | Source | Line | Formula | Status |
 |---|---|---|---|
 | `Linear` reduction | — | exact; operand evaluations are claims discharged downstream | proven (linearity of the multilinear extension) |
-| `Pointwise` batch | RLC | `(#claims)/|K|` | proven |
+| `Pointwise` claim batch | RLC + SC | RFC-0006 A2 mode 1 | proven |
 | `Pointwise` sumcheck | SC | `m·4/|K|` | proven |
 | `Contraction` claim batch | RLC + SC | RFC-0006 A2 mode 1 | proven |
 | `Contraction` sumcheck | SC | `(s+k)·δ/|K|` | proven |
