@@ -210,11 +210,15 @@ impl<K: ChallengeField + Eq> Descriptor<K> {
             let children = &levels[levels.len() - 1];
             let mut parents = Vec::new();
             reserve(&mut parents, children.len() / 2)?;
-            for pair in children.chunks_exact(2) {
-                let [p0, q0] = pair[0];
-                let [p1, q1] = pair[1];
-                parents.push([a * p0 * q1 + b * p1 * q0, q0 * q1]);
-            }
+            parents.resize(children.len() / 2, [K::from_i64(0); 2]);
+            // Each parent depends only on its two children: any split is identical.
+            stele_sumcheck::parallel::for_each_chunk(&mut parents, |start, chunk| {
+                for (j, parent) in chunk.iter_mut().enumerate() {
+                    let [p0, q0] = children[2 * (start + j)];
+                    let [p1, q1] = children[2 * (start + j) + 1];
+                    *parent = [a * p0 * q1 + b * p1 * q0, q0 * q1];
+                }
+            });
             levels.push(parents);
         }
         levels.reverse();

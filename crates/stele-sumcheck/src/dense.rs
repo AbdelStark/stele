@@ -101,16 +101,29 @@ impl<K: ChallengeField> Summand<K> for Dense<K> {
         let half = self.tables[0].len() / 2;
         // Field addition is exact, so any split of the column range into partial sums
         // gives the same round values as the sequential sum (RFC-0006 A1 is unchanged).
+        // One pass per column: the node-x value of each input is t + x·(t' − t), built
+        // by repeated addition of the difference, so no product by x is needed.
+        let inputs = self.tables.len();
         let partial = |range: core::ops::Range<usize>, out: &mut [K]| {
             out.fill(K::from_i64(0));
-            for (node, result) in out.iter_mut().enumerate() {
-                let x = K::from_i64(node as i64);
-                for column in range.clone() {
-                    *result = *result
-                        + i.evaluate_with(|input| {
-                            let table = &self.tables[input as usize];
-                            table[column] + x * (table[column + half] - table[column])
-                        });
+            let mut values = Vec::new();
+            let mut steps = Vec::new();
+            reserve(&mut values, inputs)?;
+            reserve(&mut steps, inputs)?;
+            values.resize(inputs, K::from_i64(0));
+            steps.resize(inputs, K::from_i64(0));
+            for column in range {
+                for ((value, step), table) in values.iter_mut().zip(&mut steps).zip(&self.tables) {
+                    *value = table[column];
+                    *step = table[column + half] - table[column];
+                }
+                for (node, result) in out.iter_mut().enumerate() {
+                    if node > 0 {
+                        for (value, step) in values.iter_mut().zip(&steps) {
+                            *value = *value + *step;
+                        }
+                    }
+                    *result = *result + i.evaluate(&values);
                 }
             }
             Ok(())
