@@ -1700,9 +1700,8 @@ Status: Accepted.
 
 ## ADR-084: Stacked model commitment (RFC-0026 A5, task E16-14)
 
-Context: after A4, weight sources dominated the openings of the E16-10 8-layer proof
-(57 of 59 sections, about 19 MB). The model commitment also carried one
-certificate per weight.
+Context: after A4, weight sources dominated the openings of the E16-10 8-layer proof.
+The model commitment also carried one certificate per weight.
 
 Decision:
 - Weights are split in `ColumnId` order into v2 model sources of at most `2^30`
@@ -1722,8 +1721,7 @@ Decision:
   left open.
 
 Consequences:
-- On a 56-weight plan the openings go from 5.89 MB (57 sections) to 1.46 MB (2),
-  and verify time from 210 ms to 30 ms.
+- A proof has one weight opening per model source, where it had one per weight.
 - E16-10 must commit the model once with the new layout.
 
 Status: Accepted (RFC-0026 A5).

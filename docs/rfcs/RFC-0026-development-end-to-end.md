@@ -763,11 +763,11 @@ Cost model: none. Affected tasks: E16-10 (statement codec and public-input file)
 
 - **A5 — Stacked model commitment (task E16-14).** Accepted with ADR-084.
   - **Motivation.**
-    - On the E16-10 8-layer model each weight tensor was its own source. Weight
-      openings were 57 of the 59 opening sections, about 19 MB of a 48.6 MB proof.
+    - On the E16-10 8-layer model each weight tensor was its own source, so weight
+      openings made up nearly all opening sections of a proof.
     - The model commitment carried one certificate per weight.
-    - On a 56-weight synthetic plan, stacking cuts openings from 5.89 MB (57
-      sections) to 1.46 MB (2). Verification falls from 210 ms to 30 ms.
+    - Stacking leaves one opening per model source (measurements in the E16-14 PR;
+      ledger entries belong to E16-11).
   - **Replacement text, §1.1 item 2.** "The **model commitment**: the root of each
     model source (§2.2), in split order. A model of at most `2^30` weight entries has
     exactly one model source."
