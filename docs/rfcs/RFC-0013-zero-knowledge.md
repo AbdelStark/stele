@@ -82,9 +82,9 @@ contract, with E4-03/E4-06/E10/E12 passport and inference consumers also affecte
 
 Status: Accepted, conditional scope only. Question Q29. Task E12-11.
 Evidence: [design note](../../formal/zk-development.md) §§3–4 and
-`crates/stele-code/tests/hiding.rs`. Companions: RFC-0010 A14 (source bytes and
-leaves) and RFC-0012 A17 (labels). Review:
-[same-author passes](../../agents/reviews/rfc0013-a2-acceptance.md). Decision: ADR-091.
+`crates/stele-code/tests/hiding.rs`. Companions: RFC-0010 A15 (source bytes and
+leaves) and RFC-0012 A18 (labels). Review:
+[same-author passes](../../agents/reviews/rfc0013-a2-acceptance.md). Decision: ADR-094.
 
 Motivation: A1 asks for the complete construction (Circle and expander paths,
 the 5% overhead target, native evidence). Two of its components are fully
@@ -96,7 +96,7 @@ consumer, and changes no Accepted text of §§1–6. A1 stays Draft.
 **1. Hiding source.** A hiding source commits a secret M31 matrix `X`
 (`R = 2^ell` rows, `C = 2^m` columns) as the message
 `M' = [X | Rm ; S0 | S1]` of `2R` rows and `2C` columns, with the bytes,
-code, leaves and admission of RFC-0010 A14. `Rm`, `S0`, `S1` and the leaf salts
+code, leaves and admission of RFC-0010 A15. `Rm`, `S0`, `S1` and the leaf salts
 are the **masks** of the source. The certificate and the opening are RFC-0010
 A9 §§3–4 on `M'`, unchanged; an opened value is a functional of `M'`, not of
 `X`.
@@ -117,8 +117,11 @@ A9 §§3–4 on `M'`, unchanged; an opened value is a functional of `M'`, not of
   sending a row message, the prover requires `rank Λ = D·(messages so far)`,
   with `D` the degree of `K`. Otherwise it aborts with `MaskRank` and sends
   nothing more. The abort depends on public challenges only.
-- **Lifetime.** One certificate and at most one opening per seed. Weight
-  sources, repeated openings and any reuse of `σ` are not admitted.
+- **Lifetime.** One certificate and at most one opening per seed. The producer
+  counts openings of a prepared hiding source, through any opening path, and
+  refuses a second one with `MaskBudget` (a third revealed row combination would
+  leave `rank Λ` short and exceed the query budget). Weight sources, repeated
+  openings and any reuse of `σ` are not admitted.
 - **Privacy (conditional).** Lemmas 1–3 of the design note: for uniform masks,
   an honest verifier, `q_c + q_o ≤ C − 1` and no abort, the source's algebraic
   view (certificate row, opening row, every queried column) has the same
@@ -167,7 +170,7 @@ weight lifetimes, expander sources, cost and profile admission. These are
 items R1–R13 of the design note and remain A1's open contract; NC-0604 and
 NC-0900/0901 stay `todo`.
 
-Controls reserved: NC-0902..0905 (catalog). Cost-model terms: none move; a
+Controls reserved: NC-0902..0906 (catalog). Cost-model terms: none move; a
 hiding source encodes and hashes four times its data, and a masked instance
 adds two `K` values. Affected tasks: E12-12 (hiding source), E12-13 (masked
 sumcheck), E12-14 (composition, blocked on A1).

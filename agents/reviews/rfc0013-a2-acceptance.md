@@ -1,6 +1,6 @@
-# RFC-0013 A2 acceptance review (with RFC-0010 A14 and RFC-0012 A17)
+# RFC-0013 A2 acceptance review (with RFC-0010 A15 and RFC-0012 A18)
 
-Decision: accept A2, A14 and A17 at their conditional scope, under the owner's
+Decision: accept A2, A15 and A18 at their conditional scope, under the owner's
 authorisation for autonomous amendment acceptance after Workflow 02 review.
 Reviewer: claude-code, also the author. Two same-author passes follow
 (soundness-auditor, then rfc-author acting as the hostile privacy reader). This
@@ -37,9 +37,9 @@ Attempts:
    `FinalEvaluationMismatch`. It catches a tampered `μ`; it is not a binding.
 2. *Shift `G` to absorb a false `H`.* `G` is absorbed before `α`, so
    `H + αG = H_true + αG_true` holds for at most one `α` when `H ≠ H_true`: the
-   MASK line `1/|K|`. NC-0904 changes `G` and regenerates the rounds honestly.
-   The first round check fails (`RoundSumMismatch`), because the running claim
-   moved by `α·ΔG`.
+   MASK line `1/|K|`. NC-0904 changes `G` in an honest proof and keeps the
+   rounds. The first round check fails (`RoundSumMismatch`), because the
+   running claim moved by `α·ΔG`.
 3. *Salt bytes.* Salts are not field elements and are not decoded. A prover may
    choose any salt; the Merkle tree authenticates the whole payload, so a salt
    changed after the root fails (NC-0902, `RootMismatch`). The column equation
@@ -90,7 +90,7 @@ of a version-3 source are A9's at `(m + 1, b)` and `2R`. No other line.
 
 ## Checklist (Workflow 03)
 
-- RFC sections: RFC-0013 A2 items 1–3, RFC-0010 A14 items 1–4, RFC-0012 A17.
+- RFC sections: RFC-0013 A2 items 1–3, RFC-0010 A15 items 1–4, RFC-0012 A18.
 - Challenges: `zk/mask-weight` after `Instance` and `zk/mask-sum`; PCS
   challenges unchanged.
 - Claims and consumers: the masked reduction's finals and `(ρ, μ)` have no

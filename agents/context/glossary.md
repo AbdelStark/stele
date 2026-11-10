@@ -61,7 +61,7 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 - **gate** — a milestone M0 to M7, met when its ledgers and controls exist (RFC-0027 §4). Also a CI check; context decides.
 - **round-by-round error**, **λ** — the largest probability that one round's challenge rescues a false claim; a proof has λ bits when it is at most 2^-λ (RFC-0030, Draft).
 - **cells per token**, **lookups per token** — committed cells and lookup positions divided by positions in the window; the protocol-efficiency pair reported by the accounting tool (task E22-01).
-- **hiding source** — a version-3 Circle source whose message is `[X | Rm ; S0 | S1]`: the data `X`, a mask half per data row and as many mask rows, with a salt in each leaf (RFC-0013 A2, RFC-0010 A14).
+- **hiding source** — a version-3 Circle source whose message is `[X | Rm ; S0 | S1]`: the data `X`, a mask half per data row and as many mask rows, with a salt in each leaf (RFC-0013 A2, RFC-0010 A15).
 - **mask half** — the upper half of a hiding-source message row, uniform values that hide up to `C − 1` queried positions (RFC-0013 A2).
 - **mask rows** — the lower half of a hiding-source message, uniform rows that hide the certificate and opening rows (RFC-0013 A2).
 - **masked sumcheck** — an RFC-0006 A1 sumcheck run on `f + α·g` with a uniform sum-of-univariates mask `g`, ending with the mask obligation `(ρ, g(ρ))` (RFC-0013 A2).

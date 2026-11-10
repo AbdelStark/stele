@@ -2477,7 +2477,7 @@ tasks:
   - two same-author review passes recorded; no RFC, label, ledger or wire change
 - id: E12-11
   epic: E12
-  title: RFC-0013 A2 conditional hiding sources and masked A1 sumcheck (with RFC-0010 A14, RFC-0012 A17)
+  title: RFC-0013 A2 conditional hiding sources and masked A1 sumcheck (with RFC-0010 A15, RFC-0012 A18)
   depends:
   - E12-10
   rfc:
@@ -2499,7 +2499,7 @@ tasks:
   - E12-11
   rfc:
   - RFC-0013 A2 §1
-  - RFC-0010 A14
+  - RFC-0010 A15
   skill: pcs-engineer
   crate: stele-pcs
   status: ready
@@ -2509,12 +2509,12 @@ tasks:
   - tests that proofs verify and that opened columns and rows are masked; NC-0902 and NC-0903 executed
 - id: E12-13
   epic: E12
-  title: Masked A1 sumcheck with the RFC-0012 A17 labels
+  title: Masked A1 sumcheck with the RFC-0012 A18 labels
   depends:
   - E12-11
   rfc:
   - RFC-0013 A2 §2
-  - RFC-0012 A17
+  - RFC-0012 A18
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-hash
   status: ready

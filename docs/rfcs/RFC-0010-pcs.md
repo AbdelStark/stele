@@ -1095,7 +1095,7 @@ Exact addition to §6, after A3:
     - E16-30 measures a development proof on Circle rate-1/4 Policy 2 sources.
     - This table is the standard-profile input to E12-04. E12-04 itself, the
       treaty codes.toml block, remains open.
-### A14 — Hiding Circle source bytes and salted leaves (companion of RFC-0013 A2)
+### A15 — Hiding Circle source bytes and salted leaves (companion of RFC-0013 A2)
 
 Status: Accepted, conditional scope of RFC-0013 A2. Task E12-11. Review:
 [RFC-0013 A2 acceptance](../../agents/reviews/rfc0013-a2-acceptance.md).

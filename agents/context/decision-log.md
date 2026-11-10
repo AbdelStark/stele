@@ -2097,7 +2097,7 @@ Consequences:
   in the texts as recorded here. That review is not an acceptance review.
 
 Status: Proposed (Draft RFCs; each is decided by its acceptance task).
-## ADR-091: Accept the proved ZK components separately; keep the complete construction in RFC-0013 A1 (RFC-0013 A2, RFC-0010 A14, RFC-0012 A17, task E12-11)
+## ADR-094: Accept the proved ZK components separately; keep the complete construction in RFC-0013 A1 (RFC-0013 A2, RFC-0010 A15, RFC-0012 A18, task E12-11)
 
 Context: the owner asked for zero-knowledge (weight hiding) for the development
 path, the property FlashProve has and RFC-0026 lacks. RFC-0013 A1 (Draft) asks for

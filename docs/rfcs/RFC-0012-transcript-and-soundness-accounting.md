@@ -921,14 +921,14 @@ unit tests `grind_tests::*` are primitive tests and earn no control credit.
 - E12-23: the consumers.
 - E8-05: the generator enumerates rounds and checks (C1)–(C4).
 - E16-30.
-### A17 — Masked sumcheck labels (companion of RFC-0013 A2)
+### A18 — Masked sumcheck labels (companion of RFC-0013 A2)
 
 Status: Accepted, conditional scope of RFC-0013 A2. Task E12-11. Review:
 [RFC-0013 A2 acceptance](../../agents/reviews/rfc0013-a2-acceptance.md).
 Motivation: the masked A1 sumcheck of RFC-0013 A2 sends one mask sum and draws
 one weight. Every other message reuses A1's labels.
 
-Addition to the A1 registry, in this order after A16's entries:
+Addition to the A1 registry, in this order after A17's entries:
 
 | Kind | Label | Line |
 |---|---|---|
