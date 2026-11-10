@@ -68,11 +68,11 @@ sending it, and the checks on `u` become claims on that source.
 
 ### 1.4 Companion amendments required at acceptance
 
-- **RFC-0010 A14** (new): admits fresh mode for sources whose claims are reduced to one
+- **A new RFC-0010 amendment**: admits fresh mode for sources whose claims are reduced to one
   transcript-random point, and the recursive opening of §2, replacing for those two
   cases the last sentence of A3 item 1 and the cost sentence of A3 item 10; registers
   the coefficient-form code identity and source version 3 (Q48).
-- **RFC-0012 A17** (new): the batching-coefficient label, the level roots' absorb
+- **A new RFC-0012 amendment**: the batching-coefficient label, the level roots' absorb
   label, and one PCS record per level.
 - RFC-0008 A5 and RFC-0006 A8 are unchanged.
 
@@ -214,7 +214,7 @@ Proposed ids, entered in the catalogue at acceptance.
 ## 7. Zero-knowledge reservation
 
 The source context reserves, per level, a count of randomiser coefficients per row
-and a count of mask rows. Both are zero until RFC-0013 A2 is Accepted. Reserving them
+and a count of mask rows. Both are zero until RFC-0013 A3 is Accepted. Reserving them
 now keeps the byte layout stable.
 
 ## 8. Open questions
@@ -223,7 +223,7 @@ now keeps the byte layout stable.
 - **Q48**: the byte identity and version of the coefficient-form code, and whether
   model sources registered in evaluation form (version 1) need a one-time
   re-registration or a proved change of basis. The development tier has no long-lived
-  registration, so RFC-0026 A6 may use version 1 and task E19-03 may change the row
+  registration, so RFC-0026 A7 may use version 1 and task E19-03 may change the row
   map once more.
 - **Q50**: the challenge field of the commitment rounds. On QM31 the proximity round
   caps a row codeword (RFC-0030 §3), so a `2^32`-cell witness needs thousands of rows

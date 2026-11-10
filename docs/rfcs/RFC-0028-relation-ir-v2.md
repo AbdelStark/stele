@@ -51,17 +51,17 @@ The plain checker as the oracle. The transcript labels. The module contract
 
 This RFC cannot be Accepted alone. It changes what three Accepted texts say:
 
-- **RFC-0008 A7** (new). RFC-0008 A2 item 4 and A6 say virtual tuple columns are not
+- **A new RFC-0008 amendment.** RFC-0008 A2 item 4 and A6 say virtual tuple columns are not
   admitted, because nothing established that such a column is fixed before the Unit,
-  Beta and Alpha draws. A7 admits a tuple column that is virtual under §2.1 here: it
+  Beta and Alpha draws. The amendment admits a tuple column that is virtual under §2.1 here: it
   is a fixed polynomial function of columns whose roots are absorbed before those
   draws (§2.4 steps 2.1 and 2.2 precede step 2.3).
-- **RFC-0026 A8** (new). It scopes a lookup check (A3) to one segment; it restates
+- **A new RFC-0026 amendment.** It scopes a lookup check (A3) to one segment; it restates
   A3's "split values bound" for a member value on a virtual column (the value is
   absorbed when sent and then reduced under §2.4 step 4); and it carries the segment
   rule of §2.3. Task E18-06 may accept the segment part first, for committed columns
   only.
-- **RFC-0012 A17** (new). Ledger records for the reductions of §5; no new label.
+- **A new RFC-0012 amendment.** Ledger records for the reductions of §5; no new label.
 
 ## 2. Protocol (transcript order)
 

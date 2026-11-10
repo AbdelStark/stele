@@ -438,3 +438,68 @@ fn accepts_only_the_skipped_violation_with_check_except() {
     assert_eq!(check_except(&f.relation, &f.values, &["product"]), Ok(()));
     assert!(check_except(&f.relation, &f.values, &["scale"]).is_err());
 }
+
+/// The fixture's `xw` split once into row blocks of W (RFC-0026 A6), with `y` disciplined
+/// by the blocks alone (2 * 8 * 128 fits its signed 13).
+fn split() -> Fixture {
+    let mut f = fixture();
+    let xw = f.relation.matmuls.remove(0);
+    f.relation.add_matmul_within(xw, 2);
+    let y = f.y;
+    f.relation.ranges.retain(|range| range.column != y);
+    f
+}
+
+#[test]
+fn accepts_matmul_split_into_row_blocks() {
+    let f = split();
+    let blocks = &f.relation.matmuls;
+    let y = f.y;
+    assert_eq!(blocks.len(), 2);
+    for (k, (block, fixed)) in blocks.iter().zip([Ref::FIXED_0, Ref::FIXED_1]).enumerate() {
+        assert_eq!(block.name, alloc::format!("xw/block{k}"));
+        assert_eq!((block.free, block.summed), (1, 1));
+        // The split bit is j (bit 0), the free bit W reads; i and k move down.
+        assert_eq!(block.out.vars, [fixed, 0]);
+        assert_eq!(block.lhs.vars, [1, 0]);
+        assert_eq!(block.rhs.vars, [fixed, 1]);
+    }
+    assert_eq!(check(&f.relation, &f.values), Ok(()));
+    // A domain that fits is pushed unchanged.
+    let mut fits = fixture();
+    let xw = fits.relation.matmuls.remove(0);
+    fits.relation.add_matmul(xw.clone());
+    assert_eq!(fits.relation.matmuls, [xw]);
+    // y[1][1] is block 1 (j = 1) alone; z follows it (z = y * s with s = 2).
+    let mut f = split();
+    let z = f.z;
+    tamper(&mut f, y, 3, 1);
+    tamper(&mut f, z, 3, 2);
+    assert!(
+        matches!(check(&f.relation, &f.values), Err(Violation::Matmul { relation, .. }) if relation == "xw/block1")
+    );
+    assert_eq!(check_except(&f.relation, &f.values, &["xw/block1"]), Ok(()));
+}
+
+#[test]
+fn rejects_out_covered_by_one_row_block() {
+    // Without block 1 the column j = 1 of y has no discipline.
+    let mut f = split();
+    f.relation.matmuls.truncate(1);
+    assert_eq!(f.relation.validate(), Err(Invalid::Undisciplined(f.y)));
+    // Two copies of block 0 still leave that column uncovered.
+    let mut f = split();
+    f.relation.matmuls[1] = f.relation.matmuls[0].clone();
+    assert_eq!(f.relation.validate(), Err(Invalid::Undisciplined(f.y)));
+}
+
+#[test]
+fn rejects_fixed_bits_outside_matmuls() {
+    let mut f = fixture();
+    f.relation.identities[0].terms[0].factors[0].vars = vec![0, Ref::FIXED_1];
+    assert!(matches!(f.relation.validate(), Err(Invalid::Ref { .. })));
+    // A sentinel that is neither fixed value is out of every domain.
+    let mut f = split();
+    f.relation.matmuls[0].out.vars = vec![0, 0xFD];
+    assert!(matches!(f.relation.validate(), Err(Invalid::Ref { .. })));
+}

@@ -1,12 +1,12 @@
 # RFC-0027 — Build program: tiers, ladder, lanes and milestones
 
-Status: Accepted (owner-directed; ADR-091) · Version: 0.1.0 · Depends: RFC-0000, RFC-0002, RFC-0018, RFC-0020, RFC-0026
+Status: Accepted (owner-directed; ADR-095) · Version: 0.1.0 · Depends: RFC-0000, RFC-0002, RFC-0018, RFC-0020, RFC-0026
 
 This RFC governs how Stele is built from the state recorded in
 [`docs/assessment.md`](../assessment.md) to a prover that leads on the axes of
 [`docs/plan.md`](../plan.md) §1. It changes no protocol behaviour. Every protocol
 change it schedules is its own RFC or amendment (RFC-0028, RFC-0029, RFC-0030,
-RFC-0013 A2) and stays Draft until reviewed.
+RFC-0013 A3) and stays Draft until reviewed.
 
 ## 1. Principles
 

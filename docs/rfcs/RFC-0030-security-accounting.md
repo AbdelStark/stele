@@ -89,7 +89,7 @@ is the strongest statement a 256-bit hash supports.
 | grinding | — | not counted | not counted |
 | challenge field | QM31 | QM31 | a wider field for every challenge, wide enough that every round clears 128 (about 152 bits under the caps below) |
 | lookup repetitions `r` | 1 | 1 | 1 on the wider field |
-| zero knowledge | no | optional until RFC-0013 A2 is Accepted | mandatory |
+| zero knowledge | no | optional until RFC-0013 A3 is Accepted | mandatory |
 | hash output | 256 bits | 256 bits, no truncation | 256 bits, leaves domain-separated |
 
 Consequences on QM31 (`|K| ≈ 2^124`), all enforced by plan validation:
@@ -100,7 +100,7 @@ The cap is exact: a round with numerator `n` clears 100 bits when
 - **Lookup instances are capped.** `h + N + c·t − 1 ≤ 2^24 − 1`. The plan uses
   instances of at most `2^23` positions with tables up to `2^16` rows. A larger check
   is split by the plan. A second challenge pair (`r = 2`) is not required.
-- **Splitting has a price in bytes.** With independent instances (RFC-0026 A7) each
+- **Splitting has a price in bytes.** With independent instances (RFC-0026 A8) each
   instance carries its own tree proofs, tens of kilobytes by RFC-0008 A3's lengths, so
   a proof with thousands of instances spends tens of megabytes on them. The form
   intended for `standard` shares the challenges of a check across its instances and

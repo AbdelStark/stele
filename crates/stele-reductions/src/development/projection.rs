@@ -123,6 +123,8 @@ pub struct Projection {
     weight: Option<ColumnId>,
     plan: ProjectionPlan,
     pub(crate) columns: Option<Columns>,
+    /// Matmul domain cap; tests lower it to force row blocks (RFC-0026 A6).
+    pub(crate) limit: u8,
 }
 
 /// Bytes needed for `n`.
@@ -166,9 +168,9 @@ impl Projection {
         if input.scale_bound == 0 || input.scale_bound > bound {
             return Err(Unsupported::Policy);
         }
-        // shortcut: no row-block split; plans past MAX_VARS need Ref constant bits (E16-01).
-        let domain = input.log_rows + log2_ceil(plan.outputs) + input.log_dimension;
-        if domain > MAX_VARS {
+        // The sum matmuls are split into row blocks past MAX_VARS (RFC-0026 A6); every
+        // other relation lives on the output domain (rows, outputs).
+        if input.log_rows + log2_ceil(plan.outputs) > MAX_VARS {
             return Err(Unsupported::Domain);
         }
         let this = Self {
@@ -177,6 +179,7 @@ impl Projection {
             weight,
             plan,
             columns: None,
+            limit: MAX_VARS,
         };
         if this.sum_widths().iter().any(|w| w.bits > MAX_WIDTH_BITS) {
             return Err(Unsupported::Domain);
@@ -609,14 +612,17 @@ impl Module for Projection {
         let mut sums = Vec::new();
         for (k, (column, width)) in lhs.iter().zip(self.sum_widths()).enumerate() {
             let sum = b.column(&alloc::format!("sum/{k}"), width, out);
-            b.relation.matmuls.push(Matmul {
-                name: alloc::format!("{prefix}/sum/{k}"),
-                free: out,
-                summed: ld,
-                out: at(sum),
-                lhs: r(*column, summed.iter().copied().chain(lo..out)),
-                rhs: r(weight, summed.iter().copied().chain(0..lo)),
-            });
+            b.relation.add_matmul_within(
+                Matmul {
+                    name: alloc::format!("{prefix}/sum/{k}"),
+                    free: out,
+                    summed: ld,
+                    out: at(sum),
+                    lhs: r(*column, summed.iter().copied().chain(lo..out)),
+                    rhs: r(weight, summed.iter().copied().chain(0..lo)),
+                },
+                self.limit,
+            );
             sums.push(sum);
         }
 

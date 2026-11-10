@@ -30,7 +30,7 @@ PCS      interleaved circle-RS, BLAKE3 columns, recursive opening; fresh mode (w
          certified mode (model); multiplicity sources keep the RFC-0010 A9 form (Q51)          RFC-0029
 ledger   per-round error, least bits λ; standard ≥ 100 on QM31 (round numerators ≤ 2^24 − 1),
          treaty ≥ 128 on a wider field                                                         RFC-0030
-ZK       bounded-query encodings, mask rows, committed sumcheck masks, opening budget           RFC-0013 A2
+ZK       bounded-query encodings, mask rows, committed sumcheck masks, opening budget           RFC-0013 A3
 ```
 **What is committed (target):** one or two small integers per nonlinear value; the residual stream at segment
 boundaries; multiplicities. **Never committed:** any arithmetic result.

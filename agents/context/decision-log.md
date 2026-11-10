@@ -1852,7 +1852,49 @@ Decision:
 
 Status: Accepted.
 
-## ADR-091: Adopt the build program — tiers, ladder, lanes, milestones (RFC-0027, RFC-0018 A2, task E17-00)
+## ADR-092: Row-block split of matmuls past MAX_VARS through fixed Ref bits (RFC-0026 A6, task E16-19)
+
+Context: every relation domain is capped at 30 bits (RFC-0026 §3.1). A `Ref` could
+only permute or drop domain bits, so projections and attention rejected any matmul
+past the cap with `Unsupported::Domain`. The llama2.c stories110M head
+(`6 + 15 + 10 = 31` bits) was the first real model to hit it. Only the E16-04
+embedding gather split, through per-block columns.
+
+Decision:
+- A matmul `Ref` may fix a column bit to 0 or 1 (`Ref::FIXED_0 = 0xFE`,
+  `Ref::FIXED_1 = 0xFF` in `vars`). Identity and lookup refs may not, so zerochecks
+  and lookups are unchanged.
+- One shared declare-time helper, `Relation::add_matmul`, splits a matmul past the
+  cap on its split bit: the highest free bit `rhs` reads, or the highest free bit
+  when it reads none. It recurses until every block fits, block 0 first. A matmul that
+  fits is pushed unchanged, so existing plans keep their digests and proof bytes
+  (the E16-10 FNV pins hold).
+- Splitting on a bit of `rhs` cuts a projection's weight into row blocks. The engine's
+  operand table skips entries outside a block, so the weight is read once in total
+  and the activation once per block.
+- Range discipline: a split `out` is enforced when the slices of its qualifying
+  matmuls cover every entry.
+- Projections (the head included) and attention declare every matmul through the
+  helper. They reject only identity domains past 30 bits.
+- The embedding keeps its E16-04 construction. It is exact and already plan-fixed;
+  moving it onto fixed bits would drop its recombination identity, and is left open.
+
+Alternatives considered: separate weight columns per block, which would change the
+model commitment (§2.2) and the A5 layout. Per-block output columns with a
+recombination identity, as in E16-04: it adds witness columns and one identity term
+per block, where the fixed-bit form adds neither.
+
+Consequences: matmul shapes are bounded only by their identity domains and by the
+A5 per-weight cap of `2^30` entries. Each block adds one matmul's SZ and SC lines;
+there is no new line kind, label or challenge.
+
+Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
+review in the E16-19 PR).
+
+## ADR-095: Adopt the build program — tiers, ladder, lanes, milestones (RFC-0027, RFC-0018 A2, task E17-00)
+
+Numbering: ADR-091, ADR-093 and ADR-094 are reserved by changes under review (tasks
+E12-22, E16-20 and E12-11), so this record and the next take 095 and 096.
 
 Context: the owner asked for an assessment of the project and a plan to build the
 leading prover of inference in the order "make it work, make it fast, make it right",
@@ -1916,7 +1958,7 @@ Status: Accepted (owner-directed; the lane, tier and gate definitions are the
 planning agent's proposal within that direction and are listed for the owner's
 confirmation in `docs/plan.md` §10).
 
-## ADR-092: Design direction recorded as Draft — commit rule, commitment scheme v3, per-round accounting, zero knowledge (RFC-0028, RFC-0029, RFC-0030, RFC-0013 A2, RFC-0026 A6/A7)
+## ADR-096: Design direction recorded as Draft — commit rule, commitment scheme v3, per-round accounting, zero knowledge (RFC-0028, RFC-0029, RFC-0030, RFC-0013 A3, RFC-0026 A7/A8)
 
 Context: the plan's gains come from four protocol changes. Each needs evidence and
 review before it binds code (INV-1). Recording them as Draft RFCs gives every lane a
@@ -1930,7 +1972,8 @@ Decision (direction, not law):
   the sound form of INV-6 and answers Q31 for virtual tuples. The first design's
   lookups over uncommitted tensors are not pursued. Acceptance needs companion
   amendments, because RFC-0008 A2 item 4 and A6 exclude virtual tuple columns today:
-  RFC-0008 A7, RFC-0026 A8 and RFC-0012 A17 (RFC-0028 §1.4).
+  new amendments to RFC-0008, RFC-0026 and RFC-0012, numbered at acceptance
+  (RFC-0028 §1.4).
 - **Commitment scheme v3 (RFC-0029).** Interleaved circle Reed–Solomon with a
   recursive opening. Fresh mode for the stacked witness source of each segment and
   for the recursion levels; certified mode for model sources, with one claim per
@@ -1939,18 +1982,18 @@ Decision (direction, not law):
   Proven parameters only, at radius `D/3` (Policy 3: 241 queries per level at rate
   1/4 for 100 bits). Rows are in coefficient form (a new code identity with the
   codewords of RFC-0010 A2), because the recursion needs the code's evaluation
-  functionals to be tensors. Acceptance needs RFC-0010 A14 and RFC-0012 A17
-  (RFC-0029 §1.4). RFC-0026 A6 moves the development engine from v2 expander sources
+  functionals to be tensors. Acceptance needs new amendments to RFC-0010 and RFC-0012
+  (RFC-0029 §1.4). RFC-0026 A7 moves the development engine from v2 expander sources
   to the circle sources that already exist.
 - **Security accounting (RFC-0030).** Round-by-round error with hash queries
   multiplying the largest round; `standard` at 100 bits on QM31 with every round's
   numerator capped at `2^24 − 1` (lookup instances, commitment rows, batches);
   `treaty` at 128 bits on a wider challenge field; no grinding counted; proven bounds
-  only in both. RFC-0026 A7 supplies the lookup instance split. The caps cost proof
+  only in both. RFC-0026 A8 supplies the lookup instance split. The caps cost proof
   bytes (independent instances carry their own tree proofs; short rows mean many
   rows) unless data-parallel instances (Q49) and the challenge field of the
   commitment rounds (Q50) are decided first. Both are priced before promotion.
-- **Zero knowledge (RFC-0013 A2).** Bounded-query encodings, mask rows and committed
+- **Zero knowledge (RFC-0013 A3).** Bounded-query encodings, mask rows and committed
   sumcheck masks on scheme v3, with an opening budget and a published leak list; a
   pad-and-prove construction is the alternative until task E23-01 decides. The
   encoding hides only when the randomiser block of the generator has full rank on

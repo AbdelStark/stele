@@ -90,7 +90,7 @@ cost and legibility. Stele exists to remove that blocker.
 
 ## 9. Amendments
 
-### A1 — Re-baseline after the first published system of this shape (RFC-0027, ADR-091)
+### A1 — Re-baseline after the first published system of this shape (RFC-0027, ADR-095)
 
 Status: Accepted (owner-directed). Evidence: [`docs/assessment.md`](assessment.md).
 Motivation: §1 lists the open state of the art at 400–1,100x overhead. FlashProve v0.16.0 (2026-11-02) proves a

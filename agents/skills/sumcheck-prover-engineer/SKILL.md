@@ -15,7 +15,7 @@ Rules
   tables from precomputed tables; build a level and its round data in one pass; run independent instances in
   parallel under a fixed transcript order.
 - A lookup instance has a size cap from the profile (RFC-0030 §3, Draft: pair-round numerator at most `2^24 − 1`
-  on QM31). Splitting is by the plan (RFC-0026 A7, Draft), each instance with its own multiplicity source and
+  on QM31). Splitting is by the plan (RFC-0026 A8, Draft), each instance with its own multiplicity source and
   challenges. Independent instances each carry their own tree proofs, which costs proof bytes; the form meant for
   `standard` shares the challenges and one tree reduction across the instances of a check (Q49, task E20-09).
   Record lookup-proof bytes against instance count in every ledger that splits.

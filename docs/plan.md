@@ -172,7 +172,7 @@ commitment's own challenges come from a wider field (Q50, priced by task E19-01)
 The development tier has neither cap, so these costs appear only at admission. The
 M3 gate therefore carries its own proof-size line.
 
-### 3.7 Zero knowledge (RFC-0013 A2, Draft)
+### 3.7 Zero knowledge (RFC-0013 A3, Draft)
 
 Bounded-query randomised encoding for every committed source, a mask row for each row
 combination, and small committed masks for sumcheck messages. The model commitment has
@@ -188,7 +188,7 @@ CPU first, because the reference defines the bytes (INV-3):
   before the first sumcheck fold; base-field first rounds;
 - one thread pool; independent sumchecks and lookup checks in parallel;
 - LogUp with base-field leaves, precomputed first-layer tables for small domains, and
-  the instance split of RFC-0026 A7;
+  the instance split of RFC-0026 A8;
 - stage timers and counters in every run.
 
 Then CUDA kernels behind one backend trait, in profile order: lookup tree levels and
@@ -265,7 +265,7 @@ schema. A task that must edit another lane's code is reviewed by that lane
 | E: engine | E20 | `stele-sumcheck`, `stele-lookup`, `stele-kernels`, `stele-gpu` | typed columns, thread pool, lookup fast path, backend trait, CUDA |
 | V: verifier | E21 | `stele-verifier`, `stele-proof`, Python verifier, controls, `formal/` | RFC-0030, verifier crate, Python verifier, admission |
 | N: numerics | E22 | `stele-cqis`, `harness/`, the proving modules | accounting tool, wide residual modules, first light, static-scale experiment |
-| Z: zero knowledge | E23 | masks and encodings across P, C, E | RFC-0013 A2, then implementation on v3 |
+| Z: zero knowledge | E23 | masks and encodings across P, C, E | RFC-0013 A3, then implementation on v3 |
 
 Critical path to each gate:
 

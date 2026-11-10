@@ -1303,7 +1303,7 @@ parameter script. Kill: none before M7; `D/3` is sufficient for `standard`.
 ### R-MASK: zero-knowledge budget and batch coverage
 Q40: for a reused model commitment, the smallest randomiser count and link-proof
 schedule that keeps the simulator valid across batches and segments; whether masks
-defeat base-field first rounds (Q5). Method: RFC-0013 A2 task E23-01. Kill: overhead
+defeat base-field first rounds (Q5). Method: RFC-0013 A3 task E23-01. Kill: overhead
 above 15% of prove time on L3b for candidate A triggers candidate B.
 
 ### R-FLOAT: what to prove about a float-served reply
@@ -1336,5 +1336,5 @@ roots and multiplicities (RFC-0030 §7) · Q50 the challenge field of the commit
 rounds and the per-round form of the proximity bound (RFC-0029 §8) · Q51 a reduction
 of the multiplicity sources' prefix-mask functional to a point claim (RFC-0029 §8).
 
-Q12, Q27, Q29, Q31 and Q33 are restated by RFC-0030, RFC-0029, RFC-0013 A2, RFC-0028
+Q12, Q27, Q29, Q31 and Q33 are restated by RFC-0030, RFC-0029, RFC-0013 A3, RFC-0028
 and RFC-0027 §2 respectively; each stays open until its RFC is Accepted.

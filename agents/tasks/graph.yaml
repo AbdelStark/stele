@@ -76,7 +76,7 @@ epics:
     goal: accounting, 8B modules and first light, proof-friendly CQIS, MoE, sampling; gates M1 and M6
   E23:
     title: Zero knowledge (lane Z)
-    goal: bounded-query encodings, committed masks, opening budget, leak list; gate M5 (RFC-0013 A2)
+    goal: bounded-query encodings, committed masks, opening budget, leak list; gate M5 (RFC-0013 A3)
 program:
   rfc: RFC-0027
   plan: docs/plan.md
@@ -2919,6 +2919,25 @@ tasks:
   - new bench/ledger entries for the synthetic 8-layer model and stories42M at T = 64 on current main, with the E16-11 entries kept as history
   - model-commitment time recorded separately from prove time
   - docs/development-e2e.md cites the new entries
+- id: E16-19
+  epic: E16
+  title: Row-block split of matmuls past MAX_VARS (fixed Ref bits, one shared declare-time helper)
+  depends:
+  - E16-18
+  rfc:
+  - RFC-0026 §3.1
+  - RFC-0026 §3.5
+  - RFC-0026 §5
+  skill: sumcheck-prover-engineer
+  crate: stele-ir
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-19-row-block-split
+  acceptance:
+  - RFC-0026 amendment (Workflow 02) with an ADR; one shared split helper used by projections (head included) and attention
+  - exact recombination argued (Lemma S); block selection plan-derived; matmul-out discipline requires the blocks to cover every entry
+  - deletion survey with row blocks (check_except) kills every block; engine controls tamper each block
+  - proof bytes of the pinned E16-10 fixtures unchanged
 - id: E17-00
   epic: E17
   title: Baseline reproduction on the planning host and its ledger
@@ -3185,14 +3204,14 @@ tasks:
   title: Circle sources for the stacked and model commitments
   depends: []
   rfc:
-  - RFC-0026 A6
+  - RFC-0026 A7
   - RFC-0010 A9
   skill: pcs-engineer
   crate: stele-reductions+stele-pcs
   lane: C
   status: ready
   acceptance:
-  - RFC-0026 A6 Accepted; the stacked source and model sources are version-1 sources at blow-up exponent 2 with the byte-minimising row split
+  - RFC-0026 A7 Accepted; the stacked source and model sources are version-1 sources at blow-up exponent 2 with the byte-minimising row split
   - NC-1303, NC-1304 and NC-1306 run unchanged; the pinned L0 and L1 hashes are re-recorded with the amendment
   - L1 and L2a ledgers before and after state proof bytes per section and encode time
 - id: E19-03
@@ -3286,7 +3305,7 @@ tasks:
   rfc:
   - RFC-0008 A3
   - RFC-0008 A5
-  - RFC-0026 A7
+  - RFC-0026 A8
   skill: sumcheck-prover-engineer
   crate: stele-lookup+stele-sumcheck+stele-reductions
   lane: E
@@ -3294,7 +3313,7 @@ tasks:
   acceptance:
   - one thread pool replaces per-round thread spawning; lookup instances and matmul sumchecks run in parallel with a fixed transcript order
   - leaf layers stay in the base field; the first tree layers of small-domain tables are read from precomputed tables
-  - RFC-0026 A7 Accepted; its control runs through the actual verifier; proof bytes of unsplit plans are unchanged
+  - RFC-0026 A8 Accepted; its control runs through the actual verifier; proof bytes of unsplit plans are unchanged
   - c_lu and parallel efficiency at 1, 4 and 24 threads recorded on L1 and L2a; lookup-proof bytes recorded against the instance count at B = 30 and B = 23
 - id: E20-03
   epic: E20
@@ -3407,7 +3426,7 @@ tasks:
   - E20-02
   rfc:
   - RFC-0030 §7
-  - RFC-0026 A7
+  - RFC-0026 A8
   - RFC-0008 A3
   skill: sumcheck-prover-engineer
   crate: stele-lookup+stele-reductions
@@ -3577,7 +3596,7 @@ tasks:
   lane: V
   status: ready
   acceptance:
-  - RFC-0028, RFC-0029, their companion amendments, RFC-0026 A6 and A7 and the model-class amendment of E22-03 are Accepted on the full path of Workflow 02
+  - RFC-0028, RFC-0029, their companion amendments, RFC-0026 A7 and A8 and the model-class amendment of E22-03 are Accepted on the full path of Workflow 02
   - every step of Workflow 10 for standard is met for virtual columns, segments, the recursive opening in both modes, data-parallel lookups and the 8B model class
   - first standard ledgers on L2b and L3b with proof bytes, verify time and the least round in bits
 - id: E22-01
@@ -3732,11 +3751,11 @@ tasks:
   - eight-GPU efficiency of 0.8 or more on W4
 - id: E23-01
   epic: E23
-  title: Zero-knowledge construction decision; RFC-0013 A2 accepted for the development tier
+  title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier
   depends:
   - E19-03
   rfc:
-  - RFC-0013 A2
+  - RFC-0013 A3
   - RFC-0013 A1
   skill: zk-engineer
   crate: research+docs
@@ -3744,8 +3763,8 @@ tasks:
   status: ready
   acceptance:
   - both candidates prototyped on L1 with prover overhead, proof bytes and batch coverage measured
-  - for candidate A, the placement of randomiser coefficients and the admissible query sets with a proof that the randomiser block has full rank on each (RFC-0013 A2 item 1)
-  - RFC-0013 A2 Accepted for the development tier with the chosen construction, its transcript order and its simulator sketch
+  - for candidate A, the placement of randomiser coefficients and the admissible query sets with a proof that the randomiser block has full rank on each (RFC-0013 A3 item 1)
+  - RFC-0013 A3 Accepted for the development tier with the chosen construction, its transcript order and its simulator sketch
 - id: E23-02
   epic: E23
   title: Masked sumchecks and zero-knowledge encodings
@@ -3753,7 +3772,7 @@ tasks:
   - E23-01
   - E19-06
   rfc:
-  - RFC-0013 A2
+  - RFC-0013 A3
   skill: zk-engineer
   crate: stele-sumcheck+stele-pcs+stele-reductions
   lane: Z
@@ -3769,7 +3788,7 @@ tasks:
   - E23-02
   - E19-05
   rfc:
-  - RFC-0013 A2
+  - RFC-0013 A3
   skill: zk-engineer
   crate: stele-pcs+stele-passport+docs
   lane: Z

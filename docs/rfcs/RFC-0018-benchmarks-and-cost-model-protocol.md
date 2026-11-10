@@ -50,7 +50,7 @@ is regenerated from the fit (never hand-edited numbers).
   - **Soundness ledger.** No change. **Cost model.** No term moves (RFC-0026 §7).
   - **Affected tasks.** E16-11 (validator, records).
 
-- **A2 — Ladder rungs and the scoreboard (RFC-0027 §3).** Accepted with ADR-091
+- **A2 — Ladder rungs and the scoreboard (RFC-0027 §3).** Accepted with ADR-095
   (owner-directed).
   - **Motivation.** §2 names W1 to W8 only. The build program measures progress on a
     ladder that starts below W8 and ends above W1, and reads it from one generated

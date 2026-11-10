@@ -18,7 +18,7 @@ the model, with soundness that a hostile nation‑state auditor can check line b
 | Field | Mersenne‑31 base, QM31 (degree‑4) challenges; no FFT over the weights per proof, one short circle FFT per committed witness row |
 | Commitments | hash‑based, interleaved circle Reed–Solomon with a recursive opening (RFC‑0029, Draft); **fused opening** — the matmul sumcheck’s weight pass *is* the opening |
 | Security | hash + Fiat–Shamir only, no discrete‑log or pairing assumption; `standard` ≥ 100 bits and `treaty` ≥ 128 bits per round with **no conjectural bounds** (RFC‑0030, Draft) |
-| Zero‑knowledge | masked sumchecks + bounded‑query encodings (RFC‑0013 A2, Draft); weights never leave the prover |
+| Zero‑knowledge | masked sumchecks + bounded‑query encodings (RFC‑0013 A3, Draft); weights never leave the prover |
 | Roofline, Llama‑3.1‑405B, 4096+512 request | ≈ 15–20 GPU‑s (1×H100), a projection (`docs/cost-model.md` §3). The published frontier is FlashProve: 111 tok/s on a 400B mixture‑of‑experts model, one H100, batch 24 (`docs/assessment.md` §6) |
 
 The table states design targets. What exists today is in **Status** below; how the project gets from one to
