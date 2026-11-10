@@ -504,7 +504,10 @@ def field_sources(root):
                'src/silu.rs', 'src/silu/tests.rs',
                'src/silu/conversion.rs', 'src/silu/conversion/tests.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
-    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    try:
+        manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    except tomllib.TOMLDecodeError as error:
+        raise ValueError(f'reductions API not wired: unreadable manifest ({error})') from error
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
                     for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
     # RFC-0026 §4 step 1: the relation statement digest is BLAKE3 (workspace pin).
