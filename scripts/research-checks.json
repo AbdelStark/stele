@@ -126,6 +126,7 @@
     "python3 research/packing/check_packing.py",
     "uv run --locked --script research/packing/check_fused.py",
     "python3 research/commitment-privacy/check_privacy.py",
+    "python3 research/zk-claims/check_view.py",
     "python3 research/private-verifier/check_boundary.py",
     "python3 research/logup-characteristic/check_characteristic.py",
     "uv run --locked --script research/logup-characteristic/check_units.py",

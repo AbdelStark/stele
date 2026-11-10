@@ -95,31 +95,30 @@ The A1 instance's single degree bound is the maximum over variables.
 
 ### 2.3 Batching masked linear claims per source
 
-A source (commitment group) collects claims `c_a = ⟨w_a, M⟩`, linear functionals
-of its data message `M` (the `x` columns and the `r_x` columns), each a scaled
-eq at a known point. The source is a hiding source (A2); its opening must have
-nonzero mask-row weight (A2 rank check), so the opened value involves the mask
-rows `S`. The batch is therefore run over the whole message `M'`:
+A source (commitment group) collects claims `c_a = ⟨w_a, M⟩`. Each is a linear
+functional of the source's data message `M` (the `x` columns and the `r_x`
+columns), a scaled eq at a known point. The source is a hiding source (A2). Its
+opening must put nonzero weight on the mask rows (A2 rank check), so the opened
+value involves the mask rows `S`. The batch therefore runs over the full message
+`M'` with a weight that is zero on the mask rows:
 
 1. Draw batch coefficients `γ_a` (existing `BatchCoefficient`). Put
-   `W = Σ_a γ_a·w_a` on the data rows.
-2. The prover sends `σ_S = ⟨W, S⟩`: `W` applied to the mask rows' `Y = 0` half,
-   which has the data rows' shape. It is absorbed, then `β` is drawn
-   (`BatchCoefficient`).
-3. One masked A1 sumcheck (A3, mask bound) over the source's row bit `w` and its
-   other bits proves `Σ_{w,x} [(1 − w)·W(x) + w·β·W(x)]·M̃'(w, x)
-   = Σ_a γ_a·c_a + β·σ_S`. The weight is verifier-computable at any point.
-4. Its final claim `M̃'(w*, x*)` is opened once with A2's point opening. The
-   point's `W` coordinate is `w*`, which is nonzero except on a public abort, so
-   the rank check holds generically.
+   `W = Σ_a γ_a·w_a` on the data positions (`Y = 0` face).
+2. Run one bound masked A1 sumcheck (A3) over the source's row bit `w` and its
+   other data bits, for `Σ_{w,x} W'(w, x)·M̃'(w, x) = Σ_a γ_a·c_a`, with
+   `W'(w, x) = (1 − w)·W(x)`. On the cube the `w = 1` half has weight zero, so the
+   claimed sum is public, given the `c_a`. `W'` is multilinear and
+   verifier-computable at any point.
+3. Its final claim `M̃'(w*, x*)` is opened once with A2's point opening at
+   `(w*, x*)`. The verifier multiplies by `W̃'(w*, x*) = (1 − w*)·W̃(x*)`. `w*`
+   is nonzero except on a public abort, so A2's rank check holds generically.
 
 Soundness:
-- A false `Σ γ_a c_a` must be balanced by a false `σ_S`, which is fixed before
-  `β`, so it survives with probability at most `1/|K|` (an RLC line).
-- The `γ` draw is A2's RLC line.
+- `γ` is A2's RLC line.
 - The sumcheck has SC and MASK, and the opening has A9's terms.
 
-Privacy: `σ_S` reveals `D` M31 dimensions of `S` (§4).
+No other value is revealed. An earlier draft of this note sent `σ_S = ⟨W, S⟩`
+and drew one more challenge. The zero weight on `w = 1` makes both unnecessary.
 
 ### 2.4 Order inside one proof (dev-zk)
 
@@ -152,7 +151,7 @@ layer's revealed values.
 - **H2, sumcheck layer.** Every bound masked sumcheck's mask commitment, `G`,
   rounds and `μ` are replaced, given its final values only (Lemmas 4–5). Error:
   `1/|K|` for each `α = 0`, plus the public `ρ_n ∈ {0, 1/2}` aborts.
-- **H3, batching layer.** Per source, `σ_S`, the batch rounds and the opened
+- **H3, batching layer.** Per source, the batch rounds and the opened
   value are replaced, given the masked claims `c_a`. This is Lemma 7 below.
 - **H4, claim layer.** All masked claims `c_a` are replaced by independent
   uniform `K` values, conditioned only on what is public: the relation polynomial
@@ -198,19 +197,45 @@ Two more cross-checks remain before H4 is complete:
   uses the remaining `ℓ_x` coordinates only. The `λ_a` are public, and the
   public event `λ_a = 0` (`ρ_v ∈ {0,1}`) aborts.
 
-**Lemma 7 (batching, to be proved).** Given the claims `c_a`, the values
-`σ_S`, the batch rounds, `M̃'(w*, x*)` and the opening row are simulatable,
-provided the mask rows' coefficient matrix stays full rank after `σ_S`'s `D`
-extra dimensions are added. The statement requires:
-- the A2 rank condition, extended by the functional `⟨W, ·⟩` on the mask rows;
-- that the translation of the data rows changing `x → x′` keeps every `c_a`.
+**Lemma 7 (batching).** Fix the honest verifier's challenges, with `w* ≠ 0`
+and `α ≠ 0`, a query set of at most `C − 1` distinct positions, and certificate
+and opening coefficients whose mask-row M31 coordinates have rank `2D`. Then for
+any two data messages `X, X'` with the same masked claims `c_a`, the batching
+view has the same distribution. The view is: the certificate row, the batch
+sumcheck (`G`, rounds, `μ`, its A3 mask source), the opened value, the opening
+row and every queried column.
 
-Lemma 6's per-column translation of `r_x` provides the latter. Lemma 2's
-translation of `S` then has three kinds of constraints: the certificate row, the
-opening row, and `⟨W, ΔS⟩ = 0`. The last is a single `K` constraint on a space
-of dimension `R·(2C − q)` per position block, so it is generically solvable. The
-proof must show this by an explicit witness, as in Lemma 6. This is the one new
-algebraic claim of the note that has no proof yet.
+*Proof.* The batch sumcheck's claimed sum `Σ γ_a c_a` is the same for `X` and
+`X'`. By Lemmas 4–5 its view is a function of public data, its final values and
+fresh randomness. Its final values are `W̃'(w*, x*)`, which is public, and
+`M̃'(w*, x*) = u·b`, a function of the opening row `u`. So it suffices that
+`(t, u, queried columns)` has the same distribution for `X` and `X'`. That is
+Lemma 2 with `J = 1`, whose translation needs no condition on `X − X'`. ∎
+
+The earlier draft's `σ_S` would have needed an extra rank condition (one more
+`K` functional on `S`, impossible at `R = 2D`). The zero-weight batch avoids it.
+
+**Executable check.** `research/zk-claims/check_view.py` models the whole linear
+view at toy size and checks the exact criterion `rank([B A]) = rank(B)`:
+- field and code: `F_31 ⊂ F_{31²}` (`D = 2`), a Reed–Solomon toy code;
+- one column `x` of 8 entries with a 4-entry claim mask and two masked claims;
+- one hiding source, the A2 certificate row, and the zero-weight batch with
+  Lemma 4 masking;
+- the batch opening row and every queried column.
+
+In 60 random draws per case:
+- The honest view is private in every draw without a public abort.
+- The tiny field makes rank failures frequent (5 of 60). Every rank failure
+  leaks, so Lemma 6's and Lemma 2's rank conditions must be producer aborts,
+  not only error terms. The note's ε for Lemma 6 is therefore an abort
+  probability, and the producer checks `rank Λ_x` as it already checks A2's
+  rank.
+- Each control leaks in every draw:
+  - claim masks removed;
+  - mask rows removed;
+  - batch sumcheck mask removed;
+  - opening at `w* = 0`;
+  - a query set above the budget.
 
 **Fiat–Shamir.** In the random-oracle model the simulator programs the oracle so
 its sampled challenges are the transcript's:
@@ -221,10 +246,14 @@ its sampled challenges are the transcript's:
 The FS error adds `q_H` times the number of programmed points over the output
 space. The concrete FS line is still Q12's placeholder.
 
-**Privacy claim reached** (if Lemma 7 holds, with uniform masks): statistical
+**Privacy claim reached** (Lemmas 1–7, with uniform masks): statistical
 honest-verifier ZK with error
 
-`ε_zk = Σ_sources N·q_H/2^256 + Σ_sumchecks 1/|K| + Σ_columns D·t_x·ℓ_x/p + ε_L7`,
+`ε_zk = Σ_sources N·q_H/2^256 + Σ_sumchecks 1/|K|`,
+
+where the rank conditions of Lemmas 2 and 6 are producer aborts on public data.
+Their probabilities (at most `D·t_x·ℓ_x/p` per column, and A2's) bound
+availability, not privacy;
 
 then ZK in the programmable ROM; computational with seed-derived masks.
 
@@ -237,7 +266,7 @@ OM31) of a mask that nothing else uses.
 |---|---|---|
 | `r_x` (claim mask, per column) | `t_x` masked claims | `L_x ≥ D·t_x` with `ℓ_x ≥ log2 t_x + c_D` (Lemma 6) |
 | source mask half (per row) | `q_c + q_o` queried positions | `C − 1 ≥ q_c + q_o` (Lemma 1) |
-| source mask rows `S` | certificate row, opening row, `σ_S` | `R ≥ 2D` and rank `2D + D` jointly (Lemmas 2, 7) |
+| source mask rows `S` | certificate row, opening row | `R ≥ 2D` and rank `2D` (Lemmas 2, 7) |
 | A3 mask source | `G`, rounds, `μ`, its opening row | Lemma 5 |
 
 `t_x` per column in RFC-0026 is small and plan-fixed:
@@ -278,19 +307,16 @@ mechanism (FlashProve's linked re-encodings) is still R8.
   per-instance, so with tens of instances this is the main new fixed cost.
   Batching the A3 masks of all instances into one mask source is an
   optimization left open.
-- **Batching.** One masked batch per source, plus `σ_S` and one opening, in
-  place of the current claim batch.
+- **Batching.** One masked batch per source and one opening, in place of the
+  current claim batch.
 
 ## 6. Exact remaining list for R1
 
-1. **Lemma 7.** Prove it, with an explicit non-degeneracy witness as in Lemma 6.
-2. **Executable check.** An exact small-field model before any code, extending
-   `research/commitment-privacy/privacy.py`'s rank criterion. Over
-   `F_p ⊂ F_{p^2}` (`D = 2`) with a toy RS code, enumerate the linear view of a
-   two-relation proof (one identity, one matmul zero-sum) and its batches. Check
-   `im(A_witness) ⊆ im(B_masks)` conditioned on the public outputs, for random
-   challenges. The view is nonlinear in the witness only through `P`'s final
-   evaluation, which H4 conditions on.
+1. **Lemma 7.** Done (§3), after removing `σ_S`.
+2. **Executable check.** Done for one column, one source and its batch
+   (`research/zk-claims/check_view.py`). Still to extend: two relations sharing a
+   column (an identity and a matmul zero-sum with `Ȯ`), and correlated points
+   (item 9).
 3. **Matmul with shared bits.** RFC-0026 §3.5's `eq(ρ_shared, x_shared)` sum is
    a summed variable too, so it can carry a vanishing factor. Its degree budget
    is to be checked per module.
@@ -308,5 +334,6 @@ mechanism (FlashProve's linked re-encodings) is still R8.
    RFC-0008 companions, NC reservations, and the dev-zk profile flag (INV-1).
 
 The note's position: §2's construction is complete for cube-sum relations and
-for matmul through the broadcast form. Lemma 6 is proved. Lemma 7 and the
-executable check are the gate before implementation.
+for matmul through the broadcast form. Lemmas 6 and 7 are proved, and the toy
+model finds no leak. The extended check and items 3–9 are the gate before
+implementation.
