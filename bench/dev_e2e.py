@@ -3,7 +3,9 @@
 The run directory holds what `docs/development-e2e.md` ("Benchmark ledger") produces:
 `prove.out`, `prove.time` and `verify.out`, `verify.time` (GNU `/usr/bin/time -v`),
 `proof.bin`, `public.bin`, and `controls.log`, the `--nocapture` output of
-`rejects_tampers_on_a_supplied_proof` against that proof.
+`rejects_tampers_on_a_supplied_proof` against that proof. An optional `commit.log`, the
+output of `matches_reference_model_commitment_of_a_supplied_proof`, adds the model
+commitment time (measured in its own process) as stage `model_commitment`.
 
   python3 bench/dev_e2e.py RUN_DIR OUT.json --workload dev/<name> --commit <sha> \
       --device "<cpu>" --toolchain "$(rustc -V)" --prompt-tokens P --threads N \
@@ -55,6 +57,10 @@ def main():
     assert [c for c, _ in controls] == ['next', 'token', 'weight', 'gain'], controls
     assert 'test result: ok. 1 passed' in (run / 'controls.log').read_text()
     proof, public = (run / 'proof.bin').read_bytes(), (run / 'public.bin').read_bytes()
+    stages = {'prove_dev_wall': prove_ns}
+    if (run / 'commit.log').exists():  # separate process: Artifact decode and model commitment only
+        stages['model_commitment'] = int(re.search(r'^model commitment: (\d+) ns$',
+                                                   (run / 'commit.log').read_text(), re.M).group(1))
     start, end = map(int, s['checked'].split('..'))
     t = int(s['T'])
     plan = dict(command='stele prove-dev / verify-dev', statement=s, threads=a.threads,
@@ -69,7 +75,7 @@ def main():
         'profile': 'development', 'bindings_all_on': True, 'batch_size': 1,
         'prompt_tokens': a.prompt_tokens, 'generated_tokens': t - a.prompt_tokens,
         'prover_time_ns': prove_ns, 'witness_recompute_ns': 0,
-        'stage_times_ns': {'prove_dev_wall': prove_ns},
+        'stage_times_ns': stages,
         'kernel_counters': {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
                             'public_bytes': len(public), 'checked_positions': end - start},
         'proof_size_bytes': len(proof), 'verifier_time_ns': {'rust': verify_ns, 'python': 0},
@@ -77,7 +83,8 @@ def main():
         'note': ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
                  'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
                  'commitment, executor capture (witness), plain check and proof; the witness is not timed '
-                 'separately (witness_recompute_ns 0). Verifier time is the verify-dev process wall time. '
+                 'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '
+                 'decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. '
                  'CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is GNU time maximum resident set size. Controls '
                  'are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each '
                  'rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a '
