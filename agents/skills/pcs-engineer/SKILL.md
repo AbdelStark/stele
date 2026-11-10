@@ -15,7 +15,13 @@ Rules
   transfers a larger radius to the circle code (Q39). Capacity conjectures are disproved; never cite one.
 - Every round is stated per round for RFC-0030: proximity round `2·ℓ·(e+1)/|K|`, query round `(1−δ)^q`.
 - Fresh mode: all claims are batched to one transcript-random point first; the row combination is the proximity
-  test. Certified mode: the registration certificate carries proximity; openings may use any public functional.
+  test. It applies to stacked witness sources and recursion levels only. Certified mode: the registration
+  certificate carries proximity; openings may use any public functional. Multiplicity sources are in neither
+  mode: their prefix-mask functionals are not point claims, so they keep the RFC-0010 A9 form (Q51).
+- Sources of one level are batched with one registered coefficient and share one row point; a query index is
+  opened in every block's tree (RFC-0029 §2).
+- On QM31 under `standard` the proximity round caps a row codeword (`2·ℓ·(e+1) ≤ 2^24 − 1`). Price every layout
+  with and without the cap (Q50) before choosing it.
 - The fused opening takes the matmul sumcheck's weight-side partial evaluation by reference and never recomputes it.
 - New work uses circle sources. The v2 expander source is a stopped line (RFC-0027 §7).
 - Reserve the zero-knowledge slots (randomiser coefficients, mask rows) in the source context from the start.

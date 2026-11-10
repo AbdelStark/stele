@@ -131,10 +131,9 @@ proving modules before any of this; that is on the first-light path.
 
 One scheme for weights and witness: rows encoded with the circle Reed–Solomon code
 of `stele-code` in coefficient form, columns hashed with BLAKE3, and a recursive
-opening. The
-prover combines rows once, commits the combination as a smaller matrix, and proves
-the column checks by sumcheck into the next level, until the vector is small enough
-to send.
+opening. The prover combines rows once, commits the combination as a smaller matrix,
+and proves the column checks by sumcheck into the next level, until the vector is
+small enough to send.
 
 - Parameters are proven in the unique-decoding regime for linear codes. No
   list-decoding or capacity conjecture is used. A larger radius needs its own
@@ -213,7 +212,8 @@ test.
 
 ## 4. Scoreboard and ladder
 
-One table, generated from ledgers (`bench/scoreboard.md`, E17-02). A change on a
+One table, generated from ledgers: `bench/scoreboard.md`, written by
+`bench/scoreboard.py` today and by `stele-bench` after task E17-02. A change on a
 build lane states which cell it moves or which risk it retires.
 
 | Rung | Model | Window | Role |
@@ -234,14 +234,15 @@ it (`harness/eval/REPORT.md`).
 ## 5. Milestones
 
 A milestone is a gate, met when its ledgers and controls exist. M3 and M4 run in
-parallel after M2; M4 also needs the `standard` admission of E21-04. M5 needs
-commitment scheme v3.
+parallel after M2. Both need the promotion of the lean protocol to `standard`
+(E21-09); M4 also needs the stacked weight phase (E18-08) and the numerics of E22-05.
+M5 needs commitment scheme v3.
 
 | Gate | Name | Exit criteria |
 |---|---|---|
 | M0 | Development end to end | Done: L2a proved and verified (E16-11). |
 | M1 | **First light on 8B** | L3a: a real prompt and greedy reply through the CLI, development tier, one CPU host with at most 512 GB RAM. Statement tampers and NC-1300..1310 rejected on that proof. Ledger recorded; no time or size cap. |
-| M2 | **Lean protocol** | L2a on the 24-thread reference class: prove at most 10 s, verify at most 2 s, proof at most 4 MB, RSS at most 4 GB. L3b on at most 64 cores: at most 1,800 s, with proof bytes and verify time recorded. (The two time lines ask for the same speed: L3b is about 500 times the work of L2a.) Committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline. Proof bytes identical across hosts. |
+| M2 | **Lean protocol** | L2a on the 24-thread reference class: prove at most 10 s, verify at most 2 s, proof at most 4 MB, RSS at most 4 GB. L3b on at most 64 cores: at most 1,800 s, with proof bytes and verify time recorded. (The two time lines ask for about the same speed: by committed cells and lookup positions L3b is 500 to 600 times L2a, and its attention term grows fastest, so the L3b line binds.) Committed cells per token at most 1/10 and lookup positions at most 1/5 of the E22-01 baseline. Proof bytes identical across hosts. |
 | M3 | **Admitted** | L2 and L3 proofs under `standard`: λ at least 100, proven terms only, ledger generated and checked by the verifier. L3b proof at most 8 MB, verified in at most 5 s. Written soundness arguments in `formal/`. Python verifier agrees on 10^3 proofs and rejects every mutation. `stele-verifier` is `no_std` within budget. Control coverage 100% of implemented bindings. Passport binds the checkpoint digest. |
 | M4 | **GPU** | L3b on one H100 under `standard`: at least 230 tok/s at batch 24, single request at most 10 s, CPU and GPU proofs byte-identical. Cells at most 1/20 and lookups at most 1/8 of the baseline (needs the numerics of E22-05). W1 recorded. Constants fitted from ledgers. |
 | M5 | **Zero knowledge** | Weight-hiding and activation-hiding proofs on L3b with a published leak list, written simulator argument, opening budget enforced. Prover overhead at most 15%. |

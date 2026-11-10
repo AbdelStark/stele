@@ -27,8 +27,9 @@ order    segment s: commit → lookups, zerochecks → reduce virtual columns �
          open segment s−1; drop it                                                             RFC-0028 §2.4
 weights  one stacked phase per weight role; the weight pass is the opening's row combination    RFC-0007 §5, RFC-0029 §1.3
 PCS      interleaved circle-RS, BLAKE3 columns, recursive opening; fresh mode (witness),
-         certified mode (model)                                                                RFC-0029
-ledger   per-round error, least bits λ; standard ≥ 100 on QM31, treaty ≥ 128 on a wider field    RFC-0030
+         certified mode (model); multiplicity sources keep the RFC-0010 A9 form (Q51)          RFC-0029
+ledger   per-round error, least bits λ; standard ≥ 100 on QM31 (round numerators ≤ 2^24 − 1),
+         treaty ≥ 128 on a wider field                                                         RFC-0030
 ZK       bounded-query encodings, mask rows, committed sumcheck masks, opening budget           RFC-0013 A2
 ```
 **What is committed (target):** one or two small integers per nonlinear value; the residual stream at segment

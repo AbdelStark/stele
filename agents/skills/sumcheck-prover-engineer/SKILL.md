@@ -14,8 +14,11 @@ Rules
 - Lookups are the prover today. Keep leaf layers in the base field; read the first tree layers of small-domain
   tables from precomputed tables; build a level and its round data in one pass; run independent instances in
   parallel under a fixed transcript order.
-- A lookup instance has a size cap from the profile (RFC-0030 §3, Draft). Splitting is by the plan (RFC-0026 A7,
-  Draft), each instance with its own multiplicity source and challenges.
+- A lookup instance has a size cap from the profile (RFC-0030 §3, Draft: pair-round numerator at most `2^24 − 1`
+  on QM31). Splitting is by the plan (RFC-0026 A7, Draft), each instance with its own multiplicity source and
+  challenges. Independent instances each carry their own tree proofs, which costs proof bytes; the form meant for
+  `standard` shares the challenges and one tree reduction across the instances of a check (Q49, task E20-09).
+  Record lookup-proof bytes against instance count in every ledger that splits.
 - One thread pool; fixed partition of every sum; no spawn per round.
 - Memory: report peak bytes per instance in the ledger; stacked instances expose per-block partial round sums.
 
