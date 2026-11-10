@@ -2457,6 +2457,24 @@ tasks:
   acceptance:
   - measured prove/verify time, peak RSS and proof bytes for the synthetic 8-layer model and stories42M against the E16-18 entries
   - RFC-0026 amendment only if the measured encoding cost is accepted; projected 18.3 MB proof bytes confirmed or refuted
+- id: E12-10
+  epic: E12
+  title: Zero-knowledge design note for the development path (gap analysis, hiding sources, masked sumcheck)
+  depends:
+  - E16-10
+  rfc:
+  - RFC-0013 A1
+  - RFC-0010 A7
+  - RFC-0026 §1.2
+  skill: soundness-auditor
+  crate: formal
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-10-zk-design
+  acceptance:
+  - formal/zk-development.md gives the gap analysis against RFC-0026 and FlashProve, the chosen construction, proofs of its component lemmas and the exact remaining list
+  - rank evidence for the Circle mask half and the systematic-expander counterexample as stele-code tests
+  - two same-author review passes recorded; no RFC, label, ledger or wire change
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
