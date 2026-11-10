@@ -4021,6 +4021,7 @@ tasks:
   title: Zero-knowledge construction decision; RFC-0013 A3 accepted for the development tier
   depends:
   - E19-03
+  - E12-14
   rfc:
   - RFC-0013 A3
   - RFC-0013 A1
@@ -4038,6 +4039,7 @@ tasks:
   depends:
   - E23-01
   - E19-06
+  - E12-14
   rfc:
   - RFC-0013 A3
   skill: zk-engineer

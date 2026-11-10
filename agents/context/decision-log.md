@@ -2195,6 +2195,9 @@ Decision:
   form of A3's candidate A items 4 and 6. Under RFC-0028's commit rule, claims on
   virtual columns take RFC-0008 A7's per-layer masks. E23-01 can start from this
   stack, as its acceptance text says for E12-11..E12-13.
+- E12-14 (end-to-end dev-zk) stays the development-tier deliverable that E23-01
+  and E23-02 start from. It is not folded into them. Both now depend on E12-14 in
+  graph.yaml; their acceptance lines are unchanged.
 - Costs are recorded as a projection: about 4 times the commitment on the
   eight-layer synthetic window, against about 20 times for committed fractions.
   No constant moves.
