@@ -489,3 +489,25 @@ items above leave open. None changes a label, a loss or an order.
   sources. The rounds are free, `μ` is solved last and the finals are true. Only
   binding each relation's `μ_j` in the shared batch rejects it
   (`RoundSumMismatch`).
+
+**Implementation notes (E12-14a, ADR-101; development tier, pending independent
+review).** These state how `stele_reductions::zk::relation` derives one claims
+statement from a validated RFC-0026 relation. No label, loss form or order item
+changes. Item 8 still holds: dev-zk is not admitted.
+- **Sources.** Source 0 holds every witness column in `ColumnId` order, then each
+  check's multiplicities. Source 1 holds every weight column. Its root is the
+  dev-zk model commitment (item 7 with `P = 1`): the weights and their claim masks
+  are committed from the proof's seed, for one proof. Public columns are never
+  committed. The verifier evaluates each public operand's final at its column
+  point (`ClaimMismatch`).
+- **Identities.** There is one instance per domain size, increasing. It covers
+  that size's identities in relation order, then its `Compose` identities.
+  `relation/identity` coefficients are drawn before `τ`. Each distinct
+  `(column, vars)` read is one masked occurrence (item 2).
+- **Matmuls.** The A9 zero-sum runs over the shared free variables (under
+  `eq(ρ_shared, ·)`), the summed variables and padding. Free variables not shared
+  are fixed at `ρ`. A6 fixed bits are Boolean coordinates of the occurrence.
+- **Checks.** RFC-0008 A7's implementation notes (E12-14a).
+- **Controls.** NC-0924..0928 and NC-0932. NC-0920..0926 use a forging adversary
+  (`zk::relation::forge`). The honest producer refuses a false witness at its own
+  first round.

@@ -2295,3 +2295,42 @@ Decision:
     per lookup: A5's `e` assumes the root check, which dev-zk replaces.
 
 Status: Accepted (development tier; independent review: fix-then-merge, fixes applied).
+
+## ADR-101: Every RFC-0026 relation kind as one dev-zk statement (RFC-0013 A5, RFC-0026 A9, RFC-0008 A7, task E12-14a)
+
+Numbered after ADR-100.
+
+Context: E12-18 and E12-19 built masked claims, zero-sums and ZK-GKR as components.
+They left selectors, several members per check, padding, A5's statement and unit
+messages, and the mapping from a development relation to E12-14. E12-14 is split:
+E12-14a maps every relation kind, and E12-14b wires the orchestrator, the CLI, the
+fixtures, the privacy tests and the ledger.
+
+Decision:
+- `stele_reductions::zk::relation` derives one `zk::claims` statement from any
+  validated relation. It proves and verifies it after `relation/statement`.
+  - Witness columns and multiplicities go in source 0. Weights go in source 1,
+    whose root is the dev-zk model commitment, with `P = 1`.
+  - There is one combined identity instance per domain size, `Compose` included.
+  - There is one contraction per matmul, with shared and fixed bits.
+  - There is one ZK-GKR check per table and per range width.
+  - Public operands are evaluated by the verifier.
+- A check's leaf takes a selector, several members, shifts and padding, as RFC-0008
+  A7's E12-14a notes state.
+  - The instance keeps every member claim as a final, with terms of at most four
+    factors.
+  - The producer folds compact combined factors. The declared degree covers both
+    forms.
+- The tree limit rises to `n ≤ 23` (the eight-layer window has `n = 22`).
+- dev-zk stays defined, not admitted (RFC-0013 A5 item 8). E12-14b wires the
+  profile byte. Admission waits for its independent review.
+- Evidence:
+  - The relation tests' seven fixtures prove and verify through the actual
+    verifier.
+  - The one-layer window (`T = 4`) proves and verifies at the relation level.
+  - The eight-layer window (`T = 64`) proves and verifies at the relation level
+    in an ignored release test: 413 s prove and 55 s verify on one laptop. That
+    timing is not a ledger number.
+- Controls NC-0920..0932 are added and executed.
+
+Status: Proposed (development tier; independent review requested before merge).

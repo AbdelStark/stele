@@ -64,6 +64,31 @@ pub struct Read {
     pub vars: Vec<u32>,
 }
 
+impl Read {
+    /// A `vars` entry fixing the coordinate to 0 (RFC-0026 A6, contractions only).
+    pub const FIXED_0: u32 = u32::MAX - 1;
+    /// A `vars` entry fixing the coordinate to 1 (RFC-0026 A6, contractions only).
+    pub const FIXED_1: u32 = u32::MAX;
+}
+
+/// A public column read like a [`Read`]: never masked; the verifier evaluates it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Public {
+    /// `2^{vars.len()}` values, MSB-first.
+    pub values: Vec<i64>,
+    /// Domain variable (or `Read::FIXED_*`) per column coordinate.
+    pub vars: Vec<u32>,
+}
+
+/// A factor of a [`Relation::Combined`] or [`Relation::Contraction`].
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Operand {
+    /// A committed column, one masked occurrence (A5 item 2).
+    Column(Read),
+    /// A public column (RFC-0026 §3.2: coefficient vectors, masks, selectors).
+    Public(Public),
+}
+
 /// A relation instance in A1 form (RFC-0026 A9).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Relation<K> {
@@ -94,6 +119,40 @@ pub enum Relation<K> {
         /// Bits of `j`.
         cols: u32,
     },
+    /// RFC-0026 §4 step 4 under A9: the identities of one domain size as one
+    /// zero-sum `Σ_x eq(τ, x)·Σ_k γ_{parts[k]}·c_k·Π_f F_f(x) = 0`, with `count`
+    /// `relation/identity` coefficients `γ` drawn before `τ`. Factors index
+    /// `operands`; a term has at most three; each distinct committed read is one
+    /// masked occurrence.
+    Combined {
+        /// Domain variables before padding.
+        num_vars: u32,
+        /// Distinct reads.
+        operands: Vec<Operand>,
+        /// Terms over `operands`, at most three factors each.
+        terms: Vec<Term<K>>,
+        /// The identity of each term, `< count`.
+        parts: Vec<u32>,
+        /// Identities combined.
+        count: u32,
+    },
+    /// RFC-0026 §3.5 with A9: `out(x) = Σ_y lhs(x, y)·rhs(x, y)` over a domain of
+    /// `free + summed` variables, MSB-first, the summed ones first. `ρ ∈ K^free`
+    /// (`relation/point`, variable `summed + i` at `ρ_i`); the zero-sum runs over
+    /// `y`, the shared free variables (read by both `lhs` and `rhs`, under
+    /// `eq(ρ_shared, ·)`) and A9 padding. `out` reads free variables only.
+    Contraction {
+        /// Free variables.
+        free: u32,
+        /// Summed variables.
+        summed: u32,
+        /// The result, read on free variables.
+        out: Operand,
+        /// The left factor.
+        lhs: Operand,
+        /// The right factor.
+        rhs: Operand,
+    },
 }
 
 /// The public statement: claim sources, committed columns and relations.
@@ -109,22 +168,68 @@ pub struct Statement<K> {
     pub lookups: Vec<Lookup>,
 }
 
-/// One lookup of `c` tuple columns into a public table, over `n ≥ c_D + 1`
-/// variables (RFC-0008 A7, a single unselected member): every tuple
-/// `(x_0(i), …, x_{c−1}(i))` must be a valid table row, and `multiplicity(j)`
-/// counts the lookups of row `j`. The lookup and table leaves form one tree,
-/// leaf `(x, 0)` the lookup `1/(α − Σ β^i x_i)` and leaf `(x, 1)` the negated table
-/// term `−m/(α − Σ β^i T_i)`; padded rows are `0/1`.
+/// One RFC-0026 A3 check of `c`-tuples into a public table (RFC-0008 A7): every
+/// selected tuple of every member must be a valid table row, and
+/// `multiplicity(j)` counts the lookups of row `j` (each entry of a padded member
+/// `2^pad` times, RFC-0026 A9). Members are concatenated largest first into a
+/// lookup half of `2^n` positions, `n = max(c_D + 1, k, ⌈log Σ 2^{m'}⌉)` with
+/// `m' = max(vars, c_D + 1)`; the table half is the table padded to `2^n` rows.
+/// One tree: leaf `(x, 0)` is `S(x)/(α − Σ β^i S(x)·X_i(x))` with `S` the
+/// concatenated selector (0 off the members) and `X_i` the concatenated shifted
+/// tuple; leaf `(x, 1)` is `−mult(x)/(α − Σ β^i T_i(x))`, padded rows `0/1`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Lookup {
-    /// Tuple columns, each of `2^n` entries.
-    pub columns: Vec<usize>,
-    /// The committed multiplicity column, `2^n` entries.
+    /// Members, in relation order.
+    pub members: Vec<Member>,
+    /// The committed multiplicity column, `2^k` entries.
     pub multiplicity: usize,
-    /// Public table: `2^n` rows of `c` values; rows from `valid` on are padding.
+    /// Public table: `2^k` rows of `c` values; rows from `valid` on are padding.
     pub table: Vec<Vec<i64>>,
     /// Number of valid table rows.
     pub valid: usize,
+}
+
+/// One lookup or range of a check (RFC-0026 §3.3–3.4): over `vars` member
+/// variables (MSB-first), each tuple entry is `tuple[i] + shifts[i]`.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Member {
+    /// Member domain variables before A9 padding.
+    pub vars: u32,
+    /// `c` committed reads over the member domain.
+    pub tuple: Vec<Read>,
+    /// Added to each tuple entry (a range's `−width.min()`).
+    pub shifts: Vec<i64>,
+    /// Public 0/1 selector over the member domain; `None` selects all.
+    pub selector: Option<Public>,
+}
+
+impl Lookup {
+    /// One unselected, unshifted member reading `columns` on all of `n` variables.
+    pub fn single(
+        columns: &[usize],
+        n: u32,
+        multiplicity: usize,
+        table: Vec<Vec<i64>>,
+        valid: usize,
+    ) -> Self {
+        Self {
+            members: vec![Member {
+                vars: n,
+                tuple: columns
+                    .iter()
+                    .map(|c| Read {
+                        column: *c,
+                        vars: (0..n).collect(),
+                    })
+                    .collect(),
+                shifts: vec![0; columns.len()],
+                selector: None,
+            }],
+            multiplicity,
+            table,
+            valid,
+        }
+    }
 }
 
 /// One linear claim `value = Σ weight·X[position]` on a source's data message
@@ -215,6 +320,15 @@ fn limbs<K: ChallengeField + CodeField>(value: K) -> Result<Vec<M31>, Error> {
 enum Coord {
     Var(usize),
     Free(usize),
+    /// A fixed Boolean coordinate (RFC-0026 A6): no Schwartz–Zippel term.
+    Fixed(u8),
+}
+
+/// A public input of a step: its values and coordinates.
+#[derive(Clone, Debug)]
+struct PublicInput<K> {
+    values: Vec<K>,
+    coords: Vec<Coord>,
 }
 
 /// One masked occurrence: column, coordinates, vanishing variable `v`, mask
@@ -232,13 +346,44 @@ struct Occurrence {
 struct Step<K> {
     id: u64,
     num_vars: u32,
-    /// Identity: `eq(τ, ·)` is input 0 and `τ` has `num_vars` draws.
-    eq: bool,
+    /// `eq(τ, ·)` over the leading `len` step variables is input 0, with `τ` the
+    /// draws at these indices (an identity: all `num_vars`; a contraction: its
+    /// shared free variables).
+    eq: Option<Vec<usize>>,
     label: ChallengeLabel,
     draws: usize,
     occurrences: Vec<Occurrence>,
+    /// Public inputs, after the occurrences.
+    publics: Vec<PublicInput<K>>,
     terms: Vec<Term<K>>,
     degree: usize,
+    /// `Combined`: each term's identity and the coefficient count, drawn first.
+    parts: Option<(Vec<u32>, usize)>,
+}
+
+impl<K: ChallengeField> Step<K> {
+    fn first(&self) -> usize {
+        usize::from(self.eq.is_some())
+    }
+    /// The terms with each identity's coefficient applied.
+    fn scaled(&self, gammas: &[K]) -> Vec<Term<K>> {
+        match &self.parts {
+            None => self.terms.clone(),
+            Some((parts, _)) => self
+                .terms
+                .iter()
+                .zip(parts)
+                .map(|(t, p)| Term {
+                    coefficient: t.coefficient * gammas[*p as usize],
+                    factors: t.factors.clone(),
+                })
+                .collect(),
+        }
+    }
+    /// `τ`: the draws under `eq`.
+    fn tau(&self, free: &[K]) -> Vec<K> {
+        self.eq.iter().flatten().map(|i| free[*i]).collect()
+    }
 }
 
 /// A committed column of the plan: the statement's, then each lookup's top `p, q,
@@ -356,8 +501,16 @@ fn assign<K>(
     terms: &[Term<K>],
     c: usize,
 ) -> Result<usize, Error> {
-    let mut masked = vec![None; first + occurrences.len()];
-    let free: Vec<bool> = (0..masked.len()).map(|i| i >= first).collect();
+    let inputs = terms
+        .iter()
+        .flat_map(|t| t.factors.iter())
+        .map(|f| *f as usize + 1)
+        .max()
+        .unwrap_or(0);
+    let mut masked = vec![None; inputs.max(first + occurrences.len())];
+    let free: Vec<bool> = (0..masked.len())
+        .map(|i| i >= first && i < first + occurrences.len())
+        .collect();
     vanish(num_vars, c, terms, &mut masked, &free)?;
     for (o, m) in occurrences.iter_mut().zip(&masked[first..]) {
         if let Some((v, u)) = m {
@@ -404,13 +557,180 @@ fn identity_step<K: ChallengeField>(
     Ok(Step {
         id,
         num_vars: num_vars as u32,
-        eq,
+        eq: eq.then(|| (0..num_vars).collect()),
         label: ChallengeLabel::ZeroWeight,
         draws: if eq { num_vars } else { 0 },
         occurrences,
+        publics: Vec::new(),
         terms,
         degree,
+        parts: None,
     })
+}
+
+/// Maps a read's variables to step coordinates.
+type CoordMap<'a> = dyn Fn(&[u32]) -> Result<Vec<Coord>, Error> + 'a;
+
+fn distinct(vars: &[u32]) -> Result<(), Error> {
+    let fixed = |q: &u32| *q >= Read::FIXED_0;
+    match vars
+        .iter()
+        .enumerate()
+        .any(|(k, q)| !fixed(q) && vars[..k].contains(q))
+    {
+        true => Err(Error::Statement),
+        false => Ok(()),
+    }
+}
+
+/// A step over `operands` (input 0 reserved for `eq`): committed reads become
+/// occurrences, public reads public inputs after them; term factors are remapped.
+fn operand_step<K: ChallengeField>(
+    id: u64,
+    n: usize,
+    operands: &[Operand],
+    terms: &[Term<K>],
+    map: &CoordMap<'_>,
+    column: &dyn Fn(usize, u32) -> Result<usize, Error>,
+) -> Result<Step<K>, Error> {
+    let mut occurrences = Vec::new();
+    let mut publics = Vec::new();
+    for operand in operands {
+        match operand {
+            Operand::Column(read) => occurrences.push(Occurrence {
+                column: column(read.column, read.vars.len() as u32)?,
+                coords: map(&read.vars)?,
+                v: 0,
+                u: Vec::new(),
+                block: 0,
+            }),
+            Operand::Public(p) => {
+                if p.values.len() != 1usize << p.vars.len() {
+                    return Err(Error::Statement);
+                }
+                publics.push(PublicInput {
+                    values: p.values.iter().map(|v| K::from_i64(*v)).collect(),
+                    coords: map(&p.vars)?,
+                });
+            }
+        }
+    }
+    // Input of operand `o`: 1 + its rank among occurrences, or after them.
+    let (mut seen_c, mut seen_p) = (0u32, 0u32);
+    let index: Vec<u32> = operands
+        .iter()
+        .map(|o| match o {
+            Operand::Column(_) => {
+                seen_c += 1;
+                seen_c
+            }
+            Operand::Public(_) => {
+                seen_p += 1;
+                occurrences.len() as u32 + seen_p
+            }
+        })
+        .collect();
+    let terms = terms
+        .iter()
+        .map(|t| Term {
+            coefficient: t.coefficient,
+            factors: core::iter::once(0)
+                .chain(t.factors.iter().map(|f| index[*f as usize]))
+                .collect(),
+        })
+        .collect();
+    Ok(Step {
+        id,
+        num_vars: n as u32,
+        eq: None,
+        label: ChallengeLabel::RelationPoint,
+        draws: 0,
+        occurrences,
+        publics,
+        terms,
+        degree: 0,
+        parts: None,
+    })
+}
+
+/// A [`Relation::Contraction`]'s step: variables are the shared free ones (under
+/// `eq(ρ_shared, ·)`, input 0), then the summed ones, then A9 padding.
+fn contraction<K: ChallengeField>(
+    id: u64,
+    free: u32,
+    summed: u32,
+    [out, lhs, rhs]: [&Operand; 3],
+    c: usize,
+    column: &dyn Fn(usize, u32) -> Result<usize, Error>,
+) -> Result<Step<K>, Error> {
+    let (a, s) = (free as usize, summed as usize);
+    let vars = |o: &Operand| match o {
+        Operand::Column(r) => r.vars.clone(),
+        Operand::Public(p) => p.vars.clone(),
+    };
+    let reads = |o: &Operand, q: usize| vars(o).contains(&(q as u32));
+    let shared: Vec<usize> = (s..s + a)
+        .filter(|q| reads(lhs, *q) && reads(rhs, *q))
+        .collect();
+    let n = (shared.len() + s).max(c + 1);
+    // `out` reads free variables only (RFC-0026 §3.5); any ref may fix a bit (A6).
+    if n > 24
+        || [out, lhs, rhs].iter().any(|o| {
+            vars(o)
+                .iter()
+                .any(|q| *q < Read::FIXED_0 && *q as usize >= a + s)
+        })
+        || vars(out).iter().any(|q| (*q as usize) < s)
+    {
+        return Err(Error::Statement);
+    }
+    let map = |vars: &[u32]| -> Result<Vec<Coord>, Error> {
+        distinct(vars)?;
+        Ok(vars
+            .iter()
+            .map(|q| match *q {
+                Read::FIXED_0 => Coord::Fixed(0),
+                Read::FIXED_1 => Coord::Fixed(1),
+                q if (q as usize) < s => Coord::Var(shared.len() + q as usize),
+                q => match shared.iter().position(|x| *x == q as usize) {
+                    Some(p) => Coord::Var(p),
+                    None => Coord::Free(q as usize - s),
+                },
+            })
+            .collect())
+    };
+    // Σ eq·lhs·rhs counts out 2^pad times and Σ eq·Ȯ counts it 2^{s+pad} times,
+    // so −2^{−s} balances them (RFC-0026 A9).
+    let half = K::from_i64(2).inverse().ok_or(Error::Statement)?;
+    let scale = (0..s).fold(K::from_i64(1), |p, _| p * half);
+    let terms = [
+        Term {
+            coefficient: K::from_i64(1),
+            factors: vec![1, 2],
+        },
+        Term {
+            coefficient: zero::<K>() - scale,
+            factors: vec![0],
+        },
+    ];
+    let operands = [out.clone(), lhs.clone(), rhs.clone()];
+    let mut step = operand_step(id, n, &operands, &terms, &map, column)?;
+    if shared.is_empty() {
+        // No eq input: every factor moves down by one.
+        for t in &mut step.terms {
+            t.factors.remove(0);
+            for f in &mut t.factors {
+                *f -= 1;
+            }
+        }
+    } else {
+        step.eq = Some(shared.iter().map(|q| q - s).collect());
+    }
+    step.draws = a;
+    step.label = ChallengeLabel::RelationPoint;
+    let first = step.first();
+    step.degree = assign(n, &mut step.occurrences, first, &step.terms, c)?;
+    Ok(step)
 }
 
 fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<K>, Error> {
@@ -525,14 +845,58 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
                 Step {
                     id: id(j),
                     num_vars: n as u32,
-                    eq: false,
+                    eq: None,
                     label: ChallengeLabel::RelationPoint,
                     draws: a + b,
                     occurrences,
+                    publics: Vec::new(),
                     terms,
                     degree,
+                    parts: None,
                 }
             }
+            Relation::Combined {
+                num_vars,
+                operands,
+                terms,
+                parts,
+                count,
+            } => {
+                let n = (*num_vars as usize).max(c + 1);
+                if n > 24
+                    || parts.len() != terms.len()
+                    || parts.iter().any(|p| p >= count)
+                    || terms.iter().any(|t| {
+                        t.factors.len() > 3
+                            || t.factors.iter().any(|f| *f as usize >= operands.len())
+                    })
+                {
+                    return Err(Error::Statement);
+                }
+                let map = |vars: &[u32]| -> Result<Vec<Coord>, Error> {
+                    distinct(vars)?;
+                    vars.iter()
+                        .map(|q| match *q {
+                            q if q < *num_vars => Ok(Coord::Var(q as usize)),
+                            _ => Err(Error::Statement),
+                        })
+                        .collect()
+                };
+                let mut step = operand_step(id(j), n, operands, terms, &map, &column)?;
+                step.eq = Some((0..n).collect());
+                step.label = ChallengeLabel::ZeroWeight;
+                step.draws = n;
+                step.parts = Some((parts.clone(), *count as usize));
+                step.degree = assign(n, &mut step.occurrences, 1, &step.terms, c)?;
+                step
+            }
+            Relation::Contraction {
+                free,
+                summed,
+                out,
+                lhs,
+                rhs,
+            } => contraction(id(j), *free, *summed, [out, lhs, rhs], c, &column)?,
         };
         steps.push(step);
     }
@@ -672,12 +1036,13 @@ fn slot<K>(plan: &Plan<K>, column: usize) -> usize {
 }
 
 /// A column point: its `Var` coordinates at `ρ`, its `Free` ones at `free`.
-fn column_point<K: Copy>(coords: &[Coord], point: &[K], free: &[K]) -> Vec<K> {
+fn column_point<K: ChallengeField>(coords: &[Coord], point: &[K], free: &[K]) -> Vec<K> {
     coords
         .iter()
         .map(|c| match c {
             Coord::Var(q) => point[*q],
             Coord::Free(i) => free[*i],
+            Coord::Fixed(b) => K::from_i64(i64::from(*b)),
         })
         .collect()
 }
@@ -983,11 +1348,18 @@ struct Occurrences<K> {
     degree: usize,
     num_vars: u32,
     bound: usize,
+    /// A leaf with several members: `factors` and `terms` are compact (one
+    /// combined factor per tuple entry); the instance's inputs are these.
+    expand: Option<lookup::Expand<K>>,
 }
 
 impl<K: ChallengeField> Summand<K> for Occurrences<K> {
     fn shape(&self) -> (u32, usize) {
-        (self.num_vars - self.bound as u32, self.factors.len())
+        let inputs = self
+            .expand
+            .as_ref()
+            .map_or(self.factors.len(), lookup::Expand::inputs);
+        (self.num_vars - self.bound as u32, inputs)
     }
     fn round(&self, _: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
         let half = self.factors[0].x.len() / 2;
@@ -1030,10 +1402,19 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
             }
         }
         self.bound += 1;
+        if let Some(e) = &mut self.expand {
+            e.record(challenge);
+        }
         Ok(())
     }
     fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
-        Ok(self.factors.iter().map(|f| f.x[0]).collect())
+        let compact: Vec<K> = self.factors.iter().map(|f| f.x[0]).collect();
+        match &self.expand {
+            None => Ok(compact),
+            Some(e) => e
+                .finals(&compact)
+                .map_err(|_| stele_sumcheck::Error::InvalidInstance),
+        }
     }
 }
 
@@ -1066,6 +1447,11 @@ fn domain_table<K: ChallengeField>(column: &[K], coords: &[Coord], free: &[K], n
                         } else {
                             K::from_i64(1) - free[*i]
                         }
+                }
+                Coord::Fixed(bit) => {
+                    if b != usize::from(*bit) {
+                        weight = zero::<K>();
+                    }
                 }
             }
         }
@@ -1107,6 +1493,52 @@ impl<K: ChallengeField + CodeField> Plan<K> {
     }
 }
 
+/// A `Combined` step's `relation/identity` coefficients, drawn before `τ`.
+fn step_draws<K: ChallengeField>(t: &mut Transcript<K>, step: &Step<K>) -> Result<Vec<K>, Error> {
+    let count = step.parts.as_ref().map_or(0, |(_, c)| *c);
+    draws(t, ChallengeLabel::RelationIdentity, count)
+}
+
+/// `eq(τ, ·)` over the leading `τ.len()` of `n` variables, broadcast below.
+fn eq_input<K: ChallengeField>(tau: &[K], n: usize) -> Result<Vec<K>, Error> {
+    let eq = stele_poly::eq_table(tau).map_err(|_| Error::Statement)?;
+    let low = n - tau.len();
+    Ok((0..1usize << n).map(|index| eq[index >> low]).collect())
+}
+
+/// The verifier's checks of a step's public finals: `eq(τ, ρ_lead)` and each
+/// public input's MLE at its column point (`ClaimMismatch`).
+fn public_finals<K: ChallengeField + Eq>(
+    step: &Step<K>,
+    point: &[K],
+    free: &[K],
+    finals: &[K],
+) -> Result<(), Error> {
+    let mismatch = Error::Sumcheck(stele_sumcheck::Error::ClaimMismatch);
+    if step.eq.is_some() {
+        let tau = step.tau(free);
+        let eq =
+            stele_poly::eq_evaluate(&tau, &point[..tau.len()]).map_err(|_| Error::Statement)?;
+        if finals[0] != eq {
+            return Err(mismatch);
+        }
+    }
+    let first = step.first() + step.occurrences.len();
+    for (p, value) in step.publics.iter().zip(&finals[first..]) {
+        let w = stele_poly::eq_table(&column_point(&p.coords, point, free))
+            .map_err(|_| Error::Statement)?;
+        let expected = p
+            .values
+            .iter()
+            .zip(&w)
+            .fold(zero::<K>(), |s, (a, b)| s + *a * *b);
+        if *value != expected {
+            return Err(mismatch);
+        }
+    }
+    Ok(())
+}
+
 fn draws<K: ChallengeField>(
     t: &mut Transcript<K>,
     label: ChallengeLabel,
@@ -1137,9 +1569,9 @@ fn instance<K: ChallengeField>(
     }
 }
 
-fn step_instance<K: ChallengeField>(step: &Step<K>) -> Instance<K> {
-    let mut i = instance(step.id, step.num_vars, step.terms.clone(), zero::<K>());
-    i.inputs = (0..(usize::from(step.eq) + step.occurrences.len()) as u64).collect();
+fn step_instance<K: ChallengeField>(step: &Step<K>, gammas: &[K]) -> Instance<K> {
+    let mut i = instance(step.id, step.num_vars, step.scaled(gammas), zero::<K>());
+    i.inputs = (0..(step.first() + step.occurrences.len() + step.publics.len()) as u64).collect();
     i
 }
 
@@ -1253,6 +1685,41 @@ where
     prove_with(statement, columns, &seed.0, t, true, None)
 }
 
+/// The root of claim source `source` as [`prove`] commits it from `seed`: a
+/// caller binds it before the transcript starts (a dev-zk weight source, whose
+/// root is a public input, RFC-0013 A5 item 7). Deterministic in the seed.
+pub fn source_root<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    source: usize,
+    seed: &Seed,
+) -> Result<[u8; 32], Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let plan = plan(statement)?;
+    if source >= plan.early() || columns.len() != statement.columns.len() {
+        return Err(Error::Statement);
+    }
+    let data: Vec<Vec<K>> = columns
+        .iter()
+        .map(|column| column.iter().map(|x| element::<K>(*x)).collect())
+        .collect();
+    let message = source_message(&plan, source, &data, &seed.0, true)?;
+    let layout = &plan.layouts[source];
+    let prepared = PreparedSource::<K>::hiding(
+        plan.source_id(source),
+        layout.ell,
+        layout.m,
+        BLOWUP,
+        &message,
+        &seed.0,
+        &mut HashUsage::default(),
+    )
+    .map_err(Error::Pcs)?;
+    Ok(prepared.source().root())
+}
+
 /// Which instance an adversary forges (controls only).
 #[derive(Clone, Copy, PartialEq)]
 enum Forgery {
@@ -1266,6 +1733,8 @@ enum Forgery {
     Block(usize),
     /// GKR step `g`, free rounds, final `input` plus one, `μ` solved last.
     Final(usize, usize),
+    /// Relation `j`, free rounds, final `input` plus one, `μ` solved last.
+    RelationFinal(usize, usize),
     /// Lookup `l`: the true top `p, q`, but `h` shifted so that `Σ h = 0`, with the
     /// top identity `h·q − p = 0` forged (free rounds, `μ` solved last).
     Ratio(usize),
@@ -1291,6 +1760,45 @@ where
 {
     let forgery = Some(Forgery::Final(step, input));
     prove_with(statement, columns, &seed.0, t, true, forgery)
+}
+
+/// NC-0928's adversary, never a verifier input: the honest prover, except that
+/// relation `relation` reveals final `input` plus one (free rounds, `μ` solved
+/// last). Only the verifier's own evaluation of that public final rejects it.
+#[doc(hidden)]
+pub fn forge_relation_final<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    relation: usize,
+    input: usize,
+) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let forgery = Some(Forgery::RelationFinal(relation, input));
+    prove_with(statement, columns, &seed.0, t, true, forgery)
+}
+
+/// The GKR step index and input index of lookup `lookup`'s leaf input of kind
+/// `kind` (0: the selector `S`, 1: the first member weight `W_0`, 2: `eq·Z`), for
+/// controls.
+#[doc(hidden)]
+pub fn leaf_input<K: ChallengeField + CodeField>(
+    statement: &Statement<K>,
+    lookup: usize,
+    kind: u8,
+) -> Result<(usize, usize), Error> {
+    let plan = plan(statement)?;
+    let (g, step) = plan
+        .gkr
+        .iter()
+        .enumerate()
+        .rfind(|(_, s)| s.lookup_index() == lookup)
+        .ok_or(Error::Statement)?;
+    let input = lookup::leaf_input(step, kind).ok_or(Error::Statement)?;
+    Ok((g, input))
 }
 
 /// NC-0919's adversary, never a verifier input: for a false lookup, it commits the
@@ -1577,6 +2085,7 @@ where
     let mut runs = Vec::new();
     let mut trees = Vec::new();
     for (l, lp) in plan.lookups.iter().enumerate() {
+        lookup::messages(lp, l, t)?;
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         let layers = lookup::tree(lp, &data, beta, alpha);
@@ -1621,12 +2130,13 @@ where
     let mut mus = Vec::new();
     let mut relations = Vec::new();
     for (j, step) in plan.steps.iter().enumerate() {
+        let gammas = step_draws(t, step)?;
         let free = draws(t, step.label, step.draws)?;
         let n = step.num_vars as usize;
         let mut factors = Vec::new();
-        if step.eq {
+        if step.eq.is_some() {
             factors.push(Factor {
-                x: stele_poly::eq_table(&free).map_err(|_| Error::Statement)?,
+                x: eq_input(&step.tau(&free), n)?,
                 r: Vec::new(),
                 v: None,
             });
@@ -1638,23 +2148,44 @@ where
                 v: Some(o.v),
             });
         }
-        let i = step_instance(step);
+        for p in &step.publics {
+            factors.push(Factor {
+                x: domain_table(&p.values, &p.coords, &free, n),
+                r: Vec::new(),
+                v: None,
+            });
+        }
+        let i = step_instance(step, &gammas);
         let summand = Occurrences {
             factors,
-            terms: step.terms.clone(),
+            terms: i.terms.clone(),
             degree: step.degree,
             num_vars: step.num_vars,
             bound: 0,
+            expand: None,
+        };
+        let tweak = match forgery {
+            Some(Forgery::RelationFinal(x, input)) if x == j => Some(input),
+            _ => None,
         };
         let here = forgery == Some(Forgery::Relation(j))
+            || tweak.is_some()
             || plan
                 .lookups
                 .iter()
                 .enumerate()
                 .any(|(l, lp)| forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j));
-        let (proof, point, truth, mu) =
-            masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?;
-        let first = usize::from(step.eq);
+        let (proof, point, truth, mu) = masked_instance(
+            &i,
+            step.degree,
+            summand,
+            &masks[j],
+            &binding,
+            here,
+            tweak,
+            t,
+        )?;
+        let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
             // A5 item 4: public aborts before the claim leaves the producer.
             if kappa(point[o.v]) == zero::<K>() {
@@ -1674,9 +2205,9 @@ where
     for (g, step) in plan.gkr.iter().enumerate() {
         let index = plan.steps.len() + g;
         let run = &mut runs[step.lookup_index()];
-        let (terms, claimed) = lookup::start(step, run, t, c_width(&plan, step))?;
+        let (terms, claimed) = lookup::start(step, &plan.lookups[step.lookup_index()], run, t)?;
         let i = instance(step.id, step.num_vars, terms, claimed);
-        let factors = lookup::factors(
+        let (factors, compact, expand) = lookup::factors(
             &plan,
             step,
             run,
@@ -1687,10 +2218,11 @@ where
         )?;
         let summand = Occurrences {
             factors,
-            terms: i.terms.clone(),
+            terms: compact.unwrap_or_else(|| i.terms.clone()),
             degree: step.degree,
             num_vars: step.num_vars,
             bound: 0,
+            expand,
         };
         let tweak = match forgery {
             Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
@@ -1779,11 +2311,6 @@ where
     })
 }
 
-/// The tuple width of a GKR step's lookup.
-fn c_width<K>(plan: &Plan<K>, step: &lookup::GkrStep) -> usize {
-    plan.lookups[step.lookup_index()].width()
-}
-
 /// Verify a dev-zk claims proof against the verifier-owned statement. Every claim
 /// is discharged by its source's batch and opening; returns the SC and MASK
 /// records of every masked instance.
@@ -1830,7 +2357,8 @@ where
     t.absorb(AbsorbLabel::FieldSources, &proof.sources[..early].concat())
         .map_err(fail)?;
     let mut runs = Vec::new();
-    for _ in &plan.lookups {
+    for (l, lp) in plan.lookups.iter().enumerate() {
+        lookup::messages(lp, l, t)?;
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         runs.push(lookup::Run::new(beta, alpha));
@@ -1843,18 +2371,15 @@ where
     let mut reductions = Vec::new();
     let mut records = Vec::new();
     for (j, (step, relation)) in plan.steps.iter().zip(&proof.relations).enumerate() {
+        let gammas = step_draws(t, step)?;
         let free = draws(t, step.label, step.draws)?;
-        let i = step_instance(step);
+        let i = step_instance(step, &gammas);
         let result = masked::verify_degree(&i, step.degree, relation, binding, t)
             .map_err(Error::Sumcheck)?;
         let point = &result.reduction.point;
         let finals = &relation.final_values;
-        if step.eq
-            && finals[0] != stele_poly::eq_evaluate(&free, point).map_err(|_| Error::Statement)?
-        {
-            return Err(Error::Sumcheck(stele_sumcheck::Error::ClaimMismatch));
-        }
-        let first = usize::from(step.eq);
+        public_finals(step, point, &free, finals)?;
+        let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
             let (source, claim) = occurrence_claim(&plan, o, point, &free, finals[first + k])?;
             claims[source].push(claim);
@@ -1866,7 +2391,7 @@ where
     for (g, (step, sumcheck)) in plan.gkr.iter().zip(&proof.gkr).enumerate() {
         let index = plan.steps.len() + g;
         let run = &mut runs[step.lookup_index()];
-        let (terms, claimed) = lookup::start(step, run, t, c_width(&plan, step))?;
+        let (terms, claimed) = lookup::start(step, &plan.lookups[step.lookup_index()], run, t)?;
         let i = instance(step.id, step.num_vars, terms, claimed);
         let result = masked::verify_degree(&i, step.degree, sumcheck, binding, t)
             .map_err(Error::Sumcheck)?;
@@ -1995,12 +2520,13 @@ mod tests {
                 })
                 .collect(),
             relations: Vec::new(),
-            lookups: vec![Lookup {
-                columns: vec![0],
-                multiplicity: 1,
-                table: (0..16).map(|j| vec![3 * j + 1]).collect(),
-                valid: 12,
-            }],
+            lookups: vec![Lookup::single(
+                &[0],
+                4,
+                1,
+                (0..16).map(|j| vec![3 * j + 1]).collect(),
+                12,
+            )],
         };
         let mut counts = vec![0i64; 16];
         let x = (0..16)
