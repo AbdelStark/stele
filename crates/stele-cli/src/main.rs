@@ -2,9 +2,13 @@
 //!
 //! ```text
 //! stele prove-dev --model M --preparation P --scales S --artifact A --tokens 1,2,3,4 [--length T]
-//!                 [--checked R..E] [--next Y] --public OUT --proof OUT
+//!                 [--checked R..E] [--next Y] --public OUT --proof OUT [--zk]
 //! stele verify-dev --public FILE --proof FILE [--expect-model HEX]
 //! ```
+//! `--zk` proves under the dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1)
+//! with a seed from the OS RNG (`/dev/urandom`); its model commitment is the proof's
+//! own hiding weight source, for this proof only. `verify-dev` reads the profile
+//! from the public file and prints it.
 //! A proof shows only that the model `public.bin` names ran on the statement it names.
 //! `verify-dev` therefore prints the `cqis_id`, the model digest, `T`, the tokens,
 //! `[r, e)` and `y` before its verdict; compare them with trusted values, or pass
@@ -13,10 +17,12 @@
 //! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.
 use std::collections::BTreeMap;
 use std::process::ExitCode;
-use stele_prover::development::{bundle, model_identity, prove_window, verify, Public, Statement};
+use stele_prover::development::{
+    bundle, model_identity, prove_window_profile, verify, zk, Public, Statement,
+};
 
 const USAGE: &str = "usage: stele prove-dev --model M --preparation P --scales S --artifact A \
---tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT | \
+--tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT [--zk] | \
 stele verify-dev --public FILE --proof FILE [--expect-model HEX]";
 
 enum Failure {
@@ -89,7 +95,17 @@ fn identity(public: &Public, statement: &Statement) -> Result<[u8; 32], Failure>
     Ok(model)
 }
 
-fn prove_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
+/// 32 bytes from the OS RNG: the dev-zk seed (RFC-0013 A5 item 8).
+fn os_seed() -> Result<zk::Seed, Failure> {
+    use std::io::Read;
+    let mut bytes = [0u8; 32];
+    std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| f.read_exact(&mut bytes))
+        .map_err(|e| usage(format!("OS RNG: {e}")))?;
+    Ok(zk::Seed::new(bytes))
+}
+
+fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     let tokens = get(o, "tokens")?
         .split(',')
         .map(number)
@@ -110,21 +126,28 @@ fn prove_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
         end,
         next,
     };
-    let (public, statement, proof) = prove_window(
+    let seed = zk.then(os_seed).transpose()?;
+    let (public, statement, proof) = prove_window_profile(
         &read(get(o, "model")?)?,
         &read(get(o, "preparation")?)?,
         &read(get(o, "scales")?)?,
         &read(get(o, "artifact")?)?,
         statement,
         o.get("length").map(|t| number(t)).transpose()?.unwrap_or(0) as usize,
+        seed,
     )
     .map_err(reject)?;
     let write = |key: &str, bytes: &[u8]| -> Result<(), Failure> {
         let path = get(o, key)?;
         std::fs::write(path, bytes).map_err(|e| usage(format!("write {path}: {e}")))
     };
-    write("public", &bundle::encode(&public, &statement))?;
+    let profile = if zk { zk::PROFILE } else { 0 };
+    write(
+        "public",
+        &bundle::encode_profile(&public, &statement, profile),
+    )?;
     write("proof", &proof)?;
+    println!("profile {}", if zk { "dev-zk" } else { "development" });
     identity(&public, &statement)?;
     println!("proof {} bytes", proof.len());
     Ok("PROOF WRITTEN".into())
@@ -143,14 +166,26 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
                 .ok_or_else(|| usage("--expect-model is 64 hex digits"))
         })
         .transpose()?;
-    let (public, statement) = bundle::decode(&read(get(o, "public")?)?).map_err(reject)?;
+    let (public, statement, profile) =
+        bundle::decode_profile(&read(get(o, "public")?)?).map_err(reject)?;
     let proof = read(get(o, "proof")?)?;
+    let zk_profile = profile == zk::PROFILE;
+    println!(
+        "profile {}",
+        if zk_profile { "dev-zk" } else { "development" }
+    );
     let model = identity(&public, &statement)?;
     if expected.is_some_and(|e| e != model) {
         return Err(Failure::Reject("model differs from --expect-model".into()));
     }
-    let ledger = verify(&public, &statement, &proof).map_err(reject)?;
-    println!("{ledger}");
+    if zk_profile {
+        println!(
+            "{}",
+            zk::verify(&public, &statement, &proof).map_err(reject)?
+        );
+    } else {
+        println!("{}", verify(&public, &statement, &proof).map_err(reject)?);
+    }
     Ok("YES".into())
 }
 
@@ -158,22 +193,26 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rest = args.get(1..).unwrap_or_default();
     let result = match args.first().map(String::as_str) {
-        Some("prove-dev") => options(
-            rest,
-            &[
-                "model",
-                "preparation",
-                "scales",
-                "artifact",
-                "tokens",
-                "length",
-                "checked",
-                "next",
-                "public",
-                "proof",
-            ],
-        )
-        .and_then(|o| prove_dev(&o)),
+        Some("prove-dev") => {
+            let zk = rest.iter().any(|a| a == "--zk");
+            let rest: Vec<String> = rest.iter().filter(|a| *a != "--zk").cloned().collect();
+            options(
+                &rest,
+                &[
+                    "model",
+                    "preparation",
+                    "scales",
+                    "artifact",
+                    "tokens",
+                    "length",
+                    "checked",
+                    "next",
+                    "public",
+                    "proof",
+                ],
+            )
+            .and_then(|o| prove_dev(&o, zk))
+        }
         Some("verify-dev") => {
             options(rest, &["public", "proof", "expect-model"]).and_then(|o| verify_dev(&o))
         }

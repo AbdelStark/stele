@@ -145,6 +145,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || zk::run(911),
     },
     catalog::RegisteredControl {
+        id: 912,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run(912),
+    },
+    catalog::RegisteredControl {
         id: 913,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",

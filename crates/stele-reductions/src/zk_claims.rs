@@ -1720,6 +1720,22 @@ where
     Ok(prepared.source().root())
 }
 
+/// The privacy tests' leak control, never a verifier input: [`prove`] with every
+/// claim-mask block and layer block left zero, so each revealed claim is the bare
+/// evaluation `x̃(ρ)`. The proof still verifies; no verifier sees masks.
+#[doc(hidden)]
+pub fn prove_unmasked<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    prove_with(statement, columns, &seed.0, t, false, None)
+}
+
 /// Which instance an adversary forges (controls only).
 #[derive(Clone, Copy, PartialEq)]
 enum Forgery {
@@ -2446,6 +2462,156 @@ where
         masks: records,
         lookups: runs.iter().map(|r| [r.beta, r.alpha]).collect(),
     })
+}
+
+/// The `stele-dev-zk-proof-v1` bytes of a claims proof (E12-14b): every count is a
+/// `u32`, every byte string a `u32` length then bytes, every field element its
+/// canonical little-endian limbs. The verifier's statement fixes every shape, so
+/// [`verify`] rejects a decoded proof of the wrong shape (`ProofShape`).
+pub fn encode<K: ChallengeField>(proof: &Proof<K>) -> Vec<u8> {
+    let mut out = Vec::new();
+    let count = |out: &mut Vec<u8>, n: usize| out.extend_from_slice(&(n as u32).to_le_bytes());
+    let bytes = |out: &mut Vec<u8>, b: &[u8]| {
+        out.extend_from_slice(&(b.len() as u32).to_le_bytes());
+        out.extend_from_slice(b);
+    };
+    let values = |out: &mut Vec<u8>, v: &[K]| {
+        out.extend_from_slice(&(v.len() as u32).to_le_bytes());
+        for x in v {
+            out.extend_from_slice(x.to_le_bytes().as_ref());
+        }
+    };
+    let sumcheck = |out: &mut Vec<u8>, p: &masked::Proof<K>| {
+        out.extend_from_slice(p.mask_sum.to_le_bytes().as_ref());
+        count(out, p.rounds.len());
+        for r in &p.rounds {
+            values(out, r);
+        }
+        values(out, &p.final_values);
+        out.extend_from_slice(p.mask_final.to_le_bytes().as_ref());
+    };
+    for list in [&proof.sources, &proof.certificates] {
+        count(&mut out, list.len());
+        for b in list {
+            bytes(&mut out, b);
+        }
+    }
+    for list in [&proof.relations, &proof.gkr] {
+        count(&mut out, list.len());
+        for p in list {
+            sumcheck(&mut out, p);
+        }
+    }
+    count(&mut out, proof.batches.len());
+    for b in &proof.batches {
+        sumcheck(&mut out, &b.sumcheck);
+        bytes(&mut out, &b.opening);
+    }
+    bytes(&mut out, &proof.shared.source);
+    bytes(&mut out, &proof.shared.certificate);
+    sumcheck(&mut out, &proof.shared.sumcheck);
+    bytes(&mut out, &proof.shared.opening);
+    bytes(&mut out, &proof.shared_opening);
+    out
+}
+
+/// Decode [`encode`]'s bytes; malformed, noncanonical or trailing bytes reject
+/// (`ProofShape`). Every count is bounded by the bytes that remain.
+pub fn decode<K: ChallengeField>(input: &[u8]) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    struct Cursor<'a>(&'a [u8]);
+    let shape = Error::Sumcheck(stele_sumcheck::Error::ProofShape);
+    impl<'a> Cursor<'a> {
+        fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+            let (head, tail) = (self.0.get(..n)?, self.0.get(n..)?);
+            self.0 = tail;
+            Some(head)
+        }
+        fn count(&mut self) -> Option<usize> {
+            let n = u32::from_le_bytes(self.take(4)?.try_into().ok()?) as usize;
+            // Every item takes at least one byte (or four, for a count).
+            (n <= self.0.len()).then_some(n)
+        }
+        fn bytes(&mut self) -> Option<Vec<u8>> {
+            let n = self.count()?;
+            self.take(n).map(<[u8]>::to_vec)
+        }
+        fn value<K: ChallengeField>(&mut self) -> Option<K>
+        where
+            for<'b> K::Bytes: TryFrom<&'b [u8]>,
+        {
+            let width = core::mem::size_of::<K::Bytes>();
+            K::from_le_bytes(self.take(width)?.try_into().ok()?)
+        }
+        fn values<K: ChallengeField>(&mut self) -> Option<Vec<K>>
+        where
+            for<'b> K::Bytes: TryFrom<&'b [u8]>,
+        {
+            let n = self.count()?;
+            (0..n).map(|_| self.value()).collect()
+        }
+        fn sumcheck<K: ChallengeField>(&mut self) -> Option<masked::Proof<K>>
+        where
+            for<'b> K::Bytes: TryFrom<&'b [u8]>,
+        {
+            let mask_sum = self.value()?;
+            let n = self.count()?;
+            let rounds = (0..n).map(|_| self.values()).collect::<Option<_>>()?;
+            Some(masked::Proof {
+                mask_sum,
+                rounds,
+                final_values: self.values()?,
+                mask_final: self.value()?,
+            })
+        }
+    }
+    let mut c = Cursor(input);
+    let run = |c: &mut Cursor<'_>| -> Option<Proof<K>> {
+        let mut lists = [Vec::new(), Vec::new()];
+        for list in &mut lists {
+            let n = c.count()?;
+            *list = (0..n).map(|_| c.bytes()).collect::<Option<_>>()?;
+        }
+        let [sources, certificates] = lists;
+        let mut steps = [Vec::new(), Vec::new()];
+        for list in &mut steps {
+            let n = c.count()?;
+            *list = (0..n).map(|_| c.sumcheck()).collect::<Option<_>>()?;
+        }
+        let [relations, gkr] = steps;
+        let n = c.count()?;
+        let batches = (0..n)
+            .map(|_| {
+                Some(Batch {
+                    sumcheck: c.sumcheck()?,
+                    opening: c.bytes()?,
+                })
+            })
+            .collect::<Option<_>>()?;
+        let shared = super::Proof {
+            source: c.bytes()?,
+            certificate: c.bytes()?,
+            sumcheck: c.sumcheck()?,
+            opening: c.bytes()?,
+        };
+        let shared_opening = c.bytes()?;
+        Some(Proof {
+            sources,
+            certificates,
+            relations,
+            gkr,
+            batches,
+            shared,
+            shared_opening,
+        })
+    };
+    let proof = run(&mut c).ok_or(shape)?;
+    match c.0.is_empty() {
+        true => Ok(proof),
+        false => Err(shape),
+    }
 }
 
 #[cfg(test)]

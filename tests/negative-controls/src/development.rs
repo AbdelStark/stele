@@ -181,6 +181,28 @@ pub fn run(id: u16) -> Result<(), String> {
             }
             ("RoundSumMismatch", restamped(&public, &honest, &proof)?)
         }
+        912 => {
+            use stele_prover::development::zk;
+            let base = Public {
+                commitment: Vec::new(),
+                ..public.clone()
+            };
+            let (zk_public, mut zk_proof) =
+                zk::prove(&base, &mut exec, &weights, &honest, zk::Seed::new([12; 32]))
+                    .map_err(|e| format!("dev-zk prover: {e:?}"))?;
+            zk::verify(&zk_public, &honest, &zk_proof)
+                .map_err(|e| format!("honest dev-zk rejected: {e:?}"))?;
+            // The profile byte flipped to development: the container names the
+            // development statement of the same public input and window.
+            let digest =
+                zk::statement_digest_for(&zk_public, &honest, 0).map_err(|e| format!("{e:?}"))?;
+            let at = b"stele-dev-zk-v1".len() + 32;
+            zk_proof[at..at + 32].copy_from_slice(&digest);
+            (
+                "StatementMismatch",
+                zk::verify(&zk_public, &honest, &zk_proof).err(),
+            )
+        }
         1309 => {
             let statement = Statement {
                 start: 1,
