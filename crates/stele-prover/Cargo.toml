@@ -6,7 +6,8 @@ license = "Apache-2.0"
 description = "Stele — stele-prover (see RFC-0007 §4 RFC-0014 §4)"
 
 [dependencies]
-stele-reductions = { path = "../stele-reductions" }
+# The prover crate is std: enable threaded dense rounds (E16-15).
+stele-reductions = { path = "../stele-reductions", features = ["std"] }
 stele-proof = { path = "../stele-proof" }
 # RFC-0026 §4.1 statement digest; the workspace pin.
 blake3 = { version = "=1.8.7", default-features = false }

@@ -979,3 +979,173 @@ fn measures_many_weights_relation() {
         size(&proof.matmuls),
     );
 }
+
+/// A model-shaped workload: `layers` blocks of T x d = 2^6 x 2^6 activations, each with
+/// projection matmuls against 2^6 x 2^6 weights,
+/// degree-2/3 identities with broadcast public scales, ranges and a table lookup.
+fn model_like(layers: usize) -> Fixture {
+    let mut rel = Relation::default();
+    let mut rng = Rng(11);
+    let mut sets: Vec<(ColumnId, Vec<i64>)> = Vec::new();
+    let squares = rel.add_table(Table {
+        name: "squares".into(),
+        widths: vec![Width::signed(8), Width::unsigned(15)],
+        rows: (-128..128).map(|v| vec![v, v * v]).collect(),
+    });
+    let scale = rel.add_column(
+        "scale",
+        Kind::Public((0..64).map(|i| i % 4 + 1).collect()),
+        Width::unsigned(3),
+        6,
+    );
+    let all12: Vec<u8> = (0..12).collect();
+    let g0 = Kind::Witness(rel.add_group("G/in/12", 12));
+    let x0 = rel.add_column("x0", g0, Width::signed(4), 12);
+    range(&mut rel, x0, Width::signed(4));
+    let mut x = (x0, rng.vec(1 << 12, Width::signed(4)));
+    sets.push(x.clone());
+    for layer in 0..layers {
+        let g = Kind::Witness(rel.add_group(&format!("L{layer}/act/12"), 12));
+        // Seven projections Y = X W (T=2^6 rows i, d=2^6 cols j, k summed over 2^6).
+        let mut outs = Vec::new();
+        for role in 0..7 {
+            let w = rel.add_column(
+                &format!("L{layer}/w{role}"),
+                Kind::Weight,
+                Width::signed(4),
+                12,
+            );
+            range(&mut rel, w, Width::signed(4));
+            let wv = rng.vec(1 << 12, Width::signed(4));
+            let y = rel.add_column(
+                &format!("L{layer}/y{role}"),
+                g.clone(),
+                Width::signed(14),
+                12,
+            );
+            // Bits: 0..6 = j, 6..12 = i (free); 12..18 = k (summed).
+            rel.matmuls.push(Matmul {
+                name: format!("L{layer}/mm{role}"),
+                free: 12,
+                summed: 6,
+                out: r(y, &all12),
+                lhs: r(x.0, &[12, 13, 14, 15, 16, 17, 6, 7, 8, 9, 10, 11]),
+                rhs: r(w, &[0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17]),
+            });
+            let yv: Vec<i64> = (0..1usize << 12)
+                .map(|z| {
+                    let (j, i) = (z & 63, z >> 6);
+                    (0..64).map(|k| x.1[k | i << 6] * wv[j | k << 6]).sum()
+                })
+                .collect();
+            range(&mut rel, y, Width::signed(14));
+            sets.push((w, wv));
+            sets.push((y, yv.clone()));
+            outs.push((y, yv));
+        }
+        // Identities: z = y0 * y1 (degree 2), u = y2 * scale(i) * y3 (degree 3, broadcast).
+        let (y0, y1, y2, y3) = (&outs[2], &outs[3], &outs[4], &outs[5]);
+        let small = |v: &[i64]| v.iter().map(|a| a.rem_euclid(16) - 8).collect::<Vec<_>>();
+        let a = rel.add_column(&format!("L{layer}/a"), g.clone(), Width::signed(4), 12);
+        let b = rel.add_column(&format!("L{layer}/b"), g.clone(), Width::signed(4), 12);
+        let c = rel.add_column(&format!("L{layer}/c"), g.clone(), Width::signed(4), 12);
+        let z = rel.add_column(&format!("L{layer}/z"), g.clone(), Width::signed(8), 12);
+        let u = rel.add_column(&format!("L{layer}/u"), g.clone(), Width::signed(11), 12);
+        for (col, w) in [(a, 4), (b, 4), (c, 4), (z, 8), (u, 11)] {
+            range(&mut rel, col, Width::signed(w));
+        }
+        let (av, bv, cv) = (small(&y0.1), small(&y1.1), small(&y2.1));
+        let zv: Vec<i64> = av.iter().zip(&bv).map(|(p, q)| p * q).collect();
+        let uv: Vec<i64> = (0..1usize << 12)
+            .map(|i| av[i] * cv[i] * ((i >> 6) as i64 % 4 + 1))
+            .collect();
+        identity(
+            &mut rel,
+            &format!("L{layer}/z"),
+            12,
+            vec![
+                (1, vec![r(z, &all12)]),
+                (-1, vec![r(a, &all12), r(b, &all12)]),
+            ],
+        );
+        identity(
+            &mut rel,
+            &format!("L{layer}/u"),
+            12,
+            vec![
+                (1, vec![r(u, &all12)]),
+                (
+                    -1,
+                    vec![r(a, &all12), r(c, &all12), r(scale, &[6, 7, 8, 9, 10, 11])],
+                ),
+            ],
+        );
+        let sq = rel.add_column(&format!("L{layer}/sq"), g.clone(), Width::unsigned(15), 12);
+        let xs = rel.add_column(&format!("L{layer}/xs"), g.clone(), Width::signed(8), 12);
+        rel.lookups.push(Lookup {
+            name: format!("L{layer}/sq"),
+            vars: 12,
+            selector: None,
+            tuple: vec![r(xs, &all12), r(sq, &all12)],
+            table: squares,
+        });
+        let xsv: Vec<i64> = y3.1.iter().map(|v| v.rem_euclid(256) - 128).collect();
+        sets.push((sq, xsv.iter().map(|v| v * v).collect()));
+        sets.push((xs, xsv));
+        sets.extend([(a, av), (b, bv), (c, cv), (z, zv), (u, uv)]);
+        // Next layer input: a 4-bit view of y6.
+        let nx = rel.add_column(&format!("L{layer}/nx"), g.clone(), Width::signed(4), 12);
+        range(&mut rel, nx, Width::signed(4));
+        let nv: Vec<i64> = outs[6].1.iter().map(|v| v.rem_euclid(16) - 8).collect();
+        sets.push((nx, nv.clone()));
+        x = (nx, nv);
+    }
+    let mut f = Fixture {
+        values: Values::new(&rel),
+        rel,
+    };
+    for (id, v) in sets {
+        f.set(id, v);
+    }
+    f
+}
+
+#[test]
+#[ignore = "measurement; run with --ignored --nocapture"]
+fn measures_model_like_relation() {
+    let layers = std::env::var("STELE_LAYERS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(2);
+    let f = model_like(layers);
+    assert_eq!(check(&f.rel, &f.values), Ok(()));
+    let messages = relation::model_messages(&f.rel, &f.values).expect("messages");
+    let prepared = prepare(&f.rel, &messages);
+    let certificates = certify(&prepared);
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let start = std::time::Instant::now();
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let proof = relation::prove(&mut t, &f.rel, &f.values, &model).expect("proof");
+    let proved = start.elapsed();
+    let start = std::time::Instant::now();
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let refs: Vec<_> = certificates.iter().collect();
+    relation::verify(&mut t, &f.rel, &refs, &proof).expect("verify");
+    let verified = start.elapsed();
+    let bytes = proof.encode();
+    println!(
+        "layers={layers} matmuls={} prove={proved:?} verify={verified:?} proof_bytes={} digest={}",
+        f.rel.matmuls.len(),
+        bytes.len(),
+        blake3_hex(&bytes)
+    );
+}
+
+fn blake3_hex(bytes: &[u8]) -> String {
+    // Identity check across prover changes: proof bytes must not move.
+    let mut t = Transcript::<QM31>::new(bytes).expect("transcript");
+    let k: QM31 = t
+        .challenge(stele_hash::ChallengeLabel::Sumcheck)
+        .expect("digest");
+    k.to_le_bytes().iter().map(|b| format!("{b:02x}")).collect()
+}

@@ -49,7 +49,8 @@ DEVELOPMENT = {
                    '#![forbid(unsafe_code)]\n#![no_std]\n'
                    '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                    'extern crate alloc;\npub mod development;\n',
-        'dependencies': {'stele-reductions': {'path': '../stele-reductions'},
+        # E16-15: the prover opts in to stele-reductions' threaded dense rounds.
+        'dependencies': {'stele-reductions': {'path': '../stele-reductions', 'features': ['std']},
                          'stele-proof': {'path': '../stele-proof'},
                          'blake3': {'version': '=1.8.7', 'default-features': False}},
         'dev-dependencies': {'serde_json': '=1.0.154'},
@@ -503,7 +504,10 @@ def field_sources(root):
                'src/silu.rs', 'src/silu/tests.rs',
                'src/silu/conversion.rs', 'src/silu/conversion/tests.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
-    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    try:
+        manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    except tomllib.TOMLDecodeError as error:
+        raise ValueError(f'reductions API not wired: unreadable manifest ({error})') from error
     dependencies = {f'stele-{n}': {'path': f'../stele-{n}'}
                     for n in ('field', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')}
     # RFC-0026 §4 step 1: the relation statement digest is BLAKE3 (workspace pin).
@@ -674,7 +678,9 @@ def field_sources(root):
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
-            or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target', 'features'))
+            or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
+            # E16-15: the only feature is the opt-in prover-thread switch; no_std by default.
+            or manifest.get('features', {'std': ['stele-sumcheck/std']}) != {'std': ['stele-sumcheck/std']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),

@@ -71,7 +71,7 @@ class ReadinessTests(unittest.TestCase):
                 'cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings',
                 'cargo test --workspace --all-features --locked --offline',
                 'cargo test --workspace --examples --all-features --locked --offline',
-                'cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis --no-default-features --locked --offline',
+                'cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis -p stele-reductions --no-default-features --locked --offline',
                 'cargo test -p stele-simd --release --locked --offline -- --nocapture',
                 'scripts/gates/ledger-validate.sh',
                 'scripts/gates/rfc-status.sh',

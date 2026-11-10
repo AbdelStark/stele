@@ -257,6 +257,64 @@ impl Encoder {
             work: measured.work,
         })
     }
+    /// Encode `rows` canonical rows given interleaved (`message[i * rows + r]` is symbol
+    /// `i` of row `r`); the codeword comes back interleaved the same way. Each row's
+    /// codeword equals [`Self::encode_measured`] of that row; expander rows are
+    /// generated once for all rows (RFC-0010 A4).
+    pub fn encode_rows_measured<K: CodeField>(
+        &self,
+        message: &[K],
+        rows: usize,
+    ) -> Result<MeasuredEncoding<K>, Error> {
+        let mut measured = Measurement::default();
+        let values = self.encode_rows_recorded(message, rows, &mut measured)?;
+        Ok(MeasuredEncoding {
+            values,
+            work: measured.work,
+        })
+    }
+    fn encode_rows_recorded<K: CodeField>(
+        &self,
+        message: &[K],
+        rows: usize,
+        measured: &mut Measurement,
+    ) -> Result<Vec<K>, Error> {
+        let len = usize::try_from(self.info.message_len).map_err(|_| Error::Capacity)?;
+        if rows == 0 || len.checked_mul(rows) != Some(message.len()) {
+            return Err(Error::RowShape);
+        }
+        // The same field-size and pointer-width checks as `validate`, per row.
+        self.validate(&message[..len])?;
+        let (length, scratch) = self.capacity::<K>(0)?;
+        let total = length.checked_mul(rows).ok_or(Error::Capacity)?;
+        if self.len == 21 {
+            // Circle: no generated rows to share; encode each lane in turn.
+            let circle = Circle::new(u32::from(self.id[19]), u32::from(self.id[20]))?;
+            let mut output = zeros(total, measured)?;
+            let mut lane = measured.reserve(len)?;
+            for r in 0..rows {
+                lane.clear();
+                lane.extend(message.iter().skip(r).step_by(rows).copied());
+                let encoded = circle.encode_recorded(&lane, measured)?;
+                for (c, value) in encoded.iter().enumerate() {
+                    output[c * rows + r] = *value;
+                }
+                measured.release(measurement::bytes(&encoded));
+            }
+            measured.release(measurement::bytes(&lane));
+            return Ok(output);
+        }
+        let mut output = zeros(total, measured)?;
+        let mut work = zeros(scratch.checked_mul(rows).ok_or(Error::Capacity)?, measured)?;
+        expander::Execution {
+            seed: &self.id[23..],
+            hash: &mut hash,
+            measured,
+        }
+        .run_lanes(self.id[22], message, &mut output, &mut work, rows, 1)?;
+        measured.release(measurement::bytes(&work));
+        Ok(output)
+    }
     /// A5 observations including selected-column/full-encoding overlap.
     pub fn eval_row_measured<K: CodeField>(
         &self,
@@ -311,6 +369,33 @@ mod tests {
         id[..22].copy_from_slice(b"stele/expander-seed/v2");
         id[22] = j;
         Encoder::from_code_id(&id).expect("identity")
+    }
+    #[test]
+    fn matches_reference_interleaved_rows_against_per_row_encoding() {
+        let circle =
+            Encoder::from_code_id(&Circle::new(4, 1).expect("circle").code_id()).expect("identity");
+        for (encoder, rows) in [(code(3), 1usize), (code(3), 5), (code(4), 3), (circle, 4)] {
+            let n = encoder.info().message_len as usize;
+            let message: alloc::vec::Vec<M31> = (0..n * rows)
+                .map(|i| M31::from_u64((i as u64).wrapping_mul(2654435761) % 2147483647))
+                .collect();
+            let lanes = encoder
+                .encode_rows_measured(&message, rows)
+                .expect("lanes")
+                .values;
+            for r in 0..rows {
+                let row: alloc::vec::Vec<M31> =
+                    message.iter().skip(r).step_by(rows).copied().collect();
+                let single = encoder.encode_measured(&row).expect("row").values;
+                let lane: alloc::vec::Vec<M31> =
+                    lanes.iter().skip(r).step_by(rows).copied().collect();
+                assert_eq!(lane, single);
+            }
+        }
+        assert_eq!(
+            code(3).encode_rows_measured(&[M31::ONE; 63], 1).err(),
+            Some(Error::RowShape)
+        );
     }
     #[test]
     fn rejects_invalid_requests_before_generation() {

@@ -45,11 +45,7 @@ fn dot<K: ChallengeField>(a: &[K], b: &[K]) -> K {
         .fold(K::from_i64(0), |sum, (a, b)| sum + *a * *b)
 }
 fn fold<K: ChallengeField>(table: &mut Vec<K>, r: K) {
-    let half = table.len() / 2;
-    for c in 0..half {
-        table[c] = table[c] + r * (table[c + half] - table[c]);
-    }
-    table.truncate(half);
+    crate::parallel::fold(table, r);
 }
 impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
     fn shape(&self) -> Result<(usize, usize, u32, usize), Error> {
@@ -251,18 +247,22 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         Ok(out)
     }
     fn sum(&self, tables: &[Vec<K>], weights: &[K], node: Option<K>) -> Result<K, Error> {
-        let mut values = zeros(tables.len())?;
-        let mut sum = K::from_i64(0);
-        for (column, weight) in weights.iter().enumerate() {
-            for (value, table) in values.iter_mut().zip(tables) {
-                *value = table[column];
-                if let Some(x) = node {
-                    *value = *value + x * (table[column + weights.len()] - *value);
+        // Exact field sums: any split of the columns gives the same value (A3 prover).
+        let mut sum = [K::from_i64(0)];
+        crate::parallel::sum_ranges(weights.len(), &mut sum, |range, out| {
+            let mut values = zeros(tables.len())?;
+            for column in range {
+                for (value, table) in values.iter_mut().zip(tables) {
+                    *value = table[column];
+                    if let Some(x) = node {
+                        *value = *value + x * (table[column + weights.len()] - *value);
+                    }
                 }
+                out[0] = out[0] + weights[column] * self.instance.evaluate(&values);
             }
-            sum = sum + *weight * self.instance.evaluate(&values);
-        }
-        Ok(sum)
+            Ok(())
+        })?;
+        Ok(sum[0])
     }
     /// Dense CPU prover: interpolate prefixes, fold tail coordinates, retain original slices.
     pub fn prove(&self, tables: &[Vec<K>], t: &mut Transcript<K>) -> Result<Proof<K>, Error> {

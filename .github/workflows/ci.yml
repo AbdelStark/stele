@@ -69,7 +69,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
       - run: cargo test --workspace --all-features --locked --offline
       - run: cargo test --workspace --examples --all-features --locked --offline
-      - run: cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis --no-default-features --locked --offline
+      - run: cargo check -p stele-sumcheck -p stele-lookup -p stele-cqis -p stele-reductions --no-default-features --locked --offline
       # shortcut: hosted AVX-512 varies; use a dedicated runner for mandatory coverage.
       - name: Native x86 SIMD parity
         env:

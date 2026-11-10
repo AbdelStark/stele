@@ -17,6 +17,7 @@ mod buffers;
 pub mod claim_batch;
 mod dense;
 mod instance;
+mod parallel;
 mod small;
 mod streaming;
 mod work;

@@ -68,10 +68,14 @@ pub(super) fn elements<K: ChallengeField + CodeField>(
         addressable::<merkle::Digest>(source.path_height())?;
         // Opaque Circle scratch uses <=L-1 M31 twiddle/prefix values per
         // preparation/verification; L>=2C bounds the inverse-transform overlap.
+        // E16-15: preparation encodes all rows at once, so it also holds the
+        // transposed message (R·C) and the interleaved codeword (R·L).
         base = sum(&[
             base,
             mul(rows, length)?,
             mul(3, length)?.checked_sub(2).ok_or(Error::Capacity)?,
+            mul(rows, columns)?,
+            mul(rows, length)?,
         ])?;
         // Two independent registration weight vectors, verifier row/encoded row;
         // shared prefix/suffix equality tables and every retained piece's a/b.

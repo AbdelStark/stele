@@ -2789,6 +2789,24 @@ tasks:
   - every weight column is a block of one stacked v2 model source with one certificate, one claim batch and one opening per proof
   - layout pinned by a test with tied and mixed sizes; oversized weights rejected before shifting
   - opening bytes measured before and after on a many-weight plan; binding controls green under the mutation campaign
+- id: E16-15
+  epic: E16
+  title: Development-profile prover performance (batched encoding, threaded dense rounds)
+  depends:
+  - E16-14
+  rfc:
+  - RFC-0026 §7
+  - RFC-0006 A1
+  - RFC-0010 A4
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions
+  status: done
+  agent: claude-code
+  branch: task/E16-15-prover-performance
+  acceptance:
+  - profile of the 8-layer prove with the top hotspots named
+  - identical proof bytes before and after on the measured relations
+  - prove time reduced on the 8-layer model, measured before and after
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run

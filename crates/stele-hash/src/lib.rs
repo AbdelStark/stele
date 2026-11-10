@@ -359,7 +359,8 @@ mod sealed {
 /// use stele_field::M31;
 /// let transcript = Transcript::<M31>::new(b"public");
 /// ```
-pub trait ChallengeField: sealed::Target + stele_field::Field {}
+/// `Send + Sync` lets dense provers split work across threads (RFC-0006 A1 prover only).
+pub trait ChallengeField: sealed::Target + stele_field::Field + Send + Sync {}
 impl sealed::Target for QM31 {
     const DEGREE: usize = 4;
     fn from_limbs(l: [M31; 8]) -> Self {
