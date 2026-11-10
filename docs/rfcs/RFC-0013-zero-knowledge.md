@@ -77,3 +77,45 @@ not a completed privacy proof. Cost impact: randomization/encoding, full joint
 opening work, repeated-use state and c_c/T_misc/registration costs; no constant
 or benchmark changes. Affected tasks: E4-05 and E12-01 are blocked on this
 contract, with E4-03/E4-06/E10/E12 passport and inference consumers also affected.
+
+### A2 — Bounded-query encodings and committed masks on commitment scheme v3
+
+Status: Draft. Questions Q29, Q40. Depends on RFC-0029. Tasks: E23-01..E23-04.
+Motivation: A1 states what a construction must provide and names none. Two
+published constructions fit a hash-only, sumcheck-based prover, and one of them has a
+machine-checked precedent for single proofs (FlashProve; ePrint 2026/391).
+
+Proposed construction (candidate A), replacing §3 on acceptance:
+
+> 1. **Encoding.** Every committed row carries `t` uniformly random coefficients
+>    beside its message (RFC-0029 §7 reserves the slots). Any `t` positions of a row's
+>    codeword are then uniform. The plan fixes `t` at least the number of positions
+>    of that row opened over the source's lifetime.
+> 2. **Row combinations.** Every committed source has mask rows. Each fold `u = aᵀM`
+>    includes a fresh mask row with a transcript coefficient, at every level.
+> 3. **Sumcheck messages.** Each sumcheck instance adds a committed low-degree mask
+>    polynomial to its summand with a transcript coefficient; the mask is opened with
+>    the instance's final claims.
+> 4. **Evaluation claims** on committed sources are never sent in the clear; they are
+>    carried as claims on masked folds.
+> 5. **Lifetime.** A model source has an opening budget fixed at registration and a
+>    persistent counter. When the budget is spent the provider links a fresh encoding
+>    of the same weights to the registered one with a proof of equality.
+> 6. **Leak list.** `docs/security/leak-list.md` states everything a proof reveals
+>    (shapes, lengths, timing, public outputs, any value outside the masks). A value
+>    not on the list and not covered by the simulator is a defect.
+
+Candidate B, kept as the alternative until E23-01 decides: pad every algebraic prover
+message with a one-time pad and prove the verifier's algebraic checks on the padded
+values in a small zero-knowledge argument (ePrint 2026/683).
+
+Decision criteria for E23-01: prover overhead on L3b, proof bytes, coverage of
+batches and segments, interaction with base-field first rounds (Q5), and how directly
+the simulator can be stated in Lean.
+
+A1's requirements stand in full: the joint-view simulator, the fixed-oracle query
+accounting over the passport's lifetime, NC-0604 and NC-0900/0901 as actual controls.
+Soundness impact: MASK records per masked instance (RFC-0012 §4); exact terms with
+the construction. Cost impact: `c_c` for the randomisers and mask rows, `c_sc` for
+masks; the PRD G6 bound is re-stated as at most 15% at M5 and 5% at M7.
+Affected tasks: E23-01..E23-04; E4-05, E12-01 and E12-01a are superseded (RFC-0027 §6).
