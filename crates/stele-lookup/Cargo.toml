@@ -13,6 +13,8 @@ stele-sumcheck = { path = "../stele-sumcheck" }
 
 [dev-dependencies]
 stele-field = { path = "../stele-field" }
+# Run this crate's tests through the threaded prover paths too (E16-17).
+stele-sumcheck = { path = "../stele-sumcheck", features = ["std"] }
 serde_json = "1.0"
 
 [lints]

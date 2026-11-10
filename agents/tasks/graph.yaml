@@ -2867,6 +2867,24 @@ tasks:
   - identical proof bytes on the pinned E16-10 fixtures
   - lookup tree levels and dense rounds restructured; prove time measured before and after
   - verifier unchanged and no_std builds sequential
+- id: E16-17
+  epic: E16
+  title: Rayon prover parallelism (global pool, parallel encoding and tables)
+  depends:
+  - E16-16
+  rfc:
+  - RFC-0026 §7
+  - RFC-0006 A1
+  - RFC-0010 A4
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck
+  status: done
+  agent: claude-code
+  branch: task/E16-17-rayon
+  acceptance:
+  - rayon only behind the prover std features; verifier and no_std builds free of it (cargo tree, --no-default-features)
+  - identical proof bytes on the pinned E16-10 fixtures
+  - 8-layer prove time measured before and after, with the core count
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run
@@ -2883,6 +2901,24 @@ tasks:
   acceptance:
   - bench/ledger entries for prove/verify time and proof size on the 8-layer synthetic model and one converted small Llama checkpoint
   - comparison table against the FlashProve small route; GPU path only with the parity gate (INV-3)
+- id: E16-18
+  epic: E16
+  title: Development-profile ledger refresh after the prover-performance tasks
+  depends:
+  - E16-11
+  - E16-17
+  rfc:
+  - RFC-0026 §7
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-bench
+  status: done
+  agent: claude-code
+  branch: task/E16-18-ledger-refresh
+  acceptance:
+  - new bench/ledger entries for the synthetic 8-layer model and stories42M at T = 64 on current main, with the E16-11 entries kept as history
+  - model-commitment time recorded separately from prove time
+  - docs/development-e2e.md cites the new entries
 - id: E17-00
   epic: E17
   title: Baseline reproduction on the planning host and its ledger

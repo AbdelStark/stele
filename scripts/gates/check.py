@@ -680,7 +680,8 @@ def field_sources(root):
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
             # E16-15: the only feature is the opt-in prover-thread switch; no_std by default.
-            or manifest.get('features', {'std': ['stele-sumcheck/std']}) != {'std': ['stele-sumcheck/std']}
+            or manifest.get('features', {'std': ['stele-sumcheck/std', 'stele-pcs/std']})
+                != {'std': ['stele-sumcheck/std', 'stele-pcs/std']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
@@ -854,7 +855,10 @@ def field_source_codec(root):
                '// A1 registry validator: stele-code is reachable only through this crate (deny.toml).\n'
                'pub use stele_code::{registry, CodeField};\n'
                'pub use work::{ProverWork, VerifierWork};\n')
-    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    try:
+        manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    except tomllib.TOMLDecodeError as error:
+        raise ValueError(f'PCS API not wired: unreadable manifest ({error})') from error
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
     source = (crate / 'src/source.rs').read_text()
     # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
@@ -987,7 +991,9 @@ def field_source_codec(root):
             or not opening_closed or not work_closed
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
-            or any(key in manifest for key in ('build-dependencies', 'target', 'features'))
+            or any(key in manifest for key in ('build-dependencies', 'target'))
+            # E16-17 (ADR-090): the only feature is the opt-in prover-side parallel encoder.
+            or manifest.get('features', {'std': ['stele-code/std']}) != {'std': ['stele-code/std']}
             or 'build' in manifest.get('package', {})):
         raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')
     checks = [
@@ -1067,7 +1073,9 @@ def fraction_reductions(root):
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('gkr','hash','sumcheck','poly')}
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
-            or manifest.get('dev-dependencies') != {'stele-field': {'path': '../stele-field'}, 'serde_json': '1.0'}
+            # E16-17: lookup's own tests also run the threaded prover paths.
+            or manifest.get('dev-dependencies') != {'stele-field': {'path': '../stele-field'}, 'serde_json': '1.0',
+                                                    'stele-sumcheck': {'path': '../stele-sumcheck', 'features': ['std']}}
             or any(key in manifest for key in ('build-dependencies','target','features'))
             or 'build' in manifest.get('package', {})):
         raise ValueError('fraction engine/lookup validator not wired; only A3 conditional reductions/codecs admitted (E3-07a)')

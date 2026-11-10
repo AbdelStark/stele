@@ -348,3 +348,25 @@ fn rejects_tampers_on_a_supplied_proof() {
         Error::Engine(_)
     ));
 }
+
+/// E16-18: time the model commitment alone (RFC-0026 §2.2), which `prove-dev` recomputes
+/// on every call. `STELE_DEV_PROOF` names a directory holding `model.bin`, `artifact.bin`
+/// and the `public.bin` whose roots the recomputed commitment must equal.
+#[test]
+#[ignore = "needs STELE_DEV_PROOF: run with --release -- --ignored"]
+fn matches_reference_model_commitment_of_a_supplied_proof() {
+    let dir = std::path::PathBuf::from(std::env::var("STELE_DEV_PROOF").expect("STELE_DEV_PROOF"));
+    let read = |name: &str| std::fs::read(dir.join(name)).expect(name);
+    let model = Model::decode(&read("model.bin")).expect("model");
+    let artifact = read("artifact.bin");
+    let (public, _) = bundle::decode(&read("public.bin")).expect("bundle");
+    let clock = Instant::now();
+    let weights = Weights::from_artifact(&model, &artifact).expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let ns = clock.elapsed().as_nanos();
+    assert!(
+        committed.commitment == public.commitment,
+        "same model commitment"
+    );
+    eprintln!("model commitment: {ns} ns");
+}

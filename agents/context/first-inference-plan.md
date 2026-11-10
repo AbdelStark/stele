@@ -1,6 +1,6 @@
 # First native inference: closure plan
 
-> **Superseded as the working plan by the build program** (`docs/plan.md`, RFC-0027, ADR-090).
+> **Superseded as the working plan by the build program** (`docs/plan.md`, RFC-0027, ADR-091).
 > This document stays as the record of the first closure plan and of the treaty backlog's
 > integration requirements. RFC-0027 §6 says which of its tasks are superseded, parked or resumed.
 

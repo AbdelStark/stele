@@ -1822,7 +1822,37 @@ and runs on a GPU). No GPU path is measured; it stays behind the INV-3 parity ga
 Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
 review in the E16-11 PR).
 
-## ADR-090: Adopt the build program — tiers, ladder, lanes, milestones (RFC-0027, RFC-0018 A2, task E17-00)
+## ADR-090: Rayon as the prover-side work pool, behind opt-in std features (task E16-17)
+
+Context: the scoped-thread splits of E16-15/16 spawned threads on every round. The
+v2 encoder ran sequentially during source preparation. The owner chose rayon over
+redesigning the sumcheck strategy interface.
+
+Decision:
+- `rayon =1.10.0` (MIT/Apache-2.0) is an optional dependency of `stele-sumcheck` and
+  `stele-code` only. It is enabled by their `std` features. `stele-pcs` gains
+  `std = ["stele-code/std"]`. `stele-reductions`'s `std` forwards to both. Only
+  `stele-prover` turns it on.
+- `stele_sumcheck::parallel` runs on rayon's global pool: `sum_ranges` (partials
+  combined in chunk order), `fold`, `for_each_chunk` and a block-split `eq_table`.
+  Worker panics propagate.
+- Under `std`, `Encoder::encode_rows_measured` encodes contiguous row groups in
+  parallel. Each group regenerates the sparse rows, and every row's codeword is
+  unchanged.
+- `CodeField` requires `Send + Sync`, as `ChallengeField` does, and every sealed
+  implementor already satisfies it.
+- The verifier, `stele-verifier` and every `--no-default-features` build stay free
+  of rayon. CI checks `stele-code`, `stele-pcs`, `stele-reductions` and
+  `stele-verifier` without default features. `cargo tree` shows rayon only under
+  `stele-prover`.
+- Proof bytes are unchanged; the E16-10 fixture hashes stay pinned.
+- Under `std` the encoder work counters (`generated_rows`, `hash_blocks`,
+  `peak_owned_bytes`, `encoder_peak_bytes`) depend on the thread count. They are not
+  reproducible across machines, so ledgers must not record them from `std` builds.
+
+Status: Accepted.
+
+## ADR-091: Adopt the build program — tiers, ladder, lanes, milestones (RFC-0027, RFC-0018 A2, task E17-00)
 
 Context: the owner asked for an assessment of the project and a plan to build the
 leading prover of inference in the order "make it work, make it fast, make it right",
@@ -1886,7 +1916,7 @@ Status: Accepted (owner-directed; the lane, tier and gate definitions are the
 planning agent's proposal within that direction and are listed for the owner's
 confirmation in `docs/plan.md` §10).
 
-## ADR-091: Design direction recorded as Draft — commit rule, commitment scheme v3, per-round accounting, zero knowledge (RFC-0028, RFC-0029, RFC-0030, RFC-0013 A2, RFC-0026 A6/A7)
+## ADR-092: Design direction recorded as Draft — commit rule, commitment scheme v3, per-round accounting, zero knowledge (RFC-0028, RFC-0029, RFC-0030, RFC-0013 A2, RFC-0026 A6/A7)
 
 Context: the plan's gains come from four protocol changes. Each needs evidence and
 review before it binds code (INV-1). Recording them as Draft RFCs gives every lane a

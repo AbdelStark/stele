@@ -9,6 +9,11 @@ description = "Stele — stele-code (see RFC-0010 §3)"
 blake3 = { version = "=1.8.7", default-features = false }
 stele-field = { path = "../stele-field" }
 stele-simd = { path = "../stele-simd" }
+# Prover-side row groups (E16-17, ADR-090); only through the opt-in `std` feature.
+rayon = { version = "=1.10.0", optional = true }
+
+[features]
+std = ["dep:rayon"]
 
 [lints]
 workspace = true

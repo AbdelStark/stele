@@ -39,7 +39,7 @@ fn mle<K: ChallengeField>(values: &[K], point: &[K]) -> Result<K, Error> {
     if !values.len().is_power_of_two() || values.len().trailing_zeros() as usize != point.len() {
         return Err(Error::SourceShape);
     }
-    let weights = stele_poly::eq_table(point).map_err(|_| Error::Capacity)?;
+    let weights = stele_sumcheck::parallel::eq_table(point)?;
     // Exact field sums: any split of the dot product is identical.
     let mut sum = [K::from_i64(0)];
     stele_sumcheck::parallel::sum_ranges(values.len(), &mut sum, |range, out| {
@@ -186,7 +186,7 @@ impl<'a, K: ChallengeField + Eq> SelectedProduct<'a, K> {
         let i = self.instance()?;
         let mut tables = Vec::new();
         reserve(&mut tables, xs.len() + 2)?;
-        tables.push(stele_poly::eq_table(self.point).map_err(|_| Error::Capacity)?);
+        tables.push(stele_sumcheck::parallel::eq_table(self.point)?);
         tables.push(owned(self.sigma)?);
         for x in xs {
             tables.push(owned(x)?);

@@ -26,7 +26,9 @@ mod private {
     "\nimpl stele_code::CodeField for Other {\n",
     "const DEGREE: u8 = 1;\n",
     "fn mul_base(self, c: M31) -> Self { Self(self.0 * c) }\n}\n```")]
-pub trait CodeField: Field + private::SealedField {
+/// `Send + Sync` lets prover-side encodings split across threads (E16-17); every
+/// sealed implementor already satisfies it.
+pub trait CodeField: Field + private::SealedField + Send + Sync {
     /// Canonical number of M31 limbs.
     const DEGREE: u8;
     /// Multiply each limb once by a base-field coefficient, including zero.
@@ -266,12 +268,83 @@ impl Encoder {
         message: &[K],
         rows: usize,
     ) -> Result<MeasuredEncoding<K>, Error> {
+        #[cfg(feature = "std")]
+        {
+            let groups = rayon::current_num_threads().min(rows);
+            if groups > 1 {
+                return self.encode_row_groups(message, rows, groups);
+            }
+        }
         let mut measured = Measurement::default();
         let values = self.encode_rows_recorded(message, rows, &mut measured)?;
         Ok(MeasuredEncoding {
             values,
             work: measured.work,
         })
+    }
+    /// Prover-side split (`std`): rows are cut into contiguous groups, each encoded
+    /// interleaved on its own, and scattered back. Every row's codeword is the same
+    /// as in one call; the work counters add up over groups (each regenerates rows).
+    #[cfg(feature = "std")]
+    fn encode_row_groups<K: CodeField>(
+        &self,
+        message: &[K],
+        rows: usize,
+        groups: usize,
+    ) -> Result<MeasuredEncoding<K>, Error> {
+        use rayon::prelude::*;
+        let len = usize::try_from(self.info.message_len).map_err(|_| Error::Capacity)?;
+        if len.checked_mul(rows) != Some(message.len()) {
+            return Err(Error::RowShape);
+        }
+        let step = rows.div_ceil(groups);
+        let parts: Vec<(usize, usize, MeasuredEncoding<K>)> = (0..rows.div_ceil(step))
+            .into_par_iter()
+            .map(|g| {
+                let (first, count) = (g * step, step.min(rows - g * step));
+                let mut sub = crate::reserved(len * count)?;
+                for symbol in message.chunks_exact(rows) {
+                    sub.extend_from_slice(&symbol[first..first + count]);
+                }
+                let mut measured = Measurement::default();
+                let values = self.encode_rows_recorded(&sub, count, &mut measured)?;
+                Ok((
+                    first,
+                    count,
+                    MeasuredEncoding {
+                        values,
+                        work: measured.work,
+                    },
+                ))
+            })
+            .collect::<Result<_, Error>>()?;
+        let length = usize::try_from(self.info.codeword_len).map_err(|_| Error::Capacity)?;
+        let mut values = crate::reserved(length * rows)?;
+        values.resize(length * rows, K::from_i64(0));
+        let mut work = crate::EncoderWork::default();
+        for (first, count, part) in &parts {
+            for (out, symbol) in values
+                .chunks_exact_mut(rows)
+                .zip(part.values.chunks_exact(*count))
+            {
+                out[*first..*first + *count].copy_from_slice(symbol);
+            }
+            let w = part.work;
+            work.peak_owned_bytes += w.peak_owned_bytes;
+            work.hash_blocks += w.hash_blocks;
+            work.generated_rows += w.generated_rows;
+            work.sparse_limb_additions += w.sparse_limb_additions;
+            work.sparse_limb_products += w.sparse_limb_products;
+            work.initialized_symbols += w.initialized_symbols;
+            work.copied_symbols += w.copied_symbols;
+            work.circle_calls += w.circle_calls;
+            work.circle_transform_additions += w.circle_transform_additions;
+            work.circle_transform_products += w.circle_transform_products;
+            work.twiddle_elements += w.twiddle_elements;
+            work.inverse_prefix_elements += w.inverse_prefix_elements;
+            work.max_recursive_frames = work.max_recursive_frames.max(w.max_recursive_frames);
+        }
+        Ok(MeasuredEncoding { values, work })
     }
     fn encode_rows_recorded<K: CodeField>(
         &self,

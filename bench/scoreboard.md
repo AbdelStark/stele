@@ -6,8 +6,10 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | Rung | Profile | Device | Threads | Prove s | Tok/s | Verify s | Proof MB | RSS GB | Cells/token | Lookups/token | Weight reads | λ bits | Controls | Ledger |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | L1 | development | x86_64 Intel Core Ultra 9 285K | 24 | 34.25 | 1.869 | 5.05 | 45.0 | 2.6 | — | — | — | none | 4/4 | [e16-11-dev-synthetic-8layer](ledger/e16-11-dev-synthetic-8layer.json) @ `f6db15e` |
+| L1 | development | x86_64 Intel Core Ultra 9 285K | 24 | 21.93 | 2.918 | 3.95 | 45.0 | 3.0 | — | — | — | none | 4/4 | [e16-18-dev-synthetic-8layer](ledger/e16-18-dev-synthetic-8layer.json) @ `e813ce1` |
 | L1 | development | x86_64 Intel Xeon Processor @ 2.10GHz (4 vCPU) | 4 | 55.66 | 1.150 | 7.04 | 45.0 | 2.6 | 524,288 | 321,289 | — | none | 4/4 | [e17-00-dev-synthetic-8layer-4core](ledger/e17-00-dev-synthetic-8layer-4core.json) @ `6441a90` |
 | L2a | development | x86_64 Intel Core Ultra 9 285K | 24 | 719.12 | 0.089 | 45.20 | 113.4 | 37.4 | — | — | — | none | 4/4 | [e16-11-dev-stories42m](ledger/e16-11-dev-stories42m.json) @ `f6db15e` |
+| L2a | development | x86_64 Intel Core Ultra 9 285K | 24 | 473.81 | 0.135 | 24.25 | 113.4 | 38.4 | — | — | — | none | 4/4 | [e16-18-dev-stories42m](ledger/e16-18-dev-stories42m.json) @ `e813ce1` |
 
 Rungs with no record: L0, L2b, L3a, L3b, L3c, L4, L5, L6.
 
