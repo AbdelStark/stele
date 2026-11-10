@@ -401,8 +401,17 @@ counts one claim per:
 | columns with `log_len < 3` | 348 |
 | domains below 3 variables | 118 identities, 11 lookups, 324 ranges, 0 matmuls |
 
-The census pins the counts for this window only. Longer windows (`T = 64`) grow
-the domains, not the per-column claim counts. Budget with §2.1a:
+The same census on other windows (`matches_reference_zk_claim_census_eight_layer`,
+release build, ignored by default):
+
+| Window | Committed columns (entries) | Claims | Max `t_x` | Looked-up entries | Domains below 3 vars |
+|---|---|---|---|---|---|
+| one-layer, `T = 4` | 752 (199 328) | 1804 | 33 | 193 420 | 453 |
+| one-layer, `T = 16` | 752 (593 984) | 1804 | 33 | 568 048 | 0 |
+| eight-layer, `T = 64` | 4868 (15 978 560) | 11 547 | 33 | 15 027 520 | 0 |
+
+Claim counts do not depend on `T`; they grow by about 1392 per layer. Padding is
+needed only at small `T`. Budget with §2.1a:
 - `L_x = D·t_x` rounded up: 8 or 16 entries for most columns, 256 for the three
   columns with 33 claims (QM31).
 - About `1804 claims × 4 ≈ 7.2·10^3` M31 values of claim masks in the window,
