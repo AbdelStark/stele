@@ -1,4 +1,4 @@
-//! RFC-0013 A3: the bound masked A1 sumcheck through the actual verifiers.
+//! RFC-0013 A4: the bound masked A1 sumcheck through the actual verifiers.
 use stele_field::{Field, OM31, QM31};
 use stele_hash::{ChallengeField, Transcript};
 use stele_reductions::zk::{self, Error};
@@ -147,7 +147,7 @@ fn chi_square(values: &[u32]) -> u64 {
         .sum()
 }
 
-/// A3 Lemma 5 evidence: the first round's free value and the first limb of the
+/// A4 Lemma 5 evidence: the first round's free value and the first limb of the
 /// mask opening row are uniform over seeds, for two different witnesses.
 #[test]
 fn accepts_masked_rounds_and_opening_row() {

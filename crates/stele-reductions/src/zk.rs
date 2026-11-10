@@ -1,4 +1,4 @@
-//! RFC-0013 A3: the masked A1 sumcheck with its mask bound by a hiding source.
+//! RFC-0013 A4: the masked A1 sumcheck with its mask bound by a hiding source.
 //!
 //! Order on the caller's transcript: `Instance`, the mask source bytes
 //! (`FieldSources`), `zk/mask-sum`, `zk/mask-weight`, the A1 rounds, `Final`,
@@ -29,7 +29,7 @@ pub enum Error {
     Pcs(stele_pcs::Error),
     /// The mask source bytes are not the expected version-3 layout for this instance.
     MaskSource,
-    /// `ρ_n ∈ {0, 1/2}`: the producer aborts on this public event (A3 item 5).
+    /// `ρ_n ∈ {0, 1/2}`: the producer aborts on this public event (A4 item 5).
     MaskPoint,
 }
 
@@ -92,7 +92,7 @@ where
     K::from_le_bytes(bytes).ok_or(Error::MaskSource)
 }
 
-/// A3 item 4: `a_(b,d) = ℓ_b(ρ_n)·e_d` on the data rows, zero on the mask rows;
+/// A4 item 4: `a_(b,d) = ℓ_b(ρ_n)·e_d` on the data rows, zero on the mask rows;
 /// `b` = the Lagrange weights of every mask column, zero elsewhere.
 fn functional<K: ChallengeField + CodeField>(
     i: &Instance<K>,
@@ -117,7 +117,7 @@ where
     Ok((a, b))
 }
 
-/// Prove one bound masked instance from a fresh secret seed (A3).
+/// Prove one bound masked instance from a fresh secret seed (A4).
 ///
 /// # Security
 ///
@@ -176,7 +176,7 @@ where
     let (sumcheck, point) =
         masked::prove(i, summand, &mask, &source, t).map_err(Error::Sumcheck)?;
     let last = *point.last().ok_or(Error::MaskSource)?;
-    // A3 item 5: the mask lemma needs ρ_n ≠ 0 and 2ρ_n ≠ 1; a public abort.
+    // A4 item 5: the mask lemma needs ρ_n ≠ 0 and 2ρ_n ≠ 1; a public abort.
     if last == K::from_i64(0) || last + last == K::from_i64(1) {
         return Err(Error::MaskPoint);
     }

@@ -2131,9 +2131,10 @@ Status: Accepted (owner authorisation for autonomous amendment acceptance after
 Workflow 02 review; two same-author passes in
 agents/reviews/rfc0013-a2-acceptance.md; independent review is still needed).
 
-## ADR-095: Bind the masked sumcheck's mask by a two-block hiding source (RFC-0013 A3, task E12-15)
+## ADR-097: Bind the masked sumcheck's mask by a two-block hiding source (RFC-0013 A4, task E12-15)
 
-Number to be confirmed by the coordinator, as ADR-094 was.
+Numbered after ADR-096 on main; RFC-0013 A3 is the Draft scheme-v3 direction there,
+so this amendment is A4.
 
 Context: the independent review of RFC-0013 A2 confirmed that the masked A1
 sumcheck is unsound until its mask is bound (design note R2), and
@@ -2163,4 +2164,4 @@ Decision:
   - The quarantine check also covers `hiding_mask`.
 
 Status: Accepted (owner authorisation; two same-author passes in
-agents/reviews/rfc0013-a3-acceptance.md; independent review requested).
+agents/reviews/rfc0013-a4-acceptance.md; independent review requested).

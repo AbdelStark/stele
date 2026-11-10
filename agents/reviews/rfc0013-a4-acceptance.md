@@ -1,6 +1,6 @@
-# RFC-0013 A3 acceptance review (bound mask, task E12-15)
+# RFC-0013 A4 acceptance review (bound mask, task E12-15)
 
-Decision: accept A3 at its conditional scope, under the owner's authorisation for
+Decision: accept A4 at its conditional scope, under the owner's authorisation for
 autonomous amendment acceptance after Workflow 02 review. Reviewer: claude-code,
 also the author. Two same-author passes follow; an independent review is
 requested before merge.
@@ -63,7 +63,7 @@ the mask source (PCS line, conditional as in A9). No new label.
 
 ## Checklist (Workflow 03)
 
-- RFC: RFC-0013 A3 items 1–6.
+- RFC: RFC-0013 A4 items 1–6.
 - Challenges: as listed above, all after their absorbs.
 - Claims: `μ` is consumed by the mask opening, at the same point `ρ`. The finals
   remain obligations for the caller.
@@ -85,7 +85,7 @@ the mask source (PCS line, conditional as in A9). No new label.
    proof consumes. `prove` and `hiding_mask` document single use per
    `(seed, id)` and safe retry after `MaskPoint`. The proof bytes and the
    per-object counter cannot detect reuse; this stays a duty of the caller, who
-   supplies CSPRNG bytes. No CSPRNG dependency is added (ADR-095).
+   supplies CSPRNG bytes. No CSPRNG dependency is added (ADR-097).
 2. **Public `hiding_mask` (LOW–MED).** The PCS now enforces A3's shape:
    - `2D` data rows;
    - opening weights `w_b·e_d` on the two blocks and zero on the mask rows;

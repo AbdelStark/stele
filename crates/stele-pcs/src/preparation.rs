@@ -108,9 +108,9 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Self::prepare(source, rebuild, message, Some(seed), usage)
     }
 
-    /// Prepare the mask-polynomial source of RFC-0013 A3: a hiding source with
-    /// `2D` data rows whose one opening has A3's two-block shape (enforced at the
-    /// opening; anything else is `MaskRank`). Its row message is covered by A3's
+    /// Prepare the mask-polynomial source of RFC-0013 A4: a hiding source with
+    /// `2D` data rows whose one opening has A4's two-block shape (enforced at the
+    /// opening; anything else is `MaskRank`). Its row message is covered by A4's
     /// Lemma 5 instead of A2's rank check; the certificate keeps that check.
     ///
     /// # Security
@@ -273,7 +273,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Ok(())
     }
 
-    /// True for an RFC-0013 A3 mask-polynomial source.
+    /// True for an RFC-0013 A4 mask-polynomial source.
     pub(crate) fn is_mask_polynomial(&self) -> bool {
         self.mask_polynomial
     }

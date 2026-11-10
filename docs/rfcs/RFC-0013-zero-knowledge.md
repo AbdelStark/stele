@@ -247,18 +247,21 @@ Affected tasks: E23-01..E23-04; E4-05, E12-01 and E12-01a are superseded (RFC-00
 
 ### A4 — Bound mask polynomial for the masked A1 sumcheck (closes design note R2)
 
-Status: Accepted, conditional scope only. Question Q29. Task E12-15.
+Status: Accepted, conditional scope only. Question Q29. Task E12-15. Numbered A4
+because A3 is the Draft scheme-v3 direction (ADR-096); A4 is A3's candidate A
+item 3 (committed sumcheck masks, opened with the final claims) made concrete for
+the development tier, and does not decide anything for scheme v3.
 Evidence: [design note](../../formal/zk-development.md) §4.3 (Lemma 5) and
 `crates/stele-reductions/tests/zk.rs`. Companions: RFC-0010 A15 (sources),
 RFC-0012 A18 (labels). Review:
-[same-author passes](../../agents/reviews/rfc0013-a3-acceptance.md).
-Decision: ADR-095 (number to be confirmed by the coordinator).
+[same-author passes](../../agents/reviews/rfc0013-a4-acceptance.md).
+Decision: ADR-097.
 
 Motivation: A2's masked sumcheck returns `μ = g(ρ)` with nothing binding `g`
 before its sum, so a prover can solve `μ` last and prove a false sum. A2 item 2
 admits no consumer for that reason. A sum of univariates is not a tensor
 functional, and an opening that sends `g`'s whole coefficient row would expose
-the rounds. A3 changes the mask's shape so that one ordinary A9 opening of a
+the rounds. A4 changes the mask's shape so that one ordinary A9 opening of a
 hiding source reveals exactly what the rounds can afford.
 
 Replacement for A2 item 2's mask and order (A2's labels, MASK line and privacy

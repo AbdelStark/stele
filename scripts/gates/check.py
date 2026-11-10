@@ -477,7 +477,7 @@ def field_sources(root):
                'src/development.rs', 'src/development/row.rs', 'src/development/projection.rs',
                'src/development/attention.rs', 'src/development/attention/tests.rs',
                'src/development/tests.rs',
-               # RFC-0013 A3: the bound masked A1 sumcheck and its tests.
+               # RFC-0013 A4: the bound masked A1 sumcheck and its tests.
                'src/zk.rs', 'tests/zk.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
                'src/development/embedding.rs', 'src/development/rmsnorm.rs', 'src/development/limbs.rs',
@@ -1662,10 +1662,10 @@ def docs_links(root):
 
 
 def masked_sumcheck_quarantine(root):
-    """RFC-0013 A2 item 2 is unbound; only the A3 consumer (stele_reductions::zk) may use it."""
+    """RFC-0013 A2 item 2 is unbound; only the A4 consumer (stele_reductions::zk) may use it."""
     allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
                'crates/stele-sumcheck/tests/masked.rs', 'tests/negative-controls/src/zk.rs',
-               # RFC-0013 A3: the only admitted consumer binds the mask by a hiding source.
+               # RFC-0013 A4: the only admitted consumer binds the mask by a hiding source.
                'crates/stele-reductions/src/zk.rs'}
     pattern = re.compile(r'\bmasked\s*::|\bmod\s+masked\b|stele_sumcheck\s*::\s*\{[^}]*\bmasked\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
@@ -1673,7 +1673,7 @@ def masked_sumcheck_quarantine(root):
                    if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
     if found:
         raise ValueError(f'masked sumcheck used outside its tests and controls: {found}')
-    # RFC-0013 A3: the mask-source constructor belongs to its one consumer.
+    # RFC-0013 A4: the mask-source constructor belongs to its one consumer.
     mask_allowed = {'crates/stele-pcs/src/preparation.rs', 'crates/stele-pcs/tests/hiding.rs',
                     'crates/stele-reductions/src/zk.rs'}
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
@@ -1681,8 +1681,8 @@ def masked_sumcheck_quarantine(root):
                    if re.search(r'\bhiding_mask\b', path.read_text())
                    and str(path.relative_to(root)) not in mask_allowed)
     if found:
-        raise ValueError(f'mask source constructed outside the A3 consumer: {found}')
-    print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A3 consumer')
+        raise ValueError(f'mask source constructed outside the A4 consumer: {found}')
+    print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A4 consumer')
 
 
 def main():

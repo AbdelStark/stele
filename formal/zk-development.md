@@ -288,11 +288,11 @@ lemma needs `F(ρ)`, the final values of `f`; hiding them is Z5.
 structure, and Lemma 4 is not proved for them. Under dev-zk a zerocheck runs in
 A1 form, `Σ eq(τ, x)·P(x) = 0`, one degree higher, until A3 is analysed (R3).
 
-### 4.3 Lemma 5: binding the mask with one opening (RFC-0013 A3)
+### 4.3 Lemma 5: binding the mask with one opening (RFC-0013 A4)
 
 Lemma 4 needs `μ = g(ρ)` from a `g` fixed before `G`. A sum of univariates is not
 a tensor functional, and opening a row that holds all of `g`'s coefficients
-would reveal `g` and hence `f`'s rounds. A3 uses the two-block mask
+would reveal `g` and hence `f`'s rounds. A4 uses the two-block mask
 `G(X) = (1 − X_n)·g⁰(X) + X_n·g¹(X)`, `g^b = Σ g^b_i(X_i)`,
 `deg g^b_i ≤ δ` (`i < n`), `deg g^b_n ≤ δ − 1`. Its coefficient rows (each block
 stored as `D` M31 limb rows) form the data of a hiding source, and one opening
@@ -381,7 +381,7 @@ Exact remaining list, in dependency order:
   for `V̇`, separate blocks for the certificate), the resulting `rank Λ`
   condition and the degree increase in every consumer sumcheck. Prove the joint
   view of the folded tables, the openings and the certificate.
-- **R2 Binding `g`.** Closed by RFC-0013 A3 (§4.3, Lemma 5): a two-block mask in a
+- **R2 Binding `g`.** Closed by RFC-0013 A4 (§4.3, Lemma 5): a two-block mask in a
   hiding source, opened once at `G(ρ)`.
 - **R3 Zerocheck.** Analyse A3 (eq-factored rounds, skip) or fix the A1 form and
   its cost.

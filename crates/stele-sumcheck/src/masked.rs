@@ -4,7 +4,7 @@
 //! `G(X) = (1 − X_n)·g⁰(X) + X_n·g¹(X)`, `g^b = Σ_i g^b_i(X_i)`, where
 //! `deg g^b_i ≤ δ` for `i < n` and `deg g^b_n ≤ δ − 1`. The caller binds the mask
 //! (its committed source bytes) before `G` is absorbed; the result keeps A1's
-//! final obligations and the mask obligation `(ρ, G(ρ))`. Only the RFC-0013 A3
+//! final obligations and the mask obligation `(ρ, G(ρ))`. Only the RFC-0013 A4
 //! consumer (`stele_reductions::zk`) discharges it; `scripts/gates/check.py`
 //! quarantines every other use.
 use crate::{
@@ -31,7 +31,7 @@ fn nodes(n: usize, degree: usize, i: usize) -> usize {
 }
 
 impl<K: ChallengeField> Mask<K> {
-    /// Derive the mask for one instance from a fresh secret seed (A3 item 1):
+    /// Derive the mask for one instance from a fresh secret seed (A4 item 1):
     /// block 0 then block 1, variables ascending, nodes ascending, each value
     /// `D` M31 elements in limb order from the `zk/sumcheck-mask` stream.
     pub fn derive(seed: &[u8; 32], i: &Instance<K>) -> Result<Self, Error> {
@@ -81,7 +81,7 @@ impl<K: ChallengeField> Mask<K> {
         power_of_two::<K>(last) * (c0 + half * ends)
     }
 
-    /// `G(ρ)`; the value the RFC-0013 A3 opening binds.
+    /// `G(ρ)`; the value the RFC-0013 A4 opening binds.
     pub fn evaluate(&self, point: &[K]) -> Result<K, Error> {
         let n = self.blocks[0].len();
         if point.len() != n {
@@ -103,7 +103,7 @@ fn at_one<K: ChallengeField>(row: &[K]) -> K {
     row[usize::from(row.len() > 1)]
 }
 
-/// The A3 opening weights over the `n(δ + 1) − 1` mask columns at `point`: the
+/// The A4 opening weights over the `n(δ + 1) − 1` mask columns at `point`: the
 /// Lagrange weight of each column's node at its variable's coordinate.
 pub fn column_weights<K: ChallengeField>(
     num_vars: u32,
@@ -148,7 +148,7 @@ pub struct Reduction<K> {
 }
 
 /// One MASK draw (RFC-0012 A18): loss `1/p^field_degree`, charged once per
-/// masked instance, valid only when the mask was bound before `G` (RFC-0013 A3).
+/// masked instance, valid only when the mask was bound before `G` (RFC-0013 A4).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct MaskRecord {
     /// Verifier-owned instance identity.
@@ -175,7 +175,7 @@ fn power_of_two<K: ChallengeField>(exponent: usize) -> K {
     (0..exponent).fold(K::from_i64(1), |p, _| p + p)
 }
 
-/// Absorb the instance, the mask binding and `G`, then draw `α` (A3 order).
+/// Absorb the instance, the mask binding and `G`, then draw `α` (A4 order).
 fn start<K: ChallengeField>(
     i: &Instance<K>,
     binding: &[u8],
@@ -252,7 +252,7 @@ fn mask_round<K: ChallengeField>(
     Ok(out)
 }
 
-/// Prove the masked instance with the mask bound by `binding` (A3 item 2);
+/// Prove the masked instance with the mask bound by `binding` (A4 item 2);
 /// returns the proof and the challenge point `ρ`.
 pub fn prove<K: ChallengeField + Eq>(
     i: &Instance<K>,
@@ -323,7 +323,7 @@ pub fn prove<K: ChallengeField + Eq>(
 
 /// Verify the masked reduction after the caller absorbed nothing of the mask:
 /// `binding` must be the exact bytes the prover bound. The finals and `μ`
-/// remain obligations; RFC-0013 A3's consumer discharges `μ` by an opening.
+/// remain obligations; RFC-0013 A4's consumer discharges `μ` by an opening.
 pub fn verify<K: ChallengeField + Eq>(
     i: &Instance<K>,
     proof: &Proof<K>,

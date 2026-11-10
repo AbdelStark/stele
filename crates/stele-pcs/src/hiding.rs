@@ -58,7 +58,7 @@ pub(crate) fn certificate_weights<K: ChallengeField>(source: &Source<K>) -> Resu
     stele_poly::eq_table(&point).map_err(|_| Error::Capacity)
 }
 
-/// RFC-0013 A3 item 4: the only opening a mask source admits. Its row weights
+/// RFC-0013 A4 item 4: the only opening a mask source admits. Its row weights
 /// are `a[b·D + d] = w_b·e_d` on the `2D` data rows (`e_d` the M31 basis of `K`),
 /// zero on the mask rows, with `w_0 + w_1 = 1` and `w_1 ∉ {0, 1/2}`. Any other
 /// functional would reveal more than Lemma 5 allows, so it is refused.

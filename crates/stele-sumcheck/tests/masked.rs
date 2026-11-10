@@ -6,7 +6,7 @@ use stele_hash::{ChallengeField, Transcript};
 use stele_sumcheck::masked::{self, Mask};
 use stele_sumcheck::{prove, Dense, Error, Instance, Term};
 
-/// Stand-in mask binding; the RFC-0013 A3 consumer binds real source bytes.
+/// Stand-in mask binding; the RFC-0013 A4 consumer binds real source bytes.
 const BINDING: &[u8] = b"test mask binding";
 
 fn table<K: ChallengeField>(m: u32, f: impl Fn(i64) -> i64) -> Vec<K> {

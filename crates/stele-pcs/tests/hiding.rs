@@ -224,7 +224,7 @@ where
     K::from_le_bytes(K::Bytes::try_from(&limbs[..]).ok().expect("width")).expect("canonical")
 }
 
-/// RFC-0013 A3: a mask source admits exactly one opening of the two-block shape.
+/// RFC-0013 A4: a mask source admits exactly one opening of the two-block shape.
 fn mask_source<K: ChallengeField + CodeField>()
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,

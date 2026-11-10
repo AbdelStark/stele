@@ -12,7 +12,7 @@ use stele_sumcheck::{masked, Dense, Error as SumcheckError, Instance, Term};
 
 const SEED: [u8; 32] = [3; 32];
 
-/// Stand-in mask binding; the RFC-0013 A3 consumer binds real source bytes.
+/// Stand-in mask binding; the RFC-0013 A4 consumer binds real source bytes.
 const BINDING: &[u8] = b"test mask binding";
 
 fn layout(degree: u8) -> (u8, u8, u8) {
