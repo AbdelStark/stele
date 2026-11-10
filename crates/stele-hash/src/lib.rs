@@ -14,6 +14,8 @@ use stele_hash::poseidon2::permute;
 
 extern crate alloc;
 
+/// Secret mask streams for hiding components (RFC-0013 A2).
+pub mod mask;
 /// Canonical Merkle authentication (RFC-0012 A3).
 pub mod merkle;
 mod pcs;

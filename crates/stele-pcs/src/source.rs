@@ -65,6 +65,10 @@ pub enum Error {
     CertificateContext,
     /// Retained row belongs to a different source or exact row-weight vector (A10).
     RowContext,
+    /// Revealed mask-row coefficients lack full M31 rank; abort (RFC-0013 A2 item 1).
+    MaskRank,
+    /// A hiding source was already opened once; refuse another (RFC-0013 A2 item 1).
+    MaskBudget,
     /// A size or allocation cannot be represented or satisfied on this platform.
     Capacity,
 }
@@ -114,6 +118,7 @@ pub struct Source<K: ChallengeField> {
     length: usize,
     parameters: Parameters,
     root: merkle::Digest,
+    hiding: bool,
     field: PhantomData<K>,
 }
 
@@ -199,15 +204,60 @@ impl<K: ChallengeField> Source<K> {
                 setup_term: setup.is_some(),
             },
             root,
+            hiding: false,
             field: PhantomData,
         })
+    }
+
+    /// Version-3 hiding source over `2^ell × 2^m` data (RFC-0010 A15): the context
+    /// is Circle `(m+1, b)` with `2R` rows and `2C` columns, salted leaves, and the
+    /// admission `R >= 2D` and `q_c + q_o <= C - 1`, before any transcript work.
+    pub fn hiding(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        root: merkle::Digest,
+    ) -> Result<Self, Error> {
+        if ell >= 30 || m >= 30 {
+            return Err(Error::UnsupportedSource);
+        }
+        let code =
+            Circle::new(u32::from(m) + 1, u32::from(blowup)).map_err(|error| match error {
+                stele_code::Error::Capacity => Error::Capacity,
+                _ => Error::UnsupportedSource,
+            })?;
+        let mut source = Self::from_code_id(id, ell + 1, &code.code_id(), root)?;
+        let p = source.parameters;
+        let data_columns = source.columns / 2;
+        if source.rows / 2 < 2 * K::DEGREE
+            || usize::from(p.certificate_queries) + usize::from(p.opening_queries) >= data_columns
+        {
+            return Err(Error::UnsupportedSource);
+        }
+        source.hiding = true;
+        Ok(source)
+    }
+
+    /// True for a version-3 hiding source (RFC-0013 A2).
+    pub fn is_hiding(&self) -> bool {
+        self.hiding
+    }
+
+    /// Salt bytes at the start of each leaf payload: 32 for hiding sources, else 0.
+    pub fn salt_len(&self) -> usize {
+        if self.hiding {
+            32
+        } else {
+            0
+        }
     }
 
     /// Parse exact canonical source bytes from an expected statement. Version, degree,
     /// layout, policy and dimensions must be the derived ones; else UnsupportedSource.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
         let code_len = match bytes.get(23) {
-            Some(1) => 21,
+            Some(1 | 3) => 21,
             Some(2) => 55,
             _ => return Err(Error::UnsupportedSource),
         };
@@ -221,7 +271,22 @@ impl<K: ChallengeField> Source<K> {
         let root = bytes[end + 18..]
             .try_into()
             .map_err(|_| Error::UnsupportedSource)?;
-        let source = Self::from_code_id(u64::from_le_bytes(id), bytes[33], &bytes[34..end], root)?;
+        let source = if bytes[23] == 3 {
+            // A15: rows and code are one step above the data; Circle (m+1, b) only.
+            let (ell, code) = (bytes[33], &bytes[34..end]);
+            if ell == 0 || code[19] == 0 || code[..19] != *b"stele/circle-m31/v1" {
+                return Err(Error::UnsupportedSource);
+            }
+            Self::hiding(
+                u64::from_le_bytes(id),
+                ell - 1,
+                code[19] - 1,
+                code[20],
+                root,
+            )?
+        } else {
+            Self::from_code_id(u64::from_le_bytes(id), bytes[33], &bytes[34..end], root)?
+        };
         // Re-serialization fixes version, degree, R, C, layout 0 and policy 1 exactly.
         if *source.bytes() != *bytes {
             return Err(Error::UnsupportedSource);
@@ -234,7 +299,11 @@ impl<K: ChallengeField> Source<K> {
         let mut out = [0; 139];
         let end = 34 + self.code_len;
         out[..23].copy_from_slice(PURPOSE);
-        out[23] = if self.code_len == 21 { 1 } else { 2 };
+        out[23] = match (self.hiding, self.code_len) {
+            (true, _) => 3,
+            (false, 21) => 1,
+            _ => 2,
+        };
         out[24] = K::DEGREE as u8;
         out[25..33].copy_from_slice(&self.id.to_le_bytes());
         out[33] = self.ell;
@@ -285,7 +354,7 @@ impl<K: ChallengeField> Source<K> {
             kind: merkle::Kind::Columns,
             id: self.id,
             count: self.length as u64,
-            width: 4u64 << self.ell,
+            width: (4u64 << self.ell) + self.salt_len() as u64,
         }
     }
 
@@ -308,7 +377,11 @@ impl<K: ChallengeField> Source<K> {
             .columns()
             .checked_mul(4 * K::DEGREE)
             .ok_or(Error::Capacity)?;
-        let width = self.rows().checked_mul(4).ok_or(Error::Capacity)?;
+        let width = self
+            .rows()
+            .checked_mul(4)
+            .and_then(|n| n.checked_add(self.salt_len()))
+            .ok_or(Error::Capacity)?;
         let stride = width
             .checked_add(32 * self.path_height())
             .ok_or(Error::Capacity)?;

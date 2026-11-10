@@ -470,6 +470,11 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             if row.len() != source.columns() {
                 return Err(Error::FunctionalShape);
             }
+            if source.is_hiding() {
+                self.claim_opening()?;
+                let certificate = crate::hiding::certificate_weights(source)?;
+                crate::hiding::check_mask_rank(source, &[&certificate, functional.a])?;
+            }
             let proof_size = source.proof_size(ProofKind::Opening)?;
             let frame = functional.frame(record, size)?;
             let mut proof = Vec::new();
@@ -620,7 +625,8 @@ where
             )
             .map_err(Error::Merkle)?;
             let mut value = K::from_i64(0);
-            for (a, bytes) in functional.a.iter().zip(response.payload.chunks_exact(4)) {
+            let column = &response.payload[source.salt_len()..];
+            for (a, bytes) in functional.a.iter().zip(column.chunks_exact(4)) {
                 work.column_bytes_decoded = add(work.column_bytes_decoded, bytes.len())?;
                 let limb =
                     M31::from_le_bytes(bytes.try_into().map_err(|_| Error::NoncanonicalField)?)

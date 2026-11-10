@@ -127,11 +127,11 @@
 | NC-0806 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce with a nonce that fails the PoW predicate, every other byte unchanged | `GrindMismatch` | todo |
 | NC-0807 | transcript/grinding | 0012 A17, 0010 A14 | prove a Policy 2 source with k_q−1 grinding bits and offer it under the expected k_q context | `GrindMismatch` | todo |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
-| NC-0902 | ZK hiding source | 0013 A2, 0010 A15 | change one salt byte of one certificate or opening response | `RootMismatch` | todo |
-| NC-0903 | ZK hiding source | 0013 A2, 0010 A15 | version-3 context with R < 2D, or with q_c + q_o > C − 1 | `UnsupportedSource` | todo |
+| NC-0902 | ZK hiding source | 0013 A2, 0010 A15 | change one salt byte of one certificate or opening response | `RootMismatch` | done |
+| NC-0903 | ZK hiding source | 0013 A2, 0010 A15 | version-3 context with R < 2D, or with q_c + q_o > C − 1 | `UnsupportedSource` | done |
 | NC-0904 | ZK masked sumcheck | 0013 A2, 0012 A18 | change the mask sum G in an honest proof; the running claim moves by α·ΔG and the first round check fails | `RoundSumMismatch` | todo |
 | NC-0905 | ZK masked sumcheck | 0013 A2 | change the mask final μ | `FinalEvaluationMismatch` | todo |
-| NC-0906 | ZK hiding source | 0013 A2 | prover-side refusal: open one hiding source a second time, through a point opening or a retained row | `MaskBudget` | todo |
+| NC-0906 | ZK hiding source | 0013 A2 | prover-side refusal: open one hiding source a second time, through a point opening or a retained row | `MaskBudget` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |

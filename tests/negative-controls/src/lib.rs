@@ -42,6 +42,8 @@ pub mod streaming;
 pub mod sumcheck;
 #[doc(hidden)]
 pub mod zerocheck;
+#[doc(hidden)]
+pub mod zk;
 
 extern crate self as stele_negative_controls;
 #[path = "../pcs/nc_0602.rs"]
@@ -80,6 +82,24 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
         run: || requant::run(308),
+    },
+    catalog::RegisteredControl {
+        id: 902,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || zk::run(902),
+    },
+    catalog::RegisteredControl {
+        id: 903,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "UnsupportedSource",
+        run: || zk::run(903),
+    },
+    catalog::RegisteredControl {
+        id: 906,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "MaskBudget",
+        run: || zk::run(906),
     },
     catalog::RegisteredControl {
         id: 1300,

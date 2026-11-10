@@ -2502,7 +2502,9 @@ tasks:
   - RFC-0010 A15
   skill: pcs-engineer
   crate: stele-pcs
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-12-hiding-source
   acceptance:
   - version-3 source bytes and admission; salted payloads authenticated and decoded after the salt by the actual certificate and opening verifiers
   - prover layout, seed-derived masks and salts, and the public rank check with MaskRank abort
