@@ -2824,6 +2824,24 @@ tasks:
   - identical proof bytes on the pinned E16-10 fixtures
   - lookup tree levels and dense rounds restructured; prove time measured before and after
   - verifier unchanged and no_std builds sequential
+- id: E16-17
+  epic: E16
+  title: Rayon prover parallelism (global pool, parallel encoding and tables)
+  depends:
+  - E16-16
+  rfc:
+  - RFC-0026 §7
+  - RFC-0006 A1
+  - RFC-0010 A4
+  skill: sumcheck-prover-engineer
+  crate: stele-sumcheck
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-17-rayon
+  acceptance:
+  - rayon only behind the prover std features; verifier and no_std builds free of it (cargo tree, --no-default-features)
+  - identical proof bytes on the pinned E16-10 fixtures
+  - 8-layer prove time measured before and after, with the core count
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run
