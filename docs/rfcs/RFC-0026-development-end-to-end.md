@@ -982,3 +982,32 @@ the data-parallel form of RFC-0030 Q49 is needed before any `standard` proof-siz
 gate. Affected tasks: E20-02, E20-09, E22-04.
 Control: a member value moved across an instance boundary without its multiplicity
 is rejected by the receiving instance's root equation (`RootMismatch`).
+
+- **A6 — dev-zk relation forms (companion of RFC-0013 A4, task E12-17).**
+  Accepted at conditional scope with ADR-096. It applies only to proofs whose
+  profile tag is dev-zk (RFC-0013 A4 item 8). Plain development proofs are
+  unchanged.
+  - **Profile tag.** §4 step 1's public input gains one byte, `profile`: 0 for
+    development, 1 for dev-zk. The verifier derives the statement from it and
+    rejects a mismatch with `StatementMismatch`. The byte is part of the
+    canonical public input, so it is bound before any challenge.
+  - **Padding.** Every relation domain with fewer than 3 variables (4 for OM31,
+    `c_D + 1` in general) is padded with dummy summed variables before its
+    zerocheck, lookup or range. Columns are read by broadcast. Lookup and range
+    multiplicities count each entry `2^pad` times; the plan checks
+    `B·2^pad < p`.
+  - **Identities.** §4 step 4 runs each domain size's combined identity as an
+    RFC-0006 A1 instance `Σ_x eq(τ, x)·Σ_k c_k·P_k(x) = 0` (A1 form), where `τ` is
+    drawn with the existing `ZeroWeight` label, as an RFC-0013 A3 bound masked
+    sumcheck. The A3 skip is not used.
+  - **Matmul zero-sum.** §4 step 6 replaces "the prover sends `out~(ρ)`" by the
+    single A1 instance
+    `Σ_{y,(x_shared)} eq(ρ_shared, x_shared)·(lhs·rhs − 2^{−s}·Ȯ)(ρ, y) = 0`.
+    `Ȯ` is `out` broadcast over the summed bits, with its RFC-0013 A4 claim mask
+    on a summed variable. No `out~(ρ)` is sent. The SZ line `a/|K|` and the SC
+    line are unchanged, with the degree one higher per masked factor (RFC-0013 A4
+    item 3).
+  - **Lookups.** §4 step 5 uses RFC-0008 A7 per check instead of the A3 trees.
+  - **Batching and openings.** §4 step 7 uses RFC-0013 A4 item 5 per source in
+    place of RFC-0006 A2 mode 1.
+  - **Controls.** NC-0909..0915 are reserved under RFC-0013 A4.

@@ -134,6 +134,15 @@
 | NC-0906 | ZK hiding source | 0013 A2 | prover-side refusal: open one hiding source a second time, through a point opening or a retained row | `MaskBudget` | done |
 | NC-0907 | ZK bound mask | 0013 A4 | substitute another seed's mask source and certificate in an honest bound proof | `RoundSumMismatch` | done |
 | NC-0908 | ZK bound mask | 0013 A4 | false claimed sum, free rounds and μ solved last, with a genuine mask source, certificate and opening | `ValueMismatch` | done |
+| NC-0907 | ZK bound mask | 0013 A3 | substitute another seed's mask source and certificate in an honest bound proof | `RoundSumMismatch` | done |
+| NC-0908 | ZK bound mask | 0013 A3 | false claimed sum, free rounds and μ solved last, with a genuine mask source, certificate and opening | `ValueMismatch` | done |
+| NC-0909 | dev-zk claim | 0013 A4 | one masked claim value changed in an honest proof | `RoundSumMismatch` | todo |
+| NC-0910 | dev-zk matmul | 0013 A4, 0026 A6 | a matmul claimed through a sent out~(ρ) instead of the zero-sum | `ProofShape` | todo |
+| NC-0911 | dev-zk claim | 0013 A4 | one claim-mask block of a source changed after its commitment | `RootMismatch` | todo |
+| NC-0912 | dev-zk profile | 0013 A4, 0026 A6 | profile byte flipped between development and dev-zk | `StatementMismatch` | todo |
+| NC-0913 | dev-zk fraction | 0008 A7 | one h_w entry changed, its source recommitted | `RoundSumMismatch` | todo |
+| NC-0914 | dev-zk fraction | 0008 A7 | h_T shifted on two entries with the sum preserved | `RoundSumMismatch` | todo |
+| NC-0915 | dev-zk claim | 0013 A4 | batch weight on the w = 1 half made nonzero | `FinalEvaluationMismatch` | todo |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
@@ -170,6 +179,8 @@ RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
 
 RFC-0013 A2 reserves NC-0902..0906 for E12-12 and E12-13, and A4 NC-0907..0908 for E12-15. NC-0902..0905 run through
+RFC-0013 A2 reserves NC-0902..0906 for E12-12 and E12-13, A3 NC-0907..0908 for E12-15,
+and A4 NC-0909..0915 for E12-18, E12-19 and E12-14. NC-0902..0905 run through
 the actual hiding-source or masked-sumcheck verifier. NC-0906 is a producer refusal,
 not a verifier binding: a second opening reveals a third row combination, so the
 producer must refuse it. A reservation adds no coverage.

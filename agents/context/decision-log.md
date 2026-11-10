@@ -2164,4 +2164,32 @@ Decision:
   - The quarantine check also covers `hiding_mask`.
 
 Status: Accepted (owner authorisation; two same-author passes in
+agents/reviews/rfc0013-a3-acceptance.md; independent review requested).
+
+## ADR-096: Masked claims, dev-zk relation forms and committed-fraction lookups (RFC-0013 A4, RFC-0026 A6, RFC-0008 A7, task E12-17)
+
+Number to be confirmed by the coordinator.
+
+Context: with A2/A3, sumchecks and sources are simulatable from their final and
+opened values, but those values still reveal the witness (design-note R1). The
+research note (formal/zk-claims.md) and its exact small-field checks gave a
+construction with no leak found.
+
+Decision:
+- Each masked occurrence of a committed column gets its own claim-mask block,
+  on domain coordinates, with a vanishing factor on a summed variable.
+- Matmul becomes a zero-sum with `out` broadcast, so `out~(ρ)` is never sent.
+- Small domains are padded.
+- Lookups use committed fractions (RFC-0008 A7) instead of uncommitted GKR
+  layers.
+- Each source batches its claims with a weight that is zero on the mask rows,
+  then makes one A2 opening.
+- Every rank condition is a producer abort.
+- dev-zk is profile byte 1: defined, not admitted until implemented, controlled
+  and independently reviewed.
+- Costs are recorded as a projection (about 20 times the commitment on the
+  eight-layer synthetic window, dominated by range fractions). No constant
+  moves.
+
+Status: Accepted (owner authorisation; two same-author passes in
 agents/reviews/rfc0013-a4-acceptance.md; independent review requested).

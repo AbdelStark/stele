@@ -451,9 +451,10 @@ committed source whose root is absorbed before every lookup challenge (RFC-0026
 
 ### A7 — Committed-fraction proof of the A5 identity, for the zero-knowledge development path
 
-Status: Draft. Question Q29. Task E12-16. Evidence:
-[masked claims note](../../formal/zk-claims.md) §2.2. Companion of the Draft
-RFC-0013 A1 composition (R1). Not referenced by code.
+Status: Accepted, conditional scope only: the dev-zk profile of RFC-0013 A4.
+Question Q29. Task E12-17. Evidence:
+[masked claims note](../../formal/zk-claims.md) §2.2. Companion of RFC-0013 A4.
+Review: [RFC-0013 A4 acceptance](../../agents/reviews/rfc0013-a4-acceptance.md).
 
 Motivation: A3/A5 prove the two fraction sums of the A5 identity with GKR
 fraction trees. The tree layers are not committed, so each layer claim is a
@@ -492,14 +493,54 @@ every other use):
    claims apply. The table side is public, but `h_T` depends on the secret
    multiplicities, so it is masked like any witness column.
 
-Open before acceptance:
-- an exact proof that 1–3 imply A5's identity event with A5's characteristic
-  argument unchanged, including K-valued `u` and repetitions;
-- labels: `α`, `β` and the units reuse A5's, and the fraction commitments need a
-  bound absorb;
-- the denominator-zero abort or loss;
-- costs: two K columns (`2D` M31 columns) per lookup instead of two trees;
-- NC reservations.
+6. **Soundness, carried over from A5.** A5's argument (formal/weighted-logup.md
+   §2) bounds the event that the rational identity
+   `Σ_i σ_i U_i/(X − z_β(x_i)) = Σ_t μ_t/(X − z_β(T_t))` holds at a uniform `α`
+   for false sources by `e = min(1, (h + N + c·|T| − 1)/|K|)` per repetition. It
+   uses only that the sources, selectors and units are fixed before `β`, and that
+   the multiplicities are fixed before `β` and `α`. A7 keeps that order. It
+   commits `h_w, h_T` after `α` and proves three statements about them.
 
-Soundness impact: none until accepted. Cost: as above. Affected task: E12-14
-(composition).
+   If no bound denominator vanishes, the identities of item 3 hold on the cube
+   exactly when `h_w(i) = u(i)/(α − ⟨x_i, β⟩)` and
+   `h_T(t) = m(t)/(α − ⟨T_t, β⟩)` for every position. The cube sum is then the
+   identity at `α`. A false sum therefore needs one of these events:
+   - A5's event `e`;
+   - a vanishing denominator, `α ∈ {z_β(x_i)} ∪ {z_β(T_t)}`, which has
+     probability at most `(N + |T|)/|K|` because `α` is drawn after the `z` are
+     fixed. A5's nonzero-root consumers already reject this case. Under A7 the
+     prover aborts (`DenominatorZero`), and the verifier also rejects a zero
+     table denominator (`T̃` is public);
+   - the SC/RLC failures of the two zerochecks and the sum;
+   - the PCS terms of the fraction sources.
+
+   The characteristic argument is unchanged. Group counts `n_{S,g} ≤ B < p`
+   enter only through `e`. Padding multiplies counts by `2^pad`, and the plan
+   keeps `B·2^pad < p`.
+7. **Labels.** `θ`, `β`, `α`: A5's `lookup/unit`, `lookup/beta` and
+   `lookup/alpha`, in A5's order. Each fraction source's root is absorbed with
+   RFC-0012 A16's `relation/roots` after `α` and before the first zerocheck
+   draw. The zerochecks and the sum are RFC-0013 A3 bound masked A1 instances,
+   with A1's labels. No new label.
+8. **Ledger.** Per check:
+   - A5's LU line `e`;
+   - the new line `(N + |T|)/|K|` (zero denominator, RLC family);
+   - two zerochecks (SC `m·4/|K|` each, plus their `τ` lines);
+   - one sum (SC `m·2/|K|`);
+   - MASK and SC per masked instance (A3);
+   - A9/A15 terms for the two fraction sources.
+
+   A3's tree and leaf lines are removed for this profile.
+9. **Costs (projection).** Per check, `D·N` M31 entries for `h_w` and `D·|T|`
+   for `h_T`, each in a hiding source (A15: four times the message). On the
+   eight-layer synthetic window (`T = 64`), the census counts 15 027 520
+   looked-up entries. That projects to `≈ 6.0·10^7` M31 entries of `h_w`, or
+   `≈ 2.4·10^8` with hiding, against `1.6·10^7` committed entries today. This
+   term dominates dev-zk's commitment cost (RFC-0013 A4 item 9).
+10. **Controls.** NC-0913 (one `h_w` entry changed, the source recommitted:
+    `RoundSumMismatch` in its zerocheck) and NC-0914 (`h_T` shifted by a constant
+    on two entries so the sum is unchanged: the `h_T` zerocheck rejects).
+    Reserved `todo`.
+
+Soundness impact: as item 8, for the dev-zk profile only. Affected tasks: E12-19
+(implements A7) and E12-14.

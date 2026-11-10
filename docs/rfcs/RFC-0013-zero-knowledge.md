@@ -325,3 +325,127 @@ Controls: NC-0907 (another seed's mask source substituted: `α` moves,
 `ValueMismatch`). Cost: one mask source of `4D` rows and `2^(m+1)` columns, its
 certificate and one opening per masked instance; no constant moves.
 Affected task: E12-15. A1 stays Draft; R1 and R3–R13 remain.
+
+### A4 — Masked claims and the dev-zk composition (closes design-note R1 for the development path)
+
+Status: Accepted, conditional scope only. The dev-zk profile is defined here and
+is admitted only once implemented (item 8). Question Q29. Task E12-17.
+Evidence: [masked claims note](../../formal/zk-claims.md) (Lemmas 6′ and 7,
+abort bounds, census) and the exact small-field checks
+`research/zk-claims/check_view.py` and `check_two.py`. Companions: RFC-0026 A6
+(relation forms, padding, profile tag) and RFC-0008 A7 (committed-fraction
+lookups). Review: [same-author passes](../../agents/reviews/rfc0013-a4-acceptance.md).
+Decision: ADR-096 (number to be confirmed by the coordinator).
+
+Motivation: A2/A3 make every masked sumcheck simulatable from its final values,
+and every hiding source simulatable from its opened values. The final values
+themselves (column evaluations, matmul `out~(ρ)`, lookup layer claims) still
+reveal the witness. A4 masks every revealed claim and fixes the composition.
+
+1. **Claim masks.** Every committed column `x` (witness and weight) has a
+   **claim mask** `r_x`: `t_x` blocks of `2^{c_D} = D` uniform M31 entries
+   (`c_D = log2 D`). It is committed in the same source as `x`, at a plan-fixed
+   position, and drawn from A2's `zk/source-mask` stream after that source's
+   data masks. `t_x` is the number of masked occurrences of `x` in the proof, in
+   plan order. Block `a` serves occurrence `a` only.
+2. **Masked occurrence.** Occurrence `a` of `x` in a relation instance chooses:
+   - a summed domain variable `v_a`, the vanishing variable;
+   - `c_D` other domain variables `u_a`, the mask coordinates.
+
+   Both are plan-fixed; the default is the lowest-index summed variables not
+   used by an earlier factor of the same term. The instance runs on
+   `V̇_{x,a}(X) = x̃(X|vars_a) + κ(X_{v_a})·r̃_x(a, X_{u_a})`, with
+   `κ(t) = t(1 − t)`. The revealed final value is
+   `c_a = x̃(ρ|vars_a) + κ(ρ_{v_a})·r̃_x(a, ρ_{u_a})`. Public columns and tables
+   are not masked. A domain must have at least `c_D + 1` variables (RFC-0026 A6
+   padding).
+3. **Degrees.** Each masked factor adds one to the degree of its own vanishing
+   variable. The A1 instance's degree bound is the per-variable maximum:
+   identities 5, matmul 4, A7 identities 4, A7 sum 2. The SC line uses it.
+4. **Producer aborts (all on public challenges).** Before sending any message
+   that depends on them, the producer aborts the whole proof:
+   - `κ(ρ_{v_a}) = 0`, for any occurrence;
+   - **claim-block rank:** the `D` M31 coordinates of `eq(ρ_{u_a}, ·)` have rank
+     `< D`;
+   - A2's mask-row rank failure;
+   - `w* = 0` in a batch;
+   - `α = 0` in a masked sumcheck;
+   - A3's `ρ_n ∈ {0, 1/2}`.
+
+   A retry redraws every seed, and is allowed only if nothing was published.
+   The total abort probability is `≤ Σ_claims (2/|K| + D·c_D/p) +
+   Σ_sources 2D·(ell + 1)/p + Σ_instances 3/|K|` (about `2^{−17}` on the census
+   windows for QM31).
+5. **Batching per source.** After all relation instances, each source with
+   claims runs:
+   - batch coefficients `γ_a` (`BatchCoefficient`);
+   - one A3 bound masked sumcheck of
+     `Σ_{w,x} (1 − w)·W(x)·M̃'(w, x) = Σ_a γ_a·c_a`, over the source's row bit
+     `w` and its data bits (`Y = 0` face), with `W = Σ γ_a w_a` the claims' data
+     weights;
+   - one A2 point opening at its final point, whose value times
+     `(1 − w*)·W̃(x*)` must equal the instance's final.
+
+   No other batching is used for dev-zk sources.
+6. **Order (dev-zk).** RFC-0026 §4 with A6, as follows:
+   1. Statement, including the profile byte.
+   2. Every witness and weight source as a hiding source with its claim masks.
+      Roots are absorbed and certificates verified.
+   3. Multiplicities (A5).
+   4. `θ, β, α` (A5), then the A7 fraction sources.
+   5. Identities, A7 zerochecks and sums, and matmul zero-sums: each a bound
+      masked sumcheck (A3) on the `V̇` of item 2.
+   6. Item 5 per source.
+7. **Privacy (conditional).** For an honest verifier, uniform masks and no
+   abort, the view of a dev-zk proof is simulatable from the public input
+   (RFC-0026 §1.1 with the profile byte). The proof is the hybrid argument of
+   the note §3 with Lemmas 1–5, 6′ and 7. The statistical error is
+   `Σ_sources N·q_H/2^256` (salts, random-oracle model) plus FS programming.
+   With seed-derived masks hiding is computational (A2). Weight sources carry a
+   lifetime budget, `q_c + P·q_o ≤ C − 1`. A weight's claim mask holds `P·t_W`
+   blocks, a fresh set for each proof, in proof order. The prover refuses beyond
+   either budget. Declared not hidden: the design note §7
+   list, which includes the plan and every shape.
+8. **Profile flag.** `dev-zk` is profile byte 1 (RFC-0026 A6). It is
+   **defined**, not admitted. No verifier accepts it, and the CLI does not
+   offer it, until E12-18, E12-19 and E12-14 deliver:
+   - the implementation;
+   - NC-0909..0915 executed;
+   - the privacy tests on the one- and eight-layer synthetic windows;
+   - an independent review.
+
+   The seed for a dev-zk proof is drawn by its CLI or orchestrator entry point
+   from the OS RNG (an ADR at that point). The library takes a move-only seed
+   (A3).
+9. **Cost (projection, not a measurement).** On the eight-layer synthetic
+   window (`T = 64`, census): 4868 committed columns with 1.6·10^7 entries,
+   11 547 claims and 1.5·10^7 looked-up entries. The projected dev-zk
+   commitment is about
+   - `4 × 1.6·10^7` for the hiding witness and weight sources;
+   - `4 × 4.6·10^4` for the claim masks;
+   - `4 × 6.0·10^7` for A7's `h_w`;
+   - about `1.3·10^7` for one A3 mask source per masked instance (about 800).
+
+   That is about `3.2·10^8` M31 message entries against `1.6·10^7` today,
+   roughly 20 times. It is dominated by A7 on range checks. Merging A3 mask
+   sources and cheaper range proofs are the first optimizations. For stories42M
+   (`d = 512`, 8 layers, 8 heads, `T = 64`), claims depend on layers and heads
+   only, so the projection is about `1.2–2.3·10^4`. The entry counts scale with
+   the widths and need the converted checkpoint for a census. No ledger
+   constant moves.
+10. **Controls.** Reserved as `todo`, each through the actual dev-zk verifier:
+
+| NC | Tamper | Expected rejection |
+|---|---|---|
+| NC-0909 | one masked claim value changed in an honest proof | `RoundSumMismatch` (the batch) |
+| NC-0910 | a matmul claimed through a sent `out~(ρ)` instead of the zero-sum | `ProofShape` |
+| NC-0911 | one claim-mask block of a source changed after its commitment | `RootMismatch` |
+| NC-0912 | profile byte flipped between development and dev-zk | `StatementMismatch` |
+| NC-0913 | RFC-0008 A7 `h_w` entry changed | `RoundSumMismatch` |
+| NC-0914 | RFC-0008 A7 `h_T` shifted on two entries, sum preserved | `RoundSumMismatch` |
+| NC-0915 | batch weight on the `w = 1` half made nonzero | `FinalEvaluationMismatch` |
+
+Soundness impact: the SC degrees of item 3; RFC-0008 A7's lines; A3's MASK and
+PCS terms per instance and per source. No new label. A1 stays Draft for the
+standard and treaty profiles: expander sources, the 5% target and GPU parity.
+Affected tasks: E12-18, E12-19, E12-14.
