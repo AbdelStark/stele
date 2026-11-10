@@ -2342,6 +2342,25 @@ tasks:
   - every round family of an RFC-0026 proof has an RBR error with its source (SC, RLC, SZ, LU, PCS tensor, PCS columns)
   - the query-cap convention answering Q12 is stated with what it does and does not guarantee
   - proven, conditional and open items are listed; no profile is admitted by the note
+- id: E12-21
+  epic: E12
+  title: 'Q12: FS-aware PCS parameter study (Policy 2, grinding) and stories42M proof-size projection'
+  depends:
+  - E12-20
+  rfc:
+  - RFC-0019 Q12
+  - RFC-0010 A3
+  - RFC-0012 A15
+  skill: pcs-engineer
+  crate: research
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-21-pcs-parameter-study
+  acceptance:
+  - research/fs-pcs/study.py --check reproduces the recorded stories42M proof bytes exactly from its PCS inventory
+  - least query counts verified with exact integers for all 59 Circle and 12 v2 identities at the standard and treaty column targets
+  - stories42M per-round and floor conditions computed for Policy 1, Policy 2 v2 and Policy 2 Circle, with grinding cost
+  - proven, conditional and approximate figures labelled; Johnson-radius route analysed and not adopted without a theorem
 - id: E13-01
   epic: E13
   title: GQA/MQA, QK-norm, RoPE variants, softcap, sliding window (Gemma/Qwen class)
