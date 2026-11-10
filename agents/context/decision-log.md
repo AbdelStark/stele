@@ -1774,3 +1774,50 @@ Consequences:
   registration remain open.
 
 Status: Accepted.
+
+## ADR-089: A real llama2.c checkpoint through the development prover, and development-profile ledger records (RFC-0018 A1, RFC-0026 §7 and E3, task E16-11)
+
+Context: E16-11 asks for development-profile prove/verify time and proof size on the
+8-layer synthetic model and on one converted small Llama checkpoint, in `bench/ledger/`,
+with a comparison against FlashProve's small route. RFC-0018 §1 admits only `standard`
+and `treaty` records, each with a Python verifier time; the development profile is
+neither, and RFC-0026 has no Python verifier. Several ADR and RFC-0026 amendment texts
+quoted measurements without a ledger record.
+
+Decision:
+- **Checkpoint.** Karpathy's llama2.c `stories42M` (MIT; d = 512, 8 layers, 8 heads, hidden
+  1376, vocabulary 32000), the closest real Llama to FlashProve's small route as RFC-0026
+  §7 records it (8 layers, T = 64, d = 512). It needs no change to the RFC-0026 §1.3 class: no GQA, int8 weights,
+  dynamic rows with A15 groups of 128 on the d-wide norm-fed inputs and the head, and the
+  Llama-3.1 qualification parameters otherwise (F = 7, gains G = 8, direct exp).
+- **Conversion.** `research/cqis-model-contract/stories42m.py` converts exactly: fp32
+  values copied, Q/K rows permuted to the half-split RoPE layout 1, and the shared
+  classifier written as an explicit `lm_head.weight`. RFC-0025 Llama sources are untied
+  (`tie_word_embeddings` must be false, no alias), so the head is a second, identical
+  source and commitment. Inputs, converted files, frames and prepared Artifact/Scales are
+  pinned by SHA-256; the script checks that the original and converted fp32 forwards
+  agree.
+- **Ledger (RFC-0018 A1).** A development record is `kind: inference`, `profile:
+  development`, workload `dev/<name>`, with a Rust verifier time, no Python verifier time,
+  proof bytes, and controls run against the recorded proof. `stele-bench` enforces it.
+- **Controls on a supplied proof.** The ignored test
+  `rejects_tampers_on_a_supplied_proof` reads a `stele prove-dev` output and checks that a
+  wrong `y`, a wrong checked token, a tampered weight root and a tampered public gain are
+  rejected by the verifier with the header restamped. The first, second and fourth change
+  the public input and are caught by its transcript absorption (RFC-0026 §4 step 1, A2) at
+  the first zerocheck round; the third is caught by the model-commitment certificate check
+  (§2.2). No binding is added.
+- **Unledgered figures.** The proof-byte and time figures quoted in ADR-078 (Context and
+  Consequences) and ADR-082 (Context and Decision) have no `bench/ledger/` record and are
+  superseded; they are not evidence. Development-profile measurements are cited only from
+  `bench/ledger/e16-11-dev-synthetic-8layer.json` and `bench/ledger/e16-11-dev-stories42m.json`.
+  The RFC-0026 A3/A4 motivations drop the same figures (RFC-0026 E3).
+
+Consequences: the development prover runs a trained checkpoint end to end with no model
+class change. Fidelity is informative only
+(`agents/reviews/e16-11-stories42m/fidelity.json`). The comparison with FlashProve's small
+route is in `docs/development-e2e.md`; the statements differ (FlashProve hides the weights
+and runs on a GPU). No GPU path is measured; it stays behind the INV-3 parity gate.
+
+Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
+review in the E16-11 PR).

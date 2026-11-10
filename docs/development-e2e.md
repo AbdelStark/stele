@@ -85,3 +85,102 @@ target/release/stele verify-dev --public /tmp/dev-e2e/public.bin \
 The last line of `verify-dev` is the verdict, `YES` or `NO: <reason>`. `prove-dev` ends
 with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or written,
 1 for rejected and 2 for a usage or I/O error. An option given twice is a usage error.
+
+## A real model: llama2.c `stories42M` (task E16-11)
+
+[`stories42M`](https://huggingface.co/karpathy/tinyllamas) is Karpathy's llama2.c model
+trained on TinyStories (MIT licence). It is a Llama: d = 512, 8 layers, 8 heads of
+width 64 without GQA, SwiGLU hidden 1376, vocabulary 32000, RMSNorm ε = 1e-5, RoPE
+θ = 10000. It fits the RFC-0026 §1.3 class with int8 weights and dynamic rows, grouped
+(RFC-0004 A15, g = 128) on the norm-fed projections and the head. At T = 64 the head's
+matmul has `log T + log V + log d = 6 + 15 + 9 = 30 = MAX_VARS`, so no row block is
+needed. The hidden width pads to 2048 and the vocabulary to 32768.
+
+`research/cqis-model-contract/stories42m.py` pins every input and output by SHA-256.
+The conversion is exact. The fp32 values are copied unchanged. The Q and K rows are
+permuted from llama2.c's interleaved RoPE pairs to the half-split layout (RoPE layout
+1), and the shared classifier is written out as `lm_head.weight`, since RFC-0025 Llama
+sources are untied. The script checks that the original and converted fp32 forwards
+agree.
+
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
+D=/tmp/stories42m; mkdir -p $D/in
+curl -sL -o $D/in/stories42M.bin \
+  https://huggingface.co/karpathy/tinyllamas/resolve/0bd21da7698eaf29a0d7de3992de8a46ef624add/stories42M.bin
+curl -sL -o $D/in/tokenizer.model \
+  https://raw.githubusercontent.com/karpathy/llama2.c/350e04fe35433e6d2941dce5a1f53308f87058eb/tokenizer.model
+curl -sL -o $D/in/TinyStories-valid.txt \
+  https://huggingface.co/datasets/roneneldan/TinyStories/resolve/f54c09fd23315a6f9c86f9dc80f725de7d8f9c64/TinyStories-valid.txt
+S=research/cqis-model-contract/stories42m.py
+uv run --script $S convert $D/in $D/source          # model.safetensors, config.json, tokenizer.model
+uv run --script $S frames $D/source $D/frames       # Model, Preparation, Source, Assets frames
+cargo build --release -p stele-cqis --example prepare_source -p stele-cli
+target/release/examples/prepare_source $D/frames/model.bin $D/frames/preparation.bin \
+  $D/frames/source.bin $D/frames/assets.bin 2 $D/source $D/prepared
+uv run --script $S fidelity $D/source $D/prepared $D/in   # informative: fp32 vs CQIS
+```
+
+`fidelity` runs the fp32 reference and the exact CQIS executor
+(`harness/eval/cqis_torch.py`, CPU) on a fixed prompt, greedily continued to 64
+tokens, and on four 64-token TinyStories validation windows. Its output is
+[`agents/reviews/e16-11-stories42m/fidelity.json`](../agents/reviews/e16-11-stories42m/fidelity.json).
+Both continuations read "One day, she saw a big, red balloon in the sky. She wanted
+it so much, but it was too high for her to reach. Lily asked her mommy," and agree on
+all 40 generated tokens. Fidelity is informative, not a gate. The prompt is 24 tokens,
+so the checked range is `23..64`: the 40 generated tokens and `y`.
+`prove-dev --length 64` extends the prompt with the same 40 tokens and `y = 376`, so the
+native executor agrees with the torch executor on this window.
+
+```sh
+P=$D/prepared
+/usr/bin/time -v target/release/stele prove-dev --model $P/model.bin \
+  --preparation $P/preparation.bin --scales $P/scales.bin --artifact $P/artifact.bin \
+  --tokens 1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889 \
+  --length 64 --checked 23..64 --public $P/public.bin --proof $P/proof.bin \
+  > $P/prove.out 2> $P/prove.time
+/usr/bin/time -v target/release/stele verify-dev --public $P/public.bin --proof $P/proof.bin \
+  > $P/verify.out 2> $P/verify.time
+# Wrong next token, wrong checked token, tampered weight root, tampered gain: all rejected.
+STELE_DEV_PROOF=$P cargo test --release -p stele-prover --test development \
+  rejects_tampers_on_a_supplied_proof -- --ignored --nocapture 2>&1 | tee $P/controls.log
+```
+
+## Benchmark ledger
+
+Development-profile numbers are recorded under RFC-0018 A1 (`profile: "development"`,
+workload `dev/<name>`, no Python verifier). `bench/dev_e2e.py` turns one run directory
+from the commands above (GNU `time -v`) into a ledger and validates it:
+
+```sh
+python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
+  --commit <measured commit> --device "<cpu>" --toolchain "$(rustc -V)" \
+  --prompt-tokens 24 --threads "$(nproc)" --model-config <model json> --host-context "<host>"
+```
+
+### Measured runs and the FlashProve small route
+
+Both Stele rows come from one campaign at commit `f6db15e` (E16-15) on a rented
+Intel Core Ultra 9 285K container (24 hardware threads, 188 GB), release build, one run
+each. The four statement tampers were rejected on both proofs: wrong `y` and wrong
+checked token (`RoundSumMismatch`), tampered weight root (`RootMismatch`), tampered
+gain (`RoundSumMismatch`). The controls ran this branch's
+`rejects_tampers_on_a_supplied_proof`, compiled against the measured commit. The
+real-model `proof.bin` (SHA-256 `507b52b3…5381`) is byte-identical to the one from commit
+`9d4c176` (INV-8).
+
+| Run | Model | Prove (wall) | Verify (wall) | Proof | Peak RSS prove / verify | Ledger |
+|---|---|---|---|---|---|---|
+| Stele dev, synthetic | 8 layers, d 64, V 256, T 64, checked 0..64 | 34.3 s | 5.1 s | 45.0 MB | 2.6 / 0.30 GB | [e16-11-dev-synthetic-8layer](../bench/ledger/e16-11-dev-synthetic-8layer.json) |
+| Stele dev, stories42M | 8 layers, d 512, V 32000, T 64, checked 23..64 | 719 s | 45.2 s | 113.4 MB | 37.4 / 4.8 GB | [e16-11-dev-stories42m](../bench/ledger/e16-11-dev-stories42m.json) |
+| FlashProve route 3 "small model" | 8-layer synthetic model | 23–30 s run: commit, prove and verify (build excluded) | included in the run | not stated | 10 GB RAM needed | README at `9e2bdd8` |
+
+The FlashProve row is the figure that project reports in its
+[README](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c)
+for route 3 on one NVIDIA H100 80 GB. It covers commit, prove and verify together, and
+the README does not give the model's width or vocabulary; RFC-0026 records the route
+as 8 layers, T = 64, d = 512. The statements differ (RFC-0018 rule 3): FlashProve hides
+the weights (zero-knowledge) and runs on a GPU. A Stele development proof reveals the
+model and activations, claims no security level and runs on CPU threads. The Stele
+prove time includes the model commitment, which a model owner computes once per model;
+`prove-dev` recomputes it on every call. No GPU path is measured here (INV-3).

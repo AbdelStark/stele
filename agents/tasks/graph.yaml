@@ -2834,7 +2834,9 @@ tasks:
   - RFC-0018
   skill: benchmark-runner
   crate: stele-bench
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E16-11-real-model
   acceptance:
   - bench/ledger entries for prove/verify time and proof size on the 8-layer synthetic model and one converted small Llama checkpoint
   - comparison table against the FlashProve small route; GPU path only with the parity gate (INV-3)

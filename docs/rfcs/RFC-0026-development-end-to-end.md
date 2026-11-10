@@ -525,7 +525,8 @@ The development profile claims no cost-model term, and no constant moves.
   their module, which adds one matmul relation per block.
 
 E16-11 measures both against FlashProve's small route (8 layers, T = 64, d = 512) and
-records them in `bench/ledger/`.
+records them in `bench/ledger/` (RFC-0018 A1); the comparison is in
+`docs/development-e2e.md`.
 
 ## 8. Verifier algorithm
 
@@ -589,6 +590,12 @@ actual E16-10 verifier.
   the prover writes. The binding is §4 step 1: the transcript absorbs the public input
   and the relation digest. With the header set to the verifier's own digest, the first
   failing check is the first zerocheck round, `RoundSumMismatch`. No protocol change.
+- **E3 (erratum, task E16-11).** The A3 and A4 motivations quoted proof-byte and time
+  measurements that had no `bench/ledger/` record (AGENTS.md §4). They now state the
+  reasons without the figures, and §7 points to the E16-11 comparison.
+  Development-profile measurements are recorded under
+  RFC-0018 A1: `bench/ledger/e16-11-dev-synthetic-8layer.json` and
+  `bench/ledger/e16-11-dev-stories42m.json`. No protocol change.
 
 ### A1 — RoPE pairs through a public-permutation matmul (row 5)
 
@@ -615,10 +622,10 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
 - **A3 — One A5 statement per table (task E16-12).** Accepted with ADR-078.
   - **Motivation.** One A5 instance per lookup or range gave each check its own
     multiplicity source, certificate and pair of trees. On the E16-10 8-layer model
-    (d=64, T=64), 3,755 multiplicity sources took 945 MB of a 2.1 GB proof, and the
-    lookup proofs another 469 MB. On a lookup-heavy synthetic relation (80 checks
-    into 3 tables), batching cuts the multiplicity bytes from 22.8 MB to 0.97 MB and
-    the lookup bytes from 11.2 MB to 0.49 MB.
+    (d=64, T=64), the 3,755 multiplicity sources and the lookup proofs were most of
+    the proof bytes. Batching them by table met the E16-12 acceptance criterion on a
+    lookup-heavy synthetic relation (80 checks into 3 tables). Current end-to-end
+    proof sizes are in `bench/ledger/` (E3).
   - **Replacement text, §4 step 3.** "For each **check**, in check order, the prover
     commits the RFC-0008 A5 multiplicity source, which depends on no challenge. Its
     root is absorbed with `relation/roots` and its certificate verified. A check is
@@ -684,9 +691,9 @@ Affected tasks: E16-06 (implements it), E16-10 (counts the matmul in the ledger)
 - **A4 — One stacked source (task E16-13).** Accepted with ADR-082.
   - **Motivation.** Each commitment group used to be its own RFC-0010 v2 source, so
     every group paid for its own certificate and opening. On the E16-10 8-layer model
-    the 255 group certificates came to 469 MB and the 313 openings to 232 MB. On a
-    40-group synthetic plan, stacking cuts the certificate bytes from 7.5 MB to
-    4.0 MB and the opening bytes from 3.5 MB to 1.9 MB.
+    the 255 group certificates and 313 openings were most of the remaining proof
+    bytes, and stacking reduced both on a 40-group synthetic plan. Current end-to-end
+    proof sizes are in `bench/ledger/` (E3).
   - **Replacement text, §2.3 (first two bullets and "Order").**
     - **Layout.** "Each commitment group's columns form a block of `2^(n+c)`
       entries, with the column count padded with zero columns to `2^c`. The blocks

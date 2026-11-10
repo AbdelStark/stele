@@ -21,7 +21,7 @@
     "kind": {"enum": ["inference", "micro"]},
     "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "plan_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "profile": {"enum": ["standard", "treaty"]},
+    "profile": {"enum": ["standard", "treaty", "development"]},
     "bindings_all_on": {"const": true},
     "model_config": {"type": "object", "minProperties": 1, "propertyNames": {"type": "string", "pattern": "\\S"}, "additionalProperties": {"$ref": "#/$defs/json"}},
     "stage_times_ns": {"$ref": "#/$defs/counters"},
