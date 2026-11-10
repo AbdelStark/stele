@@ -199,7 +199,10 @@ where
         )
         .map_err(Error::Merkle)?;
         let mut value = K::from_i64(0);
-        for (weight, bytes) in weights.iter().zip(response.payload.chunks_exact(4)) {
+        for (weight, bytes) in weights
+            .iter()
+            .zip(response.payload[source.salt_len()..].chunks_exact(4))
+        {
             work.column_bytes_decoded = add(work.column_bytes_decoded, bytes.len())?;
             let limb = M31::from_le_bytes(bytes.try_into().map_err(|_| Error::NoncanonicalField)?)
                 .ok_or(Error::NoncanonicalField)?;

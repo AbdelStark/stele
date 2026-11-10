@@ -1,5 +1,5 @@
 //! Conditional Circle and v2 field sources, certificates and functional openings,
-//! RFC-0010 A3/A6/A9/A10.
+//! RFC-0010 A3/A6/A9/A10/A14, with RFC-0013 A2 hiding sources.
 //!
 //! Verification retains conditional obligations; A1 closure and profiles remain separate.
 #![forbid(unsafe_code)]
@@ -9,6 +9,7 @@
 extern crate alloc;
 mod certificate;
 mod expansion;
+mod hiding;
 mod opening;
 mod preparation;
 mod producer;
@@ -19,6 +20,7 @@ pub use certificate::{
     VerifiedCertificate,
 };
 pub use expansion::{expand, Embedding, Value};
+pub use hiding::hiding_message;
 pub use opening::{
     verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,
     OpeningRecord, RetainedRow, RetainedRowWork,

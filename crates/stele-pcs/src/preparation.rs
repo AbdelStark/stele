@@ -5,6 +5,7 @@ use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use stele_code::Encoder;
 use stele_field::{Serialize, M31};
+use stele_hash::mask::{MaskStream, SOURCE_SALT};
 use stele_hash::{merkle, ChallengeField, HashUsage};
 
 /// Observed vector capacities for successful preparation; not a proof or budget.
@@ -84,6 +85,34 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
         let source = Source::<K>::from_code_id(id, ell, code, [0; 32])?;
+        let rebuild = |root| Source::from_code_id(id, ell, code, root);
+        Self::prepare(source, rebuild, message, None, usage)
+    }
+
+    /// Prepare a version-3 hiding source (RFC-0010 A14) over the full message
+    /// `M'` of [`crate::hiding_message`], with leaf salts drawn from `seed`.
+    /// The seed must be the one that produced `M'`, fresh and secret (RFC-0013 A2).
+    pub fn hiding(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::hiding(id, ell, m, blowup, [0; 32])?;
+        let rebuild = |root| Source::hiding(id, ell, m, blowup, root);
+        Self::prepare(source, rebuild, message, Some(seed), usage)
+    }
+
+    fn prepare<F: FnOnce(merkle::Digest) -> Result<Source<K>, Error>>(
+        source: Source<K>,
+        rebuild: F,
+        message: &'a [M31],
+        seed: Option<&[u8; 32]>,
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
         let count = source
             .rows()
             .checked_mul(source.columns())
@@ -141,11 +170,22 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             .peak_owned_bytes
             .checked_add(checked_bytes::<M31>(count)?)
             .ok_or(Error::Capacity)?;
-        if encoded.values.len().checked_mul(4) != Some(columns.len()) {
+        if encoded.values.len() != rows * length {
             return Err(Error::MessageShape);
         }
-        for (out, value) in columns.chunks_exact_mut(4).zip(&encoded.values) {
-            out.copy_from_slice(&value.to_le_bytes());
+        // A14: a hiding leaf is salt || column; other sources have no salt.
+        let salt = source.salt_len();
+        let mut salts = seed.map(|seed| MaskStream::new(seed, SOURCE_SALT, source.descriptor().id));
+        for (leaf, symbols) in columns
+            .chunks_exact_mut(width)
+            .zip(encoded.values.chunks_exact(rows))
+        {
+            if let Some(stream) = &mut salts {
+                stream.fill(&mut leaf[..salt]);
+            }
+            for (out, value) in leaf[salt..].chunks_exact_mut(4).zip(symbols) {
+                out.copy_from_slice(&value.to_le_bytes());
+            }
         }
         let mut leaves = Vec::new();
         leaves
@@ -166,7 +206,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
                 ),
             )
             .ok_or(Error::Capacity)?;
-        let source = Source::from_code_id(id, ell, code, tree.root())?;
+        let source = rebuild(tree.root())?;
         Ok(Self {
             source,
             message,
@@ -200,7 +240,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
     pub fn response(&self, index: u64) -> Result<PreparedColumn<'_>, Error> {
         let siblings = self.tree.path(index).map_err(Error::Merkle)?;
         // Tree checked index < N; construction checked N*width, so these offsets fit.
-        let width = 4 * self.source.rows();
+        let width = self.source.descriptor().width as usize;
         let offset = index as usize * width;
         Ok(PreparedColumn {
             payload: &self.columns[offset..offset + width],

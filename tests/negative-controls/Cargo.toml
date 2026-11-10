@@ -318,3 +318,11 @@ path = "matmul/nc_0305.rs"
 [[test]]
 name = "nc-0605"
 path = "pcs/nc_0605.rs"
+
+[[test]]
+name = "nc-0902"
+path = "pcs/nc_0902.rs"
+
+[[test]]
+name = "nc-0903"
+path = "pcs/nc_0903.rs"

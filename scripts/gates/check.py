@@ -834,18 +834,20 @@ def field_source_codec(root):
                'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
-               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs'}
+               'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs',
+               'src/hiding.rs', 'tests/hiding.rs'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional Circle and v2 field sources, certificates and functional openings,\n'
-               '//! RFC-0010 A3/A6/A9/A10.\n'
+               '//! RFC-0010 A3/A6/A9/A10/A14, with RFC-0013 A2 hiding sources.\n'
                '//!\n//! Verification retains conditional obligations; A1 closure and profiles remain separate.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
+               'extern crate alloc;\nmod certificate;\nmod expansion;\nmod hiding;\nmod opening;\nmod preparation;\nmod producer;\nmod source;\nmod work;\n'
                'pub use certificate::{\n'
                '    verify_certificate, verify_certificate_measured, CertificateRecord, Failure, Usage,\n'
                '    VerifiedCertificate,\n};\n'
                'pub use expansion::{expand, Embedding, Value};\n'
+               'pub use hiding::hiding_message;\n'
                'pub use opening::{\n'
                '    verify_opening, verify_opening_measured, verify_point, verify_point_measured, Functional,\n'
                '    OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
@@ -868,7 +870,8 @@ def field_source_codec(root):
     expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('field', 'setup_term'), ('struct', 'Source'),
-        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_bytes'), ('fn', 'bytes'),
+        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'is_hiding'),
+        ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
         ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code_id'), ('fn', 'codeword_len'), ('fn', 'root'), ('fn', 'path_height'),
         ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'), ('fn', 'opening_frame_size'),
         ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
@@ -889,7 +892,7 @@ def field_source_codec(root):
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
                        'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,'
-                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,Capacity,'),
+                       'FunctionalShape,ValueMismatch,CertificateContext,RowContext,MaskRank,Capacity,'),
                       ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
@@ -900,7 +903,8 @@ def field_source_codec(root):
         ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'source'), ('fn', 'message'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'source'),
+        ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b', prepared))
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
@@ -909,6 +913,7 @@ def field_source_codec(root):
             'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
             'usecore::sync::atomic::{AtomicUsize,Ordering};',
             'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
+            'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
@@ -1562,7 +1567,7 @@ def controls_layout(root):
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
