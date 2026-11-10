@@ -13,3 +13,7 @@ stele-bench = { path = "../stele-bench" }
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "stele"
+path = "src/main.rs"

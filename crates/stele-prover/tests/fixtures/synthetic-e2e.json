@@ -1,0 +1,94 @@
+{
+ "source": "research/cqis-model-contract/synthetic_e2e.py",
+ "blake3": "d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+ "cases": [
+  {
+   "name": "one-layer",
+   "params": {
+    "seed": 1,
+    "layers": 1,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "vocabulary": 256,
+    "context": 16
+   },
+   "model": {
+    "offset": 0,
+    "length": 1171
+   },
+   "preparation": {
+    "offset": 1171,
+    "length": 469
+   },
+   "scales": {
+    "offset": 1640,
+    "length": 2266
+   },
+   "artifact": {
+    "offset": 3906,
+    "length": 77003
+   },
+   "artifact_id": "94a2e4411a7597f3439224034d8724817ec98f98cb355177876c127ab7bbf570"
+  },
+  {
+   "name": "one-layer-grouped",
+   "params": {
+    "seed": 2,
+    "layers": 1,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "vocabulary": 256,
+    "context": 16,
+    "group": true
+   },
+   "model": {
+    "offset": 80909,
+    "length": 1171
+   },
+   "preparation": {
+    "offset": 82080,
+    "length": 469
+   },
+   "scales": {
+    "offset": 82549,
+    "length": 2266
+   },
+   "artifact": {
+    "offset": 84815,
+    "length": 77003
+   },
+   "artifact_id": "48404ef0456c1b8ed8cb4171dc6e2f6bf91f50daf4b011fb5932b5078deca523"
+  },
+  {
+   "name": "eight-layer",
+   "params": {
+    "seed": 8,
+    "layers": 8,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "vocabulary": 256,
+    "context": 64
+   },
+   "model": {
+    "offset": 161818,
+    "length": 7548
+   },
+   "preparation": {
+    "offset": 169366,
+    "length": 2359
+   },
+   "scales": {
+    "offset": 171725,
+    "length": 10526
+   },
+   "artifact": {
+    "offset": 182251,
+    "length": 377086
+   },
+   "artifact_id": "140b51f112acf66d7e0e087c9a58271c44ae0e5ae56ccf89655dfa14fd213f32"
+  }
+ ]
+}

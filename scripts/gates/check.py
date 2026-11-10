@@ -36,6 +36,52 @@ ARTIFACTS = {
 }
 
 
+# RFC-0026 §1.2/§8 (task E16-10): the development profile claims no profile, so it has
+# no reference digest (E8-06). Its module is admitted by exact surface; the rest of the
+# scaffold stays guarded.
+DEVELOPMENT = {
+    'prover': {
+        'files': ('src/development.rs', 'src/development/plan.rs', 'src/development/bundle.rs',
+                  'tests/development.rs', 'tests/fixtures/synthetic-e2e.bin',
+                  'tests/fixtures/synthetic-e2e.json'),
+        'library': '//! stele-prover — governed by RFC-0007 §4 RFC-0014 §4 and, for `development`, '
+                   'RFC-0026 §8. No behaviour exists here that is not specified there (INV-1).\n'
+                   '#![forbid(unsafe_code)]\n#![no_std]\n'
+                   '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+                   'extern crate alloc;\npub mod development;\n',
+        'dependencies': {'stele-reductions': {'path': '../stele-reductions'},
+                         'stele-proof': {'path': '../stele-proof'},
+                         'blake3': {'version': '=1.8.7', 'default-features': False}},
+        'dev-dependencies': {'serde_json': '=1.0.154'},
+    },
+    'proof': {
+        'files': ('src/development.rs',),
+        'library': '//! stele-proof — governed by RFC-0016 §1 and, for `development`, RFC-0026 '
+                   '§4.1. No behaviour exists here that is not specified there (INV-1).\n'
+                   '#![forbid(unsafe_code)]\n#![no_std]\n'
+                   '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
+                   'extern crate alloc;\npub mod development;\n',
+        'dependencies': {'stele-field': {'path': '../stele-field'}},
+        'dev-dependencies': None,
+    },
+}
+
+
+def development_surface(crate, name, actual, expected):
+    """Strip the admitted RFC-0026 development module; anything else stays guarded."""
+    spec = DEVELOPMENT[name]
+    manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
+    if ((crate / 'src/lib.rs').read_text() != spec['library']
+            or manifest.get('dependencies') != spec['dependencies']
+            or manifest.get('dev-dependencies') != spec['dev-dependencies']
+            or set(manifest) - {'package', 'dependencies', 'dev-dependencies', 'lints'}):
+        return actual
+    kept = {path: digest for path, digest in actual.items() if path not in spec['files']}
+    kept['src/lib.rs'] = expected['src/lib.rs']
+    kept['Cargo.toml'] = expected['Cargo.toml']
+    return kept
+
+
 def bootstrap_guard(root, gate):
     """An absent implementation may pass; an unvalidated implementation may not."""
     baseline = json.loads((root / 'scripts/gates/bootstrap-sources.json').read_text())
@@ -44,6 +90,8 @@ def bootstrap_guard(root, gate):
         expected = baseline[f'stele-{name}']
         actual = {str(p.relative_to(crate)): hashlib.sha256(p.read_bytes()).hexdigest()
                   for p in crate.rglob('*') if p.is_file()}
+        if gate == 'digest' and name in DEVELOPMENT:
+            actual = development_surface(crate, name, actual, expected)
         if actual != expected:
             raise ValueError(f'{gate}: validator not wired for changed {crate.relative_to(root)}; '
                              f'implement the gate with its producer (task {OWNERS[gate]})')
@@ -463,7 +511,10 @@ def field_sources(root):
     library = ('//! Closed original field-source consumer for RFC-0006 A1, governed by RFC-0010 A9 §5.\n'
                '#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
-               'extern crate alloc;\npub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\n'
+               'extern crate alloc;\n'
+               '// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.\n'
+               'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};\n'
+               'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
                '    prove_stacked_sources, prove_stacked_sources_measured, verify_stacked_sources,\n'
@@ -1488,13 +1539,13 @@ def controls_layout(root):
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
-                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly')}
+                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
     dependencies['stele-sumcheck']['features'] = ['std']
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',

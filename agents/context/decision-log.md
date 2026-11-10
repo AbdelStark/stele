@@ -1610,6 +1610,70 @@ without an amendment; wide (A14) streams stay out. Every module constraint is sh
 load-bearing by a deletion survey or has a stated redundancy reason over Z
 (`agents/reviews/e16-09-residual-argmax.md`).
 
+## ADR-085: Development orchestrator, container and verifier input (RFC-0026 §1.1 A2, §2.2, §4.1, §8, task E16-10)
+
+Context: E16-10 composes the RFC-0026 §5 modules into one relation per prefill
+window, fixes the `stele-dev-e2e-v1` codec and the verifier's inputs, and runs the
+RFC-0026 §9 controls through the actual verifier. RFC-0026 leaves the weight-source
+geometry, the public-input encoding, the container section framing and the model
+commitment's carrier to E16-10; one statement gap (norm gains) needed an amendment.
+
+Decision:
+- **Placement and edges.** `stele_prover::development` orchestrates; `stele-reductions`
+  re-exports `stele_cqis`, `stele_field`, `stele_hash`, `stele_ir` and `stele_pcs`, so
+  no new workspace crate edge is added (RFC-0026 §8). `stele-prover` gains the
+  workspace-pinned `blake3` for the statement digest. `stele-cli` gains the `stele`
+  binary (`prove-dev`, `verify-dev`).
+- **Gains are public (RFC-0026 A2).** Every 1-D artifact record is a public input, as
+  its ordinal and int16 codes in artifact record order, absorbed in the first
+  transcript frame with Model, Scales and Preparation.
+- **Public input.** `stele/v0.1/dev-e2e/public-input`, `cqis_id` (`NumericalIdentity`
+  of Model, Scales, Registry and Bounds, recomputed by the verifier), length-prefixed
+  Model, Scales and Preparation, the 1-D records, the weight roots in plan order, `T`
+  and the tokens, `r`, `e`, and `y` behind a presence byte. It is the argument of
+  `Transcript::new`.
+- **Statement digest.** The container's digest is BLAKE3 of
+  `stele/v0.1/dev-e2e/statement`, the public-input length and bytes, and the relation
+  digest. The verifier recomputes it before any proof byte is read and rejects a
+  difference with `StatementMismatch`. The prover writes this field, so it only fails
+  fast; the binding is the transcript, which absorbs the same public input and relation
+  digest. Controls restamp it with the verifier's digest and require an engine rejection.
+- **Model identity.** A self-consistent `public.bin` proves only that the model it names
+  ran. `model_identity` is `cqis_id` and BLAKE3 of `stele/v0.1/dev-e2e/model`, `cqis_id`,
+  the weight roots and the 1-D records; `stele verify-dev` prints it with the statement
+  before its verdict and `--expect-model` rejects a different model. The 1-D records must
+  be exactly the Model's, in record order, and `T` at most the Model's context.
+- **Model commitment.** Weight `i` in plan order is the v2 source with id `2^40 + i`
+  and the smallest certificate-plus-opening size over `J = 3..14` (ties: smallest
+  `J`), the engine's group rule; its message is the int8/int4 codes in the signed
+  embedding, `[channel][lane]` with both dimensions padded. Roots and certificates
+  are prepared once and travel in the verifier's input file `stele-dev-public-v1`.
+  The verifier derives each source from the plan and verifies each certificate.
+- **Plan obligation (RFC-0026 §2.2).** Both sides compare the declared `Kind::Weight`
+  columns with the plan's weight list (embedding; per layer Q, K, V, O, gate, up,
+  down; head) and the commitment count, and reject a difference with
+  `StatementMismatch`. Gate is declared before up for this order.
+- **Container.** Magic, `u16` version 1, `cqis_id`, statement digest, then the six
+  section lists of RFC-0026 §4.1, each a `u32` count of `u32`-length-prefixed
+  sections. Trailing or missing bytes reject with `ProofShape`.
+- **Controls.** The prover runs the plain checker before proving. `prove_tampered`
+  applies a prover-side hook and skips that check, so controls reach the verifier;
+  the verifier has no bypass. NC-1300, NC-1301, NC-1304, NC-1305 and NC-1309 are
+  registered in `tests/negative-controls`, which therefore may import `stele-prover`
+  (one `deny.toml` wrapper edge; the harness is test-only and never linked into a
+  prover or verifier). NC-1300 and NC-1301 reject with `RootMismatch`, NC-1305 and
+  NC-1309 with `RoundSumMismatch` (RFC-0026 E2).
+- **Digest scaffold guard.** The development profile claims no profile and so has no
+  reference digest (E8-06). The `digest` scaffold guard over `stele-prover` and
+  `stele-proof` admits exactly the RFC-0026 development files and the matching `lib.rs`
+  and manifest; any other change to those crates still fails it.
+
+Consequences: a verifier needs only `public.bin` and the proof. Weight sources stay
+separate from the stacked witness source (RFC-0026 A4), one opening each. Gains must
+become committed weights before any zero-knowledge profile.
+
+Status: Accepted (owner authorisation for A2; independent review in the E16-10 PR).
+
 ## ADR-086: Grouped Q/K/V rows are not pursued; the residual G7 gap is in exact-only numerics (RFC-0004 A15, task E5-05g)
 
 Context: E5-05e (grouped activation rows, g = 128) halved every G7 gap but left G7 failing

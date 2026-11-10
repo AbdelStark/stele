@@ -5,6 +5,8 @@
 pub mod batching;
 pub mod catalog;
 #[doc(hidden)]
+pub mod development;
+#[doc(hidden)]
 pub mod fraction;
 #[doc(hidden)]
 pub mod fraction_transcript;
@@ -78,6 +80,36 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
         run: || requant::run(308),
+    },
+    catalog::RegisteredControl {
+        id: 1300,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || development::run(1300),
+    },
+    catalog::RegisteredControl {
+        id: 1301,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || development::run(1301),
+    },
+    catalog::RegisteredControl {
+        id: 1304,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || development::run(1304),
+    },
+    catalog::RegisteredControl {
+        id: 1305,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || development::run(1305),
+    },
+    catalog::RegisteredControl {
+        id: 1309,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || development::run(1309),
     },
     catalog::RegisteredControl {
         id: 309,
