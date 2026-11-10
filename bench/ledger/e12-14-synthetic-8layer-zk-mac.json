@@ -1,7 +1,7 @@
 {
  "batch_size": 1,
  "bindings_all_on": true,
- "commit": "4a77fb3db1afa6b961bb0b22c4f402fe4f9693ce",
+ "commit": "c8efdc419882a37208d1a40cf888e2d30c3aebcb",
  "controls": {
   "failed": 0,
   "passed": 2,
@@ -23,7 +23,7 @@
    "next": "StatementMismatch",
    "token": "StatementMismatch"
   },
-  "host_context": "Apple laptop, macOS, release build of the measured commit; one run each; dev and dev-zk measured back to back on the same host with no other workload; BSD /usr/bin/time -l.",
+  "host_context": "Apple laptop, macOS, release build of the measured commit; one run each; dev and dev-zk measured back to back on the same host with no other workload; BSD /usr/bin/time -l. Measured at 4a77fb3, which a rebase onto the reworked E12-14a controls replaced by c8efdc4: the honest prover and verifier code is the same; only controls-gated adversaries changed.",
   "model": {
    "cqis": "int8 matrices, dynamic rows, random small codes",
    "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",

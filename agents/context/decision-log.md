@@ -2367,8 +2367,19 @@ Decision:
   `bench/ledger/e12-14-synthetic-8layer-zk-mac.json`. Both carry
   `profile: "development"`, because RFC-0018 A1 admits no other development-tier
   profile. The workload name and `model_config.profile_byte` mark dev-zk.
-- Admission of profile byte 1 is proposed, not taken. The item 8 deliverables are
-  present. The admission is the independent review's decision.
+- Admission of profile byte 1 is not taken. The independent review
+  (fix-then-merge) holds it until E12-25 binds the model.
+- Independent review fixes:
+  - F1: The claim is existential, with `P = 1` per proof. The CLI prints
+    `weights: unbound (per-proof commitment)` and refuses `--expect-model`.
+    E12-25 gates admission.
+  - F2: 1-D records are declared public.
+  - F4: An exact leak test runs on the one-layer window, as does a two-witness
+    test. The eight-layer leak test is ignored and run locally.
+  - F5: NC-0912 gains a transcript-level half.
+  - F6: The scoreboard labels the dev-zk record.
+  - F7: The adversaries sit behind the `controls` feature.
+  - The verifier reports counts, not a soundness ledger (E12-26).
 
-Status: Proposed (development tier; independent review requested, which also decides
-the admission).
+Status: Proposed (development tier; independent review: fix-then-merge, fixes
+applied; dev-zk not admitted).

@@ -7,8 +7,11 @@
 //! ```
 //! `--zk` proves under the dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1)
 //! with a seed from the OS RNG (`/dev/urandom`); its model commitment is the proof's
-//! own hiding weight source, for this proof only. `verify-dev` reads the profile
-//! from the public file and prints it.
+//! own hiding weight source, for this proof only, so a dev-zk proof shows that
+//! some int8 weights of the declared shape produce the statement: `verify-dev`
+//! prints `weights: unbound (per-proof commitment)` in place of the model digest,
+//! and `--expect-model` is a usage error. `verify-dev` reads the profile from the
+//! public file and prints it.
 //! A proof shows only that the model `public.bin` names ran on the statement it names.
 //! `verify-dev` therefore prints the `cqis_id`, the model digest, `T`, the tokens,
 //! `[r, e)` and `y` before its verdict; compare them with trusted values, or pass
@@ -80,10 +83,15 @@ fn hex(bytes: &[u8]) -> String {
 }
 
 /// The statement lines a user compares with trusted values; returns the model digest.
-fn identity(public: &Public, statement: &Statement) -> Result<[u8; 32], Failure> {
+/// Under dev-zk the weights are committed per proof, so no digest pins them.
+fn identity(public: &Public, statement: &Statement, zk: bool) -> Result<[u8; 32], Failure> {
     let (cqis_id, model) = model_identity(public).map_err(reject)?;
     println!("cqis_id {}", hex(&cqis_id));
-    println!("model {}", hex(&model));
+    if zk {
+        println!("weights: unbound (per-proof commitment)");
+    } else {
+        println!("model {}", hex(&model));
+    }
     println!("T {}", statement.tokens.len());
     let tokens: Vec<String> = statement.tokens.iter().map(u32::to_string).collect();
     println!("tokens {}", tokens.join(","));
@@ -148,7 +156,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     )?;
     write("proof", &proof)?;
     println!("profile {}", if zk { "dev-zk" } else { "development" });
-    identity(&public, &statement)?;
+    identity(&public, &statement, zk)?;
     println!("proof {} bytes", proof.len());
     Ok("PROOF WRITTEN".into())
 }
@@ -174,7 +182,13 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
         "profile {}",
         if zk_profile { "dev-zk" } else { "development" }
     );
-    let model = identity(&public, &statement)?;
+    if zk_profile && expected.is_some() {
+        // RFC-0013 A5 item 7 with P = 1: no published model commitment exists.
+        return Err(usage(
+            "--expect-model does not apply to dev-zk: its weights are committed per proof (E12-25)",
+        ));
+    }
+    let model = identity(&public, &statement, zk_profile)?;
     if expected.is_some_and(|e| e != model) {
         return Err(Failure::Reject("model differs from --expect-model".into()));
     }

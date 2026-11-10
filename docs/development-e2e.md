@@ -96,6 +96,18 @@ RFC-0026 A9, profile byte 1). Its admission is pending independent review
   proof's hiding weight source, made for this proof only (`P = 1`).
 - `verify-dev` reads the profile from the public file and prints `profile dev-zk`
   before the statement lines.
+- The claim is existential. A dev-zk proof shows that *some int8 weights of the
+  declared shape*, with the public 1-D records, produce the statement. No published
+  commitment pins the weights.
+  - `verify-dev` prints `weights: unbound (per-proof commitment)` instead of a
+    model digest.
+  - `--expect-model` is a usage error.
+  - A persistent commitment is task E12-25.
+- Public, not hidden: the Model, Scales and Preparation bytes, every 1-D record
+  (norm gains and other vectors), the shapes, the plan, `T`, the tokens, `[r, e)`
+  and `y`.
+- `verify-dev` reports counts of instances, steps and batches, not a soundness
+  ledger (task E12-26).
 
 ```sh
 target/release/stele prove-dev --zk \

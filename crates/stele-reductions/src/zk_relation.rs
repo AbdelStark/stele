@@ -430,8 +430,24 @@ pub fn forge_substituted(
     claims::prove(&layout.statement, &columns, seed, t)
 }
 
+/// The privacy tests' exact leak count on `relation` (`claims::leaks`), replaying
+/// the verifier from the caller's transcript.
+#[cfg(feature = "controls")]
+pub fn leaks(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    proof: &Proof<K>,
+) -> Result<(usize, usize), Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::leaks(&layout.statement, &columns, proof, t)
+}
+
 /// The privacy tests' leak control: [`prove`] through `claims::prove_unmasked`.
-#[doc(hidden)]
+#[cfg(feature = "controls")]
 pub fn prove_unmasked(
     t: &mut Transcript<K>,
     relation: &Relation,

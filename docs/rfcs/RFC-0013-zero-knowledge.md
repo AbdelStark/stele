@@ -530,14 +530,30 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
   statement digest) fails fast (NC-0912).
 - **Seed.** `stele prove-dev --zk` draws the 32-byte seed from the OS RNG
   (`/dev/urandom`). The library takes it move-only, for one proof.
-- **Model commitment.** It is one root, the proof's hiding weight source (item 7
-  with `P = 1`). Its certificate travels in the proof. The verifier checks the
-  proof's weight source against the public root (NC-0927). A second dev-zk proof
-  needs a new commitment.
+- **Model commitment and claim.** It is one root, the proof's hiding weight source
+  (item 7 with `P = 1`). Its certificate travels in the proof. The verifier checks
+  the proof's weight source against the public root (NC-0927). The root comes from
+  the proof's own seed, so no published commitment pins the weights.
+  - A dev-zk proof states only that *some int8 weights of the declared shape*,
+    with the public 1-D records, produce the statement. It does not state that a
+    named model ran.
+  - `verify-dev` prints `weights: unbound (per-proof commitment)` in place of the
+    model digest. `--expect-model` is a usage error.
+  - E12-25 (a persistent hiding commitment with item 7's `P·t_W` budget and a
+    lifetime counter) gates admission.
+- **Not hidden.** Besides the design note's §7 list, every 1-D record (norm gains
+  and other vectors) is public input. E12-25 commits them.
+- **Verifier output.** dev-zk verify reports counts of instances, steps and
+  batches. It does not report an RFC-0026 §6 soundness ledger; E12-26 adds one.
 - **Item 8 deliverables.** These are present:
   - the implementation (E12-18, E12-19, E12-14a, E12-14b);
   - NC-0909..0915, executed;
-  - the privacy tests, which run on small relations:
+  - on the one-layer window (`T = 4`): an exact test that no revealed occurrence
+    final equals its bare `x̃(ρ)`, and two witnesses of one statement (a moved Q
+    weight code, the same tokens and `y`) with equal byte lengths and
+    χ²-homogeneous revealed values; the exact test on the eight-layer window runs
+    ignored, locally;
+  - the privacy tests on small relations:
     - χ² uniformity of revealed values across seeds;
     - the leak control: without masks, a claim equals `ã(ρ)` and tells two witnesses
       apart;
@@ -545,7 +561,6 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
       revealed values.
   - The one- and eight-layer synthetic windows prove and verify under dev-zk.
 
-  This note proposes admitting dev-zk (profile byte 1). The admission takes effect
-  only after the independent review that item 8 requires. Until then, item 8's
-  "defined, not admitted" stands. The CLI prints the profile; it makes no privacy
-  claim.
+  The independent review (fix-then-merge) did not admit dev-zk (profile byte 1).
+  Item 8's "defined, not admitted" stands until E12-25 binds the model and a
+  further review admits it. The CLI prints the profile; it makes no privacy claim.

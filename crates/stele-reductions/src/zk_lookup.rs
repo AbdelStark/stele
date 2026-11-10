@@ -1202,6 +1202,15 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
     Ok(())
 }
 
+/// Every masked occurrence of a step with its input index (privacy tests).
+#[cfg(feature = "controls")]
+pub(super) fn occurrences(step: &GkrStep) -> impl Iterator<Item = (usize, &Occurrence)> {
+    step.inputs.iter().enumerate().filter_map(|(i, g)| match g {
+        Gin::Top(o) | Gin::Leaf(o) => Some((i, o)),
+        _ => None,
+    })
+}
+
 /// The input index of the step's `p(·, 0)` layer child (NC-0913's target).
 pub(super) fn first_layer(step: &GkrStep) -> Option<usize> {
     step.inputs

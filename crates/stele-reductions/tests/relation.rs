@@ -1316,16 +1316,21 @@ mod dev_zk_privacy {
     const CRITICAL_X10: u128 = 377;
 
     fn proof(rel: &Relation, values: &Values, seed: u16, masks: bool) -> Proof<QM31> {
+        #[cfg(not(feature = "controls"))]
+        assert!(masks, "the unmasked control needs the controls feature");
         let mut bytes = [9u8; 32];
         bytes[..2].copy_from_slice(&seed.to_le_bytes());
         let root = zk_relation::weight_root(rel, values, &Seed::new(bytes)).expect("root");
         let mut t = Transcript::new(T).expect("transcript");
+        #[cfg(feature = "controls")]
         let proof = if masks {
             zk_relation::prove(&mut t, rel, values, Seed::new(bytes))
         } else {
             zk_relation::prove_unmasked(&mut t, rel, values, Seed::new(bytes))
         }
         .expect("prove");
+        #[cfg(not(feature = "controls"))]
+        let proof = zk_relation::prove(&mut t, rel, values, Seed::new(bytes)).expect("prove");
         let mut t = Transcript::new(T).expect("transcript");
         assert!(zk_relation::verify(&mut t, rel, root, &proof).is_ok());
         proof
@@ -1424,6 +1429,7 @@ mod dev_zk_privacy {
     /// the identity's public point, so two witnesses with the same statement are
     /// told apart; with masks it never is.
     #[test]
+    #[cfg(feature = "controls")]
     fn rejects_unmasked_claims_as_witness_leak() {
         let (f, g) = (
             product((0..8).collect()),

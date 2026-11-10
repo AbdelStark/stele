@@ -281,6 +281,8 @@ pub struct Verified<K> {
     pub masks: Vec<MaskRecord>,
     /// Each lookup's public `(β, α)`.
     pub lookups: Vec<[K; 2]>,
+    /// Each relation's public draws (`τ` or `ρ`), in plan order.
+    pub draws: Vec<Vec<K>>,
 }
 
 fn dim<K: CodeField>() -> usize {
@@ -1723,7 +1725,7 @@ where
 /// The privacy tests' leak control, never a verifier input: [`prove`] with every
 /// claim-mask block and layer block left zero, so each revealed claim is the bare
 /// evaluation `x̃(ρ)`. The proof still verifies; no verifier sees masks.
-#[doc(hidden)]
+#[cfg(feature = "controls")]
 pub fn prove_unmasked<K: ChallengeField + CodeField + Eq>(
     statement: &Statement<K>,
     columns: &[Vec<M31>],
@@ -2380,9 +2382,11 @@ where
     let mut mus = Vec::new();
     let mut reductions = Vec::new();
     let mut records = Vec::new();
+    let mut all_draws = Vec::new();
     for (j, (step, relation)) in plan.steps.iter().zip(&proof.relations).enumerate() {
         let gammas = step_draws(t, step)?;
         let free = draws(t, step.label, step.draws)?;
+        all_draws.push(free.clone());
         let i = step_instance(step, &gammas);
         let result = masked::verify_degree(&i, step.degree, relation, binding, t)
             .map_err(Error::Sumcheck)?;
@@ -2461,7 +2465,60 @@ where
         reductions,
         masks: records,
         lookups: runs.iter().map(|r| [r.beta, r.alpha]).collect(),
+        draws: all_draws,
     })
+}
+
+/// The privacy tests' exact leak count (RFC-0013 A5 item 7): for every masked
+/// occurrence of a statement column in an accepted proof, whether its revealed
+/// final equals the bare evaluation `x̃` at its column point. Returns
+/// `(occurrences, equal)`; masks make `equal` zero except with probability
+/// `≈ occurrences/|K|`. Replays [`verify`] on `t`.
+#[cfg(feature = "controls")]
+pub fn leaks<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    proof: &Proof<K>,
+    t: &mut Transcript<K>,
+) -> Result<(usize, usize), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let plan = plan(statement)?;
+    let verified = verify(statement, proof, t)?;
+    let bare = |o: &Occurrence, point: &[K], free: &[K]| -> Result<Option<K>, Error> {
+        let Some(column) = columns.get(o.column) else {
+            return Ok(None);
+        };
+        let w = stele_poly::eq_table(&column_point(&o.coords, point, free))
+            .map_err(|_| Error::Statement)?;
+        Ok(Some(
+            column
+                .iter()
+                .zip(&w)
+                .fold(zero::<K>(), |s, (x, e)| s + element::<K>(*x) * *e),
+        ))
+    };
+    let (mut total, mut equal) = (0, 0);
+    for (j, step) in plan.steps.iter().enumerate() {
+        let point = &verified.reductions[j].point;
+        for (k, o) in step.occurrences.iter().enumerate() {
+            if let Some(x) = bare(o, point, &verified.draws[j])? {
+                total += 1;
+                equal += usize::from(proof.relations[j].final_values[step.first() + k] == x);
+            }
+        }
+    }
+    for (g, step) in plan.gkr.iter().enumerate() {
+        let point = &verified.reductions[plan.steps.len() + g].point;
+        for (input, o) in lookup::occurrences(step) {
+            if let Some(x) = bare(o, point, &[])? {
+                total += 1;
+                equal += usize::from(proof.gkr[g].final_values[input] == x);
+            }
+        }
+    }
+    Ok((total, equal))
 }
 
 /// The `stele-dev-zk-proof-v1` bytes of a claims proof (E12-14b): every count is a
