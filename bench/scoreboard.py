@@ -15,8 +15,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'bench/scoreboard.md'
 # Records made before task E17-01 carry no model_config.rung.
-RUNGS = {'dev/synthetic-8layer-t64': 'L1', 'dev/stories42m-t64': 'L2a'}
-ORDER = ['L0', 'L1', 'L2a', 'L2b', 'L3a', 'L3b', 'L3c', 'L4', 'L5', 'L6']
+RUNGS = {'dev/synthetic-8layer-t64': 'L1', 'dev/stories42m-t64': 'L2a', 'dev/stories110m-t64': 'L2c'}
+ORDER = ['L0', 'L1', 'L2a', 'L2b', 'L2c', 'L3a', 'L3b', 'L3c', 'L4', 'L5', 'L6']
 
 
 def rows():

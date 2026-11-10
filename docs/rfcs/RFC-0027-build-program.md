@@ -54,6 +54,7 @@ Rules:
 | L0 | synthetic one-layer fixture | T 16 | required CI smoke |
 | L1 | synthetic eight-layer fixture | T 64 | regression and profiling |
 | L2a, L2b | stories42M | T 64; T 1,024 | first real checkpoint |
+| L2c | stories110M | T 64 | second real checkpoint; the first with row blocks (E16-20) |
 | L3a, L3b, L3c | Llama-3.1-8B, G7 configuration | T 64; T 1,024; W1 | first light, headline |
 | L4 | Llama-3.1-70B | W3 | scale |
 | L5 | 400B mixture-of-experts, Maverick shape | 1,024 × batch 24 | head-to-head |

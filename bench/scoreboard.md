@@ -12,6 +12,7 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | L1 | development | x86_64 Intel Xeon Processor @ 2.10GHz (4 vCPU) | 4 | 55.66 | 1.150 | 7.04 | 45.0 | 2.6 | 524,288 | 321,289 | — | none | 4/4 | [e17-00-dev-synthetic-8layer-4core](ledger/e17-00-dev-synthetic-8layer-4core.json) @ `6441a90` |
 | L2a | development | x86_64 Intel Core Ultra 9 285K | 24 | 719.12 | 0.089 | 45.20 | 113.4 | 37.4 | — | — | — | none | 4/4 | [e16-11-dev-stories42m](ledger/e16-11-dev-stories42m.json) @ `f6db15e` |
 | L2a | development | x86_64 Intel Core Ultra 9 285K | 24 | 473.81 | 0.135 | 24.25 | 113.4 | 38.4 | — | — | — | none | 4/4 | [e16-18-dev-stories42m](ledger/e16-18-dev-stories42m.json) @ `e813ce1` |
+| L2c | development | x86_64 AMD EPYC 7532 32-Core Processor | 128 | 1978.97 | 0.032 | 69.36 | 126.8 | 109.7 | — | — | — | none | 4/4 | [e16-20-dev-stories110m](ledger/e16-20-dev-stories110m.json) @ `445c9b0` |
 
 Rungs with no record: L0, L2b, L3a, L3b, L3c, L4, L5, L6.
 

@@ -1,0 +1,80 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "445c9b0229fda4edc149478b6b77b1e95c173eed",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "x86_64 AMD EPYC 7532 32-Core Processor",
+ "driver": "not-applicable",
+ "generated_tokens": 40,
+ "kernel_counters": {
+  "checked_positions": 41,
+  "prove_peak_rss_bytes": 109729071104,
+  "public_bytes": 39999889,
+  "verify_peak_rss_bytes": 17932029952
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Merkle(RootMismatch))"
+  },
+  "host_context": "Rented Vast.ai container (Ubuntu 22.04, AMD EPYC 7532, 128 hardware threads visible with 64 effective vCPUs allocated by the offer, 1 TB host RAM); release build of the measured commit (the E16-19 branch head); prove, verify, controls and model commitment run sequentially, no other workload on the container; host sharing not measured. The same proof also verified YES on an arm64 laptop (16 cores).",
+  "model": {
+   "artifact_sha256": "83b126b082d8595bd096dab48a6e86e175593bb920900a73edce0b0eaf6c5df5",
+   "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+   "fidelity": "agents/reviews/e16-20-stories110m/fidelity.json",
+   "model_sha256": "38db6c1ce9e49e4b68b45bcc894c4e15b05dbbce7e2b02a582a586e4819b5016",
+   "name": "llama2.c stories110M (MIT), converted by research/cqis-model-contract/stories110m.py",
+   "preparation_sha256": "a8b616f3190ac169d4f801c978ac2e28e0faa00e4537d9f80e32c6dd19bab92a",
+   "row_blocks": "head matmul 6+15+10 = 31 bits in two row blocks of the head weight (RFC-0026 A6); embedding gather in two blocks of 32 tokens (E16-04)",
+   "scales_sha256": "44c600cdfabe216a6f4d6479a8bbc2fdd27552b47f112bc0e554c75e37b9c019",
+   "shape": {
+    "context": 1024,
+    "d": 768,
+    "head_width": 64,
+    "heads": 12,
+    "hidden": 2048,
+    "kv_heads": 12,
+    "layers": 12,
+    "vocabulary": 32000
+   },
+   "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories110M.bin sha256 515267168726a1ed1317a64a408492e6af3b67c1f71c5bd98c01d9d721803a24"
+  },
+  "proof_sha256": "0cd59f67fa67975b5d663ae6d3ce3fc6082db0c1d925c34a2176b88d05636fbc",
+  "public_sha256": "40d49569ac5dfc144af1a0858687f048d80f8ab7a35b1d926d96f75a699067be",
+  "statement": {
+   "T": "64",
+   "checked": "23..64",
+   "cqis_id": "6b406c38946bca01fc34e640bcfaa72613c4b3b34bf632657ea63912618f7c02",
+   "model": "b6e5f3adfff5dcb085caf0a3a186741bc61c7b15125e659739374fce3801f1f6",
+   "next": "940",
+   "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,5447,411,14568,310,11308,29889,2296,5131,304,10784,29890,372,29892,541,372,471,2086,1880,29889,29871,13,29903,566,1145,368,29892,263,8023,4257,5918,2996,491,29889"
+  },
+  "threads": 128
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is GNU time maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "30aae7111ed001acb9b32f812fe236ebac4f1ab5df90798f4c1b36bf7ee09ba6",
+ "profile": "development",
+ "prompt_tokens": 24,
+ "proof_size_bytes": 126754429,
+ "prover_time_ns": 1978970000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment": 42658597580,
+  "prove_dev_wall": 1978970000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 69360000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/stories110m-t64"
+}

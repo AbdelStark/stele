@@ -5,7 +5,7 @@ Status: Draft · Version: 0.1.0 · Depends: RFC-0002, RFC-0008 (A2, A5), RFC-001
 Resolves Q12 when Accepted. Until then the texts below stand and no proof is admitted
 to `standard` or `treaty`. Tasks: E21-01, E21-04, E12-03.
 
-Related work under review when this draft was merged with `main` at `21710de`: tasks
+Related work under review when this draft was merged with `main`: tasks
 E12-20 to E12-22 answer Q12 for the classical random-oracle model with the same
 per-round reading, a slack of 8 bits and counted grinding, as amendments to RFC-0012,
 RFC-0010 and RFC-0002. If they are Accepted first they are the law. This RFC is then

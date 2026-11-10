@@ -56,7 +56,7 @@ is regenerated from the fit (never hand-edited numbers).
     ladder that starts below W8 and ends above W1, and reads it from one generated
     table.
   - **Added text, §2.** "The ladder rungs of RFC-0027 §3 are workloads: `L0`, `L1`,
-    `L2a`, `L2b`, `L3a`, `L3b`, `L3c` (identical to W1), `L4` (W3), `L5`, `L6`. A
+    `L2a`, `L2b`, `L2c`, `L3a`, `L3b`, `L3c` (identical to W1), `L4` (W3), `L5`, `L6`. A
     development record keeps the `dev/<name>` form of A1 and names its rung in
     `model_config.rung`; records made before this amendment are mapped to their rung
     by the generator. A `standard` or `treaty` record uses the rung id as its

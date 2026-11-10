@@ -1891,10 +1891,33 @@ there is no new line kind, label or challenge.
 Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
 review in the E16-19 PR).
 
+## ADR-093: llama2.c stories110M through the development prover (RFC-0026 A6, RFC-0018 A1, task E16-20)
+
+Context: E16-19 removed the 30-bit matmul limit that kept models larger than stories42M
+out of the development prover. stories110M (d = 768, 12 layers, V = 32000) is the next
+llama2.c checkpoint. Its head matmul has 31 bits.
+
+Decision:
+- `research/cqis-model-contract/stories110m.py` reuses the stories42M pipeline and CQIS
+  configuration at the new shape. It pins its own inputs and outputs by SHA-256; the
+  `.bin` digest equals the Hugging Face LFS digest. `stories42m.py` gains a `BIN` name,
+  and its own pinned digests are unchanged.
+- One proof at T = 64 is recorded in `bench/ledger/e16-20-dev-stories110m.json`, with the
+  four supplied-proof tampers rejected. The head is proven as two row blocks (A6).
+
+Consequences: fidelity is informative only
+(`agents/reviews/e16-20-stories110m/fidelity.json`). The validation perplexity is 2.124
+in fp32 and 2.130 under CQIS. The greedy continuations agree on 7 tokens, then diverge
+into different fluent text. The proof is about the CQIS continuation. Prove time and
+peak memory grow faster than the parameter count: 1979 s and 109.7 GB on the measured
+host. That host differs from E16-18, so the times are not compared.
+
+Status: Accepted (owner authorisation; independent review in the E16-20 PR).
+
 ## ADR-095: Adopt the build program — tiers, ladder, lanes, milestones (RFC-0027, RFC-0018 A2, task E17-00)
 
-Numbering: ADR-091, ADR-093 and ADR-094 are reserved by changes under review (tasks
-E12-22, E16-20 and E12-11), so this record and the next take 095 and 096.
+Numbering: ADR-091 and ADR-094 are reserved by changes under review (tasks E12-22 and
+E12-11), so this record and the next take 095 and 096.
 
 Context: the owner asked for an assessment of the project and a plan to build the
 leading prover of inference in the order "make it work, make it fast, make it right",
@@ -1953,12 +1976,13 @@ Consequences:
 - Agents read `docs/plan.md` and the lane rules before picking a task; AGENTS.md,
   the workflows, the skills and the templates are updated in the same change.
 - No soundness ledger line, cost-model constant or proof byte changes.
-- This record was merged with `main` at `21710de`. E16-17 (ADR-090) had delivered the
-  work pool, so task E20-02 keeps the parallel checks only. E16-19 (ADR-092) had
-  delivered row blocks, which task E22-03 uses. The E16-18 ledgers are the L1 and L2a
-  baseline, with two records from the planning host at `21710de`. The lane rule
-  allows a stack inside a lane, as the changes under review use. `docs/plan.md` §6
-  lists that work and how the plan absorbs it.
+- This record was merged with `main` after E16-17 to E16-20. E16-17 (ADR-090) had
+  delivered the work pool, so task E20-02 keeps the parallel checks only. E16-19
+  (ADR-092) had delivered row blocks, which task E22-03 uses. The E16-18 ledgers are
+  the L1 and L2a baseline, with two records from the planning host at `21710de`.
+  stories110M (E16-20, ADR-093) is rung L2c. The lane rule allows a stack inside a
+  lane, as the changes under review use. `docs/plan.md` §6 lists that work and how
+  the plan absorbs it.
 
 Status: Accepted (owner-directed; the lane, tier and gate definitions are the
 planning agent's proposal within that direction and are listed for the owner's

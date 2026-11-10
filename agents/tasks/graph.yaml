@@ -2939,6 +2939,24 @@ tasks:
   - exact recombination argued (Lemma S); block selection plan-derived; matmul-out discipline requires the blocks to cover every entry
   - deletion survey with row blocks (check_except) kills every block; engine controls tamper each block
   - proof bytes of the pinned E16-10 fixtures unchanged
+- id: E16-20
+  epic: E16
+  title: A larger real Llama through the development prover (llama2.c stories110M, T = 64)
+  depends:
+  - E16-19
+  rfc:
+  - RFC-0026 §7
+  - RFC-0026 A6
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-bench
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-20-stories110m
+  acceptance:
+  - stories110M converted with every input and output pinned by SHA-256 and the layout permutation checked against the original fp32 forward
+  - fidelity (fp32 vs CQIS) recorded as informative; the head matmul (31 bits) proven in two row blocks
+  - bench/ledger entry for prove/verify time, proof size and peak memory, with the four supplied-proof tampers rejected
 - id: E17-00
   epic: E17
   title: Baseline reproduction on the planning host and its ledger

@@ -221,7 +221,7 @@ build lane states which cell it moves or which risk it retires.
 |---|---|---|---|
 | L0 | synthetic, 1 layer, d 64 | T 16 | required CI smoke |
 | L1 | synthetic, 8 layers, d 64 | T 64 | regression and profiling |
-| L2 | stories42M (d 512, 8 layers, V 32000) | a: T 64 · b: T 1,024 | first real checkpoint |
+| L2 | stories42M (d 512, 8 layers, V 32000); stories110M (d 768, 12 layers) | a: T 64 · b: T 1,024 · c: stories110M at T 64 | first real checkpoints |
 | L3 | Llama-3.1-8B, G7 configuration | a: T 64 · b: T 1,024 · c: 4,096 + 512 (W1) | first light, then the headline |
 | L4 | Llama-3.1-70B | 4,096 + 512 (W3) | scale |
 | L5 | 400B mixture-of-experts, Maverick shape | 1,024 × batch 24 | head-to-head |
@@ -284,19 +284,20 @@ which tasks are superseded, which are parked and which resume at which gate.
 
 ### Work under review at the merge
 
-Three lines of work were open against `main` when this plan was merged with it at
-`21710de`. None of it is law until it is Accepted on `main`. Each row says how the
-plan absorbs it.
+Two lines of work were open against `main` when this plan was merged with it. None
+of it is law until it is Accepted on `main`. Each row says how the plan absorbs it.
 
 | Work under review | Tasks | What it decides | When it is Accepted |
 |---|---|---|---|
 | Fiat–Shamir and profile security (Q12) | E12-20, E12-21, E12-22 | A per-round bound with counted grinding and 8 bits of slack; Policy 2 query counts for `standard`; a per-query profile definition (RFC-0012 A17, RFC-0010 A14, RFC-0002 A1). | It is the law for Q12, and RFC-0030 is re-based on it. Both read security per round. They differ on grinding: RFC-0030 counts none and caps the lookup instance and the commitment row instead. Task E21-01 then keeps the ledger report, the plan validation and the treaty field. Policy 3 of RFC-0029 is restated against Policy 2. |
 | Zero knowledge on the development path | E12-10 to E12-13 | Hiding Circle sources with salted leaves and a masked sumcheck (RFC-0013 A2, RFC-0010 A15, RFC-0012 A18). | Lane Z starts from it. Task E23-01 decides only what commitment scheme v3 adds (RFC-0013 A3). |
-| stories110M | E16-20 | A second real checkpoint through the development prover, on the row blocks of RFC-0026 A6. | It becomes a rung between L2 and L3 by an RFC-0018 amendment. |
 
-Their ids are reserved (Workflow 12 step 4): ADR-091, ADR-093 and ADR-094; RFC-0013
-A2; RFC-0012 A17 and A18; RFC-0010 A14 and A15; NC-0806, NC-0807 and NC-0902 to
-NC-0906.
+Their ids are reserved (Workflow 12 step 4): ADR-091 and ADR-094; RFC-0013 A2;
+RFC-0012 A17 and A18; RFC-0010 A14 and A15; NC-0806, NC-0807 and NC-0902 to NC-0906.
+
+Four changes merged while this plan was under review and are already counted in it:
+the work pool (E16-17), the refreshed ledgers (E16-18), row blocks (E16-19) and
+stories110M (E16-20, rung L2c).
 
 ### First ten moves
 

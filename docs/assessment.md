@@ -4,12 +4,12 @@ This is the evidence base for the build program ([`docs/plan.md`](plan.md), RFC-
 Every Stele number below comes from a `bench/ledger/` record or from a command stated
 here. External numbers are quoted with their source and statement (RFC-0018 rule 3).
 
-The assessment was made at `6441a90` and merged with `main` at `21710de`. In between,
-`main` gained a rayon work pool (E16-17, ADR-090), new ledgers with the model
-commitment timed alone (E16-18) and the row-block split of matmuls past 30 bits
-(E16-19, RFC-0026 A6). Section 3 is restated at the merged tree. Sections 1, 4 and 5
-are unchanged by those three changes. Work that was under review at the merge is
-listed in [plan §6](plan.md#work-under-review-at-the-merge).
+The assessment was made at `6441a90`. Before it merged, `main` gained a rayon work
+pool (E16-17, ADR-090), new ledgers with the model commitment timed alone (E16-18),
+the row-block split of matmuls past 30 bits (E16-19, RFC-0026 A6) and a second real
+checkpoint, stories110M (E16-20). Section 3 is restated with all four. Sections 1, 4
+and 5 are unchanged by them. Work that was under review at the merge is listed in
+[plan §6](plan.md#work-under-review-at-the-merge).
 
 ## 1. Verdict
 
@@ -47,7 +47,7 @@ Three facts decide the plan:
 | Codes and PCS | circle-RS encoder; v2 expander encoder; Ligero-style source with certificate and functional opening; retained-row fused opening | E4-01..04, E4-08 done |
 | CQIS | integer semantics for Llama and GPT-2 families; quantiser; tables; native and NumPy executors; real GPT-2-small and Llama-3.1-8B conversion | E5-01..04 done; RFC-0025 |
 | Fidelity | Llama-3.1-8B, full protocol, paired standard errors, attribution | `harness/eval/REPORT.md`; E5-05..05g |
-| End to end | one prefill window, greedy exact-match, development profile, CPU; matmuls past 30 bits split into row blocks | E16-01..19 merged; RFC-0026 (A1 to A6) |
+| End to end | one prefill window, greedy exact-match, development profile, CPU; matmuls past 30 bits split into row blocks | E16-01..20 merged; RFC-0026 (A1 to A6) |
 | GPU, distribution, wrapper, passport, `stele-verifier` | empty scaffolds (9 to 10 lines each) | `crates/stele-{gpu,dist,wrapper,passport,kernels,py,verifier}` |
 
 Volume (tracked files at `6441a90`, counted with `git ls-tree -r` and `wc -l`): about
@@ -72,6 +72,8 @@ Ledgers, all for one prefill window of 64 tokens:
 - 24 hardware threads (Intel Core Ultra 9 285K), commit `e813ce1`:
   [`e16-18-dev-synthetic-8layer`](../bench/ledger/e16-18-dev-synthetic-8layer.json),
   [`e16-18-dev-stories42m`](../bench/ledger/e16-18-dev-stories42m.json);
+- 128 hardware threads (AMD EPYC 7532), commit `445c9b0`:
+  [`e16-20-dev-stories110m`](../bench/ledger/e16-20-dev-stories110m.json);
 - the same host class before the work pool, commit `f6db15e`:
   [`e16-11-dev-synthetic-8layer`](../bench/ledger/e16-11-dev-synthetic-8layer.json),
   [`e16-11-dev-stories42m`](../bench/ledger/e16-11-dev-stories42m.json);
@@ -90,8 +92,9 @@ Ledgers, all for one prefill window of 64 tokens:
 | same | Xeon, 1 | `21710de` | 103.6 s | 7.9 s | 45.0 MB | 2.6 GB |
 | same, before the work pool | Xeon, 4 | `6441a90` | 55.7 s | 7.0 s | 45.0 MB | 2.6 GB |
 | same, before the work pool | Core Ultra 9, 24 | `f6db15e` | 34.3 s | 5.1 s | 45.0 MB | 2.6 GB |
-| stories42M, d 512, V 32000 | Core Ultra 9, 24 | `e813ce1` | 474 s | 24.3 s | 113.4 MB | 38.4 GB |
+| stories42M, d 512, 8 layers, V 32000 | Core Ultra 9, 24 | `e813ce1` | 474 s | 24.3 s | 113.4 MB | 38.4 GB |
 | same, before the work pool | Core Ultra 9, 24 | `f6db15e` | 719 s | 45.2 s | 113.4 MB | 37.4 GB |
+| stories110M, d 768, 12 layers, V 32000 | EPYC 7532, 128 | `445c9b0` | 1,979 s | 69.4 s | 126.8 MB | 109.7 GB |
 
 Findings:
 
@@ -131,8 +134,12 @@ Findings:
   20 million padded positions (the 21 LU numerators in the verifier's ledger sum to
   20.6 million, tables included). That is roughly 1,000 cells and 600 lookup
   positions per token, layer and unit of width.
-- **Memory is one shot.** Every column is `i64`, every sumcheck table is a dense
-  QM31 vector, and the whole window is resident. stories42M at T = 64 needs 38 GB.
+- **Memory is one shot, and it decides first light.** Every column is `i64`, every
+  sumcheck table is a dense QM31 vector, and the whole window is resident. At T = 64,
+  stories42M needs 38 GB and stories110M needs 110 GB. That is 9 to 12 MB per layer
+  and unit of width. At that rate Llama-3.1-8B (32 layers, d 4096) would need more
+  than a terabyte for 64 tokens. This is a projection from two records, not a
+  measurement. It is why the first-light gate depends on segments (task E18-06).
 - **The verifier is linear in public data and slow.** 24 s for stories42M on 24
   threads. On the synthetic model, 3 of the 6 samples taken during verification at
   `6441a90` (same method) were in re-deriving the relation (table generation
