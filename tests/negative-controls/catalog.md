@@ -142,6 +142,9 @@
 | NC-0914 | dev-zk fraction | 0008 A7 | one layer mask-block entry changed after commitment: its row symbol in the shared opening | `RootMismatch` | done |
 | NC-0915 | dev-zk claim | 0013 A5 | batch weight on the w = 1 half made nonzero, sum-preserving, by an alternative batch prover | `FinalEvaluationMismatch` | done |
 | NC-0916 | dev-zk claim | 0013 A5 | A4's NC-0908 attack on a composed relation over honest sources: free rounds, μ solved last, true finals | `RoundSumMismatch` | done |
+| NC-0917 | dev-zk fraction | 0008 A7 | a later GKR step's head final (1 − s)·eq(r, x) changed, the step kept intact (free rounds, μ solved last) | `ClaimMismatch` | done |
+| NC-0918 | dev-zk fraction | 0008 A7 | a later GKR step's selector final S_p changed, the step kept intact (free rounds, μ solved last) | `ClaimMismatch` | done |
+| NC-0919 | dev-zk fraction | 0008 A7 | false lookup with the true top p, q and h ≠ p/q shifted to Σh = 0, the top identity h·q − p = 0 forged | `RoundSumMismatch` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |

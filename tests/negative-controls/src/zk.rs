@@ -774,6 +774,52 @@ fn nc_0914() -> Result<(), String> {
     )
 }
 
+/// NC-0917 and NC-0918 (RFC-0008 A7 item 4): the leaf step (a later step) reveals
+/// its head `(1 − s)·eq(r, x)` (input 0) or its selector `S_p` (input 1) plus one.
+/// Its rounds are free and `μ` is solved last, so the step's final check passes.
+/// The verifier's own evaluation of that public final rejects it.
+fn nc_public_final(input: usize) -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let t = || Transcript::<QM31>::new(b"dev-zk lookup control").expect("transcript");
+    let forged = claims::forge_final(
+        &lookup_statement(),
+        &lookup_witness(),
+        Seed::new([15; 32]),
+        &mut t(),
+        1,
+        input,
+    )
+    .map_err(|e| format!("forger: {e:?}"))?;
+    lookup_control(
+        &ForgedProof(forged),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::ClaimMismatch),
+    )
+}
+
+/// NC-0919 (RFC-0008 A7 item 3): a false lookup (`x = 2` once, not a table row)
+/// with the true top `p, q` committed and `h = p/q` shifted at one entry, so that
+/// `Σ h = 0` holds. The adversary forges the top identity `h·q − p = 0` (free rounds,
+/// `μ` solved last). Every other step is honest, so the shared batch, which binds
+/// that identity's `μ`, rejects it.
+fn nc_0919() -> Result<(), String> {
+    use stele_reductions::zk::{claims, Seed};
+    let t = || Transcript::<QM31>::new(b"dev-zk lookup control").expect("transcript");
+    let mut false_witness = lookup_witness();
+    false_witness[0][3] = M31::from_i64(2);
+    let forged = claims::forge_ratio(
+        &lookup_statement(),
+        &false_witness,
+        Seed::new([16; 32]),
+        &mut t(),
+        0,
+    )
+    .map_err(|e| format!("forger: {e:?}"))?;
+    lookup_control(
+        &ForgedProof(forged),
+        stele_reductions::zk::Error::Sumcheck(SumcheckError::RoundSumMismatch),
+    )
+}
+
 /// Execute one hiding-source control in both challenge fields.
 pub fn run(id: u16) -> Result<(), String> {
     match id {
@@ -784,6 +830,9 @@ pub fn run(id: u16) -> Result<(), String> {
         913 => nc_0913(),
         914 => nc_0914(),
         916 => nc_0916(),
+        917 => nc_public_final(0),
+        918 => nc_public_final(1),
+        919 => nc_0919(),
         907 => nc_0907(),
         908 => nc_0908(),
         904 | 905 => nc_masked(id),
