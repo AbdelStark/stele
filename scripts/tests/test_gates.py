@@ -14,8 +14,9 @@ class GateTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = pathlib.Path(self.directory.name)
+        # harness/ is copied because docs link into it (RFC-0004 links harness/eval/REPORT.md).
         for name in ('.github', 'scripts', 'crates', 'docs', 'tests', 'bench',
-                     'agents', 'research', 'formal'):
+                     'agents', 'research', 'formal', 'harness'):
             shutil.copytree(ROOT / name, self.root / name)
         for name in ('README.md', 'Cargo.toml', 'Cargo.lock'):
             shutil.copy(ROOT / name, self.root / name)
