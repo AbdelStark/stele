@@ -326,18 +326,24 @@ Controls: NC-0907 (another seed's mask source substituted: `α` moves,
 certificate and one opening per masked instance; no constant moves.
 Affected task: E12-15. A1 stays Draft; R1 and R3–R13 remain.
 
-### A4 — Masked claims and the dev-zk composition (closes design-note R1 for the development path)
+### A5 — Masked claims and the dev-zk composition (closes design-note R1 for the development path)
 
 Status: Accepted, conditional scope only. The dev-zk profile is defined here and
-is admitted only once implemented (item 8). Question Q29. Task E12-17.
+is admitted only once implemented (item 8). Relation to the Draft A3 (scheme v3,
+ADR-096): A5 is A3's candidate A item 4 (evaluation claims never sent in the
+clear) and item 6 (a leak list) made concrete for the development tier on
+version-1 Circle sources, as A3 anticipates. Under RFC-0028's commit rule (Draft),
+claims on virtual columns are intermediate sumcheck claims. They take RFC-0008
+A7's per-layer mask blocks (ZK-GKR), not claim masks. A5 decides nothing for scheme
+v3 or for the `standard` profile of RFC-0030. Question Q29. Task E12-17.
 Evidence: [masked claims note](../../formal/zk-claims.md) (Lemmas 6′ and 7,
 abort bounds, census) and the exact small-field checks
-`research/zk-claims/check_view.py` and `check_two.py`. Companions: RFC-0026 A6
+`research/zk-claims/check_view.py` and `check_two.py`. Companions: RFC-0026 A9
 (relation forms, padding, profile tag) and RFC-0008 A7 (committed-fraction
-lookups). Review: [same-author passes](../../agents/reviews/rfc0013-a4-acceptance.md).
-Decision: ADR-096 (number to be confirmed by the coordinator).
+lookups). Review: [same-author passes](../../agents/reviews/rfc0013-a5-acceptance.md).
+Decision: ADR-098.
 
-Motivation: A2/A3 make every masked sumcheck simulatable from its final values,
+Motivation: A2/A4 make every masked sumcheck simulatable from its final values,
 and every hiding source simulatable from its opened values. The final values
 themselves (column evaluations, matmul `out~(ρ)`, lookup layer claims) still
 reveal the witness. A4 masks every revealed claim and fixes the composition.
@@ -357,7 +363,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    `V̇_{x,a}(X) = x̃(X|vars_a) + κ(X_{v_a})·r̃_x(a, X_{u_a})`, with
    `κ(t) = t(1 − t)`. The revealed final value is
    `c_a = x̃(ρ|vars_a) + κ(ρ_{v_a})·r̃_x(a, ρ_{u_a})`. Public columns and tables
-   are not masked. A domain must have at least `c_D + 1` variables (RFC-0026 A6
+   are not masked. A domain must have at least `c_D + 1` variables (RFC-0026 A9
    padding).
 3. **Degrees.** Each masked factor adds one to the degree of its own vanishing
    variable. The A1 instance's degree bound is the per-variable maximum:
@@ -379,7 +385,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
 5. **Batching per source.** After all relation instances, each source with
    claims runs:
    - batch coefficients `γ_a` (`BatchCoefficient`);
-   - one A3 bound masked sumcheck of
+   - one A4 bound masked sumcheck of
      `Σ_{w,x} (1 − w)·W(x)·M̃'(w, x) = Σ_a γ_a·c_a`, over the source's row bit
      `w` and its data bits (`Y = 0` face), with `W = Σ γ_a w_a` the claims' data
      weights;
@@ -392,8 +398,8 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    sumcheck's mask polynomial `g_j` (a sum of univariates, as `D` limb rows) and
    every RFC-0008 A7 layer block. It is committed and absorbed before the first
    masked instance. Each `μ_j = g_j(ρ_j)` and each block claim is a linear claim
-   on it, batched by item 5 and opened once. Only that batch uses an RFC-0013 A3
-   two-block mask source, one per proof. This replaces one A3 source per
+   on it, batched by item 5 and opened once. Only that batch uses an RFC-0013 A4
+   two-block mask source, one per proof. This replaces one A4 source per
    instance. Soundness: each `g_j` is bound before its `G_j` is absorbed, and the
    `μ_j` are bound by the batch's RLC. Privacy: Lemma 4 per instance, and
    Lemma 7 for the batch.
@@ -416,7 +422,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    blocks, a fresh set for each proof, in proof order. The prover refuses beyond
    either budget. Declared not hidden: the design note §7
    list, which includes the plan and every shape.
-8. **Profile flag.** `dev-zk` is profile byte 1 (RFC-0026 A6). It is
+8. **Profile flag.** `dev-zk` is profile byte 1 (RFC-0026 A9). It is
    **defined**, not admitted. No verifier accepts it, and the CLI does not
    offer it, until E12-18, E12-19 and E12-14 deliver:
    - the implementation;
@@ -454,7 +460,7 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
 | NC-0914 | RFC-0008 A7 layer mask-block entry changed after commitment | `RootMismatch` |
 | NC-0915 | batch weight on the `w = 1` half made nonzero | `FinalEvaluationMismatch` |
 
-Soundness impact: the SC degrees of item 3; RFC-0008 A7's lines; A3's MASK and
+Soundness impact: the SC degrees of item 3; RFC-0008 A7's lines; A4's MASK and
 PCS terms per instance and per source. No new label. A1 stays Draft for the
 standard and treaty profiles: expander sources, the 5% target and GPU parity.
 Affected tasks: E12-18, E12-19, E12-14.

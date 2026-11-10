@@ -983,10 +983,12 @@ gate. Affected tasks: E20-02, E20-09, E22-04.
 Control: a member value moved across an instance boundary without its multiplicity
 is rejected by the receiving instance's root equation (`RootMismatch`).
 
-- **A6 — dev-zk relation forms (companion of RFC-0013 A4, task E12-17).**
-  Accepted at conditional scope with ADR-096. It applies only to proofs whose
-  profile tag is dev-zk (RFC-0013 A4 item 8). Plain development proofs are
-  unchanged.
+- **A9 — dev-zk relation forms (companion of RFC-0013 A5, task E12-17).**
+  Accepted at conditional scope with ADR-098. It applies only to proofs whose
+  profile tag is dev-zk (RFC-0013 A5 item 8). Plain development proofs are
+  unchanged. Numbered A9 after the Draft A7/A8 on main. It assumes Circle sources:
+  dev-zk sources are RFC-0010 A15 hiding sources whether or not the Draft A7 is
+  accepted. Under the Draft A8 every lookup instance is masked on its own.
   - **Profile tag.** §4 step 1's public input gains one byte, `profile`: 0 for
     development, 1 for dev-zk. The verifier derives the statement from it and
     rejects a mismatch with `StatementMismatch`. The byte is part of the
@@ -998,17 +1000,17 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     `B·2^pad < p`.
   - **Identities.** §4 step 4 runs each domain size's combined identity as an
     RFC-0006 A1 instance `Σ_x eq(τ, x)·Σ_k c_k·P_k(x) = 0` (A1 form), where `τ` is
-    drawn with the existing `ZeroWeight` label, as an RFC-0013 A3 bound masked
+    drawn with the existing `ZeroWeight` label, as an RFC-0013 A4 bound masked
     sumcheck. The A3 skip is not used.
   - **Matmul zero-sum.** §4 step 6 replaces "the prover sends `out~(ρ)`" by the
     single A1 instance
     `Σ_{y,(x_shared)} eq(ρ_shared, x_shared)·(lhs·rhs − 2^{−s}·Ȯ)(ρ, y) = 0`.
-    `Ȯ` is `out` broadcast over the summed bits, with its RFC-0013 A4 claim mask
+    `Ȯ` is `out` broadcast over the summed bits, with its RFC-0013 A5 claim mask
     on a summed variable. No `out~(ρ)` is sent. The SZ line `a/|K|` and the SC
-    line are unchanged, with the degree one higher per masked factor (RFC-0013 A4
+    line are unchanged, with the degree one higher per masked factor (RFC-0013 A5
     item 3).
   - **Lookups.** §4 step 5 masks A5's trees per RFC-0008 A7 (ZK-GKR, committed
     top layer).
-  - **Batching and openings.** §4 step 7 uses RFC-0013 A4 item 5 per source in
+  - **Batching and openings.** §4 step 7 uses RFC-0013 A5 item 5 per source in
     place of RFC-0006 A2 mode 1.
-  - **Controls.** NC-0909..0915 are reserved under RFC-0013 A4.
+  - **Controls.** NC-0909..0915 are reserved under RFC-0013 A5.

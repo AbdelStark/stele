@@ -1,4 +1,4 @@
-# RFC-0013 A4 acceptance review (with RFC-0026 A6 and RFC-0008 A7)
+# RFC-0013 A5 acceptance review (with RFC-0026 A9 and RFC-0008 A7)
 
 Decision: accept at conditional scope. The dev-zk profile is defined but not
 admitted until E12-18, E12-19 and E12-14 deliver with their controls, privacy
@@ -14,7 +14,7 @@ same-author passes follow; an independent review is requested.
     the summand equals `lhs·rhs − 2^{−s}out` for every Boolean `y`. The SZ line
     is unchanged.
   - The degree bound rises by one per masked factor in its vanishing variable
-    only, and A4 item 3 charges it.
+    only, and A5 item 3 charges it.
   - I tried a matmul whose `out` is masked on a free variable instead of a summed
     one. The zero-sum then fails for the honest prover. That is why item 2 makes
     `v_a` a summed variable.
@@ -39,7 +39,7 @@ abort with its ledger line, and NC-0915 cover each.
 
 - Every revealed value is one of:
   - a masked claim (Lemma 6′, own block);
-  - an A3-masked round, `G` or `μ` (Lemmas 4–5);
+  - an A4-masked round, `G` or `μ` (Lemmas 4–5);
   - an A2 row or column (Lemmas 1–2);
   - the batch's public sum and opened value (Lemma 7).
 - The exact checks model one and two relations sharing a column and find no leak.
@@ -58,9 +58,9 @@ abort with its ledger line, and NC-0915 cover each.
 
 ## Checklist (Workflow 03)
 
-- RFC: RFC-0013 A4 items 1–10, RFC-0026 A6, RFC-0008 A7 items 1–10.
+- RFC: RFC-0013 A5 items 1–10, RFC-0026 A9, RFC-0008 A7 items 1–10.
 - Challenges: existing labels only (`ZeroWeight`, A1, A5, `relation/roots`,
-  `BatchCoefficient`, A18). Their order is A4 item 6.
+  `BatchCoefficient`, A18). Their order is A5 item 6.
 - Claims: every claim is consumed by its source's batch and one opening.
 - Bindings and controls: NC-0909..0915 reserved `todo`.
 - Ledger: SC degrees, A7's lines, MASK and PCS per instance and per source.
@@ -80,8 +80,8 @@ M31 entries with hiding, against `3.3·10^8` for committed fractions.
 `check_gkr.py` finds the masked two-layer view private. Removing the masks,
 removing the mask rows, sharing the `t` blocks, or a `2D` block each leaks.
 
-A7 is rewritten to ZK-GKR before merge. A4 gains item 5a: one shared mask
-source per proof, with batched `μ` openings, in place of one A3 source per
+A7 is rewritten to ZK-GKR before merge. A5 gains item 5a: one shared mask
+source per proof, with batched `μ` openings, in place of one A4 source per
 instance. Soundness pass:
 - A5's order and `e` are unchanged.
 - Each masked step is a GKR step whose extra `s = 1` half is a claim on a block
@@ -91,4 +91,4 @@ instance. Soundness pass:
 
 Privacy pass:
 - The block rank `3D` is a producer abort.
-- The top and the leaves are A4 masked claims.
+- The top and the leaves are A5 masked claims.

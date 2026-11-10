@@ -2560,11 +2560,11 @@ tasks:
   - Lemma 6 proved; Lemma 7 and the executable small-field check listed as the gate before any implementation
 - id: E12-17
   epic: E12
-  title: RFC-0013 A4 masked claims and dev-zk composition (with RFC-0026 A6, RFC-0008 A7)
+  title: RFC-0013 A5 masked claims and dev-zk composition (with RFC-0026 A9, RFC-0008 A7)
   depends:
   - E12-16
   rfc:
-  - RFC-0013 A4
+  - RFC-0013 A5
   skill: rfc-author
   crate: docs
   status: in_progress
@@ -2576,17 +2576,17 @@ tasks:
   - census on the one- and eight-layer windows and a labelled cost projection; two same-author passes recorded
 - id: E12-18
   epic: E12
-  title: Masked claims and matmul zero-sum in the engine (RFC-0013 A4 items 1-5)
+  title: Masked claims and matmul zero-sum in the engine (RFC-0013 A5 items 1-5)
   depends:
   - E12-17
   rfc:
-  - RFC-0013 A4
-  - RFC-0026 A6
+  - RFC-0013 A5
+  - RFC-0026 A9
   skill: sumcheck-prover-engineer
   crate: stele-sumcheck+stele-reductions
   status: ready
   acceptance:
-  - V-dot occurrences, padding, matmul zero-sum and per-source batching as A4; claim-block rank abort
+  - V-dot occurrences, padding, matmul zero-sum and per-source batching as A5; claim-block rank abort
   - tests that proofs verify and claims are masked; NC-0909, NC-0910, NC-0911, NC-0915
 - id: E12-19
   epic: E12
@@ -2608,12 +2608,12 @@ tasks:
   - E12-19
   rfc:
   - RFC-0013 A1
-  - RFC-0013 A4
+  - RFC-0013 A5
   skill: soundness-auditor
   crate: stele-reductions+stele-prover
   status: ready
   acceptance:
-  - end-to-end dev-zk prove/verify on the one- and eight-layer synthetic windows under RFC-0013 A4, with privacy tests
+  - end-to-end dev-zk prove/verify on the one- and eight-layer synthetic windows under RFC-0013 A5, with privacy tests
   - NC-0912 and NC-0909..0915 executed; profile byte admitted only after independent review
 - id: E13-01
   epic: E13
