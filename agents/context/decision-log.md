@@ -1851,3 +1851,42 @@ Decision:
   reproducible across machines, so ledgers must not record them from `std` builds.
 
 Status: Accepted.
+
+## ADR-091: Row-block split of matmuls past MAX_VARS through fixed Ref bits (RFC-0026 A6, task E16-19)
+
+Context: every relation domain is capped at 30 bits (RFC-0026 §3.1). A `Ref` could
+only permute or drop domain bits, so projections and attention rejected any matmul
+past the cap with `Unsupported::Domain`. The llama2.c stories110M head
+(`6 + 15 + 10 = 31` bits) was the first real model to hit it. Only the E16-04
+embedding gather split, through per-block columns.
+
+Decision:
+- A matmul `Ref` may fix a column bit to 0 or 1 (`Ref::FIXED_0 = 0xFE`,
+  `Ref::FIXED_1 = 0xFF` in `vars`). Identity and lookup refs may not, so zerochecks
+  and lookups are unchanged.
+- One shared declare-time helper, `Relation::add_matmul`, splits a matmul past the
+  cap on its split bit: the highest free bit `rhs` reads, or the highest free bit
+  when it reads none. It recurses until every block fits, block 0 first. A matmul that
+  fits is pushed unchanged, so existing plans keep their digests and proof bytes
+  (the E16-10 FNV pins hold).
+- Splitting on a bit of `rhs` cuts a projection's weight into row blocks. The engine's
+  operand table skips entries outside a block, so the weight is read once in total
+  and the activation once per block.
+- Range discipline: a split `out` is enforced when the slices of its qualifying
+  matmuls cover every entry.
+- Projections (the head included) and attention declare every matmul through the
+  helper. They reject only identity domains past 30 bits.
+- The embedding keeps its E16-04 construction. It is exact and already plan-fixed;
+  moving it onto fixed bits would drop its recombination identity, and is left open.
+
+Alternatives considered: separate weight columns per block, which would change the
+model commitment (§2.2) and the A5 layout. Per-block output columns with a
+recombination identity, as in E16-04: it adds witness columns and one identity term
+per block, where the fixed-bit form adds neither.
+
+Consequences: matmul shapes are bounded only by their identity domains and by the
+A5 per-weight cap of `2^30` entries. Each block adds one matmul's SZ and SC lines;
+there is no new line kind, label or challenge.
+
+Status: Accepted (owner authorisation for autonomous amendment acceptance; independent
+review in the E16-19 PR).

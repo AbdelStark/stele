@@ -307,6 +307,61 @@ fn matmuls() -> Fixture {
     f
 }
 
+/// The two `matmuls()` products, each split once into row blocks (RFC-0026 A6): `xw` on
+/// the column bit `j` that `w` reads (fixed in `y` and `w`), `pv` on its shared head bit `h` (fixed in
+/// `o`, `p` and `v`). The `y` and `o` columns carry no range of their own: the blocks
+/// together discipline them by the matmul-out rule.
+fn split_matmuls() -> Fixture {
+    let honest = matmuls();
+    let mut rel = honest.rel.clone();
+    let products = core::mem::take(&mut rel.matmuls);
+    rel.ranges
+        .retain(|range| range.name != "range2" && range.name != "range5");
+    for mm in products {
+        rel.add_matmul_within(mm, 2);
+    }
+    let names: Vec<&str> = rel.matmuls.iter().map(|m| m.name.as_str()).collect();
+    assert_eq!(names, ["xw/block0", "xw/block1", "pv/block0", "pv/block1"]);
+    assert_eq!(rel.matmuls[3].rhs.vars, [1, Ref::FIXED_1]);
+    let mut f = Fixture {
+        values: Values::new(&rel),
+        rel,
+    };
+    for id in 0..6 {
+        f.set(ColumnId(id), honest.get(ColumnId(id)));
+    }
+    f
+}
+
+#[test]
+fn accepts_split_matmuls() {
+    let f = split_matmuls();
+    assert_eq!(check(&f.rel, &f.values), Ok(()));
+    let ledger = run(&f).expect("engine");
+    println!("{ledger}");
+}
+
+#[test]
+fn rejects_out_tamper_in_each_row_block() {
+    // y index 1 is (i = 0, j = 1): block 1 of xw; o index 1 is (h = 0, i = 1): block 0 of pv.
+    for (column, index, block) in [
+        (2, 1, "xw/block1"),
+        (2, 2, "xw/block0"),
+        (5, 1, "pv/block0"),
+        (5, 3, "pv/block1"),
+    ] {
+        let mut f = split_matmuls();
+        let mut v = f.get(ColumnId(column));
+        v[index] += 1;
+        f.set(ColumnId(column), v);
+        assert!(
+            matches!(check(&f.rel, &f.values), Err(Violation::Matmul { relation, .. }) if relation == block),
+            "{block}"
+        );
+        assert!(run(&f).is_err(), "{block}: engine");
+    }
+}
+
 /// A 24-bit column composed from range-checked limbs, and a matmul out disciplined by
 /// its worst case alone (RFC-0026 §3.5a, §3.6 item 3).
 fn composes() -> Fixture {
