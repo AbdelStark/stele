@@ -32,6 +32,38 @@ honest draw with a short rank leaks, so these rank conditions must be producer
 aborts. In this tiny field they fail in about 1 draw in 12; at M31 the bound is
 `D·t·ℓ/p`.
 
-Scope: one column, one source, one batch. The note's item 2 extends this to two
-relations sharing a column and to correlated claim points. This is not a proof
-of the composed protocol, and it earns no NC credit.
+## Two relations sharing a column
+
+Run `python3 research/zk-claims/check_two.py` (about one minute).
+
+Model:
+- Field: `F_97 ⊂ F_97[i]/(i² − 5)` (`D = 2`).
+- Source: one hiding source with five columns (x, y, z, w, o) and their
+  per-claim mask blocks (formal/zk-claims.md §2.1a).
+- Identity `x·y − z = 0` on a 3-variable domain, with masked claims on x, y
+  and z at one point.
+- Matmul zero-sum `o(i) = Σ_k x(i,k)·w(k)`, with masked claims on x (a second,
+  correlated claim on the same column, in its own block), on w, and on o
+  through `Ȯ` on a summed bit.
+- The A2 certificate, the zero-weight batch with a Lemma 4 mask, the opening
+  row and the queried columns.
+
+Result over 12 draws without a public abort per case:
+
+| Case | Private in |
+|---|---|
+| honest, 6 queried positions | 12 of 12 |
+| honest, 15 queried positions (`C − 1`, the budget) | 12 of 12 |
+| claim masks removed | 0 |
+| mask rows removed | 0 |
+| batch sumcheck mask removed | 0 |
+| the second x claim reusing the first one's mask block | 0 |
+| 17 queried positions, above the budget | 0 |
+
+The shared-block case is why each claim occurrence needs its own block
+(Lemma 6′).
+
+## Scope
+
+These are small fixed shapes. They are not a proof of the composed protocol, and
+they earn no NC credit.

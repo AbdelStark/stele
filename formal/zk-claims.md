@@ -440,10 +440,14 @@ same degree.
 ## 6. Exact remaining list for R1
 
 1. **Lemma 7.** Done (§3), after removing `σ_S`.
-2. **Executable check.** Done for one column, one source and its batch
-   (`research/zk-claims/check_view.py`). Still to extend: two relations sharing a
-   column (an identity and a matmul zero-sum with `Ȯ`), and correlated points
-   (item 9).
+2. **Executable check.** Done:
+   - `research/zk-claims/check_view.py`: one column, one source and its batch;
+   - `research/zk-claims/check_two.py`: an identity and a matmul zero-sum
+     sharing column x through two correlated claims in separate blocks, `Ȯ`
+     for the matmul output, and the query budget at `C − 1`.
+
+   Neither finds a leak. Each removed mask leaks, and so does a shared mask
+   block.
 3. **Correlated points (was item 9).** Closed by §2.1a (Lemma 6′).
 3a. **Matmul with shared bits.** RFC-0026 §3.5's `eq(ρ_shared, x_shared)` sum is
    a summed variable too, so it can carry a vanishing factor. Its degree budget
