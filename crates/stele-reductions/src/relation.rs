@@ -451,45 +451,22 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         };
         checks.push(check(id, base + id, name, members, t, entries)?);
     }
-    // RFC-0026 A5: weights, in ColumnId order, are split greedily into model sources
-    // of at most 2^30 entries; inside a source, blocks of 2^n go largest first, ties
-    // in ColumnId order. The same guards as A4.
-    let mut weights: Vec<Weight> = (0..relation.columns.len() as u32)
+    let lengths: Vec<u8> = (0..relation.columns.len())
+        .filter(|i| relation.columns[*i].kind == Kind::Weight)
+        .map(|i| relation.columns[i].log_len)
+        .collect();
+    let (placement, model) = model_plan(&lengths)?;
+    let weights: Vec<Weight> = (0..relation.columns.len() as u32)
         .map(ColumnId)
         .filter(|id| relation.columns[id.0 as usize].kind == Kind::Weight)
-        .map(|column| Weight {
+        .zip(placement)
+        .map(|(column, (source, offset))| Weight {
             column,
             n: relation.columns[column.0 as usize].log_len,
-            source: 0,
-            offset: 0,
+            source,
+            offset,
         })
         .collect();
-    let mut totals: Vec<usize> = Vec::new();
-    for weight in &mut weights {
-        if weight.n > 30 {
-            return Err(Error::Unsupported);
-        }
-        let size = 1usize << weight.n;
-        match totals.last_mut() {
-            Some(total) if *total + size <= MODEL_CAP => *total += size,
-            _ => totals.push(size),
-        }
-        weight.source = totals.len() - 1;
-    }
-    let mut model = Vec::new();
-    for (k, total) in totals.iter().enumerate() {
-        let mut order: Vec<usize> = (0..weights.len())
-            .filter(|w| weights[*w].source == k)
-            .collect();
-        order.sort_by(|a, b| weights[*b].n.cmp(&weights[*a].n));
-        let mut offset = 0usize;
-        for w in order {
-            weights[w].offset = offset;
-            offset += 1 << weights[w].n;
-        }
-        // Aligned blocks summing to at most 2^30 fit 2^ceil(log2 total) <= 2^30.
-        model.push(self::stack(MODEL + k as u64, ceil_log2(*total))?);
-    }
     let composes = relation.composes.iter();
     let mut sizes: Vec<u8> = relation.identities.iter().map(|i| i.vars).collect();
     sizes.extend(composes.map(|c| relation.columns[c.column.0 as usize].log_len));
@@ -816,20 +793,96 @@ pub struct ModelLayout {
     pub code: Vec<u8>,
     /// The stacked message has `2^bits` entries.
     pub bits: u8,
+    /// `(weight index in ColumnId order, block offset)` of each weight in this source.
+    pub blocks: Vec<(usize, usize)>,
 }
 
-/// The model sources of a relation, in split order; empty without weight columns.
-pub fn model_layout(relation: &Relation) -> Result<Vec<ModelLayout>, Error> {
-    Ok(plan(relation)?
-        .model
+/// RFC-0026 A5 layout from the weights' lengths (`2^n` entries each, `ColumnId`
+/// order): weights are split greedily into model sources of at most 2^30 entries;
+/// inside a source, blocks go largest first, ties in order. Returns each weight's
+/// `(source, offset)` and the sources.
+type ModelPlan = (Vec<(usize, usize)>, Vec<Stack>);
+
+fn model_plan(lengths: &[u8]) -> Result<ModelPlan, Error> {
+    let mut placement = vec![(0usize, 0usize); lengths.len()];
+    let mut totals: Vec<usize> = Vec::new();
+    for (w, &n) in lengths.iter().enumerate() {
+        if n > 30 {
+            return Err(Error::Unsupported);
+        }
+        let size = 1usize << n;
+        match totals.last_mut() {
+            Some(total) if *total + size <= MODEL_CAP => *total += size,
+            _ => totals.push(size),
+        }
+        placement[w].0 = totals.len() - 1;
+    }
+    let mut model = Vec::new();
+    for (k, total) in totals.iter().enumerate() {
+        let mut order: Vec<usize> = (0..lengths.len())
+            .filter(|w| placement[*w].0 == k)
+            .collect();
+        order.sort_by(|a, b| lengths[*b].cmp(&lengths[*a]));
+        let mut offset = 0usize;
+        for w in order {
+            placement[w].1 = offset;
+            offset += 1 << lengths[w];
+        }
+        // Aligned blocks summing to at most 2^30 fit 2^ceil(log2 total) <= 2^30.
+        model.push(self::stack(MODEL + k as u64, ceil_log2(*total))?);
+    }
+    Ok((placement, model))
+}
+
+/// The model sources for weights of `2^lengths[i]` entries in `ColumnId` order (A5),
+/// for a model owner that commits before any relation is built.
+pub fn model_layout_for(lengths: &[u8]) -> Result<Vec<ModelLayout>, Error> {
+    let (placement, model) = model_plan(lengths)?;
+    Ok(model
         .into_iter()
-        .map(|m| ModelLayout {
+        .enumerate()
+        .map(|(k, m)| ModelLayout {
             id: m.id,
             ell: m.ell,
             code: m.code,
             bits: m.bits,
+            blocks: placement
+                .iter()
+                .enumerate()
+                .filter(|(_, (source, _))| *source == k)
+                .map(|(w, (_, offset))| (w, *offset))
+                .collect(),
         })
         .collect())
+}
+
+/// The model sources of a relation, in split order; empty without weight columns.
+pub fn model_layout(relation: &Relation) -> Result<Vec<ModelLayout>, Error> {
+    let lengths: Vec<u8> = relation
+        .columns
+        .iter()
+        .filter(|c| c.kind == Kind::Weight)
+        .map(|c| c.log_len)
+        .collect();
+    model_layout_for(&lengths)
+}
+
+/// Place per-weight messages (`ColumnId` order, `2^n` entries each, signed
+/// embedding) into the stacked messages of `layouts`.
+pub fn stack_model(layouts: &[ModelLayout], weights: &[&[M31]]) -> Result<Vec<Vec<M31>>, Error> {
+    let mut out = Vec::new();
+    for layout in layouts {
+        let mut message = vec![M31::from_i64(0); 1 << layout.bits];
+        for &(w, offset) in &layout.blocks {
+            let weight = weights.get(w).ok_or(Error::Weights)?;
+            let block = message
+                .get_mut(offset..offset + weight.len())
+                .ok_or(Error::Weights)?;
+            block.copy_from_slice(weight);
+        }
+        out.push(message);
+    }
+    Ok(out)
 }
 
 /// The model messages (signed embedding; each weight at its block offset).

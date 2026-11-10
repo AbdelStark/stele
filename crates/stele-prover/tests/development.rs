@@ -210,7 +210,8 @@ fn rejects_statement_and_container_tampers() {
     rejects(&public, &tokens);
     // A tampered weight commitment root (a different model commitment).
     let mut other = public.clone();
-    other.commitment[1].0[0] ^= 1;
+    other.commitment[0].0[0] ^= 1; // One stacked model source (RFC-0026 A5).
+    assert_eq!(other.commitment.len(), 1);
     assert!(verify(&other, &statement, &proof).is_err());
     // A tampered public gain (RFC-0026 A2): absorbed in the first transcript frame.
     let mut gain = public.clone();

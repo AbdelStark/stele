@@ -137,7 +137,7 @@
 | NC-1301 | development next token | 0026 §1.1 | change the next token y | `RootMismatch` | done |
 | NC-1302 | development witness column | 0026 §3.2, §4 | +1 on one witness value, group recommitted honestly | `FinalEvaluationMismatch` | todo |
 | NC-1303 | development width | 0026 §3.6 | send one group message element as the noncanonical limb p | `NoncanonicalField` | todo |
-| NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RootMismatch` | done |
+| NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RoundSumMismatch` | done |
 | NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `RoundSumMismatch` | done |
 | NC-1306 | development root substitution | 0026 §2.3 | replace the stacked root with a multiplicity root | `RootMismatch` | todo |
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | todo |

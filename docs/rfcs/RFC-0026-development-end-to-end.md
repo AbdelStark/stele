@@ -792,6 +792,9 @@ Cost model: none. Affected tasks: E16-10 (statement codec and public-input file)
     - "**Binding.** Right after the §4 step-1 statement digest, the engine absorbs
       every model root, in split order, with `relation/roots`. The proof therefore
       binds the model even when a caller's public input leaves the roots out."
+  - **Replacement text, §9 NC-1304, expected error.** "`RoundSumMismatch`: the
+    model root another commitment would produce is absorbed right after the
+    statement, so the transcripts diverge before any opening."
   - **Replacement text, §4 step 7, weight bullet.** "For each model source `k`, its
     weight claims are mapped to model claims: weight `w` at block offset `o` with
     claim point `ρ` maps to `(bits(o/2^n) ‖ ρ)`, Boolean in the leading coordinates.

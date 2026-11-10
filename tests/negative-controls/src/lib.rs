@@ -96,7 +96,7 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
     catalog::RegisteredControl {
         id: 1304,
         kind: catalog::ControlKind::Proof,
-        expected_error: "RootMismatch",
+        expected_error: "RoundSumMismatch",
         run: || development::run(1304),
     },
     catalog::RegisteredControl {
