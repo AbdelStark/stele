@@ -17,7 +17,9 @@ mod buffers;
 pub mod claim_batch;
 mod dense;
 mod instance;
-/// Masked A1 sumcheck (RFC-0013 A2 item 2); its mask obligation has no consumer.
+/// Masked A1 sumcheck (RFC-0013 A2 item 2). Unsound until the mask is bound (R2):
+/// hidden, and `scripts/gates/check.py` bans its use outside its tests and controls.
+#[doc(hidden)]
 pub mod masked;
 /// Prover-side work splitting with identical results (RFC-0006 A1 prover only).
 pub mod parallel;

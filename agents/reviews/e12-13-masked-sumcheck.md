@@ -1,4 +1,4 @@
-# E12-13 masked A1 sumcheck review (RFC-0013 A2 item 2, RFC-0012 A17)
+# E12-13 masked A1 sumcheck review (RFC-0013 A2 item 2, RFC-0012 A18)
 
 Reviewer: claude-code, also the author. This file records same-author
 sumcheck-prover-engineer and soundness-auditor passes. It is not an independent
@@ -26,16 +26,28 @@ review, and one is still needed.
   `zk/mask-sum`, then `α` is drawn under `zk/mask-weight`. The rounds follow,
   with A1's `Round` and `Sumcheck` labels. Last, `finals ‖ μ` is absorbed under
   `Final` at index `k + 1`. `α` follows `G`, as the MASK line requires.
-- **Changed `G`.** With `G` changed and the rounds left honest, the first round
-  check fails, because the running claim moved by `α·ΔG`. NC-0904 runs this
-  through the actual verifier and gets `RoundSumMismatch`.
+- **Changed `G`.** NC-0904 changes `G` in an honest proof and keeps the rounds.
+  The first round check fails (`RoundSumMismatch`), because the running claim
+  moved by `α·ΔG`.
 - **Changed `μ`.** NC-0905 changes `μ` and gets `FinalEvaluationMismatch`.
 - **False claim.** A false `H` (claimed sum + 1) makes the honest prover's
   own round check fail. A zerocheck in A1 form with one wrong product entry
   fails the same way.
 - **Open gap (R2).** Nothing binds `g` before `G`, so a prover could pick `μ`
-  after `ρ`. The verifier therefore returns `μ` as an obligation, and no
-  consumer exists.
+  after `ρ`. `accepts_forged_mask_final_for_a_false_sum` shows it: a proof of a
+  false claimed sum with arbitrary rounds and `μ` solved last is accepted.
+  Independent review asked for "no consumer" to be enforced, not only stated:
+  the module is `#[doc(hidden)]`, and the `masked quarantine` check in
+  `scripts/gates/check.py` (run by the negative-controls and accounting gates)
+  rejects any use of `masked::` outside its own tests and the NC-0904/0905
+  controls.
+- **Ledger.** `masked::Reduction` carries a `MaskRecord` (instance id, field
+  degree) for the one `zk/mask-weight` draw, charged `1/|K|` on MASK and valid
+  only once `g` is bound.
+- **Label indices.** This branch registers the two labels at indices 46 and 47.
+  The coordinator assigned this stack index 47 after the Q12 stack's entry at
+  46, so the rebase onto the merged Q12 stack moves them to 47 and 48, with the
+  registry tests and `transcript-labels.json`.
 - **Degenerate instances.** `n = 0` and `δ = 0` are rejected with
   `InvalidInstance`.
 - **SC record.** It is unchanged (`n·δ`). The record shows `numerator = 8`
@@ -59,7 +71,7 @@ consumer.
 
 ## Checklist
 
-- RFC: RFC-0013 A2 item 2 and RFC-0012 A17.
+- RFC: RFC-0013 A2 item 2 and RFC-0012 A18.
 - Challenges: `zk/mask-weight` follows the `Instance` and `zk/mask-sum`
   absorbs.
 - Claims: the A1 finals and `μ` have no consumer.

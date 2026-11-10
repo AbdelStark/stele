@@ -81,7 +81,7 @@ pub enum LossLine {
     Lu,
     /// Actual-tail point equality; no separate challenge is drawn (A14).
     Sz,
-    /// Masked-sumcheck weight, conditional on the mask binding (A17, RFC-0013 A2).
+    /// Masked-sumcheck weight, conditional on the mask binding (A18, RFC-0013 A2).
     Mask,
 }
 /// Registered label metadata; validation does not authorize a caller-supplied registry.
@@ -475,7 +475,7 @@ pub enum AbsorbLabel {
     RelationStatement,
     /// One commitment-group or multiplicity root, in RFC-0026 §4 order (A16).
     RelationRoots,
-    /// Masked-sumcheck mask sum G before its weight (A17, RFC-0013 A2).
+    /// Masked-sumcheck mask sum G before its weight (A18, RFC-0013 A2).
     ZkMaskSum,
 }
 impl AbsorbLabel {
@@ -547,7 +547,7 @@ pub enum ChallengeLabel {
     RelationIdentity,
     /// One coordinate of a matmul out-claim point, SZ (A16).
     RelationPoint,
-    /// Masked-sumcheck weight after the mask sum, MASK (A17, RFC-0013 A2).
+    /// Masked-sumcheck weight after the mask sum, MASK (A18, RFC-0013 A2).
     ZkMaskWeight,
 }
 impl ChallengeLabel {

@@ -1,7 +1,7 @@
 //! RFC-0013 A2 item 2: masked A1 sumcheck through the actual verifier, and
 //! evidence that the round messages are masked.
 use core::fmt::Debug;
-use stele_field::{Field, OM31, QM31};
+use stele_field::{Field, Inverse, OM31, QM31};
 use stele_hash::{ChallengeField, Transcript};
 use stele_sumcheck::masked::{self, Mask};
 use stele_sumcheck::{prove, Dense, Error, Instance, Term};
@@ -58,8 +58,9 @@ fn round_trip<K: ChallengeField + Eq + Debug>() {
     assert_eq!(result.reduction.claims[1].1, mle(&b, point));
     assert_eq!(result.mask_final, mask.evaluate(point).expect("g(ρ)"));
     assert_eq!(result.reduction.sc.numerator, 8);
+    assert_eq!(result.mask.id, i.id);
 
-    // NC-0904 shape: G changed, rounds regenerated honestly for the old G.
+    // NC-0904 shape: G changed in an honest proof; the running claim moves by α·ΔG.
     let mut changed = proof.clone();
     changed.mask_sum = changed.mask_sum + K::from_i64(1);
     assert_eq!(
@@ -206,4 +207,51 @@ fn accepts_masked_rounds_and_rejects_unmasked() {
     let unmasked = first_free_value(&a, &b, None);
     assert!((0..8).all(|_| first_free_value(&a, &b, None) == unmasked));
     assert_ne!(unmasked, first_free_value(&a2, &b2, None));
+}
+
+/// The open gap R2, made visible: nothing binds `g`, so a prover that picks `μ`
+/// after `ρ` passes the verifier with a false claimed sum. This is why the
+/// module is hidden and no consumer may accept a masked reduction.
+#[test]
+fn accepts_forged_mask_final_for_a_false_sum() {
+    use stele_hash::{AbsorbLabel, ChallengeLabel};
+    use stele_sumcheck::message_bytes;
+    let m = 3;
+    let (a, b) = (table::<QM31>(m, |n| n + 1), table::<QM31>(m, |n| n - 2));
+    let mut i = product(&a, &b, m);
+    i.claimed_sum = i.claimed_sum + QM31::from_i64(5); // false
+    let mut t = transcript::<QM31>();
+    let mask_sum = QM31::from_i64(11);
+    t.absorb(AbsorbLabel::Instance, &i.encode().expect("instance"))
+        .expect("absorb");
+    t.absorb(
+        AbsorbLabel::ZkMaskSum,
+        &message_bytes(i.id, 0, &[mask_sum]).expect("bytes"),
+    )
+    .expect("absorb");
+    let alpha = t.challenge(ChallengeLabel::ZkMaskWeight).expect("alpha");
+    let mut running = i.claimed_sum + alpha * mask_sum;
+    let half = QM31::from_i64(2).inverse().expect("1/2");
+    let mut rounds = Vec::new();
+    for index in 0..m {
+        // p(t) = running*(1-t)(2-t)/2: p(0) + p(1) = running, degree 2.
+        let values = vec![running, QM31::from_i64(0), QM31::from_i64(0)];
+        t.absorb(
+            AbsorbLabel::Round,
+            &message_bytes(i.id, index, &values).expect("bytes"),
+        )
+        .expect("absorb");
+        let r = t.challenge(ChallengeLabel::Sumcheck).expect("rho");
+        running = running * (r - QM31::from_i64(1)) * (r - QM31::from_i64(2)) * half;
+        rounds.push(values);
+    }
+    let finals = vec![QM31::from_i64(1), QM31::from_i64(1)];
+    let mask_final = (running - finals[0] * finals[1]) * alpha.inverse().expect("alpha != 0");
+    let forged = masked::Proof {
+        mask_sum,
+        rounds,
+        final_values: finals,
+        mask_final,
+    };
+    assert!(masked::verify(&i, &forged, &mut transcript()).is_ok());
 }

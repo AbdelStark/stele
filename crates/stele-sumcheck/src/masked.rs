@@ -1,4 +1,4 @@
-//! Masked A1 sumcheck, RFC-0013 A2 item 2 (labels RFC-0012 A17).
+//! Masked A1 sumcheck, RFC-0013 A2 item 2 (labels RFC-0012 A18).
 //!
 //! The rounds run on `f + α·g` with `g = Σ g_i(X_i)`. The result keeps A1's
 //! final obligations and adds the undischarged mask obligation `(ρ, g(ρ))`:
@@ -71,6 +71,18 @@ pub struct Reduction<K> {
     pub reduction: crate::Reduction<K>,
     /// `μ`, claimed equal to `g(ρ)` at `reduction.point`; no consumer is admitted.
     pub mask_final: K,
+    /// The MASK ledger record for `α`: `1/|K|`, conditional on binding `g`.
+    pub mask: MaskRecord,
+}
+
+/// One MASK draw (RFC-0012 A18): loss `1/p^field_degree`, charged once per
+/// masked instance and valid only once `g` is bound before `G` (design note R2).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MaskRecord {
+    /// Verifier-owned instance identity.
+    pub id: u64,
+    /// Canonical extension degree, 4 or 8.
+    pub field_degree: u8,
 }
 
 fn shape<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
@@ -222,5 +234,9 @@ pub fn verify<K: ChallengeField + Eq>(
             },
         },
         mask_final: proof.mask_final,
+        mask: MaskRecord {
+            id: i.id,
+            field_degree: K::from_i64(0).to_le_bytes().as_ref().len() as u8 / 4,
+        },
     })
 }
