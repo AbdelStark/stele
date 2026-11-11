@@ -357,6 +357,13 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "RoundSumMismatch",
         run: || development::run(1309),
     },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1310,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: development::run_width,
+    },
     catalog::RegisteredControl {
         id: 309,
         kind: catalog::ControlKind::Proof,

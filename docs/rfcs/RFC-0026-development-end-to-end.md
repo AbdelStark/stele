@@ -1022,3 +1022,35 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     are unchanged. A dev-zk public input is the development bytes followed by `1`.
     The two encodings are distinct, so the profile is still bound before any
     challenge. NC-0912 covers the header and the transcript.
+
+- **A10 — NC-1310 at the relation-engine level (task E16-02 follow-up).** Accepted
+  with ADR-110 after independent review, development tier.
+  - **Motivation.** §9 requires every NC-1300..1310 control to run through the actual
+    E16-10 verifier. For NC-1310, no window-level tamper meets the rest of its row.
+    Every committed column is range-checked (§3.6), so on the synthetic window each
+    column that could rebalance an identity after the change is itself read by
+    another identity, lookup or compose. Changing one value to `2^30` therefore breaks
+    an identity, and the prover fails first. The two ranged columns that no identity
+    reads, `attention/maximum/lo` and `hi`, are limbs of a compose.
+  - **Exact change.** §9's NC-1310 row is replaced by the following.
+    - Tamper: on a minimal relation, run through `stele_reductions::relation::{prove,
+      verify}`, commit one ranged witness value as `2^30`, outside its declared width.
+      Change one second, in-width value so every identity still holds.
+    - Expected: LU rejection, `RootMismatch`, the A5 root equation of the first range
+      check, which is the out-of-width value's.
+    - §9's "through the actual E16-10 verifier" does not apply to NC-1310. Every other
+      row keeps that requirement.
+  - **Why this level suffices.**
+    - The relation engine is the code under test: the E16-10 verifier calls it for
+      every lookup and range (§4 step 5).
+    - The window-level path of the same binding is already covered through the actual
+      E16-10 verifier. NC-1300 and NC-1301 leave a margin entry at `-1`, outside its
+      unsigned range, and are rejected by that range's A5 root equation, `RootMismatch`
+      (E2).
+  - **INV-4 exception.** The control changes two values. One is out of its width; the
+    other stays inside its width and only rebalances the identity. The binding under
+    test is "a ranged witness value outside its width is rejected". The relation is
+    `x + 2^22·y − c = 0`, with `x` unsigned 8, `y` signed 9 and `c` public.
+    `x[0] = 2^30` and `y[0] = −256`.
+  - **Soundness, cost and proof bytes.** No new round, error term, label or proof
+    byte. Controls: NC-1310. Affected tasks: E16-02 (its NC-1310 obligation).
