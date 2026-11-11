@@ -875,7 +875,7 @@ def field_source_codec(root):
     except tomllib.TOMLDecodeError as error:
         raise ValueError(f'PCS API not wired: unreadable manifest ({error})') from error
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
-    # E16-23 (ADR-104): rayon for prover-side column blocks, only through `std`.
+    # E16-23 (ADR-105): rayon for prover-side column blocks, only through `std`.
     dependencies['rayon'] = {'version': '=1.10.0', 'optional': True}
     source = (crate / 'src/source.rs').read_text()
     # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
@@ -974,7 +974,7 @@ def field_source_codec(root):
         ('', 'source_elements'), ('', 'retained_bytes'), ('struct', 'RetainedRow'),
         ('fn', 'new'), ('fn', 'values'), ('fn', 'work'), ('fn', 'opening'), ('fn', 'opening_measured'),
         ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening'), ('fn', 'verify_opening_measured')]
-        # E16-23 (ADR-104): one crate-private row combination shared with the producer.
+        # E16-23 (ADR-105): one crate-private row combination shared with the producer.
         and len(opening_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', opening))
         and re.findall(r'\bpub\s*\([^)]*\)\s*fn\s+\w+', opening)
             == ['pub(crate) fn for_each_block', 'pub(crate) fn combine_rows']
@@ -1017,7 +1017,7 @@ def field_source_codec(root):
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target'))
-            # E16-17 (ADR-090), E16-23 (ADR-104): the only feature is the opt-in prover-side pool.
+            # E16-17 (ADR-090), E16-23 (ADR-105): the only feature is the opt-in prover-side pool.
             or manifest.get('features') != {'std': ['stele-code/std', 'dep:rayon']}
             or 'build' in manifest.get('package', {})):
         raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')

@@ -280,7 +280,7 @@ and in 103.6 s with one thread
 ([e17-00-dev-synthetic-8layer-1thread-21710de](../bench/ledger/e17-00-dev-synthetic-8layer-1thread-21710de.json)).
 All three have the synthetic row's proof bytes (INV-8).
 
-Task E16-23 (ADR-104) moved the prover's sequential residual onto the work pool without
+Task E16-23 (ADR-105) moved the prover's sequential residual onto the work pool without
 changing proof bytes. It measured before (`736aef5`) and after (`68aa737`) on one
 16-thread Apple M4 Max. The rows are not comparable with the hosts above:
 

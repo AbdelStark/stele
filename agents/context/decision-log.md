@@ -2443,7 +2443,7 @@ Consequences:
 
 Status: Accepted (owner authorisation for autonomous gating decisions; independent review in the E16-21 PR).
 
-## ADR-104: The development prover's sequential residual on the work pool (RFC-0026 §7, RFC-0006 A1, RFC-0010 A4, task E16-23)
+## ADR-105: The development prover's sequential residual on the work pool (RFC-0026 §7, RFC-0006 A1, RFC-0010 A4, task E16-23)
 
 Context: ADR-103 found that in the 8-layer `prove-dev` profile most of the CPU residual
 ran on the main thread outside any parallel region: relation registration, lookup leaf
@@ -2489,8 +2489,10 @@ Decision:
     discarded.
 - Every change is an exact reordering of field additions, or a write into disjoint
   slots. Transcript order, proof bytes, the E16-10 fixture hashes and every proof pin
-  are unchanged (INV-3, INV-8). The verifier, `stele-verifier` and the
-  `--no-default-features` builds are unchanged, and they stay free of rayon.
+  are unchanged (INV-3, INV-8). The verifier crates (`stele-verifier`, the engine's
+  `verify` paths) and the `--no-default-features` builds are unchanged, and they stay
+  free of rayon. `verify-dev` shares `Layout::declare` with the prover, so the
+  rotary and activation deduplication also speeds up verification.
 
 Consequences:
 - The work left on one thread is `Layout::assign`, witness capture, `Attention::new`
