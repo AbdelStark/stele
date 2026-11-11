@@ -545,6 +545,12 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
             if scalar.to_le_bytes().as_ref() != functional.value.to_le_bytes().as_ref() {
                 return Err(Error::ValueMismatch);
             }
+            // A14 item 3: n_q after OpeningRow, immediately before the response block.
+            let (_, column_bits) = source.grind_bits(ProofKind::Opening);
+            if column_bits > 0 {
+                let nonce = t.grind(column_bits).map_err(Error::Transcript)?;
+                proof.extend_from_slice(&nonce.to_le_bytes());
+            }
             let start = proof.len();
             for _ in 0..source.queries(ProofKind::Opening) {
                 let index = t
@@ -647,6 +653,12 @@ where
             .max(add(work.row_bytes, work.encoder.peak_owned_bytes)?)
             .max(work.encoded_bytes);
         drop(row);
+        // A14 item 3: n_q follows OpeningRow and precedes the first column draw.
+        if let Some(nonce) = wire.column_nonce() {
+            let (_, column_bits) = source.grind_bits(ProofKind::Opening);
+            t.verify_grind(column_bits, nonce)
+                .map_err(Error::Transcript)?;
+        }
         for response in wire.responses() {
             let index = t
                 .opening_column(source.descriptor().count)

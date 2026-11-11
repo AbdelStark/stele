@@ -2569,9 +2569,62 @@ Consequences:
 
 Status: Accepted (owner authorisation for autonomous performance work; soundness-auditor review requested in the E16-23 PR for the `stele-sumcheck` and `stele-pcs` prover-side changes; ADR-090's list of crates with rayon gains `stele-pcs`).
 
+## ADR-106: Policy 2 and grinding in stele-pcs; development proofs stay on Policy 1; LU split to E12-24 (RFC-0010 A14, RFC-0012 A17, task E12-23)
+
+Numbering: ADR-101..104 are on main and ADR-105 is on main (task E16-23), so this record takes 106.
+
+Context: ADR-091 admitted Policy 2 (RFC-0010 A14) for the standard profile and left
+the consumers to E12-23. The request that started this change asked for the
+development prover (`prove-dev`/`verify-dev`) to switch to Policy 2. The Accepted text
+says otherwise: A14 item 1 ("RFC-0026 development proofs keep policy 1"), RFC-0012
+A17 item 7, ADR-091 ("Development profile. Unchanged: Policy 1") and E12-23's own
+acceptance ("Policy 1 proof bytes unchanged").
+
+Decision:
+
+- **Spec over request (INV-1).** `stele-pcs` gains Policy 2 as an explicit source
+  policy (`Policy::Two`, `Source::from_code_id_policy`,
+  `PreparedSource::from_code_id_policy`). Every existing constructor keeps Policy 1,
+  so development proof bytes and the E16-10 pins do not move. Moving a development
+  proof to Policy 2 is E16-30's measurement and an RFC-0026 amendment, not this task.
+- **Resolver.** `registry::resolve_pcs` returns the A14 item 2 tables for a standard
+  request with QM31 or OM31 challenges, and `UnsupportedParameters` for treaty, M31
+  challenges and v2 J = 15. Policy 2 sources take their counts only from it.
+- **Wires.** Certificate: `u8(1) || [n_t] || t_bytes || n_q || responses`. Opening:
+  `u8(1) || u_bytes || n_q || responses`. k_q = 16; k_t is the least k of A14 item 4
+  computed with exact integers (0 in OM31). The verifier derives both from the
+  expected source and checks each nonce before the next draw.
+- **Conservative readings.** (1) The opening nonce is checked after the
+  `ValueMismatch` check and before the first column draw; both precede any draw, so
+  the order changes only which error is reported. (2) The registry export's per-family
+  `proven = false` is left as is: A14's `proven` is a profile fact, returned by the
+  resolver, and the export format belongs to E12-04. (3) Policy byte 2 in a source
+  context is now valid, so NC-0613 tampers with byte 3 instead (A14 item 7).
+- **Controls.** NC-0806 (a column or tensor nonce failing the predicate), NC-0807 (a
+  k_q − 1 prover), NC-0808 (another valid column nonce: the nonce is absorbed),
+  NC-0809 (one response fewer than q_c or q_o) and NC-0813 (another valid tensor nonce)
+  run through the actual certificate and opening verifiers. NC-0810..0812 are left to
+  the ADR-096 drafts. Tampered nonces come from an independent replay of the A1
+  transcript and the A17 predicate in the harness, with every search capped at 2^20.
+  Python parity: `research/merkle-oracle/check_policy2_wire.py`, which also recomputes
+  all 59 Circle and 12 v2 rows of the A14 table from the exact inequality and pins them
+  for the native resolver test.
+- **Split.** The LU (β, α) consumer needs its RFC-0008 offset amendment first and has
+  no standard-profile LU caller yet. It moves to E12-24.
+- **Gate on the first standard caller.** `resolve_pcs` returns `proven: true`, which
+  presumes RFC-0012 A17 (C1)–(C4) hold for the whole configuration, and an
+  ungrinded QM31 LU round can fail (C1). So no standard-profile caller of
+  `resolve_pcs` (or of `Policy::Two`) may land before E12-24 is done; until then
+  Policy 2 is exercised only by tests, fixtures and controls.
+
+Consequences: no proof byte, pin or measured constant moves; no ledger is recorded.
+E16-30 is unblocked on the stele-pcs side. Open: E12-24, E12-04, E8-05.
+
+Status: Accepted (follows Accepted RFC-0010 A14 and RFC-0012 A17; no protocol change).
+
 ## ADR-107: Commit the 1-D records for dev-zk with a CQIS gain-encoding proof (RFC-0013 A7, task E12-27)
 
-Numbered after ADR-105 on main, skipping ADR-106, which #341 holds.
+Numbered after ADR-106 on main.
 
 Context: under RFC-0013 A5/A6 the RMSNorm gains (the 1-D records, RFC-0026 A2) are
 dev-zk public input. Review F2 of E12-14b asked to commit them, and E12-27 is an
