@@ -2688,7 +2688,7 @@ tasks:
   - RFC-0026 A2
   skill: soundness-auditor
   crate: stele-prover+stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-27-dev-zk-records
   acceptance:
@@ -2726,7 +2726,7 @@ tasks:
   crate: stele-reductions+stele-prover
   status: in_progress
   agent: claude-code
-  branch: task/E12-14a-dev-zk-relations
+  branch: task/E12-14-dev-zk-admission
   acceptance:
   - end-to-end dev-zk prove/verify on the one- and eight-layer synthetic windows under RFC-0013 A5, with privacy tests
   - NC-0912 and NC-0909..0915 executed; profile byte admitted only after independent review
