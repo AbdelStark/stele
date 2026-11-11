@@ -122,19 +122,33 @@ fn os_bytes() -> Result<[u8; 32], Failure> {
 /// atomically, so a crash never leaves a counter behind a published proof.
 fn write_secret(path: &str, state: &zk::ModelState) -> Result<(), Failure> {
     use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     let temporary = format!("{path}.tmp");
     let fail = |e: std::io::Error| usage(format!("write {path}: {e}"));
+    // A stale temporary from a crash is replaced, never reused.
+    match std::fs::remove_file(&temporary) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
+        _ => {}
+    }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
-        .create(true)
-        .truncate(true)
+        .create_new(true)
         .mode(0o600)
         .open(&temporary)
         .map_err(fail)?;
+    file.set_permissions(std::fs::Permissions::from_mode(0o600))
+        .map_err(fail)?;
     file.write_all(&state.encode()).map_err(fail)?;
     file.sync_all().map_err(fail)?;
-    std::fs::rename(&temporary, path).map_err(fail)
+    std::fs::rename(&temporary, path).map_err(fail)?;
+    // The rename is durable only once the directory entry is.
+    let parent = std::path::Path::new(path)
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| std::path::Path::new("."));
+    std::fs::File::open(parent)
+        .and_then(|d| d.sync_all())
+        .map_err(fail)
 }
 
 fn window(o: &BTreeMap<&str, &str>) -> Result<Statement, Failure> {
@@ -221,25 +235,34 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         println!("proof {} bytes", proof.len());
         return Ok("PROOF WRITTEN".into());
     }
+    // Read and validate every input before the index is taken (RFC-0013 A6 item 5).
     let commitment = zk::ModelCommitment::decode(&read(get(o, "commitment")?)?).map_err(reject)?;
     let secret = get(o, "secret")?;
     let mut state = zk::ModelState::decode(&read(secret)?).map_err(reject)?;
-    // RFC-0013 A6: the index is spent before the proof exists.
-    let index = state.take(&commitment).map_err(reject)?;
-    write_secret(secret, &state)?;
-    let mut revealed = Vec::new();
     let [m, p, s, a] = read_files()?;
-    let window = zk::Window::Prove {
-        seed: zk::Seed::new(os_bytes()?),
-        commitment: &commitment,
-        state: &state,
-        index,
-        revealed: &mut revealed,
+    for key in ["public", "proof"] {
+        get(o, key)?;
+    }
+    let seed = zk::Seed::new(os_bytes()?);
+    let mut index = 0;
+    let mut saved = Ok(());
+    let mut persist = |state: &zk::ModelState| {
+        saved = write_secret(secret, state);
+        saved
+            .as_ref()
+            .map(|_| ())
+            .map_err(|_| stele_prover::development::Error::Witness)
     };
-    let (public, statement, proof) =
-        prove_window_profile(&m, &p, &s, &a, statement, length, Some(window)).map_err(reject)?;
-    state.revealed.push(revealed);
-    write_secret(secret, &state)?;
+    let window = zk::Window::Prove {
+        seed,
+        commitment: &commitment,
+        state: &mut state,
+        persist: &mut persist,
+        index: &mut index,
+    };
+    let proved = prove_window_profile(&m, &p, &s, &a, statement, length, Some(window));
+    saved?;
+    let (public, statement, proof) = proved.map_err(reject)?;
     write(
         "public",
         &bundle::encode_zk(&public, &statement, &commitment, index),

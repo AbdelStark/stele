@@ -319,3 +319,104 @@ fn rejects_mask_source_openings_outside_the_two_block_shape() {
     mask_source::<QM31>();
     mask_source::<OM31>();
 }
+
+/// The lifetime tests' data exponent: `q_c + 3·q_o = 704 ≤ C − 1 = 1023`.
+const LM: u8 = 10;
+
+/// One opening of a lifetime source (QM31, `ell = 4`: `R = 16 = (P + 1)·D` at
+/// `P = 3`, `m = 10`) after `revealed`, at the point whose row part starts at `w`. Returns
+/// the opening's result and its row vector.
+fn lifetime_opening(revealed: Vec<Vec<QM31>>, w: u64) -> (Result<(), Error>, Vec<QM31>) {
+    type K = QM31;
+    let (ell, budget) = (ELL + 1, 3);
+    let x: Vec<M31> = (0..(1usize << (ell + LM)))
+        .map(|i| M31::from_i64(i as i64 % 89 - 44))
+        .collect();
+    let seed = [11; 32];
+    let message = hiding_message(43, ell, LM, &x, &seed).expect("layout");
+    let prepared = PreparedSource::<K>::hiding_lifetime(
+        43,
+        ell,
+        LM,
+        B,
+        &message,
+        &seed,
+        &mut HashUsage::default(),
+        budget,
+        revealed,
+    )
+    .expect("prepare");
+    let (certificate, _) = prepared.certificate().expect("certificate");
+    let expected = Source::<K>::hiding(43, ell, LM, B, prepared.source().root()).expect("expected");
+    let (verified, _) = verify_certificate(expected, &certificate).expect("verified");
+    // Unstructured row coordinates (splitmix64 limbs), as Fiat–Shamir gives.
+    let mut state = w.wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    let mut next = || {
+        state = state.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut z = state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        ((z ^ (z >> 31)) % 0x7fff_ffff) as u32
+    };
+    let mut random = || {
+        let limbs: Vec<u8> = (0..4).flat_map(|_| next().to_le_bytes()).collect();
+        <K as stele_field::Serialize>::from_le_bytes(limbs[..].try_into().expect("width"))
+            .expect("canonical")
+    };
+    let mut point = vec![random()];
+    point.extend((0..ell).map(|_| random()));
+    point.push(K::from_i64(0));
+    point.extend((0..LM).map(|i| element::<K>(40 + u64::from(i))));
+    let value = evaluate(&message, &point);
+    let a = stele_poly::eq_table(&point[..usize::from(ell) + 1]).expect("eq");
+    let mut prover = Transcript::<K>::new(b"lifetime opening").expect("transcript");
+    let result = prepared
+        .opening_point(&mut prover, &verified, 3, &point, value)
+        .map(|_| ())
+        .map_err(|f| f.cause);
+    (result, a)
+}
+
+/// RFC-0013 A6 (Proposed): a lifetime source at exactly `R = (P + 1)·D`.
+/// - `admits_lifetime` holds for `P = 3` and fails for `P = 4` and `0`;
+/// - `hiding_lifetime` refuses a spent budget (`MaskBudget`) and a budget past
+///   the admission (`UnsupportedSource`);
+/// - an opening whose row vector the earlier openings already revealed is
+///   rank-deficient (`MaskRank`); after distinct earlier openings it verifies.
+#[test]
+fn rejects_rank_deficient_lifetime_openings() {
+    type K = QM31;
+    let ell = ELL + 1;
+    let probe = Source::<K>::hiding(43, ell, LM, B, [0; 32]).expect("source");
+    assert_eq!(probe.rows() / 2, (3 + 1) * 4);
+    assert!(probe.admits_lifetime(3));
+    assert!(!probe.admits_lifetime(4), "R < (P + 1)·D");
+    assert!(!probe.admits_lifetime(0));
+    let message = vec![M31::ZERO; probe.rows() * probe.columns()];
+    let prepare = |budget, revealed: Vec<Vec<K>>| {
+        PreparedSource::<K>::hiding_lifetime(
+            43,
+            ell,
+            LM,
+            B,
+            &message,
+            &[11; 32],
+            &mut HashUsage::default(),
+            budget,
+            revealed,
+        )
+        .err()
+    };
+    assert_eq!(prepare(3, vec![vec![]; 3]), Some(Error::MaskBudget));
+    assert_eq!(prepare(4, Vec::new()), Some(Error::UnsupportedSource));
+    // Two earlier openings with distinct row vectors: the third verifies.
+    let (first, a1) = lifetime_opening(Vec::new(), 1);
+    assert_eq!(first, Ok(()));
+    let (second, a2) = lifetime_opening(vec![a1.clone()], 2);
+    assert_eq!(second, Ok(()));
+    let (third, _) = lifetime_opening(vec![a1.clone(), a2], 3);
+    assert_eq!(third, Ok(()));
+    // Reopening at an already revealed row vector: rank-deficient.
+    let (again, _) = lifetime_opening(vec![a1], 1);
+    assert_eq!(again, Err(Error::MaskRank));
+}

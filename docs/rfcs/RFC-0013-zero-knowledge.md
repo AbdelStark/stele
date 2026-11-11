@@ -595,11 +595,31 @@ hiding the weights.
    rank condition. It covers the certificate's row vector and every earlier
    opening's row vector of this source, in index order, and fails with
    `MaskRank`. The owner keeps those vectors with the counter.
+   - The certificate bytes are identical in every proof, so they add no row.
+   - The index reveals proof order.
+   - Owners should commit at the largest `T` they will prove, since `t_x` is
+     counted on that reference window.
 5. **Counter.** The owner's state is `σ_M`, the next index and the revealed row
    vectors. It is persisted before each proof starts. The producer refuses
    `j ≥ P`, and any index whose earlier openings are missing from the state
-   (`MaskBudget`). A restored or forked state that reuses an index is outside
-   this amendment: the counter is the owner's duty, as in A5 item 7.
+   (`MaskBudget`). It also refuses, before any transcript work, a rebuilt source
+   whose root differs from the published one (`RootMismatch`): other weights `X′`
+   under the same masks would leak `(X − X′)·G` on the shared queried columns.
+   Inputs are read and validated before the index is taken. A failed proof
+   restores the prior state, which is safe because no proof bytes left the
+   producer.
+
+   **Index reuse.** A restored or forked state that reuses an index is the
+   owner's duty, as in A5 item 7. It leaks the following:
+   - **Claim blocks.** Two proofs share each claim-mask block of that index. Each
+     shared block whose finals both proofs reveal gives `D` linear equations on
+     the weights, so up to `D·Σ_x t_x` equations per reused index.
+   - **Rank.** The forked state misses the other opening's row from its rank
+     check. The extra opening breaks PCS hiding once `(P + 2)·D > R`.
+   - **Queries.** The extra queries break PCS hiding once the union of queried
+     columns reaches `C`.
+   - **Detection.** Reuse is publicly detectable afterwards: two proofs carry the
+     same root and the same index.
 6. **Privacy (conditional, to be reviewed).** The source's view across its
    lifetime is one certificate row, `P` opening rows and at most `q_c + P·q_o`
    queried columns. Every claim on a weight column uses its own block, never
@@ -615,7 +635,14 @@ hiding the weights.
 7. **Not changed.** No label, loss or order of A5 changes. The certificate is
    the same bytes in every proof. Each proof carries it again.
 
-Controls: NC-0933 (a proof against another commitment of the same weights:
-`StatementMismatch`; the pinned digests differ) and NC-0934 (the lifetime counter:
-`MaskBudget`). The 1-D records stay public input until E12-27 commits them.
+Controls:
+- NC-0933: a proof against another commitment of the same weights.
+  - The header half expects `StatementMismatch`; the pinned digests differ.
+  - The transcript half expects `RootMismatch`: an adversary with A's secret,
+    under B's public input and header.
+- NC-0934: the lifetime counter, expecting `MaskBudget`.
+
+Evidence: `research/zk-claims/check_lifetime.py` (the independent review's exact
+`F_61²` check). Within budget the weights stay hidden. Index reuse, an opening
+past the rank budget, and `C + 1` queries expose them. The 1-D records stay public input until E12-27 commits them.
 

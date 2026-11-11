@@ -239,7 +239,6 @@ impl<K: ChallengeField> Source<K> {
         Ok(source)
     }
 
-    /// True for a version-3 hiding source (RFC-0013 A2).
     /// RFC-0013 A6 (Proposed): whether this hiding source admits a lifetime of
     /// `budget` openings after its certificate: `R ≥ (budget + 1)·D` mask rows,
     /// so every revealed row combination keeps the rank check satisfiable, and
@@ -254,6 +253,7 @@ impl<K: ChallengeField> Source<K> {
                 < self.columns / 2
     }
 
+    /// True for a version-3 hiding source (RFC-0013 A2).
     pub fn is_hiding(&self) -> bool {
         self.hiding
     }

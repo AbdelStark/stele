@@ -653,11 +653,11 @@ pub fn prove_window_profile(
                 seed,
                 commitment,
                 state,
+                persist,
                 index,
-                revealed,
             } => {
                 public.commitment = alloc::vec![(commitment.root, Vec::new())];
-                let (proof, a) = zk::prove(
+                let (proof, i) = zk::prove_next(
                     &public,
                     &mut executor,
                     &weights,
@@ -665,9 +665,9 @@ pub fn prove_window_profile(
                     seed,
                     commitment,
                     state,
-                    index,
+                    persist,
                 )?;
-                *revealed = a;
+                *index = i;
                 proof
             }
         };

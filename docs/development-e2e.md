@@ -97,7 +97,10 @@ waits for the independent review and for E12-27 (RFC-0013 A5 item 8).
     its model digest.
   - It writes the secret `--secret` file (`stele-dev-zk-model-secret-v1`, mode
     0600: seed, proof counter, earlier openings). Keep the secret file private
-    and never restore an older copy.
+    and never restore an older copy. A reused index leaks linear equations on
+    the weights (RFC-0013 A6 item 5).
+  - Commit at the largest `T` you will prove: the per-proof mask blocks are
+    counted on that window.
 - `prove-dev --zk --commitment C --secret S` takes the next proof index and
   writes the advanced counter back before it proves. It refuses once the budget
   is spent. Each proof's own seed also comes from `/dev/urandom`.

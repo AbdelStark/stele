@@ -265,6 +265,9 @@ pub struct ModelSecret<'a, K> {
     pub seed: &'a [u8; 32],
     /// Earlier openings' row-coefficient vectors.
     pub revealed: Vec<Vec<K>>,
+    /// The published root. The rebuilt source must match it before any transcript
+    /// work: other weights under the same masks would leak their difference.
+    pub root: [u8; 32],
 }
 
 /// A batch of A5 item 5 on a plain-masked instance, with its point opening.
@@ -1054,7 +1057,11 @@ fn plan_with<K: ChallengeField + CodeField>(
     for (index, x) in columns.iter().enumerate() {
         let at = cursors[x.source];
         let blocks = at + (x.limbs << x.log_len);
-        cursors[x.source] = blocks + reserved[index] * dim::<K>();
+        // A hostile commitment file can name huge block counts.
+        cursors[x.source] = reserved[index]
+            .checked_mul(dim::<K>())
+            .and_then(|b| b.checked_add(blocks))
+            .ok_or(Error::Statement)?;
         offsets.push((at, blocks));
     }
     let mut layouts = Vec::new();
@@ -2200,18 +2207,27 @@ where
     for (s, message) in messages.iter().enumerate() {
         let layout = &plan.layouts[s];
         prepared.push(match (model.as_mut(), &plan.lifetime) {
-            (Some(m), Some(l)) if l.source == s => PreparedSource::<K>::hiding_lifetime(
-                plan.source_id(s),
-                layout.ell,
-                layout.m,
-                BLOWUP,
-                message,
-                m.seed,
-                &mut HashUsage::default(),
-                l.proofs,
-                core::mem::take(&mut m.revealed),
-            )
-            .map_err(Error::Pcs)?,
+            (Some(m), Some(l)) if l.source == s => {
+                let p = PreparedSource::<K>::hiding_lifetime(
+                    plan.source_id(s),
+                    layout.ell,
+                    layout.m,
+                    BLOWUP,
+                    message,
+                    m.seed,
+                    &mut HashUsage::default(),
+                    l.proofs,
+                    core::mem::take(&mut m.revealed),
+                )
+                .map_err(Error::Pcs)?;
+                // RFC-0013 A6: the producer refuses weights other than the committed ones.
+                if p.source().root() != m.root {
+                    return Err(Error::Pcs(stele_pcs::Error::Merkle(
+                        stele_hash::merkle::Error::RootMismatch,
+                    )));
+                }
+                p
+            }
             _ => hiding(plan.source_id(s), (layout.ell, layout.m), message)?,
         });
     }
@@ -3025,6 +3041,81 @@ mod tests {
                 let residual = proof.gkr[0].final_values[3] - exact;
                 assert_eq!(residual == QM31::from_i64(0), !masks);
             }
+        }
+    }
+
+    /// RFC-0013 A6 item 3: proofs 0 and 1 against one lifetime source use
+    /// disjoint claim-mask block positions for every weight occurrence, inside the
+    /// `P·t` blocks the source reserves.
+    #[test]
+    fn accepts_disjoint_lifetime_blocks_per_proof() {
+        let read = |column| Read {
+            column,
+            vars: vec![0, 1, 2],
+        };
+        let term = |coefficient, factors| Term {
+            coefficient: QM31::from_i64(coefficient),
+            factors,
+        };
+        let statement = Statement::<QM31> {
+            sources: 2,
+            columns: vec![
+                Column {
+                    source: 0,
+                    log_len: 3,
+                },
+                Column {
+                    source: 1,
+                    log_len: 3,
+                },
+            ],
+            relations: vec![
+                Relation::Identity {
+                    num_vars: 3,
+                    reads: vec![read(0), read(1)],
+                    terms: vec![term(1, vec![0, 1]), term(-1, vec![0])],
+                },
+                Relation::Identity {
+                    num_vars: 3,
+                    reads: vec![read(1)],
+                    terms: vec![term(1, vec![0])],
+                },
+            ],
+            lookups: Vec::new(),
+        };
+        let t = occurrence_counts(&statement).expect("counts")[1];
+        assert_eq!(t, 2);
+        let positions = |index| {
+            let life = Lifetime {
+                source: 1,
+                proofs: 3,
+                index,
+                blocks: vec![t],
+            };
+            let plan = plan_with(&statement, Some(&life)).expect("plan");
+            let (_, first) = plan.layouts[1].offsets[0];
+            assert_eq!(plan.reserved[1], 3 * t);
+            let mut out: Vec<usize> = plan
+                .steps
+                .iter()
+                .flat_map(|s| s.occurrences.iter())
+                .filter(|o| o.column == 1)
+                .flat_map(|o| {
+                    assert!(o.block < 3 * t, "block past the reservation");
+                    let at = first + o.block * dim::<QM31>();
+                    at..at + dim::<QM31>()
+                })
+                .collect();
+            out.sort_unstable();
+            out
+        };
+        let (zero, one, two) = (positions(0), positions(1), positions(2));
+        assert_eq!(zero.len(), t * dim::<QM31>());
+        for (a, b) in [(&zero, &one), (&zero, &two), (&one, &two)] {
+            assert!(
+                a.iter().all(|p| !b.contains(p)),
+                "two proofs share a mask entry"
+            );
         }
     }
 

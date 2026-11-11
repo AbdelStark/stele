@@ -112,6 +112,73 @@ fn zk_prove(
     Ok((proof, index))
 }
 
+/// NC-0933's transcript-level half: an adversary that proves with commitment A's
+/// model seed and state (past the producer's root check, since its secret names
+/// A's root) under B's public input, with a correct dev-zk header for B. Header
+/// and transcript both name B; only the verifier's binding of the proof's weight
+/// source to B's root rejects it (`RootMismatch`).
+#[allow(clippy::too_many_arguments)]
+fn commitment_transcript(
+    public: &Public,
+    exec: &mut Executor<'_>,
+    weights: &Weights,
+    committed: &Committed<'_>,
+    statement: &Statement,
+    b_public: &Public,
+    b: &zk::ModelCommitment,
+    a: &zk::ModelCommitment,
+    a_state: &zk::ModelState,
+) -> Result<(), String> {
+    use stele_prover::development::model_identity;
+    use stele_reductions::stele_field::QM31;
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::zk::claims::{self, Lifetime, ModelSecret};
+    use stele_reductions::zk::relation as zk_relation;
+    let mut captured = None;
+    let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
+    prove_tampered(public, exec, weights, committed, statement, &mut hook)
+        .map_err(|e| format!("capture: {e:?}"))?;
+    let (relation, values) = captured.ok_or("relation")?;
+    let index = a_state.revealed.len() as u32;
+    let (cqis_id, _) = model_identity(b_public).map_err(|e| format!("{e:?}"))?;
+    let input = zk::public_input(b_public, &cqis_id, statement, b, index);
+    let mut t = Transcript::<QM31>::new(&input).map_err(|e| format!("{e:?}"))?;
+    let lifetime = Lifetime {
+        source: zk_relation::WEIGHTS,
+        proofs: b.proofs as usize,
+        index: index as usize,
+        blocks: b.blocks.iter().map(|x| *x as usize).collect(),
+    };
+    let model = ModelSecret {
+        seed: &a_state.seed,
+        revealed: a_state.revealed.clone(),
+        root: a.root,
+    };
+    let (proof, _) = zk_relation::prove_lifetime(
+        &mut t,
+        &relation,
+        &values,
+        zk::Seed::new([39; 32]),
+        &lifetime,
+        model,
+    )
+    .map_err(|e| format!("adversary: {e:?}"))?;
+    let mut bytes = b"stele-dev-zk-v1".to_vec();
+    bytes.extend_from_slice(&cqis_id);
+    bytes.extend_from_slice(
+        &zk::statement_digest_for(b_public, statement, b, index, zk::PROFILE)
+            .map_err(|e| format!("{e:?}"))?,
+    );
+    bytes.extend_from_slice(&claims::encode(&proof));
+    let root = stele_reductions::zk::Error::Pcs(stele_reductions::stele_pcs::Error::Merkle(
+        stele_reductions::stele_hash::merkle::Error::RootMismatch,
+    ));
+    match zk::verify(b_public, statement, &bytes, b, index) {
+        Err(Error::Zk(e)) if e == root => Ok(()),
+        other => Err(format!("transcript-level NC-0933: {other:?}")),
+    }
+}
+
 /// NC-0912's transcript-level half: a claims proof made under the development
 /// transcript input (no profile byte, index or commitment) and stamped with the
 /// correct dev-zk header. The header passes; the claims verifier, whose transcript
@@ -150,6 +217,7 @@ fn transcript_profile(
     let model = ModelSecret {
         seed: &state.seed,
         revealed: state.revealed.clone(),
+        root: commitment.root,
     };
     let (proof, _) = zk_relation::prove_lifetime(
         &mut t,
@@ -355,6 +423,9 @@ pub fn run(id: u16) -> Result<(), String> {
             if pinned_a == pinned_b {
                 return Err("two commitments share a model digest".into());
             }
+            commitment_transcript(
+                &public, &mut exec, &weights, &committed, &honest, &b_public, &b, &a, &a_state,
+            )?;
             (
                 "StatementMismatch",
                 zk::verify(&b_public, &honest, &proof, &b, index).err(),

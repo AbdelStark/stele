@@ -2478,5 +2478,27 @@ Decision:
   - NC-0930..0932.
 - dev-zk stays not admitted.
 
-Status: Proposed (development tier; A6 and this ADR need the independent review).
+Independent review (fix-then-merge; A6's `P + 1` extension confirmed by an exact
+`F_61²` check, now `research/zk-claims/check_lifetime.py`). Fixes:
+- F1: The producer refuses a rebuilt root that differs from the published one,
+  before any transcript work. The CLI verifies its own proof before writing it.
+- F2: NC-0933 gains a transcript-level half.
+- F3:
+  - A plan test checks disjoint block sets per index.
+  - A `stele-pcs` test sits at `R = (P + 1)·D` and checks a rank-deficient
+    revealed set.
+  - Both are mutation-checked.
+- F4:
+  - The CLI validates its inputs before it takes an index.
+  - `prove_next` restores the prior state on any error.
+  - `write_secret` replaces stale temporaries, sets mode 0600 and syncs the
+    parent directory.
+- F6:
+  - Index reuse is quantified in A6 item 5 and §7.
+  - A6 now declares that the certificate is repeated in every proof and that the
+    index reveals proof order.
+- F7: `is_hiding`'s doc is restored, and block offsets use checked arithmetic.
+
+Status: Proposed (development tier; independent review: fix-then-merge, fixes
+applied; A6 acceptance and dev-zk admission are the reviewer's).
 

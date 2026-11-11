@@ -192,14 +192,60 @@ pub enum Window<'a> {
         seed: [u8; 32],
         out: &'a mut Option<(ModelCommitment, ModelState)>,
     },
-    /// [`prove`] as proof `index`; the opening's revealed vector lands in `revealed`.
+    /// [`prove_next`]: the next index of `state`, persisted through `persist`; the
+    /// index lands in `index`.
     Prove {
         seed: Seed,
         commitment: &'a ModelCommitment,
-        state: &'a ModelState,
-        index: u32,
-        revealed: &'a mut Vec<K>,
+        state: &'a mut ModelState,
+        persist: &'a mut Persist<'a>,
+        index: &'a mut u32,
     },
+}
+
+/// Saves the model state (the CLI writes the secret file).
+pub type Persist<'a> = dyn FnMut(&ModelState) -> Result<(), Error> + 'a;
+
+/// Prove the next index of `state` against `commitment` (RFC-0013 A6 item 5),
+/// after every input was read and validated by the caller:
+/// - take the index and persist the advanced state before proving;
+/// - prove, then verify the proof itself;
+/// - on any error, no proof bytes left the process, so restore and persist the
+///   prior state (the index is not spent);
+/// - on success, record the opening and persist.
+#[allow(clippy::too_many_arguments)]
+pub fn prove_next(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    statement: &Statement,
+    seed: Seed,
+    commitment: &ModelCommitment,
+    state: &mut ModelState,
+    persist: &mut Persist<'_>,
+) -> Result<(Vec<u8>, u32), Error> {
+    let prior = state.clone();
+    let index = state.take(commitment)?;
+    persist(state)?;
+    let result = prove(
+        public, executor, weights, statement, seed, commitment, state, index,
+    )
+    .and_then(|(proof, revealed)| {
+        verify(public, statement, &proof, commitment, index)?;
+        Ok((proof, revealed))
+    });
+    match result {
+        Ok((proof, revealed)) => {
+            state.revealed.push(revealed);
+            persist(state)?;
+            Ok((proof, index))
+        }
+        Err(e) => {
+            *state = prior;
+            persist(state)?;
+            Err(e)
+        }
+    }
 }
 
 fn budget() -> Error {
@@ -368,6 +414,7 @@ pub fn prove(
     let model = ModelSecret {
         seed: &state.seed,
         revealed: state.revealed.clone(),
+        root: commitment.root,
     };
     let (proof, revealed) = zk_relation::prove_lifetime(
         &mut t,
