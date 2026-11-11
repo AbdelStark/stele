@@ -2921,5 +2921,5 @@ What remains (main-thread shares of the after profile):
 - self-verify 13%;
 - ZK-GKR factors 9%.
 
-Status: Proposed (development tier; review requested).
+Status: Accepted (development tier). Independent review: MERGE at 84684f3; pins reproduced on base code, mask-draw and salt-offset mutations caught by the 1-layer pin. Follow-ups: unit tests for the draws() wrapper and the leaf-salt sequence, and a read-once rule on MaskStream::fill_at.
 
