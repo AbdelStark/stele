@@ -15,7 +15,8 @@ class QuarantineTests(unittest.TestCase):
 
     def test_rejects_development_entry_point_in_forbidden_crate(self):
         for call in ('Source::<K>::from_code_id_development(0, 0, &c, r)',
-                     'resolve_pcs_like(Profile::Development)', 'let s = Sources::Circle;'):
+                     'resolve_pcs_like(Profile::Development)', 'let s = Sources::Circle;',
+                     'let s = Sources::CircleAll;'):
             with self.subTest(call=call), tempfile.TemporaryDirectory() as directory:
                 root = pathlib.Path(directory)
                 verifier = root / 'crates/stele-verifier/src/lib.rs'
