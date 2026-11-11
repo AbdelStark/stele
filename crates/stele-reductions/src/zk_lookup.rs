@@ -1211,6 +1211,32 @@ pub(super) fn occurrences(step: &GkrStep) -> impl Iterator<Item = (usize, &Occur
     })
 }
 
+/// Each masked layer child's input index and its bare value `Ṽ_P(x*, t)` from the
+/// prover's tree (privacy tests).
+#[cfg(feature = "controls")]
+pub(super) fn layer_values<K: ChallengeField>(
+    step: &GkrStep,
+    layers: &[Vec<[K; 2]>],
+    point: &[K],
+) -> Result<Vec<(usize, K)>, Error> {
+    let w = stele_poly::eq_table(&point[step.xo..]).map_err(|_| Error::Statement)?;
+    let values = &layers[step.k + 1];
+    Ok(step
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(i, g)| match g {
+            Gin::Layer { poly, t, .. } => Some((
+                i,
+                w.iter().enumerate().fold(zero::<K>(), |s, (x, e)| {
+                    s + *e * values[(x << 1) | t][*poly]
+                }),
+            )),
+            _ => None,
+        })
+        .collect())
+}
+
 /// The input index of the step's `p(·, 0)` layer child (NC-0913's target).
 pub(super) fn first_layer(step: &GkrStep) -> Option<usize> {
     step.inputs

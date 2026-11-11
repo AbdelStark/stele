@@ -242,6 +242,34 @@ pub struct Claim<K> {
     pub value: K,
 }
 
+/// RFC-0013 A6: claim source `source` is a lifetime weight source,
+/// committed once and opened by at most `proofs` proofs. Its column `i` (in
+/// column order) reserves `proofs·blocks[i]` claim-mask blocks; proof `index`
+/// uses blocks `index·blocks[i]..`, so every proof's masks are fresh.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Lifetime {
+    /// The lifetime source.
+    pub source: usize,
+    /// Its proof budget `P`.
+    pub proofs: usize,
+    /// This proof's index, `< proofs`.
+    pub index: usize,
+    /// Per-proof claim-mask blocks of each of its columns, in column order.
+    pub blocks: Vec<usize>,
+}
+
+/// The prover's half of a lifetime source: the model seed and the
+/// row-coefficient vectors its earlier openings revealed, in order.
+pub struct ModelSecret<'a, K> {
+    /// The seed the source was committed from.
+    pub seed: &'a [u8; 32],
+    /// Earlier openings' row-coefficient vectors.
+    pub revealed: Vec<Vec<K>>,
+    /// The published root. The rebuilt source must match it before any transcript
+    /// work: other weights under the same masks would leak their difference.
+    pub root: [u8; 32],
+}
+
 /// A batch of A5 item 5 on a plain-masked instance, with its point opening.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Batch<K> {
@@ -423,6 +451,11 @@ struct Plan<K> {
     blocks: usize,
     /// Masked occurrences (claim-mask blocks) per column.
     counts: Vec<usize>,
+    /// Claim-mask blocks committed per column (`counts`, or `P·t` for a lifetime
+    /// source's columns).
+    reserved: Vec<usize>,
+    /// The lifetime source, if any.
+    lifetime: Option<Lifetime>,
 }
 
 impl<K: ChallengeField + CodeField> Plan<K> {
@@ -736,6 +769,32 @@ fn contraction<K: ChallengeField>(
 }
 
 fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<K>, Error> {
+    plan_with(statement, None)
+}
+
+/// A6's admission of a lifetime source: the smallest `(ell, m)` with `R ≥ 2D`,
+/// `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`, holding at least `entries`.
+fn lifetime_shape<K: ChallengeField + CodeField>(
+    id: u64,
+    proofs: usize,
+    entries: usize,
+) -> Result<(u8, u8), Error> {
+    let ell = ceil_log2((2 * dim::<K>()).max((proofs + 1) * dim::<K>()));
+    let mut m = MIN_M.max(ceil_log2(entries.div_ceil(1 << ell)));
+    while m < 30 {
+        let source = Source::<K>::hiding(id, ell, m, BLOWUP, [0; 32]).map_err(Error::Pcs)?;
+        if source.admits_lifetime(proofs) {
+            return Ok((ell, m));
+        }
+        m += 1;
+    }
+    Err(Error::Statement)
+}
+
+fn plan_with<K: ChallengeField + CodeField>(
+    statement: &Statement<K>,
+    lifetime: Option<&Lifetime>,
+) -> Result<Plan<K>, Error> {
     let c = dim::<K>().trailing_zeros() as usize;
     let s = statement.sources;
     if s == 0
@@ -959,6 +1018,37 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
         occurrence.block = counts[occurrence.column];
         counts[occurrence.column] += 1;
     }
+    // RFC-0013 A6: a lifetime source's columns reserve P·t blocks; this proof
+    // takes its own set, after `index·t`.
+    let mut reserved = counts.clone();
+    if let Some(life) = lifetime {
+        let members: Vec<usize> = (0..columns.len())
+            .filter(|c| columns[*c].source == life.source)
+            .collect();
+        if life.source >= s
+            || life.proofs == 0
+            || life.index >= life.proofs
+            || members.len() != life.blocks.len()
+            || members
+                .iter()
+                .zip(&life.blocks)
+                .any(|(c, t)| counts[*c] > *t)
+        {
+            return Err(Error::Statement);
+        }
+        for (c, t) in members.iter().zip(&life.blocks) {
+            reserved[*c] = life.proofs.checked_mul(*t).ok_or(Error::Statement)?;
+        }
+        for occurrence in steps
+            .iter_mut()
+            .flat_map(|st| st.occurrences.iter_mut())
+            .chain(gkr.iter_mut().flat_map(|g| g.occurrences_mut()))
+        {
+            if let Some(i) = members.iter().position(|c| *c == occurrence.column) {
+                occurrence.block += life.index * life.blocks[i];
+            }
+        }
+    }
     // Claim sources: columns in index order, each followed by its blocks.
     let rows = 2 * dim::<K>();
     let ell = ceil_log2(rows);
@@ -967,12 +1057,21 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
     for (index, x) in columns.iter().enumerate() {
         let at = cursors[x.source];
         let blocks = at + (x.limbs << x.log_len);
-        cursors[x.source] = blocks + counts[index] * dim::<K>();
+        // A hostile commitment file can name huge block counts.
+        cursors[x.source] = reserved[index]
+            .checked_mul(dim::<K>())
+            .and_then(|b| b.checked_add(blocks))
+            .ok_or(Error::Statement)?;
         offsets.push((at, blocks));
     }
     let mut layouts = Vec::new();
-    for cursor in &cursors {
-        let m = MIN_M.max(ceil_log2(cursor.div_ceil(rows)));
+    for (source, cursor) in cursors.iter().enumerate() {
+        let (ell, m) = match lifetime {
+            Some(life) if life.source == source => {
+                lifetime_shape::<K>(source as u64, life.proofs, *cursor)?
+            }
+            _ => (ell, MIN_M.max(ceil_log2(cursor.div_ceil(rows)))),
+        };
         if m >= 30 {
             return Err(Error::Statement);
         }
@@ -1025,6 +1124,8 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
         shared: (ell, m),
         blocks,
         counts,
+        reserved,
+        lifetime: lifetime.cloned(),
     })
 }
 
@@ -1613,7 +1714,7 @@ fn source_message<K: ChallengeField + CodeField>(
                 x[at + d * len + p] = limb;
             }
         }
-        for value in &mut x[*blocks..*blocks + plan.counts[index] * dim::<K>()] {
+        for value in &mut x[*blocks..*blocks + plan.reserved[index] * dim::<K>()] {
             let drawn = stream.m31();
             if claim_masks {
                 *value = drawn;
@@ -1684,7 +1785,7 @@ pub fn prove<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    prove_with(statement, columns, &seed.0, t, true, None)
+    prove_with(statement, columns, &seed.0, t, true, None, None).map(|p| p.0)
 }
 
 /// The root of claim source `source` as [`prove`] commits it from `seed`: a
@@ -1735,7 +1836,7 @@ pub fn prove_unmasked<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    prove_with(statement, columns, &seed.0, t, false, None)
+    prove_with(statement, columns, &seed.0, t, false, None, None).map(|p| p.0)
 }
 
 /// Which instance an adversary forges (controls only).
@@ -1778,7 +1879,7 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let forgery = Some(Forgery::Final(step, input));
-    prove_with(statement, columns, &seed.0, t, true, forgery)
+    prove_with(statement, columns, &seed.0, t, true, forgery, None).map(|p| p.0)
 }
 
 /// NC-0920..0926's adversary, never a verifier input: the honest prover on a
@@ -1797,7 +1898,7 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let forgery = Some(Forgery::Unchecked(relation));
-    prove_with(statement, columns, &seed.0, t, true, forgery)
+    prove_with(statement, columns, &seed.0, t, true, forgery, None).map(|p| p.0)
 }
 
 /// [`forge_unchecked`]'s instance: honest rounds and `μ`, no self-check.
@@ -1840,7 +1941,7 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let forgery = Some(Forgery::Ratio(lookup));
-    prove_with(statement, columns, &seed.0, t, true, forgery)
+    prove_with(statement, columns, &seed.0, t, true, forgery, None).map(|p| p.0)
 }
 
 /// The block-claim adversary's strategy: honest rounds, then `B_p + 1` and
@@ -1899,7 +2000,9 @@ where
         t,
         true,
         Some(Forgery::Block(step)),
+        None,
     )
+    .map(|p| p.0)
 }
 
 /// NC-0916's adversary, never a verifier input: the honest prover, except that
@@ -1920,7 +2023,7 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let forgery = Some(Forgery::Relation(relation));
-    prove_with(statement, columns, &seed.0, t, true, forgery)
+    prove_with(statement, columns, &seed.0, t, true, forgery, None).map(|p| p.0)
 }
 
 /// NC-0913's adversary, never a verifier input: the honest prover, except that GKR
@@ -1945,7 +2048,9 @@ where
         t,
         true,
         Some(Forgery::Layer(step)),
+        None,
     )
+    .map(|p| p.0)
 }
 
 fn evaluate<K: ChallengeField>(terms: &[Term<K>], values: &[K]) -> K {
@@ -2049,6 +2154,7 @@ fn masked_instance<K: ChallengeField + CodeField + Eq>(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn prove_with<K: ChallengeField + CodeField + Eq>(
     statement: &Statement<K>,
     columns: &[Vec<M31>],
@@ -2056,11 +2162,16 @@ fn prove_with<K: ChallengeField + CodeField + Eq>(
     t: &mut Transcript<K>,
     claim_masks: bool,
     forgery: Option<Forgery>,
-) -> Result<Proof<K>, Error>
+    lifetime: Option<(&Lifetime, ModelSecret<'_, K>)>,
+) -> Result<(Proof<K>, Option<Vec<K>>), Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let plan = plan(statement)?;
+    let plan = plan_with(statement, lifetime.as_ref().map(|(l, _)| *l))?;
+    let (life_source, model) = match lifetime {
+        Some((l, secret)) => (Some(l.source), Some(secret)),
+        None => (None, None),
+    };
     if columns.len() != statement.columns.len()
         || columns
             .iter()
@@ -2074,8 +2185,13 @@ where
         .map(|column| column.iter().map(|x| element::<K>(*x)).collect())
         .collect();
     let early = plan.early();
+    // A6: the lifetime source is rebuilt from the model seed, every proof alike.
+    let seed_of = |s: usize| match (&model, life_source) {
+        (Some(m), Some(l)) if l == s => m.seed,
+        _ => seed,
+    };
     let messages = (0..early)
-        .map(|s| source_message(&plan, s, &data, seed, claim_masks))
+        .map(|s| source_message(&plan, s, &data, seed_of(s), claim_masks))
         .collect::<Result<Vec<_>, _>>()?;
     let masks = plan
         .masks
@@ -2087,9 +2203,33 @@ where
             .map_err(Error::Pcs)
     };
     let mut prepared = Vec::new();
+    let mut model = model;
     for (s, message) in messages.iter().enumerate() {
         let layout = &plan.layouts[s];
-        prepared.push(hiding(plan.source_id(s), (layout.ell, layout.m), message)?);
+        prepared.push(match (model.as_mut(), &plan.lifetime) {
+            (Some(m), Some(l)) if l.source == s => {
+                let p = PreparedSource::<K>::hiding_lifetime(
+                    plan.source_id(s),
+                    layout.ell,
+                    layout.m,
+                    BLOWUP,
+                    message,
+                    m.seed,
+                    &mut HashUsage::default(),
+                    l.proofs,
+                    core::mem::take(&mut m.revealed),
+                )
+                .map_err(Error::Pcs)?;
+                // RFC-0013 A6: the producer refuses weights other than the committed ones.
+                if p.source().root() != m.root {
+                    return Err(Error::Pcs(stele_pcs::Error::Merkle(
+                        stele_hash::merkle::Error::RootMismatch,
+                    )));
+                }
+                p
+            }
+            _ => hiding(plan.source_id(s), (layout.ell, layout.m), message)?,
+        });
     }
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
@@ -2279,6 +2419,7 @@ where
         gkr.push(proof);
     }
     let mut batches = Vec::new();
+    let mut revealed = None;
     for (b, source) in plan.batched.iter().enumerate() {
         let index = plan.steps.len() + plan.gkr.len() + b;
         let (batch, point) = prove_batch(
@@ -2291,6 +2432,13 @@ where
             t,
         )?;
         mus.push(mask_claim(&plan, index, &point, batch.sumcheck.mask_final)?);
+        if life_source == Some(*source) {
+            let ell = plan.layouts[*source].ell as usize;
+            revealed = Some(
+                stele_poly::eq_table(&opening_point(&point, ell)[..ell + 1])
+                    .map_err(|_| Error::Statement)?,
+            );
+        }
         batches.push(batch);
     }
     let shared = &prepared[shared_index];
@@ -2312,15 +2460,86 @@ where
         )
         .map_err(|f| Error::Pcs(f.cause))?
         .0;
-    Ok(Proof {
-        sources,
-        certificates,
-        relations,
-        gkr,
-        batches,
-        shared: proof,
-        shared_opening,
-    })
+    Ok((
+        Proof {
+            sources,
+            certificates,
+            relations,
+            gkr,
+            batches,
+            shared: proof,
+            shared_opening,
+        },
+        revealed,
+    ))
+}
+
+/// [`prove`] with claim source `lifetime.source` a lifetime weight source (RFC-0013
+/// A6): rebuilt from the model seed, opened as proof `lifetime.index`
+/// with that proof's own claim-mask blocks. Returns the proof and the
+/// row-coefficient vector this opening revealed, which the caller appends to the
+/// model secret before the next proof.
+pub fn prove_lifetime<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    lifetime: &Lifetime,
+    model: ModelSecret<'_, K>,
+) -> Result<(Proof<K>, Vec<K>), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let (proof, revealed) = prove_with(
+        statement,
+        columns,
+        &seed.0,
+        t,
+        true,
+        None,
+        Some((lifetime, model)),
+    )?;
+    Ok((proof, revealed.ok_or(Error::Statement)?))
+}
+
+/// The root of lifetime source `lifetime.source`, committed once from `model`
+/// (the published model commitment, RFC-0013 A6).
+pub fn lifetime_root<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    lifetime: &Lifetime,
+    model: &[u8; 32],
+) -> Result<[u8; 32], Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let plan = plan_with(statement, Some(lifetime))?;
+    let data: Vec<Vec<K>> = columns
+        .iter()
+        .map(|column| column.iter().map(|x| element::<K>(*x)).collect())
+        .collect();
+    let s = lifetime.source;
+    let message = source_message(&plan, s, &data, model, true)?;
+    let layout = &plan.layouts[s];
+    let prepared = PreparedSource::<K>::hiding(
+        plan.source_id(s),
+        layout.ell,
+        layout.m,
+        BLOWUP,
+        &message,
+        model,
+        &mut HashUsage::default(),
+    )
+    .map_err(Error::Pcs)?;
+    Ok(prepared.source().root())
+}
+
+/// Masked occurrences per statement column (the per-proof block need `t_x`).
+pub fn occurrence_counts<K: ChallengeField + CodeField>(
+    statement: &Statement<K>,
+) -> Result<Vec<usize>, Error> {
+    let plan = plan(statement)?;
+    Ok(plan.counts[..statement.columns.len()].to_vec())
 }
 
 /// Verify a dev-zk claims proof against the verifier-owned statement. Every claim
@@ -2334,7 +2553,22 @@ pub fn verify<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let plan = plan(statement)?;
+    verify_lifetime(statement, None, proof, t)
+}
+
+/// [`verify`] with an optional lifetime source (RFC-0013 A6): its layout and
+/// this proof's block set follow `lifetime`, and its source must admit the
+/// lifetime budget.
+pub fn verify_lifetime<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    lifetime: Option<&Lifetime>,
+    proof: &Proof<K>,
+    t: &mut Transcript<K>,
+) -> Result<Verified<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let plan = plan_with(statement, lifetime)?;
     let shape = Error::Sumcheck(stele_sumcheck::Error::ProofShape);
     let shared_index = plan.layouts.len();
     if proof.sources.len() != shared_index + 1
@@ -2357,6 +2591,11 @@ where
             Source::<K>::hiding(id, ell, m, BLOWUP, source.root()).map_err(Error::Pcs)?;
         if expected.bytes() != source.bytes() {
             return Err(Error::MaskSource);
+        }
+        if let Some(l) = lifetime.filter(|l| l.source == s) {
+            if !expected.admits_lifetime(l.proofs) {
+                return Err(Error::MaskSource);
+            }
         }
         verified.push(
             verify_certificate(expected, certificate)
@@ -2470,8 +2709,9 @@ where
 }
 
 /// The privacy tests' exact leak count (RFC-0013 A5 item 7): for every masked
-/// occurrence of a statement column in an accepted proof, whether its revealed
-/// final equals the bare evaluation `x̃` at its column point. Returns
+/// occurrence (statement columns and the lookups' committed tops `p, q, h`) and
+/// every masked GKR layer child in an accepted proof, whether its revealed final
+/// equals the bare evaluation at its point. Returns
 /// `(occurrences, equal)`; masks make `equal` zero except with probability
 /// `≈ occurrences/|K|`. Replays [`verify`] on `t`.
 #[cfg(feature = "controls")]
@@ -2486,36 +2726,47 @@ where
 {
     let plan = plan(statement)?;
     let verified = verify(statement, proof, t)?;
-    let bare = |o: &Occurrence, point: &[K], free: &[K]| -> Result<Option<K>, Error> {
-        let Some(column) = columns.get(o.column) else {
-            return Ok(None);
-        };
-        let w = stele_poly::eq_table(&column_point(&o.coords, point, free))
-            .map_err(|_| Error::Statement)?;
-        Ok(Some(
-            column
-                .iter()
-                .zip(&w)
-                .fold(zero::<K>(), |s, (x, e)| s + element::<K>(*x) * *e),
-        ))
+    // Every plan column as K, the lookups' committed tops p, q, h included, and
+    // each lookup's tree from its public (β, α).
+    let mut data: Vec<Vec<K>> = columns
+        .iter()
+        .map(|c| c.iter().map(|x| element::<K>(*x)).collect())
+        .collect();
+    let mut trees = Vec::new();
+    for (lp, [beta, alpha]) in plan.lookups.iter().zip(&verified.lookups) {
+        let layers = lookup::tree(lp, &data, *beta, *alpha);
+        data.extend(lookup::top(lp, &layers)?);
+        trees.push(layers);
+    }
+    let mle = |values: &[K], point: Vec<K>| -> Result<K, Error> {
+        let w = stele_poly::eq_table(&point).map_err(|_| Error::Statement)?;
+        Ok(values
+            .iter()
+            .zip(&w)
+            .fold(zero::<K>(), |s, (x, e)| s + *x * *e))
     };
     let (mut total, mut equal) = (0, 0);
     for (j, step) in plan.steps.iter().enumerate() {
         let point = &verified.reductions[j].point;
         for (k, o) in step.occurrences.iter().enumerate() {
-            if let Some(x) = bare(o, point, &verified.draws[j])? {
-                total += 1;
-                equal += usize::from(proof.relations[j].final_values[step.first() + k] == x);
-            }
+            let x = mle(
+                &data[o.column],
+                column_point(&o.coords, point, &verified.draws[j]),
+            )?;
+            total += 1;
+            equal += usize::from(proof.relations[j].final_values[step.first() + k] == x);
         }
     }
     for (g, step) in plan.gkr.iter().enumerate() {
         let point = &verified.reductions[plan.steps.len() + g].point;
         for (input, o) in lookup::occurrences(step) {
-            if let Some(x) = bare(o, point, &[])? {
-                total += 1;
-                equal += usize::from(proof.gkr[g].final_values[input] == x);
-            }
+            let x = mle(&data[o.column], column_point(&o.coords, point, &[]))?;
+            total += 1;
+            equal += usize::from(proof.gkr[g].final_values[input] == x);
+        }
+        for (input, x) in lookup::layer_values(step, &trees[step.lookup_index()], point)? {
+            total += 1;
+            equal += usize::from(proof.gkr[g].final_values[input] == x);
         }
     }
     Ok((total, equal))
@@ -2712,7 +2963,8 @@ mod tests {
         for masks in [true, false] {
             for n in 0..8u8 {
                 let t = || Transcript::<QM31>::new(b"leak").expect("transcript");
-                let proof = prove_with(&statement, &columns, &[n; 32], &mut t(), masks, None)
+                let proof = prove_with(&statement, &columns, &[n; 32], &mut t(), masks, None, None)
+                    .map(|p| p.0)
                     .expect("proof");
                 let verified = verify(&statement, &proof, &mut t()).expect("accepted");
                 let eq = stele_poly::eq_table(&verified.reductions[0].point).expect("eq");
@@ -2773,7 +3025,8 @@ mod tests {
         for masks in [true, false] {
             for n in 0..6u8 {
                 let t = || Transcript::<QM31>::new(b"leak").expect("transcript");
-                let proof = prove_with(&statement, &columns, &[n; 32], &mut t(), masks, None)
+                let proof = prove_with(&statement, &columns, &[n; 32], &mut t(), masks, None, None)
+                    .map(|p| p.0)
                     .expect("proof");
                 let verified = verify(&statement, &proof, &mut t()).expect("accepted");
                 let [beta, alpha] = verified.lookups[0];
@@ -2788,6 +3041,81 @@ mod tests {
                 let residual = proof.gkr[0].final_values[3] - exact;
                 assert_eq!(residual == QM31::from_i64(0), !masks);
             }
+        }
+    }
+
+    /// RFC-0013 A6 item 3: proofs 0 and 1 against one lifetime source use
+    /// disjoint claim-mask block positions for every weight occurrence, inside the
+    /// `P·t` blocks the source reserves.
+    #[test]
+    fn accepts_disjoint_lifetime_blocks_per_proof() {
+        let read = |column| Read {
+            column,
+            vars: vec![0, 1, 2],
+        };
+        let term = |coefficient, factors| Term {
+            coefficient: QM31::from_i64(coefficient),
+            factors,
+        };
+        let statement = Statement::<QM31> {
+            sources: 2,
+            columns: vec![
+                Column {
+                    source: 0,
+                    log_len: 3,
+                },
+                Column {
+                    source: 1,
+                    log_len: 3,
+                },
+            ],
+            relations: vec![
+                Relation::Identity {
+                    num_vars: 3,
+                    reads: vec![read(0), read(1)],
+                    terms: vec![term(1, vec![0, 1]), term(-1, vec![0])],
+                },
+                Relation::Identity {
+                    num_vars: 3,
+                    reads: vec![read(1)],
+                    terms: vec![term(1, vec![0])],
+                },
+            ],
+            lookups: Vec::new(),
+        };
+        let t = occurrence_counts(&statement).expect("counts")[1];
+        assert_eq!(t, 2);
+        let positions = |index| {
+            let life = Lifetime {
+                source: 1,
+                proofs: 3,
+                index,
+                blocks: vec![t],
+            };
+            let plan = plan_with(&statement, Some(&life)).expect("plan");
+            let (_, first) = plan.layouts[1].offsets[0];
+            assert_eq!(plan.reserved[1], 3 * t);
+            let mut out: Vec<usize> = plan
+                .steps
+                .iter()
+                .flat_map(|s| s.occurrences.iter())
+                .filter(|o| o.column == 1)
+                .flat_map(|o| {
+                    assert!(o.block < 3 * t, "block past the reservation");
+                    let at = first + o.block * dim::<QM31>();
+                    at..at + dim::<QM31>()
+                })
+                .collect();
+            out.sort_unstable();
+            out
+        };
+        let (zero, one, two) = (positions(0), positions(1), positions(2));
+        assert_eq!(zero.len(), t * dim::<QM31>());
+        for (a, b) in [(&zero, &one), (&zero, &two), (&one, &two)] {
+            assert!(
+                a.iter().all(|p| !b.contains(p)),
+                "two proofs share a mask entry"
+            );
         }
     }
 

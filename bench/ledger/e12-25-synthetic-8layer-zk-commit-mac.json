@@ -1,0 +1,75 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "c12d32a06da328e9be90ff0f6d10fe003654a99d",
+ "controls": {
+  "failed": 0,
+  "passed": 1,
+  "total": 1
+ },
+ "device": "arm64 Apple laptop (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "commit_peak_rss_bytes": 826540032,
+  "model_commitment_bytes": 297,
+  "prove_peak_rss_bytes": 10973478912,
+  "public_bytes": 23363,
+  "verify_peak_rss_bytes": 2581790720
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele commit-model --zk (P = 8) / prove-dev --zk / verify-dev --expect-model",
+  "controls": {
+   "pin": "model differs from --expect-model"
+  },
+  "host_context": "Apple laptop, macOS, release build of the measured commit; one run; the model committed once (P = 8), then proofs 0 and 1 against it, both verified with --expect-model; BSD /usr/bin/time -l.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "profile_byte": 1,
+  "proof_index": 0,
+  "proof_sha256": "370f4eb89c528f9834623c32812b6e6d785b3dd9fc853765cc2e25f9c0adcbdb",
+  "proofs": 8,
+  "public_sha256": "753a9c6a660e266f5ad2431b922d91874450f596020cf575b95f31bd69c0e297",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "deccf2f3c2448f89feac035597599d2fd6602a29e2805f9eb896125e2b407552",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1) against one published model commitment (RFC-0013 A6, Proposed, task E12-25), not admitted; zero knowledge is conditional and computational. Prover time is the prove-dev --zk process wall time of proof 0 (Artifact decode, executor capture, plain check and proof; the model commitment is made once by commit-model, recorded as stage model_commitment_once and not part of the prove time). Verifier time is verify-dev with --expect-model. The control is verify-dev pinned to another model digest. CPU only, no GPU. Not comparable to the 4-vCPU E17-00 records; not a cost-model fit input.",
+ "plan_digest": "ff4ed25aec689c8065e2f551b5dddb225e3a3d184b120c455b491c8b074bfc66",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 141739226,
+ "prover_time_ns": 320050000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment_once": 84320000000,
+  "prove_dev_wall": 320050000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 52210000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-zk-commit-mac"
+}

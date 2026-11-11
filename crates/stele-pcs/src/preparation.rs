@@ -54,6 +54,9 @@ pub struct PreparedSource<'a, K: ChallengeField> {
     borrows: AtomicUsize,
     openings: AtomicUsize,
     mask_polynomial: bool,
+    /// RFC-0013 A6: a weight source's lifetime budget and the
+    /// row-coefficient vectors its earlier openings revealed.
+    lifetime: Option<(usize, Vec<Vec<K>>)>,
 }
 
 fn checked_bytes<T>(count: usize) -> Result<usize, Error> {
@@ -106,6 +109,44 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         let source = Source::<K>::hiding(id, ell, m, blowup, [0; 32])?;
         let rebuild = |root| Source::hiding(id, ell, m, blowup, root);
         Self::prepare(source, rebuild, message, Some(seed), usage)
+    }
+
+    /// Prepare a lifetime hiding source (RFC-0013 A6): a weight source
+    /// committed once from `seed` and opened at most `budget` times over its
+    /// life, once per proof. `revealed` holds the row-coefficient vectors of its
+    /// earlier openings, in order; the next opening's rank check covers them all,
+    /// and the producer refuses past the budget (`MaskBudget`).
+    ///
+    /// # Security
+    ///
+    /// The caller persists the opening count and `revealed` across proofs; a
+    /// restored or forked state that reopens an index breaks the budget.
+    #[allow(clippy::too_many_arguments)]
+    pub fn hiding_lifetime(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+        budget: usize,
+        revealed: Vec<Vec<K>>,
+    ) -> Result<Self, Error> {
+        let mut prepared = Self::hiding(id, ell, m, blowup, message, seed, usage)?;
+        if !prepared.source.admits_lifetime(budget) {
+            return Err(Error::UnsupportedSource);
+        }
+        if revealed.len() >= budget {
+            return Err(Error::MaskBudget);
+        }
+        prepared.lifetime = Some((budget, revealed));
+        Ok(prepared)
+    }
+
+    /// The vectors a lifetime source revealed before this preparation.
+    pub(crate) fn revealed(&self) -> &[Vec<K>] {
+        self.lifetime.as_ref().map_or(&[], |(_, r)| r.as_slice())
     }
 
     /// Prepare the mask-polynomial source of RFC-0013 A4: a hiding source with
@@ -249,6 +290,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             borrows: AtomicUsize::new(0),
             openings: AtomicUsize::new(0),
             mask_polynomial: false,
+            lifetime: None,
         })
     }
 
@@ -266,8 +308,13 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
 
     /// RFC-0013 A2 item 1: a hiding source admits one opening over its lifetime.
     /// Every attempt counts, through any opening path, even if it later fails.
+    /// A lifetime source (A6) admits one opening per preparation, within its budget.
     pub(crate) fn claim_opening(&self) -> Result<(), Error> {
-        if self.source.is_hiding() && self.openings.fetch_add(1, Ordering::Relaxed) > 0 {
+        let earlier = self.revealed().len();
+        let budget = self.lifetime.as_ref().map_or(1, |(b, _)| *b);
+        if self.source.is_hiding()
+            && (self.openings.fetch_add(1, Ordering::Relaxed) > 0 || earlier >= budget)
+        {
             return Err(Error::MaskBudget);
         }
         Ok(())

@@ -2442,3 +2442,64 @@ Consequences:
 - The verifier, `no_std` builds and every CPU path are unchanged.
 
 Status: Accepted (owner authorisation for autonomous gating decisions; independent review in the E16-21 PR).
+
+## ADR-104: One published dev-zk model commitment for P proofs (RFC-0013 A6, task E12-25)
+
+Numbered after ADR-103 (main).
+
+Context: E12-14b committed the weights per proof (`P = 1`), so a dev-zk proof bound
+no published model. Review F1 asked for a persistent commitment, and E12-25 makes
+it the admission gate.
+
+Decision:
+- RFC-0013 A6 (Proposed) defines a lifetime hiding weight source.
+  - It is committed once from a model seed, with `P·t_x` claim-mask blocks per
+    weight column.
+  - It is admitted when `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`.
+  - Proof `j` opens it once and uses block set `j`.
+  - The rank check spans every opening of the lifetime.
+- `stele-pcs` gains `Source::admits_lifetime` and `PreparedSource::hiding_lifetime`,
+  whose opening budget and rank check cover earlier openings. `zk::claims` gains
+  `Lifetime`, `prove_lifetime`, `verify_lifetime` and `lifetime_root`.
+- The orchestrator and the CLI:
+  - `commit-model --zk` writes the public commitment and a secret state with mode
+    0600.
+  - `prove-dev --zk` persists the counter before it proves.
+  - The public input carries the index and the commitment.
+  - `--expect-model` pins the commitment's model digest.
+- Reviewer nits:
+  - `zk::claims::leaks` covers the committed tops and the GKR layer children.
+    The unmasked control must leak.
+  - The CLI doc reads "A development proof".
+  - A gate checks that `cargo tree -p stele-cli` has no `controls` feature.
+- Deferred:
+  - committing the 1-D records with their CQIS well-formedness relations (E12-27,
+    now an admission gate);
+  - NC-0930..0932.
+- dev-zk stays not admitted.
+
+Independent review (fix-then-merge; A6's `P + 1` extension confirmed by an exact
+`F_61²` check, now `research/zk-claims/check_lifetime.py`). Fixes:
+- F1: The producer refuses a rebuilt root that differs from the published one,
+  before any transcript work. The CLI verifies its own proof before writing it.
+- F2: NC-0933 gains a transcript-level half.
+- F3:
+  - A plan test checks disjoint block sets per index.
+  - A `stele-pcs` test sits at `R = (P + 1)·D` and checks a rank-deficient
+    revealed set.
+  - Both are mutation-checked.
+- F4:
+  - The CLI validates its inputs before it takes an index.
+  - `prove_next` restores the prior state on any error.
+  - `write_secret` replaces stale temporaries, sets mode 0600 and syncs the
+    parent directory.
+- F6:
+  - Index reuse is quantified in A6 item 5 and §7.
+  - A6 now declares that the certificate is repeated in every proof and that the
+    index reveals proof order.
+- F7: `is_hiding`'s doc is restored, and block offsets use checked arithmetic.
+
+Status: Accepted (development tier). Independent review in two rounds:
+fix-then-merge, then MERGE with "accept A6: yes". dev-zk stays not admitted
+until E12-27.
+

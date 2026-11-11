@@ -14,7 +14,7 @@
 //! so the rejection comes from the engine transcript, not the prover-written header.
 use stele_prover::development::container;
 use stele_prover::development::{
-    artifact_id, prove, prove_tampered, statement_digest_for, verify, Committed, Error, Public,
+    artifact_id, prove, prove_tampered, statement_digest_for, verify, zk, Committed, Error, Public,
     Statement, Weights,
 };
 use stele_reductions::stele_cqis::execution::Executor;
@@ -65,47 +65,177 @@ fn name(error: &Error) -> String {
 }
 
 /// Run control `id`; `Ok` only on the honest acceptance and the exact rejection.
+/// A dev-zk model commitment of the window's model (RFC-0013 A6) with budget
+/// `proofs`, committed on a reference window of 4 tokens from `seed`.
+fn zk_commit(
+    public: &Public,
+    exec: &mut Executor<'_>,
+    weights: &Weights,
+    proofs: u32,
+    seed: u8,
+) -> Result<(Public, zk::ModelCommitment, zk::ModelState), String> {
+    let base = Public {
+        commitment: Vec::new(),
+        ..public.clone()
+    };
+    let (commitment, state) =
+        zk::commit(&base, exec, weights, 4, proofs, [seed; 32]).map_err(|e| format!("{e:?}"))?;
+    let zk_public = Public {
+        commitment: vec![(commitment.root, Vec::new())],
+        ..public.clone()
+    };
+    Ok((zk_public, commitment, state))
+}
+
+/// The next dev-zk proof against `commitment`, advancing `state`.
+fn zk_prove(
+    zk_public: &Public,
+    exec: &mut Executor<'_>,
+    weights: &Weights,
+    statement: &Statement,
+    commitment: &zk::ModelCommitment,
+    state: &mut zk::ModelState,
+    seed: u8,
+) -> Result<(Vec<u8>, u32), Error> {
+    let index = state.take(commitment)?;
+    let (proof, revealed) = zk::prove(
+        zk_public,
+        exec,
+        weights,
+        statement,
+        zk::Seed::new([seed; 32]),
+        commitment,
+        state,
+        index,
+    )?;
+    state.revealed.push(revealed);
+    Ok((proof, index))
+}
+
+/// NC-0933's transcript-level half: an adversary that proves with commitment A's
+/// model seed and state (past the producer's root check, since its secret names
+/// A's root) under B's public input, with a correct dev-zk header for B. Header
+/// and transcript both name B; only the verifier's binding of the proof's weight
+/// source to B's root rejects it (`RootMismatch`).
+#[allow(clippy::too_many_arguments)]
+fn commitment_transcript(
+    public: &Public,
+    exec: &mut Executor<'_>,
+    weights: &Weights,
+    committed: &Committed<'_>,
+    statement: &Statement,
+    b_public: &Public,
+    b: &zk::ModelCommitment,
+    a: &zk::ModelCommitment,
+    a_state: &zk::ModelState,
+) -> Result<(), String> {
+    use stele_prover::development::model_identity;
+    use stele_reductions::stele_field::QM31;
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::zk::claims::{self, Lifetime, ModelSecret};
+    use stele_reductions::zk::relation as zk_relation;
+    let mut captured = None;
+    let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
+    prove_tampered(public, exec, weights, committed, statement, &mut hook)
+        .map_err(|e| format!("capture: {e:?}"))?;
+    let (relation, values) = captured.ok_or("relation")?;
+    let index = a_state.revealed.len() as u32;
+    let (cqis_id, _) = model_identity(b_public).map_err(|e| format!("{e:?}"))?;
+    let input = zk::public_input(b_public, &cqis_id, statement, b, index);
+    let mut t = Transcript::<QM31>::new(&input).map_err(|e| format!("{e:?}"))?;
+    let lifetime = Lifetime {
+        source: zk_relation::WEIGHTS,
+        proofs: b.proofs as usize,
+        index: index as usize,
+        blocks: b.blocks.iter().map(|x| *x as usize).collect(),
+    };
+    let model = ModelSecret {
+        seed: &a_state.seed,
+        revealed: a_state.revealed.clone(),
+        root: a.root,
+    };
+    let (proof, _) = zk_relation::prove_lifetime(
+        &mut t,
+        &relation,
+        &values,
+        zk::Seed::new([39; 32]),
+        &lifetime,
+        model,
+    )
+    .map_err(|e| format!("adversary: {e:?}"))?;
+    let mut bytes = b"stele-dev-zk-v1".to_vec();
+    bytes.extend_from_slice(&cqis_id);
+    bytes.extend_from_slice(
+        &zk::statement_digest_for(b_public, statement, b, index, zk::PROFILE)
+            .map_err(|e| format!("{e:?}"))?,
+    );
+    bytes.extend_from_slice(&claims::encode(&proof));
+    let root = stele_reductions::zk::Error::Pcs(stele_reductions::stele_pcs::Error::Merkle(
+        stele_reductions::stele_hash::merkle::Error::RootMismatch,
+    ));
+    match zk::verify(b_public, statement, &bytes, b, index) {
+        Err(Error::Zk(e)) if e == root => Ok(()),
+        other => Err(format!("transcript-level NC-0933: {other:?}")),
+    }
+}
+
 /// NC-0912's transcript-level half: a claims proof made under the development
-/// transcript input (no profile byte) and stamped with the correct dev-zk header.
-/// The header passes; the claims verifier, whose transcript binds the byte,
-/// rejects it.
+/// transcript input (no profile byte, index or commitment) and stamped with the
+/// correct dev-zk header. The header passes; the claims verifier, whose transcript
+/// binds the dev-zk input, rejects it.
+#[allow(clippy::too_many_arguments)]
 fn transcript_profile(
     public: &Public,
     exec: &mut Executor<'_>,
     weights: &Weights,
     committed: &Committed<'_>,
     statement: &Statement,
+    zk_public: &Public,
+    commitment: &zk::ModelCommitment,
+    state: &zk::ModelState,
 ) -> Result<(), String> {
-    use stele_prover::development::{model_identity, public_input, zk};
+    use stele_prover::development::{model_identity, public_input};
     use stele_reductions::stele_field::QM31;
     use stele_reductions::stele_hash::Transcript;
-    use stele_reductions::zk::{claims, relation as zk_relation};
+    use stele_reductions::zk::claims::{self, Lifetime, ModelSecret};
+    use stele_reductions::zk::relation as zk_relation;
     let mut captured = None;
     let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
     prove_tampered(public, exec, weights, committed, statement, &mut hook)
         .map_err(|e| format!("capture: {e:?}"))?;
     let (relation, values) = captured.ok_or("relation")?;
-    let seed = || zk::Seed::new([13; 32]);
-    let root = zk_relation::weight_root(&relation, &values, &seed())
-        .map_err(|e| format!("{e:?}"))?
-        .ok_or("weights")?;
-    let zk_public = Public {
-        commitment: vec![(root, Vec::new())],
-        ..public.clone()
-    };
-    let (cqis_id, _) = model_identity(&zk_public).map_err(|e| format!("{e:?}"))?;
-    let mut t = Transcript::<QM31>::new(&public_input(&zk_public, &cqis_id, statement))
+    let index = state.revealed.len() as u32;
+    let (cqis_id, _) = model_identity(zk_public).map_err(|e| format!("{e:?}"))?;
+    let mut t = Transcript::<QM31>::new(&public_input(zk_public, &cqis_id, statement))
         .map_err(|e| format!("{e:?}"))?;
-    let proof = zk_relation::prove(&mut t, &relation, &values, seed())
-        .map_err(|e| format!("adversary: {e:?}"))?;
+    let lifetime = Lifetime {
+        source: zk_relation::WEIGHTS,
+        proofs: commitment.proofs as usize,
+        index: index as usize,
+        blocks: commitment.blocks.iter().map(|b| *b as usize).collect(),
+    };
+    let model = ModelSecret {
+        seed: &state.seed,
+        revealed: state.revealed.clone(),
+        root: commitment.root,
+    };
+    let (proof, _) = zk_relation::prove_lifetime(
+        &mut t,
+        &relation,
+        &values,
+        zk::Seed::new([13; 32]),
+        &lifetime,
+        model,
+    )
+    .map_err(|e| format!("adversary: {e:?}"))?;
     let mut bytes = b"stele-dev-zk-v1".to_vec();
     bytes.extend_from_slice(&cqis_id);
     bytes.extend_from_slice(
-        &zk::statement_digest_for(&zk_public, statement, zk::PROFILE)
+        &zk::statement_digest_for(zk_public, statement, commitment, index, zk::PROFILE)
             .map_err(|e| format!("{e:?}"))?,
     );
     bytes.extend_from_slice(&claims::encode(&proof));
-    match zk::verify(&zk_public, statement, &bytes) {
+    match zk::verify(zk_public, statement, &bytes, commitment, index) {
         Err(Error::Zk(_)) => Ok(()),
         other => Err(format!("transcript-level NC-0912: {other:?}")),
     }
@@ -232,26 +362,130 @@ pub fn run(id: u16) -> Result<(), String> {
             ("RoundSumMismatch", restamped(&public, &honest, &proof)?)
         }
         912 => {
-            use stele_prover::development::zk;
-            let base = Public {
-                commitment: Vec::new(),
-                ..public.clone()
-            };
-            let (zk_public, mut zk_proof) =
-                zk::prove(&base, &mut exec, &weights, &honest, zk::Seed::new([12; 32]))
-                    .map_err(|e| format!("dev-zk prover: {e:?}"))?;
-            zk::verify(&zk_public, &honest, &zk_proof)
+            let (zk_public, commitment, mut state) =
+                zk_commit(&public, &mut exec, &weights, 2, 12)?;
+            let (mut zk_proof, index) = zk_prove(
+                &zk_public,
+                &mut exec,
+                &weights,
+                &honest,
+                &commitment,
+                &mut state,
+                12,
+            )
+            .map_err(|e| format!("dev-zk prover: {e:?}"))?;
+            zk::verify(&zk_public, &honest, &zk_proof, &commitment, index)
                 .map_err(|e| format!("honest dev-zk rejected: {e:?}"))?;
             // The profile byte flipped to development: the container names the
             // development statement of the same public input and window.
-            let digest =
-                zk::statement_digest_for(&zk_public, &honest, 0).map_err(|e| format!("{e:?}"))?;
+            let digest = zk::statement_digest_for(&zk_public, &honest, &commitment, index, 0)
+                .map_err(|e| format!("{e:?}"))?;
             let at = b"stele-dev-zk-v1".len() + 32;
             zk_proof[at..at + 32].copy_from_slice(&digest);
-            transcript_profile(&public, &mut exec, &weights, &committed, &honest)?;
+            transcript_profile(
+                &public,
+                &mut exec,
+                &weights,
+                &committed,
+                &honest,
+                &zk_public,
+                &commitment,
+                &state,
+            )?;
             (
                 "StatementMismatch",
-                zk::verify(&zk_public, &honest, &zk_proof).err(),
+                zk::verify(&zk_public, &honest, &zk_proof, &commitment, index).err(),
+            )
+        }
+        933 => {
+            // A proof under commitment A, verified against commitment B of the same
+            // weights (another model seed): the public input names B's root.
+            let (a_public, a, mut a_state) = zk_commit(&public, &mut exec, &weights, 2, 33)?;
+            let (_, b, _) = zk_commit(&public, &mut exec, &weights, 2, 34)?;
+            let (proof, index) = zk_prove(
+                &a_public,
+                &mut exec,
+                &weights,
+                &honest,
+                &a,
+                &mut a_state,
+                33,
+            )
+            .map_err(|e| format!("dev-zk prover: {e:?}"))?;
+            zk::verify(&a_public, &honest, &proof, &a, index)
+                .map_err(|e| format!("honest dev-zk rejected: {e:?}"))?;
+            let pinned_a = zk::model_digest(&a_public, &a).map_err(|e| format!("{e:?}"))?;
+            let b_public = Public {
+                commitment: vec![(b.root, Vec::new())],
+                ..a_public.clone()
+            };
+            let pinned_b = zk::model_digest(&b_public, &b).map_err(|e| format!("{e:?}"))?;
+            if pinned_a == pinned_b {
+                return Err("two commitments share a model digest".into());
+            }
+            commitment_transcript(
+                &public, &mut exec, &weights, &committed, &honest, &b_public, &b, &a, &a_state,
+            )?;
+            (
+                "StatementMismatch",
+                zk::verify(&b_public, &honest, &proof, &b, index).err(),
+            )
+        }
+        934 => {
+            // Budget 2: two proofs, then the third index is refused. A state whose
+            // earlier opening is missing (index 1 without opening 0) is refused too.
+            let (zk_public, commitment, mut state) =
+                zk_commit(&public, &mut exec, &weights, 2, 35)?;
+            zk_prove(
+                &zk_public,
+                &mut exec,
+                &weights,
+                &honest,
+                &commitment,
+                &mut state,
+                35,
+            )
+            .map_err(|e| format!("dev-zk prover: {e:?}"))?;
+            let mut replay = state.clone();
+            replay.revealed.clear();
+            replay.next = 2;
+            if !matches!(
+                zk::prove(
+                    &zk_public,
+                    &mut exec,
+                    &weights,
+                    &honest,
+                    zk::Seed::new([36; 32]),
+                    &commitment,
+                    &replay,
+                    1,
+                ),
+                Err(Error::Zk(_))
+            ) {
+                return Err("index proved without its earlier opening".into());
+            }
+            zk_prove(
+                &zk_public,
+                &mut exec,
+                &weights,
+                &honest,
+                &commitment,
+                &mut state,
+                37,
+            )
+            .map_err(|e| format!("dev-zk prover: {e:?}"))?;
+            (
+                "MaskBudget",
+                zk_prove(
+                    &zk_public,
+                    &mut exec,
+                    &weights,
+                    &honest,
+                    &commitment,
+                    &mut state,
+                    38,
+                )
+                .err(),
             )
         }
         1309 => {
@@ -380,6 +614,13 @@ mod privacy {
             equal, 0,
             "{equal} of {total} revealed finals equal the bare evaluation"
         );
+        // The control: without masks the same count finds the bare evaluations.
+        let mut tp = Transcript::new(b"dev-zk window privacy").expect("transcript");
+        let bare = zk_relation::prove_unmasked(&mut tp, &relation, &values, Seed::new([5; 32]))
+            .expect("prove");
+        let mut tr = Transcript::new(b"dev-zk window privacy").expect("transcript");
+        let (_, leaked) = zk_relation::leaks(&mut tr, &relation, &values, &bare).expect("accepted");
+        assert!(leaked > 0, "the unmasked control leaks nothing");
     }
 
     #[test]
@@ -392,6 +633,53 @@ mod privacy {
     #[ignore = "8 layers at T=64: run with --release -- --ignored"]
     fn rejects_bare_evaluations_on_the_eight_layer_window() {
         exact("eight-layer", 64);
+    }
+
+    /// RFC-0013 A6: two proofs against one published commitment both verify, at
+    /// indices 0 and 1, and their revealed values stay independent: χ² homogeneity
+    /// of the two proofs' finals, as for two fresh commitments.
+    #[test]
+    fn accepts_two_independent_proofs_against_one_commitment() {
+        let model = Model::decode(span("model").expect("model")).expect("model");
+        let prep = Preparation::decode(&model, span("preparation").expect("prep")).expect("prep");
+        let scales = Scales::decode(&model, span("scales").expect("scales")).expect("scales");
+        let artifact = span("artifact").expect("artifact");
+        let id = artifact_id(artifact);
+        let mut exec =
+            Executor::new(&model, &prep, &scales, artifact, &id, 1 << 34).expect("executor");
+        let (statement, _, _) = window("one-layer", artifact, 4).expect("window");
+        let weights = Weights::from_artifact(&model, artifact).expect("weights");
+        let public = Public {
+            model: span("model").expect("model").to_vec(),
+            scales: span("scales").expect("scales").to_vec(),
+            preparation: span("preparation").expect("prep").to_vec(),
+            vectors: weights.vectors.clone(),
+            commitment: Vec::new(),
+        };
+        let (zk_public, commitment, mut state) =
+            zk_commit(&public, &mut exec, &weights, 3, 41).expect("commit");
+        let mut finals = Vec::new();
+        for seed in [42, 43] {
+            let (proof, index) = zk_prove(
+                &zk_public,
+                &mut exec,
+                &weights,
+                &statement,
+                &commitment,
+                &mut state,
+                seed,
+            )
+            .expect("prove");
+            zk::verify(&zk_public, &statement, &proof, &commitment, index).expect("verify");
+            let header = b"stele-dev-zk-v1".len() + 64;
+            finals.push(
+                stele_reductions::zk::claims::decode::<QM31>(&proof[header..]).expect("decode"),
+            );
+        }
+        assert_eq!(state.next, 2);
+        assert_eq!(state.revealed.len(), 2);
+        let chi2 = chi2_same_x10(&histogram(&finals[0]), &histogram(&finals[1]));
+        assert!(chi2 < 377, "10·χ² {chi2}");
     }
 
     /// Two witnesses with one public statement: the window under the honest
