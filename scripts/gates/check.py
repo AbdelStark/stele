@@ -881,7 +881,9 @@ def field_source_codec(root):
     expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('field', 'setup_term'), ('struct', 'Source'),
-        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'is_hiding'),
+        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
+        # RFC-0013 A6 (Proposed, E12-25): the lifetime source's admission.
+        ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
         ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
         ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code_id'), ('fn', 'codeword_len'), ('fn', 'root'), ('fn', 'path_height'),
         ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'), ('fn', 'opening_frame_size'),
@@ -914,7 +916,9 @@ def field_source_codec(root):
         ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'hiding_mask'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
+        # RFC-0013 A6 (Proposed, E12-25): a lifetime hiding source.
+        ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),
         ('fn', 'source'), ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
@@ -927,7 +931,8 @@ def field_source_codec(root):
             'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
-            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
+            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[allow(clippy::too_many_arguments)]',
+                '#[cfg(test)]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
     producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
