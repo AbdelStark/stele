@@ -2774,7 +2774,7 @@ E16-30.
 Status: Accepted with RFC-0008 A8 (independent review: FIX-THEN-MERGE, F1 fixed here).
 A8 is the protocol change; this record follows RFC-0012 A17 and RFC-0010 A14.
 
-## ADR-110: NC-1310 as a two-value tamper on a minimal relation; INV-4 exception (RFC-0026 §3.6, §9)
+## ADR-110: NC-1310 as a two-value tamper on a minimal relation; INV-4 exception (RFC-0026 A10, §3.6, §9)
 
 Numbering: ADR-108 is on main and #348 proposes ADR-109, so this record takes 110.
 
@@ -2790,6 +2790,14 @@ every identity true.
 
 Decision:
 
+- **Amendment, not just an ADR (INV-1).** §9 requires every NC-1300..1310 control to run
+  through the actual E16-10 verifier. RFC-0026 A10 (Proposed) redefines NC-1310 at the
+  relation-engine level that this verifier calls, and states the INV-4 exception. This
+  record implements A10.
+- **Window-level coverage stays with NC-1300/1301.** Both run through the actual E16-10
+  verifier. Each leaves a margin entry at `-1`, outside its unsigned range, and is
+  rejected by that range's A5 root equation, `RootMismatch` (RFC-0026 E2). That is
+  the same binding at window level.
 - **Minimal relation.** NC-1310 runs through the actual relation-engine prover and
   verifier (`stele_reductions::relation::{prove, verify}`), the engine the development
   verifier calls. The relation has the identity `x + 2^22·y − c = 0`, with `x` unsigned
@@ -2817,5 +2825,5 @@ Consequences: no proof byte, pin or ledger moves. NC-1310 is `done` (115/219 con
 A window-level NC-1310 would need an adversary that recomputes the downstream witness.
 That is left open.
 
-Status: Accepted (coordinator decision on the E12-24 follow-up).
+Status: Accepted with RFC-0026 A10 (Proposed; acceptance by independent review).
 

@@ -11,7 +11,7 @@
 //! - NC-1309: a different checked range (`RoundSumMismatch`).
 //!
 //! NC-1310 (`run_width`) runs on a minimal relation through the relation-engine
-//! prover and verifier, as a documented INV-4 exception (ADR-110).
+//! prover and verifier (RFC-0026 A10), as a documented INV-4 exception (ADR-110).
 //!
 //! NC-1305 and NC-1309 restamp the container's statement digest with the verifier's own,
 //! so the rejection comes from the engine transcript, not the prover-written header.
