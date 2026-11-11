@@ -2513,8 +2513,9 @@ was repeated. The measurements are in the E16-23 ledgers.
 
 Decision:
 - `stele_sumcheck::parallel` gains `map`, with one pool task per item for a few large
-  independent items, and `join`. Without `std`, both run in order on the calling
-  thread.
+  independent items, `join`, and `gated` (a deciding gate beside the work). Without
+  `std`, each runs in order on the calling thread; `gated` runs the gate first.
+  `stele-reductions` re-exports `stele_sumcheck::parallel` only.
 - `stele-pcs` gains an optional `rayon =1.10.0`, which only its `std` feature enables.
   It does not depend on `stele-sumcheck`, so that edge stays banned (`deny.toml`). A
   crate-private `for_each_block` splits disjoint output blocks.
@@ -2541,12 +2542,13 @@ Decision:
 - `Layout::declare` generates rotary coefficients once for each distinct rotation, not
   once for Q and again for K in every layer. Activation tables are generated once for
   each distinct descriptor (`Rope::with_input`).
-- `prove-dev` runs the plain checker alongside the engine (`parallel::join`).
+- `prove-dev` runs the plain checker alongside the engine (`parallel::gated`).
   - The engine's output does not depend on the checker.
-  - The checker's verdict is applied first, so a false witness still fails with
-    `Check` and no proof is returned.
+  - The checker decides. A false witness fails with `Check` and returns no proof,
+    even if the engine errs or panics on it; under `std` the engine's panic is caught
+    and dropped in that case. When the checker passes, an engine panic propagates.
   - The engine may finish work on a witness the checker rejects. That work is
-    discarded.
+    discarded. `rejects_false_witness_with_check` tests the outcome.
 - Every change is an exact reordering of field additions, or a write into disjoint
   slots. Transcript order, proof bytes, the E16-10 fixture hashes and every proof pin
   are unchanged (INV-3, INV-8). The verifier crates (`stele-verifier`, the engine's
