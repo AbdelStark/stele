@@ -6,6 +6,8 @@
 extern crate alloc;
 // RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.
 pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};
+// E16-23: the prover-side work pool only (map, join), not the sumcheck crate.
+pub use stele_sumcheck::parallel;
 pub mod argmax;
 pub mod byte_range;
 pub mod development;

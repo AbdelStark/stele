@@ -237,11 +237,14 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         reserve(&mut out, tables.len())?;
         for table in tables {
             let mut values = zeros(width)?;
-            for (slice, weight) in table.chunks_exact(width).zip(weights) {
-                for (out, value) in values.iter_mut().zip(slice) {
-                    *out = *out + *weight * *value;
+            // Disjoint column blocks, each summed over the slices in order.
+            crate::parallel::for_each_chunk(&mut values, |start, chunk| {
+                for (slice, weight) in table.chunks_exact(width).zip(weights) {
+                    for (out, value) in chunk.iter_mut().zip(&slice[start..]) {
+                        *out = *out + *weight * *value;
+                    }
                 }
-            }
+            });
             out.push(values);
         }
         Ok(out)
@@ -294,10 +297,13 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         let mut point = zeros(j as usize)?;
         for h in 0..j as usize {
             let eq = crate::parallel::eq_table(&alpha[h + 1..])?;
-            let mut row = zeros(degree + 1)?;
-            for (node, value) in row.iter_mut().enumerate() {
-                *value = self.sum(&state, &eq, Some(K::from_i64(node as i64)))?;
-            }
+            // Independent node sums, one pool task each: late rounds are too short
+            // for `sum` to split, but each column evaluates the whole instance.
+            let row = crate::parallel::map(degree + 1, |node| {
+                self.sum(&state, &eq, Some(K::from_i64(node as i64)))
+            })
+            .into_iter()
+            .collect::<Result<Vec<K>, Error>>()?;
             (point[h], running) = self.round(t, h, &row, alpha[h], running)?;
             for table in &mut state {
                 fold(table, point[h]);

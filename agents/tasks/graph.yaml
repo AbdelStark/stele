@@ -4262,6 +4262,25 @@ tasks:
   status: blocked(ADR-103: stories42M profile, task E16-22)
   acceptance:
   - GPU prove time against the 24-thread CPU run (bench/ledger/e16-18-dev-stories42m.json), with GPU model and transfer share recorded
+- id: E16-23
+  epic: E16
+  title: Parallel CPU residual in the development prover (registration, lookup leaves and counts, table builds, layout)
+  depends:
+  - E16-21
+  rfc:
+  - RFC-0026 §7
+  - RFC-0006 A1
+  - RFC-0010 A4
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions+stele-pcs+stele-sumcheck+stele-prover
+  status: done
+  agent: claude-code
+  branch: task/E16-23-cpu-residual-parallel
+  acceptance:
+  - macOS sample profile of the 8-layer prove-dev run before and after, with the main-thread samples outside any parallel region per stage (research/gpu-gating/stage_shares.py)
+  - the sequential work ADR-103 names runs on the ADR-090 work pool or is removed as repeated work; no_std crates stay no_std, the verifier is unchanged
+  - every proof-hash pin and every E16-10 fixture hash unchanged
+  - 8-layer (T = 64) and 1-layer prove time before and after in a bench/ledger entry; scoreboard regenerated
 - id: E16-22
   epic: E16
   title: stories42M T = 64 prove stage shares on a Linux host

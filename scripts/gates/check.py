@@ -527,6 +527,8 @@ def field_sources(root):
                'extern crate alloc;\n'
                '// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.\n'
                'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};\n'
+               '// E16-23: the prover-side work pool only (map, join), not the sumcheck crate.\n'
+               'pub use stele_sumcheck::parallel;\n'
                'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\npub mod zk;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
@@ -873,6 +875,8 @@ def field_source_codec(root):
     except tomllib.TOMLDecodeError as error:
         raise ValueError(f'PCS API not wired: unreadable manifest ({error})') from error
     dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
+    # E16-23 (ADR-105): rayon for prover-side column blocks, only through `std`.
+    dependencies['rayon'] = {'version': '=1.10.0', 'optional': True}
     source = (crate / 'src/source.rs').read_text()
     # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
     code = re.sub(r'//[^\n]*', '', source)
@@ -975,7 +979,12 @@ def field_source_codec(root):
         ('', 'source_elements'), ('', 'retained_bytes'), ('struct', 'RetainedRow'),
         ('fn', 'new'), ('fn', 'values'), ('fn', 'work'), ('fn', 'opening'), ('fn', 'opening_measured'),
         ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening'), ('fn', 'verify_opening_measured')]
-        and len(opening_declarations) == len(re.findall(r'\bpub\b', opening))
+        # E16-23 (ADR-105): one crate-private row combination shared with the producer.
+        and len(opening_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', opening))
+        and re.findall(r'\bpub\s*\([^)]*\)\s*fn\s+\w+', opening)
+            == ['pub(crate) fn for_each_block', 'pub(crate) fn combine_rows']
+        # Exactly those two restricted items: no other pub(crate) struct, const, use or mod.
+        and len(re.findall(r'\bpub\s*\(', opening)) == 2
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
             "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",
@@ -985,9 +994,9 @@ def field_source_codec(root):
             'usecrate::{CertificateRecord,Error,Failure,PreparedSource,ProofKind,ProverWork,Source,Usage,VerifiedCertificate,VerifierWork,};',
             'usealloc::vec::Vec;', 'usestele_code::{CodeField,Encoder};',
             'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,AbsorbLabel,ChallengeField,HashUsage,Transcript};',
-            'usestele_field::{Field,QM31};']
+            'userayon::prelude::*;', 'usestele_field::{Field,QM31};']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', opening)] == [
-            '#[derive(Clone,Copy)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]'] + ['#[cfg(test)]', '#[test]'] * 2
+            '#[cfg(feature="std")]', '#[cfg(not(feature="std"))]', '#[derive(Clone,Copy)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]'] + ['#[cfg(test)]', '#[test]'] * 2
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', opening))
     work = re.sub(r'//[^\n]*', '', (crate / 'src/work.rs').read_text())
     work_closed = (re.findall(r'\bpub\b(?:\s*\([^)]*\))?', work) == ['pub'] * 23 + ['pub(crate)'] * 2
@@ -1013,8 +1022,8 @@ def field_source_codec(root):
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target'))
-            # E16-17 (ADR-090): the only feature is the opt-in prover-side parallel encoder.
-            or manifest.get('features', {'std': ['stele-code/std']}) != {'std': ['stele-code/std']}
+            # E16-17 (ADR-090), E16-23 (ADR-105): the only feature is the opt-in prover-side pool.
+            or manifest.get('features') != {'std': ['stele-code/std', 'dep:rayon']}
             or 'build' in manifest.get('package', {})):
         raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')
     checks = [

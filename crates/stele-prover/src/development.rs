@@ -15,6 +15,7 @@ use alloc::vec::Vec;
 /// The `stele-dev-e2e-v1` codec (RFC-0026 §4.1), re-exported for verifier callers.
 pub use stele_proof::development as container;
 use stele_proof::development::Container;
+use stele_reductions::parallel;
 use stele_reductions::relation::{self, Ledger, Proof};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{
@@ -460,22 +461,29 @@ fn prove_inner(
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let mut values = layout.assign(&capture, &weights.codes)?;
-    match hook {
-        Some(hook) => hook(&mut layout.relation, &mut values),
-        None => check(&layout.relation, &values).map_err(Error::Check)?,
+    let checked = hook.is_none();
+    if let Some(hook) = hook {
+        hook(&mut layout.relation, &mut values);
     }
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
-    let proof = relation::prove(
-        &mut t,
-        &layout.relation,
-        &values,
-        &committed
-            .prepared
-            .iter()
-            .zip(&committed.certificates)
-            .collect::<Vec<_>>(),
-    )
+    let model = committed
+        .prepared
+        .iter()
+        .zip(&committed.certificates)
+        .collect::<Vec<_>>();
+    // The plain checker runs beside the engine and decides: a false witness fails
+    // with `Check` even if the engine errs or panics on it (E16-23).
+    let proof = parallel::gated(
+        || {
+            if checked {
+                check(&layout.relation, &values).map_err(Error::Check)
+            } else {
+                Ok(())
+            }
+        },
+        || relation::prove(&mut t, &layout.relation, &values, &model),
+    )?
     .map_err(Error::Engine)?;
     let digest = statement_digest(&input, &relation::digest(&layout.relation));
     Ok(sections(proof, d.cqis_id, digest).encode())
