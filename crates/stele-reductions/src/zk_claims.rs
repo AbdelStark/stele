@@ -1181,10 +1181,10 @@ where
 {
     let column = plan.columns[occurrence.column];
     let (at, blocks) = plan.layouts[column.source].offsets[slot(plan, occurrence.column)];
-    let x = stele_sumcheck::parallel::eq_table(&column_point(&occurrence.coords, point, free))
+    let x = stele_poly::eq_table(&column_point(&occurrence.coords, point, free))
         .map_err(|_| Error::Statement)?;
     let u: Vec<K> = occurrence.u.iter().map(|q| point[*q]).collect();
-    let r = stele_sumcheck::parallel::eq_table(&u).map_err(|_| Error::Statement)?;
+    let r = stele_poly::eq_table(&u).map_err(|_| Error::Statement)?;
     let k = kappa(point[occurrence.v]);
     let first = blocks + occurrence.block * dim::<K>();
     let len = 1usize << column.log_len;
@@ -1234,7 +1234,7 @@ where
 /// A5 item 4's claim-block rank: the `D` M31 coordinates of `eq(ρ_u, ·)` must have
 /// rank `D`. Public; the producer aborts otherwise.
 fn block_rank<K: ChallengeField + CodeField>(u: &[K]) -> Result<bool, Error> {
-    let eq = stele_sumcheck::parallel::eq_table(u).map_err(|_| Error::Statement)?;
+    let eq = stele_poly::eq_table(u).map_err(|_| Error::Statement)?;
     full_rank(&[eq])
 }
 
@@ -1350,7 +1350,7 @@ fn expected_weight<K: ChallengeField>(
     point: &[K],
 ) -> Result<K, Error> {
     let table = weight_table(source, claims, gammas)?;
-    let eq = stele_sumcheck::parallel::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
+    let eq = stele_poly::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
     let data = eq
         .iter()
         .zip(&table)
@@ -1484,9 +1484,12 @@ enum Coefficient<K> {
 /// are not multiplied, and the factor in most terms (at least two) is multiplied once,
 /// outside their sum. Field arithmetic is exact, so the value is the same element.
 struct TermPlan<K> {
-    outer: Vec<(Coefficient<K>, Vec<u32>)>,
-    common: Option<(u32, Vec<(Coefficient<K>, Vec<u32>)>)>,
+    outer: Terms<K>,
+    common: Option<(u32, Terms<K>)>,
 }
+
+/// Coefficient and factor list per term.
+type Terms<K> = Vec<(Coefficient<K>, Vec<u32>)>;
 
 impl<K: ChallengeField> TermPlan<K> {
     fn new(terms: &[Term<K>]) -> Self {
@@ -1777,7 +1780,7 @@ fn public_finals<K: ChallengeField + Eq>(
     }
     let first = step.first() + step.occurrences.len();
     for (p, value) in step.publics.iter().zip(&finals[first..]) {
-        let w = stele_sumcheck::parallel::eq_table(&column_point(&p.coords, point, free))
+        let w = stele_poly::eq_table(&column_point(&p.coords, point, free))
             .map_err(|_| Error::Statement)?;
         let expected = p
             .values
@@ -2339,9 +2342,12 @@ where
         (Some(m), Some(l)) if l == s => m.seed,
         _ => seed,
     };
-    let messages = (0..early)
-        .map(|s| source_message(&plan, s, &data, seed_of(s), claim_masks))
-        .collect::<Result<Vec<_>, _>>()?;
+    // Independent per source; built concurrently, kept in source order (E16-24).
+    let messages = stele_sumcheck::parallel::map(early, |s| {
+        source_message(&plan, s, &data, seed_of(s), claim_masks)
+    })
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()?;
     let masks = plan
         .masks
         .iter()
@@ -2351,22 +2357,28 @@ where
         PreparedSource::<K>::hiding(id, ell, m, BLOWUP, message, seed, &mut HashUsage::default())
             .map_err(Error::Pcs)
     };
-    let mut prepared = Vec::new();
     let mut model = model;
-    for (s, message) in messages.iter().enumerate() {
+    let revealed = model
+        .as_mut()
+        .map(|m| core::mem::take(&mut m.revealed))
+        .unwrap_or_default();
+    let model = model;
+    // Sources are independent: prepared (encoding, salts, Merkle tree) and certified
+    // concurrently; results and the first error are taken in source order (E16-24).
+    let prepare = |s: usize| {
         let layout = &plan.layouts[s];
-        prepared.push(match (model.as_mut(), &plan.lifetime) {
+        match (model.as_ref(), &plan.lifetime) {
             (Some(m), Some(l)) if l.source == s => {
                 let p = PreparedSource::<K>::hiding_lifetime(
                     plan.source_id(s),
                     layout.ell,
                     layout.m,
                     BLOWUP,
-                    message,
+                    &messages[s],
                     m.seed,
                     &mut HashUsage::default(),
                     l.proofs,
-                    core::mem::take(&mut m.revealed),
+                    revealed.clone(),
                 )
                 .map_err(Error::Pcs)?;
                 // RFC-0013 A6: the producer refuses weights other than the committed ones.
@@ -2375,16 +2387,20 @@ where
                         stele_hash::merkle::Error::RootMismatch,
                     )));
                 }
-                p
+                Ok(p)
             }
-            _ => hiding(plan.source_id(s), (layout.ell, layout.m), message)?,
-        });
-    }
+            _ => hiding(plan.source_id(s), (layout.ell, layout.m), &messages[s]),
+        }
+    };
+    let mut prepared = stele_sumcheck::parallel::map(early, prepare)
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
     let mut verified = Vec::new();
-    for p in &prepared {
-        let (certificate, v) = certify(p)?;
+    let certified = stele_sumcheck::parallel::map(prepared.len(), |i| certify(&prepared[i]));
+    for (p, c) in prepared.iter().zip(certified) {
+        let (certificate, v) = c?;
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
@@ -2415,17 +2431,23 @@ where
         source_message(&plan, early, &data, seed, claim_masks)?
     };
     let shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
-    if !plan.lookups.is_empty() {
-        let layout = &plan.layouts[early];
-        prepared.push(hiding(
-            plan.source_id(early),
-            (layout.ell, layout.m),
-            &top_message,
-        )?);
+    let (top, shared) = stele_sumcheck::parallel::join(
+        || {
+            (!plan.lookups.is_empty()).then(|| {
+                let layout = &plan.layouts[early];
+                hiding(plan.source_id(early), (layout.ell, layout.m), &top_message)
+            })
+        },
+        || hiding(plan.shared_id(), plan.shared, &shared_message),
+    );
+    if let Some(top) = top {
+        prepared.push(top?);
     }
-    prepared.push(hiding(plan.shared_id(), plan.shared, &shared_message)?);
-    for p in &prepared[early..] {
-        let (certificate, v) = certify(p)?;
+    prepared.push(shared?);
+    let certified =
+        stele_sumcheck::parallel::map(prepared.len() - early, |i| certify(&prepared[early + i]));
+    for (p, c) in prepared[early..].iter().zip(certified) {
+        let (certificate, v) = c?;
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
@@ -2888,7 +2910,7 @@ where
         trees.push(layers);
     }
     let mle = |values: &[K], point: Vec<K>| -> Result<K, Error> {
-        let w = stele_sumcheck::parallel::eq_table(&point).map_err(|_| Error::Statement)?;
+        let w = stele_poly::eq_table(&point).map_err(|_| Error::Statement)?;
         Ok(values
             .iter()
             .zip(&w)

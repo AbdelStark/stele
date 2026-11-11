@@ -279,8 +279,20 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
             .map_err(|_| Error::Capacity)?;
         leaves.extend(columns.chunks_exact(width));
         work.leaf_references_bytes = leaves.capacity() * size_of::<&[u8]>();
-        let tree = merkle::Tree::new_with_usage(source.descriptor(), &leaves, usage)
-            .map_err(Error::Merkle)?;
+        // Each tree level's digests are independent: hashed in blocks (E16-24).
+        let tree = merkle::Tree::new_with_usage_filled(
+            source.descriptor(),
+            &leaves,
+            usage,
+            &|out, digest| {
+                crate::opening::for_each_block(out, |start, block| {
+                    for (index, slot) in (start..).zip(block) {
+                        *slot = digest(index);
+                    }
+                })
+            },
+        )
+        .map_err(Error::Merkle)?;
         work.merkle_nodes_bytes = tree.owned_bytes();
         work.peak_owned_bytes = work
             .encoded_columns_bytes

@@ -330,6 +330,33 @@ fn rejects_descriptor_aliasing_and_invalid_shapes() {
         Err(Error::RootMismatch)
     );
 }
+/// E16-24: a level fill in another order (last to first, in uneven blocks) builds
+/// the same root, paths and usage as the sequential build.
+#[test]
+fn matches_reference_filled_tree() {
+    use stele_hash::HashUsage;
+    for count in [1u64, 2, 3, 5, 8, 13, 64, 100] {
+        let spec = descriptor(Kind::Columns, count, 3);
+        let leaves: Vec<[u8; 3]> = (0..count).map(|i| [i as u8, 7, (i * 31) as u8]).collect();
+        let refs: Vec<&[u8]> = leaves.iter().map(|l| l.as_slice()).collect();
+        let (mut a, mut b) = (HashUsage::default(), HashUsage::default());
+        let sequential = Tree::new_with_usage(spec, &refs, &mut a).expect("tree");
+        let filled = Tree::new_with_usage_filled(spec, &refs, &mut b, &|out, digest| {
+            let order: Vec<usize> = (0..out.len()).collect();
+            for block in order.rchunks(3) {
+                for &i in block.iter().rev() {
+                    out[i] = digest(i);
+                }
+            }
+        })
+        .expect("filled tree");
+        assert_eq!(filled.root(), sequential.root());
+        assert_eq!(a, b);
+        for index in 0..count {
+            assert_eq!(filled.path(index), sequential.path(index));
+        }
+    }
+}
 #[test]
 fn accepts_authenticated_child_root_and_rejects_wrong_child() {
     let child_spec = descriptor(Kind::Columns, 2, 1);
