@@ -1,0 +1,75 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "d72f6de4c1c1fdcaa718e89312f7ad516e6902bb",
+ "controls": {
+  "failed": 0,
+  "passed": 1,
+  "total": 1
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "commit_peak_rss_bytes": 938983424,
+  "model_commitment_bytes": 637,
+  "prove_peak_rss_bytes": 10882596864,
+  "public_bytes": 23703,
+  "verify_peak_rss_bytes": 2576171008
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+  "controls": {
+   "pin": "model differs from --expect-model"
+  },
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit (origin/main after #346 plus the E12-14 claim commit; the admission PR changes no Rust). One run of each process, no repeats: the model committed once (P = 8, T = 64), then proofs 0 and 1 against it, both verified with --expect-model, then proof 1 pinned to another model digest (refused). Other agents' builds and tests shared the host; each timed step waited for a 1-minute load average below 1.5 and started at 1.44 (commit), 1.29 (prove) and 1.42 (verify), so the times carry that noise. The same window at the E12-27 head 1b0c94e proved in 364 s in an earlier single run. BSD /usr/bin/time -l.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "profile_byte": 1,
+  "proof_index": 0,
+  "proof_sha256": "b90a176fded17bae92c0f0c46daf6a038235e9ecd56655b7dc9a0d2fb628c16f",
+  "proofs": 8,
+  "public_sha256": "d99f40592e8e86ef10ff2f7aac7f008e769a2f23f9650da62f7e82b2e7c333c2",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "e7334370bd42e5260a3e50359a599535586c82016142bf40d1cd619565f1c1ad",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1), admitted at the development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof 0: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; proof 1 against the same commitment also verifies. The control is verify-dev of proof 1 pinned to another model digest. One run of each process, no repeats: single-run wall times on a laptop. CPU only, no GPU. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Not a cost-model fit input.",
+ "plan_digest": "eed8fde122f76fadf821954c5d309c24c64b71a103d6614801c4e376b6154bf0",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 141745010,
+ "prover_time_ns": 420140000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment_once": 100400000000,
+  "prove_dev_wall": 420140000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 54720000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-zk-admission-mac"
+}

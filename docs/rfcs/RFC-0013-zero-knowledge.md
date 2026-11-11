@@ -329,7 +329,8 @@ Affected task: E12-15. A1 stays Draft; R1 and R3–R13 remain.
 ### A5 — Masked claims and the dev-zk composition (closes design-note R1 for the development path)
 
 Status: Accepted, conditional scope only. The dev-zk profile is defined here and
-is admitted only once implemented (item 8). Relation to the Draft A3 (scheme v3,
+is admitted only once implemented (item 8). E12-14 admits it at the development
+tier (ADR-109; see **Admission** at the end of A5). Relation to the Draft A3 (scheme v3,
 ADR-096): A5 is A3's candidate A item 4 (evaluation claims never sent in the
 clear) and item 6 (a leak list) made concrete for the development tier on
 version-1 Circle sources, as A3 anticipates. Under RFC-0028's commit rule (Draft),
@@ -424,7 +425,8 @@ reveal the witness. A4 masks every revealed claim and fixes the composition.
    list, which includes the plan and every shape.
 8. **Profile flag.** `dev-zk` is profile byte 1 (RFC-0026 A9). It is
    **defined**, not admitted. No verifier accepts it, and the CLI does not
-   offer it, until E12-18, E12-19 and E12-14 deliver:
+   offer it, until E12-18, E12-19 and E12-14 deliver the following. They are
+   delivered, and E12-14 admits it (ADR-109, **Admission** below):
    - the implementation;
    - NC-0909..0915 executed;
    - the privacy tests on the one- and eight-layer synthetic windows;
@@ -565,13 +567,43 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
   Item 8's "defined, not admitted" stands until E12-25 binds the model and a
   further review admits it. The CLI prints the profile; it makes no privacy claim.
 
+**Admission (E12-14, ADR-109; development tier).** dev-zk, profile byte 1, is
+admitted at the development tier. The independent review of the admission change
+decides it; ADR-109 records the outcome.
+- **What it rests on.**
+  - Item 8's deliverables (above).
+  - A6 (Accepted): one published model commitment for `P` proofs, with the lifetime
+    counter and `--expect-model`.
+  - A7 (Accepted): the 1-D records are committed weights with their encoding proof.
+  - Controls NC-0909..0915 and NC-0930..0938, executed.
+  - The ignored eight-layer tests, run at the admission head with A7 in place:
+    the dev-zk window, the claim census, and the exact bare-evaluation privacy
+    test.
+  - The eight-layer window proved under dev-zk against a published commitment, both
+    proofs verified, and a pinned other model refused
+    (`bench/ledger/e12-14-synthetic-8layer-zk-admission-mac.json`).
+- **What it claims.** For a statement `(Model bytes, plan, T, tokens, [r, e), y)`,
+  the proof shows that some weights and gains under the published commitment yield
+  `y`, and it reveals nothing more about them than the design note's §7 list
+  (as amended by A7). The claim holds under the masked-claims note's lemmas, with
+  seed-derived masks (computational, A2) and the `P`-proof lifetime (A6).
+- **What it does not claim.**
+  - A security level. The development tier has none: FS is unproven, the PCS is
+    conjectural (RFC-0026 §6).
+  - Hiding beyond `P` proofs, or after a reused proof index (A6 item 5).
+  - A soundness ledger for dev-zk; `verify-dev` reports counts (E12-26).
+  - Anything for the `standard` profile or scheme v3 (A3, Draft).
+- **CLI.** `prove-dev --zk`, `commit-model --zk` and `verify-dev` keep their
+  behaviour. `verify-dev` prints `profile dev-zk`.
+
 ### A6 — Lifetime hiding weight source for dev-zk (P proofs against one published commitment)
 
 Status: **Accepted** (development tier, Workflow 02 development-tier path).
 Independent review, two rounds: fix-then-merge on the first, then MERGE with
 "accept A6: yes" on the second. The reviewer confirmed the `P + 1` extension by an
 exact `F_61²` check and spot-checked the mutations. Task: E12-25. Decision: ADR-104.
-dev-zk stays not admitted until E12-27 commits the 1-D records (A5 item 8).
+dev-zk stays not admitted until E12-27 commits the 1-D records (A5 item 8). E12-14
+admits it after E12-27 (ADR-109).
 It amends A2 item 1's lifetime ("at most one opening per seed … weight sources,
 repeated openings and any reuse of `σ` are not admitted") and A5 item 7's
 `P`-proof budget. It applies only to dev-zk weight sources.

@@ -56,7 +56,15 @@ A real checkpoint (llama2.c `stories42M`, 64 tokens) proves in 474 s and verifie
 128-thread host ([ledger](bench/ledger/e16-20-dev-stories110m.json)). Proof bytes are the same on every host and
 thread count measured ([scoreboard](bench/scoreboard.md)).
 
-**Does not exist yet.** A security level (the development profile claims none), zero knowledge, a GPU prover,
+The `dev-zk` profile (`--zk`) proves the same kind of window in zero knowledge at the development tier. The
+weights and norm gains are hidden behind one published model commitment, which serves up to `P` proofs. The
+zero knowledge is conditional and computational, and there is no security level
+([RFC‑0013 A5 admission](docs/rfcs/RFC-0013-zero-knowledge.md), [how to run](docs/development-e2e.md#dev-zk-tasks-e12-14b-e12-25-e12-27-e12-14)).
+The eight-layer synthetic window proves in 420 s and verifies in 55 s with a 142 MB proof on a 16-thread
+laptop, one run ([ledger](bench/ledger/e12-14-synthetic-8layer-zk-admission-mac.json)).
+
+**Does not exist yet.** A security level (the development profile claims none), zero knowledge at a security
+level, a dev-zk proof of a real checkpoint, a GPU prover,
 the `no_std` verifier crate, a passport, a proof of Llama‑3.1‑8B.
 
 **What is solid underneath.** Fields, transcript, Merkle, sumcheck, lookup, encoder and commitment primitives

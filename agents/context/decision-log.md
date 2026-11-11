@@ -2662,3 +2662,36 @@ fixed). Fixes:
 Status: Accepted (development tier). Independent review: fix-then-merge, F1 to F3
 applied, "accept A7 once F1 is fixed". dev-zk stays not admitted until the
 admission PR.
+
+## ADR-109: Admit dev-zk (profile byte 1) at the development tier (RFC-0013 A5 item 8, task E12-14)
+
+Numbered after ADR-107 on main, skipping ADR-108, which #347 (E12-24) holds.
+
+Context: RFC-0013 A5 item 8 defined dev-zk and withheld admission until its
+deliverables and an independent review. The two E12-14b gaps the review named are
+closed: the model is bound by one published commitment (A6, ADR-104, Accepted), and
+the 1-D records are committed weights (A7, ADR-107, Accepted).
+
+Decision:
+- dev-zk is admitted at the development tier. The scope is recorded in RFC-0013 A5,
+  under **Admission**:
+  - no security level (FS unproven, PCS conjectural);
+  - zero knowledge conditional and computational;
+  - hiding within the `P`-proof lifetime;
+  - no dev-zk soundness ledger yet (E12-26).
+- Evidence:
+  - item 8's deliverables;
+  - NC-0909..0915 and NC-0930..0938, executed;
+  - the ignored eight-layer tests, run at this head and passing:
+    `accepts_eight_layer_window_under_dev_zk`,
+    `matches_reference_zk_claim_census_eight_layer` and
+    `rejects_bare_evaluations_on_the_eight_layer_window`;
+  - the eight-layer ledger `e12-14-synthetic-8layer-zk-admission-mac` (one run).
+- `bench/dev_e2e.py --zk` records a dev-zk run against a published commitment, so
+  dev-zk ledgers come from the same script as development ones.
+- No code path changes. The CLI already offers `--zk`, and the verifier accepts
+  profile byte 1.
+
+Status: Proposed (development tier; independent review of the admission requested,
+not self-accepted).
+
