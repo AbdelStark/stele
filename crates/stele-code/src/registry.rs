@@ -1,9 +1,9 @@
 //! Closed code registry and fail-closed PCS parameter resolution, RFC-0010 A1
 //! (acceptance resolution) and RFC-0012 A7.
 //!
-//! Parameters are derived from a validated identity, never accepted as input. No
-//! proximity radius, query count or profile is admitted yet (RFC-0010 A3, Q12), so
-//! [`resolve_pcs`] has no success value: [`ProximityParams`] is uninhabited.
+//! Parameters are derived from a validated identity, never accepted as input. Only
+//! RFC-0010 A14's Policy 2 is admitted, and only for the standard profile with QM31
+//! or OM31 challenges; every other request fails closed.
 use super::{Code, Encoder, Error};
 
 /// Immutable evidence identifier for the A2 Circle distance bound.
@@ -50,9 +50,77 @@ pub enum Profile {
     Treaty,
 }
 
-/// Admitted PCS parameters. No set is admitted, so no value of this type exists.
+/// Admitted PCS parameters (RFC-0010 A14 item 6); constructed only by [`resolve_pcs`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ProximityParams {}
+pub struct ProximityParams {
+    /// Source policy byte (A14 item 1): always 2.
+    pub policy: u8,
+    /// Least q_c with `2^92·(N−e−1)^q_c ≤ N^q_c` (A14 item 2).
+    pub certificate_queries: u16,
+    /// Least q_o with `2^92·(N−D+e)^q_o ≤ N^q_o` (A14 item 2).
+    pub opening_queries: u16,
+    /// Grinding bits k_q of every certificate and opening column round (A14 item 3).
+    pub column_grind_bits: u8,
+    /// A14 item 6: true for standard under Policy 2; treaty is never admitted.
+    pub proven: bool,
+}
+
+/// RFC-0010 A14 item 2 column grinding bits k_q.
+pub const POLICY2_COLUMN_GRIND_BITS: u8 = 16;
+// RFC-0010 A14 item 2: (q_c, q_o) per Circle m (b = 1, b = 2) and v2 J (J−3).
+const POLICY2_HALF: [(u16, u16); 30] = {
+    let mut t = [(350, 158); 30];
+    let head = [
+        (92, 1),
+        (222, 92),
+        (222, 136),
+        (308, 136),
+        (308, 152),
+        (339, 152),
+        (339, 156),
+        (347, 156),
+        (347, 157),
+        (350, 157),
+    ];
+    let mut i = 0;
+    while i < head.len() {
+        t[i] = head[i];
+        i += 1;
+    }
+    t
+};
+const POLICY2_QUARTER: [(u16, u16); 29] = {
+    let mut t = [(222, 92); 29];
+    let head = [
+        (92, 46),
+        (222, 66),
+        (222, 78),
+        (222, 85),
+        (222, 88),
+        (222, 90),
+        (222, 91),
+    ];
+    let mut i = 0;
+    while i < head.len() {
+        t[i] = head[i];
+        i += 1;
+    }
+    t
+};
+const POLICY2_V2: [(u16, u16); 12] = [
+    (339, 156),
+    (8131, 4050),
+    (9297, 4633),
+    (9467, 4718),
+    (9510, 4739),
+    (9532, 4748),
+    (9532, 4751),
+    (9533, 4751),
+    (9534, 4751),
+    (9534, 4751),
+    (9534, 4751),
+    (9534, 4751),
+];
 
 /// Derive the parameters of a validated code; the identity is the only authority.
 pub fn parameters(code: &Encoder) -> CodeParameters {
@@ -100,18 +168,40 @@ pub fn parameters(code: &Encoder) -> CodeParameters {
 /// Resolve PCS parameters for a code identity, field degree and profile.
 ///
 /// Validates the identity (`InvalidCodeId`) and field degree 1, 4 or 8
-/// (`FieldMismatch`), then fails closed with `UnsupportedParameters`: no proximity
-/// radius, exceptional-combination bound or query count is admitted (RFC-0010 A3, Q12).
+/// (`FieldMismatch`). A standard request with QM31 or OM31 challenges returns the
+/// RFC-0010 A14 Policy 2 parameters; every other request (treaty, M31 challenges,
+/// v2 J = 15) fails closed with `UnsupportedParameters`.
 pub fn resolve_pcs(
     code_id: &[u8],
     field_degree: u8,
     profile: Profile,
 ) -> Result<ProximityParams, Error> {
-    let _ = (Encoder::from_code_id(code_id)?, profile);
+    Encoder::from_code_id(code_id)?;
     if !matches!(field_degree, 1 | 4 | 8) {
         return Err(Error::FieldMismatch);
     }
-    Err(Error::UnsupportedParameters)
+    if profile != Profile::Standard || field_degree == 1 {
+        return Err(Error::UnsupportedParameters);
+    }
+    // The factory validated the identity: Circle m <= 30 - b, v2 J in 3..=15.
+    let (certificate_queries, opening_queries) = if code_id.len() == 21 {
+        let m = usize::from(code_id[19]);
+        if code_id[20] == 1 {
+            POLICY2_HALF[m]
+        } else {
+            POLICY2_QUARTER[m]
+        }
+    } else {
+        let j = usize::from(code_id[22]);
+        *POLICY2_V2.get(j - 3).ok_or(Error::UnsupportedParameters)?
+    };
+    Ok(ProximityParams {
+        policy: 2,
+        certificate_queries,
+        opening_queries,
+        column_grind_bits: POLICY2_COLUMN_GRIND_BITS,
+        proven: true,
+    })
 }
 
 /// Check a registry export; anything but the exact compiled bytes is `InvalidRegistry`.

@@ -848,7 +848,9 @@ def field_source_codec(root):
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
                'tests/fixtures/field-wire.jsonl', 'examples/field_policy.rs', 'src/work.rs',
-               'src/hiding.rs', 'tests/hiding.rs'}
+               'src/hiding.rs', 'tests/hiding.rs',
+               # E12-23: RFC-0010 A14 Policy 2 wire parity.
+               'tests/policy2_wire.rs', 'tests/fixtures/policy2-wire.jsonl'}
     actual = {str(p.relative_to(crate)) for p in crate.rglob('*') if p.is_file()}
     library = ('//! Conditional Circle and v2 field sources, certificates and functional openings,\n'
                '//! RFC-0010 A3/A6/A9/A10/A15, with RFC-0013 A2 hiding sources.\n'
@@ -866,7 +868,7 @@ def field_source_codec(root):
                '    OpeningRecord, RetainedRow, RetainedRowWork,\n};\n'
                'pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};\n'
                'pub use producer::CertificateFailure;\n'
-               'pub use source::{Error, Parameters, ProofKind, Response, Source, SourceBytes, Wire};\n'
+               'pub use source::{Error, Parameters, Policy, ProofKind, Response, Source, SourceBytes, Wire};\n'
                '// A1 registry validator: stele-code is reachable only through this crate (deny.toml).\n'
                'pub use stele_code::{registry, CodeField};\n'
                'pub use work::{ProverWork, VerifierWork};\n')
@@ -882,17 +884,22 @@ def field_source_codec(root):
     code = re.sub(r'//[^\n]*', '', source)
     declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', code)
     surface = [(kind or 'field', name) for kind, name in declarations]
-    expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
+    expected_surface = [('enum', 'Error'), ('enum', 'Policy'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
-        ('field', 'certificate_queries'), ('field', 'opening_queries'), ('field', 'setup_term'), ('struct', 'Source'),
-        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
+        ('field', 'certificate_queries'), ('field', 'opening_queries'),
+        ('field', 'policy'), ('field', 'column_grind_bits'), ('field', 'tensor_grind_bits'),
+        ('field', 'setup_term'), ('struct', 'Source'),
+        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
+        ('fn', 'hiding'),
         # RFC-0013 A6, E12-25: the lifetime source's admission.
         ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
         ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
         ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code_id'), ('fn', 'codeword_len'), ('fn', 'root'), ('fn', 'path_height'),
-        ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'), ('fn', 'opening_frame_size'),
+        ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'grind_bits'), ('fn', 'proof_size'),
+        ('fn', 'opening_frame_size'),
         ('fn', 'parse'), ('struct', 'Response'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'Wire'), ('fn', 'row_bytes'), ('fn', 'response_bytes'), ('fn', 'responses')]
+        ('struct', 'Wire'), ('fn', 'tensor_nonce'), ('fn', 'column_nonce'), ('fn', 'row_bytes'),
+        ('fn', 'response_bytes'), ('fn', 'responses')]
     compact = lambda text: re.sub(r'\s+', '', text)
     impls = [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', code)]
     derives = [compact(text) for text in re.findall(r'#\[[^\]]*\]', code)]
@@ -902,15 +909,16 @@ def field_source_codec(root):
         and len(declarations) == len(re.findall(r'\bpub\b', code))
         and impls == ['implcore::ops::DerefforSourceBytes{', 'impl<K:ChallengeField>Source<K>{', "impl<'a>Wire<'a>{",
                       "implExactSizeIterator<Item=Response<'a>>+'_{"]
-        and derives == ['#[derive(Clone,Copy,Debug,Eq,PartialEq)]']*3
+        and derives == ['#[derive(Clone,Copy,Debug,Eq,PartialEq)]']*4
             + ['#[derive(Clone,Copy,Debug)]', '#[derive(Clone,Copy,Debug,Eq,PartialEq)]']
-            + ['#[derive(Clone,Copy,Debug)]']*2 + ['#[cfg(test)]', '#[test]']
-        and imports == ['usecore::marker::PhantomData;', 'usestele_code::{registry,Circle,Code,Encoder};',
-            'usestele_field::{Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
+            + ['#[derive(Clone,Copy,Debug)]']*2 + ['#[cfg(test)]', '#[test]']*2
+        and imports == ['usecore::marker::PhantomData;', 'usestele_code::registry::{self,Profile};',
+            'usestele_code::{Circle,Code,Encoder};',
+            'usestele_field::{Field,Serialize,M31};', 'usestele_hash::{merkle,ChallengeField};']
         and enums == [('Error', 'UnsupportedSource,ProofShape,NoncanonicalField,MessageShape,'
                        'Encoder(stele_code::Error),Merkle(merkle::Error),Transcript(stele_hash::Error),ColumnMismatch,'
                        'FunctionalShape,ValueMismatch,CertificateContext,RowContext,MaskRank,MaskBudget,Capacity,'),
-                      ('ProofKind', 'Certificate,Opening,')]
+                      ('Policy', 'One,Two,'), ('ProofKind', 'Certificate,Opening,')]
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', code))
     prepared = re.sub(r'//[^\n]*', '', (crate / 'src/preparation.rs').read_text())
     prepared_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', prepared)
@@ -920,7 +928,8 @@ def field_source_codec(root):
         ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
+        ('fn', 'hiding'),
         # RFC-0013 A6, E12-25: a lifetime hiding source.
         ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),
         ('fn', 'source'), ('fn', 'message'),
@@ -929,7 +938,7 @@ def field_source_codec(root):
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', prepared)]
             == ["impl<'a,K:ChallengeField>PreparedSource<'a,K>{"]
         and [compact(text) for text in re.findall(r'\buse\s+[^;]+;', prepared)] == [
-            'usecrate::{Error,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
+            'usecrate::{Error,Policy,Source};', 'usealloc::vec::Vec;', 'usecore::mem::size_of;',
             'usecore::sync::atomic::{AtomicUsize,Ordering};',
             'usestele_code::Encoder;', 'usestele_field::{Serialize,M31};',
             'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
@@ -1590,11 +1599,13 @@ def controls_layout(root):
     dependencies['stele-sumcheck']['features'] = ['std']
     # E12-14a: the dev-zk controls' adversaries (never a verifier input).
     dependencies['stele-reductions']['features'] = ['controls']
+    # E12-23: pcs_policy2.rs replays the A17 predicate independently of stele-hash.
+    dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',

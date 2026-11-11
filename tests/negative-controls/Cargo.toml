@@ -78,6 +78,8 @@ stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }
 stele-field = { path = "../../crates/stele-field" }
 stele-hash = { path = "../../crates/stele-hash" }
 stele-prover = { path = "../../crates/stele-prover" }
+# E12-23: the independent A17 predicate in pcs_policy2.rs; never linked into a prover or verifier.
+blake3 = { version = "=1.8.7", default-features = false }
 
 [[test]]
 name = "nc-0801"
@@ -162,6 +164,26 @@ path = "pcs/nc_0601.rs"
 [[test]]
 name = "nc-0803"
 path = "pcs/nc_0803.rs"
+
+[[test]]
+name = "nc-0813"
+path = "pcs/nc_0813.rs"
+
+[[test]]
+name = "nc-0806"
+path = "pcs/nc_0806.rs"
+
+[[test]]
+name = "nc-0807"
+path = "pcs/nc_0807.rs"
+
+[[test]]
+name = "nc-0808"
+path = "pcs/nc_0808.rs"
+
+[[test]]
+name = "nc-0809"
+path = "pcs/nc_0809.rs"
 
 [[test]]
 name = "nc-0610"

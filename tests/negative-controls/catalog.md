@@ -102,7 +102,7 @@
 | NC-0610 | PCS | 0010 A9 §4, 0008 A5 §7, 0023 §6, 0024 §6 | change the expected scalar under zero b or one closed lookup mu-opening row value; replace one Requant or centered integer-linear source row using a swapped or omitted independent weight in each of four phases; reject before column draws | `ValueMismatch` | done |
 | NC-0611 | PCS | 0010 A10, 0007 A2, 0024 §6 | one retained opening-row value changed, with dependent final/responses reconstructed under a zero opposite factor | `ColumnMismatch` | done |
 | NC-0612 | PCS | 0010 A1, A3, 0012 A7 | conditional until E8-02 calls `check_source` (rows 2-3 run the actual certificate verifier and A1 registry validator): offer a verified certificate for another seed's v2 source or for Circle(6,1); certify the expected context with rows encoded under another seed; edit one registry evidence ID | `CertificateContext / ColumnMismatch / InvalidRegistry` | done |
-| NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 2 | `UnsupportedSource` | done |
+| NC-0613 | PCS | 0010 A3 | v2 source context with J=15 (N=2^31) or policy byte 3 (byte 2 is Policy 2 since 0010 A14) | `UnsupportedSource` | done |
 | NC-0614 | PCS | 0010 A6 | storage-to-message expansion: one typed value expanded into two message elements under the expected one-element context; an expanded row containing the limb p | `ColumnMismatch / NoncanonicalField` | done |
 | NC-0615 | sharded commitment | 0010 A13 | replace one child root by the root of a different shard; actual certificate verifier | `RootMismatch` | todo |
 | NC-0616 | sharded commitment | 0010 A13 | swap two distinct child roots and their segments in every response; actual certificate verifier | `RootMismatch` | todo |
@@ -124,8 +124,11 @@
 | NC-0802 | transcript/ledger | 0006 A1,A2,A3,A4, 0008 A3,A5, 0010 A9, 0012 A1,A4,A5,A6,A9,A10,A11,A12,A13,A14, 0007 A2, 0024 §6 | next instance's one final value generated after omitting Final (including tree/selected-product), BatchFinal, ZeroFinal, OpeningColumns, Stack, StackSources, LookupStatement, LookupMultiplicities, LookupMultiplicityClaims, MatmulStatement either original matmul OpeningColumns, RequantStatement, RequantConstraints, each of three RequantClaims frames or final Requant OpeningColumns; centered LinearStatement, RequantConstraints, each RequantClaims or either original OpeningColumns | `FinalEvaluationMismatch` | done |
 | NC-0803 | transcript/ledger | 0010 A9, 0012 A10 | replace one query with a differing index drawn before CertificateRow or OpeningRow absorption | `RootMismatch` | done |
 | NC-0804–0805 | transcript/ledger | 0012 §6 | see RFC | | todo |
-| NC-0806 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce with a nonce that fails the PoW predicate, every other byte unchanged | `GrindMismatch` | todo |
-| NC-0807 | transcript/grinding | 0012 A17, 0010 A14 | prove a Policy 2 source with k_q−1 grinding bits and offer it under the expected k_q context | `GrindMismatch` | todo |
+| NC-0806 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce (certificate or opening) or tensor-round nonce with a nonce that fails the PoW predicate, every other byte unchanged | `GrindMismatch` | done |
+| NC-0807 | transcript/grinding | 0012 A17, 0010 A14 | prove a Policy 2 source with k_q−1 grinding bits and offer it under the expected k_q context | `GrindMismatch` | done |
+| NC-0808 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce (certificate or opening) with another nonce that passes the predicate, every other byte unchanged | `RootMismatch` | done |
+| NC-0809 | pcs/queries | 0010 A14 | offer a Policy 2 certificate or opening with one response fewer than the verifier-derived q_c or q_o | `ProofShape` | done |
+| NC-0813 | transcript/grinding | 0012 A17, 0010 A14 | replace the Policy 2 tensor-round nonce with another nonce that passes the predicate, every other byte unchanged; the following column nonce then fails on the changed state | `GrindMismatch` | done |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-0902 | ZK hiding source | 0013 A2, 0010 A15 | change one salt byte of one certificate or opening response | `RootMismatch` | done |
 | NC-0903 | ZK hiding source | 0013 A2, 0010 A15 | version-3 context with R < 2D, or with q_c + q_o > C − 1 | `UnsupportedSource` | done |
@@ -188,9 +191,14 @@ is RFC-0025 §6. Each reference-role variant retains full actual child validatio
 outer byte comparison alone cannot earn a cryptographic source/evidence control.
 These reservations add no coverage and change no existing control or registration.
 
-RFC-0012 A17 reserves NC-0806..0807 for E12-23's Policy 2 PCS consumer. Each must run
-through the actual certificate or opening verifier; the `stele-hash` grinding unit tests
-earn no control credit.
+RFC-0012 A17 reserves NC-0806..0807 for E12-23's Policy 2 PCS consumer. E12-23 also
+adds NC-0808 (nonce absorption), NC-0809 (query count) and NC-0813 (tensor nonce
+absorption; 0810..0812 are proposed by ADR-096 drafts). Each runs through the actual
+certificate and opening verifiers in QM31 and OM31 (`src/pcs_policy2.rs`). The tensor
+cases use the QM31 Circle m=14, b=2, R=8 source, the least with k_t ≥ 1. Tampered
+nonces are chosen by an independent replay of the A1 transcript and the A17 predicate,
+with every search capped at 2^20 candidates. The `stele-hash` grinding unit tests earn
+no control credit.
 
 RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
@@ -222,7 +230,7 @@ them done or admit a PCS profile.
 E4-03 (RFC-0010 A3/A6) executes NC-0603 and NC-0612..0614 in QM31 and OM31.
 The NC-0603 control commits and certifies the offset int8 pair (261,2) honestly;
 the actual RFC-0024 §1.1 byte-range verifier rejects it. NC-0613 and both NC-0614 variants
-run the actual certificate verifier: J=15 or policy byte 2 is rejected when the
+run the actual certificate verifier: J=15 or policy byte 3 is rejected when the
 expected statement bytes are parsed, and NC-0614 splits one value into two
 elements, or sends the limb p in t (R=1). NC-0612's ColumnMismatch variant uses
 J=4, because at J=3 the base-only map ignores the seed. Two NC-0612 variants are
