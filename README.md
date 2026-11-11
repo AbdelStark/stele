@@ -56,8 +56,9 @@ A real checkpoint (llama2.c `stories42M`, 64 tokens) proves in 474 s and verifie
 128-thread host ([ledger](bench/ledger/e16-20-dev-stories110m.json)). Proof bytes are the same on every host and
 thread count measured ([scoreboard](bench/scoreboard.md)).
 
-The `dev-zk` profile (`--zk`) proves the same kind of window in zero knowledge at the development tier. The
-weights and norm gains are hidden behind one published model commitment, which serves up to `P` proofs. The
+The `dev-zk` profile (`--zk`) proves a synthetic window in zero knowledge at the development tier. The
+weights and norm gains are hidden behind one published model commitment, which serves up to `P` proofs,
+except for the declared leaks (shapes, linkability, proof order). There is no dev-zk soundness ledger yet (E12-26). The
 zero knowledge is conditional and computational, and there is no security level
 ([RFC‑0013 A5 admission](docs/rfcs/RFC-0013-zero-knowledge.md), [how to run](docs/development-e2e.md#dev-zk-tasks-e12-14b-e12-25-e12-27-e12-14)).
 The eight-layer synthetic window proves in 420 s and verifies in 55 s with a 142 MB proof on a 16-thread

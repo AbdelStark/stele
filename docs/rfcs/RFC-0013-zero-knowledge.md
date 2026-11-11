@@ -565,7 +565,7 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
 
   The independent review (fix-then-merge) did not admit dev-zk (profile byte 1).
   Item 8's "defined, not admitted" stands until E12-25 binds the model and a
-  further review admits it. The CLI prints the profile; it makes no privacy claim.
+  further review admits it (superseded by the Admission paragraph in this section). The CLI prints the profile; it makes no privacy claim.
 
 **Admission (E12-14, ADR-109; development tier).** dev-zk, profile byte 1, is
 admitted at the development tier. The independent review of the admission change
@@ -575,7 +575,8 @@ decides it; ADR-109 records the outcome.
   - A6 (Accepted): one published model commitment for `P` proofs, with the lifetime
     counter and `--expect-model`.
   - A7 (Accepted): the 1-D records are committed weights with their encoding proof.
-  - Controls NC-0909..0915 and NC-0930..0938, executed.
+  - Controls NC-0909..0915 and NC-0933..0938, executed. NC-0930..0932 are `todo`
+    (they await a substitution adversary) and are listed below as open.
   - The ignored eight-layer tests, run at the admission head with A7 in place:
     the dev-zk window, the claim census, and the exact bare-evaluation privacy
     test.
@@ -585,7 +586,7 @@ decides it; ADR-109 records the outcome.
 - **What it claims.** For a statement `(Model bytes, plan, T, tokens, [r, e), y)`,
   the proof shows that some weights and gains under the published commitment yield
   `y`, and it reveals nothing more about them than the design note's §7 list
-  (as amended by A7). The claim holds under the masked-claims note's lemmas, with
+  (as amended by A6 and A7). The claim holds under the masked-claims note's lemmas, with
   seed-derived masks (computational, A2) and the `P`-proof lifetime (A6).
 - **What it does not claim.**
   - A security level. The development tier has none: FS is unproven, the PCS is
@@ -593,6 +594,11 @@ decides it; ADR-109 records the outcome.
   - Hiding beyond `P` proofs, or after a reused proof index (A6 item 5).
   - A soundness ledger for dev-zk; `verify-dev` reports counts (E12-26).
   - Anything for the `standard` profile or scheme v3 (A3, Draft).
+  - A real checkpoint. The evidence covers the synthetic one- and eight-layer
+    windows only; no real model has been proved under dev-zk.
+  - Executed controls for the member weight, `eq·Z` and shared-bit finals
+    (NC-0930..0932, `todo`). Their checks exist in the verifier, but no control
+    yet shows that removing one is caught.
 - **CLI.** `prove-dev --zk`, `commit-model --zk` and `verify-dev` keep their
   behaviour. `verify-dev` prints `profile dev-zk`.
 

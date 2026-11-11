@@ -2681,7 +2681,9 @@ Decision:
   - no dev-zk soundness ledger yet (E12-26).
 - Evidence:
   - item 8's deliverables;
-  - NC-0909..0915 and NC-0930..0938, executed;
+  - NC-0909..0915 and NC-0933..0938, executed (NC-0930..0932 stay `todo` and are
+    named under what is not claimed);
+  - synthetic one- and eight-layer windows only; no real checkpoint is proved under dev-zk;
   - the ignored eight-layer tests, run at this head and passing:
     `accepts_eight_layer_window_under_dev_zk`,
     `matches_reference_zk_claim_census_eight_layer` and
