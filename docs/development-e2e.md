@@ -88,21 +88,22 @@ with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or w
 
 ## dev-zk (task E12-14b)
 
-`prove-dev --zk` proves the same window under the dev-zk profile (RFC-0013 A5,
-RFC-0026 A9, profile byte 1). Its admission is pending independent review
-(RFC-0013 A5 item 8).
-- The seed comes from `/dev/urandom`.
-- The public file is `stele-dev-zk-public-v1`. Its one model-commitment root is the
-  proof's hiding weight source, made for this proof only (`P = 1`).
-- `verify-dev` reads the profile from the public file and prints `profile dev-zk`
-  before the statement lines.
-- The claim is existential. A dev-zk proof shows that *some int8 weights of the
-  declared shape*, with the public 1-D records, produce the statement. No published
-  commitment pins the weights.
-  - `verify-dev` prints `weights: unbound (per-proof commitment)` instead of a
-    model digest.
-  - `--expect-model` is a usage error.
-  - A persistent commitment is task E12-25.
+dev-zk (RFC-0013 A5, RFC-0026 A9, profile byte 1) proves a window against one
+published model commitment (RFC-0013 A6, Proposed, task E12-25). Its admission
+waits for the independent review and for E12-27 (RFC-0013 A5 item 8).
+- `commit-model --zk` commits the weights once, for at most `--proofs` proofs. The
+  model seed comes from `/dev/urandom`.
+  - It writes the public `--commitment` file (`stele-dev-zk-model-v1`) and prints
+    its model digest.
+  - It writes the secret `--secret` file (`stele-dev-zk-model-secret-v1`, mode
+    0600: seed, proof counter, earlier openings). Keep the secret file private
+    and never restore an older copy.
+- `prove-dev --zk --commitment C --secret S` takes the next proof index and
+  writes the advanced counter back before it proves. It refuses once the budget
+  is spent. Each proof's own seed also comes from `/dev/urandom`.
+- The public file is `stele-dev-zk-public-v1`. It carries the commitment and the
+  proof index. `verify-dev` prints `profile dev-zk`, `proof index j of P` and the
+  model digest of the commitment. `--expect-model` pins a proof to it.
 - Public, not hidden: the Model, Scales and Preparation bytes, every 1-D record
   (norm gains and other vectors), the shapes, the plan, `T`, the tokens, `[r, e)`
   and `y`.
@@ -110,12 +111,19 @@ RFC-0026 A9, profile byte 1). Its admission is pending independent review
   ledger (task E12-26).
 
 ```sh
+target/release/stele commit-model --zk \
+  --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
+  --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
+  --length 16 --proofs 8 \
+  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret
 target/release/stele prove-dev --zk \
   --model /tmp/dev-e2e/model.bin --preparation /tmp/dev-e2e/preparation.bin \
   --scales /tmp/dev-e2e/scales.bin --artifact /tmp/dev-e2e/artifact.bin \
   --tokens 1 --length 16 \
+  --commitment /tmp/dev-e2e/zk-model.bin --secret /tmp/dev-e2e/zk-model.secret \
   --public /tmp/dev-e2e/zk-public.bin --proof /tmp/dev-e2e/zk-proof.bin
-target/release/stele verify-dev --public /tmp/dev-e2e/zk-public.bin --proof /tmp/dev-e2e/zk-proof.bin
+target/release/stele verify-dev --public /tmp/dev-e2e/zk-public.bin \
+  --proof /tmp/dev-e2e/zk-proof.bin --expect-model <model digest from commit-model>
 ```
 
 Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back

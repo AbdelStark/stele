@@ -435,11 +435,11 @@ Following FlashProve's declared list, by design:
 3. Whether a proof was produced: an unsupported model, an out-of-range value or
    a wrong token fails, and that depends on the weights.
 4. Time, proof size and the number of proofs made under one model commitment.
-5. The model commitment's roots (salted). The E12-14 implementation commits the
-   weights per proof (`P = 1`, RFC-0013 A5 item 7), so roots are not shared and a
-   proof binds no named model: it states only that some weights of the declared
-   shape produce the statement. A persistent commitment under one model, whose
-   fixed roots would show that two proofs share a model, is task E12-25.
+5. The model commitment's root (salted, fixed). Under RFC-0013 A6 (Proposed,
+   E12-25), one published commitment serves up to `P` proofs. Two proofs under it
+   show they share a model, as they must, since they pin it. They also reveal
+   their proof indices and the budget `P`. Each proof's claims use fresh mask
+   blocks, and the source's view stays within A6's query and rank budgets.
 6. Anything the operator leaks by breaking the lifecycle: a reused seed, a lost
    counter, or a run past the budget.
 

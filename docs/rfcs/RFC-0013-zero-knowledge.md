@@ -564,3 +564,58 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
   The independent review (fix-then-merge) did not admit dev-zk (profile byte 1).
   Item 8's "defined, not admitted" stands until E12-25 binds the model and a
   further review admits it. The CLI prints the profile; it makes no privacy claim.
+
+### A6 — Lifetime hiding weight source for dev-zk (P proofs against one published commitment)
+
+Status: **Proposed** (development tier, Workflow 02 development-tier path;
+independent review requested; not self-accepted). Task: E12-25. Decision: ADR-103.
+It amends A2 item 1's lifetime ("at most one opening per seed … weight sources,
+repeated openings and any reuse of `σ` are not admitted") and A5 item 7's
+`P`-proof budget. It applies only to dev-zk weight sources.
+
+Motivation: with E12-14's `P = 1`, every dev-zk proof made its own weight
+commitment, so a proof bound no published model (review F1). A model owner must be
+able to publish one commitment and prove up to `P` windows against it, each proof
+hiding the weights.
+
+1. **Commitment.** The weight source is committed once from a secret model seed
+   `σ_M` (RFC-0010 A15 bytes, A2's masks and salts from `σ_M`). Its weight columns
+   reserve `P·t_x` claim-mask blocks each, where `t_x` is the column's masked
+   occurrences per proof, counted on a reference window. The published commitment
+   is the root, `P`, every `t_x` and the reference length. A proof whose window
+   needs more than `t_x` blocks for a column is refused (`Statement`).
+2. **Admission.** The source needs `R ≥ max(2D, (P + 1)·D)` data rows and
+   `q_c + P·q_o ≤ C − 1` (`Source::admits_lifetime`). The verifier rejects a
+   source that does not admit `P` (`MaskSource`).
+3. **Proof `j`.** Proof `j < P` opens the source once, in its own A5 batch, and
+   uses blocks `j·t_x .. (j + 1)·t_x` of every weight column. Every other source
+   and mask comes from the proof's own fresh seed, as in A5. The public input
+   carries `j`, after the profile byte, and then the commitment bytes.
+4. **Rank across the lifetime.** Before each opening, the producer checks A2's
+   rank condition. It covers the certificate's row vector and every earlier
+   opening's row vector of this source, in index order, and fails with
+   `MaskRank`. The owner keeps those vectors with the counter.
+5. **Counter.** The owner's state is `σ_M`, the next index and the revealed row
+   vectors. It is persisted before each proof starts. The producer refuses
+   `j ≥ P`, and any index whose earlier openings are missing from the state
+   (`MaskBudget`). A restored or forked state that reuses an index is outside
+   this amendment: the counter is the owner's duty, as in A5 item 7.
+6. **Privacy (conditional, to be reviewed).** The source's view across its
+   lifetime is one certificate row, `P` opening rows and at most `q_c + P·q_o`
+   queried columns. Every claim on a weight column uses its own block, never
+   reused across proofs. Under item 4's rank condition and item 2's query bound,
+   A2 Lemmas 1–3 apply to that whole view, as they do to one opening when
+   `R ≥ 2D`. With the A5 claim-mask argument per block, the `P` proofs together
+   are simulatable from their public inputs.
+
+   The design note's §7 gains the item that proofs under one commitment are
+   linkable: they share its root. The argument extends A2's lemmas from two
+   revealed rows to `P + 1`. That extension is the text this amendment asks the
+   independent review to check.
+7. **Not changed.** No label, loss or order of A5 changes. The certificate is
+   the same bytes in every proof. Each proof carries it again.
+
+Controls: NC-0933 (a proof against another commitment of the same weights:
+`StatementMismatch`; the pinned digests differ) and NC-0934 (the lifetime counter:
+`MaskBudget`). The 1-D records stay public input until E12-27 commits them.
+

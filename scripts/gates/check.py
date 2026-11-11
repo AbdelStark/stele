@@ -1672,6 +1672,17 @@ def docs_links(root):
     print(f'gate docs-links: checked {count} local file targets')
 
 
+def controls_quarantine(root):
+    """E12-14a/E12-25: the `controls` adversaries never reach the shipped binary."""
+    tree = subprocess.run(['cargo', 'tree', '-p', 'stele-cli', '-e', 'features', '--locked', '--offline'],
+                          cwd=root, capture_output=True, text=True)
+    if tree.returncode != 0:
+        raise ValueError(f'controls quarantine: cargo tree failed: {tree.stderr.strip()}')
+    if re.search(r'feature "controls"', tree.stdout):
+        raise ValueError('controls quarantine: stele-cli builds with the controls feature')
+    print('gate controls quarantine: stele-cli builds without the controls adversaries')
+
+
 def masked_sumcheck_quarantine(root):
     """RFC-0013 A2 item 2 is unbound; only the A4/A5 consumer (stele_reductions::zk) may use it."""
     allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
@@ -1725,6 +1736,7 @@ def main():
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 masked_sumcheck_quarantine(ROOT)
+                controls_quarantine(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)
                 small_strategy(ROOT)

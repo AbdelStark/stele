@@ -94,8 +94,47 @@ pub fn decode(bytes: &[u8]) -> Result<(Public, Statement), Error> {
     }
 }
 
-/// [`decode`] for either profile; returns the profile byte the file names.
+/// A dev-zk input file: the [`encode_profile`] bytes, then the proof index (`u32`)
+/// and the model commitment (`stele-dev-zk-model-v1`, RFC-0013 A6).
+pub fn encode_zk(
+    public: &Public,
+    statement: &Statement,
+    commitment: &super::zk::ModelCommitment,
+    index: u32,
+) -> Vec<u8> {
+    let mut out = encode_profile(public, statement, 1);
+    out.extend_from_slice(&index.to_le_bytes());
+    out.extend_from_slice(&commitment.encode());
+    out
+}
+
+/// Parse a dev-zk input file; returns the commitment and the proof index.
+#[allow(clippy::type_complexity)]
+pub fn decode_zk(
+    bytes: &[u8],
+) -> Result<(Public, Statement, super::zk::ModelCommitment, u32), Error> {
+    let (public, statement, profile, rest) = parse(bytes)?;
+    let index = rest.get(..4).ok_or(Error::StatementMismatch)?;
+    let index = u32::from_le_bytes([index[0], index[1], index[2], index[3]]);
+    if profile != 1 {
+        return Err(Error::StatementMismatch);
+    }
+    let commitment = super::zk::ModelCommitment::decode(&rest[4..])?;
+    Ok((public, statement, commitment, index))
+}
+
+/// [`decode`] for either profile; returns the profile byte the file names. A
+/// dev-zk file's commitment and index are read by [`decode_zk`].
 pub fn decode_profile(bytes: &[u8]) -> Result<(Public, Statement, u8), Error> {
+    match parse(bytes)? {
+        (public, statement, 0, []) => Ok((public, statement, 0)),
+        (public, statement, 1, _) => decode_zk(bytes).map(|_| (public, statement, 1)),
+        _ => Err(Error::StatementMismatch),
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
     let (profile, magic) = match bytes.starts_with(ZK_MAGIC) {
         true => (1, ZK_MAGIC),
         false => (0, MAGIC),
@@ -136,9 +175,7 @@ pub fn decode_profile(bytes: &[u8]) -> Result<(Public, Statement, u8), Error> {
         1 => Some(r.u32()?),
         _ => return Err(Error::StatementMismatch),
     };
-    if !r.0.is_empty() {
-        return Err(Error::StatementMismatch);
-    }
+    let rest = r.0;
     let public = Public {
         model,
         scales,
@@ -155,5 +192,6 @@ pub fn decode_profile(bytes: &[u8]) -> Result<(Public, Statement, u8), Error> {
             next,
         },
         profile,
+        rest,
     ))
 }

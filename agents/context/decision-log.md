@@ -2383,3 +2383,41 @@ Decision:
 
 Status: Proposed (development tier; independent review: fix-then-merge, fixes
 applied; dev-zk not admitted).
+
+## ADR-103: One published dev-zk model commitment for P proofs (RFC-0013 A6, task E12-25)
+
+Numbered after ADR-102.
+
+Context: E12-14b committed the weights per proof (`P = 1`), so a dev-zk proof bound
+no published model. Review F1 asked for a persistent commitment, and E12-25 makes
+it the admission gate.
+
+Decision:
+- RFC-0013 A6 (Proposed) defines a lifetime hiding weight source.
+  - It is committed once from a model seed, with `P·t_x` claim-mask blocks per
+    weight column.
+  - It is admitted when `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`.
+  - Proof `j` opens it once and uses block set `j`.
+  - The rank check spans every opening of the lifetime.
+- `stele-pcs` gains `Source::admits_lifetime` and `PreparedSource::hiding_lifetime`,
+  whose opening budget and rank check cover earlier openings. `zk::claims` gains
+  `Lifetime`, `prove_lifetime`, `verify_lifetime` and `lifetime_root`.
+- The orchestrator and the CLI:
+  - `commit-model --zk` writes the public commitment and a secret state with mode
+    0600.
+  - `prove-dev --zk` persists the counter before it proves.
+  - The public input carries the index and the commitment.
+  - `--expect-model` pins the commitment's model digest.
+- Reviewer nits:
+  - `zk::claims::leaks` covers the committed tops and the GKR layer children.
+    The unmasked control must leak.
+  - The CLI doc reads "A development proof".
+  - A gate checks that `cargo tree -p stele-cli` has no `controls` feature.
+- Deferred:
+  - committing the 1-D records with their CQIS well-formedness relations (E12-27,
+    now an admission gate);
+  - NC-0930..0932.
+- dev-zk stays not admitted.
+
+Status: Proposed (development tier; A6 and this ADR need the independent review).
+

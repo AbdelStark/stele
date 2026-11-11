@@ -477,7 +477,11 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
                     crate::hiding::check_mask_shape(source, functional.a)?;
                 } else {
                     let certificate = crate::hiding::certificate_weights(source)?;
-                    crate::hiding::check_mask_rank(source, &[&certificate, functional.a])?;
+                    // A6: a lifetime source's earlier openings join the rank check.
+                    let mut all: Vec<&[K]> = alloc::vec![&certificate];
+                    all.extend(self.revealed().iter().map(Vec::as_slice));
+                    all.push(functional.a);
+                    crate::hiding::check_mask_rank(source, &all)?;
                 }
             }
             let proof_size = source.proof_size(ProofKind::Opening)?;
