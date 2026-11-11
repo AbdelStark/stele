@@ -531,7 +531,7 @@ fn records(gains: &[i16]) -> Result<(Relation, Values), String> {
     Ok((rel_c, values.ok_or("values")?))
 }
 
-/// NC-0935..0937: one value of the committed gain encoding made inconsistent,
+/// NC-0935..0938: one value of the committed gain encoding made inconsistent,
 /// sent through `zk::relation::forge` on claims relation `target` (honest rounds,
 /// true `μ`, no producer self-check). The same adversary on the honest encoding is
 /// accepted (mutation M0).
@@ -605,6 +605,16 @@ pub fn run_records(id: u16) -> Result<(), String> {
         ),
         // NC-0937: a nonzero H0 past the model width d: the padding identity.
         937 => records_control(|r, v| set(r, v, "/H0", 7, 5), Target::Identities),
+        // NC-0938: σH = 1 and flipH = −1 on gain 7 (H1 = 0), H1low = H1 = 0 in range
+        // and the flip identity holding: only the sign identity rejects it.
+        938 => records_control(
+            |r, v| {
+                set(r, v, "/sigmaH", 1, 1)?;
+                set(r, v, "/flipH", 1, -1)?;
+                set(r, v, "/H1low", 1, 0)
+            },
+            Target::Identities,
+        ),
         _ => Err(format!("unknown records control {id}")),
     }
 }

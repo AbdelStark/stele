@@ -297,7 +297,10 @@ pub fn public_input(
 }
 
 /// What `--expect-model` pins under dev-zk: BLAKE3 of the tag, `cqis_id`, the
-/// commitment bytes and the 1-D records (ordinal, length, codes) in record order.
+/// commitment bytes and the public 1-D records (ordinal, length, codes) in record
+/// order. Under RFC-0013 A7 those records are the fixed per-format pattern
+/// ([`published`]), not the gains; the gains are bound only through
+/// `commitment.root`.
 pub fn model_digest(public: &Public, commitment: &ModelCommitment) -> Result<[u8; 32], Error> {
     let d = decode(public)?;
     let mut h = blake3::Hasher::new();
@@ -361,7 +364,7 @@ pub fn published(model: &[u8], vectors: &[(u16, Vec<i16>)]) -> Result<Vec<(u16, 
 ///   and `L = H1 + 128·σH ∈ [0, 128)` (a new weight column), so `σH` is `H1`'s
 ///   two's-complement sign;
 /// - identities `flipH − 1 + 2σH = 0` and `L − H1 − 128·σH = 0`;
-/// - padding past the model width `d` is zero: `x·(1 − valid) = 0` for `H0, H1, σH`.
+/// - padding past the model width `d` is zero: `x·(1 − gainvalid) = 0` for `H0, H1, σH`.
 ///
 /// `values` (the prover's, or empty for the verifier) gets the converted columns'
 /// values. The result's structure depends on no gain value.
@@ -414,7 +417,7 @@ pub fn commit_records(
         );
         let valid: Vec<i64> = (0..1usize << log_len).map(|k| i64::from(k < d)).collect();
         let mask = rel.add_column(
-            &alloc::format!("{prefix}/valid"),
+            &alloc::format!("{prefix}/gainvalid"),
             Kind::Public(valid),
             Width::unsigned(1),
             log_len,

@@ -653,8 +653,10 @@ past the rank budget, and `C + 1` queries expose them. The 1-D records stay publ
 
 ### A7 — Committed 1-D records for dev-zk (the gains as weights with a CQIS encoding proof)
 
-Status: **Proposed** (development tier, Workflow 02 development-tier path;
-independent review requested; not self-accepted). Task: E12-27. Decision: ADR-107.
+Status: **Accepted** (development tier, Workflow 02 development-tier path).
+Independent review of #346: fix-then-merge, with the encoding relations complete
+and unique, the binding correct and the full width necessary (int16 is fixed); F1
+to F3 applied. Task: E12-27. Decision: ADR-107.
 
 Motivation: under A5/A6 the 1-D records (the RMSNorm gains, RFC-0026 A2) are public
 input, so a dev-zk proof hides the matrices but not the norm gains (review F2 of
@@ -676,8 +678,8 @@ E12-14b).
    - a weight column `H1low ∈ [0, 128)` with the identity
      `H1low − H1 − 128·σH = 0`, so `σH` is `H1`'s two's-complement sign;
    - the identity `flipH − 1 + 2σH = 0`;
-   - `x·(1 − valid) = 0` for `H0`, `H1` and `σH`, where `valid` is the public mask
-     `[k < d]` of the model width `d`, so padding gains are zero.
+   - `x·(1 − gainvalid) = 0` for `H0`, `H1` and `σH`, where `gainvalid` is the
+     public mask `[k < d]` of the model width `d`, so padding gains are zero.
 
    Together these make each group the encoding `h = H0 + 256·H1` of one int16 gain
    with its sign and flip.
@@ -685,7 +687,10 @@ E12-14b).
    fixed pattern `min, max, −1, 0, …` of each record's format; lengths are kept.
    The verifier derives the relation from it. The prover derives the same relation
    from the real gains, and it refuses a window whose committed relation differs
-   from the verifier's.
+   from the verifier's. The `--expect-model` digest hashes this pattern, not the
+   gains; the gains are bound only through the commitment root. A model commitment
+   made before E12-27 does not fit the new relation (its weight columns lack the
+   gain groups), so such a model must be committed again.
 4. **Not hidden.** The record lengths and formats, and that the norms have
    gains. The values are hidden as weights under A6.
 5. **Cost.** The full-width gain columns enlarge some carries' static bounds (wider
@@ -696,7 +701,11 @@ Controls:
 - NC-0936: σH set on a non-negative H1. The sign identity is kept, so the 7-bit
   range of `H1low` rejects it.
 - NC-0937: a nonzero gain past `d`.
+- NC-0938: σH = 1 and flipH = −1 on a non-negative gain with `H1low = H1`, so the
+  ranges and the flip identity hold and only the sign identity rejects it (review F1).
 
 Each control uses the unchecked adversary, expects `RoundSumMismatch`, and passes
-on the honest encoding (M0).
+on the honest encoding (M0). Removing the flip identity, widening `H1low` to 8 bits,
+removing the padding identity, or removing the sign identity turns exactly NC-0935,
+NC-0936, NC-0937 or NC-0938 red, with the false encoding accepted.
 
