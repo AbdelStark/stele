@@ -268,7 +268,7 @@ python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
 
 RFC-0026 A10 (Proposed) moves the stacked and model sources to the Circle code at rate
 1/4 and every source to RFC-0010 A14 Policy 2. It claims no security level. Before is
-`origin/main` `276b2c0` and after is `5487d5c`, on one Apple M4 Max laptop shared with
+`origin/main` `276b2c0` and after is `944a4fc`, on one Apple M4 Max laptop shared with
 other workloads. The synthetic windows had five alternating runs of each, and each
 ledger keeps the median run; stories42M had one run of each:
 

@@ -1,7 +1,7 @@
 {
  "batch_size": 1,
  "bindings_all_on": true,
- "commit": "5487d5c66c17c77a75f9b59ab28ae52c03757c3d",
+ "commit": "944a4fcd008f7094d315b89521406736d409bef1",
  "controls": {
   "failed": 0,
   "passed": 4,
@@ -37,7 +37,7 @@
    "token": "Engine(Sumcheck(RoundSumMismatch))",
    "weight": "Commitment(Transcript(GrindMismatch))"
   },
-  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; BSD /usr/bin/time -l. Task E16-30 before/after pair. after: task E16-30 at 5487d5c66c17c77a75f9b59ab28ae52c03757c3d, RFC-0026 A10 profile byte 2 (Circle rate-1/4 stacked and model sources, Policy 2 on every source). One prove-dev and one verify-dev run per commit, after then before, back to back, on a host shared with other workloads (1-minute load average 7 to 20); not a median. The before proof is byte-identical to the E16-18 proof (SHA-256 507b52b3...5381, INV-8). The after proof is 18,325,385 bytes against the 18,325,537 projected by research/fs-pcs/PARAMETERS.md section 4; the projection also counts 19 LU (beta, alpha) nonces of 8 bytes, which A10 does not use. Counters proof_section_* are the container's section bytes and counts (RFC-0026 \u00a74.1).",
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; BSD /usr/bin/time -l. Task E16-30 before/after pair. after: task E16-30 at 944a4fcd008f7094d315b89521406736d409bef1 (measured binary built from 5487d5c, the same crates before the rebase onto 77b253f), RFC-0026 A10 profile byte 2 (Circle rate-1/4 stacked and model sources, Policy 2 on every source). One prove-dev and one verify-dev run per commit, after then before, back to back, on a host shared with other workloads (1-minute load average 7 to 20); not a median. The before proof is byte-identical to the E16-18 proof (SHA-256 507b52b3...5381, INV-8). The after proof is 18,325,385 bytes against the 18,325,537 projected by research/fs-pcs/PARAMETERS.md section 4; the projection also counts 19 LU (beta, alpha) nonces of 8 bytes, which A10 does not use. Counters proof_section_* are the container's section bytes and counts (RFC-0026 \u00a74.1).",
   "model": {
    "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
    "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
