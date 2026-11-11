@@ -25,12 +25,15 @@ use super::{
     decode, layout_for, public_input as development_input, statement_digest, Error, Public,
     Statement, Weights, K,
 };
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use stele_reductions::relation;
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_field::Serialize;
 use stele_reductions::stele_hash::Transcript;
-use stele_reductions::stele_ir::relation::{check, Relation, Values};
+use stele_reductions::stele_ir::relation::{
+    check, ColumnId, Identity, Kind, Range, Ref, Relation, Term as IdentityTerm, Values, Width,
+};
 use stele_reductions::zk::claims::{Lifetime, ModelSecret};
 pub use stele_reductions::zk::Seed;
 use stele_reductions::zk::{claims, relation as zk_relation};
@@ -294,7 +297,10 @@ pub fn public_input(
 }
 
 /// What `--expect-model` pins under dev-zk: BLAKE3 of the tag, `cqis_id`, the
-/// commitment bytes and the 1-D records (ordinal, length, codes) in record order.
+/// commitment bytes and the public 1-D records (ordinal, length, codes) in record
+/// order. Under RFC-0013 A7 those records are the fixed per-format pattern
+/// ([`published`]), not the gains; the gains are bound only through
+/// `commitment.root`.
 pub fn model_digest(public: &Public, commitment: &ModelCommitment) -> Result<[u8; 32], Error> {
     let d = decode(public)?;
     let mut h = blake3::Hasher::new();
@@ -316,21 +322,244 @@ fn engine(e: stele_reductions::zk::Error) -> Error {
     Error::Zk(e)
 }
 
-/// The window's relation and values (the plain checker passed).
-fn window(
+/// The RMSNorm gain-derived columns a dev-zk proof commits (E12-27, RFC-0013 A6):
+/// the gain's low byte `H0`, its high byte `H1`, its sign `σH` and `flipH = 1 −
+/// 2σH`, by name suffix, with their fixed widths.
+const RECORDS: [(&str, Width); 4] = [
+    ("/H0", Width::unsigned(8)),
+    ("/H1", Width::signed(8)),
+    ("/sigmaH", Width::unsigned(1)),
+    ("/flipH", Width::signed(2)),
+];
+
+/// The published 1-D records of `model` (canonical Model bytes): every code
+/// replaced by the fixed pattern `min, max, −1, 0, …` of the record's format,
+/// lengths kept. Under dev-zk the gains are committed weights; the public input
+/// names only their shapes. The pattern reaches the format's extremes of `H0, H1,
+/// σH, flipH`, so the plan's static bounds (RFC-0026 §3.6) hold for any gain the
+/// format admits.
+pub fn published(model: &[u8], vectors: &[(u16, Vec<i16>)]) -> Result<Vec<(u16, Vec<i16>)>, Error> {
+    let m = stele_reductions::stele_cqis::model::Model::decode(model)
+        .map_err(|_| Error::StatementMismatch)?;
+    vectors
+        .iter()
+        .map(|(o, codes)| {
+            let bits = m
+                .formats()
+                .get(usize::from(*o))
+                .ok_or(Error::StatementMismatch)?
+                .bits()
+                .min(16);
+            let (min, max) = (-(1i32 << (bits - 1)), (1i32 << (bits - 1)) - 1);
+            let pattern = [min as i16, max as i16, -1, 0];
+            Ok((*o, (0..codes.len()).map(|k| pattern[k % 4]).collect()))
+        })
+        .collect()
+}
+
+/// Commit the 1-D records (E12-27): turn every gain-derived public column into a
+/// weight column of fixed width, and add the relations that make each group a CQIS
+/// int16 gain encoding `h = H0 + 256·H1` with `σH = [h < 0]`:
+/// - ranges `H0 ∈ [0, 256)`, `H1 ∈ [−128, 128)`, `σH ∈ {0, 1}`, `flipH ∈ [−2, 2)`
+///   and `L = H1 + 128·σH ∈ [0, 128)` (a new weight column), so `σH` is `H1`'s
+///   two's-complement sign;
+/// - identities `flipH − 1 + 2σH = 0` and `L − H1 − 128·σH = 0`;
+/// - padding past the model width `d` is zero: `x·(1 − gainvalid) = 0` for `H0, H1, σH`.
+///
+/// `values` (the prover's, or empty for the verifier) gets the converted columns'
+/// values. The result's structure depends on no gain value.
+pub fn commit_records(
+    relation: &Relation,
+    values: Option<(&Values, &Relation)>,
+    d: usize,
+) -> Result<(Relation, Option<Values>), Error> {
+    // The real gain columns come from `values`' own relation (same column ids).
+    let source = values.map_or(relation, |(_, r)| r);
+    let mut rel = relation.clone();
+    let mut converted: Vec<(ColumnId, Vec<i64>)> = Vec::new();
+    // Groups by module prefix: (prefix, [H0, H1, σH, flipH]).
+    let mut groups: Vec<(String, [Option<ColumnId>; 4])> = Vec::new();
+    for (i, column) in rel.columns.iter_mut().enumerate() {
+        let Some(slot) = RECORDS.iter().position(|(s, _)| column.name.ends_with(s)) else {
+            continue;
+        };
+        let Some(Kind::Public(data)) = source.columns.get(i).map(|c| &c.kind) else {
+            return Err(Error::UnsupportedModel);
+        };
+        if !matches!(column.kind, Kind::Public(_)) {
+            return Err(Error::UnsupportedModel);
+        }
+        converted.push((ColumnId(i as u32), data.clone()));
+        column.kind = Kind::Weight;
+        column.width = RECORDS[slot].1;
+        let prefix = column.name[..column.name.len() - RECORDS[slot].0.len()].to_string();
+        match groups.iter_mut().find(|(p, _)| *p == prefix) {
+            Some((_, ids)) => ids[slot] = Some(ColumnId(i as u32)),
+            None => {
+                let mut ids = [None; 4];
+                ids[slot] = Some(ColumnId(i as u32));
+                groups.push((prefix, ids));
+            }
+        }
+    }
+    let mut derived: Vec<(ColumnId, ColumnId, ColumnId)> = Vec::new();
+    for (prefix, ids) in &groups {
+        let [Some(h0), Some(h1), Some(sigma), Some(flip)] = *ids else {
+            return Err(Error::UnsupportedModel);
+        };
+        let log_len = rel.columns[h0.0 as usize].log_len;
+        let read = |id| Ref::identity(id, log_len);
+        let low = rel.add_column(
+            &alloc::format!("{prefix}/H1low"),
+            Kind::Weight,
+            Width::unsigned(7),
+            log_len,
+        );
+        let valid: Vec<i64> = (0..1usize << log_len).map(|k| i64::from(k < d)).collect();
+        let mask = rel.add_column(
+            &alloc::format!("{prefix}/gainvalid"),
+            Kind::Public(valid),
+            Width::unsigned(1),
+            log_len,
+        );
+        for (id, width) in [
+            (h0, Width::unsigned(8)),
+            (h1, Width::signed(8)),
+            (sigma, Width::unsigned(1)),
+            (flip, Width::signed(2)),
+            (low, Width::unsigned(7)),
+        ] {
+            rel.ranges.push(Range {
+                name: alloc::format!("{}/range", rel.columns[id.0 as usize].name),
+                column: id,
+                width,
+            });
+        }
+        let term = |coeff, factors| IdentityTerm { coeff, factors };
+        let mut identities = alloc::vec![
+            (
+                "flip",
+                alloc::vec![
+                    term(1, alloc::vec![read(flip)]),
+                    term(-1, Vec::new()),
+                    term(2, alloc::vec![read(sigma)]),
+                ],
+            ),
+            (
+                "sign",
+                alloc::vec![
+                    term(1, alloc::vec![read(low)]),
+                    term(-1, alloc::vec![read(h1)]),
+                    term(-128, alloc::vec![read(sigma)]),
+                ],
+            ),
+        ];
+        for (name, id) in [("pad0", h0), ("pad1", h1), ("padsigma", sigma)] {
+            identities.push((
+                name,
+                alloc::vec![
+                    term(1, alloc::vec![read(id)]),
+                    term(-1, alloc::vec![read(mask), read(id)]),
+                ],
+            ));
+        }
+        for (name, terms) in identities {
+            rel.identities.push(Identity {
+                name: alloc::format!("{prefix}/records/{name}"),
+                vars: log_len,
+                terms,
+            });
+        }
+        derived.push((low, h1, sigma));
+    }
+    rel.validate().map_err(|_| Error::UnsupportedModel)?;
+    let Some((values, real)) = values else {
+        return Ok((rel, None));
+    };
+    let mut out = Values::new(&rel);
+    for i in 0..relation.columns.len() {
+        let id = ColumnId(i as u32);
+        if matches!(relation.columns[i].kind, Kind::Public(_)) {
+            continue;
+        }
+        let v = values.get(real, id).ok_or(Error::Witness)?.to_vec();
+        out.set(&rel, id, v).map_err(|_| Error::Witness)?;
+    }
+    for (id, v) in &converted {
+        out.set(&rel, *id, v.clone()).map_err(|_| Error::Witness)?;
+    }
+    for (low, h1, sigma) in derived {
+        let get = |id| out.get(&rel, id).map(<[i64]>::to_vec).ok_or(Error::Witness);
+        let (h1v, sv) = (get(h1)?, get(sigma)?);
+        let lv = h1v.iter().zip(&sv).map(|(h, s)| h + 128 * s).collect();
+        out.set(&rel, low, lv).map_err(|_| Error::Witness)?;
+    }
+    Ok((rel, Some(out)))
+}
+
+/// The dev-zk relation the verifier derives (E12-27): the development plan on the
+/// published (zeroed) 1-D records, with the records committed. A public input whose
+/// records are not zeroed is refused (`StatementMismatch`).
+fn zk_relation_of(public: &Public, statement: &Statement) -> Result<Relation, Error> {
+    if public.vectors != published(&public.model, &public.vectors)? {
+        return Err(Error::StatementMismatch);
+    }
+    let d = decode(public)?;
+    let layout = layout_for(&d, public, statement, true)?;
+    let width = usize::from(d.model.shape().width());
+    Ok(commit_records(&layout.relation, None, width)?.0)
+}
+
+/// The window's committed relation and values from the real 1-D records in
+/// `weights` (the plain checker passed when `checked`). The relation equals the
+/// verifier's [`zk_relation_of`] or the window is refused.
+fn window_values(
+    public: &Public,
+    executor: &mut Executor<'_>,
+    weights: &Weights,
+    statement: &Statement,
+    checked: bool,
+) -> Result<(Relation, Values), Error> {
+    if public.vectors != published(&public.model, &weights.vectors)? {
+        return Err(Error::StatementMismatch);
+    }
+    let published_relation = zk_relation_of(public, statement)?;
+    let real = Public {
+        vectors: weights.vectors.clone(),
+        ..public.clone()
+    };
+    let d = decode(&real)?;
+    let layout = layout_for(&d, &real, statement, true)?;
+    let capture = executor
+        .capture(&statement.tokens)
+        .map_err(|_| Error::Witness)?;
+    let values = layout.assign(&capture, &weights.codes)?;
+    if checked {
+        check(&layout.relation, &values).map_err(Error::Check)?;
+    }
+    let width = usize::from(d.model.shape().width());
+    let (relation, values) =
+        commit_records(&layout.relation, Some((&values, &layout.relation)), width)?;
+    let values = values.ok_or(Error::Witness)?;
+    if checked {
+        check(&relation, &values).map_err(Error::Check)?;
+    }
+    // The committed relation depends on no gain value: it is the verifier's.
+    if relation::digest(&relation) != relation::digest(&published_relation) {
+        return Err(Error::StatementMismatch);
+    }
+    Ok((relation, values))
+}
+
+/// The window's committed dev-zk relation and values (the plain checker passed),
+/// as [`prove`] uses them; `public` carries the published records.
+pub fn window(
     public: &Public,
     executor: &mut Executor<'_>,
     weights: &Weights,
     statement: &Statement,
 ) -> Result<(Relation, Values), Error> {
-    let d = decode(public)?;
-    let layout = layout_for(&d, public, statement, true)?;
-    let capture = executor
-        .capture(&statement.tokens)
-        .map_err(|_| Error::Witness)?;
-    let values = layout.assign(&capture, &weights.codes)?;
-    check(&layout.relation, &values).map_err(Error::Check)?;
-    Ok((layout.relation, values))
+    window_values(public, executor, weights, statement, true)
 }
 
 /// Commit the model once (RFC-0013 A6): count the per-proof blocks on a reference
@@ -355,13 +584,9 @@ pub fn commit(
     };
     let mut public = public.clone();
     public.commitment = alloc::vec![([0; 32], Vec::new())];
-    let d = decode(&public)?;
-    let layout = layout_for(&d, &public, &reference, true)?;
-    let capture = executor
-        .capture(&reference.tokens)
-        .map_err(|_| Error::Witness)?;
-    let values = layout.assign(&capture, &weights.codes)?;
-    let blocks = zk_relation::weight_blocks(&layout.relation).map_err(engine)?;
+    // The reference window need not be greedy: only its shape and weights count.
+    let (relation, values) = window_values(&public, executor, weights, &reference, false)?;
+    let blocks = zk_relation::weight_blocks(&relation).map_err(engine)?;
     let mut commitment = ModelCommitment {
         root: [0; 32],
         proofs,
@@ -369,7 +594,7 @@ pub fn commit(
         length: length as u32,
     };
     commitment.root = zk_relation::lifetime_root(
-        &layout.relation,
+        &relation,
         &values,
         &commitment.lifetime(0),
         &Seed::new(seed),
@@ -444,15 +669,12 @@ pub fn statement_digest_for(
     profile: u8,
 ) -> Result<[u8; 32], Error> {
     let d = decode(public)?;
-    let layout = layout_for(&d, public, statement, true)?;
+    let relation_zk = zk_relation_of(public, statement)?;
     let input = match profile {
         PROFILE => public_input(public, &d.cqis_id, statement, commitment, index),
         _ => development_input(public, &d.cqis_id, statement),
     };
-    Ok(statement_digest(
-        &input,
-        &relation::digest(&layout.relation),
-    ))
+    Ok(statement_digest(&input, &relation::digest(&relation_zk)))
 }
 
 /// Verify one dev-zk window (RFC-0026 §8 with A9) as proof `index` against the
@@ -477,15 +699,10 @@ pub fn verify(
     {
         return Err(Error::StatementMismatch);
     }
-    let layout = layout_for(&d, public, statement, true)?;
-    layout
-        .relation
-        .validate()
-        .map_err(|_| Error::StatementMismatch)?;
+    let relation_zk = zk_relation_of(public, statement)?;
     let input = public_input(public, &d.cqis_id, statement, commitment, index);
     // Fail fast only: the binding is the transcript over `input` (NC-0912).
-    if proof[MAGIC.len() + 32..header]
-        != statement_digest(&input, &relation::digest(&layout.relation))
+    if proof[MAGIC.len() + 32..header] != statement_digest(&input, &relation::digest(&relation_zk))
     {
         return Err(Error::StatementMismatch);
     }
@@ -493,7 +710,7 @@ pub fn verify(
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
     let verified = zk_relation::verify_lifetime(
         &mut t,
-        &layout.relation,
+        &relation_zk,
         commitment.root,
         &commitment.lifetime(index),
         &decoded,

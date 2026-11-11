@@ -107,9 +107,9 @@ waits for the independent review and for E12-27 (RFC-0013 A5 item 8).
 - The public file is `stele-dev-zk-public-v1`. It carries the commitment and the
   proof index. `verify-dev` prints `profile dev-zk`, `proof index j of P` and the
   model digest of the commitment. `--expect-model` pins a proof to it.
-- Public, not hidden: the Model, Scales and Preparation bytes, every 1-D record
-  (norm gains and other vectors), the shapes, the plan, `T`, the tokens, `[r, e)`
-  and `y`.
+- Public, not hidden: the Model, Scales and Preparation bytes, the 1-D records'
+  lengths and formats (their values, the norm gains, are committed weights under
+  RFC-0013 A7), the shapes, the plan, `T`, the tokens, `[r, e)` and `y`.
 - `verify-dev` reports counts of instances, steps and batches, not a soundness
   ledger (task E12-26).
 

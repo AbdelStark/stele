@@ -107,6 +107,7 @@ fn case(f: &Fixture, claims: &[u32]) -> Option<Case> {
             descriptor,
             gains,
             rows: t,
+            fixed_widths: false,
         },
         policy: policy(model.final_policy()),
         head: ProjectionPlan {
@@ -267,6 +268,7 @@ fn accepts_tied_head_on_embedding_source() {
                 descriptor,
                 gains: gains.clone(),
                 rows: t,
+                fixed_widths: false,
             },
             policy: policy(model.final_policy()),
             head: ProjectionPlan {
@@ -372,6 +374,7 @@ fn accepts_static_validity_e2e_shape() {
             descriptor,
             gains: vec![1 << 8; d],
             rows: t,
+            fixed_widths: false,
         },
         policy: Policy::Dynamic,
         head: ProjectionPlan {

@@ -192,6 +192,7 @@ fn accepts_executor_embedding_and_rmsnorm_on_family_one_fixtures() {
                 descriptor,
                 gains,
                 rows: tokens.len(),
+                fixed_widths: false,
             };
             let mut module = RmsNorm::new(plan, x, "L0/norm1").expect("plan");
             module.declare(&mut relation);

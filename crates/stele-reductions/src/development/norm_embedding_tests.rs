@@ -70,6 +70,7 @@ impl Norm {
             descriptor: self.descriptor,
             gains: self.gains.clone(),
             rows,
+            fixed_widths: false,
         };
         let mut module = RmsNorm::new(plan, x, "L0/norm1").expect("supported plan");
         module.declare(&mut relation);

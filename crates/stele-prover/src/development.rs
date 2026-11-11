@@ -237,6 +237,7 @@ fn layout_for(
         model: &d.model,
         scales: &d.scales,
         vectors: &public.vectors,
+        zk,
     };
     let layout = Layout::declare(&plan, statement)?;
     let roles = weight_roles(&d.model);
@@ -642,11 +643,13 @@ pub fn prove_window_profile(
     }
     let weights = Weights::from_artifact(&m, artifact)?;
     if let Some(window) = zk {
+        // E12-27: the 1-D records are committed weights; the public input names
+        // only their shapes.
         let mut public = Public {
             model: model.to_vec(),
             scales: scales.to_vec(),
             preparation: preparation.to_vec(),
-            vectors: weights.vectors.clone(),
+            vectors: zk::published(model, &weights.vectors)?,
             commitment: Vec::new(),
         };
         let proof = match window {
