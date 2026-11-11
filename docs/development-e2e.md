@@ -292,12 +292,12 @@ and in 103.6 s with one thread
 All three have the synthetic row's proof bytes (INV-8).
 
 Task E16-23 (ADR-105) moved the prover's sequential residual onto the work pool without
-changing proof bytes. It measured before (`736aef5`) and after (`68aa737`) on one
+changing proof bytes. It measured before (`736aef5`) and after (`e855f74`) on one
 16-thread Apple M4 Max. The rows are not comparable with the hosts above:
 
 | Rung | Before | After | Ledgers |
 |---|---|---|---|
-| L1, 8 layers, T 64 | 16.31 s | 9.37 s | [before](../bench/ledger/e16-23-dev-synthetic-8layer-mac-before.json), [after](../bench/ledger/e16-23-dev-synthetic-8layer-mac-after.json) |
+| L1, 8 layers, T 64 | 16.31 s | 9.50 s | [before](../bench/ledger/e16-23-dev-synthetic-8layer-mac-before.json), [after](../bench/ledger/e16-23-dev-synthetic-8layer-mac-after.json) |
 | L0, 1 layer, T 16 | 1.67 s | 1.36 s | [before](../bench/ledger/e16-23-dev-synthetic-1layer-mac-before.json), [after](../bench/ledger/e16-23-dev-synthetic-1layer-mac-after.json) |
 
 `research/gpu-gating/sequential_residual.py` counts the samples of one profile in which

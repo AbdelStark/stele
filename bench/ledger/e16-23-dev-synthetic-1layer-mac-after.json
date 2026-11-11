@@ -1,7 +1,7 @@
 {
  "batch_size": 1,
  "bindings_all_on": true,
- "commit": "68aa7374f40f906c7b19b05f698f8d9f77d158ed",
+ "commit": "e855f74a7a393e9497d2603798f51df1a107630e",
  "controls": {
   "failed": 0,
   "passed": 4,
@@ -12,9 +12,9 @@
  "generated_tokens": 15,
  "kernel_counters": {
   "checked_positions": 16,
-  "prove_peak_rss_bytes": 282509312,
+  "prove_peak_rss_bytes": 274202624,
   "public_bytes": 4028337,
-  "verify_peak_rss_bytes": 98336768
+  "verify_peak_rss_bytes": 99368960
  },
  "kind": "inference",
  "model_config": {
@@ -25,7 +25,7 @@
    "token": "Engine(Sumcheck(RoundSumMismatch))",
    "weight": "Commitment(Merkle(RootMismatch))"
   },
-  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; three prove-dev runs per commit, before and after measured back to back on the same host with no other workload; this record is the median run (wall times of the three: 1.36 s, 1.37 s, 1.34 s); BSD /usr/bin/time -l. Task E16-23 before/after pair. Counters profile_sequential_samples and profile_sequential_check_samples (8-layer only) come from one separate run under macOS sample (1 ms) of a line-table build of the same commit, classified by research/gpu-gating/sequential_residual.py; check samples run beside the engine after E16-23.",
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; three prove-dev runs per commit with no other workload on the host (load average about 2); this record is the median run (wall times of the three: 1.35 s, 1.36 s, 1.44 s); BSD /usr/bin/time -l. Task E16-23 before/after pair: before at origin/main 736aef5, after at the PR head e855f74 (after the #344 merge). Counters profile_sequential_samples* (8-layer only) come from one separate run of a line-table build of the same commit under macOS sample (1 ms). research/gpu-gating/sequential_residual.py classifies them: per-stage self samples, on any thread, with no rayon frame inside the innermost prover root. After E16-23 the check samples run beside the engine, off the critical path.",
   "model": {
    "cqis": "int8 matrices, dynamic rows, random small codes",
    "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
@@ -52,7 +52,7 @@
   },
   "threads": 16
  },
- "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is GNU time maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
  "plan_digest": "7c5bee44fc2fdc57c9a5ef2f9fccaad5ea3b280e1b6962ecd372a2f4b6eb3534",
  "profile": "development",
  "prompt_tokens": 1,
@@ -65,7 +65,7 @@
  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
  "verifier_time_ns": {
   "python": 0,
-  "rust": 690000000
+  "rust": 660000000
  },
  "witness_recompute_ns": 0,
  "workload": "dev/synthetic-1layer-t16"
