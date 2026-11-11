@@ -49,6 +49,10 @@ class FieldSourceGateTests(unittest.TestCase):
                                  'pub fn from_values(_: Vec<K>) -> Self { todo!() } }\n'),
                                 ('src/opening.rs', '\nimpl<K: ChallengeField> RetainedRow<\'_, \'_, K> { '
                                  'pub fn values_mut(&mut self) -> &mut [K] { &mut self.values } }\n'),
+                                # E16-23: only the two reviewed pub(crate) helpers in opening.rs.
+                                ('src/opening.rs', '\npub(crate) struct Evil;\n'),
+                                ('src/opening.rs', '\npub(crate) const EVIL: bool = true;\n'),
+                                ('src/opening.rs', '\npub(crate) fn evil() -> bool { true }\n'),
                                 ('src/work.rs', '\npub fn verify() -> bool { true }\n'),
                                 ('src/work.rs', '\nimpl From<ProverWork> for bool {}\n'),
                                 ('src/work.rs', '\ninclude!("unchecked.rs");\n'),

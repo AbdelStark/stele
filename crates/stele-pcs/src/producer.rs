@@ -78,15 +78,15 @@ fn produce_inner<K: ChallengeField>(
     work.proof_bytes = bytes(&proof)?;
     work.weights_bytes = bytes(&weights)?;
     work.peak_owned_bytes = add(work.proof_bytes, work.weights_bytes)?;
-    let message = prepared.message();
-    for column in 0..source.columns() {
-        let mut value = K::from_i64(0);
-        for (row, weight) in weights.iter().enumerate() {
-            // PreparedSource checked R*C and immutably borrows exactly that message.
-            work.source_elements = add(work.source_elements, 1)?;
-            let limb = message[row * source.columns() + column];
-            value = value + *weight * K::from_i64(i64::from(limb.as_u32()));
-        }
+    // PreparedSource checked R*C and immutably borrows exactly that message.
+    let row = crate::opening::combine_rows(
+        prepared.message(),
+        source.columns(),
+        &weights,
+        source.columns(),
+    );
+    for value in row {
+        work.source_elements = add(work.source_elements, weights.len())?;
         work.row_values = add(work.row_values, 1)?;
         proof.extend_from_slice(value.to_le_bytes().as_ref());
     }

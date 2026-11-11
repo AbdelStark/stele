@@ -181,6 +181,10 @@ impl Layout {
         let mut incoming = model.initial_fraction();
 
         let mut layers = Vec::new();
+        // Rotary coefficients and activation tables depend only on the block's
+        // rotation and descriptor, so equal ones are generated once (task E16-23).
+        let mut rope_cache: Option<(Option<_>, Rope)> = None;
+        let mut table_cache: Option<CqisTable> = None;
         for (l, block) in model.blocks().iter().enumerate() {
             let layer = Some(l as u16);
             let fr = block.projection_fractions();
@@ -250,28 +254,26 @@ impl Layout {
                 unit1,
                 fr[2],
             )?;
-            let mut rope_q = Rope::new(
-                l,
-                "q",
-                declared(q.output())?,
-                t,
-                heads,
-                hw,
-                block.rotation(),
-            )
-            .map_err(unsupported)?;
+            let rotation = block.rotation().copied();
+            let mut rope_q = match &rope_cache {
+                Some((r, rope)) if *r == rotation => {
+                    rope.with_input(l, "q", declared(q.output())?, heads)
+                }
+                _ => Rope::new(
+                    l,
+                    "q",
+                    declared(q.output())?,
+                    t,
+                    heads,
+                    hw,
+                    block.rotation(),
+                )
+                .map_err(unsupported)?,
+            };
             rope_q.declare(&mut relation);
-            let mut rope_k = Rope::new(
-                l,
-                "k",
-                declared(k.output())?,
-                t,
-                shape.groups(),
-                hw,
-                block.rotation(),
-            )
-            .map_err(unsupported)?;
+            let mut rope_k = rope_q.with_input(l, "k", declared(k.output())?, shape.groups());
             rope_k.declare(&mut relation);
+            rope_cache = Some((rotation, rope_q.clone()));
             let kv = usize::from(shape.groups()) * usize::from(hw);
             let convert = |relation: &mut Relation, name: &str, input, width, p| {
                 let mut row = RowConversion::new(&s(name), input, t, width, policy(p)?)
@@ -385,8 +387,11 @@ impl Layout {
                 unit2,
                 fr[4],
             )?;
-            let table =
-                CqisTable::generate(block.activation().components()[0]).map_err(unsupported)?;
+            let component = block.activation().components()[0];
+            let table = match table_cache.take() {
+                Some(table) if *table.descriptor() == component => table,
+                _ => CqisTable::generate(component).map_err(unsupported)?,
+            };
             let mut gated = GatedProduct::new(
                 l,
                 declared(gate.output())?,
@@ -396,6 +401,7 @@ impl Layout {
                 &table,
             )
             .map_err(unsupported)?;
+            table_cache = Some(table);
             gated.declare(&mut relation);
             let high_low = declared(gated.columns())?;
             let mut down_row =

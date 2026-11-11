@@ -72,6 +72,50 @@ pub fn for_each_chunk<T: Send>(out: &mut [T], fill: impl Fn(usize, &mut [T]) + S
     fill(0, out);
 }
 
+/// `(0..len).map(f)` in index order, each item one task on the pool. For a few large,
+/// independent items, which `for_each_chunk` (runs of at least `MIN_CHUNK`) never splits.
+pub fn map<T: Send>(len: usize, f: impl Fn(usize) -> T + Sync + Send) -> Vec<T> {
+    #[cfg(feature = "std")]
+    if len > 1 {
+        return (0..len).into_par_iter().map(f).collect();
+    }
+    (0..len).map(f).collect()
+}
+
+/// `(a(), b())`, the two run concurrently on the pool.
+pub fn join<A: Send, B: Send>(
+    a: impl FnOnce() -> A + Send,
+    b: impl FnOnce() -> B + Send,
+) -> (A, B) {
+    #[cfg(feature = "std")]
+    return rayon::join(a, b);
+    #[cfg(not(feature = "std"))]
+    (a(), b())
+}
+
+/// `gate()` beside `work()`, with `gate` deciding: its error is returned even if `work`
+/// panicked, so work on an input the gate rejects never decides the outcome. When the
+/// gate passes, a panic in `work` propagates. Without `std`, `gate` runs first and
+/// `work` only after it passes.
+pub fn gated<E: Send, B: Send>(
+    gate: impl FnOnce() -> Result<(), E> + Send,
+    work: impl FnOnce() -> B + Send,
+) -> Result<B, E> {
+    #[cfg(feature = "std")]
+    {
+        extern crate std;
+        use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
+        let (verdict, result) = rayon::join(gate, || catch_unwind(AssertUnwindSafe(work)));
+        verdict?;
+        Ok(result.unwrap_or_else(|panic| resume_unwind(panic)))
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        gate()?;
+        Ok(work())
+    }
+}
+
 /// `stele_poly::eq_table(point)`, split into blocks: entry `(hi << r) | lo` is
 /// `eq(point[..k], hi) · eq(point[k..], lo)`. Field products are exact, so every
 /// entry equals the sequential table's.
@@ -181,5 +225,25 @@ mod tests {
         let mut out = alloc::vec![0u8; 1 << 14];
         // Every chunk starts below the length, so every worker panics.
         for_each_chunk(&mut out, |start, _| assert!(start >= 1 << 14, "worker"));
+    }
+
+    #[test]
+    fn rejects_by_gate_even_when_work_panics() {
+        let result: Result<(), u8> = gated(
+            || Err(7),
+            || assert!(core::hint::black_box(false), "work on a rejected input"),
+        );
+        assert_eq!(result, Err(7));
+        assert_eq!(gated(|| Ok::<(), u8>(()), || 5), Ok(5));
+        assert_eq!(map(3, |i| i * i), alloc::vec![0, 1, 4]);
+    }
+
+    #[test]
+    #[should_panic(expected = "work")]
+    fn rejects_silent_loss_of_a_work_panic_after_a_passing_gate() {
+        let _ = gated(
+            || Ok::<(), u8>(()),
+            || assert!(core::hint::black_box(false), "work"),
+        );
     }
 }

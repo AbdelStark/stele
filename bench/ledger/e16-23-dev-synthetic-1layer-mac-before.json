@@ -1,0 +1,72 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "736aef57cb35c2344b34985d07c113781926f567",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 15,
+ "kernel_counters": {
+  "checked_positions": 16,
+  "prove_peak_rss_bytes": 275087360,
+  "public_bytes": 4028337,
+  "verify_peak_rss_bytes": 98779136
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Merkle(RootMismatch))"
+  },
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; three prove-dev runs per commit with no other workload on the host (load average about 2); this record is the median run (wall times of the three: 1.69 s, 1.67 s, 1.67 s); BSD /usr/bin/time -l. Task E16-23 before/after pair: before at origin/main 736aef5, after at the PR head e855f74 (after the #344 merge). Counters profile_sequential_samples* (8-layer only) come from one separate run of a line-table build of the same commit under macOS sample (1 ms). research/gpu-gating/sequential_residual.py classifies them: per-stage self samples, on any thread, with no rayon frame inside the innermost prover root. After E16-23 the check samples run beside the engine, off the critical path.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e one-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 16,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 1,
+    "vocabulary": 256
+   }
+  },
+  "proof_sha256": "ea29af1af2de806a529f5844c1ad63c69da390aef12b66b8fbe63c98ef65379f",
+  "public_sha256": "4c231d913f7f105b1b61d24df4e6da344937f92837335f05ec528cd2c6bce8d6",
+  "rung": "L0",
+  "statement": {
+   "T": "16",
+   "checked": "0..16",
+   "cqis_id": "dbc4ca0489fdf0360e673f4dad6e4456d08dc2e8a78211ea1660dd392f7e8c0f",
+   "model": "cf668bc98937b10d99d1f441e216e68d774134d6ced200a70c69c5d4868edcf6",
+   "next": "43",
+   "tokens": "1,153,252,31,205,2,73,62,140,139,111,9,214,56,62,2"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "7c5bee44fc2fdc57c9a5ef2f9fccaad5ea3b280e1b6962ecd372a2f4b6eb3534",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 25363609,
+ "prover_time_ns": 1670000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "prove_dev_wall": 1670000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 660000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-1layer-t16"
+}
