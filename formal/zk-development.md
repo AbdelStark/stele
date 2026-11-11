@@ -443,10 +443,14 @@ Following FlashProve's declared list, by design:
    - Each proof's claims use fresh mask blocks, and the source's view stays within
      A6's query and rank budgets.
    - A reused index (a restored or forked owner state) leaks up to `D·Σ_x t_x`
-     linear equations on the weights. It misses a row from the rank check, which
-     breaks hiding once `(P + 2)·D > R`. Its extra queries break hiding once the
-     queried columns reach `C`. It is publicly detectable afterwards: the same
-     root and index appear in two proofs.
+     M31 linear equations on the weights (`D` per shared block).
+   - It misses a row from the rank check. `r` reuses break hiding once
+     `(P + 1 + r)·D > R`; below that bound, hiding holds only with high
+     probability, through the rank check.
+   - Its extra queries can break hiding once the queried columns reach `C`, and
+     always break it at `C + 1`.
+   - It is publicly detectable afterwards: the same root and index appear in two
+     proofs.
 6. Anything the operator leaks by breaking the lifecycle: a reused seed, a lost
    counter, or a run past the budget.
 

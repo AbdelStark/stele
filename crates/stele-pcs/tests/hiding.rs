@@ -377,7 +377,7 @@ fn lifetime_opening(revealed: Vec<Vec<QM31>>, w: u64) -> (Result<(), Error>, Vec
     (result, a)
 }
 
-/// RFC-0013 A6 (Proposed): a lifetime source at exactly `R = (P + 1)·D`.
+/// RFC-0013 A6: a lifetime source at exactly `R = (P + 1)·D`.
 /// - `admits_lifetime` holds for `P = 3` and fails for `P = 4` and `0`;
 /// - `hiding_lifetime` refuses a spent budget (`MaskBudget`) and a budget past
 ///   the admission (`UnsupportedSource`);

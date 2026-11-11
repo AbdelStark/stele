@@ -242,7 +242,7 @@ pub struct Claim<K> {
     pub value: K,
 }
 
-/// RFC-0013 A6 (Proposed): claim source `source` is a lifetime weight source,
+/// RFC-0013 A6: claim source `source` is a lifetime weight source,
 /// committed once and opened by at most `proofs` proofs. Its column `i` (in
 /// column order) reserves `proofs·blocks[i]` claim-mask blocks; proof `index`
 /// uses blocks `index·blocks[i]..`, so every proof's masks are fresh.
@@ -2475,7 +2475,7 @@ where
 }
 
 /// [`prove`] with claim source `lifetime.source` a lifetime weight source (RFC-0013
-/// A6, Proposed): rebuilt from the model seed, opened as proof `lifetime.index`
+/// A6): rebuilt from the model seed, opened as proof `lifetime.index`
 /// with that proof's own claim-mask blocks. Returns the proof and the
 /// row-coefficient vector this opening revealed, which the caller appends to the
 /// model secret before the next proof.

@@ -567,8 +567,11 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
 
 ### A6 — Lifetime hiding weight source for dev-zk (P proofs against one published commitment)
 
-Status: **Proposed** (development tier, Workflow 02 development-tier path;
-independent review requested; not self-accepted). Task: E12-25. Decision: ADR-104.
+Status: **Accepted** (development tier, Workflow 02 development-tier path).
+Independent review, two rounds: fix-then-merge on the first, then MERGE with
+"accept A6: yes" on the second. The reviewer confirmed the `P + 1` extension by an
+exact `F_61²` check and spot-checked the mutations. Task: E12-25. Decision: ADR-104.
+dev-zk stays not admitted until E12-27 commits the 1-D records (A5 item 8).
 It amends A2 item 1's lifetime ("at most one opening per seed … weight sources,
 repeated openings and any reuse of `σ` are not admitted") and A5 item 7's
 `P`-proof budget. It applies only to dev-zk weight sources.
@@ -612,12 +615,13 @@ hiding the weights.
    **Index reuse.** A restored or forked state that reuses an index is the
    owner's duty, as in A5 item 7. It leaks the following:
    - **Claim blocks.** Two proofs share each claim-mask block of that index. Each
-     shared block whose finals both proofs reveal gives `D` linear equations on
-     the weights, so up to `D·Σ_x t_x` equations per reused index.
+     shared block whose finals both proofs reveal gives `D` M31 linear equations
+     on the weights, so up to `D·Σ_x t_x` equations per reused index.
    - **Rank.** The forked state misses the other opening's row from its rank
-     check. The extra opening breaks PCS hiding once `(P + 2)·D > R`.
-   - **Queries.** The extra queries break PCS hiding once the union of queried
-     columns reaches `C`.
+     check. `r` reuses break PCS hiding once `(P + 1 + r)·D > R`. Below that
+     bound, hiding holds only with high probability, through the rank check.
+   - **Queries.** The extra queries can break PCS hiding once the union of queried
+     columns reaches `C`, and always break it at `C + 1`.
    - **Detection.** Reuse is publicly detectable afterwards: two proofs carry the
      same root and the same index.
 6. **Privacy (conditional, to be reviewed).** The source's view across its

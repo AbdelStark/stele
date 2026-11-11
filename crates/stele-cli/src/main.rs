@@ -9,7 +9,7 @@
 //! stele verify-dev --public FILE --proof FILE [--expect-model HEX]
 //! ```
 //! `commit-model --zk` commits the model once for at most `N` dev-zk proofs
-//! (RFC-0013 A6, Proposed): a hiding weight source from a model seed drawn from the
+//! (RFC-0013 A6): a hiding weight source from a model seed drawn from the
 //! OS RNG (`/dev/urandom`). The published `--commitment` file names it; the
 //! `--secret` file (seed, proof counter, earlier openings) must stay private. It is
 //! written with owner-only permissions.

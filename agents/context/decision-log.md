@@ -2499,6 +2499,7 @@ Independent review (fix-then-merge; A6's `P + 1` extension confirmed by an exact
     index reveals proof order.
 - F7: `is_hiding`'s doc is restored, and block offsets use checked arithmetic.
 
-Status: Proposed (development tier; independent review: fix-then-merge, fixes
-applied; A6 acceptance and dev-zk admission are the reviewer's).
+Status: Accepted (development tier). Independent review in two rounds:
+fix-then-merge, then MERGE with "accept A6: yes". dev-zk stays not admitted
+until E12-27.
 

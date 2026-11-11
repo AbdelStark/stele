@@ -89,7 +89,7 @@ with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or w
 ## dev-zk (task E12-14b)
 
 dev-zk (RFC-0013 A5, RFC-0026 A9, profile byte 1) proves a window against one
-published model commitment (RFC-0013 A6, Proposed, task E12-25). Its admission
+published model commitment (RFC-0013 A6, task E12-25). Its admission
 waits for the independent review and for E12-27 (RFC-0013 A5 item 8).
 - `commit-model --zk` commits the weights once, for at most `--proofs` proofs. The
   model seed comes from `/dev/urandom`.

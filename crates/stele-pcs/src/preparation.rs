@@ -54,7 +54,7 @@ pub struct PreparedSource<'a, K: ChallengeField> {
     borrows: AtomicUsize,
     openings: AtomicUsize,
     mask_polynomial: bool,
-    /// RFC-0013 A6 (Proposed): a weight source's lifetime budget and the
+    /// RFC-0013 A6: a weight source's lifetime budget and the
     /// row-coefficient vectors its earlier openings revealed.
     lifetime: Option<(usize, Vec<Vec<K>>)>,
 }
@@ -111,7 +111,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Self::prepare(source, rebuild, message, Some(seed), usage)
     }
 
-    /// Prepare a lifetime hiding source (RFC-0013 A6, Proposed): a weight source
+    /// Prepare a lifetime hiding source (RFC-0013 A6): a weight source
     /// committed once from `seed` and opened at most `budget` times over its
     /// life, once per proof. `revealed` holds the row-coefficient vectors of its
     /// earlier openings, in order; the next opening's rank check covers them all,

@@ -1,5 +1,5 @@
 //! The dev-zk profile through the development orchestrator (RFC-0013 A5 items 6–8,
-//! RFC-0013 A6 (Proposed), RFC-0026 A9; tasks E12-14b, E12-25).
+//! RFC-0013 A6, RFC-0026 A9; tasks E12-14b, E12-25).
 //!
 //! - **Model commitment** ([`ModelCommitment`], `stele-dev-zk-model-v1`). The model
 //!   owner commits the weights once ([`commit`]), from a secret model seed, as one
@@ -43,7 +43,7 @@ const MODEL_MAGIC: &[u8] = b"stele-dev-zk-model-v1";
 const STATE_MAGIC: &[u8] = b"stele-dev-zk-model-secret-v1";
 const DIGEST_TAG: &[u8] = b"stele/v0.1/dev-zk/model";
 
-/// The published dev-zk model commitment (RFC-0013 A6, Proposed).
+/// The published dev-zk model commitment (RFC-0013 A6).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModelCommitment {
     /// The lifetime weight source's root.

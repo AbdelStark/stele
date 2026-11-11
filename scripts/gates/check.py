@@ -882,7 +882,7 @@ def field_source_codec(root):
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('field', 'setup_term'), ('struct', 'Source'),
         ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
-        # RFC-0013 A6 (Proposed, E12-25): the lifetime source's admission.
+        # RFC-0013 A6, E12-25: the lifetime source's admission.
         ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
         ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
         ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code_id'), ('fn', 'codeword_len'), ('fn', 'root'), ('fn', 'path_height'),
@@ -917,7 +917,7 @@ def field_source_codec(root):
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
-        # RFC-0013 A6 (Proposed, E12-25): a lifetime hiding source.
+        # RFC-0013 A6, E12-25: a lifetime hiding source.
         ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),
         ('fn', 'source'), ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]

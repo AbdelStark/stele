@@ -239,7 +239,7 @@ impl<K: ChallengeField> Source<K> {
         Ok(source)
     }
 
-    /// RFC-0013 A6 (Proposed): whether this hiding source admits a lifetime of
+    /// RFC-0013 A6: whether this hiding source admits a lifetime of
     /// `budget` openings after its certificate: `R ≥ (budget + 1)·D` mask rows,
     /// so every revealed row combination keeps the rank check satisfiable, and
     /// `q_c + budget·q_o ≤ C − 1` queried columns.
