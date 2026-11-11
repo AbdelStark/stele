@@ -485,22 +485,38 @@ fn vanish<K>(
     masked: &mut [Option<(usize, Vec<usize>)>],
     free: &[bool],
 ) -> Result<(), Error> {
-    let shares = |a: usize, b: usize| {
-        terms
-            .iter()
-            .any(|t| t.factors.contains(&(a as u32)) && t.factors.contains(&(b as u32)))
-    };
+    // The terms each input appears in, so `a`'s term-sharing partners are found
+    // without scanning every earlier input against every term (E16-24).
+    let mut terms_of = vec![Vec::new(); masked.len()];
+    for (k, t) in terms.iter().enumerate() {
+        for f in &t.factors {
+            if let Some(list) = terms_of.get_mut(*f as usize) {
+                if list.last() != Some(&k) {
+                    list.push(k);
+                }
+            }
+        }
+    }
+    let mut used = vec![false; num_vars];
     for a in 0..masked.len() {
         if !free[a] {
             continue;
         }
-        let used: Vec<usize> = (0..a)
-            .filter(|&b| shares(a, b))
-            .filter_map(|b| masked[b].as_ref().map(|m| m.0))
-            .collect();
-        let v = (0..num_vars)
-            .find(|q| !used.contains(q))
-            .ok_or(Error::Statement)?;
+        // `v` of every earlier masked input sharing a term with `a`.
+        used.iter_mut().for_each(|u| *u = false);
+        for &k in &terms_of[a] {
+            for &b in &terms[k].factors {
+                let b = b as usize;
+                if b < a {
+                    if let Some((v, _)) = &masked[b] {
+                        if let Some(u) = used.get_mut(*v) {
+                            *u = true;
+                        }
+                    }
+                }
+            }
+        }
+        let v = (0..num_vars).find(|q| !used[*q]).ok_or(Error::Statement)?;
         masked[a] = Some((v, (0..num_vars).filter(|&q| q != v).take(c).collect()));
     }
     Ok(())
@@ -1466,28 +1482,59 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
     }
     fn round(&self, _: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
         let half = self.factors[0].x.len() / 2;
-        let mut out = vec![zero::<K>(); self.degree + 1];
-        let mut values = vec![zero::<K>(); self.factors.len()];
-        for column in 0..half {
-            for (node, result) in out.iter_mut().enumerate() {
-                let t = K::from_i64(node as i64);
-                for (value, f) in values.iter_mut().zip(&self.factors) {
-                    let at =
-                        |table: &[K]| table[column] + t * (table[column + half] - table[column]);
-                    *value = at(&f.x);
-                    if f.v == Some(self.bound) {
-                        *value = *value + kappa(t) * at(&f.r);
+        let nodes = self.degree + 1;
+        // κ(t) per node, once; a factor at node t is reached by adding its slope t
+        // times (exact field arithmetic, so every node value equals lo + t·(hi − lo)).
+        let kappas: Vec<K> = (0..nodes).map(|t| kappa(K::from_i64(t as i64))).collect();
+        let masked: Vec<bool> = self
+            .factors
+            .iter()
+            .map(|f| f.v == Some(self.bound))
+            .collect();
+        let mut out = vec![zero::<K>(); nodes];
+        stele_sumcheck::parallel::sum_ranges(half, &mut out, |range, out| {
+            let width = self.factors.len();
+            let mut x = vec![zero::<K>(); width];
+            let mut dx = vec![zero::<K>(); width];
+            let mut r = vec![zero::<K>(); width];
+            let mut dr = vec![zero::<K>(); width];
+            let mut values = vec![zero::<K>(); width];
+            for column in range {
+                for (k, f) in self.factors.iter().enumerate() {
+                    x[k] = f.x[column];
+                    dx[k] = f.x[column + half] - x[k];
+                    if masked[k] {
+                        r[k] = f.r[column];
+                        dr[k] = f.r[column + half] - r[k];
                     }
                 }
-                *result = *result
-                    + self.terms.iter().fold(zero::<K>(), |s, term| {
-                        s + term
-                            .factors
-                            .iter()
-                            .fold(term.coefficient, |p, f| p * values[*f as usize])
-                    });
+                for (node, result) in out.iter_mut().enumerate() {
+                    if node > 0 {
+                        for k in 0..width {
+                            x[k] = x[k] + dx[k];
+                            if masked[k] {
+                                r[k] = r[k] + dr[k];
+                            }
+                        }
+                    }
+                    for k in 0..width {
+                        values[k] = if masked[k] {
+                            x[k] + kappas[node] * r[k]
+                        } else {
+                            x[k]
+                        };
+                    }
+                    *result = *result
+                        + self.terms.iter().fold(zero::<K>(), |s, term| {
+                            s + term
+                                .factors
+                                .iter()
+                                .fold(term.coefficient, |p, f| p * values[*f as usize])
+                        });
+                }
             }
-        }
+            Ok(())
+        })?;
         Ok(out)
     }
     fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
