@@ -770,6 +770,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "RoundSumMismatch",
         run: || lookup_grind::run(816),
     },
+    catalog::RegisteredControl {
+        id: 817,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CertificateContext",
+        run: || lookup_grind::run(817),
+    },
 ];
 
 /// A one-value mutation applied to an honest witness, proof or configuration.

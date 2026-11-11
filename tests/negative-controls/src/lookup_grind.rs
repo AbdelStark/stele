@@ -1,5 +1,6 @@
 //! RFC-0008 A8 and RFC-0012 A17 item 5: the standard-profile LU (β, α) nonce,
-//! through the actual A5 lookup verifier (NC-0814..0816).
+//! through the actual A5 lookup verifier (NC-0814..0816), and A8 item 3's Policy 2
+//! originals (NC-0817).
 //!
 //! The fixture is a QM31 `sigmoid_q` lookup (c = 2, N = 1, t = 2^16), whose round
 //! needs k = 2 bits. Nonce choices come from an independent replay of the A1
@@ -9,7 +10,7 @@ use crate::check_control;
 use crate::pcs_policy2::Replay;
 use stele_field::{Field, M31, QM31};
 use stele_hash::{HashUsage, Transcript};
-use stele_pcs::{verify_certificate, CodeField, PreparedSource, ProofKind};
+use stele_pcs::{verify_certificate, CodeField, Policy, PreparedSource, ProofKind};
 use stele_reductions::lookup::{
     Descriptor, Error, Layout, Limits, ProducerLimits, Statement, Table, TableDescriptor,
 };
@@ -46,24 +47,36 @@ pub fn run(id: u16) -> Result<(), String> {
     let messages: Vec<Vec<M31>> = (0..2)
         .map(|a| vec![M31::from_i64(i64::from(table.entries()[2 + a]))])
         .collect();
-    let prepared = messages
-        .iter()
-        .enumerate()
-        .map(|(a, m)| {
-            PreparedSource::<QM31>::new(10 + a as u64, 0, 0, 1, m, &mut HashUsage::default())
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| fail(format!("{e:?}")))?;
-    let certificates = prepared
-        .iter()
-        .map(|p| {
-            let bytes = p.certificate().map_err(|e| e.cause)?.0;
-            verify_certificate(*p.source(), &bytes)
-                .map(|v| v.0)
-                .map_err(|e| e.cause)
-        })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| fail(format!("{e:?}")))?;
+    // RFC-0008 A8 item 3: standard originals are Policy 2 (Circle m = 0, b = 1).
+    let code = [&b"stele/circle-m31/v1"[..], &[0, 1]].concat();
+    let originals_with = |policy| -> Result<_, stele_pcs::Error> {
+        let prepared = messages
+            .iter()
+            .enumerate()
+            .map(|(a, m)| {
+                PreparedSource::<QM31>::from_code_id_policy(
+                    10 + a as u64,
+                    0,
+                    &code,
+                    m,
+                    &mut HashUsage::default(),
+                    policy,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let certificates = prepared
+            .iter()
+            .map(|p| {
+                let bytes = p.certificate().map_err(|e| e.cause)?.0;
+                verify_certificate(*p.source(), &bytes)
+                    .map(|v| v.0)
+                    .map_err(|e| e.cause)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok((prepared, certificates))
+    };
+    let (prepared, certificates) =
+        originals_with(Policy::Two).map_err(|e| fail(format!("{e:?}")))?;
     let originals: Vec<_> = certificates.iter().collect();
     let material: Vec<_> = prepared.iter().collect();
     let layouts = [Layout {
@@ -104,6 +117,40 @@ pub fn run(id: u16) -> Result<(), String> {
     let (mu, _) = descriptor
         .register_multiplicities(&honest, usize::MAX)
         .map_err(|e| fail(format!("{:?}", e.cause)))?;
+    if id == 817 {
+        // NC-0817: the same statement over Policy 1 originals (same ids and messages).
+        let (_, policy1) = originals_with(Policy::One).map_err(|e| fail(format!("{e:?}")))?;
+        let handles: Vec<_> = mu.iter().collect();
+        return check_control(
+            &Witness(false),
+            &Tamper,
+            |w| Ok::<_, String>(w.0),
+            |policy_one| {
+                let roster: Vec<_> = if *policy_one { &policy1 } else { &certificates }
+                    .iter()
+                    .collect();
+                let descriptor = Descriptor::standard(
+                    Statement {
+                        id: 7,
+                        m: 0,
+                        b: 0,
+                        table: &table,
+                        selector: &[1],
+                        originals: &roster,
+                        multiplicities: &layouts,
+                    },
+                    LIMITS,
+                )?;
+                let mut t = Transcript::<QM31>::new(PUBLIC).map_err(Error::Transcript)?;
+                descriptor
+                    .verify(&mut t, &handles, &honest)
+                    .map(|_| ())
+                    .map_err(|e| e.cause)
+            },
+            Error::CertificateContext,
+        )
+        .map_err(|error| fail(format!("{error:?}")));
+    }
     let source = mu[0].record().source();
     // RFC-0008 A8 item 5: the nonce follows the version, degree and registration.
     let at = 2

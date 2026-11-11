@@ -1736,6 +1736,30 @@ def masked_sumcheck_quarantine(root):
     print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A4 consumer')
 
 
+def standard_quarantine(root):
+    """ADR-106/ADR-108: no standard-profile caller before E8-05.
+
+    `resolve_pcs`'s `proven: true` (RFC-0010 A14 item 6) and RFC-0008 A8 make the
+    PCS and LU grinding rounds meet RFC-0012 A17 (C1). A composed standard proof
+    also needs (C1) on every non-grinding round, plus (C2) and (C3), which E8-05's
+    generator checks. Until then, only the defining crates, their tests and the
+    controls may name the standard entry points. No proof claims an admitted level.
+    """
+    allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
+               'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/tests/policy2_wire.rs',
+               'crates/stele-reductions/src/lookup.rs', 'crates/stele-reductions/tests/lookup_grind.rs',
+               'tests/negative-controls/src/pcs_policy2.rs', 'tests/negative-controls/src/lookup_grind.rs'}
+    pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
+                         r'|\bpolicy::\{[^}]*\bTwo\b|\bPolicy::\{[^}]*\bTwo\b')
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   if (root / directory).is_dir()
+                   for path in (root / directory).rglob('*.rs')
+                   if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
+    if found:
+        raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
+    print('gate standard quarantine: standard PCS/LU entry points used only by their crates, tests and controls')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('gate', choices=(*OWNERS, 'native', 'rfc-status', 'docs-links'))
@@ -1763,6 +1787,7 @@ def main():
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 masked_sumcheck_quarantine(ROOT)
+                standard_quarantine(ROOT)
                 controls_quarantine(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)

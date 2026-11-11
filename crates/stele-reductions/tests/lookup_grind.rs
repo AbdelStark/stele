@@ -3,11 +3,25 @@
 use core::fmt::Debug;
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};
-use stele_pcs::{verify_certificate, CodeField, PreparedSource};
+use stele_pcs::{verify_certificate, CodeField, Policy, PreparedSource};
 use stele_reductions::lookup::{
-    lu_grind_bits, Descriptor, Layout, Limits, ProducerLimits, Statement, Table, TableDescriptor,
-    TableField,
+    lu_grind_bits, Descriptor, Error, Layout, Limits, ProducerLimits, Statement, Table,
+    TableDescriptor, TableField,
 };
+
+/// A one-position Policy 2 original (Circle m = 0, b = 1; RFC-0008 A8 item 3).
+fn original<K: ChallengeField + CodeField>(id: u64, message: &[M31]) -> PreparedSource<'_, K> {
+    let code = [&b"stele/circle-m31/v1"[..], &[0, 1]].concat();
+    PreparedSource::<K>::from_code_id_policy(
+        id,
+        0,
+        &code,
+        message,
+        &mut HashUsage::default(),
+        Policy::Two,
+    )
+    .expect("Policy 2 original")
+}
 
 const LIMITS: Limits = Limits {
     positions: 16,
@@ -30,10 +44,7 @@ where
     let prepared: Vec<_> = messages
         .iter()
         .enumerate()
-        .map(|(a, message)| {
-            PreparedSource::<K>::new(10 + a as u64, 0, 0, 1, message, &mut HashUsage::default())
-                .expect("original")
-        })
+        .map(|(a, message)| original::<K>(10 + a as u64, message))
         .collect();
     let certificates: Vec<_> = prepared
         .iter()
@@ -141,22 +152,29 @@ fn standard_wire<K: ChallengeField + CodeField + TableField + Eq + Debug>(line: 
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    // degree table value k offset nonces bytes blake3 continuation
+    // degree table value r k offset nonces bytes blake3 continuation
     let v: Vec<&str> = line.split(' ').collect();
+    let r: usize = v[3].parse().expect("repetitions");
     let table =
         Table::range(v[1].trim_start_matches("range_").parse().expect("width")).expect("range");
     let value: i64 = v[2].parse().expect("value");
     let message = [M31::from_i64(value)];
-    let prepared = PreparedSource::<K>::new(10, 0, 0, 1, &message, &mut HashUsage::default())
-        .expect("original");
+    let prepared = original::<K>(10, &message);
     let certificate = verify_certificate(*prepared.source(), &prepared.certificate().expect("c").0)
         .expect("register original")
         .0;
-    let layouts = [Layout {
-        id: 20,
-        ell: 4,
-        blowup: 1,
-    }];
+    let layouts = [
+        Layout {
+            id: 20,
+            ell: 4,
+            blowup: 1,
+        },
+        Layout {
+            id: 21,
+            ell: 4,
+            blowup: 2,
+        },
+    ];
     let originals = [&certificate];
     let descriptor = Descriptor::standard(
         Statement {
@@ -166,12 +184,12 @@ where
             table: &table,
             selector: &[1],
             originals: &originals,
-            multiplicities: &layouts,
+            multiplicities: &layouts[..r],
         },
         LIMITS,
     )
     .expect("standard descriptor");
-    assert_eq!(descriptor.grind_bits().to_string(), v[3], "{line}");
+    assert_eq!(descriptor.grind_bits().to_string(), v[4], "{line}");
     let limits = ProducerLimits {
         public_bytes: descriptor.producer_public_bytes().expect("public"),
         dense_elements: descriptor.producer_dense_elements().expect("dense"),
@@ -180,15 +198,19 @@ where
     let (proof, _) = descriptor
         .prove(&mut t, &[&prepared], limits)
         .expect("honest producer");
-    let at: usize = v[4].parse().expect("offset");
-    if v[5] != "-" {
-        let nonce = u64::from_le_bytes(proof[at..at + 8].try_into().expect("nonce"));
-        assert_eq!(nonce.to_string(), v[5], "{line}");
+    let at: usize = v[5].parse().expect("offset");
+    if v[6] != "-" {
+        // A8 item 5: nonce j at the first offset + 8j.
+        for (j, expected) in v[6].split(',').enumerate() {
+            let bytes = &proof[at + 8 * j..at + 8 * j + 8];
+            let nonce = u64::from_le_bytes(bytes.try_into().expect("nonce"));
+            assert_eq!(nonce.to_string(), expected, "{line}");
+        }
     }
-    assert_eq!(proof.len().to_string(), v[6], "{line}");
-    assert_eq!(blake3::hash(&proof).to_hex().as_str(), v[7], "{line}");
+    assert_eq!(proof.len().to_string(), v[7], "{line}");
+    assert_eq!(blake3::hash(&proof).to_hex().as_str(), v[8], "{line}");
     let continuation = t.challenge(ChallengeLabel::Sumcheck).expect("continuation");
-    assert_eq!(hex(continuation.to_le_bytes().as_ref()), v[8], "{line}");
+    assert_eq!(hex(continuation.to_le_bytes().as_ref()), v[9], "{line}");
 }
 
 #[test]
@@ -203,5 +225,37 @@ fn matches_reference_standard_lookup_wire() {
             standard_wire::<OM31>(line);
         }
     }
-    assert_eq!(text.lines().count(), 3);
+    assert_eq!(text.lines().count(), 4);
+}
+
+#[test]
+fn rejects_policy1_originals_under_standard() {
+    // RFC-0008 A8 item 3; the catalog control is NC-0817.
+    let table = Table::range(8).expect("range");
+    let message = [M31::from_i64(7)];
+    let prepared = PreparedSource::<QM31>::new(10, 0, 0, 1, &message, &mut HashUsage::default())
+        .expect("Policy 1 original");
+    let certificate = verify_certificate(*prepared.source(), &prepared.certificate().expect("c").0)
+        .expect("register")
+        .0;
+    let originals = [&certificate];
+    let layouts = [Layout {
+        id: 20,
+        ell: 4,
+        blowup: 1,
+    }];
+    let statement = Statement {
+        id: 7,
+        m: 0,
+        b: 0,
+        table: &table,
+        selector: &[1],
+        originals: &originals,
+        multiplicities: &layouts,
+    };
+    assert!(Descriptor::new(statement, LIMITS).is_ok());
+    assert_eq!(
+        Descriptor::standard(statement, LIMITS).err(),
+        Some(Error::CertificateContext)
+    );
 }

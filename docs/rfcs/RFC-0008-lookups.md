@@ -596,7 +596,9 @@ form or challenge changes.
 
 ### A8 — Standard-profile LU (β, α) nonce: bits, byte offset and multiplicity policy (companion of RFC-0012 A17)
 
-Status: Proposed. Full path (Workflow 02 item 3). Task E12-24. Companion of RFC-0012
+Status: Accepted. Full path (Workflow 02 item 3). Task E12-24. Decision: ADR-108.
+Review: the independent review of PR #347 (FIX-THEN-MERGE; its F1, Policy 2
+originals, is fixed in item 3 and NC-0817). Companion of RFC-0012
 A17 item 5, which says "An RFC-0008 amendment in E12-23 fixes the exact byte offset
 before implementation"; ADR-106 moved that work to E12-24.
 
@@ -622,11 +624,16 @@ Exact addition, to A5 and formal/native-lookup.md §§3–4:
    the configuration is UnsupportedParameters (`Error::Statement`), and it is rejected
    before any transcript mutation. The unit round (θ, h ≤ 30 draws) is charged
    `h/|K| < 2^-108` and is never ground (A17 (C4)).
-3. **Multiplicity sources.** Each multiplicity layout's A9 source uses Policy 2
-   (RFC-0010 A14). Its certificate and opening tensor and column rounds then grind as
-   E12-23 implements them. The policy byte is part of the 105-byte context that
-   step 3 already absorbs in Multiplicities. Original sources stay caller-owned. The
-   lookup only opens them, and an opening has no tensor round.
+3. **Policy 2 sources.** Every source of a standard lookup uses Policy 2
+   (RFC-0010 A14 item 1: standard means Policy 2).
+   - Each multiplicity layout's A9 source is constructed with Policy 2. Its
+     certificate and opening tensor and column rounds then grind as E12-23
+     implements them. The policy byte is part of the 105-byte context that step 3
+     already absorbs in Multiplicities.
+   - Every caller-owned original certificate must carry Policy 2. Otherwise
+     construction rejects with `CertificateContext`, before any transcript work. A
+     Policy 1 original's certificate was verified with an ungrinded tensor round,
+     which can fail (C1), so a standard lookup must not consume it.
 4. **Transcript.** Exact replacement for native-lookup §4 step 4, under item 1's
    scope: "For j=0..r-1 absorb Repetition(u64 id,u8 j,u8 phase=0). If k ≥ 1, the
    prover sends nonce n_j and the verifier checks it, exactly as RFC-0012 A17 item 5
@@ -661,10 +668,17 @@ Cost impact (T_misc, no measured constant):
   opening sizes of A14.
 
 Controls: NC-0814 (a nonce failing the predicate, `GrindMismatch`), NC-0815 (a k−1
-prover's nonce, `GrindMismatch`) and NC-0816 (another valid nonce, absorbed, so β and α
-change, `RoundSumMismatch`). All three run through the actual A5 verifier.
-Python parity: `research/fs-pcs/check_lu_grind.py` (bit table, and three standard
-wires from the unchanged independent A5 producer of `lookup_corpus.py`).
+prover's nonce, `GrindMismatch`), NC-0816 (another valid nonce, absorbed, so β and α
+change, `RoundSumMismatch`) and NC-0817 (the statement over Policy 1 originals,
+`CertificateContext`). All four run through the actual A5 consumer.
+Python parity: `research/fs-pcs/check_lu_grind.py` (bit table, and four standard
+wires from the unchanged independent A5 producer of `lookup_corpus.py`, including
+r = 2 with the second nonce at +8).
+
+Admission: A8 makes the LU rounds meet (C1). It admits no profile level. A composed
+standard proof also needs (C1) on every non-grinding round, plus (C2) and (C3); E8-05's
+generator checks these. Until E8-05, the native gate (`standard_quarantine`) keeps
+every standard entry point inside its defining crates, their tests and the controls.
 
 Affected tasks: E12-24 (implements A8), E8-05 (the generator enumerates these
 rounds with their k), E16-30.

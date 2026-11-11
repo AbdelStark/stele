@@ -232,7 +232,7 @@ pub fn lu_grind_bits(c: usize, positions: u64, rows: usize, degree: usize) -> Op
     if degree >= 8 {
         return Some(0);
     }
-    let field = u128::from(M31::MODULUS).pow(degree as u32);
+    let field = u128::from(M31::MODULUS).checked_pow(u32::try_from(degree).ok()?)?;
     // a·2^(108-k) <= field; a shift that would leave u128 already exceeds field.
     let fits = |k: u32| a.leading_zeros() > 108 - k && (a << (108 - k)) <= field;
     (0..=32u8).find(|k| fits(u32::from(*k)))
@@ -260,9 +260,11 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
     pub fn new(s: Statement<'input, 'cert, K>, limits: Limits) -> Result<Self, Error> {
         Self::build(s, limits, false)
     }
-    /// The same descriptor for the standard profile (RFC-0008 A8): Policy 2
-    /// multiplicity sources and a (β, α) nonce of the least A17 (C1) bits per repetition.
-    /// A round needing more than 32 bits rejects as `Statement` (UnsupportedParameters).
+    /// The same descriptor for the standard profile (RFC-0008 A8): Policy 2 originals
+    /// (else `CertificateContext`), Policy 2 multiplicity sources and a (β, α) nonce of
+    /// the least A17 (C1) bits per repetition. A round needing more than 32 bits rejects
+    /// as `Statement` (UnsupportedParameters). This admits no profile level: a composed
+    /// standard proof also needs E8-05's (C1)-(C3) check (ADR-108).
     pub fn standard(s: Statement<'input, 'cert, K>, limits: Limits) -> Result<Self, Error> {
         Self::build(s, limits, true)
     }
@@ -316,6 +318,10 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             let source = certificate.record().source();
             if mul(source.rows(), source.columns())? != n_positions {
                 return Err(Error::SourceRoster);
+            }
+            // RFC-0008 A8 item 3: a standard lookup reads only Policy 2 originals.
+            if standard && source.parameters().policy != Policy::Two {
+                return Err(Error::CertificateContext);
             }
             ids[i] = source.descriptor().id;
         }

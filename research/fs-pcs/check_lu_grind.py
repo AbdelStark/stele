@@ -9,7 +9,7 @@
    a·2^108 ≤ p^d·2^k (A17 (C1), standard λ+g = 108); k > 32 is UnsupportedParameters.
    Rows "c N t d k" (k = none when unsupported) are pinned in lu-grind-bits.txt.
 2. Wire. The unchanged independent A5 producer of tests/negative-controls/lookup_corpus.py
-   is run with Policy 2 multiplicity sources (research/merkle-oracle/check_policy2_wire.py)
+   is run with Policy 2 originals and multiplicity sources (research/merkle-oracle/check_policy2_wire.py)
    and the A8 nonce: after Repetition(id, j, 0), before Beta; on the wire after the
    registrations. Its bytes and continuation are pinned in lu-standard-wire.txt for
    the native Descriptor::standard. No native code is imported.
@@ -57,12 +57,12 @@ def standard_wire():
     nonces, certificates = [], []
 
     class Pcs:
-        """field_wire, except multiplicity sources (ids >= 20) carry Policy 2."""
+        """field_wire, except every source carries Policy 2 (RFC-0008 A8 item 3)."""
         def __getattr__(self, name):
             return getattr(base, name)
 
         def commit(self, matrix, ell, m, blowup, d, identity):
-            return (p2.commit if identity >= 20 else base.commit)(matrix, ell, m, blowup, d, identity)
+            return p2.commit(matrix, ell, m, blowup, d, identity)
 
         def open_functional(self, t, identity, verified, witness, a, b, value):
             policy2 = isinstance(verified.source, p2.Source)
@@ -77,36 +77,35 @@ def standard_wire():
                 nonces.append(p2.grind(self, Transcript.grind))
             return super().field(label)
 
-    original_register = lc.register
-
     def register(source, witness):
-        if not isinstance(source, p2.Source):
-            return original_register(source, witness)
+        assert isinstance(source, p2.Source)
         proof = p2.certify(source, witness)
-        certificates.append(len(proof))
+        if source.identity >= 20:  # multiplicity registrations only; originals are caller-owned
+            certificates.append(len(proof))
         return p2.verify_certificate(source, proof), proof, None, 0
 
     saved = lc.pcs, lc.register, lc.Transcript, base.Transcript
     lc.pcs, lc.register, lc.Transcript, base.Transcript = Pcs(), register, Transcript, lc.Transcript
     out = []
     try:
-        for d, table, t, value in ((4, 'range_8', 256, 7), (8, 'range_8', 256, 7), (4, 'range_16', 65536, 9)):
+        for d, table, t, value, r in ((4, 'range_8', 256, 7, 1), (8, 'range_8', 256, 7, 1),
+                                      (4, 'range_16', 65536, 9, 1), (4, 'range_16', 65536, 9, 2)):
             case = dict(name=f'standard-{table}-{d}', degree=d, public_hex=lc.PUBLIC.hex(), lookup_id=7,
                         m=0, b=0, table=dict(name=table, version=1, params_hex=''), selector=[1],
                         originals=[dict(id=10, ell=0, blowup=1, message=[value])],
-                        multiplicities=[dict(id=20, ell=4, blowup=1)])
+                        multiplicities=[dict(id=20+j, ell=4, blowup=1+j) for j in range(r)])
             Transcript.grind = bits(1, 1, t, d)
             nonces.clear()
             certificates.clear()
             result = lc.reference(case)
             assert result['outcome'] == 'produced', result
-            assert len(nonces) == int(Transcript.grind > 0) and len(certificates) == 1
+            assert len(nonces) == r*int(Transcript.grind > 0) and len(certificates) == r
             raw = bytes.fromhex(result['proof'])
-            # A8 item 5: the nonce follows the version, degree and the registration packet.
-            at = 2+32+certificates[0]
+            # A8 item 5: nonce j sits at 2 + sum(32 + C_i) + 8j, after every registration packet.
+            at = 2+sum(32+c for c in certificates)
             proof = raw[:at]+b''.join(struct.pack('<Q', n) for n in nonces)+raw[at:]
-            # Plain rows for the native test: degree table value k offset nonces bytes blake3 continuation.
-            out.append(' '.join(map(str, (d, table, value, Transcript.grind, at,
+            # Plain rows for the native test: degree table value r k offset nonces bytes blake3 continuation.
+            out.append(' '.join(map(str, (d, table, value, r, Transcript.grind, at,
                                           ','.join(map(str, nonces)) or '-', len(proof),
                                           blake3(proof).hexdigest(), result['continuation']))))
     finally:
@@ -130,7 +129,7 @@ def main():
     for path, raw in pins:
         assert path.read_bytes() == raw, f'native fixture drift: {path.name}'
     count = table.count(b'\n')
-    print(f'{count} LU (beta, alpha) grind-bit rows; 3 standard A5 wires (k = 0, 0, 1); '
+    print(f'{count} LU (beta, alpha) grind-bit rows; 4 standard A5 wires (k = 0, 0, 1, 1; r = 2 last); '
           f'SHA256 {sha256(wire).hexdigest()}')
 
 

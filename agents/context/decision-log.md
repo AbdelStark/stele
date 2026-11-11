@@ -2640,23 +2640,28 @@ Decision:
   bits are the least k with `(c(N+t) − 1)·2^108 ≤ p^d·2^k`. k > 32 is
   `Error::Statement` (UnsupportedParameters).
 - **Consumer.** `lookup::Descriptor::standard` is the standard-profile A5 lookup. Its
-  multiplicity sources use Policy 2, and it grinds when k ≥ 1. `Descriptor::new` is
+  multiplicity sources use Policy 2, it rejects any original that is not Policy 2
+  (`CertificateContext`), and it grinds when k ≥ 1. `Descriptor::new` is
   unchanged: Policy 1, k = 0, no nonce. The RFC-0026 development checks
   (`relation_lookup.rs`) and dev-zk trees are not touched, so no development proof
   byte moves. The existing lookup corpus digests are unchanged.
-- **Why the multiplicity policy moves too.** A standard lookup certifies its own
-  multiplicity sources. Under Policy 1 their ungrinded QM31 tensor round
-  `2·ℓ·(e+1)/|K|` can fail (C1). Grinding only (β, α) would leave the lookup
-  inadmissible.
+- **Why the source policy moves too.** Under Policy 1, the ungrinded QM31 tensor round
+  `2·ℓ·(e+1)/|K|` of any certificate the lookup relies on can fail (C1). That covers
+  its own multiplicity sources and the caller's originals. RFC-0010 A14 item 1 makes
+  standard mean Policy 2, so both are required. Grinding only (β, α) would leave the
+  lookup inadmissible.
 - **Conservative readings.**
-  1. Originals stay caller-owned. The lookup only opens them, and an opening has no
-     tensor round, so the lookup does not check their policy. Their certificates' (C1)
-     belongs to whoever registers them.
+  1. Originals stay caller-owned, but a standard lookup accepts only Policy 2
+     certificates. A Policy 1 original would let `proven` cover an ungrinded
+     certificate round. (The first review draft read this the other way; review F1
+     corrected it.)
   2. N is the 2^m positions and t the real rows, as in the recorded LU numerator.
   3. The grind absorb's 9-byte payload is counted in `Limits::public_bytes`.
 - **Controls.** NC-0814 (a failing nonce, `GrindMismatch`), NC-0815 (a k−1 prover,
-  `GrindMismatch`) and NC-0816 (another valid nonce, absorbed, `RoundSumMismatch`)
-  run through the actual A5 verifier on a QM31 `sigmoid_q` lookup with k = 2. Nonces
+  `GrindMismatch`), NC-0816 (another valid nonce, absorbed, `RoundSumMismatch`) and
+  NC-0817 (the statement over Policy 1 originals, `CertificateContext`) run through
+  the actual A5 consumer on a QM31 `sigmoid_q` lookup with Policy 2 originals and
+  k = 2. Nonces
   come from the independent `Replay` of E12-23, with every search capped at 2^20.
   Mutation checks, each leaving the honest proof accepted:
   1. With the PoW check skipped but the absorb kept, NC-0814 and NC-0815 go red
@@ -2667,24 +2672,36 @@ Decision:
      guard and by the native pin `matches_reference_lu_grind_bits`. A verifier that
      checks fewer bits than the prover ground rejects the honest proof, because the
      predicate's payload binds k.
+  4. With the original-policy check removed, NC-0817 goes red. The Policy 1 roster is
+     then rejected only later, as `ProofShape`, because its opening size differs.
 - **Parity.** `research/fs-pcs/check_lu_grind.py` recomputes 180 (c, N, t, d) rows
   from the exact inequality. It also runs the unchanged independent A5 producer of
-  `lookup_corpus.py` with Policy 2 multiplicity sources and the A8 nonce, for three
-  standard proofs (k = 0, 0, 1). Both are pinned natively in `tests/lookup_grind.rs`,
+  `lookup_corpus.py` with Policy 2 originals and multiplicity sources and the A8
+  nonce, for four standard proofs (k = 0, 0, 1, 1). The last has r = 2, with its
+  second nonce at +8. Both are pinned natively in `tests/lookup_grind.rs`,
   which matches the proof bytes, nonce offset, nonce and continuation. The pinned
   `lookup_corpus.py` is not edited, so the requant and integer-linear provenance
   hashes do not move.
-- **ADR-106's gate, narrowed.** Every family that A17 item 5 lets grind now has a
-  consumer that grinds at the least (C1) k: PCS column and tensor rounds (E12-23), and
-  LU (β, α) rounds (here). `resolve_pcs`'s `proven: true` is justified for a Policy 2
-  source together with these consumers. A standard-profile caller may now land if it
-  uses `Descriptor::standard` for its lookups, or has no lookup. A standard proof's
-  whole-proof (C2)/(C3) checks and its round enumeration remain E8-05's. A caller must
-  not state an admitted level before E8-05 lands. The registry export's per-family
-  `proven = false` is unchanged (E12-04).
+- **ADR-106's gate, restated and enforced.** Every family that A17 item 5 lets grind now
+  has a consumer that grinds at the least (C1) k: PCS column and tensor rounds
+  (E12-23), and LU (β, α) rounds (here).
+  - `resolve_pcs`'s `proven: true` (A14 item 6) is a fact about one Policy 2 source's
+    rounds. It now holds together with these consumers.
+  - It is not a claim about a composed proof. A composed standard proof also needs (C1)
+    on every non-grinding round (SC, RLC, SZ, units θ), plus (C2) and (C3). E8-05's
+    generator checks these.
+  - Until E8-05 lands, the native gate `standard_quarantine` (`scripts/gates/check.py`)
+    fails if `resolve_pcs`, `Policy::Two` or `Descriptor::standard` is named outside
+    `stele-code`'s registry, `stele-pcs`'s source, `stele-reductions`' lookup, their
+    tests and the controls. So no prover, CLI or verifier can emit `proven: true` or an
+    admitted level for a composed proof.
+  - E8-05 lifts the gate in the same change that adds the composed check.
+  - The registry export's per-family `proven = false` is unchanged (E12-04).
 
 Consequences: no development proof byte, pin or measured constant moves, and no ledger
-is recorded. A8 stays Proposed until an independent review accepts it. Open: E8-05,
-E12-04, E16-30.
+is recorded. Only standard-profile bytes (test fixtures) carry Policy 2 originals and
+nonces. Open: E8-05 (composed (C1)–(C3) check, lifts `standard_quarantine`), E12-04,
+E16-30.
 
-Status: Accepted when A8 is accepted (follows RFC-0012 A17; A8 is the protocol change).
+Status: Accepted with RFC-0008 A8 (independent review: FIX-THEN-MERGE, F1 fixed here).
+A8 is the protocol change; this record follows RFC-0012 A17 and RFC-0010 A14.
