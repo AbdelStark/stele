@@ -22,7 +22,8 @@
 //! `n − 1 − j` reads domain variable `m − 1 − vars[j]`. Column data is the same
 //! array in both conventions.
 use super::claims::{
-    self, Column, Lookup, Member, Operand, Proof, Public, Read, Statement, Verified,
+    self, Column, Lifetime, Lookup, Member, ModelSecret, Operand, Proof, Public, Read, Statement,
+    Verified,
 };
 use super::{Error, Seed};
 use crate::relation::{digest, K};
@@ -376,6 +377,75 @@ pub fn weight_root(
     }
     let columns = columns(&layout, relation, values)?;
     claims::source_root(&layout.statement, &columns, WEIGHTS, seed).map(Some)
+}
+
+/// The per-proof claim-mask need `t` of each weight column, in column order: the
+/// blocks a lifetime weight source reserves per proof (RFC-0013 A6).
+pub fn weight_blocks(relation: &Relation) -> Result<Vec<usize>, Error> {
+    let layout = layout(relation)?;
+    let counts = claims::occurrence_counts(&layout.statement)?;
+    Ok(layout
+        .statement
+        .columns
+        .iter()
+        .zip(counts)
+        .filter(|(c, _)| c.source == WEIGHTS)
+        .map(|(_, t)| t)
+        .collect())
+}
+
+/// The lifetime weight source's root, committed once from `model` (RFC-0013 A6).
+pub fn lifetime_root(
+    relation: &Relation,
+    values: &Values,
+    lifetime: &Lifetime,
+    model: &Seed,
+) -> Result<[u8; 32], Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    claims::lifetime_root(&layout.statement, &columns, lifetime, &model.0)
+}
+
+/// [`prove`] against a lifetime weight source (RFC-0013 A6): proof
+/// `lifetime.index` of at most `lifetime.proofs`. Returns the proof and the
+/// opening's row-coefficient vector, for the model secret.
+pub fn prove_lifetime(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    seed: Seed,
+    lifetime: &Lifetime,
+    model: ModelSecret<'_, K>,
+) -> Result<(Proof<K>, Vec<K>), Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::prove_lifetime(&layout.statement, &columns, seed, t, lifetime, model)
+}
+
+/// [`verify`] against a lifetime weight source whose public root is `root`.
+pub fn verify_lifetime(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    root: [u8; 32],
+    lifetime: &Lifetime,
+    proof: &Proof<K>,
+) -> Result<Verified<K>, Error> {
+    let layout = layout(relation)?;
+    let bound = proof
+        .sources
+        .get(WEIGHTS)
+        .and_then(|bytes| stele_pcs::Source::<K>::from_bytes(bytes).ok())
+        .is_some_and(|s| s.root() == root);
+    if !layout.has_weights() || lifetime.source != WEIGHTS || !bound {
+        return Err(Error::Pcs(stele_pcs::Error::Merkle(
+            stele_hash::merkle::Error::RootMismatch,
+        )));
+    }
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::verify_lifetime(&layout.statement, Some(lifetime), proof, t)
 }
 
 /// Prove `relation` on `values` under dev-zk after the caller's statement frames:

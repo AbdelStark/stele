@@ -885,7 +885,9 @@ def field_source_codec(root):
     expected_surface = [('enum', 'Error'), ('enum', 'ProofKind'), ('struct', 'Parameters'),
         ('field', 'length'), ('field', 'distance'), ('field', 'radius'),
         ('field', 'certificate_queries'), ('field', 'opening_queries'), ('field', 'setup_term'), ('struct', 'Source'),
-        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'is_hiding'),
+        ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
+        # RFC-0013 A6, E12-25: the lifetime source's admission.
+        ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
         ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
         ('fn', 'rows'), ('fn', 'columns'), ('fn', 'code_id'), ('fn', 'codeword_len'), ('fn', 'root'), ('fn', 'path_height'),
         ('fn', 'descriptor'), ('fn', 'parameters'), ('fn', 'queries'), ('fn', 'proof_size'), ('fn', 'opening_frame_size'),
@@ -918,7 +920,9 @@ def field_source_codec(root):
         ('field', 'encoded_columns_bytes'), ('field', 'encoder_peak_bytes'),
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
-        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'), ('fn', 'hiding_mask'),
+        ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'hiding'),
+        # RFC-0013 A6, E12-25: a lifetime hiding source.
+        ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),
         ('fn', 'source'), ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
@@ -931,7 +935,8 @@ def field_source_codec(root):
             'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
-            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[cfg(test)]', '#[test]']
+            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[allow(clippy::too_many_arguments)]',
+                '#[cfg(test)]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
     producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
@@ -1681,6 +1686,17 @@ def docs_links(root):
     print(f'gate docs-links: checked {count} local file targets')
 
 
+def controls_quarantine(root):
+    """E12-14a/E12-25: the `controls` adversaries never reach the shipped binary."""
+    tree = subprocess.run(['cargo', 'tree', '-p', 'stele-cli', '-e', 'features', '--locked', '--offline'],
+                          cwd=root, capture_output=True, text=True)
+    if tree.returncode != 0:
+        raise ValueError(f'controls quarantine: cargo tree failed: {tree.stderr.strip()}')
+    if re.search(r'feature "controls"', tree.stdout):
+        raise ValueError('controls quarantine: stele-cli builds with the controls feature')
+    print('gate controls quarantine: stele-cli builds without the controls adversaries')
+
+
 def masked_sumcheck_quarantine(root):
     """RFC-0013 A2 item 2 is unbound; only the A4/A5 consumer (stele_reductions::zk) may use it."""
     allowed = {'crates/stele-sumcheck/src/lib.rs', 'crates/stele-sumcheck/src/masked.rs',
@@ -1734,6 +1750,7 @@ def main():
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 masked_sumcheck_quarantine(ROOT)
+                controls_quarantine(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)
                 small_strategy(ROOT)

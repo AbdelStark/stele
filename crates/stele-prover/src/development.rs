@@ -604,7 +604,7 @@ pub fn prove_window_profile(
     artifact: &[u8],
     mut statement: Statement,
     length: usize,
-    zk: Option<stele_reductions::zk::Seed>,
+    zk: Option<zk::Window<'_>>,
 ) -> Result<(Public, Statement, Vec<u8>), Error> {
     let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
     let p = stele_reductions::stele_cqis::model::Preparation::decode(&m, preparation)
@@ -641,15 +641,44 @@ pub fn prove_window_profile(
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
     let weights = Weights::from_artifact(&m, artifact)?;
-    if let Some(seed) = zk {
-        let base = Public {
+    if let Some(window) = zk {
+        let mut public = Public {
             model: model.to_vec(),
             scales: scales.to_vec(),
             preparation: preparation.to_vec(),
             vectors: weights.vectors.clone(),
             commitment: Vec::new(),
         };
-        let (public, proof) = zk::prove(&base, &mut executor, &weights, &statement, seed)?;
+        let proof = match window {
+            zk::Window::Commit { proofs, seed, out } => {
+                let (c, state) =
+                    zk::commit(&public, &mut executor, &weights, length, proofs, seed)?;
+                public.commitment = alloc::vec![(c.root, Vec::new())];
+                *out = Some((c, state));
+                Vec::new()
+            }
+            zk::Window::Prove {
+                seed,
+                commitment,
+                state,
+                persist,
+                index,
+            } => {
+                public.commitment = alloc::vec![(commitment.root, Vec::new())];
+                let (proof, i) = zk::prove_next(
+                    &public,
+                    &mut executor,
+                    &weights,
+                    &statement,
+                    seed,
+                    commitment,
+                    state,
+                    persist,
+                )?;
+                *index = i;
+                proof
+            }
+        };
         return Ok((public, statement, proof));
     }
     let committed = Committed::new(&weights)?;

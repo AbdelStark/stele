@@ -158,6 +158,8 @@
 | NC-0930 | dev-zk member weight final | 0026 A3, 0008 A7 | a leaf's member weight final B_m·S substituted; needs a substitution adversary that keeps the A5 statement message (reworked after review) | `ClaimMismatch` | todo |
 | NC-0931 | dev-zk table padding final | 0026 A9, 0008 A7 | a leaf's eq·Z final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
 | NC-0932 | dev-zk shared-bit final | 0026 §3.5, A9 | a contraction's eq(ρ_shared, ·) final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
+| NC-0933 | dev-zk model commitment pin | 0013 A6 | a proof made against one published commitment, verified against another of the same weights (another model seed): the pinned model digests differ | `StatementMismatch` | done |
+| NC-0934 | dev-zk lifetime counter | 0013 A6 | prover-side refusal: a third proof past a budget of two, and an index whose earlier opening is missing from the model state | `MaskBudget` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
