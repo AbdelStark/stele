@@ -219,6 +219,8 @@ impl<K: ChallengeField> Source<K> {
             match policy {
                 Policy::One => (certificate_queries, opening_queries, 0, 0),
                 Policy::Two => {
+                    // ADR-108: fails closed unless `standard-unproven` is enabled, so a
+                    // production verifier rejects every Policy 2 source, parsed ones too.
                     let p = registry::resolve_pcs(code, K::DEGREE as u8, Profile::Standard)
                         .map_err(|_| Error::UnsupportedSource)?;
                     let k_t = tensor_grind_bits(ell, radius, K::DEGREE);

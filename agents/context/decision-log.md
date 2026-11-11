@@ -2663,6 +2663,117 @@ Status: Accepted (development tier). Independent review: fix-then-merge, F1 to F
 applied, "accept A7 once F1 is fixed". dev-zk stays not admitted until the
 admission PR.
 
+## ADR-108: The standard-profile LU (β, α) nonce and Policy 2 sources; ADR-106's gate enforced until E8-05 (RFC-0008 A8, RFC-0012 A17, task E12-24)
+
+Numbering: ADR-107 is taken by #346 (task E12-27), so this record takes 108.
+
+Context: RFC-0012 A17 item 5 lets LU (β, α) rounds grind, and it requires an RFC-0008
+amendment to fix the nonce's byte offset first. ADR-106 split that work from E12-23 into
+E12-24. It also barred any standard-profile caller of `registry::resolve_pcs` or
+`Policy::Two` until E12-24 was done. The reason: `proven: true` presumes A17 (C1)–(C4),
+and an ungrinded QM31 LU round can fail (C1).
+
+Decision:
+
+- **Amendment.** RFC-0008 A8 (Proposed, full path) fixes the placement. The nonce
+  follows `Repetition(id, j, 0)` and precedes `Beta`. On the wire, r u64le nonces follow
+  the registration packets, and nonce j starts at byte `2 + Σ(32 + C_i) + 8j`. Its
+  bits are the least k with `(c(N+t) − 1)·2^108 ≤ p^d·2^k`. k > 32 is
+  `Error::Statement` (UnsupportedParameters).
+- **Consumer.** `lookup::Descriptor::standard` is the standard-profile A5 lookup. Its
+  multiplicity sources use Policy 2, it rejects any original that is not Policy 2
+  (`CertificateContext`), and it grinds when k ≥ 1. `Descriptor::new` is
+  unchanged: Policy 1, k = 0, no nonce. The RFC-0026 development checks
+  (`relation_lookup.rs`) and dev-zk trees are not touched, so no development proof
+  byte moves. The existing lookup corpus digests are unchanged.
+- **Why the source policy moves too.** Under Policy 1, the ungrinded QM31 tensor round
+  `2·ℓ·(e+1)/|K|` of any certificate the lookup relies on can fail (C1). That covers
+  its own multiplicity sources and the caller's originals. RFC-0010 A14 item 1 makes
+  standard mean Policy 2, so both are required. Grinding only (β, α) would leave the
+  lookup inadmissible.
+- **Conservative readings.**
+  1. Originals stay caller-owned, but a standard lookup accepts only Policy 2
+     certificates. A Policy 1 original would let `proven` cover an ungrinded
+     certificate round. (The first review draft read this the other way; review F1
+     corrected it.)
+  2. N is the 2^m positions and t the real rows, as in the recorded LU numerator.
+  3. The grind absorb's 9-byte payload is counted in `Limits::public_bytes`.
+- **Controls.** NC-0814 (a failing nonce, `GrindMismatch`), NC-0815 (a k−1 prover,
+  `GrindMismatch`), NC-0816 (another valid nonce, absorbed, `RoundSumMismatch`) and
+  NC-0817 (the statement over Policy 1 originals, `CertificateContext`) run through
+  the actual A5 consumer on a QM31 `sigmoid_q` lookup with Policy 2 originals and
+  k = 2. Nonces
+  come from the independent `Replay` of E12-23, with every search capped at 2^20.
+  Mutation checks, each leaving the honest proof accepted:
+  1. With the PoW check skipped but the absorb kept, NC-0814 and NC-0815 go red
+     (`RoundSumMismatch` instead of `GrindMismatch`).
+  2. With the nonce not absorbed on either side, NC-0816 goes red (tamper accepted).
+  3. With an off-by-one bit derivation on both sides, no control goes red, because
+     the prover and verifier still agree. It is caught by the controls' k = 2 fixture
+     guard and by the native pin `matches_reference_lu_grind_bits`. A verifier that
+     checks fewer bits than the prover ground rejects the honest proof, because the
+     predicate's payload binds k.
+  4. With the original-policy check removed, NC-0817 goes red. The Policy 1 roster is
+     then rejected only later, as `ProofShape`, because its opening size differs.
+- **Parity.** `research/fs-pcs/check_lu_grind.py` recomputes 180 (c, N, t, d) rows
+  from the exact inequality. It also runs the unchanged independent A5 producer of
+  `lookup_corpus.py` with Policy 2 originals and multiplicity sources and the A8
+  nonce, for four standard proofs (k = 0, 0, 1, 1). The last has r = 2, with its
+  second nonce at +8. Both are pinned natively in `tests/lookup_grind.rs`,
+  which matches the proof bytes, nonce offset, nonce and continuation. The pinned
+  `lookup_corpus.py` is not edited, so the requant and integer-linear provenance
+  hashes do not move.
+- **ADR-106's gate, restated and enforced.** Every family that A17 item 5 lets grind now
+  has a consumer that grinds at the least (C1) k: PCS column and tensor rounds
+  (E12-23), and LU (β, α) rounds (here).
+  - `resolve_pcs`'s `proven: true` (A14 item 6) is a fact about one Policy 2 source's
+    rounds. It now holds together with these consumers.
+  - It is not a claim about a composed proof. A composed standard proof also needs (C1)
+    on every non-grinding round (SC, RLC, SZ, units θ), plus (C2) and (C3). E8-05's
+    generator checks these.
+  - Until E8-05 lands, the standard-profile entry points sit behind a Cargo feature,
+    `standard-unproven`, in `stele-code`, `stele-pcs` and `stele-reductions` (each
+    forwards it down):
+    - Without it, `resolve_pcs`'s standard path returns `UnsupportedParameters`.
+    - Without it, every Policy 2 source constructor fails `UnsupportedSource`. That
+      includes `Source::from_bytes` with policy byte 2, so a production verifier
+      rejects a Policy 2 context instead of accepting it.
+    - `lookup::Descriptor::standard` does not exist without it.
+  - No crate turns the feature on in a dependency line. Under resolver 2 that would
+    unify it into every crate of a `cargo build --workspace`.
+    - `stele-negative-controls` declares its own off-by-default features
+      `standard-unproven` and `controls`, which forward to `stele-reductions`. Its
+      `pcs_policy2`, `lookup_grind`, `zk` and `zk_relation` modules, the E12-27
+      records controls and their CONTROLS entries are `#[cfg]`-gated. Their Cargo test
+      targets carry `required-features`, and so does the catalog test.
+    - The runners select the features explicitly: `native.sh` and
+      `negative-controls.sh` pass `--all-features`, as CI's workspace test and clippy
+      already do, and so does Workflow 02's catalog command.
+    - The standard tests carry `#![cfg(feature = "standard-unproven")]`. A no-feature
+      test pins the rejection.
+  - Two native gates check this:
+    - `cargo tree -p` on stele-cli, stele-prover and stele-verifier must show no
+      `standard-unproven`. Adding it to stele-prover's dependency turns this red.
+    - `cargo tree --workspace -e features` with no feature selected must show neither
+      `controls` nor `standard-unproven`.
+  - Scope extension: the second check also covers the E12-14a/E12-25 `controls`
+    feature. Its old gate checked only `cargo tree -p stele-cli`, so a workspace build
+    unified the adversaries into every crate.
+  - The earlier grep lint (`standard_quarantine`) stays as a second, weaker check. It
+    misses turbofish, qualified-path and glob forms.
+  - So no prover, CLI or verifier can emit `proven: true` or an admitted level for a
+    composed proof. E8-05 removes the feature in the same change that adds the composed
+    check.
+  - The registry export's per-family `proven = false` is unchanged (E12-04).
+
+Consequences: no development proof byte, pin or measured constant moves, and no ledger
+is recorded. Only standard-profile bytes (test fixtures) carry Policy 2 originals and
+nonces. Open: E8-05 (composed (C1)–(C3) check, lifts `standard_quarantine`), E12-04,
+E16-30.
+
+Status: Accepted with RFC-0008 A8 (independent review: FIX-THEN-MERGE, F1 fixed here).
+A8 is the protocol change; this record follows RFC-0012 A17 and RFC-0010 A14.
+
 ## ADR-109: Admit dev-zk (profile byte 1) at the development tier (RFC-0013 A5 item 8, task E12-14)
 
 Numbered after ADR-107 on main, skipping ADR-108, which #347 (E12-24) holds.

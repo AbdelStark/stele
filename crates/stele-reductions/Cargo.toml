@@ -23,6 +23,8 @@ stele-ir = { path = "../stele-ir" }
 std = ["stele-sumcheck/std", "stele-pcs/std"]
 # Negative controls' and privacy tests' adversaries (never a verifier input).
 controls = ["stele-sumcheck/controls"]
+# ADR-108: the standard-profile lookup (RFC-0008 A8). Only tests and controls enable it.
+standard-unproven = ["stele-pcs/standard-unproven"]
 
 [lints]
 workspace = true

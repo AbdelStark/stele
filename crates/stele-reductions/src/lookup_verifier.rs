@@ -196,6 +196,11 @@ where
         let mut pairs = [[K::from_i64(0); 2]; 2];
         for (j, pair) in pairs[..r].iter_mut().enumerate() {
             absorb(t, AbsorbLabel::LookupRepetition, &phase(s.id, j, 0))?;
+            // RFC-0008 A8 item 4: the nonce is checked and absorbed before Beta.
+            if self.grind > 0 {
+                t.verify_grind(self.grind, wire.nonces[j])
+                    .map_err(Error::Transcript)?;
+            }
             *pair = [
                 draw(t, ChallengeLabel::LookupBeta)?,
                 draw(t, ChallengeLabel::LookupAlpha)?,

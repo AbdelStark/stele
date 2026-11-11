@@ -33,7 +33,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0005 | Tensor IR, claim graph, witness capture | Accepted (A1, A2, A3, A5, A6, A7); A4 superseded by A5 |
 | 0006 | Sumcheck engine and layer-stacked GKR core | Accepted (A1, A2, A3, A4, A5, A6, A7, A8) |
 | 0007 | Matmul reduction, residual cuts, four-phase weight passes | Accepted (A1, A2, A3, A4, A5, A6, A7); A8 Draft |
-| 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A2, A3, A4, A5, A6, A7 conditional); A1 Draft |
+| 0008 | Lookups: LogUp-GKR, table registry, range discipline | Accepted (A2, A3, A4, A5, A6, A7 conditional, A8); A1 Draft |
 | 0009 | Attention protocol | Accepted (A1, A4); A2, A3 superseded by A4 for RFC-0025 |
 | 0010 | Interleaved-code PCS, fused opening, certified commitments | Accepted (A1, A2, A3, A4, A5, A6, A8, A9, A10, A11, A12, A13, A14, A15); A7 Draft |
 | 0011 | Model passport and checkpoint binding | Accepted (A2, A8); A1 Draft; A3–A7 superseded by A8 for RFC-0025 |
