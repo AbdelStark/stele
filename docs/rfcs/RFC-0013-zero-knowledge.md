@@ -568,7 +568,7 @@ review).** These wire dev-zk through the development orchestrator and the CLI.
 ### A6 — Lifetime hiding weight source for dev-zk (P proofs against one published commitment)
 
 Status: **Proposed** (development tier, Workflow 02 development-tier path;
-independent review requested; not self-accepted). Task: E12-25. Decision: ADR-103.
+independent review requested; not self-accepted). Task: E12-25. Decision: ADR-104.
 It amends A2 item 1's lifetime ("at most one opening per seed … weight sources,
 repeated openings and any reuse of `σ` are not admitted") and A5 item 7's
 `P`-proof budget. It applies only to dev-zk weight sources.

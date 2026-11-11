@@ -2384,9 +2384,68 @@ Decision:
 Status: Proposed (development tier; independent review: fix-then-merge, fixes
 applied; dev-zk not admitted).
 
-## ADR-103: One published dev-zk model commitment for P proofs (RFC-0013 A6, task E12-25)
+## ADR-103: Provisional NO-GO for a development-profile GPU backend (fixture stage shares) (RFC-0014 §1, §5, RFC-0026 §7, task E16-21)
 
-Numbered after ADR-102.
+Context: task E16-21 gates a development-profile GPU backend (tasks E16-21a..e) on a
+projected stories42M T = 64 prove-time gain of at least 3x, once dense and zerocheck
+rounds, LogUp levels, v2 encoding and Merkle hashing run on the device with state
+resident. The measurement and the projection are in
+`bench/ledger/e16-21-gpu-gating.json`; the sources are in `research/gpu-gating/`.
+
+Method:
+- **Device rounds.** `dense_gpu.cu` runs a dense QM31 sumcheck (one product of K tables)
+  with the tables resident on a rented RTX 4090; each round copies the K + 1 node sums
+  to the host for the Fiat–Shamir round trip and folds with the host's challenge.
+  `dense_cpu.rs` runs `stele_sumcheck::Dense` on the same inputs on the same host. The
+  round values agree byte for byte (FNV) at every size.
+- **Stage shares.** No stories42M profile exists. `stage_shares.py` charges the
+  main-thread samples of one `stele prove-dev` run of the 8-layer fixture to prover
+  stages; the main thread waits inside every parallel region, so its samples are wall
+  time.
+- **Projection.** Amdahl's law on `bench/ledger/e16-18-dev-stories42m.json`, with the
+  8-layer shares applied unchanged and the device speedup of the offloaded stages taken
+  as the measured rounds-only ratio at its lowest, its highest, and unbounded. The
+  measured ratios are against the CPU reference at 46 threads, not the 24 threads of
+  the target record; the ceiling at unbounded speed does not depend on them.
+
+Decision: **NO-GO (provisional: fixture stage shares, stories42M unprofiled).** The work the scoped backend leaves on the CPU (relation
+registration, lookup leaf preparation and counts, matmul table builds, the PCS row
+combination, witness and layout) bounds the projected gain below 3x even at unbounded
+device speed on the fixture's shares. No GPU binding is chosen and no RFC-0014
+amendment is written.
+
+What flips it: a stories42M profile on the target host whose residual share (the work
+outside the offloaded stages) is at most one third (33.3%) of wall time. The fixture's
+residual is close to that line, and two biases are not measured:
+- *Attribution.* `stage_shares.py` charges a sample to the first stage pattern on its
+  stack; field products inside `relation_other` that belong logically to LogUp leaf
+  preparation or dense rounds count as residual. This overstates the residual.
+- *Threads.* The fixture ran on 16 threads, the target on 24. The offloaded stages are
+  mostly parallel and the residual mostly sequential, so more threads raise the
+  residual share. Model size changes the mix in ways the fixture cannot show.
+
+Alternatives rejected:
+- *Proceed on the rounds-only ratio.* It ignores the residual CPU share, which is the
+  binding term.
+- *Widen the backend to the residual relation work now.* In the fixture profile almost
+  all residual samples have no rayon frame on the stack: they ran sequentially on the
+  main thread (counts in the ledger, `main_thread_samples_outside_parallel_region`).
+  Making that work parallel on the CPU is cheaper and helps every host. A GPU case
+  needs a new profile after that.
+
+Consequences:
+- Tasks E16-21a..e are blocked on task E16-22, a stories42M stage-share profile on a
+  Linux host. That profile, with this ledger's device ratios, confirms or reverses this
+  decision.
+- Device upload in the micro-benchmark uses pageable memory; it does not affect the
+  verdict, which holds with zero transfer cost.
+- The verifier, `no_std` builds and every CPU path are unchanged.
+
+Status: Accepted (owner authorisation for autonomous gating decisions; independent review in the E16-21 PR).
+
+## ADR-104: One published dev-zk model commitment for P proofs (RFC-0013 A6, task E12-25)
+
+Numbered after ADR-103 (main).
 
 Context: E12-14b committed the weights per proof (`P = 1`), so a dev-zk proof bound
 no published model. Review F1 asked for a persistent commitment, and E12-25 makes
