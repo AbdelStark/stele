@@ -1173,7 +1173,7 @@ granted (Workflow 10).
 
 ### A12 — Multiplicity sources at Circle rate 1/4 for development proofs
 
-Status: Proposed (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
+Status: Accepted with ADR-113 after independent review (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
 Needs one independent reviewer from another lane before acceptance; until then it is
 Draft. Task: E16-31. Decision: ADR-113.
 

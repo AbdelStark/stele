@@ -2985,4 +2985,4 @@ Decision:
 Consequences: development proof bytes change under byte 3 (new pins); byte-2 and pre-A11
 proofs are unchanged. Open: the independent review of A12.
 
-Status: Proposed with RFC-0026 A12 (development tier).
+Status: Accepted with RFC-0026 A12 (development tier). Independent review: MERGE at 6044c28. NC-1319 isolates the byte-3 transcript binding, the length-before-parse reorder does not change acceptance, and ADR-108 is still enforced. Follow-ups: explicit match arms for Sources dispatch; note the stories42M split is inferred.
