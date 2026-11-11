@@ -5,10 +5,14 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 
 | Rung | Profile | Device | Threads | Prove s | Tok/s | Verify s | Proof MB | RSS GB | Cells/token | Lookups/token | Weight reads | λ bits | Controls | Ledger |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| L0 | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 1.36 | 11.765 | 0.69 | 25.4 | 0.3 | — | — | — | none | 4/4 | [e16-23-dev-synthetic-1layer-mac-after](ledger/e16-23-dev-synthetic-1layer-mac-after.json) @ `68aa737` |
+| L0 | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 1.67 | 9.581 | 0.66 | 25.4 | 0.3 | — | — | — | none | 4/4 | [e16-23-dev-synthetic-1layer-mac-before](ledger/e16-23-dev-synthetic-1layer-mac-before.json) @ `736aef5` |
 | L1 | development | arm64 Apple laptop (16 hardware threads) | 16 | 16.56 | 3.865 | 3.01 | 45.0 | 4.5 | — | — | — | none | 2/2 | [e12-14-synthetic-8layer-mac](ledger/e12-14-synthetic-8layer-mac.json) @ `c8efdc4` |
 | L1 | development (dev-zk) | arm64 Apple laptop (16 hardware threads) | 16 | 389.89 | 0.164 | 56.33 | 145.3 | 11.3 | — | — | — | none | 2/2 | [e12-14-synthetic-8layer-zk-mac](ledger/e12-14-synthetic-8layer-zk-mac.json) @ `c8efdc4` |
 | L1 | development | x86_64 Intel Core Ultra 9 285K | 24 | 34.25 | 1.869 | 5.05 | 45.0 | 2.6 | — | — | — | none | 4/4 | [e16-11-dev-synthetic-8layer](ledger/e16-11-dev-synthetic-8layer.json) @ `f6db15e` |
 | L1 | development | x86_64 Intel Core Ultra 9 285K | 24 | 21.93 | 2.918 | 3.95 | 45.0 | 3.0 | — | — | — | none | 4/4 | [e16-18-dev-synthetic-8layer](ledger/e16-18-dev-synthetic-8layer.json) @ `e813ce1` |
+| L1 | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 9.37 | 6.830 | 2.00 | 45.0 | 4.3 | — | — | — | none | 4/4 | [e16-23-dev-synthetic-8layer-mac-after](ledger/e16-23-dev-synthetic-8layer-mac-after.json) @ `68aa737` |
+| L1 | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 16.31 | 3.924 | 3.02 | 45.0 | 4.5 | — | — | — | none | 4/4 | [e16-23-dev-synthetic-8layer-mac-before](ledger/e16-23-dev-synthetic-8layer-mac-before.json) @ `736aef5` |
 | L1 | development | x86_64 Intel Xeon Processor @ 2.10GHz (4 vCPU) | 1 | 103.63 | 0.618 | 7.91 | 45.0 | 2.6 | 524,288 | 321,289 | — | none | 4/4 | [e17-00-dev-synthetic-8layer-1thread-21710de](ledger/e17-00-dev-synthetic-8layer-1thread-21710de.json) @ `21710de` |
 | L1 | development | x86_64 Intel Xeon Processor @ 2.10GHz (4 vCPU) | 4 | 59.84 | 1.070 | 7.00 | 45.0 | 2.6 | 524,288 | 321,289 | — | none | 4/4 | [e17-00-dev-synthetic-8layer-4core-21710de](ledger/e17-00-dev-synthetic-8layer-4core-21710de.json) @ `21710de` |
 | L1 | development | x86_64 Intel Xeon Processor @ 2.10GHz (4 vCPU) | 4 | 55.66 | 1.150 | 7.04 | 45.0 | 2.6 | 524,288 | 321,289 | — | none | 4/4 | [e17-00-dev-synthetic-8layer-4core](ledger/e17-00-dev-synthetic-8layer-4core.json) @ `6441a90` |
@@ -16,7 +20,7 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | L2a | development | x86_64 Intel Core Ultra 9 285K | 24 | 473.81 | 0.135 | 24.25 | 113.4 | 38.4 | — | — | — | none | 4/4 | [e16-18-dev-stories42m](ledger/e16-18-dev-stories42m.json) @ `e813ce1` |
 | L2c | development | x86_64 AMD EPYC 7532 32-Core Processor | 128 | 1978.97 | 0.032 | 69.36 | 126.8 | 109.7 | — | — | — | none | 4/4 | [e16-20-dev-stories110m](ledger/e16-20-dev-stories110m.json) @ `445c9b0` |
 
-Rungs with no record: L0, L2b, L3a, L3b, L3c, L4, L5, L6.
+Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
 
 - Cells/token and Lookups/token before task E17-01 are upper bounds read from the proof: the padded
   stacked-source size and the sum of the verifier's LU numerators (tables included). A dash

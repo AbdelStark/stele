@@ -4253,7 +4253,7 @@ tasks:
   - RFC-0010 A4
   skill: sumcheck-prover-engineer
   crate: stele-reductions+stele-pcs+stele-sumcheck+stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-23-cpu-residual-parallel
   acceptance:

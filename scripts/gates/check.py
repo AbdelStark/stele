@@ -526,7 +526,7 @@ def field_sources(root):
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                'extern crate alloc;\n'
                '// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.\n'
-               'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};\n'
+               'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs, stele_sumcheck};\n'
                'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\npub mod zk;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
@@ -872,7 +872,9 @@ def field_source_codec(root):
         manifest = tomllib.loads((crate / 'Cargo.toml').read_text())
     except tomllib.TOMLDecodeError as error:
         raise ValueError(f'PCS API not wired: unreadable manifest ({error})') from error
-    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'} for name in ('code', 'field', 'hash', 'poly')}
+    # E16-23 (ADR-104): stele-sumcheck for the prover-side work-splitting helpers.
+    dependencies = {f'stele-{name}': {'path': f'../stele-{name}'}
+                    for name in ('code', 'field', 'hash', 'poly', 'sumcheck')}
     source = (crate / 'src/source.rs').read_text()
     # Closed reviewed API inventory, not a semantic Rust sandbox or source-hash rebaseline.
     code = re.sub(r'//[^\n]*', '', source)
@@ -970,7 +972,9 @@ def field_source_codec(root):
         ('', 'source_elements'), ('', 'retained_bytes'), ('struct', 'RetainedRow'),
         ('fn', 'new'), ('fn', 'values'), ('fn', 'work'), ('fn', 'opening'), ('fn', 'opening_measured'),
         ('fn', 'opening_point'), ('fn', 'opening'), ('fn', 'verify_opening'), ('fn', 'verify_opening_measured')]
-        and len(opening_declarations) == len(re.findall(r'\bpub\b', opening))
+        # E16-23 (ADR-104): one crate-private row combination shared with the producer.
+        and len(opening_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', opening))
+        and re.findall(r'\bpub\s*\([^)]*\)\s*fn\s+\w+', opening) == ['pub(crate) fn combine_rows']
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
             "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",
@@ -1008,8 +1012,8 @@ def field_source_codec(root):
             or manifest.get('dependencies') != dependencies
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target'))
-            # E16-17 (ADR-090): the only feature is the opt-in prover-side parallel encoder.
-            or manifest.get('features', {'std': ['stele-code/std']}) != {'std': ['stele-code/std']}
+            # E16-17 (ADR-090), E16-23 (ADR-104): the only feature is the opt-in prover-side pool.
+            or manifest.get('features') != {'std': ['stele-code/std', 'stele-sumcheck/std']}
             or 'build' in manifest.get('package', {})):
         raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')
     checks = [

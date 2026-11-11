@@ -280,6 +280,18 @@ and in 103.6 s with one thread
 ([e17-00-dev-synthetic-8layer-1thread-21710de](../bench/ledger/e17-00-dev-synthetic-8layer-1thread-21710de.json)).
 All three have the synthetic row's proof bytes (INV-8).
 
+Task E16-23 (ADR-104) moved the prover's sequential residual onto the work pool without
+changing proof bytes. It measured before (`736aef5`) and after (`68aa737`) on one
+16-thread Apple M4 Max. The rows are not comparable with the hosts above:
+
+| Rung | Before | After | Ledgers |
+|---|---|---|---|
+| L1, 8 layers, T 64 | 16.31 s | 9.37 s | [before](../bench/ledger/e16-23-dev-synthetic-8layer-mac-before.json), [after](../bench/ledger/e16-23-dev-synthetic-8layer-mac-after.json) |
+| L0, 1 layer, T 16 | 1.67 s | 1.36 s | [before](../bench/ledger/e16-23-dev-synthetic-1layer-mac-before.json), [after](../bench/ledger/e16-23-dev-synthetic-1layer-mac-after.json) |
+
+`research/gpu-gating/sequential_residual.py` counts the samples of one profile in which
+prover code ran on a single thread.
+
 The FlashProve row is the figure that project reports in its
 [README](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c)
 for route 3 on one NVIDIA H100 80 GB. It covers commit, prove and verify together, and
