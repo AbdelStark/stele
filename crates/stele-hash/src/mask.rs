@@ -29,6 +29,14 @@ impl MaskStream {
     pub fn fill(&mut self, out: &mut [u8]) {
         self.reader.fill(out);
     }
+    /// The raw bytes at absolute stream offset `position`, without advancing this
+    /// stream: the bytes [`Self::fill`] yields after `position` bytes from the start.
+    /// Disjoint ranges can be read concurrently (a prover's split; E16-24).
+    pub fn fill_at(&self, position: u64, out: &mut [u8]) {
+        let mut reader = self.reader.clone();
+        reader.set_position(position);
+        reader.fill(out);
+    }
     /// Next uniform M31: the low 31 bits of a u32le word, rejecting `p`.
     pub fn m31(&mut self) -> M31 {
         loop {
