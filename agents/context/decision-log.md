@@ -2809,3 +2809,64 @@ Status: Accepted (development tier). Independent review: fix-then-merge (F1 cont
 overclaim, F2 real-model scope, F4 README, F5 wording), then MERGE at 2371198 with
 "accept ADR-109". F3 (extra dev-zk tampers in bench/dev_e2e.py) is a follow-up.
 
+## ADR-112: dev-zk prover performance: equal-value rewrites, pool use on prover paths only (task E16-24)
+
+Numbered after ADR-109 on main, skipping ADR-110 and ADR-111, which #350 and #351 hold.
+
+Context: the eight-layer dev-zk prove took about 363 s, against 9.5 s for the dev prove.
+commit-model took 93 s and verify-dev 56 s. A macOS `sample` profile split the prove as
+follows:
+- 62% masked occurrence rounds on one thread;
+- 25% mask assignment (`vanish`), which compared every earlier input with every
+  term;
+- 15% the producer's self-verify, most of it the same assignment.
+
+commit-model was 94% assignment.
+
+Decision:
+- Every change gives the same field elements, digests and bytes. The dev-zk proofs
+  at fixed seeds are pinned (one- and eight-layer), and every development pin is
+  unchanged.
+- Algorithms:
+  - mask assignment indexes the terms each input appears in;
+  - the lookup selector and the combined-leaf owner fill each member's range, in
+    place of scanning the members for every position;
+  - masked rounds step factor values by their slope and compute `κ(t)` once per node;
+  - round terms are evaluated through a plan that leaves `±1` coefficients
+    unmultiplied and multiplies the factor shared by most terms once.
+- `Field::mul_m31` (default `self · from_i64(x)`; M31 towers override it
+  coefficient-wise) replaces lifted-scalar products in the Circle transform and the
+  PCS row combinations. Verifier code uses it too; the values are unchanged.
+- Pool use, all through existing seams (`stele_sumcheck::parallel`, the PCS's
+  `for_each_block`):
+  - rounds and folds split by work (`sum_ranges_weighted`,
+    `for_each_chunk_weighted`);
+  - sources prepared, certified and messaged concurrently;
+  - the LogUp tree and table denominators.
+- `stele-hash` gets no new dependency. `Tree::new_with_usage_filled` takes a
+  caller's level fill, with the same digests and usage, and the PCS passes its pool.
+  `MaskStream::fill_at` reads the stream at an absolute offset. Mask draws are made
+  from block-filled bytes, then scanned in order with the same rejection; leaf
+  salts are filled per leaf.
+- The pool stays off verifier paths. Pool-backed eq tables in shared prover/verifier
+  code woke idle workers in `verify-dev` (about 10 s of system time) with no wall-time
+  gain, so those calls stay sequential.
+- The self-verify (E12-25 review F1/F4) is kept. It costs about 4 s of the prove after
+  this change.
+
+Measured: three alternating runs per commit on one M4 Max, medians.
+- prove 362.6 s to 30.7 s;
+- commit-model 92.7 s to 3.4 s;
+- verify-dev 55.8 s to 4.4 s.
+
+Ledgers: `e16-24-dev-zk-synthetic-8layer-mac-before/-after`.
+
+What remains (main-thread shares of the after profile):
+- masked rounds 35%, bound by QM31 products;
+- source preparation 17%;
+- window build and checks 14%;
+- self-verify 13%;
+- ZK-GKR factors 9%.
+
+Status: Proposed (development tier; review requested).
+

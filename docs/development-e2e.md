@@ -317,7 +317,7 @@ changing proof bytes. It measured before (`736aef5`) and after (`e855f74`) on on
 `research/gpu-gating/sequential_residual.py` counts the samples of one profile in which
 prover code ran on a single thread.
 
-Task E16-24 sped up the dev-zk prover without changing proof bytes for a fixed seed:
+Task E16-24 (ADR-112) sped up the dev-zk prover without changing proof bytes for a fixed seed:
 - mask assignment indexed by term;
 - the masked rounds factored and spread over the work pool;
 - Merkle levels, mask streams, sources and the LogUp tree built over the pool;
