@@ -198,13 +198,19 @@ pub enum Sources {
     /// sources, all under RFC-0010 A14 Policy 2 counts and grinding, resolved for
     /// the development tier (`proven: false`).
     Circle,
+    /// A12: `Circle`, with every multiplicity source at Circle rate 1/4 too.
+    CircleAll,
 }
 impl Sources {
+    /// Stacked and model sources are A11's Circle rate-1/4 sources (A11, A12).
+    fn circle(self) -> bool {
+        self != Sources::Expander
+    }
     /// The verifier's source of `(id, ell, code)` under this set's policy.
     pub fn source(self, id: u64, ell: u8, code: &[u8], root: [u8; 32]) -> Result<Source<K>, Error> {
         match self {
             Sources::Expander => Source::from_code_id(id, ell, code, root),
-            Sources::Circle => Source::from_code_id_development(id, ell, code, root),
+            _ => Source::from_code_id_development(id, ell, code, root),
         }
         .map_err(Error::Pcs)
     }
@@ -219,9 +225,7 @@ impl Sources {
         let usage = &mut HashUsage::default();
         match self {
             Sources::Expander => PreparedSource::from_code_id(id, ell, code, message, usage),
-            Sources::Circle => {
-                PreparedSource::from_code_id_development(id, ell, code, message, usage)
-            }
+            _ => PreparedSource::from_code_id_development(id, ell, code, message, usage),
         }
         .map_err(Error::Pcs)
     }
@@ -324,12 +328,12 @@ fn v2_code(j: u8) -> Vec<u8> {
 /// (A11): the rate-1/4 row split `ell + m = bits` (ties: smallest `ell`).
 fn stack(id: u64, bits: u8, sources: Sources) -> Result<Stack, Error> {
     let bits = bits.max(2 * MIN_J);
-    let candidates: Vec<(u8, Vec<u8>)> = match sources {
-        Sources::Expander => (MIN_J..=MAX_J.min(bits / 2))
+    let candidates: Vec<(u8, Vec<u8>)> = match sources.circle() {
+        false => (MIN_J..=MAX_J.min(bits / 2))
             .map(|j| (bits - 2 * j, v2_code(j)))
             .collect(),
         // Circle (m, b) exists for m <= 30 - b; a source has ell <= 30.
-        Sources::Circle => (bits.saturating_sub(30 - CIRCLE_BLOWUP)..=bits.min(30))
+        true => (bits.saturating_sub(30 - CIRCLE_BLOWUP)..=bits.min(30))
             .filter_map(|ell| {
                 Source::<K>::new(id, ell, bits - ell, CIRCLE_BLOWUP, [0; 32])
                     .ok()
@@ -337,6 +341,23 @@ fn stack(id: u64, bits: u8, sources: Sources) -> Result<Stack, Error> {
             })
             .collect(),
     };
+    let (ell, code) = smallest(id, candidates, sources)?;
+    Ok(Stack {
+        id,
+        bits,
+        ell,
+        code,
+        sources,
+    })
+}
+
+/// The candidate `(ell, code)` whose source under `sources` has the fewest certificate
+/// plus opening bytes (ties: the first, i.e. the smallest `ell` or `J`).
+fn smallest(
+    id: u64,
+    candidates: Vec<(u8, Vec<u8>)>,
+    sources: Sources,
+) -> Result<(u8, Vec<u8>), Error> {
     let mut best: Option<(usize, u8, Vec<u8>)> = None;
     for (ell, code) in candidates {
         let Ok(source) = sources.source(id, ell, &code, [0; 32]) else {
@@ -350,14 +371,34 @@ fn stack(id: u64, bits: u8, sources: Sources) -> Result<Stack, Error> {
             best = Some((size, ell, code));
         }
     }
-    let (_, ell, code) = best.ok_or(Error::Unsupported)?;
-    Ok(Stack {
+    best.map(|(_, ell, code)| (ell, code))
+        .ok_or(Error::Unsupported)
+}
+
+/// RFC-0008 A5 multiplicity layout of a check with `2^k` table rows: Circle rate 1/2
+/// at `ell = k/2` (A5, A11), or under A12 Circle rate 1/4 at the `ell` that
+/// [`smallest`] picks.
+fn mu_layout(id: u64, k: u8, sources: Sources) -> Result<Layout, Error> {
+    if sources != Sources::CircleAll {
+        return Ok(Layout {
+            id,
+            ell: k / 2,
+            blowup: 1,
+        });
+    }
+    let layout = |ell| Layout {
         id,
-        bits,
         ell,
-        code,
-        sources,
-    })
+        blowup: CIRCLE_BLOWUP,
+    };
+    let candidates = (0..=k)
+        .filter_map(|ell| {
+            mu_source::<K>(layout(ell), k, [0; 32], stele_pcs::Policy::One)
+                .ok()
+                .map(|s| (ell, s.code_id().to_vec()))
+        })
+        .collect();
+    Ok(layout(smallest(id, candidates, sources)?.0))
 }
 
 /// The table a lookup or range targets: ranges are keyed by width bits, because
@@ -375,6 +416,7 @@ fn check(
     mut members: Vec<Member>,
     t: usize,
     mut entries: Vec<i64>,
+    sources: Sources,
 ) -> Result<Check, Error> {
     let c = members[0].tuple.len();
     // RFC-0008 A2 item 5: arity 1..=2 and at most 2^16 table rows.
@@ -396,11 +438,7 @@ fn check(
     }
     let k = ceil_log2(t);
     entries.resize(c << k, 0);
-    let layout = Layout {
-        id: source_id,
-        ell: k / 2,
-        blowup: 1,
-    };
+    let layout = mu_layout(source_id, k, sources)?;
     Ok(Check {
         id,
         name,
@@ -508,7 +546,7 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
                 (alloc::format!("range_{bits}"), t, (0..t as i64).collect())
             }
         };
-        checks.push(check(id, base + id, name, members, t, entries)?);
+        checks.push(check(id, base + id, name, members, t, entries, sources)?);
     }
     let lengths: Vec<u8> = (0..relation.columns.len())
         .filter(|i| relation.columns[*i].kind == Kind::Weight)
@@ -979,6 +1017,20 @@ pub fn stack_source(
         .transpose()
 }
 
+/// The plan-derived multiplicity source of check `index` under `root` (RFC-0008 A5,
+/// RFC-0026 A12); controls use it to locate one certificate field.
+pub fn multiplicity_source(
+    relation: &Relation,
+    sources: Sources,
+    index: usize,
+    root: [u8; 32],
+) -> Result<Source<K>, Error> {
+    let plan = plan(relation, sources)?;
+    let check = plan.checks.get(index).ok_or(Error::Unsupported)?;
+    let l = check.layout;
+    sources.source(l.id, l.ell, mu_code(check)?.code_id(), root)
+}
+
 /// Place per-weight messages (`ColumnId` order, `2^n` entries each, signed
 /// embedding) into the stacked messages of `layouts`.
 pub fn stack_model(layouts: &[ModelLayout], weights: &[&[M31]]) -> Result<Vec<Vec<M31>>, Error> {
@@ -1314,8 +1366,8 @@ impl stele_sumcheck::Summand<K> for Capture<'_> {
     }
 }
 
-/// A5's Circle multiplicity source of a check (its geometry is the same in both
-/// sets); only its code identity is used, under the plan's policy.
+/// A5's Circle multiplicity source of a check (its geometry is the plan's, A12);
+/// only its code identity is used, under the plan's policy.
 fn mu_code(check: &Check) -> Result<Source<K>, Error> {
     mu_source::<K>(check.layout, check.k, [0; 32], stele_pcs::Policy::One).map_err(Error::Lookup)
 }
@@ -1477,9 +1529,10 @@ pub fn verify(
         let size = source
             .proof_size(ProofKind::Certificate)
             .map_err(Error::Pcs)?;
-        let (handle, _) =
-            verify_certificate(source, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
+        // A12: the section length is the derived geometry's, checked before the bytes.
+        let bytes = reader.take(size)?;
         reader.end()?;
+        let (handle, _) = verify_certificate(source, bytes).map_err(|f| Error::Pcs(f.cause))?;
         t.absorb(AbsorbLabel::RelationRoots, &root)?;
         mu.push(handle);
         ledger.pcs_sources += 1;

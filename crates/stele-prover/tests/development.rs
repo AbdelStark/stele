@@ -153,13 +153,22 @@ fn run(name: &str, t: usize, sources: Sources) -> u64 {
     fnv(&proof)
 }
 
-// Pinned proof bytes. The default sources are RFC-0026 A11's Circle rate-1/4
-// sources under Policy 2 (new pins, E16-30). The pre-A11 expander sources keep
-// their E16-10 pins unchanged: an old proof is the same bytes and still verifies.
+// Pinned proof bytes. The default sources are RFC-0026 A12's: every source,
+// multiplicity sources included, Circle rate 1/4 under Policy 2 (new pins, E16-31).
+// A11 (profile byte 2, E16-30) and pre-A11 expander sources keep their pins
+// unchanged: an old proof is the same bytes and still verifies.
 #[test]
 fn accepts_one_layer_window() {
     // The T=16 window is large enough for the threaded dense rounds (E16-15), and
     // the hash equals the sequential prover's.
+    assert_eq!(
+        run("one-layer", 16, Sources::CircleAll),
+        0x61d3_c199_0e56_1b8f
+    );
+}
+
+#[test]
+fn accepts_one_layer_window_on_a11_sources() {
     assert_eq!(run("one-layer", 16, Sources::Circle), 0x11e8_0225_ea2f_e1bd);
 }
 
@@ -173,6 +182,14 @@ fn accepts_one_layer_window_on_pre_a10_sources() {
 
 #[test]
 fn accepts_one_layer_grouped_window() {
+    assert_eq!(
+        run("one-layer-grouped", 16, Sources::CircleAll),
+        0xef75_7091_9e40_b790
+    );
+}
+
+#[test]
+fn accepts_one_layer_grouped_window_on_a11_sources() {
     assert_eq!(
         run("one-layer-grouped", 16, Sources::Circle),
         0x1e0e_81df_8e4a_37a6
@@ -191,6 +208,15 @@ fn accepts_one_layer_grouped_window_on_pre_a10_sources() {
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn accepts_eight_layer_window() {
+    assert_eq!(
+        run("eight-layer", 64, Sources::CircleAll),
+        0xf2a8_6453_9644_a144
+    );
+}
+
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn accepts_eight_layer_window_on_a11_sources() {
     assert_eq!(
         run("eight-layer", 64, Sources::Circle),
         0xea0b_5946_0256_c917
@@ -264,22 +290,30 @@ fn rejects_statement_and_container_tampers() {
         bundle::decode(&file),
         Ok((public.clone(), statement.clone()))
     );
-    // RFC-0026 A11: the source set is bound in the public input (byte 2 appended),
-    // and the pre-A11 file (`stele-dev-public-v1`, no byte) still round-trips.
-    assert_eq!(public.sources, Sources::Circle);
-    let old = Public {
-        sources: Sources::Expander,
+    // RFC-0026 A11, A12: the source set is bound in the public input (byte 3 appended
+    // by default, byte 2 for A11), and the A11 file (`stele-dev-public-v2`) and the
+    // pre-A11 file (`stele-dev-public-v1`, no byte) still round-trip.
+    assert_eq!(public.sources, Sources::CircleAll);
+    let with = |sources| Public {
+        sources,
         ..public.clone()
     };
-    let (new_input, old_input) = (
-        public_input(&public, &[0; 32], &statement),
-        public_input(&old, &[0; 32], &statement),
+    let (a11, old) = (with(Sources::Circle), with(Sources::Expander));
+    let old_input = public_input(&old, &[0; 32], &statement);
+    for (p, byte) in [(&public, 3), (&a11, 2)] {
+        assert_eq!(
+            public_input(p, &[0; 32], &statement),
+            [old_input.as_slice(), &[byte]].concat()
+        );
+    }
+    let (a11_file, old_file) = (
+        bundle::encode(&a11, &statement),
+        bundle::encode(&old, &statement),
     );
-    assert_eq!(new_input, [old_input.as_slice(), &[2]].concat());
-    let old_file = bundle::encode(&old, &statement);
-    assert!(
-        old_file.starts_with(b"stele-dev-public-v1") && file.starts_with(b"stele-dev-public-v2")
-    );
+    assert!(old_file.starts_with(b"stele-dev-public-v1"));
+    assert!(a11_file.starts_with(b"stele-dev-public-v2"));
+    assert!(file.starts_with(b"stele-dev-public-v3"));
+    assert_eq!(bundle::decode(&a11_file), Ok((a11, statement.clone())));
     assert_eq!(bundle::decode(&old_file), Ok((old, statement.clone())));
 
     // Each statement tamper fails fast at the prover-written header digest and, with
@@ -750,15 +784,17 @@ fn zk_window(name: &str, t: usize) -> usize {
     let mut other = statement.clone();
     other.next = other.next.map(|y| y ^ 1);
     assert!(zk::verify(&public, &other, &proof, &commitment, index).is_err());
-    // RFC-0026 A11: a dev-zk input naming the Circle source set is rejected.
-    let circle = Public {
-        sources: Sources::Circle,
-        ..public.clone()
-    };
-    assert_eq!(
-        zk::verify(&circle, &statement, &proof, &commitment, index).err(),
-        Some(Error::StatementMismatch)
-    );
+    // RFC-0026 A11, A12: a dev-zk input naming a Circle source set is rejected.
+    for sources in [Sources::Circle, Sources::CircleAll] {
+        let circle = Public {
+            sources,
+            ..public.clone()
+        };
+        assert_eq!(
+            zk::verify(&circle, &statement, &proof, &commitment, index).err(),
+            Some(Error::StatementMismatch)
+        );
+    }
     proof.len()
 }
 

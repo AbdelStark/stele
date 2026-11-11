@@ -635,3 +635,40 @@ fn accepts_circle_policy2_sources_and_rejects_the_other_set() {
         Some(Error::Weights)
     );
 }
+
+/// RFC-0026 A12: under `Sources::CircleAll` every multiplicity source is Circle rate
+/// 1/4 (A5 blow-up 2) with policy byte 2, the stacked source is A11's, an honest proof
+/// verifies, and one verified under A11's set rejects.
+#[test]
+fn accepts_rate_quarter_multiplicity_sources_and_rejects_the_a11_set() {
+    let (rel, values) = batched();
+    let (a11, all) = (
+        plan(&rel, Sources::Circle).expect("plan"),
+        plan(&rel, Sources::CircleAll).expect("plan"),
+    );
+    let (s, t) = (
+        a11.stack.as_ref().expect("stack"),
+        all.stack.as_ref().expect("stack"),
+    );
+    assert_eq!((s.ell, &s.code), (t.ell, &t.code));
+    assert_eq!(a11.checks.len(), all.checks.len());
+    for (a, b) in a11.checks.iter().zip(&all.checks) {
+        assert_eq!((a.layout.blowup, b.layout.blowup), (1, CIRCLE_BLOWUP));
+        let code = mu_code(b).expect("code");
+        assert_eq!(code.code_id()[20], CIRCLE_BLOWUP);
+        let l = b.layout;
+        let source = Sources::CircleAll
+            .source(l.id, l.ell, code.code_id(), [0; 32])
+            .expect("source");
+        assert_eq!(source.grind_bits(ProofKind::Certificate).1, 16);
+    }
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let proof = prove(&mut t, &rel, &values, &[], Sources::CircleAll).expect("honest proof");
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert!(verify(&mut t, &rel, &[], &proof, Sources::CircleAll).is_ok());
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify(&mut t, &rel, &[], &proof, Sources::Circle).err(),
+        Some(Error::ProofShape)
+    );
+}

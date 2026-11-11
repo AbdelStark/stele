@@ -159,6 +159,9 @@ const PUBLIC_TAG: &[u8] = b"stele/v0.1/dev-e2e/public-input";
 /// `Expander` omits the byte, so pre-A11 inputs and proofs are unchanged; dev-zk
 /// appends `1` (A9).
 pub const CIRCLE_PROFILE: u8 = 2;
+/// RFC-0026 A12: the profile byte of a development proof whose multiplicity sources
+/// are Circle rate 1/4 too (`Sources::CircleAll`).
+pub const CIRCLE_ALL_PROFILE: u8 = 3;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
 
 /// Canonical RFC-0026 §1.1 public input (as amended by A2), the transcript's first frame.
@@ -191,8 +194,10 @@ pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) 
         }
         None => out.push(0),
     }
-    if public.sources == Sources::Circle {
-        out.push(CIRCLE_PROFILE);
+    match public.sources {
+        Sources::Expander => {}
+        Sources::Circle => out.push(CIRCLE_PROFILE),
+        Sources::CircleAll => out.push(CIRCLE_ALL_PROFILE),
     }
     out
 }
@@ -280,9 +285,10 @@ pub struct Weights {
 }
 
 impl Weights {
-    /// The weights under the default source set, Circle Policy 2 (RFC-0026 A11).
+    /// The weights under the default source set: every source Circle rate 1/4 under
+    /// Policy 2 (RFC-0026 A12).
     pub fn from_artifact(model: &Model, artifact: &[u8]) -> Result<Self, Error> {
-        Self::from_artifact_sources(model, artifact, Sources::Circle)
+        Self::from_artifact_sources(model, artifact, Sources::CircleAll)
     }
 
     /// The source set the model commitment uses; [`Public::sources`] must equal it.
@@ -290,7 +296,8 @@ impl Weights {
         self.sources
     }
 
-    /// The weights under an explicit source set; `Expander` reproduces pre-A11 proofs.
+    /// The weights under an explicit source set; `Expander` reproduces pre-A11 proofs
+    /// and `Circle` A11 (profile byte 2) proofs.
     pub fn from_artifact_sources(
         model: &Model,
         artifact: &[u8],
