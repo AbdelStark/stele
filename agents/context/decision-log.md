@@ -2862,3 +2862,76 @@ That is left open.
 
 Status: Accepted with RFC-0026 A10 (independent review: FIX, then accept A10).
 
+## ADR-111: Development proofs on Circle rate-1/4 sources under Policy 2, behind profile byte 2 (RFC-0026 A11, task E16-30)
+
+Numbering: ADR-109 is taken by #348 (task E12-14) and ADR-110 by #350 (NC-1310, RFC-0026 A10), so this record takes 111 and this amendment A11.
+
+Context: ADR-091 projected 18.3 MB for stories42M on Circle rate-1/4 Policy 2 sources,
+against 113.4 MB on v2 Policy 1, and left the switch to E16-30's encoding benchmark.
+RFC-0010 A14 item 1, RFC-0012 A17 item 7, ADR-091 and ADR-106 keep development proofs
+on Policy 1. ADR-108 quarantines every standard-profile Policy 2 entry point behind the
+`standard-unproven` feature until E8-05.
+
+Decision:
+
+- **Benchmark first.** Before and after on the 1-layer and 8-layer synthetic windows,
+  alternating on one shared host, and stories42M once each
+  (`bench/ledger/e16-30-*.json`). Proof bytes fall from 25.4 to 7.3 MB (L0), from 45.0
+  to 9.8 MB (L1) and from 113.4 to 18.3 MB (L2a, confirming ADR-091's projection to
+  within the 152 bytes of LU nonces it counted). Verification time falls; the prove-time
+  difference is within the host's noise. The encoding cost is accepted, so the amendment
+  goes ahead (E16-30 acceptance line 2).
+- **Amendment.** RFC-0026 A11 (development-tier path): profile byte 2 selects
+  Circle rate-1/4 stacked and model sources (Draft A7's geometry, priced under Policy 2)
+  and policy byte 2 on every source, multiplicity sources included. LogUp keeps r = 1
+  with no (β, α) nonce.
+- **Binding and versioning.** A byte-2 public input is the pre-A11 bytes followed by
+  `u8(2)`; a pre-A11 input omits the byte, as A9 does for profile 0. Old proofs are the
+  same bytes, verify unchanged and keep their E16-10 pins; byte-2 proofs get new pins.
+  The input file is `stele-dev-public-v2`; `stele-dev-public-v1` still decodes.
+- **No level, no quarantine leak.**
+  - `registry::Profile` gains `Development`. `resolve_pcs(.., Development)` returns
+    the A14 table with `proven: false` and is not gated. The standard path keeps its
+    gate and `proven: true`.
+  - The development engine reaches Policy 2 only through
+    `Source::from_code_id_development` and `PreparedSource::from_code_id_development`.
+    They never call the standard resolver. `Source::from_code_id_policy(.., Two)`,
+    `Source::from_bytes` with byte 2 and `Descriptor::standard` are unchanged: without
+    the feature they still fail.
+  - `standard_quarantine` still passes: no file outside its allow-list names
+    `resolve_pcs`, `Policy::Two` or `Descriptor::standard`. The native
+    `cargo tree` gates are unchanged: no production crate enables the feature.
+- **Conservative readings.**
+  1. A development Policy 2 source has the same bytes as a standard Policy 2 source of
+     that identity. The policy byte names the counts and k_q, not a profile; λ and
+     `proven` are profile facts from the resolver. So a byte-2 certificate grants no
+     standard claim. Under the feature (tests and controls only) a standard lookup
+     would accept it as an original, as it would any Policy 2 source.
+  2. Multiplicity sources move to Policy 2 too, as in the Q12 study.
+  3. The stacked source keeps A4's minimum of 6 variables, so the plan's bits do not
+     depend on the source set.
+- **Controls.** NC-1311 and NC-1312 swap the profile byte both ways (`ProofShape`: the
+  derived model sources differ). NC-1313, NC-1314 and NC-1315 replace the column nonce of
+  the stacked certificate, the stacked opening and the model certificate with one that
+  fails the predicate (`GrindMismatch`). All run through the actual development verifier.
+  A native test pins that the byte-2 input is the pre-A11 input followed by `2` and that
+  the v1 file still round-trips. Without the byte in the public input, NC-1311 and
+  NC-1312 would still pass: the derived sources differ in shape. The transcript binding
+  is checked by that native test and, after review fix 1, by NC-1316: the engine run with
+  the plan fixed at one source set and the public input of the other, both ways
+  (`RoundSumMismatch`). Mutation check: with the byte push removed from `public_input`,
+  NC-1316 goes red ("byte not bound": both replays accept).
+- **Review fixes (independent soundness review of #351, FIX-THEN-MERGE).** (1) NC-1316.
+  (2) `standard_quarantine` also confines `from_code_id_development`,
+  `Profile::Development` and `Sources::Circle` to the development path and forbids
+  them in stele-verifier, with a gate test. (3) Ledger timing caveats. (4) source.rs
+  comment says "every standard Policy 2 source". (5) dev-zk commit, prove and verify
+  reject a non-expander source set.
+
+Consequences: development proof bytes change under byte 2 (pins re-recorded); pre-A11
+proofs are unchanged. E19-02's Draft A7 is subsumed if A11 is accepted. Open: the
+independent review of A11; multiplicity sources at rate 1/4 (now the largest
+section on L0 and L1, an RFC-0008 A5 geometry change); RFC-0008 A8 LU grinding for development proofs (not needed: no λ is claimed).
+
+Status: Accepted with RFC-0026 A11 (development tier; independent soundness review of
+#351: FIX-THEN-MERGE, no soundness break, fix 1 applied; no distinct policy byte needed).

@@ -1,0 +1,85 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "944a4fcd008f7094d315b89521406736d409bef1",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "proof_section_groups_bytes": 1554417,
+  "proof_section_groups_count": 1,
+  "proof_section_identities_bytes": 94608,
+  "proof_section_identities_count": 5,
+  "proof_section_lookups_bytes": 2625583,
+  "proof_section_lookups_count": 21,
+  "proof_section_matmuls_bytes": 289920,
+  "proof_section_matmuls_count": 750,
+  "proof_section_multiplicities_bytes": 4120125,
+  "proof_section_multiplicities_count": 21,
+  "proof_section_openings_bytes": 1107186,
+  "proof_section_openings_count": 2,
+  "prove_peak_rss_bytes": 4427988992,
+  "public_bytes": 301724,
+  "verify_peak_rss_bytes": 359137280
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Transcript(GrindMismatch))"
+  },
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; BSD /usr/bin/time -l. Task E16-30 before/after pair. after: task E16-30 at 944a4fcd008f7094d315b89521406736d409bef1, RFC-0026 A11 profile byte 2 (Circle rate-1/4 stacked and model sources, Policy 2 on every source). Five prove-dev and five verify-dev runs per commit, alternating before and after (ABAB) on a host shared with other workloads (1-minute load average 10 to 45 over the runs); each record is the median run (prove walls before 9.64, 9.64, 9.91, 11.31, 35.25 s; after 9.15, 9.23, 10.47, 12.34, 31.39 s; verify walls before 1.99, 2.00, 2.01, 2.65, 4.83 s; after 0.89, 0.90, 0.90, 0.92, 5.20 s). Controls and model commitment are one run each, taken under that load. Counters proof_section_* are the container's section bytes and counts (RFC-0026 \u00a74.1). Timing caveat (review fix 3): times are medians of five alternating runs on a loaded host; the 8-layer prove wall clock ranged 9.15 to 35.25 s across both commits, so prove-time deltas are within noise; byte counts are exact. The after binary was measured at 5487d5c; the crates diff from 5487d5c to 944a4fc is empty (the rebase onto 77b253f changed bench/README.md only).",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "proof_sha256": "c632073d72a78512b8f68fb938a7cbac9f4e0274cbe94ab1a91ee24737fdf61c",
+  "public_sha256": "653458ee2f6056432143f2c949fea47c703c3d1a62ab515beefa02b19db12ee2",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "07e2921c4033546455eca3813dcdbcfabf51d6b4005abd3803271beac7a17474",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "0270c3aa781c8d81c775ff8dc3bbcc1777e066d8d91e3098b49256c370a9861e",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 9795145,
+ "prover_time_ns": 10470000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment": 75853417,
+  "prove_dev_wall": 10470000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 900000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-t64"
+}

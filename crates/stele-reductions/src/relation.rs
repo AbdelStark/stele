@@ -184,6 +184,48 @@ const MIN_J: u8 = 3;
 const MAX_J: u8 = 14;
 /// Fixed public v2 seed; RFC-0012 A7 bounds hold for every seed.
 const SEED: [u8; 32] = [0; 32];
+/// RFC-0026 A11: Circle blow-up exponent of the stacked and model sources (rate 1/4).
+const CIRCLE_BLOWUP: u8 = 2;
+
+/// The source parameter set of a development proof (RFC-0026 A11). The caller binds
+/// it in the public input; the plan derives every source from it and the relation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Sources {
+    /// A4/A5 v2 expander stacked and model sources and A5 Circle rate-1/2
+    /// multiplicity sources, all under RFC-0010 A3 Policy 1 (no grinding).
+    Expander,
+    /// A11: Circle rate-1/4 stacked and model sources and the same multiplicity
+    /// sources, all under RFC-0010 A14 Policy 2 counts and grinding, resolved for
+    /// the development tier (`proven: false`).
+    Circle,
+}
+impl Sources {
+    /// The verifier's source of `(id, ell, code)` under this set's policy.
+    pub fn source(self, id: u64, ell: u8, code: &[u8], root: [u8; 32]) -> Result<Source<K>, Error> {
+        match self {
+            Sources::Expander => Source::from_code_id(id, ell, code, root),
+            Sources::Circle => Source::from_code_id_development(id, ell, code, root),
+        }
+        .map_err(Error::Pcs)
+    }
+    /// The prover's prepared source of `(id, ell, code)` under this set's policy.
+    pub fn prepare<'a>(
+        self,
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: &'a [M31],
+    ) -> Result<PreparedSource<'a, K>, Error> {
+        let usage = &mut HashUsage::default();
+        match self {
+            Sources::Expander => PreparedSource::from_code_id(id, ell, code, message, usage),
+            Sources::Circle => {
+                PreparedSource::from_code_id_development(id, ell, code, message, usage)
+            }
+        }
+        .map_err(Error::Pcs)
+    }
+}
 
 /// A commitment group: its columns occupy one aligned block of the stacked source
 /// source, column `j` at `offset + j·2^n` (RFC-0026 §2.3 as amended by A4).
@@ -208,10 +250,11 @@ struct Stack {
     bits: u8,
     ell: u8,
     code: Vec<u8>,
+    sources: Sources,
 }
 impl Stack {
     fn source(&self, root: [u8; 32]) -> Result<Source<K>, Error> {
-        Source::from_code_id(self.id, self.ell, &self.code, root).map_err(Error::Pcs)
+        self.sources.source(self.id, self.ell, &self.code, root)
     }
 }
 
@@ -262,6 +305,7 @@ struct Plan {
     /// The model sources, in split order; empty without weight columns.
     model: Vec<Stack>,
     sizes: Vec<u8>,
+    sources: Sources,
 }
 
 fn ceil_log2(n: usize) -> u8 {
@@ -274,30 +318,45 @@ fn v2_code(j: u8) -> Vec<u8> {
     code
 }
 
-/// Stack geometry: at least 2·MIN_J variables, and the expander exponent J that
-/// minimises certificate plus opening bytes (ties: smallest J).
-fn stack(id: u64, bits: u8) -> Result<Stack, Error> {
+/// Stack geometry: at least 2·MIN_J variables (both sets, so the plan's bits do not
+/// depend on the set), and the code that minimises certificate plus opening bytes
+/// under the set's policy. Expander: the v2 exponent J (ties: smallest J). Circle
+/// (A11): the rate-1/4 row split `ell + m = bits` (ties: smallest `ell`).
+fn stack(id: u64, bits: u8, sources: Sources) -> Result<Stack, Error> {
     let bits = bits.max(2 * MIN_J);
-    let mut best: Option<(usize, u8)> = None;
-    for j in MIN_J..=MAX_J.min(bits / 2) {
-        let ell = bits - 2 * j;
-        let Ok(source) = Source::<K>::from_code_id(id, ell, &v2_code(j), [0; 32]) else {
+    let candidates: Vec<(u8, Vec<u8>)> = match sources {
+        Sources::Expander => (MIN_J..=MAX_J.min(bits / 2))
+            .map(|j| (bits - 2 * j, v2_code(j)))
+            .collect(),
+        // Circle (m, b) exists for m <= 30 - b; a source has ell <= 30.
+        Sources::Circle => (bits.saturating_sub(30 - CIRCLE_BLOWUP)..=bits.min(30))
+            .filter_map(|ell| {
+                Source::<K>::new(id, ell, bits - ell, CIRCLE_BLOWUP, [0; 32])
+                    .ok()
+                    .map(|s| (ell, s.code_id().to_vec()))
+            })
+            .collect(),
+    };
+    let mut best: Option<(usize, u8, Vec<u8>)> = None;
+    for (ell, code) in candidates {
+        let Ok(source) = sources.source(id, ell, &code, [0; 32]) else {
             continue;
         };
         let size = source
             .proof_size(ProofKind::Certificate)
             .map_err(Error::Pcs)?
             + source.proof_size(ProofKind::Opening).map_err(Error::Pcs)?;
-        if best.is_none_or(|(b, _)| size < b) {
-            best = Some((size, j));
+        if best.as_ref().is_none_or(|(b, _, _)| size < *b) {
+            best = Some((size, ell, code));
         }
     }
-    let (_, j) = best.ok_or(Error::Unsupported)?;
+    let (_, ell, code) = best.ok_or(Error::Unsupported)?;
     Ok(Stack {
         id,
         bits,
-        ell: bits - 2 * j,
-        code: v2_code(j),
+        ell,
+        code,
+        sources,
     })
 }
 
@@ -359,7 +418,7 @@ fn check(
     })
 }
 
-fn plan(relation: &Relation) -> Result<Plan, Error> {
+fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
     relation.validate().map_err(Error::StatementMismatch)?;
     let mut groups = Vec::new();
     for (g, group_meta) in relation.groups.iter().enumerate() {
@@ -399,7 +458,7 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
             if bits > 30 {
                 return Err(Error::Unsupported);
             }
-            Some(self::stack(2, bits)?)
+            Some(self::stack(2, bits, sources)?)
         }
     };
     let base = 3;
@@ -455,7 +514,7 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         .filter(|i| relation.columns[*i].kind == Kind::Weight)
         .map(|i| relation.columns[i].log_len)
         .collect();
-    let (placement, model) = model_plan(&lengths)?;
+    let (placement, model) = model_plan(&lengths, sources)?;
     let weights: Vec<Weight> = (0..relation.columns.len() as u32)
         .map(ColumnId)
         .filter(|id| relation.columns[id.0 as usize].kind == Kind::Weight)
@@ -480,6 +539,7 @@ fn plan(relation: &Relation) -> Result<Plan, Error> {
         weights,
         model,
         sizes,
+        sources,
     })
 }
 
@@ -820,12 +880,14 @@ fn group_claims(plan: &Plan, stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)>
 }
 
 /// One model source's derived layout (RFC-0026 A5); the model owner commits the
-/// matching [`model_messages`] entry with `PreparedSource::from_code_id(id, ell, &code, ..)`.
+/// matching [`model_messages`] entry with `sources.prepare(id, ell, &code, ..)`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModelLayout {
     pub id: u64,
     pub ell: u8,
     pub code: Vec<u8>,
+    /// The source parameter set this layout was derived under (A11).
+    pub sources: Sources,
     /// The stacked message has `2^bits` entries.
     pub bits: u8,
     /// `(weight index in ColumnId order, block offset)` of each weight in this source.
@@ -838,7 +900,7 @@ pub struct ModelLayout {
 /// `(source, offset)` and the sources.
 type ModelPlan = (Vec<(usize, usize)>, Vec<Stack>);
 
-fn model_plan(lengths: &[u8]) -> Result<ModelPlan, Error> {
+fn model_plan(lengths: &[u8], sources: Sources) -> Result<ModelPlan, Error> {
     let mut placement = vec![(0usize, 0usize); lengths.len()];
     let mut totals: Vec<usize> = Vec::new();
     for (w, &n) in lengths.iter().enumerate() {
@@ -864,15 +926,15 @@ fn model_plan(lengths: &[u8]) -> Result<ModelPlan, Error> {
             offset += 1 << lengths[w];
         }
         // Aligned blocks summing to at most 2^30 fit 2^ceil(log2 total) <= 2^30.
-        model.push(self::stack(MODEL + k as u64, ceil_log2(*total))?);
+        model.push(self::stack(MODEL + k as u64, ceil_log2(*total), sources)?);
     }
     Ok((placement, model))
 }
 
 /// The model sources for weights of `2^lengths[i]` entries in `ColumnId` order (A5),
 /// for a model owner that commits before any relation is built.
-pub fn model_layout_for(lengths: &[u8]) -> Result<Vec<ModelLayout>, Error> {
-    let (placement, model) = model_plan(lengths)?;
+pub fn model_layout_for(lengths: &[u8], sources: Sources) -> Result<Vec<ModelLayout>, Error> {
+    let (placement, model) = model_plan(lengths, sources)?;
     Ok(model
         .into_iter()
         .enumerate()
@@ -880,6 +942,7 @@ pub fn model_layout_for(lengths: &[u8]) -> Result<Vec<ModelLayout>, Error> {
             id: m.id,
             ell: m.ell,
             code: m.code,
+            sources: m.sources,
             bits: m.bits,
             blocks: placement
                 .iter()
@@ -892,14 +955,28 @@ pub fn model_layout_for(lengths: &[u8]) -> Result<Vec<ModelLayout>, Error> {
 }
 
 /// The model sources of a relation, in split order; empty without weight columns.
-pub fn model_layout(relation: &Relation) -> Result<Vec<ModelLayout>, Error> {
+pub fn model_layout(relation: &Relation, sources: Sources) -> Result<Vec<ModelLayout>, Error> {
     let lengths: Vec<u8> = relation
         .columns
         .iter()
         .filter(|c| c.kind == Kind::Weight)
         .map(|c| c.log_len)
         .collect();
-    model_layout_for(&lengths)
+    model_layout_for(&lengths, sources)
+}
+
+/// The plan-derived stacked source of a relation under `root`, `None` without
+/// commitment groups (A4, A11). The verifier derives it the same way; controls use it
+/// to locate one certificate or opening field.
+pub fn stack_source(
+    relation: &Relation,
+    sources: Sources,
+    root: [u8; 32],
+) -> Result<Option<Source<K>>, Error> {
+    plan(relation, sources)?
+        .stack
+        .map(|stack| stack.source(root))
+        .transpose()
 }
 
 /// Place per-weight messages (`ColumnId` order, `2^n` entries each, signed
@@ -922,7 +999,8 @@ pub fn stack_model(layouts: &[ModelLayout], weights: &[&[M31]]) -> Result<Vec<Ve
 
 /// The model messages (signed embedding; each weight at its block offset).
 pub fn model_messages(relation: &Relation, values: &Values) -> Result<Vec<Vec<M31>>, Error> {
-    let plan = plan(relation)?;
+    // Messages depend on the bits only, which no source set changes.
+    let plan = plan(relation, Sources::Expander)?;
     (0..plan.model.len())
         .map(|k| weights_message(relation, &plan, k, values))
         .collect()
@@ -998,7 +1076,8 @@ fn absorb_model(
 
 /// Produce a development-profile proof. `t` must be `Transcript::new(public)` with
 /// the RFC-0026 §1.1 public inputs; `model` holds each prepared model source of
-/// [`model_layout`] with its verified certificate (empty without weights). The
+/// [`model_layout`] with its verified certificate (empty without weights), under the
+/// source set `sources` the caller bound in the public input (A11). The
 /// prover checks none of the verifier's equations; a false witness yields a
 /// rejected proof or an error from a primitive prover.
 pub fn prove(
@@ -1006,8 +1085,9 @@ pub fn prove(
     relation: &Relation,
     values: &Values,
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
 ) -> Result<Proof, Error> {
-    let plan = plan(relation)?;
+    let plan = plan(relation, sources)?;
     prove_plan(t, relation, &plan, values, values, model)
 }
 
@@ -1060,14 +1140,10 @@ fn prove_plan(
         plan.stack
             .as_ref()
             .map(|stack| {
-                let p = PreparedSource::<K>::from_code_id(
-                    stack.id,
-                    stack.ell,
-                    &stack.code,
-                    &committed_message,
-                    &mut HashUsage::default(),
-                )
-                .map_err(Error::Pcs)?;
+                let p =
+                    stack
+                        .sources
+                        .prepare(stack.id, stack.ell, &stack.code, &committed_message)?;
                 let (section, handle) = register(&p)?;
                 Ok::<_, Error>((p, handle, section))
             })
@@ -1093,16 +1169,10 @@ fn prove_plan(
     let (counts, mu_messages): (Vec<_>, Vec<_>) = mu_messages?.into_iter().unzip();
     let mu = parallel::map(plan.checks.len(), |i| {
         let layout = plan.checks[i].layout;
-        let columns = plan.checks[i].k - layout.ell + 2;
-        let p = PreparedSource::<K>::new(
-            layout.id,
-            layout.ell,
-            columns,
-            layout.blowup,
-            &mu_messages[i],
-            &mut HashUsage::default(),
-        )
-        .map_err(Error::Pcs)?;
+        let code = mu_code(&plan.checks[i])?;
+        let p = plan
+            .sources
+            .prepare(layout.id, layout.ell, code.code_id(), &mu_messages[i])?;
         let (section, handle) = register(&p)?;
         Ok::<_, Error>((p, handle, section))
     })
@@ -1244,6 +1314,12 @@ impl stele_sumcheck::Summand<K> for Capture<'_> {
     }
 }
 
+/// A5's Circle multiplicity source of a check (its geometry is the same in both
+/// sets); only its code identity is used, under the plan's policy.
+fn mu_code(check: &Check) -> Result<Source<K>, Error> {
+    mu_source::<K>(check.layout, check.k, [0; 32], stele_pcs::Policy::One).map_err(Error::Lookup)
+}
+
 fn register(p: &PreparedSource<'_, K>) -> Result<(Vec<u8>, VerifiedCertificate<K>), Error> {
     let (certificate, _) = p.certificate().map_err(|f| Error::Pcs(f.cause))?;
     let (handle, _) =
@@ -1364,8 +1440,9 @@ pub fn verify(
     relation: &Relation,
     model: &[&VerifiedCertificate<K>],
     proof: &Proof,
+    sources: Sources,
 ) -> Result<Ledger, Error> {
-    let plan = plan(relation)?;
+    let plan = plan(relation, sources)?;
     model_check(&plan, model)?;
     let mut ledger = Ledger::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
@@ -1395,8 +1472,8 @@ pub fn verify(
     for check in &plan.checks {
         let mut reader = sections.next()?;
         let root = reader.root()?;
-        let source = mu_source::<K>(check.layout, check.k, root, stele_pcs::Policy::One)
-            .map_err(Error::Lookup)?;
+        let l = check.layout;
+        let source = sources.source(l.id, l.ell, mu_code(check)?.code_id(), root)?;
         let size = source
             .proof_size(ProofKind::Certificate)
             .map_err(Error::Pcs)?;

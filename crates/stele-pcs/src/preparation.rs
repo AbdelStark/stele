@@ -107,6 +107,20 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Self::prepare(source, rebuild, message, None, usage)
     }
 
+    /// [`Source::from_code_id_development`] prepared (RFC-0026 A11): the development
+    /// tier's Policy 2 source; the committed columns and root are those of Policy 1.
+    pub fn from_code_id_development(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: &'a [M31],
+        usage: &mut HashUsage,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::from_code_id_development(id, ell, code, [0; 32])?;
+        let rebuild = |root| Source::from_code_id_development(id, ell, code, root);
+        Self::prepare(source, rebuild, message, None, usage)
+    }
+
     /// Prepare a version-3 hiding source (RFC-0010 A15) over the full message
     /// `M'` of [`crate::hiding_message`], with leaf salts drawn from `seed`.
     /// The seed must be the one that produced `M'`, fresh and secret (RFC-0013 A2).

@@ -65,7 +65,7 @@ impl Fixture {
 
 /// The model sources (RFC-0026 A5): messages, preparations and certificates.
 fn prepare<'a>(rel: &Relation, messages: &'a [Vec<M31>]) -> Vec<PreparedSource<'a, QM31>> {
-    let layouts = relation::model_layout(rel).unwrap_or_default();
+    let layouts = relation::model_layout(rel, relation::Sources::Expander).unwrap_or_default();
     layouts
         .iter()
         .zip(messages)
@@ -99,14 +99,20 @@ fn produce(rel: &Relation, values: &Values) -> Result<(Proof, Vec<Vec<M31>>), Er
     let certificates = certify(&prepared);
     let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = relation::prove(&mut t, rel, values, &model)?;
+    let proof = relation::prove(&mut t, rel, values, &model, relation::Sources::Expander)?;
     Ok((proof, messages))
 }
 fn check_proof(rel: &Relation, messages: &[Vec<M31>], proof: &Proof) -> Result<Ledger, Error> {
     let prepared = prepare(rel, messages);
     let certificates = certify(&prepared);
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    relation::verify(&mut t, rel, &certificates.iter().collect::<Vec<_>>(), proof)
+    relation::verify(
+        &mut t,
+        rel,
+        &certificates.iter().collect::<Vec<_>>(),
+        proof,
+        relation::Sources::Expander,
+    )
 }
 fn run(f: &Fixture) -> Result<Ledger, Error> {
     let (proof, messages) = produce(&f.rel, &f.values)?;
@@ -1180,12 +1186,19 @@ fn measures_model_like_relation() {
     let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let start = std::time::Instant::now();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = relation::prove(&mut t, &f.rel, &f.values, &model).expect("proof");
+    let proof = relation::prove(
+        &mut t,
+        &f.rel,
+        &f.values,
+        &model,
+        relation::Sources::Expander,
+    )
+    .expect("proof");
     let proved = start.elapsed();
     let start = std::time::Instant::now();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let refs: Vec<_> = certificates.iter().collect();
-    relation::verify(&mut t, &f.rel, &refs, &proof).expect("verify");
+    relation::verify(&mut t, &f.rel, &refs, &proof, relation::Sources::Expander).expect("verify");
     let verified = start.elapsed();
     let bytes = proof.encode();
     println!(

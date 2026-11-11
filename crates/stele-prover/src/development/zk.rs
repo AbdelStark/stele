@@ -573,7 +573,8 @@ pub fn commit(
     proofs: u32,
     seed: [u8; 32],
 ) -> Result<(ModelCommitment, ModelState), Error> {
-    if proofs == 0 || length == 0 {
+    // RFC-0026 A11: dev-zk uses its hiding sources; an A11 source set is rejected.
+    if proofs == 0 || length == 0 || public.sources != relation::Sources::Expander {
         return Err(Error::StatementMismatch);
     }
     let reference = Statement {
@@ -625,6 +626,9 @@ pub fn prove(
     state: &ModelState,
     index: u32,
 ) -> Result<(Vec<u8>, Vec<K>), Error> {
+    if public.sources != relation::Sources::Expander {
+        return Err(Error::StatementMismatch); // RFC-0026 A11: not a dev-zk input.
+    }
     if index >= commitment.proofs
         || index >= state.next
         || state.revealed.len() != index as usize
@@ -688,7 +692,11 @@ pub fn verify(
     index: u32,
 ) -> Result<Verified, Error> {
     let header = MAGIC.len() + 64;
-    if proof.len() < header || !proof.starts_with(MAGIC) {
+    // RFC-0026 A11: a dev-zk input carries no source-set byte.
+    if proof.len() < header
+        || !proof.starts_with(MAGIC)
+        || public.sources != relation::Sources::Expander
+    {
         return Err(Error::StatementMismatch);
     }
     let d = decode(public)?;

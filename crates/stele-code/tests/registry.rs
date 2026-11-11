@@ -56,6 +56,33 @@ fn accepts_derived_parameters_for_every_supported_identity() {
     );
 }
 
+/// RFC-0026 A11 (ADR-111): the development request is ungated and never `proven`;
+/// its counts are the A14 standard counts.
+#[test]
+fn accepts_development_policy2_requests_unproven() {
+    for id in supported() {
+        let j15 = id.len() != 21 && id[22] == 15;
+        let p = resolve_pcs(&id, 4, Profile::Development);
+        if j15 {
+            assert_eq!(p, Err(Error::UnsupportedParameters));
+            continue;
+        }
+        let p = p.expect("development Policy 2");
+        assert_eq!((p.policy, p.column_grind_bits, p.proven), (2, 16, false));
+        if cfg!(feature = "standard-unproven") {
+            let s = resolve_pcs(&id, 4, Profile::Standard).expect("standard");
+            assert_eq!(
+                (s.certificate_queries, s.opening_queries, s.proven),
+                (p.certificate_queries, p.opening_queries, true)
+            );
+        }
+        assert_eq!(
+            resolve_pcs(&id, 1, Profile::Development),
+            Err(Error::UnsupportedParameters)
+        );
+    }
+}
+
 #[cfg(not(feature = "standard-unproven"))]
 #[test]
 fn rejects_standard_requests_without_the_standard_feature() {
