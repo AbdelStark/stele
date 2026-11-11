@@ -2809,6 +2809,59 @@ Status: Accepted (development tier). Independent review: fix-then-merge (F1 cont
 overclaim, F2 real-model scope, F4 README, F5 wording), then MERGE at 2371198 with
 "accept ADR-109". F3 (extra dev-zk tampers in bench/dev_e2e.py) is a follow-up.
 
+## ADR-110: NC-1310 as a two-value tamper on a minimal relation; INV-4 exception (RFC-0026 A10, §3.6, §9)
+
+Numbering: ADR-108 is on main and #348 proposes ADR-109, so this record takes 110.
+
+Context: RFC-0026 §9 reserves NC-1310: commit one ranged witness value as `2^30`,
+outside its declared width, with every identity recomputed, rejected by the range
+lookup's A5 root equation (`RootMismatch`). It stayed `todo`. On the synthetic
+one-layer development window, every column that could rebalance an identity after the
+change is itself read by another identity, lookup or compose. That follows from the
+RFC-0026 rule that every committed column is range-checked. The two ranged witness
+columns that no identity reads, `attention/maximum/lo` and `hi`, are limbs of a
+`Compose`. So no single-value or two-value tamper of the development window keeps
+every identity true.
+
+Decision:
+
+- **Amendment, not just an ADR (INV-1).** §9 requires every NC-1300..1310 control to run
+  through the actual E16-10 verifier. RFC-0026 A10 (Accepted) redefines NC-1310 at the
+  relation-engine level that this verifier calls, and states the INV-4 exception. This
+  record implements A10.
+- **Window-level coverage stays with NC-1300/1301.** Both run through the actual E16-10
+  verifier. Each leaves a margin entry at `-1`, outside its unsigned range, and is
+  rejected by that range's A5 root equation, `RootMismatch` (RFC-0026 E2). That is
+  the same binding at window level.
+- **Minimal relation.** NC-1310 runs through the actual relation-engine prover and
+  verifier (`stele_reductions::relation::{prove, verify}`), the engine the development
+  verifier calls. The relation has the identity `x + 2^22·y − c = 0`, with `x` unsigned
+  8, `y` signed 9 and `c` public.
+  - The tamper sets `x[0] = 2^30` and `y[0] = −256`.
+  - The identity still holds, `y` stays inside its width, and `x` is the only value
+    outside one.
+  - The plain checker confirms this before the control runs. Its only violation is
+    `x`'s range. That check earns no credit.
+- **Attribution.** `x`'s range is the relation's first range, and checks run in order
+  of first use (RFC-0026 A3). `y` is in its width. So the `RootMismatch` is `x`'s range
+  check, deterministically.
+- **INV-4 exception, documented.** The control changes two values, `x` and the in-width
+  `y` that rebalances the identity. The catalog row states it. The binding under test
+  is "a ranged witness value outside its width is rejected".
+- **Mutation checks.**
+  - With the verifier's A5 root equation skipped (`check_roots`), the control goes red:
+    the tamper is accepted.
+  - With every range check dropped from the plan, the control goes red the same way.
+- **Feature.** The entry and `run_width` are under the negative-controls `controls`
+  feature. `relation::prove` never runs the plain checker, so the false witness needs
+  no other adversary seam.
+
+Consequences: no proof byte, pin or ledger moves. NC-1310 is `done` (115/219 controls).
+A window-level NC-1310 would need an adversary that recomputes the downstream witness.
+That is left open.
+
+Status: Accepted with RFC-0026 A10 (independent review: FIX, then accept A10).
+
 ## ADR-112: dev-zk prover performance: equal-value rewrites, pool use on prover paths only (task E16-24)
 
 Numbered after ADR-109 on main, skipping ADR-110 and ADR-111, which #350 and #351 hold.
