@@ -501,6 +501,7 @@ pub fn run(id: u16) -> Result<(), String> {
     }
 }
 
+#[cfg(feature = "controls")]
 /// E12-27: one RMSNorm gain group (`H0, H1, σH, flipH` of `gains`, padded to 8
 /// positions with `d = gains.len()`) committed by `zk::commit_records`.
 fn records(gains: &[i16]) -> Result<(Relation, Values), String> {
@@ -531,6 +532,7 @@ fn records(gains: &[i16]) -> Result<(Relation, Values), String> {
     Ok((rel_c, values.ok_or("values")?))
 }
 
+#[cfg(feature = "controls")]
 /// NC-0935..0938: one value of the committed gain encoding made inconsistent,
 /// sent through `zk::relation::forge` on claims relation `target` (honest rounds,
 /// true `μ`, no producer self-check). The same adversary on the honest encoding is
@@ -569,6 +571,7 @@ fn records_control(
 }
 
 /// Which claims relation [`records_control`] forges.
+#[cfg(feature = "controls")]
 enum Target {
     /// The combined identities of the gain domain (claims relation 0).
     Identities,
@@ -576,6 +579,7 @@ enum Target {
     Check(usize),
 }
 
+#[cfg(feature = "controls")]
 fn set(rel: &Relation, values: &mut Values, suffix: &str, k: usize, v: i64) -> Result<(), String> {
     let id = rel
         .columns
@@ -589,6 +593,7 @@ fn set(rel: &Relation, values: &mut Values, suffix: &str, k: usize, v: i64) -> R
 }
 
 /// Execute one E12-27 records control.
+#[cfg(feature = "controls")]
 pub fn run_records(id: u16) -> Result<(), String> {
     match id {
         // NC-0935: flipH = −1 with σH = 0 (gain 7): the flip identity.
@@ -621,7 +626,7 @@ pub fn run_records(id: u16) -> Result<(), String> {
 
 /// RFC-0013 A5 item 7 privacy tests on the real one-layer window (T = 4, E12-14b,
 /// review F4), at the relation level, through the actual verifier.
-#[cfg(test)]
+#[cfg(all(test, feature = "controls"))]
 mod privacy {
     use super::*;
     use stele_reductions::stele_field::{Serialize, QM31};

@@ -1603,12 +1603,15 @@ def controls_layout(root):
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
                     for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
     dependencies['stele-sumcheck']['features'] = ['std']
-    # E12-14a: the dev-zk controls' adversaries (never a verifier input).
-    dependencies['stele-reductions']['features'] = ['controls', 'standard-unproven']
+    # E12-14a, ADR-108: the dev-zk adversaries and the standard-profile entry points are
+    # this crate's own off-by-default features, never a dependency-line feature that a
+    # workspace build would unify into every crate.
     # E12-23: pcs_policy2.rs replays the A17 predicate independently of stele-hash.
     dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
+            or manifest.get('features') != {'controls': ['stele-reductions/controls'],
+                                            'standard-unproven': ['stele-reductions/standard-unproven']}
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
     allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
@@ -1721,6 +1724,15 @@ def controls_quarantine(root):
         if re.search(r'feature "standard-unproven"', tree.stdout):
             raise ValueError(f'standard quarantine: {crate} builds with the standard-unproven feature')
     print('gate standard quarantine: stele-cli, stele-prover and stele-verifier build without standard-unproven')
+    # ADR-108: a workspace build with no features selected unifies neither feature.
+    tree = subprocess.run(['cargo', 'tree', '--workspace', '-e', 'features', '--locked', '--offline'],
+                          cwd=root, capture_output=True, text=True)
+    if tree.returncode != 0:
+        raise ValueError(f'feature quarantine: cargo tree failed: {tree.stderr.strip()}')
+    for feature in ('controls', 'standard-unproven'):
+        if re.search(rf'feature "{feature}"', tree.stdout):
+            raise ValueError(f'feature quarantine: the default workspace build enables {feature}')
+    print('gate feature quarantine: the default workspace build enables neither controls nor standard-unproven')
 
 
 def masked_sumcheck_quarantine(root):

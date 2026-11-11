@@ -2739,12 +2739,26 @@ Decision:
       includes `Source::from_bytes` with policy byte 2, so a production verifier
       rejects a Policy 2 context instead of accepting it.
     - `lookup::Descriptor::standard` does not exist without it.
-  - Only the negative-controls crate enables the feature. The standard tests carry
-    `#![cfg(feature = "standard-unproven")]`, and `cargo test --workspace` unifies the
-    feature through the controls crate. A no-feature test pins the rejection.
-  - The native gate checks with `cargo tree -e features` that stele-cli, stele-prover
-    and stele-verifier build without the feature, as the `controls` gate does. Adding it
-    to stele-prover's dependency turns the gate red.
+  - No crate turns the feature on in a dependency line. Under resolver 2 that would
+    unify it into every crate of a `cargo build --workspace`.
+    - `stele-negative-controls` declares its own off-by-default features
+      `standard-unproven` and `controls`, which forward to `stele-reductions`. Its
+      `pcs_policy2`, `lookup_grind`, `zk` and `zk_relation` modules, the E12-27
+      records controls and their CONTROLS entries are `#[cfg]`-gated. Their Cargo test
+      targets carry `required-features`, and so does the catalog test.
+    - The runners select the features explicitly: `native.sh` and
+      `negative-controls.sh` pass `--all-features`, as CI's workspace test and clippy
+      already do, and so does Workflow 02's catalog command.
+    - The standard tests carry `#![cfg(feature = "standard-unproven")]`. A no-feature
+      test pins the rejection.
+  - Two native gates check this:
+    - `cargo tree -p` on stele-cli, stele-prover and stele-verifier must show no
+      `standard-unproven`. Adding it to stele-prover's dependency turns this red.
+    - `cargo tree --workspace -e features` with no feature selected must show neither
+      `controls` nor `standard-unproven`.
+  - Scope extension: the second check also covers the E12-14a/E12-25 `controls`
+    feature. Its old gate checked only `cargo tree -p stele-cli`, so a workspace build
+    unified the adversaries into every crate.
   - The earlier grep lint (`standard_quarantine`) stays as a second, weaker check. It
     misses turbofish, qualified-path and glob forms.
   - So no prover, CLI or verifier can emit `proven: true` or an admitted level for a
