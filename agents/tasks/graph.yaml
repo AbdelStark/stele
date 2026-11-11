@@ -2648,12 +2648,29 @@ tasks:
   rfc:
   - RFC-0013 A5 item 7
   skill: soundness-auditor
-  crate: stele-prover+stele-reductions+stele-cli
-  status: ready
+  crate: stele-prover+stele-reductions+stele-cli+stele-pcs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-25-dev-zk-model-commitment
   acceptance:
   - one hiding weight source per model, published once, with P·t_W claim-mask blocks and a lifetime counter; the prover refuses past either budget
-  - the 1-D records committed in it rather than public; --expect-model pins a dev-zk proof to the published commitment
+  - --expect-model pins a dev-zk proof to the published commitment; RFC-0013 A6 drafted for the lifetime source
   - gate for admitting dev-zk (RFC-0013 A5 item 8); controls for a reused block set and a run past the budget
+- id: E12-27
+  epic: E12
+  title: Commit the 1-D records (norm gains and vectors) in the dev-zk weight source, with their CQIS well-formedness relations
+  depends:
+  - E12-25
+  rfc:
+  - RFC-0013 A6
+  - RFC-0026 A2
+  skill: soundness-auditor
+  crate: stele-prover+stele-reductions
+  status: ready
+  acceptance:
+  - the gain-derived columns (H0, H1, σH, flipH and the final gain) are weight columns of the lifetime source, with ranges and the sign identities that make them a CQIS gain encoding
+  - the 1-D records leave the dev-zk public input and the model digest; controls for an inconsistent encoding
+  - gate for admitting dev-zk (closes review F2)
 - id: E12-26
   epic: E12
   title: dev-zk soundness ledger from the verifier (SC, MASK, ZD, LU and PCS lines per instance and source)
@@ -2677,6 +2694,7 @@ tasks:
   - E12-14a
   - E12-14b
   - E12-25
+  - E12-27
   rfc:
   - RFC-0013 A1
   - RFC-0013 A5
