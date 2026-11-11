@@ -56,6 +56,19 @@ fn accepts_derived_parameters_for_every_supported_identity() {
     );
 }
 
+#[cfg(not(feature = "standard-unproven"))]
+#[test]
+fn rejects_standard_requests_without_the_standard_feature() {
+    // ADR-108: production builds resolve no standard profile before E8-05.
+    for degree in [4, 8] {
+        assert_eq!(
+            resolve_pcs(&circle(1, 1), degree, Profile::Standard),
+            Err(Error::UnsupportedParameters)
+        );
+    }
+}
+
+#[cfg(feature = "standard-unproven")]
 #[test]
 fn accepts_policy2_only_for_standard_extension_requests() {
     for id in supported() {

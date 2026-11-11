@@ -11,6 +11,13 @@ commitment time (measured in its own process) as stage `model_commitment`.
       --device "<cpu>" --toolchain "$(rustc -V)" --prompt-tokens P --threads N \
       --model-config config.json --host-context "<host>" [--rung L1] [--counters extra.json]
 
+`--zk` reads a dev-zk run against one published model commitment (RFC-0013 A6, A7):
+`commit.out` and `commit.time` from `stele commit-model --zk`, `model.commit`, the
+proof-0 files under the names above, `verify1.out` (proof 1 against the same
+commitment, `--expect-model`) and `pin.out` (proof 1 pinned to another model digest,
+the one control). It records the commitment as stage `model_commitment_once`, not part
+of the prove time. `controls.log` is not read.
+
 `--rung` names the ladder rung of RFC-0027 §3 and is written to `model_config.rung`
 (RFC-0018 A2).
 
@@ -47,6 +54,18 @@ def statement(path):
     return {k: lines[k] for k in ('cqis_id', 'model', 'T', 'tokens', 'checked', 'next')}
 
 
+ZK_NOTE = ('RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. '
+           'dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1), admitted at the development tier; '
+           'zero knowledge is conditional and computational (seed-derived masks). The weights and the '
+           '1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for '
+           'P proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover '
+           'time is the prove-dev --zk process wall time of proof 0: Artifact decode, executor capture, plain '
+           'check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; proof 1 '
+           'against the same commitment also verifies. The control is verify-dev of proof 1 pinned to another '
+           'model digest. One run of each process, no repeats: single-run wall times on a laptop. CPU only, '
+           'no GPU. Peak RSS is the {timer} maximum resident set size. Not a cost-model fit input.')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('run', type=Path)
@@ -58,6 +77,7 @@ def main():
     p.add_argument('--host-context', required=True)
     p.add_argument('--counters', type=Path, help='JSON object of extra unsigned integer counters')
     p.add_argument('--rung', help='ladder rung, for example L1 or L2a (RFC-0018 A2)')
+    p.add_argument('--zk', action='store_true', help='a dev-zk run against a published model commitment')
     a = p.parse_args()
     run = a.run
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
@@ -67,9 +87,15 @@ def main():
     verify_ns, verify_rss = gnu_time(run / 'verify.time')
     s = statement(run / 'prove.out')
     assert s == statement(run / 'verify.out'), 'StatementDiffers'
-    controls = re.findall(r'^(\w+): rejected with (\S+) in \d+ ms$', (run / 'controls.log').read_text(), re.M)
-    assert [c for c, _ in controls] == ['next', 'token', 'weight', 'gain'], controls
-    assert 'test result: ok. 1 passed' in (run / 'controls.log').read_text()
+    if a.zk:
+        assert (run / 'verify1.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
+        pin = (run / 'pin.out').read_text().splitlines()[-1]
+        assert pin == 'NO: model differs from --expect-model', pin
+        controls = [('pin', 'model differs from --expect-model')]
+    else:
+        controls = re.findall(r'^(\w+): rejected with (\S+) in \d+ ms$', (run / 'controls.log').read_text(), re.M)
+        assert [c for c, _ in controls] == ['next', 'token', 'weight', 'gain'], controls
+        assert 'test result: ok. 1 passed' in (run / 'controls.log').read_text()
     proof, public = (run / 'proof.bin').read_bytes(), (run / 'public.bin').read_bytes()
     stages = {'prove_dev_wall': prove_ns}
     if (run / 'commit.log').exists():  # separate process: Artifact decode and model commitment only
@@ -79,10 +105,19 @@ def main():
     t = int(s['T'])
     plan = dict(command='stele prove-dev / verify-dev', statement=s, threads=a.threads,
                 model=json.loads(Path(a.model_config).read_text()))
+    extra_counters = {}
+    if a.zk:
+        commit_ns, commit_rss = gnu_time(run / 'commit.time')
+        stages['model_commitment_once'] = commit_ns
+        proofs = int(re.search(r'^proofs (\d+)$', (run / 'commit.out').read_text(), re.M).group(1))
+        plan.update(command='stele commit-model --zk / prove-dev --zk / verify-dev --expect-model',
+                    profile_byte=1, proofs=proofs, proof_index=0)
+        extra_counters = {'commit_peak_rss_bytes': commit_rss,
+                          'model_commitment_bytes': (run / 'model.commit').stat().st_size}
     if a.rung:
         plan['rung'] = a.rung
     counters = {'prove_peak_rss_bytes': prove_rss, 'verify_peak_rss_bytes': verify_rss,
-                'public_bytes': len(public), 'checked_positions': end - start}
+                'public_bytes': len(public), 'checked_positions': end - start, **extra_counters}
     if a.counters:
         extra = json.loads(a.counters.read_text())
         assert isinstance(extra, dict) and not set(extra) & set(counters), 'CounterNames'
@@ -102,7 +137,7 @@ def main():
         'kernel_counters': counters,
         'proof_size_bytes': len(proof), 'verifier_time_ns': {'rust': verify_ns, 'python': 0},
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
-        'note': ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
+        'note': ZK_NOTE.format(timer=timer) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
                  'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
                  'commitment, executor capture (witness), plain check and proof; the witness is not timed '
                  'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '

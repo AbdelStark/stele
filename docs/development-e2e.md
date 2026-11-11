@@ -86,11 +86,13 @@ The last line of `verify-dev` is the verdict, `YES` or `NO: <reason>`. `prove-de
 with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or written,
 1 for rejected and 2 for a usage or I/O error. An option given twice is a usage error.
 
-## dev-zk (task E12-14b)
+## dev-zk (tasks E12-14b, E12-25, E12-27, E12-14)
 
 dev-zk (RFC-0013 A5, RFC-0026 A9, profile byte 1) proves a window against one
-published model commitment (RFC-0013 A6, task E12-25). Its admission
-waits for the independent review and for E12-27 (RFC-0013 A5 item 8).
+published model commitment (RFC-0013 A6, task E12-25), with the weights and the
+norm gains hidden (A7, task E12-27). It is admitted at the development tier
+(RFC-0013 A5 **Admission**, ADR-109, task E12-14). There is no security level, and
+zero knowledge is conditional and computational.
 - `commit-model --zk` commits the weights once, for at most `--proofs` proofs. The
   model seed comes from `/dev/urandom`.
   - It writes the public `--commitment` file (`stele-dev-zk-model-v1`) and prints
@@ -137,6 +139,18 @@ Eight-layer window, `T = 64`, one Apple laptop, one run each, back to back
 |---|---|---|---|
 | development | 16.6 s | 3.0 s | 44,963,009 |
 | dev-zk | 389.9 s | 56.3 s | 145,252,954 |
+
+The admission record (`bench/ledger/e12-14-synthetic-8layer-zk-admission-mac.json`,
+task E12-14) is for the same window against one published commitment with committed
+gains (RFC-0013 A6, A7). Each process ran once, on a host shared with other builds.
+- `commit-model --zk` (P = 8) took 100.4 s.
+- Proof 0 proved in 420.1 s, with 10.9 GB peak RSS.
+- It verified in 54.7 s with `--expect-model`. The proof is 141,745,010 bytes.
+- Proof 1 verified too, and a pin to another model digest was refused.
+
+`bench/dev_e2e.py --zk` writes the record from the directory of those runs:
+`commit.out` and `commit.time`, `model.commit`, proof 0 under the names above,
+`verify1.out` and `pin.out`.
 
 ## A real model: llama2.c `stories42M` (task E16-11)
 

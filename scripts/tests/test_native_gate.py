@@ -51,8 +51,8 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                                     ('negative-controls', ['--coverage'])]:
                 expected = [
                     ['python3', str(ROOT / 'scripts/gates/check.py'), name],
-                    ['cargo', 'test', '-p', 'stele-negative-controls', '--locked', '--offline'],
-                    ['cargo', 'run', '--profile', 'test', '-p', 'stele-negative-controls',
+                    ['cargo', 'test', '-p', 'stele-negative-controls', '--all-features', '--locked', '--offline'],
+                    ['cargo', 'run', '--profile', 'test', '-p', 'stele-negative-controls', '--all-features',
                      '--bin', 'stele-controls', '--locked', '--offline', '--', '--coverage'],
                 ]
                 for failure, count in [('', 3), ('python3', 1), ('test', 2), ('run', 3)]:

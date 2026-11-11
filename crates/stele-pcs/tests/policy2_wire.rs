@@ -1,5 +1,6 @@
 //! RFC-0010 A14 / RFC-0012 A17 item 5: Policy 2 sources, column and tensor nonces,
 //! byte parity with research/merkle-oracle/check_policy2_wire.py.
+#![cfg(feature = "standard-unproven")]
 use stele_code::CodeField;
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{certificate_id, ChallengeField, ChallengeLabel, HashUsage, Transcript};

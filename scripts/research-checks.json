@@ -11,6 +11,7 @@
     "python3 research/merkle-oracle/check_native_policy.py",
     "python3 research/merkle-oracle/check_expander_policy.py",
     "python3 research/fs-pcs/study.py --check",
+    "uv run --locked --script research/fs-pcs/check_lu_grind.py",
     "uv run --locked --script research/sumcheck/check_sumcheck.py",
     "uv run --locked --script research/batching/check_batching.py",
     "uv run --locked --script research/zerocheck/check_zerocheck.py",

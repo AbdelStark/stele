@@ -2434,7 +2434,7 @@ tasks:
   - RFC-0012 A17
   skill: pcs-engineer
   crate: stele-pcs
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-23-policy2-grinding
   acceptance:
@@ -2453,7 +2453,9 @@ tasks:
   - RFC-0008
   skill: pcs-engineer
   crate: stele-reductions
-  status: ready
+  status: done
+  agent: claude-code
+  branch: task/E12-24-lu-grinding
   acceptance:
   - RFC-0008 amendment fixing the LU nonce byte offset (RFC-0012 A17 item 5) before implementation
   - LU (beta, alpha) nonce at the least k meeting (C1) for a standard-profile LU consumer; development LU bytes unchanged
@@ -2684,7 +2686,7 @@ tasks:
   - RFC-0026 A2
   skill: soundness-auditor
   crate: stele-prover+stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-27-dev-zk-records
   acceptance:
@@ -2722,7 +2724,7 @@ tasks:
   crate: stele-reductions+stele-prover
   status: in_progress
   agent: claude-code
-  branch: task/E12-14a-dev-zk-relations
+  branch: task/E12-14-dev-zk-admission
   acceptance:
   - end-to-end dev-zk prove/verify on the one- and eight-layer synthetic windows under RFC-0013 A5, with privacy tests
   - NC-0912 and NC-0909..0915 executed; profile byte admitted only after independent review

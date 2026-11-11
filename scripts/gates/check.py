@@ -497,7 +497,9 @@ def field_sources(root):
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
-               'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs',
+               'tests/lookup_verifier.rs', 'src/lookup_work.rs',
+               # RFC-0008 A8 (E12-24): the standard (β, α) nonce and its pinned bits.
+               'tests/lookup_grind.rs', 'tests/fixtures/lu-grind-bits.txt', 'tests/fixtures/lu-standard-wire.txt', 'src/matmul.rs', 'tests/matmul.rs',
                'src/matmul_producer.rs', 'tests/matmul_producer.rs', 'src/requant.rs',
                'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt', 'src/requant_constraints.rs',
                'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
@@ -566,8 +568,8 @@ def field_sources(root):
         ('use', 'stele_cqis'), ('enum', 'Error'), ('struct', 'Layout'), ('', 'id'), ('', 'ell'), ('', 'blowup'),
         ('struct', 'Limits'), ('', 'positions'), ('', 'public_bytes'), ('', 'proof_bytes'),
         ('struct', 'Statement'), ('', 'id'), ('', 'm'), ('', 'b'), ('', 'table'), ('', 'selector'),
-        ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'new'),
-        ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
+        ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'lu_grind_bits'), ('fn', 'new'),
+        ('fn', 'standard'), ('fn', 'grind_bits'), ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
         ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('enum', 'Profile'), ('fn', 'admit'), ('use', 'producer'), ('use', 'verifier')]
         and len(lookup_declarations) == len(re.findall(r'\bpub\b', lookup))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
@@ -694,7 +696,9 @@ def field_sources(root):
             # controls' adversaries (zk), never a verifier input.
             or manifest.get('features', {})
                 != {'std': ['stele-sumcheck/std', 'stele-pcs/std'],
-                    'controls': ['stele-sumcheck/controls']}
+                    'controls': ['stele-sumcheck/controls'],
+                    # ADR-108: the standard-profile lookup, for tests and controls only.
+                    'standard-unproven': ['stele-pcs/standard-unproven']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
@@ -1032,7 +1036,9 @@ def field_source_codec(root):
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target'))
             # E16-17 (ADR-090), E16-23 (ADR-105): the only feature is the opt-in prover-side pool.
-            or manifest.get('features') != {'std': ['stele-code/std', 'dep:rayon']}
+            # ADR-108: Policy 2 sources resolve only under the test/control feature.
+            or manifest.get('features') != {'std': ['stele-code/std', 'dep:rayon'],
+                                            'standard-unproven': ['stele-code/standard-unproven']}
             or 'build' in manifest.get('package', {})):
         raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')
     checks = [
@@ -1597,15 +1603,18 @@ def controls_layout(root):
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
                     for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
     dependencies['stele-sumcheck']['features'] = ['std']
-    # E12-14a: the dev-zk controls' adversaries (never a verifier input).
-    dependencies['stele-reductions']['features'] = ['controls']
+    # E12-14a, ADR-108: the dev-zk adversaries and the standard-profile entry points are
+    # this crate's own off-by-default features, never a dependency-line feature that a
+    # workspace build would unify into every crate.
     # E12-23: pcs_policy2.rs replays the A17 predicate independently of stele-hash.
     dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
             or manifest.get('dependencies') != dependencies
+            or manifest.get('features') != {'controls': ['stele-reductions/controls'],
+                                            'standard-unproven': ['stele-reductions/standard-unproven']}
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
@@ -1706,6 +1715,24 @@ def controls_quarantine(root):
     if re.search(r'feature "controls"', tree.stdout):
         raise ValueError('controls quarantine: stele-cli builds with the controls feature')
     print('gate controls quarantine: stele-cli builds without the controls adversaries')
+    # ADR-108: no production crate resolves a standard profile before E8-05.
+    for crate in ('stele-cli', 'stele-prover', 'stele-verifier'):
+        tree = subprocess.run(['cargo', 'tree', '-p', crate, '-e', 'features', '--locked', '--offline'],
+                              cwd=root, capture_output=True, text=True)
+        if tree.returncode != 0:
+            raise ValueError(f'standard quarantine: cargo tree failed: {tree.stderr.strip()}')
+        if re.search(r'feature "standard-unproven"', tree.stdout):
+            raise ValueError(f'standard quarantine: {crate} builds with the standard-unproven feature')
+    print('gate standard quarantine: stele-cli, stele-prover and stele-verifier build without standard-unproven')
+    # ADR-108: a workspace build with no features selected unifies neither feature.
+    tree = subprocess.run(['cargo', 'tree', '--workspace', '-e', 'features', '--locked', '--offline'],
+                          cwd=root, capture_output=True, text=True)
+    if tree.returncode != 0:
+        raise ValueError(f'feature quarantine: cargo tree failed: {tree.stderr.strip()}')
+    for feature in ('controls', 'standard-unproven'):
+        if re.search(rf'feature "{feature}"', tree.stdout):
+            raise ValueError(f'feature quarantine: the default workspace build enables {feature}')
+    print('gate feature quarantine: the default workspace build enables neither controls nor standard-unproven')
 
 
 def masked_sumcheck_quarantine(root):
@@ -1732,6 +1759,30 @@ def masked_sumcheck_quarantine(root):
     if found:
         raise ValueError(f'mask source constructed outside the A4 consumer: {found}')
     print('gate masked quarantine: masked sumcheck used only by its tests, controls and the A4 consumer')
+
+
+def standard_quarantine(root):
+    """ADR-106/ADR-108: no standard-profile caller before E8-05.
+
+    `resolve_pcs`'s `proven: true` (RFC-0010 A14 item 6) and RFC-0008 A8 make the
+    PCS and LU grinding rounds meet RFC-0012 A17 (C1). A composed standard proof
+    also needs (C1) on every non-grinding round, plus (C2) and (C3), which E8-05's
+    generator checks. Until then, only the defining crates, their tests and the
+    controls may name the standard entry points. No proof claims an admitted level.
+    """
+    allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
+               'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/tests/policy2_wire.rs',
+               'crates/stele-reductions/src/lookup.rs', 'crates/stele-reductions/tests/lookup_grind.rs',
+               'tests/negative-controls/src/pcs_policy2.rs', 'tests/negative-controls/src/lookup_grind.rs'}
+    pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
+                         r'|\bpolicy::\{[^}]*\bTwo\b|\bPolicy::\{[^}]*\bTwo\b')
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   if (root / directory).is_dir()
+                   for path in (root / directory).rglob('*.rs')
+                   if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
+    if found:
+        raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
+    print('gate standard quarantine: standard PCS/LU entry points used only by their crates, tests and controls')
 
 
 def main():
@@ -1761,6 +1812,7 @@ def main():
                 public_coefficients(ROOT)
                 transcript_registry(ROOT)
                 masked_sumcheck_quarantine(ROOT)
+                standard_quarantine(ROOT)
                 controls_quarantine(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)

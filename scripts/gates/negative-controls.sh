@@ -8,5 +8,5 @@ fi
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 python3 "$root/scripts/gates/check.py" negative-controls
 cd "$root"
-cargo test -p stele-negative-controls --locked --offline
-cargo run --profile test -p stele-negative-controls --bin stele-controls --locked --offline -- --coverage
+cargo test -p stele-negative-controls --all-features --locked --offline
+cargo run --profile test -p stele-negative-controls --all-features --bin stele-controls --locked --offline -- --coverage

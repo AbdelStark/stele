@@ -183,6 +183,11 @@ pub fn resolve_pcs(
     if profile != Profile::Standard || field_degree == 1 {
         return Err(Error::UnsupportedParameters);
     }
+    // ADR-108: no production build resolves a standard profile before E8-05's
+    // composed (C1)-(C3) check; tests and controls opt in with `standard-unproven`.
+    if cfg!(not(feature = "standard-unproven")) {
+        return Err(Error::UnsupportedParameters);
+    }
     // The factory validated the identity: Circle m <= 30 - b, v2 J in 3..=15.
     let (certificate_queries, opening_queries) = if code_id.len() == 21 {
         let m = usize::from(code_id[19]);

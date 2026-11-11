@@ -344,7 +344,7 @@ dependencies, remove profile/compiler overrides, and choose a new empty
 `CARGO_TARGET_DIR` for each `PROFILE` (`dev`, then `test`):
 
 ```sh
-cargo build --profile "$PROFILE" -p stele-negative-controls --bin stele-controls \
+cargo build --profile "$PROFILE" -p stele-negative-controls --all-features --bin stele-controls \
   --locked --offline --verbose --message-format=json
 ```
 
