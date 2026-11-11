@@ -102,6 +102,18 @@ impl Scope {
         Builder::new(relation, &self.name).public(name, values, width, log_len)
     }
 
+    /// A public column of a declared width (the dev-zk gain columns, E12-27).
+    pub(crate) fn public_width(
+        &self,
+        relation: &mut Relation,
+        name: &str,
+        values: Vec<i64>,
+        width: Width,
+        log_len: u8,
+    ) -> ColumnId {
+        Builder::new(relation, &self.name).public(name, values, width, log_len)
+    }
+
     pub(crate) fn identity(&self, relation: &mut Relation, name: &str, vars: u8, terms: Vec<Term>) {
         Builder::new(relation, &self.name).identity(name, vars, terms);
     }

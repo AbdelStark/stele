@@ -2667,7 +2667,7 @@ tasks:
   - RFC-0013 A5 item 7
   skill: soundness-auditor
   crate: stele-prover+stele-reductions+stele-cli+stele-pcs
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-25-dev-zk-model-commitment
   acceptance:
@@ -2684,7 +2684,9 @@ tasks:
   - RFC-0026 A2
   skill: soundness-auditor
   crate: stele-prover+stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-27-dev-zk-records
   acceptance:
   - the gain-derived columns (H0, H1, σH, flipH and the final gain) are weight columns of the lifetime source, with ranges and the sign identities that make them a CQIS gain encoding
   - the 1-D records leave the dev-zk public input and the model digest; controls for an inconsistent encoding

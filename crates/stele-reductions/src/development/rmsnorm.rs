@@ -77,6 +77,10 @@ pub struct RmsNormPlan {
     pub gains: Vec<i16>,
     /// Rows `T`, a power of two.
     pub rows: usize,
+    /// dev-zk (E12-27): the gain-derived columns take their format's full widths
+    /// (`H0` unsigned 8, `H1` signed 8, `σH` unsigned 1, `flipH` signed 2) instead
+    /// of the widths of these gains, so the relation does not depend on them.
+    pub fixed_widths: bool,
 }
 
 /// The executor's intermediates of one row (RFC-0026 §3.8), from [`NormEvaluation`].
@@ -521,12 +525,17 @@ impl Module for RmsNorm {
         chains.push(s.chain(relation, "Jg", lt, jg));
 
         let [h0, h1, sh, s1] = self.gain_bytes(ld);
+        let fixed = self.plan.fixed_widths;
+        let mut public = |name: &str, values: Vec<i64>, width: Width| match fixed {
+            true => s.public_width(relation, name, values, width, ld),
+            false => s.public(relation, name, values, ld),
+        };
         let gains = [
-            s.public(relation, "H0", h0, ld),
-            s.public(relation, "H1", h1, ld),
+            public("H0", h0, Width::unsigned(8)),
+            public("H1", h1, Width::signed(8)),
         ];
-        let sigma_h = s.public(relation, "sigmaH", sh, ld);
-        let flip = s.public(relation, "flipH", s1, ld);
+        let sigma_h = public("sigmaH", sh, Width::unsigned(1));
+        let flip = public("flipH", s1, Width::signed(2));
         let output = s.ranged(relation, "Y", Width::signed(16), ev);
         let top = (self.es / 8) as usize;
         let z: Vec<_> = (0..top)

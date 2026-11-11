@@ -428,9 +428,9 @@ verifier and fixed public challenges. Nothing is proved for the composed proof.
 Following FlashProve's declared list, by design:
 
 1. The public input: the model bytes (`Model`, `Scales`, `Preparation`,
-   including mantissas and exponents chosen from the weights), every 1-D record
-   (norm gains and other vectors, RFC-0026 A2), `T`, the tokens, `[r, e)` and
-   `y`.
+   including mantissas and exponents chosen from the weights), the 1-D records'
+   lengths and formats (their values are committed weights under RFC-0013 A7,
+   E12-27), `T`, the tokens, `[r, e)` and `y`.
 2. Every shape, the plan, the source layouts and the query budgets.
 3. Whether a proof was produced: an unsupported model, an out-of-range value or
    a wrong token fails, and that depends on the weights.

@@ -37,6 +37,8 @@ pub struct PlanData<'a> {
     pub scales: &'a Scales,
     /// `(ordinal, codes)` of every 1-D record, in artifact record order.
     pub vectors: &'a [(u16, Vec<i16>)],
+    /// dev-zk: gain-derived columns at their full widths (E12-27).
+    pub zk: bool,
 }
 
 impl PlanData<'_> {
@@ -201,6 +203,7 @@ impl Layout {
                     descriptor: norm1_descriptor,
                     gains: gains[0].clone(),
                     rows: t,
+                    fixed_widths: plan.zk,
                 },
                 stream,
                 &s("norm1"),
@@ -356,6 +359,7 @@ impl Layout {
                     descriptor: norm2_descriptor,
                     gains: gains[1].clone(),
                     rows: t,
+                    fixed_widths: plan.zk,
                 },
                 mid_out,
                 &s("norm2"),
@@ -467,6 +471,7 @@ impl Layout {
                     descriptor: final_descriptor,
                     gains: final_gains.clone(),
                     rows: t,
+                    fixed_widths: plan.zk,
                 },
                 policy: policy(model.final_policy())?,
                 head: plan.projection(
