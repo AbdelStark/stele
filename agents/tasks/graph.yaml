@@ -4158,3 +4158,102 @@ tasks:
   - weight-hiding and activation-hiding proofs on L3b; prover overhead at most 15 percent
   - the simulator argument is written in formal/ and reviewed by the soundness-auditor
   - the budget is enforced across batches
+- id: E16-21
+  epic: E16
+  title: Development-profile GPU gating micro-benchmark and RFC-0014 amendment
+  depends:
+  - E16-18
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: done
+  agent: claude-code
+  branch: task/E16-21-gpu-gating
+  acceptance:
+  - device-resident dense sumcheck rounds measured on a rented RTX 4090 at the 8-layer and stories42M relation sizes, transfers included
+  - projected stories42M prove-time gain reported; the full backend proceeds only at >= 3x
+  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-103, provisional NO-GO)
+- id: E16-21a
+  epic: E16
+  title: Development-profile GPU backend infrastructure (backend trait, op table, parity harness)
+  depends:
+  - E16-21
+  - E16-22
+  - E10-01
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - CPU backend is the default and unchanged; GPU behind an opt-in feature with runtime-loaded CUDA
+  - verifier and every --no-default-features build free of GPU code (cargo tree, CI check)
+  - parity harness compares GPU and CPU outputs byte for byte
+- id: E16-21b
+  epic: E16
+  title: GPU dense sumcheck and zerocheck rounds, folds and eq tables
+  depends:
+  - E16-21a
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - fixed-order reductions, no atomics on transcript-bound values
+  - FNV proof pins identical on the GPU host
+- id: E16-21c
+  epic: E16
+  title: GPU LogUp fraction-tree levels
+  depends:
+  - E16-21b
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - FNV proof pins identical on the GPU host
+- id: E16-21d
+  epic: E16
+  title: GPU v2 expander encoding and Merkle leaf hashing
+  depends:
+  - E16-21b
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - FNV proof pins identical on the GPU host
+- id: E16-21e
+  epic: E16
+  title: stories42M T = 64 GPU prove-time ledger entry
+  depends:
+  - E16-21c
+  - E16-21d
+  rfc:
+  - RFC-0018 A1
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-bench
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - GPU prove time against the 24-thread CPU run (bench/ledger/e16-18-dev-stories42m.json), with GPU model and transfer share recorded
+- id: E16-22
+  epic: E16
+  title: stories42M T = 64 prove stage shares on a Linux host
+  depends:
+  - E16-21
+  rfc:
+  - RFC-0026 §7
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-bench
+  status: ready
+  acceptance:
+  - perf profile of one stele prove-dev run of stories42M at T = 64 on the 24-thread host class of bench/ledger/e16-18-dev-stories42m.json, release build with debuginfo
+  - wall-time shares of dense and zerocheck rounds, LogUp levels, v2 encoding, Merkle hashing and the residual, with the parallel and sequential split, recorded in a bench/ledger entry
+  - ADR-103 confirmed (residual above one third) or reversed (residual at most one third) in a new ADR
