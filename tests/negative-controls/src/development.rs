@@ -21,6 +21,9 @@
 //!   proof under the input with it (`RoundSumMismatch`). Unlike NC-1311/1312, no source
 //!   shape differs, so only the public-input byte can reject.
 //!
+//! NC-1310 (`run_width`) runs on a minimal relation through the relation-engine
+//! prover and verifier (RFC-0026 A10), as a documented INV-4 exception (ADR-110).
+//!
 //! NC-1305 and NC-1309 restamp the container's statement digest with the verifier's own,
 //! so the rejection comes from the engine transcript, not the prover-written header.
 use stele_prover::development::container;
@@ -1016,4 +1019,126 @@ mod privacy {
         let chi2 = chi2_same_x10(&histogram(&p), &histogram(&q));
         assert!(chi2 < 377, "10·χ² {chi2}");
     }
+}
+
+/// NC-1310 (RFC-0026 §3.6, §9): a ranged witness value committed as `2^30`, outside its
+/// declared width, with every identity recomputed, through the actual relation-engine
+/// prover and verifier (`stele_reductions::relation`).
+///
+/// Documented INV-4 exception (ADR-110): two values change. In every development
+/// window, each column that could rebalance an identity is itself read by another
+/// identity or lookup. So the control uses a minimal relation: `x + 2^22·y − c = 0`,
+/// with `x` unsigned 8, `y` signed 9 and `c` public. The tamper sets `x[0] = 2^30` and
+/// `y[0] = −256`. The identity still holds, `y` stays inside its width, and `x` is the
+/// only value outside one. `x`'s range is the relation's first range, so its A5 check
+/// runs first, and the rejection, `RootMismatch` from its root equation, is `x`'s.
+#[cfg(feature = "controls")]
+pub fn run_width() -> Result<(), String> {
+    use stele_hash::Transcript;
+    use stele_reductions::relation::{prove, verify};
+    use stele_reductions::stele_ir::relation::{
+        check, Identity, Kind, Range, Ref, Term, Violation, Width,
+    };
+
+    const PUBLIC: &[u8] = b"stele/nc-1310/width";
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("G/width/1", 1));
+    let x = rel.add_column("x", g.clone(), Width::unsigned(8), 1);
+    let y = rel.add_column("y", g, Width::signed(9), 1);
+    let c = rel.add_column("c", Kind::Public(vec![0, 7]), Width::unsigned(8), 1);
+    let at = |column| vec![Ref::identity(column, 1)];
+    rel.identities.push(Identity {
+        name: "width".into(),
+        vars: 1,
+        terms: vec![
+            Term {
+                coeff: 1,
+                factors: at(x),
+            },
+            Term {
+                coeff: 1 << 22,
+                factors: at(y),
+            },
+            Term {
+                coeff: -1,
+                factors: at(c),
+            },
+        ],
+    });
+    for (name, column, width) in [("x", x, Width::unsigned(8)), ("y", y, Width::signed(9))] {
+        rel.ranges.push(Range {
+            name: name.into(),
+            column,
+            width,
+        });
+    }
+    let witness = |tampered: &bool| -> Result<Values, String> {
+        let mut values = Values::new(&rel);
+        let (xs, ys) = if *tampered {
+            (vec![1 << 30, 7], vec![-256, 0])
+        } else {
+            (vec![0, 7], vec![0, 0])
+        };
+        values.set(&rel, x, xs).map_err(|e| format!("{e:?}"))?;
+        values.set(&rel, y, ys).map_err(|e| format!("{e:?}"))?;
+        Ok(values)
+    };
+    // The plain checker confirms the tamper keeps the identity and y's width: its only
+    // violation is x's range. It is a fixture check, not the rejection under test.
+    match check(&rel, &witness(&true)?) {
+        Err(Violation::Range { relation, .. }) if relation == "x" => {}
+        other => return Err(format!("tamper is not exactly x's width: {other:?}")),
+    }
+    crate::check_control(
+        &false,
+        &Tamper1310,
+        |tampered| {
+            let values = witness(tampered)?;
+            let mut t = Transcript::new(PUBLIC).map_err(|e| format!("{e:?}"))?;
+            prove(
+                &mut t,
+                &rel,
+                &values,
+                &[],
+                stele_reductions::relation::Sources::Expander,
+            )
+            .map_err(|e| format!("{e:?}"))
+        },
+        |proof| {
+            let mut t = Transcript::new(PUBLIC).map_err(|e| format!("{e:?}"))?;
+            verify(
+                &mut t,
+                &rel,
+                &[],
+                proof,
+                stele_reductions::relation::Sources::Expander,
+            )
+            .map(|_| ())
+            .map_err(|e| name_of(&format!("{e:?}")))
+        },
+        "RootMismatch".to_string(),
+    )
+    .map_err(|e| format!("{e:?}"))
+}
+
+/// The innermost variant name of a nested error's debug form.
+#[cfg(feature = "controls")]
+fn name_of(debug: &str) -> String {
+    let inner = debug.trim_end_matches(')');
+    inner.rsplit('(').next().unwrap_or(inner).into()
+}
+
+#[cfg(feature = "controls")]
+struct Tamper1310;
+#[cfg(feature = "controls")]
+impl crate::ProverHook<bool> for Tamper1310 {
+    fn tamper(&self, tampered: &mut bool) {
+        *tampered = true;
+    }
+}
+
+#[cfg(all(test, feature = "controls"))]
+#[test]
+fn rejects_nc_1310_out_of_width() {
+    run_width().expect("NC-1310");
 }

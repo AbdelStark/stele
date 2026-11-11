@@ -189,7 +189,7 @@
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | todo |
 | NC-1308 | development column claim | 0026 §2.3 | route one column claim to the neighbouring column index | `ValueMismatch` | todo |
 | NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `RoundSumMismatch` | done |
-| NC-1310 | development width | 0026 §3.6 | commit one ranged witness value as 2^30, outside its width, with every identity recomputed | `RootMismatch` | todo |
+| NC-1310 | development width | 0026 §3.6 | commit one ranged witness value as 2^30, outside its width, with every identity recomputed (RFC-0026 A10: relation-engine level; INV-4 exception, ADR-110: a second, in-width value rebalances the identity) | `RootMismatch` | done |
 | NC-1311 | development profile byte | 0026 A11 | verify an A11 (Circle, Policy 2) proof with the profile byte omitted, header restamped: the verifier derives the pre-A11 model sources | `ProofShape` | done |
 | NC-1312 | development profile byte | 0026 A11 | verify a pre-A11 (expander, Policy 1) proof with the profile byte 2 added, header restamped: the verifier derives the A11 model sources | `ProofShape` | done |
 | NC-1313 | development source grinding | 0026 A11, 0010 A14 | replace the stacked certificate's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
@@ -239,9 +239,9 @@ relation, rejected only by binding each relation's `μ` in the shared batch.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit. RFC-0026 A11
-(Proposed, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
-that selects the source set, and the Policy 2 column nonces of the stacked certificate,
-the stacked opening and the model certificate.
+(Accepted, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
+that selects the source set (NC-1316 for its transcript binding alone), and the Policy 2
+column nonces of the stacked certificate, the stacked opening and the model certificate.
 
 The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.
 
