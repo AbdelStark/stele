@@ -388,6 +388,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || development::run(1315),
     },
     catalog::RegisteredControl {
+        id: 1316,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || development::run(1316),
+    },
+    catalog::RegisteredControl {
         id: 309,
         kind: catalog::ControlKind::Proof,
         expected_error: "CertificateContext",

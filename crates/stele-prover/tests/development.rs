@@ -750,6 +750,15 @@ fn zk_window(name: &str, t: usize) -> usize {
     let mut other = statement.clone();
     other.next = other.next.map(|y| y ^ 1);
     assert!(zk::verify(&public, &other, &proof, &commitment, index).is_err());
+    // RFC-0026 A11: a dev-zk input naming the Circle source set is rejected.
+    let circle = Public {
+        sources: Sources::Circle,
+        ..public.clone()
+    };
+    assert_eq!(
+        zk::verify(&circle, &statement, &proof, &commitment, index).err(),
+        Some(Error::StatementMismatch)
+    );
     proof.len()
 }
 

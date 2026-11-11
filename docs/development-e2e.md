@@ -11,7 +11,7 @@ bytes, a power-of-two token window `x_0..x_{T-1}`, a checked range `[r, e)` and,
 `e = T`, the next token `y`. It:
 
 1. commits the weight matrices once, stacked into RFC-0010 Circle sources at rate 1/4
-   under Policy 2 (the model commitment; RFC-0026 A11, Proposed);
+   under Policy 2 (the model commitment; RFC-0026 A11);
 2. runs `Executor::capture` and declares every RFC-0026 §5 module in order;
 3. assigns the witness, runs the plain checker, then the relation engine;
 4. writes a `stele-dev-e2e-v1` container (`stele_proof::development`, RFC-0026 §4.1).
@@ -266,7 +266,7 @@ python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
 
 ### Circle rate-1/4 sources under Policy 2 (task E16-30)
 
-RFC-0026 A11 (Proposed) moves the stacked and model sources to the Circle code at rate
+RFC-0026 A11 moves the stacked and model sources to the Circle code at rate
 1/4 and every source to RFC-0010 A14 Policy 2. It claims no security level. Before is
 `origin/main` `276b2c0` and after is `944a4fc`, on one Apple M4 Max laptop shared with
 other workloads. The synthetic windows had five alternating runs of each, and each

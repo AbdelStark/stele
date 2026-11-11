@@ -15,19 +15,25 @@
 //!   other model sources from the byte). NC-1313, NC-1314 and NC-1315 replace the
 //!   column-round nonce of the stack certificate, the stack opening and the model
 //!   certificate with one that fails the k_q = 16 predicate (`GrindMismatch`).
+//! - NC-1316 (RFC-0026 A11, review fix 1): the transcript binding of the profile byte.
+//!   The engine is run with the plan fixed at one source set and the transcript input of
+//!   the other: an A11 proof under the input without the trailing `2`, and a pre-A11
+//!   proof under the input with it (`RoundSumMismatch`). Unlike NC-1311/1312, no source
+//!   shape differs, so only the public-input byte can reject.
 //!
 //! NC-1305 and NC-1309 restamp the container's statement digest with the verifier's own,
 //! so the rejection comes from the engine transcript, not the prover-written header.
 use stele_prover::development::container;
 use stele_prover::development::{
-    artifact_id, prove, prove_tampered, statement_digest_for, verify, zk, Committed, Error, Public,
-    Statement, Weights,
+    artifact_id, prove, prove_tampered, public_input, statement_digest_for, verify, zk, Committed,
+    Error, Public, Statement, Weights,
 };
 use stele_reductions::relation::{self, Sources};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{ArtifactLayout, Model, Preparation, Role, Scales};
+use stele_reductions::stele_hash::Transcript;
 use stele_reductions::stele_ir::relation::{Relation, Values};
-use stele_reductions::stele_pcs::{ProofKind, Source};
+use stele_reductions::stele_pcs::{verify_certificate, ProofKind, Source};
 
 const RAW: &[u8] = include_bytes!("../../../crates/stele-prover/tests/fixtures/synthetic-e2e.bin");
 const JSON: &str = include_str!("../../../crates/stele-prover/tests/fixtures/synthetic-e2e.json");
@@ -64,6 +70,44 @@ fn restamped(
     let mut c = container::decode(proof).map_err(|e| format!("{e:?}"))?;
     c.statement = statement_digest_for(public, statement).map_err(|e| format!("{e:?}"))?;
     Ok(verify(public, statement, &c.encode()).err())
+}
+
+/// RFC-0026 A11, NC-1316: replay the engine with the plan and model sources fixed at
+/// `plan` and the transcript started from `input`'s public input (same window).
+fn engine_with_input(
+    public: &Public,
+    input: &Public,
+    statement: &Statement,
+    rel: &Relation,
+    proof: &[u8],
+    plan: Sources,
+) -> Result<Option<Error>, String> {
+    let c = container::decode(proof).map_err(|e| format!("{e:?}"))?;
+    let layouts = relation::model_layout(rel, plan).map_err(|e| format!("{e:?}"))?;
+    let mut certificates = Vec::new();
+    for (l, (root, bytes)) in layouts.iter().zip(&public.commitment) {
+        let source = l
+            .sources
+            .source(l.id, l.ell, &l.code, *root)
+            .map_err(|e| format!("{e:?}"))?;
+        let (verified, _) =
+            verify_certificate(source, bytes).map_err(|f| format!("{:?}", f.cause))?;
+        certificates.push(verified);
+    }
+    let bytes = public_input(input, &c.cqis_id, statement);
+    let mut t = Transcript::<relation::K>::new(&bytes).map_err(|e| format!("{e:?}"))?;
+    let sections = relation::Proof {
+        groups: c.groups,
+        multiplicities: c.multiplicities,
+        identities: c.identities,
+        lookups: c.lookups,
+        matmuls: c.matmuls,
+        openings: c.openings,
+    };
+    let refs: Vec<_> = certificates.iter().collect();
+    Ok(relation::verify(&mut t, rel, &refs, &sections, plan)
+        .err()
+        .map(Error::Engine))
 }
 
 fn name(error: &Error) -> String {
@@ -530,6 +574,46 @@ pub fn run(id: u16) -> Result<(), String> {
                 ..old
             };
             ("ProofShape", restamped(&added, &honest, &old_proof)?)
+        }
+        1316 => {
+            let mut captured = None;
+            let mut hook = |r: &mut Relation, _: &mut Values| captured = Some(r.clone());
+            prove_tampered(&public, &mut exec, &weights, &committed, &honest, &mut hook)
+                .map_err(|e| format!("capture prover: {e:?}"))?;
+            let rel = captured.ok_or("no relation")?;
+            let omitted = Public {
+                sources: Sources::Expander,
+                ..public.clone()
+            };
+            // The harness itself: the honest input under the honest plan accepts.
+            if let Some(e) =
+                engine_with_input(&public, &public, &honest, &rel, &proof, Sources::Circle)?
+            {
+                return Err(format!("honest replay rejected: {e:?}"));
+            }
+            let a11 = engine_with_input(&public, &omitted, &honest, &rel, &proof, Sources::Circle)?;
+            // Reverse: a pre-A11 proof under its plan, transcript input with `2` appended.
+            let w = Weights::from_artifact_sources(&model, artifact, Sources::Expander)
+                .map_err(|e| format!("{e:?}"))?;
+            let c = Committed::new(&w).map_err(|e| format!("{e:?}"))?;
+            let old = Public {
+                commitment: c.commitment.clone(),
+                sources: Sources::Expander,
+                ..public.clone()
+            };
+            let old_proof = prove(&old, &mut exec, &w, &c, &honest)
+                .map_err(|e| format!("pre-A11 prover: {e:?}"))?;
+            let added = Public {
+                sources: Sources::Circle,
+                ..old.clone()
+            };
+            let pre =
+                engine_with_input(&old, &added, &honest, &rel, &old_proof, Sources::Expander)?;
+            match (&a11, &pre) {
+                (Some(a), Some(b)) if name(a) == name(b) => {}
+                _ => return Err(format!("byte not bound: omitted {a11:?}, added {pre:?}")),
+            }
+            ("RoundSumMismatch", a11)
         }
         1313..=1315 => {
             // The plan-derived relation, captured from the prover's own declaration.

@@ -1025,8 +1025,9 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
 
 ### A11 — Circle rate-1/4 sources under Policy 2 for development proofs
 
-Status: Proposed (development-tier amendment under RFC-0027 §2; independent review
-pending, Workflow 02 item 4). Task: E16-30. Decision: ADR-111 (Proposed).
+Status: Accepted (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
+Independent soundness review of #351: FIX-THEN-MERGE, no soundness break; fix 1
+(NC-1316) applied, and no distinct policy byte is needed. Task: E16-30. Decision: ADR-111.
 
 **Motivation.** The PCS is most of a development proof. The stacked (A4) and model (A5)
 sources are v2 expander sources under RFC-0010 A3 Policy 1, which needs up to 13,472
@@ -1127,7 +1128,10 @@ codeword per row, fewer responses per proof. Each grinding round costs the prove
 **Controls.** NC-1311 (an A11 proof with the byte omitted, header restamped:
 `ProofShape`), NC-1312 (a pre-A11 proof with byte 2 added: `ProofShape`), NC-1313,
 NC-1314 and NC-1315 (the stacked certificate's, the stacked opening's and the model
-certificate's column nonce replaced by one failing the predicate: `GrindMismatch`).
+certificate's column nonce replaced by one failing the predicate: `GrindMismatch`), and
+NC-1316 (the transcript binding of the byte: the engine run with the plan fixed at one
+source set and the public input of the other, both ways, so no source shape differs:
+`RoundSumMismatch`; removing the byte from the public input turns it red).
 NC-1300, NC-1301, NC-1304, NC-1305 and NC-1309 run unchanged on byte-2 proofs.
 
 **Affected tasks.** E16-30 (implements it). E19-02: Draft A7's geometry is A11's; if

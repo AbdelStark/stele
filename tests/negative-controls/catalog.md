@@ -195,6 +195,7 @@
 | NC-1313 | development source grinding | 0026 A11, 0010 A14 | replace the stacked certificate's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
 | NC-1314 | development source grinding | 0026 A11, 0010 A14 | replace the stacked opening's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
 | NC-1315 | development source grinding | 0026 A11, 0010 A14 | replace the model certificate's column-round nonce (public input) with one failing the k_q = 16 predicate | `GrindMismatch` | done |
+| NC-1316 | development profile byte transcript | 0026 A11 | replay the engine with the plan fixed at one source set and the transcript input of the other (an A11 proof without the trailing byte 2; a pre-A11 proof with it): no source shape differs | `RoundSumMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -238,7 +239,7 @@ relation, rejected only by binding each relation's `μ` in the shared batch.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit. RFC-0026 A11
-(Proposed, task E16-30) adds NC-1311..1315 through the same verifier: the profile byte
+(Proposed, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
 that selects the source set, and the Policy 2 column nonces of the stacked certificate,
 the stacked opening and the model certificate.
 

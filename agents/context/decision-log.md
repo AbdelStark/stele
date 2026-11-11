@@ -2793,7 +2793,7 @@ Decision:
   within the 152 bytes of LU nonces it counted). Verification time falls; the prove-time
   difference is within the host's noise. The encoding cost is accepted, so the amendment
   goes ahead (E16-30 acceptance line 2).
-- **Amendment.** RFC-0026 A11 (Proposed, development-tier path): profile byte 2 selects
+- **Amendment.** RFC-0026 A11 (development-tier path): profile byte 2 selects
   Circle rate-1/4 stacked and model sources (Draft A7's geometry, priced under Policy 2)
   and policy byte 2 on every source, multiplicity sources included. LogUp keeps r = 1
   with no (β, α) nonce.
@@ -2829,11 +2829,21 @@ Decision:
   A native test pins that the byte-2 input is the pre-A11 input followed by `2` and that
   the v1 file still round-trips. Without the byte in the public input, NC-1311 and
   NC-1312 would still pass: the derived sources differ in shape. The transcript binding
-  is checked by that native test.
+  is checked by that native test and, after review fix 1, by NC-1316: the engine run with
+  the plan fixed at one source set and the public input of the other, both ways
+  (`RoundSumMismatch`). Mutation check: with the byte push removed from `public_input`,
+  NC-1316 goes red ("byte not bound": both replays accept).
+- **Review fixes (independent soundness review of #351, FIX-THEN-MERGE).** (1) NC-1316.
+  (2) `standard_quarantine` also confines `from_code_id_development`,
+  `Profile::Development` and `Sources::Circle` to the development path and forbids
+  them in stele-verifier, with a gate test. (3) Ledger timing caveats. (4) source.rs
+  comment says "every standard Policy 2 source". (5) dev-zk commit, prove and verify
+  reject a non-expander source set.
 
 Consequences: development proof bytes change under byte 2 (pins re-recorded); pre-A11
 proofs are unchanged. E19-02's Draft A7 is subsumed if A11 is accepted. Open: the
 independent review of A11; multiplicity sources at rate 1/4 (now the largest
 section on L0 and L1, an RFC-0008 A5 geometry change); RFC-0008 A8 LU grinding for development proofs (not needed: no λ is claimed).
 
-Status: Proposed (RFC-0026 A11 pending independent review).
+Status: Accepted with RFC-0026 A11 (development tier; independent soundness review of
+#351: FIX-THEN-MERGE, no soundness break, fix 1 applied; no distinct policy byte needed).
