@@ -1,0 +1,85 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "944a4fcd008f7094d315b89521406736d409bef1",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 15,
+ "kernel_counters": {
+  "checked_positions": 16,
+  "proof_section_groups_bytes": 351345,
+  "proof_section_groups_count": 1,
+  "proof_section_identities_bytes": 17040,
+  "proof_section_identities_count": 6,
+  "proof_section_lookups_bytes": 2449839,
+  "proof_section_lookups_count": 21,
+  "proof_section_matmuls_bytes": 47296,
+  "proof_section_matmuls_count": 127,
+  "proof_section_multiplicities_bytes": 4120125,
+  "proof_section_multiplicities_count": 21,
+  "proof_section_openings_bytes": 318754,
+  "proof_section_openings_count": 2,
+  "prove_peak_rss_bytes": 241090560,
+  "public_bytes": 186425,
+  "verify_peak_rss_bytes": 53936128
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Transcript(GrindMismatch))"
+  },
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit; BSD /usr/bin/time -l. Task E16-30 before/after pair. after: task E16-30 at 944a4fcd008f7094d315b89521406736d409bef1, RFC-0026 A11 profile byte 2 (Circle rate-1/4 stacked and model sources, Policy 2 on every source). Five prove-dev and five verify-dev runs per commit, alternating before and after (ABAB) on a host shared with other workloads (1-minute load average 10 to 11 over the runs); each record is the median run (prove walls before 1.37, 1.41, 1.41, 1.43, 1.46 s; after 1.28, 1.28, 1.29, 1.38, 1.54 s; verify walls before 0.67 to 0.68 s; after 0.34, 0.35, 0.35, 0.37, 1.00 s). Controls and model commitment are one run each. Counters proof_section_* are the container's section bytes and counts (RFC-0026 \u00a74.1). Timing caveat (review fix 3): times are medians of five alternating runs on a loaded host; the 8-layer prove wall clock ranged 9.15 to 35.25 s across both commits, so prove-time deltas are within noise; byte counts are exact. The after binary was measured at 5487d5c; the crates diff from 5487d5c to 944a4fc is empty (the rebase onto 77b253f changed bench/README.md only).",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e one-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 16,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 1,
+    "vocabulary": 256
+   }
+  },
+  "proof_sha256": "45d38c15d4633b7d4acfe29bb553c0afba56ce0c60bd456fbed2b75413f05e8a",
+  "public_sha256": "09639801ab05028872a7c4ca9abbcccfce24bead2cf5dcacb5228d6d2eba7d7c",
+  "rung": "L0",
+  "statement": {
+   "T": "16",
+   "checked": "0..16",
+   "cqis_id": "dbc4ca0489fdf0360e673f4dad6e4456d08dc2e8a78211ea1660dd392f7e8c0f",
+   "model": "da85fab2df9780caf3fc70df092f8a8564844ed444b338546d083232760e0247",
+   "next": "43",
+   "tokens": "1,153,252,31,205,2,73,62,140,139,111,9,214,56,62,2"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "a577490044172f2e8172652d40766052b7dd5c49abddaaae08f31bdba64f0951",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 7305217,
+ "prover_time_ns": 1290000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment": 10563125,
+  "prove_dev_wall": 1290000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 350000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-1layer-t16"
+}

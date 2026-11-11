@@ -10,7 +10,8 @@ conjectural, and the proof reveals the model and the activations (RFC-0026 §1.2
 bytes, a power-of-two token window `x_0..x_{T-1}`, a checked range `[r, e)` and, when
 `e = T`, the next token `y`. It:
 
-1. commits each weight matrix once as an RFC-0010 v2 source (the model commitment);
+1. commits the weight matrices once, stacked into RFC-0010 Circle sources at rate 1/4
+   under Policy 2 (the model commitment; RFC-0026 A11);
 2. runs `Executor::capture` and declares every RFC-0026 §5 module in order;
 3. assigns the witness, runs the plain checker, then the relation engine;
 4. writes a `stele-dev-e2e-v1` container (`stele_proof::development`, RFC-0026 §4.1).
@@ -61,9 +62,12 @@ target/release/stele verify-dev --public /tmp/dev-e2e/public.bin --proof /tmp/de
   defaults to the whole window. `--next Y` defaults to the
   executor's greedy choice when `E = T`.
 - Every checked token must be the greedy choice, or the prover's plain checker rejects.
-- `public.bin` (`stele-dev-public-v1`) holds everything the verifier reads besides
+- `public.bin` (`stele-dev-public-v2`) holds everything the verifier reads besides
   the proof: Model, Scales, Preparation, 1-D records, model-commitment roots and
-  certificates, and the statement.
+  certificates, and the statement. Its magic names the source set, which the public
+  input binds (RFC-0026 A11): `v2` for Circle Policy 2 sources, which `prove-dev`
+  writes, and `v1` for the pre-A11 v2-expander Policy 1 sources, which `verify-dev`
+  still accepts. Both print `profile development` and a `sources` line.
 
 `verify-dev` only shows that the model named in `public.bin` produced the statement
 named in `public.bin`. A prover can write a self-consistent `public.bin` for a model of
@@ -273,6 +277,28 @@ python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
   --commit <measured commit> --device "<cpu>" --toolchain "$(rustc -V)" \
   --prompt-tokens 24 --threads "$(nproc)" --model-config <model json> --host-context "<host>"
 ```
+
+### Circle rate-1/4 sources under Policy 2 (task E16-30)
+
+RFC-0026 A11 moves the stacked and model sources to the Circle code at rate
+1/4 and every source to RFC-0010 A14 Policy 2. It claims no security level. Before is
+`origin/main` `276b2c0` and after is `944a4fc`, on one Apple M4 Max laptop shared with
+other workloads. The synthetic windows had five alternating runs of each, and each
+ledger keeps the median run; stories42M had one run of each:
+
+| Window | Proof before → after | `public.bin` | Prove (median) | Verify (median) | Ledgers |
+|---|---|---|---|---|---|
+| 1 layer, T 16 | 25.4 → 7.3 MB | 4.03 → 0.19 MB | 1.41 → 1.29 s | 0.67 → 0.35 s | [before](../bench/ledger/e16-30-dev-synthetic-1layer-mac-before.json), [after](../bench/ledger/e16-30-dev-synthetic-1layer-mac-after.json) |
+| 8 layers, T 64 | 45.0 → 9.8 MB | 8.46 → 0.30 MB | 9.91 → 10.47 s | 2.01 → 0.90 s | [before](../bench/ledger/e16-30-dev-synthetic-8layer-mac-before.json), [after](../bench/ledger/e16-30-dev-synthetic-8layer-mac-after.json) |
+| stories42M, T 64, one run each | 113.4 → 18.3 MB | 26.4 → 2.33 MB | 197.0 → 186.9 s | 11.06 → 6.57 s | [before](../bench/ledger/e16-30-dev-stories42m-mac-before.json), [after](../bench/ledger/e16-30-dev-stories42m-mac-after.json) |
+
+The prove-time difference is within the noise of the shared host. The ledgers list every
+run's wall time. On stories42M the model commitment takes 2.52 s against 2.12 s, and peak
+prove RSS is 25.3 GB against 26.2 GB. The before proof is byte-identical to the E16-18
+proof. The after proof confirms the Q12 projection of 18.3 MB to within 152 bytes, the
+LU nonces that the projection counted and A11 does not use. With Policy 2 grinding, the tampered-root control is now rejected at the
+certificate's column nonce (`GrindMismatch`) instead of at the Merkle path, because the
+root is absorbed before the nonce is checked.
 
 ### Measured runs and the FlashProve small route
 

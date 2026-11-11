@@ -7,6 +7,7 @@ use stele_prover::development::{
     bundle, model_identity, prove, public_input, statement_digest_for, verify, Committed, Error,
     Public, Statement, Weights,
 };
+use stele_reductions::relation::Sources;
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{Model, Preparation, Scales};
 
@@ -79,6 +80,7 @@ impl Case {
             preparation: self.bytes[2].to_vec(),
             vectors: weights.vectors.clone(),
             commitment: committed.commitment.clone(),
+            sources: weights.sources(),
         }
     }
 }
@@ -114,11 +116,12 @@ fn fnv(bytes: &[u8]) -> u64 {
     })
 }
 
-fn run(name: &str, t: usize) -> u64 {
+fn run(name: &str, t: usize, sources: Sources) -> u64 {
     let case = load(name);
     let mut executor = case.executor(&case.artifact);
     let statement = greedy(&mut executor, t);
-    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, sources).expect("weights");
     let clock = Instant::now();
     let committed = Committed::new(&weights).expect("commitment");
     let commit_ms = clock.elapsed().as_millis();
@@ -150,23 +153,57 @@ fn run(name: &str, t: usize) -> u64 {
     fnv(&proof)
 }
 
+// Pinned proof bytes. The default sources are RFC-0026 A11's Circle rate-1/4
+// sources under Policy 2 (new pins, E16-30). The pre-A11 expander sources keep
+// their E16-10 pins unchanged: an old proof is the same bytes and still verifies.
 #[test]
 fn accepts_one_layer_window() {
-    // Pinned proof bytes: the T=16 window is large enough for the threaded dense
-    // rounds (E16-15), and the hash equals the sequential prover's.
-    assert_eq!(run("one-layer", 16), 0x035f_65b3_0541_72b5);
+    // The T=16 window is large enough for the threaded dense rounds (E16-15), and
+    // the hash equals the sequential prover's.
+    assert_eq!(run("one-layer", 16, Sources::Circle), 0x11e8_0225_ea2f_e1bd);
+}
+
+#[test]
+fn accepts_one_layer_window_on_pre_a10_sources() {
+    assert_eq!(
+        run("one-layer", 16, Sources::Expander),
+        0x035f_65b3_0541_72b5
+    );
 }
 
 #[test]
 fn accepts_one_layer_grouped_window() {
-    assert_eq!(run("one-layer-grouped", 16), 0xeacf_1ac6_dd87_6e3b);
+    assert_eq!(
+        run("one-layer-grouped", 16, Sources::Circle),
+        0x1e0e_81df_8e4a_37a6
+    );
+}
+
+#[test]
+fn accepts_one_layer_grouped_window_on_pre_a10_sources() {
+    assert_eq!(
+        run("one-layer-grouped", 16, Sources::Expander),
+        0xeacf_1ac6_dd87_6e3b
+    );
 }
 
 /// The E16-10 acceptance window; release build only (`docs/development-e2e.md`).
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn accepts_eight_layer_window() {
-    assert_eq!(run("eight-layer", 64), 0x4f2a_0f00_d2d8_3acb);
+    assert_eq!(
+        run("eight-layer", 64, Sources::Circle),
+        0xea0b_5946_0256_c917
+    );
+}
+
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn accepts_eight_layer_window_on_pre_a10_sources() {
+    assert_eq!(
+        run("eight-layer", 64, Sources::Expander),
+        0x4f2a_0f00_d2d8_3acb
+    );
 }
 
 /// One honest small window shared by the controls: T = 4, one layer.
@@ -227,6 +264,23 @@ fn rejects_statement_and_container_tampers() {
         bundle::decode(&file),
         Ok((public.clone(), statement.clone()))
     );
+    // RFC-0026 A11: the source set is bound in the public input (byte 2 appended),
+    // and the pre-A11 file (`stele-dev-public-v1`, no byte) still round-trips.
+    assert_eq!(public.sources, Sources::Circle);
+    let old = Public {
+        sources: Sources::Expander,
+        ..public.clone()
+    };
+    let (new_input, old_input) = (
+        public_input(&public, &[0; 32], &statement),
+        public_input(&old, &[0; 32], &statement),
+    );
+    assert_eq!(new_input, [old_input.as_slice(), &[2]].concat());
+    let old_file = bundle::encode(&old, &statement);
+    assert!(
+        old_file.starts_with(b"stele-dev-public-v1") && file.starts_with(b"stele-dev-public-v2")
+    );
+    assert_eq!(bundle::decode(&old_file), Ok((old, statement.clone())));
 
     // Each statement tamper fails fast at the prover-written header digest and, with
     // the header restamped to the verifier's own digest, in the engine: the binding is
@@ -576,6 +630,7 @@ fn zk_window(name: &str, t: usize) -> u64 {
         preparation: case.bytes[2].to_vec(),
         vectors: zk::published(case.bytes[0], &weights.vectors).expect("published"),
         commitment: Vec::new(),
+        sources: Sources::Expander,
     };
     // RFC-0013 A6: commit once (budget 2), then prove as index 0.
     let (commitment, mut state) = zk::commit(
@@ -695,6 +750,15 @@ fn zk_window(name: &str, t: usize) -> u64 {
     let mut other = statement.clone();
     other.next = other.next.map(|y| y ^ 1);
     assert!(zk::verify(&public, &other, &proof, &commitment, index).is_err());
+    // RFC-0026 A11: a dev-zk input naming the Circle source set is rejected.
+    let circle = Public {
+        sources: Sources::Circle,
+        ..public.clone()
+    };
+    assert_eq!(
+        zk::verify(&circle, &statement, &proof, &commitment, index).err(),
+        Some(Error::StatementMismatch)
+    );
     // Every seed above is fixed, so the proof is too: identity check across
     // prover-side changes (INV-8, E16-24).
     eprintln!("dev-zk {name}: proof fnv {:016x}", fnv(&proof));

@@ -38,13 +38,13 @@ fn attempt(rel: &Relation, values: &Values, plan: &Plan) -> Result<Ledger, Error
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let proof = prove_plan(&mut t, rel, plan, values, values, &[])?;
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    verify(&mut t, rel, &[], &proof)
+    verify(&mut t, rel, &[], &proof, Sources::Expander)
 }
 
 #[test]
 fn accepts_honest_squares() {
     let (rel, values) = squares();
-    assert!(attempt(&rel, &values, &plan(&rel).expect("plan")).is_ok());
+    assert!(attempt(&rel, &values, &plan(&rel, Sources::Expander).expect("plan")).is_ok());
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn rejects_prover_table_differing_from_the_relation() {
     values
         .set(&rel, ColumnId(1), vec![50, 4, 9, 0])
         .expect("sq");
-    let mut forged = plan(&rel).expect("plan");
+    let mut forged = plan(&rel, Sources::Expander).expect("plan");
     forged.checks[0].entries[2 * 15 + 1] = 50;
     assert_eq!(
         attempt(&rel, &values, &forged).err(),
@@ -68,7 +68,7 @@ fn rejects_prover_table_differing_from_the_relation() {
 #[test]
 fn rejects_committed_multiplicities_differing_from_the_tree() {
     let (rel, values) = squares();
-    let mut forged = plan(&rel).expect("plan");
+    let mut forged = plan(&rel, Sources::Expander).expect("plan");
     forged.checks[0].skew = 1;
     assert_eq!(
         attempt(&rel, &values, &forged).err(),
@@ -79,12 +79,12 @@ fn rejects_committed_multiplicities_differing_from_the_tree() {
 // Lying prover: commit `committed` (step 2), prove every later message from `values`
 // (the true witness). Only the openings can tie claims to the commitment.
 fn lie(rel: &Relation, committed: &Values, values: &Values) -> Result<Ledger, Error> {
-    let plan = plan(rel).expect("plan");
+    let plan = plan(rel, Sources::Expander).expect("plan");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let proof = prove_plan(&mut t, rel, &plan, committed, values, &[])
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    verify(&mut t, rel, &[], &proof)
+    verify(&mut t, rel, &[], &proof, Sources::Expander)
 }
 const VALUE: Option<Error> = Some(Error::Pcs(stele_pcs::Error::ValueMismatch));
 
@@ -282,7 +282,7 @@ fn batched() -> (Relation, Values) {
 fn accepts_batched_lookups_and_ranges_per_table() {
     let (rel, values) = batched();
     assert!(stele_ir::relation::check(&rel, &values).is_ok());
-    let plan = plan(&rel).expect("plan");
+    let plan = plan(&rel, Sources::Expander).expect("plan");
     // One check for the table, one for 8-bit ranges, one for 4-bit ranges.
     assert_eq!(plan.checks.len(), 3);
     assert_eq!(
@@ -315,7 +315,7 @@ fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
     let (mut rel, values) = squares();
     rel.ranges.clear();
     let committed = tampered(&rel, &values, ColumnId(1), 0);
-    let mut forged = plan(&rel).expect("plan");
+    let mut forged = plan(&rel, Sources::Expander).expect("plan");
     assert_eq!(forged.checks.len(), 1);
     forged.checks[0].split = Some(committed.clone());
     let mut t = Transcript::new(PUBLIC).expect("transcript");
@@ -323,7 +323,7 @@ fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, &[], &proof).err(),
+        verify(&mut t, &rel, &[], &proof, Sources::Expander).err(),
         Some(Error::MemberSumMismatch)
     );
 }
@@ -363,12 +363,16 @@ fn groups(shapes: &[(u8, usize)]) -> Relation {
 fn matches_reference_stacked_layout_with_ties_and_mixed_sizes() {
     // Block sizes 2^(n+c): g0 = 2^(2+1), g1 = 2^3, g2 = 2^1, g3 = 2^(4+1).
     // Largest first, ties (g0, g1) in GroupId order: g3 @0, g0 @32, g1 @40, g2 @48.
-    let first = plan(&groups(&[(2, 2), (3, 1), (1, 1), (4, 2)])).expect("plan");
+    let first = plan(
+        &groups(&[(2, 2), (3, 1), (1, 1), (4, 2)]),
+        Sources::Expander,
+    )
+    .expect("plan");
     let offsets: Vec<usize> = first.groups.iter().map(|g| g.offset).collect();
     assert_eq!(offsets, [32, 40, 48, 0]);
     assert_eq!(first.stack.as_ref().map(|s| s.bits), Some(6));
     // A tie in the other declaration order keeps GroupId order too.
-    let other = plan(&groups(&[(3, 1), (2, 2)])).expect("plan");
+    let other = plan(&groups(&[(3, 1), (2, 2)]), Sources::Expander).expect("plan");
     let offsets: Vec<usize> = other.groups.iter().map(|g| g.offset).collect();
     assert_eq!(offsets, [0, 8]);
 }
@@ -376,7 +380,10 @@ fn matches_reference_stacked_layout_with_ties_and_mixed_sizes() {
 #[test]
 fn rejects_a_group_wider_than_a_source_before_shifting() {
     // n = 30 with two columns needs 2^31 entries: rejected, never shifted or summed.
-    assert_eq!(plan(&groups(&[(30, 2)])).err(), Some(Error::Unsupported));
+    assert_eq!(
+        plan(&groups(&[(30, 2)]), Sources::Expander).err(),
+        Some(Error::Unsupported)
+    );
 }
 
 /// Weight columns of the given lengths, each range-checked.
@@ -410,7 +417,7 @@ fn certify_model<'a>(
     rel: &Relation,
     messages: &'a [Vec<M31>],
 ) -> (Vec<PreparedSource<'a, K>>, Vec<VerifiedCertificate<K>>) {
-    let layouts = model_layout(rel).expect("layout");
+    let layouts = model_layout(rel, Sources::Expander).expect("layout");
     let prepared: Vec<_> = layouts
         .iter()
         .zip(messages)
@@ -435,7 +442,7 @@ fn certify_model<'a>(
 fn matches_reference_model_layout_with_ties_and_mixed_sizes() {
     // Blocks 2^n: w0 = 2^3, w1 = 2^5, w2 = 2^3, w3 = 2^1. Largest first, ties (w0, w2)
     // in ColumnId order: w1 @0, w0 @32, w2 @40, w3 @48; 50 entries, so 2^6.
-    let first = plan(&weights(&[3, 5, 3, 1])).expect("plan");
+    let first = plan(&weights(&[3, 5, 3, 1]), Sources::Expander).expect("plan");
     let offsets: Vec<usize> = first.weights.iter().map(|w| w.offset).collect();
     assert_eq!(offsets, [32, 0, 40, 48]);
     assert_eq!(
@@ -446,7 +453,9 @@ fn matches_reference_model_layout_with_ties_and_mixed_sizes() {
             .collect::<Vec<_>>(),
         [(MODEL, 6)]
     );
-    assert!(model_layout(&squares().0).expect("layout").is_empty());
+    assert!(model_layout(&squares().0, Sources::Expander)
+        .expect("layout")
+        .is_empty());
 }
 
 #[test]
@@ -459,7 +468,7 @@ fn matches_reference_model_split_into_capped_sources() {
         range.width = Width::signed(5 + i as u8);
         rel.columns[i].width = Width::signed(5 + i as u8);
     }
-    let plan = plan(&rel).expect("plan");
+    let plan = plan(&rel, Sources::Expander).expect("plan");
     let layout: Vec<(usize, usize)> = plan.weights.iter().map(|w| (w.source, w.offset)).collect();
     assert_eq!(layout, [(0, 0), (1, 0), (1, 1 << 29), (2, 0)]);
     assert_eq!(
@@ -476,18 +485,18 @@ fn rejects_a_weight_wider_than_a_source() {
     let mut rel = weights(&[2]);
     // Bypass validation's MAX_VARS for the guard itself: plan() checks n <= 30.
     rel.columns[0].log_len = 31;
-    assert!(plan(&rel).is_err());
+    assert!(plan(&rel, Sources::Expander).is_err());
 }
 
 #[test]
 fn rejects_a_missing_or_foreign_model_certificate() {
     let rel = weights(&[2]);
     let values = weight_values(&rel, &[2]);
-    let plan = plan(&rel).expect("plan");
+    let plan = plan(&rel, Sources::Expander).expect("plan");
     let proof = Proof::default();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, &[], &proof).err(),
+        verify(&mut t, &rel, &[], &proof, Sources::Expander).err(),
         Some(Error::Weights)
     );
     // A Circle source of the right size is not the derived v2 layout.
@@ -498,7 +507,7 @@ fn rejects_a_missing_or_foreign_model_certificate() {
     let (foreign, _) = verify_certificate(*prepared.source(), &bytes).expect("certificate");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        verify(&mut t, &rel, &[&foreign], &proof).err(),
+        verify(&mut t, &rel, &[&foreign], &proof, Sources::Expander).err(),
         Some(Error::Weights)
     );
     let mut t = Transcript::new(PUBLIC).expect("transcript");
@@ -518,10 +527,10 @@ fn accepts_several_weights_in_one_model_source() {
     let (prepared, certificates) = certify_model(&rel, &messages);
     let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove(&mut t, &rel, &values, &model).expect("honest proof");
+    let proof = prove(&mut t, &rel, &values, &model, Sources::Expander).expect("honest proof");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let certificates: Vec<_> = certificates.iter().collect();
-    assert!(verify(&mut t, &rel, &certificates, &proof).is_ok());
+    assert!(verify(&mut t, &rel, &certificates, &proof, Sources::Expander).is_ok());
 }
 
 #[test]
@@ -536,7 +545,7 @@ fn rejects_any_forged_weight_among_several() {
     let (prepared, certificates) = certify_model(&rel, &messages);
     let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let refs: Vec<_> = certificates.iter().collect();
-    let plan = plan(&rel).expect("plan");
+    let plan = plan(&rel, Sources::Expander).expect("plan");
     for forged in 0..lengths.len() {
         let values = tampered(&rel, &owner, ColumnId(forged as u32), 1);
         let mut t = Transcript::new(PUBLIC).expect("transcript");
@@ -544,7 +553,7 @@ fn rejects_any_forged_weight_among_several() {
             .expect("a lying prover still produces bytes");
         let mut t = Transcript::new(PUBLIC).expect("transcript");
         assert_eq!(
-            verify(&mut t, &rel, &refs, &proof).err(),
+            verify(&mut t, &rel, &refs, &proof, Sources::Expander).err(),
             VALUE,
             "forged weight {forged}"
         );
@@ -563,13 +572,66 @@ fn binds_the_model_root_without_it_in_the_public_input() {
     let (prepared, certificates) = certify_model(&rel, &messages);
     let model: Vec<_> = prepared.iter().zip(&certificates).collect();
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove(&mut t, &rel, &first, &model).expect("honest proof");
+    let proof = prove(&mut t, &rel, &first, &model, Sources::Expander).expect("honest proof");
     let other_messages = model_messages(&rel, &second).expect("messages");
     let (_, other) = certify_model(&rel, &other_messages);
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let other: Vec<_> = other.iter().collect();
-    assert!(verify(&mut t, &rel, &other, &proof).is_err());
+    assert!(verify(&mut t, &rel, &other, &proof, Sources::Expander).is_err());
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     let mine: Vec<_> = certificates.iter().collect();
-    assert!(verify(&mut t, &rel, &mine, &proof).is_ok());
+    assert!(verify(&mut t, &rel, &mine, &proof, Sources::Expander).is_ok());
+}
+
+/// RFC-0026 A11: under `Sources::Circle` the stacked and model sources are Circle
+/// rate-1/4 with policy byte 2 and the same bits as the expander plan; an honest proof
+/// verifies, and one verified under the other set rejects.
+#[test]
+fn accepts_circle_policy2_sources_and_rejects_the_other_set() {
+    let (expander, circle) = (
+        plan(&squares().0, Sources::Expander).expect("plan"),
+        plan(&squares().0, Sources::Circle).expect("plan"),
+    );
+    let (e, c) = (
+        expander.stack.as_ref().expect("stack"),
+        circle.stack.as_ref().expect("stack"),
+    );
+    assert_eq!(e.bits, c.bits);
+    let source = c.source([0; 32]).expect("source");
+    assert_eq!(source.code_id().len(), 21); // Circle identity (A9).
+    assert_eq!(source.code_id()[20], CIRCLE_BLOWUP);
+    // Policy byte 2 (A14 item 1): k_q = 16 grinding on every column round.
+    assert_eq!(source.grind_bits(ProofKind::Certificate).1, 16);
+
+    let lengths = [1, 3, 2];
+    let rel = weights(&lengths);
+    let values = weight_values(&rel, &lengths);
+    let messages = model_messages(&rel, &values).expect("messages");
+    let layouts = model_layout(&rel, Sources::Circle).expect("layout");
+    let prepared: Vec<_> = layouts
+        .iter()
+        .zip(&messages)
+        .map(|(l, m)| l.sources.prepare(l.id, l.ell, &l.code, m).expect("model"))
+        .collect();
+    let certificates: Vec<_> = prepared
+        .iter()
+        .map(|p| {
+            let (bytes, _) = p.certificate().expect("certificate");
+            verify_certificate(*p.source(), &bytes)
+                .expect("certificate")
+                .0
+        })
+        .collect();
+    let model: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    let proof = prove(&mut t, &rel, &values, &model, Sources::Circle).expect("honest proof");
+    let refs: Vec<_> = certificates.iter().collect();
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert!(verify(&mut t, &rel, &refs, &proof, Sources::Circle).is_ok());
+    // The expander plan derives other model sources than the certified ones.
+    let mut t = Transcript::new(PUBLIC).expect("transcript");
+    assert_eq!(
+        verify(&mut t, &rel, &refs, &proof, Sources::Expander).err(),
+        Some(Error::Weights)
+    );
 }

@@ -894,6 +894,8 @@ def field_source_codec(root):
         ('field', 'policy'), ('field', 'column_grind_bits'), ('field', 'tensor_grind_bits'),
         ('field', 'setup_term'), ('struct', 'Source'),
         ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
+        # RFC-0026 A11, E16-30 (ADR-111): the development tier's Policy 2 source, resolved unproven.
+        ('fn', 'from_code_id_development'),
         ('fn', 'hiding'),
         # RFC-0013 A6, E12-25: the lifetime source's admission.
         ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
@@ -933,6 +935,8 @@ def field_source_codec(root):
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
+        # RFC-0026 A11, E16-30 (ADR-111).
+        ('fn', 'from_code_id_development'),
         ('fn', 'hiding'),
         # RFC-0013 A6, E12-25: a lifetime hiding source.
         ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),
@@ -1782,7 +1786,25 @@ def standard_quarantine(root):
                    if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
     if found:
         raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
-    print('gate standard quarantine: standard PCS/LU entry points used only by their crates, tests and controls')
+    # RFC-0026 A11, ADR-111: the development tier's Policy 2 entry points resolve
+    # `proven: false`; they stay in the development path and never reach stele-verifier.
+    dev_allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
+                   'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/src/preparation.rs',
+                   'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
+                   'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',
+                   'crates/stele-prover/src/development/zk.rs', 'crates/stele-prover/tests/development.rs',
+                   'tests/negative-controls/src/development.rs'}
+    dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
+                             r'|\bSources\s*::\s*Circle\b')
+    found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
+                   if (root / directory).is_dir()
+                   for path in (root / directory).rglob('*.rs')
+                   if dev_pattern.search(path.read_text()) and (str(path.relative_to(root)) not in dev_allowed
+                                                                or 'stele-verifier' in path.parts))
+    if found:
+        raise ValueError(f'development Policy 2 entry point outside the development path (ADR-111): {found}')
+    print('gate standard quarantine: standard PCS/LU entry points used only by their crates, tests and controls;'
+          ' development Policy 2 entry points only on the development path')
 
 
 def main():
