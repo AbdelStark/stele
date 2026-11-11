@@ -797,10 +797,12 @@ impl<K: ChallengeField> Expand<K> {
                     v,
                     u,
                 } => {
-                    let x = stele_poly::eq_table(&column_point(coords, &self.point, &[]))
-                        .map_err(|_| Error::Statement)?;
+                    let x =
+                        stele_sumcheck::parallel::eq_table(&column_point(coords, &self.point, &[]))
+                            .map_err(|_| Error::Statement)?;
                     let at: Vec<K> = u.iter().map(|q| self.point[*q]).collect();
-                    let r = stele_poly::eq_table(&at).map_err(|_| Error::Statement)?;
+                    let r =
+                        stele_sumcheck::parallel::eq_table(&at).map_err(|_| Error::Statement)?;
                     let data = column
                         .iter()
                         .zip(&x)
@@ -869,7 +871,8 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
     for input in &step.inputs {
         let factor = match input {
             Gin::Head => {
-                let eq = stele_poly::eq_table(&run.r).map_err(|_| Error::Statement)?;
+                let eq =
+                    stele_sumcheck::parallel::eq_table(&run.r).map_err(|_| Error::Statement)?;
                 if step.first {
                     public(eq)
                 } else {
@@ -878,7 +881,7 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
             }
             Gin::Select(poly) => {
                 let (k, u) = &run.incoming[*poly];
-                let eq = stele_poly::eq_table(u).map_err(|_| Error::Statement)?;
+                let eq = stele_sumcheck::parallel::eq_table(u).map_err(|_| Error::Statement)?;
                 let mut x = vec![zero::<K>(); 2 * half];
                 for (y, w) in eq.into_iter().enumerate() {
                     x[half + y] = *k * w;
@@ -1057,7 +1060,7 @@ where
     let y: Vec<K> = step.y.iter().map(|j| point[*j]).collect();
     let eq = |a: &[K], b: &[K]| stele_poly::eq_evaluate(a, b).map_err(|_| Error::Statement);
     let mle = |values: Vec<K>| -> Result<K, Error> {
-        let w = stele_poly::eq_table(x).map_err(|_| Error::Statement)?;
+        let w = stele_sumcheck::parallel::eq_table(x).map_err(|_| Error::Statement)?;
         Ok(values
             .iter()
             .zip(&w)
@@ -1092,7 +1095,7 @@ where
                 let at = core::iter::once(run.tstar)
                     .chain(y.iter().copied())
                     .collect::<Vec<_>>();
-                let w = stele_poly::eq_table(&at).map_err(|_| Error::Statement)?;
+                let w = stele_sumcheck::parallel::eq_table(&at).map_err(|_| Error::Statement)?;
                 out.blocks.push(Claim {
                     weights: w
                         .into_iter()
@@ -1159,7 +1162,8 @@ pub(super) fn aborts<K: ChallengeField + CodeField + Eq>(
                     .chain(step.y.iter().map(|j| point[*j]))
                     .collect();
                 let mut functionals = run.pending[*poly].clone();
-                functionals.push(stele_poly::eq_table(&at).map_err(|_| Error::Statement)?);
+                functionals
+                    .push(stele_sumcheck::parallel::eq_table(&at).map_err(|_| Error::Statement)?);
                 if !full_rank(&functionals)? {
                     return Err(Error::ClaimRank);
                 }
@@ -1194,7 +1198,7 @@ pub(super) fn advance<K: ChallengeField + CodeField>(
                 let at: Vec<K> = core::iter::once(K::from_i64(bit))
                     .chain(u.iter().copied())
                     .collect();
-                stele_poly::eq_table(&at)
+                stele_sumcheck::parallel::eq_table(&at)
                     .map(|w| w.into_iter().map(|e| k * e).collect())
                     .map_err(|_| Error::Statement)
             })
@@ -1222,7 +1226,7 @@ pub(super) fn layer_values<K: ChallengeField>(
     layers: &[Vec<[K; 2]>],
     point: &[K],
 ) -> Result<Vec<(usize, K)>, Error> {
-    let w = stele_poly::eq_table(&point[step.xo..]).map_err(|_| Error::Statement)?;
+    let w = stele_sumcheck::parallel::eq_table(&point[step.xo..]).map_err(|_| Error::Statement)?;
     let values = &layers[step.k + 1];
     Ok(step
         .inputs

@@ -38,6 +38,8 @@ pub fn sum_ranges_weighted<K: ChallengeField>(
     out: &mut [K],
     partial: impl Fn(core::ops::Range<usize>, &mut [K]) -> Result<(), Error> + Sync,
 ) -> Result<(), Error> {
+    #[cfg(not(feature = "std"))]
+    let _ = cost;
     #[cfg(feature = "std")]
     {
         let n = chunks(len.saturating_mul(cost.max(1))).min(len.max(1));
@@ -69,9 +71,21 @@ pub fn sum_ranges_weighted<K: ChallengeField>(
 /// Fill `out` chunk by chunk: `fill(start, chunk)` writes `out[start..start + len]`.
 /// Chunks are disjoint, so the result does not depend on the split.
 pub fn for_each_chunk<T: Send>(out: &mut [T], fill: impl Fn(usize, &mut [T]) + Sync) {
+    for_each_chunk_weighted(out, 1, fill)
+}
+
+/// [`for_each_chunk`] for items that each cost about `cost` table entries, so a short
+/// run of heavy items still splits (E16-24: many small sumcheck factors).
+pub fn for_each_chunk_weighted<T: Send>(
+    out: &mut [T],
+    cost: usize,
+    fill: impl Fn(usize, &mut [T]) + Sync,
+) {
+    #[cfg(not(feature = "std"))]
+    let _ = cost;
     #[cfg(feature = "std")]
     {
-        let n = chunks(out.len());
+        let n = chunks(out.len().saturating_mul(cost.max(1))).min(out.len().max(1));
         if n > 1 {
             let step = out.len().div_ceil(n);
             out.par_chunks_mut(step)

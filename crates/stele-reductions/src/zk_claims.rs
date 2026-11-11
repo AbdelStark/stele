@@ -1181,10 +1181,10 @@ where
 {
     let column = plan.columns[occurrence.column];
     let (at, blocks) = plan.layouts[column.source].offsets[slot(plan, occurrence.column)];
-    let x = stele_poly::eq_table(&column_point(&occurrence.coords, point, free))
+    let x = stele_sumcheck::parallel::eq_table(&column_point(&occurrence.coords, point, free))
         .map_err(|_| Error::Statement)?;
     let u: Vec<K> = occurrence.u.iter().map(|q| point[*q]).collect();
-    let r = stele_poly::eq_table(&u).map_err(|_| Error::Statement)?;
+    let r = stele_sumcheck::parallel::eq_table(&u).map_err(|_| Error::Statement)?;
     let k = kappa(point[occurrence.v]);
     let first = blocks + occurrence.block * dim::<K>();
     let len = 1usize << column.log_len;
@@ -1234,7 +1234,7 @@ where
 /// A5 item 4's claim-block rank: the `D` M31 coordinates of `eq(ρ_u, ·)` must have
 /// rank `D`. Public; the producer aborts otherwise.
 fn block_rank<K: ChallengeField + CodeField>(u: &[K]) -> Result<bool, Error> {
-    let eq = stele_poly::eq_table(u).map_err(|_| Error::Statement)?;
+    let eq = stele_sumcheck::parallel::eq_table(u).map_err(|_| Error::Statement)?;
     full_rank(&[eq])
 }
 
@@ -1350,7 +1350,7 @@ fn expected_weight<K: ChallengeField>(
     point: &[K],
 ) -> Result<K, Error> {
     let table = weight_table(source, claims, gammas)?;
-    let eq = stele_poly::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
+    let eq = stele_sumcheck::parallel::eq_table(&point[1..]).map_err(|_| Error::Statement)?;
     let data = eq
         .iter()
         .zip(&table)
@@ -1472,6 +1472,104 @@ struct Occurrences<K> {
     expand: Option<lookup::Expand<K>>,
 }
 
+/// A term's coefficient, with `±1` kept apart so its product is not multiplied by it.
+#[derive(Clone, Copy)]
+enum Coefficient<K> {
+    One,
+    MinusOne,
+    Other(K),
+}
+
+/// `Σ_k c_k·Π_{f ∈ F_k} v_f` in a cheaper but equal form (E16-24): coefficients `±1`
+/// are not multiplied, and the factor in most terms (at least two) is multiplied once,
+/// outside their sum. Field arithmetic is exact, so the value is the same element.
+struct TermPlan<K> {
+    outer: Vec<(Coefficient<K>, Vec<u32>)>,
+    common: Option<(u32, Vec<(Coefficient<K>, Vec<u32>)>)>,
+}
+
+impl<K: ChallengeField> TermPlan<K> {
+    fn new(terms: &[Term<K>]) -> Self {
+        let coefficient = |c: K| match c.to_i64_signed() {
+            Some(1) => Coefficient::One,
+            Some(-1) => Coefficient::MinusOne,
+            _ => Coefficient::Other(c),
+        };
+        let mut counts: Vec<(u32, usize)> = Vec::new();
+        for t in terms {
+            for f in &t.factors {
+                match counts.iter_mut().find(|(g, _)| g == f) {
+                    Some((_, n)) => *n += 1,
+                    None => counts.push((*f, 1)),
+                }
+            }
+        }
+        // Most terms first, then lowest factor; a factor repeated in one term counts
+        // per occurrence, and only one occurrence is taken out.
+        let common = counts
+            .iter()
+            .filter(|(_, n)| *n >= 2)
+            .max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0)))
+            .map(|(g, _)| *g);
+        let mut outer = Vec::new();
+        let mut inner = Vec::new();
+        for t in terms {
+            let c = coefficient(t.coefficient);
+            match common.and_then(|g| t.factors.iter().position(|f| *f == g)) {
+                Some(at) => {
+                    let mut rest = t.factors.clone();
+                    rest.remove(at);
+                    inner.push((c, rest));
+                }
+                None => outer.push((c, t.factors.clone())),
+            }
+        }
+        match common {
+            Some(g) if inner.len() >= 2 => Self {
+                outer,
+                common: Some((g, inner)),
+            },
+            // One term holds `g`: nothing to share; keep it whole.
+            _ => {
+                let mut all = outer;
+                if let Some(g) = common {
+                    for (c, mut rest) in inner {
+                        rest.insert(0, g);
+                        all.push((c, rest));
+                    }
+                }
+                Self {
+                    outer: all,
+                    common: None,
+                }
+            }
+        }
+    }
+    fn sum(terms: &[(Coefficient<K>, Vec<u32>)], values: &[K]) -> K {
+        terms.iter().fold(zero::<K>(), |s, (c, factors)| {
+            let product = factors.split_first().map(|(f, rest)| {
+                rest.iter()
+                    .fold(values[*f as usize], |p, g| p * values[*g as usize])
+            });
+            match (c, product) {
+                (Coefficient::One, Some(p)) => s + p,
+                (Coefficient::MinusOne, Some(p)) => s - p,
+                (Coefficient::Other(c), Some(p)) => s + *c * p,
+                (Coefficient::One, None) => s + K::from_i64(1),
+                (Coefficient::MinusOne, None) => s - K::from_i64(1),
+                (Coefficient::Other(c), None) => s + *c,
+            }
+        })
+    }
+    fn evaluate(&self, values: &[K]) -> K {
+        let outer = Self::sum(&self.outer, values);
+        match &self.common {
+            Some((g, inner)) => outer + values[*g as usize] * Self::sum(inner, values),
+            None => outer,
+        }
+    }
+}
+
 impl<K: ChallengeField> Summand<K> for Occurrences<K> {
     fn shape(&self) -> (u32, usize) {
         let inputs = self
@@ -1494,6 +1592,7 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
         let mut out = vec![zero::<K>(); nodes];
         let products: usize = self.terms.iter().map(|t| t.factors.len() + 1).sum();
         let cost = nodes * (self.factors.len() + products);
+        let plan = TermPlan::new(&self.terms);
         stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
             let width = self.factors.len();
             let mut x = vec![zero::<K>(); width];
@@ -1520,19 +1619,14 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
                         }
                     }
                     for k in 0..width {
-                        values[k] = if masked[k] {
+                        // κ(0) = κ(1) = 0: the mask term vanishes on the cube.
+                        values[k] = if masked[k] && node > 1 {
                             x[k] + kappas[node] * r[k]
                         } else {
                             x[k]
                         };
                     }
-                    *result = *result
-                        + self.terms.iter().fold(zero::<K>(), |s, term| {
-                            s + term
-                                .factors
-                                .iter()
-                                .fold(term.coefficient, |p, f| p * values[*f as usize])
-                        });
+                    *result = *result + plan.evaluate(&values);
                 }
             }
             Ok(())
@@ -1540,19 +1634,25 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
         Ok(out)
     }
     fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
-        for f in &mut self.factors {
-            stele_sumcheck::parallel::fold(&mut f.x, challenge);
-            if !f.r.is_empty() {
-                stele_sumcheck::parallel::fold(&mut f.r, challenge);
-            }
-            if f.v == Some(self.bound) {
-                let k = kappa(challenge);
-                for (x, r) in f.x.iter_mut().zip(&f.r) {
-                    *x = *x + k * *r;
+        let bound = self.bound;
+        let k = kappa(challenge);
+        // Factors are independent; many small ones split over the pool, and a large
+        // table's own fold splits as well (E16-24).
+        let cost = self.factors.first().map_or(1, |f| f.x.len());
+        stele_sumcheck::parallel::for_each_chunk_weighted(&mut self.factors, cost, |_, chunk| {
+            for f in chunk {
+                stele_sumcheck::parallel::fold(&mut f.x, challenge);
+                if !f.r.is_empty() {
+                    stele_sumcheck::parallel::fold(&mut f.r, challenge);
                 }
-                f.r.clear();
+                if f.v == Some(bound) {
+                    for (x, r) in f.x.iter_mut().zip(&f.r) {
+                        *x = *x + k * *r;
+                    }
+                    f.r.clear();
+                }
             }
-        }
+        });
         self.bound += 1;
         if let Some(e) = &mut self.expand {
             e.record(challenge);
@@ -1653,7 +1753,7 @@ fn step_draws<K: ChallengeField>(t: &mut Transcript<K>, step: &Step<K>) -> Resul
 
 /// `eq(τ, ·)` over the leading `τ.len()` of `n` variables, broadcast below.
 fn eq_input<K: ChallengeField>(tau: &[K], n: usize) -> Result<Vec<K>, Error> {
-    let eq = stele_poly::eq_table(tau).map_err(|_| Error::Statement)?;
+    let eq = stele_sumcheck::parallel::eq_table(tau).map_err(|_| Error::Statement)?;
     let low = n - tau.len();
     Ok((0..1usize << n).map(|index| eq[index >> low]).collect())
 }
@@ -1677,7 +1777,7 @@ fn public_finals<K: ChallengeField + Eq>(
     }
     let first = step.first() + step.occurrences.len();
     for (p, value) in step.publics.iter().zip(&finals[first..]) {
-        let w = stele_poly::eq_table(&column_point(&p.coords, point, free))
+        let w = stele_sumcheck::parallel::eq_table(&column_point(&p.coords, point, free))
             .map_err(|_| Error::Statement)?;
         let expected = p
             .values
@@ -2484,7 +2584,7 @@ where
         if life_source == Some(*source) {
             let ell = plan.layouts[*source].ell as usize;
             revealed = Some(
-                stele_poly::eq_table(&opening_point(&point, ell)[..ell + 1])
+                stele_sumcheck::parallel::eq_table(&opening_point(&point, ell)[..ell + 1])
                     .map_err(|_| Error::Statement)?,
             );
         }
@@ -2788,7 +2888,7 @@ where
         trees.push(layers);
     }
     let mle = |values: &[K], point: Vec<K>| -> Result<K, Error> {
-        let w = stele_poly::eq_table(&point).map_err(|_| Error::Statement)?;
+        let w = stele_sumcheck::parallel::eq_table(&point).map_err(|_| Error::Statement)?;
         Ok(values
             .iter()
             .zip(&w)
@@ -2975,6 +3075,47 @@ where
 mod tests {
     use super::*;
     use stele_field::{Field, QM31};
+
+    /// E16-24: the factored term evaluation is the same element as the plain
+    /// `Σ c·Π v`, over shapes with a shared factor, `±1` and other coefficients,
+    /// empty products and repeated factors.
+    #[test]
+    fn matches_reference_term_plan() {
+        let mut state = 0x5354_454c_4516_0024u64;
+        let mut next = |m: u64| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (state >> 33) % m
+        };
+        for _ in 0..2000 {
+            let width = 1 + next(10) as usize;
+            let values: Vec<QM31> = (0..width)
+                .map(|_| {
+                    let (a, b, c) = (next(1 << 31), next(1 << 31), next(1 << 31));
+                    QM31::from_i64(a as i64)
+                        + QM31::from_i64(7) * QM31::from_i64(b as i64) * QM31::from_i64(c as i64)
+                })
+                .collect();
+            let terms: Vec<Term<QM31>> = (0..next(8))
+                .map(|_| Term {
+                    coefficient: match next(4) {
+                        0 => QM31::from_i64(1),
+                        1 => QM31::from_i64(-1),
+                        _ => values[0] * QM31::from_i64(next(1000) as i64 - 500),
+                    },
+                    factors: (0..next(5)).map(|_| next(width as u64) as u32).collect(),
+                })
+                .collect();
+            let naive = terms.iter().fold(QM31::from_i64(0), |s, t| {
+                s + t
+                    .factors
+                    .iter()
+                    .fold(t.coefficient, |p, f| p * values[*f as usize])
+            });
+            assert_eq!(TermPlan::new(&terms).evaluate(&values), naive);
+        }
+    }
 
     /// Leak control for the privacy test of `tests/zk_claims.rs`: with the claim
     /// masks removed the proof still verifies (no verifier sees masks), but the
