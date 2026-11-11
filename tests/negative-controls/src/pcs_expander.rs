@@ -179,7 +179,7 @@ where
     .map_err(|e| format!("{e:?}"))
 }
 
-/// NC-0613: J=15 (N=2^31) or policy byte 2 in the expected statement bytes rejects
+/// NC-0613: J=15 (N=2^31) or policy byte 3 (RFC-0010 A14 item 7) in the expected statement bytes rejects
 /// as UnsupportedSource before any transcript or Merkle work.
 fn nc_0613<K: ChallengeField + CodeField>() -> Result<(), String>
 where
@@ -197,7 +197,7 @@ where
     let proof = p.certificate().map_err(|f| format!("{:?}", f.cause))?.0;
     let honest = p.source().bytes().to_vec();
     // Offsets in the 139-byte version-2 layout: J at 56, policy at 106.
-    for (offset, value) in [(56usize, 15u8), (106, 2)] {
+    for (offset, value) in [(56usize, 15u8), (106, 3)] {
         let mut changed = honest.clone();
         changed[offset] = value;
         check_control(

@@ -200,7 +200,8 @@ fn rejects_unsupported_v2_contexts_before_transcript_work() {
         (89, 4),
         (98, 0),
         (105, 1),
-        (106, 2),
+        (106, 3),
+        (106, 0),
     ] {
         let mut changed = honest.to_vec();
         changed[offset] = value;

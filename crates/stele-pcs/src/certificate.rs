@@ -143,6 +143,12 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let ell = source.rows().trailing_zeros() as usize;
+    let (tensor_bits, column_bits) = source.grind_bits(ProofKind::Certificate);
+    // A14 item 4: n_t binds S after construction, before the ell weight draws.
+    if let Some(nonce) = wire.tensor_nonce() {
+        t.verify_grind(tensor_bits, nonce)
+            .map_err(Error::Transcript)?;
+    }
     let mut point = [K::from_i64(0); 30];
     for coordinate in &mut point[..ell] {
         *coordinate = t
@@ -175,6 +181,11 @@ where
         add(work.weights_bytes, work.row_bytes)?,
         work.encoder.peak_owned_bytes.max(work.encoded_bytes),
     )?;
+    // A14 item 3: n_q follows CertificateRow and precedes the first column draw.
+    if let Some(nonce) = wire.column_nonce() {
+        t.verify_grind(column_bits, nonce)
+            .map_err(Error::Transcript)?;
+    }
     for response in wire.responses() {
         let index = t
             .certificate_column(source.descriptor().count)

@@ -1,0 +1,71 @@
+circle 0 1 92 1
+circle 1 1 222 92
+circle 2 1 222 136
+circle 3 1 308 136
+circle 4 1 308 152
+circle 5 1 339 152
+circle 6 1 339 156
+circle 7 1 347 156
+circle 8 1 347 157
+circle 9 1 350 157
+circle 10 1 350 158
+circle 11 1 350 158
+circle 12 1 350 158
+circle 13 1 350 158
+circle 14 1 350 158
+circle 15 1 350 158
+circle 16 1 350 158
+circle 17 1 350 158
+circle 18 1 350 158
+circle 19 1 350 158
+circle 20 1 350 158
+circle 21 1 350 158
+circle 22 1 350 158
+circle 23 1 350 158
+circle 24 1 350 158
+circle 25 1 350 158
+circle 26 1 350 158
+circle 27 1 350 158
+circle 28 1 350 158
+circle 29 1 350 158
+circle 0 2 92 46
+circle 1 2 222 66
+circle 2 2 222 78
+circle 3 2 222 85
+circle 4 2 222 88
+circle 5 2 222 90
+circle 6 2 222 91
+circle 7 2 222 92
+circle 8 2 222 92
+circle 9 2 222 92
+circle 10 2 222 92
+circle 11 2 222 92
+circle 12 2 222 92
+circle 13 2 222 92
+circle 14 2 222 92
+circle 15 2 222 92
+circle 16 2 222 92
+circle 17 2 222 92
+circle 18 2 222 92
+circle 19 2 222 92
+circle 20 2 222 92
+circle 21 2 222 92
+circle 22 2 222 92
+circle 23 2 222 92
+circle 24 2 222 92
+circle 25 2 222 92
+circle 26 2 222 92
+circle 27 2 222 92
+circle 28 2 222 92
+v2 3 339 156
+v2 4 8131 4050
+v2 5 9297 4633
+v2 6 9467 4718
+v2 7 9510 4739
+v2 8 9532 4748
+v2 9 9532 4751
+v2 10 9533 4751
+v2 11 9534 4751
+v2 12 9534 4751
+v2 13 9534 4751
+v2 14 9534 4751

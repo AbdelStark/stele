@@ -1,5 +1,5 @@
 //! RFC-0010 A9 §§1,6,9: canonical prover storage, with no verifier acceptance.
-use crate::{Error, Source};
+use crate::{Error, Policy, Source};
 use alloc::vec::Vec;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
@@ -86,8 +86,21 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         message: &'a [M31],
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
-        let source = Source::<K>::from_code_id(id, ell, code, [0; 32])?;
-        let rebuild = |root| Source::from_code_id(id, ell, code, root);
+        Self::from_code_id_policy(id, ell, code, message, usage, Policy::One)
+    }
+
+    /// Same preparation under an explicit source policy (RFC-0010 A14); the committed
+    /// columns and root do not depend on the policy.
+    pub fn from_code_id_policy(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        message: &'a [M31],
+        usage: &mut HashUsage,
+        policy: Policy,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::from_code_id_policy(id, ell, code, [0; 32], policy)?;
+        let rebuild = |root| Source::from_code_id_policy(id, ell, code, root, policy);
         Self::prepare(source, rebuild, message, None, usage)
     }
 

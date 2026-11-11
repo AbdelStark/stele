@@ -27,7 +27,7 @@ pub use opening::{
 };
 pub use preparation::{PreparationWork, PreparedColumn, PreparedSource};
 pub use producer::CertificateFailure;
-pub use source::{Error, Parameters, ProofKind, Response, Source, SourceBytes, Wire};
+pub use source::{Error, Parameters, Policy, ProofKind, Response, Source, SourceBytes, Wire};
 // A1 registry validator: stele-code is reachable only through this crate (deny.toml).
 pub use stele_code::{registry, CodeField};
 pub use work::{ProverWork, VerifierWork};

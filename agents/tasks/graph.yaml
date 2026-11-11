@@ -2426,7 +2426,7 @@ tasks:
   - NC-0806/0807 reserved as todo for E12-23; no control credit from primitive tests
 - id: E12-23
   epic: E12
-  title: Policy 2 and grinding consumers (stele-pcs certificate/opening, LU and tensor rounds) with controls
+  title: Policy 2 and grinding consumers in stele-pcs (certificate/opening column and tensor rounds) with controls
   depends:
   - E12-22
   rfc:
@@ -2434,13 +2434,31 @@ tasks:
   - RFC-0012 A17
   skill: pcs-engineer
   crate: stele-pcs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-23-policy2-grinding
+  acceptance:
+  - policy byte 2 sources with the A14 u16 tables; resolver returns Policy 2 for standard and UnsupportedParameters otherwise
+  - column-round nonce (k_q=16) and tensor-round nonce (least k) on the certificate/opening wires
+  - independent Python wire parity; NC-0806 and NC-0807 through the actual certificate and opening verifiers
+  - Policy 1 proof bytes unchanged (E16-10 fixture hashes stay pinned)
+  - the LU (beta, alpha) consumer is split to E12-24 (ADR-104)
+- id: E12-24
+  epic: E12
+  title: LU (beta, alpha) grinding consumer in stele-reductions, after its RFC-0008 nonce-offset amendment
+  depends:
+  - E12-23
+  rfc:
+  - RFC-0012 A17
+  - RFC-0008
+  skill: pcs-engineer
+  crate: stele-reductions
   status: ready
   acceptance:
   - RFC-0008 amendment fixing the LU nonce byte offset (RFC-0012 A17 item 5) before implementation
-  - policy byte 2 sources with the A14 u16 tables; resolver returns Policy 2 for standard and UnsupportedParameters otherwise
-  - column-round nonce (k_q=16) and tensor-round nonce (least k) on the certificate/opening wires; LU (beta, alpha) nonce at the least k
-  - independent Python wire parity; NC-0806 and NC-0807 through the actual certificate and opening verifiers
-  - Policy 1 proof bytes unchanged (E16-10 fixture hashes stay pinned)
+  - LU (beta, alpha) nonce at the least k meeting (C1) for a standard-profile LU consumer; development LU bytes unchanged
+  - independent Python wire parity; a control through the actual LU verifier
+  - gates the first standard-profile caller of registry::resolve_pcs or Policy::Two: proven true presumes RFC-0012 A17 (C1)-(C4), which an ungrinded LU round can fail (ADR-104)
 - id: E16-30
   epic: E16
   title: Development proof on Circle rate-1/4 sources under Policy 2; encoding benchmark and ledger

@@ -29,6 +29,8 @@ pub mod pcs_opening_continuation;
 #[doc(hidden)]
 pub mod pcs_opening_field;
 #[doc(hidden)]
+pub mod pcs_policy2;
+#[doc(hidden)]
 pub mod requant;
 #[doc(hidden)]
 pub mod small;
@@ -705,6 +707,36 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Configuration,
         expected_error: "DuplicateLabel",
         run: nc_0801::run,
+    },
+    catalog::RegisteredControl {
+        id: 806,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || pcs_policy2::run(806),
+    },
+    catalog::RegisteredControl {
+        id: 807,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || pcs_policy2::run(807),
+    },
+    catalog::RegisteredControl {
+        id: 808,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RootMismatch",
+        run: || pcs_policy2::run(808),
+    },
+    catalog::RegisteredControl {
+        id: 809,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ProofShape",
+        run: || pcs_policy2::run(809),
+    },
+    catalog::RegisteredControl {
+        id: 813,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || pcs_policy2::run(813),
     },
 ];
 

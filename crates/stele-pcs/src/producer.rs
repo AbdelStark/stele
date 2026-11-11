@@ -57,6 +57,14 @@ fn produce_inner<K: ChallengeField>(
         .try_reserve_exact(source.proof_size(ProofKind::Certificate)?)
         .map_err(|_| Error::Capacity)?;
     let ell = source.rows().trailing_zeros() as usize;
+    let (tensor_bits, column_bits) = source.grind_bits(ProofKind::Certificate);
+    proof.push(1);
+    // A14 item 4: the least valid n_t, on S after construction, before the weight draws.
+    if tensor_bits > 0 {
+        let nonce = t.grind(tensor_bits).map_err(Error::Transcript)?;
+        proof.extend_from_slice(&nonce.to_le_bytes());
+    }
+    let row_start = proof.len();
     let mut point = [K::from_i64(0); 30];
     for coordinate in &mut point[..ell] {
         *coordinate = t
@@ -70,7 +78,6 @@ fn produce_inner<K: ChallengeField>(
     work.proof_bytes = bytes(&proof)?;
     work.weights_bytes = bytes(&weights)?;
     work.peak_owned_bytes = add(work.proof_bytes, work.weights_bytes)?;
-    proof.push(1);
     let message = prepared.message();
     for column in 0..source.columns() {
         let mut value = K::from_i64(0);
@@ -84,8 +91,13 @@ fn produce_inner<K: ChallengeField>(
         proof.extend_from_slice(value.to_le_bytes().as_ref());
     }
     drop(weights);
-    t.absorb(AbsorbLabel::CertificateRow, &proof[1..])
+    t.absorb(AbsorbLabel::CertificateRow, &proof[row_start..])
         .map_err(Error::Transcript)?;
+    // A14 item 3: n_q after CertificateRow, immediately before the response block.
+    if column_bits > 0 {
+        let nonce = t.grind(column_bits).map_err(Error::Transcript)?;
+        proof.extend_from_slice(&nonce.to_le_bytes());
+    }
     let start = proof.len();
     for _ in 0..source.queries(ProofKind::Certificate) {
         let index = t

@@ -57,16 +57,30 @@ fn accepts_derived_parameters_for_every_supported_identity() {
 }
 
 #[test]
-fn rejects_every_pcs_parameter_request() {
+fn accepts_policy2_only_for_standard_extension_requests() {
     for id in supported() {
-        for degree in [1, 4, 8] {
-            for profile in [Profile::Standard, Profile::Treaty] {
-                assert_eq!(
-                    resolve_pcs(&id, degree, profile),
-                    Err(Error::UnsupportedParameters)
-                );
+        for degree in [4, 8] {
+            let j15 = id.len() != 21 && id[22] == 15;
+            let resolved = resolve_pcs(&id, degree, Profile::Standard);
+            if j15 {
+                // A3 item 2: J = 15 exceeds the sampler domain; A14 has no entry.
+                assert_eq!(resolved, Err(Error::UnsupportedParameters));
+                continue;
             }
+            let p = resolved.expect("A14 item 6 admits standard Policy 2");
+            assert_eq!((p.policy, p.column_grind_bits, p.proven), (2, 16, true));
+            assert!(p.certificate_queries >= p.opening_queries && p.opening_queries >= 1);
         }
+        for degree in [1, 4, 8] {
+            assert_eq!(
+                resolve_pcs(&id, degree, Profile::Treaty),
+                Err(Error::UnsupportedParameters)
+            );
+        }
+        assert_eq!(
+            resolve_pcs(&id, 1, Profile::Standard),
+            Err(Error::UnsupportedParameters)
+        );
         for degree in [0, 2, 3, 5, 16] {
             assert_eq!(
                 resolve_pcs(&id, degree, Profile::Treaty),
@@ -74,6 +88,23 @@ fn rejects_every_pcs_parameter_request() {
             );
         }
     }
+    // Every RFC-0010 A14 item 2 row, recomputed from the exact inequality by
+    // research/merkle-oracle/check_policy2_wire.py, in both extension degrees.
+    let mut rows = 0;
+    for line in include_str!("policy2-tables.txt").lines() {
+        let f: Vec<&str> = line.split(' ').collect();
+        let n = |i: usize| f[i].parse::<u16>().expect("fixture integer");
+        let (id, counts) = match f[0] {
+            "circle" => (circle(n(1) as u8, n(2) as u8), (n(3), n(4))),
+            _ => (expander(n(1) as u8, 7), (n(2), n(3))),
+        };
+        for degree in [4, 8] {
+            let p = resolve_pcs(&id, degree, Profile::Standard).expect("admitted");
+            assert_eq!((p.certificate_queries, p.opening_queries), counts, "{line}");
+        }
+        rows += 1;
+    }
+    assert_eq!(rows, 59 + 12);
     for bad in [
         circle(30, 1),
         circle(5, 3),
