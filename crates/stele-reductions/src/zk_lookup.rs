@@ -1018,13 +1018,15 @@ fn combined<K: ChallengeField + CodeField>(
         return Err(Error::Statement);
     }
     let mask = (1usize << lp.n) - 1;
-    let owner: Vec<Option<usize>> = (0..1usize << lp.n)
-        .map(|x| {
-            lp.members
-                .iter()
-                .position(|m| (m.offset..m.offset + (1 << m.m)).contains(&x))
-        })
-        .collect();
+    // The first member containing each position: member ranges filled last to first
+    // (E16-24: no scan of every member per position).
+    let mut owner: Vec<Option<usize>> = vec![None; 1usize << lp.n];
+    for (index, m) in lp.members.iter().enumerate().rev() {
+        let end = (m.offset + (1 << m.m)).min(owner.len());
+        for slot in owner.get_mut(m.offset..end).unwrap_or(&mut []) {
+            *slot = Some(index);
+        }
+    }
     let mut out = Vec::new();
     for (i, x) in tuple(lp, data).into_iter().enumerate() {
         let blocks: Vec<Vec<M31>> = (0..lp.members.len())
