@@ -435,7 +435,7 @@ Following FlashProve's declared list, by design:
 3. Whether a proof was produced: an unsupported model, an out-of-range value or
    a wrong token fails, and that depends on the weights.
 4. Time, proof size and the number of proofs made under one model commitment.
-5. The model commitment's root (salted, fixed). Under RFC-0013 A6 (Proposed,
+5. The model commitment's root (salted, fixed). Under RFC-0013 A6 (Accepted,
    E12-25), one published commitment serves up to `P` proofs.
    - Two proofs under it show they share a model, as they must, since they pin it.
    - They reveal `P` and their indices, and the index reveals proof order.

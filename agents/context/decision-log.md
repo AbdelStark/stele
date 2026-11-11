@@ -2774,6 +2774,41 @@ E16-30.
 Status: Accepted with RFC-0008 A8 (independent review: FIX-THEN-MERGE, F1 fixed here).
 A8 is the protocol change; this record follows RFC-0012 A17 and RFC-0010 A14.
 
+## ADR-109: Admit dev-zk (profile byte 1) at the development tier (RFC-0013 A5 item 8, task E12-14)
+
+Numbered after ADR-107 on main, skipping ADR-108, which #347 (E12-24) holds.
+
+Context: RFC-0013 A5 item 8 defined dev-zk and withheld admission until its
+deliverables and an independent review. The two E12-14b gaps the review named are
+closed: the model is bound by one published commitment (A6, ADR-104, Accepted), and
+the 1-D records are committed weights (A7, ADR-107, Accepted).
+
+Decision:
+- dev-zk is admitted at the development tier. The scope is recorded in RFC-0013 A5,
+  under **Admission**:
+  - no security level (FS unproven, PCS conjectural);
+  - zero knowledge conditional and computational;
+  - hiding within the `P`-proof lifetime;
+  - no dev-zk soundness ledger yet (E12-26).
+- Evidence:
+  - item 8's deliverables;
+  - NC-0909..0915 and NC-0933..0938, executed (NC-0930..0932 stay `todo` and are
+    named under what is not claimed);
+  - synthetic one- and eight-layer windows only; no real checkpoint is proved under dev-zk;
+  - the ignored eight-layer tests, run at this head and passing:
+    `accepts_eight_layer_window_under_dev_zk`,
+    `matches_reference_zk_claim_census_eight_layer` and
+    `rejects_bare_evaluations_on_the_eight_layer_window`;
+  - the eight-layer ledger `e12-14-synthetic-8layer-zk-admission-mac` (one run).
+- `bench/dev_e2e.py --zk` records a dev-zk run against a published commitment, so
+  dev-zk ledgers come from the same script as development ones.
+- No code path changes. The CLI already offers `--zk`, and the verifier accepts
+  profile byte 1.
+
+Status: Accepted (development tier). Independent review: fix-then-merge (F1 controls
+overclaim, F2 real-model scope, F4 README, F5 wording), then MERGE at 2371198 with
+"accept ADR-109". F3 (extra dev-zk tampers in bench/dev_e2e.py) is a follow-up.
+
 ## ADR-110: NC-1310 as a two-value tamper on a minimal relation; INV-4 exception (RFC-0026 A10, §3.6, §9)
 
 Numbering: ADR-108 is on main and #348 proposes ADR-109, so this record takes 110.
