@@ -2694,6 +2694,7 @@ Decision:
 - No code path changes. The CLI already offers `--zk`, and the verifier accepts
   profile byte 1.
 
-Status: Proposed (development tier; independent review of the admission requested,
-not self-accepted).
+Status: Accepted (development tier). Independent review: fix-then-merge (F1 controls
+overclaim, F2 real-model scope, F4 README, F5 wording), then MERGE at 2371198 with
+"accept ADR-109". F3 (extra dev-zk tampers in bench/dev_e2e.py) is a follow-up.
 
