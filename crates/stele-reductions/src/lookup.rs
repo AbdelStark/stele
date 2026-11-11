@@ -9,7 +9,7 @@ pub use stele_cqis::tables::{Descriptor as TableDescriptor, Table, TableField};
 use stele_field::{Field, Serialize, M31};
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_lookup::fraction;
-use stele_pcs::{ProofKind, Source, VerifiedCertificate};
+use stele_pcs::{Policy, ProofKind, Source, VerifiedCertificate};
 
 /// Rejected expected data, untrusted encoding or admission policy.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -115,6 +115,8 @@ pub struct Descriptor<'input, 'cert, K: ChallengeField> {
     public_bytes: usize,
     local_hashes: u64,
     k: u8,
+    policy: Policy,
+    grind: u8,
 }
 fn sum(values: &[usize]) -> Result<usize, Error> {
     values
@@ -179,6 +181,7 @@ struct Repetition<'a> {
 #[derive(Default)]
 struct Wire<'a> {
     registrations: [Registration<'a>; 2],
+    nonces: [u64; 2],
     repetitions: [Repetition<'a>; 2],
 }
 fn tree_size(v: usize, w: usize) -> Result<usize, Error> {
@@ -207,6 +210,7 @@ pub(crate) fn mu_source<K: ChallengeField>(
     layout: Layout,
     k: u8,
     root: [u8; 32],
+    policy: Policy,
 ) -> Result<Source<K>, Error> {
     if layout.ell > k || !matches!(layout.blowup, 1 | 2) {
         return Err(Error::Statement);
@@ -215,7 +219,23 @@ pub(crate) fn mu_source<K: ChallengeField>(
         .checked_sub(layout.ell)
         .and_then(|v| v.checked_add(K::DEGREE.trailing_zeros() as u8))
         .ok_or(Error::Capacity)?;
-    Source::new(layout.id, layout.ell, columns, layout.blowup, root).map_err(Error::Pcs)
+    let circle = Source::<K>::new(layout.id, layout.ell, columns, layout.blowup, root)
+        .map_err(Error::Pcs)?;
+    Source::from_code_id_policy(layout.id, layout.ell, circle.code_id(), root, policy)
+        .map_err(Error::Pcs)
+}
+/// RFC-0008 A8 item 2: least k >= 0 with `(c(N+t)-1)·2^108 <= p^d·2^k` for one
+/// (β, α) round (RFC-0012 A17 (C1), Lemma 4), exact integers; k > 32 is unsupported.
+pub fn lu_grind_bits(c: usize, positions: u64, rows: usize, degree: usize) -> Option<u8> {
+    // N <= 2^59, t <= 2^16, c <= 2: a < 2^61, so a·2^108 < 2^169 < p^8 and OM31 needs none.
+    let a = (c as u128) * (u128::from(positions) + rows as u128) - 1;
+    if degree >= 8 {
+        return Some(0);
+    }
+    let field = u128::from(M31::MODULUS).checked_pow(u32::try_from(degree).ok()?)?;
+    // a·2^(108-k) <= field; a shift that would leave u128 already exceeds field.
+    let fits = |k: u32| a.leading_zeros() > 108 - k && (a << (108 - k)) <= field;
+    (0..=32u8).find(|k| fits(u32::from(*k)))
 }
 fn opening_cost<K: ChallengeField>(source: &Source<K>) -> Result<(usize, u64), Error> {
     // Actual verifier coefficient/row/encoder allocations; no message matrix is built.
@@ -238,6 +258,27 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
     /// Validate immutable expected data and all known verifier sizes without hashing.
     /// Dense producer storage is not allocated or admitted by this constructor.
     pub fn new(s: Statement<'input, 'cert, K>, limits: Limits) -> Result<Self, Error> {
+        Self::build(s, limits, false)
+    }
+    /// The same descriptor for the standard profile (RFC-0008 A8): Policy 2 originals
+    /// (else `CertificateContext`), Policy 2 multiplicity sources and a (β, α) nonce of
+    /// the least A17 (C1) bits per repetition. A round needing more than 32 bits rejects
+    /// as `Statement` (UnsupportedParameters). This admits no profile level: a composed
+    /// standard proof also needs E8-05's (C1)-(C3) check (ADR-108).
+    #[cfg(feature = "standard-unproven")]
+    pub fn standard(s: Statement<'input, 'cert, K>, limits: Limits) -> Result<Self, Error> {
+        Self::build(s, limits, true)
+    }
+    /// Verifier-derived (β, α) grinding bits; 0 means no nonce (RFC-0008 A8 item 2).
+    pub fn grind_bits(&self) -> u8 {
+        self.grind
+    }
+    fn build(
+        s: Statement<'input, 'cert, K>,
+        limits: Limits,
+        standard: bool,
+    ) -> Result<Self, Error> {
+        let policy = if standard { Policy::Two } else { Policy::One };
         let r = s.multiplicities.len();
         if s.id >= 1 << 60 || s.m > 59 || !(1..=2).contains(&r) {
             return Err(Error::Statement);
@@ -271,7 +312,7 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             return Err(Error::SourceRoster);
         }
         let k = n.trailing_zeros() as u8;
-        let first = mu_source::<K>(s.multiplicities[0], k, [0; 32])?;
+        let first = mu_source::<K>(s.multiplicities[0], k, [0; 32], policy)?;
         let mut mu = [first; 2]; // Unused second slot is never exposed as a repetition.
         let mut ids = [0; 4];
         for (i, certificate) in s.originals.iter().enumerate() {
@@ -279,10 +320,14 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             if mul(source.rows(), source.columns())? != n_positions {
                 return Err(Error::SourceRoster);
             }
+            // RFC-0008 A8 item 3: a standard lookup reads only Policy 2 originals.
+            if standard && source.parameters().policy != Policy::Two {
+                return Err(Error::CertificateContext);
+            }
             ids[i] = source.descriptor().id;
         }
         for (j, layout) in s.multiplicities.iter().enumerate() {
-            mu[j] = mu_source::<K>(*layout, k, [0; 32])?;
+            mu[j] = mu_source::<K>(*layout, k, [0; 32], policy)?;
             ids[c + j] = layout.id;
         }
         if ids[..c + r]
@@ -329,12 +374,19 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             repetition_payload = sum(&[repetition_payload, payload])?;
             original_hashes = original_hashes.checked_add(hashes).ok_or(Error::Capacity)?;
         }
-        let mut proof_bytes = sum(&[2, mul(r, repetition_bytes)?])?;
-        // Units, Multiplicities and both Repetition phases, native-lookup §4.
+        let grind = if standard {
+            lu_grind_bits(c, positions, t, K::DEGREE).ok_or(Error::Statement)?
+        } else {
+            0
+        };
+        let nonces = r * usize::from(grind > 0);
+        let mut proof_bytes = sum(&[2, mul(8, nonces)?, mul(r, repetition_bytes)?])?;
+        // Units, Multiplicities, both Repetition phases and each 9-byte grind absorb.
         let mut public_bytes = sum(&[
             statement_bytes,
             9,
             mul(167, r)?,
+            mul(9, nonces)?,
             mul(r, repetition_payload)?,
         ])?;
         let mut local_hashes = original_hashes
@@ -379,6 +431,8 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             public_bytes,
             local_hashes,
             k,
+            policy,
+            grind,
         })
     }
     /// Exact expected statement bytes, including canonical signed Table encodings.
@@ -404,7 +458,7 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             .multiplicities
             .get(j)
             .ok_or(Error::Statement)?;
-        mu_source(*layout, self.k, root)
+        mu_source(*layout, self.k, root, self.policy)
     }
     /// Serialize the complete statement and retain the actual ordinary-hash prefix.
     /// The same immutable Table's size/descriptor checks were established by new().
@@ -471,6 +525,13 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
             source
                 .parse(ProofKind::Certificate, packet.certificate)
                 .map_err(Error::Pcs)?;
+        }
+        // RFC-0008 A8 item 5: r u64le nonces after the registrations when k >= 1.
+        if self.grind > 0 {
+            for nonce in &mut wire.nonces[..r] {
+                let bytes = take(&mut rest, 8)?;
+                *nonce = u64::from_le_bytes(bytes.try_into().map_err(|_| Error::ProofShape)?);
+            }
         }
         for (j, packet) in wire.repetitions[..r].iter_mut().enumerate() {
             for (out, size) in [&mut packet.lookup, &mut packet.table, &mut packet.selected]

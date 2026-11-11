@@ -14,7 +14,7 @@
 5. On acceptance: update RFC-0000 index, `agents/context/decision-log.md` (ADR), affected tasks in `graph.yaml`, and
    `tests/negative-controls/catalog.md` (every new binding ⇒ new control id).
    After catalog changes, update its exact reservation/coverage snapshot and run
-   `cargo test -p stele-negative-controls --test catalog --locked --offline` before publication.
+   `cargo test -p stele-negative-controls --all-features --test catalog --locked --offline` before publication.
    A reservation alone never marks a control done.
 6. A Draft RFC is direction. Code follows the Accepted text until the draft is accepted, even when the draft is
    obviously better.

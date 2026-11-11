@@ -1395,7 +1395,8 @@ pub fn verify(
     for check in &plan.checks {
         let mut reader = sections.next()?;
         let root = reader.root()?;
-        let source = mu_source::<K>(check.layout, check.k, root).map_err(Error::Lookup)?;
+        let source = mu_source::<K>(check.layout, check.k, root, stele_pcs::Policy::One)
+            .map_err(Error::Lookup)?;
         let size = source
             .proof_size(ProofKind::Certificate)
             .map_err(Error::Pcs)?;

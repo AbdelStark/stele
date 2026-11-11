@@ -16,6 +16,9 @@ rayon = { version = "=1.10.0", optional = true }
 # Prover-side parallel encoding (E16-17, ADR-090); off by default, verifiers stay no_std.
 [features]
 std = ["stele-code/std", "dep:rayon"]
+# ADR-108: Policy 2 sources (RFC-0010 A14) resolve only with this feature; without it
+# every Policy 2 constructor, `from_bytes` with policy byte 2 included, is UnsupportedSource.
+standard-unproven = ["stele-code/standard-unproven"]
 
 [dev-dependencies]
 serde_json = "=1.0.154"

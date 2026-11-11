@@ -2434,7 +2434,7 @@ tasks:
   - RFC-0012 A17
   skill: pcs-engineer
   crate: stele-pcs
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-23-policy2-grinding
   acceptance:
@@ -2453,7 +2453,9 @@ tasks:
   - RFC-0008
   skill: pcs-engineer
   crate: stele-reductions
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-24-lu-grinding
   acceptance:
   - RFC-0008 amendment fixing the LU nonce byte offset (RFC-0012 A17 item 5) before implementation
   - LU (beta, alpha) nonce at the least k meeting (C1) for a standard-profile LU consumer; development LU bytes unchanged

@@ -57,12 +57,19 @@ path = "requant/nc_0318.rs"
 name = "nc-0609"
 path = "pcs/nc_0609.rs"
 
+# ADR-108: off by default so a workspace build never enables them; the controls
+# runners and CI select them explicitly (--all-features).
+[features]
+controls = ["stele-reductions/controls"]
+standard-unproven = ["stele-reductions/standard-unproven"]
+
 [lints]
 workspace = true
 
 [[test]]
 name = "catalog"
 path = "harness/catalog.rs"
+required-features = ["controls", "standard-unproven"]
 
 [[test]]
 name = "configuration"
@@ -71,7 +78,7 @@ path = "harness/configuration.rs"
 [dependencies]
 stele-gkr = { path = "../../crates/stele-gkr" }
 stele-poly = { path = "../../crates/stele-poly" }
-stele-reductions = { path = "../../crates/stele-reductions", features = ["controls"] }
+stele-reductions = { path = "../../crates/stele-reductions" }
 stele-pcs = { path = "../../crates/stele-pcs" }
 stele-lookup = { path = "../../crates/stele-lookup" }
 stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }
@@ -168,22 +175,27 @@ path = "pcs/nc_0803.rs"
 [[test]]
 name = "nc-0813"
 path = "pcs/nc_0813.rs"
+required-features = ["standard-unproven"]
 
 [[test]]
 name = "nc-0806"
 path = "pcs/nc_0806.rs"
+required-features = ["standard-unproven"]
 
 [[test]]
 name = "nc-0807"
 path = "pcs/nc_0807.rs"
+required-features = ["standard-unproven"]
 
 [[test]]
 name = "nc-0808"
 path = "pcs/nc_0808.rs"
+required-features = ["standard-unproven"]
 
 [[test]]
 name = "nc-0809"
 path = "pcs/nc_0809.rs"
+required-features = ["standard-unproven"]
 
 [[test]]
 name = "nc-0610"
@@ -344,67 +356,84 @@ path = "pcs/nc_0605.rs"
 [[test]]
 name = "nc-0902"
 path = "pcs/nc_0902.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0903"
 path = "pcs/nc_0903.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0906"
 path = "pcs/nc_0906.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0904"
 path = "sumcheck/nc_0904.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0905"
 path = "sumcheck/nc_0905.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0907"
 path = "sumcheck/nc_0907.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0908"
 path = "sumcheck/nc_0908.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0909"
 path = "sumcheck/nc_0909.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0910"
 path = "sumcheck/nc_0910.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0911"
 path = "sumcheck/nc_0911.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0913"
 path = "sumcheck/nc_0913.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0914"
 path = "sumcheck/nc_0914.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0915"
 path = "sumcheck/nc_0915.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0916"
 path = "sumcheck/nc_0916.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0917"
 path = "sumcheck/nc_0917.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0918"
 path = "sumcheck/nc_0918.rs"
+required-features = ["controls"]
 
 [[test]]
 name = "nc-0919"
 path = "sumcheck/nc_0919.rs"
+required-features = ["controls"]

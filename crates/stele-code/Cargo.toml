@@ -13,6 +13,9 @@ stele-simd = { path = "../stele-simd" }
 rayon = { version = "=1.10.0", optional = true }
 
 [features]
+# ADR-108: the standard-profile path of `registry::resolve_pcs` (RFC-0010 A14). Only
+# tests and negative controls enable it until E8-05 checks a composed standard proof.
+standard-unproven = []
 std = ["dep:rayon"]
 
 [lints]

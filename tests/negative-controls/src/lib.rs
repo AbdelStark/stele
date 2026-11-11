@@ -14,6 +14,9 @@ pub mod fraction_transcript;
 pub mod integer_linear;
 #[doc(hidden)]
 pub mod lookup;
+#[cfg(feature = "standard-unproven")]
+#[doc(hidden)]
+pub mod lookup_grind;
 #[doc(hidden)]
 pub mod matmul;
 #[doc(hidden)]
@@ -28,6 +31,7 @@ pub mod pcs_opening;
 pub mod pcs_opening_continuation;
 #[doc(hidden)]
 pub mod pcs_opening_field;
+#[cfg(feature = "standard-unproven")]
 #[doc(hidden)]
 pub mod pcs_policy2;
 #[doc(hidden)]
@@ -44,8 +48,10 @@ pub mod streaming;
 pub mod sumcheck;
 #[doc(hidden)]
 pub mod zerocheck;
+#[cfg(feature = "controls")]
 #[doc(hidden)]
 pub mod zk;
+#[cfg(feature = "controls")]
 pub mod zk_relation;
 
 extern crate self as stele_negative_controls;
@@ -86,60 +92,70 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "ValueMismatch",
         run: || requant::run(308),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 902,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
         run: || zk::run(902),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 903,
         kind: catalog::ControlKind::Proof,
         expected_error: "UnsupportedSource",
         run: || zk::run(903),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 904,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(904),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 905,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",
         run: || zk::run(905),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 906,
         kind: catalog::ControlKind::Proof,
         expected_error: "MaskBudget",
         run: || zk::run(906),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 907,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(907),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 908,
         kind: catalog::ControlKind::Proof,
         expected_error: "ValueMismatch",
         run: || zk::run(908),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 909,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(909),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 910,
         kind: catalog::ControlKind::Proof,
         expected_error: "ProofShape",
         run: || zk::run(910),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 911,
         kind: catalog::ControlKind::Proof,
@@ -164,126 +180,147 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "MaskBudget",
         run: || development::run(934),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 913,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(913),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 914,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
         run: || zk::run(914),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 915,
         kind: catalog::ControlKind::Proof,
         expected_error: "FinalEvaluationMismatch",
         run: || zk::run(915),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 916,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(916),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 917,
         kind: catalog::ControlKind::Proof,
         expected_error: "ClaimMismatch",
         run: || zk::run(917),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 918,
         kind: catalog::ControlKind::Proof,
         expected_error: "ClaimMismatch",
         run: || zk::run(918),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 919,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk::run(919),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 920,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(920),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 921,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(921),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 922,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(922),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 923,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(923),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 924,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(924),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 925,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(925),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 926,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || zk_relation::run(926),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 927,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
         run: || zk_relation::run(927),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 928,
         kind: catalog::ControlKind::Proof,
         expected_error: "ClaimMismatch",
         run: || zk_relation::run(928),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 929,
         kind: catalog::ControlKind::Proof,
         expected_error: "ClaimMismatch",
         run: || zk_relation::run(929),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 935,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || development::run_records(935),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 936,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || development::run_records(936),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 937,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || development::run_records(937),
     },
+    #[cfg(feature = "controls")]
     catalog::RegisteredControl {
         id: 938,
         kind: catalog::ControlKind::Proof,
@@ -744,35 +781,68 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         expected_error: "DuplicateLabel",
         run: nc_0801::run,
     },
+    #[cfg(feature = "standard-unproven")]
     catalog::RegisteredControl {
         id: 806,
         kind: catalog::ControlKind::Proof,
         expected_error: "GrindMismatch",
         run: || pcs_policy2::run(806),
     },
+    #[cfg(feature = "standard-unproven")]
     catalog::RegisteredControl {
         id: 807,
         kind: catalog::ControlKind::Proof,
         expected_error: "GrindMismatch",
         run: || pcs_policy2::run(807),
     },
+    #[cfg(feature = "standard-unproven")]
     catalog::RegisteredControl {
         id: 808,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",
         run: || pcs_policy2::run(808),
     },
+    #[cfg(feature = "standard-unproven")]
     catalog::RegisteredControl {
         id: 809,
         kind: catalog::ControlKind::Proof,
         expected_error: "ProofShape",
         run: || pcs_policy2::run(809),
     },
+    #[cfg(feature = "standard-unproven")]
     catalog::RegisteredControl {
         id: 813,
         kind: catalog::ControlKind::Proof,
         expected_error: "GrindMismatch",
         run: || pcs_policy2::run(813),
+    },
+    #[cfg(feature = "standard-unproven")]
+    catalog::RegisteredControl {
+        id: 814,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || lookup_grind::run(814),
+    },
+    #[cfg(feature = "standard-unproven")]
+    catalog::RegisteredControl {
+        id: 815,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || lookup_grind::run(815),
+    },
+    #[cfg(feature = "standard-unproven")]
+    catalog::RegisteredControl {
+        id: 816,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || lookup_grind::run(816),
+    },
+    #[cfg(feature = "standard-unproven")]
+    catalog::RegisteredControl {
+        id: 817,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "CertificateContext",
+        run: || lookup_grind::run(817),
     },
 ];
 
