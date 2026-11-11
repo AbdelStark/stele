@@ -116,6 +116,20 @@ impl Rope {
         })
     }
 
+    /// The same rotation, tokens and head width on another input: equal to
+    /// `Rope::new(layer, role, input, self.tokens, heads, ..)` with the coefficients
+    /// copied instead of regenerated (task E16-23).
+    pub fn with_input(&self, layer: usize, role: &str, input: ColumnId, heads: u16) -> Self {
+        Self {
+            layer,
+            name: format!("L{layer}/rope/{role}"),
+            input,
+            heads: usize::from(heads),
+            columns: None,
+            ..self.clone()
+        }
+    }
+
     /// Column ids, once declared.
     pub fn columns(&self) -> Option<RopeColumns> {
         self.columns

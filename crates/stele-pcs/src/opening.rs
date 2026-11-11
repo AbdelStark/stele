@@ -9,6 +9,27 @@ use stele_code::{CodeField, Encoder};
 use stele_field::{Serialize, M31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeField, HashUsage, Transcript};
 
+/// `out[c] = Σ_row a[row] · message[row · columns + c]` for `c < width`, rows in order.
+/// Column blocks are disjoint and each reads its rows' contiguous slices, so every
+/// value equals the column-by-column loop's; under `std` the blocks run on the
+/// work pool (task E16-23). Rows or columns beyond the shapes are not read.
+pub(crate) fn combine_rows<K: ChallengeField>(
+    message: &[M31],
+    columns: usize,
+    a: &[K],
+    width: usize,
+) -> Vec<K> {
+    let mut out = alloc::vec![K::from_i64(0); width.min(columns)];
+    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+        for (row, weight) in message.chunks_exact(columns.max(1)).zip(a) {
+            for (value, limb) in chunk.iter_mut().zip(&row[start..]) {
+                *value = *value + *weight * K::from_i64(i64::from(limb.as_u32()));
+            }
+        }
+    });
+    out
+}
+
 fn point_weights<K: ChallengeField>(
     point: &[K],
     row_bits: usize,
@@ -437,17 +458,16 @@ impl<K: ChallengeField> PreparedSource<'_, K> {
         certificate: &VerifiedCertificate<K>,
         functional: Functional<'_, K>,
     ) -> Result<(Vec<u8>, Usage), Failure> {
-        // Lazy iteration preserves A9's preflight and original read/absorption order.
-        let message = self.message();
-        let row = (0..functional.b.len()).map(|column| {
-            let mut value = K::from_i64(0);
-            for (row, a) in functional.a.iter().enumerate() {
-                let limb = message[row * self.source().columns() + column];
-                value = value + *a * K::from_i64(i64::from(limb.as_u32()));
-            }
-            value
-        });
-        self.opening_row(t, certificate, functional, row)
+        // The row is pure in the message, so computing it before A9's preflight leaves
+        // every check, read count and absorption as before; a wrong shape still
+        // rejects in the preflight (`frame_len`).
+        let row = combine_rows(
+            self.message(),
+            self.source().columns(),
+            functional.a,
+            functional.b.len(),
+        );
+        self.opening_row(t, certificate, functional, row.into_iter())
             .map(|(proof, usage, _)| (proof, usage))
     }
 

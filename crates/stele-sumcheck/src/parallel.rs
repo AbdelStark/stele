@@ -72,6 +72,27 @@ pub fn for_each_chunk<T: Send>(out: &mut [T], fill: impl Fn(usize, &mut [T]) + S
     fill(0, out);
 }
 
+/// `(0..len).map(f)` in index order, each item one task on the pool. For a few large,
+/// independent items, which `for_each_chunk` (runs of at least `MIN_CHUNK`) never splits.
+pub fn map<T: Send>(len: usize, f: impl Fn(usize) -> T + Sync + Send) -> Vec<T> {
+    #[cfg(feature = "std")]
+    if len > 1 {
+        return (0..len).into_par_iter().map(f).collect();
+    }
+    (0..len).map(f).collect()
+}
+
+/// `(a(), b())`, the two run concurrently on the pool.
+pub fn join<A: Send, B: Send>(
+    a: impl FnOnce() -> A + Send,
+    b: impl FnOnce() -> B + Send,
+) -> (A, B) {
+    #[cfg(feature = "std")]
+    return rayon::join(a, b);
+    #[cfg(not(feature = "std"))]
+    (a(), b())
+}
+
 /// `stele_poly::eq_table(point)`, split into blocks: entry `(hi << r) | lo` is
 /// `eq(point[..k], hi) · eq(point[k..], lo)`. Field products are exact, so every
 /// entry equals the sequential table's.

@@ -27,8 +27,12 @@ import subprocess
 
 
 def gnu_time(path):
-    """Wall seconds and maximum RSS bytes from GNU time -v."""
+    """Wall seconds and maximum RSS bytes from GNU time -v, or from BSD (macOS) time -l."""
     text = Path(path).read_text()
+    bsd = re.search(r'^\s*([\d.]+) real\b', text, re.M)
+    if bsd:  # BSD time reports RSS in bytes and no exit status; the caller checks the outputs.
+        rss = int(re.search(r'^\s*(\d+)\s+maximum resident set size$', text, re.M).group(1))
+        return round(float(bsd.group(1)) * 1e9), rss
     clock = re.search(r'Elapsed \(wall clock\) time \(h:mm:ss or m:ss\): (\S+)', text).group(1)
     seconds = 0.0
     for part in clock.split(':'):

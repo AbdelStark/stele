@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use core::mem::size_of;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use stele_code::Encoder;
-use stele_field::{Serialize, M31};
+use stele_field::{Field, Serialize, M31};
 use stele_hash::mask::{MaskStream, SOURCE_SALT};
 use stele_hash::{merkle, ChallengeField, HashUsage};
 
@@ -186,15 +186,14 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         transposed
             .try_reserve_exact(count)
             .map_err(|_| Error::Capacity)?;
-        for column in 0..source.columns() {
-            transposed.extend(
-                message
-                    .iter()
-                    .skip(column)
-                    .step_by(source.columns())
-                    .copied(),
-            );
-        }
+        // Entry `c*R + r` is message entry `r*C + c`; disjoint blocks (task E16-23).
+        transposed.resize(count, M31::from_i64(0));
+        let cols = source.columns();
+        stele_sumcheck::parallel::for_each_chunk(&mut transposed, |start, chunk| {
+            for (i, out) in (start..).zip(chunk) {
+                *out = message[(i % rows) * cols + i / rows];
+            }
+        });
         let encoded = encoder
             .encode_rows_measured(&transposed, rows)
             .map_err(Error::Encoder)?;

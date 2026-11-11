@@ -26,6 +26,7 @@ use stele_reductions::stele_ir::relation::{check, Relation, Values, Violation};
 use stele_reductions::stele_pcs::{
     verify_certificate, PreparedSource, Source, VerifiedCertificate,
 };
+use stele_reductions::stele_sumcheck::parallel;
 
 pub mod bundle;
 mod plan;
@@ -459,23 +460,31 @@ fn prove_inner(
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let mut values = layout.assign(&capture, &weights.codes)?;
-    match hook {
-        Some(hook) => hook(&mut layout.relation, &mut values),
-        None => check(&layout.relation, &values).map_err(Error::Check)?,
+    let checked = hook.is_none();
+    if let Some(hook) = hook {
+        hook(&mut layout.relation, &mut values);
     }
     let input = public_input(public, &d.cqis_id, statement);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
-    let proof = relation::prove(
-        &mut t,
-        &layout.relation,
-        &values,
-        &committed
-            .prepared
-            .iter()
-            .zip(&committed.certificates)
-            .collect::<Vec<_>>(),
-    )
-    .map_err(Error::Engine)?;
+    let model = committed
+        .prepared
+        .iter()
+        .zip(&committed.certificates)
+        .collect::<Vec<_>>();
+    // The plain checker runs beside the engine, which reads nothing it decides; its
+    // verdict is applied first, so a false witness still fails with `Check` (E16-23).
+    let (check, proof) = parallel::join(
+        || {
+            if checked {
+                check(&layout.relation, &values).map_err(Error::Check)
+            } else {
+                Ok(())
+            }
+        },
+        || relation::prove(&mut t, &layout.relation, &values, &model),
+    );
+    check?;
+    let proof = proof.map_err(Error::Engine)?;
     let digest = statement_digest(&input, &relation::digest(&layout.relation));
     Ok(sections(proof, d.cqis_id, digest).encode())
 }

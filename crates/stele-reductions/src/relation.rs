@@ -23,7 +23,7 @@ use stele_ir::relation::{
 use stele_pcs::{
     verify_certificate, verify_point, PreparedSource, ProofKind, Source, VerifiedCertificate,
 };
-use stele_sumcheck::{claim_batch, zerocheck, Dense, Instance, Term};
+use stele_sumcheck::{claim_batch, parallel, zerocheck, Dense, Instance, Term};
 
 #[path = "relation_codec.rs"]
 mod codec;
@@ -706,13 +706,26 @@ impl MatmulShape {
         point
     }
     /// Operand table over the sumcheck variables, non-shared free bits fixed at ρ.
-    fn table(&self, r: &Ref, col: &[i64]) -> Vec<K> {
+    fn table(&self, r: &Ref, col: &[i64]) -> Result<Vec<K>, Error> {
         let nv = self.vars.len();
-        let mut reduced = vec![K::from_i64(0); 1 << nv];
         let mut mask = 0usize;
-        for d in &r.vars {
-            if let Some(p) = self.position(*d) {
-                mask |= 1 << (nv - 1 - p);
+        // Per entry-index bit: its sumcheck variable (`inner`, as `(j, z bit)`), or a bit
+        // outside the sumcheck (`outer`) whose weights `eq` folds in, in `r.vars` order.
+        let (mut inner, mut outer) = (Vec::new(), Vec::new());
+        let mut eq = vec![K::from_i64(1)];
+        for (j, d) in r.vars.iter().enumerate() {
+            match self.position(*d) {
+                Some(p) => {
+                    mask |= 1 << (nv - 1 - p);
+                    inner.push((j, nv - 1 - p));
+                }
+                None => {
+                    let x = self.fixed_at(*d);
+                    let low: Vec<K> = eq.iter().map(|w| *w * (K::from_i64(1) - x)).collect();
+                    let high: Vec<K> = eq.iter().map(|w| *w * x).collect();
+                    eq = [low, high].concat();
+                    outer.push(j);
+                }
             }
         }
         // Entries outside a row block (RFC-0026 A6) have eq weight 0: skip them, so
@@ -724,24 +737,25 @@ impl MatmulShape {
                 selected |= usize::from(bit) << j;
             }
         }
-        for (index, v) in col.iter().enumerate() {
-            if index & fixed != selected {
-                continue;
-            }
-            let (mut z, mut w) = (0usize, K::from_i64(1));
-            for (j, d) in r.vars.iter().enumerate() {
-                let bit = (index >> j) & 1;
-                match self.position(*d) {
-                    Some(p) => z |= bit << (nv - 1 - p),
-                    None => {
-                        let x = self.fixed_at(*d);
-                        w = w * if bit == 1 { x } else { K::from_i64(1) - x };
-                    }
+        // Exact field sums: the split leaves every entry equal to the sequential loop's.
+        let mut reduced = vec![K::from_i64(0); 1 << nv];
+        stele_sumcheck::parallel::sum_ranges(col.len(), &mut reduced, |range, reduced| {
+            for index in range {
+                if index & fixed != selected {
+                    continue;
                 }
+                let z = inner
+                    .iter()
+                    .fold(0, |z, (j, to)| z | ((index >> j) & 1) << to);
+                let o = outer
+                    .iter()
+                    .enumerate()
+                    .fold(0, |o, (k, j)| o | ((index >> j) & 1) << k);
+                reduced[z] = reduced[z] + eq[o] * K::from_i64(col[index]);
             }
-            reduced[z] = reduced[z] + w * K::from_i64(*v);
-        }
-        (0..1 << nv).map(|z| reduced[z & mask]).collect()
+            Ok(())
+        })?;
+        Ok((0..1 << nv).map(|z| reduced[z & mask]).collect())
     }
     fn eq_table(&self) -> Vec<K> {
         let nv = self.vars.len();
@@ -1039,45 +1053,67 @@ fn prove_plan(
         Some(stack) => message(stack, committed)?,
         None => Vec::new(),
     };
-    let mut usage = HashUsage::default();
-    let mut stacked = None;
-    if let Some(stack) = &plan.stack {
-        let p = PreparedSource::<K>::from_code_id(
-            stack.id,
-            stack.ell,
-            &stack.code,
-            &committed_message,
-            &mut usage,
-        )
-        .map_err(Error::Pcs)?;
-        let (section, handle) = register(&p)?;
-        t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
+    // Steps 2 and 3 are independent of every challenge: the stacked source and each
+    // check's counts, multiplicity source and certificate are pool tasks, and the
+    // roots are absorbed in step order below (task E16-23). Errors keep that order.
+    let stack_source = || {
+        plan.stack
+            .as_ref()
+            .map(|stack| {
+                let p = PreparedSource::<K>::from_code_id(
+                    stack.id,
+                    stack.ell,
+                    &stack.code,
+                    &committed_message,
+                    &mut HashUsage::default(),
+                )
+                .map_err(Error::Pcs)?;
+                let (section, handle) = register(&p)?;
+                Ok::<_, Error>((p, handle, section))
+            })
+            .transpose()
+    };
+    let mu_messages = |i: usize| {
+        let counts = lookup::counts(&plan.checks[i], relation, values)?;
+        let message = lookup::multiplicities(&plan.checks[i], &counts)?;
+        Ok::<_, Error>((counts, message))
+    };
+    let (stacked, mu_messages) = parallel::join(stack_source, || {
+        parallel::map(plan.checks.len(), mu_messages)
+            .into_iter()
+            .collect::<Result<Vec<_>, Error>>()
+    });
+    let stacked = stacked?.map(|(p, handle, section)| {
         proof.groups.push(section);
-        stacked = Some((p, handle));
+        (p, handle)
+    });
+    if let Some((p, _)) = &stacked {
+        t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
     }
-    // Step 3: multiplicity sources, independent of every challenge.
-    let mut mu_messages = Vec::new();
-    for check in &plan.checks {
-        mu_messages.push(lookup::multiplicities(check, relation, values)?);
-    }
-    let mut mu = Vec::new();
-    for (check, message) in plan.checks.iter().zip(&mu_messages) {
-        let layout = check.layout;
-        let columns = check.k - layout.ell + 2;
+    let (counts, mu_messages): (Vec<_>, Vec<_>) = mu_messages?.into_iter().unzip();
+    let mu = parallel::map(plan.checks.len(), |i| {
+        let layout = plan.checks[i].layout;
+        let columns = plan.checks[i].k - layout.ell + 2;
         let p = PreparedSource::<K>::new(
             layout.id,
             layout.ell,
             columns,
             layout.blowup,
-            message,
-            &mut usage,
+            &mu_messages[i],
+            &mut HashUsage::default(),
         )
         .map_err(Error::Pcs)?;
         let (section, handle) = register(&p)?;
+        Ok::<_, Error>((p, handle, section))
+    })
+    .into_iter()
+    .map(|r| {
+        let (p, handle, section) = r?;
         t.absorb(AbsorbLabel::RelationRoots, &p.source().root())?;
         proof.multiplicities.push(section);
-        mu.push((p, handle));
-    }
+        Ok((p, handle))
+    })
+    .collect::<Result<Vec<_>, Error>>()?;
     // Step 4: one zerocheck per identity domain size.
     for &m in &plan.sizes {
         let lambdas = identity_lambdas(t, relation, m)?;
@@ -1109,13 +1145,14 @@ fn prove_plan(
         proof.identities.push(out);
     }
     // Step 5.
-    for (check, (p, handle)) in plan.checks.iter().zip(&mu) {
+    for ((check, (p, handle)), counts) in plan.checks.iter().zip(&mu).zip(&counts) {
         let mut out = Vec::new();
         lookup::prove(
             t,
             check,
             relation,
             values,
+            counts,
             (p, handle),
             &mut out,
             &mut claims,
@@ -1132,8 +1169,8 @@ fn prove_plan(
         if !shape.shared.is_empty() {
             tables.push(shape.eq_table());
         }
-        tables.push(shape.table(&mm.lhs, column(relation, values, mm.lhs.column)?));
-        tables.push(shape.table(&mm.rhs, column(relation, values, mm.rhs.column)?));
+        tables.push(shape.table(&mm.lhs, column(relation, values, mm.lhs.column)?)?);
+        tables.push(shape.table(&mm.rhs, column(relation, values, mm.rhs.column)?)?);
         let mut sc = Vec::new();
         let capture = Capture {
             dense: Dense::new(&instance, tables)?,

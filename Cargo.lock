@@ -379,6 +379,7 @@ dependencies = [
  "stele-field",
  "stele-hash",
  "stele-poly",
+ "stele-sumcheck",
 ]
 
 [[package]]
