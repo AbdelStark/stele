@@ -48,6 +48,9 @@ pub enum Profile {
     Standard,
     /// Treaty profile.
     Treaty,
+    /// RFC-0026 A10: the development tier's Policy 2 counts, with `proven: false`.
+    /// Ungated by `standard-unproven`, because it admits nothing (ADR-110).
+    Development,
 }
 
 /// Admitted PCS parameters (RFC-0010 A14 item 6); constructed only by [`resolve_pcs`].
@@ -61,7 +64,8 @@ pub struct ProximityParams {
     pub opening_queries: u16,
     /// Grinding bits k_q of every certificate and opening column round (A14 item 3).
     pub column_grind_bits: u8,
-    /// A14 item 6: true for standard under Policy 2; treaty is never admitted.
+    /// A14 item 6: true for standard under Policy 2; treaty is never admitted;
+    /// false for the development tier (RFC-0026 A10), which claims no level.
     pub proven: bool,
 }
 
@@ -170,7 +174,8 @@ pub fn parameters(code: &Encoder) -> CodeParameters {
 /// Validates the identity (`InvalidCodeId`) and field degree 1, 4 or 8
 /// (`FieldMismatch`). A standard request with QM31 or OM31 challenges returns the
 /// RFC-0010 A14 Policy 2 parameters; every other request (treaty, M31 challenges,
-/// v2 J = 15) fails closed with `UnsupportedParameters`.
+/// v2 J = 15) fails closed with `UnsupportedParameters`. A development request
+/// (RFC-0026 A10) returns the same counts with `proven: false`.
 pub fn resolve_pcs(
     code_id: &[u8],
     field_degree: u8,
@@ -180,12 +185,14 @@ pub fn resolve_pcs(
     if !matches!(field_degree, 1 | 4 | 8) {
         return Err(Error::FieldMismatch);
     }
-    if profile != Profile::Standard || field_degree == 1 {
+    if profile == Profile::Treaty || field_degree == 1 {
         return Err(Error::UnsupportedParameters);
     }
+    let proven = profile == Profile::Standard;
     // ADR-108: no production build resolves a standard profile before E8-05's
     // composed (C1)-(C3) check; tests and controls opt in with `standard-unproven`.
-    if cfg!(not(feature = "standard-unproven")) {
+    // The development tier is not gated: it gets `proven: false` (ADR-110).
+    if proven && cfg!(not(feature = "standard-unproven")) {
         return Err(Error::UnsupportedParameters);
     }
     // The factory validated the identity: Circle m <= 30 - b, v2 J in 3..=15.
@@ -205,7 +212,7 @@ pub fn resolve_pcs(
         certificate_queries,
         opening_queries,
         column_grind_bits: POLICY2_COLUMN_GRIND_BITS,
-        proven: true,
+        proven,
     })
 }
 

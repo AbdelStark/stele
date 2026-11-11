@@ -16,17 +16,15 @@ use alloc::vec::Vec;
 pub use stele_proof::development as container;
 use stele_proof::development::Container;
 use stele_reductions::parallel;
-use stele_reductions::relation::{self, Ledger, Proof};
+use stele_reductions::relation::{self, Ledger, Proof, Sources};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{
     ArtifactLayout, Bounds, Model, NumericalIdentity, Registry, Role, Scales,
 };
 use stele_reductions::stele_field::{Field, M31};
-use stele_reductions::stele_hash::{HashUsage, Transcript};
+use stele_reductions::stele_hash::Transcript;
 use stele_reductions::stele_ir::relation::{check, Relation, Values, Violation};
-use stele_reductions::stele_pcs::{
-    verify_certificate, PreparedSource, Source, VerifiedCertificate,
-};
+use stele_reductions::stele_pcs::{verify_certificate, PreparedSource, VerifiedCertificate};
 
 pub mod bundle;
 mod plan;
@@ -101,6 +99,9 @@ pub struct Public {
     pub vectors: Vec<(u16, Vec<i16>)>,
     /// One `(root, certificate)` per weight source in plan order.
     pub commitment: Vec<([u8; 32], Vec<u8>)>,
+    /// The source parameter set (RFC-0026 A10), bound by [`public_input`]. dev-zk
+    /// inputs carry `Expander`: their hiding sources do not read it.
+    pub sources: Sources,
 }
 
 struct Decoded {
@@ -154,6 +155,10 @@ fn blob(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 const PUBLIC_TAG: &[u8] = b"stele/v0.1/dev-e2e/public-input";
+/// RFC-0026 A10: the profile byte of a development proof on Circle Policy 2 sources.
+/// `Expander` omits the byte, so pre-A10 inputs and proofs are unchanged; dev-zk
+/// appends `1` (A9).
+pub const CIRCLE_PROFILE: u8 = 2;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
 
 /// Canonical RFC-0026 §1.1 public input (as amended by A2), the transcript's first frame.
@@ -185,6 +190,9 @@ pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) 
             out.extend_from_slice(&y.to_le_bytes());
         }
         None => out.push(0),
+    }
+    if public.sources == Sources::Circle {
+        out.push(CIRCLE_PROFILE);
     }
     out
 }
@@ -250,7 +258,7 @@ fn layout_for(
             );
     let sources = match zk {
         true => 1,
-        false => relation::model_layout(&layout.relation)
+        false => relation::model_layout(&layout.relation, public.sources)
             .map_err(Error::Engine)?
             .len(),
     };
@@ -268,10 +276,26 @@ pub struct Weights {
     /// The model sources and their stacked messages (RFC-0026 A5).
     layouts: Vec<relation::ModelLayout>,
     stacked: Vec<Vec<M31>>,
+    sources: Sources,
 }
 
 impl Weights {
+    /// The weights under the default source set, Circle Policy 2 (RFC-0026 A10).
     pub fn from_artifact(model: &Model, artifact: &[u8]) -> Result<Self, Error> {
+        Self::from_artifact_sources(model, artifact, Sources::Circle)
+    }
+
+    /// The source set the model commitment uses; [`Public::sources`] must equal it.
+    pub fn sources(&self) -> Sources {
+        self.sources
+    }
+
+    /// The weights under an explicit source set; `Expander` reproduces pre-A10 proofs.
+    pub fn from_artifact_sources(
+        model: &Model,
+        artifact: &[u8],
+        sources: Sources,
+    ) -> Result<Self, Error> {
         let layout = ArtifactLayout::new(model).map_err(|_| Error::UnsupportedModel)?;
         let shape = model.shape();
         let mut records = Vec::new();
@@ -333,7 +357,7 @@ impl Weights {
             .iter()
             .map(|m: &Vec<M31>| m.len().trailing_zeros() as u8)
             .collect();
-        let layouts = relation::model_layout_for(&lengths).map_err(Error::Engine)?;
+        let layouts = relation::model_layout_for(&lengths, sources).map_err(Error::Engine)?;
         let slices: Vec<&[M31]> = messages.iter().map(Vec::as_slice).collect();
         let stacked = relation::stack_model(&layouts, &slices).map_err(Error::Engine)?;
         Ok(Self {
@@ -341,6 +365,7 @@ impl Weights {
             vectors,
             layouts,
             stacked,
+            sources,
         })
     }
 }
@@ -359,14 +384,13 @@ impl<'a> Committed<'a> {
         let mut certificates = Vec::new();
         let mut commitment = Vec::new();
         for (layout, message) in weights.layouts.iter().zip(&weights.stacked) {
-            let p = PreparedSource::from_code_id(
-                layout.id,
-                layout.ell,
-                &layout.code,
-                message,
-                &mut HashUsage::default(),
-            )
-            .map_err(Error::Commitment)?;
+            let p = layout
+                .sources
+                .prepare(layout.id, layout.ell, &layout.code, message)
+                .map_err(|e| match e {
+                    relation::Error::Pcs(e) => Error::Commitment(e),
+                    e => Error::Engine(e),
+                })?;
             let (bytes, _) = p
                 .certificate()
                 .map_err(|_| Error::Commitment(stele_reductions::stele_pcs::Error::Capacity))?;
@@ -386,7 +410,7 @@ impl<'a> Committed<'a> {
 
 /// Verify every model-commitment certificate against its plan-derived model source.
 fn certificates(public: &Public, bits: &[u8]) -> Result<Vec<VerifiedCertificate<K>>, Error> {
-    let layouts = relation::model_layout_for(bits).map_err(Error::Engine)?;
+    let layouts = relation::model_layout_for(bits, public.sources).map_err(Error::Engine)?;
     if layouts.len() != public.commitment.len() {
         return Err(Error::StatementMismatch);
     }
@@ -395,8 +419,13 @@ fn certificates(public: &Public, bits: &[u8]) -> Result<Vec<VerifiedCertificate<
         .iter()
         .zip(&layouts)
         .map(|((root, bytes), l)| {
-            let source =
-                Source::from_code_id(l.id, l.ell, &l.code, *root).map_err(Error::Commitment)?;
+            let source = l
+                .sources
+                .source(l.id, l.ell, &l.code, *root)
+                .map_err(|e| match e {
+                    relation::Error::Pcs(e) => Error::Commitment(e),
+                    e => Error::Engine(e),
+                })?;
             verify_certificate(source, bytes)
                 .map(|(v, _)| v)
                 .map_err(|f| Error::Commitment(f.cause))
@@ -482,7 +511,7 @@ fn prove_inner(
                 Ok(())
             }
         },
-        || relation::prove(&mut t, &layout.relation, &values, &model),
+        || relation::prove(&mut t, &layout.relation, &values, &model, public.sources),
     )?
     .map_err(Error::Engine)?;
     let digest = statement_digest(&input, &relation::digest(&layout.relation));
@@ -567,6 +596,7 @@ pub fn verify(public: &Public, statement: &Statement, proof: &[u8]) -> Result<Le
         &layout.relation,
         &certs.iter().collect::<Vec<_>>(),
         &sections,
+        public.sources,
     )
     .map_err(Error::Engine)
 }
@@ -651,6 +681,7 @@ pub fn prove_window_profile(
             preparation: preparation.to_vec(),
             vectors: zk::published(model, &weights.vectors)?,
             commitment: Vec::new(),
+            sources: Sources::Expander,
         };
         let proof = match window {
             zk::Window::Commit { proofs, seed, out } => {
@@ -691,6 +722,7 @@ pub fn prove_window_profile(
         preparation: preparation.to_vec(),
         vectors: weights.vectors.clone(),
         commitment: committed.commitment.clone(),
+        sources: weights.sources,
     };
     let proof = prove(&public, &mut executor, &weights, &committed, &statement)?;
     Ok((public, statement, proof))

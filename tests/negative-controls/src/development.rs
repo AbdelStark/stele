@@ -9,6 +9,12 @@
 //!   the engine absorbs the model root after the statement, RFC-0026 A5);
 //! - NC-1305: one prover-side rounding exponent (`RoundSumMismatch`);
 //! - NC-1309: a different checked range (`RoundSumMismatch`).
+//! - NC-1311..1315 (RFC-0026 A10, task E16-30): the honest proof is on the A10 Circle
+//!   Policy 2 sources. NC-1311 reads it with the profile byte omitted and NC-1312
+//!   reads a pre-A10 proof with the byte added (`ProofShape`: the verifier derives
+//!   other model sources from the byte). NC-1313, NC-1314 and NC-1315 replace the
+//!   column-round nonce of the stack certificate, the stack opening and the model
+//!   certificate with one that fails the k_q = 16 predicate (`GrindMismatch`).
 //!
 //! NC-1305 and NC-1309 restamp the container's statement digest with the verifier's own,
 //! so the rejection comes from the engine transcript, not the prover-written header.
@@ -17,9 +23,11 @@ use stele_prover::development::{
     artifact_id, prove, prove_tampered, statement_digest_for, verify, zk, Committed, Error, Public,
     Statement, Weights,
 };
+use stele_reductions::relation::{self, Sources};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{ArtifactLayout, Model, Preparation, Role, Scales};
 use stele_reductions::stele_ir::relation::{Relation, Values};
+use stele_reductions::stele_pcs::{ProofKind, Source};
 
 const RAW: &[u8] = include_bytes!("../../../crates/stele-prover/tests/fixtures/synthetic-e2e.bin");
 const JSON: &str = include_str!("../../../crates/stele-prover/tests/fixtures/synthetic-e2e.json");
@@ -77,6 +85,8 @@ fn zk_commit(
     let base = Public {
         commitment: Vec::new(),
         vectors: zk::published(&public.model, &public.vectors).map_err(|e| format!("{e:?}"))?,
+        // dev-zk inputs omit the A10 byte: their hiding sources do not read it.
+        sources: Sources::Expander,
         ..public.clone()
     };
     let (commitment, state) =
@@ -292,6 +302,7 @@ pub fn run(id: u16) -> Result<(), String> {
         preparation: span("preparation")?.to_vec(),
         vectors: weights.vectors.clone(),
         commitment: committed.commitment.clone(),
+        sources: weights.sources(),
     };
     let proof = prove(&public, &mut exec, &weights, &committed, &honest)
         .map_err(|e| format!("honest prover: {e:?}"))?;
@@ -492,6 +503,82 @@ pub fn run(id: u16) -> Result<(), String> {
             };
             ("RoundSumMismatch", restamped(&public, &statement, &proof)?)
         }
+        1311 => {
+            if public.sources != Sources::Circle {
+                return Err("honest proof not on A10 sources".into());
+            }
+            let omitted = Public {
+                sources: Sources::Expander,
+                ..public.clone()
+            };
+            ("ProofShape", restamped(&omitted, &honest, &proof)?)
+        }
+        1312 => {
+            let w = Weights::from_artifact_sources(&model, artifact, Sources::Expander)
+                .map_err(|e| format!("{e:?}"))?;
+            let c = Committed::new(&w).map_err(|e| format!("{e:?}"))?;
+            let old = Public {
+                commitment: c.commitment.clone(),
+                sources: Sources::Expander,
+                ..public.clone()
+            };
+            let old_proof = prove(&old, &mut exec, &w, &c, &honest)
+                .map_err(|e| format!("pre-A10 prover: {e:?}"))?;
+            verify(&old, &honest, &old_proof).map_err(|e| format!("pre-A10 rejected: {e:?}"))?;
+            let added = Public {
+                sources: Sources::Circle,
+                ..old
+            };
+            ("ProofShape", restamped(&added, &honest, &old_proof)?)
+        }
+        1313..=1315 => {
+            // The plan-derived relation, captured from the prover's own declaration.
+            let mut captured = None;
+            let mut hook = |r: &mut Relation, _: &mut Values| captured = Some(r.clone());
+            prove_tampered(&public, &mut exec, &weights, &committed, &honest, &mut hook)
+                .map_err(|e| format!("capture prover: {e:?}"))?;
+            let rel = captured.ok_or("no relation")?;
+            let mut c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
+            let mut tampered = public.clone();
+            // Certificate wire `u8(1) || [n_t] || t || n_q || ..`; opening `u8(1) || u || n_q || ..`.
+            let nonce = |source: &Source<relation::K>, kind| {
+                let (tensor, column) = source.grind_bits(kind);
+                let tensor = if tensor > 0 { 8 } else { 0 };
+                (column == 16).then_some(1 + tensor + source.columns() * 16)
+            };
+            match id {
+                1313 | 1314 => {
+                    let root = c.groups[0][..32].try_into().map_err(|_| "root")?;
+                    let stack = relation::stack_source(&rel, Sources::Circle, root)
+                        .map_err(|e| format!("{e:?}"))?
+                        .ok_or("no stack")?;
+                    if id == 1313 {
+                        let at = nonce(&stack, ProofKind::Certificate).ok_or("no k_q = 16")?;
+                        c.groups[0][32 + at] ^= 1;
+                    } else {
+                        // Claim-batch rounds (3 values each) and the final value precede it.
+                        let bits = (stack.rows() * stack.columns()).trailing_zeros() as usize;
+                        let at = nonce(&stack, ProofKind::Opening).ok_or("no k_q = 16")?;
+                        c.openings[0][bits * 48 + 16 + at] ^= 1;
+                    }
+                }
+                _ => {
+                    let l = &relation::model_layout(&rel, Sources::Circle)
+                        .map_err(|e| format!("{e:?}"))?[0];
+                    let (root, certificate) = &mut tampered.commitment[0];
+                    let model = l
+                        .sources
+                        .source(l.id, l.ell, &l.code, *root)
+                        .map_err(|e| format!("{e:?}"))?;
+                    let at = nonce(&model, ProofKind::Certificate).ok_or("no k_q = 16")?;
+                    certificate[at] ^= 1;
+                }
+            }
+            (
+                "GrindMismatch",
+                verify(&tampered, &honest, &c.encode()).err(),
+            )
+        }
         _ => return Err(format!("unknown development control {id}")),
     };
     match rejection {
@@ -679,6 +766,7 @@ mod privacy {
             preparation: span("preparation")?.to_vec(),
             vectors: weights.vectors.clone(),
             commitment: committed.commitment.clone(),
+            sources: weights.sources(),
         };
         let mut captured = None;
         let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
@@ -776,6 +864,7 @@ mod privacy {
             vectors: zk::published(span("model").expect("model"), &weights.vectors)
                 .expect("published"),
             commitment: Vec::new(),
+            sources: Sources::Expander,
         };
         let (zk_public, commitment, mut state) =
             zk_commit(&public, &mut exec, &weights, 3, 41).expect("commit");

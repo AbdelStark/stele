@@ -22,7 +22,9 @@
 //! A development proof shows only that the model `public.bin` names ran on the statement it names.
 //! `verify-dev` therefore prints the `cqis_id`, the model digest, `T`, the tokens,
 //! `[r, e)` and `y` before its verdict; compare them with trusted values, or pass
-//! `--expect-model`. Under dev-zk the model digest covers the published commitment,
+//! `--expect-model`. A development proof is on RFC-0026 A10 Circle Policy 2 sources
+//! (`sources Circle`, `stele-dev-public-v2`); a pre-A10 `stele-dev-public-v1` file
+//! still verifies (`sources Expander`). Under dev-zk the model digest covers the published commitment,
 //! so `--expect-model` pins a proof to it. The verdict is the last line: `YES`, or
 //! `NO: <reason>`. `prove-dev` ends with `PROOF WRITTEN`, which is not a verdict.
 //! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.
@@ -230,6 +232,8 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         write("public", &bundle::encode(&public, &statement))?;
         write("proof", &proof)?;
         println!("profile development");
+        // RFC-0026 A10: the source set the public input binds.
+        println!("sources {:?}", public.sources);
         let (cqis_id, model) = model_identity(&public).map_err(reject)?;
         identity(&cqis_id, &model, &statement);
         println!("proof {} bytes", proof.len());
@@ -308,6 +312,7 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
         }
         None => {
             println!("profile development");
+            println!("sources {:?}", public.sources);
             development_model
         }
     };

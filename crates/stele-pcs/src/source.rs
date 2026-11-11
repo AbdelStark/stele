@@ -182,6 +182,30 @@ impl<K: ChallengeField> Source<K> {
         root: merkle::Digest,
         policy: Policy,
     ) -> Result<Self, Error> {
+        Self::build(id, ell, code, root, policy, Profile::Standard)
+    }
+
+    /// The development tier's Policy 2 source (RFC-0026 A10): the A14 counts and
+    /// grinding, resolved as `Profile::Development` (`proven: false`), so it needs no
+    /// `standard-unproven` feature and admits no level (ADR-110). Its bytes carry
+    /// policy byte 2, like a standard Policy 2 source of the same identity.
+    pub fn from_code_id_development(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        root: merkle::Digest,
+    ) -> Result<Self, Error> {
+        Self::build(id, ell, code, root, Policy::Two, Profile::Development)
+    }
+
+    fn build(
+        id: u64,
+        ell: u8,
+        code: &[u8],
+        root: merkle::Digest,
+        policy: Policy,
+        profile: Profile,
+    ) -> Result<Self, Error> {
         if ell > 30 {
             return Err(Error::UnsupportedSource);
         }
@@ -221,7 +245,7 @@ impl<K: ChallengeField> Source<K> {
                 Policy::Two => {
                     // ADR-108: fails closed unless `standard-unproven` is enabled, so a
                     // production verifier rejects every Policy 2 source, parsed ones too.
-                    let p = registry::resolve_pcs(code, K::DEGREE as u8, Profile::Standard)
+                    let p = registry::resolve_pcs(code, K::DEGREE as u8, profile)
                         .map_err(|_| Error::UnsupportedSource)?;
                     let k_t = tensor_grind_bits(ell, radius, K::DEGREE);
                     (
