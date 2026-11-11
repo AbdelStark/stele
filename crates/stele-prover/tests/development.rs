@@ -176,6 +176,39 @@ fn honest() -> (Case, Statement) {
     (case, statement)
 }
 
+/// E16-23: the plain checker runs beside the engine, and a false witness must still
+/// end in `Error::Check`, not in an engine error, a panic or a proof.
+#[test]
+fn rejects_false_witness_with_check() {
+    let (case, statement) = honest();
+    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let public = case.public(&committed, &weights);
+    let mut executor = case.executor(&case.artifact);
+    // A next token that is not the greedy choice.
+    let next = Statement {
+        next: statement.next.map(|y| y ^ 1),
+        ..statement.clone()
+    };
+    // A checked token that is not the greedy choice of its prefix.
+    let mut token = statement.clone();
+    token.tokens[statement.start as usize + 1] ^= 1;
+    for (name, false_statement) in [("next", next), ("token", token)] {
+        let result = prove(
+            &public,
+            &mut executor,
+            &weights,
+            &committed,
+            &false_statement,
+        );
+        assert!(
+            matches!(result, Err(Error::Check(_))),
+            "{name}: {:?}",
+            result.err()
+        );
+    }
+}
+
 #[test]
 fn rejects_statement_and_container_tampers() {
     let (case, statement) = honest();

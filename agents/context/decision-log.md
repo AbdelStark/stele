@@ -2503,3 +2503,68 @@ Status: Accepted (development tier). Independent review in two rounds:
 fix-then-merge, then MERGE with "accept A6: yes". dev-zk stays not admitted
 until E12-27.
 
+## ADR-105: The development prover's sequential residual on the work pool (RFC-0026 §7, RFC-0006 A1, RFC-0010 A4, task E16-23)
+
+Context: ADR-103 found that in the 8-layer `prove-dev` profile most of the CPU residual
+ran on the main thread outside any parallel region: relation registration, lookup leaf
+preparation and counts, matmul table builds, the PCS row combination, witness and
+layout. Task E16-23 moves that work onto the ADR-090 pool, or removes it where it
+was repeated. The measurements are in the E16-23 ledgers.
+
+Decision:
+- `stele_sumcheck::parallel` gains `map`, with one pool task per item for a few large
+  independent items, `join`, and `gated` (a deciding gate beside the work). Without
+  `std`, each runs in order on the calling thread; `gated` runs the gate first.
+  `stele-reductions` re-exports `stele_sumcheck::parallel` only.
+- `stele-pcs` gains an optional `rayon =1.10.0`, which only its `std` feature enables.
+  It does not depend on `stele-sumcheck`, so that edge stays banned (`deny.toml`). A
+  crate-private `for_each_block` splits disjoint output blocks.
+  - The certificate row and the functional-opening row are combined row-major in
+    disjoint column blocks. Before, the loop went column by column with a stride of one
+    row through the message.
+  - Each column keeps its sum in row order.
+  - Source preparation transposes in parallel blocks.
+  - Verification code is unchanged.
+- The relation engine:
+  - Prepares and registers the stacked source and the multiplicity sources as pool
+    tasks. It absorbs their roots in step order.
+  - Computes lookup counts once, in step 3, and passes them to step 5. They used to be
+    computed twice.
+  - Fills the lookup selector, original columns, leaves, table fractions and member
+    evaluations in parallel blocks.
+  - Builds each matmul operand table with a precomputed table of eq weights over the
+    bits outside the sumcheck. Each entry no longer needs a linear search and a product
+    over every bit. The table build splits the entries over the pool with exact field
+    sums.
+- The claim-batch coefficient table accumulates in parallel blocks. Zerocheck rounds
+  compute their degree + 1 node sums as pool tasks, because late rounds are too short
+  for `sum_ranges` to split. The hybrid fold runs in parallel blocks.
+- `Layout::declare` generates rotary coefficients once for each distinct rotation, not
+  once for Q and again for K in every layer. Activation tables are generated once for
+  each distinct descriptor (`Rope::with_input`).
+- `prove-dev` runs the plain checker alongside the engine (`parallel::gated`).
+  - The engine's output does not depend on the checker.
+  - The checker decides. A false witness fails with `Check` and returns no proof,
+    even if the engine errs or panics on it; under `std` the engine's panic is caught
+    and dropped in that case. When the checker passes, an engine panic propagates.
+  - The engine may finish work on a witness the checker rejects. That work is
+    discarded. `rejects_false_witness_with_check` tests the outcome.
+- Every change is an exact reordering of field additions, or a write into disjoint
+  slots. Transcript order, proof bytes, the E16-10 fixture hashes and every proof pin
+  are unchanged (INV-3, INV-8). The verifier crates (`stele-verifier`, the engine's
+  `verify` paths) and the `--no-default-features` builds are unchanged, and they stay
+  free of rayon. `verify-dev` shares `Layout::declare` with the prover, so the
+  rotary and activation deduplication also speeds up verification.
+
+Consequences:
+- The work left on one thread is `Layout::assign`, witness capture, `Attention::new`
+  (per-layer `Exp` tables), the fraction-tree tail rounds and short eq tables. It is
+  listed in the E16-23 ledger.
+- The plain checker no longer shows up as wall time on the 8-layer fixture.
+- `stage_shares.py` charges main-thread samples. Once `prove-dev` joins, the main
+  thread only waits. For an after-profile, use the per-thread residual count in the
+  E16-23 ledger notes.
+- ADR-103 stands. Its gate is a stories42M profile (task E16-22). That profile should be
+  taken on this code, because this change lowers the CPU residual it measures.
+
+Status: Accepted (owner authorisation for autonomous performance work; soundness-auditor review requested in the E16-23 PR for the `stele-sumcheck` and `stele-pcs` prover-side changes; ADR-090's list of crates with rayon gains `stele-pcs`).

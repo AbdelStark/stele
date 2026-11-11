@@ -227,15 +227,14 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         transposed
             .try_reserve_exact(count)
             .map_err(|_| Error::Capacity)?;
-        for column in 0..source.columns() {
-            transposed.extend(
-                message
-                    .iter()
-                    .skip(column)
-                    .step_by(source.columns())
-                    .copied(),
-            );
-        }
+        // Entry `c*R + r` is message entry `r*C + c`; disjoint blocks (task E16-23).
+        transposed.resize(count, M31::default());
+        let cols = source.columns();
+        crate::opening::for_each_block(&mut transposed, |start, chunk| {
+            for (i, out) in (start..).zip(chunk) {
+                *out = message[(i % rows) * cols + i / rows];
+            }
+        });
         let encoded = encoder
             .encode_rows_measured(&transposed, rows)
             .map_err(Error::Encoder)?;

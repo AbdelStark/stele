@@ -18,6 +18,7 @@ use stele_hash::{AbsorbLabel, ChallengeLabel, Transcript};
 use stele_ir::relation::{Relation, Values};
 use stele_lookup::fraction::{self, LeafDescriptor, SelectedProduct};
 use stele_pcs::{verify_opening, Functional, PreparedSource, Source, VerifiedCertificate};
+use stele_sumcheck::parallel::{for_each_chunk, sum_ranges};
 
 const FRACTION: fn(fraction::Error) -> Error = Error::Fraction;
 
@@ -48,16 +49,19 @@ fn sigma(check: &Check, relation: &Relation) -> Vec<K> {
     let mut out = alloc::vec![K::from_i64(0); 1 << check.m];
     for member in &check.members {
         let block = &mut out[member.offset..member.offset + (1 << member.m)];
-        for (x, s) in block.iter_mut().enumerate() {
-            *s = match &member.selector {
-                None => K::from_i64(1),
-                // Validated public 0/1 column (RFC-0026 §3.3).
-                Some(r) => match &relation.columns[r.column.0 as usize].kind {
-                    stele_ir::relation::Kind::Public(v) => K::from_i64(v[r.index(x as u64)]),
-                    _ => K::from_i64(0),
-                },
-            };
-        }
+        for_each_chunk(block, |start, chunk| {
+            for (j, s) in chunk.iter_mut().enumerate() {
+                let x = start + j;
+                *s = match &member.selector {
+                    None => K::from_i64(1),
+                    // Validated public 0/1 column (RFC-0026 §3.3).
+                    Some(r) => match &relation.columns[r.column.0 as usize].kind {
+                        stele_ir::relation::Kind::Public(v) => K::from_i64(v[r.index(x as u64)]),
+                        _ => K::from_i64(0),
+                    },
+                };
+            }
+        });
     }
     out
 }
@@ -71,9 +75,11 @@ fn originals(check: &Check, relation: &Relation, values: &Values) -> Result<Vec<
             let col = column(relation, values, r.column)?;
             let shift = K::from_i64(*offset);
             let block = &mut x[member.offset..member.offset + (1 << member.m)];
-            for (local, v) in block.iter_mut().enumerate() {
-                *v = K::from_i64(col[r.index(local as u64)]) + shift;
-            }
+            for_each_chunk(block, |start, chunk| {
+                for (j, v) in chunk.iter_mut().enumerate() {
+                    *v = K::from_i64(col[r.index((start + j) as u64)]) + shift;
+                }
+            });
         }
     }
     Ok(out)
@@ -98,15 +104,17 @@ fn split(check: &Check, xs: &[Vec<K>], z: &[K]) -> Result<Vec<K>, Error> {
     let mut out = Vec::new();
     for member in &check.members {
         let low = &z[usize::from(check.m - member.m)..];
-        let eq = stele_poly::eq_table(low).map_err(|_| Error::Capacity)?;
+        let eq = stele_sumcheck::parallel::eq_table(low)?;
         for x in xs {
             let block = &x[member.offset..member.offset + (1 << member.m)];
-            out.push(
-                block
-                    .iter()
-                    .zip(&eq)
-                    .fold(K::from_i64(0), |s, (v, w)| s + *v * *w),
-            );
+            let mut dot = [K::from_i64(0)];
+            sum_ranges(eq.len(), &mut dot, |range, out| {
+                for i in range {
+                    out[0] = out[0] + block[i] * eq[i];
+                }
+                Ok(())
+            })?;
+            out.push(dot[0]);
         }
     }
     Ok(out)
@@ -117,7 +125,11 @@ fn compress(row: &[K], beta: K) -> K {
 }
 
 /// Grouped multiplicities (b = m, so every unit weight is one) per table row.
-fn counts(check: &Check, relation: &Relation, values: &Values) -> Result<Vec<i64>, Error> {
+pub(super) fn counts(
+    check: &Check,
+    relation: &Relation,
+    values: &Values,
+) -> Result<Vec<i64>, Error> {
     let key = |row: &[i64]| -> [u32; 2] {
         let mut key = [0; 2];
         for (k, v) in key.iter_mut().zip(row) {
@@ -144,31 +156,38 @@ fn counts(check: &Check, relation: &Relation, values: &Values) -> Result<Vec<i64
                 M31::from_i64(*offset),
             ));
         }
-        for local in 0..1usize << member.m {
-            if selected[member.offset + local] == K::from_i64(0) {
-                continue;
+        // Each position's table row is found in parallel and counted in order below.
+        let mut rows = alloc::vec![usize::MAX; 1 << member.m];
+        for_each_chunk(&mut rows, |start, chunk| {
+            for (j, row) in chunk.iter_mut().enumerate() {
+                let local = start + j;
+                if selected[member.offset + local] == K::from_i64(0) {
+                    continue;
+                }
+                let mut k = [0u32; 2];
+                for (k, (r, col, shift)) in k.iter_mut().zip(&xs) {
+                    *k = (M31::from_i64(col[r.index(local as u64)]) + *shift).as_u32();
+                }
+                // Unmatched tuples stay in the lookup leaves; the roots decide (A5 producer).
+                if let Ok(p) = index.binary_search_by_key(&k, |e| e.0) {
+                    *row = index[p].1;
+                }
             }
-            let mut k = [0u32; 2];
-            for (k, (r, col, shift)) in k.iter_mut().zip(&xs) {
-                *k = (M31::from_i64(col[r.index(local as u64)]) + *shift).as_u32();
-            }
-            // Unmatched tuples stay in the lookup leaves; the roots decide (A5 producer).
-            if let Ok(p) = index.binary_search_by_key(&k, |e| e.0) {
-                mu[index[p].1] += 1;
-            }
+        });
+        for row in rows.into_iter().filter(|row| *row != usize::MAX) {
+            mu[row] += 1;
         }
     }
     Ok(mu)
 }
 
-/// The committed multiplicity message: counts as A5 §4 K limbs.
+/// The committed multiplicity message: [`counts`] as A5 §4 K limbs.
 pub(super) fn multiplicities(
-    check: &Check,
-    relation: &Relation,
-    values: &Values,
+    #[allow(unused_variables)] check: &Check,
+    counts: &[i64],
 ) -> Result<Vec<M31>, Error> {
     #[allow(unused_mut)]
-    let mut mu = counts(check, relation, values)?;
+    let mut mu = counts.to_vec();
     #[cfg(test)]
     {
         mu[0] += check.skew; // Malicious-prover seam for the piece-sum control.
@@ -307,11 +326,14 @@ fn route(check: &Check, z: &[K], members: &[K], claims: &mut Claims) {
 }
 
 /// Produce one lookup section; never checks the verifier's equations itself.
+/// `counts` is [`counts`] of `(check, relation, values)`, made once in step 3.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn prove(
     t: &mut Transcript<K>,
     check: &Check,
     relation: &Relation,
     values: &Values,
+    counts: &[i64],
     mu: (&PreparedSource<'_, K>, &VerifiedCertificate<K>),
     out: &mut Vec<u8>,
     claims: &mut Claims,
@@ -320,28 +342,35 @@ pub(super) fn prove(
     let xs = originals(check, relation, values)?;
     let sigma = sigma(check, relation);
     let one = K::from_i64(1);
-    let leaves: Vec<[K; 2]> = sigma
-        .iter()
-        .enumerate()
-        .map(|(i, s)| {
-            let row: Vec<K> = xs.iter().map(|x| x[i]).collect();
-            [*s, one - *s + *s * (p.alpha - compress(&row, p.beta))]
-        })
-        .collect();
+    // compress(row) without the row: the same Horner fold over the tuple columns.
+    let mut leaves = alloc::vec![[K::from_i64(0); 2]; sigma.len()];
+    for_each_chunk(&mut leaves, |start, chunk| {
+        for (j, leaf) in chunk.iter_mut().enumerate() {
+            let (i, s) = (start + j, sigma[start + j]);
+            let row = xs
+                .iter()
+                .rev()
+                .fold(K::from_i64(0), |v, x| v * p.beta + x[i]);
+            *leaf = [s, one - s + s * (p.alpha - row)];
+        }
+    });
     let (left_proof, lookup) = p.left.prove(&leaves, t).map_err(FRACTION)?;
     out.extend_from_slice(&left_proof.encode(&p.left).map_err(FRACTION)?);
     let message = mu.0.message();
-    let counts = counts(check, relation, values)?;
-    let mut right = Vec::with_capacity(1 << check.k);
-    for (i, row) in check.entries.chunks_exact(check.c).enumerate() {
-        let row: Vec<K> = row.iter().map(|v| K::from_i64(*v)).collect();
-        let count = K::from_i64(counts[i]);
-        right.push(if i < check.t {
-            [count, p.alpha - compress(&row, p.beta)]
-        } else {
-            [K::from_i64(0), one]
-        });
-    }
+    let mut right = alloc::vec![[K::from_i64(0), one]; check.entries.len() / check.c];
+    for_each_chunk(&mut right, |start, chunk| {
+        for (j, out) in chunk.iter_mut().enumerate() {
+            let i = start + j;
+            if i < check.t {
+                let row = &check.entries[i * check.c..(i + 1) * check.c];
+                let row = row
+                    .iter()
+                    .rev()
+                    .fold(K::from_i64(0), |v, x| v * p.beta + K::from_i64(*x));
+                *out = [K::from_i64(counts[i]), p.alpha - row];
+            }
+        }
+    });
     let (right_proof, table) = p.right.prove(&right, t).map_err(FRACTION)?;
     out.extend_from_slice(&right_proof.encode(&p.right).map_err(FRACTION)?);
     let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
