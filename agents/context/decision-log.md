@@ -2791,7 +2791,7 @@ every identity true.
 Decision:
 
 - **Amendment, not just an ADR (INV-1).** §9 requires every NC-1300..1310 control to run
-  through the actual E16-10 verifier. RFC-0026 A10 (Proposed) redefines NC-1310 at the
+  through the actual E16-10 verifier. RFC-0026 A10 (Accepted) redefines NC-1310 at the
   relation-engine level that this verifier calls, and states the INV-4 exception. This
   record implements A10.
 - **Window-level coverage stays with NC-1300/1301.** Both run through the actual E16-10
@@ -2825,5 +2825,5 @@ Consequences: no proof byte, pin or ledger moves. NC-1310 is `done` (115/219 con
 A window-level NC-1310 would need an adversary that recomputes the downstream witness.
 That is left open.
 
-Status: Accepted with RFC-0026 A10 (Proposed; acceptance by independent review).
+Status: Accepted with RFC-0026 A10 (independent review: FIX, then accept A10).
 

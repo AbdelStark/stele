@@ -1023,8 +1023,8 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     The two encodings are distinct, so the profile is still bound before any
     challenge. NC-0912 covers the header and the transcript.
 
-- **A10 — NC-1310 at the relation-engine level (task E16-02 follow-up).** Proposed,
-  development tier. Decision: ADR-110.
+- **A10 — NC-1310 at the relation-engine level (task E16-02 follow-up).** Accepted
+  with ADR-110 after independent review, development tier.
   - **Motivation.** §9 requires every NC-1300..1310 control to run through the actual
     E16-10 verifier. For NC-1310, no window-level tamper meets the rest of its row.
     Every committed column is range-checked (§3.6), so on the synthetic window each
