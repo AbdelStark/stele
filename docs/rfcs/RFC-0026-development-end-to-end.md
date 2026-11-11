@@ -1170,3 +1170,92 @@ NC-1300, NC-1301, NC-1304, NC-1305 and NC-1309 run unchanged on byte-2 proofs.
 A11 is accepted, A7 and E19-02's acceptance should be rebased on Policy 2 or withdrawn.
 E19-03 changes the row map again (coefficient-form rows). Promotion to `standard`: not
 granted (Workflow 10).
+
+### A12 — Multiplicity sources at Circle rate 1/4 for development proofs
+
+Status: Proposed (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
+Needs one independent reviewer from another lane before acceptance; until then it is
+Draft. Task: E16-31. Decision: ADR-113.
+
+**Motivation.** After A11 the RFC-0008 A5 multiplicity sources, still Circle rate 1/2,
+are the largest section of a development proof: 4,120,125 bytes of 7,305,217 on L0 and
+of 9,795,145 on L1 (`bench/ledger/e16-30-*.json`). Their openings sit in the lookup
+section. A11's rate-1/4 Policy 2 counts apply to them too.
+
+**Exact change.**
+
+1. **Profile byte 3.** A9's profile tag gains the value 3: "development proof on A12
+   sources". An A12 public input is the development bytes followed by `u8(3)`. The
+   four encodings (no byte, `1`, `2`, `3`) are distinct and self-delimiting, so the
+   source set is bound before any challenge. The verifier's input file is
+   `stele-dev-public-v3`, with the `stele-dev-public-v1` layout. The container stays
+   `stele-dev-e2e-v1`.
+2. **Sources under byte 3.**
+   - The stacked source and every model source are A11 item 2's, byte for byte, so a
+     model commitment (`public.bin` roots and certificates) is the same under byte 2
+     and byte 3.
+   - Every multiplicity source has the RFC-0008 A5 layout `(id, ell, blowup = 2)`,
+     inside A5's stated range `blowup ∈ {1, 2}` (formal/native-lookup.md). For a check
+     with `2^k` table rows, the plan chooses the `ell ∈ [0, k]` that minimises the
+     source's certificate plus opening bytes under item 3 (ties: the smallest `ell`),
+     A11 item 2's rule. Byte 2 keeps `ell = ⌊k/2⌋`, `blowup = 1`.
+   - The layout is part of A5's statement bytes, which the transcript absorbs, so the
+     blow-up is bound by the plan as well as by the byte.
+3. **Policy byte 2 on every source**, as A11 item 3. LogUp keeps `r = 1` and no
+   (β, α) nonce (RFC-0008 A8 not applied).
+4. **No level is claimed**, as A11 item 4. The development tier claims no λ; byte 3
+   certifies no profile; the §6 ledger is unchanged in kind. The development path
+   still reaches Policy 2 only through `from_code_id_development`; ADR-108's
+   `standard-unproven` quarantine and the development entry-point allow-list are
+   unchanged (the gate's pattern now also matches `Sources::CircleAll`).
+5. **Verifier order.** The verifier checks a multiplicity section's length against
+   the derived certificate size before it parses the certificate. Accepted bytes do
+   not change; a section of another geometry rejects as `ProofShape`.
+6. **Old proofs.** Pre-A11 and byte-2 proofs are the same bytes and still verify,
+   with their pins. Byte 3 is the default for new development proofs.
+
+No RFC-0008 text changes: A5 already admits the rate-1/4 layout, and A11 item 3
+already replaced A5's `policy = 1` for development proofs.
+
+**Soundness.** No challenge, label or ledger line is added. Each multiplicity source
+gains A14's grinding rounds at rate 1/4 in place of rate 1/2. Each PCS round's
+interactive error stays A14 item 5's `≤ 2^-108`. The worst round is still the
+ungrinded LU round. Nothing is summed into a claimed level; the PCS stays not
+admitted for the development tier.
+
+**Cells, lookups, bytes.** Cells and lookups are unchanged. Measured in
+`bench/ledger/e16-31-*.json` (one Apple M4 Max laptop, before at `origin/main`
+byte 2, after at this change byte 3):
+
+| Rung, window | Proof bytes | Multiplicity certificates | Lookups | Prove | Verify | Prove RSS |
+|---|---|---|---|---|---|---|
+| L0 1-layer, T = 16, byte 2 | 7,305,217 | 4,120,125 | 2,449,839 | 1.28 s | 0.33 s | 0.24 GB |
+| L0 1-layer, T = 16, byte 3 | 4,534,593 | 2,263,981 | 1,535,359 | 1.31 s | 0.33 s | 0.25 GB |
+| L1 8-layer, T = 64, byte 2 | 9,795,145 | 4,120,125 | 2,625,583 | 8.74 s | 0.91 s | 4.39 GB |
+| L1 8-layer, T = 64, byte 3 | 7,024,521 | 2,263,981 | 1,711,103 | 8.87 s | 0.91 s | 4.41 GB |
+| L2a stories42M, T = 64, byte 2 | 18,325,385 | 4,120,125 | 2,732,063 | 174.3 s | 6.31 s | 27.6 GB |
+| L2a stories42M, T = 64, byte 3 | 15,554,761 | 2,263,981 | 1,817,583 | 157.3 s | 6.30 s | 28.6 GB |
+
+Every proof falls by the same 2,770,624 bytes: 1,856,144 in the multiplicity
+certificates and 914,480 in the multiplicity openings of the lookup section. That is
+38% on L0, 28% on L1 and 15% on L2a. `public.bin` is unchanged. L0 and L1 are the
+medians of five alternating runs each (1-minute load 1.5 to 10), L2a one run each
+(load 5.4 to 8.3); prove and verify time are unchanged within that spread, and the
+L2a prove-time difference is one run each, not significant.
+
+**Cost.** The multiplicity rows are encoded by the circle FFT at rate 1/4. No
+cost-model term is claimed.
+
+**Controls.** NC-1317 (an A12 proof read with byte 2, header restamped: `ProofShape`),
+NC-1318 (an A11 proof read with byte 3: `ProofShape`), NC-1319 (the transcript
+binding of byte 3 alone: the engine replayed with the plan fixed at one of the two
+sets and the public input of the other, both ways: `RoundSumMismatch`) and NC-1320
+(the first multiplicity certificate's column nonce replaced by one failing the
+predicate: `GrindMismatch`). Mutation checks: with the layout forced to rate 1/2,
+NC-1317, NC-1318 and NC-1320 go red; with byte 3 pushed as 2, NC-1319 goes red
+("byte not bound"); with the certificate's column-nonce check removed, NC-1320 goes
+red. NC-1311..1316 keep running on byte-2 proofs; NC-1300, 1301, 1304, 1305 and 1309
+run on byte-3 proofs.
+
+**Affected tasks.** E16-31 (implements it). Promotion to `standard`: not granted
+(Workflow 10).
