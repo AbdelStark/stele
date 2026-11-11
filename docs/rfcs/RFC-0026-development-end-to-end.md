@@ -1022,3 +1022,115 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     are unchanged. A dev-zk public input is the development bytes followed by `1`.
     The two encodings are distinct, so the profile is still bound before any
     challenge. NC-0912 covers the header and the transcript.
+
+### A10 — Circle rate-1/4 sources under Policy 2 for development proofs
+
+Status: Proposed (development-tier amendment under RFC-0027 §2; independent review
+pending, Workflow 02 item 4). Task: E16-30. Decision: ADR-110 (Proposed).
+
+**Motivation.** The PCS is most of a development proof. The stacked (A4) and model (A5)
+sources are v2 expander sources under RFC-0010 A3 Policy 1, which needs up to 13,472
+certificate and 6,714 opening responses. RFC-0010 A14 (Accepted) derived Policy 2: the
+same Circle code at rate 1/4 needs 222 and 92, with 16-bit column grinding. The Q12
+study projected 18.3 MB for stories42M on such sources, against 113.4 MB
+(`research/fs-pcs/PARAMETERS.md` §4, a projection). A14 item 10 deferred the switch to
+E16-30's encoding benchmark: the Circle FFT replaces the linear-time v2 encoder. The
+benchmark (ledgers below) shows no measurable prove-time cost on the L0, L1 and L2a
+rungs while proof bytes fall 3.5 to 6.2 times and verification time falls.
+
+**Exact change.**
+
+1. **Profile byte 2.** A9's profile tag gains the value 2: "development proof on A10
+   sources". The development public input (§4 step 1, A2) is unchanged for the pre-A10
+   sources: the byte is omitted (A9 implementation note). An A10 public input is the
+   development bytes followed by `u8(2)`. The development encoding is self-delimiting,
+   so the three encodings (no byte, `1`, `2`) are distinct and the source set is bound
+   before any challenge. The verifier derives every source from the byte and the
+   relation; no proof byte selects it. The verifier's input file is
+   `stele-dev-public-v2` for byte 2, with the `stele-dev-public-v1` layout. The
+   container stays `stele-dev-e2e-v1`.
+2. **Sources under byte 2.**
+   - The stacked source and every model source are RFC-0010 source version 1 (Circle,
+     A9) with blow-up exponent 2. A source of `2^S` entries (`S ≥ 6`, as in A4) has
+     `2^ell` rows of `2^m` message elements, `ell + m = S`, `m ≤ 28`, `ell ≤ 30`. The
+     plan chooses the `ell` that minimises certificate plus opening bytes under item 3
+     (ties: the smallest `ell`). This is Draft A7's geometry, priced under Policy 2.
+   - The multiplicity sources keep A5's geometry (RFC-0008 A5 Circle rate 1/2).
+   - Ids, layout, block placement, the `2^30` cap per model source, claim mapping,
+     batching and one opening per source are A4 and A5's, unchanged.
+3. **Policy byte 2 on every source.** Every source of a byte-2 proof (stacked, model
+   and multiplicity) carries RFC-0010 A14 policy byte 2: the item 2 query counts, the
+   item 3 column grinding (`k_q = 16`) and the item 4 tensor grinding, with the item 3
+   and 4 wires and the item 8 errors. The counts are resolved as the development
+   profile: `registry::resolve_pcs(code, 4, Development)` returns A14's table with
+   `proven: false`. LogUp keeps `r = 1` and no (β, α) nonce: RFC-0008 A8 is not
+   applied.
+4. **No level is claimed.** The development tier still claims no λ, and a byte-2 proof
+   certifies no profile. Policy 2's counts are used as a size and speed choice. The §6
+   ledger is unchanged in kind: it reports `ε_interactive`, labels FS unproven, and
+   prints the PCS lines unsummed and not admitted. Dev-profile use of Policy 2 unlocks
+   no standard-profile claim: the standard resolver path and every standard entry point
+   stay behind ADR-108's `standard-unproven` quarantine. The development path reaches
+   Policy 2 only through `Source::from_code_id_development` and
+   `PreparedSource::from_code_id_development`, which resolve `Development`.
+5. **Superseded Accepted text, development tier only.**
+   - §1.2 "Development proofs use RFC-0010 A3 Policy 1 v2 sources" reads "Development
+     proofs use RFC-0010 A3 Policy 1 v2 sources (pre-A10, profile byte omitted) or
+     A10's Circle Policy 2 sources (profile byte 2)".
+   - RFC-0010 A14 item 1, "RFC-0026 development proofs keep policy 1", and RFC-0012
+     A17 item 7, "they still use Policy 1", read "may use policy 1 or, under RFC-0026
+     A10, policy 2 without any profile claim".
+   - ADR-091 ("Development profile. Unchanged: Policy 1") and ADR-106 ("development
+     proofs stay on Policy 1") are superseded by ADR-110 for the development tier.
+6. **Old proofs.** A pre-A10 proof is the same bytes and still verifies: its public
+   input carries no byte, so the verifier derives the pre-A10 sources. The E16-10 pins
+   of those proofs are unchanged; byte-2 proofs have their own pins.
+
+**Soundness.** No challenge, label or ledger line is added. The new rounds are A14's
+grinding rounds: one PoW frame (RFC-0012 A17 A1 frame tag 3, `stele/v0.1/grind`) per
+certificate and opening column round, and one per certificate tensor round with
+`k_t ≥ 1`. Each PCS round's interactive error is A14 item 5's `≤ 2^-108` (Lemmas 5–6,
+grinding counted by Theorem 1) instead of Policy 1's `≤ 2^-130`. The composed proof's
+worst round is unchanged: it is still the ungrinded LU round (RFC-0012 A17, `2^-97` on
+stories42M). None of this is summed into a claimed level; the PCS stays not admitted
+for the development tier.
+
+**Cells, lookups, bytes.** Cells and lookups are unchanged. Measured on one Apple M4
+Max laptop, back to back, before at `origin/main` and after at this change (ledgers
+`bench/ledger/e16-30-*.json`):
+
+| Rung, window | Proof bytes | Stacked certificate | Openings | Multiplicity certificates | Lookups | `public.bin` | Prove (median) | Verify (median) |
+|---|---|---|---|---|---|---|---|---|
+| L0 1-layer, T = 16, before | 25,363,609 | 9,237,761 | 6,989,810 | 5,767,709 | 3,303,175 | 4,028,337 | 1.41 s | 0.67 s |
+| L0 1-layer, T = 16, after | 7,305,217 | 351,345 | 318,754 | 4,120,125 | 2,449,839 | 186,425 | 1.29 s | 0.35 s |
+| L1 8-layer, T = 64, before | 44,963,009 | 19,279,617 | 16,048,930 | 5,767,709 | 3,478,919 | 8,455,508 | 9.91 s | 2.01 s |
+| L1 8-layer, T = 64, after | 9,795,145 | 1,554,417 | 1,107,186 | 4,120,125 | 2,625,583 | 301,724 | 10.47 s | 0.90 s |
+| L2a stories42M, T = 64, before | 113,422,913 | 53,418,369 | 50,189,170 | 5,767,709 | 3,585,399 | 26,419,059 | 197.0 s | 11.06 s |
+| L2a stories42M, T = 64, after | 18,325,385 | 5,869,425 | 5,141,506 | 4,120,125 | 2,732,063 | 2,329,123 | 186.9 s | 6.57 s |
+
+Proof bytes fall 3.5 times (L0), 4.6 times (L1) and 6.2 times (L2a). The stories42M
+proof is 18,325,385 bytes; the Q12 projection of 18,325,537 is confirmed, the 152-byte
+difference being the 19 LU nonces it counted and A10 does not use. `public.bin`, which
+holds the model certificates, falls 11 to 28 times. L0 and L1 are five alternating runs
+each, L2a one run each, on a host shared with other workloads. The prove-time
+difference is within that host's noise (8-layer walls 9.64–35.25 s before,
+9.15–31.39 s after); stories42M's model commitment takes 2.52 s against 2.12 s (the
+rate-1/4 FFT), its prove wall 186.9 s against 197.0 s and its peak RSS 25.3 GB against
+26.2 GB. Verification time falls by half on L0 and L1, and by 40% on L2a. The
+multiplicity certificates, still Circle rate 1/2, are now the largest section on L0 and
+L1.
+
+**Cost.** Rows are encoded by the circle FFT (RFC-0010 A2) at rate 1/4: a larger
+codeword per row, fewer responses per proof. Each grinding round costs the prover
+2^16 expected BLAKE3 calls, and the verifier one. No cost-model term is claimed.
+
+**Controls.** NC-1311 (an A10 proof with the byte omitted, header restamped:
+`ProofShape`), NC-1312 (a pre-A10 proof with byte 2 added: `ProofShape`), NC-1313,
+NC-1314 and NC-1315 (the stacked certificate's, the stacked opening's and the model
+certificate's column nonce replaced by one failing the predicate: `GrindMismatch`).
+NC-1300, NC-1301, NC-1304, NC-1305 and NC-1309 run unchanged on byte-2 proofs.
+
+**Affected tasks.** E16-30 (implements it). E19-02: Draft A7's geometry is A10's; if
+A10 is accepted, A7 and E19-02's acceptance should be rebased on Policy 2 or withdrawn.
+E19-03 changes the row map again (coefficient-form rows). Promotion to `standard`: not
+granted (Workflow 10).

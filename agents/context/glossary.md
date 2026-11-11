@@ -69,3 +69,4 @@ Forbidden synonyms: "circuit" (say reduction/claim graph), "trace" (nothing is t
 - **mask source** — the hiding source of RFC-0013 A3 that holds a masked sumcheck's two-block mask as `2D` limb rows; it is opened once, at `G(ρ)`, with zero weight on its mask rows.
 - **claim mask** — the per-column blocks of uniform M31 values that mask each revealed claim of a dev-zk proof, one block of `D` entries per masked occurrence (RFC-0013 A5).
 - **dev-zk** — the zero-knowledge variant of the RFC-0026 development profile, profile byte 1; defined by RFC-0013 A5 and RFC-0026 A9, admitted only once implemented and reviewed.
+- **source set** — the sources a development proof uses, selected by its profile byte (RFC-0026 A10): byte omitted, the pre-A10 v2 expander sources under Policy 1; byte 2, Circle rate-1/4 stacked and model sources with every source under Policy 2. It claims no security level.

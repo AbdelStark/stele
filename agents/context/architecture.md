@@ -15,7 +15,8 @@ relation engine (stele-reductions::relation)
   prove    zerocheck per domain size · LogUp per table · sumcheck per matmul · claim batch + opening per source
 container  stele-dev-e2e-v1 (stele-proof) · CLI prove-dev / verify-dev
 ```
-Everything is committed, weights are read twice, the per-proof code is the v2 expander, no security level is
+Everything is committed, weights are read twice, the per-proof code is the Circle code at rate 1/4 under Policy 2
+(RFC-0026 A10, Proposed; pre-A10 v2 expander proofs still verify), no security level is
 claimed, CPU only. Measured state: `docs/assessment.md` §3 and `bench/scoreboard.md`.
 
 ## Where it is going (build program, RFC-0027; Draft RFC-0028, 0029, 0030)
