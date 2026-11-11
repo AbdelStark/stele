@@ -129,6 +129,8 @@ macro_rules! suite {
                     assert_eq!(F::from_le_bytes(a.to_le_bytes()), Some(a));
                     let signed = (next(&mut seed) % P) as i64 - (P / 2) as i64;
                     assert_eq!(F::from_i64(signed).to_i64_signed(), Some(signed));
+                    let x = stele_field::M31::from_u64(next(&mut seed) % P);
+                    assert_eq!(a.mul_m31(x), a * F::from_i64(i64::from(x.as_u32())));
                 }
             }
 

@@ -40,7 +40,7 @@ pub(crate) fn combine_rows<K: ChallengeField>(
     for_each_block(&mut out, |start, chunk| {
         for (row, weight) in message.chunks_exact(columns.max(1)).zip(a) {
             for (value, limb) in chunk.iter_mut().zip(&row[start..]) {
-                *value = *value + *weight * K::from_i64(i64::from(limb.as_u32()));
+                *value = *value + weight.mul_m31(*limb);
             }
         }
     });
@@ -285,7 +285,7 @@ impl<'prepared, 'message, K: ChallengeField> RetainedRow<'prepared, 'message, K>
             .zip(weights)
         {
             for (value, limb) in values.iter_mut().zip(row) {
-                *value = *value + *a * K::from_i64(i64::from(limb.as_u32()));
+                *value = *value + a.mul_m31(*limb);
                 work.source_elements += 1;
             }
         }
@@ -689,7 +689,7 @@ where
                 let limb =
                     M31::from_le_bytes(bytes.try_into().map_err(|_| Error::NoncanonicalField)?)
                         .ok_or(Error::NoncanonicalField)?;
-                value = value + *a * K::from_i64(i64::from(limb.as_u32()));
+                value = value + a.mul_m31(limb);
             }
             work.encoded_values_read = add(work.encoded_values_read, 1)?;
             if value.to_le_bytes().as_ref() != encoded.values[index as usize].to_le_bytes().as_ref()

@@ -104,17 +104,19 @@ impl LookupPlan {
     fn block(&self, layer: usize, poly: usize) -> usize {
         self.first_block + 2 * (layer - self.k0 - 1) + poly
     }
-    /// The member containing lookup position `x`, if any.
-    fn member_at(&self, x: usize) -> Option<&MemberPlan> {
-        self.members
-            .iter()
-            .find(|m| (m.offset..m.offset + (1 << m.m)).contains(&x))
-    }
-    /// The concatenated selector `S` over the lookup half.
+    /// The concatenated selector `S` over the lookup half: at position `x`, the
+    /// selector of the first member containing `x`, else 0.
     fn selector(&self) -> Vec<i64> {
-        (0..1usize << self.n)
-            .map(|x| self.member_at(x).map_or(0, |m| m.selected(x, self.n)))
-            .collect()
+        // Each member fills its own range, last to first, so the first member
+        // containing a position wins (E16-24: no scan of every member per position).
+        let len = 1usize << self.n;
+        let mut out = vec![0; len];
+        for m in self.members.iter().rev() {
+            for x in m.offset..(m.offset + (1 << m.m)).min(len) {
+                out[x] = m.selected(x, self.n);
+            }
+        }
+        out
     }
 }
 
@@ -886,14 +888,15 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
             Gin::Block(poly) => {
                 let block = block_entries(plan, shared, lp.block(step.k, *poly));
                 let two = block.len() / 2;
-                let one = K::from_i64(1);
-                let x = (0..half)
-                    .map(|xi| {
-                        let y = xi & (two - 1);
-                        (one - run.tstar) * element::<K>(block[y])
-                            + run.tstar * element::<K>(block[two + y])
+                // `(1 − t*)·a + t*·b` depends on `xi` only through `xi & (two − 1)`:
+                // `two` values, tiled (E16-24).
+                let period: Vec<K> = (0..two)
+                    .map(|y| {
+                        let (a, b) = (element::<K>(block[y]), element::<K>(block[two + y]));
+                        a + run.tstar * (b - a)
                     })
                     .collect();
+                let x = (0..half).map(|xi| period[xi & (two - 1)]).collect();
                 public(both(x))
             }
             Gin::Leaf(o) if compact && seen_mult => {

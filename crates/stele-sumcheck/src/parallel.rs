@@ -27,9 +27,20 @@ pub fn sum_ranges<K: ChallengeField>(
     out: &mut [K],
     partial: impl Fn(core::ops::Range<usize>, &mut [K]) -> Result<(), Error> + Sync,
 ) -> Result<(), Error> {
+    sum_ranges_weighted(len, 1, out, partial)
+}
+
+/// [`sum_ranges`] for items that each cost about `cost` dense-round items, so a short
+/// range of heavy items still splits (E16-24: masked rounds with many terms).
+pub fn sum_ranges_weighted<K: ChallengeField>(
+    len: usize,
+    cost: usize,
+    out: &mut [K],
+    partial: impl Fn(core::ops::Range<usize>, &mut [K]) -> Result<(), Error> + Sync,
+) -> Result<(), Error> {
     #[cfg(feature = "std")]
     {
-        let n = chunks(len);
+        let n = chunks(len.saturating_mul(cost.max(1))).min(len.max(1));
         if n > 1 {
             let step = len.div_ceil(n);
             let width = out.len();

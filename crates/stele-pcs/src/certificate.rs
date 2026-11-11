@@ -217,7 +217,7 @@ where
             work.column_bytes_decoded = add(work.column_bytes_decoded, bytes.len())?;
             let limb = M31::from_le_bytes(bytes.try_into().map_err(|_| Error::NoncanonicalField)?)
                 .ok_or(Error::NoncanonicalField)?;
-            value = value + *weight * K::from_i64(i64::from(limb.as_u32()));
+            value = value + weight.mul_m31(limb);
         }
         work.encoded_values_read = add(work.encoded_values_read, 1)?;
         if value.to_le_bytes().as_ref() != encoded.values[index as usize].to_le_bytes().as_ref() {

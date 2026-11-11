@@ -1492,7 +1492,9 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
             .map(|f| f.v == Some(self.bound))
             .collect();
         let mut out = vec![zero::<K>(); nodes];
-        stele_sumcheck::parallel::sum_ranges(half, &mut out, |range, out| {
+        let products: usize = self.terms.iter().map(|t| t.factors.len() + 1).sum();
+        let cost = nodes * (self.factors.len() + products);
+        stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
             let width = self.factors.len();
             let mut x = vec![zero::<K>(); width];
             let mut dx = vec![zero::<K>(); width];
