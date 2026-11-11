@@ -11,7 +11,7 @@ bytes, a power-of-two token window `x_0..x_{T-1}`, a checked range `[r, e)` and,
 `e = T`, the next token `y`. It:
 
 1. commits the weight matrices once, stacked into RFC-0010 Circle sources at rate 1/4
-   under Policy 2 (the model commitment; RFC-0026 A10, Proposed);
+   under Policy 2 (the model commitment; RFC-0026 A11, Proposed);
 2. runs `Executor::capture` and declares every RFC-0026 §5 module in order;
 3. assigns the witness, runs the plain checker, then the relation engine;
 4. writes a `stele-dev-e2e-v1` container (`stele_proof::development`, RFC-0026 §4.1).
@@ -65,8 +65,8 @@ target/release/stele verify-dev --public /tmp/dev-e2e/public.bin --proof /tmp/de
 - `public.bin` (`stele-dev-public-v2`) holds everything the verifier reads besides
   the proof: Model, Scales, Preparation, 1-D records, model-commitment roots and
   certificates, and the statement. Its magic names the source set, which the public
-  input binds (RFC-0026 A10): `v2` for Circle Policy 2 sources, which `prove-dev`
-  writes, and `v1` for the pre-A10 v2-expander Policy 1 sources, which `verify-dev`
+  input binds (RFC-0026 A11): `v2` for Circle Policy 2 sources, which `prove-dev`
+  writes, and `v1` for the pre-A11 v2-expander Policy 1 sources, which `verify-dev`
   still accepts. Both print `profile development` and a `sources` line.
 
 `verify-dev` only shows that the model named in `public.bin` produced the statement
@@ -266,7 +266,7 @@ python3 bench/dev_e2e.py $P bench/ledger/<name>.json --workload dev/<name> \
 
 ### Circle rate-1/4 sources under Policy 2 (task E16-30)
 
-RFC-0026 A10 (Proposed) moves the stacked and model sources to the Circle code at rate
+RFC-0026 A11 (Proposed) moves the stacked and model sources to the Circle code at rate
 1/4 and every source to RFC-0010 A14 Policy 2. It claims no security level. Before is
 `origin/main` `276b2c0` and after is `944a4fc`, on one Apple M4 Max laptop shared with
 other workloads. The synthetic windows had five alternating runs of each, and each
@@ -282,7 +282,7 @@ The prove-time difference is within the noise of the shared host. The ledgers li
 run's wall time. On stories42M the model commitment takes 2.52 s against 2.12 s, and peak
 prove RSS is 25.3 GB against 26.2 GB. The before proof is byte-identical to the E16-18
 proof. The after proof confirms the Q12 projection of 18.3 MB to within 152 bytes, the
-LU nonces that the projection counted and A10 does not use. With Policy 2 grinding, the tampered-root control is now rejected at the
+LU nonces that the projection counted and A11 does not use. With Policy 2 grinding, the tampered-root control is now rejected at the
 certificate's column nonce (`GrindMismatch`) instead of at the Merkle path, because the
 root is absorbed before the nonce is checked.
 

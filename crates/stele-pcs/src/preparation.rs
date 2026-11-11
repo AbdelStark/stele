@@ -107,7 +107,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         Self::prepare(source, rebuild, message, None, usage)
     }
 
-    /// [`Source::from_code_id_development`] prepared (RFC-0026 A10): the development
+    /// [`Source::from_code_id_development`] prepared (RFC-0026 A11): the development
     /// tier's Policy 2 source; the committed columns and root are those of Policy 1.
     pub fn from_code_id_development(
         id: u64,

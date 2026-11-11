@@ -184,17 +184,17 @@ const MIN_J: u8 = 3;
 const MAX_J: u8 = 14;
 /// Fixed public v2 seed; RFC-0012 A7 bounds hold for every seed.
 const SEED: [u8; 32] = [0; 32];
-/// RFC-0026 A10: Circle blow-up exponent of the stacked and model sources (rate 1/4).
+/// RFC-0026 A11: Circle blow-up exponent of the stacked and model sources (rate 1/4).
 const CIRCLE_BLOWUP: u8 = 2;
 
-/// The source parameter set of a development proof (RFC-0026 A10). The caller binds
+/// The source parameter set of a development proof (RFC-0026 A11). The caller binds
 /// it in the public input; the plan derives every source from it and the relation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Sources {
     /// A4/A5 v2 expander stacked and model sources and A5 Circle rate-1/2
     /// multiplicity sources, all under RFC-0010 A3 Policy 1 (no grinding).
     Expander,
-    /// A10: Circle rate-1/4 stacked and model sources and the same multiplicity
+    /// A11: Circle rate-1/4 stacked and model sources and the same multiplicity
     /// sources, all under RFC-0010 A14 Policy 2 counts and grinding, resolved for
     /// the development tier (`proven: false`).
     Circle,
@@ -321,7 +321,7 @@ fn v2_code(j: u8) -> Vec<u8> {
 /// Stack geometry: at least 2·MIN_J variables (both sets, so the plan's bits do not
 /// depend on the set), and the code that minimises certificate plus opening bytes
 /// under the set's policy. Expander: the v2 exponent J (ties: smallest J). Circle
-/// (A10): the rate-1/4 row split `ell + m = bits` (ties: smallest `ell`).
+/// (A11): the rate-1/4 row split `ell + m = bits` (ties: smallest `ell`).
 fn stack(id: u64, bits: u8, sources: Sources) -> Result<Stack, Error> {
     let bits = bits.max(2 * MIN_J);
     let candidates: Vec<(u8, Vec<u8>)> = match sources {
@@ -886,7 +886,7 @@ pub struct ModelLayout {
     pub id: u64,
     pub ell: u8,
     pub code: Vec<u8>,
-    /// The source parameter set this layout was derived under (A10).
+    /// The source parameter set this layout was derived under (A11).
     pub sources: Sources,
     /// The stacked message has `2^bits` entries.
     pub bits: u8,
@@ -966,7 +966,7 @@ pub fn model_layout(relation: &Relation, sources: Sources) -> Result<Vec<ModelLa
 }
 
 /// The plan-derived stacked source of a relation under `root`, `None` without
-/// commitment groups (A4, A10). The verifier derives it the same way; controls use it
+/// commitment groups (A4, A11). The verifier derives it the same way; controls use it
 /// to locate one certificate or opening field.
 pub fn stack_source(
     relation: &Relation,
@@ -1077,7 +1077,7 @@ fn absorb_model(
 /// Produce a development-profile proof. `t` must be `Transcript::new(public)` with
 /// the RFC-0026 §1.1 public inputs; `model` holds each prepared model source of
 /// [`model_layout`] with its verified certificate (empty without weights), under the
-/// source set `sources` the caller bound in the public input (A10). The
+/// source set `sources` the caller bound in the public input (A11). The
 /// prover checks none of the verifier's equations; a false witness yields a
 /// rejected proof or an error from a primitive prover.
 pub fn prove(

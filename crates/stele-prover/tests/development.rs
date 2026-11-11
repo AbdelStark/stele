@@ -153,8 +153,8 @@ fn run(name: &str, t: usize, sources: Sources) -> u64 {
     fnv(&proof)
 }
 
-// Pinned proof bytes. The default sources are RFC-0026 A10's Circle rate-1/4
-// sources under Policy 2 (new pins, E16-30). The pre-A10 expander sources keep
+// Pinned proof bytes. The default sources are RFC-0026 A11's Circle rate-1/4
+// sources under Policy 2 (new pins, E16-30). The pre-A11 expander sources keep
 // their E16-10 pins unchanged: an old proof is the same bytes and still verifies.
 #[test]
 fn accepts_one_layer_window() {
@@ -264,8 +264,8 @@ fn rejects_statement_and_container_tampers() {
         bundle::decode(&file),
         Ok((public.clone(), statement.clone()))
     );
-    // RFC-0026 A10: the source set is bound in the public input (byte 2 appended),
-    // and the pre-A10 file (`stele-dev-public-v1`, no byte) still round-trips.
+    // RFC-0026 A11: the source set is bound in the public input (byte 2 appended),
+    // and the pre-A11 file (`stele-dev-public-v1`, no byte) still round-trips.
     assert_eq!(public.sources, Sources::Circle);
     let old = Public {
         sources: Sources::Expander,

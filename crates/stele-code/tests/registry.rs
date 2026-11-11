@@ -56,7 +56,7 @@ fn accepts_derived_parameters_for_every_supported_identity() {
     );
 }
 
-/// RFC-0026 A10 (ADR-110): the development request is ungated and never `proven`;
+/// RFC-0026 A11 (ADR-111): the development request is ungated and never `proven`;
 /// its counts are the A14 standard counts.
 #[test]
 fn accepts_development_policy2_requests_unproven() {

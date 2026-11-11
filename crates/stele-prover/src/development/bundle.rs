@@ -6,15 +6,15 @@
 //! root and blob certificate; `u32 T`, tokens as `u32`; `u32 r`, `u32 e`; `u8` 0/1 and,
 //! when 1, `u32 y`. Trailing bytes reject.
 //!
-//! RFC-0026 A10: `stele-dev-public-v2` is the same layout for a proof on Circle
-//! Policy 2 sources (`Sources::Circle`); `stele-dev-public-v1` stays the pre-A10
+//! RFC-0026 A11: `stele-dev-public-v2` is the same layout for a proof on Circle
+//! Policy 2 sources (`Sources::Circle`); `stele-dev-public-v1` stays the pre-A11
 //! `Sources::Expander` file, so old inputs still decode and verify.
 use super::{Error, Public, Statement};
 use alloc::vec::Vec;
 use stele_reductions::relation::Sources;
 
 const MAGIC: &[u8] = b"stele-dev-public-v1";
-/// The A10 Circle-sources development input file (profile byte 2): the same layout.
+/// The A11 Circle-sources development input file (profile byte 2): the same layout.
 const CIRCLE_MAGIC: &[u8] = b"stele-dev-public-v2";
 /// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
 const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";

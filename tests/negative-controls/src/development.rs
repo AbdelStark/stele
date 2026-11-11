@@ -9,9 +9,9 @@
 //!   the engine absorbs the model root after the statement, RFC-0026 A5);
 //! - NC-1305: one prover-side rounding exponent (`RoundSumMismatch`);
 //! - NC-1309: a different checked range (`RoundSumMismatch`).
-//! - NC-1311..1315 (RFC-0026 A10, task E16-30): the honest proof is on the A10 Circle
+//! - NC-1311..1315 (RFC-0026 A11, task E16-30): the honest proof is on the A11 Circle
 //!   Policy 2 sources. NC-1311 reads it with the profile byte omitted and NC-1312
-//!   reads a pre-A10 proof with the byte added (`ProofShape`: the verifier derives
+//!   reads a pre-A11 proof with the byte added (`ProofShape`: the verifier derives
 //!   other model sources from the byte). NC-1313, NC-1314 and NC-1315 replace the
 //!   column-round nonce of the stack certificate, the stack opening and the model
 //!   certificate with one that fails the k_q = 16 predicate (`GrindMismatch`).
@@ -85,7 +85,7 @@ fn zk_commit(
     let base = Public {
         commitment: Vec::new(),
         vectors: zk::published(&public.model, &public.vectors).map_err(|e| format!("{e:?}"))?,
-        // dev-zk inputs omit the A10 byte: their hiding sources do not read it.
+        // dev-zk inputs omit the A11 byte: their hiding sources do not read it.
         sources: Sources::Expander,
         ..public.clone()
     };
@@ -505,7 +505,7 @@ pub fn run(id: u16) -> Result<(), String> {
         }
         1311 => {
             if public.sources != Sources::Circle {
-                return Err("honest proof not on A10 sources".into());
+                return Err("honest proof not on A11 sources".into());
             }
             let omitted = Public {
                 sources: Sources::Expander,
@@ -523,8 +523,8 @@ pub fn run(id: u16) -> Result<(), String> {
                 ..public.clone()
             };
             let old_proof = prove(&old, &mut exec, &w, &c, &honest)
-                .map_err(|e| format!("pre-A10 prover: {e:?}"))?;
-            verify(&old, &honest, &old_proof).map_err(|e| format!("pre-A10 rejected: {e:?}"))?;
+                .map_err(|e| format!("pre-A11 prover: {e:?}"))?;
+            verify(&old, &honest, &old_proof).map_err(|e| format!("pre-A11 rejected: {e:?}"))?;
             let added = Public {
                 sources: Sources::Circle,
                 ..old

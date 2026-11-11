@@ -185,9 +185,9 @@ impl<K: ChallengeField> Source<K> {
         Self::build(id, ell, code, root, policy, Profile::Standard)
     }
 
-    /// The development tier's Policy 2 source (RFC-0026 A10): the A14 counts and
+    /// The development tier's Policy 2 source (RFC-0026 A11): the A14 counts and
     /// grinding, resolved as `Profile::Development` (`proven: false`), so it needs no
-    /// `standard-unproven` feature and admits no level (ADR-110). Its bytes carry
+    /// `standard-unproven` feature and admits no level (ADR-111). Its bytes carry
     /// policy byte 2, like a standard Policy 2 source of the same identity.
     pub fn from_code_id_development(
         id: u64,

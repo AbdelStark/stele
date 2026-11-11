@@ -51,7 +51,7 @@ Research RFCs carry `Research` status and never bind implementation.
 | 0023 | Integer Requant with a fixed advice cut | Accepted (A1) |
 | 0024 | Centered signed-int8 matmul and Requant | Accepted |
 | 0025 | Canonical full-model CQIS and checkpoint conversion | Accepted (A1, A2, A3) |
-| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6; A9 conditional); A7, A8 Draft; A10 Proposed |
+| 0026 | Development-profile end-to-end prefill proof | Accepted (A1, A2, A3, A4, A5, A6; A9 conditional); A7, A8 Draft; A11 Proposed |
 | 0027 | Build program: tiers, ladder, lanes and milestones | Accepted |
 | 0028 | Relation IR v2: the commit rule, virtual columns and segments | Draft |
 | 0029 | Commitment scheme v3: interleaved circle Reed–Solomon with a recursive opening | Draft |

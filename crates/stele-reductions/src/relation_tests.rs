@@ -583,7 +583,7 @@ fn binds_the_model_root_without_it_in_the_public_input() {
     assert!(verify(&mut t, &rel, &mine, &proof, Sources::Expander).is_ok());
 }
 
-/// RFC-0026 A10: under `Sources::Circle` the stacked and model sources are Circle
+/// RFC-0026 A11: under `Sources::Circle` the stacked and model sources are Circle
 /// rate-1/4 with policy byte 2 and the same bits as the expander plan; an honest proof
 /// verifies, and one verified under the other set rejects.
 #[test]

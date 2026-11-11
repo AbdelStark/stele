@@ -1023,10 +1023,10 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
     The two encodings are distinct, so the profile is still bound before any
     challenge. NC-0912 covers the header and the transcript.
 
-### A10 — Circle rate-1/4 sources under Policy 2 for development proofs
+### A11 — Circle rate-1/4 sources under Policy 2 for development proofs
 
 Status: Proposed (development-tier amendment under RFC-0027 §2; independent review
-pending, Workflow 02 item 4). Task: E16-30. Decision: ADR-110 (Proposed).
+pending, Workflow 02 item 4). Task: E16-30. Decision: ADR-111 (Proposed).
 
 **Motivation.** The PCS is most of a development proof. The stacked (A4) and model (A5)
 sources are v2 expander sources under RFC-0010 A3 Policy 1, which needs up to 13,472
@@ -1040,9 +1040,9 @@ rungs while proof bytes fall 3.5 to 6.2 times and verification time falls.
 
 **Exact change.**
 
-1. **Profile byte 2.** A9's profile tag gains the value 2: "development proof on A10
-   sources". The development public input (§4 step 1, A2) is unchanged for the pre-A10
-   sources: the byte is omitted (A9 implementation note). An A10 public input is the
+1. **Profile byte 2.** A9's profile tag gains the value 2: "development proof on A11
+   sources". The development public input (§4 step 1, A2) is unchanged for the pre-A11
+   sources: the byte is omitted (A9 implementation note). An A11 public input is the
    development bytes followed by `u8(2)`. The development encoding is self-delimiting,
    so the three encodings (no byte, `1`, `2`) are distinct and the source set is bound
    before any challenge. The verifier derives every source from the byte and the
@@ -1075,15 +1075,15 @@ rungs while proof bytes fall 3.5 to 6.2 times and verification time falls.
    `PreparedSource::from_code_id_development`, which resolve `Development`.
 5. **Superseded Accepted text, development tier only.**
    - §1.2 "Development proofs use RFC-0010 A3 Policy 1 v2 sources" reads "Development
-     proofs use RFC-0010 A3 Policy 1 v2 sources (pre-A10, profile byte omitted) or
-     A10's Circle Policy 2 sources (profile byte 2)".
+     proofs use RFC-0010 A3 Policy 1 v2 sources (pre-A11, profile byte omitted) or
+     A11's Circle Policy 2 sources (profile byte 2)".
    - RFC-0010 A14 item 1, "RFC-0026 development proofs keep policy 1", and RFC-0012
      A17 item 7, "they still use Policy 1", read "may use policy 1 or, under RFC-0026
-     A10, policy 2 without any profile claim".
+     A11, policy 2 without any profile claim".
    - ADR-091 ("Development profile. Unchanged: Policy 1") and ADR-106 ("development
-     proofs stay on Policy 1") are superseded by ADR-110 for the development tier.
-6. **Old proofs.** A pre-A10 proof is the same bytes and still verifies: its public
-   input carries no byte, so the verifier derives the pre-A10 sources. The E16-10 pins
+     proofs stay on Policy 1") are superseded by ADR-111 for the development tier.
+6. **Old proofs.** A pre-A11 proof is the same bytes and still verifies: its public
+   input carries no byte, so the verifier derives the pre-A11 sources. The E16-10 pins
    of those proofs are unchanged; byte-2 proofs have their own pins.
 
 **Soundness.** No challenge, label or ledger line is added. The new rounds are A14's
@@ -1110,7 +1110,7 @@ Max laptop, back to back, before at `origin/main` and after at this change (ledg
 
 Proof bytes fall 3.5 times (L0), 4.6 times (L1) and 6.2 times (L2a). The stories42M
 proof is 18,325,385 bytes; the Q12 projection of 18,325,537 is confirmed, the 152-byte
-difference being the 19 LU nonces it counted and A10 does not use. `public.bin`, which
+difference being the 19 LU nonces it counted and A11 does not use. `public.bin`, which
 holds the model certificates, falls 11 to 28 times. L0 and L1 are five alternating runs
 each, L2a one run each, on a host shared with other workloads. The prove-time
 difference is within that host's noise (8-layer walls 9.64–35.25 s before,
@@ -1124,13 +1124,13 @@ L1.
 codeword per row, fewer responses per proof. Each grinding round costs the prover
 2^16 expected BLAKE3 calls, and the verifier one. No cost-model term is claimed.
 
-**Controls.** NC-1311 (an A10 proof with the byte omitted, header restamped:
-`ProofShape`), NC-1312 (a pre-A10 proof with byte 2 added: `ProofShape`), NC-1313,
+**Controls.** NC-1311 (an A11 proof with the byte omitted, header restamped:
+`ProofShape`), NC-1312 (a pre-A11 proof with byte 2 added: `ProofShape`), NC-1313,
 NC-1314 and NC-1315 (the stacked certificate's, the stacked opening's and the model
 certificate's column nonce replaced by one failing the predicate: `GrindMismatch`).
 NC-1300, NC-1301, NC-1304, NC-1305 and NC-1309 run unchanged on byte-2 proofs.
 
-**Affected tasks.** E16-30 (implements it). E19-02: Draft A7's geometry is A10's; if
-A10 is accepted, A7 and E19-02's acceptance should be rebased on Policy 2 or withdrawn.
+**Affected tasks.** E16-30 (implements it). E19-02: Draft A7's geometry is A11's; if
+A11 is accepted, A7 and E19-02's acceptance should be rebased on Policy 2 or withdrawn.
 E19-03 changes the row map again (coefficient-form rows). Promotion to `standard`: not
 granted (Workflow 10).

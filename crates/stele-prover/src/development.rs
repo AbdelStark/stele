@@ -99,7 +99,7 @@ pub struct Public {
     pub vectors: Vec<(u16, Vec<i16>)>,
     /// One `(root, certificate)` per weight source in plan order.
     pub commitment: Vec<([u8; 32], Vec<u8>)>,
-    /// The source parameter set (RFC-0026 A10), bound by [`public_input`]. dev-zk
+    /// The source parameter set (RFC-0026 A11), bound by [`public_input`]. dev-zk
     /// inputs carry `Expander`: their hiding sources do not read it.
     pub sources: Sources,
 }
@@ -155,8 +155,8 @@ fn blob(out: &mut Vec<u8>, bytes: &[u8]) {
 }
 
 const PUBLIC_TAG: &[u8] = b"stele/v0.1/dev-e2e/public-input";
-/// RFC-0026 A10: the profile byte of a development proof on Circle Policy 2 sources.
-/// `Expander` omits the byte, so pre-A10 inputs and proofs are unchanged; dev-zk
+/// RFC-0026 A11: the profile byte of a development proof on Circle Policy 2 sources.
+/// `Expander` omits the byte, so pre-A11 inputs and proofs are unchanged; dev-zk
 /// appends `1` (A9).
 pub const CIRCLE_PROFILE: u8 = 2;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
@@ -280,7 +280,7 @@ pub struct Weights {
 }
 
 impl Weights {
-    /// The weights under the default source set, Circle Policy 2 (RFC-0026 A10).
+    /// The weights under the default source set, Circle Policy 2 (RFC-0026 A11).
     pub fn from_artifact(model: &Model, artifact: &[u8]) -> Result<Self, Error> {
         Self::from_artifact_sources(model, artifact, Sources::Circle)
     }
@@ -290,7 +290,7 @@ impl Weights {
         self.sources
     }
 
-    /// The weights under an explicit source set; `Expander` reproduces pre-A10 proofs.
+    /// The weights under an explicit source set; `Expander` reproduces pre-A11 proofs.
     pub fn from_artifact_sources(
         model: &Model,
         artifact: &[u8],

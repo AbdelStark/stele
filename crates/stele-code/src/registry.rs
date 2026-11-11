@@ -48,8 +48,8 @@ pub enum Profile {
     Standard,
     /// Treaty profile.
     Treaty,
-    /// RFC-0026 A10: the development tier's Policy 2 counts, with `proven: false`.
-    /// Ungated by `standard-unproven`, because it admits nothing (ADR-110).
+    /// RFC-0026 A11: the development tier's Policy 2 counts, with `proven: false`.
+    /// Ungated by `standard-unproven`, because it admits nothing (ADR-111).
     Development,
 }
 
@@ -65,7 +65,7 @@ pub struct ProximityParams {
     /// Grinding bits k_q of every certificate and opening column round (A14 item 3).
     pub column_grind_bits: u8,
     /// A14 item 6: true for standard under Policy 2; treaty is never admitted;
-    /// false for the development tier (RFC-0026 A10), which claims no level.
+    /// false for the development tier (RFC-0026 A11), which claims no level.
     pub proven: bool,
 }
 
@@ -175,7 +175,7 @@ pub fn parameters(code: &Encoder) -> CodeParameters {
 /// (`FieldMismatch`). A standard request with QM31 or OM31 challenges returns the
 /// RFC-0010 A14 Policy 2 parameters; every other request (treaty, M31 challenges,
 /// v2 J = 15) fails closed with `UnsupportedParameters`. A development request
-/// (RFC-0026 A10) returns the same counts with `proven: false`.
+/// (RFC-0026 A11) returns the same counts with `proven: false`.
 pub fn resolve_pcs(
     code_id: &[u8],
     field_degree: u8,
@@ -191,7 +191,7 @@ pub fn resolve_pcs(
     let proven = profile == Profile::Standard;
     // ADR-108: no production build resolves a standard profile before E8-05's
     // composed (C1)-(C3) check; tests and controls opt in with `standard-unproven`.
-    // The development tier is not gated: it gets `proven: false` (ADR-110).
+    // The development tier is not gated: it gets `proven: false` (ADR-111).
     if proven && cfg!(not(feature = "standard-unproven")) {
         return Err(Error::UnsupportedParameters);
     }

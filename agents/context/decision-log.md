@@ -2774,9 +2774,9 @@ E16-30.
 Status: Accepted with RFC-0008 A8 (independent review: FIX-THEN-MERGE, F1 fixed here).
 A8 is the protocol change; this record follows RFC-0012 A17 and RFC-0010 A14.
 
-## ADR-110: Development proofs on Circle rate-1/4 sources under Policy 2, behind profile byte 2 (RFC-0026 A10, task E16-30)
+## ADR-111: Development proofs on Circle rate-1/4 sources under Policy 2, behind profile byte 2 (RFC-0026 A11, task E16-30)
 
-Numbering: ADR-109 is taken by #348 (task E12-14), so this record takes 110.
+Numbering: ADR-109 is taken by #348 (task E12-14) and ADR-110 by #350 (NC-1310, RFC-0026 A10), so this record takes 111 and this amendment A11.
 
 Context: ADR-091 projected 18.3 MB for stories42M on Circle rate-1/4 Policy 2 sources,
 against 113.4 MB on v2 Policy 1, and left the switch to E16-30's encoding benchmark.
@@ -2793,12 +2793,12 @@ Decision:
   within the 152 bytes of LU nonces it counted). Verification time falls; the prove-time
   difference is within the host's noise. The encoding cost is accepted, so the amendment
   goes ahead (E16-30 acceptance line 2).
-- **Amendment.** RFC-0026 A10 (Proposed, development-tier path): profile byte 2 selects
+- **Amendment.** RFC-0026 A11 (Proposed, development-tier path): profile byte 2 selects
   Circle rate-1/4 stacked and model sources (Draft A7's geometry, priced under Policy 2)
   and policy byte 2 on every source, multiplicity sources included. LogUp keeps r = 1
   with no (β, α) nonce.
-- **Binding and versioning.** A byte-2 public input is the pre-A10 bytes followed by
-  `u8(2)`; a pre-A10 input omits the byte, as A9 does for profile 0. Old proofs are the
+- **Binding and versioning.** A byte-2 public input is the pre-A11 bytes followed by
+  `u8(2)`; a pre-A11 input omits the byte, as A9 does for profile 0. Old proofs are the
   same bytes, verify unchanged and keep their E16-10 pins; byte-2 proofs get new pins.
   The input file is `stele-dev-public-v2`; `stele-dev-public-v1` still decodes.
 - **No level, no quarantine leak.**
@@ -2826,14 +2826,14 @@ Decision:
   derived model sources differ). NC-1313, NC-1314 and NC-1315 replace the column nonce of
   the stacked certificate, the stacked opening and the model certificate with one that
   fails the predicate (`GrindMismatch`). All run through the actual development verifier.
-  A native test pins that the byte-2 input is the pre-A10 input followed by `2` and that
+  A native test pins that the byte-2 input is the pre-A11 input followed by `2` and that
   the v1 file still round-trips. Without the byte in the public input, NC-1311 and
   NC-1312 would still pass: the derived sources differ in shape. The transcript binding
   is checked by that native test.
 
-Consequences: development proof bytes change under byte 2 (pins re-recorded); pre-A10
-proofs are unchanged. E19-02's Draft A7 is subsumed if A10 is accepted. Open: the
-independent review of A10; multiplicity sources at rate 1/4 (now the largest
+Consequences: development proof bytes change under byte 2 (pins re-recorded); pre-A11
+proofs are unchanged. E19-02's Draft A7 is subsumed if A11 is accepted. Open: the
+independent review of A11; multiplicity sources at rate 1/4 (now the largest
 section on L0 and L1, an RFC-0008 A5 geometry change); RFC-0008 A8 LU grinding for development proofs (not needed: no λ is claimed).
 
-Status: Proposed (RFC-0026 A10 pending independent review).
+Status: Proposed (RFC-0026 A11 pending independent review).
