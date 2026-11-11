@@ -648,5 +648,55 @@ Controls:
 
 Evidence: `research/zk-claims/check_lifetime.py` (the independent review's exact
 `F_61²` check). Within budget the weights stay hidden. Index reuse, an opening
-past the rank budget, and `C + 1` queries expose them. The 1-D records stay public input until E12-27 commits them.
+past the rank budget, and `C + 1` queries expose them. The 1-D records stay public input until E12-27 commits them
+(A7).
+
+### A7 — Committed 1-D records for dev-zk (the gains as weights with a CQIS encoding proof)
+
+Status: **Proposed** (development tier, Workflow 02 development-tier path;
+independent review requested; not self-accepted). Task: E12-27. Decision: ADR-107.
+
+Motivation: under A5/A6 the 1-D records (the RMSNorm gains, RFC-0026 A2) are public
+input, so a dev-zk proof hides the matrices but not the norm gains (review F2 of
+E12-14b).
+
+1. **Columns.** Under dev-zk, each RMSNorm's gain-derived columns are weight
+   columns of the lifetime source (A6):
+   - `H0`, the low byte of the int16 gain `h`, unsigned 8;
+   - `H1`, its high byte, signed 8;
+   - `σH = [h < 0]`, unsigned 1;
+   - `flipH = 1 − 2σH`, signed 2.
+
+   The plan declares them at these fixed widths (`RmsNormPlan::fixed_widths`), so
+   the relation and its static bounds (RFC-0026 §3.6) depend on no gain value. The
+   development profile keeps its value-derived widths, and its proof bytes are
+   unchanged.
+2. **Encoding relations.** Per group, `commit_records` adds:
+   - ranges `H0 ∈ [0, 256)`, `H1 ∈ [−128, 128)`, `σH ∈ {0, 1}`, `flipH ∈ [−2, 2)`;
+   - a weight column `H1low ∈ [0, 128)` with the identity
+     `H1low − H1 − 128·σH = 0`, so `σH` is `H1`'s two's-complement sign;
+   - the identity `flipH − 1 + 2σH = 0`;
+   - `x·(1 − valid) = 0` for `H0`, `H1` and `σH`, where `valid` is the public mask
+     `[k < d]` of the model width `d`, so padding gains are zero.
+
+   Together these make each group the encoding `h = H0 + 256·H1` of one int16 gain
+   with its sign and flip.
+3. **Public input.** The 1-D records in a dev-zk public input are replaced by the
+   fixed pattern `min, max, −1, 0, …` of each record's format; lengths are kept.
+   The verifier derives the relation from it. The prover derives the same relation
+   from the real gains, and it refuses a window whose committed relation differs
+   from the verifier's.
+4. **Not hidden.** The record lengths and formats, and that the norms have
+   gains. The values are hidden as weights under A6.
+5. **Cost.** The full-width gain columns enlarge some carries' static bounds (wider
+   range checks), measured on the eight-layer window by the admission ledger.
+
+Controls:
+- NC-0935: a flipH inconsistent with σH.
+- NC-0936: σH set on a non-negative H1. The sign identity is kept, so the 7-bit
+  range of `H1low` rejects it.
+- NC-0937: a nonzero gain past `d`.
+
+Each control uses the unchecked adversary, expects `RoundSumMismatch`, and passes
+on the honest encoding (M0).
 

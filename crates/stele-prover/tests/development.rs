@@ -541,7 +541,7 @@ fn zk_window(name: &str, t: usize) -> usize {
         model: case.bytes[0].to_vec(),
         scales: case.bytes[1].to_vec(),
         preparation: case.bytes[2].to_vec(),
-        vectors: weights.vectors.clone(),
+        vectors: zk::published(case.bytes[0], &weights.vectors).expect("published"),
         commitment: Vec::new(),
     };
     // RFC-0013 A6: commit once (budget 2), then prove as index 0.

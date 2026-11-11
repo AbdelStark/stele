@@ -2503,3 +2503,33 @@ Status: Accepted (development tier). Independent review in two rounds:
 fix-then-merge, then MERGE with "accept A6: yes". dev-zk stays not admitted
 until E12-27.
 
+## ADR-107: Commit the 1-D records for dev-zk with a CQIS gain-encoding proof (RFC-0013 A7, task E12-27)
+
+Numbered after ADR-104 on main, skipping ADR-105 and ADR-106, which #345 and #341
+hold.
+
+Context: under RFC-0013 A5/A6 the RMSNorm gains (the 1-D records, RFC-0026 A2) are
+dev-zk public input. Review F2 of E12-14b asked to commit them, and E12-27 is an
+admission gate.
+
+Decision:
+- RFC-0013 A7 (Proposed): under dev-zk, each RMSNorm's gain-derived columns
+  (`H0`, `H1`, `σH`, `flipH`) are weight columns of the A6 lifetime source.
+  - They are declared at fixed full widths (`RmsNormPlan::fixed_widths`, set by the
+    dev-zk plan), so the relation and its static bounds depend on no gain.
+  - `development::zk::commit_records` converts them and adds the encoding
+    relations: the ranges, `H1low = H1 + 128·σH ∈ [0, 128)`,
+    `flipH = 1 − 2σH`, and zero padding past the model width.
+- The dev-zk public input carries a fixed per-format pattern in place of each 1-D
+  record's values. The prover builds the relation from the real gains and refuses
+  a window whose committed relation differs from the verifier's.
+- Development proofs are unchanged; their pinned hashes still match.
+- Controls NC-0935..0937 use the unchecked adversary on a one-group relation.
+  Each is mutation-checked: removing the flip identity, widening `H1low` to 8 bits,
+  or removing the padding identity turns exactly its control red, with the false
+  encoding accepted.
+- dev-zk stays not admitted. The admission PR follows, with its review and the
+  eight-layer ledger.
+
+Status: Proposed (development tier; independent review requested).
+

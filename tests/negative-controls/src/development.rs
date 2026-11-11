@@ -76,13 +76,14 @@ fn zk_commit(
 ) -> Result<(Public, zk::ModelCommitment, zk::ModelState), String> {
     let base = Public {
         commitment: Vec::new(),
+        vectors: zk::published(&public.model, &public.vectors).map_err(|e| format!("{e:?}"))?,
         ..public.clone()
     };
     let (commitment, state) =
         zk::commit(&base, exec, weights, 4, proofs, [seed; 32]).map_err(|e| format!("{e:?}"))?;
     let zk_public = Public {
         commitment: vec![(commitment.root, Vec::new())],
-        ..public.clone()
+        ..base
     };
     Ok((zk_public, commitment, state))
 }
@@ -134,11 +135,9 @@ fn commitment_transcript(
     use stele_reductions::stele_hash::Transcript;
     use stele_reductions::zk::claims::{self, Lifetime, ModelSecret};
     use stele_reductions::zk::relation as zk_relation;
-    let mut captured = None;
-    let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
-    prove_tampered(public, exec, weights, committed, statement, &mut hook)
-        .map_err(|e| format!("capture: {e:?}"))?;
-    let (relation, values) = captured.ok_or("relation")?;
+    let _ = (public, committed);
+    let (relation, values) =
+        zk::window(b_public, exec, weights, statement).map_err(|e| format!("capture: {e:?}"))?;
     let index = a_state.revealed.len() as u32;
     let (cqis_id, _) = model_identity(b_public).map_err(|e| format!("{e:?}"))?;
     let input = zk::public_input(b_public, &cqis_id, statement, b, index);
@@ -199,11 +198,9 @@ fn transcript_profile(
     use stele_reductions::stele_hash::Transcript;
     use stele_reductions::zk::claims::{self, Lifetime, ModelSecret};
     use stele_reductions::zk::relation as zk_relation;
-    let mut captured = None;
-    let mut hook = |r: &mut Relation, v: &mut Values| captured = Some((r.clone(), v.clone()));
-    prove_tampered(public, exec, weights, committed, statement, &mut hook)
-        .map_err(|e| format!("capture: {e:?}"))?;
-    let (relation, values) = captured.ok_or("relation")?;
+    let _ = (public, committed);
+    let (relation, values) =
+        zk::window(zk_public, exec, weights, statement).map_err(|e| format!("capture: {e:?}"))?;
     let index = state.revealed.len() as u32;
     let (cqis_id, _) = model_identity(zk_public).map_err(|e| format!("{e:?}"))?;
     let mut t = Transcript::<QM31>::new(&public_input(zk_public, &cqis_id, statement))
@@ -504,6 +501,114 @@ pub fn run(id: u16) -> Result<(), String> {
     }
 }
 
+/// E12-27: one RMSNorm gain group (`H0, H1, σH, flipH` of `gains`, padded to 8
+/// positions with `d = gains.len()`) committed by `zk::commit_records`.
+fn records(gains: &[i16]) -> Result<(Relation, Values), String> {
+    use stele_reductions::stele_ir::relation::{Kind, Width};
+    let mut rel = Relation::default();
+    let mut columns = [Vec::new(), Vec::new(), Vec::new(), vec![1i64; 8]];
+    for c in &mut columns[..3] {
+        *c = vec![0; 8];
+    }
+    for (k, h) in gains.iter().enumerate() {
+        let h = i64::from(*h);
+        columns[0][k] = h & 255;
+        columns[1][k] = h >> 8;
+        columns[2][k] = i64::from(h < 0);
+        columns[3][k] = 1 - 2 * i64::from(h < 0);
+    }
+    for (name, values) in ["H0", "H1", "sigmaH", "flipH"].iter().zip(columns) {
+        rel.add_column(
+            &format!("L0/norm1/{name}"),
+            Kind::Public(values),
+            Width::signed(16),
+            3,
+        );
+    }
+    let empty = Values::new(&rel);
+    let (rel_c, values) = zk::commit_records(&rel, Some((&empty, &rel)), gains.len())
+        .map_err(|e| format!("{e:?}"))?;
+    Ok((rel_c, values.ok_or("values")?))
+}
+
+/// NC-0935..0937: one value of the committed gain encoding made inconsistent,
+/// sent through `zk::relation::forge` on claims relation `target` (honest rounds,
+/// true `μ`, no producer self-check). The same adversary on the honest encoding is
+/// accepted (mutation M0).
+fn records_control(
+    tamper: impl Fn(&Relation, &mut Values) -> Result<(), String>,
+    target: Target,
+) -> Result<(), String> {
+    use stele_reductions::stele_field::QM31;
+    use stele_reductions::stele_hash::Transcript;
+    use stele_reductions::zk::{relation as zk_relation, Seed};
+    let gains = [-300i16, 7, i16::MIN, i16::MAX, -1, 0];
+    let (rel, values) = records(&gains)?;
+    let layout = zk_relation::layout(&rel).map_err(|e| format!("{e:?}"))?;
+    let index = match target {
+        Target::Identities => 0,
+        Target::Check(l) => zk_relation::check_sum(&layout, l),
+    };
+    let run = |values: &Values| -> Result<(), stele_reductions::zk::Error> {
+        let seed = Seed::new([51; 32]);
+        let root = zk_relation::weight_root(&rel, values, &seed)?;
+        let mut t = Transcript::<QM31>::new(b"dev-zk records").expect("transcript");
+        let proof = zk_relation::forge(&mut t, &rel, values, Seed::new([51; 32]), index)?;
+        let mut t = Transcript::<QM31>::new(b"dev-zk records").expect("transcript");
+        zk_relation::verify(&mut t, &rel, root, &proof).map(|_| ())
+    };
+    run(&values).map_err(|e| format!("M0: honest encoding rejected: {e:?}"))?;
+    let mut false_values = values.clone();
+    tamper(&rel, &mut false_values)?;
+    match run(&false_values) {
+        Err(stele_reductions::zk::Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch)) => {
+            Ok(())
+        }
+        other => Err(format!("unexpected: {other:?}")),
+    }
+}
+
+/// Which claims relation [`records_control`] forges.
+enum Target {
+    /// The combined identities of the gain domain (claims relation 0).
+    Identities,
+    /// Range check `l`'s `Σ h = 0`.
+    Check(usize),
+}
+
+fn set(rel: &Relation, values: &mut Values, suffix: &str, k: usize, v: i64) -> Result<(), String> {
+    let id = rel
+        .columns
+        .iter()
+        .position(|c| c.name.ends_with(suffix))
+        .ok_or("column")?;
+    let id = stele_reductions::stele_ir::relation::ColumnId(id as u32);
+    let mut col = values.get(rel, id).ok_or("values")?.to_vec();
+    col[k] = v;
+    values.set(rel, id, col).map_err(|e| format!("{e:?}"))
+}
+
+/// Execute one E12-27 records control.
+pub fn run_records(id: u16) -> Result<(), String> {
+    match id {
+        // NC-0935: flipH = −1 with σH = 0 (gain 7): the flip identity.
+        935 => records_control(|r, v| set(r, v, "/flipH", 1, -1), Target::Identities),
+        // NC-0936: σH = 1 with H1 = 0 and flipH = −1 (gain 7), H1low = 128 so the
+        // sign identity holds: the 7-bit range (check 3) rejects it.
+        936 => records_control(
+            |r, v| {
+                set(r, v, "/sigmaH", 1, 1)?;
+                set(r, v, "/flipH", 1, -1)?;
+                set(r, v, "/H1low", 1, 128)
+            },
+            Target::Check(3),
+        ),
+        // NC-0937: a nonzero H0 past the model width d: the padding identity.
+        937 => records_control(|r, v| set(r, v, "/H0", 7, 5), Target::Identities),
+        _ => Err(format!("unknown records control {id}")),
+    }
+}
+
 /// RFC-0013 A5 item 7 privacy tests on the real one-layer window (T = 4, E12-14b,
 /// review F4), at the relation level, through the actual verifier.
 #[cfg(test)]
@@ -653,7 +758,8 @@ mod privacy {
             model: span("model").expect("model").to_vec(),
             scales: span("scales").expect("scales").to_vec(),
             preparation: span("preparation").expect("prep").to_vec(),
-            vectors: weights.vectors.clone(),
+            vectors: zk::published(span("model").expect("model"), &weights.vectors)
+                .expect("published"),
             commitment: Vec::new(),
         };
         let (zk_public, commitment, mut state) =

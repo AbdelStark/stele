@@ -160,6 +160,9 @@
 | NC-0932 | dev-zk shared-bit final | 0026 §3.5, A9 | a contraction's eq(ρ_shared, ·) final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
 | NC-0933 | dev-zk model commitment pin | 0013 A6 | a proof made against one published commitment, verified against another of the same weights (another model seed): the pinned model digests differ | `StatementMismatch` | done |
 | NC-0934 | dev-zk lifetime counter | 0013 A6 | prover-side refusal: a third proof past a budget of two, and an index whose earlier opening is missing from the model state | `MaskBudget` | done |
+| NC-0935 | dev-zk gain encoding flip | 0013 A6, 0026 A2 | a committed flipH of −1 with σH = 0; the gain identities sent with honest rounds and the true μ, unchecked | `RoundSumMismatch` | done |
+| NC-0936 | dev-zk gain encoding sign | 0013 A6, 0026 A2 | σH = 1 on a non-negative H1, flipH and H1low made consistent: the 7-bit range of H1low = H1 + 128σH, its Σ h = 0 sent unchecked | `RoundSumMismatch` | done |
+| NC-0937 | dev-zk gain padding | 0013 A6, 0026 A2 | a nonzero committed H0 past the model width d; the gain identities sent unchecked | `RoundSumMismatch` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
