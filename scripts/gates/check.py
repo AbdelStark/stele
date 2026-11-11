@@ -894,6 +894,8 @@ def field_source_codec(root):
         ('field', 'policy'), ('field', 'column_grind_bits'), ('field', 'tensor_grind_bits'),
         ('field', 'setup_term'), ('struct', 'Source'),
         ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
+        # RFC-0026 A10, E16-30 (ADR-110): the development tier's Policy 2 source, resolved unproven.
+        ('fn', 'from_code_id_development'),
         ('fn', 'hiding'),
         # RFC-0013 A6, E12-25: the lifetime source's admission.
         ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
@@ -933,6 +935,8 @@ def field_source_codec(root):
         ('field', 'leaf_references_bytes'), ('field', 'merkle_nodes_bytes'), ('field', 'peak_owned_bytes'),
         ('struct', 'PreparedColumn'), ('field', 'payload'), ('field', 'siblings'),
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
+        # RFC-0026 A10, E16-30 (ADR-110).
+        ('fn', 'from_code_id_development'),
         ('fn', 'hiding'),
         # RFC-0013 A6, E12-25: a lifetime hiding source.
         ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),

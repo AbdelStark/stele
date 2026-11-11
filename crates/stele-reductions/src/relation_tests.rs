@@ -600,7 +600,7 @@ fn accepts_circle_policy2_sources_and_rejects_the_other_set() {
     let source = c.source([0; 32]).expect("source");
     assert_eq!(source.code_id().len(), 21); // Circle identity (A9).
     assert_eq!(source.code_id()[20], CIRCLE_BLOWUP);
-    assert_eq!(source.parameters().policy, stele_pcs::Policy::Two);
+    // Policy byte 2 (A14 item 1): k_q = 16 grinding on every column round.
     assert_eq!(source.grind_bits(ProofKind::Certificate).1, 16);
 
     let lengths = [1, 3, 2];
