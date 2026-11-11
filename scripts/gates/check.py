@@ -526,7 +526,9 @@ def field_sources(root):
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\n'
                'extern crate alloc;\n'
                '// RFC-0026 §8: stele-prover orchestrates the development profile through this crate only.\n'
-               'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs, stele_sumcheck};\n'
+               'pub use {stele_cqis, stele_field, stele_hash, stele_ir, stele_pcs};\n'
+               '// E16-23: the prover-side work pool only (map, join), not the sumcheck crate.\n'
+               'pub use stele_sumcheck::parallel;\n'
                'pub mod argmax;\npub mod byte_range;\npub mod development;\n#[cfg(test)]\nmod executor_fixtures;\nmod field_sources;\npub mod finish;\npub mod integer_linear;\npub mod lookup;\npub mod matmul;\npub mod relation;\npub mod requant;\npub mod residual;\npub mod rope;\npub mod silu;\npub mod zk;\n'
                'pub use field_sources::{verify_field_sources, Error, Failure, FieldSourceRecord};\n'
                'mod stacked_sources;\npub use stacked_sources::{\n'
@@ -976,6 +978,8 @@ def field_source_codec(root):
         and len(opening_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', opening))
         and re.findall(r'\bpub\s*\([^)]*\)\s*fn\s+\w+', opening)
             == ['pub(crate) fn for_each_block', 'pub(crate) fn combine_rows']
+        # Exactly those two restricted items: no other pub(crate) struct, const, use or mod.
+        and len(re.findall(r'\bpub\s*\(', opening)) == 2
         and [compact(text) for text in re.findall(r'\bimpl\b[^\{]*\{', opening)] == [
             "impl<K:ChallengeField>Functional<'_,K>{", "impl<K:ChallengeField>OpeningRecord<'_,K>{",
             "impl<'prepared,'message,K:ChallengeField>RetainedRow<'prepared,'message,K>{",

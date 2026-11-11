@@ -63,6 +63,7 @@ def main():
     assert (run / 'verify.out').read_text().splitlines()[-1] == 'YES', 'NotAccepted'
     assert (run / 'prove.out').read_text().splitlines()[-1] == 'PROOF WRITTEN', 'NotProved'
     prove_ns, prove_rss = gnu_time(run / 'prove.time')
+    timer = 'BSD /usr/bin/time -l' if re.search(r'^\s*[\d.]+ real\b', (run / 'prove.time').read_text(), re.M) else 'GNU time -v'
     verify_ns, verify_rss = gnu_time(run / 'verify.time')
     s = statement(run / 'prove.out')
     assert s == statement(run / 'verify.out'), 'StatementDiffers'
@@ -106,7 +107,7 @@ def main():
                  'commitment, executor capture (witness), plain check and proof; the witness is not timed '
                  'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '
                  'decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. '
-                 'CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is GNU time maximum resident set size. Controls '
+                 'CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the ' + timer + ' maximum resident set size. Controls '
                  'are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each '
                  'rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a '
                  'cost-model fit input.'),
