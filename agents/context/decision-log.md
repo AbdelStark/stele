@@ -2455,8 +2455,9 @@ Decision:
 - `stele_sumcheck::parallel` gains `map`, with one pool task per item for a few large
   independent items, and `join`. Without `std`, both run in order on the calling
   thread.
-- `stele-pcs` depends on `stele-sumcheck`, and its `std` feature forwards to
-  `stele-sumcheck/std`.
+- `stele-pcs` gains an optional `rayon =1.10.0`, which only its `std` feature enables.
+  It does not depend on `stele-sumcheck`, so that edge stays banned (`deny.toml`). A
+  crate-private `for_each_block` splits disjoint output blocks.
   - The certificate row and the functional-opening row are combined row-major in
     disjoint column blocks. Before, the loop went column by column with a stride of one
     row through the message.
@@ -2502,4 +2503,4 @@ Consequences:
 - ADR-103 stands. Its gate is a stories42M profile (task E16-22). That profile should be
   taken on this code, because this change lowers the CPU residual it measures.
 
-Status: Accepted (owner authorisation for autonomous performance work; soundness-auditor review requested in the E16-23 PR for the `stele-sumcheck` and `stele-pcs` prover-side changes).
+Status: Accepted (owner authorisation for autonomous performance work; soundness-auditor review requested in the E16-23 PR for the `stele-sumcheck` and `stele-pcs` prover-side changes; ADR-090's list of crates with rayon gains `stele-pcs`).

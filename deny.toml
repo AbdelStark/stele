@@ -28,7 +28,7 @@ deny = [
   { name = "stele-py", wrappers = ["stele-py"] },
   { name = "stele-reductions", wrappers = ["stele-negative-controls", "stele-prover"] },
   { name = "stele-simd", wrappers = ["stele-code", "stele-poly"] },
-  { name = "stele-sumcheck", wrappers = ["stele-reductions", "stele-lookup", "stele-gkr", "stele-pcs", "stele-negative-controls"] },
+  { name = "stele-sumcheck", wrappers = ["stele-reductions", "stele-lookup", "stele-gkr", "stele-negative-controls"] },
   { name = "stele-verifier", wrappers = ["stele-cli", "stele-py", "stele-wrapper"] },
   { name = "stele-wrapper", wrappers = ["stele-passport"] },
 ]

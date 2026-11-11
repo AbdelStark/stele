@@ -189,7 +189,7 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         // Entry `c*R + r` is message entry `r*C + c`; disjoint blocks (task E16-23).
         transposed.resize(count, M31::default());
         let cols = source.columns();
-        stele_sumcheck::parallel::for_each_chunk(&mut transposed, |start, chunk| {
+        crate::opening::for_each_block(&mut transposed, |start, chunk| {
             for (i, out) in (start..).zip(chunk) {
                 *out = message[(i % rows) * cols + i / rows];
             }

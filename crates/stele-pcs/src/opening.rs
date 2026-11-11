@@ -9,10 +9,27 @@ use stele_code::{CodeField, Encoder};
 use stele_field::{Serialize, M31};
 use stele_hash::{merkle, AbsorbLabel, ChallengeField, HashUsage, Transcript};
 
+/// Fill `out` in disjoint blocks: `fill(start, block)` writes `out[start..start + len]`.
+/// Under `std` the blocks run on rayon's global pool (ADR-090, task E16-23); the
+/// result does not depend on the split.
+pub(crate) fn for_each_block<T: Send, F: Fn(usize, &mut [T]) + Sync>(out: &mut [T], fill: F) {
+    #[cfg(feature = "std")]
+    {
+        use rayon::prelude::*;
+        // Blocks below 256 entries cost more to schedule than they save.
+        let step = out.len().div_ceil(rayon::current_num_threads()).max(256);
+        out.par_chunks_mut(step)
+            .enumerate()
+            .for_each(|(t, block)| fill(t * step, block));
+    }
+    #[cfg(not(feature = "std"))]
+    fill(0, out);
+}
+
 /// `out[c] = Σ_row a[row] · message[row · columns + c]` for `c < width`, rows in order.
 /// Column blocks are disjoint and each reads its rows' contiguous slices, so every
-/// value equals the column-by-column loop's; under `std` the blocks run on the
-/// work pool (task E16-23). Rows or columns beyond the shapes are not read.
+/// value equals the column-by-column loop's (task E16-23). Rows or columns beyond the
+/// shapes are not read.
 pub(crate) fn combine_rows<K: ChallengeField>(
     message: &[M31],
     columns: usize,
@@ -20,7 +37,7 @@ pub(crate) fn combine_rows<K: ChallengeField>(
     width: usize,
 ) -> Vec<K> {
     let mut out = alloc::vec![K::from_i64(0); width.min(columns)];
-    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+    for_each_block(&mut out, |start, chunk| {
         for (row, weight) in message.chunks_exact(columns.max(1)).zip(a) {
             for (value, limb) in chunk.iter_mut().zip(&row[start..]) {
                 *value = *value + *weight * K::from_i64(i64::from(limb.as_u32()));
