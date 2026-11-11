@@ -1,5 +1,6 @@
 //! RFC-0008 A8: the standard-profile (β, α) nonce on the A5 consumer. The grind
 //! bits and wire are pinned by research/fs-pcs/check_lu_grind.py; controls are NC-0814..0816.
+#![cfg(feature = "standard-unproven")]
 use core::fmt::Debug;
 use stele_field::{Field, M31, OM31, QM31};
 use stele_hash::{ChallengeField, ChallengeLabel, HashUsage, Transcript};

@@ -2731,12 +2731,25 @@ Decision:
   - It is not a claim about a composed proof. A composed standard proof also needs (C1)
     on every non-grinding round (SC, RLC, SZ, units θ), plus (C2) and (C3). E8-05's
     generator checks these.
-  - Until E8-05 lands, the native gate `standard_quarantine` (`scripts/gates/check.py`)
-    fails if `resolve_pcs`, `Policy::Two` or `Descriptor::standard` is named outside
-    `stele-code`'s registry, `stele-pcs`'s source, `stele-reductions`' lookup, their
-    tests and the controls. So no prover, CLI or verifier can emit `proven: true` or an
-    admitted level for a composed proof.
-  - E8-05 lifts the gate in the same change that adds the composed check.
+  - Until E8-05 lands, the standard-profile entry points sit behind a Cargo feature,
+    `standard-unproven`, in `stele-code`, `stele-pcs` and `stele-reductions` (each
+    forwards it down):
+    - Without it, `resolve_pcs`'s standard path returns `UnsupportedParameters`.
+    - Without it, every Policy 2 source constructor fails `UnsupportedSource`. That
+      includes `Source::from_bytes` with policy byte 2, so a production verifier
+      rejects a Policy 2 context instead of accepting it.
+    - `lookup::Descriptor::standard` does not exist without it.
+  - Only the negative-controls crate enables the feature. The standard tests carry
+    `#![cfg(feature = "standard-unproven")]`, and `cargo test --workspace` unifies the
+    feature through the controls crate. A no-feature test pins the rejection.
+  - The native gate checks with `cargo tree -e features` that stele-cli, stele-prover
+    and stele-verifier build without the feature, as the `controls` gate does. Adding it
+    to stele-prover's dependency turns the gate red.
+  - The earlier grep lint (`standard_quarantine`) stays as a second, weaker check. It
+    misses turbofish, qualified-path and glob forms.
+  - So no prover, CLI or verifier can emit `proven: true` or an admitted level for a
+    composed proof. E8-05 removes the feature in the same change that adds the composed
+    check.
   - The registry export's per-family `proven = false` is unchanged (E12-04).
 
 Consequences: no development proof byte, pin or measured constant moves, and no ledger

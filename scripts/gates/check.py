@@ -696,7 +696,9 @@ def field_sources(root):
             # controls' adversaries (zk), never a verifier input.
             or manifest.get('features', {})
                 != {'std': ['stele-sumcheck/std', 'stele-pcs/std'],
-                    'controls': ['stele-sumcheck/controls']}
+                    'controls': ['stele-sumcheck/controls'],
+                    # ADR-108: the standard-profile lookup, for tests and controls only.
+                    'standard-unproven': ['stele-pcs/standard-unproven']}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),
@@ -1034,7 +1036,9 @@ def field_source_codec(root):
             or manifest.get('dev-dependencies') != {'serde_json': '=1.0.154'}
             or any(key in manifest for key in ('build-dependencies', 'target'))
             # E16-17 (ADR-090), E16-23 (ADR-105): the only feature is the opt-in prover-side pool.
-            or manifest.get('features') != {'std': ['stele-code/std', 'dep:rayon']}
+            # ADR-108: Policy 2 sources resolve only under the test/control feature.
+            or manifest.get('features') != {'std': ['stele-code/std', 'dep:rayon'],
+                                            'standard-unproven': ['stele-code/standard-unproven']}
             or 'build' in manifest.get('package', {})):
         raise ValueError('PCS API not wired; only reviewed A9 source/certificate/opening and A10 retained-row APIs admitted')
     checks = [
@@ -1600,7 +1604,7 @@ def controls_layout(root):
                     for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
     dependencies['stele-sumcheck']['features'] = ['std']
     # E12-14a: the dev-zk controls' adversaries (never a verifier input).
-    dependencies['stele-reductions']['features'] = ['controls']
+    dependencies['stele-reductions']['features'] = ['controls', 'standard-unproven']
     # E12-23: pcs_policy2.rs replays the A17 predicate independently of stele-hash.
     dependencies['blake3'] = {'version': '=1.8.7', 'default-features': False}
     if (manifest.get('example') != examples or manifest.get('dev-dependencies') != dev
@@ -1708,6 +1712,15 @@ def controls_quarantine(root):
     if re.search(r'feature "controls"', tree.stdout):
         raise ValueError('controls quarantine: stele-cli builds with the controls feature')
     print('gate controls quarantine: stele-cli builds without the controls adversaries')
+    # ADR-108: no production crate resolves a standard profile before E8-05.
+    for crate in ('stele-cli', 'stele-prover', 'stele-verifier'):
+        tree = subprocess.run(['cargo', 'tree', '-p', crate, '-e', 'features', '--locked', '--offline'],
+                              cwd=root, capture_output=True, text=True)
+        if tree.returncode != 0:
+            raise ValueError(f'standard quarantine: cargo tree failed: {tree.stderr.strip()}')
+        if re.search(r'feature "standard-unproven"', tree.stdout):
+            raise ValueError(f'standard quarantine: {crate} builds with the standard-unproven feature')
+    print('gate standard quarantine: stele-cli, stele-prover and stele-verifier build without standard-unproven')
 
 
 def masked_sumcheck_quarantine(root):

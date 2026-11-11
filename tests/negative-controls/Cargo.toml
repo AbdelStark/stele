@@ -71,7 +71,7 @@ path = "harness/configuration.rs"
 [dependencies]
 stele-gkr = { path = "../../crates/stele-gkr" }
 stele-poly = { path = "../../crates/stele-poly" }
-stele-reductions = { path = "../../crates/stele-reductions", features = ["controls"] }
+stele-reductions = { path = "../../crates/stele-reductions", features = ["controls", "standard-unproven"] }
 stele-pcs = { path = "../../crates/stele-pcs" }
 stele-lookup = { path = "../../crates/stele-lookup" }
 stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }

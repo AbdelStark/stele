@@ -677,8 +677,11 @@ r = 2 with the second nonce at +8).
 
 Admission: A8 makes the LU rounds meet (C1). It admits no profile level. A composed
 standard proof also needs (C1) on every non-grinding round, plus (C2) and (C3); E8-05's
-generator checks these. Until E8-05, the native gate (`standard_quarantine`) keeps
-every standard entry point inside its defining crates, their tests and the controls.
+generator checks these. Until E8-05, `Descriptor::standard`, the standard path of
+`resolve_pcs` and every Policy 2 source constructor (`from_bytes` included) exist only
+under the Cargo feature `standard-unproven`. Only tests and negative controls enable it,
+and the native gate checks that stele-cli, stele-prover and stele-verifier build
+without it (ADR-108).
 
 Affected tasks: E12-24 (implements A8), E8-05 (the generator enumerates these
 rounds with their k), E16-30.

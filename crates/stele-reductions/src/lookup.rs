@@ -265,6 +265,7 @@ impl<'input, 'cert, K: ChallengeField> Descriptor<'input, 'cert, K> {
     /// the least A17 (C1) bits per repetition. A round needing more than 32 bits rejects
     /// as `Statement` (UnsupportedParameters). This admits no profile level: a composed
     /// standard proof also needs E8-05's (C1)-(C3) check (ADR-108).
+    #[cfg(feature = "standard-unproven")]
     pub fn standard(s: Statement<'input, 'cert, K>, limits: Limits) -> Result<Self, Error> {
         Self::build(s, limits, true)
     }
