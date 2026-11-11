@@ -287,6 +287,20 @@ impl<K: ChallengeField> Source<K> {
         Ok(source)
     }
 
+    /// RFC-0013 A6: whether this hiding source admits a lifetime of
+    /// `budget` openings after its certificate: `R ≥ (budget + 1)·D` mask rows,
+    /// so every revealed row combination keeps the rank check satisfiable, and
+    /// `q_c + budget·q_o ≤ C − 1` queried columns.
+    pub fn admits_lifetime(&self, budget: usize) -> bool {
+        let p = self.parameters;
+        self.hiding
+            && budget >= 1
+            && self.rows / 2 >= (budget + 1).saturating_mul(K::DEGREE)
+            && usize::from(p.certificate_queries)
+                .saturating_add(budget.saturating_mul(usize::from(p.opening_queries)))
+                < self.columns / 2
+    }
+
     /// True for a version-3 hiding source (RFC-0013 A2).
     pub fn is_hiding(&self) -> bool {
         self.hiding

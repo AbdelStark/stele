@@ -544,36 +544,124 @@ fn zk_window(name: &str, t: usize) -> usize {
         vectors: weights.vectors.clone(),
         commitment: Vec::new(),
     };
-    let start = Instant::now();
-    let (public, proof) = zk::prove(
+    // RFC-0013 A6: commit once (budget 2), then prove as index 0.
+    let (commitment, mut state) = zk::commit(
         &base,
+        &mut case.executor(&case.artifact),
+        &weights,
+        t,
+        2,
+        [7; 32],
+    )
+    .expect("commit");
+    let public = Public {
+        commitment: vec![(commitment.root, Vec::new())],
+        ..base.clone()
+    };
+    let index = state.take(&commitment).expect("index");
+    let start = Instant::now();
+    let (proof, revealed) = zk::prove(
+        &public,
         &mut case.executor(&case.artifact),
         &weights,
         &statement,
         zk::Seed::new([42; 32]),
+        &commitment,
+        &state,
+        index,
     )
     .expect("dev-zk prove");
+    state.revealed.push(revealed);
     let proved = start.elapsed();
     let start = Instant::now();
-    let verified = zk::verify(&public, &statement, &proof).expect("dev-zk verify");
+    let verified =
+        zk::verify(&public, &statement, &proof, &commitment, index).expect("dev-zk verify");
     eprintln!(
         "dev-zk {name} T={t}: prove {proved:?}, verify {:?}, {verified}",
         start.elapsed()
     );
-    // The public bundle round-trips with its profile.
-    let bytes = bundle::encode_profile(&public, &statement, zk::PROFILE);
+    // The public bundle round-trips with its profile, commitment and index; the
+    // model state too.
+    let bytes = bundle::encode_zk(&public, &statement, &commitment, index);
     assert_eq!(
         bundle::decode_profile(&bytes).expect("bundle"),
         (public.clone(), statement.clone(), zk::PROFILE)
+    );
+    assert_eq!(
+        bundle::decode_zk(&bytes).expect("bundle"),
+        (public.clone(), statement.clone(), commitment.clone(), index)
     );
     assert!(
         bundle::decode(&bytes).is_err(),
         "a dev-zk bundle is not development"
     );
+    assert_eq!(
+        zk::ModelState::decode(&state.encode()).expect("state"),
+        state
+    );
+    assert_eq!(
+        zk::ModelCommitment::decode(&commitment.encode()).expect("commitment"),
+        commitment
+    );
+    // RFC-0013 A6 item 5 (review F4): a failed proof spends no index. The state is
+    // persisted with the index taken, then restored and persisted again.
+    let prior = state.clone();
+    let mut saved: Vec<zk::ModelState> = Vec::new();
+    let mut bad = statement.clone();
+    bad.next = bad.next.map(|y| y ^ 1);
+    let failed = zk::prove_next(
+        &public,
+        &mut case.executor(&case.artifact),
+        &weights,
+        &bad,
+        zk::Seed::new([43; 32]),
+        &commitment,
+        &mut state,
+        &mut |s: &zk::ModelState| {
+            saved.push(s.clone());
+            Ok(())
+        },
+    );
+    assert!(failed.is_err());
+    assert_eq!(state, prior, "the state is restored");
+    assert_eq!(saved.len(), 2);
+    assert_eq!(
+        saved[0].next,
+        prior.next + 1,
+        "the index is persisted before proving"
+    );
+    assert_eq!(saved[1], prior, "and restored after the failure");
+    // RFC-0013 A6 (review F1): a wrong secret (another model seed) rebuilds other
+    // masks; the producer refuses before any transcript work.
+    let wrong = zk::ModelState {
+        seed: [8; 32],
+        next: state.next + 1,
+        revealed: state.revealed.clone(),
+    };
+    let refused = zk::prove(
+        &public,
+        &mut case.executor(&case.artifact),
+        &weights,
+        &statement,
+        zk::Seed::new([44; 32]),
+        &commitment,
+        &wrong,
+        state.next,
+    );
+    assert_eq!(
+        refused.err(),
+        Some(Error::Zk(stele_reductions::zk::Error::Pcs(
+            stele_reductions::stele_pcs::Error::Merkle(
+                stele_reductions::stele_hash::merkle::Error::RootMismatch
+            )
+        )))
+    );
+    // Another index of the same commitment is rejected.
+    assert!(zk::verify(&public, &statement, &proof, &commitment, 1).is_err());
     // A different window under the same public data is rejected.
     let mut other = statement.clone();
     other.next = other.next.map(|y| y ^ 1);
-    assert!(zk::verify(&public, &other, &proof).is_err());
+    assert!(zk::verify(&public, &other, &proof, &commitment, index).is_err());
     proof.len()
 }
 

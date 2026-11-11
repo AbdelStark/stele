@@ -435,11 +435,22 @@ Following FlashProve's declared list, by design:
 3. Whether a proof was produced: an unsupported model, an out-of-range value or
    a wrong token fails, and that depends on the weights.
 4. Time, proof size and the number of proofs made under one model commitment.
-5. The model commitment's roots (salted). The E12-14 implementation commits the
-   weights per proof (`P = 1`, RFC-0013 A5 item 7), so roots are not shared and a
-   proof binds no named model: it states only that some weights of the declared
-   shape produce the statement. A persistent commitment under one model, whose
-   fixed roots would show that two proofs share a model, is task E12-25.
+5. The model commitment's root (salted, fixed). Under RFC-0013 A6 (Proposed,
+   E12-25), one published commitment serves up to `P` proofs.
+   - Two proofs under it show they share a model, as they must, since they pin it.
+   - They reveal `P` and their indices, and the index reveals proof order.
+   - The certificate bytes are identical across proofs.
+   - Each proof's claims use fresh mask blocks, and the source's view stays within
+     A6's query and rank budgets.
+   - A reused index (a restored or forked owner state) leaks up to `D·Σ_x t_x`
+     M31 linear equations on the weights (`D` per shared block).
+   - It misses a row from the rank check. `r` reuses break hiding once
+     `(P + 1 + r)·D > R`; below that bound, hiding holds only with high
+     probability, through the rank check.
+   - Its extra queries can break hiding once the queried columns reach `C`, and
+     always break it at `C + 1`.
+   - It is publicly detectable afterwards: the same root and index appear in two
+     proofs.
 6. Anything the operator leaks by breaking the lifecycle: a reused seed, a lost
    counter, or a run past the budget.
 

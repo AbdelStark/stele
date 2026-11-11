@@ -2442,7 +2442,7 @@ tasks:
   - column-round nonce (k_q=16) and tensor-round nonce (least k) on the certificate/opening wires
   - independent Python wire parity; NC-0806 and NC-0807 through the actual certificate and opening verifiers
   - Policy 1 proof bytes unchanged (E16-10 fixture hashes stay pinned)
-  - the LU (beta, alpha) consumer is split to E12-24 (ADR-104)
+  - the LU (beta, alpha) consumer is split to E12-24 (ADR-106)
 - id: E12-24
   epic: E12
   title: LU (beta, alpha) grinding consumer in stele-reductions, after its RFC-0008 nonce-offset amendment
@@ -2458,7 +2458,7 @@ tasks:
   - RFC-0008 amendment fixing the LU nonce byte offset (RFC-0012 A17 item 5) before implementation
   - LU (beta, alpha) nonce at the least k meeting (C1) for a standard-profile LU consumer; development LU bytes unchanged
   - independent Python wire parity; a control through the actual LU verifier
-  - gates the first standard-profile caller of registry::resolve_pcs or Policy::Two: proven true presumes RFC-0012 A17 (C1)-(C4), which an ungrinded LU round can fail (ADR-104)
+  - gates the first standard-profile caller of registry::resolve_pcs or Policy::Two: proven true presumes RFC-0012 A17 (C1)-(C4), which an ungrinded LU round can fail (ADR-106)
 - id: E16-30
   epic: E16
   title: Development proof on Circle rate-1/4 sources under Policy 2; encoding benchmark and ledger
@@ -2666,12 +2666,29 @@ tasks:
   rfc:
   - RFC-0013 A5 item 7
   skill: soundness-auditor
-  crate: stele-prover+stele-reductions+stele-cli
-  status: ready
+  crate: stele-prover+stele-reductions+stele-cli+stele-pcs
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-25-dev-zk-model-commitment
   acceptance:
   - one hiding weight source per model, published once, with P·t_W claim-mask blocks and a lifetime counter; the prover refuses past either budget
-  - the 1-D records committed in it rather than public; --expect-model pins a dev-zk proof to the published commitment
+  - --expect-model pins a dev-zk proof to the published commitment; RFC-0013 A6 drafted for the lifetime source
   - gate for admitting dev-zk (RFC-0013 A5 item 8); controls for a reused block set and a run past the budget
+- id: E12-27
+  epic: E12
+  title: Commit the 1-D records (norm gains and vectors) in the dev-zk weight source, with their CQIS well-formedness relations
+  depends:
+  - E12-25
+  rfc:
+  - RFC-0013 A6
+  - RFC-0026 A2
+  skill: soundness-auditor
+  crate: stele-prover+stele-reductions
+  status: ready
+  acceptance:
+  - the gain-derived columns (H0, H1, σH, flipH and the final gain) are weight columns of the lifetime source, with ranges and the sign identities that make them a CQIS gain encoding
+  - the 1-D records leave the dev-zk public input and the model digest; controls for an inconsistent encoding
+  - gate for admitting dev-zk (closes review F2)
 - id: E12-26
   epic: E12
   title: dev-zk soundness ledger from the verifier (SC, MASK, ZD, LU and PCS lines per instance and source)
@@ -2695,6 +2712,7 @@ tasks:
   - E12-14a
   - E12-14b
   - E12-25
+  - E12-27
   rfc:
   - RFC-0013 A1
   - RFC-0013 A5
@@ -4176,3 +4194,102 @@ tasks:
   - weight-hiding and activation-hiding proofs on L3b; prover overhead at most 15 percent
   - the simulator argument is written in formal/ and reviewed by the soundness-auditor
   - the budget is enforced across batches
+- id: E16-21
+  epic: E16
+  title: Development-profile GPU gating micro-benchmark and RFC-0014 amendment
+  depends:
+  - E16-18
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: done
+  agent: claude-code
+  branch: task/E16-21-gpu-gating
+  acceptance:
+  - device-resident dense sumcheck rounds measured on a rented RTX 4090 at the 8-layer and stories42M relation sizes, transfers included
+  - projected stories42M prove-time gain reported; the full backend proceeds only at >= 3x
+  - on GO, an RFC-0014 amendment (Workflow 02) for a development-profile GPU backend, with an RFC-0026 §7 cross-reference, and an ADR for cudarc with runtime loading; on NO-GO, an ADR (ADR-103, provisional NO-GO)
+- id: E16-21a
+  epic: E16
+  title: Development-profile GPU backend infrastructure (backend trait, op table, parity harness)
+  depends:
+  - E16-21
+  - E16-22
+  - E10-01
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - CPU backend is the default and unchanged; GPU behind an opt-in feature with runtime-loaded CUDA
+  - verifier and every --no-default-features build free of GPU code (cargo tree, CI check)
+  - parity harness compares GPU and CPU outputs byte for byte
+- id: E16-21b
+  epic: E16
+  title: GPU dense sumcheck and zerocheck rounds, folds and eq tables
+  depends:
+  - E16-21a
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - fixed-order reductions, no atomics on transcript-bound values
+  - FNV proof pins identical on the GPU host
+- id: E16-21c
+  epic: E16
+  title: GPU LogUp fraction-tree levels
+  depends:
+  - E16-21b
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - FNV proof pins identical on the GPU host
+- id: E16-21d
+  epic: E16
+  title: GPU v2 expander encoding and Merkle leaf hashing
+  depends:
+  - E16-21b
+  rfc:
+  - RFC-0014 §2,§5
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - FNV proof pins identical on the GPU host
+- id: E16-21e
+  epic: E16
+  title: stories42M T = 64 GPU prove-time ledger entry
+  depends:
+  - E16-21c
+  - E16-21d
+  rfc:
+  - RFC-0018 A1
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-bench
+  status: blocked(ADR-103: stories42M profile, task E16-22)
+  acceptance:
+  - GPU prove time against the 24-thread CPU run (bench/ledger/e16-18-dev-stories42m.json), with GPU model and transfer share recorded
+- id: E16-22
+  epic: E16
+  title: stories42M T = 64 prove stage shares on a Linux host
+  depends:
+  - E16-21
+  rfc:
+  - RFC-0026 §7
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-bench
+  status: ready
+  acceptance:
+  - perf profile of one stele prove-dev run of stories42M at T = 64 on the 24-thread host class of bench/ledger/e16-18-dev-stories42m.json, release build with debuginfo
+  - wall-time shares of dense and zerocheck rounds, LogUp levels, v2 encoding, Merkle hashing and the residual, with the parallel and sequential split, recorded in a bench/ledger entry
+  - ADR-103 confirmed (residual above one third) or reversed (residual at most one third) in a new ADR
