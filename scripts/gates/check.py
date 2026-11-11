@@ -497,7 +497,9 @@ def field_sources(root):
                'src/lookup.rs', 'src/lookup_sizes_tests.rs', 'tests/lookup_codec.rs',
                'src/lookup_producer.rs', 'src/lookup_resources.rs', 'src/lookup_functionals.rs',
                'tests/lookup_producer.rs', 'src/lookup_verifier.rs', 'src/lookup_records.rs',
-               'tests/lookup_verifier.rs', 'src/lookup_work.rs', 'src/matmul.rs', 'tests/matmul.rs',
+               'tests/lookup_verifier.rs', 'src/lookup_work.rs',
+               # RFC-0008 A8 (E12-24): the standard (β, α) nonce and its pinned bits.
+               'tests/lookup_grind.rs', 'tests/fixtures/lu-grind-bits.txt', 'tests/fixtures/lu-standard-wire.txt', 'src/matmul.rs', 'tests/matmul.rs',
                'src/matmul_producer.rs', 'tests/matmul_producer.rs', 'src/requant.rs',
                'src/requant_tests.rs', 'tests/fixtures/requant-schema.txt', 'src/requant_constraints.rs',
                'src/requant_constraint_tests.rs', 'tests/fixtures/requant-constraints.txt',
@@ -566,8 +568,8 @@ def field_sources(root):
         ('use', 'stele_cqis'), ('enum', 'Error'), ('struct', 'Layout'), ('', 'id'), ('', 'ell'), ('', 'blowup'),
         ('struct', 'Limits'), ('', 'positions'), ('', 'public_bytes'), ('', 'proof_bytes'),
         ('struct', 'Statement'), ('', 'id'), ('', 'm'), ('', 'b'), ('', 'table'), ('', 'selector'),
-        ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'new'),
-        ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
+        ('', 'originals'), ('', 'multiplicities'), ('struct', 'Descriptor'), ('fn', 'lu_grind_bits'), ('fn', 'new'),
+        ('fn', 'standard'), ('fn', 'grind_bits'), ('fn', 'statement_size'), ('fn', 'proof_size'), ('fn', 'public_bytes'), ('fn', 'max_local_hashes'),
         ('fn', 'multiplicity_source'), ('fn', 'encode'), ('fn', 'preflight'), ('enum', 'Profile'), ('fn', 'admit'), ('use', 'producer'), ('use', 'verifier')]
         and len(lookup_declarations) == len(re.findall(r'\bpub\b', lookup))
         and [re.sub(r'\s+', '', item) for item in re.findall(r'\bimpl\b[^\{]*\{', lookup)]
@@ -1605,7 +1607,7 @@ def controls_layout(root):
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',

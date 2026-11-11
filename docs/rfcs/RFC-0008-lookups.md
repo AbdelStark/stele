@@ -593,3 +593,78 @@ form or challenge changes.
 - **Controls.** NC-0920..0923 cover members, selector, shift and padding. NC-0929
   covers the `S` final. NC-0930 (`W_m`) and NC-0931 (`eq·Z`) are `todo` (see the
   RFC-0013 A5 E12-14a notes).
+
+### A8 — Standard-profile LU (β, α) nonce: bits, byte offset and multiplicity policy (companion of RFC-0012 A17)
+
+Status: Proposed. Full path (Workflow 02 item 3). Task E12-24. Companion of RFC-0012
+A17 item 5, which says "An RFC-0008 amendment in E12-23 fixes the exact byte offset
+before implementation"; ADR-106 moved that work to E12-24.
+
+Motivation: A17 (C1) requires every reachable round to satisfy `ε_i·2^-k_i ≤ 2^-108`
+under the standard profile. A QM31 (β, α) round can fail this without grinding; the
+recorded stories42M range_8 round is `2^-97` (formal/fs-composition.md §6). A17 lets
+LU rounds grind, but it leaves their wire position to this amendment. A standard
+lookup also opens and certifies its own multiplicity sources. Under Policy 1 their
+ungrinded QM31 tensor round `2·ℓ·(e+1)/|K|` can also fail (C1).
+
+Exact addition, to A5 and formal/native-lookup.md §§3–4:
+
+1. **Scope.** This amendment applies only to an A5 lookup admitted to the standard
+   profile (`lookup::Descriptor::standard`). An A5 lookup with no profile
+   (`Descriptor::new`), the RFC-0026 development checks (A6) and the dev-zk trees
+   (A7) have k = 0, carry no nonce and keep Policy 1. Their bytes are unchanged.
+2. **Bits.** Each repetition j has one (β_j, α_j) round (RFC-0012 A17 item 3,
+   fs-composition.md Lemma 4), with error `a/|K|`, where
+   `a = (c−1)(N+t) + N+t−1 = c(N+t) − 1`. Here N = 2^m positions, t = the Table's
+   real rows and c its columns. k is the least integer k ≥ 0 with
+   `a·2^108 ≤ p^d·2^k`, computed from the expected statement with exact integers.
+   The same k serves every repetition. For d = 8, k = 0, because a < 2^62. If k > 32,
+   the configuration is UnsupportedParameters (`Error::Statement`), and it is rejected
+   before any transcript mutation. The unit round (θ, h ≤ 30 draws) is charged
+   `h/|K| < 2^-108` and is never ground (A17 (C4)).
+3. **Multiplicity sources.** Each multiplicity layout's A9 source uses Policy 2
+   (RFC-0010 A14). Its certificate and opening tensor and column rounds then grind as
+   E12-23 implements them. The policy byte is part of the 105-byte context that
+   step 3 already absorbs in Multiplicities. Original sources stay caller-owned. The
+   lookup only opens them, and an opening has no tensor round.
+4. **Transcript.** Exact replacement for native-lookup §4 step 4, under item 1's
+   scope: "For j=0..r-1 absorb Repetition(u64 id,u8 j,u8 phase=0). If k ≥ 1, the
+   prover sends nonce n_j and the verifier checks it, exactly as RFC-0012 A17 item 5
+   specifies: one PoW query, then absorb on success. GrindMismatch aborts the attempt.
+   Then draw Beta followed by Alpha. Finish all r pairs before any tree proof."
+   This is the A17 placement: the nonce immediately follows the last absorb before
+   `lookup/beta`.
+5. **Wire.** If k ≥ 1, r u64le nonces n_0..n_{r−1} follow the r registration packets,
+   in repetition order, and precede repetition packet 0. Nonce j starts at byte
+   `2 + Σ_{i<r}(32 + C_i) + 8j`. The §3 total gains `8·r·[k ≥ 1]` bytes, and the
+   absorb-payload bound gains `9·r·[k ≥ 1]`. Every u64 value is well formed. The
+   predicate is checked at the transcript point in item 4, never during preflight.
+6. **Prover.** It sends the least valid nonce (A17 item 5), so the proof stays
+   deterministic (INV-8).
+
+Soundness impact:
+- Under item 1's scope, each (β, α) round's FS factor is `ε·2^-k ≤ 2^-108`, so (C1)
+  holds, and k is the least such value, so (C4) holds.
+- The interactive LU line (Lemma 4's numerator) is unchanged.
+- The grinding registry line `stele/v0.1/grind` (A17 item 6) is already registered.
+  No new label, challenge or loss line is added.
+- The Policy 2 multiplicity rounds meet (C1) by RFC-0010 A14.
+- Proven/conditional status is that of RFC-0012 A17 Theorem 1.
+- Open: (C2) and (C3) over a whole standard proof, and the exact round enumeration,
+  remain E8-05's.
+
+Cost impact (T_misc, no measured constant):
+- Prover: about 2^k BLAKE3 calls per repetition, at most 2^12 for any RFC-0026-sized
+  check.
+- Verifier: one PoW call per repetition.
+- Proof: +8 bytes per repetition, plus the Policy 2 multiplicity certificate and
+  opening sizes of A14.
+
+Controls: NC-0814 (a nonce failing the predicate, `GrindMismatch`), NC-0815 (a k−1
+prover's nonce, `GrindMismatch`) and NC-0816 (another valid nonce, absorbed, so β and α
+change, `RoundSumMismatch`). All three run through the actual A5 verifier.
+Python parity: `research/fs-pcs/check_lu_grind.py` (bit table, and three standard
+wires from the unchanged independent A5 producer of `lookup_corpus.py`).
+
+Affected tasks: E12-24 (implements A8), E8-05 (the generator enumerates these
+rounds with their k), E16-30.

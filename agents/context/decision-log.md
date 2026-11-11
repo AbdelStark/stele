@@ -2621,3 +2621,70 @@ Consequences: no proof byte, pin or measured constant moves; no ledger is record
 E16-30 is unblocked on the stele-pcs side. Open: E12-24, E12-04, E8-05.
 
 Status: Accepted (follows Accepted RFC-0010 A14 and RFC-0012 A17; no protocol change).
+
+## ADR-108: The standard-profile LU (β, α) nonce and Policy 2 multiplicity sources; ADR-106's gate narrowed (RFC-0008 A8, RFC-0012 A17, task E12-24)
+
+Numbering: ADR-107 is taken by #346 (task E12-27), so this record takes 108.
+
+Context: RFC-0012 A17 item 5 lets LU (β, α) rounds grind, and it requires an RFC-0008
+amendment to fix the nonce's byte offset first. ADR-106 split that work from E12-23 into
+E12-24. It also barred any standard-profile caller of `registry::resolve_pcs` or
+`Policy::Two` until E12-24 was done. The reason: `proven: true` presumes A17 (C1)–(C4),
+and an ungrinded QM31 LU round can fail (C1).
+
+Decision:
+
+- **Amendment.** RFC-0008 A8 (Proposed, full path) fixes the placement. The nonce
+  follows `Repetition(id, j, 0)` and precedes `Beta`. On the wire, r u64le nonces follow
+  the registration packets, and nonce j starts at byte `2 + Σ(32 + C_i) + 8j`. Its
+  bits are the least k with `(c(N+t) − 1)·2^108 ≤ p^d·2^k`. k > 32 is
+  `Error::Statement` (UnsupportedParameters).
+- **Consumer.** `lookup::Descriptor::standard` is the standard-profile A5 lookup. Its
+  multiplicity sources use Policy 2, and it grinds when k ≥ 1. `Descriptor::new` is
+  unchanged: Policy 1, k = 0, no nonce. The RFC-0026 development checks
+  (`relation_lookup.rs`) and dev-zk trees are not touched, so no development proof
+  byte moves. The existing lookup corpus digests are unchanged.
+- **Why the multiplicity policy moves too.** A standard lookup certifies its own
+  multiplicity sources. Under Policy 1 their ungrinded QM31 tensor round
+  `2·ℓ·(e+1)/|K|` can fail (C1). Grinding only (β, α) would leave the lookup
+  inadmissible.
+- **Conservative readings.**
+  1. Originals stay caller-owned. The lookup only opens them, and an opening has no
+     tensor round, so the lookup does not check their policy. Their certificates' (C1)
+     belongs to whoever registers them.
+  2. N is the 2^m positions and t the real rows, as in the recorded LU numerator.
+  3. The grind absorb's 9-byte payload is counted in `Limits::public_bytes`.
+- **Controls.** NC-0814 (a failing nonce, `GrindMismatch`), NC-0815 (a k−1 prover,
+  `GrindMismatch`) and NC-0816 (another valid nonce, absorbed, `RoundSumMismatch`)
+  run through the actual A5 verifier on a QM31 `sigmoid_q` lookup with k = 2. Nonces
+  come from the independent `Replay` of E12-23, with every search capped at 2^20.
+  Mutation checks, each leaving the honest proof accepted:
+  1. With the PoW check skipped but the absorb kept, NC-0814 and NC-0815 go red
+     (`RoundSumMismatch` instead of `GrindMismatch`).
+  2. With the nonce not absorbed on either side, NC-0816 goes red (tamper accepted).
+  3. With an off-by-one bit derivation on both sides, no control goes red, because
+     the prover and verifier still agree. It is caught by the controls' k = 2 fixture
+     guard and by the native pin `matches_reference_lu_grind_bits`. A verifier that
+     checks fewer bits than the prover ground rejects the honest proof, because the
+     predicate's payload binds k.
+- **Parity.** `research/fs-pcs/check_lu_grind.py` recomputes 180 (c, N, t, d) rows
+  from the exact inequality. It also runs the unchanged independent A5 producer of
+  `lookup_corpus.py` with Policy 2 multiplicity sources and the A8 nonce, for three
+  standard proofs (k = 0, 0, 1). Both are pinned natively in `tests/lookup_grind.rs`,
+  which matches the proof bytes, nonce offset, nonce and continuation. The pinned
+  `lookup_corpus.py` is not edited, so the requant and integer-linear provenance
+  hashes do not move.
+- **ADR-106's gate, narrowed.** Every family that A17 item 5 lets grind now has a
+  consumer that grinds at the least (C1) k: PCS column and tensor rounds (E12-23), and
+  LU (β, α) rounds (here). `resolve_pcs`'s `proven: true` is justified for a Policy 2
+  source together with these consumers. A standard-profile caller may now land if it
+  uses `Descriptor::standard` for its lookups, or has no lookup. A standard proof's
+  whole-proof (C2)/(C3) checks and its round enumeration remain E8-05's. A caller must
+  not state an admitted level before E8-05 lands. The registry export's per-family
+  `proven = false` is unchanged (E12-04).
+
+Consequences: no development proof byte, pin or measured constant moves, and no ledger
+is recorded. A8 stays Proposed until an independent review accepts it. Open: E8-05,
+E12-04, E16-30.
+
+Status: Accepted when A8 is accepted (follows RFC-0012 A17; A8 is the protocol change).

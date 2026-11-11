@@ -20,7 +20,7 @@ const SEARCH: u64 = 1 << 20;
 
 /// Independent RFC-0012 A1 transcript state and A17 predicate, from the RFC text.
 #[derive(Clone)]
-struct Replay {
+pub(crate) struct Replay {
     state: [u8; 32],
     degree: usize,
 }
@@ -35,7 +35,7 @@ impl Replay {
         h.update(payload);
         h
     }
-    fn new(public: &[u8], degree: usize) -> Self {
+    pub(crate) fn new(public: &[u8], degree: usize) -> Self {
         let initial = Self {
             state: *blake3::hash(b"stele/v0.1/transcript/init").as_bytes(),
             degree,
@@ -46,7 +46,7 @@ impl Replay {
             .as_bytes();
         Self { state, degree }
     }
-    fn absorb(&mut self, label: &str, bytes: &[u8]) {
+    pub(crate) fn absorb(&mut self, label: &str, bytes: &[u8]) {
         self.state = *self.frame(0, label, bytes).finalize().as_bytes();
     }
     /// A1 field challenge: rejection-sample d limbs from a 256-byte XOF, then commit.
@@ -77,7 +77,7 @@ impl Replay {
         payload
     }
     /// A17: u64le of the first 8 bytes of H(frame(S, 3, grind, k||n)) has k trailing zeros.
-    fn pow(&self, bits: u8, nonce: u64) -> bool {
+    pub(crate) fn pow(&self, bits: u8, nonce: u64) -> bool {
         let digest = self
             .frame(3, "stele/v0.1/grind", &Self::grind_payload(bits, nonce))
             .finalize();
@@ -92,7 +92,11 @@ impl Replay {
             .as_bytes();
     }
     /// Least nonce after `from` satisfying `keep`, within the search cap.
-    fn search(&self, from: u64, keep: impl Fn(&Self, u64) -> bool) -> Result<u64, Error> {
+    pub(crate) fn search(
+        &self,
+        from: u64,
+        keep: impl Fn(&Self, u64) -> bool,
+    ) -> Result<u64, Error> {
         (from + 1..from + 1 + SEARCH)
             .find(|nonce| keep(self, *nonce))
             .ok_or(Error::Capacity)

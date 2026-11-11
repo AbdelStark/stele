@@ -15,6 +15,8 @@ pub mod integer_linear;
 #[doc(hidden)]
 pub mod lookup;
 #[doc(hidden)]
+pub mod lookup_grind;
+#[doc(hidden)]
 pub mod matmul;
 #[doc(hidden)]
 pub mod pcs;
@@ -749,6 +751,24 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "GrindMismatch",
         run: || pcs_policy2::run(813),
+    },
+    catalog::RegisteredControl {
+        id: 814,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || lookup_grind::run(814),
+    },
+    catalog::RegisteredControl {
+        id: 815,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || lookup_grind::run(815),
+    },
+    catalog::RegisteredControl {
+        id: 816,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || lookup_grind::run(816),
     },
 ];
 

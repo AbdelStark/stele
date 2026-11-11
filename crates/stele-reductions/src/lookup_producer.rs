@@ -215,14 +215,13 @@ where
         ])?;
         for (j, message) in limbs[..r].iter().enumerate() {
             let layout = s.multiplicities[j];
-            let columns = self.mu[j].columns().trailing_zeros() as u8;
-            let p = PreparedSource::<K>::new(
+            let p = PreparedSource::<K>::from_code_id_policy(
                 layout.id,
                 layout.ell,
-                columns,
-                layout.blowup,
+                self.mu[j].code_id(),
                 message,
                 &mut usage.non_transcript,
+                self.policy,
             )
             .map_err(Error::Pcs)?;
             let preparation = p.work();
@@ -267,6 +266,11 @@ where
         let mut pairs = [[K::from_i64(0); 2]; 2];
         for (j, pair) in pairs[..r].iter_mut().enumerate() {
             absorb(t, AbsorbLabel::LookupRepetition, &phase(s.id, j, 0))?;
+            // RFC-0008 A8 items 4-5: least nonce, written after the registrations.
+            if self.grind > 0 {
+                let nonce = t.grind(self.grind).map_err(Error::Transcript)?;
+                out.extend_from_slice(&nonce.to_le_bytes());
+            }
             *pair = [
                 draw(t, ChallengeLabel::LookupBeta)?,
                 draw(t, ChallengeLabel::LookupAlpha)?,

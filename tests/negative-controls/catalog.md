@@ -129,6 +129,9 @@
 | NC-0808 | transcript/grinding | 0012 A17, 0010 A14 | replace one Policy 2 column-round nonce (certificate or opening) with another nonce that passes the predicate, every other byte unchanged | `RootMismatch` | done |
 | NC-0809 | pcs/queries | 0010 A14 | offer a Policy 2 certificate or opening with one response fewer than the verifier-derived q_c or q_o | `ProofShape` | done |
 | NC-0813 | transcript/grinding | 0012 A17, 0010 A14 | replace the Policy 2 tensor-round nonce with another nonce that passes the predicate, every other byte unchanged; the following column nonce then fails on the changed state | `GrindMismatch` | done |
+| NC-0814 | transcript/grinding | 0012 A17, 0008 A8 | replace the standard LU (β, α) nonce with a nonce that fails the k-bit predicate, every other byte unchanged | `GrindMismatch` | done |
+| NC-0815 | transcript/grinding | 0012 A17, 0008 A8 | offer a k−1 prover's LU nonce (valid at k−1 bits, not at k) under the expected k context | `GrindMismatch` | done |
+| NC-0816 | transcript/grinding | 0012 A17, 0008 A8 | replace the standard LU (β, α) nonce with another nonce that passes the predicate, every other byte unchanged; the verifier absorbs it, so β and α change | `RoundSumMismatch` | done |
 | NC-0900–0901 | ZK | 0013 §6 | see RFC | | todo |
 | NC-0902 | ZK hiding source | 0013 A2, 0010 A15 | change one salt byte of one certificate or opening response | `RootMismatch` | done |
 | NC-0903 | ZK hiding source | 0013 A2, 0010 A15 | version-3 context with R < 2D, or with q_c + q_o > C − 1 | `UnsupportedSource` | done |
@@ -199,6 +202,11 @@ cases use the QM31 Circle m=14, b=2, R=8 source, the least with k_t ≥ 1. Tampe
 nonces are chosen by an independent replay of the A1 transcript and the A17 predicate,
 with every search capped at 2^20 candidates. The `stele-hash` grinding unit tests earn
 no control credit.
+
+RFC-0008 A8 (E12-24) adds NC-0814..0816 for the standard-profile LU (β, α) nonce. They
+run through the actual A5 verifier (`src/lookup_grind.rs`) on a QM31 `sigmoid_q` lookup
+with k = 2. The tampered nonces come from the same independent `Replay`, which is first
+checked against the honest least nonce.
 
 RFC-0010 A13 reserves NC-0615..0621 for E4-07's root of roots. Each must run
 through the actual certificate or opening verifier; a reservation adds no coverage.
