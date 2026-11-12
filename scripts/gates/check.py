@@ -1781,17 +1781,25 @@ def standard_quarantine(root):
     allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/tests/policy2_wire.rs',
                'crates/stele-reductions/src/lookup.rs', 'crates/stele-reductions/tests/lookup_grind.rs',
-               'tests/negative-controls/src/pcs_policy2.rs', 'tests/negative-controls/src/lookup_grind.rs',
-               # RFC-0013 A8 (E12-28): Policy::Two names dev-zk hiding sources, which resolve
-               # Development (proven: false); the development-path check below confines them.
-               'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
-               'crates/stele-prover/tests/development.rs'}
+               'tests/negative-controls/src/pcs_policy2.rs', 'tests/negative-controls/src/lookup_grind.rs'}
+    # RFC-0013 A8 (E12-28): these may name `Policy::Two` for dev-zk hiding sources, which
+    # resolve Development (proven: false) and stay on the development path (below); the
+    # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
+    policy_two_only = {'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+                       'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
                          r'|\bpolicy::\{[^}]*\bTwo\b|\bPolicy::\{[^}]*\bTwo\b')
+    standard_only = re.compile(r'\bresolve_pcs\b|\bDescriptor\s*::\s*standard\b')
+
+    def standard_use(path):
+        name = str(path.relative_to(root))
+        if name in allowed:
+            return False
+        return (standard_only if name in policy_two_only else pattern).search(path.read_text())
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    if (root / directory).is_dir()
                    for path in (root / directory).rglob('*.rs')
-                   if pattern.search(path.read_text()) and str(path.relative_to(root)) not in allowed)
+                   if standard_use(path))
     if found:
         raise ValueError(f'standard-profile entry point used before E8-05 (ADR-108): {found}')
     # RFC-0026 A11, ADR-111: the development tier's Policy 2 entry points resolve
@@ -1807,7 +1815,8 @@ def standard_quarantine(root):
                    'crates/stele-pcs/src/producer_tests.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
-                             r'|\bhiding(?:_lifetime|_mask)?_with\b')  # RFC-0013 A8
+                             r'|\bhiding(?:_lifetime|_mask)?_with\b'  # RFC-0013 A8
+                             r'|\bGeometry\s*::\s*Balanced\b')  # RFC-0013 A8's dev-zk geometry
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    if (root / directory).is_dir()
                    for path in (root / directory).rglob('*.rs')

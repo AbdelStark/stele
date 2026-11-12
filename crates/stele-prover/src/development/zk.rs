@@ -238,6 +238,8 @@ impl ModelState {
 /// (the window's `length` is the reference), or prove one window against it.
 pub enum Window<'a> {
     /// [`commit`] with budget `proofs` from the model seed; the result lands in `out`.
+    /// The caller supplies a fresh uniform `seed` (σ_M) for every commitment and every
+    /// profile byte: reusing one across commitments or bytes reuses the hiding masks.
     Commit {
         proofs: u32,
         seed: [u8; 32],
@@ -615,6 +617,10 @@ pub fn window(
 /// Commit the model once (RFC-0013 A6): count the per-proof blocks on a reference
 /// window of `length` tokens, then commit the lifetime weight source from `seed`.
 /// Returns the published commitment and the owner's secret state.
+///
+/// `seed` is σ_M. The library caller must supply a fresh uniform seed for every
+/// commitment and every profile byte (the CLI draws it from the OS): two commitments,
+/// or two bytes, from one seed share their hiding masks and lose zero knowledge.
 pub fn commit(
     public: &Public,
     executor: &mut Executor<'_>,

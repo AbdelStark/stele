@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! stele commit-model --zk --model M --preparation P --scales S --artifact A --length T
-//!                    --proofs N --commitment OUT --secret OUT
+//!                    --proofs N --commitment OUT --secret OUT [--zk-profile 4|1]
 //! stele prove-dev --model M --preparation P --scales S --artifact A --tokens 1,2,3,4 [--length T]
 //!                 [--checked R..E] [--next Y] --public OUT --proof OUT
 //!                 [--zk --commitment FILE --secret FILE]
@@ -14,8 +14,11 @@
 //! `--secret` file (seed, proof counter, earlier openings) must stay private. It is
 //! written with owner-only permissions.
 //!
+//! The commitment's profile byte is 4 (RFC-0013 A8, balanced policy-2 sources) unless
+//! `--zk-profile 1` asks for the A5/A6/A7 sources; each commitment draws a fresh seed.
+//!
 //! `prove-dev --zk` proves under the dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile
-//! byte 1) against that commitment. It takes the next proof index from the secret
+//! byte 1 or 4, the commitment's) against that commitment. It takes the next proof index from the secret
 //! file and writes the advanced counter back before it proves. It refuses once the
 //! budget is spent. Each proof's own seed also comes from the OS RNG.
 //!
@@ -36,7 +39,7 @@ use stele_prover::development::{
 };
 
 const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --scales S \
---artifact A --length T --proofs N --commitment OUT --secret OUT | \
+--artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
 [--zk --commitment FILE --secret FILE] | \
@@ -182,10 +185,15 @@ fn commit_model(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
     let mut out = None;
     // RFC-0013 A8: new commitments are byte 4 (balanced policy-2 sources), from a
     // fresh model seed; byte-1 commitments keep proving and verifying.
+    let profile = match o.get("zk-profile").copied() {
+        None | Some("4") => zk::PROFILE_BALANCED,
+        Some("1") => zk::PROFILE,
+        Some(other) => return Err(usage(format!("--zk-profile {other}: expected 4 or 1"))),
+    };
     let window = zk::Window::Commit {
         proofs: number(get(o, "proofs")?)?,
         seed: os_bytes()?,
-        profile: zk::PROFILE_BALANCED,
+        profile,
         out: &mut out,
     };
     let statement = Statement {
@@ -344,7 +352,11 @@ fn main() -> ExitCode {
     let result = match args.first().map(String::as_str) {
         Some("commit-model") if zk => options(
             &rest,
-            &[&files[..], &["length", "proofs", "commitment", "secret"]].concat(),
+            &[
+                &files[..],
+                &["length", "proofs", "commitment", "secret", "zk-profile"],
+            ]
+            .concat(),
         )
         .and_then(|o| commit_model(&o)),
         Some("commit-model") => Err(usage("commit-model needs --zk (RFC-0013 A6)")),

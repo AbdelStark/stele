@@ -1,6 +1,6 @@
 # dev-zk sources: balanced geometry and Policy 2 (design note, task E12-28)
 
-Status: design note for RFC-0013 A8 (Draft; review of the first draft applied). Nothing here is implemented. It reads
+Status: design note for RFC-0013 A8, implemented in E12-28 (profile byte 4; measured in §4). It reads
 `formal/zk-development.md` (§3, Lemmas 1–3), RFC-0013 A2, A5 and A6, RFC-0010 A14/A15,
 RFC-0026 A9 and A11, and RFC-0012 A17.
 
@@ -151,7 +151,7 @@ Policy 2 sources with the constraints of items 1–2 and the least-nonce rule of
 No lemma needs a new proof; Lemma 1's query budget and Lemma 2's rank budget are
 re-instantiated with the new `q`, `C` and `R`.
 
-## 4. Implementation plan (after #353 lands; not started)
+## 4. Implementation (implemented, E12-28)
 
 1. `stele-pcs`: hiding sources and preparations with an explicit policy, resolved for
    development, and the grind rounds on the hiding certificate and opening paths
@@ -164,10 +164,18 @@ re-instantiated with the new `q`, `C` and `R`.
 4. Tests and controls:
    - pinned byte-4 proofs (one and eight layers);
    - the χ² privacy tests and the eight-layer bare-evaluation test on byte 4;
-   - Lemma 1's rank check at the new `(m, b)`;
    - the least-nonce pin;
    - the refusal of a byte-1 secret file under byte 4;
    - layout tests at `ell ∈ {3, 7, 9}`;
    - NC-0939 (hiding-source nonce, `GrindMismatch`), NC-0940 (byte-1 commitment under
      byte 4) and NC-0941 (byte-4 proof as byte 1), both `StatementMismatch`.
 5. Ledger: the eight-layer window, byte 1 against byte 4, three runs each.
+
+No separate Lemma 1 test: Lemma 1 holds for every `(m, b)` (§3 item 1) and only its
+query budget changes; Lemma 2's rank condition is checked at proving time by the
+`MaskRank` abort at every shape.
+
+Measured (ledger `e12-28-dev-zk-synthetic-8layer-mac`, eight-layer synthetic window,
+median of three runs per byte at one commit): 6,421,222 proof bytes against 141,745,010 at byte 1;
+prove 27.1 s against 30.6 s, verify 2.8 s against 4.4 s, commit 3.4 s on both. Balanced `ell` per source: witness 9, lifetime 7, mask 3,
+lookup 6.

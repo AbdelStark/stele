@@ -830,7 +830,7 @@ Cells, lookups, bytes: cells and lookups unchanged. Bytes were projected at abou
 for the eight-layer window, against 141.7 MB (design note §2). E12-28 measures 6,421,222
 bytes (ledger `e12-28-dev-zk-synthetic-8layer-mac`).
 
-Controls (reserved, todo, E12-28):
+Controls (done, E12-28):
 - NC-0939: one byte of a hiding source's column nonce changed (`GrindMismatch`).
 - NC-0940: a byte-1 model commitment under a byte-4 proof (`StatementMismatch`).
 - NC-0941: a byte-4 proof verified as byte 1 (`StatementMismatch`).
