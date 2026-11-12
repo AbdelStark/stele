@@ -836,7 +836,7 @@ fn balanced_shape<K: ChallengeField + CodeField>(
         let shape = (least..30).find_map(|m| {
             let source = Source::<K>::hiding_with(0, ell, m, BLOWUP, [0; 32], Policy::Two).ok()?;
             proofs
-                .map_or(true, |p| source.admits_lifetime(p))
+                .is_none_or(|p| source.admits_lifetime(p))
                 .then_some((m, source))
         });
         let Some((m, source)) = shape else {
@@ -847,7 +847,7 @@ fn balanced_shape<K: ChallengeField + CodeField>(
             4 * source.rows() + 32 * source.codeword_len().trailing_zeros() as usize + 32;
         let bytes = 2 * 4 * dim::<K>() * source.columns()
             + (usize::from(p.certificate_queries) + usize::from(p.opening_queries)) * response;
-        if best.map_or(true, |(b, _, _)| bytes < b) {
+        if best.is_none_or(|(b, _, _)| bytes < b) {
             best = Some((bytes, ell, m));
         }
     }
