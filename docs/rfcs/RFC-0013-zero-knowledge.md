@@ -747,3 +747,50 @@ on the honest encoding (M0). Removing the flip identity, widening `H1low` to 8 b
 removing the padding identity, or removing the sign identity turns exactly NC-0935,
 NC-0936, NC-0937 or NC-0938 red, with the false encoding accepted.
 
+### A8 — dev-zk on balanced Policy 2 hiding sources (profile byte 4)
+
+Status: **Proposed** (development tier, Workflow 02 development-tier path; independent
+review requested; not self-accepted). Task: E12-28. Decision: ADR-114. Design note:
+[dev-zk sources](../../formal/zk-sources.md). Companion: an RFC-0026 A9 tag value,
+written into RFC-0026 after RFC-0026 A12 (byte 3) lands.
+
+Motivation: the eight-layer dev-zk proof is 141.7 MB. 95% of it is two combined rows of
+the witness source, which has A5's least row count (`R = 2D`, `ell = 3`) and `2^21` data
+columns. Every dev-zk source is already an RFC-0010 A15 Circle source at rate 1/4; the
+sources use RFC-0010 A3 Policy 1.
+
+1. **Profile byte 4.** RFC-0026 A9's profile tag gains the value 4: "dev-zk proof on A8
+   sources".
+   - Byte 1 (A5, A6, A7) is unchanged and its proofs still verify.
+   - The byte-4 public file is `stele-dev-zk-public-v2`.
+   - The model commitment file is `stele-dev-zk-model-v2` and records the profile
+     byte. `verify-dev` rejects a commitment of the other byte (`StatementMismatch`).
+2. **Balanced geometry.** Under byte 4 each claim source of `2^S` data entries takes the
+   `ell` that minimises `(1 + J)·16·2C + (q_c + J·q_o)·(8R + 32·log2 N + 32)`
+   (`R = 2^ell`, `C = 2^(S−ell)`, `N = 8C`, `J = 1`), ties to the smallest `ell`.
+   It does so subject to:
+   - A2's `R ≥ 2D` and `q_c + q_o ≤ C − 1`;
+   - for the lifetime source, A6's `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`.
+
+   The A4 mask source keeps `R = 2D`. The verifier derives every `ell` from the
+   statement.
+3. **Policy 2.** Every byte-4 source carries RFC-0010 A14 policy byte 2: items 2–4's
+   counts, 16-bit column grinding and tensor grinding, with item 8's errors. They are
+   resolved as the development profile (`proven: false`), as RFC-0026 A11 item 3 does.
+4. **Least nonce.** The producer's grinding nonces are the least passing nonce on the
+   transcript state (`Transcript::grind`). No nonce depends on a mask, a seed or `X`.
+5. **Hiding.** A2's Lemmas 1–3 apply with the item 2 constraints (design note §3).
+   Grinding nonces are functions of the public prefix (item 4). The column draws that
+   follow them are too, and Lemmas 1–2 hold for every fixed query set within the
+   budget, so the statement stays A2's: conditional and computational.
+6. **No level is claimed.** As RFC-0026 A11 item 4: each grinded PCS round is
+   `≤ 2^-108` instead of `≤ 2^-130`; the development tier claims no λ.
+
+Projected (design note §2, not measured): about 6.6 MB for the eight-layer window,
+against 141.7 MB. The implementing task measures it in a ledger.
+
+Controls (to be added with the implementation):
+- a grind mismatch on a hiding source (`GrindMismatch`);
+- a byte-1 commitment under byte 4 (`StatementMismatch`);
+- a byte-4 proof verified as byte 1 (`StatementMismatch`).
+
