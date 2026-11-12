@@ -826,8 +826,9 @@ per certificate and opening column round, and one per certificate tensor round w
 item 5) instead of Policy 1's `≤ 2^-130`. No challenge or label is added; nothing is
 summed into a level. Byte 1 is unchanged.
 
-Cells, lookups, bytes: cells and lookups unchanged. Bytes are projected at about 6.6 MB
-for the eight-layer window, against 141.7 MB (design note §2), and measured in E12-28.
+Cells, lookups, bytes: cells and lookups unchanged. Bytes were projected at about 6.6 MB
+for the eight-layer window, against 141.7 MB (design note §2). E12-28 measures 6,421,222
+bytes (ledger `e12-28-dev-zk-synthetic-8layer-mac`).
 
 Controls (reserved, todo, E12-28):
 - NC-0939: one byte of a hiding source's column nonce changed (`GrindMismatch`).

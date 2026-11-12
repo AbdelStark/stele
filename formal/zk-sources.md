@@ -92,8 +92,13 @@ mask source. The modelled total is 140.3 MB.
 | total sources | 140.3 MB | 6.3 MB | 5.3 MB |
 
 With the sumchecks and the A4 mask source the proof would be about 6.6 MB, against
-141.7 MB. This is a projection, not a measurement; the ledger of the implementing task
-measures it. The verifier also gets cheaper: it encodes each combined row, and the
+141.7 MB.
+
+Measured (E12-28): the byte-4 eight-layer proof is 6,421,222 bytes. Its shapes are
+witness `ell = 9`, weights `7`, top `3` and shared `6`. The shared source's real entry
+count `D·(L + 4·blocks)` is not the `2^19` the table assumes, so it lands one row step
+below. The one-layer window is 2,370,918 bytes, against 8,591,170 on byte 1. The
+ledger is `bench/ledger/e12-28-dev-zk-synthetic-8layer-mac.json`. The verifier also gets cheaper: it encodes each combined row, and the
 witness row shrinks from `2^22` to `2^16` values.
 
 ## 3. The hiding argument at the new geometry

@@ -896,7 +896,7 @@ def field_source_codec(root):
         ('struct', 'SourceBytes'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
         # RFC-0026 A11, E16-30 (ADR-111): the development tier's Policy 2 source, resolved unproven.
         ('fn', 'from_code_id_development'),
-        ('fn', 'hiding'),
+        ('fn', 'hiding'), ('fn', 'hiding_with'),  # RFC-0013 A8, E12-28
         # RFC-0013 A6, E12-25: the lifetime source's admission.
         ('fn', 'admits_lifetime'), ('fn', 'is_hiding'),
         ('fn', 'salt_len'), ('fn', 'from_bytes'), ('fn', 'bytes'),
@@ -937,9 +937,10 @@ def field_source_codec(root):
         ('struct', 'PreparedSource'), ('fn', 'new'), ('fn', 'from_code_id'), ('fn', 'from_code_id_policy'),
         # RFC-0026 A11, E16-30 (ADR-111).
         ('fn', 'from_code_id_development'),
-        ('fn', 'hiding'),
+        ('fn', 'hiding'), ('fn', 'hiding_with'),  # RFC-0013 A8, E12-28
         # RFC-0013 A6, E12-25: a lifetime hiding source.
-        ('fn', 'hiding_lifetime'), ('fn', 'hiding_mask'),
+        ('fn', 'hiding_lifetime'), ('fn', 'hiding_lifetime_with'), ('fn', 'hiding_mask'),
+        ('fn', 'hiding_mask_with'),
         ('fn', 'source'), ('fn', 'message'),
         ('fn', 'message_reads'), ('fn', 'response'), ('fn', 'work')]
         and len(prepared_declarations) == len(re.findall(r'\bpub\b(?!\s*\()', prepared))
@@ -952,7 +953,9 @@ def field_source_codec(root):
             'usestele_hash::mask::{MaskStream,SOURCE_SALT};',
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
-            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[allow(clippy::too_many_arguments)]',
+            == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]']
+               # RFC-0013 A8, E12-28: hiding_with, hiding_lifetime(_with), hiding_mask_with.
+               + ['#[allow(clippy::too_many_arguments)]'] * 4 + [
                 '#[cfg(test)]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
@@ -1777,7 +1780,11 @@ def standard_quarantine(root):
     allowed = {'crates/stele-code/src/registry.rs', 'crates/stele-code/tests/registry.rs',
                'crates/stele-pcs/src/source.rs', 'crates/stele-pcs/tests/policy2_wire.rs',
                'crates/stele-reductions/src/lookup.rs', 'crates/stele-reductions/tests/lookup_grind.rs',
-               'tests/negative-controls/src/pcs_policy2.rs', 'tests/negative-controls/src/lookup_grind.rs'}
+               'tests/negative-controls/src/pcs_policy2.rs', 'tests/negative-controls/src/lookup_grind.rs',
+               # RFC-0013 A8 (E12-28): Policy::Two names dev-zk hiding sources, which resolve
+               # Development (proven: false); the development-path check below confines them.
+               'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+               'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
                          r'|\bpolicy::\{[^}]*\bTwo\b|\bPolicy::\{[^}]*\bTwo\b')
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
@@ -1793,9 +1800,13 @@ def standard_quarantine(root):
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
                    'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',
                    'crates/stele-prover/src/development/zk.rs', 'crates/stele-prover/tests/development.rs',
-                   'tests/negative-controls/src/development.rs'}
+                   'tests/negative-controls/src/development.rs',
+                   # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.
+                   'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
+                   'crates/stele-pcs/src/producer_tests.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
-                             r'|\bSources\s*::\s*Circle\w*\b')  # Circle (A11), CircleAll (A12)
+                             r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
+                             r'|\bhiding(?:_lifetime|_mask)?_with\b')  # RFC-0013 A8
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    if (root / directory).is_dir()
                    for path in (root / directory).rglob('*.rs')
