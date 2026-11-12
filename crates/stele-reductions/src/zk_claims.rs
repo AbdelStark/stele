@@ -2710,8 +2710,8 @@ where
         .map(|m| core::mem::take(&mut m.revealed))
         .unwrap_or_default();
     let model = model;
-    // Sources are independent: prepared (encoding, salts, Merkle tree) and certified
-    // concurrently; results and the first error are taken in source order (E16-24).
+    // Sources are independent: prepared (encoding, salts, Merkle tree) in source order
+    // and certified concurrently; results and the first error in source order (E16-24).
     let prepare = |s: usize| {
         let layout = &plan.layouts[s];
         match (model.as_ref(), &plan.lifetime) {
@@ -2740,9 +2740,9 @@ where
             _ => hiding(plan.source_id(s), (layout.ell, layout.m), &messages[s]),
         }
     };
-    let mut prepared = stele_sumcheck::parallel::map(early, prepare)
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
+    // E16-33: one source at a time. Each encoding is already parallel inside, and two
+    // large sources encoded together doubled the transient peak.
+    let mut prepared = (0..early).map(prepare).collect::<Result<Vec<_>, _>>()?;
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
     let mut verified = Vec::new();
@@ -2756,21 +2756,21 @@ where
     let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
     t.absorb(AbsorbLabel::FieldSources, &sources.concat())
         .map_err(fail)?;
-    // RFC-0008 A7 items 1–3: β and α after the multiplicities, then the top.
+    // RFC-0008 A7 items 1–3: β and α after the multiplicities, then the top. Only the
+    // top is kept: each tree is rebuilt, identically, for its own GKR steps (E16-33).
     let mut runs = Vec::new();
-    let mut trees = Vec::new();
     for (l, lp) in plan.lookups.iter().enumerate() {
         lookup::messages(lp, l, t)?;
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         let layers = lookup::tree(lp, &data, beta, alpha);
         let [p, q, mut h] = lookup::top(lp, &layers)?;
+        drop(layers);
         if forgery == Some(Forgery::Ratio(l)) {
             let total = h.iter().fold(zero::<K>(), |s, v| s + *v);
             h[0] = h[0] - total;
         }
         data.extend([p, q, h]);
-        trees.push(layers);
         runs.push(lookup::Run::new(beta, alpha));
     }
     let top_message = if plan.lookups.is_empty() {
@@ -2873,20 +2873,26 @@ where
         relations.push(proof);
     }
     let mut gkr = Vec::new();
+    // E16-33: one lookup's tree at a time, rebuilt from its own `β, α` (the columns it
+    // reads precede the appended tops, so it is the same tree), and dropped before
+    // the leaf step, the largest, which reads no layer. Proof bytes are unchanged.
+    let mut tree: Option<(usize, Vec<Vec<[K; 2]>>)> = None;
     for (g, step) in plan.gkr.iter().enumerate() {
         let index = plan.steps.len() + g;
-        let run = &mut runs[step.lookup_index()];
-        let (terms, claimed) = lookup::start(step, &plan.lookups[step.lookup_index()], run, t)?;
+        let l = step.lookup_index();
+        if step.is_leaf() {
+            tree = None;
+        } else if tree.as_ref().map(|(at, _)| *at) != Some(l) {
+            drop(tree.take()); // the previous tree goes before the next is built
+            let lp = &plan.lookups[l];
+            tree = Some((l, lookup::tree(lp, &data, runs[l].beta, runs[l].alpha)));
+        }
+        let run = &mut runs[l];
+        let (terms, claimed) = lookup::start(step, &plan.lookups[l], run, t)?;
         let i = instance(step.id, step.num_vars, terms, claimed);
-        let (factors, compact, expand) = lookup::factors(
-            &plan,
-            step,
-            run,
-            &trees[step.lookup_index()],
-            &data,
-            &shared_message,
-            &block_of,
-        )?;
+        let layers: &[Vec<[K; 2]>] = tree.as_ref().map_or(&[], |(_, layers)| layers);
+        let (factors, compact, expand) =
+            lookup::factors(&plan, step, run, layers, &data, &shared_message, &block_of)?;
         let summand = Occurrences {
             factors,
             terms: compact.unwrap_or_else(|| i.terms.clone()),

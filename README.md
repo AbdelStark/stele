@@ -65,9 +65,12 @@ The zero knowledge is conditional and computational, and there is no security le
   linkability under one commitment.
 - **Synthetic window:** the eight-layer window proves in 27 s with a 6.4 MB proof
   ([ledger](bench/ledger/e12-28-dev-zk-synthetic-8layer-mac.json)).
-- **Real checkpoint:** llama2.c `stories42M` (T = 32, profile byte 4) proves in 593 s (median of three) and verifies
-  in 33 s. The proof is 21.4 MB, and the prover peaks at 30–34 GB RSS on a 16-thread laptop
-  ([ledger](bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json); RFC‑0013 A9, Draft). stories42M is a public
+- **Real checkpoint:** llama2.c `stories42M` (profile byte 4) proves on a 16-thread, 48 GB laptop:
+  - at T = 32 in 519 s, verifying in 34 s, with a 21.4 MB proof
+    ([ledger](bench/ledger/e16-33-dev-zk-stories42m-t32-mac-after.json); RFC‑0013 A9);
+  - at T = 64 in 923 s, verifying in 47 s, with a 25.7 MB proof and a 107 GB peak memory footprint
+    ([ledger](bench/ledger/e16-33-dev-zk-stories42m-t64-mac.json)). Admission at T = 64 is RFC‑0013 A10
+    (accepted, development tier). stories42M is a public
   checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
   15 tampers of the real proof (every proof section and public field) are each rejected with their pinned error
   (`bench/dev_zk_tamper.py`).
@@ -75,8 +78,7 @@ The zero knowledge is conditional and computational, and there is no security le
   conjectural).
 
 **Does not exist yet.** A security level (the development profile claims none), zero knowledge at a security
-level, a dev-zk proof of a real checkpoint at T = 64 (it did not fit a 48 GB host) or of any model other than
-stories42M, a GPU prover,
+level, a dev-zk proof of any real model other than stories42M, a GPU prover,
 the `no_std` verifier crate, a passport, a proof of Llama‑3.1‑8B.
 
 **What is solid underneath.** Fields, transcript, Merkle, sumcheck, lookup, encoder and commitment primitives
