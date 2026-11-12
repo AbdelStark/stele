@@ -245,7 +245,7 @@ fn transform_recorded<K: Field>(
                     let opposite = width - 1 - j;
                     let (a, b) = (block[j], block[opposite]);
                     block[j] = a + b;
-                    block[opposite] = (a - b) * K::from_i64(i64::from(twiddle.as_u32()));
+                    block[opposite] = (a - b).mul_m31(*twiddle);
                 }
                 // Reverse pairing writes odd values backward; restore quotient order.
                 block[level.len()..].reverse();
@@ -254,9 +254,8 @@ fn transform_recorded<K: Field>(
         bit_reverse(values, log);
         // Each omitted /2 contributes to N; normalize once before returning (A2).
         let scale = M31::from_u64(values.len() as u64).pow(u64::from(M31::MODULUS) - 2);
-        let scale = K::from_i64(i64::from(scale.as_u32()));
         for value in values {
-            *value = *value * scale;
+            *value = value.mul_m31(scale);
         }
     } else {
         bit_reverse(values, log);
@@ -267,7 +266,7 @@ fn transform_recorded<K: Field>(
                 for (j, twiddle) in level.iter().enumerate() {
                     let opposite = width - 1 - j;
                     let a = block[j];
-                    let b = block[opposite] * K::from_i64(i64::from(twiddle.as_u32()));
+                    let b = block[opposite].mul_m31(*twiddle);
                     block[j] = a + b;
                     block[opposite] = a - b;
                 }

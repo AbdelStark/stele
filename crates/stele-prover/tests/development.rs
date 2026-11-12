@@ -653,7 +653,7 @@ fn matches_reference_zk_claim_census_eight_layer() {
 /// RFC-0013 A5, RFC-0026 A9 (E12-14b): one window proven under dev-zk through the
 /// development orchestrator and verified by the dev-zk verifier; the profile byte
 /// is bound by the transcript (a development-profile transcript rejects).
-fn zk_window(name: &str, t: usize) -> usize {
+fn zk_window(name: &str, t: usize) -> u64 {
     use stele_prover::development::zk;
     let case = load(name);
     let statement = greedy(&mut case.executor(&case.artifact), t);
@@ -795,17 +795,20 @@ fn zk_window(name: &str, t: usize) -> usize {
             Some(Error::StatementMismatch)
         );
     }
-    proof.len()
+    // Every seed above is fixed, so the proof is too: identity check across
+    // prover-side changes (INV-8, E16-24).
+    eprintln!("dev-zk {name}: proof fnv {:016x}", fnv(&proof));
+    fnv(&proof)
 }
 
 #[test]
 fn accepts_one_layer_window_under_dev_zk() {
-    zk_window("one-layer", 4);
+    assert_eq!(zk_window("one-layer", 4), 0x5127_0022_790c_94fc);
 }
 
 /// The E16-10 acceptance window under dev-zk; release build only.
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn accepts_eight_layer_window_under_dev_zk() {
-    zk_window("eight-layer", 64);
+    assert_eq!(zk_window("eight-layer", 64), 0x1ae4_d78e_9daa_dc92);
 }

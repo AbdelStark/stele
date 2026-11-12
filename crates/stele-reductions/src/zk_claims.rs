@@ -485,22 +485,38 @@ fn vanish<K>(
     masked: &mut [Option<(usize, Vec<usize>)>],
     free: &[bool],
 ) -> Result<(), Error> {
-    let shares = |a: usize, b: usize| {
-        terms
-            .iter()
-            .any(|t| t.factors.contains(&(a as u32)) && t.factors.contains(&(b as u32)))
-    };
+    // The terms each input appears in, so `a`'s term-sharing partners are found
+    // without scanning every earlier input against every term (E16-24).
+    let mut terms_of = vec![Vec::new(); masked.len()];
+    for (k, t) in terms.iter().enumerate() {
+        for f in &t.factors {
+            if let Some(list) = terms_of.get_mut(*f as usize) {
+                if list.last() != Some(&k) {
+                    list.push(k);
+                }
+            }
+        }
+    }
+    let mut used = vec![false; num_vars];
     for a in 0..masked.len() {
         if !free[a] {
             continue;
         }
-        let used: Vec<usize> = (0..a)
-            .filter(|&b| shares(a, b))
-            .filter_map(|b| masked[b].as_ref().map(|m| m.0))
-            .collect();
-        let v = (0..num_vars)
-            .find(|q| !used.contains(q))
-            .ok_or(Error::Statement)?;
+        // `v` of every earlier masked input sharing a term with `a`.
+        used.iter_mut().for_each(|u| *u = false);
+        for &k in &terms_of[a] {
+            for &b in &terms[k].factors {
+                let b = b as usize;
+                if b < a {
+                    if let Some((v, _)) = &masked[b] {
+                        if let Some(u) = used.get_mut(*v) {
+                            *u = true;
+                        }
+                    }
+                }
+            }
+        }
+        let v = (0..num_vars).find(|q| !used[*q]).ok_or(Error::Statement)?;
         masked[a] = Some((v, (0..num_vars).filter(|&q| q != v).take(c).collect()));
     }
     Ok(())
@@ -1456,6 +1472,107 @@ struct Occurrences<K> {
     expand: Option<lookup::Expand<K>>,
 }
 
+/// A term's coefficient, with `±1` kept apart so its product is not multiplied by it.
+#[derive(Clone, Copy)]
+enum Coefficient<K> {
+    One,
+    MinusOne,
+    Other(K),
+}
+
+/// `Σ_k c_k·Π_{f ∈ F_k} v_f` in a cheaper but equal form (E16-24): coefficients `±1`
+/// are not multiplied, and the factor in most terms (at least two) is multiplied once,
+/// outside their sum. Field arithmetic is exact, so the value is the same element.
+struct TermPlan<K> {
+    outer: Terms<K>,
+    common: Option<(u32, Terms<K>)>,
+}
+
+/// Coefficient and factor list per term.
+type Terms<K> = Vec<(Coefficient<K>, Vec<u32>)>;
+
+impl<K: ChallengeField> TermPlan<K> {
+    fn new(terms: &[Term<K>]) -> Self {
+        let coefficient = |c: K| match c.to_i64_signed() {
+            Some(1) => Coefficient::One,
+            Some(-1) => Coefficient::MinusOne,
+            _ => Coefficient::Other(c),
+        };
+        let mut counts: Vec<(u32, usize)> = Vec::new();
+        for t in terms {
+            for f in &t.factors {
+                match counts.iter_mut().find(|(g, _)| g == f) {
+                    Some((_, n)) => *n += 1,
+                    None => counts.push((*f, 1)),
+                }
+            }
+        }
+        // Most terms first, then lowest factor; a factor repeated in one term counts
+        // per occurrence, and only one occurrence is taken out.
+        let common = counts
+            .iter()
+            .filter(|(_, n)| *n >= 2)
+            .max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0)))
+            .map(|(g, _)| *g);
+        let mut outer = Vec::new();
+        let mut inner = Vec::new();
+        for t in terms {
+            let c = coefficient(t.coefficient);
+            match common.and_then(|g| t.factors.iter().position(|f| *f == g)) {
+                Some(at) => {
+                    let mut rest = t.factors.clone();
+                    rest.remove(at);
+                    inner.push((c, rest));
+                }
+                None => outer.push((c, t.factors.clone())),
+            }
+        }
+        match common {
+            Some(g) if inner.len() >= 2 => Self {
+                outer,
+                common: Some((g, inner)),
+            },
+            // One term holds `g`: nothing to share; keep it whole.
+            _ => {
+                let mut all = outer;
+                if let Some(g) = common {
+                    for (c, mut rest) in inner {
+                        rest.insert(0, g);
+                        all.push((c, rest));
+                    }
+                }
+                Self {
+                    outer: all,
+                    common: None,
+                }
+            }
+        }
+    }
+    fn sum(terms: &[(Coefficient<K>, Vec<u32>)], values: &[K]) -> K {
+        terms.iter().fold(zero::<K>(), |s, (c, factors)| {
+            let product = factors.split_first().map(|(f, rest)| {
+                rest.iter()
+                    .fold(values[*f as usize], |p, g| p * values[*g as usize])
+            });
+            match (c, product) {
+                (Coefficient::One, Some(p)) => s + p,
+                (Coefficient::MinusOne, Some(p)) => s - p,
+                (Coefficient::Other(c), Some(p)) => s + *c * p,
+                (Coefficient::One, None) => s + K::from_i64(1),
+                (Coefficient::MinusOne, None) => s - K::from_i64(1),
+                (Coefficient::Other(c), None) => s + *c,
+            }
+        })
+    }
+    fn evaluate(&self, values: &[K]) -> K {
+        let outer = Self::sum(&self.outer, values);
+        match &self.common {
+            Some((g, inner)) => outer + values[*g as usize] * Self::sum(inner, values),
+            None => outer,
+        }
+    }
+}
+
 impl<K: ChallengeField> Summand<K> for Occurrences<K> {
     fn shape(&self) -> (u32, usize) {
         let inputs = self
@@ -1466,44 +1583,79 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
     }
     fn round(&self, _: &Instance<K>) -> Result<Vec<K>, stele_sumcheck::Error> {
         let half = self.factors[0].x.len() / 2;
-        let mut out = vec![zero::<K>(); self.degree + 1];
-        let mut values = vec![zero::<K>(); self.factors.len()];
-        for column in 0..half {
-            for (node, result) in out.iter_mut().enumerate() {
-                let t = K::from_i64(node as i64);
-                for (value, f) in values.iter_mut().zip(&self.factors) {
-                    let at =
-                        |table: &[K]| table[column] + t * (table[column + half] - table[column]);
-                    *value = at(&f.x);
-                    if f.v == Some(self.bound) {
-                        *value = *value + kappa(t) * at(&f.r);
+        let nodes = self.degree + 1;
+        // κ(t) per node, once; a factor at node t is reached by adding its slope t
+        // times (exact field arithmetic, so every node value equals lo + t·(hi − lo)).
+        let kappas: Vec<K> = (0..nodes).map(|t| kappa(K::from_i64(t as i64))).collect();
+        let masked: Vec<bool> = self
+            .factors
+            .iter()
+            .map(|f| f.v == Some(self.bound))
+            .collect();
+        let mut out = vec![zero::<K>(); nodes];
+        let products: usize = self.terms.iter().map(|t| t.factors.len() + 1).sum();
+        let cost = nodes * (self.factors.len() + products);
+        let plan = TermPlan::new(&self.terms);
+        stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
+            let width = self.factors.len();
+            let mut x = vec![zero::<K>(); width];
+            let mut dx = vec![zero::<K>(); width];
+            let mut r = vec![zero::<K>(); width];
+            let mut dr = vec![zero::<K>(); width];
+            let mut values = vec![zero::<K>(); width];
+            for column in range {
+                for (k, f) in self.factors.iter().enumerate() {
+                    x[k] = f.x[column];
+                    dx[k] = f.x[column + half] - x[k];
+                    if masked[k] {
+                        r[k] = f.r[column];
+                        dr[k] = f.r[column + half] - r[k];
                     }
                 }
-                *result = *result
-                    + self.terms.iter().fold(zero::<K>(), |s, term| {
-                        s + term
-                            .factors
-                            .iter()
-                            .fold(term.coefficient, |p, f| p * values[*f as usize])
-                    });
+                for (node, result) in out.iter_mut().enumerate() {
+                    if node > 0 {
+                        for k in 0..width {
+                            x[k] = x[k] + dx[k];
+                            if masked[k] {
+                                r[k] = r[k] + dr[k];
+                            }
+                        }
+                    }
+                    for k in 0..width {
+                        // κ(0) = κ(1) = 0: the mask term vanishes on the cube.
+                        values[k] = if masked[k] && node > 1 {
+                            x[k] + kappas[node] * r[k]
+                        } else {
+                            x[k]
+                        };
+                    }
+                    *result = *result + plan.evaluate(&values);
+                }
             }
-        }
+            Ok(())
+        })?;
         Ok(out)
     }
     fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
-        for f in &mut self.factors {
-            stele_sumcheck::parallel::fold(&mut f.x, challenge);
-            if !f.r.is_empty() {
-                stele_sumcheck::parallel::fold(&mut f.r, challenge);
-            }
-            if f.v == Some(self.bound) {
-                let k = kappa(challenge);
-                for (x, r) in f.x.iter_mut().zip(&f.r) {
-                    *x = *x + k * *r;
+        let bound = self.bound;
+        let k = kappa(challenge);
+        // Factors are independent; many small ones split over the pool, and a large
+        // table's own fold splits as well (E16-24).
+        let cost = self.factors.first().map_or(1, |f| f.x.len());
+        stele_sumcheck::parallel::for_each_chunk_weighted(&mut self.factors, cost, |_, chunk| {
+            for f in chunk {
+                stele_sumcheck::parallel::fold(&mut f.x, challenge);
+                if !f.r.is_empty() {
+                    stele_sumcheck::parallel::fold(&mut f.r, challenge);
                 }
-                f.r.clear();
+                if f.v == Some(bound) {
+                    for (x, r) in f.x.iter_mut().zip(&f.r) {
+                        *x = *x + k * *r;
+                    }
+                    f.r.clear();
+                }
             }
-        }
+        });
         self.bound += 1;
         if let Some(e) = &mut self.expand {
             e.record(challenge);
@@ -1604,7 +1756,7 @@ fn step_draws<K: ChallengeField>(t: &mut Transcript<K>, step: &Step<K>) -> Resul
 
 /// `eq(τ, ·)` over the leading `τ.len()` of `n` variables, broadcast below.
 fn eq_input<K: ChallengeField>(tau: &[K], n: usize) -> Result<Vec<K>, Error> {
-    let eq = stele_poly::eq_table(tau).map_err(|_| Error::Statement)?;
+    let eq = stele_sumcheck::parallel::eq_table(tau).map_err(|_| Error::Statement)?;
     let low = n - tau.len();
     Ok((0..1usize << n).map(|index| eq[index >> low]).collect())
 }
@@ -2190,9 +2342,12 @@ where
         (Some(m), Some(l)) if l == s => m.seed,
         _ => seed,
     };
-    let messages = (0..early)
-        .map(|s| source_message(&plan, s, &data, seed_of(s), claim_masks))
-        .collect::<Result<Vec<_>, _>>()?;
+    // Independent per source; built concurrently, kept in source order (E16-24).
+    let messages = stele_sumcheck::parallel::map(early, |s| {
+        source_message(&plan, s, &data, seed_of(s), claim_masks)
+    })
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()?;
     let masks = plan
         .masks
         .iter()
@@ -2202,22 +2357,28 @@ where
         PreparedSource::<K>::hiding(id, ell, m, BLOWUP, message, seed, &mut HashUsage::default())
             .map_err(Error::Pcs)
     };
-    let mut prepared = Vec::new();
     let mut model = model;
-    for (s, message) in messages.iter().enumerate() {
+    let revealed = model
+        .as_mut()
+        .map(|m| core::mem::take(&mut m.revealed))
+        .unwrap_or_default();
+    let model = model;
+    // Sources are independent: prepared (encoding, salts, Merkle tree) and certified
+    // concurrently; results and the first error are taken in source order (E16-24).
+    let prepare = |s: usize| {
         let layout = &plan.layouts[s];
-        prepared.push(match (model.as_mut(), &plan.lifetime) {
+        match (model.as_ref(), &plan.lifetime) {
             (Some(m), Some(l)) if l.source == s => {
                 let p = PreparedSource::<K>::hiding_lifetime(
                     plan.source_id(s),
                     layout.ell,
                     layout.m,
                     BLOWUP,
-                    message,
+                    &messages[s],
                     m.seed,
                     &mut HashUsage::default(),
                     l.proofs,
-                    core::mem::take(&mut m.revealed),
+                    revealed.clone(),
                 )
                 .map_err(Error::Pcs)?;
                 // RFC-0013 A6: the producer refuses weights other than the committed ones.
@@ -2226,16 +2387,20 @@ where
                         stele_hash::merkle::Error::RootMismatch,
                     )));
                 }
-                p
+                Ok(p)
             }
-            _ => hiding(plan.source_id(s), (layout.ell, layout.m), message)?,
-        });
-    }
+            _ => hiding(plan.source_id(s), (layout.ell, layout.m), &messages[s]),
+        }
+    };
+    let mut prepared = stele_sumcheck::parallel::map(early, prepare)
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()?;
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
     let mut verified = Vec::new();
-    for p in &prepared {
-        let (certificate, v) = certify(p)?;
+    let certified = stele_sumcheck::parallel::map(prepared.len(), |i| certify(&prepared[i]));
+    for (p, c) in prepared.iter().zip(certified) {
+        let (certificate, v) = c?;
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
@@ -2266,17 +2431,23 @@ where
         source_message(&plan, early, &data, seed, claim_masks)?
     };
     let shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
-    if !plan.lookups.is_empty() {
-        let layout = &plan.layouts[early];
-        prepared.push(hiding(
-            plan.source_id(early),
-            (layout.ell, layout.m),
-            &top_message,
-        )?);
+    let (top, shared) = stele_sumcheck::parallel::join(
+        || {
+            (!plan.lookups.is_empty()).then(|| {
+                let layout = &plan.layouts[early];
+                hiding(plan.source_id(early), (layout.ell, layout.m), &top_message)
+            })
+        },
+        || hiding(plan.shared_id(), plan.shared, &shared_message),
+    );
+    if let Some(top) = top {
+        prepared.push(top?);
     }
-    prepared.push(hiding(plan.shared_id(), plan.shared, &shared_message)?);
-    for p in &prepared[early..] {
-        let (certificate, v) = certify(p)?;
+    prepared.push(shared?);
+    let certified =
+        stele_sumcheck::parallel::map(prepared.len() - early, |i| certify(&prepared[early + i]));
+    for (p, c) in prepared[early..].iter().zip(certified) {
+        let (certificate, v) = c?;
         sources.push(p.source().bytes().to_vec());
         certificates.push(certificate);
         verified.push(v);
@@ -2435,7 +2606,7 @@ where
         if life_source == Some(*source) {
             let ell = plan.layouts[*source].ell as usize;
             revealed = Some(
-                stele_poly::eq_table(&opening_point(&point, ell)[..ell + 1])
+                stele_sumcheck::parallel::eq_table(&opening_point(&point, ell)[..ell + 1])
                     .map_err(|_| Error::Statement)?,
             );
         }
@@ -2926,6 +3097,47 @@ where
 mod tests {
     use super::*;
     use stele_field::{Field, QM31};
+
+    /// E16-24: the factored term evaluation is the same element as the plain
+    /// `Σ c·Π v`, over shapes with a shared factor, `±1` and other coefficients,
+    /// empty products and repeated factors.
+    #[test]
+    fn matches_reference_term_plan() {
+        let mut state = 0x5354_454c_4516_0024u64;
+        let mut next = |m: u64| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (state >> 33) % m
+        };
+        for _ in 0..2000 {
+            let width = 1 + next(10) as usize;
+            let values: Vec<QM31> = (0..width)
+                .map(|_| {
+                    let (a, b, c) = (next(1 << 31), next(1 << 31), next(1 << 31));
+                    QM31::from_i64(a as i64)
+                        + QM31::from_i64(7) * QM31::from_i64(b as i64) * QM31::from_i64(c as i64)
+                })
+                .collect();
+            let terms: Vec<Term<QM31>> = (0..next(8))
+                .map(|_| Term {
+                    coefficient: match next(4) {
+                        0 => QM31::from_i64(1),
+                        1 => QM31::from_i64(-1),
+                        _ => values[0] * QM31::from_i64(next(1000) as i64 - 500),
+                    },
+                    factors: (0..next(5)).map(|_| next(width as u64) as u32).collect(),
+                })
+                .collect();
+            let naive = terms.iter().fold(QM31::from_i64(0), |s, t| {
+                s + t
+                    .factors
+                    .iter()
+                    .fold(t.coefficient, |p, f| p * values[*f as usize])
+            });
+            assert_eq!(TermPlan::new(&terms).evaluate(&values), naive);
+        }
+    }
 
     /// Leak control for the privacy test of `tests/zk_claims.rs`: with the claim
     /// masks removed the proof still verifies (no verifier sees masks), but the

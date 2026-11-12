@@ -96,6 +96,10 @@ macro_rules! tower {
                     self.0.to_i64_signed()
                 }
             }
+            fn mul_m31(self, x: M31) -> Self {
+                // `from_i64` embeds in the first coefficient: (a + b·w)·c = a·c + b·c·w.
+                Self(self.0.mul_m31(x), self.1.mul_m31(x))
+            }
         }
         impl Serialize for $name {
             type Bytes = [u8; $bytes];

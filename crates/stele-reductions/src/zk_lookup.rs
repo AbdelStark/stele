@@ -104,17 +104,20 @@ impl LookupPlan {
     fn block(&self, layer: usize, poly: usize) -> usize {
         self.first_block + 2 * (layer - self.k0 - 1) + poly
     }
-    /// The member containing lookup position `x`, if any.
-    fn member_at(&self, x: usize) -> Option<&MemberPlan> {
-        self.members
-            .iter()
-            .find(|m| (m.offset..m.offset + (1 << m.m)).contains(&x))
-    }
-    /// The concatenated selector `S` over the lookup half.
+    /// The concatenated selector `S` over the lookup half: at position `x`, the
+    /// selector of the first member containing `x`, else 0.
     fn selector(&self) -> Vec<i64> {
-        (0..1usize << self.n)
-            .map(|x| self.member_at(x).map_or(0, |m| m.selected(x, self.n)))
-            .collect()
+        // Each member fills its own range, last to first, so the first member
+        // containing a position wins (E16-24: no scan of every member per position).
+        let len = 1usize << self.n;
+        let mut out = vec![0; len];
+        for m in self.members.iter().rev() {
+            let end = (m.offset + (1 << m.m)).min(len);
+            for (x, value) in (m.offset..end).zip(out.get_mut(m.offset..end).unwrap_or(&mut [])) {
+                *value = m.selected(x, self.n);
+            }
+        }
+        out
     }
 }
 
@@ -592,26 +595,34 @@ pub(super) fn messages<K: ChallengeField>(
     t.absorb(AbsorbLabel::LookupUnits, &units).map_err(fail)
 }
 
-fn compress<K: ChallengeField>(row: impl Iterator<Item = K>, beta: K) -> K {
+/// `1, β, β², …`, `count` powers: a tuple compresses to `Σ β^i·x_i`.
+fn powers<K: ChallengeField>(beta: K, count: usize) -> Vec<K> {
+    let mut out = Vec::with_capacity(count);
     let mut power = K::from_i64(1);
-    let mut total = zero::<K>();
-    for x in row {
-        total = total + power * x;
+    for _ in 0..count {
+        out.push(power);
         power = power * beta;
     }
-    total
+    out
 }
 
 /// The public table denominators `α − Σ β^i T_i(x)` over `2^n`, 1 on padding.
+/// Entries are independent: filled over the pool, with the powers of β once (E16-24).
 fn table<K: ChallengeField>(lp: &LookupPlan, beta: K, alpha: K) -> Vec<K> {
-    (0..1usize << lp.n)
-        .map(|x| match lp.table.get(x) {
-            Some(row) if x < lp.valid => {
-                alpha - compress(row.iter().map(|v| K::from_i64(*v)), beta)
+    let width = lp.table.iter().map(Vec::len).max().unwrap_or(0);
+    let weights = powers(beta, width);
+    let mut out = vec![K::from_i64(1); 1usize << lp.n];
+    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+        for (x, value) in (start..).zip(chunk) {
+            if let Some(row) = lp.table.get(x).filter(|_| x < lp.valid) {
+                *value = alpha
+                    - row.iter().zip(&weights).fold(zero::<K>(), |s, (v, w)| {
+                        s + w.mul_m31(<M31 as stele_field::Field>::from_i64(*v))
+                    });
             }
-            _ => K::from_i64(1),
-        })
-        .collect()
+        }
+    });
+    out
 }
 
 /// The concatenated shifted tuple `X_i` over the lookup half (0 off the members).
@@ -638,24 +649,35 @@ pub(super) fn tree<K: ChallengeField>(
     let s = lp.selector();
     let xs = tuple(lp, data);
     let mult = &data[lp.multiplicity];
-    let mut leaves = Vec::new();
-    for (x, qx) in q.iter().enumerate() {
-        let selected = K::from_i64(s[x]);
-        let compressed = compress(xs.iter().map(|col| col[x]), beta);
-        leaves.push([selected, alpha - selected * compressed]);
-        let count = mult.get(x).copied().unwrap_or_else(zero::<K>);
-        leaves.push([zero::<K>() - count, *qx]);
-    }
+    let weights = powers(beta, xs.len());
+    // Leaves and each level's parents are independent: filled over the pool (E16-24).
+    let mut leaves = vec![[zero::<K>(); 2]; 2 * q.len()];
+    stele_sumcheck::parallel::for_each_chunk(&mut leaves, |start, chunk| {
+        for (i, leaf) in (start..).zip(chunk) {
+            let x = i / 2;
+            *leaf = if i % 2 == 0 {
+                let selected = K::from_i64(s[x]);
+                let compressed = xs
+                    .iter()
+                    .zip(&weights)
+                    .fold(zero::<K>(), |t, (col, w)| t + *w * col[x]);
+                [selected, alpha - selected * compressed]
+            } else {
+                let count = mult.get(x).copied().unwrap_or_else(zero::<K>);
+                [zero::<K>() - count, q[x]]
+            };
+        }
+    });
     let mut layers = vec![leaves];
     while layers[layers.len() - 1].len() > 1 {
         let children = &layers[layers.len() - 1];
-        let parents = children
-            .chunks_exact(2)
-            .map(|pair| {
-                let ([p0, q0], [p1, q1]) = (pair[0], pair[1]);
-                [p0 * q1 + p1 * q0, q0 * q1]
-            })
-            .collect();
+        let mut parents = vec![[zero::<K>(); 2]; children.len() / 2];
+        stele_sumcheck::parallel::for_each_chunk(&mut parents, |start, chunk| {
+            for (j, parent) in (start..).zip(chunk) {
+                let ([p0, q0], [p1, q1]) = (children[2 * j], children[2 * j + 1]);
+                *parent = [p0 * q1 + p1 * q0, q0 * q1];
+            }
+        });
         layers.push(parents);
     }
     layers.reverse();
@@ -795,10 +817,12 @@ impl<K: ChallengeField> Expand<K> {
                     v,
                     u,
                 } => {
-                    let x = stele_poly::eq_table(&column_point(coords, &self.point, &[]))
-                        .map_err(|_| Error::Statement)?;
+                    let x =
+                        stele_sumcheck::parallel::eq_table(&column_point(coords, &self.point, &[]))
+                            .map_err(|_| Error::Statement)?;
                     let at: Vec<K> = u.iter().map(|q| self.point[*q]).collect();
-                    let r = stele_poly::eq_table(&at).map_err(|_| Error::Statement)?;
+                    let r =
+                        stele_sumcheck::parallel::eq_table(&at).map_err(|_| Error::Statement)?;
                     let data = column
                         .iter()
                         .zip(&x)
@@ -867,7 +891,8 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
     for input in &step.inputs {
         let factor = match input {
             Gin::Head => {
-                let eq = stele_poly::eq_table(&run.r).map_err(|_| Error::Statement)?;
+                let eq =
+                    stele_sumcheck::parallel::eq_table(&run.r).map_err(|_| Error::Statement)?;
                 if step.first {
                     public(eq)
                 } else {
@@ -876,7 +901,7 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
             }
             Gin::Select(poly) => {
                 let (k, u) = &run.incoming[*poly];
-                let eq = stele_poly::eq_table(u).map_err(|_| Error::Statement)?;
+                let eq = stele_sumcheck::parallel::eq_table(u).map_err(|_| Error::Statement)?;
                 let mut x = vec![zero::<K>(); 2 * half];
                 for (y, w) in eq.into_iter().enumerate() {
                     x[half + y] = *k * w;
@@ -886,14 +911,15 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
             Gin::Block(poly) => {
                 let block = block_entries(plan, shared, lp.block(step.k, *poly));
                 let two = block.len() / 2;
-                let one = K::from_i64(1);
-                let x = (0..half)
-                    .map(|xi| {
-                        let y = xi & (two - 1);
-                        (one - run.tstar) * element::<K>(block[y])
-                            + run.tstar * element::<K>(block[two + y])
+                // `(1 − t*)·a + t*·b` depends on `xi` only through `xi & (two − 1)`:
+                // `two` values, tiled (E16-24).
+                let period: Vec<K> = (0..two)
+                    .map(|y| {
+                        let (a, b) = (element::<K>(block[y]), element::<K>(block[two + y]));
+                        a + run.tstar * (b - a)
                     })
                     .collect();
+                let x = (0..half).map(|xi| period[xi & (two - 1)]).collect();
                 public(both(x))
             }
             Gin::Leaf(o) if compact && seen_mult => {
@@ -992,13 +1018,15 @@ fn combined<K: ChallengeField + CodeField>(
         return Err(Error::Statement);
     }
     let mask = (1usize << lp.n) - 1;
-    let owner: Vec<Option<usize>> = (0..1usize << lp.n)
-        .map(|x| {
-            lp.members
-                .iter()
-                .position(|m| (m.offset..m.offset + (1 << m.m)).contains(&x))
-        })
-        .collect();
+    // The first member containing each position: member ranges filled last to first
+    // (E16-24: no scan of every member per position).
+    let mut owner: Vec<Option<usize>> = vec![None; 1usize << lp.n];
+    for (index, m) in lp.members.iter().enumerate().rev() {
+        let end = (m.offset + (1 << m.m)).min(owner.len());
+        for slot in owner.get_mut(m.offset..end).unwrap_or(&mut []) {
+            *slot = Some(index);
+        }
+    }
     let mut out = Vec::new();
     for (i, x) in tuple(lp, data).into_iter().enumerate() {
         let blocks: Vec<Vec<M31>> = (0..lp.members.len())
