@@ -183,6 +183,15 @@ def lu_round_numerator(name, num):
     return num
 
 
+def lu_cap_ok(c, n, t, lam=100, field=P**4):
+    """RFC-0030 §3 cap on a lookup's (beta, alpha) round: c*(N+t)-1 <= floor(|K|/2^lam).
+
+    The round numerator is RFC-0012 A17 item 3's c*(N+t)-1 (Lemma 4). At lam = 100 over QM31
+    the bound is 2^24-1, so N+t <= 2^24 for c=1 and N+t <= 2^23 for c=2.
+    """
+    return c * (n + t) - 1 <= field // 2**lam
+
+
 def rounds(inv, ledger, family, profile):
     """Every FS round of one stories42M verification with its exact error and grinding bits.
 
@@ -314,10 +323,24 @@ def check():
     p1 = admission(inv, ledger, 'policy1', 'standard')
     assert not p1[3], p1  # Policy 1 fails the per-round rule (its LU round alone is 2^-97)
     assert counts(circle(17, 2), 92) == (222, 92) and counts(v2(10), 92) == (9533, 4751)
+    # The recorded ledger (E16-32, c*(N+t)-1 per check) and the code agree: the Policy 1 worst
+    # round is LU range_8, and the per-proof grind receipts of PARAMETERS.md section 4 hold.
+    lus = {name: num for kind, name, num in ledger if kind == 'Lu'}
+    assert lus['range_8'] == 134217983 and max(lus, key=lus.get) == 'range_8', lus
+    assert p1[0] == Fraction(lus['range_8'], P**4), p1
+    receipts = {f: admission(inv, ledger, f, 'standard')[2] for f in ('v2', 'circle1', 'circle2')}
+    assert receipts == {'v2': 3090950, 'circle1': 3090978, 'circle2': 3091010}, receipts
+    # RFC-0030 section 3: the lookup cap at its boundaries, both arities.
+    assert P**4 // 2**100 == 2**24 - 1
+    assert lu_cap_ok(1, 2**24 - 2**16, 2**16) and not lu_cap_ok(1, 2**24 - 2**16 + 1, 2**16)
+    assert lu_cap_ok(1, 2**23, 2**16)
+    assert lu_cap_ok(2, 2**23 - 2**16, 2**16) and not lu_cap_ok(2, 2**23 - 2**16 + 1, 2**16)
+    assert lu_cap_ok(2, 2**22, 2**16) and not lu_cap_ok(2, 2**23, 1)
     print('fs-pcs study: Policy 1 size model exact (113422913 proof bytes, 48 PCS records); '
           'Policy 2 least counts verified for all 59 Circle and 12 v2 identities at 92 and 120 bits; '
           'stories42M standard admission passes C1/C2 for v2 and Circle rate 1/4; '
-          'Circle rate 1/4 proof 18325537 bytes')
+          'Circle rate 1/4 proof 18325537 bytes; Policy 1 worst round LU range_8; '
+          'grind receipts 3090950/3090978/3091010; RFC-0030 LU cap boundaries for c = 1, 2')
 
 
 if __name__ == '__main__':

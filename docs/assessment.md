@@ -211,7 +211,8 @@ its §3), more than the weights. Commitment cost
 probability at most Q·ε_round + Q²/2^256", where ε_round is the largest round-by-round
 error. Then QM31 gives 100 bits when every round's numerator is at most
 `⌊p^4/2^100⌋ = 2^24 − 1` (RFC-0030 §3, Draft). For a lookup that means instances of at
-most 2^23 positions against tables of up to 2^16 rows. A larger check is split into
+most 2^23 positions against tables of up to 2^16 rows for one-column checks, and 2^22
+positions for two-column checks (the pair round charges `c·(N + t) − 1`, RFC-0012 A17). A larger check is split into
 instances of that size, each with its own multiplicity source, so no second challenge
 pair is needed. The same cap applies to every commitment row and every batch. The
 split and the row cap both cost proof bytes unless RFC-0019 Q49 and Q50 are resolved
