@@ -894,7 +894,7 @@ fn check_ledger(verified: &stele_prover::development::zk::Verified, sources: usi
             .iter()
             .all(|s| s.parameters.policy == Policy::Two));
         assert_eq!(worst.grind, 0, "the worst byte-4 round is ungrinded");
-        assert_eq!(worst.line, "LU", "and it is a check's (β, α) round");
+        assert_eq!(worst.line, "LU+ZD", "and it is a check's (β, α) round");
     } else {
         // Byte 1 (Policy 1): the witness source's ungrinded tensor round
         // `2·ell·(e + 1)/|K|` is worse than any LU round on both synthetic windows.
@@ -919,7 +919,7 @@ fn check_ledger(verified: &stele_prover::development::zk::Verified, sources: usi
 fn accepts_one_layer_window_under_dev_zk() {
     assert_eq!(
         zk_window("one-layer", 4, stele_prover::development::zk::PROFILE),
-        (0x5127_0022_790c_94fc, 2_481_105)
+        (0x5127_0022_790c_94fc, 2_678_737)
     );
 }
 
@@ -932,7 +932,7 @@ fn accepts_one_layer_window_under_dev_zk_balanced() {
         stele_prover::development::zk::PROFILE_BALANCED,
     );
     assert!(sources.iter().all(|(_, p)| *p == Policy::Two));
-    assert_eq!((hash, interactive), (0x31c2_47c4_ebd8_7325, 2_481_103));
+    assert_eq!((hash, interactive), (0x31c2_47c4_ebd8_7325, 2_678_735));
 }
 
 /// RFC-0013 A8 on the E16-10 acceptance window: the balanced shapes are A8 item 2's
@@ -955,7 +955,7 @@ fn accepts_eight_layer_window_under_dev_zk_balanced() {
             (6, Policy::Two)
         ]
     );
-    assert_eq!((hash, interactive), (0x3a27_f281_868d_803b, 57_269_604));
+    assert_eq!((hash, interactive), (0x3a27_f281_868d_803b, 57_662_820));
 }
 
 /// The E16-10 acceptance window under dev-zk; release build only.
@@ -964,6 +964,6 @@ fn accepts_eight_layer_window_under_dev_zk_balanced() {
 fn accepts_eight_layer_window_under_dev_zk() {
     assert_eq!(
         zk_window("eight-layer", 64, stele_prover::development::zk::PROFILE),
-        (0x1ae4_d78e_9daa_dc92, 57_269_606)
+        (0x1ae4_d78e_9daa_dc92, 57_662_822)
     );
 }

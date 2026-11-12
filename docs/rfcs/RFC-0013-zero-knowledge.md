@@ -614,7 +614,7 @@ ledger. No label, loss form, order or byte changes.
 - **Worst round** (A8 item 4's open question). On the eight-layer window:
   - byte 4: the ungrinded LU + ZD round of one check, `2^-100.4`; every PCS round is
     `≤ 2^-108`;
-  - byte 1: the witness source's ungrinded Policy 1 tensor round, `2^-98.9`, ahead of
+  - byte 1: the witness source's ungrinded Policy 1 tensor round, `≈ 2^-99.0`, ahead of
     that LU round.
   No level is claimed for either byte.
 

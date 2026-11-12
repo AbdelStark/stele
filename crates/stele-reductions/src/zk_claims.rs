@@ -359,8 +359,9 @@ pub struct Entry {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PcsSource {
     pub name: String,
-    /// Row exponent of the source, mask rows included (RFC-0010 A15's `ell + 1`).
-    pub ell: u8,
+    /// Row exponent of the source, mask rows included (RFC-0010 A15's data `ell`
+    /// plus one).
+    pub rows_log: u8,
     pub parameters: Parameters,
     pub openings: usize,
 }
@@ -369,7 +370,7 @@ impl PcsSource {
     /// The tensor round's numerator `2·ell·(e + 1)` over `|K|` (RFC-0010 A14
     /// item 4), before its `2^k_t`.
     pub fn tensor(&self) -> u64 {
-        2 * u64::from(self.ell) * (self.parameters.radius + 1)
+        2 * u64::from(self.rows_log) * (self.parameters.radius + 1)
     }
     /// `−log2` of a column round's bound: the policy's query target (Policy 1:
     /// 2^-130, A3 item 4; Policy 2: 2^-92, A14 item 2) plus `k_q`.
@@ -392,6 +393,8 @@ pub struct Ledger {
     pub pcs: Vec<PcsSource>,
     /// Masked claims across every claim source (each a claim-block rank abort).
     pub claims: usize,
+    /// ZK-GKR layer blocks (each a block-rank abort, RFC-0008 A7 item 4).
+    pub blocks: usize,
     /// Extension degree `D` of `K`.
     pub degree: usize,
 }
@@ -404,6 +407,18 @@ pub struct Round {
     pub name: String,
     pub bits: u64,
     pub grind: u8,
+}
+
+/// A ledger line's printed label.
+fn label(line: Line) -> &'static str {
+    match line {
+        Line::Rlc => "RLC",
+        Line::Sc => "SC",
+        Line::Sz => "SZ",
+        Line::Lu => "LU",
+        Line::Zd => "ZD",
+        Line::Mask => "MASK",
+    }
 }
 
 /// `⌊1024·log2 n⌋` for `n ≥ 1`, by repeated squaring of the Q62 mantissa.
@@ -451,19 +466,18 @@ impl Ledger {
         self.entries.iter().map(|e| e.numerator).sum()
     }
     /// Every round: the algebraic ones (none grinded under dev-zk) and each
-    /// source's PCS tensor and column rounds.
+    /// source's PCS tensor and column rounds. A source's opening column rounds share
+    /// its certificate column round's bound (`q_o` meets the same target, with the
+    /// same `k_q`), so one column round stands for all of them.
     pub fn rounds(&self) -> Vec<Round> {
         let mut rounds: Vec<Round> = self
             .entries
             .iter()
             .map(|e| Round {
+                // A check's LU and ZD are one `(β, α)` round.
                 line: match e.line {
-                    Line::Rlc => "RLC",
-                    Line::Sc => "SC",
-                    Line::Sz => "SZ",
-                    Line::Lu => "LU",
-                    Line::Zd => "ZD",
-                    Line::Mask => "MASK",
+                    Line::Lu | Line::Zd => "LU+ZD",
+                    line => label(line),
                 },
                 name: e.name.clone(),
                 bits: bits(e.round, 0),
@@ -506,17 +520,17 @@ pub fn tenths(bits: u64) -> String {
 impl fmt::Display for Ledger {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for e in &self.entries {
-            writeln!(f, "{:?}\t{}\t{}/|K|", e.line, e.name, e.numerator)?;
+            writeln!(f, "{}\t{}\t{}/|K|", label(e.line), e.name, e.numerator)?;
         }
         let d = self.degree as u64;
         for s in &self.pcs {
             let p = &s.parameters;
             writeln!(
                 f,
-                "PCS\t{}\tell {}, policy {:?}, q_c/q_o {}/{}, k_t {}, k_q {}, {} opening(s); \
+                "PCS\t{}\trow exponent {}, policy {:?}, q_c/q_o {}/{}, k_t {}, k_q {}, {} opening(s); \
                  tensor {}/|K| before 2^{}, column {}\tconjectural (RFC-0012 A15)",
                 s.name,
-                s.ell,
+                s.rows_log,
                 p.policy,
                 p.certificate_queries,
                 p.opening_queries,
@@ -533,7 +547,7 @@ impl fmt::Display for Ledger {
                 f,
                 "abort\tMaskRank {}\t{}/p\tcompleteness only",
                 s.name,
-                2 * d * u64::from(s.ell)
+                2 * d * u64::from(s.rows_log)
             )?;
         }
         writeln!(
@@ -541,6 +555,22 @@ impl fmt::Display for Ledger {
             "abort\tclaim-block rank, {} claims\t{}/p\tcompleteness only",
             self.claims,
             self.claims as u64 * d * u64::from(d.trailing_zeros())
+        )?;
+        writeln!(
+            f,
+            "abort\tZK-GKR block rank < {}, {} blocks\tnot bounded (RFC-0008 A7 item 4; R9)\tcompleteness only",
+            3 * d,
+            self.blocks
+        )?;
+        // RFC-0013 A5 item 4's |K| terms: κ = 0 (2 per claim); α = 0, w* = 0 and A4's
+        // ρ_n ∈ {0, 1/2} (3 per masked instance).
+        let instances = self.entries.iter().filter(|e| e.line == Line::Mask).count();
+        writeln!(
+            f,
+            "abort\tκ, α, w*, ρ_n, {} claims, {} instances\t{}/|K|\tcompleteness only",
+            self.claims,
+            instances,
+            2 * self.claims as u64 + 3 * instances as u64
         )?;
         if let Some(w) = self.worst() {
             writeln!(
@@ -3072,6 +3102,7 @@ where
     let mut verified = Vec::new();
     let mut ledger = Ledger {
         degree: dim::<K>(),
+        blocks: plan.blocks,
         ..Ledger::default()
     };
     for (s, (bytes, certificate)) in proof.sources.iter().zip(&proof.certificates).enumerate() {
@@ -3102,7 +3133,7 @@ where
             } else {
                 "shared mask source".to_string()
             },
-            ell: expected.rows().trailing_zeros() as u8,
+            rows_log: expected.rows().trailing_zeros() as u8,
             parameters: expected.parameters(),
             openings: usize::from(s == shared_index || plan.batched.contains(&s)),
         });
@@ -3218,7 +3249,7 @@ where
     ledger.add(Line::Mask, name, 1, 1);
     ledger.pcs.push(PcsSource {
         name: "shared batch mask source".to_string(),
-        ell: mask_source.rows().trailing_zeros() as u8,
+        rows_log: mask_source.rows().trailing_zeros() as u8,
         parameters: mask_source.parameters(),
         openings: 1,
     });

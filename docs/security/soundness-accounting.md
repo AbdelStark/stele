@@ -1905,22 +1905,29 @@ A2's MASK and RFC-0008 A7's ZD. Each line is `numerator/|K|`, `|K| = p^4`:
 | SZ | each relation's `τ` (`ZeroWeight`) or `ρ` (`RelationPoint`) | draws (`n` for `eq(τ, ·)`, `a` for a matmul point) |
 | SC | each masked instance (relations, ZK-GKR steps, batches, shared batch) | its A1 record `m·δ` at the declared degree (RFC-0013 A5 item 3) |
 | MASK | each masked instance's `α` | 1 |
-| LU | each RFC-0026 A3 check's `(β, α)` | RFC-0012 A11 `h + N + c·t − 1`, `h = 0`, `N = 2^n`, `t` the padded table rows |
+| LU | each RFC-0026 A3 check's `(β, α)` | `c·(N + t) − 1`, `N = 2^n`, `t` the padded table rows (RFC-0012 A17 item 3, [fs-composition.md](../../formal/fs-composition.md) Lemma 4; the recorded `h + N + c·t − 1` holds only for `c = 1`) |
 | ZD | each check's `(β, α)` | RFC-0008 A7 `2^{n+1}·c` |
 | SZ | each check's first ZK-GKR step `r` (`ZeroWeight`) | `k` |
 | RLC | each ZK-GKR step's `λ` and, below the leaf, `t*` | 1 or 2 |
 | RLC | each claim source's batch `γ_a`; the shared batch's `γ_j` | claims; `μ_j` and block claims |
 
 - **PCS**, per hiding source (each claim source, the shared mask source, the shared
-  batch's A4 mask source): `ell`, policy, `q_c/q_o`, `k_t`, `k_q` and openings, all
+  batch's A4 mask source): row exponent, policy, `q_c/q_o`, `k_t`, `k_q` and openings, all
   from the verifier-derived source parameters. Printed as conjectural (RFC-0012 A15)
   and not summed.
   - Tensor round: `2·ell·(e + 1)/|K|` over `2^k_t` (RFC-0010 A14 item 4), with `ell`
     the source's row exponent, mask rows included.
   - Column rounds: at most `2^-(92 + k_q)` under Policy 2 and `2^-130` under Policy 1,
-    by the query tables.
-- **Aborts** (RFC-0013 A5 item 4; completeness only, over `p`, not summed): MaskRank
-  `2D·(ell + 1)/p` per source, and claim-block rank `D·c_D/p` per masked claim.
+    by the query tables. A source's opening column rounds meet the same bound as its
+    certificate column round, so one column round stands for them.
+- **Aborts** (completeness only, not summed):
+  - RFC-0013 A5 item 4, over `p`: MaskRank `2D·(ell + 1)/p` per source and
+    claim-block rank `D·c_D/p` per masked claim;
+  - RFC-0013 A5 item 4, over `|K|`: `κ = 0` (2 per claim), and `α = 0`, `w* = 0` and
+    A4's `ρ_n ∈ {0, 1/2}` (3 per masked instance), printed as one total;
+  - RFC-0008 A7 item 4: ZK-GKR block rank `< 3D`, one per layer block. Its
+    probability is not bounded yet (design note R9), so only the block count is
+    printed.
 - **Rounds.** A round is a maximal run of challenges (RFC-0012 A17). Draws that
   share a run are charged together:
   - `γ` with `τ`;
@@ -1929,6 +1936,8 @@ A2's MASK and RFC-0008 A7's ZD. Each line is `numerator/|K|`, `|K| = p^4`:
 
   An SC record's rounds are its degree each. The ledger prints the round with the
   largest error, counting grinding. No algebraic dev-zk round is grinded.
+  `verify-dev` rounds each printed value down to a tenth of a bit, toward the larger
+  error. For example, `2^25/|K| ≈ 2^-99.0` prints as `2^-98.9`.
 - **Output.** `ε_interactive` (every line except FS and PCS), "FS unproven, PCS
   conjectural". Nothing is summed into a claimed level.
 
@@ -1937,18 +1946,17 @@ one-layer window, T = 4, in the pinned tests):
 
 | Window | Byte | `ε_interactive·|K|` | Worst round | Next |
 |---|---|---:|---|---|
-| eight-layer | 4 | 57,269,604 | LU + ZD of check 6, `2^-100.4`, ungrinded | every PCS round `≤ 2^-108` |
-| eight-layer | 1 | 57,269,606 | PCS tensor round of source 0 (witness), `2^-98.9`, ungrinded (Policy 1) | LU + ZD of check 6, `2^-100.4` |
-| one-layer | 4 | 2,481,103 | LU + ZD of check 1, `2^-105.1` | every PCS round `≤ 2^-108` |
-| one-layer | 1 | 2,481,105 | PCS tensor round of source 0, `2^-103.9` | |
+| eight-layer | 4 | 57,662,820 | LU + ZD of check 6, `2^-100.4`, ungrinded | every PCS round `≤ 2^-108` |
+| eight-layer | 1 | 57,662,822 | PCS tensor round of source 0 (witness), `≈ 2^-99.0`, ungrinded (Policy 1) | LU + ZD of check 6, `2^-100.4` |
+| one-layer | 4 | 2,678,735 | LU + ZD of check 1, `2^-105.0` | every PCS round `≤ 2^-108` |
+| one-layer | 1 | 2,678,737 | PCS tensor round of source 0, `2^-103.9` | |
 
 - **Byte 4 confirms** "the worst round stays the ungrinded LU round". Its PCS rounds
   are Policy 2 rounds, each `≤ 2^-108`. Its worst round is a check's `(β, α)` round,
   where ZD (`2^{n+1}·c`, about twice LU) dominates the LU term.
 - **Byte 1 refutes it.** The narrow witness source (`ell = 3`, so 16 rows with the
   mask rows, and radius `e + 1 = 2^22`) has an ungrinded Policy 1 tensor round of
-  `2·4·2^22/|K| = 2^25/|K|`. That is worse than
-  any LU round. This is the RFC-0008 A8 (C1) observation for Policy 1 tensor rounds.
+  `2·4·2^22/|K| = 2^25/|K| ≈ 2^-99.0`. That is worse than any LU round. This is the RFC-0008 A8 (C1) observation for Policy 1 tensor rounds.
 - Neither byte is admitted to a profile. The development tier claims no level, so
   this is a statement of which round is worst, not a failure.
 

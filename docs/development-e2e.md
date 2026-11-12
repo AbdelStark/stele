@@ -131,7 +131,8 @@ zero knowledge is conditional and computational.
   only), the worst round and `eps_interactive`. The lines are listed in
   `docs/security/soundness-accounting.md`. On the eight-layer window the worst
   round is a check's LU + ZD round at byte 4 (`2^-100.4`), and the witness source's
-  Policy 1 tensor round at byte 1 (`2^-98.9`).
+  Policy 1 tensor round at byte 1 (`≈ 2^-99.0`; `verify-dev` rounds toward the
+  larger error and prints `2^-98.9`).
 
 ```sh
 target/release/stele commit-model --zk \
