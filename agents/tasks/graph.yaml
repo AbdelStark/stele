@@ -2755,6 +2755,22 @@ tasks:
   - byte-4 dev-zk proofs on balanced Policy 2 sources, byte 1 still verified; pinned proofs, χ² privacy tests and the eight-layer bare-evaluation test on byte 4
   - controls for a hiding-source grind mismatch, a cross-byte model commitment and a wrong profile byte
   - eight-layer ledger, byte 1 against byte 4, three runs each at the same commit (byte 1 through commit-model --zk-profile 1)
+- id: E12-30
+  epic: E12
+  title: dev-zk tamper suite on a stored real-checkpoint proof (verify only)
+  depends:
+  - E12-29
+  rfc:
+  - RFC-0013 A9
+  - RFC-0026 A9
+  skill: soundness-auditor
+  crate: bench
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-30-dev-zk-tamper-suite
+  acceptance:
+  - a script mutates a stored dev-zk proof and public file at offsets found by decoding them, one targeted mutation per major section and per public field, plus an unchanged control
+  - verify-dev rejects each with its exact pinned error on the stories42M T = 32 proof; results recorded in docs (closes the #348 review's F3, extra dev-zk tampers)
 - id: E12-29
   epic: E12
   title: dev-zk byte 4 on the real stories42M checkpoint (commit, prove, verify, measured and soundness ledgers)

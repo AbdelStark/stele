@@ -216,7 +216,8 @@ The claim, its limits and its leaks:
 - **Limits.**
   - `T = 64` did not fit the 48 GB laptop: the prove was killed at about 31 GB RSS,
     twice.
-  - The privacy tests and the tamper controls run on the synthetic windows only.
+  - The privacy tests run on the synthetic windows only. The tamper suite also runs on
+    the real proof (E12-30, below).
 
 ```sh
 P=$D/prepared   # the E16-11 prepared files
@@ -228,6 +229,54 @@ target/release/stele prove-dev --zk $F \
   --length 32 --checked 23..32 --commitment $P/zk.commit --secret $P/zk.secret \
   --public $P/zk-public.bin --proof $P/zk-proof.bin
 target/release/stele verify-dev --public $P/zk-public.bin --proof $P/zk-proof.bin \
+  --expect-model "$(grep '^model ' commit.out | cut -d' ' -f2)"
+```
+
+### dev-zk tamper suite on the real proof (task E12-30)
+
+`bench/dev_zk_tamper.py` takes a stored dev-zk run directory (`public.bin`, `proof.bin`)
+and runs `verify-dev --expect-model` on 15 mutated copies and on one unchanged copy. It
+verifies only and never proves.
+- **Offsets.** They come from decoding both files (the `bundle::encode_zk` and
+  `zk::claims::encode` layouts), never from fixed positions.
+- **Mutations.**
+  - A QM31 value is mutated by adding 1 to its first M31 limb, so it stays canonical
+    and the verifier's own check rejects it, not the decoder.
+  - Other mutations are single-bit flips.
+- **Pinning.** The script fails unless every case gives its exact expected line.
+
+On the E12-29 stories42M `T = 32` proof (index 1, 21,411,006 bytes; about 4 minutes,
+17.6 GB peak RSS):
+
+| Tamper | Section | `verify-dev` |
+|---|---|---|
+| none (control) | — | `YES` |
+| witness certificate's tensor nonce `n_t` (bit 0) | certificate grinding (RFC-0010 A14 item 4) | `NO: Zk(Pcs(Transcript(GrindMismatch)))` |
+| witness source's last byte (its root) | sources | `NO: Zk(Pcs(Transcript(GrindMismatch)))` |
+| witness certificate's last byte (a column response) | certificate | `NO: Zk(Pcs(Merkle(RootMismatch)))` |
+| a relation's first masked round, `+1` | masked sumcheck | `NO: Zk(Sumcheck(RoundSumMismatch))` |
+| a ZK-GKR step's first round, `+1` | ZK-GKR | `NO: Zk(Sumcheck(RoundSumMismatch))` |
+| relation 0's first final value, `+1` | claims | `NO: Zk(Sumcheck(FinalEvaluationMismatch))` |
+| witness batch opening, middle byte (its row) | opening | `NO: Zk(Pcs(Transcript(GrindMismatch)))` |
+| witness batch opening, last byte (a response) | opening | `NO: Zk(Pcs(Merkle(RootMismatch)))` |
+| shared-source opening, middle byte | opening | `NO: Zk(Pcs(Transcript(GrindMismatch)))` |
+| shared-source opening, last byte | opening | `NO: Zk(Pcs(Merkle(RootMismatch)))` |
+| one prompt token | public | `NO: StatementMismatch` |
+| `y` | public | `NO: StatementMismatch` |
+| window start `r` | public | `NO: StatementMismatch` |
+| proof index | public | `NO: StatementMismatch` |
+| profile byte (a v2 file read as v1) | public | `NO: StatementMismatch` |
+
+Notes on the results:
+- **`GrindMismatch` cases.** A changed root or opening row changes what the transcript
+  absorbs before the column nonce. So the stored least nonce fails first (RFC-0013 A8
+  item 4), before any Merkle check.
+- **Public tampers.** These stop at the proof header's statement digest, the fail-fast
+  check. The transcript binding behind it is covered on the synthetic windows by
+  NC-0912, NC-0940 and NC-0941.
+
+```sh
+python3 bench/dev_zk_tamper.py RUN_DIR --stele target/release/stele \
   --expect-model "$(grep '^model ' commit.out | cut -d' ' -f2)"
 ```
 

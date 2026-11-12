@@ -69,6 +69,8 @@ The zero knowledge is conditional and computational, and there is no security le
   in 33 s. The proof is 21.4 MB, and the prover peaks at 30–34 GB RSS on a 16-thread laptop
   ([ledger](bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json); RFC‑0013 A9, Draft). stories42M is a public
   checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
+  15 tampers of the real proof (every proof section and public field) are each rejected with their pinned error
+  (`bench/dev_zk_tamper.py`).
 - **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
   conjectural).
 
