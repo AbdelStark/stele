@@ -2749,9 +2749,12 @@ tasks:
   - RFC-0012
   skill: soundness-auditor
   crate: stele-reductions+stele-prover
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-26-dev-zk-soundness-ledger
   acceptance:
   - verify-dev prints an RFC-0026 §6-style ledger for dev-zk, derived by the verifier; soundness-accounting covers it
+  - per-term lines (RLC, SZ, SC, MASK, LU, ZD), PCS terms per hiding source under its policy with grinding bits, the MaskRank abort term, and the worst round; "the worst round stays the ungrinded LU round" confirmed or refuted for dev-zk
 - id: E12-14
   epic: E12
   title: Composed zero-knowledge development proof (masked claims, LogUp, matmul, claim batching, FS)

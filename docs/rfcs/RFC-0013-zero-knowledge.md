@@ -602,6 +602,22 @@ decides it; ADR-109 records the outcome.
 - **CLI.** `prove-dev --zk`, `commit-model --zk` and `verify-dev` keep their
   behaviour. `verify-dev` prints `profile dev-zk`.
 
+**Implementation notes (E12-26, ADR-115; development tier).** The dev-zk soundness
+ledger. No label, loss form, order or byte changes.
+- **Ledger.** The dev-zk verifier derives an RFC-0026 §6-style ledger while it
+  replays the proof, and `verify-dev` prints it after the counts. Its lines are
+  existing ones: item 3's SC, A2's MASK, RFC-0026's RLC and SZ, and RFC-0008 A7's
+  LU, ZD and ZK-GKR terms. For every hiding source it prints the PCS terms (as
+  conjectural), and item 4's MaskRank and claim-block-rank aborts (as completeness
+  terms). The inventory is in `docs/security/soundness-accounting.md`. This replaces
+  "`verify-dev` reports counts (E12-26)" above.
+- **Worst round** (A8 item 4's open question). On the eight-layer window:
+  - byte 4: the ungrinded LU + ZD round of one check, `2^-100.4`; every PCS round is
+    `≤ 2^-108`;
+  - byte 1: the witness source's ungrinded Policy 1 tensor round, `≈ 2^-99.0`, ahead of
+    that LU round.
+  No level is claimed for either byte.
+
 ### A6 — Lifetime hiding weight source for dev-zk (P proofs against one published commitment)
 
 Status: **Accepted** (development tier, Workflow 02 development-tier path).

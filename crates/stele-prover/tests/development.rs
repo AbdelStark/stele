@@ -7,7 +7,7 @@ use stele_prover::development::{
     bundle, model_identity, prove, public_input, statement_digest_for, verify, Committed, Error,
     Public, Statement, Weights,
 };
-use stele_reductions::relation::Sources;
+use stele_reductions::relation::{Line, Sources};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{Model, Preparation, Scales};
 use stele_reductions::stele_field::QM31;
@@ -655,13 +655,15 @@ fn matches_reference_zk_claim_census_eight_layer() {
 /// RFC-0013 A5, RFC-0026 A9 (E12-14b): one window proven under dev-zk through the
 /// development orchestrator and verified by the dev-zk verifier; the profile byte
 /// is bound by the transcript (a development-profile transcript rejects).
-fn zk_window(name: &str, t: usize, profile: u8) -> u64 {
-    zk_window_sources(name, t, profile).0
+fn zk_window(name: &str, t: usize, profile: u8) -> (u64, u64) {
+    let (hash, _, interactive) = zk_window_sources(name, t, profile);
+    (hash, interactive)
 }
 
 /// [`zk_window`] and each source's `(ell, policy)` from the proof's source bytes, in
-/// proof order: claim sources, then the shared source (RFC-0013 A8 item 2).
-fn zk_window_sources(name: &str, t: usize, profile: u8) -> (u64, Vec<(u32, Policy)>) {
+/// proof order: claim sources, then the shared source (RFC-0013 A8 item 2), and the
+/// ledger's `ε_interactive·|K|` (E12-26).
+fn zk_window_sources(name: &str, t: usize, profile: u8) -> (u64, Vec<(u32, Policy)>, u64) {
     use stele_prover::development::zk;
     let case = load(name);
     let statement = greedy(&mut case.executor(&case.artifact), t);
@@ -851,27 +853,86 @@ fn zk_window_sources(name: &str, t: usize, profile: u8) -> (u64, Vec<(u32, Polic
         fnv(&proof),
         proof.len()
     );
-    (fnv(&proof), sources)
+    check_ledger(&verified, sources.len(), profile);
+    (fnv(&proof), sources, verified.ledger.interactive())
+}
+
+/// E12-26: the verifier's dev-zk ledger has one SC and one MASK line per masked
+/// instance, LU and ZD per check, and PCS rounds for every hiding source (the
+/// claim sources, the shared source and the shared batch's A4 source). Under byte
+/// 4 every PCS round is at most `2^-108` (A14 item 5), so the worst round is an
+/// ungrinded algebraic round; it is printed for both bytes.
+fn check_ledger(verified: &stele_prover::development::zk::Verified, sources: usize, profile: u8) {
+    use stele_prover::development::zk;
+    let ledger = &verified.ledger;
+    let count = |line: Line| ledger.entries.iter().filter(|e| e.line == line).count();
+    let instances = verified.relations + verified.gkr + verified.batches;
+    assert_eq!(count(Line::Mask), instances);
+    assert_eq!(count(Line::Sc), instances);
+    assert!(count(Line::Lu) > 0);
+    assert_eq!(count(Line::Lu), count(Line::Zd));
+    assert_eq!(ledger.pcs.len(), sources + 1);
+    assert_eq!(
+        ledger.interactive(),
+        ledger.entries.iter().map(|e| e.numerator).sum::<u64>()
+    );
+    let worst = ledger.worst().expect("rounds");
+    let pcs = ledger
+        .rounds()
+        .into_iter()
+        .filter(|r| r.line.starts_with("PCS"))
+        .map(|r| r.bits)
+        .min()
+        .expect("PCS rounds");
+    if profile == zk::PROFILE_BALANCED {
+        assert!(
+            pcs >= 108 * 1024,
+            "every byte-4 PCS round is at most 2^-108"
+        );
+        assert!(ledger
+            .pcs
+            .iter()
+            .all(|s| s.parameters.policy == Policy::Two));
+        assert_eq!(worst.grind, 0, "the worst byte-4 round is ungrinded");
+        assert_eq!(worst.line, "LU+ZD", "and it is a check's (β, α) round");
+    } else {
+        // Byte 1 (Policy 1): the witness source's ungrinded tensor round
+        // `2·ell·(e + 1)/|K|` is worse than any LU round on both synthetic windows.
+        assert_eq!(
+            (worst.line, worst.name.as_str()),
+            ("PCS tensor", "source 0")
+        );
+    }
+    let text = verified.to_string();
+    assert!(text.contains("worst round\t") && text.ends_with("FS unproven, PCS conjectural"));
+    eprintln!(
+        "dev-zk byte {profile} ledger: eps_interactive <= {}/p^4, worst round {} {} {}, best PCS {}",
+        ledger.interactive(),
+        worst.line,
+        worst.name,
+        stele_reductions::zk::claims::tenths(worst.bits),
+        stele_reductions::zk::claims::tenths(pcs),
+    );
 }
 
 #[test]
 fn accepts_one_layer_window_under_dev_zk() {
     assert_eq!(
         zk_window("one-layer", 4, stele_prover::development::zk::PROFILE),
-        0x5127_0022_790c_94fc
+        (0x5127_0022_790c_94fc, 2_678_737)
     );
 }
 
 /// RFC-0013 A8: the one-layer window on byte-4 sources, every one policy 2.
 #[test]
 fn accepts_one_layer_window_under_dev_zk_balanced() {
-    let (hash, sources) = zk_window_sources(
+    let (hash, sources, interactive) = zk_window_sources(
         "one-layer",
         4,
         stele_prover::development::zk::PROFILE_BALANCED,
     );
     assert!(sources.iter().all(|(_, p)| *p == Policy::Two));
-    assert_eq!(hash, 0x31c2_47c4_ebd8_7325);
+    assert_eq!((hash, interactive), (0x31c2_47c4_ebd8_7325, 2_678_735));
 }
 
 /// RFC-0013 A8 on the E16-10 acceptance window: the balanced shapes are A8 item 2's
@@ -880,7 +941,7 @@ fn accepts_one_layer_window_under_dev_zk_balanced() {
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn accepts_eight_layer_window_under_dev_zk_balanced() {
-    let (hash, sources) = zk_window_sources(
+    let (hash, sources, interactive) = zk_window_sources(
         "eight-layer",
         64,
         stele_prover::development::zk::PROFILE_BALANCED,
@@ -894,7 +955,7 @@ fn accepts_eight_layer_window_under_dev_zk_balanced() {
             (6, Policy::Two)
         ]
     );
-    assert_eq!(hash, 0x3a27_f281_868d_803b);
+    assert_eq!((hash, interactive), (0x3a27_f281_868d_803b, 57_662_820));
 }
 
 /// The E16-10 acceptance window under dev-zk; release build only.
@@ -903,6 +964,6 @@ fn accepts_eight_layer_window_under_dev_zk_balanced() {
 fn accepts_eight_layer_window_under_dev_zk() {
     assert_eq!(
         zk_window("eight-layer", 64, stele_prover::development::zk::PROFILE),
-        0x1ae4_d78e_9daa_dc92
+        (0x1ae4_d78e_9daa_dc92, 57_662_822)
     );
 }

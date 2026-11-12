@@ -97,6 +97,14 @@ pub(super) struct LookupPlan {
 }
 
 impl LookupPlan {
+    /// The `(β, α)` round's numerators over `|K|` (E12-26): LU `c·(N + t) − 1`
+    /// (RFC-0012 A17 item 3, `formal/fs-composition.md` Lemma 4; the recorded
+    /// `h + N + c·t − 1` of A8/A11 holds only for `c = 1`), with `N = 2^n` and `t` the
+    /// padded table rows, and RFC-0008 A7's ZD `2^{n+1}·c`.
+    pub(super) fn lu(&self) -> (u64, u64) {
+        let (n, c) = (1u64 << self.n, self.c as u64);
+        (c * (n + self.table.len() as u64) - 1, 2 * n * c)
+    }
     /// Masked layers `k0 + 1..=n`, two blocks (`p`, `q`) each.
     pub(super) fn block_count(&self) -> usize {
         2 * (self.n - self.k0)
@@ -168,6 +176,12 @@ pub(super) struct GkrStep {
 impl GkrStep {
     pub(super) fn lookup_index(&self) -> usize {
         self.lookup
+    }
+    /// Public draws besides the sumcheck's (E12-26): the first step's `r` (`k`,
+    /// `ZeroWeight`), and every step's `λ` and, below the leaf, `t*`.
+    pub(super) fn draws(&self) -> (u64, u64) {
+        let r = if self.first { self.k as u64 } else { 0 };
+        (r, 1 + u64::from(!self.leaf))
     }
     pub(super) fn occurrences_mut(&mut self) -> impl Iterator<Item = &mut Occurrence> {
         self.inputs.iter_mut().filter_map(|i| match i {

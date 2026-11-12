@@ -31,13 +31,16 @@
 //! relations, GKR steps, batches and the shared batch; every mask stream is
 //! therefore used once per proof.
 use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
+use crate::relation::Line;
+use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
+use core::fmt;
 use stele_field::{Inverse, Serialize, M31};
 use stele_hash::mask::{MaskStream, SOURCE_MASK};
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::{
-    verify_certificate, verify_point, CodeField, Policy, PreparedSource, Source,
+    verify_certificate, verify_point, CodeField, Parameters, Policy, PreparedSource, Source,
     VerifiedCertificate,
 };
 use stele_sumcheck::masked::{self, Mask, MaskRecord};
@@ -335,6 +338,256 @@ pub struct Verified<K> {
     pub lookups: Vec<[K; 2]>,
     /// Each relation's public draws (`τ` or `ρ`), in plan order.
     pub draws: Vec<Vec<K>>,
+    /// The dev-zk soundness ledger (E12-26), derived by the verifier.
+    pub ledger: Ledger,
+}
+
+/// One interactive dev-zk term `numerator/|K|` (RFC-0026 §6 with RFC-0013 A5 and
+/// RFC-0008 A7). `round` is the numerator of its largest single round, a maximal
+/// run of challenges (RFC-0012 A17): an SC record's degree, and for draws that share
+/// a run (`γ` with `τ`, `β` with `α`, `t*` with the next `λ`) the whole run.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Entry {
+    pub line: Line,
+    pub name: String,
+    pub numerator: u64,
+    pub round: u64,
+}
+
+/// One hiding source's PCS rounds under its verifier-derived parameters: the
+/// certificate's tensor and column rounds and `openings` opening column rounds.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PcsSource {
+    pub name: String,
+    /// Row exponent of the source, mask rows included (RFC-0010 A15's data `ell`
+    /// plus one).
+    pub rows_log: u8,
+    pub parameters: Parameters,
+    pub openings: usize,
+}
+
+impl PcsSource {
+    /// The tensor round's numerator `2·ell·(e + 1)` over `|K|` (RFC-0010 A14
+    /// item 4), before its `2^k_t`.
+    pub fn tensor(&self) -> u64 {
+        2 * u64::from(self.rows_log) * (self.parameters.radius + 1)
+    }
+    /// `−log2` of a column round's bound: the policy's query target (Policy 1:
+    /// 2^-130, A3 item 4; Policy 2: 2^-92, A14 item 2) plus `k_q`.
+    pub fn column_bits(&self) -> u64 {
+        let target = match self.parameters.policy {
+            Policy::One => 130,
+            _ => 92,
+        };
+        target + u64::from(self.parameters.column_grind_bits)
+    }
+}
+
+/// The dev-zk soundness ledger of one accepted proof (E12-26). Interactive terms
+/// only, as RFC-0026 §6: FS unproven (Q12), PCS conjectural (RFC-0012 A15), and
+/// nothing summed into a claimed level. Producer aborts (RFC-0013 A5 item 4) are
+/// completeness terms over `p`, printed and not summed.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Ledger {
+    pub entries: Vec<Entry>,
+    pub pcs: Vec<PcsSource>,
+    /// Masked claims across every claim source (each a claim-block rank abort).
+    pub claims: usize,
+    /// ZK-GKR layer blocks (each a block-rank abort, RFC-0008 A7 item 4).
+    pub blocks: usize,
+    /// Extension degree `D` of `K`.
+    pub degree: usize,
+}
+
+/// One round of the ledger with its security in 1/1024 bits: `−log2` of its error,
+/// rounded down.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Round {
+    pub line: &'static str,
+    pub name: String,
+    pub bits: u64,
+    pub grind: u8,
+}
+
+/// A ledger line's printed label.
+fn label(line: Line) -> &'static str {
+    match line {
+        Line::Rlc => "RLC",
+        Line::Sc => "SC",
+        Line::Sz => "SZ",
+        Line::Lu => "LU",
+        Line::Zd => "ZD",
+        Line::Mask => "MASK",
+    }
+}
+
+/// `⌊1024·log2 n⌋` for `n ≥ 1`, by repeated squaring of the Q62 mantissa.
+fn log2_1024(n: u64) -> u64 {
+    let n = n.max(1);
+    let i = u64::from(63 - n.leading_zeros());
+    let mut y = (u128::from(n) << 62) >> i;
+    let mut fraction = 0;
+    for _ in 0..10 {
+        y = (y * y) >> 62;
+        fraction <<= 1;
+        if y >= 2u128 << 62 {
+            y >>= 1;
+            fraction |= 1;
+        }
+    }
+    1024 * i + fraction
+}
+
+/// `−log2(numerator/(2^grind·|K|))` in 1/1024 bits, rounded down (`|K| = p^4 <
+/// 2^124`, and the log is rounded up).
+fn bits(numerator: u64, grind: u8) -> u64 {
+    (1024 * (124 + u64::from(grind))).saturating_sub(log2_1024(numerator) + 1)
+}
+
+impl Ledger {
+    fn add(&mut self, line: Line, name: &str, numerator: u64, round: u64) {
+        if numerator > 0 {
+            self.entries.push(Entry {
+                line,
+                name: name.to_string(),
+                numerator,
+                round,
+            });
+        }
+    }
+    /// A masked instance's SC record (rounds of its degree) and MASK `1/|K|`.
+    fn masked<K>(&mut self, name: &str, result: &masked::Reduction<K>) {
+        let sc = &result.reduction.sc;
+        self.add(Line::Sc, name, sc.numerator, u64::from(sc.degree));
+        self.add(Line::Mask, name, 1, 1);
+    }
+    /// `ε_interactive·|K|`: the sum of every non-FS, non-PCS numerator.
+    pub fn interactive(&self) -> u64 {
+        self.entries.iter().map(|e| e.numerator).sum()
+    }
+    /// Every round: the algebraic ones (none grinded under dev-zk) and each
+    /// source's PCS tensor and column rounds. A source's opening column rounds share
+    /// its certificate column round's bound (`q_o` meets the same target, with the
+    /// same `k_q`), so one column round stands for all of them.
+    pub fn rounds(&self) -> Vec<Round> {
+        let mut rounds: Vec<Round> = self
+            .entries
+            .iter()
+            .map(|e| Round {
+                // A check's LU and ZD are one `(β, α)` round.
+                line: match e.line {
+                    Line::Lu | Line::Zd => "LU+ZD",
+                    line => label(line),
+                },
+                name: e.name.clone(),
+                bits: bits(e.round, 0),
+                grind: 0,
+            })
+            .collect();
+        for s in &self.pcs {
+            let p = &s.parameters;
+            rounds.push(Round {
+                line: "PCS tensor",
+                name: s.name.clone(),
+                bits: bits(s.tensor(), p.tensor_grind_bits),
+                grind: p.tensor_grind_bits,
+            });
+            rounds.push(Round {
+                line: "PCS column",
+                name: s.name.clone(),
+                bits: 1024 * s.column_bits(),
+                grind: p.column_grind_bits,
+            });
+        }
+        rounds
+    }
+    /// The round with the largest error (least `bits`); the first in ledger order
+    /// on ties.
+    pub fn worst(&self) -> Option<Round> {
+        self.rounds().into_iter().fold(None, |w, r| match w {
+            Some(w) if w.bits <= r.bits => Some(w),
+            _ => Some(r),
+        })
+    }
+}
+
+/// `2^-x.y` for a security of `bits/1024`, rounded down to a tenth.
+pub fn tenths(bits: u64) -> String {
+    let t = bits * 10 / 1024;
+    alloc::format!("2^-{}.{}", t / 10, t % 10)
+}
+
+impl fmt::Display for Ledger {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for e in &self.entries {
+            writeln!(f, "{}\t{}\t{}/|K|", label(e.line), e.name, e.numerator)?;
+        }
+        let d = self.degree as u64;
+        for s in &self.pcs {
+            let p = &s.parameters;
+            writeln!(
+                f,
+                "PCS\t{}\trow exponent {}, policy {:?}, q_c/q_o {}/{}, k_t {}, k_q {}, {} opening(s); \
+                 tensor {}/|K| before 2^{}, column {}\tconjectural (RFC-0012 A15)",
+                s.name,
+                s.rows_log,
+                p.policy,
+                p.certificate_queries,
+                p.opening_queries,
+                p.tensor_grind_bits,
+                p.column_grind_bits,
+                s.openings,
+                s.tensor(),
+                p.tensor_grind_bits,
+                tenths(1024 * s.column_bits()),
+            )?;
+        }
+        for s in &self.pcs {
+            writeln!(
+                f,
+                "abort\tMaskRank {}\t{}/p\tcompleteness only",
+                s.name,
+                2 * d * u64::from(s.rows_log)
+            )?;
+        }
+        writeln!(
+            f,
+            "abort\tclaim-block rank, {} claims\t{}/p\tcompleteness only",
+            self.claims,
+            self.claims as u64 * d * u64::from(d.trailing_zeros())
+        )?;
+        writeln!(
+            f,
+            "abort\tZK-GKR block rank < {}, {} blocks\tnot bounded (RFC-0008 A7 item 4; R9)\tcompleteness only",
+            3 * d,
+            self.blocks
+        )?;
+        // RFC-0013 A5 item 4's |K| terms: κ = 0 (2 per claim); α = 0, w* = 0 and A4's
+        // ρ_n ∈ {0, 1/2} (3 per masked instance).
+        let instances = self.entries.iter().filter(|e| e.line == Line::Mask).count();
+        writeln!(
+            f,
+            "abort\tκ, α, w*, ρ_n, {} claims, {} instances\t{}/|K|\tcompleteness only",
+            self.claims,
+            instances,
+            2 * self.claims as u64 + 3 * instances as u64
+        )?;
+        if let Some(w) = self.worst() {
+            writeln!(
+                f,
+                "worst round\t{} {}\t{}\tgrinding {} bits",
+                w.line,
+                w.name,
+                tenths(w.bits),
+                w.grind
+            )?;
+        }
+        write!(
+            f,
+            "eps_interactive <= {}/p^4; FS unproven, PCS conjectural",
+            self.interactive()
+        )
+    }
 }
 
 fn dim<K: CodeField>() -> usize {
@@ -2847,6 +3100,11 @@ where
         return Err(shape);
     }
     let mut verified = Vec::new();
+    let mut ledger = Ledger {
+        degree: dim::<K>(),
+        blocks: plan.blocks,
+        ..Ledger::default()
+    };
     for (s, (bytes, certificate)) in proof.sources.iter().zip(&proof.certificates).enumerate() {
         let (id, (ell, m)) = if s < shared_index {
             (plan.source_id(s), (plan.layouts[s].ell, plan.layouts[s].m))
@@ -2869,6 +3127,16 @@ where
                 .map_err(|f| Error::Pcs(f.cause))?
                 .0,
         );
+        ledger.pcs.push(PcsSource {
+            name: if s < shared_index {
+                alloc::format!("source {s}")
+            } else {
+                "shared mask source".to_string()
+            },
+            rows_log: expected.rows().trailing_zeros() as u8,
+            parameters: expected.parameters(),
+            openings: usize::from(s == shared_index || plan.batched.contains(&s)),
+        });
     }
     let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
     let early = plan.early();
@@ -2880,6 +3148,10 @@ where
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
         runs.push(lookup::Run::new(beta, alpha));
+        let (lu, zd) = lp.lu();
+        let name = alloc::format!("check {l}");
+        ledger.add(Line::Lu, &name, lu, lu + zd);
+        ledger.add(Line::Zd, &name, zd, lu + zd);
     }
     t.absorb(AbsorbLabel::FieldSources, &proof.sources[early..].concat())
         .map_err(fail)?;
@@ -2896,6 +3168,11 @@ where
         let i = step_instance(step, &gammas);
         let result = masked::verify_degree(&i, step.degree, relation, binding, t)
             .map_err(Error::Sumcheck)?;
+        let name = alloc::format!("relation {j}");
+        let (g, d) = (gammas.len() as u64, free.len() as u64);
+        ledger.add(Line::Rlc, &name, g, g + d);
+        ledger.add(Line::Sz, &name, d, g + d);
+        ledger.masked(&name, &result);
         let point = &result.reduction.point;
         let finals = &relation.final_values;
         public_finals(step, point, &free, finals)?;
@@ -2915,6 +3192,12 @@ where
         let i = instance(step.id, step.num_vars, terms, claimed);
         let result = masked::verify_degree(&i, step.degree, sumcheck, binding, t)
             .map_err(Error::Sumcheck)?;
+        let name = alloc::format!("check {} step {g}", step.lookup_index());
+        // `r` and `λ` share a run, as `t*` and the next step's `λ` do (counted here).
+        let (r, line) = step.draws();
+        ledger.add(Line::Sz, &name, r, r + 2);
+        ledger.add(Line::Rlc, &name, line, r + 2);
+        ledger.masked(&name, &result);
         let point = &result.reduction.point;
         let finals = lookup::finals(&plan, step, run, point, &sumcheck.final_values)?;
         for (source, claim) in finals.claims.iter().cloned() {
@@ -2936,6 +3219,11 @@ where
             binding,
             t,
         )?;
+        let name = alloc::format!("batch source {source}");
+        let count = claims[*source].len() as u64;
+        ledger.claims += claims[*source].len();
+        ledger.add(Line::Rlc, &name, count, count);
+        ledger.masked(&name, &result);
         mus.push(mask_claim(
             &plan,
             index,
@@ -2949,7 +3237,22 @@ where
     let source = shared.record().source();
     let gammas = coefficients(t, mus.len())?;
     let i = batch_instance(plan.shared_batch_id(), source, &mus, &gammas);
-    let (reduction, record) = verify_with(&i, &proof.shared, t, plan.policy())?;
+    let (reduction, record, mask_source) = verify_with(&i, &proof.shared, t, plan.policy())?;
+    let name = "shared batch";
+    ledger.add(Line::Rlc, name, mus.len() as u64, mus.len() as u64);
+    ledger.add(
+        Line::Sc,
+        name,
+        reduction.sc.numerator,
+        u64::from(reduction.sc.degree),
+    );
+    ledger.add(Line::Mask, name, 1, 1);
+    ledger.pcs.push(PcsSource {
+        name: "shared batch mask source".to_string(),
+        rows_log: mask_source.rows().trailing_zeros() as u8,
+        parameters: mask_source.parameters(),
+        openings: 1,
+    });
     let point = &reduction.point;
     if reduction.claims[0].1 != expected_weight(source, &mus, &gammas, point)? {
         return Err(Error::Sumcheck(
@@ -2972,6 +3275,7 @@ where
         masks: records,
         lookups: runs.iter().map(|r| [r.beta, r.alpha]).collect(),
         draws: all_draws,
+        ledger,
     })
 }
 
@@ -3209,6 +3513,18 @@ where
 mod tests {
     use super::*;
     use stele_field::{Field, QM31};
+
+    /// E12-26: the ledger's integer log2 and its round security, rounded toward the
+    /// larger error; the eight-layer byte-4 LU and witness tensor rounds.
+    #[test]
+    fn matches_reference_ledger_bits() {
+        let logs = [1, 2, 3, 1 << 40, 12_648_447].map(log2_1024);
+        assert_eq!(logs, [0, 1024, 1623, 40 * 1024, 24158]);
+        assert_eq!(bits(12_648_447, 0), 102_817);
+        assert_eq!(tenths(bits(12_648_447, 0)), "2^-100.4");
+        assert_eq!(tenths(bits(1_310_720, 5)), "2^-108.6");
+        assert_eq!(tenths(108 * 1024), "2^-108.0");
+    }
 
     /// RFC-0013 A8 item 2: the balanced shapes of `research/zk-sources/zkgeom.py`'s
     /// model (2^12 → ell 3, 2^19 → ell 7, 2^24 → ell 9; the lifetime source at P = 8
