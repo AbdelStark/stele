@@ -56,16 +56,25 @@ A real checkpoint (llama2.c `stories42M`, 64 tokens) proves in 474 s and verifie
 128-thread host ([ledger](bench/ledger/e16-20-dev-stories110m.json)). Proof bytes are the same on every host and
 thread count measured ([scoreboard](bench/scoreboard.md)).
 
-The `dev-zk` profile (`--zk`) proves a synthetic window in zero knowledge at the development tier. The
-weights and norm gains are hidden behind one published model commitment, which serves up to `P` proofs,
-except for the declared leaks (shapes, linkability, proof order). There is no dev-zk soundness ledger yet (E12-26). The
-zero knowledge is conditional and computational, and there is no security level
+The `dev-zk` profile (`--zk`) proves a window in zero knowledge at the development tier. The int8 weight
+codes and the norm gains are hidden behind one published model commitment, which serves up to `P` proofs.
+The zero knowledge is conditional and computational, and there is no security level
 ([RFC‑0013 A5 admission](docs/rfcs/RFC-0013-zero-knowledge.md), [how to run](docs/development-e2e.md#dev-zk-tasks-e12-14b-e12-25-e12-27-e12-14)).
-The eight-layer synthetic window proves in 420 s and verifies in 55 s with a 142 MB proof on a 16-thread
-laptop, one run ([ledger](bench/ledger/e12-14-synthetic-8layer-zk-admission-mac.json)).
+- **Not hidden:** the model's shapes and per-row quantisation scales (the public Scales file), the tokens and every
+  checked greedy choice (on stories42M, all 9 at positions 23..31, not only `y`), the plan, the proof index, and
+  linkability under one commitment.
+- **Synthetic window:** the eight-layer window proves in 27 s with a 6.4 MB proof
+  ([ledger](bench/ledger/e12-28-dev-zk-synthetic-8layer-mac.json)).
+- **Real checkpoint:** llama2.c `stories42M` (T = 32, profile byte 4) proves in 593 s (median of three) and verifies
+  in 33 s. The proof is 21.4 MB, and the prover peaks at 30–34 GB RSS on a 16-thread laptop
+  ([ledger](bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json); RFC‑0013 A9, Draft). stories42M is a public
+  checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
+- **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
+  conjectural).
 
 **Does not exist yet.** A security level (the development profile claims none), zero knowledge at a security
-level, a dev-zk proof of a real checkpoint, a GPU prover,
+level, a dev-zk proof of a real checkpoint at T = 64 (it did not fit a 48 GB host) or of any model other than
+stories42M, a GPU prover,
 the `no_std` verifier crate, a passport, a proof of Llama‑3.1‑8B.
 
 **What is solid underneath.** Fields, transcript, Merkle, sumcheck, lookup, encoder and commitment primitives

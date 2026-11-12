@@ -168,8 +168,68 @@ gains (RFC-0013 A6, A7). Each process ran once, on a host shared with other buil
 - Proof 1 verified too, and a pin to another model digest was refused.
 
 `bench/dev_e2e.py --zk` writes the record from the directory of those runs:
-`commit.out` and `commit.time`, `model.commit`, proof 0 under the names above,
-`verify1.out` and `pin.out`.
+`commit.out` and `commit.time`, `model.commit`, one proof under the names above (its
+index, read from `verify.out`, is recorded), `verify1.out` and `pin.out`.
+
+### dev-zk on stories42M (task E12-29, RFC-0013 A9, Draft)
+
+The real `stories42M` checkpoint proves under dev-zk byte 4 at `T = 32`, from the same
+prepared files as the development runs below, with the E16-11 prompt checked `23..32`.
+The claim, its limits and its leaks:
+- **What the proof shows.**
+  - Some int8 weights and norm gains under the published commitment, together with
+    the public Model, Scales and Preparation bytes, produce all 9 checked greedy
+    choices at positions 23..31: the 8 generated tokens 24..31 (chosen at positions
+    23..30), and `y = 2654` (chosen at position 31).
+  - The proof reveals nothing more about the weight codes and gains than RFC-0013 A9
+    lists.
+  - The zero knowledge is conditional and computational: masks come from seeds, and
+    proofs are limited to the lifetime of `P = 8`.
+  - There is no security level.
+- **What is not hidden.**
+  - The Model, Scales and Preparation bytes. These include every per-row quantisation
+    scale, which is chosen from the weights and so leaks each row's magnitude.
+  - `T`, the tokens, the checked range and `y`.
+  - Every shape and the plan.
+  - Whether a proof could be produced, and the time and proof size.
+  - `P`, the proof index and linkability under one commitment.
+- **A public checkpoint.** stories42M is public; it shows the mechanics and the costs. A
+  real deployment must not publish hashes of the hidden weights (`artifact_sha256` and
+  `model_sha256` in the ledger would identify them).
+- **Measured** (`bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json`; M4 Max 48 GB,
+  other agents on the host):
+
+  | Step | Wall time | Peak RSS |
+  |---|---:|---:|
+  | `commit-model --zk` (P = 8) | 66.0 s | 31.7 GB |
+  | `prove-dev --zk` (median of three, indices 0–2) | 592.7 s | 30.5 GB (34.0 GB max) |
+  | `verify-dev --expect-model` | 32.7 s | 17.7 GB |
+
+  Each proof is 21,411,006 bytes.
+- **Soundness ledger** (`verify-dev`):
+  - `eps_interactive <= 731241032/p^4`;
+  - worst round `LU+ZD check 5`, the `2^27`-position `range_8` weight range check, at
+    `2^-95.4`, ungrinded;
+  - every PCS round is `<= 2^-108`.
+- **What it took.** A ZK-GKR check tree may now hold `2^30` positions. It was refused
+  above `2^23` before.
+- **Limits.**
+  - `T = 64` did not fit the 48 GB laptop: the prove was killed at about 31 GB RSS,
+    twice.
+  - The privacy tests and the tamper controls run on the synthetic windows only.
+
+```sh
+P=$D/prepared   # the E16-11 prepared files
+F="--model $P/model.bin --preparation $P/preparation.bin --scales $P/scales.bin --artifact $P/artifact.bin"
+target/release/stele commit-model --zk $F --length 32 --proofs 8 \
+  --commitment $P/zk.commit --secret $P/zk.secret | tee commit.out
+target/release/stele prove-dev --zk $F \
+  --tokens 1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889 \
+  --length 32 --checked 23..32 --commitment $P/zk.commit --secret $P/zk.secret \
+  --public $P/zk-public.bin --proof $P/zk-proof.bin
+target/release/stele verify-dev --public $P/zk-public.bin --proof $P/zk-proof.bin \
+  --expect-model "$(grep '^model ' commit.out | cut -d' ' -f2)"
+```
 
 ## A real model: llama2.c `stories42M` (task E16-11)
 

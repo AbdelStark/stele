@@ -2755,6 +2755,25 @@ tasks:
   - byte-4 dev-zk proofs on balanced Policy 2 sources, byte 1 still verified; pinned proofs, χ² privacy tests and the eight-layer bare-evaluation test on byte 4
   - controls for a hiding-source grind mismatch, a cross-byte model commitment and a wrong profile byte
   - eight-layer ledger, byte 1 against byte 4, three runs each at the same commit (byte 1 through commit-model --zk-profile 1)
+- id: E12-29
+  epic: E12
+  title: dev-zk byte 4 on the real stories42M checkpoint (commit, prove, verify, measured and soundness ledgers)
+  depends:
+  - E12-28
+  - E12-26
+  rfc:
+  - RFC-0013 A9
+  - RFC-0013 A5
+  - RFC-0008 A7
+  skill: soundness-auditor
+  crate: stele-reductions+bench
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-29-dev-zk-stories42m
+  acceptance:
+  - blockers for real checkpoints under dev-zk found and written down; the ones within accepted design fixed in code with a boundary test
+  - commit-model --zk, prove-dev --zk and verify-dev on stories42M; size, prove, verify and peak RSS in bench/ledger with the soundness ledger's worst round
+  - RFC-0013 amendment (A9, Draft) with the hiding re-check; README and docs/development-e2e.md state the real-checkpoint claim and its declared leaks
 - id: E12-26
   epic: E12
   title: dev-zk soundness ledger from the verifier (SC, MASK, ZD, LU and PCS lines per instance and source)
@@ -2766,7 +2785,7 @@ tasks:
   - RFC-0012
   skill: soundness-auditor
   crate: stele-reductions+stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-26-dev-zk-soundness-ledger
   acceptance:

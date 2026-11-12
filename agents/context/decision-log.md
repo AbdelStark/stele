@@ -3182,3 +3182,53 @@ Consequences:
 Status: Accepted (development tier) with RFC-0026 A13. Independent review: MERGE at
 4bff268; non-blocking follow-ups: RFC-0030 pair-round cap, `study.py --check` pins for
 the grind receipts and worst round.
+
+## ADR-117: dev-zk byte 4 on a real checkpoint, llama2.c stories42M at T = 32 (RFC-0013 A9, task E12-29)
+
+Context: dev-zk was admitted for the synthetic windows only (RFC-0013 A5 Admission,
+ADR-109). E12-29 aims at a zero-knowledge proof of a real stories42M prefill window, with
+`commit-model --zk`, `prove-dev --zk`, `verify-dev`, a measured ledger and a soundness
+ledger.
+
+Decision:
+- **Blocker found and fixed: the ZK-GKR check-tree cap.** `zk_lookup::plan_lookup`
+  refused a check above `2^23` positions, a limit with no RFC text. stories42M's weight
+  range check (`range_8`) has `2^27`.
+  - The cap is now `2^30` (RFC-0026 A3's `m ≤ 30`; `N < p` per RFC-0012 A8).
+  - Columns stay at most `2^24` entries.
+  - A boundary test is added.
+  - No proof byte of any existing window changes.
+- **Not blockers.** Weight import, the A7 gains, the norm and attention relations, and
+  the lifetime budget (`P = 8`).
+- **Memory.** `T = 64` does not fit a 48 GB host: the prove was killed at about 31 GB
+  RSS with heavy paging, twice. The Vast.ai account had no credit for a larger host,
+  so this change measures `T = 32` (the E16-11 prompt, checked `23..32`).
+- **RFC-0013 A9 (Draft)** records the blockers, the hiding re-check at the stories42M
+  geometry (Lemma 1/2/6′ budgets, the rank aborts, the lifetime condition), the
+  declared leaks for a real model, and a proposed admission at `T ≤ 32`.
+  - The new real-model leak is the per-row quantisation scales in the public Scales
+    file.
+
+Measured (`bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json`; M4 Max 48 GB, shared host):
+- `commit-model --zk`: 66.0 s, 31.7 GB.
+- Three proofs (indices 0, 1, 2): 516.7, 592.7 and 658.1 s, median 592.7 s; peak RSS
+  30.5–34.0 GB.
+- `verify-dev`: 32.5–33.6 s, 17.7 GB.
+- 21,411,006 proof bytes each. Every proof verifies with `--expect-model`, and a wrong
+  pin is refused.
+- Soundness ledger: `ε_interactive ≤ 731,241,032/p^4`. The worst round is `range_8`'s
+  LU + ZD round, `2^-95.4`, ungrinded; every PCS round is `≤ 2^-108`.
+
+Consequences:
+- The README and `docs/development-e2e.md` state the real-checkpoint dev-zk claim with
+  its leaks and limits.
+- Open:
+  - `T = 64` on a host with at least 64 GB;
+  - the privacy tests on the real checkpoint;
+  - tamper controls on the real proof;
+  - prover memory.
+
+Status: Accepted (development tier) with RFC-0013 A9. Independent review: FIX-THEN-MERGE at
+491f111; fixes applied at bbe98f6. Open: T = 64 (prover memory), privacy tests and tampers
+on the real checkpoint.
+
