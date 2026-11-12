@@ -453,6 +453,37 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// E16-24 follow-up: a prepared hiding source's leaf salts are the salt stream read
+    /// leaf by leaf (`MaskStream::fill`, `salt` bytes each, in leaf order).
+    #[test]
+    fn matches_reference_sequential_leaf_salts() {
+        let (ell, m, id, seed) = (3u8, 9u8, 41u64, [9u8; 32]);
+        let x: Vec<M31> = (0..1usize << (ell + m))
+            .map(|i| M31::from_u64(i as u64 % 251))
+            .collect();
+        let message = crate::hiding_message(id, ell, m, &x, &seed).expect("message");
+        let prepared = PreparedSource::<stele_field::QM31>::hiding(
+            id,
+            ell,
+            m,
+            2,
+            &message,
+            &seed,
+            &mut HashUsage::default(),
+        )
+        .expect("prepare");
+        let salt = prepared.source.salt_len();
+        let width = usize::try_from(prepared.source.descriptor().width).expect("width");
+        assert!(salt > 0);
+        let mut stream = MaskStream::new(&seed, SOURCE_SALT, prepared.source.descriptor().id);
+        let mut expected = alloc::vec![0u8; salt];
+        for leaf in prepared.columns.chunks_exact(width) {
+            stream.fill(&mut expected);
+            assert_eq!(&leaf[..salt], expected.as_slice());
+        }
+    }
+
     #[test]
     fn rejects_preparation_allocation_sizes() {
         assert_eq!(checked_bytes::<u8>(usize::MAX), Err(Error::Capacity));

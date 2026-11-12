@@ -956,7 +956,8 @@ def field_source_codec(root):
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]']
                # RFC-0013 A8, E12-28: hiding_with, hiding_lifetime(_with), hiding_mask_with.
                + ['#[allow(clippy::too_many_arguments)]'] * 4 + [
-                '#[cfg(test)]', '#[test]']
+                # E16-24 review follow-up: the leaf-salt test reads the private leaves.
+                '#[cfg(test)]', '#[test]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
     producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)

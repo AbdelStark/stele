@@ -32,6 +32,13 @@ impl MaskStream {
     /// The raw bytes at absolute stream offset `position`, without advancing this
     /// stream: the bytes [`Self::fill`] yields after `position` bytes from the start.
     /// Disjoint ranges can be read concurrently (a prover's split; E16-24).
+    ///
+    /// # Security
+    ///
+    /// Each byte range of a stream is read at most once, by `fill_at` or by the
+    /// sequential reads, never both: a mask or salt used twice is no longer hidden
+    /// (RFC-0013 A2). Callers split one sequential read into disjoint ranges only.
+    #[doc(hidden)]
     pub fn fill_at(&self, position: u64, out: &mut [u8]) {
         let mut reader = self.reader.clone();
         reader.set_position(position);
