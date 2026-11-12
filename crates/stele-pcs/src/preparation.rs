@@ -400,13 +400,12 @@ mod tests {
     /// leaf by leaf (`MaskStream::fill`, `salt` bytes each, in leaf order).
     #[test]
     fn matches_reference_sequential_leaf_salts() {
-        use stele_field::QM31;
         let (ell, m, id, seed) = (3u8, 9u8, 41u64, [9u8; 32]);
         let x: Vec<M31> = (0..1usize << (ell + m))
             .map(|i| M31::from_u64(i as u64 % 251))
             .collect();
         let message = crate::hiding_message(id, ell, m, &x, &seed).expect("message");
-        let prepared = PreparedSource::<QM31>::hiding(
+        let prepared = PreparedSource::<stele_field::QM31>::hiding(
             id,
             ell,
             m,

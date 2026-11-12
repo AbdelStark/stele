@@ -953,7 +953,8 @@ def field_source_codec(root):
             'usestele_hash::{merkle,ChallengeField,HashUsage};', 'usesuper::*;']
         and [compact(text) for text in re.findall(r'#\[[^\]]*\]', prepared)]
             == ['#[derive(Clone,Copy,Debug,Default,Eq,PartialEq)]', '#[allow(clippy::too_many_arguments)]',
-                '#[cfg(test)]', '#[test]']
+                # E16-24 review follow-up: the leaf-salt test reads the private leaves.
+                '#[cfg(test)]', '#[test]', '#[test]']
         and not re.search(r'\b(?:include|include_str|include_bytes|macro_rules)\s*!', prepared))
     producer = re.sub(r'//[^\n]*', '', (crate / 'src/producer.rs').read_text())
     producer_declarations = re.findall(r'\bpub\s+(?:(fn|struct|enum|type|trait|mod|use|const|static)\s+)?(\w+)', producer)
