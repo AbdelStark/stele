@@ -175,12 +175,12 @@ def price(inv, family, profile):
 
 
 def lu_round_numerator(name, num):
-    """One (beta, alpha) round (Lemma 4): num for ranges (c=1); at most 2*num+1 for tables (c<=2).
+    """One (beta, alpha) round (Lemma 4): the recorded numerator itself.
 
-    Range checks (`range_*`, `range/...`) read one column (c=1, `Target::Range`); every other
-    check is charged as c=2, which over-charges a c=1 table and is therefore safe.
+    Since E16-32 (RFC-0026 A13) the verifier records c*(N+t)-1, A17 item 3's round numerator,
+    for every check; before it recorded N+c*t-1, exact only for c=1.
     """
-    return num if name.startswith('range') else 2 * num + 1
+    return num
 
 
 def rounds(inv, ledger, family, profile):

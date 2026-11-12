@@ -12,13 +12,13 @@ Rlc	identities/17	312/|K|
 Sc	identities/17	68/|K|
 Rlc	identities/21	13/|K|
 Sc	identities/21	84/|K|
-Lu	sign/8	1049087/|K|
+Lu	sign/8	2097663/|K|
 Rlc	sign/8	40/|K|
 Sc	sign/8	570/|K|
 Rlc	sign/8	16/|K|
 Sc	sign/8	84/|K|
 Sc	sign/8	60/|K|
-Lu	rsqrt_q	100351/|K|
+Lu	rsqrt_q	102399/|K|
 Rlc	rsqrt_q	22/|K|
 Sc	rsqrt_q	165/|K|
 Rlc	rsqrt_q	32/|K|
@@ -30,13 +30,13 @@ Sc	range/0..=126	273/|K|
 Rlc	range/0..=126	14/|K|
 Sc	range/0..=126	63/|K|
 Sc	range/0..=126	42/|K|
-Lu	exp_q/direct/[15, 7, 14]	327681/|K|
+Lu	exp_q/direct/[15, 7, 14]	589825/|K|
 Rlc	exp_q/direct/[15, 7, 14]	36/|K|
 Sc	exp_q/direct/[15, 7, 14]	459/|K|
 Rlc	exp_q/direct/[15, 7, 14]	32/|K|
 Sc	exp_q/direct/[15, 7, 14]	360/|K|
 Sc	exp_q/direct/[15, 7, 14]	54/|K|
-Lu	silu_q	1179647/|K|
+Lu	silu_q	2228223/|K|
 Rlc	silu_q	40/|K|
 Sc	silu_q	570/|K|
 Rlc	silu_q	32/|K|

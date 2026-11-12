@@ -7,7 +7,7 @@ use stele_ir::relation::{
     Values, Violation, Width,
 };
 use stele_pcs::{verify_certificate, PreparedSource, VerifiedCertificate};
-use stele_reductions::relation::{self, Error, Ledger, Proof};
+use stele_reductions::relation::{self, Error, Ledger, Line, Proof};
 
 const PUBLIC: &[u8] = b"stele/test/relation-engine";
 
@@ -547,6 +547,17 @@ fn accepts_combined_relation() {
     check(&f.rel, &f.values).expect("honest");
     let ledger = run(&f).expect("engine");
     assert!(ledger.interactive() > 0);
+    // RFC-0026 A13: each check's LU line is RFC-0012 A17 item 3's c·(2^m + t) − 1:
+    // `squares` (c = 2, 2^3 positions, 16 rows) is 47, not the recorded 8 + 2·16 − 1 = 39;
+    // `nonneg` (c = 1, 8 rows) is unchanged at 15.
+    let lu = |name: &str| {
+        ledger
+            .entries
+            .iter()
+            .find(|e| e.line == Line::Lu && e.name == name)
+            .map(|e| e.numerator)
+    };
+    assert_eq!((lu("squares"), lu("nonneg")), (Some(47), Some(15)));
     println!("{ledger}");
 }
 
