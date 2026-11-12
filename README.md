@@ -72,6 +72,8 @@ The zero knowledge is conditional and computational, and there is no security le
     ([ledger](bench/ledger/e16-33-dev-zk-stories42m-t64-mac.json)). Admission at T = 64 is RFC‑0013 A10
     (accepted, development tier). stories42M is a public
   checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
+  15 tampers of the real proof (every proof section and public field) are each rejected with their pinned error
+  (`bench/dev_zk_tamper.py`).
 - **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
   conjectural).
 

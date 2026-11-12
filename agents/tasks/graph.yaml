@@ -2773,6 +2773,22 @@ tasks:
   - reductions with identical proof bytes (every pin unchanged)
   - T = 32 peak footprint before and after, three runs each; stories42M T = 64 proved on the 48 GB host; ledgers in bench/ledger
   - RFC-0013 A10 (Draft) extends A9's admission to T <= 64, with the hiding re-check at that geometry
+- id: E12-30
+  epic: E12
+  title: dev-zk tamper suite on a stored real-checkpoint proof (verify only)
+  depends:
+  - E12-29
+  rfc:
+  - RFC-0013 A9
+  - RFC-0026 A9
+  skill: soundness-auditor
+  crate: bench
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-30-dev-zk-tamper-suite
+  acceptance:
+  - a script mutates a stored dev-zk proof and public file at offsets found by decoding them, one targeted mutation per major section and per public field, plus an unchanged control
+  - verify-dev rejects each with its exact pinned error on the stories42M T = 32 proof; results recorded in docs (closes the #348 review's F3, extra dev-zk tampers)
 - id: E12-29
   epic: E12
   title: dev-zk byte 4 on the real stories42M checkpoint (commit, prove, verify, measured and soundness ledgers)
