@@ -76,7 +76,7 @@ still printed, as information.
 | zerocheck | the `eq` point | `m/|K|` | RFC-0006 A3 |
 | claim or identity batch | one coefficient, `t` items | `(t−1)/|K|` | RFC-0006 A2 |
 | matmul point | `a` coordinates | `a/|K|` | RFC-0012 A14 |
-| lookup instance | unit, beta, alpha rounds | RFC-0012 A8 record, `(h + N + c·t − 1)/|K|` for the pair round | RFC-0008 A2, A5 |
+| lookup instance | unit, beta, alpha rounds | `h/|K|` for the units; `(c·(N + t) − 1)/|K|` for the pair round (RFC-0012 A17 item 3, `formal/fs-composition.md` Lemma 4; the A8 record `h + N + c·t − 1` is exact only for `c = 1`) | RFC-0008 A2, A5 |
 | lookup trees | each layer round | `3/|K|`; layer combination `1/|K|` | RFC-0008 A3 |
 | commitment, proximity round | tensor of `ℓ` coordinates, radius `e` | `2·ℓ·(e+1)/|K|` | RFC-0010 A3 item 6 |
 | commitment, query round | `q` columns | `((N−e−1)/N)^q` or `((N−D+e)/N)^q` | RFC-0010 A3 item 6 |
@@ -106,9 +106,16 @@ Consequences on QM31 (`|K| ≈ 2^124`), all enforced by plan validation:
 The cap is exact: a round with numerator `n` clears 100 bits when
 `n ≤ ⌊p^4 / 2^100⌋ = 2^24 − 1`.
 
-- **Lookup instances are capped.** `h + N + c·t − 1 ≤ 2^24 − 1`. The plan uses
-  instances of at most `2^23` positions with tables up to `2^16` rows. A larger check
-  is split by the plan. A second challenge pair (`r = 2`) is not required.
+- **Lookup instances are capped.** The pair round's `c·(N + t) − 1 ≤ 2^24 − 1`, that
+  is, `N + t ≤ 2^24` for `c = 1` and `N + t ≤ 2^23` for `c = 2`.
+  - The plan uses `c = 1` instances of at most `2^23` positions with tables up to
+    `2^16` rows.
+  - It uses `c = 2` instances of at most `2^22` positions with tables up to `2^16`
+    rows. `2^23` positions with any table breaks the `c = 2` cap.
+  - A larger check is split by the plan. A second challenge pair (`r = 2`) is not
+    required.
+  - `research/fs-pcs/study.py --check` asserts the cap at its boundaries. No plan
+    validator enforces it yet (E21-04).
 - **Splitting has a price in bytes.** With independent instances (RFC-0026 A8) each
   instance carries its own tree proofs, tens of kilobytes by RFC-0008 A3's lengths, so
   a proof with thousands of instances spends tens of megabytes on them. The form

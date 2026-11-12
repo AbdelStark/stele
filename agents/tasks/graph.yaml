@@ -4020,6 +4020,24 @@ tasks:
   - the least round at 128 bits or more from proven bounds; zero knowledge covering batches
   - a machine-checked top-level soundness statement; an external audit with no open critical finding
   - two independent verifiers agree on 10000 proofs
+- id: E21-10
+  epic: E21
+  title: RFC-0030 lookup cap on the A17 pair-round numerator c·(N + t) − 1, and study receipts asserted
+  depends:
+  - E16-32
+  rfc:
+  - RFC-0030 §2
+  - RFC-0030 §3
+  - RFC-0012 A17
+  skill: soundness-auditor
+  crate: research
+  status: in_progress
+  agent: claude-code
+  branch: task/E21-10-lu-cap
+  acceptance:
+  - RFC-0030 (Draft) uses c·(N + t) − 1 for the pair round and caps c = 2 checks at N + t ≤ 2^23 (≤ 2^22 positions with a 2^16-row table)
+  - the cap is asserted at its boundaries for c = 1 and c = 2 (study.py --check); no plan validator enforces it yet (E21-04)
+  - study.py --check asserts the grind receipts and that LU range_8 is the worst Policy 1 round
 - id: E21-09
   epic: E21
   title: Promote the lean protocol to standard

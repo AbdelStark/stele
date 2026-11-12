@@ -164,7 +164,7 @@ below the profile.
 | treaty | at least 128 | proven only | mandatory | a wider field for every challenge (a QM31 sumcheck round is 2^-122); E12-03 decides which |
 
 100 bits on QM31 has a price in proof bytes, in two places. A lookup check must be
-split into instances of at most 2^23 positions; with independent instances a large
+split into instances of at most 2^23 positions (2^22 for two-column checks); with independent instances a large
 proof would carry tens of megabytes of tree proofs, so the instances must share
 challenges and one tree reduction (Q49, task E20-09). A commitment row must be
 short; a large witness then has many rows and megabytes of opened columns unless the
