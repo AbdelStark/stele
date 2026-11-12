@@ -3173,7 +3173,12 @@ Consequences:
 - RFC-0026 A11's and A12's statement "the worst round is still the ungrinded LU round"
   holds. The largest corrected table round, `silu_q`, is about `2^-102.9`, below
   `range_8`'s `2^-97.0`.
-- Open, outside this task: RFC-0030's lookup row and `lookup_records.rs` (the
-  standard and treaty A11 records) still state `h + N + c·t − 1` for the pair round.
+- Open, outside this task: RFC-0030 (Draft) lines 79 and 109 still state
+  `h + N + c·t − 1` for the pair round and cap it at `2^24 − 1`; at `c = 2`, `N = 2^23`,
+  `t = 2^16` the A17 numerator exceeds that cap. `lookup_records.rs` is an interactive-only
+  record (`weighted-logup.md` §2), not a Fiat–Shamir bound, and needs no change; the
+  standard profile's LU grinding (`lu_grind_bits`) already uses `c·(N + t) − 1`.
 
-Status: Proposed (development tier), pending independent review.
+Status: Accepted (development tier) with RFC-0026 A13. Independent review: MERGE at
+4bff268; non-blocking follow-ups: RFC-0030 pair-round cap, `study.py --check` pins for
+the grind receipts and worst round.
