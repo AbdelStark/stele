@@ -12,10 +12,10 @@ commitment time (measured in its own process) as stage `model_commitment`.
       --model-config config.json --host-context "<host>" [--rung L1] [--counters extra.json]
 
 `--zk` reads a dev-zk run against one published model commitment (RFC-0013 A6, A7):
-`commit.out` and `commit.time` from `stele commit-model --zk`, `model.commit`, the
-proof-0 files under the names above, `verify1.out` (proof 1 against the same
-commitment, `--expect-model`) and `pin.out` (proof 1 pinned to another model digest,
-the one control). It records the commitment as stage `model_commitment_once`, not part
+`commit.out` and `commit.time` from `stele commit-model --zk`, `model.commit`, one
+proof's files under the names above (its index, from `verify.out`, is recorded),
+`verify1.out` (another proof against the same commitment, `--expect-model`) and
+`pin.out` (a proof pinned to another model digest, the one control). It records the commitment as stage `model_commitment_once`, not part
 of the prove time. `controls.log` is not read.
 
 `--rung` names the ladder rung of RFC-0027 §3 and is written to `model_config.rung`
@@ -113,7 +113,8 @@ def main():
         # RFC-0013 A8: the public file names the profile byte (v2 is byte 4).
         byte = 4 if public.startswith(b'stele-dev-zk-public-v2') else 1
         plan.update(command='stele commit-model --zk / prove-dev --zk / verify-dev --expect-model',
-                    profile_byte=byte, proofs=proofs, proof_index=0)
+                    profile_byte=byte, proofs=proofs,
+                    proof_index=int(re.search(r'^proof index (\d+) of', (run / 'verify.out').read_text(), re.M).group(1)))
         extra_counters = {'commit_peak_rss_bytes': commit_rss,
                           'model_commitment_bytes': (run / 'model.commit').stat().st_size}
     if a.rung:
