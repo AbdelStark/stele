@@ -86,6 +86,10 @@ pub enum Line {
     Sc,
     Sz,
     Lu,
+    /// dev-zk only: a lookup leaf's zero denominator (RFC-0008 A7, E12-19 notes).
+    Zd,
+    /// dev-zk only: a masked sumcheck's `α` (RFC-0013 A2/A4).
+    Mask,
 }
 /// One interactive error term `numerator / |K|`, `|K| = p^4`.
 #[derive(Clone, Debug, PartialEq, Eq)]

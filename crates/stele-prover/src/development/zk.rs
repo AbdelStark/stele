@@ -309,7 +309,8 @@ fn budget() -> Error {
     ))
 }
 
-/// What an accepted dev-zk proof leaves: the masked instances it verified.
+/// What an accepted dev-zk proof leaves: the masked instances it verified and its
+/// soundness ledger (E12-26).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Verified {
     /// Relation instances (identities per domain size, contractions, top identities).
@@ -320,15 +321,18 @@ pub struct Verified {
     pub batches: usize,
     /// Proof bytes.
     pub bytes: usize,
+    /// The verifier-derived RFC-0026 §6-style ledger (RFC-0013 A5, RFC-0008 A7).
+    pub ledger: claims::Ledger,
 }
 
 impl core::fmt::Display for Verified {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
+        writeln!(
             f,
             "dev-zk: {} relation instances, {} GKR steps, {} batches, {} proof bytes",
             self.relations, self.gkr, self.batches, self.bytes
-        )
+        )?;
+        write!(f, "{}", self.ledger)
     }
 }
 
@@ -801,5 +805,6 @@ pub fn verify(
         gkr: decoded.gkr.len(),
         batches: verified.reductions.len() - decoded.relations.len() - decoded.gkr.len(),
         bytes: proof.len(),
+        ledger: verified.ledger,
     })
 }

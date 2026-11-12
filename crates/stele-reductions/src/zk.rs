@@ -250,16 +250,17 @@ pub fn verify<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    verify_with(i, proof, t, Policy::One)
+    verify_with(i, proof, t, Policy::One).map(|(r, m, _)| (r, m))
 }
 
-/// [`verify`] with the mask source expected under `policy` (RFC-0013 A8).
+/// [`verify`] with the mask source expected under `policy` (RFC-0013 A8); also
+/// returns that source, for the dev-zk ledger's PCS terms.
 fn verify_with<K: ChallengeField + CodeField + Eq>(
     i: &Instance<K>,
     proof: &Proof<K>,
     t: &mut Transcript<K>,
     policy: Policy,
-) -> Result<(Reduction<K>, MaskRecord), Error>
+) -> Result<(Reduction<K>, MaskRecord, Source<K>), Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -288,5 +289,5 @@ where
         &proof.opening,
     )
     .map_err(|f| Error::Pcs(f.cause))?;
-    Ok((result.reduction, result.mask))
+    Ok((result.reduction, result.mask, expected))
 }

@@ -125,8 +125,13 @@ zero knowledge is conditional and computational.
 - Public, not hidden: the Model, Scales and Preparation bytes, the 1-D records'
   lengths and formats (their values, the norm gains, are committed weights under
   RFC-0013 A7), the shapes, the plan, `T`, the tokens, `[r, e)` and `y`.
-- `verify-dev` reports counts of instances, steps and batches, not a soundness
-  ledger (task E12-26).
+- `verify-dev` reports counts of instances, steps and batches. It then prints the
+  verifier's dev-zk soundness ledger (E12-26): one line per term, then the PCS
+  terms of each hiding source (conjectural), the producer aborts (completeness
+  only), the worst round and `eps_interactive`. The lines are listed in
+  `docs/security/soundness-accounting.md`. On the eight-layer window the worst
+  round is a check's LU + ZD round at byte 4 (`2^-100.4`), and the witness source's
+  Policy 1 tensor round at byte 1 (`2^-98.9`).
 
 ```sh
 target/release/stele commit-model --zk \

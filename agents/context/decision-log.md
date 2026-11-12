@@ -3082,3 +3082,52 @@ at 2e56537; implementation FIX-THEN-MERGE at afe2fc0 (6,421,222-byte proof and b
 reproduced, native green, decode_zk byte-check and Policy::One-downgrade mutations caught);
 all fixes applied at 02008a0.
 
+## ADR-115: dev-zk soundness ledger from the verifier, and the dev-zk worst round (RFC-0013 A5, RFC-0008 A7, task E12-26)
+
+Context: `verify-dev` printed only counts for dev-zk proofs (RFC-0013 A5, E12-14b notes).
+RFC-0013 A8 item 4 left open which round of a dev-zk proof is the worst. RFC-0026 A11
+and A12 state, for development proofs, that the worst round stays the ungrinded LU
+round.
+
+Decision:
+- The dev-zk verifier (`zk::claims::verify_lifetime`) builds a `Ledger` while it
+  replays the proof. `verify-dev` prints it, in the RFC-0026 §6 format.
+- It uses only existing lines. `relation::Line` gains `Zd` and `Mask` for RFC-0008
+  A7's ZD and RFC-0013 A2's MASK; development ledgers never emit them.
+  - RLC: identity coefficients, batch coefficients, ZK-GKR `λ`/`t*`.
+  - SZ: `τ`, `ρ` and the first ZK-GKR `r`.
+  - SC: each masked instance's record at its declared degree.
+  - MASK: 1 per masked instance.
+  - LU: `2^n + c·t − 1` and ZD `2^{n+1}·c` per check.
+- PCS terms per hiding source, from the verifier-derived parameters: the tensor
+  round `2·ell·(e + 1)/|K|` over `2^k_t`, and the column rounds at the policy's
+  target plus `k_q`. They are printed as conjectural and not summed.
+- Producer aborts from RFC-0013 A5 item 4 are printed as completeness terms over `p`,
+  not summed: MaskRank `2D·(ell + 1)/p` per source, and claim-block rank `D·c_D/p`
+  per claim.
+- Rounds follow RFC-0012 A17: a maximal run of challenges, with the draws that share
+  a run summed. The ledger prints the round with the largest error after grinding.
+  Logs are integer (1/1024 bit), rounded toward the larger error.
+
+Findings (the E12-28 eight-layer proofs; the one-layer window in the pinned tests):
+- Byte 4: the worst round is one check's ungrinded LU + ZD round, `2^-100.4` (one layer
+  `2^-105.1`). Every PCS round is `≤ 2^-108`. This confirms the RFC-0026 claim for
+  dev-zk byte 4. ZD is about twice LU in that round.
+- Byte 1: the worst round is the narrow witness source's ungrinded Policy 1 tensor
+  round, `2^25/|K| ≈ 2^-98.9` (one layer `2^-103.9`). It is ahead of the LU + ZD round
+  (`2^-100.4`). The claim is refuted for byte 1. This matches RFC-0008 A8's note that
+  Policy 1 tensor rounds can fail (C1).
+- `eps_interactive·|K|`: 57,269,604 (byte 4) and 57,269,606 (byte 1) on eight layers.
+  The only difference is the shared batch's SC record, 38 against 40: its source
+  geometry gives it one round fewer at byte 4.
+
+Consequences:
+- No byte, label, loss form or order changes. Proof bytes and pins are unchanged.
+- The tests pin `eps_interactive` on both windows and bytes, and the worst-round line
+  per byte.
+- No level is claimed. (C1)–(C4) are still not checked for dev-zk, and FS stays
+  unproven (Q12).
+- New byte-1 commitments are opt-in (`--zk-profile 1`); byte 4 is the default.
+
+Status: Proposed (development tier), pending independent review.
+

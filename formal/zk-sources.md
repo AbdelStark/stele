@@ -74,7 +74,10 @@ of sources).
 4. **No level is claimed.** As RFC-0026 A11 item 4: Policy 2 is a size and speed
    choice; each grinded PCS round is `≤ 2^-108` (A14 item 5) instead of `≤ 2^-130`,
    and nothing is summed into a level. Which round is the dev-zk proof's worst is to be
-   confirmed by E12-26's dev-zk ledger.
+   confirmed by E12-26's dev-zk ledger. E12-26 confirmed it for byte 4: the worst
+   round is an ungrinded LU + ZD round (`2^-100.4` on the eight-layer window). For byte
+   1 it is the witness source's ungrinded Policy 1 tensor round (`2^-98.9`)
+   (`docs/security/soundness-accounting.md`, dev-zk inventory).
 5. **Tensor grinding.** `k_t` uses the source's row exponent `ell + 1` (RFC-0010 A15
    item 1) in A14 item 4; `k_t = 5` at `ell = 9`.
 
