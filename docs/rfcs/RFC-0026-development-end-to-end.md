@@ -992,7 +992,9 @@ is rejected by the receiving instance's root equation (`RootMismatch`).
   - **Profile tag.** §4 step 1's public input gains one byte, `profile`: 0 for
     development, 1 for dev-zk. The verifier derives the statement from it and
     rejects a mismatch with `StatementMismatch`. The byte is part of the
-    canonical public input, so it is bound before any challenge.
+    canonical public input, so it is bound before any challenge. Values defined
+    later: 2 (A11), 3 (A12), and 4, dev-zk on balanced policy-2 hiding sources
+    (RFC-0013 A8, Draft).
   - **Padding.** Every relation domain with fewer than 3 variables (4 for OM31,
     `c_D + 1` in general) is padded with dummy summed variables before its
     zerocheck, lookup or range. Columns are read by broadcast. Lookup and range

@@ -10,6 +10,8 @@ use stele_prover::development::{
 use stele_reductions::relation::Sources;
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{Model, Preparation, Scales};
+use stele_reductions::stele_field::QM31;
+use stele_reductions::stele_pcs::{Policy, Source};
 
 const RAW: &[u8] = include_bytes!("fixtures/synthetic-e2e.bin");
 const JSON: &str = include_str!("fixtures/synthetic-e2e.json");
@@ -653,7 +655,13 @@ fn matches_reference_zk_claim_census_eight_layer() {
 /// RFC-0013 A5, RFC-0026 A9 (E12-14b): one window proven under dev-zk through the
 /// development orchestrator and verified by the dev-zk verifier; the profile byte
 /// is bound by the transcript (a development-profile transcript rejects).
-fn zk_window(name: &str, t: usize) -> u64 {
+fn zk_window(name: &str, t: usize, profile: u8) -> u64 {
+    zk_window_sources(name, t, profile).0
+}
+
+/// [`zk_window`] and each source's `(ell, policy)` from the proof's source bytes, in
+/// proof order: claim sources, then the shared source (RFC-0013 A8 item 2).
+fn zk_window_sources(name: &str, t: usize, profile: u8) -> (u64, Vec<(u32, Policy)>) {
     use stele_prover::development::zk;
     let case = load(name);
     let statement = greedy(&mut case.executor(&case.artifact), t);
@@ -674,6 +682,7 @@ fn zk_window(name: &str, t: usize) -> u64 {
         t,
         2,
         [7; 32],
+        profile,
     )
     .expect("commit");
     let public = Public {
@@ -707,7 +716,7 @@ fn zk_window(name: &str, t: usize) -> u64 {
     let bytes = bundle::encode_zk(&public, &statement, &commitment, index);
     assert_eq!(
         bundle::decode_profile(&bytes).expect("bundle"),
-        (public.clone(), statement.clone(), zk::PROFILE)
+        (public.clone(), statement.clone(), profile)
     );
     assert_eq!(
         bundle::decode_zk(&bytes).expect("bundle"),
@@ -756,6 +765,7 @@ fn zk_window(name: &str, t: usize) -> u64 {
     // RFC-0013 A6 (review F1): a wrong secret (another model seed) rebuilds other
     // masks; the producer refuses before any transcript work.
     let wrong = zk::ModelState {
+        profile,
         seed: [8; 32],
         next: state.next + 1,
         revealed: state.revealed.clone(),
@@ -797,18 +807,102 @@ fn zk_window(name: &str, t: usize) -> u64 {
     }
     // Every seed above is fixed, so the proof is too: identity check across
     // prover-side changes (INV-8, E16-24).
-    eprintln!("dev-zk {name}: proof fnv {:016x}", fnv(&proof));
-    fnv(&proof)
+    // RFC-0013 A8 item 1: a state of the other byte never proves against this
+    // commitment; nothing is taken or persisted.
+    let mut other = zk::ModelState {
+        profile: if profile == zk::PROFILE {
+            zk::PROFILE_BALANCED
+        } else {
+            zk::PROFILE
+        },
+        ..state.clone()
+    };
+    assert_eq!(other.take(&commitment), Err(Error::StatementMismatch));
+    assert_eq!(
+        zk::prove(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &statement,
+            zk::Seed::new([45; 32]),
+            &commitment,
+            &other,
+            state.next,
+        )
+        .err(),
+        Some(Error::StatementMismatch)
+    );
+    let decoded =
+        stele_reductions::zk::claims::decode::<QM31>(&proof[b"stele-dev-zk-v1".len() + 64..])
+            .expect("claims proof");
+    let sources: Vec<(u32, Policy)> = decoded
+        .sources
+        .iter()
+        .map(|bytes| {
+            let source = Source::<QM31>::from_bytes(bytes).expect("source");
+            (
+                source.rows().trailing_zeros() - 1,
+                source.parameters().policy,
+            )
+        })
+        .collect();
+    eprintln!(
+        "dev-zk {name} byte {profile}: proof fnv {:016x}, {} bytes, sources (ell, policy) {sources:?}",
+        fnv(&proof),
+        proof.len()
+    );
+    (fnv(&proof), sources)
 }
 
 #[test]
 fn accepts_one_layer_window_under_dev_zk() {
-    assert_eq!(zk_window("one-layer", 4), 0x5127_0022_790c_94fc);
+    assert_eq!(
+        zk_window("one-layer", 4, stele_prover::development::zk::PROFILE),
+        0x5127_0022_790c_94fc
+    );
+}
+
+/// RFC-0013 A8: the one-layer window on byte-4 sources, every one policy 2.
+#[test]
+fn accepts_one_layer_window_under_dev_zk_balanced() {
+    let (hash, sources) = zk_window_sources(
+        "one-layer",
+        4,
+        stele_prover::development::zk::PROFILE_BALANCED,
+    );
+    assert!(sources.iter().all(|(_, p)| *p == Policy::Two));
+    assert_eq!(hash, 0x31c2_47c4_ebd8_7325);
+}
+
+/// RFC-0013 A8 on the E16-10 acceptance window: the balanced shapes are A8 item 2's
+/// (witness `ell = 9`, weights `7`, top `3`, shared `6`), so the claim layouts run at
+/// `ell ∈ {3, 7, 9}` and the shared layout above `2D` rows; release build only.
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn accepts_eight_layer_window_under_dev_zk_balanced() {
+    let (hash, sources) = zk_window_sources(
+        "eight-layer",
+        64,
+        stele_prover::development::zk::PROFILE_BALANCED,
+    );
+    assert_eq!(
+        sources,
+        vec![
+            (9, Policy::Two),
+            (7, Policy::Two),
+            (3, Policy::Two),
+            (6, Policy::Two)
+        ]
+    );
+    assert_eq!(hash, 0x3a27_f281_868d_803b);
 }
 
 /// The E16-10 acceptance window under dev-zk; release build only.
 #[test]
 #[ignore = "8 layers at T=64: run with --release -- --ignored"]
 fn accepts_eight_layer_window_under_dev_zk() {
-    assert_eq!(zk_window("eight-layer", 64), 0x1ae4_d78e_9daa_dc92);
+    assert_eq!(
+        zk_window("eight-layer", 64, stele_prover::development::zk::PROFILE),
+        0x1ae4_d78e_9daa_dc92
+    );
 }

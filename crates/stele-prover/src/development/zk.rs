@@ -38,17 +38,51 @@ use stele_reductions::zk::claims::{Lifetime, ModelSecret};
 pub use stele_reductions::zk::Seed;
 use stele_reductions::zk::{claims, relation as zk_relation};
 
-/// The RFC-0026 A9 profile byte of dev-zk.
+/// The RFC-0026 A9 profile byte of dev-zk on A5/A6/A7 sources.
 pub const PROFILE: u8 = 1;
+/// The profile byte of dev-zk on RFC-0013 A8's balanced policy-2 sources.
+pub const PROFILE_BALANCED: u8 = 4;
 
 const MAGIC: &[u8] = b"stele-dev-zk-v1";
 const MODEL_MAGIC: &[u8] = b"stele-dev-zk-model-v1";
+/// RFC-0013 A8: a byte-4 commitment, `u8(4)` after the magic.
+const MODEL_MAGIC_V2: &[u8] = b"stele-dev-zk-model-v2";
 const STATE_MAGIC: &[u8] = b"stele-dev-zk-model-secret-v1";
+/// RFC-0013 A8: a byte-4 secret state, `u8(4)` after the magic.
+const STATE_MAGIC_V2: &[u8] = b"stele-dev-zk-model-secret-v2";
+
+/// The magic of a commitment or state file of `profile` (`v1` for byte 1, `v2`
+/// followed by the byte for byte 4), and the body that follows it.
+fn profile_body<'a>(bytes: &'a [u8], v1: &[u8], v2: &[u8]) -> Result<(u8, &'a [u8]), Error> {
+    if let Some(body) = bytes.strip_prefix(v2) {
+        return match body.split_first() {
+            Some((&PROFILE_BALANCED, rest)) => Ok((PROFILE_BALANCED, rest)),
+            _ => Err(Error::StatementMismatch),
+        };
+    }
+    Ok((
+        PROFILE,
+        bytes.strip_prefix(v1).ok_or(Error::StatementMismatch)?,
+    ))
+}
+
+fn profile_magic(profile: u8, v1: &[u8], v2: &[u8]) -> Vec<u8> {
+    match profile {
+        PROFILE_BALANCED => {
+            let mut out = v2.to_vec();
+            out.push(PROFILE_BALANCED);
+            out
+        }
+        _ => v1.to_vec(),
+    }
+}
 const DIGEST_TAG: &[u8] = b"stele/v0.1/dev-zk/model";
 
 /// The published dev-zk model commitment (RFC-0013 A6).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModelCommitment {
+    /// The profile byte its proofs carry: [`PROFILE`] or [`PROFILE_BALANCED`].
+    pub profile: u8,
     /// The lifetime weight source's root.
     pub root: [u8; 32],
     /// The proof budget `P`.
@@ -66,9 +100,10 @@ fn u32_at(bytes: &[u8], at: &mut usize) -> Result<u32, Error> {
 }
 
 impl ModelCommitment {
-    /// Canonical bytes: magic, root, `P`, `length`, the block count and each block.
+    /// Canonical bytes: magic (with the byte under byte 4), root, `P`, `length`, the
+    /// block count and each block. A byte-1 commitment keeps its `v1` bytes.
     pub fn encode(&self) -> Vec<u8> {
-        let mut out = MODEL_MAGIC.to_vec();
+        let mut out = profile_magic(self.profile, MODEL_MAGIC, MODEL_MAGIC_V2);
         out.extend_from_slice(&self.root);
         for x in [self.proofs, self.length, self.blocks.len() as u32] {
             out.extend_from_slice(&x.to_le_bytes());
@@ -81,9 +116,7 @@ impl ModelCommitment {
 
     /// Parse [`Self::encode`]'s bytes; anything else is `StatementMismatch`.
     pub fn decode(bytes: &[u8]) -> Result<Self, Error> {
-        let body = bytes
-            .strip_prefix(MODEL_MAGIC)
-            .ok_or(Error::StatementMismatch)?;
+        let (profile, body) = profile_body(bytes, MODEL_MAGIC, MODEL_MAGIC_V2)?;
         let mut root = [0; 32];
         root.copy_from_slice(body.get(..32).ok_or(Error::StatementMismatch)?);
         let mut at = 32;
@@ -97,6 +130,7 @@ impl ModelCommitment {
             .map(|_| u32_at(body, &mut at))
             .collect::<Result<_, _>>()?;
         Ok(Self {
+            profile,
             root,
             proofs,
             blocks,
@@ -104,8 +138,17 @@ impl ModelCommitment {
         })
     }
 
+    /// The source set its proofs use (RFC-0013 A8).
+    pub fn geometry(&self) -> claims::Geometry {
+        match self.profile {
+            PROFILE_BALANCED => claims::Geometry::Balanced,
+            _ => claims::Geometry::Narrow,
+        }
+    }
+
     fn lifetime(&self, index: u32) -> Lifetime {
         Lifetime {
+            geometry: self.geometry(),
             source: zk_relation::WEIGHTS,
             proofs: self.proofs as usize,
             index: index as usize,
@@ -117,6 +160,8 @@ impl ModelCommitment {
 /// The model owner's secret state (RFC-0013 A6): never published.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ModelState {
+    /// The profile byte of the commitment it was made with (RFC-0013 A8 item 1).
+    pub profile: u8,
     /// The model seed the weight source was committed from.
     pub seed: [u8; 32],
     /// The next proof index.
@@ -128,7 +173,7 @@ pub struct ModelState {
 impl ModelState {
     /// Canonical bytes: magic, seed, `next`, then each revealed vector (count, values).
     pub fn encode(&self) -> Vec<u8> {
-        let mut out = STATE_MAGIC.to_vec();
+        let mut out = profile_magic(self.profile, STATE_MAGIC, STATE_MAGIC_V2);
         out.extend_from_slice(&self.seed);
         out.extend_from_slice(&self.next.to_le_bytes());
         out.extend_from_slice(&(self.revealed.len() as u32).to_le_bytes());
@@ -143,9 +188,7 @@ impl ModelState {
 
     /// Parse [`Self::encode`]'s bytes.
     pub fn decode(bytes: &[u8]) -> Result<Self, Error> {
-        let body = bytes
-            .strip_prefix(STATE_MAGIC)
-            .ok_or(Error::StatementMismatch)?;
+        let (profile, body) = profile_body(bytes, STATE_MAGIC, STATE_MAGIC_V2)?;
         let mut seed = [0; 32];
         seed.copy_from_slice(body.get(..32).ok_or(Error::StatementMismatch)?);
         let mut at = 32;
@@ -167,6 +210,7 @@ impl ModelState {
             return Err(Error::StatementMismatch);
         }
         Ok(Self {
+            profile,
             seed,
             next,
             revealed,
@@ -178,6 +222,10 @@ impl ModelState {
     /// (`MaskBudget`), and so it does when earlier openings are missing from the
     /// state (an index taken but its opening never recorded).
     pub fn take(&mut self, commitment: &ModelCommitment) -> Result<u32, Error> {
+        // RFC-0013 A8 item 1: a state of another byte never builds this byte's sources.
+        if self.profile != commitment.profile {
+            return Err(Error::StatementMismatch);
+        }
         if self.next >= commitment.proofs || self.revealed.len() != self.next as usize {
             return Err(budget());
         }
@@ -193,6 +241,8 @@ pub enum Window<'a> {
     Commit {
         proofs: u32,
         seed: [u8; 32],
+        /// [`PROFILE`] or [`PROFILE_BALANCED`]; the seed must be fresh for it.
+        profile: u8,
         out: &'a mut Option<(ModelCommitment, ModelState)>,
     },
     /// [`prove_next`]: the next index of `state`, persisted through `persist`; the
@@ -290,7 +340,7 @@ pub fn public_input(
     index: u32,
 ) -> Vec<u8> {
     let mut out = development_input(public, cqis_id, statement);
-    out.push(PROFILE);
+    out.push(commitment.profile);
     out.extend_from_slice(&index.to_le_bytes());
     out.extend_from_slice(&commitment.encode());
     out
@@ -572,9 +622,14 @@ pub fn commit(
     length: usize,
     proofs: u32,
     seed: [u8; 32],
+    profile: u8,
 ) -> Result<(ModelCommitment, ModelState), Error> {
     // RFC-0026 A11: dev-zk uses its hiding sources; an A11 source set is rejected.
-    if proofs == 0 || length == 0 || public.sources != relation::Sources::Expander {
+    if proofs == 0
+        || length == 0
+        || public.sources != relation::Sources::Expander
+        || !matches!(profile, PROFILE | PROFILE_BALANCED)
+    {
         return Err(Error::StatementMismatch);
     }
     let reference = Statement {
@@ -589,6 +644,7 @@ pub fn commit(
     let (relation, values) = window_values(&public, executor, weights, &reference, false)?;
     let blocks = zk_relation::weight_blocks(&relation).map_err(engine)?;
     let mut commitment = ModelCommitment {
+        profile,
         root: [0; 32],
         proofs,
         blocks: blocks.iter().map(|b| *b as u32).collect(),
@@ -604,6 +660,7 @@ pub fn commit(
     Ok((
         commitment,
         ModelState {
+            profile,
             seed,
             next: 0,
             revealed: Vec::new(),
@@ -628,6 +685,9 @@ pub fn prove(
 ) -> Result<(Vec<u8>, Vec<K>), Error> {
     if public.sources != relation::Sources::Expander {
         return Err(Error::StatementMismatch); // RFC-0026 A11: not a dev-zk input.
+    }
+    if state.profile != commitment.profile {
+        return Err(Error::StatementMismatch); // RFC-0013 A8 item 1.
     }
     if index >= commitment.proofs
         || index >= state.next
@@ -675,7 +735,13 @@ pub fn statement_digest_for(
     let d = decode(public)?;
     let relation_zk = zk_relation_of(public, statement)?;
     let input = match profile {
-        PROFILE => public_input(public, &d.cqis_id, statement, commitment, index),
+        PROFILE | PROFILE_BALANCED => {
+            let commitment = ModelCommitment {
+                profile,
+                ..commitment.clone()
+            };
+            public_input(public, &d.cqis_id, statement, &commitment, index)
+        }
         _ => development_input(public, &d.cqis_id, statement),
     };
     Ok(statement_digest(&input, &relation::digest(&relation_zk)))

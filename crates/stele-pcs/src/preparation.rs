@@ -133,8 +133,23 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         seed: &[u8; 32],
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
-        let source = Source::<K>::hiding(id, ell, m, blowup, [0; 32])?;
-        let rebuild = |root| Source::hiding(id, ell, m, blowup, root);
+        Self::hiding_with(id, ell, m, blowup, message, seed, usage, Policy::One)
+    }
+
+    /// [`Self::hiding`] under `policy` ([`Source::hiding_with`], RFC-0013 A8).
+    #[allow(clippy::too_many_arguments)]
+    pub fn hiding_with(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+        policy: Policy,
+    ) -> Result<Self, Error> {
+        let source = Source::<K>::hiding_with(id, ell, m, blowup, [0; 32], policy)?;
+        let rebuild = |root| Source::hiding_with(id, ell, m, blowup, root, policy);
         Self::prepare(source, rebuild, message, Some(seed), usage)
     }
 
@@ -160,7 +175,35 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         budget: usize,
         revealed: Vec<Vec<K>>,
     ) -> Result<Self, Error> {
-        let mut prepared = Self::hiding(id, ell, m, blowup, message, seed, usage)?;
+        Self::hiding_lifetime_with(
+            id,
+            ell,
+            m,
+            blowup,
+            message,
+            seed,
+            usage,
+            budget,
+            revealed,
+            Policy::One,
+        )
+    }
+
+    /// [`Self::hiding_lifetime`] under `policy` (RFC-0013 A8).
+    #[allow(clippy::too_many_arguments)]
+    pub fn hiding_lifetime_with(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+        budget: usize,
+        revealed: Vec<Vec<K>>,
+        policy: Policy,
+    ) -> Result<Self, Error> {
+        let mut prepared = Self::hiding_with(id, ell, m, blowup, message, seed, usage, policy)?;
         if !prepared.source.admits_lifetime(budget) {
             return Err(Error::UnsupportedSource);
         }
@@ -199,10 +242,25 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         seed: &[u8; 32],
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
+        Self::hiding_mask_with(id, ell, m, blowup, message, seed, usage, Policy::One)
+    }
+
+    /// [`Self::hiding_mask`] under `policy` (RFC-0013 A8).
+    #[allow(clippy::too_many_arguments)]
+    pub fn hiding_mask_with(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        message: &'a [M31],
+        seed: &[u8; 32],
+        usage: &mut HashUsage,
+        policy: Policy,
+    ) -> Result<Self, Error> {
         if (1usize << ell) != 2 * K::DEGREE {
             return Err(Error::UnsupportedSource);
         }
-        let mut prepared = Self::hiding(id, ell, m, blowup, message, seed, usage)?;
+        let mut prepared = Self::hiding_with(id, ell, m, blowup, message, seed, usage, policy)?;
         prepared.mask_polynomial = true;
         Ok(prepared)
     }

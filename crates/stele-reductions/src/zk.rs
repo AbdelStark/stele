@@ -11,8 +11,8 @@ use alloc::vec::Vec;
 use stele_field::{Serialize, M31};
 use stele_hash::{ChallengeField, HashUsage, Transcript};
 use stele_pcs::{
-    hiding_message, verify_certificate, verify_opening, CodeField, Functional, PreparedSource,
-    Source,
+    hiding_message, verify_certificate, verify_opening, CodeField, Functional, Policy,
+    PreparedSource, Source,
 };
 use stele_sumcheck::masked::{self, Mask, MaskRecord};
 use stele_sumcheck::{Instance, Reduction, Summand};
@@ -156,16 +156,18 @@ pub fn prove<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    prove_at(i, summand, &seed.0, t).map(|(proof, _)| proof)
+    prove_at(i, summand, &seed.0, t, Policy::One).map(|(proof, _)| proof)
 }
 
 /// [`prove`] on borrowed seed bytes, also returning `ρ`; the A5 batch of the
-/// shared mask source opens that source at `ρ` (RFC-0013 A5 item 5a).
+/// shared mask source opens that source at `ρ` (RFC-0013 A5 item 5a). The mask
+/// source takes `policy` (RFC-0013 A8: policy 2 under profile byte 4).
 fn prove_at<K: ChallengeField + CodeField + Eq>(
     i: &Instance<K>,
     summand: impl Summand<K>,
     seed: &[u8; 32],
     t: &mut Transcript<K>,
+    policy: Policy,
 ) -> Result<(Proof<K>, Vec<K>), Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
@@ -190,7 +192,7 @@ where
         }
     }
     let message = hiding_message(i.id, ell, m, &data, seed).map_err(Error::Pcs)?;
-    let prepared = PreparedSource::<K>::hiding_mask(
+    let prepared = PreparedSource::<K>::hiding_mask_with(
         i.id,
         ell,
         m,
@@ -198,6 +200,7 @@ where
         &message,
         seed,
         &mut HashUsage::default(),
+        policy,
     )
     .map_err(Error::Pcs)?;
     let certificate = prepared.certificate().map_err(|f| Error::Pcs(f.cause))?.0;
@@ -247,10 +250,24 @@ pub fn verify<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    verify_with(i, proof, t, Policy::One)
+}
+
+/// [`verify`] with the mask source expected under `policy` (RFC-0013 A8).
+fn verify_with<K: ChallengeField + CodeField + Eq>(
+    i: &Instance<K>,
+    proof: &Proof<K>,
+    t: &mut Transcript<K>,
+    policy: Policy,
+) -> Result<(Reduction<K>, MaskRecord), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let degree = masked::degree(i).map_err(Error::Sumcheck)?;
     let (ell, m) = layout(i, degree)?;
     let source = Source::<K>::from_bytes(&proof.source).map_err(Error::Pcs)?;
-    let expected = Source::<K>::hiding(i.id, ell, m, BLOWUP, source.root()).map_err(Error::Pcs)?;
+    let expected = Source::<K>::hiding_with(i.id, ell, m, BLOWUP, source.root(), policy)
+        .map_err(Error::Pcs)?;
     if expected.bytes() != source.bytes() {
         return Err(Error::MaskSource);
     }

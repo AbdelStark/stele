@@ -180,9 +180,12 @@ fn window(o: &BTreeMap<&str, &str>) -> Result<Statement, Failure> {
 fn commit_model(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
     let length = number(get(o, "length")?)?;
     let mut out = None;
+    // RFC-0013 A8: new commitments are byte 4 (balanced policy-2 sources), from a
+    // fresh model seed; byte-1 commitments keep proving and verifying.
     let window = zk::Window::Commit {
         proofs: number(get(o, "proofs")?)?,
         seed: os_bytes()?,
+        profile: zk::PROFILE_BALANCED,
         out: &mut out,
     };
     let statement = Statement {
@@ -299,7 +302,7 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
     let (public, statement, profile) = bundle::decode_profile(&bytes).map_err(reject)?;
     let proof = read(get(o, "proof")?)?;
     let (cqis_id, development_model) = model_identity(&public).map_err(reject)?;
-    let zk = if profile == zk::PROFILE {
+    let zk = if matches!(profile, zk::PROFILE | zk::PROFILE_BALANCED) {
         let (_, _, commitment, index) = bundle::decode_zk(&bytes).map_err(reject)?;
         Some((commitment, index))
     } else {
@@ -308,6 +311,7 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
     let model = match &zk {
         Some((commitment, index)) => {
             println!("profile dev-zk");
+            println!("zk sources {:?}", commitment.geometry());
             println!("proof index {index} of {}", commitment.proofs);
             zk::model_digest(&public, commitment).map_err(reject)?
         }

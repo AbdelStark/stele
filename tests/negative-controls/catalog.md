@@ -171,9 +171,9 @@
 | NC-0936 | dev-zk gain encoding sign range | 0013 A7, 0026 A2 | σH = 1 on a non-negative H1, flipH and H1low made consistent: the 7-bit range of H1low = H1 + 128σH, its Σ h = 0 sent unchecked | `RoundSumMismatch` | done |
 | NC-0937 | dev-zk gain padding | 0013 A7, 0026 A2 | a nonzero committed H0 past the model width d; the gain identities sent unchecked | `RoundSumMismatch` | done |
 | NC-0938 | dev-zk gain encoding sign identity | 0013 A7, 0026 A2 | σH = 1 and flipH = −1 on a non-negative H1 with H1low = H1 (in range, flip identity holding); the gain identities sent with honest rounds and the true μ, unchecked | `RoundSumMismatch` | done |
-| NC-0939 | dev-zk hiding source column nonce | 0013 A8, 0010 A14 | one byte of a byte-4 hiding source's column-round nonce changed | `GrindMismatch` | todo |
-| NC-0940 | dev-zk model commitment profile byte | 0013 A8 | a byte-1 model commitment presented with a byte-4 proof | `StatementMismatch` | todo |
-| NC-0941 | dev-zk profile byte 4 | 0013 A8, 0026 A9 | a byte-4 proof verified with the byte-1 public input | `StatementMismatch` | todo |
+| NC-0939 | dev-zk hiding source column nonce | 0013 A8, 0010 A14 | one byte of a byte-4 hiding source's column-round nonce changed | `GrindMismatch` | done |
+| NC-0940 | dev-zk model commitment profile byte | 0013 A8 | a byte-1 model commitment presented with a byte-4 proof | `StatementMismatch` | done |
+| NC-0941 | dev-zk profile byte 4 | 0013 A8, 0026 A9 | a byte-4 proof verified with the byte-1 public input | `StatementMismatch` | done |
 | NC-1000–1002 | GPU | 0014 §7 | see RFC | | todo |
 | NC-1100–1101 | distributed | 0015 §7 | see RFC | | todo |
 | NC-1200–1203 | verifier/wrapper | 0016 §7 | see RFC | | todo |
