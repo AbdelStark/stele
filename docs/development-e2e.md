@@ -171,7 +171,12 @@ gains (RFC-0013 A6, A7). Each process ran once, on a host shared with other buil
 `commit.out` and `commit.time`, `model.commit`, one proof under the names above (its
 index, read from `verify.out`, is recorded), `verify1.out` and `pin.out`.
 
-### dev-zk on stories42M (task E12-29, RFC-0013 A9, Draft)
+### dev-zk on stories42M (task E12-29, RFC-0013 A9; `T = 64`: task E16-33, A10, Draft)
+
+Since E16-33, `T = 64` (checked `23..64`, `y = 376`) also proves on the 48 GB laptop:
+prove 923.1 s, verify 46.5 s, 25,667,970 bytes (memory note below). Its admission is
+RFC-0013 A10, still a Draft. At `T = 64` a proof shows all 41 greedy choices at
+positions 23..63.
 
 The real `stories42M` checkpoint proves under dev-zk byte 4 at `T = 32`, from the same
 prepared files as the development runs below, with the E16-11 prompt checked `23..32`.
@@ -214,8 +219,8 @@ The claim, its limits and its leaks:
 - **What it took.** A ZK-GKR check tree may now hold `2^30` positions. It was refused
   above `2^23` before.
 - **Limits.**
-  - `T = 64` did not fit the 48 GB laptop: the prove was killed at about 31 GB RSS,
-    twice.
+  - Before E16-33, `T = 64` did not fit the 48 GB laptop: the prove was killed at
+    about 31 GB RSS, twice. It proves since E16-33 (above).
   - The privacy tests and the tamper controls run on the synthetic windows only.
 
 ```sh

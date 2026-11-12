@@ -3275,3 +3275,25 @@ Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.js
 Status: Accepted (performance only; no protocol, byte or admission change). RFC-0013 A10
 (Draft, ADR-119) carries the `T = 64` admission separately.
 
+## ADR-119: dev-zk admission on stories42M extended to T ≤ 64 (RFC-0013 A10, task E16-33)
+
+Context: RFC-0013 A9 (ADR-117) admitted stories42M at `T ≤ 32`, because `T = 64` did
+not fit the 48 GB host. ADR-118 lowered the prover's peak memory without changing a
+byte. `T = 64` now proves and verifies there, three proofs under one commitment.
+Shipping a measured `T = 64` proof outside the admission would overstate it.
+
+Decision: RFC-0013 A10 (Draft) extends A9's admission to `T ≤ 64`.
+- The hiding re-check is re-instantiated from the `T = 64` verify output:
+  - the witness source has `C = 2^17`, the weight source `C = 2^16`, both with
+    `R = 2^11` data rows;
+  - 314 queries per proof and 958 over the lifetime, against `C − 1`;
+  - `R ≥ 2D` and `R ≥ (P + 1)·D`;
+  - the MaskRank, claim-block and `|K|` abort terms; the GKR block abort is unbounded,
+    completeness only.
+- The worst round (`range_8`, LU + ZD, `2^-95.4`) and `ε_interactive ≤
+  1,058,031,463/p^4` are recorded.
+- The leaks list now names the 41 public greedy choices.
+- No byte, label, round or control is added.
+
+Status: Proposed (development tier), pending independent review.
+
