@@ -992,3 +992,80 @@ before, now plan.
 cap.
 
 Affected tasks: E12-29. Promotion to `standard`: not granted (Workflow 10).
+
+### A10 — dev-zk on stories42M at `T ≤ 64` (byte 4)
+
+Status: Accepted (development tier) with ADR-119. Independent review: FIX-THEN-MERGE at
+9930b11 (columns read from the proof's source descriptors, Lemma 1 and 2 budgets, abort
+terms, the 1,058,031,463 sum and the 2^-95.4 worst round recomputed; fixes applied).
+Task: E16-33. Decision: ADR-119.
+
+**Motivation.** A9 admits stories42M at `T ≤ 32` because `T = 64` did not fit the
+48 GB evaluation host. E16-33 (ADR-118) cut the prover's peak memory with no change
+to any byte. `T = 64` now proves and verifies on that host (three proofs under one
+commitment). This amendment extends A9's admission to that window. Nothing else
+changes.
+
+**Hiding re-check at the `T = 64` geometry** (byte 4, `P = 8`; from `verify-dev`'s
+ledger on the three proofs):
+- **Sources.** All five are Policy 2, `q_c/q_o = 222/92`:
+
+  | Source | Row exponent | Columns |
+  |---|---|---|
+  | witness | 12 (`R = 2^11` data rows) | `C = 2^17` (`e + 1 = 2^18`) |
+  | weight (lifetime) | 12 (`R = 2^11`) | `C = 2^16` (`e + 1 = 2^17`) |
+  | top | 4 | `C ≥ 2^9` (A2's `MIN_M`) |
+  | shared | 7 | `C ≥ 2^9` |
+  | A4 batch | 4 | `C ≥ 2^9` |
+
+  At `T = 32` the witness was `C = 2^16`; the larger window doubles its columns.
+- **Lemma 1:**
+  - per proof, `q_c + q_o = 314 ≤ C − 1` for every source (`C ≥ 2^9`);
+  - over the weight source's lifetime, `q_c + P·q_o = 958 ≤ 2^16 − 1`, which the
+    verifier checks (`admits_lifetime`).
+- **Lemma 2.** The per-proof sources need `R ≥ 2D = 8`, and the lifetime source needs
+  `R ≥ (P + 1)·D = 36`. Both hold with `R = 2^11`. The rank checks passed in all three
+  proofs.
+- **Aborts** (completeness only):
+  - MaskRank `2D·(ell + 1)/p = 96/p` per large source;
+  - claim-block rank `105,736/p` over 13,217 claims;
+  - the `|K|` terms `30,277/|K|` (1,281 masked instances);
+  - 766 ZK-GKR layer blocks, whose `3D` rank abort is not bounded (R9) and shows only
+    in whether a proof is produced.
+- **No new lemma.** A2, A5, A6, A8 and A9 are instantiated with these parameters.
+
+**What is not hidden.** A9's list, at `T = 64`: the 40 generated tokens and `y = 376`.
+That is all 41 greedy choices at positions 23..63 on the public window, every one of
+them in the statement.
+
+**Soundness.** The existing lines apply, with `N ≤ 2^30 < p` as in A9. No round, label
+or challenge is added. `verify-dev`'s ledger gives `ε_interactive ≤
+1,058,031,463/p^4`. The worst round is `range_8`'s ungrinded LU + ZD round, `2^-95.4`,
+the same check as at `T = 32`. Every PCS round is `≤ 2^-108`.
+
+**Exact replacement** for A9's replacement of A5 **Admission**'s "What it does not claim"
+item:
+
+> A real checkpoint beyond llama2.c `stories42M` at `T ≤ 64` under byte 4 (A9, A10).
+> The evidence covers the synthetic one- and eight-layer windows and that checkpoint
+> at `T = 32` and `T = 64` only.
+
+A9's Admission is extended to `T ≤ 64` by this amendment; A9's text is unchanged.
+
+**Cells, lookups, bytes.**
+- No proof byte changes: every pin is the same, and ADR-118 is a prover-memory change
+  only.
+- `bench/ledger/e16-33-dev-zk-stories42m-t64-mac.json`, median of three on an M4 Max
+  48 GB, shared host:
+  - commit 95.4 s;
+  - prove 923.1 s, peak footprint 107.1 GB (median), max RSS 33.6 GB;
+  - verify 46.5 s;
+  - 25,667,970 proof bytes in every run.
+
+**Controls.** None new. The three proofs verify with `--expect-model`, and a pin to
+another model digest is refused.
+
+**Not covered.** A9's list, except that `T = 64` has now run. The χ² tests, the
+bare-evaluation test and tampers beyond `--expect-model` were not run at `T = 64`.
+
+Affected tasks: E16-33. Promotion to `standard`: not granted (Workflow 10).

@@ -36,6 +36,9 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | L2a | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 196.96 | 0.325 | 11.06 | 113.4 | 26.2 | — | — | — | none | 4/4 | [e16-30-dev-stories42m-mac-before](ledger/e16-30-dev-stories42m-mac-before.json) @ `276b2c0` |
 | L2a | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 157.34 | 0.407 | 6.30 | 15.6 | 28.6 | — | — | — | none | 4/4 | [e16-31-dev-stories42m-mac-after](ledger/e16-31-dev-stories42m-mac-after.json) @ `8ae605d` |
 | L2a | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 174.32 | 0.367 | 6.31 | 18.3 | 27.6 | — | — | — | none | 4/4 | [e16-31-dev-stories42m-mac-before](ledger/e16-31-dev-stories42m-mac-before.json) @ `fe77a02` |
+| L2a | development (dev-zk, A8 sources) | arm64 Apple M4 Max (16 hardware threads) | 16 | 518.54 | 0.062 | 32.28 | 21.4 | 29.6 | — | — | — | none | 1/1 | [e16-33-dev-zk-stories42m-t32-mac-after](ledger/e16-33-dev-zk-stories42m-t32-mac-after.json) @ `a87e071` |
+| L2a | development (dev-zk, A8 sources) | arm64 Apple M4 Max (16 hardware threads) | 16 | 591.18 | 0.054 | 33.97 | 21.4 | 29.6 | — | — | — | none | 1/1 | [e16-33-dev-zk-stories42m-t32-mac-before](ledger/e16-33-dev-zk-stories42m-t32-mac-before.json) @ `6978d3f` |
+| L2a | development (dev-zk, A8 sources) | arm64 Apple M4 Max (16 hardware threads) | 16 | 923.11 | 0.069 | 46.26 | 25.7 | 33.6 | — | — | — | none | 1/1 | [e16-33-dev-zk-stories42m-t64-mac](ledger/e16-33-dev-zk-stories42m-t64-mac.json) @ `a87e071` |
 | L2c | development | x86_64 AMD EPYC 7532 32-Core Processor | 128 | 1978.97 | 0.032 | 69.36 | 126.8 | 109.7 | — | — | — | none | 4/4 | [e16-20-dev-stories110m](ledger/e16-20-dev-stories110m.json) @ `445c9b0` |
 
 Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
