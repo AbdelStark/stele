@@ -4334,7 +4334,7 @@ tasks:
   - RFC-0026 §7
   skill: sumcheck-prover-engineer
   crate: stele-reductions+stele-pcs+stele-sumcheck+stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-24-dev-zk-prover-perf
   acceptance:

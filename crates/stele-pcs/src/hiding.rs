@@ -253,12 +253,32 @@ mod tests {
                 assert_eq!(out, expected, "len {len}, chunk {chunk}");
             }
         }
-        let stream = MaskStream::new(&[9; 32], SOURCE_MASK, 77);
-        let mut sequential = MaskStream::new(&[9; 32], SOURCE_MASK, 77);
-        let expected: alloc::vec::Vec<M31> = (0..5000).map(|_| sequential.m31()).collect();
-        let mut out = vec![M31::ZERO; 5000];
-        draws_from(&|p, b| stream.fill_at(p, b), &mut out, 333).expect("draws");
-        assert_eq!(out, expected);
+        // The real path: `hiding_message` (through `draws`, 2^20 words per chunk) against
+        // the sequential layout, `Rm` row-major then the mask rows, from `m31()`. With
+        // R·C = 2^19 the 3·2^19 draws cross a chunk boundary.
+        let (ell, m) = (9u8, 10u8);
+        let (rows, columns) = (1usize << ell, 1usize << m);
+        let data: alloc::vec::Vec<M31> = (0..rows * columns)
+            .map(|i| M31::from_u64((i as u64 * 7919) % 2_147_483_647))
+            .collect();
+        let seed = [9; 32];
+        let mut sequential = MaskStream::new(&seed, SOURCE_MASK, 77);
+        let mut expected = vec![M31::ZERO; 4 * data.len()];
+        for (row, x) in data.chunks_exact(columns).enumerate() {
+            let target = &mut expected[row * 2 * columns..(row + 1) * 2 * columns];
+            target[..columns].copy_from_slice(x);
+            for value in &mut target[columns..] {
+                *value = sequential.m31();
+            }
+        }
+        for value in &mut expected[rows * 2 * columns..] {
+            *value = sequential.m31();
+        }
+        let message = hiding_message(77, ell, m, &data, &seed).expect("message");
+        assert!(
+            message == expected,
+            "hiding_message differs from sequential draws"
+        );
     }
 
     #[test]
