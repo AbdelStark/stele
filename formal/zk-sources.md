@@ -1,6 +1,6 @@
 # dev-zk sources: balanced geometry and Policy 2 (design note, task E12-28)
 
-Status: design note for RFC-0013 A8 (Proposed). Nothing here is implemented. It reads
+Status: design note for RFC-0013 A8 (Draft; review of the first draft applied). Nothing here is implemented. It reads
 `formal/zk-development.md` (§3, Lemmas 1–3), RFC-0013 A2, A5 and A6, RFC-0010 A14/A15,
 RFC-0026 A9 and A11, and RFC-0012 A17.
 
@@ -30,7 +30,8 @@ RFC-0026 A11's development sources is the following:
 2. **Policy.** Hiding sources resolve RFC-0010 A3 Policy 1, with `q_c/q_o = 314/130`
    at `b = 2`. A14's Policy 2 needs 222/92 there, with 16-bit column grinding.
 
-The geometry is the 20× lever; Policy 2 adds about 1 MB.
+The geometry is the 20× lever. On top of it, Policy 2 saves about 1 MB more (6.3 → 5.3 MB
+of sources).
 
 ## 2. Proposal
 
@@ -38,8 +39,23 @@ The geometry is the 20× lever; Policy 2 adds about 1 MB.
    - Each claim source of `2^S` data entries takes the `ell` that minimises its bytes
      `(1 + J)·16·2C + (q_c + J·q_o)·(4·2R + 32·log2 N + 32)`, with `R = 2^ell`,
      `C = 2^(S−ell)` and `N = 8C`. `J` is the number of openings per proof: 1.
-   - It does so subject to §3's constraints; ties take the smallest `ell`.
+   - It does so subject to §3's constraints; ties take the smallest `ell`. If no `ell`
+     is admissible, commit and plan refuse with `Statement`.
    - The verifier derives `ell` from the statement as today; no proof byte chooses it.
+   - **Claim-source layout at any `ell`.** Columns and their blocks stay one linear
+     sequence of data positions, as under byte 1. A claim is a dense linear functional
+     over those positions: A5 item 5 sums the claims' weights into one table over the
+     data face and reduces it with one masked sumcheck to one point opening. So no
+     column needs row alignment, and the packing does not depend on `ell`.
+   - **The shared source** is a claim source under this rule. Its data face is one
+     linear sequence of `R·C` positions:
+     - limb `d` of the plain masks occupies `[d·L, (d + 1)·L)`, with `L` the total
+       plain-mask width (relations, GKR steps, batches, in order);
+     - the `4D`-entry layer blocks follow from position `D·L`.
+
+     Byte 1's layout is the case `L = C`: limb `d` in data row `d`, blocks from row
+     `D`. Byte 1 keeps it.
+   - Tests pin the claim and shared layouts at `ell ∈ {3, 7, 9}`.
 2. **Policy 2 on every dev-zk source.** Claim, lifetime, shared and A4 mask sources
    carry policy byte 2 with A14 items 2–4. The counts are resolved as the
    development profile (`proven: false`), as RFC-0026 A11 item 3 does. The A4 mask
@@ -51,12 +67,21 @@ The geometry is the 20× lever; Policy 2 adds about 1 MB.
      byte. The lifetime source's geometry and policy change its root and blocks, so
      a byte-1 commitment cannot serve byte-4 proofs, and the reverse; `verify-dev`
      rejects a mismatch (`StatementMismatch`).
+   - A byte-4 model commitment draws a fresh `σ_M`; a byte-1 secret state is never
+     used to build a byte-4 source. The mask stream contexts carry no byte and no
+     geometry, so the same seed would reuse masks under another geometry. The
+     producer refuses a secret file whose byte is not the proof's.
 4. **No level is claimed.** As RFC-0026 A11 item 4: Policy 2 is a size and speed
    choice; each grinded PCS round is `≤ 2^-108` (A14 item 5) instead of `≤ 2^-130`,
-   the worst round stays the ungrinded LU round, and nothing is summed into a level.
+   and nothing is summed into a level. Which round is the dev-zk proof's worst is to be
+   confirmed by E12-26's dev-zk ledger.
+5. **Tensor grinding.** `k_t` uses the source's row exponent `ell + 1` (RFC-0010 A15
+   item 1) in A14 item 4; `k_t = 5` at `ell = 9`.
 
-Projected source bytes on the eight-layer window (`research/zk-sources/zkgeom.py`, which reproduces the
-measured 140.4 MB of sources at the current geometry to 0.1 MB):
+Projected source bytes on the eight-layer window (`research/zk-sources/zkgeom.py`). At
+the current geometry the model matches the measured witness, weight and shared sources
+to 0.01 MB each. The top source is modelled, not separated in the decode from the A4
+mask source. The modelled total is 140.3 MB.
 
 | Source (`2^S` entries) | Now: `ell`, bytes | Balanced, Policy 1 | Balanced, Policy 2 |
 |---|---|---|---|
@@ -88,9 +113,11 @@ for balanced Circle sources at `b = 2` under Policy 2.
    `C = 2^15`. Policy 2 lowers `q`, so these constraints are weaker than today's.
 2. **Lemma 2 (joint linear view, rank check).** It needs the mask-row parts of the
    revealed row combinations to have rank `D·(messages)`. That requires `R ≥ 2D` for a
-   per-proof source and `R ≥ (P + 1)·D` for the lifetime source. Balancing raises `R`,
-   so the rank check has more slack and the `MaskRank` abort, which depends on public
-   challenges only, is rarer. The A4 mask source keeps `R = 2D`.
+   per-proof source and `R ≥ (P + 1)·D` for the lifetime source; balancing raises `R`
+   and keeps both. The `MaskRank` abort depends on public challenges only. Its
+   probability term `2D·(ell + 1)/p` per source grows with `ell`: about `2^-26.0` at
+   `ell = 3` and `2^-24.7` at `ell = 9` (the witness). It stays negligible. The A4 mask
+   source keeps `R = 2D`.
 3. **Lemma 3 (salted leaves).** One uniform 32-byte salt per codeword position, from
    the source-salt stream. It is independent of geometry; there are fewer, wider
    leaves.
@@ -108,9 +135,10 @@ for balanced Circle sources at `b = 2` under Policy 2.
      are `X`-independent) goes through unchanged.
    - **Requirement.** The nonce must not depend on any secret. A search started at a
      seed-derived offset, or a prover that retries masks until some nonce property
-     holds, would break the argument above. A8 states "least nonce" as a producer
-     rule, and a unit test pins that dev-zk hiding sources grind through
-     `Transcript::grind`.
+     holds, would break the argument above. A8 item 4 states "least nonce" as a
+     producer rule for every grinder, parallel or GPU included. A grinder that returns
+     another valid nonce is non-conformant even though it verifies. A test recomputes
+     the least nonce of each grind round and compares.
    - **Timing.** The time spent grinding depends only on `S`, which is public.
 
 Conclusion: A2's conditional, computational hiding statement carries over to balanced
@@ -132,7 +160,9 @@ re-instantiated with the new `q`, `C` and `R`.
    - pinned byte-4 proofs (one and eight layers);
    - the χ² privacy tests and the eight-layer bare-evaluation test on byte 4;
    - Lemma 1's rank check at the new `(m, b)`;
-   - least-nonce pin;
-   - controls for a grind mismatch on a hiding source, a byte-1 commitment used
-     under byte 4, and a wrong profile byte.
+   - the least-nonce pin;
+   - the refusal of a byte-1 secret file under byte 4;
+   - layout tests at `ell ∈ {3, 7, 9}`;
+   - NC-0939 (hiding-source nonce, `GrindMismatch`), NC-0940 (byte-1 commitment under
+     byte 4) and NC-0941 (byte-4 proof as byte 1), both `StatementMismatch`.
 5. Ledger: the eight-layer window, byte 1 against byte 4, three runs each.

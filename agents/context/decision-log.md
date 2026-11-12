@@ -3067,7 +3067,16 @@ Decision (Proposed):
   `|Q| ≤ C − 1` and Lemma 2's rank budget hold at the new `q`, `C`, `R`. Nonces are
   functions of the public prefix.
 - Projected 6.6 MB (design note `formal/zk-sources.md`).
-- Implementation waits for #353 (RFC-0026 A12, byte 3) to land, then branches from main.
+- Rules added after the independent review of the first draft (accept with fixes):
+  - a fresh `σ_M` per byte-4 commitment, and a byte-1 secret file refused;
+  - every grinder returns the least passing nonce;
+  - `k_t` on the source row exponent `ell + 1`;
+  - a linear claim and shared layout at any `ell`;
+  - `Statement` when no `ell` is admissible;
+  - A8 item 7's superseded text in RFC-0010 A14/A15 and RFC-0026 A11.
+- Implementation waits for #353 (RFC-0026 A12, byte 3) to land, then lands in the same
+  PR as the amendment.
 
-Status: Proposed (development tier; independent review requested).
+Status: Proposed (development tier; RFC-0013 A8 Draft; final independent review with the
+implementation).
 

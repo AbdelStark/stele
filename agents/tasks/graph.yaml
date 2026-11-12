@@ -2723,7 +2723,9 @@ tasks:
   - E16-30
   rfc:
   - RFC-0013 A8
+  - RFC-0013 A6
   - RFC-0010 A14
+  - RFC-0010 A15
   - RFC-0026 A9
   skill: soundness-auditor
   crate: stele-pcs+stele-reductions+stele-prover+stele-cli

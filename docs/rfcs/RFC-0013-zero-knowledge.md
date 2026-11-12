@@ -749,48 +749,94 @@ NC-0936, NC-0937 or NC-0938 red, with the false encoding accepted.
 
 ### A8 — dev-zk on balanced Policy 2 hiding sources (profile byte 4)
 
-Status: **Proposed** (development tier, Workflow 02 development-tier path; independent
-review requested; not self-accepted). Task: E12-28. Decision: ADR-114. Design note:
-[dev-zk sources](../../formal/zk-sources.md). Companion: an RFC-0026 A9 tag value,
-written into RFC-0026 after RFC-0026 A12 (byte 3) lands.
+Status: Draft (development-tier amendment under RFC-0027 §2). Task: E12-28. Decision:
+ADR-114. Design note: [dev-zk sources](../../formal/zk-sources.md). Independent review
+of the first draft (2e56537): accept with fixes, applied here; final review with the
+implementation. Companion: an RFC-0026 A9 tag value, written into RFC-0026 with the
+implementation, after RFC-0026 A12 (byte 3).
 
-Motivation: the eight-layer dev-zk proof is 141.7 MB. 95% of it is two combined rows of
-the witness source, which has A5's least row count (`R = 2D`, `ell = 3`) and `2^21` data
-columns. Every dev-zk source is already an RFC-0010 A15 Circle source at rate 1/4; the
-sources use RFC-0010 A3 Policy 1.
+Motivation: the eight-layer dev-zk proof is 141.7 MB (E16-24 ledger
+`e16-24-dev-zk-synthetic-8layer-mac-after`). 95% of it is two combined rows of the
+witness source. That source has A5's least row count (`R = 2D`, `ell = 3`) and `2^21`
+data columns. Every dev-zk source is already an RFC-0010 A15 Circle source at rate 1/4;
+the sources use RFC-0010 A3 Policy 1.
 
 1. **Profile byte 4.** RFC-0026 A9's profile tag gains the value 4: "dev-zk proof on A8
    sources".
    - Byte 1 (A5, A6, A7) is unchanged and its proofs still verify.
    - The byte-4 public file is `stele-dev-zk-public-v2`.
-   - The model commitment file is `stele-dev-zk-model-v2` and records the profile
-     byte. `verify-dev` rejects a commitment of the other byte (`StatementMismatch`).
-2. **Balanced geometry.** Under byte 4 each claim source of `2^S` data entries takes the
-   `ell` that minimises `(1 + J)·16·2C + (q_c + J·q_o)·(8R + 32·log2 N + 32)`
+   - The model commitment file is `stele-dev-zk-model-v2` and the secret state file
+     `stele-dev-zk-model-secret-v2`; both record the profile byte. `verify-dev`
+     rejects a commitment of the other byte (`StatementMismatch`).
+   - A byte-4 model commitment draws a fresh `σ_M`. A byte-1 secret state is never
+     used to build a byte-4 source: the producer refuses a secret file whose byte is
+     not the proof's. The mask stream contexts carry no byte and no geometry, so
+     reusing `σ_M` across bytes would reuse masks under a different geometry.
+2. **Balanced geometry.** Under byte 4 each claim source of `2^S` data entries takes
+   the `ell` that minimises `(1 + J)·16·2C + (q_c + J·q_o)·(8R + 32·log2 N + 32)`
    (`R = 2^ell`, `C = 2^(S−ell)`, `N = 8C`, `J = 1`), ties to the smallest `ell`.
-   It does so subject to:
-   - A2's `R ≥ 2D` and `q_c + q_o ≤ C − 1`;
-   - for the lifetime source, A6's `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`.
-
-   The A4 mask source keeps `R = 2D`. The verifier derives every `ell` from the
-   statement.
-3. **Policy 2.** Every byte-4 source carries RFC-0010 A14 policy byte 2: items 2–4's
-   counts, 16-bit column grinding and tensor grinding, with item 8's errors. They are
-   resolved as the development profile (`proven: false`), as RFC-0026 A11 item 3 does.
+   - The rule applies subject to A2's `R ≥ 2D` and `q_c + q_o ≤ C − 1`, and for the
+     lifetime source A6's `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`.
+   - If no `ell` is admissible, commit and plan refuse with `Statement`.
+   - The verifier derives every `ell` from the statement.
+   - **Claim sources** pack their columns and blocks as under byte 1, as one linear
+     sequence of data positions. A claim is a dense linear functional over those
+     positions (A5 item 5's weight table and batch), so no alignment to a row is
+     needed at any `ell`.
+   - **The shared source** is a claim source under this item. Its data face is one
+     linear sequence of `R·C` positions. Limb `d` of the plain masks occupies
+     `[d·L, (d + 1)·L)`, where `L` is the total plain-mask width (relations, GKR
+     steps, batches, in order). The `4D`-entry layer blocks follow from position
+     `D·L`. Byte 1 keeps `L = C` (limb `d` in data row `d`, blocks from row `D`).
+   - The A4 mask source keeps `R = 2D`.
+3. **Policy 2.** Every byte-4 source carries RFC-0010 A14 policy byte 2: item 2's
+   counts, item 3's 16-bit column grinding and item 4's tensor grinding, with item 8's
+   errors.
+   - They are resolved as the development profile (`proven: false`), as RFC-0026
+     A11 item 3 does.
+   - `k_t` uses the source's row exponent `ell + 1` (RFC-0010 A15 item 1) in A14
+     item 4. For example, `k_t = 5` at `ell = 9`.
 4. **Least nonce.** The producer's grinding nonces are the least passing nonce on the
    transcript state (`Transcript::grind`). No nonce depends on a mask, a seed or `X`.
-5. **Hiding.** A2's Lemmas 1–3 apply with the item 2 constraints (design note §3).
-   Grinding nonces are functions of the public prefix (item 4). The column draws that
-   follow them are too, and Lemmas 1–2 hold for every fixed query set within the
-   budget, so the statement stays A2's: conditional and computational.
+   Every producer grinder, including any parallel or GPU one, returns the least
+   passing nonce. A grinder that returns another valid nonce is non-conformant even
+   though it verifies.
+5. **Hiding.** A2's Lemmas 1–3 apply with the item 2 constraints
+   ([design note §3](../../formal/zk-sources.md)).
+   - Grinding nonces are functions of the public prefix (item 4).
+   - The column draws that follow them are too, and Lemmas 1–2 hold for every fixed
+     query set within the budget.
+   - So the statement stays A2's: conditional and computational.
 6. **No level is claimed.** As RFC-0026 A11 item 4: each grinded PCS round is
-   `≤ 2^-108` instead of `≤ 2^-130`; the development tier claims no λ.
+   `≤ 2^-108` instead of `≤ 2^-130`, and the development tier claims no λ.
+7. **Superseded Accepted text (development tier only).**
+   - RFC-0010 A15 item 2, "with `q_c`, `q_o` from A9's tables at `(m + 1, b)`",
+     reads "with `q_c`, `q_o` from the source's policy tables at `(m + 1, b)`: A9's
+     for policy 1, A14 item 2's for policy 2 (RFC-0013 A8)".
+   - RFC-0010 A14 item 1, as amended by RFC-0026 A11 item 5, reads "may use policy 1
+     or, under RFC-0026 A11 or RFC-0013 A8, policy 2 without any profile claim".
+   - RFC-0026 A11 item 4's sentence "The development path reaches Policy 2 only
+     through `Source::from_code_id_development` and
+     `PreparedSource::from_code_id_development`, which resolve `Development`" gains
+     "and the RFC-0013 A8 hiding-source constructors, which resolve `Development`".
 
-Projected (design note §2, not measured): about 6.6 MB for the eight-layer window,
-against 141.7 MB. The implementing task measures it in a ledger.
+Soundness: the new rounds are A14's grinding rounds on each byte-4 source: one PoW frame
+per certificate and opening column round, and one per certificate tensor round with
+`k_t ≥ 1`, counted by RFC-0012 A17 Theorem 1. Each such PCS round is `≤ 2^-108` (A14
+item 5) instead of Policy 1's `≤ 2^-130`. No challenge or label is added; nothing is
+summed into a level. Byte 1 is unchanged.
 
-Controls (to be added with the implementation):
-- a grind mismatch on a hiding source (`GrindMismatch`);
-- a byte-1 commitment under byte 4 (`StatementMismatch`);
-- a byte-4 proof verified as byte 1 (`StatementMismatch`).
+Cells, lookups, bytes: cells and lookups unchanged. Bytes are projected at about 6.6 MB
+for the eight-layer window, against 141.7 MB (design note §2), and measured in E12-28.
 
+Controls (reserved, todo, E12-28):
+- NC-0939: one byte of a hiding source's column nonce changed (`GrindMismatch`).
+- NC-0940: a byte-1 model commitment under a byte-4 proof (`StatementMismatch`).
+- NC-0941: a byte-4 proof verified as byte 1 (`StatementMismatch`).
+
+Producer-side tests, not controls:
+- a byte-1 secret file refused for byte 4;
+- each grinder's nonce equal to the recomputed least nonce;
+- the claim and shared layouts at `ell ∈ {3, 7, 9}`.
+
+Affected tasks: E12-28. Promotion to `standard`: not granted (Workflow 10).
