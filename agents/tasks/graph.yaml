@@ -2498,6 +2498,23 @@ tasks:
   - RFC-0026 amendment drafted as Proposed for independent review; the development tier claims no lambda
   - before and after proof bytes, prove and verify time on L0 and L1 (and L2a if memory allows) in bench/ledger with the host load recorded; scoreboard regenerated
   - one mutation-checked negative control per new binding; standard-unproven quarantine and dev entry-point allow-list unchanged
+- id: E16-32
+  epic: E16
+  title: Development ledger LU line as the (β, α) round numerator c·(2^m + t) − 1 (RFC-0012 A17 item 3)
+  depends:
+  - E12-26
+  rfc:
+  - RFC-0026 A3
+  - RFC-0012 A17
+  skill: soundness-auditor
+  crate: stele-reductions
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-32-dev-lu-round
+  acceptance:
+  - relation_lookup.rs charges each check c·(2^m + t) − 1; a test pins a c = 2 check (and an unchanged c = 1 check)
+  - the stories42M ledger (research/fs-pcs/stories42m-ledger.tsv) re-printed by the fixed verifier on the recorded proof; study.py uses the exact numerators and its receipts are updated
+  - the soundness-accounting development inventory and an RFC-0026 amendment (A13) carry A17's form; the worst-round statements of RFC-0026 A11/A12 (E16-30, E16-31) re-checked
 - id: E12-10
   epic: E12
   title: Zero-knowledge design note for the development path (gap analysis, hiding sources, masked sumcheck)

@@ -473,9 +473,10 @@ pub(super) fn verify(
         };
         verify_opening(t, mu, functional, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
     }
-    // RFC-0012 A8/A11 LU numerator h+N+c*t-1 with h = 0, plus the A3 tree/leaf lines.
-    let n = 1u64 << check.m;
-    ledger.add(Line::Lu, &check.name, n + (check.c * check.t) as u64 - 1);
+    // The (β, α) round's LU numerator c·(N + t) − 1 (RFC-0012 A17 item 3, RFC-0026 A13;
+    // A8/A11's recorded h + N + c·t − 1 holds only for c = 1), plus the A3 tree/leaf lines.
+    let (n, c) = (1u64 << check.m, check.c as u64);
+    ledger.add(Line::Lu, &check.name, c * (n + check.t as u64) - 1);
     for tree in [&lookup, &table] {
         let a = &tree.accounting;
         ledger.add(Line::Rlc, &check.name, a.gamma + a.fold);

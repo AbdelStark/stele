@@ -1261,3 +1261,37 @@ run on byte-3 proofs.
 
 **Affected tasks.** E16-31 (implements it). Promotion to `standard`: not granted
 (Workflow 10).
+
+### A13 — The development LU line is the (β, α) round numerator c·(2^m + t) − 1
+
+Status: Draft (development tier). Needs one independent reviewer before acceptance.
+Task: E16-32. Decision: ADR-116.
+
+**Motivation.** A3's ledger item charges each check `(2^m + c·t − 1)/|K|`, which is RFC-0012
+A8/A11's recorded record. RFC-0012 A17 item 3 (`formal/fs-composition.md` Lemma 4)
+charges the check's single `(β, α)` round `((c − 1)(N + |T|) + N + |T| − 1)/|K|`, which
+is `(c·(N + |T|) − 1)/|K|`. That equals the recorded value only for `c = 1`; for `c = 2`
+it is larger by `(c − 1)·N`. E12-26's independent review found the same gap in the
+dev-zk ledger, which uses A17's form.
+
+**Exact replacement** for A3's ledger item ("The LU line becomes `(2^m + c·t − 1)/|K|`
+once per check"):
+
+> *Ledger.* The LU line is `(c·(2^m + t) − 1)/|K|` once per check: RFC-0012 A17
+> item 3's `(β, α)` round numerator with `N = 2^m` and `|T| = t`. The A3 tree and leaf
+> lines are charged once per check.
+
+§6's LU row reads "RFC-0012 A17 item 3 per check, `r = 1`".
+
+**Effect.**
+- No proof byte, challenge, label or order changes. Every pin stays as it is.
+- `verify-dev` prints larger LU lines for `c = 2` checks.
+- On the recorded stories42M proof (`e813ce1`, `research/fs-pcs/stories42m-ledger.tsv`),
+  four tables change: `sign/8`, `rsqrt_q`, `exp_q/direct` and `silu_q`.
+  `eps_interactive` goes from 350,466,731 to 352,828,075 over `p^4`.
+- The worst round is unchanged. It is still the ungrinded LU `range_8` round (`c = 1`,
+  `2^-97.0`; `research/fs-pcs/PARAMETERS.md` §4, which already charged `c = 2` tables
+  `2·numerator + 1`). The largest corrected table round is `silu_q` at `2,228,223/|K|`.
+  A11's and A12's statement "the worst round is still the ungrinded LU round" holds.
+
+**Affected tasks.** E16-32. Promotion to `standard`: not granted (Workflow 10).

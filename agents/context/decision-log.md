@@ -3141,3 +3141,39 @@ An independent script reproduced every `eps_interactive` and confirmed the round
 The fixes are applied: LU is `c·(N + t) − 1`, the GKR block-rank and `|K|` abort lines
 are printed, the labels are unified, and `rows_log` replaces `ell`, all at 821aef8. Follow-up: the plain development ledger (`relation_lookup.rs`, soundness-accounting.md inventory) still uses `2^m + c·t − 1` and needs the same fix.
 
+## ADR-116: The development ledger's LU line is the (β, α) round numerator c·(2^m + t) − 1 (RFC-0026 A13, task E16-32)
+
+Context: E12-26's independent review found that the dev-zk LU line used RFC-0012
+A8/A11's recorded `N + c·t − 1`. RFC-0012 A17 item 3 (`formal/fs-composition.md` Lemma 4)
+charges a check's single `(β, α)` round `c·(N + t) − 1`, and the recorded value equals
+that only for `c = 1`. The plain development ledger (`relation_lookup.rs`, RFC-0026 A3,
+the soundness-accounting inventory) had the same undercount of `(c − 1)·2^m` per `c = 2`
+check.
+
+Decision:
+- `relation_lookup.rs` charges `c·(2^m + t) − 1` per check. RFC-0026 A13 (Draft)
+  replaces A3's ledger item with A17's form, and the soundness-accounting development
+  inventory follows.
+- The stories42M ledger (`research/fs-pcs/stories42m-ledger.tsv`) is re-printed by the
+  fixed verifier on the recorded proof (`e813ce1`, `proof.bin` SHA-256
+  `507b52b3…5381`). Only the four `c = 2` tables change: `sign/8` 1,049,087 → 2,097,663,
+  `rsqrt_q` 100,351 → 102,399, `exp_q/direct` 327,681 → 589,825 and `silu_q`
+  1,179,647 → 2,228,223. `eps_interactive` goes from 350,466,731 to 352,828,075 over
+  `p^4`.
+- `research/fs-pcs/study.py` charges each LU round its recorded numerator. Before, it
+  charged `2·numerator + 1` for every non-range check, an over-charge that was safe.
+  - Worst rounds and floors are unchanged: Policy 1 at `2^-97.0` (LU `range_8`, `c = 1`)
+    with floor `2^-95.6`, and the Policy 2 rows.
+  - The per-proof grind-hash receipts drop by 2: 3,090,950, 3,090,978 and 3,091,010.
+    `--check` passes.
+
+Consequences:
+- No proof byte, transcript or pin changes; only the printed LU lines and
+  `eps_interactive` of proofs with `c = 2` checks.
+- RFC-0026 A11's and A12's statement "the worst round is still the ungrinded LU round"
+  holds. The largest corrected table round, `silu_q`, is about `2^-102.9`, below
+  `range_8`'s `2^-97.0`.
+- Open, outside this task: RFC-0030's lookup row and `lookup_records.rs` (the
+  standard and treaty A11 records) still state `h + N + c·t − 1` for the pair round.
+
+Status: Proposed (development tier), pending independent review.

@@ -35,6 +35,11 @@ research CI next to the Policy 1 checker.
 - **`stories42m-ledger.tsv`** holds the 1,792 RLC/SC/SZ/LU lines of the RFC-0026 §6
   ledger. The unpatched `verify-dev` printed them on stdout for the same proof, and
   the first three tab-separated fields were kept.
+  - E16-32 (RFC-0026 A13) re-printed them with the E16-32 verifier on the same proof
+    and public file (SHA-256 above). Each LU line is now A17 item 3's round
+    numerator `c·(N + t) − 1`. Only the four `c = 2` tables changed: `sign/8`,
+    `rsqrt_q`, `exp_q/direct` and `silu_q`. `eps_interactive` went from 350,466,731 to
+    352,828,075 over `p^4`.
 
 ## 2. Theorems, codes and fields
 
@@ -204,17 +209,22 @@ For comparison:
 
 - "Worst round" and "floor" are the (C1) and (C2) quantities of
   fs-composition.md §5, including grinding.
-- They are computed over every LU check, counted as two rounds of at most
-  numerator+1 each (Lemma 4), every RLC and SZ line, the SC records as sums,
-  and every PCS tensor and column round.
+- They are computed over:
+  - every LU check, one round of its recorded numerator `c·(N + t) − 1` (Lemma 4);
+  - every RLC and SZ line;
+  - the SC records, as sums;
+  - every PCS tensor and column round.
+- Before E16-32, a table check was charged `2·numerator + 1` from the recorded
+  `N + c·t − 1`. With the exact numerators, the worst rounds and floors are
+  unchanged. Each per-proof grind-hash count drops by 2.
 - The A7 setup term is added when a v2 source is present.
 
 | policy | profile rule | stack | q_c/q_o | model | q_c/q_o | proof bytes | model cert | worst round | floor | per-proof grind hashes | C1 | C2 |
 |---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|
 | policy1 | standard | v2 (recorded J) R=512 | 13471/6713 | v2 (recorded J) R=256 | 13469/6713 | 113,422,913 | 26,175,713 | 2^-97.0 | 2^-95.6 | 0 | FAIL | FAIL |
-| v2 | standard | v2(J=10) R=512 | 9533/4751 | v2(J=9) R=256 | 9532/4751 | 91,672,193 | 19,750,537 | 2^-108.0 | 2^-102.2 | 3,090,952 | pass | pass |
-| circle1 | standard | circle(m=17,b=1) R=4096 | 350/158 | circle(m=16,b=1) R=1024 | 350/158 | 21,909,025 | 2,672,585 | 2^-108.1 | 2^-102.2 | 3,090,980 | pass | pass |
-| circle2 | standard | circle(m=17,b=2) R=4096 | 222/92 | circle(m=16,b=2) R=1024 | 222/92 | 18,325,537 | 2,085,769 | 2^-108.0 | 2^-102.2 | 3,091,012 | pass | pass |
+| v2 | standard | v2(J=10) R=512 | 9533/4751 | v2(J=9) R=256 | 9532/4751 | 91,672,193 | 19,750,537 | 2^-108.0 | 2^-102.2 | 3,090,950 | pass | pass |
+| circle1 | standard | circle(m=17,b=1) R=4096 | 350/158 | circle(m=16,b=1) R=1024 | 350/158 | 21,909,025 | 2,672,585 | 2^-108.1 | 2^-102.2 | 3,090,978 | pass | pass |
+| circle2 | standard | circle(m=17,b=2) R=4096 | 222/92 | circle(m=16,b=2) R=1024 | 222/92 | 18,325,537 | 2,085,769 | 2^-108.0 | 2^-102.2 | 3,091,010 | pass | pass |
 | v2 | treaty | v2(J=10) R=512 | 12435/6197 | v2(J=9) R=256 | 12433/6197 | 145,451,681 | 28,679,273 | 2^-136.0 | 2^-130.3 | 3,080,192 | pass | pass |
 | circle2 | treaty | circle(m=17,b=2) R=4096 | 290/120 | circle(m=15,b=2) R=2048 | 290/120 | 26,613,889 | 3,582,025 | 2^-136.0 | 2^-130.7 | 3,080,192 | pass | pass |
 

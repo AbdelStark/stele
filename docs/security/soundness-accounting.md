@@ -1872,8 +1872,10 @@ RFC-0026 adds no new ledger line kind. Each development proof charges the follow
   in its domain's RLC and zerocheck.
 - **LU**, plus tree/leaf terms, for each lookup and range, with `r = 1`. Under
   RFC-0026 A3 this is once per check (one table, or one range width):
-  `(2^m + c·t − 1)/|K|` over the concatenated domain of `2^m >= Σ 2^m_i`
-  positions. The member split is an exact linear identity and adds no term.
+  `(c·(2^m + t) − 1)/|K|` over the concatenated domain of `2^m >= Σ 2^m_i`
+  positions. That is the `(β, α)` round of RFC-0012 A17 item 3 (RFC-0026 A13). The
+  recorded `2^m + c·t − 1` undercounted it by `(c − 1)·2^m` for the `c = 2` tables.
+  The member split is an exact linear identity and adds no term.
 - **RLC** and **SC** for each source's RFC-0006 A2 mode-1 claim batch.
   Under RFC-0026 A4 every group is one stacked source, and under A5 every weight
   is one stacked model source, so there is one group batch and one weight batch
