@@ -376,7 +376,7 @@ pub(super) fn plan_lookup<K: ChallengeField + CodeField>(
     order.sort_by_key(|i| core::cmp::Reverse(padded(*i)));
     let total: usize = order.iter().map(|i| 1usize << padded(*i).min(40)).sum();
     let n = k0.max(k).max(ceil_log2(total));
-    if n > 23 {
+    if n > 30 {
         return Err(Error::Statement);
     }
     let mut members = Vec::new();

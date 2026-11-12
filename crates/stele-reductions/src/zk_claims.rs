@@ -3665,6 +3665,51 @@ mod tests {
         )
     }
 
+    /// A ZK-GKR check tree of up to `2^30` positions plans (RFC-0026 A3's `m ≤ 30`,
+    /// and `N < p` for RFC-0012 A8's characteristic hypothesis); `2^31` is refused. A
+    /// real checkpoint's weight range check concatenates `2^24`-entry members up to
+    /// `2^27` positions (stories42M, E12-29), which the earlier `2^23` cap refused.
+    #[test]
+    fn plans_check_trees_up_to_2_to_30() {
+        // `members` members of `2^24` entries each, one column apiece, then the
+        // multiplicity column.
+        let statement = |members: usize| {
+            let mut columns: Vec<Column> = (0..members)
+                .map(|_| Column {
+                    source: 0,
+                    log_len: 24,
+                })
+                .collect();
+            columns.push(Column {
+                source: 0,
+                log_len: 4,
+            });
+            let mut lookup =
+                Lookup::single(&[0], 24, members, (0..16).map(|j| vec![j]).collect(), 16);
+            lookup.members = (0..members)
+                .map(|column| Member {
+                    vars: 24,
+                    tuple: vec![Read {
+                        column,
+                        vars: (0..24).collect(),
+                    }],
+                    shifts: vec![0],
+                    selector: None,
+                })
+                .collect();
+            Statement::<QM31> {
+                sources: 1,
+                columns,
+                relations: Vec::new(),
+                lookups: vec![lookup],
+            }
+        };
+        for members in [2, 8, 64] {
+            assert_eq!(plan(&statement(members)).err(), None, "{members} members");
+        }
+        assert_eq!(plan(&statement(128)).err(), Some(Error::Statement));
+    }
+
     /// Leak control for `accepts_uniform_layer_values` (check_gkr.py's no-mask
     /// variant): with the layer blocks removed, the first step's revealed `p(x*, 0)`
     /// is exactly the tree's layer value; with them it never is.
