@@ -1795,7 +1795,7 @@ def standard_quarantine(root):
                    'crates/stele-prover/src/development/zk.rs', 'crates/stele-prover/tests/development.rs',
                    'tests/negative-controls/src/development.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
-                             r'|\bSources\s*::\s*Circle\b')
+                             r'|\bSources\s*::\s*Circle\w*\b')  # Circle (A11), CircleAll (A12)
     found = sorted(str(path.relative_to(root)) for directory in ('crates', 'tests', 'bench', 'harness')
                    if (root / directory).is_dir()
                    for path in (root / directory).rglob('*.rs')

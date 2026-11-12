@@ -196,6 +196,10 @@
 | NC-1314 | development source grinding | 0026 A11, 0010 A14 | replace the stacked opening's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
 | NC-1315 | development source grinding | 0026 A11, 0010 A14 | replace the model certificate's column-round nonce (public input) with one failing the k_q = 16 predicate | `GrindMismatch` | done |
 | NC-1316 | development profile byte transcript | 0026 A11 | replay the engine with the plan fixed at one source set and the transcript input of the other (an A11 proof without the trailing byte 2; a pre-A11 proof with it): no source shape differs | `RoundSumMismatch` | done |
+| NC-1317 | development profile byte | 0026 A12 | verify an A12 proof (multiplicity sources Circle rate 1/4) with profile byte 2 in place of 3, header restamped: the verifier derives the A11 rate-1/2 multiplicity sources | `ProofShape` | done |
+| NC-1318 | development profile byte | 0026 A12 | verify an A11 proof with profile byte 3 in place of 2, header restamped: the verifier derives the A12 rate-1/4 multiplicity sources | `ProofShape` | done |
+| NC-1319 | development profile byte transcript | 0026 A12 | replay the engine with the plan fixed at one of the A11 and A12 source sets and the transcript input of the other (trailing byte 2 for 3, and 3 for 2): no source shape differs | `RoundSumMismatch` | done |
+| NC-1320 | development multiplicity grinding | 0026 A12, 0010 A14 | replace the first rate-1/4 multiplicity certificate's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -241,7 +245,10 @@ RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit. RFC-0026 A11
 (Accepted, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
 that selects the source set (NC-1316 for its transcript binding alone), and the Policy 2
-column nonces of the stacked certificate, the stacked opening and the model certificate.
+column nonces of the stacked certificate, the stacked opening and the model certificate. RFC-0026
+A12 (Proposed, task E16-31) adds NC-1317..1320: profile byte 3 against byte 2 both ways
+(NC-1319 for its transcript binding alone), and the column nonce of a rate-1/4
+multiplicity certificate.
 
 The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.
 

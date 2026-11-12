@@ -2997,3 +2997,53 @@ What remains (main-thread shares of the after profile):
 
 Status: Accepted (development tier). Independent review: MERGE at 84684f3; pins reproduced on base code, mask-draw and salt-offset mutations caught by the 1-layer pin. Follow-ups: unit tests for the draws() wrapper and the leaf-salt sequence, and a read-once rule on MaskStream::fill_at.
 
+## ADR-113: Development multiplicity sources at Circle rate 1/4, behind profile byte 3 (RFC-0026 A12, task E16-31)
+
+Numbered after ADR-112, which #352 (task E16-24) holds.
+
+Context: after ADR-111 the RFC-0008 A5 multiplicity sources, still Circle rate 1/2, are
+the largest section of a development proof on L0 and L1 (4.1 MB of 7.3 and of 9.8 MB,
+`bench/ledger/e16-30-*.json`). #351's open question 3 left the move to a follow-up.
+
+Decision:
+
+- **Version: profile byte 3, not a change to byte 2.** ADR-111's scheme appends one
+  profile byte to the development public input; byte 2 now names a merged, pinned proof
+  format. Changing what byte 2 means would make old byte-2 proofs fail. Byte 3
+  (`Sources::CircleAll`, input file `stele-dev-public-v3`) is the A11 set with every
+  multiplicity layout at `blowup = 2`. Pre-A11 and byte-2 proofs are the same bytes, keep
+  their pins and verify. Byte 3 is the default for new proofs.
+- **Geometry.** The multiplicity `ell` is chosen by A11's rule (fewest certificate plus
+  opening bytes, ties smallest `ell`). The model sources are A11's, so a byte-2 model
+  commitment is a byte-3 model commitment.
+- **RFC placement.** RFC-0026 A12 only. RFC-0008 A5's layout already admits
+  `blowup ∈ {1, 2}`, and A11 item 3 already replaced A5's `policy = 1` for development
+  proofs, so no RFC-0008 text changes. A12 is Proposed; it needs one independent reviewer
+  from another lane.
+- **No λ, quarantine intact.** No new challenge, label or ledger line; no profile is
+  claimed. The development path reaches Policy 2 only through
+  `from_code_id_development`. `standard_quarantine`'s development pattern widens from
+  `Sources::Circle` to `Sources::Circle\w*`, so `Sources::CircleAll` is confined to the
+  same allow-list (with a gate test); the allow-list itself is unchanged.
+- **Verifier order.** The engine checks a multiplicity section's length before parsing
+  its certificate. Without that, an A11 proof read as byte 3 failed at a column nonce
+  (`GrindMismatch`), because its larger rate-1/2 certificate covers the shorter rate-1/4
+  wire; now it fails as `ProofShape`, the reason NC-1318 states. Accepted bytes do not
+  change.
+- **Controls.** NC-1317 and NC-1318 (byte 3 against byte 2 both ways, `ProofShape`),
+  NC-1319 (transcript binding of the byte alone, `RoundSumMismatch`), NC-1320 (column
+  nonce of a rate-1/4 multiplicity certificate, `GrindMismatch`). Mutation-checked: the
+  layout forced to rate 1/2 turns NC-1317, 1318 and 1320 red; byte 3 pushed as 2 turns
+  NC-1319 red ("byte not bound"); the certificate's column-nonce check removed turns
+  NC-1320 red. NC-1311..1316 keep byte-2 honest proofs.
+- **Benchmark.** `bench/ledger/e16-31-*.json`, one Apple M4 Max laptop, byte 2 at
+  `fe77a02` against byte 3 at `8ae605d`. Proof bytes fall from 7.31 to 4.53 MB (L0),
+  9.80 to 7.02 MB (L1) and 18.33 to 15.55 MB (L2a): 2,770,624 bytes on every rung, the
+  multiplicity certificates and their openings. Prove and verify time are unchanged
+  within the spread of five alternating runs (L0, L1; load 1.5 to 10); L2a is one run
+  each (157.3 against 174.3 s prove, 6.30 against 6.31 s verify; not significant).
+
+Consequences: development proof bytes change under byte 3 (new pins); byte-2 and pre-A11
+proofs are unchanged. Open: the independent review of A12.
+
+Status: Accepted with RFC-0026 A12 (development tier). Independent review: MERGE at 6044c28. NC-1319 isolates the byte-3 transcript binding, the length-before-parse reorder does not change acceptance, and ADR-108 is still enforced. Follow-ups: explicit match arms for Sources dispatch; note the stories42M split is inferred.

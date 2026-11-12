@@ -20,6 +20,14 @@
 //!   the other: an A11 proof under the input without the trailing `2`, and a pre-A11
 //!   proof under the input with it (`RoundSumMismatch`). Unlike NC-1311/1312, no source
 //!   shape differs, so only the public-input byte can reject.
+//! - NC-1317..1320 (RFC-0026 A12, task E16-31): the honest proof is on A12 sources
+//!   (profile byte 3: multiplicity sources at Circle rate 1/4); NC-1311..1316 keep an
+//!   A11 (byte 2) honest proof. NC-1317 reads the A12 proof with byte 2 and NC-1318
+//!   reads an A11 proof with byte 3 (`ProofShape`: the verifier derives the other
+//!   multiplicity geometry). NC-1319 is the transcript binding of byte 3 alone, as
+//!   NC-1316 (`RoundSumMismatch`). NC-1320 replaces the first multiplicity
+//!   certificate's column-round nonce with one that fails the k_q = 16 predicate
+//!   (`GrindMismatch`).
 //!
 //! NC-1310 (`run_width`) runs on a minimal relation through the relation-engine
 //! prover and verifier (RFC-0026 A10), as a documented INV-4 exception (ADR-110).
@@ -341,7 +349,13 @@ pub fn run(id: u16) -> Result<(), String> {
         end: 4,
         next: Some(next),
     };
-    let weights = Weights::from_artifact(&model, artifact).map_err(|e| format!("{e:?}"))?;
+    // NC-1311..1316 test A11 (byte 2) proofs; every other control the default (A12).
+    let set = match id {
+        1311..=1316 => Sources::Circle,
+        _ => Sources::CircleAll,
+    };
+    let weights =
+        Weights::from_artifact_sources(&model, artifact, set).map_err(|e| format!("{e:?}"))?;
     let committed = Committed::new(&weights).map_err(|e| format!("{e:?}"))?;
     let public = Public {
         model: span("model")?.to_vec(),
@@ -617,6 +631,69 @@ pub fn run(id: u16) -> Result<(), String> {
                 _ => return Err(format!("byte not bound: omitted {a11:?}, added {pre:?}")),
             }
             ("RoundSumMismatch", a11)
+        }
+        1317 => {
+            if public.sources != Sources::CircleAll {
+                return Err("honest proof not on A12 sources".into());
+            }
+            let a11 = Public {
+                sources: Sources::Circle,
+                ..public.clone()
+            };
+            ("ProofShape", restamped(&a11, &honest, &proof)?)
+        }
+        1318 | 1319 => {
+            // An A11 (byte 2) proof of the same window; the model sources are the same.
+            let a11 = Public {
+                sources: Sources::Circle,
+                ..public.clone()
+            };
+            let w = Weights::from_artifact_sources(&model, artifact, Sources::Circle)
+                .map_err(|e| format!("{e:?}"))?;
+            let a11_proof = prove(&a11, &mut exec, &w, &committed, &honest)
+                .map_err(|e| format!("A11 prover: {e:?}"))?;
+            verify(&a11, &honest, &a11_proof).map_err(|e| format!("A11 rejected: {e:?}"))?;
+            if id == 1318 {
+                ("ProofShape", restamped(&public, &honest, &a11_proof)?)
+            } else {
+                let mut captured = None;
+                let mut hook = |r: &mut Relation, _: &mut Values| captured = Some(r.clone());
+                prove_tampered(&public, &mut exec, &weights, &committed, &honest, &mut hook)
+                    .map_err(|e| format!("capture prover: {e:?}"))?;
+                let rel = captured.ok_or("no relation")?;
+                let all = Sources::CircleAll;
+                if let Some(e) = engine_with_input(&public, &public, &honest, &rel, &proof, all)? {
+                    return Err(format!("honest replay rejected: {e:?}"));
+                }
+                // A12 proof and plan, byte 2 input; A11 proof and plan, byte 3 input.
+                let a12 = engine_with_input(&public, &a11, &honest, &rel, &proof, all)?;
+                let pre =
+                    engine_with_input(&a11, &public, &honest, &rel, &a11_proof, Sources::Circle)?;
+                match (&a12, &pre) {
+                    (Some(a), Some(b)) if name(a) == name(b) => {}
+                    _ => return Err(format!("byte not bound: as 2 {a12:?}, as 3 {pre:?}")),
+                }
+                ("RoundSumMismatch", a12)
+            }
+        }
+        1320 => {
+            let mut captured = None;
+            let mut hook = |r: &mut Relation, _: &mut Values| captured = Some(r.clone());
+            prove_tampered(&public, &mut exec, &weights, &committed, &honest, &mut hook)
+                .map_err(|e| format!("capture prover: {e:?}"))?;
+            let rel = captured.ok_or("no relation")?;
+            let mut c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
+            let root = c.multiplicities[0][..32].try_into().map_err(|_| "root")?;
+            let source = relation::multiplicity_source(&rel, Sources::CircleAll, 0, root)
+                .map_err(|e| format!("{e:?}"))?;
+            // Certificate wire `u8(1) || [n_t] || t || n_q || ..` (as NC-1313).
+            let (tensor, column) = source.grind_bits(ProofKind::Certificate);
+            if column != 16 || source.code_id()[20] != 2 {
+                return Err("multiplicity source not rate 1/4 with k_q = 16".into());
+            }
+            let at = 1 + if tensor > 0 { 8 } else { 0 } + source.columns() * 16;
+            c.multiplicities[0][32 + at] ^= 1;
+            ("GrindMismatch", verify(&public, &honest, &c.encode()).err())
         }
         1313..=1315 => {
             // The plan-derived relation, captured from the prover's own declaration.

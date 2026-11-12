@@ -22,9 +22,10 @@
 //! A development proof shows only that the model `public.bin` names ran on the statement it names.
 //! `verify-dev` therefore prints the `cqis_id`, the model digest, `T`, the tokens,
 //! `[r, e)` and `y` before its verdict; compare them with trusted values, or pass
-//! `--expect-model`. A development proof is on RFC-0026 A11 Circle Policy 2 sources
-//! (`sources Circle`, `stele-dev-public-v2`); a pre-A11 `stele-dev-public-v1` file
-//! still verifies (`sources Expander`). Under dev-zk the model digest covers the published commitment,
+//! `--expect-model`. A development proof is on RFC-0026 A12 Circle Policy 2 sources,
+//! multiplicity sources included (`sources CircleAll`, `stele-dev-public-v3`); an A11
+//! `stele-dev-public-v2` file (`sources Circle`) and a pre-A11 `stele-dev-public-v1`
+//! file (`sources Expander`) still verify. Under dev-zk the model digest covers the published commitment,
 //! so `--expect-model` pins a proof to it. The verdict is the last line: `YES`, or
 //! `NO: <reason>`. `prove-dev` ends with `PROOF WRITTEN`, which is not a verdict.
 //! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.

@@ -401,6 +401,30 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || development::run(1316),
     },
     catalog::RegisteredControl {
+        id: 1317,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ProofShape",
+        run: || development::run(1317),
+    },
+    catalog::RegisteredControl {
+        id: 1318,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ProofShape",
+        run: || development::run(1318),
+    },
+    catalog::RegisteredControl {
+        id: 1319,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || development::run(1319),
+    },
+    catalog::RegisteredControl {
+        id: 1320,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || development::run(1320),
+    },
+    catalog::RegisteredControl {
         id: 309,
         kind: catalog::ControlKind::Proof,
         expected_error: "CertificateContext",

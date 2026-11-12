@@ -8,7 +8,8 @@
 //!
 //! RFC-0026 A11: `stele-dev-public-v2` is the same layout for a proof on Circle
 //! Policy 2 sources (`Sources::Circle`); `stele-dev-public-v1` stays the pre-A11
-//! `Sources::Expander` file, so old inputs still decode and verify.
+//! `Sources::Expander` file, so old inputs still decode and verify. RFC-0026 A12:
+//! `stele-dev-public-v3` is the same layout for `Sources::CircleAll` (profile byte 3).
 use super::{Error, Public, Statement};
 use alloc::vec::Vec;
 use stele_reductions::relation::Sources;
@@ -16,6 +17,8 @@ use stele_reductions::relation::Sources;
 const MAGIC: &[u8] = b"stele-dev-public-v1";
 /// The A11 Circle-sources development input file (profile byte 2): the same layout.
 const CIRCLE_MAGIC: &[u8] = b"stele-dev-public-v2";
+/// The A12 input file (profile byte 3, multiplicity sources at rate 1/4): the same layout.
+const CIRCLE_ALL_MAGIC: &[u8] = b"stele-dev-public-v3";
 /// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
 const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";
 
@@ -34,6 +37,7 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
     let mut out = match (profile, public.sources) {
         (0, Sources::Expander) => MAGIC.to_vec(),
         (0, Sources::Circle) => CIRCLE_MAGIC.to_vec(),
+        (0, Sources::CircleAll) => CIRCLE_ALL_MAGIC.to_vec(),
         _ => ZK_MAGIC.to_vec(),
     };
     blob(&mut out, &public.model);
@@ -147,6 +151,8 @@ fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
         (1, ZK_MAGIC, Sources::Expander)
     } else if bytes.starts_with(CIRCLE_MAGIC) {
         (0, CIRCLE_MAGIC, Sources::Circle)
+    } else if bytes.starts_with(CIRCLE_ALL_MAGIC) {
+        (0, CIRCLE_ALL_MAGIC, Sources::CircleAll)
     } else {
         (0, MAGIC, Sources::Expander)
     };

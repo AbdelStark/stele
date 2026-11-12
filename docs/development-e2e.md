@@ -11,7 +11,8 @@ bytes, a power-of-two token window `x_0..x_{T-1}`, a checked range `[r, e)` and,
 `e = T`, the next token `y`. It:
 
 1. commits the weight matrices once, stacked into RFC-0010 Circle sources at rate 1/4
-   under Policy 2 (the model commitment; RFC-0026 A11);
+   under Policy 2 (the model commitment; RFC-0026 A11); the LogUp multiplicity sources
+   are Circle rate 1/4 too (A12, profile byte 3);
 2. runs `Executor::capture` and declares every RFC-0026 §5 module in order;
 3. assigns the witness, runs the plain checker, then the relation engine;
 4. writes a `stele-dev-e2e-v1` container (`stele_proof::development`, RFC-0026 §4.1).
@@ -62,12 +63,13 @@ target/release/stele verify-dev --public /tmp/dev-e2e/public.bin --proof /tmp/de
   defaults to the whole window. `--next Y` defaults to the
   executor's greedy choice when `E = T`.
 - Every checked token must be the greedy choice, or the prover's plain checker rejects.
-- `public.bin` (`stele-dev-public-v2`) holds everything the verifier reads besides
+- `public.bin` (`stele-dev-public-v3`) holds everything the verifier reads besides
   the proof: Model, Scales, Preparation, 1-D records, model-commitment roots and
   certificates, and the statement. Its magic names the source set, which the public
-  input binds (RFC-0026 A11): `v2` for Circle Policy 2 sources, which `prove-dev`
-  writes, and `v1` for the pre-A11 v2-expander Policy 1 sources, which `verify-dev`
-  still accepts. Both print `profile development` and a `sources` line.
+  input binds (RFC-0026 A11, A12): `v3` for Circle Policy 2 sources with the
+  multiplicity sources at rate 1/4 too (A12, Proposed), which `prove-dev` writes;
+  `v2` for A11's set (multiplicity sources at rate 1/2) and `v1` for the pre-A11
+  v2-expander Policy 1 sources, which `verify-dev` still accepts. Both print `profile development` and a `sources` line.
 
 `verify-dev` only shows that the model named in `public.bin` produced the statement
 named in `public.bin`. A prover can write a self-consistent `public.bin` for a model of
@@ -299,6 +301,24 @@ proof. The after proof confirms the Q12 projection of 18.3 MB to within 152 byte
 LU nonces that the projection counted and A11 does not use. With Policy 2 grinding, the tampered-root control is now rejected at the
 certificate's column nonce (`GrindMismatch`) instead of at the Merkle path, because the
 root is absorbed before the nonce is checked.
+
+### Multiplicity sources at Circle rate 1/4 (task E16-31)
+
+RFC-0026 A12 (Proposed) moves the LogUp multiplicity sources to Circle rate 1/4 too,
+behind profile byte 3. It claims no security level. Before is `origin/main` `fe77a02`
+(byte 2) and after is `8ae605d` (byte 3), on one Apple M4 Max laptop. The synthetic
+windows had five alternating runs of each (1-minute load 1.5 to 10), and each ledger
+keeps the median run; stories42M had one run of each (load 5.4 to 8.3):
+
+| Window | Proof before → after | Prove (median) | Verify (median) | Ledgers |
+|---|---|---|---|---|
+| 1 layer, T 16 | 7.31 → 4.53 MB | 1.28 → 1.31 s | 0.33 → 0.33 s | [before](../bench/ledger/e16-31-dev-synthetic-1layer-mac-before.json), [after](../bench/ledger/e16-31-dev-synthetic-1layer-mac-after.json) |
+| 8 layers, T 64 | 9.80 → 7.02 MB | 8.74 → 8.87 s | 0.91 → 0.91 s | [before](../bench/ledger/e16-31-dev-synthetic-8layer-mac-before.json), [after](../bench/ledger/e16-31-dev-synthetic-8layer-mac-after.json) |
+| stories42M, T 64, one run each | 18.33 → 15.55 MB | 174.3 → 157.3 s | 6.31 → 6.30 s | [before](../bench/ledger/e16-31-dev-stories42m-mac-before.json), [after](../bench/ledger/e16-31-dev-stories42m-mac-after.json) |
+
+Every proof is 2,770,624 bytes smaller: the multiplicity certificates and their
+openings. `public.bin` is unchanged, and the before proofs are byte-identical to the
+E16-30 after proofs. Time differences are within the run-to-run spread.
 
 ### Measured runs and the FlashProve small route
 

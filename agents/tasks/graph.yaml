@@ -2473,12 +2473,31 @@ tasks:
   - RFC-0018 A1
   skill: benchmark-runner
   crate: stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-30-circle-policy2
   acceptance:
   - measured prove/verify time, peak RSS and proof bytes for the synthetic 8-layer model and stories42M against the E16-18 entries
   - RFC-0026 amendment only if the measured encoding cost is accepted; projected 18.3 MB proof bytes confirmed or refuted
+- id: E16-31
+  epic: E16
+  title: Development multiplicity sources on Circle rate 1/4 under Policy 2, behind profile byte 3
+  depends:
+  - E16-30
+  rfc:
+  - RFC-0026 A11
+  - RFC-0008 A5
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-prover
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-31-mu-circle-quarter
+  acceptance:
+  - profile byte 3 moves every RFC-0008 A5 multiplicity source of a development proof to Circle rate 1/4 under Policy 2; byte-2 and pre-A11 proofs keep their bytes, pins and verification
+  - RFC-0026 amendment drafted as Proposed for independent review; the development tier claims no lambda
+  - before and after proof bytes, prove and verify time on L0 and L1 (and L2a if memory allows) in bench/ledger with the host load recorded; scoreboard regenerated
+  - one mutation-checked negative control per new binding; standard-unproven quarantine and dev entry-point allow-list unchanged
 - id: E12-10
   epic: E12
   title: Zero-knowledge design note for the development path (gap analysis, hiding sources, masked sumcheck)
