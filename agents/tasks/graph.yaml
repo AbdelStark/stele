@@ -2755,6 +2755,24 @@ tasks:
   - byte-4 dev-zk proofs on balanced Policy 2 sources, byte 1 still verified; pinned proofs, χ² privacy tests and the eight-layer bare-evaluation test on byte 4
   - controls for a hiding-source grind mismatch, a cross-byte model commitment and a wrong profile byte
   - eight-layer ledger, byte 1 against byte 4, three runs each at the same commit (byte 1 through commit-model --zk-profile 1)
+- id: E16-33
+  epic: E16
+  title: dev-zk prover peak memory so stories42M T = 64 fits a 48 GB laptop (bytes identical)
+  depends:
+  - E12-29
+  rfc:
+  - RFC-0013 A9
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-reductions
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-33-dev-zk-memory
+  acceptance:
+  - per-phase memory profile of the T = 32 prove; the top allocations named
+  - reductions with identical proof bytes (every pin unchanged)
+  - T = 32 peak footprint before and after, three runs each; stories42M T = 64 proved on the 48 GB host; ledgers in bench/ledger
+  - RFC-0013 A10 (Draft) extends A9's admission to T <= 64, with the hiding re-check at that geometry
 - id: E12-29
   epic: E12
   title: dev-zk byte 4 on the real stories42M checkpoint (commit, prove, verify, measured and soundness ledgers)

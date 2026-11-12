@@ -1,0 +1,84 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "a87e071317bc371e57916d1b713015f47a731e0e",
+ "controls": {
+  "failed": 0,
+  "passed": 1,
+  "total": 1
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 8,
+ "kernel_counters": {
+  "checked_positions": 9,
+  "commit_peak_footprint_bytes": 41297884728,
+  "commit_peak_rss_bytes": 33642430464,
+  "model_commitment_bytes": 638,
+  "prove_peak_footprint_bytes": 88288807536,
+  "prove_peak_rss_bytes": 29625237504,
+  "public_bytes": 243863,
+  "verify_peak_rss_bytes": 17713594368
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+  "controls": {
+   "pin": "model differs from --expect-model"
+  },
+  "host_context": "Apple M4 Max laptop (48 GB), macOS; BSD /usr/bin/time -l (peak memory footprint in kernel_counters, since macOS compresses and swaps: max RSS stays near 30 GB while the footprint is several times larger). Each timed step started once the 1-minute load average was below 4; other agents shared the host. One commitment per window (P = 8); proofs take consecutive indices; every proof verified with --expect-model. Task E16-33 before/after pair, after: a87e071 (one ZK-GKR tree at a time, dropped before the leaf step; hiding sources prepared one at a time). T = 32, alternating with before under one commitment. after prove walls 488.54 s / 518.54 s / 538.85 s /  peak footprints 89926176520 / 88288807536 / 92486292696 /  bytes; verify 34.26 s / 32.28 s / 33.78 s / . Proof bytes 21,411,006 in all six runs. This record is the median prove run.",
+  "model": {
+   "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+   "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+   "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+   "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+   "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+   "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+   "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+   "shape": {
+    "context": 1024,
+    "d": 512,
+    "head_width": 64,
+    "heads": 8,
+    "hidden": 1376,
+    "kv_heads": 8,
+    "layers": 8,
+    "vocabulary": 32000
+   },
+   "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+  },
+  "profile_byte": 4,
+  "proof_index": 3,
+  "proof_sha256": "1b9fac80205fa525361fd986d0dc22ba002c2080a1ce8bd4e17b66acad5c6083",
+  "proofs": 8,
+  "public_sha256": "c849d2a57ae2ff9f1347fa1a564ecef0b12f5835e42bb78ae47e9173fffcd376",
+  "rung": "L2a",
+  "statement": {
+   "T": "32",
+   "checked": "23..32",
+   "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+   "model": "2f5c5b372d5c222823580e84a1f0086f7fba0764b0dd283753be3f224cbad0de",
+   "next": "2654",
+   "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 (balanced policy-2 hiding sources, RFC-0013 A8; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P = 8 proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof index 3: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another proof against the same commitment also verifies. The control is verify-dev of a proof pinned to another model digest. Repeats, if any, are in model_config.host_context. Soundness ledger (verify-dev, E12-26): eps_interactive <= 731241032/p^4; worst round LU+ZD check 5, 2^-95.4, grinding 0 bits. CPU only, no GPU. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Not a cost-model fit input.",
+ "plan_digest": "6d12eddc9913a2b59f922fa82065debd0805fc55f70963484d661e32221199d2",
+ "profile": "development",
+ "prompt_tokens": 24,
+ "proof_size_bytes": 21411006,
+ "prover_time_ns": 518540000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment_once": 65720000000,
+  "prove_dev_wall": 518540000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 32280000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/stories42m-zk-balanced-t32"
+}

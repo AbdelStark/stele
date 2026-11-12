@@ -3232,3 +3232,46 @@ Status: Accepted (development tier) with RFC-0013 A9. Independent review: FIX-TH
 491f111; fixes applied at bbe98f6. Open: T = 64 (prover memory), privacy tests and tampers
 on the real checkpoint.
 
+## ADR-118: dev-zk prover peak memory; one ZK-GKR tree at a time, sources prepared in turn (task E16-33)
+
+Context: E12-29 proved stories42M under dev-zk at `T = 32` only. On the 48 GB laptop,
+`T = 64` was killed twice at about 31 GB RSS. macOS compresses and swaps, so RSS hides
+the demand: the `T = 32` prove's peak memory footprint was about 122 GB.
+
+Profile (the footprint timeline of one `T = 32` prove, with stack samples):
+1. The ZK-GKR leaf step of the `2^27`-position `range_8` check: dense QM31 factor
+   tables over `2^28` entries, about +50 GB at the peak.
+2. Hiding-source encoding: two large sources encoded together, about +30 GB transient
+   (62 GB, down to 30 GB after).
+3. Every check's LogUp tree, held from the `(β, α)` draws to the end of the ZK-GKR
+   phase, about +25 GB.
+
+The prepared sources' codeword columns (about 17 GB) are fourth.
+
+Decision (stele-reductions only):
+- Only each check's top is kept after the `(β, α)` draws. The tree is rebuilt from the
+  same `β`, `α` and columns when its ZK-GKR steps start, one check at a time. It is
+  dropped before the leaf step, which reads no tree layer.
+- The early hiding sources are prepared one at a time. Each encoding is already
+  parallel inside.
+- Field arithmetic is exact, so every value, round and byte is the same:
+  - the one- and eight-layer dev-zk pins (both bytes) and their `eps_interactive` are
+    unchanged;
+  - the stories42M proofs keep their sizes.
+- Not needed: re-deriving the source columns at opening time through a new stele-pcs
+  API, M31-typed factor tables, and dropping the doubled leaf tables.
+
+Measured (BSD `/usr/bin/time -l` peak memory footprint; M4 Max 48 GB, shared host; each
+figure is the median of its own three values):
+
+| Window | Before | After |
+|---|---|---|
+| stories42M `T = 32` (medians of three, alternating) | prove 591.2 s, footprint 122.2 GB | prove 518.5 s, footprint 89.9 GB (−26%) |
+| stories42M `T = 64` (medians of three) | killed | prove 923.1 s, footprint 107.1 GB, max RSS 33.6 GB; verify 46.5 s; 25,667,970 bytes |
+
+Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.json` and
+`e16-33-dev-zk-stories42m-t64-mac.json`.
+
+Status: Accepted (performance only; no protocol, byte or admission change). RFC-0013 A10
+(Draft, ADR-119) carries the `T = 64` admission separately.
+

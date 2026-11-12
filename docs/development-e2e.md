@@ -231,6 +231,31 @@ target/release/stele verify-dev --public $P/zk-public.bin --proof $P/zk-proof.bi
   --expect-model "$(grep '^model ' commit.out | cut -d' ' -f2)"
 ```
 
+### dev-zk prover memory (task E16-33)
+
+macOS compresses and swaps memory, so the prover's maximum RSS (about 30 GB) hides its
+demand. BSD `/usr/bin/time -l` also reports the **peak memory footprint**, and the
+E16-33 ledgers record it as `prove_peak_footprint_bytes`.
+- **Before E16-33:**
+  - a `T = 32` stories42M prove peaked at 122.2 GB;
+  - `T = 64` was killed on a 48 GB laptop.
+- **What changed.** The prover now keeps one ZK-GKR tree at a time, rebuilt from its
+  `β, α` and dropped before the leaf step. It also prepares the hiding sources one at a
+  time.
+- **After** (proof bytes identical):
+
+  | Window | Prove | Peak footprint | Verify | Proof bytes |
+  |---|---:|---:|---:|---:|
+  | `T = 32` (medians of three) | 518.5 s | 89.9 GB | 33.8 s | 21,411,006 |
+  | `T = 64` (medians of three) | 923.1 s | 107.1 GB | 46.5 s | 25,667,970 |
+
+  `T = 32` had a 591.2 s prove before. Each column is its own median. Each ledger record
+  is the median prove run, so its footprint can differ slightly: 119.6 GB before,
+  88.3 GB after and 107.3 GB at `T = 64`.
+
+Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.json`,
+`e16-33-dev-zk-stories42m-t64-mac.json`.
+
 ## A real model: llama2.c `stories42M` (task E16-11)
 
 [`stories42M`](https://huggingface.co/karpathy/tinyllamas) is Karpathy's llama2.c model
