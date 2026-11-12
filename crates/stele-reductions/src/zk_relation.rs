@@ -516,6 +516,23 @@ pub fn leaks(
     claims::leaks(&layout.statement, &columns, proof, t)
 }
 
+/// [`leaks`] of a dev-zk proof with its lifetime weight source (RFC-0013 A6), under
+/// the lifetime's geometry (RFC-0013 A8).
+#[cfg(feature = "controls")]
+pub fn leaks_lifetime(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    lifetime: &Lifetime,
+    proof: &Proof<K>,
+) -> Result<(usize, usize), Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::leaks_lifetime(&layout.statement, Some(lifetime), &columns, proof, t)
+}
+
 /// The privacy tests' leak control: [`prove`] through `claims::prove_unmasked`.
 #[cfg(feature = "controls")]
 pub fn prove_unmasked(

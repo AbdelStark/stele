@@ -30,20 +30,42 @@
 //! Ids: claim sources `0..S` (the top source last), the shared source next, then
 //! relations, GKR steps, batches and the shared batch; every mask stream is
 //! therefore used once per proof.
-use super::{basis, prove_at, Error, Seed, BLOWUP, MIN_M};
+use super::{basis, prove_at, verify_with, Error, Seed, BLOWUP, MIN_M};
 use alloc::vec;
 use alloc::vec::Vec;
 use stele_field::{Inverse, Serialize, M31};
 use stele_hash::mask::{MaskStream, SOURCE_MASK};
 use stele_hash::{AbsorbLabel, ChallengeField, ChallengeLabel, HashUsage, Transcript};
 use stele_pcs::{
-    verify_certificate, verify_point, CodeField, PreparedSource, Source, VerifiedCertificate,
+    verify_certificate, verify_point, CodeField, Policy, PreparedSource, Source,
+    VerifiedCertificate,
 };
 use stele_sumcheck::masked::{self, Mask, MaskRecord};
 use stele_sumcheck::{Dense, Instance, Reduction, Summand, Term};
 
 #[path = "zk_lookup.rs"]
 mod lookup;
+
+/// The source set of a dev-zk proof: its sources' geometry and PCS policy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Geometry {
+    /// Profile byte 1 (A5, A6, A7): `R = 2D` rows on every claim source, policy 1,
+    /// the shared source's limb `d` in data row `d`.
+    Narrow,
+    /// Profile byte 4 (RFC-0013 A8): each source's `ell` by A8 item 2's byte rule,
+    /// policy 2 (development resolution), the shared source's limbs as `L`-wide runs.
+    Balanced,
+}
+
+impl Geometry {
+    /// The PCS policy of every source of this geometry.
+    pub fn policy(self) -> Policy {
+        match self {
+            Geometry::Narrow => Policy::One,
+            Geometry::Balanced => Policy::Two,
+        }
+    }
+}
 
 /// A committed column of `2^log_len` M31 entries in claim source `source`.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -248,6 +270,8 @@ pub struct Claim<K> {
 /// uses blocks `index·blocks[i]..`, so every proof's masks are fresh.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Lifetime {
+    /// The source geometry and policy of the proof (RFC-0013 A8).
+    pub geometry: Geometry,
     /// The lifetime source.
     pub source: usize,
     /// Its proof budget `P`.
@@ -447,6 +471,12 @@ struct Plan<K> {
     /// Column offset of each mask in the shared source, and its `(ell, m)`.
     shared_offsets: Vec<usize>,
     shared: (u8, u8),
+    /// Data positions per limb run of the shared source's plain masks: `L = C` under
+    /// [`Geometry::Narrow`] (limb `d` in row `d`), the total mask width under
+    /// [`Geometry::Balanced`]. Layer blocks start at `D·L`.
+    stride: usize,
+    /// The proof's source set.
+    geometry: Geometry,
     /// Layer blocks of `4D` entries in the shared source, from data row `D`.
     blocks: usize,
     /// Masked occurrences (claim-mask blocks) per column.
@@ -461,6 +491,9 @@ struct Plan<K> {
 impl<K: ChallengeField + CodeField> Plan<K> {
     fn source_id(&self, s: usize) -> u64 {
         s as u64
+    }
+    fn policy(&self) -> Policy {
+        self.geometry.policy()
     }
     fn shared_id(&self) -> u64 {
         self.layouts.len() as u64
@@ -788,6 +821,39 @@ fn plan<K: ChallengeField + CodeField>(statement: &Statement<K>) -> Result<Plan<
     plan_with(statement, None)
 }
 
+/// RFC-0013 A8 item 2: the `(ell, m)` of a balanced policy-2 hiding source of at
+/// least `entries` data positions minimising its proof bytes
+/// `2·4D·2C + (q_c + q_o)·(4·2R + 32·log2 N + 32)`, ties to the smallest `ell`. For
+/// each `ell` the least admissible `m` is taken; a lifetime source (`proofs`) must
+/// also admit A6's lifetime. No admissible shape is `Statement`.
+fn balanced_shape<K: ChallengeField + CodeField>(
+    entries: usize,
+    proofs: Option<usize>,
+) -> Result<(u8, u8), Error> {
+    let mut best: Option<(usize, u8, u8)> = None;
+    for ell in 1u8..30 {
+        let least = MIN_M.max(ceil_log2(entries.max(1).div_ceil(1usize << ell)));
+        let shape = (least..30).find_map(|m| {
+            let source = Source::<K>::hiding_with(0, ell, m, BLOWUP, [0; 32], Policy::Two).ok()?;
+            proofs
+                .is_none_or(|p| source.admits_lifetime(p))
+                .then_some((m, source))
+        });
+        let Some((m, source)) = shape else {
+            continue;
+        };
+        let p = source.parameters();
+        let response =
+            4 * source.rows() + 32 * source.codeword_len().trailing_zeros() as usize + 32;
+        let bytes = 2 * 4 * dim::<K>() * source.columns()
+            + (usize::from(p.certificate_queries) + usize::from(p.opening_queries)) * response;
+        if best.is_none_or(|(b, _, _)| bytes < b) {
+            best = Some((bytes, ell, m));
+        }
+    }
+    best.map(|(_, ell, m)| (ell, m)).ok_or(Error::Statement)
+}
+
 /// A6's admission of a lifetime source: the smallest `(ell, m)` with `R ≥ 2D`,
 /// `R ≥ (P + 1)·D` and `q_c + P·q_o ≤ C − 1`, holding at least `entries`.
 fn lifetime_shape<K: ChallengeField + CodeField>(
@@ -811,6 +877,7 @@ fn plan_with<K: ChallengeField + CodeField>(
     statement: &Statement<K>,
     lifetime: Option<&Lifetime>,
 ) -> Result<Plan<K>, Error> {
+    let geometry = lifetime.map_or(Geometry::Narrow, |l| l.geometry);
     let c = dim::<K>().trailing_zeros() as usize;
     let s = statement.sources;
     if s == 0
@@ -1082,11 +1149,15 @@ fn plan_with<K: ChallengeField + CodeField>(
     }
     let mut layouts = Vec::new();
     for (source, cursor) in cursors.iter().enumerate() {
-        let (ell, m) = match lifetime {
-            Some(life) if life.source == source => {
+        let (ell, m) = match (lifetime, geometry) {
+            (Some(life), Geometry::Narrow) if life.source == source => {
                 lifetime_shape::<K>(source as u64, life.proofs, *cursor)?
             }
-            _ => (ell, MIN_M.max(ceil_log2(cursor.div_ceil(rows)))),
+            (Some(life), Geometry::Balanced) if life.source == source => {
+                balanced_shape::<K>(*cursor, Some(life.proofs))?
+            }
+            (_, Geometry::Narrow) => (ell, MIN_M.max(ceil_log2(cursor.div_ceil(rows)))),
+            (_, Geometry::Balanced) => balanced_shape::<K>(*cursor, None)?,
         };
         if m >= 30 {
             return Err(Error::Statement);
@@ -1123,11 +1194,22 @@ fn plan_with<K: ChallengeField + CodeField>(
         shared_offsets.push(width);
         width += *n as usize * (degree + 1);
     }
-    // Blocks fill data rows D..2D: C ≥ 4·blocks.
-    let m = MIN_M.max(ceil_log2(width)).max(ceil_log2(4 * blocks));
-    if m >= 30 {
-        return Err(Error::Statement);
-    }
+    // Narrow: limb d in data row d, blocks in data rows D..2D, so C ≥ width and
+    // C ≥ 4·blocks. Balanced (RFC-0013 A8 item 2): limb d at [d·L, (d + 1)·L) with
+    // L = width, then the blocks from D·L, on the shape A8's byte rule picks.
+    let (shared, stride) = match geometry {
+        Geometry::Narrow => {
+            let m = MIN_M.max(ceil_log2(width)).max(ceil_log2(4 * blocks));
+            if m >= 30 {
+                return Err(Error::Statement);
+            }
+            ((ell, m), 1usize << m)
+        }
+        Geometry::Balanced => {
+            let entries = dim::<K>() * (width + 4 * blocks);
+            (balanced_shape::<K>(entries, None)?, width.max(1))
+        }
+    };
     Ok(Plan {
         columns,
         steps,
@@ -1137,7 +1219,9 @@ fn plan_with<K: ChallengeField + CodeField>(
         batched,
         masks,
         shared_offsets,
-        shared: (ell, m),
+        shared,
+        stride,
+        geometry,
         blocks,
         counts,
         reserved,
@@ -1217,7 +1301,7 @@ where
 {
     let (_, n, degree) = plan.masks[index];
     let b = masked::column_weights(n, degree, point, true).map_err(Error::Sumcheck)?;
-    let columns = 1usize << plan.shared.1;
+    let stride = plan.stride;
     let offset = plan.shared_offsets[index];
     let mut weights = Vec::new();
     for d in 0..dim::<K>() {
@@ -1225,7 +1309,7 @@ where
         weights.extend(
             b.iter()
                 .enumerate()
-                .map(|(c, w)| (d * columns + offset + c, e * *w)),
+                .map(|(c, w)| (d * stride + offset + c, e * *w)),
         );
     }
     Ok(Claim { weights, value })
@@ -1891,12 +1975,12 @@ fn shared_message<K: ChallengeField + CodeField>(
     for (mask, offset) in masks.iter().zip(&plan.shared_offsets) {
         for (c, value) in mask.columns(0).enumerate() {
             for (d, limb) in limbs(value)?.into_iter().enumerate() {
-                x[d * width + offset + c] = limb;
+                x[d * plan.stride + offset + c] = limb;
             }
         }
     }
     let mut stream = after_masks(seed, plan.shared_id(), rows, width);
-    let start = dim::<K>() * width;
+    let start = dim::<K>() * plan.stride;
     for value in &mut x[start..start + 4 * dim::<K>() * plan.blocks] {
         let drawn = stream.m31();
         if claim_masks {
@@ -1962,7 +2046,7 @@ where
         .collect();
     let message = source_message(&plan, source, &data, &seed.0, true)?;
     let layout = &plan.layouts[source];
-    let prepared = PreparedSource::<K>::hiding(
+    let prepared = PreparedSource::<K>::hiding_with(
         plan.source_id(source),
         layout.ell,
         layout.m,
@@ -1970,6 +2054,7 @@ where
         &message,
         &seed.0,
         &mut HashUsage::default(),
+        plan.policy(),
     )
     .map_err(Error::Pcs)?;
     Ok(prepared.source().root())
@@ -2354,8 +2439,17 @@ where
         .map(|(id, n, degree)| Mask::plain(seed, *id, *n, *degree).map_err(Error::Sumcheck))
         .collect::<Result<Vec<_>, _>>()?;
     let hiding = |id: u64, (ell, m): (u8, u8), message| {
-        PreparedSource::<K>::hiding(id, ell, m, BLOWUP, message, seed, &mut HashUsage::default())
-            .map_err(Error::Pcs)
+        PreparedSource::<K>::hiding_with(
+            id,
+            ell,
+            m,
+            BLOWUP,
+            message,
+            seed,
+            &mut HashUsage::default(),
+            plan.policy(),
+        )
+        .map_err(Error::Pcs)
     };
     let mut model = model;
     let revealed = model
@@ -2369,7 +2463,7 @@ where
         let layout = &plan.layouts[s];
         match (model.as_ref(), &plan.lifetime) {
             (Some(m), Some(l)) if l.source == s => {
-                let p = PreparedSource::<K>::hiding_lifetime(
+                let p = PreparedSource::<K>::hiding_lifetime_with(
                     plan.source_id(s),
                     layout.ell,
                     layout.m,
@@ -2379,6 +2473,7 @@ where
                     &mut HashUsage::default(),
                     l.proofs,
                     revealed.clone(),
+                    plan.policy(),
                 )
                 .map_err(Error::Pcs)?;
                 // RFC-0013 A6: the producer refuses weights other than the committed ones.
@@ -2617,7 +2712,7 @@ where
     let weights = weight_table(shared.source(), &mus, &gammas)?;
     let i = batch_instance(plan.shared_batch_id(), shared.source(), &mus, &gammas);
     let dense = Dense::new(&i, vec![weights, face(shared)]).map_err(Error::Sumcheck)?;
-    let (proof, point) = prove_at(&i, dense, seed, t)?;
+    let (proof, point) = prove_at(&i, dense, seed, t, plan.policy())?;
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
     }
@@ -2692,7 +2787,7 @@ where
     let s = lifetime.source;
     let message = source_message(&plan, s, &data, model, true)?;
     let layout = &plan.layouts[s];
-    let prepared = PreparedSource::<K>::hiding(
+    let prepared = PreparedSource::<K>::hiding_with(
         plan.source_id(s),
         layout.ell,
         layout.m,
@@ -2700,6 +2795,7 @@ where
         &message,
         model,
         &mut HashUsage::default(),
+        plan.policy(),
     )
     .map_err(Error::Pcs)?;
     Ok(prepared.source().root())
@@ -2758,8 +2854,8 @@ where
             (plan.shared_id(), plan.shared)
         };
         let source = Source::<K>::from_bytes(bytes).map_err(Error::Pcs)?;
-        let expected =
-            Source::<K>::hiding(id, ell, m, BLOWUP, source.root()).map_err(Error::Pcs)?;
+        let expected = Source::<K>::hiding_with(id, ell, m, BLOWUP, source.root(), plan.policy())
+            .map_err(Error::Pcs)?;
         if expected.bytes() != source.bytes() {
             return Err(Error::MaskSource);
         }
@@ -2853,7 +2949,7 @@ where
     let source = shared.record().source();
     let gammas = coefficients(t, mus.len())?;
     let i = batch_instance(plan.shared_batch_id(), source, &mus, &gammas);
-    let (reduction, record) = super::verify(&i, &proof.shared, t)?;
+    let (reduction, record) = verify_with(&i, &proof.shared, t, plan.policy())?;
     let point = &reduction.point;
     if reduction.claims[0].1 != expected_weight(source, &mus, &gammas, point)? {
         return Err(Error::Sumcheck(
@@ -2895,8 +2991,24 @@ pub fn leaks<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    let plan = plan(statement)?;
-    let verified = verify(statement, proof, t)?;
+    leaks_lifetime(statement, None, columns, proof, t)
+}
+
+/// [`leaks`] of a proof with a lifetime source (RFC-0013 A6), under its geometry
+/// (RFC-0013 A8): the byte-4 privacy tests count bare evaluations through it.
+#[cfg(feature = "controls")]
+pub fn leaks_lifetime<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    lifetime: Option<&Lifetime>,
+    columns: &[Vec<M31>],
+    proof: &Proof<K>,
+    t: &mut Transcript<K>,
+) -> Result<(usize, usize), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let plan = plan_with(statement, lifetime)?;
+    let verified = verify_lifetime(statement, lifetime, proof, t)?;
     // Every plan column as K, the lookups' committed tops p, q, h included, and
     // each lookup's tree from its public (β, α).
     let mut data: Vec<Vec<K>> = columns
@@ -3097,6 +3209,20 @@ where
 mod tests {
     use super::*;
     use stele_field::{Field, QM31};
+
+    /// RFC-0013 A8 item 2: the balanced shapes of `research/zk-sources/zkgeom.py`'s
+    /// model (2^12 → ell 3, 2^19 → ell 7, 2^24 → ell 9; the lifetime source at P = 8
+    /// → ell 7), and `Statement` when no shape is admissible.
+    #[test]
+    fn matches_reference_balanced_shapes() {
+        let ell = |entries: usize, proofs| balanced_shape::<QM31>(entries, proofs).map(|s| s.0);
+        assert_eq!(ell(1 << 12, None), Ok(3));
+        assert_eq!(ell(1 << 19, None), Ok(7));
+        assert_eq!(ell(1 << 24, None), Ok(9));
+        assert_eq!(ell(1 << 19, Some(8)), Ok(7));
+        assert_eq!(balanced_shape::<QM31>(1 << 24, None), Ok((9, 15)));
+        assert_eq!(balanced_shape::<QM31>(1 << 60, None), Err(Error::Statement));
+    }
 
     /// E16-24: the factored term evaluation is the same element as the plain
     /// `Σ c·Π v`, over shapes with a shared factor, `±1` and other coefficients,
@@ -3299,6 +3425,7 @@ mod tests {
         assert_eq!(t, 2);
         let positions = |index| {
             let life = Lifetime {
+                geometry: Geometry::Narrow,
                 source: 1,
                 proofs: 3,
                 index,

@@ -101,3 +101,54 @@ fn matches_reference_qm31_certificate_production() {
 fn matches_reference_om31_certificate_production() {
     corpus::<OM31>();
 }
+/// RFC-0013 A8 item 4: a policy-2 hiding certificate's grinding nonces are the least
+/// passing ones. The verifier's transcript is replayed and, at each grind round, every
+/// smaller nonce is checked to fail (a failed check leaves the state unchanged).
+#[test]
+fn matches_reference_least_nonces_on_policy_two_hiding_certificate() {
+    let (ell, m, id, seed) = (3u8, 9u8, 41u64, [9u8; 32]);
+    let x: Vec<M31> = (0..1usize << (ell + m))
+        .map(|i| M31::from_i64(i as i64 % 251 - 125))
+        .collect();
+    let message = crate::hiding_message(id, ell, m, &x, &seed).expect("message");
+    let prepared = PreparedSource::<QM31>::hiding_with(
+        id,
+        ell,
+        m,
+        2,
+        &message,
+        &seed,
+        &mut HashUsage::default(),
+        crate::Policy::Two,
+    )
+    .expect("prepare");
+    let (proof, _) = prepared.certificate().expect("certificate");
+    let source = prepared.source();
+    let (tensor_bits, column_bits) = source.grind_bits(ProofKind::Certificate);
+    assert!(column_bits > 0, "policy 2 grinds the column round");
+    let nonce_at = |at: usize| u64::from_le_bytes(proof[at..at + 8].try_into().expect("nonce"));
+    let least = |t: &mut Transcript<QM31>, bits: u8, nonce: u64| {
+        for smaller in 0..nonce {
+            assert_eq!(
+                t.verify_grind(bits, smaller),
+                Err(stele_hash::Error::GrindMismatch)
+            );
+        }
+        t.verify_grind(bits, nonce)
+            .expect("the proof's nonce passes");
+    };
+    let mut t = transcript(source).expect("transcript");
+    let mut at = 1;
+    if tensor_bits > 0 {
+        least(&mut t, tensor_bits, nonce_at(at));
+        at += 8;
+    }
+    for _ in 0..source.rows().trailing_zeros() {
+        t.challenge(ChallengeLabel::CertificateWeight)
+            .expect("weight");
+    }
+    let row = source.columns() * 16; // QM31 row values, 16 bytes each
+    t.absorb(AbsorbLabel::CertificateRow, &proof[at..at + row])
+        .expect("row");
+    least(&mut t, column_bits, nonce_at(at + row));
+}

@@ -1,0 +1,75 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "442b27d59f31e6f16fcc39c21a3249b8d1255bd6",
+ "controls": {
+  "failed": 0,
+  "passed": 1,
+  "total": 1
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "commit_peak_rss_bytes": 857751552,
+  "model_commitment_bytes": 638,
+  "prove_peak_rss_bytes": 9255927808,
+  "public_bytes": 23704,
+  "verify_peak_rss_bytes": 2232942592
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+  "controls": {
+   "pin": "model differs from --expect-model"
+  },
+  "host_context": "Apple M4 Max laptop, macOS, release build of the measured commit (the E12-28 PR head before its ledger commit). Three runs of commit-model --zk (P = 8), prove-dev --zk (proofs 0 and 1) and verify-dev --expect-model; each timed step started once the 1-minute load average was below 2 (other agents shared the host). This record is the median prove run. Wall times of the three runs: commit-model 3.80 s, 3.30 s, 3.35 s; prove-dev --zk 27.11 s, 27.12 s, 27.56 s; verify-dev 2.81 s, 2.77 s, 2.78 s. Proof bytes 6,421,222 in every run (fresh seeds). Byte 1 on the same window, three runs at the same tree with commit-model --zk-profile 1 (not quoted from E16-24): 141,745,010 bytes in every run; commit-model 3.75 s, 3.38 s, 3.38 s; prove-dev --zk 30.71 s, 30.64 s, 30.55 s; verify-dev 4.41 s, 4.39 s, 4.37 s (medians 3.38 s, 30.64 s, 4.39 s). These agree with the E16-24 after-ledger (30.7 s, 4.4 s at ac2a9e3). BSD /usr/bin/time -l.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "profile_byte": 4,
+  "proof_index": 0,
+  "proof_sha256": "c6fb1853fc417400cd7ca94b31df8483233b13f52452dda3957a3b43d7538954",
+  "proofs": 8,
+  "public_sha256": "1c3b0c4df554a4b75bc5abc3a7149710b7c23394f732a50a6200fc5ddf25a645",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "5679ceb495e14fcefcc7349a2ab33145ae1ae85e8366ee3094026e228114adc3",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 on balanced policy-2 hiding sources (RFC-0013 A8, Draft; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof 0: Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; proof 1 against the same commitment also verifies. The control is verify-dev of proof 1 pinned to another model digest. Three runs per process (model_config.host_context); this record is the median prove run. CPU only, no GPU. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Not a cost-model fit input.",
+ "plan_digest": "7c91fbac5765d7353bcb7e63f8389a71edf96f79022a95a28f5ead7336a05ac9",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 6421222,
+ "prover_time_ns": 27120000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "model_commitment_once": 3300000000,
+  "prove_dev_wall": 27120000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 2770000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-zk-balanced-t64"
+}

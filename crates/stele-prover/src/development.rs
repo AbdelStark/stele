@@ -691,9 +691,21 @@ pub fn prove_window_profile(
             sources: Sources::Expander,
         };
         let proof = match window {
-            zk::Window::Commit { proofs, seed, out } => {
-                let (c, state) =
-                    zk::commit(&public, &mut executor, &weights, length, proofs, seed)?;
+            zk::Window::Commit {
+                proofs,
+                seed,
+                profile,
+                out,
+            } => {
+                let (c, state) = zk::commit(
+                    &public,
+                    &mut executor,
+                    &weights,
+                    length,
+                    proofs,
+                    seed,
+                    profile,
+                )?;
                 public.commitment = alloc::vec![(c.root, Vec::new())];
                 *out = Some((c, state));
                 Vec::new()

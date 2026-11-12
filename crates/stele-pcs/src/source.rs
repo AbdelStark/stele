@@ -294,6 +294,20 @@ impl<K: ChallengeField> Source<K> {
         blowup: u8,
         root: merkle::Digest,
     ) -> Result<Self, Error> {
+        Self::hiding_with(id, ell, m, blowup, root, Policy::One)
+    }
+
+    /// [`Self::hiding`] under `policy`. Hiding sources serve dev-zk only, so policy 2
+    /// resolves the development profile (RFC-0013 A8, unproven); its tensor grinding
+    /// uses the source's row exponent `ell + 1`.
+    pub fn hiding_with(
+        id: u64,
+        ell: u8,
+        m: u8,
+        blowup: u8,
+        root: merkle::Digest,
+        policy: Policy,
+    ) -> Result<Self, Error> {
         if ell >= 30 || m >= 30 {
             return Err(Error::UnsupportedSource);
         }
@@ -302,7 +316,10 @@ impl<K: ChallengeField> Source<K> {
                 stele_code::Error::Capacity => Error::Capacity,
                 _ => Error::UnsupportedSource,
             })?;
-        let mut source = Self::from_code_id(id, ell + 1, &code.code_id(), root)?;
+        let mut source = match policy {
+            Policy::One => Self::from_code_id(id, ell + 1, &code.code_id(), root)?,
+            Policy::Two => Self::from_code_id_development(id, ell + 1, &code.code_id(), root)?,
+        };
         let p = source.parameters;
         let data_columns = source.columns / 2;
         if source.rows / 2 < 2 * K::DEGREE
@@ -361,7 +378,8 @@ impl<K: ChallengeField> Source<K> {
             .try_into()
             .map_err(|_| Error::UnsupportedSource)?;
         // A14 item 7: a policy byte other than 1 or 2 is UnsupportedSource. Hiding
-        // (version 3) sources are Policy 1 only; byte 2 there fails re-serialization.
+        // (version 3) sources take either: policy 2 there is RFC-0013 A8's development
+        // resolution, and the caller compares the bytes with the source it derives.
         let policy = match bytes[end + 17] {
             1 => Policy::One,
             2 => Policy::Two,
@@ -373,12 +391,13 @@ impl<K: ChallengeField> Source<K> {
             if ell == 0 || code[19] == 0 || code[..19] != *b"stele/circle-m31/v1" {
                 return Err(Error::UnsupportedSource);
             }
-            Self::hiding(
+            Self::hiding_with(
                 u64::from_le_bytes(id),
                 ell - 1,
                 code[19] - 1,
                 code[20],
                 root,
+                policy,
             )?
         } else {
             Self::from_code_id_policy(

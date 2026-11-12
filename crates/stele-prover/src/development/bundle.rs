@@ -21,6 +21,8 @@ const CIRCLE_MAGIC: &[u8] = b"stele-dev-public-v2";
 const CIRCLE_ALL_MAGIC: &[u8] = b"stele-dev-public-v3";
 /// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
 const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";
+/// RFC-0013 A8's input file (profile byte 4): the same layout.
+const ZK_BALANCED_MAGIC: &[u8] = b"stele-dev-zk-public-v2";
 
 fn blob(out: &mut Vec<u8>, bytes: &[u8]) {
     out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
@@ -38,6 +40,7 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
         (0, Sources::Expander) => MAGIC.to_vec(),
         (0, Sources::Circle) => CIRCLE_MAGIC.to_vec(),
         (0, Sources::CircleAll) => CIRCLE_ALL_MAGIC.to_vec(),
+        (super::zk::PROFILE_BALANCED, _) => ZK_BALANCED_MAGIC.to_vec(),
         _ => ZK_MAGIC.to_vec(),
     };
     blob(&mut out, &public.model);
@@ -114,7 +117,7 @@ pub fn encode_zk(
     commitment: &super::zk::ModelCommitment,
     index: u32,
 ) -> Vec<u8> {
-    let mut out = encode_profile(public, statement, 1);
+    let mut out = encode_profile(public, statement, commitment.profile);
     out.extend_from_slice(&index.to_le_bytes());
     out.extend_from_slice(&commitment.encode());
     out
@@ -128,10 +131,14 @@ pub fn decode_zk(
     let (public, statement, profile, rest) = parse(bytes)?;
     let index = rest.get(..4).ok_or(Error::StatementMismatch)?;
     let index = u32::from_le_bytes([index[0], index[1], index[2], index[3]]);
-    if profile != 1 {
+    if !matches!(profile, 1 | super::zk::PROFILE_BALANCED) {
         return Err(Error::StatementMismatch);
     }
     let commitment = super::zk::ModelCommitment::decode(&rest[4..])?;
+    // RFC-0013 A8: the file names the commitment's byte (NC-0941).
+    if commitment.profile != profile {
+        return Err(Error::StatementMismatch);
+    }
     Ok((public, statement, commitment, index))
 }
 
@@ -140,14 +147,22 @@ pub fn decode_zk(
 pub fn decode_profile(bytes: &[u8]) -> Result<(Public, Statement, u8), Error> {
     match parse(bytes)? {
         (public, statement, 0, []) => Ok((public, statement, 0)),
-        (public, statement, 1, _) => decode_zk(bytes).map(|_| (public, statement, 1)),
+        (public, statement, p @ (1 | super::zk::PROFILE_BALANCED), _) => {
+            decode_zk(bytes).map(|_| (public, statement, p))
+        }
         _ => Err(Error::StatementMismatch),
     }
 }
 
 #[allow(clippy::type_complexity)]
 fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
-    let (profile, magic, sources) = if bytes.starts_with(ZK_MAGIC) {
+    let (profile, magic, sources) = if bytes.starts_with(ZK_BALANCED_MAGIC) {
+        (
+            super::zk::PROFILE_BALANCED,
+            ZK_BALANCED_MAGIC,
+            Sources::Expander,
+        )
+    } else if bytes.starts_with(ZK_MAGIC) {
         (1, ZK_MAGIC, Sources::Expander)
     } else if bytes.starts_with(CIRCLE_MAGIC) {
         (0, CIRCLE_MAGIC, Sources::Circle)

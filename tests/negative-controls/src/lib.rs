@@ -328,6 +328,24 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || development::run_records(938),
     },
     catalog::RegisteredControl {
+        id: 939,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "GrindMismatch",
+        run: || development::run(939),
+    },
+    catalog::RegisteredControl {
+        id: 940,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run(940),
+    },
+    catalog::RegisteredControl {
+        id: 941,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "StatementMismatch",
+        run: || development::run(941),
+    },
+    catalog::RegisteredControl {
         id: 1300,
         kind: catalog::ControlKind::Proof,
         expected_error: "RootMismatch",

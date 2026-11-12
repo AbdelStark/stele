@@ -99,11 +99,18 @@ published model commitment (RFC-0013 A6, task E12-25), with the weights and the
 norm gains hidden (A7, task E12-27). It is admitted at the development tier
 (RFC-0013 A5 **Admission**, ADR-109, task E12-14). There is no security level, and
 zero knowledge is conditional and computational.
+- Sources (RFC-0013 A8, Draft, task E12-28):
+  - `commit-model --zk` makes a byte-4 commitment: profile byte 4, balanced
+    policy-2 hiding sources, with the byte recorded in the commitment and secret files.
+  - Byte-1 commitments and proofs still prove and verify.
+  - On the eight-layer window a byte-4 proof is 6,421,222 bytes (prove 27.1 s, verify
+    2.8 s; `bench/ledger/e12-28-dev-zk-synthetic-8layer-mac.json`). A byte-1 proof is
+    141,745,010 bytes.
 - `commit-model --zk` commits the weights once, for at most `--proofs` proofs. The
   model seed comes from `/dev/urandom`.
-  - It writes the public `--commitment` file (`stele-dev-zk-model-v1`) and prints
+  - It writes the public `--commitment` file (`stele-dev-zk-model-v2`; byte 1's is `-v1`) and prints
     its model digest.
-  - It writes the secret `--secret` file (`stele-dev-zk-model-secret-v1`, mode
+  - It writes the secret `--secret` file (`stele-dev-zk-model-secret-v2`; byte 1's is `-v1`; mode
     0600: seed, proof counter, earlier openings). Keep the secret file private
     and never restore an older copy. A reused index leaks linear equations on
     the weights (RFC-0013 A6 item 5).

@@ -7,7 +7,7 @@ const ROW: &str = "| NC-0001 | binding | 0002 §7 | change cell | ExactError | t
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 229);
+    assert_eq!(catalog.len(), 232);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
     assert_eq!(catalog.last().map(|entry| entry.id), Some(1320));
     assert!(
@@ -17,7 +17,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
     assert!(
-        coverage.contains("57/106 bindings; 125/229 controls"),
+        coverage.contains("60/109 bindings; 128/232 controls"),
         "{coverage}"
     );
     assert_eq!(coverage.matches("MISSING").count(), 104);

@@ -3047,3 +3047,38 @@ Consequences: development proof bytes change under byte 3 (new pins); byte-2 and
 proofs are unchanged. Open: the independent review of A12.
 
 Status: Accepted with RFC-0026 A12 (development tier). Independent review: MERGE at 6044c28. NC-1319 isolates the byte-3 transcript binding, the length-before-parse reorder does not change acceptance, and ADR-108 is still enforced. Follow-ups: explicit match arms for Sources dispatch; note the stories42M split is inferred.
+
+## ADR-114: dev-zk on balanced Policy 2 hiding sources, profile byte 4 (RFC-0013 A8, task E12-28)
+
+Numbered after ADR-113, which #353 holds.
+
+Context: the eight-layer dev-zk proof is 141.7 MB. It is not an expander problem: dev-zk
+sources are already Circle rate 1/4 (RFC-0010 A15). Two combined rows of the witness
+source, at A5's least row count (`ell = 3`, `2^21` data columns), take 134 MB.
+
+Decision:
+- A new profile byte 4 for dev-zk on balanced sources. Byte 1 keeps verifying. Model
+  commitments record their byte.
+- Each claim source's `ell` is chosen by a byte-count rule subject to A2/A6's row and
+  query budgets.
+- Policy 2 on every dev-zk source, resolved for development, with least-nonce
+  grinding.
+- The hiding argument is re-instantiated, not re-proved: Lemma 1's
+  `|Q| ≤ C − 1` and Lemma 2's rank budget hold at the new `q`, `C`, `R`. Nonces are
+  functions of the public prefix.
+- Projected 6.6 MB (design note `formal/zk-sources.md`).
+- Rules added after the independent review of the first draft (accept with fixes):
+  - a fresh `σ_M` per byte-4 commitment, and a byte-1 secret file refused;
+  - every grinder returns the least passing nonce;
+  - `k_t` on the source row exponent `ell + 1`;
+  - a linear claim and shared layout at any `ell`;
+  - `Statement` when no `ell` is admissible;
+  - A8 item 7's superseded text in RFC-0010 A14/A15 and RFC-0026 A11.
+- Implementation waits for #353 (RFC-0026 A12, byte 3) to land, then lands in the same
+  PR as the amendment.
+
+Status: Accepted (development tier) with RFC-0013 A8. Independent review: design ACCEPT-WITH-FIXES
+at 2e56537; implementation FIX-THEN-MERGE at afe2fc0 (6,421,222-byte proof and byte-1 pins
+reproduced, native green, decode_zk byte-check and Policy::One-downgrade mutations caught);
+all fixes applied at 02008a0.
+

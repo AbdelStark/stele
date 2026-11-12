@@ -2714,6 +2714,30 @@ tasks:
   - the gain-derived columns (H0, H1, σH, flipH and the final gain) are weight columns of the lifetime source, with ranges and the sign identities that make them a CQIS gain encoding
   - the 1-D records leave the dev-zk public input and the model digest; controls for an inconsistent encoding
   - gate for admitting dev-zk (closes review F2)
+- id: E12-28
+  epic: E12
+  title: dev-zk on balanced Policy 2 hiding sources (profile byte 4; RFC-0013 A8)
+  depends:
+  - E12-14
+  - E16-24
+  - E16-30
+  - E16-31
+  rfc:
+  - RFC-0013 A8
+  - RFC-0013 A6
+  - RFC-0010 A14
+  - RFC-0010 A15
+  - RFC-0026 A9
+  skill: soundness-auditor
+  crate: stele-pcs+stele-reductions+stele-prover+stele-cli
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-28-dev-zk-circle-design
+  acceptance:
+  - design note formal/zk-sources.md and RFC-0013 A8 reviewed; the A2 hiding argument re-checked at the balanced geometry under Policy 2 grinding
+  - byte-4 dev-zk proofs on balanced Policy 2 sources, byte 1 still verified; pinned proofs, χ² privacy tests and the eight-layer bare-evaluation test on byte 4
+  - controls for a hiding-source grind mismatch, a cross-byte model commitment and a wrong profile byte
+  - eight-layer ledger, byte 1 against byte 4, three runs each at the same commit (byte 1 through commit-model --zk-profile 1)
 - id: E12-26
   epic: E12
   title: dev-zk soundness ledger from the verifier (SC, MASK, ZD, LU and PCS lines per instance and source)

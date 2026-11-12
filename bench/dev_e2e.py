@@ -110,8 +110,10 @@ def main():
         commit_ns, commit_rss = gnu_time(run / 'commit.time')
         stages['model_commitment_once'] = commit_ns
         proofs = int(re.search(r'^proofs (\d+)$', (run / 'commit.out').read_text(), re.M).group(1))
+        # RFC-0013 A8: the public file names the profile byte (v2 is byte 4).
+        byte = 4 if public.startswith(b'stele-dev-zk-public-v2') else 1
         plan.update(command='stele commit-model --zk / prove-dev --zk / verify-dev --expect-model',
-                    profile_byte=1, proofs=proofs, proof_index=0)
+                    profile_byte=byte, proofs=proofs, proof_index=0)
         extra_counters = {'commit_peak_rss_bytes': commit_rss,
                           'model_commitment_bytes': (run / 'model.commit').stat().st_size}
     if a.rung:

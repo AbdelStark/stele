@@ -137,6 +137,18 @@ fn zk_commit(
     proofs: u32,
     seed: u8,
 ) -> Result<(Public, zk::ModelCommitment, zk::ModelState), String> {
+    zk_commit_profile(public, exec, weights, proofs, seed, zk::PROFILE)
+}
+
+/// [`zk_commit`] under `profile` (RFC-0013 A8: [`zk::PROFILE_BALANCED`]).
+fn zk_commit_profile(
+    public: &Public,
+    exec: &mut Executor<'_>,
+    weights: &Weights,
+    proofs: u32,
+    seed: u8,
+    profile: u8,
+) -> Result<(Public, zk::ModelCommitment, zk::ModelState), String> {
     let base = Public {
         commitment: Vec::new(),
         vectors: zk::published(&public.model, &public.vectors).map_err(|e| format!("{e:?}"))?,
@@ -144,8 +156,8 @@ fn zk_commit(
         sources: Sources::Expander,
         ..public.clone()
     };
-    let (commitment, state) =
-        zk::commit(&base, exec, weights, 4, proofs, [seed; 32]).map_err(|e| format!("{e:?}"))?;
+    let (commitment, state) = zk::commit(&base, exec, weights, 4, proofs, [seed; 32], profile)
+        .map_err(|e| format!("{e:?}"))?;
     let zk_public = Public {
         commitment: vec![(commitment.root, Vec::new())],
         ..base
@@ -208,6 +220,7 @@ fn commitment_transcript(
     let input = zk::public_input(b_public, &cqis_id, statement, b, index);
     let mut t = Transcript::<QM31>::new(&input).map_err(|e| format!("{e:?}"))?;
     let lifetime = Lifetime {
+        geometry: b.geometry(),
         source: zk_relation::WEIGHTS,
         proofs: b.proofs as usize,
         index: index as usize,
@@ -271,6 +284,7 @@ fn transcript_profile(
     let mut t = Transcript::<QM31>::new(&public_input(zk_public, &cqis_id, statement))
         .map_err(|e| format!("{e:?}"))?;
     let lifetime = Lifetime {
+        geometry: commitment.geometry(),
         source: zk_relation::WEIGHTS,
         proofs: commitment.proofs as usize,
         index: index as usize,
@@ -499,6 +513,69 @@ pub fn run(id: u16) -> Result<(), String> {
                 "StatementMismatch",
                 zk::verify(&b_public, &honest, &proof, &b, index).err(),
             )
+        }
+        939..=941 => {
+            // RFC-0013 A8: an honest byte-4 proof, then its control.
+            let (zk_public, commitment, mut state) =
+                zk_commit_profile(&public, &mut exec, &weights, 2, 39, zk::PROFILE_BALANCED)?;
+            let (proof, index) = zk_prove(
+                &zk_public,
+                &mut exec,
+                &weights,
+                &honest,
+                &commitment,
+                &mut state,
+                39,
+            )
+            .map_err(|e| format!("dev-zk prover: {e:?}"))?;
+            zk::verify(&zk_public, &honest, &proof, &commitment, index)
+                .map_err(|e| format!("honest byte-4 dev-zk rejected: {e:?}"))?;
+            match id {
+                939 => {
+                    // One byte of the witness source's certificate column-round nonce.
+                    use stele_reductions::stele_field::QM31;
+                    use stele_reductions::zk::claims;
+                    let header = b"stele-dev-zk-v1".len() + 64;
+                    let mut decoded =
+                        claims::decode::<QM31>(&proof[header..]).map_err(|e| format!("{e:?}"))?;
+                    let source = Source::<QM31>::from_bytes(&decoded.sources[0])
+                        .map_err(|e| format!("{e:?}"))?;
+                    let (tensor, column) = source.grind_bits(ProofKind::Certificate);
+                    if column == 0 {
+                        return Err("the witness source does not grind".into());
+                    }
+                    let at = 1 + if tensor > 0 { 8 } else { 0 } + 16 * source.columns();
+                    decoded.certificates[0][at] ^= 1;
+                    let mut tampered = proof[..header].to_vec();
+                    tampered.extend_from_slice(&claims::encode(&decoded));
+                    (
+                        "GrindMismatch",
+                        zk::verify(&zk_public, &honest, &tampered, &commitment, index).err(),
+                    )
+                }
+                940 => {
+                    // The same commitment presented as byte 1.
+                    let narrow = zk::ModelCommitment {
+                        profile: zk::PROFILE,
+                        ..commitment.clone()
+                    };
+                    (
+                        "StatementMismatch",
+                        zk::verify(&zk_public, &honest, &proof, &narrow, index).err(),
+                    )
+                }
+                _ => {
+                    // The byte-4 public file relabelled as the byte-1 file.
+                    use stele_prover::development::bundle;
+                    let mut file = bundle::encode_zk(&zk_public, &honest, &commitment, index);
+                    let (v2, v1) = (b"stele-dev-zk-public-v2", b"stele-dev-zk-public-v1");
+                    if !file.starts_with(v2) {
+                        return Err("not a byte-4 public file".into());
+                    }
+                    file[..v1.len()].copy_from_slice(v1);
+                    ("StatementMismatch", bundle::decode_zk(&file).err())
+                }
+            }
         }
         934 => {
             // Budget 2: two proofs, then the third index is refused. A state whose
@@ -1009,29 +1086,35 @@ mod privacy {
 
     /// RFC-0013 A6: two proofs against one published commitment both verify, at
     /// indices 0 and 1, and their revealed values stay independent: χ² homogeneity
-    /// of the two proofs' finals, as for two fresh commitments.
-    #[test]
-    fn accepts_two_independent_proofs_against_one_commitment() {
-        let model = Model::decode(span("model").expect("model")).expect("model");
-        let prep = Preparation::decode(&model, span("preparation").expect("prep")).expect("prep");
-        let scales = Scales::decode(&model, span("scales").expect("scales")).expect("scales");
-        let artifact = span("artifact").expect("artifact");
+    /// of the two proofs' finals, as for two fresh commitments. Under `profile` (byte 1,
+    /// or RFC-0013 A8's byte 4), on `case`'s greedy window of `t` tokens; every proof's
+    /// revealed finals also differ from the bare evaluations (exact, every occurrence).
+    fn two_proofs(case: &str, t: usize, profile: u8) {
+        use stele_prover::development::model_identity;
+        use stele_reductions::zk::claims::Lifetime;
+        let span = |key: &str| span_of(case, key).expect(key);
+        let model = Model::decode(span("model")).expect("model");
+        let prep = Preparation::decode(&model, span("preparation")).expect("prep");
+        let scales = Scales::decode(&model, span("scales")).expect("scales");
+        let artifact = span("artifact");
         let id = artifact_id(artifact);
         let mut exec =
             Executor::new(&model, &prep, &scales, artifact, &id, 1 << 34).expect("executor");
-        let (statement, _, _) = window("one-layer", artifact, 4).expect("window");
+        let (statement, _, _) = window(case, artifact, t).expect("window");
         let weights = Weights::from_artifact(&model, artifact).expect("weights");
         let public = Public {
-            model: span("model").expect("model").to_vec(),
-            scales: span("scales").expect("scales").to_vec(),
-            preparation: span("preparation").expect("prep").to_vec(),
-            vectors: zk::published(span("model").expect("model"), &weights.vectors)
-                .expect("published"),
+            model: span("model").to_vec(),
+            scales: span("scales").to_vec(),
+            preparation: span("preparation").to_vec(),
+            vectors: zk::published(span("model"), &weights.vectors).expect("published"),
             commitment: Vec::new(),
             sources: Sources::Expander,
         };
         let (zk_public, commitment, mut state) =
-            zk_commit(&public, &mut exec, &weights, 3, 41).expect("commit");
+            zk_commit_profile(&public, &mut exec, &weights, 3, 41, profile).expect("commit");
+        let (relation, values) =
+            zk::window(&zk_public, &mut exec, &weights, &statement).expect("window");
+        let (cqis_id, _) = model_identity(&zk_public).expect("identity");
         let mut finals = Vec::new();
         for seed in [42, 43] {
             let (proof, index) = zk_prove(
@@ -1046,14 +1129,50 @@ mod privacy {
             .expect("prove");
             zk::verify(&zk_public, &statement, &proof, &commitment, index).expect("verify");
             let header = b"stele-dev-zk-v1".len() + 64;
-            finals.push(
-                stele_reductions::zk::claims::decode::<QM31>(&proof[header..]).expect("decode"),
+            let decoded =
+                stele_reductions::zk::claims::decode::<QM31>(&proof[header..]).expect("decode");
+            let lifetime = Lifetime {
+                geometry: commitment.geometry(),
+                source: zk_relation::WEIGHTS,
+                proofs: commitment.proofs as usize,
+                index: index as usize,
+                blocks: commitment.blocks.iter().map(|b| *b as usize).collect(),
+            };
+            let input = zk::public_input(&zk_public, &cqis_id, &statement, &commitment, index);
+            let mut tr = Transcript::new(&input).expect("transcript");
+            let (total, equal) =
+                zk_relation::leaks_lifetime(&mut tr, &relation, &values, &lifetime, &decoded)
+                    .expect("accepted");
+            assert!(total > 100, "{total} occurrences");
+            assert_eq!(
+                equal, 0,
+                "{equal} of {total} finals equal the bare evaluation"
             );
+            finals.push(decoded);
         }
         assert_eq!(state.next, 2);
         assert_eq!(state.revealed.len(), 2);
         let chi2 = chi2_same_x10(&histogram(&finals[0]), &histogram(&finals[1]));
         assert!(chi2 < 377, "10·χ² {chi2}");
+    }
+
+    #[test]
+    fn accepts_two_independent_proofs_against_one_commitment() {
+        two_proofs("one-layer", 4, zk::PROFILE);
+    }
+
+    /// RFC-0013 A8: the same on byte-4 sources.
+    #[test]
+    fn accepts_two_independent_proofs_against_one_commitment_balanced() {
+        two_proofs("one-layer", 4, zk::PROFILE_BALANCED);
+    }
+
+    /// RFC-0013 A8 on the eight-layer acceptance window (balanced shapes at
+    /// `ell ∈ {3, 6, 7, 9}`); release build only.
+    #[test]
+    #[ignore = "8 layers at T=64: run with --release -- --ignored"]
+    fn rejects_bare_evaluations_on_the_eight_layer_window_balanced() {
+        two_proofs("eight-layer", 64, zk::PROFILE_BALANCED);
     }
 
     /// Two witnesses with one public statement: the window under the honest

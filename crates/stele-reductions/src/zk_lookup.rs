@@ -758,7 +758,7 @@ pub(super) fn start<K: ChallengeField>(
 /// The `4D` entries of a layer block in the shared source's data message.
 fn block_entries<K: CodeField>(plan: &Plan<K>, shared: &[M31], index: usize) -> Vec<M31> {
     let width = 1usize << plan.shared.1;
-    let start = dim::<K>() * width + 4 * dim::<K>() * index;
+    let start = dim::<K>() * plan.stride + 4 * dim::<K>() * index;
     (start..start + 4 * dim::<K>())
         .map(|p| shared[(p / width) * 2 * width + p % width])
         .collect()
@@ -1112,8 +1112,7 @@ where
                 point[0] * *k * eq(u, &y)? * rest
             }
             Gin::Block(poly) => {
-                let width = 1usize << plan.shared.1;
-                let start = dim::<K>() * width + 4 * dim::<K>() * lp.block(step.k, *poly);
+                let start = dim::<K>() * plan.stride + 4 * dim::<K>() * lp.block(step.k, *poly);
                 let at = core::iter::once(run.tstar)
                     .chain(y.iter().copied())
                     .collect::<Vec<_>>();
