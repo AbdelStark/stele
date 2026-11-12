@@ -3136,8 +3136,8 @@ Consequences:
   unproven (Q12).
 - New byte-1 commitments are opt-in (`--zk-profile 1`); byte 4 is the default.
 
-Status: Proposed (development tier). Independent review: FIX-THEN-MERGE at 391cd94.
+Status: Accepted (development tier; no security level claimed). Independent review: FIX-THEN-MERGE at 391cd94.
 An independent script reproduced every `eps_interactive` and confirmed the round model.
 The fixes are applied: LU is `c·(N + t) − 1`, the GKR block-rank and `|K|` abort lines
-are printed, the labels are unified, and `rows_log` replaces `ell`.
+are printed, the labels are unified, and `rows_log` replaces `ell`, all at 821aef8. Follow-up: the plain development ledger (`relation_lookup.rs`, soundness-accounting.md inventory) still uses `2^m + c·t − 1` and needs the same fix.
 
