@@ -862,7 +862,9 @@ Affected tasks: E12-28. Promotion to `standard`: not granted (Workflow 10).
 
 ### A9 — dev-zk on a real checkpoint (llama2.c stories42M, byte 4)
 
-Status: Draft (development tier). Needs one independent reviewer before acceptance.
+Status: Accepted (development tier) with ADR-117. Independent review: FIX-THEN-MERGE at
+491f111 (2^30 cap sound: N < p is the only condition, boundary mutation caught; hiding
+budgets and the 2^-95.4 worst round recomputed from the stored runs); fixes applied at bbe98f6.
 Task: E12-29. Decision: ADR-117.
 
 **Motivation.** A5's Admission covers the synthetic one- and eight-layer windows only

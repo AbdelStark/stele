@@ -3228,5 +3228,7 @@ Consequences:
   - tamper controls on the real proof;
   - prover memory.
 
-Status: Proposed (development tier), pending independent review.
+Status: Accepted (development tier) with RFC-0013 A9. Independent review: FIX-THEN-MERGE at
+491f111; fixes applied at bbe98f6. Open: T = 64 (prover memory), privacy tests and tampers
+on the real checkpoint.
 
