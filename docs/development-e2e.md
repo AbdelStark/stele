@@ -171,11 +171,11 @@ gains (RFC-0013 A6, A7). Each process ran once, on a host shared with other buil
 `commit.out` and `commit.time`, `model.commit`, one proof under the names above (its
 index, read from `verify.out`, is recorded), `verify1.out` and `pin.out`.
 
-### dev-zk on stories42M (task E12-29, RFC-0013 A9; `T = 64`: task E16-33, A10, Draft)
+### dev-zk on stories42M (task E12-29, RFC-0013 A9; `T = 64`: task E16-33, A10)
 
 Since E16-33, `T = 64` (checked `23..64`, `y = 376`) also proves on the 48 GB laptop:
 prove 923.1 s, verify 46.5 s, 25,667,970 bytes (memory note below). Its admission is
-RFC-0013 A10, still a Draft. At `T = 64` a proof shows all 41 greedy choices at
+RFC-0013 A10 (development tier). At `T = 64` a proof shows all 41 greedy choices at
 positions 23..63.
 
 The real `stories42M` checkpoint proves under dev-zk byte 4 at `T = 32`, from the same
@@ -247,7 +247,7 @@ E16-33 ledgers record it as `prove_peak_footprint_bytes`.
 - **What changed.** The prover now keeps one ZK-GKR tree at a time, rebuilt from its
   `β, α` and dropped before the leaf step. It also prepares the hiding sources one at a
   time.
-- **After** (proof bytes identical):
+- **After** (every pin unchanged; stories42M proof sizes equal):
 
   | Window | Prove | Peak footprint | Verify | Proof bytes |
   |---|---:|---:|---:|---:|

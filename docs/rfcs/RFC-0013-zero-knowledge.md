@@ -995,7 +995,9 @@ Affected tasks: E12-29. Promotion to `standard`: not granted (Workflow 10).
 
 ### A10 — dev-zk on stories42M at `T ≤ 64` (byte 4)
 
-Status: Draft (development tier). Needs one independent reviewer before acceptance.
+Status: Accepted (development tier) with ADR-119. Independent review: FIX-THEN-MERGE at
+9930b11 (columns read from the proof's source descriptors, Lemma 1 and 2 budgets, abort
+terms, the 1,058,031,463 sum and the 2^-95.4 worst round recomputed; fixes applied).
 Task: E16-33. Decision: ADR-119.
 
 **Motivation.** A9 admits stories42M at `T ≤ 32` because `T = 64` did not fit the
@@ -1041,13 +1043,14 @@ or challenge is added. `verify-dev`'s ledger gives `ε_interactive ≤
 1,058,031,463/p^4`. The worst round is `range_8`'s ungrinded LU + ZD round, `2^-95.4`,
 the same check as at `T = 32`. Every PCS round is `≤ 2^-108`.
 
-**Exact replacement** for A9's replacement text for A5's **Admission** item:
+**Exact replacement** for A9's replacement of A5 **Admission**'s "What it does not claim"
+item:
 
 > A real checkpoint beyond llama2.c `stories42M` at `T ≤ 64` under byte 4 (A9, A10).
 > The evidence covers the synthetic one- and eight-layer windows and that checkpoint
 > at `T = 32` and `T = 64` only.
 
-A9's "Admission (proposed)" reads `T ≤ 64`.
+A9's Admission is extended to `T ≤ 64` by this amendment; A9's text is unchanged.
 
 **Cells, lookups, bytes.**
 - No proof byte changes: every pin is the same, and ADR-118 is a prover-memory change
@@ -1061,5 +1064,8 @@ A9's "Admission (proposed)" reads `T ≤ 64`.
 
 **Controls.** None new. The three proofs verify with `--expect-model`, and a pin to
 another model digest is refused.
+
+**Not covered.** A9's list, except that `T = 64` has now run. The χ² tests, the
+bare-evaluation test and tampers beyond `--expect-model` were not run at `T = 64`.
 
 Affected tasks: E16-33. Promotion to `standard`: not granted (Workflow 10).

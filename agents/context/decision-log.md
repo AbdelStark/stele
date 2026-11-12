@@ -3272,8 +3272,10 @@ figure is the median of its own three values):
 Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.json` and
 `e16-33-dev-zk-stories42m-t64-mac.json`.
 
-Status: Accepted (performance only; no protocol, byte or admission change). RFC-0013 A10
-(Draft, ADR-119) carries the `T = 64` admission separately.
+Status: Accepted (performance only; no protocol, byte or admission change). Independent
+review: FIX-THEN-MERGE at 9930b11 (rebuild inputs unchanged, no draw moved, mask streams
+per source id; β/α-swap and wrong-β mutations caught by the pins). RFC-0013 A10
+(ADR-119) carries the `T = 64` admission separately.
 
 ## ADR-119: dev-zk admission on stories42M extended to T ≤ 64 (RFC-0013 A10, task E16-33)
 
@@ -3295,5 +3297,6 @@ Decision: RFC-0013 A10 (Draft) extends A9's admission to `T ≤ 64`.
 - The leaks list now names the 41 public greedy choices.
 - No byte, label, round or control is added.
 
-Status: Proposed (development tier), pending independent review.
+Status: Accepted (development tier) with RFC-0013 A10. Independent review: FIX-THEN-MERGE
+at 9930b11; fixes applied.
 
