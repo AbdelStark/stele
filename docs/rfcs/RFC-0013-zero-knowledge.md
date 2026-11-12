@@ -749,7 +749,9 @@ NC-0936, NC-0937 or NC-0938 red, with the false encoding accepted.
 
 ### A8 — dev-zk on balanced Policy 2 hiding sources (profile byte 4)
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task: E12-28. Decision:
+Status: Accepted (development tier, Workflow 02 development-tier path) with ADR-114 after
+independent review: final review with the implementation FIX-THEN-MERGE, all fixes applied
+at 02008a0. Task: E12-28. Decision:
 ADR-114. Design note: [dev-zk sources](../../formal/zk-sources.md). Independent review
 of the first draft (2e56537): accept with fixes, applied here; final review with the
 implementation. Companion: an RFC-0026 A9 tag value, written into RFC-0026 with the
