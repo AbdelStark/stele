@@ -343,6 +343,25 @@ changing proof bytes. It measured before (`736aef5`) and after (`e855f74`) on on
 `research/gpu-gating/sequential_residual.py` counts the samples of one profile in which
 prover code ran on a single thread.
 
+Task E16-24 (ADR-112) sped up the dev-zk prover without changing proof bytes for a fixed seed:
+- mask assignment indexed by term;
+- the masked rounds factored and spread over the work pool;
+- Merkle levels, mask streams, sources and the LogUp tree built over the pool;
+- `Field::mul_m31` in the Circle transform.
+
+It measured the eight-layer window, `T = 64` and `P = 8`, before (`aa24529`) and after
+(`ac2a9e3`) on the same Mac, three runs each; the medians are:
+
+| Step | Before | After | Ledgers |
+|---|---|---|---|
+| `commit-model --zk` | 92.7 s | 3.4 s | [before](../bench/ledger/e16-24-dev-zk-synthetic-8layer-mac-before.json), [after](../bench/ledger/e16-24-dev-zk-synthetic-8layer-mac-after.json) |
+| `prove-dev --zk` | 362.6 s | 30.7 s | same |
+| `verify-dev` | 55.8 s | 4.4 s | same |
+
+The prove time includes the producer's own verification of the proof, about 4 s after the
+change. `research/gpu-gating/zk_stage_shares.py` splits a `sample` profile of the prove
+by dev-zk component.
+
 The FlashProve row is the figure that project reports in its
 [README](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c)
 for route 3 on one NVIDIA H100 80 GB. It covers commit, prove and verify together, and

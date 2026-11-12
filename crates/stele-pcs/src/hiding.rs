@@ -27,18 +27,69 @@ pub fn hiding_message(
     let mut out = Vec::new();
     out.try_reserve_exact(total).map_err(|_| Error::Capacity)?;
     out.resize(total, M31::ZERO);
-    let mut stream = MaskStream::new(seed, SOURCE_MASK, id);
-    for (row, x) in data.chunks_exact(columns).enumerate() {
+    let stream = MaskStream::new(seed, SOURCE_MASK, id);
+    // The stream's draws in order: `Rm` row-major, then the mask rows.
+    let mut masks = Vec::new();
+    masks
+        .try_reserve_exact(3 * data.len())
+        .map_err(|_| Error::Capacity)?;
+    masks.resize(3 * data.len(), M31::ZERO);
+    draws(&stream, &mut masks)?;
+    let (rm, below) = masks.split_at(data.len());
+    for ((row, x), r) in data
+        .chunks_exact(columns)
+        .enumerate()
+        .zip(rm.chunks_exact(columns))
+    {
         let target = &mut out[row * 2 * columns..(row + 1) * 2 * columns];
         target[..columns].copy_from_slice(x);
-        for value in &mut target[columns..] {
-            *value = stream.m31();
-        }
+        target[columns..].copy_from_slice(r);
     }
-    for value in &mut out[rows * 2 * columns..] {
-        *value = stream.m31();
-    }
+    out[rows * 2 * columns..].copy_from_slice(below);
     Ok(out)
+}
+
+/// `out.len()` consecutive [`MaskStream::m31`] draws from the start of `stream`:
+/// u32le words, low 31 bits, `p` rejected. The words' bytes are produced in
+/// disjoint blocks over the pool, then scanned in order, so every draw equals the
+/// sequential one (E16-24).
+fn draws(stream: &MaskStream, out: &mut [M31]) -> Result<(), Error> {
+    draws_from(
+        &|position, block| stream.fill_at(position, block),
+        out,
+        1 << 20,
+    )
+}
+
+/// [`draws`] over any byte stream `fill_at(position, out)`, `chunk` words at a time.
+fn draws_from(
+    fill_at: &(dyn Fn(u64, &mut [u8]) + Sync),
+    out: &mut [M31],
+    chunk: usize,
+) -> Result<(), Error> {
+    let chunk = chunk.max(1);
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(4 * chunk.min(out.len()))
+        .map_err(|_| Error::Capacity)?;
+    bytes.resize(4 * chunk.min(out.len()), 0u8);
+    let (mut position, mut filled) = (0u64, 0usize);
+    while filled < out.len() {
+        let words = (out.len() - filled).min(chunk);
+        let buffer = &mut bytes[..4 * words];
+        crate::opening::for_each_block(buffer, |start, block| {
+            fill_at(position + start as u64, block)
+        });
+        for word in buffer.chunks_exact(4) {
+            let value = u32::from_le_bytes([word[0], word[1], word[2], word[3]]) & 0x7fff_ffff;
+            if value != 0x7fff_ffff && filled < out.len() {
+                out[filled] = M31::from_u64(u64::from(value));
+                filled += 1;
+            }
+        }
+        position += 4 * words as u64;
+    }
+    Ok(())
 }
 
 /// The certificate's row weights, a function of the source bytes alone (A9 §3),
@@ -157,6 +208,59 @@ fn rank(rows: &mut [Vec<M31>]) -> usize {
 mod tests {
     use super::*;
     use alloc::vec;
+
+    /// E16-24: the block-filled draws equal word-by-word sequential draws, with `p`
+    /// rejected, across chunk boundaries (a synthetic stream rejects every third or
+    /// fifth word), and over a real mask stream.
+    #[test]
+    fn matches_reference_split_mask_draws() {
+        let byte = |p: u64| -> u8 {
+            let word = p / 4;
+            if word % 3 == 1 || word % 5 == 4 {
+                if p % 4 == 3 {
+                    0x7f | ((word as u8) & 0x80)
+                } else {
+                    0xff
+                }
+            } else {
+                (p.wrapping_mul(2654435761) >> 7) as u8
+            }
+        };
+        let fill_at = |position: u64, out: &mut [u8]| {
+            for (i, b) in out.iter_mut().enumerate() {
+                *b = byte(position + i as u64);
+            }
+        };
+        for len in [0usize, 1, 2, 5, 17, 64, 301] {
+            let mut expected = vec![];
+            let mut word = 0u64;
+            while expected.len() < len {
+                let bytes = [
+                    byte(4 * word),
+                    byte(4 * word + 1),
+                    byte(4 * word + 2),
+                    byte(4 * word + 3),
+                ];
+                let value = u32::from_le_bytes(bytes) & 0x7fff_ffff;
+                if value != 0x7fff_ffff {
+                    expected.push(M31::from_u64(u64::from(value)));
+                }
+                word += 1;
+            }
+            for chunk in [1usize, 2, 3, 7, 1 << 20] {
+                let mut out = vec![M31::ZERO; len];
+                draws_from(&fill_at, &mut out, chunk).expect("draws");
+                assert_eq!(out, expected, "len {len}, chunk {chunk}");
+            }
+        }
+        let stream = MaskStream::new(&[9; 32], SOURCE_MASK, 77);
+        let mut sequential = MaskStream::new(&[9; 32], SOURCE_MASK, 77);
+        let expected: alloc::vec::Vec<M31> = (0..5000).map(|_| sequential.m31()).collect();
+        let mut out = vec![M31::ZERO; 5000];
+        draws_from(&|p, b| stream.fill_at(p, b), &mut out, 333).expect("draws");
+        assert_eq!(out, expected);
+    }
+
     #[test]
     fn rejects_dependent_mask_coefficients() {
         let mut rows = [

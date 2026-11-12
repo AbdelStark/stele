@@ -4,6 +4,9 @@ use alloc::vec::Vec;
 
 /// Full BLAKE3-256 output; truncated roots/siblings are not representable.
 pub type Digest = [u8; 32];
+/// Writes one tree level: `fill(out, digest)` sets `out[i] = digest(i)` for every `i`
+/// ([`Tree::new_with_usage_filled`]).
+pub type LevelFill<'a> = dyn Fn(&mut [Digest], &(dyn Fn(usize) -> Digest + Sync)) + 'a;
 /// Closed leaf domains from RFC-0012 A3.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
@@ -211,6 +214,23 @@ impl Tree {
         leaves: &[&[u8]],
         usage: &mut HashUsage,
     ) -> Result<Self, Error> {
+        Self::new_with_usage_filled(spec, leaves, usage, &|out, digest| {
+            for (index, slot) in out.iter_mut().enumerate() {
+                *slot = digest(index);
+            }
+        })
+    }
+    /// [`Tree::new_with_usage`] with each level written by `fill(out, digest)`, which
+    /// must set `out[i] = digest(i)` for every `i`, in any order and on any thread (a
+    /// prover passes its work pool; E16-24). The digests, root and usage are those
+    /// of the sequential build; a `fill` that skips an entry yields another root,
+    /// which no verifier accepts for the committed data.
+    pub fn new_with_usage_filled(
+        spec: Descriptor,
+        leaves: &[&[u8]],
+        usage: &mut HashUsage,
+        fill: &LevelFill<'_>,
+    ) -> Result<Self, Error> {
         let height = spec.height()?;
         if u64::try_from(leaves.len()).ok() != Some(spec.count)
             || leaves
@@ -228,20 +248,22 @@ impl Tree {
             .map_err(|_| Error::Capacity)?;
         usage.hashes(hashes).map_err(|_| Error::UsageOverflow)?;
         // All indices are below total, already checked to fit u64; no fallible work remains.
-        for index in 0..padded {
-            let payload = leaves.get(index).copied().unwrap_or(&[]);
-            nodes.push(spec.leaf(index as u64, payload));
-        }
+        nodes.resize(total, [0; 32]);
+        fill(&mut nodes[..padded], &|index| {
+            spec.leaf(index as u64, leaves.get(index).copied().unwrap_or(&[]))
+        });
         let (mut offset, mut width) = (0, padded);
         for level in 1..=height {
-            for index in 0..width / 2 {
-                nodes.push(spec.node(
+            let (done, rest) = nodes.split_at_mut(offset + width);
+            let children = &done[offset..];
+            fill(&mut rest[..width / 2], &|index| {
+                spec.node(
                     level,
                     index as u64,
-                    &nodes[offset + 2 * index],
-                    &nodes[offset + 2 * index + 1],
-                ));
-            }
+                    &children[2 * index],
+                    &children[2 * index + 1],
+                )
+            });
             offset += width;
             width /= 2;
         }

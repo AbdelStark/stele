@@ -275,26 +275,42 @@ impl<'a, K: ChallengeField> PreparedSource<'a, K> {
         }
         // A15: a hiding leaf is salt || column; other sources have no salt.
         let salt = source.salt_len();
-        let mut salts = seed.map(|seed| MaskStream::new(seed, SOURCE_SALT, source.descriptor().id));
-        for (leaf, symbols) in columns
-            .chunks_exact_mut(width)
-            .zip(encoded.values.chunks_exact(rows))
-        {
-            if let Some(stream) = &mut salts {
-                stream.fill(&mut leaf[..salt]);
+        let salts = seed.map(|seed| MaskStream::new(seed, SOURCE_SALT, source.descriptor().id));
+        // Leaf `i`'s salt is the stream's bytes `[i·salt, (i + 1)·salt)`, the same as
+        // reading the stream leaf by leaf: leaves fill independently (E16-24).
+        let mut slots: Vec<&mut [u8]> = columns.chunks_exact_mut(width).collect();
+        crate::opening::for_each_block(&mut slots, |start, block| {
+            for (index, leaf) in (start..).zip(block.iter_mut()) {
+                if let Some(stream) = &salts {
+                    stream.fill_at((index * salt) as u64, &mut leaf[..salt]);
+                }
+                let symbols = &encoded.values[index * rows..(index + 1) * rows];
+                for (out, value) in leaf[salt..].chunks_exact_mut(4).zip(symbols) {
+                    out.copy_from_slice(&value.to_le_bytes());
+                }
             }
-            for (out, value) in leaf[salt..].chunks_exact_mut(4).zip(symbols) {
-                out.copy_from_slice(&value.to_le_bytes());
-            }
-        }
+        });
+        drop(slots);
         let mut leaves = Vec::new();
         leaves
             .try_reserve_exact(length)
             .map_err(|_| Error::Capacity)?;
         leaves.extend(columns.chunks_exact(width));
         work.leaf_references_bytes = leaves.capacity() * size_of::<&[u8]>();
-        let tree = merkle::Tree::new_with_usage(source.descriptor(), &leaves, usage)
-            .map_err(Error::Merkle)?;
+        // Each tree level's digests are independent: hashed in blocks (E16-24).
+        let tree = merkle::Tree::new_with_usage_filled(
+            source.descriptor(),
+            &leaves,
+            usage,
+            &|out, digest| {
+                crate::opening::for_each_block(out, |start, block| {
+                    for (index, slot) in (start..).zip(block) {
+                        *slot = digest(index);
+                    }
+                })
+            },
+        )
+        .map_err(Error::Merkle)?;
         work.merkle_nodes_bytes = tree.owned_bytes();
         work.peak_owned_bytes = work
             .encoded_columns_bytes

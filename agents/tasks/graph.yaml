@@ -4303,6 +4303,26 @@ tasks:
   - the sequential work ADR-103 names runs on the ADR-090 work pool or is removed as repeated work; no_std crates stay no_std, the verifier is unchanged
   - every proof-hash pin and every E16-10 fixture hash unchanged
   - 8-layer (T = 64) and 1-layer prove time before and after in a bench/ledger entry; scoreboard regenerated
+- id: E16-24
+  epic: E16
+  title: dev-zk prover performance (masked sumcheck, mask evaluation, hiding sources, claim blocks, ZK-GKR, self-verify share)
+  depends:
+  - E16-23
+  - E12-27
+  rfc:
+  - RFC-0013 A5
+  - RFC-0013 A6
+  - RFC-0026 §7
+  skill: sumcheck-prover-engineer
+  crate: stele-reductions+stele-pcs+stele-sumcheck+stele-prover
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-24-dev-zk-prover-perf
+  acceptance:
+  - macOS sample profile of the 8-layer prove-dev --zk run, time classified by component (masked rounds, mask evaluation, hiding source encoding, claim blocks, ZK-GKR, rank and abort checks, self-verify, commit-model)
+  - the largest costs cut with the stele_sumcheck::parallel helpers, removed repeated work or better algorithms; the self-verify kept and its share reported
+  - dev-zk proof bytes identical for a fixed seed (every pinned dev-zk hash and the χ² tests unchanged); the verifier changes only without semantic change
+  - 8-layer dev-zk prove, verify and commit-model before and after at one commit base, three runs each, in a bench/ledger entry; scoreboard regenerated
 - id: E16-22
   epic: E16
   title: stories42M T = 64 prove stage shares on a Linux host

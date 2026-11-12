@@ -44,4 +44,9 @@ pub trait Field:
     fn from_i64(value: i64) -> Self;
     /// Recover a prime-subfield element, or reject nonconstant coefficients (RFC-0003 A1).
     fn to_i64_signed(self) -> Option<i64>;
+    /// `self · from_i64(x)` for the integer value of `x`; extension towers of M31
+    /// multiply coefficient-wise (the same element, fewer products; E16-24).
+    fn mul_m31(self, x: M31) -> Self {
+        self * Self::from_i64(i64::from(x.as_u32()))
+    }
 }
