@@ -178,8 +178,9 @@ prepared files as the development runs below, with the E16-11 prompt checked `23
 The claim, its limits and its leaks:
 - **What the proof shows.**
   - Some int8 weights and norm gains under the published commitment, together with
-    the public Model, Scales and Preparation bytes, produce `y = 2654` at the last
-    position of the 32-token window.
+    the public Model, Scales and Preparation bytes, produce all 9 checked greedy
+    choices at positions 23..31: the 8 generated tokens 24..31 (chosen at positions
+    23..30), and `y = 2654` (chosen at position 31).
   - The proof reveals nothing more about the weight codes and gains than RFC-0013 A9
     lists.
   - The zero knowledge is conditional and computational: masks come from seeds, and
@@ -192,6 +193,9 @@ The claim, its limits and its leaks:
   - Every shape and the plan.
   - Whether a proof could be produced, and the time and proof size.
   - `P`, the proof index and linkability under one commitment.
+- **A public checkpoint.** stories42M is public; it shows the mechanics and the costs. A
+  real deployment must not publish hashes of the hidden weights (`artifact_sha256` and
+  `model_sha256` in the ledger would identify them).
 - **Measured** (`bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json`; M4 Max 48 GB,
   other agents on the host):
 
@@ -218,7 +222,7 @@ The claim, its limits and its leaks:
 P=$D/prepared   # the E16-11 prepared files
 F="--model $P/model.bin --preparation $P/preparation.bin --scales $P/scales.bin --artifact $P/artifact.bin"
 target/release/stele commit-model --zk $F --length 32 --proofs 8 \
-  --commitment $P/zk.commit --secret $P/zk.secret
+  --commitment $P/zk.commit --secret $P/zk.secret | tee commit.out
 target/release/stele prove-dev --zk $F \
   --tokens 1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889 \
   --length 32 --checked 23..32 --commitment $P/zk.commit --secret $P/zk.secret \

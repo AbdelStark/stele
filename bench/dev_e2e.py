@@ -55,15 +55,27 @@ def statement(path):
 
 
 ZK_NOTE = ('RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. '
-           'dev-zk profile (RFC-0013 A5, RFC-0026 A9 profile byte 1), admitted at the development tier; '
-           'zero knowledge is conditional and computational (seed-derived masks). The weights and the '
-           '1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for '
-           'P proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover '
-           'time is the prove-dev --zk process wall time of proof 0: Artifact decode, executor capture, plain '
-           'check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; proof 1 '
-           'against the same commitment also verifies. The control is verify-dev of proof 1 pinned to another '
-           'model digest. One run of each process, no repeats: single-run wall times on a laptop. CPU only, '
-           'no GPU. Peak RSS is the {timer} maximum resident set size. Not a cost-model fit input.')
+           'dev-zk profile byte {byte} ({sources}; RFC-0026 A9), development tier; zero knowledge is '
+           'conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) '
+           'are committed once by commit-model as one published commitment for P = {proofs} proofs (A6), '
+           'recorded as stage model_commitment_once and not part of the prove time. Prover time is the '
+           'prove-dev --zk process wall time of proof index {index}: Artifact decode, executor capture, plain '
+           'check and proof (witness_recompute_ns 0). Verifier time is verify-dev with --expect-model; another '
+           'proof against the same commitment also verifies. The control is verify-dev of a proof pinned to '
+           'another model digest. Repeats, if any, are in model_config.host_context.{ledger} CPU only, no GPU. '
+           'Peak RSS is the {timer} maximum resident set size. Not a cost-model fit input.')
+# RFC-0013 A8: byte 4 is balanced policy-2 hiding sources; byte 1 is A5's.
+ZK_SOURCES = {1: 'RFC-0013 A5 sources', 4: 'balanced policy-2 hiding sources, RFC-0013 A8'}
+
+
+def zk_ledger(verify):
+    """The soundness-ledger sentence from verify-dev's last lines (E12-26), or nothing."""
+    eps = re.search(r'^eps_interactive <= (\d+)/p\^4', verify, re.M)
+    worst = re.search(r'^worst round\t(.+?)\t(\S+)\tgrinding (\d+) bits$', verify, re.M)
+    if not (eps and worst):
+        return ''
+    return (f' Soundness ledger (verify-dev, E12-26): eps_interactive <= {eps.group(1)}/p^4; worst round '
+            f'{worst.group(1)}, {worst.group(2)}, grinding {worst.group(3)} bits.')
 
 
 def main():
@@ -140,7 +152,9 @@ def main():
         'kernel_counters': counters,
         'proof_size_bytes': len(proof), 'verifier_time_ns': {'rust': verify_ns, 'python': 0},
         'controls': {'total': len(controls), 'passed': len(controls), 'failed': 0},
-        'note': ZK_NOTE.format(timer=timer) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
+        'note': ZK_NOTE.format(timer=timer, byte=plan['profile_byte'], sources=ZK_SOURCES[plan['profile_byte']],
+                               proofs=plan['proofs'], index=plan['proof_index'],
+                               ledger=zk_ledger((run / 'verify.out').read_text())) if a.zk else ('RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, '
                  'no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight '
                  'commitment, executor capture (witness), plain check and proof; the witness is not timed '
                  'separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact '

@@ -60,13 +60,15 @@ The `dev-zk` profile (`--zk`) proves a window in zero knowledge at the developme
 codes and the norm gains are hidden behind one published model commitment, which serves up to `P` proofs.
 The zero knowledge is conditional and computational, and there is no security level
 ([RFC‑0013 A5 admission](docs/rfcs/RFC-0013-zero-knowledge.md), [how to run](docs/development-e2e.md#dev-zk-tasks-e12-14b-e12-25-e12-27-e12-14)).
-- **Not hidden:** the model's shapes and per-row quantisation scales (the public Scales file), the tokens and `y`,
-  the plan, the proof index, and linkability under one commitment.
+- **Not hidden:** the model's shapes and per-row quantisation scales (the public Scales file), the tokens and every
+  checked greedy choice (on stories42M, all 9 at positions 23..31, not only `y`), the plan, the proof index, and
+  linkability under one commitment.
 - **Synthetic window:** the eight-layer window proves in 27 s with a 6.4 MB proof
   ([ledger](bench/ledger/e12-28-dev-zk-synthetic-8layer-mac.json)).
 - **Real checkpoint:** llama2.c `stories42M` (T = 32, profile byte 4) proves in 593 s (median of three) and verifies
   in 33 s. The proof is 21.4 MB, and the prover peaks at 30–34 GB RSS on a 16-thread laptop
-  ([ledger](bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json); RFC‑0013 A9, Draft).
+  ([ledger](bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json); RFC‑0013 A9, Draft). stories42M is a public
+  checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
 - **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
   conjectural).
 

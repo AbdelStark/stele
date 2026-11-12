@@ -922,17 +922,27 @@ proofs' source parameters and `verify-dev`'s ledger):
   `P·t_x` for the weight columns (A6).
 - **ZK-GKR layer blocks.** 728 blocks, each with the `3D` rank abort of RFC-0008 A7
   item 4. None aborted.
+  - That abort's probability is not bounded (design note R9).
+  - It is a completeness term only. An abort shows only in whether a proof was
+    produced, which is already declared below.
 - **No new lemma.** The arguments of A2, A5, A6 and A8 are instantiated with these
   parameters. Nothing in them depends on the model being synthetic.
 
 **What is not hidden** (A5 and the design note's §7, read for a real model):
 - the Model, Scales and Preparation bytes:
-  - the architecture;
+  - the architecture:
+    - 8 layers, `d = 512`, 8 heads (8 key-value heads, head width 64);
+    - hidden width 1,376, vocabulary 32,000, context 1,024;
+    - RMSNorm `ε = 10^-5`;
+    - RoPE `θ = 10,000` in the half-split layout (layout 1);
+  - the CQIS formats: int8 matrices, int16 gains (`G = 8`), `F = 7`, A15 groups of 128
+    on the norm-fed inputs and the head, and direct exp;
   - every per-row quantisation scale (mantissa and exponent), which is chosen from the
     weights and so leaks each row's magnitude;
   - the 1-D records' lengths and formats;
-- `T`, the tokens, `[r, e)` and `y`, so the model's next-token choice on the public
-  window;
+- `T`, the tokens, `[r, e)` and `y`. Every checked position is a greedy choice, so a
+  proof shows all 9 of the model's choices at positions 23..31 (the 8 tokens after the
+  prompt and `y`) on the public window, not only the last;
 - every shape and the plan;
 - whether a proof could be produced;
 - time and proof size;
@@ -950,13 +960,33 @@ budget.
 - No tamper controls beyond `--expect-model` were run on the real proof. NC-0909..0941
   run on the synthetic windows.
 
+stories42M is a public checkpoint. It is used here to show the mechanics and the costs,
+not to hide anything. A real deployment must not publish hashes of its hidden weights:
+the ledger's `artifact_sha256` and `model_sha256` would identify them.
+
 **Admission (proposed).** On this evidence, extend A5's Admission to stories42M at
 `T ≤ 32` under byte 4, at the development tier, with the leaks above. There is no
 security level.
+- **Exact replacement** for A5 **Admission**'s "What it does not claim" item:
+
+  > A real checkpoint beyond llama2.c `stories42M` at `T ≤ 32` under byte 4 (A9). The
+  > evidence covers the synthetic one- and eight-layer windows and that checkpoint
+  > window only.
 - The ledger is `bench/ledger/e12-29-dev-zk-stories42m-t32-mac.json`: 21,411,006 proof
   bytes; prove 592.7 s (median of three proofs); verify 32.7 s; commit 66.0 s; peak
   RSS 31.7 GB for commit, 30.5 GB for prove and 17.7 GB for verify.
 - The soundness ledger (E12-26) gives `ε_interactive ≤ 731,241,032/p^4`. The worst round
   is `range_8`'s ungrinded LU + ZD round, `2^-95.4`, and every PCS round is `≤ 2^-108`.
+
+**Soundness.** The existing LU and ZD lines apply (RFC-0012 A17 item 3, RFC-0008 A7),
+with `N ≤ 2^30 < p`, as RFC-0012 A8's characteristic hypothesis
+(`formal/logup-characteristic.md` §2) requires. No round, label or challenge is added.
+
+**Cells, lookups, bytes.** No existing proof's bytes change: every pin is the same. Only
+statements whose checks lie between `2^23` and `2^30` positions, which were refused
+before, now plan.
+
+**Controls.** None new. The boundary test `plans_check_trees_up_to_2_to_30` covers the
+cap.
 
 Affected tasks: E12-29. Promotion to `standard`: not granted (Workflow 10).

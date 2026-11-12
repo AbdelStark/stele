@@ -2785,7 +2785,7 @@ tasks:
   - RFC-0012
   skill: soundness-auditor
   crate: stele-reductions+stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-26-dev-zk-soundness-ledger
   acceptance:
