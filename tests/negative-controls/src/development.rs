@@ -1380,6 +1380,6 @@ fn rejects_nc_1310_out_of_width() {
 #[test]
 fn rejects_nc_1321_and_nc_1322_lookup_grinding() {
     for id in [1321, 1322] {
-        run(id).unwrap_or_else(|e| panic!("NC-{id}: {e}"));
+        assert_eq!(run(id), Ok(()), "NC-{id}");
     }
 }

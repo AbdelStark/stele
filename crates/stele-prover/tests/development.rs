@@ -239,7 +239,10 @@ fn accepts_one_layer_window_on_a14_sources() {
     let (hash, ledger) = proved("one-layer", 16, Sources::CircleAllGrind);
     assert_eq!(hash, 0x59ee_67e3_9aa2_5d4b);
     let (_, _, worst, floor) = enumerated(&ledger);
-    assert!(worst >= 108 * 1024 && floor >= 100 * 1024, "{worst} {floor}");
+    assert!(
+        worst >= 108 * 1024 && floor >= 100 * 1024,
+        "{worst} {floor}"
+    );
 }
 
 #[test]
