@@ -22,7 +22,7 @@ VALIDATORS = ('controls_layout', 'field_source_codec', 'field_sources', 'bootstr
               'public_coefficients', 'transcript_registry', 'sumcheck_corpus', 'fraction_reductions',
               'small_strategy', 'small_corpus', 'batch_instances', 'batch_claims', 'batch_corpus',
               'zerocheck', 'zero_corpus', 'buffered_engine', 'streaming_strategy', 'file_source',
-              'streaming_corpus', 'merkle_vectors')
+              'streaming_corpus', 'merkle_vectors', 'accounting_admission')
 
 
 class NativeGateTests(unittest.TestCase):
@@ -98,6 +98,34 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                 code, calls = self.run_gate('native', fail=validator)
                 self.assertNotEqual(code, 0)
                 self.assertEqual(calls[-1][0], validator)
+
+    def test_rejects_missing_accounting_receipt_and_unadmitted_verifier_surface(self):
+        lines = [f'test accounting::tests::{n} ... ok' for n in gate.ACCOUNTING['tests']]
+        output = '\n'.join(lines)
+        with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, '')):
+            gate.accounting_admission(ROOT)
+        for code, text in [(1, output)] + [(0, output.replace(line, '')) for line in lines]:
+            with self.subTest(code=code, output=text), patch.object(gate.subprocess, 'run',
+                    return_value=subprocess.CompletedProcess([], code, text, '')):
+                with self.assertRaisesRegex(ValueError, 'accounting admission'):
+                    gate.accounting_admission(ROOT)
+        crate = ROOT / 'crates/stele-verifier'
+        expected = json.loads((ROOT / 'scripts/gates/bootstrap-sources.json').read_text())['stele-verifier']
+        actual = {'Cargo.toml': expected['Cargo.toml'], 'src/lib.rs': 'changed',
+                  'src/accounting.rs': gate.ACCOUNTING['sha256']}
+        self.assertEqual(gate.accounting_surface(crate, actual, expected), expected)
+        for extra in ({'src/other.rs': 'y'}, {'Cargo.toml': 'changed'}, {'src/accounting.rs': 'edited'}):
+            changed = {**actual, **extra}
+            self.assertEqual(gate.accounting_surface(crate, changed, expected), changed)
+        # A path module or include hidden in the admitted file is refused even at the pin.
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory)
+            (fake / 'src').mkdir()
+            (fake / 'src/lib.rs').write_text(gate.ACCOUNTING['library'])
+            source = (crate / 'src/accounting.rs').read_text()
+            for hidden in ('#[path = "x.rs"]\nmod x;\n', 'include!("x.rs");\n', 'mod extra {}\n'):
+                (fake / 'src/accounting.rs').write_text(source + hidden)
+                self.assertEqual(gate.accounting_surface(fake, actual, expected), actual)
 
     def test_rejects_missing_actual_zerocheck_point_receipt(self):
         names=['matches_reference_zerocheck_bytes_and_accounting','matches_reference_retained_tail_and_failed_prefix',

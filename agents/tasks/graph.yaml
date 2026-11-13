@@ -1929,6 +1929,7 @@ tasks:
   depends:
   - E8-02
   - E8-05a
+  - E8-05b
   rfc:
   - RFC-0012 §4-5
   - RFC-0012 A15
@@ -1967,6 +1968,23 @@ tasks:
   - native no_std derivation/checking and independent exact enumeration with actual NC-0804/0805 and NC-1205 rejection, including missing or substituted child losses
   - no final passport or accepted inference proof is a derivation input; E8-05 retains both-profile full W8 ledger delivery and original budget criteria
   - every LU line is `LookupParameters::identity_term` of an actual verified lookup record (E12-02, ADR-072), never recomputed from proof bytes or applied as a Fiat-Shamir bound
+- id: E8-05b
+  epic: E8
+  title: Exact (C1)-(C4) profile admission check over enumerated rounds (stele-verifier::accounting)
+  depends:
+  - E12-22
+  rfc:
+  - RFC-0012 A17 item 4
+  - RFC-0002 A1
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-05b-admission-check
+  acceptance:
+  - no_std `accounting::admit` decides (C1)-(C4) with exact integers over a round list, the A7 setup term and Q_V, for the standard profile (lambda 100, g 8, Q_cap 2^80, k_q 16)
+  - tests pin each condition at its exact boundary (one round above, one grinding bit off, 256 rounds at 2^-108, the H* endpoints)
+  - round enumeration from a plan, NC-0804/0805 and lifting `standard-unproven` stay with E8-05
 - id: E8-06
   epic: E8
   title: Digest gate with recorded W8 digests

@@ -3,8 +3,4 @@
 #![no_std]
 #![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn skeleton_compiles() {}
-}
+pub mod accounting;
