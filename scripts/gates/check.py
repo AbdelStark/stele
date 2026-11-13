@@ -132,7 +132,7 @@ def accounting_admission(root):
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
-        raise ValueError(f'verifier parity checks failed: {missing} {result.stderr[-2000:]}')
+        raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
     print('gate verifier: independent no_std A1 sumcheck matches every corpus decision and receipt (E8-02a)')
 
 
