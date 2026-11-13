@@ -76,14 +76,17 @@ ACCOUNTING = {
     # E8-05b's admission decision; the independent verifier primitives (ADR-128) and
     # their parity tests: E8-02a's A1 sumcheck, E8-02b's A3 zerocheck and A2 batches.
     'files': ('src/accounting.rs', 'src/sumcheck.rs', 'tests/sumcheck_corpus.rs',
-              'src/zerocheck.rs', 'src/batch.rs', 'tests/zerocheck_corpus.rs', 'tests/batch_corpus.rs'),
+              'src/zerocheck.rs', 'src/batch.rs', 'tests/zerocheck_corpus.rs', 'tests/batch_corpus.rs',
+              'src/circle.rs', 'tests/circle_vectors.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
-               'pub mod accounting;\npub mod batch;\npub mod sumcheck;\npub mod zerocheck;\n',
+               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod sumcheck;\npub mod zerocheck;\n',
     'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
                'matches_reference_a3_corpus_decisions_and_receipts',
-               'matches_reference_a2_corpus_decisions_and_receipts'),
+               'matches_reference_a2_corpus_decisions_and_receipts',
+               'matches_reference_shared_circle_vectors', 'matches_direct_evaluation_of_the_basis',
+               'encodes_extension_elements_limb_by_limb'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -98,6 +101,8 @@ ACCOUNTING = {
         'src/zerocheck.rs': 'a82b783675819269f079de56cb1964076780068b0331cb3263d34ee540421df2',
         'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
         'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
+        'src/circle.rs': 'b8d5c0cc6fabe1842c658cb83fe431daa1ea103f36067df50b414f8462bd28d1',
+        'tests/circle_vectors.rs': '15675d311a9558979f34c1c8d4f461cd1e93d9b1131bdd0a01bcf3a630a19403',
         'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
@@ -136,14 +141,15 @@ def accounting_admission(root):
           'no round enumeration, profile or NC-0804/0805 credit')
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
     result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
-                             '--test', 'zerocheck_corpus', '--test', 'batch_corpus',
+                             '--test', 'zerocheck_corpus', '--test', 'batch_corpus', '--test', 'circle_vectors',
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
     print('gate verifier: independent no_std A1 sumcheck, A3 zerocheck and A2 batches match every '
-          'corpus decision and receipt (E8-02a, E8-02b)')
+          'corpus decision and receipt; the Circle code matches the shared vectors and direct evaluation '
+          '(E8-02a..c)')
 
 
 def development_surface(crate, name, actual, expected):

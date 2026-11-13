@@ -1932,6 +1932,23 @@ tasks:
   acceptance:
   - stele_verifier::zerocheck and ::batch (mode 0 instances, mode 1 ClaimBatch) match every decision and receipt of research/zerocheck/corpus.jsonl (314 cases) and research/batching/corpus.jsonl (276 cases), QM31 and OM31, continuations included
   - the recorded production receipts are checked against the production verifiers by the zerocheck and batching gates; mutation-checked parity tests
+- id: E8-02c
+  epic: E8
+  title: Verifier primitives (unblocked) - independent no_std Circle code (RFC-0010 A2) for the verifier's column checks
+  depends:
+  - E8-02b
+  rfc:
+  - RFC-0016 §3
+  - RFC-0010 A2
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02c-verifier-circle
+  acceptance:
+  - stele_verifier::circle encode/eval_row as the recursive circle and x transforms on the canonical coset (not stele-code's iterative butterflies)
+  - matches the twelve shared vectors (also checked by stele-code and check_circle.py), direct evaluation of the A2 basis for m <= 7 at both rates, and limb-wise extension encoding; mutation-checked
+  - the v2 expander is left for a later piece (byte 5 uses Circle sources only)
 - id: E8-03
   epic: E8
   title: Python differential verifier
