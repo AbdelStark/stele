@@ -1928,7 +1928,7 @@ tasks:
   title: Soundness ledger generator + accounting gate; first ledger for W8 under the non-ZK standard profile (ZK and treaty in E8-05e)
   depends:
   - E8-02
-  # ADR-124 (Proposed): non-ZK standard admission waits on E8-05b/E8-05c, not on
+  # ADR-124: non-ZK standard admission waits on E8-05b/E8-05c, not on
   # E8-05a's Q29 blocker; ZK and treaty admission (E8-05e) still need E8-05a.
   - E8-05b
   - E8-05c
