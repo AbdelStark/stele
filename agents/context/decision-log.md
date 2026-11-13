@@ -3418,3 +3418,68 @@ Status: Accepted (development tier). Independent review: MERGE at bae3215 (adver
 confined to `controls`, all three mutations reproduced, each turning only its own control
 red; coverage 63/109, 131/232). Follow-ups: derive `pad_factor`'s `Z` index from the
 `compact_terms` layout; gate the `Substitute` re-export behind `controls`.
+
+## ADR-122: CPU prover speedups with identical bytes; lazy-reduction QM31 product, base-field masked rounds, one dev-zk plain check, blake3 std (task E16-34)
+
+Numbered after ADR-120 (#362) and ADR-121 (#363).
+
+Context: E16-22's stories42M profile ranked the dev-zk masked and ZK-GKR products (QM31)
+first among the CPU stages. It also listed BLAKE3 SIMD and dev-zk's second plain check.
+
+Decision (four commits; every pin byte-identical):
+- **Lazy-reduction QM31 product** (stele-field).
+  - Limb products are summed in u64, with at most four per sum (`< 4p² < 2^64`), and
+    each output limb is reduced once. A subtracted product `x·y` is added as
+    `x·(p − y)`.
+  - It is the same element as RFC-0003 §2's Karatsuba product. That product is kept as
+    `QM31::karatsuba`, and a test pins the two equal on 10^6 random pairs and on every
+    edge-limb pair. The existing schoolbook-oracle tests pass.
+  - CM31 and OM31 keep Karatsuba; OM31 benefits through its QM31 sub-products.
+- **Base-field masked rounds** (stele-reductions).
+  - A dev-zk masked round treats as base field every factor whose tables are all
+    base-field: occurrences and masks before a challenge is folded in. `κ(t)` is an
+    integer at integer nodes.
+  - Those factors are stepped and multiplied in M31, and the product is applied once
+    with `mul_m31`.
+  - Rounds with no base factor keep the old path.
+- **One dev-zk plain check** (stele-prover). The committed relation keeps every
+  constraint of the layout relation over the same values and adds the record encodings,
+  so checking it alone rejects every false witness the first check did.
+  `rejects_false_witness_with_check_under_dev_zk` pins it: a false next token and a
+  false checked token are each rejected with `Check` by `zk::window` and `zk::prove`.
+  With the check replaced by a no-op, the test fails.
+- **blake3 `std`** (stele-code, under the prover-side `std`) adds runtime AVX2 and
+  AVX-512 detection on x86_64.
+  - On aarch64, blake3's build script already enables NEON, so this host gains
+    nothing from the change.
+  - Correction: an earlier draft of this record and of #362 said blake3 ran portable
+    on aarch64. That was wrong. #362 merged with the corrected line (ADR-120 and
+    `research/gpu-gating/STORIES42M-STAGES.md` §4 item 4), so neither needs an edit.
+  - `no_std` builds and every digest are unchanged.
+- **Not done: stele-simd in the round loops.** deny.toml lets only stele-code and
+  stele-poly import stele-simd, and the scalar lazy product already gives most of the
+  gain.
+
+Measured (M4 Max 48 GB; before = main 0298d88, after = 5670be3). Each row is the
+median prove run and that run's verify, as the ledgers record:
+
+| Workload | Before | After |
+|---|---|---|
+| synthetic eight-layer dev-zk byte 4 (median of three) | prove 27.66 s, verify 2.96 s, peak RSS 7.16 GB | prove 21.05 s (1.31×), verify 2.04 s, peak RSS 7.31 GB |
+| synthetic eight-layer plain dev (median of three) | prove 8.62 s, verify 0.87 s | prove 6.60 s (1.31×), verify 0.78 s |
+| stories42M dev-zk `T = 32` (single runs) | prove 475.6 s, verify 32.3 s, peak RSS 31.9 GB | prove 369.7 s (1.29×), verify 21.6 s, peak RSS 32.5 GB |
+
+- Peak RSS rises by about 2% in these runs (7.16 → 7.31 GB synthetic, 31.9 → 32.5 GB
+  stories42M). The cause is not separated from run-to-run variation.
+- The stories42M plain dev `T = 64` single runs (175.5 s before, 181.7 s after, same
+  bytes) are in the `host_context` of the `e16-34-dev-zk-stories42m-t32` ledgers. That
+  run is bound by main's sequential plain checker, which E16-22's parallel checker
+  (#362) removes.
+
+Ledgers: `bench/ledger/e16-34-*-mac-{before,after}.json`.
+
+Status: Accepted (performance only; no protocol, byte or admission change). Independent
+review: FIX-THEN-MERGE at 6c27032 (lazy QM31 product proven exact and 6/6 mutants caught;
+base-field rounds decided per factor at runtime, 3/3 mutants caught; the single dev-zk plain
+check covers the dropped one); fixes applied, including the dev-zk false-witness test.
+
