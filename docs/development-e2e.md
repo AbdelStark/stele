@@ -221,7 +221,7 @@ The claim, its limits and its leaks:
 - **Limits.**
   - Before E16-33, `T = 64` did not fit the 48 GB laptop: the prove was killed at
     about 31 GB RSS, twice. It proves since E16-33 (above).
-  - The privacy tests now also run on stories42M at `T = 32` (E12-31, below); the
+  - The privacy tests now also run on stories42M at `T = 32` (E12-32, below); the
     tamper suite runs on the real proof too (E12-30, below).
 
 ```sh
@@ -262,7 +262,7 @@ E16-33 ledgers record it as `prove_peak_footprint_bytes`.
 Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.json`,
 `e16-33-dev-zk-stories42m-t64-mac.json`.
 
-### dev-zk privacy tests on stories42M (task E12-31)
+### dev-zk privacy tests on stories42M (task E12-32)
 
 RFC-0013 A5 item 7's two privacy tests, which ran only on the synthetic windows, now also
 run on the real checkpoint. `rejects_bare_evaluations_and_accepts_two_proofs_on_a_supplied_checkpoint`
@@ -272,23 +272,35 @@ run on the real checkpoint. `rejects_bare_evaluations_and_accepts_two_proofs_on_
   runs;
 - commits once (byte 4, `P = 3`) and makes two proofs, indices 0 and 1;
 - verifies both proofs;
-- replays each proof to count the revealed finals that equal their bare evaluation;
-- compares the two proofs' finals with a two-sample χ².
+- replays each proof to count the masked revealed finals that equal their bare
+  evaluation, and collects those masked finals (`zk_relation::leaks_lifetime`);
+- tests each proof's masked finals against uniform, and the two proofs against each
+  other, with χ² on byte 0 mod 16 (15 degrees of freedom, bound χ² < 37.7).
 
-Result (`bench/ledger/e12-31-dev-zk-stories42m-privacy-t32-mac.json`; one run, 1,414 s,
-31.1 GB peak RSS; two 30 GB proofs run one after the other on a quiet host):
+The synthetic windows share this path (`check_two_proofs`).
+
+Result (`bench/ledger/e12-32-dev-zk-stories42m-privacy-t32-mac.json`; one run at
+`451d1e6`, 1,414 s; 31.1 GB is the test's peak RAM, not a proof size; the two proofs
+ran one after the other, and other agents' sessions resumed during the run, so the host
+was not quiet throughout):
 
 | Test | Result |
 |---|---|
 | bare evaluations, proof 0 | 0 of 14,673 masked finals |
 | bare evaluations, proof 1 | 0 of 14,673 masked finals |
-| χ² homogeneity of the two proofs (byte 0 mod 16, 15 degrees of freedom) | χ² = 11.6 < 37.7 |
+| χ² homogeneity of the two proofs, over every final (masked and public) | χ² = 11.6 < 37.7 |
+| χ² against uniform, masked finals only, each proof | pending a quiet-host re-run |
+| χ² homogeneity, masked finals only | pending a quiet-host re-run |
 
 - Both proofs are 21,411,006 bytes and verify.
-- Bin 1 is high in both histograms (1,729 and 1,641 against about 1,430). The likely
-  cause is public finals that are always 1, such as an all-ones selector or padding
-  indicator; the cause was not measured. The two proofs share the bias, so it does not
-  separate them.
+- Bin 1 is high in both all-finals histograms (1,729 and 1,641 against about 1,430).
+  The cause is measured: public constant-1 operands (`Operand::Public`). About 297 of
+  the 1,063 relation finals are exactly 1, and the verifier recomputes those finals
+  itself (`public_finals`); they carry no mask. No masked final is 0 or 1. The tests
+  now histogram masked finals only.
+- On the synthetic windows, masked finals only: χ² against uniform is 22.0 and 22.8
+  (one layer, byte 4), 8.9 and 8.9 (one layer, byte 1), and 10.4 and 16.5 (eight
+  layers, byte 4); homogeneity is 17.0, 7.3 and 12.4.
 - These tests check observable consequences of the hiding argument. They are not a
   proof of zero knowledge.
 

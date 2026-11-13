@@ -14,7 +14,7 @@
   "bare_equal_proof_0": 0,
   "bare_equal_proof_1": 0,
   "checked_positions": 9,
-  "chi2_x10": 116,
+  "chi2_x10_all_finals": 116,
   "masked_finals_per_proof": 14673,
   "test_peak_rss_bytes": 31139446784,
   "verify_peak_rss_bytes": 17646026752
@@ -25,7 +25,7 @@
   "controls": {
    "bare_evaluations_proof_0": "0 of 14673 masked finals equal the bare evaluation",
    "bare_evaluations_proof_1": "0 of 14673 masked finals equal the bare evaluation",
-   "chi2_homogeneity": "10 chi2 = 116 < 377 (15 degrees of freedom); histograms of byte 0 mod 16 of every relation and ZK-GKR final: [1452, 1729, 1461, 1479, 1440, 1414, 1377, 1412, 1369, 1410, 1465, 1436, 1425, 1385, 1414, 1397] and [1492, 1641, 1431, 1427, 1386, 1427, 1432, 1476, 1439, 1425, 1399, 1416, 1421, 1439, 1408, 1406]"
+   "chi2_homogeneity_all_finals": "10 chi2 = 116 < 377 (15 degrees of freedom); histograms of byte 0 mod 16 of every relation and ZK-GKR final: [1452, 1729, 1461, 1479, 1440, 1414, 1377, 1412, 1369, 1410, 1465, 1436, 1425, 1385, 1414, 1397] and [1492, 1641, 1431, 1427, 1386, 1427, 1432, 1476, 1439, 1425, 1399, 1416, 1421, 1439, 1408, 1406]"
   },
   "host_context": "Apple M4 Max laptop (48 GB), macOS, release build of 451d1e6 (main 0298d88 plus the test). One run of the test, started at 1-minute load 2.79 and ended at 4.58; other agents' sessions resumed during it. The test commits once at T = 32 (byte 4, P = 3), makes two proofs (indices 0 and 1, 21,411,006 bytes each), verifies both, replays each to count revealed finals equal to their bare evaluation (zk_relation::leaks_lifetime), and runs the two-sample chi-square homogeneity of the two proofs' finals. prover_time_ns is the whole test wall time (commit, window, two proofs, two verifies, two replays), not one prove. Peak RSS is BSD /usr/bin/time -l on the cargo process (its largest child is the test). The verifier time (32.44 s, 17.6 GB) is one verify-dev, measured separately at this commit on a stored proof of the same window and byte (the proof of bench/ledger/e16-34-dev-zk-stories42m-t32-mac-before.json), because the test verifies inside its wall time.",
   "model": {
@@ -62,7 +62,7 @@
   },
   "threads": 16
  },
- "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk byte 4 privacy tests (RFC-0013 A5 item 7, A6; A9/A10 admission) on the real llama2.c stories42M checkpoint at T = 32, checked 23..32: in each of two proofs under one commitment no revealed final equals its bare evaluation (exact, every masked occurrence), and the two proofs' finals are chi-square homogeneous. These are tests of the hiding argument's observable consequences, not a proof of zero knowledge. Verifier time is a separate verify-dev of a same-window proof (host_context). Not a cost-model fit input.",
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk byte 4 privacy tests (RFC-0013 A5 item 7, A6; A9/A10 admission) on the real llama2.c stories42M checkpoint at T = 32, checked 23..32: in each of two proofs under one commitment no revealed final equals its bare evaluation (exact, every masked occurrence), and the two proofs' finals (all of them, masked and public) are chi-square homogeneous. This run predates the E12-32 review fix: the masked-only histograms and the per-proof uniformity test are pending a re-run. These are tests of the hiding argument's observable consequences, not a proof of zero knowledge. Verifier time is a separate verify-dev of a same-window proof (host_context). Not a cost-model fit input.",
  "plan_digest": "8f957db52bdfd4e781fa9eb3685036199446d7db9266f3281a13562a69d43be8",
  "profile": "development",
  "prompt_tokens": 24,

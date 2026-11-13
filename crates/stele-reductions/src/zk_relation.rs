@@ -508,7 +508,7 @@ pub fn leaks(
     relation: &Relation,
     values: &Values,
     proof: &Proof<K>,
-) -> Result<(usize, usize), Error> {
+) -> Result<claims::Leaks<K>, Error> {
     let layout = layout(relation)?;
     let columns = columns(&layout, relation, values)?;
     t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
@@ -525,7 +525,7 @@ pub fn leaks_lifetime(
     values: &Values,
     lifetime: &Lifetime,
     proof: &Proof<K>,
-) -> Result<(usize, usize), Error> {
+) -> Result<claims::Leaks<K>, Error> {
     let layout = layout(relation)?;
     let columns = columns(&layout, relation, values)?;
     t.absorb(AbsorbLabel::RelationStatement, &digest(relation))

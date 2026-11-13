@@ -1024,17 +1024,21 @@ mod privacy {
         zk_relation::prove(&mut t, relation, values, Seed::new([seed; 32])).expect("prove")
     }
 
-    fn histogram(proof: &Proof<QM31>) -> Vec<u128> {
+    /// Byte 0 mod 16 of masked revealed finals only: public finals, which the verifier
+    /// recomputes (constant-1 operands among them), are not drawn from the masks.
+    fn histogram(masked: &[QM31]) -> Vec<u128> {
         let mut h = vec![0u128; 16];
-        for v in proof
-            .relations
-            .iter()
-            .chain(&proof.gkr)
-            .flat_map(|p| &p.final_values)
-        {
+        for v in masked {
             h[(v.to_le_bytes().as_ref()[0] % 16) as usize] += 1;
         }
         h
+    }
+
+    /// Ten times the goodness-of-fit χ² against uniform (15 degrees of freedom):
+    /// `Σ (o − n/16)² / (n/16) = Σ (16·o − n)² / (16·n)`.
+    fn chi2_uniform_x10(h: &[u128]) -> u128 {
+        let n: u128 = h.iter().sum();
+        10 * h.iter().map(|o| (16 * o).abs_diff(n).pow(2)).sum::<u128>() / (16 * n)
     }
 
     /// Ten times the two-sample homogeneity χ² (15 degrees of freedom).
@@ -1057,7 +1061,8 @@ mod privacy {
         let (_, relation, values) = window(case, artifact, t).expect("window");
         let p = proof(&relation, &values, 5);
         let mut tr = Transcript::new(b"dev-zk window privacy").expect("transcript");
-        let (total, equal) = zk_relation::leaks(&mut tr, &relation, &values, &p).expect("accepted");
+        let stele_reductions::zk::claims::Leaks { total, equal, .. } =
+            zk_relation::leaks(&mut tr, &relation, &values, &p).expect("accepted");
         assert!(total > 1000, "{total} occurrences");
         assert_eq!(
             equal, 0,
@@ -1068,7 +1073,9 @@ mod privacy {
         let bare = zk_relation::prove_unmasked(&mut tp, &relation, &values, Seed::new([5; 32]))
             .expect("prove");
         let mut tr = Transcript::new(b"dev-zk window privacy").expect("transcript");
-        let (_, leaked) = zk_relation::leaks(&mut tr, &relation, &values, &bare).expect("accepted");
+        let leaked = zk_relation::leaks(&mut tr, &relation, &values, &bare)
+            .expect("accepted")
+            .equal;
         assert!(leaked > 0, "the unmasked control leaks nothing");
     }
 
@@ -1086,12 +1093,9 @@ mod privacy {
 
     /// RFC-0013 A6: two proofs against one published commitment both verify, at
     /// indices 0 and 1, and their revealed values stay independent: χ² homogeneity
-    /// of the two proofs' finals, as for two fresh commitments. Under `profile` (byte 1,
-    /// or RFC-0013 A8's byte 4), on `case`'s greedy window of `t` tokens; every proof's
-    /// revealed finals also differ from the bare evaluations (exact, every occurrence).
+    /// of the two proofs' masked finals, as for two fresh commitments. Under `profile`
+    /// (byte 1, or RFC-0013 A8's byte 4), on `case`'s greedy window of `t` tokens.
     fn two_proofs(case: &str, t: usize, profile: u8) {
-        use stele_prover::development::model_identity;
-        use stele_reductions::zk::claims::Lifetime;
         let span = |key: &str| span_of(case, key).expect(key);
         let model = Model::decode(span("model")).expect("model");
         let prep = Preparation::decode(&model, span("preparation")).expect("prep");
@@ -1102,7 +1106,7 @@ mod privacy {
             Executor::new(&model, &prep, &scales, artifact, &id, 1 << 34).expect("executor");
         let (statement, _, _) = window(case, artifact, t).expect("window");
         let weights = Weights::from_artifact(&model, artifact).expect("weights");
-        let public = Public {
+        let base = Public {
             model: span("model").to_vec(),
             scales: span("scales").to_vec(),
             preparation: span("preparation").to_vec(),
@@ -1110,24 +1114,45 @@ mod privacy {
             commitment: Vec::new(),
             sources: Sources::Expander,
         };
-        let (zk_public, commitment, mut state) =
-            zk_commit_profile(&public, &mut exec, &weights, 3, 41, profile).expect("commit");
-        let (relation, values) =
-            zk::window(&zk_public, &mut exec, &weights, &statement).expect("window");
+        check_two_proofs(base, &mut exec, &weights, &statement, 4, profile, 100);
+    }
+
+    /// Commits `base` for `length` tokens (`P = 3`, seed 41) under `profile`, then
+    /// makes two proofs of `statement` (indices 0 and 1). Each must verify, reveal no
+    /// bare evaluation (exact, every masked final; more than `min` of them), and its
+    /// masked finals must pass a uniformity χ² test; the two must be χ²-homogeneous.
+    fn check_two_proofs(
+        base: Public,
+        exec: &mut Executor<'_>,
+        weights: &Weights,
+        statement: &Statement,
+        length: usize,
+        profile: u8,
+        min: usize,
+    ) {
+        use stele_prover::development::model_identity;
+        use stele_reductions::zk::claims::Lifetime;
+        let (commitment, mut state) =
+            zk::commit(&base, exec, weights, length, 3, [41; 32], profile).expect("commit");
+        let zk_public = Public {
+            commitment: vec![(commitment.root, Vec::new())],
+            ..base
+        };
+        let (relation, values) = zk::window(&zk_public, exec, weights, statement).expect("window");
         let (cqis_id, _) = model_identity(&zk_public).expect("identity");
-        let mut finals = Vec::new();
+        let mut hs = Vec::new();
         for seed in [42, 43] {
             let (proof, index) = zk_prove(
                 &zk_public,
-                &mut exec,
-                &weights,
-                &statement,
+                exec,
+                weights,
+                statement,
                 &commitment,
                 &mut state,
                 seed,
             )
             .expect("prove");
-            zk::verify(&zk_public, &statement, &proof, &commitment, index).expect("verify");
+            zk::verify(&zk_public, statement, &proof, &commitment, index).expect("verify");
             let header = b"stele-dev-zk-v1".len() + 64;
             let decoded =
                 stele_reductions::zk::claims::decode::<QM31>(&proof[header..]).expect("decode");
@@ -1138,37 +1163,43 @@ mod privacy {
                 index: index as usize,
                 blocks: commitment.blocks.iter().map(|b| *b as usize).collect(),
             };
-            let input = zk::public_input(&zk_public, &cqis_id, &statement, &commitment, index);
+            let input = zk::public_input(&zk_public, &cqis_id, statement, &commitment, index);
             let mut tr = Transcript::new(&input).expect("transcript");
-            let (total, equal) =
+            let leaks =
                 zk_relation::leaks_lifetime(&mut tr, &relation, &values, &lifetime, &decoded)
                     .expect("accepted");
-            assert!(total > 100, "{total} occurrences");
+            let (total, equal) = (leaks.total, leaks.equal);
+            let h = histogram(&leaks.masked);
+            let uniform = chi2_uniform_x10(&h);
+            eprintln!(
+                "proof index {index}: {} bytes, {total} masked finals, {equal} equal to the bare \
+                 evaluation; histogram {h:?}, 10·χ² against uniform {uniform}",
+                proof.len()
+            );
+            assert!(total > min, "{total} masked finals");
             assert_eq!(
                 equal, 0,
-                "{equal} of {total} finals equal the bare evaluation"
+                "{equal} of {total} masked finals equal the bare evaluation"
             );
-            finals.push(decoded);
+            assert!(uniform < 377, "10·χ² against uniform {uniform}");
+            hs.push(h);
         }
         assert_eq!(state.next, 2);
         assert_eq!(state.revealed.len(), 2);
-        let chi2 = chi2_same_x10(&histogram(&finals[0]), &histogram(&finals[1]));
+        let chi2 = chi2_same_x10(&hs[0], &hs[1]);
+        eprintln!("10·χ² homogeneity {chi2} (15 degrees of freedom; bound 377, χ² < 37.7)");
         assert!(chi2 < 377, "10·χ² {chi2}");
     }
 
-    /// E12-31 (RFC-0013 A9, A10): [`two_proofs`] on a real checkpoint read from
+    /// E12-32 (RFC-0013 A9, A10): [`check_two_proofs`] on a real checkpoint read from
     /// `STELE_ZK_CHECKPOINT` (a directory with `model.bin`, `preparation.bin`,
     /// `scales.bin`, `artifact.bin`). The window is the E16-11 prompt (24 tokens),
     /// greedily extended to `STELE_ZK_LENGTH` (default 32) and checked from position 23,
-    /// as in the E12-29 and E16-33 runs. It commits at that length (byte 4, `P = 3`),
-    /// then makes two proofs (indices 0 and 1). Each must verify and reveal no bare
-    /// evaluation (exact, every occurrence), and the two must be χ²-homogeneous.
-    /// Release build only, about 30 GB per proof.
+    /// as in the E12-29 and E16-33 runs. It commits at that length (byte 4, `P = 3`).
+    /// Release build only, about 30 GB peak RAM per proof.
     #[test]
     #[ignore = "a real checkpoint: STELE_ZK_CHECKPOINT=dir, release, --ignored"]
     fn rejects_bare_evaluations_and_accepts_two_proofs_on_a_supplied_checkpoint() {
-        use stele_prover::development::model_identity;
-        use stele_reductions::zk::claims::Lifetime;
         let dir = std::path::PathBuf::from(
             std::env::var("STELE_ZK_CHECKPOINT").expect("STELE_ZK_CHECKPOINT"),
         );
@@ -1210,75 +1241,22 @@ mod privacy {
         };
         let weights = Weights::from_artifact(&model, &a).expect("weights");
         let base = Public {
-            model: m.clone(),
-            scales: s.clone(),
-            preparation: p.clone(),
             vectors: zk::published(&m, &weights.vectors).expect("published"),
+            model: m,
+            scales: s,
+            preparation: p,
             commitment: Vec::new(),
             sources: Sources::Expander,
         };
-        let (commitment, mut state) = zk::commit(
-            &base,
+        check_two_proofs(
+            base,
             &mut exec,
             &weights,
+            &statement,
             length,
-            3,
-            [41; 32],
             zk::PROFILE_BALANCED,
-        )
-        .expect("commit");
-        let zk_public = Public {
-            commitment: vec![(commitment.root, Vec::new())],
-            ..base
-        };
-        let (relation, values) =
-            zk::window(&zk_public, &mut exec, &weights, &statement).expect("window");
-        let (cqis_id, _) = model_identity(&zk_public).expect("identity");
-        let mut finals = Vec::new();
-        for seed in [42, 43] {
-            let (proof, index) = zk_prove(
-                &zk_public,
-                &mut exec,
-                &weights,
-                &statement,
-                &commitment,
-                &mut state,
-                seed,
-            )
-            .expect("prove");
-            zk::verify(&zk_public, &statement, &proof, &commitment, index).expect("verify");
-            let header = b"stele-dev-zk-v1".len() + 64;
-            let decoded =
-                stele_reductions::zk::claims::decode::<QM31>(&proof[header..]).expect("decode");
-            let lifetime = Lifetime {
-                geometry: commitment.geometry(),
-                source: zk_relation::WEIGHTS,
-                proofs: commitment.proofs as usize,
-                index: index as usize,
-                blocks: commitment.blocks.iter().map(|b| *b as usize).collect(),
-            };
-            let input = zk::public_input(&zk_public, &cqis_id, &statement, &commitment, index);
-            let mut tr = Transcript::new(&input).expect("transcript");
-            let (total, equal) =
-                zk_relation::leaks_lifetime(&mut tr, &relation, &values, &lifetime, &decoded)
-                    .expect("accepted");
-            eprintln!(
-                "proof index {index}: {} bytes, {total} masked finals, {equal} equal to the bare evaluation",
-                proof.len()
-            );
-            assert!(total > 1000, "{total} occurrences");
-            assert_eq!(
-                equal, 0,
-                "{equal} of {total} finals equal the bare evaluation"
-            );
-            finals.push(decoded);
-        }
-        let (h0, h1) = (histogram(&finals[0]), histogram(&finals[1]));
-        let chi2 = chi2_same_x10(&h0, &h1);
-        eprintln!(
-            "histograms {h0:?} {h1:?}; 10·χ² {chi2} (15 degrees of freedom; bound 377, χ² < 37.7)"
+            1000,
         );
-        assert!(chi2 < 377, "10·χ² {chi2}");
     }
 
     #[test]
@@ -1337,7 +1315,12 @@ mod privacy {
             stele_reductions::zk::claims::encode(&p).len(),
             stele_reductions::zk::claims::encode(&q).len()
         );
-        let chi2 = chi2_same_x10(&histogram(&p), &histogram(&q));
+        let masked = |v: &Values, proof: &Proof<QM31>| {
+            let mut tr = Transcript::new(b"dev-zk window privacy").expect("transcript");
+            let leaks = zk_relation::leaks(&mut tr, &relation, v, proof).expect("accepted");
+            histogram(&leaks.masked)
+        };
+        let chi2 = chi2_same_x10(&masked(&values, &p), &masked(&other, &q));
         assert!(chi2 < 377, "10·χ² {chi2}");
     }
 }
