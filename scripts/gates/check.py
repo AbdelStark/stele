@@ -693,9 +693,10 @@ def field_sources(root):
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
             # E16-15: the opt-in prover-thread switch; no_std by default. E12-14a: the
-            # controls' adversaries (zk), never a verifier input.
+            # controls' adversaries (zk), never a verifier input. E16-22: `std` also runs
+            # the plain checker (stele-ir) on the pool, with the same result.
             or manifest.get('features', {})
-                != {'std': ['stele-sumcheck/std', 'stele-pcs/std'],
+                != {'std': ['stele-sumcheck/std', 'stele-pcs/std', 'stele-ir/std'],
                     'controls': ['stele-sumcheck/controls'],
                     # ADR-108: the standard-profile lookup, for tests and controls only.
                     'standard-unproven': ['stele-pcs/standard-unproven']}
