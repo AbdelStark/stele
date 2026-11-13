@@ -1303,7 +1303,9 @@ lines are charged once per check."):
 
 ### A14 — Ground lookup (β, α) rounds for development proofs (profile byte 5)
 
-Status: Draft. Needs one independent reviewer from another lane before acceptance.
+Status: Accepted (development tier) with ADR-125. Independent review: FIX-THEN-MERGE at
+0439aa9 (nonce placement and transcript state verified, k from the plan, all 11,647 rounds
+recomputed exactly); fixes applied (RFC-0008 A8 item 1 replacement, NC-1323/1324).
 Task: E8-05d. Decision: ADR-125 (Proposed). Companion: RFC-0012 A17 item 5, RFC-0008 A8.
 
 **Motivation.**

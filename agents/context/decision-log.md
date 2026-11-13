@@ -3723,4 +3723,6 @@ Independent review of #369: FIX-THEN-MERGE.
   - "Cells, lookups: none added";
   - `--dev-profile` checked against 3 and 5.
 
-Status: Proposed (development tier). Review requested with RFC-0026 A14.
+Status: Accepted (development tier) with RFC-0026 A14. Independent review: FIX-THEN-MERGE
+at 0439aa9; fixes applied. No security level is claimed; `proven: true` waits on E8-05's
+verifier entry point.
