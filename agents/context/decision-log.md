@@ -3726,3 +3726,74 @@ Independent review of #369: FIX-THEN-MERGE.
 Status: Accepted (development tier) with RFC-0026 A14. Independent review: FIX-THEN-MERGE
 at 0439aa9; fixes applied. No security level is claimed; `proven: true` waits on E8-05's
 verifier entry point.
+
+## ADR-127: dev-zk GPU backend: NO-GO; the measured resident ceiling on current main is 2.65×–2.85×, capped at 3.00× (RFC-0014 §1, §5, task E16-36, ADR-123 follow-up)
+
+Context: ADR-123 lifted the NO-GO for the masked and ZK-GKR rounds. It left the dev-zk
+decision to E16-36: a stage re-profile on main after E16-34, and a device measurement of
+hiding-source preparation. GO only if the measured resident ceiling is at least 3×.
+
+Measurement (`research/gpu-gating/DEV-ZK-E16-36.md`):
+- **Profile** (`bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json`). One stage-lap prove
+  of stories42M dev-zk byte 4 at `T = 32` on `8aa97af`, M4 Max, started at load 2.77:
+  - 306.2 s (E16-22: 465.7 s);
+  - ZK-GKR 153.2 s, relations 22.5 s, source preparation and certification 28.3 s
+    (E16-22: 103.5 s), LogUp trees 7.4 s, claim batches 9.3 s;
+  - residual outside ADR-120's offloadable set 85.4 s: source messages 20.7 s,
+    self-verify 20.1 s, witness 30.9 s, the rest.
+- **Device source preparation** (`bench/ledger/e16-36-dev-zk-gpu-sources.json`):
+  - Kernels in `research/gpu-gating/masked`: transpose, Circle levels (RFC-0010 A2),
+    BLAKE3 leaves with device-computed keyed-XOF salts, and the RFC-0012 A3 tree. Opt-in,
+    CUDA loaded at run time.
+  - Bit equality: the device roots equal the production `PreparedSource` roots at
+    `(ell, m)` = (4, 10), (6, 12), (11, 15), (11, 16), (11, 17). The same algorithm in
+    plain Rust matches the production root in a CPU test.
+  - RTX 4090 against 61 EPYC threads at the witness shape (`ell = 11`, `C = 2^16`):
+    16.47 s on the CPU against 0.77 s on the device (encode and Merkle on the device,
+    the certificate on the CPU), 21.5×. Against the Mac that took the laps: 13.3×.
+    The upload phase moves 2 GiB at the bench's staging rate (1.53 s); the bus moves
+    1 GiB in 61 ms pageable.
+- **Masked rounds**, re-timed against E16-34's CPU on the box: 15.9–57.7× rounds-only.
+  The Mac calibration did not run (host load 8–11), so `s_M` is against the box CPU;
+  that is conservative for the device.
+
+Ceiling (Amdahl over the laps):
+- every offloadable stage free: 3.58×;
+- the masked rounds and source preparation free, LogUp trees and claim batches (16.7 s)
+  on the CPU: **2.996×**, below 3× however fast the device is;
+- **measured: 2.65×–2.85×** (masked rounds at 15.9–57.7×, source preparation at 13.3×,
+  trees and batches on the CPU);
+- trees and batches at E16-21's ratios, which were not measured for those stages:
+  3.08×–3.37× rounds-only, 2.93×–3.34× upload-inclusive. 3× needs them at ≥ 4.9× on
+  the device.
+
+Decision:
+- **dev-zk: NO-GO.** The measured resident ceiling is 2.65×–2.85×, below the 3× gate of
+  ADR-103 and E16-36. A backend over the stages measured so far cannot pass 3.00×.
+- **Development: NO-GO stands** (ADR-120).
+- E16-37 stays blocked. Tasks E16-21a..e stay blocked. No GPU binding, no RFC-0014
+  amendment, no change to `crates/stele-gpu`.
+- The research kernels stay as evidence: the masked and GKR rounds and source
+  preparation, each bit-equal to the production CPU code.
+
+What would reopen it (a new task and ADR, not this one):
+- LogUp trees and tops and claim batches measured on the device at ≥ 4.9× against the
+  laps host's CPU, with a re-profile on the then-current main still showing the
+  offloadable share; or
+- a change to the residual. Source messages (20.7 s of keyed-XOF mask draws) and
+  self-verify (20.1 s) are CPU work outside ADR-120's offloadable set. A design that
+  moves the mask draws to the device, or that drops a self-verify, changes `r`. That is
+  a separate decision with its own measurement.
+- CPU work on the residual moves the same terms on every host, so it comes first.
+
+Consequences:
+- Ledgers: `bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json` (inference, single run)
+  and `bench/ledger/e16-36-dev-zk-gpu-sources.json` (micro).
+- `research/gpu-gating/masked` gains `source.rs` (the plain-Rust reference, CPU-tested),
+  `source.cu`, `gpu_source.rs`, a `source` bench mode, `tests/source_parity.rs`,
+  `run36.sh` and `summarize36.py`. The research inventory group `gpu-gating-masked`
+  runs the CPU test and the `cuda` check.
+- No proof byte, transcript, verifier or `crates/` change.
+
+Status: Accepted (owner authorisation for autonomous gating decisions; independent review
+requested in the E16-36 PR).
