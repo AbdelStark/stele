@@ -9,5 +9,8 @@ description = "Stele — stele-verifier (see RFC-0016)"
 stele-field = { path = "../stele-field" }
 stele-hash = { path = "../stele-hash" }
 
+[dev-dependencies]
+serde_json = "=1.0.154"
+
 [lints]
 workspace = true

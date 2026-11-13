@@ -1898,6 +1898,23 @@ tasks:
   - plan derivation calls lookup::admit for every RFC-0023/0024 lookup consumer before the first transcript absorb; NC-0420..0424 run through the verifier entry point and fail if the call is removed
   - plan derivation fixes one RFC-0010 A6 message embedding per source context and rejects a plan whose consumers name two or none (NC-1207/1208)
   - the plan verifier calls `check_source` (or obtains the handle via `verify_certificate(expected)`) before accepting any PCS opening; NC-0612 runs through it and fails if the call is removed
+- id: E8-02a
+  epic: E8
+  title: no_std verifier, first piece - independent A1 sumcheck in stele-verifier with corpus parity (ADR-127 plan for E8-02)
+  depends:
+  - E8-05b
+  rfc:
+  - RFC-0016 §3
+  - RFC-0006 A1
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02a-verifier-sumcheck
+  acceptance:
+  - ADR-127 (Proposed) fixes the E8-02 plan - independent re-implementation, module order, size estimate
+  - stele_verifier::sumcheck verify/verify_public match every decision and receipt of research/sumcheck/corpus.jsonl (196 cases, QM31 and OM31)
+  - the recorded production receipts are checked against the production verifier by the sumcheck gate; mutation-checked parity test
 - id: E8-03
   epic: E8
   title: Python differential verifier

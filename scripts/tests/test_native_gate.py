@@ -100,7 +100,8 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                 self.assertEqual(calls[-1][0], validator)
 
     def test_rejects_missing_accounting_receipt_and_unadmitted_verifier_surface(self):
-        lines = [f'test accounting::tests::{n} ... ok' for n in gate.ACCOUNTING['tests']]
+        lines = ([f'test accounting::tests::{n} ... ok' for n in gate.ACCOUNTING['tests']]
+                 + [f'test {n} ... ok' for n in gate.ACCOUNTING['parity']])
         output = '\n'.join(lines)
         with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, '')):
             gate.accounting_admission(ROOT)
@@ -111,10 +112,10 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                     gate.accounting_admission(ROOT)
         crate = ROOT / 'crates/stele-verifier'
         expected = json.loads((ROOT / 'scripts/gates/bootstrap-sources.json').read_text())['stele-verifier']
-        actual = {'Cargo.toml': expected['Cargo.toml'], 'src/lib.rs': 'changed',
-                  'src/accounting.rs': gate.ACCOUNTING['sha256']}
+        actual = {'src/lib.rs': 'changed', **gate.ACCOUNTING['pins']}
         self.assertEqual(gate.accounting_surface(crate, actual, expected), expected)
-        for extra in ({'src/other.rs': 'y'}, {'Cargo.toml': 'changed'}, {'src/accounting.rs': 'edited'}):
+        for extra in ({'src/other.rs': 'y'}, {'Cargo.toml': 'changed'}, {'src/accounting.rs': 'edited'},
+                      {'src/sumcheck.rs': 'edited'}):
             changed = {**actual, **extra}
             self.assertEqual(gate.accounting_surface(crate, changed, expected), changed)
         # A path module or include hidden in the admitted file is refused even at the pin.
