@@ -3599,7 +3599,9 @@ Decision (Proposed):
   - E8-05c enumerates a development proof's rounds and prints the verdict in
     `verify-dev`.
 
-  E8-05a stays `blocked(RFC-0013 A1)` for ZK and treaty admission.
+  E8-05a stays `blocked(RFC-0013 A1)` for ZK and treaty admission. Those move to a
+  new task, E8-05e, which depends on E8-05 and E8-05a, so treaty cannot close without
+  Q29. E8-05 is retitled to the non-ZK standard profile.
 - **What E8-05 still owes for non-ZK standard.** These are E8-05a's other acceptance
   lines, now E8-05's for that profile:
   - the canonical ledger derived from the plan and instance geometry;
@@ -3627,5 +3629,22 @@ Consequences:
   - the verdict is FAIL (C4), because LU rounds are not ground.
 - On study.py's recorded stories42M ledger, the same code gives LU range_8 at
   2^-96.99999 (printed 2^-96.9) and a floor of 2^-95.6, as in PARAMETERS.md §4.
+
+Independent review of #367: FIX-THEN-MERGE.
+- **Confirmed.**
+  - Every draw maps to exactly one round.
+  - Sum and max are exact; independent exact-rational sums reproduce the pins.
+  - `Q_V = 2^64 − 1` is sound.
+  - The RFC-0002 §8 basis holds.
+- **Fixes applied.**
+  - The moved E8-05a lines are in E8-05's acceptance, scoped "(non-ZK standard)",
+    and E8-05e holds ZK and treaty.
+  - A zerocheck is three entries: `τ` (j, j), skip (D, D) and tail (j·δ, δ). The
+    eight-layer window now has 11,687 rounds, not 11,647; its worst round and floor
+    are unchanged.
+  - The `2^124`-for-`p^4` display rounding is documented as display only.
+  - An unknown round line fails the verdict instead of reading as MASK.
+  - The verdict notes that Policy 1 sources always fail (C4).
+  - The test checks each entry's rounds, not each name's.
 
 Status: Proposed (governance; no protocol change). Review requested.

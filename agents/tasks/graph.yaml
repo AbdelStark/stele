@@ -1925,22 +1925,29 @@ tasks:
   - CI gate green
 - id: E8-05
   epic: E8
-  title: Soundness ledger generator + accounting gate; first ledger for W8 both profiles
+  title: Soundness ledger generator + accounting gate; first ledger for W8 under the non-ZK standard profile (ZK and treaty in E8-05e)
   depends:
   - E8-02
   # ADR-124 (Proposed): non-ZK standard admission waits on E8-05b/E8-05c, not on
-  # E8-05a's Q29 blocker; ZK and treaty admission still need E8-05a.
+  # E8-05a's Q29 blocker; ZK and treaty admission (E8-05e) still need E8-05a.
   - E8-05b
   - E8-05c
   rfc:
   - RFC-0012 §4-5
   - RFC-0012 A15
+  - RFC-0012 A17
   skill: soundness-auditor
   crate: stele-verifier
   status: ready
   acceptance:
   - NC-0804/0805
   - totals within profile or config rejected
+  # E8-05a's lines moved here by ADR-124, for the non-ZK standard profile only.
+  - (non-ZK standard) exact canonical ledger derived from the complete independently expected plan, instance geometry, actual consumer schedule and permitted profile; every challenge/query/failed-attempt/lifetime obligation retained
+  - (non-ZK standard) native no_std derivation/checking and independent exact enumeration with actual NC-0804/0805 and NC-1205 rejection, including missing or substituted child losses
+  - (non-ZK standard) every LU line is `LookupParameters::identity_term` of an actual verified lookup record (E12-02, ADR-072), never recomputed from proof bytes or applied as a Fiat-Shamir bound
+  - (non-ZK standard) no final passport or accepted inference proof is a derivation input
+  - (non-ZK standard) the composed (C1)-(C4) check at the verifier entry point lifts `standard-unproven` in the same change (ADR-108)
 - id: E8-05a
   epic: E8
   title: Native deterministic ledger and profile admission prerequisites
@@ -1970,6 +1977,22 @@ tasks:
   - native no_std derivation/checking and independent exact enumeration with actual NC-0804/0805 and NC-1205 rejection, including missing or substituted child losses
   - no final passport or accepted inference proof is a derivation input; E8-05 retains both-profile full W8 ledger delivery and original budget criteria
   - every LU line is `LookupParameters::identity_term` of an actual verified lookup record (E12-02, ADR-072), never recomputed from proof bytes or applied as a Fiat-Shamir bound
+- id: E8-05e
+  epic: E8
+  title: Profile admission for ZK standard and for treaty (the ledger of E8-05 with Q29 and the treaty rows)
+  depends:
+  - E8-05
+  - E8-05a
+  rfc:
+  - RFC-0012 A17
+  - RFC-0013 A1
+  - RFC-0002 §8
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: blocked(RFC-0013 A1)
+  acceptance:
+  - E8-05a's acceptance (Q29 privacy composition; no placeholder theorem, adversarial query cap or MASK term) for every ZK standard and treaty admission
+  - the W8 treaty ledger with E8-05's original both-profile budget criteria
 - id: E8-05b
   epic: E8
   title: Exact (C1)-(C4) profile admission check over enumerated rounds (stele-verifier::accounting)
