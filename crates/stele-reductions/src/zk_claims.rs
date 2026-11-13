@@ -1908,6 +1908,58 @@ impl<K: ChallengeField> TermPlan<K> {
             None => outer,
         }
     }
+    /// [`Self::sum`] where the factors with `base[f]` hold M31 values in `small`
+    /// (E16-34). Their product is taken in M31 and applied once with `mul_m31`. The
+    /// field is exact, so this is the same element as [`Self::sum`] on the embedded
+    /// values.
+    fn sum_mixed(
+        terms: &[(Coefficient<K>, Vec<u32>)],
+        values: &[K],
+        small: &[M31],
+        base: &[bool],
+    ) -> K {
+        terms.iter().fold(zero::<K>(), |s, (c, factors)| {
+            let (mut m, mut k) = (M31::from_u64(1), None::<K>);
+            for f in factors {
+                let f = *f as usize;
+                if base[f] {
+                    m = m * small[f];
+                } else {
+                    k = Some(k.map_or(values[f], |p| p * values[f]));
+                }
+            }
+            let p = match k {
+                Some(k) => k.mul_m31(m),
+                None => K::from_i64(i64::from(m.as_u32())),
+            };
+            match c {
+                Coefficient::One => s + p,
+                Coefficient::MinusOne => s - p,
+                Coefficient::Other(c) => s + *c * p,
+            }
+        })
+    }
+    fn evaluate_mixed(&self, values: &[K], small: &[M31], base: &[bool]) -> K {
+        let outer = Self::sum_mixed(&self.outer, values, small, base);
+        match &self.common {
+            Some((g, inner)) => {
+                let rest = Self::sum_mixed(inner, values, small, base);
+                let g = *g as usize;
+                outer
+                    + if base[g] {
+                        rest.mul_m31(small[g])
+                    } else {
+                        values[g] * rest
+                    }
+            }
+            None => outer,
+        }
+    }
+}
+
+/// The M31 value of a base-field element of `K` (`to_i64_signed` is `Some`).
+fn small<K: ChallengeField>(v: K) -> M31 {
+    <M31 as stele_field::Field>::from_i64(v.to_i64_signed().unwrap_or(0))
 }
 
 impl<K: ChallengeField> Summand<K> for Occurrences<K> {
@@ -1933,6 +1985,84 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
         let products: usize = self.terms.iter().map(|t| t.factors.len() + 1).sum();
         let cost = nodes * (self.factors.len() + products);
         let plan = TermPlan::new(&self.terms);
+        // E16-34: factors whose tables are all base-field (most occurrences before any
+        // challenge is folded in) are stepped and multiplied in M31; κ(t) at an integer
+        // node is an integer, so a masked base factor stays base at every node.
+        let base: Vec<bool> = self
+            .factors
+            .iter()
+            .map(|f| f.x.iter().chain(&f.r).all(|v| v.to_i64_signed().is_some()))
+            .collect();
+        if base.iter().any(|b| *b) {
+            let small_kappas: Vec<M31> = (0..nodes)
+                .map(|t| <M31 as stele_field::Field>::from_i64(t as i64 * (1 - t as i64)))
+                .collect();
+            stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
+                let width = self.factors.len();
+                let mut x = vec![zero::<K>(); width];
+                let mut dx = vec![zero::<K>(); width];
+                let mut r = vec![zero::<K>(); width];
+                let mut dr = vec![zero::<K>(); width];
+                let mut values = vec![zero::<K>(); width];
+                let zero_m = M31::from_u64(0);
+                let mut xs = vec![zero_m; width];
+                let mut dxs = vec![zero_m; width];
+                let mut rs = vec![zero_m; width];
+                let mut drs = vec![zero_m; width];
+                let mut smalls = vec![zero_m; width];
+                for column in range {
+                    for (k, f) in self.factors.iter().enumerate() {
+                        if base[k] {
+                            xs[k] = small(f.x[column]);
+                            dxs[k] = small(f.x[column + half]) - xs[k];
+                            if masked[k] {
+                                rs[k] = small(f.r[column]);
+                                drs[k] = small(f.r[column + half]) - rs[k];
+                            }
+                        } else {
+                            x[k] = f.x[column];
+                            dx[k] = f.x[column + half] - x[k];
+                            if masked[k] {
+                                r[k] = f.r[column];
+                                dr[k] = f.r[column + half] - r[k];
+                            }
+                        }
+                    }
+                    for (node, result) in out.iter_mut().enumerate() {
+                        for k in 0..width {
+                            if base[k] {
+                                if node > 0 {
+                                    xs[k] = xs[k] + dxs[k];
+                                    if masked[k] {
+                                        rs[k] = rs[k] + drs[k];
+                                    }
+                                }
+                                smalls[k] = if masked[k] && node > 1 {
+                                    xs[k] + small_kappas[node] * rs[k]
+                                } else {
+                                    xs[k]
+                                };
+                            } else {
+                                if node > 0 {
+                                    x[k] = x[k] + dx[k];
+                                    if masked[k] {
+                                        r[k] = r[k] + dr[k];
+                                    }
+                                }
+                                values[k] = if masked[k] && node > 1 {
+                                    x[k] + kappas[node] * r[k]
+                                } else {
+                                    x[k]
+                                };
+                            }
+                        }
+                        *result = *result + plan.evaluate_mixed(&values, &smalls, &base);
+                    }
+                }
+                Ok(())
+            })?;
+            return Ok(out);
+        }
         stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
             let width = self.factors.len();
             let mut x = vec![zero::<K>(); width];
