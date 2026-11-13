@@ -449,7 +449,8 @@ mod tests {
     /// keyed-XOF salts, the node tree) gives the production `PreparedSource` root.
     #[test]
     fn matches_reference_prepared_source_root() {
-        for (ell, m) in [(3u8, 9u8), (4, 10)] {
+        // (8, 10) and (9, 11): 2132- and 4180-byte leaves, the multi-chunk BLAKE3 path.
+        for (ell, m) in [(3u8, 9u8), (4, 10), (8, 10), (9, 11)] {
             let shape = Shape::new(ell, m, 5);
             let message = shape.message();
             let (expected, _, _) = cpu(&shape, &message).expect("production preparation");

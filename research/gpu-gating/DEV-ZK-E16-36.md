@@ -56,7 +56,8 @@ offloadable time is in the masked rounds, which ADR-123 showed the device handle
   - the check mode at (11, 15), (11, 16), (11, 17);
   - on the Mac, `source.rs` runs the same algorithm in plain Rust. Its test
     (`matches_reference_prepared_source_root`) matches the production root before any
-    GPU runs.
+    GPU runs, at (3, 9), (4, 10), (8, 10) and (9, 11); the last two have multi-chunk
+  (2132- and 4180-byte) leaves.
 - **Shapes.** stories42M has two large hiding sources with row exponent 12 (`ell = 11`)
   and three small ones (row exponents 4, 7 and 4). The witness is `C = 2^16`.
 
@@ -81,31 +82,39 @@ code on both sides):
 - GKR layer: 18.4×, 17.0× and 15.9×.
 
 The Mac calibration of these rounds did not run: the host's load stayed at 8–11 for more
-than 30 minutes. The ceiling below takes `s_M` against the box CPU. In E16-35 the Mac ran
-these rounds slower than such a box, so this understates the device's gain. The cap in §4
-does not depend on it.
+than 30 minutes. The ceiling below therefore uses ratios against the box CPU. In E16-35
+the Mac ran these rounds slower than such a box, so box-calibrated ratios understate the
+device's gain on the laps host. They bias the ceiling toward NO-GO.
 
 ## 4. Ceiling
 
-`T' = r + M/s_M + S/s_src + L/s_L` over the laps of §1 (306.16 s), where `r` = 85.44 s,
-`M` = 175.64 s, `S` (source preparation) = 28.34 s and `L` (LogUp trees and claim
-batches) = 16.74 s.
+`T' = r + rel/s_rel + gkr/s_gkr + S/s_src + L/s_L` over the laps of §1 (306.16 s):
+- `r` = 85.44 s;
+- relations `rel` = 22.45 s at `s_rel` and ZK-GKR `gkr` = 153.19 s at `s_gkr`, each at
+  its own measured ratio;
+- `S` (source preparation) = 28.34 s;
+- `L` (LogUp trees and claim batches) = 16.74 s.
 
 | Assumption | Ceiling |
 |---|---:|
 | every offloadable stage free | 3.58× |
-| `M` and `S` free, `L` on the CPU | **2.996×** |
-| **measured:** `M` at 15.9–57.7×, `S` at 13.3×, `L` on the CPU | **2.65×–2.85×** |
-| `L` at E16-21's rounds-only ratios (25.4–76.1×; not measured for `L`) | 3.08×–3.37× |
-| `L` at E16-21's upload-inclusive ratios (2.9–15.9×; not measured for `L`) | 2.93×–3.34× |
+| relations, ZK-GKR and `S` free, `L` on the CPU | 2.996× |
+| **measured (box-calibrated):** `s_rel` 31.7–57.7×, `s_gkr` 15.9–18.4×, `s_src` 13.3×, `L` on the CPU | **2.67×–2.71×** |
+| `L` at E16-21's rounds-only ratios (25.4–76.1×; not measured for `L`) | 3.11×–3.17× |
+| `L` at E16-21's upload-inclusive ratios (2.9–15.9×; not measured for `L`) | 2.95×–3.14× |
 
-- **The measured resident ceiling is 2.65×–2.85×, below 3×.** Even with an infinitely
-  fast device for everything this task measured, the ceiling is capped at 2.996×.
-- Reaching 3× would need LogUp trees and claim batches on the device at **≥ 4.9×**, a
-  stage no task has measured.
+- **NO-GO at this measurement:** the measured ceiling is 2.67–2.71× (box-calibrated).
+- The 2.996× bound assumes trees and batches stay on the CPU, and ADR-123 item 3 puts
+  them on the device. The bound is 0.19 s, or 0.06% of one loaded run, short of 3×,
+  which is within single-run noise.
+- **What 3× needs from `L`:** `s_L ≥ L / (T/3 − r − rel/s_rel − gkr/s_gkr − S/s_src)`.
+  - With the box-calibrated ratios: **2.9–4.0×**.
+  - With ADR-123's Mac-calibrated 39.7–83.4× over all of `M` (before E16-34):
+    **1.35–1.66×**.
+  - Neither has been measured for trees and batches. The answer depends on calibrating
+    the masked rounds on the laps host.
 - Outside ADR-120's offloadable set, the largest CPU stages are source messages (20.7 s
-  of keyed-XOF mask draws) and self-verify (20.1 s). These, not the GPU-shaped work, now
-  set the ceiling.
+  of keyed-XOF mask draws) and self-verify (20.1 s).
 
 ## 5. Reproduce
 

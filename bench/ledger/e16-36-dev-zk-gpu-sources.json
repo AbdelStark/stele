@@ -40,7 +40,7 @@
    },
    "gpu": "research/gpu-gating/masked/src/source.cu: M' uploaded, transposed to symbol-major on the device, inverse Circle levels on the head, bit reversal and 1/n scale, forward levels on the whole (twiddles from the host, RFC-0010 A2), leaves hashed one per thread with the keyed-XOF salts computed on the device, one launch per tree level; only the root is read back. The certificate stays on the CPU. One untimed warm-up pass per process.",
    "operation": "hiding-source preparation (RFC-0013 A2/A8 policy 2, rate 1/4): M' (2R x 2C) Circle-encoded row by row (RFC-0010 A2), leaves salt || column hashed with BLAKE3 under the RFC-0012 A3 domain, the tree to its root; and the E16-35 masked rounds re-timed on main after E16-34",
-   "parity": "device roots equal the production PreparedSource roots: tests/source_parity.rs at (ell, m) = (4, 10), (6, 12), (11, 16) and the check mode at (11, 15), (11, 16), (11, 17); the masked parity test (2^20) also passed on this box",
+   "parity": "device roots equal the production PreparedSource roots: tests/source_parity.rs at (ell, m) = (4, 10), (6, 12), (11, 16) and the check mode at (11, 15), (11, 16), (11, 17); on the Mac the plain-Rust reference matches the production root at (3, 9), (4, 10), (8, 10), (9, 11), the last two multi-chunk leaves; the masked parity test (2^20) also passed on this box",
    "source_shapes": "ell 11 (2R = 4096 rows, the row exponent 12 of stories42M's two large sources) with m 15, 16 (the witness, C = 2^16) and 17; codewords of 2^(m + 3) symbols",
    "timing": "per cell, the run with the median key (source: encode; masked: rounds total) of three; that run's other phases recorded"
   },
@@ -48,28 +48,28 @@
    "ceiling_x1000": {
     "m_and_sources_free_trees_batches_on_cpu": 2996,
     "measured_trees_batches_on_cpu": [
-     2654,
-     2852
+     2670,
+     2708
     ],
     "trees_batches_at_e16_21_rounds_only_unmeasured": [
-     3080,
-     3370
+     3110,
+     3170
     ],
     "trees_batches_at_e16_21_upload_inclusive_unmeasured": [
-     2930,
-     3340
+     2950,
+     3140
     ],
     "unbounded": 3583
    },
    "gate": "GO only if the measured resident ceiling is at least 3x (E16-36)",
-   "method": "Amdahl on bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json laps (single run, 306.16 s): r = 85.44 s outside ADR-120's offloadable set; M = relations + ZK-GKR 175.64 s at s_M; source preparation 28.34 s at s_src; LogUp trees and tops + claim batches 16.74 s. s_src is the Mac CPU's (prepare + certificate) over (device encode + Merkle + the Mac's certificate) at the witness shape; s_M is against the box CPU (the Mac masked calibration did not run: host load 8-11), conservative because the Mac ran these rounds slower than such a box in E16-35",
-   "trees_batches_ratio_needed_for_3x": "4.9x at the lowest measured s_M and the measured s_src",
-   "verdict": "NO-GO (ADR-127): with every stage the task measured on the device and the unmeasured offloadable stages on the CPU the ceiling is 2.65x-2.85x, and it cannot exceed 2.996x however fast the device is"
+   "method": "Amdahl on bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json laps (single run, 306.16 s): T' = r + rel/s_rel + gkr/s_gkr + S/s_src + L/s_L; r = 85.44 s outside ADR-120's offloadable set; relations 22.45 s at s_rel, ZK-GKR 153.19 s at s_gkr, each at its own measured ratio; source preparation S = 28.34 s at s_src; LogUp trees and tops + claim batches L = 16.74 s. s_src is the Mac CPU's (prepare + certificate) over (device encode + Merkle + the Mac's certificate) at the witness shape (13.31x). s_rel (31.7-57.7x) and s_gkr (15.9-18.4x) are against the box CPU: the Mac masked calibration did not run (host load 8-11). The Mac ran these rounds slower than such a box in E16-35, so box-calibrated ratios understate the device's gain on the laps host and bias the ceiling toward NO-GO.",
+   "trees_batches_ratio_needed_for_3x": "s_L >= L / (T/3 - r - rel/s_rel - gkr/s_gkr - S/s_src): 2.91x-4.05x with the box-calibrated s_rel, s_gkr; 1.35x-1.66x with ADR-123's Mac-calibrated 39.7-83.4x (before E16-34) over all of M",
+   "verdict": "NO-GO at this measurement (ADR-127): measured 2.67x-2.71x (box-calibrated); the 2.996x bound assumes LogUp trees and claim batches on the CPU and is within single-run noise of 3x (0.19 s of a 306 s prove)"
   },
   "raw": "research/gpu-gating/masked/results36.txt"
  },
  "note": "E16-36 dev-zk GPU decision benchmark (RFC-0014 §1, §5; ADR-127). prover_time_ns is the sum of the GPU phases (upload + encode + Merkle for the three source shapes; upload + build + rounds for the six masked cells) from each cell's median run; per-cell GPU times are in stage_times_ns, CPU times in kernel_counters (ns). Device roots equal the production roots at every source shape. plan_digest is the SHA-256 of research/gpu-gating/masked/results36.txt. The commit is the main the box tree was copied from. The projection is an estimate, not a GPU prover measurement. Micro schema proof, verifier and control fields are zero: no inference evidence is claimed. Not a cost-model fit input.",
- "plan_digest": "5f18d7d42f739cb15fb4aa505a3fa514c8dd44e352186bcd964315ffa6274d67",
+ "plan_digest": "47e43d7b7c66b5097f6f813a8b35a1fd977be7959784ed477323ba3f8b9434d9",
  "profile": "standard",
  "prompt_tokens": 0,
  "proof_size_bytes": 0,

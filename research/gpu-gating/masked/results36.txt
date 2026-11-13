@@ -2677,9 +2677,10 @@ masked rounds (rounds only, production code both sides):
 laps: wall 306.16 s; M 175.64, sources 28.34, trees + batches 16.74, residual r 85.44 s
 unbounded (every offloadable stage free): 3.58x
 M and sources free, trees and batches on the CPU: 2.996x
-s_M from the box CPU (no Mac masked calibration; conservative for the device)
-s_M 15.9..57.7, s_src 13.3 (Mac-calibrated)
-  3x needs trees and batches at 4.9x on the device
-  measured stages at s, trees and batches on the CPU: 2.654x..2.852x
-  trees and batches at E16-21 rounds-only (unmeasured): 3.08x..3.37x
-  trees and batches at E16-21 upload-inclusive (unmeasured): 2.93x..3.34x
+box-calibrated: relations 31.7..57.7x, ZK-GKR 15.9..18.4x; s_src 13.31x (Mac-calibrated)
+  measured, trees and batches on the CPU: 2.670x..2.708x
+  trees and batches at E16-21 rounds-only (unmeasured): 3.11x..3.17x
+  trees and batches at E16-21 upload-inclusive (unmeasured): 2.95x..3.14x
+  3x needs trees and batches at s_L >= 2.91x..4.05x
+  with M at ADR-123 Mac-calibrated 39.7x: 3x needs s_L >= 1.66x
+  with M at ADR-123 Mac-calibrated 83.4x: 3x needs s_L >= 1.35x
