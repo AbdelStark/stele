@@ -3895,4 +3895,7 @@ Consequences:
 - Each check carries its RFC annotation (RFC-0016 §3). Each proof-shape bound, upper
   and lower, has its own test, because the corpora hold only short proofs.
 
-Status: Proposed (verifier architecture; no protocol change). Review requested.
+Status: Accepted (verifier architecture; no protocol change). Independent review of #372
+and #373: FIX-THEN-MERGE (dependency set, `no_std`, parity on 196/314/276 cases, live
+receipts, strict pins and a 400k-case fuzz verified); fixes applied at e13044d and 2001244,
+including the upper-bound tests and the stated provenance of the zerocheck and batch modules.
