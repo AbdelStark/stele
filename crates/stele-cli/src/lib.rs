@@ -11,19 +11,22 @@ fn tenths(bits: u64) -> String {
     format!("2^-{}.{}", t / 10, t % 10)
 }
 
-fn family(line: &str) -> Family {
-    match line {
+/// A round's family; an unknown line is `None`, never a non-grinding default, so a
+/// renamed PCS line cannot lose its grinding rule.
+fn family(line: &str) -> Option<Family> {
+    Some(match line {
         "SC" => Family::Sumcheck,
         "RLC" => Family::Rlc,
         "SZ" => Family::Sz,
         "LU" => Family::Lookup,
+        "MASK" => Family::Mask,
         "PCS tensor" => Family::PcsTensor,
         "PCS column" => Family::PcsColumn,
-        _ => Family::Mask,
-    }
+        _ => return None,
+    })
 }
 
-fn round(r: &Round) -> accounting::Round {
+fn round(r: &Round) -> Option<accounting::Round> {
     let error = match r.error {
         RoundError::Field(n) => Bound {
             numerator: u128::from(n),
@@ -36,11 +39,11 @@ fn round(r: &Round) -> accounting::Round {
             log2_denominator: c,
         },
     };
-    accounting::Round {
-        family: family(r.line),
+    Some(accounting::Round {
+        family: family(r.line)?,
         error,
         grind_bits: u32::from(r.grind),
-    }
+    })
 }
 
 /// E8-05c: the RFC-0012 A17 item 4 verdict for a development proof's enumerated
@@ -51,7 +54,13 @@ fn round(r: &Round) -> accounting::Round {
 /// (C3) holds there for the standard profile.
 pub fn admission(ledger: &Ledger) -> String {
     let rounds = ledger.rounds();
-    let checked: Vec<_> = rounds.iter().map(round).collect();
+    let Some(checked) = rounds.iter().map(round).collect::<Option<Vec<_>>>() else {
+        return "admission\tFAIL: a round of an unknown line".to_string();
+    };
+    // Policy 1 column rounds carry no k_q nonce; RFC-0010 A14 admits only Policy 2.
+    let policy1 = checked
+        .iter()
+        .any(|r| r.family == Family::PcsColumn && r.grind_bits == 0);
     let setup = ledger.setup.then_some(Bound {
         numerator: 200_431_782,
         field_degree: 0,
@@ -86,10 +95,16 @@ pub fn admission(ledger: &Ledger) -> String {
             r.grind
         )
     });
+    let note = if policy1 {
+        "note\tPolicy 1 sources are not a standard configuration (no k_q column grinding, \
+         RFC-0010 A14): they always fail (C4)\n"
+    } else {
+        ""
+    };
     format!(
         "admission\tstandard (lambda 100, g 8, Q_cap 2^80), RFC-0012 A17 item 4; \
          informational, development claims no level\n\
-         rounds\t{}\n{worst}floor\t{}{}\n\
+         rounds\t{}\n{worst}floor\t{}{}\n{note}\
          verdict\t{verdict}",
         rounds.len(),
         tenths(ledger.floor_bits()),

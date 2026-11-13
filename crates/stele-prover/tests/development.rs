@@ -176,14 +176,22 @@ fn enumerated(ledger: &Ledger) -> (usize, String, u64, u64) {
         .map(field)
         .sum();
     assert_eq!(algebraic, ledger.interactive());
+    // `rounds()` lists each entry's rounds in turn: per entry, ⌈n/r⌉ rounds whose
+    // largest is min(r, n) and whose sum is n (#367 review: per entry, not per name).
+    let mut algebraic_rounds = rounds.iter().filter(|r| !r.line.starts_with("PCS"));
     for e in &ledger.entries {
-        let largest = rounds
-            .iter()
-            .filter(|r| !r.line.starts_with("PCS") && r.name == e.name)
-            .map(field)
-            .max();
-        assert!(largest >= Some(e.round.min(e.numerator)), "{e:?}");
+        let r = e.round.clamp(1, e.numerator.max(1));
+        let count = e.numerator.div_ceil(r) as usize;
+        let own: Vec<u64> = algebraic_rounds.by_ref().take(count).map(field).collect();
+        assert_eq!(own.len(), count, "{e:?}");
+        assert_eq!(own.iter().sum::<u64>(), e.numerator, "{e:?}");
+        assert_eq!(
+            own.iter().max().copied().unwrap_or(0),
+            r.min(e.numerator),
+            "{e:?}"
+        );
     }
+    assert!(algebraic_rounds.next().is_none());
     let tensors = rounds.iter().filter(|r| r.line == "PCS tensor").count();
     // The stack, each check's multiplicity source and at least one model source.
     let checks = ledger.entries.iter().filter(|e| e.line == Line::Lu).count();
@@ -227,7 +235,7 @@ fn enumerates_every_round_of_the_eight_layer_window() {
         let (_, ledger) = proved("eight-layer", 64, sources);
         let summary = enumerated(&ledger);
         eprintln!("{sources:?}: {summary:?}");
-        assert_eq!(summary, (11_647, "LU range_16".to_string(), 104_425, floor));
+        assert_eq!(summary, (11_687, "LU range_16".to_string(), 104_425, floor));
     }
 }
 

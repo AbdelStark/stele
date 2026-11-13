@@ -245,9 +245,11 @@ impl Ledger {
                 _ => Some((r, b)),
             })
     }
-    /// `−log2` of the floor `Σ ε_i·2^-k_i` over every round, in 1/1024 bits,
-    /// rounded down (toward the larger error). `|K| = p^4` is replaced by
-    /// `2^124 > p^4`, which the rounding absorbs.
+    /// `−log2` of the floor `Σ ε_i·2^-k_i` over every round, in 1/1024 bits, rounded
+    /// down. `|K| = p^4` is replaced by `2^124`, which understates each error by a
+    /// factor below `1 + 2^-28`. That is far below the 1/1024-bit resolution, and the
+    /// rounding absorbs it except at an exact tie; (C1)–(C4) are decided exactly by
+    /// `stele_verifier::accounting::admit`, not by these printed values.
     pub fn floor_bits(&self) -> u64 {
         // Common denominator 2^(124 + 32): k ≤ 32 and column targets ≤ 156.
         let sum: u128 = self
@@ -261,7 +263,8 @@ impl Ledger {
         (1024 * 156u64).saturating_sub(log2_1024(sum) + 1)
     }
 }
-/// `−log2` of one round's error after grinding, in 1/1024 bits, rounded down.
+/// `−log2` of one round's error after grinding, in 1/1024 bits, rounded down, with
+/// `2^124` for `p^4` as in [`Ledger::floor_bits`] (display only).
 fn round_bits(r: &Round) -> u64 {
     let k = u64::from(r.grind);
     match r.error {
@@ -1791,18 +1794,19 @@ pub fn verify(
         let name = alloc::format!("identities/{m}");
         let lambdas = lambdas.len() as u64;
         ledger.add(Line::Rlc, &name, lambdas, lambdas);
-        // Phase 0 is the `τ` run (one round of `m` draws); skip and tail rounds are
-        // one challenge each, of their degree.
+        // One entry per phase, so each is an exact enumeration: the `τ` run is one
+        // round of its `j` draws, the skip one round of `D`, and the tail `j` rounds of
+        // `δ` each (#367 review).
         let [weights, skip, tail] = reduction.sc;
-        ledger.add(
-            Line::Sc,
-            &name,
-            reduction.sc.iter().map(|s| s.numerator).sum(),
-            weights
-                .numerator
-                .max(u64::from(skip.degree))
-                .max(u64::from(tail.degree)),
-        );
+        for (numerator, round) in [
+            (weights.numerator, weights.numerator),
+            (skip.numerator, skip.numerator),
+            (tail.numerator, u64::from(tail.degree)),
+        ] {
+            if numerator > 0 {
+                ledger.add(Line::Sc, &name, numerator, round);
+            }
+        }
     }
     sections.end()?;
     // Step 5.
