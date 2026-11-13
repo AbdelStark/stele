@@ -500,6 +500,26 @@ pub fn forge_substituted(
     claims::prove(&layout.statement, &columns, seed, t)
 }
 
+/// Controls only, never a verifier input: [`prove`] with `target`'s public input
+/// replaced by `delta` (`claims::forge_substitute`), under `relation`'s digest and
+/// statement messages. Only the verifier's own evaluation of that final rejects it
+/// (`ClaimMismatch`); `delta = 0` is the honest proof.
+#[cfg(feature = "controls")]
+pub fn forge_substitute(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    seed: Seed,
+    target: claims::Substitute,
+    delta: i64,
+) -> Result<Proof<K>, Error> {
+    let layout = layout(relation)?;
+    let columns = columns(&layout, relation, values)?;
+    t.absorb(AbsorbLabel::RelationStatement, &digest(relation))
+        .map_err(|e| Error::Sumcheck(e.into()))?;
+    claims::forge_substitute(&layout.statement, &columns, seed, t, target, delta)
+}
+
 /// The privacy tests' exact leak count on `relation` (`claims::leaks`), replaying
 /// the verifier from the caller's transcript.
 #[cfg(feature = "controls")]

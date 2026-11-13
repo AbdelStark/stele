@@ -229,6 +229,73 @@ fn rejects_selected_lookup_tamper_and_skips_unselected_rows() {
     );
 }
 
+/// E16-22: with several failures the checker reports the first in sequential order,
+/// both sequentially and on the pool (`std`): category order (the identity before the
+/// matmul), then the least failing point (2 before 3).
+#[test]
+fn reports_the_sequential_first_failure() {
+    let mut f = fixture();
+    let (a, y, z) = (f.a, f.y, f.z);
+    tamper(&mut f, y, 3, 1);
+    tamper(&mut f, z, 3, 2);
+    tamper(&mut f, a, 3, 1);
+    tamper(&mut f, a, 2, 1);
+    assert_eq!(
+        check(&f.relation, &f.values),
+        Err(Violation::Identity {
+            relation: "product".to_string(),
+            point: 2
+        })
+    );
+}
+
+/// Review of #362: constraint order beats point order. The identity fails at point 2
+/// and the matmul at point 0; the identity, earlier in check order, is reported.
+#[test]
+fn reports_constraint_order_before_point_order() {
+    let mut f = fixture();
+    let (a, z) = (f.a, f.z);
+    tamper(&mut f, a, 2, 1);
+    tamper(&mut f, z, 0, 1);
+    assert_eq!(
+        check(&f.relation, &f.values),
+        Err(Violation::Identity {
+            relation: "product".to_string(),
+            point: 2
+        })
+    );
+}
+
+/// Review of #362: the least failing point of a long range column (2^16 entries,
+/// failures at every i ≥ 1000 with i % 7 = 0), stable across repeats on the pool.
+#[test]
+fn reports_the_least_failing_point_of_a_long_column() {
+    let mut rel = Relation::default();
+    let g = Kind::Witness(rel.add_group("L0/test/16", 16));
+    let v = rel.add_column("v", g, Width::unsigned(10), 16);
+    range(&mut rel, v, Width::unsigned(10));
+    let mut values = Values::new(&rel);
+    let column = (0..1i64 << 16)
+        .map(|i| {
+            if i >= 1000 && i % 7 == 0 {
+                5000
+            } else {
+                i % 1000
+            }
+        })
+        .collect();
+    values.set(&rel, v, column).expect("length");
+    for _ in 0..20 {
+        assert_eq!(
+            check(&rel, &values),
+            Err(Violation::Range {
+                relation: "v".to_string(),
+                index: 1001
+            })
+        );
+    }
+}
+
 #[test]
 fn rejects_matmul_tamper() {
     let mut f = fixture();

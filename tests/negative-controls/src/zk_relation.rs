@@ -8,7 +8,8 @@ use stele_hash::Transcript;
 use stele_reductions::stele_ir::relation::{
     ColumnId, Identity, Kind, Lookup, Matmul, Range, Ref, Relation, Table, Term, Values, Width,
 };
-use stele_reductions::zk::{claims::Proof, relation as zk_relation, Error, Seed};
+use stele_reductions::zk::claims::{Proof, Substitute};
+use stele_reductions::zk::{relation as zk_relation, Error, Seed};
 use stele_sumcheck::Error as SumcheckError;
 
 const SEED: [u8; 32] = [21; 32];
@@ -357,6 +358,52 @@ fn public_control(nc: u16) -> Result<(), String> {
     }
 }
 
+/// The one check of [`fixture`] whose table has `rows` rows, all valid.
+fn check_with(rel: &Relation, rows: usize) -> Result<usize, String> {
+    let layout = zk_relation::layout(rel).map_err(|e| format!("{e:?}"))?;
+    let found =
+        |l: &&stele_reductions::zk::claims::Lookup| l.table.len() == rows && l.valid == rows;
+    let lookups = &layout.statement.lookups;
+    match lookups.iter().filter(found).count() {
+        1 => Ok(lookups.iter().position(|l| found(&l)).unwrap_or(0)),
+        _ => Err(format!("no single check of {rows} valid rows")),
+    }
+}
+
+/// NC-0930..0932: `zk::relation::forge_substitute` on the honest witness, under
+/// the true relation's digest and A5 statement messages. The substitute's sum over
+/// the cube is the true one, so its rounds, finals and `μ` are honest; only the
+/// verifier's own evaluation of that public final rejects it. `δ = 0` is the
+/// honest proof and is accepted (mutation M0).
+fn substitute_control(nc: u16) -> Result<(), String> {
+    let (rel, values, _) = fixture(false);
+    let target = match nc {
+        // The signed 8-bit range (`t`, 256 rows, n = 8): its one member fills
+        // block 0 of 8 entries; block 1 is off every member, so `S = 0` there.
+        930 => Substitute::Member {
+            lookup: check_with(&rel, 256)?,
+            member: 0,
+            offset: 8,
+        },
+        // The unsigned 2-bit range (`z`, 4 rows, n = 3): `Z = [x_high = 0]`.
+        931 => Substitute::Pad(check_with(&rel, 4)?),
+        // The matmul with a shared bit (`pv`, claims relation 2, as NC-0924).
+        _ => Substitute::Shared(2),
+    };
+    let run = |delta: i64| -> Result<(), Error> {
+        let root = zk_relation::weight_root(&rel, &values, &Seed::new(SEED))?;
+        let mut t = Transcript::new(b"dev-zk relation control").expect("transcript");
+        let proof =
+            zk_relation::forge_substitute(&mut t, &rel, &values, Seed::new(SEED), target, delta)?;
+        verify(&rel, root, &proof)
+    };
+    run(0).map_err(|e| format!("M0: honest substitute rejected: {e:?}"))?;
+    match run(1) {
+        Err(Error::Sumcheck(SumcheckError::ClaimMismatch)) => Ok(()),
+        other => Err(format!("unexpected: {other:?}")),
+    }
+}
+
 /// NC-0921's positive half: an out-of-table entry at an unselected position of
 /// the selected member is accepted (honest prover); the same entry selected is
 /// rejected (NC-0921 itself).
@@ -411,6 +458,10 @@ pub fn run(id: u16) -> Result<(), String> {
         // NC-0928: the identity's public coefficient column substituted.
         // NC-0929: the selected check's selector substituted (one entry unselected).
         928 | 929 => public_control(id),
+        // NC-0930: a leaf's member weight `B_m·S` substituted.
+        // NC-0931: a leaf's `eq·Z` substituted.
+        // NC-0932: a contraction's `eq(ρ_shared, ·)` substituted.
+        930..=932 => substitute_control(id),
         _ => Err(format!("unknown control {id}")),
     }
 }

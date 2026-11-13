@@ -1,0 +1,72 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "5670be34dde2c96694704b51935a2cdbf9c3c4c2",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 63,
+ "kernel_counters": {
+  "checked_positions": 64,
+  "prove_peak_rss_bytes": 4405264384,
+  "public_bytes": 301724,
+  "verify_peak_rss_bytes": 349192192
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Transcript(GrindMismatch))"
+  },
+  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build; BSD /usr/bin/time -l. Task E16-34 before/after: before = main at 0298d88, after = 5670be3 (blake3/std, one dev-zk plain check, lazy-reduction QM31 product, base-field factors in M31 in the masked rounds). Steps started at 1-minute load < 3 (load.log: z8-before commit { 2.99 5.55 5.95 };z8-after commit { 2.83 5.47 5.92 };z8-before-1 { 2.83 5.47 5.92 };z8-after-1 { 2.73 5.01 5.71 };z8-before-2 { 2.74 4.45 5.41 };z8-after-2 { 2.85 4.31 5.27 };z8-before-3 { 2.76 4.07 5.12 };z8-after-3 { 2.79 4.00 5.01 };d8-before-1 { 2.85 3.84 4.87 };d8-after-1 { 2.72 3.78 4.83 };d8-before-2 { 2.74 3.77 4.82 };d8-after-2 { 2.63 3.70 4.74 };d8-before-3 { 2.91 3.70 4.69 };d8-after-3 { 2.76 3.63 4.65 };c42-commit { 2.99 3.63 4.61 };z42-before { 2.92 3.55 4.45 };z42-after { 2.95 5.21 5.03 };d42-before { 2.81 5.48 5.73 };d42-after { 2.85 5.26 5.70 }). Synthetic eight-layer plain dev (profile byte 3), T = 64, three runs each alternating: before prove 8.72, 8.62, 8.61 s, verify 0.85, 0.87, 0.84 s; after prove 6.60, 6.69, 6.41 s, verify 0.78, 0.76, 0.78 s; all six proofs byte-identical. Controls ran once on the shared proof bytes. This record is the median prove run. After.",
+  "model": {
+   "cqis": "int8 matrices, dynamic rows, random small codes",
+   "fixture": "crates/stele-prover/tests/fixtures/synthetic-e2e.json blake3 d5e857d4a616064a02027cd5263ec29928929bec68b80ac4d8580aa538954697",
+   "name": "synthetic-e2e eight-layer (research/cqis-model-contract/synthetic_e2e.py)",
+   "shape": {
+    "context": 64,
+    "d": 64,
+    "heads": 4,
+    "hidden": 128,
+    "layers": 8,
+    "vocabulary": 256
+   }
+  },
+  "proof_sha256": "60bec98c7d81a01c364f0dc78a91f054b0e225f333682e3d5a3f6ae12f5ea900",
+  "public_sha256": "2e37b729754daf5e2d97e6a70ba854ed11aaa4306e089182e3551205fca314b6",
+  "rung": "L1",
+  "statement": {
+   "T": "64",
+   "checked": "0..64",
+   "cqis_id": "7efb461279b78fc54f2c67397c81f287afa950774ef277450a3e6a19b7dcb660",
+   "model": "07e2921c4033546455eca3813dcdbcfabf51d6b4005abd3803271beac7a17474",
+   "next": "177",
+   "tokens": "1,95,208,144,53,144,202,231,102,208,144,202,231,118,123,144,53,12,171,53,115,115,171,53,199,240,10,231,102,144,14,123,200,217,240,201,231,102,102,228,203,53,203,60,10,14,123,10,171,53,171,53,171,53,171,53,171,53,171,53,56,47,228,215"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "0270c3aa781c8d81c775ff8dc3bbcc1777e066d8d91e3098b49256c370a9861e",
+ "profile": "development",
+ "prompt_tokens": 1,
+ "proof_size_bytes": 7024521,
+ "prover_time_ns": 6600000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "prove_dev_wall": 6600000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 780000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/synthetic-8layer-t64"
+}

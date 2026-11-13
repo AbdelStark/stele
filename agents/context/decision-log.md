@@ -218,7 +218,6 @@ not authentication, and replay cannot add a weight pass. No challenge, loss or
 measured constant changes. Same-author reviews approve the contract, not an
 independent audit, actual memory measurement or task completion. Status: Accepted.
 
-
 ## ADR-030 — Deterministic encoder implementation before PCS admission
 
 Context: E4-08/E4-01, RFC-0010 A4 and Q23. Decision: accept the exact v2 map,
@@ -324,7 +323,6 @@ Q12 and inference remain unfinished. No measured constant, cut or weight-pass
 change. Review: agents/reviews/field-pcs-acceptance.md records internal agent
 skill and owner sign-offs; independent audit is not claimed. Status: Accepted.
 
-
 ## ADR-037: Consolidated delivery and scoped CI
 
 Context: E0-06 and the owner's instruction to consolidate existing work and
@@ -340,7 +338,6 @@ full-size experiments, copied-source gate mutations, upstream regeneration and
 throughput measurements in an explicit manual workflow. Full-size Draft
 acceptance claims still require their own evidence. No protocol, challenge,
 sample-count, cost-model constant or weight-pass change. Status: Accepted.
-
 
 ADR-037 execution note: required CI runs on PR events only. Verify the tested
 merge tree against current main before each sequential merge; direct
@@ -760,7 +757,6 @@ random-oracle assumption on BLAKE3, is a separate ledger term that is never fold
 into query or hash terms. NC-0612 reserves identity/evidence substitution under
 the first expander PCS consumer. No profile, challenge, cost constant, committed
 intermediate or weight-pass change. Status: Accepted.
-
 
 ## ADR-060: Take the RFC-0004 §8 wide residual knob after the first G7 measurement
 
@@ -1749,7 +1745,6 @@ Consequences:
 - Prover-side speed now depends on core count. The verifier is unchanged.
 
 Status: Accepted.
-
 
 ## ADR-088: Single-pass dense rounds and a public prover work-splitting module (RFC-0006 A1, RFC-0008 A3, task E16-16)
 
@@ -3299,4 +3294,192 @@ Decision: RFC-0013 A10 (Draft) extends A9's admission to `T ≤ 64`.
 
 Status: Accepted (development tier) with RFC-0013 A10. Independent review: FIX-THEN-MERGE
 at 9930b11; fixes applied.
+
+## ADR-120: stories42M stage profile; the GPU NO-GO stands for development, and dev-zk is open at 2.0×–3.6× (upload-inclusive) and 3.8×–4.2× (resident); parallel plain checker (task E16-22, ADR-103 follow-up)
+
+Context: ADR-103 set a provisional GPU NO-GO from fixture stage shares, with a ceiling of
+about 2.57× against a 3× gate. It asked for a stories42M profile. The owner asked for it
+on the Mac, since no rented host was available.
+
+Measurement (`research/gpu-gating/STORIES42M-STAGES.md`):
+- Stage wall times come from `parallel::Laps` (`STELE_STAGE_TIMES`, off by default, no
+  byte effect), split by work kind with macOS `sample` (`stage_profile.py`).
+- Development, byte 3, `T = 64`:
+  - the plain checker was the critical path, 156 s, sequential, beside a 97 s engine;
+  - prove 167.6 s (median of three).
+- dev-zk, byte 4, `T = 32` (562.5 s):
+  - ZK-GKR 178 s;
+  - two sequential plain checks 125 s;
+  - source preparation 85 s;
+  - masked relations 35 s.
+
+Decision:
+- **The parallel plain checker.**
+  - With `std`, `stele_ir::relation::check` runs its constraints and points on rayon's
+    pool (`stele-ir/std` via `stele-reductions/std`).
+  - It returns the same result as the sequential checker: pass, or the first failure in
+    order. Three tests pin it in both modes:
+    - the first failure in category order;
+    - constraint order before point order;
+    - the least failing point of a `2^16`-entry column, over 20 repeats.
+
+    CI runs the sequential (no `std`) path. `no_std` builds are unchanged.
+  - rayon is optional, as in stele-code, stele-pcs and stele-sumcheck. The crate-import
+    rules (deny.toml) and rust-policy pass.
+  - Results:
+    - development `T = 64`: 167.6 → 123.6 s (1.36×; the checker went from 156 to 22 s);
+    - dev-zk `T = 32`: 562.5 → 465.7 s (1.21×, single runs);
+    - every proof byte-identical.
+- **GPU, development: NO-GO stands.**
+  - After this change, even an infinitely fast device that took the whole engine leaves
+    witness, model sources and the 22.5 s checker: a ceiling of **2.80×**, below 3×.
+  - At E16-21's ratios it is 2.80× rounds-only (checker-bound) and 2.19×–2.80× with
+    the upload.
+  - Before it, the ceiling was about 1.0×, because the CPU checker was the critical path.
+- **GPU, dev-zk: not decided.**
+  - The offloadable share is 77% (358 of 466 s).
+  - The ceiling is 4.34× unbounded, and **3.83×–4.15× at E16-21's rounds-only ratios
+    with resident tables**.
+  - It is **2.02×–3.58× at its upload-inclusive ratios**. It is above 3× only at the
+    smallest size's 15.9×, and 2.02× at the `2^24` size that matches stories42M's
+    tables.
+  - It assumes the masked factor tables are built on the device.
+  - A GO needs a dev-zk device benchmark of the masked and GKR rounds with resident
+    tables and device-side factor construction (follow-up). Until then, no GPU binding
+    and no RFC-0014 amendment.
+
+Consequences:
+- Ledgers:
+  - `bench/ledger/e16-22-dev-stories42m-t64-mac-before.json` and `-after.json`, with
+    the stage laps in `stage_times_ns`;
+  - `bench/ledger/e16-22-dev-zk-stories42m-t32-mac-before.json` and `-after.json`
+    (single runs).
+- CPU work ranked by expected gain:
+  - SIMD QM31 and M31-typed tables in the masked and GKR products (dev-zk's top stage);
+  - SIMD Circle encoding;
+  - BLAKE3 `std` for runtime AVX2/AVX-512 detection on x86_64 (aarch64 already gets
+    NEON from blake3's build script);
+  - development LogUp leaf preparation;
+  - a single dev-zk plain check.
+- These change no bytes.
+
+Status: Accepted (development tier; measurement and a performance change). Independent
+review: FIX-THEN-MERGE at 86a4a75; fixes verified at 22f0d6f.
+- The checker logic is correct; native is green; the ceilings were recomputed.
+- The soundness-auditor pass covered the timing-only `Laps` in
+  `stele-sumcheck/src/parallel.rs`: stderr only, under `std` and `STELE_STAGE_TIMES`,
+  with no value, transcript or byte effect.
+- Fixes applied: the two pinning tests, the CI sequential path, the stele-ir feature
+  pin, the upload-inclusive ceiling, and the stage laps in the ledgers.
+
+
+## ADR-121: dev-zk substitution adversary; NC-0930..0932 executed (RFC-0013 A5, RFC-0008 A7, task E12-31)
+
+Context: NC-0930..0932 pin three public finals that the dev-zk verifier evaluates
+itself: a leaf's member weight `B_m·S`, a leaf's `eq·Z`, and a contraction's
+`eq(ρ_shared, ·)`. E12-14a's first controls tweaked these finals by one, with free
+rounds and `μ` solved last. The independent review found that they did not
+discriminate, because the shared batch's `μ` binding rejects any solved `μ`. They went
+back to `todo` (ADR-101). NC-0928/0929's adversary, an honest proof of a relation with
+one public column changed, cannot reach these three. They come from the statement's
+structure (member offsets, the valid row count, shared bits), and changing that
+structure changes the A5 statement messages, so the transcript diverges before the
+final.
+
+Decision: a controls-only substitution adversary, `zk::claims::forge_substitute`.
+- It proves the true statement's plan, so every statement message is unchanged.
+- It replaces one public input with a substitute that has the same sum over the cube.
+  The rounds, finals and `μ` are therefore honest for the substitute, and only the
+  verifier's evaluation of that final differs.
+  - Member weight: `(B_m + δ·B_g)·S`, where `B_g` is an aligned block off every member
+    (`S = 0`). It enters the producer's combined factors and masks, which stay
+    multilinear, so the declared degree holds.
+  - `Z` and `eq(ρ_shared, ·)`: moved by `δ` at a cube point where the factor's cofactor
+    vanishes, else at two points weighted by each other's cofactor.
+- The producer routes the true finals, from an honest twin folded at the same point.
+  The verifier is not touched.
+- These are substitution controls. On the cube, the substitutes prove the true
+  statement, so they test that the verifier pins each public final, not a false
+  witness. The final is the only binding of these inputs: a verifier that skipped it
+  would accept any polynomial with the same cube sum.
+
+Evidence (synthetic relation fixture, release build):
+- `δ = 0` is accepted for all three (M0), and `δ = 1` is rejected with `ClaimMismatch`.
+- Removing the member-weight check (`zk_lookup::finals`, `Gin::Member`) turns only
+  NC-0930 red. Removing the `eq·Z` check (`Gin::Pad`) turns only NC-0931 red. Removing
+  the step's `eq` final check (`zk_claims::public_finals`) turns only NC-0932 red. In
+  each case the forged proof is accepted (`unexpected: Ok(())`). The mutations are not
+  committed.
+
+No RFC amendment: no label, byte, order or verifier check changes. RFC-0013 A5 gains
+implementation notes. Coverage rises by three controls.
+
+Status: Accepted (development tier). Independent review: MERGE at bae3215 (adversary
+confined to `controls`, all three mutations reproduced, each turning only its own control
+red; coverage 63/109, 131/232). Follow-ups: derive `pad_factor`'s `Z` index from the
+`compact_terms` layout; gate the `Substitute` re-export behind `controls`.
+
+## ADR-122: CPU prover speedups with identical bytes; lazy-reduction QM31 product, base-field masked rounds, one dev-zk plain check, blake3 std (task E16-34)
+
+Numbered after ADR-120 (#362) and ADR-121 (#363).
+
+Context: E16-22's stories42M profile ranked the dev-zk masked and ZK-GKR products (QM31)
+first among the CPU stages. It also listed BLAKE3 SIMD and dev-zk's second plain check.
+
+Decision (four commits; every pin byte-identical):
+- **Lazy-reduction QM31 product** (stele-field).
+  - Limb products are summed in u64, with at most four per sum (`< 4p² < 2^64`), and
+    each output limb is reduced once. A subtracted product `x·y` is added as
+    `x·(p − y)`.
+  - It is the same element as RFC-0003 §2's Karatsuba product. That product is kept as
+    `QM31::karatsuba`, and a test pins the two equal on 10^6 random pairs and on every
+    edge-limb pair. The existing schoolbook-oracle tests pass.
+  - CM31 and OM31 keep Karatsuba; OM31 benefits through its QM31 sub-products.
+- **Base-field masked rounds** (stele-reductions).
+  - A dev-zk masked round treats as base field every factor whose tables are all
+    base-field: occurrences and masks before a challenge is folded in. `κ(t)` is an
+    integer at integer nodes.
+  - Those factors are stepped and multiplied in M31, and the product is applied once
+    with `mul_m31`.
+  - Rounds with no base factor keep the old path.
+- **One dev-zk plain check** (stele-prover). The committed relation keeps every
+  constraint of the layout relation over the same values and adds the record encodings,
+  so checking it alone rejects every false witness the first check did.
+  `rejects_false_witness_with_check_under_dev_zk` pins it: a false next token and a
+  false checked token are each rejected with `Check` by `zk::window` and `zk::prove`.
+  With the check replaced by a no-op, the test fails.
+- **blake3 `std`** (stele-code, under the prover-side `std`) adds runtime AVX2 and
+  AVX-512 detection on x86_64.
+  - On aarch64, blake3's build script already enables NEON, so this host gains
+    nothing from the change.
+  - Correction: an earlier draft of this record and of #362 said blake3 ran portable
+    on aarch64. That was wrong. #362 merged with the corrected line (ADR-120 and
+    `research/gpu-gating/STORIES42M-STAGES.md` §4 item 4), so neither needs an edit.
+  - `no_std` builds and every digest are unchanged.
+- **Not done: stele-simd in the round loops.** deny.toml lets only stele-code and
+  stele-poly import stele-simd, and the scalar lazy product already gives most of the
+  gain.
+
+Measured (M4 Max 48 GB; before = main 0298d88, after = 5670be3). Each row is the
+median prove run and that run's verify, as the ledgers record:
+
+| Workload | Before | After |
+|---|---|---|
+| synthetic eight-layer dev-zk byte 4 (median of three) | prove 27.66 s, verify 2.96 s, peak RSS 7.16 GB | prove 21.05 s (1.31×), verify 2.04 s, peak RSS 7.31 GB |
+| synthetic eight-layer plain dev (median of three) | prove 8.62 s, verify 0.87 s | prove 6.60 s (1.31×), verify 0.78 s |
+| stories42M dev-zk `T = 32` (single runs) | prove 475.6 s, verify 32.3 s, peak RSS 31.9 GB | prove 369.7 s (1.29×), verify 21.6 s, peak RSS 32.5 GB |
+
+- Peak RSS rises by about 2% in these runs (7.16 → 7.31 GB synthetic, 31.9 → 32.5 GB
+  stories42M). The cause is not separated from run-to-run variation.
+- The stories42M plain dev `T = 64` single runs (175.5 s before, 181.7 s after, same
+  bytes) are in the `host_context` of the `e16-34-dev-zk-stories42m-t32` ledgers. That
+  run is bound by main's sequential plain checker, which E16-22's parallel checker
+  (#362) removes.
+
+Ledgers: `bench/ledger/e16-34-*-mac-{before,after}.json`.
+
+Status: Accepted (performance only; no protocol, byte or admission change). Independent
+review: FIX-THEN-MERGE at 6c27032 (lazy QM31 product proven exact and 6/6 mutants caught;
+base-field rounds decided per factor at runtime, 3/3 mutants caught; the single dev-zk plain
+check covers the dropped one); fixes applied, including the dev-zk false-witness test.
 

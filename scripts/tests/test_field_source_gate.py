@@ -207,6 +207,9 @@ class ClosedStackedGateTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
         shutil.copytree(ROOT/'crates/stele-reductions', self.root/'crates/stele-reductions')
+        # E16-22: the gate also pins stele-ir's feature map.
+        (self.root/'crates/stele-ir').mkdir(parents=True)
+        shutil.copy(ROOT/'crates/stele-ir/Cargo.toml', self.root/'crates/stele-ir/Cargo.toml')
         oracle = self.root/'tests/negative-controls'
         oracle.mkdir(parents=True)
         for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py', 'examples/support/lookup_verifier.rs',

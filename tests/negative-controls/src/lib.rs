@@ -301,6 +301,27 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
     },
     #[cfg(feature = "controls")]
     catalog::RegisteredControl {
+        id: 930,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk_relation::run(930),
+    },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 931,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk_relation::run(931),
+    },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 932,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "ClaimMismatch",
+        run: || zk_relation::run(932),
+    },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
         id: 935,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",

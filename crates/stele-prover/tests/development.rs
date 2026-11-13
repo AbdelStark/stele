@@ -274,6 +274,73 @@ fn rejects_false_witness_with_check() {
     }
 }
 
+/// E16-34 review: dev-zk's single plain check (on the committed relation) rejects the
+/// same false witnesses, in `zk::window` and in `zk::prove`, with `Check`.
+#[test]
+fn rejects_false_witness_with_check_under_dev_zk() {
+    use stele_prover::development::zk;
+    let case = load("one-layer");
+    let statement = greedy(&mut case.executor(&case.artifact), 4);
+    let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+    let base = Public {
+        model: case.bytes[0].to_vec(),
+        scales: case.bytes[1].to_vec(),
+        preparation: case.bytes[2].to_vec(),
+        vectors: zk::published(case.bytes[0], &weights.vectors).expect("published"),
+        commitment: Vec::new(),
+        sources: Sources::Expander,
+    };
+    let (commitment, mut state) = zk::commit(
+        &base,
+        &mut case.executor(&case.artifact),
+        &weights,
+        4,
+        2,
+        [7; 32],
+        zk::PROFILE_BALANCED,
+    )
+    .expect("commit");
+    let public = Public {
+        commitment: vec![(commitment.root, Vec::new())],
+        ..base
+    };
+    let index = state.take(&commitment).expect("index");
+    let next = Statement {
+        next: statement.next.map(|y| y ^ 1),
+        ..statement.clone()
+    };
+    let mut token = statement.clone();
+    token.tokens[statement.start as usize + 1] ^= 1;
+    for (name, false_statement) in [("next", next), ("token", token)] {
+        let window = zk::window(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &false_statement,
+        );
+        assert!(
+            matches!(window, Err(Error::Check(_))),
+            "{name}: window {:?}",
+            window.err()
+        );
+        let result = zk::prove(
+            &public,
+            &mut case.executor(&case.artifact),
+            &weights,
+            &false_statement,
+            zk::Seed::new([9; 32]),
+            &commitment,
+            &state,
+            index,
+        );
+        assert!(
+            matches!(result, Err(Error::Check(_))),
+            "{name}: prove {:?}",
+            result.err()
+        );
+    }
+}
+
 #[test]
 fn rejects_statement_and_container_tampers() {
     let (case, statement) = honest();
