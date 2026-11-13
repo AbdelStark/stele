@@ -90,7 +90,7 @@ ACCOUNTING = {
     # the parity test's dev-dependency), needs its pin moved in review.
     'pins': {
         'src/accounting.rs': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
-        'src/sumcheck.rs': 'bc30ae065299b73ef78e510120a4cfba9bac957524d3717293b43fc718f54252',
+        'src/sumcheck.rs': 'e830f2691b22f41e1e64363354ef5259a1ac860d2ab89b8539a6b8fc30214973',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
     },
@@ -1437,11 +1437,12 @@ def sumcheck_corpus(root, path='research/sumcheck/corpus.jsonl', features=()):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
         raise ValueError('sumcheck corpus decisions/accounting mismatch')
-    # E8-02a: the recorded production receipts the independent verifier is held to.
-    receipts = root / path.replace('corpus.jsonl', 'corpus-receipts.jsonl')
-    if not features and receipts.is_file() and outputs[0] != [
-            json.loads(line) for line in receipts.read_text().splitlines()]:
-        raise ValueError('sumcheck corpus receipts differ from the recorded file (E8-02a)')
+    # E8-02a: the A1 corpus's recorded production receipts, which the independent
+    # verifier is held to. A missing file fails; the other A1 corpora have none.
+    if path == 'research/sumcheck/corpus.jsonl':
+        receipts = root / 'research/sumcheck/corpus-receipts.jsonl'
+        if outputs[0] != [json.loads(line) for line in receipts.read_text().splitlines()]:
+            raise ValueError('sumcheck corpus receipts differ from the recorded file (E8-02a)')
     for case, result in zip(cases, outputs[0]):
         if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
             raise ValueError('sumcheck corpus expected rejection mismatch')

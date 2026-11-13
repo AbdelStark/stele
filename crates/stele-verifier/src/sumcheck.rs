@@ -93,9 +93,11 @@ fn bytes_of<K: ChallengeField>(x: &K) -> usize {
 
 /// Checks the instance and returns its degree, the largest factor count.
 fn degree<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
+    // RFC-0006 A1: input and term counts fit the u32 encoding.
     if u32::try_from(i.inputs.len()).is_err() || u32::try_from(i.terms.len()).is_err() {
         return Err(Error::InvalidInstance);
     }
+    // RFC-0006 A1: input tensor ids are distinct.
     for (n, id) in i.inputs.iter().enumerate() {
         if i.inputs[n + 1..].contains(id) {
             return Err(Error::InvalidInstance);
@@ -103,6 +105,7 @@ fn degree<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
     }
     let mut d = 0;
     for t in &i.terms {
+        // RFC-0006 A1: at most four factors, each an input ordinal.
         if t.factors.len() > 4 || t.factors.iter().any(|f| *f as usize >= i.inputs.len()) {
             return Err(Error::InvalidInstance);
         }
@@ -219,30 +222,37 @@ pub fn verify<K: ChallengeField + Eq>(
 ) -> Result<Reduction<K>, Error> {
     let d = degree(i)?;
     let m = usize::try_from(i.num_vars).map_err(|_| Error::Capacity)?;
+    // RFC-0006 A1: exactly num_vars rounds of degree + 1 values and one final value per
+    // input; a longer or shorter proof is refused before the first absorb.
     if proof.rounds.len() != m
         || proof.final_values.len() != i.inputs.len()
         || proof.rounds.iter().any(|r| r.len() != d + 1)
     {
         return Err(Error::ProofShape);
     }
+    // RFC-0006 A1 / RFC-0012 A1: the instance is absorbed before any challenge.
     t.absorb(AbsorbLabel::Instance, &instance_bytes(i, d)?)?;
     let mut point = Vec::new();
     point.try_reserve_exact(m).map_err(|_| Error::Capacity)?;
     let mut claim = i.claimed_sum;
     for (index, g) in (0u32..).zip(&proof.rounds) {
-        // g(0) + g(1); a constant round (degree 0) has the one node g(0) twice.
+        // RFC-0006 §1: g(0) + g(1) is the running claim; a constant round (degree 0)
+        // has the one node g(0) twice.
         let at_one = if g.len() > 1 { g[1] } else { g[0] };
         if g[0] + at_one != claim {
             return Err(Error::RoundSumMismatch);
         }
+        // RFC-0006 A1: the round message is absorbed, then r is drawn; g(r) is next.
         t.absorb(AbsorbLabel::Round, &message(i.id, index, g)?)?;
         let r = t.challenge(ChallengeLabel::Sumcheck)?;
         claim = lagrange(g, r)?;
         point.push(r);
     }
+    // RFC-0006 §1: P at the final values is the last running claim.
     if evaluate(i, &proof.final_values) != claim {
         return Err(Error::FinalEvaluationMismatch);
     }
+    // RFC-0006 A1: the final values are absorbed before any later challenge.
     t.absorb(
         AbsorbLabel::Final,
         &message(i.id, i.inputs.len() as u32, &proof.final_values)?,
@@ -291,7 +301,7 @@ pub fn verify_public<K: ChallengeField + Eq>(
     t: &mut Transcript<K>,
 ) -> Result<Reduction<K>, Error> {
     degree(i)?;
-    // Each table has exactly 2^num_vars entries.
+    // RFC-0006 §2: one public table per input, each of exactly 2^num_vars entries.
     let sized = |n: usize| n.is_power_of_two() && n.trailing_zeros() == i.num_vars;
     if tables.len() != i.inputs.len() || tables.iter().any(|table| !sized(table.len())) {
         return Err(Error::PublicShape);
@@ -302,9 +312,67 @@ pub fn verify_public<K: ChallengeField + Eq>(
         for (x, entry) in table.iter().enumerate() {
             at = at + *entry * eq_at(&reduction.point, x);
         }
+        // RFC-0006 §2: each final value is its public table's MLE at the point.
         if at != *value {
             return Err(Error::ClaimMismatch);
         }
     }
     Ok(reduction)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use stele_field::{Field, QM31};
+
+    /// `P = x` over one variable with table `[3, 5]`: sum 8.
+    fn instance() -> Instance<QM31> {
+        Instance {
+            id: 1,
+            num_vars: 1,
+            inputs: alloc::vec![11],
+            terms: alloc::vec![Term {
+                coefficient: QM31::from_i64(1),
+                factors: alloc::vec![0],
+            }],
+            claimed_sum: QM31::from_i64(8),
+        }
+    }
+
+    fn shape(proof: Proof<QM31>) -> Result<(), Error> {
+        let mut t = Transcript::new(b"stele/test/a1-shape").expect("transcript");
+        verify(&instance(), &proof, &mut t).map(|_| ())
+    }
+
+    fn v(x: i64) -> QM31 {
+        QM31::from_i64(x)
+    }
+
+    /// The upper bounds of A1's shape (the corpus holds only short proofs).
+    #[test]
+    fn rejects_overlong_round_row() {
+        let proof = Proof {
+            rounds: alloc::vec![alloc::vec![v(3), v(5), v(0)]],
+            final_values: alloc::vec![v(4)],
+        };
+        assert_eq!(shape(proof), Err(Error::ProofShape));
+    }
+
+    #[test]
+    fn rejects_extra_round() {
+        let proof = Proof {
+            rounds: alloc::vec![alloc::vec![v(3), v(5)], alloc::vec![v(1), v(1)]],
+            final_values: alloc::vec![v(4)],
+        };
+        assert_eq!(shape(proof), Err(Error::ProofShape));
+    }
+
+    #[test]
+    fn rejects_extra_final() {
+        let proof = Proof {
+            rounds: alloc::vec![alloc::vec![v(3), v(5)]],
+            final_values: alloc::vec![v(4), v(4)],
+        };
+        assert_eq!(shape(proof), Err(Error::ProofShape));
+    }
 }
