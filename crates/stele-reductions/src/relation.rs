@@ -91,12 +91,29 @@ pub enum Line {
     /// dev-zk only: a masked sumcheck's `α` (RFC-0013 A2/A4).
     Mask,
 }
-/// One interactive error term `numerator / |K|`, `|K| = p^4`.
+/// One interactive error term `numerator / |K|`, `|K| = p^4`. `round` is the
+/// numerator of its largest single Fiat–Shamir round (RFC-0012 A17 item 3: a maximal
+/// run of challenges with no absorb between them): a sumcheck record's degree, a
+/// zerocheck's `τ` run, and the whole draw for the other lines.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {
     pub line: Line,
     pub name: String,
     pub numerator: u64,
+    pub round: u64,
+}
+/// One PCS round of a source (E8-05c): a certificate's tensor round
+/// `2·ell·(e + 1)/|K|` before `2^k_t`, or a certificate or opening column round at
+/// its policy's query target (Policy 1: `2^-130`, RFC-0010 A3 item 4; Policy 2:
+/// `2^-92`, A14 item 2) before `2^k_q`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PcsRound {
+    pub name: String,
+    /// `Some(2·ell·(e + 1))` for a tensor round; `None` for a column round.
+    pub tensor: Option<u64>,
+    /// `−log2` of a column round's target (130 or 92); unused for a tensor round.
+    pub target: u32,
+    pub grind: u8,
 }
 /// Accepted-proof ledger. Interactive terms only: FS unproven (Q12), PCS conjectural.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -105,19 +122,173 @@ pub struct Ledger {
     /// Sources opened (groups and weights) plus multiplicity sources; PCS lines per
     /// RFC-0012 A15 are conjectural and not summed.
     pub pcs_sources: usize,
+    /// Every PCS round of the proof's certificates and openings, model sources
+    /// included (E8-05c).
+    pub pcs: Vec<PcsRound>,
+    /// RFC-0012 A7's setup term applies: a v2 J ≥ 4 source is present.
+    pub setup: bool,
+}
+/// The error of one enumerated round (E8-05c).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RoundError {
+    /// `numerator / |K|`.
+    Field(u64),
+    /// `2^-bits`.
+    Pow2(u32),
+}
+/// One Fiat–Shamir round of a development proof (RFC-0012 A17 item 3, E8-05c).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Round {
+    /// `SC`, `RLC`, `SZ`, `LU`, `PCS tensor` or `PCS column`.
+    pub line: &'static str,
+    pub name: String,
+    pub error: RoundError,
+    pub grind: u8,
 }
 impl Ledger {
-    fn add(&mut self, line: Line, name: &str, numerator: u64) {
+    fn add(&mut self, line: Line, name: &str, numerator: u64, round: u64) {
         self.entries.push(Entry {
             line,
             name: name.into(),
             numerator,
+            round,
+        });
+    }
+    /// A certificate's tensor and column rounds under `source`'s parameters.
+    fn certificate(&mut self, name: &str, source: &Source<K>) {
+        let p = source.parameters();
+        self.setup |= p.setup_term;
+        let ell = source.rows().trailing_zeros() as u64;
+        self.pcs.push(PcsRound {
+            name: name.into(),
+            tensor: Some(2 * ell * (p.radius + 1)),
+            target: 0,
+            grind: p.tensor_grind_bits,
+        });
+        self.opening(name, source);
+    }
+    /// One column round under `source`'s parameters.
+    fn opening(&mut self, name: &str, source: &Source<K>) {
+        let p = source.parameters();
+        self.pcs.push(PcsRound {
+            name: name.into(),
+            tensor: None,
+            target: match p.policy {
+                stele_pcs::Policy::One => 130,
+                _ => 92,
+            },
+            grind: p.column_grind_bits,
         });
     }
     /// `ε_interactive · |K|`: the sum of every non-FS, non-PCS numerator.
     pub fn interactive(&self) -> u64 {
         self.entries.iter().map(|e| e.numerator).sum()
     }
+    /// Every round of the proof, in ledger order (E8-05c). An entry of numerator `n`
+    /// whose largest round is `r` becomes `⌊n/r⌋` rounds of `r` and one of the
+    /// remainder: its largest round and its sum are exact, which is all (C1) and (C2)
+    /// read. No algebraic development round grinds.
+    pub fn rounds(&self) -> Vec<Round> {
+        let mut out = Vec::new();
+        for e in &self.entries {
+            let line = match e.line {
+                Line::Sc => "SC",
+                Line::Rlc => "RLC",
+                Line::Sz => "SZ",
+                Line::Lu | Line::Zd => "LU",
+                Line::Mask => "MASK",
+            };
+            let r = e.round.clamp(1, e.numerator.max(1));
+            let (full, rest) = (e.numerator / r, e.numerator % r);
+            for numerator in
+                core::iter::repeat_n(r, full as usize).chain((rest > 0).then_some(rest))
+            {
+                out.push(Round {
+                    line,
+                    name: e.name.clone(),
+                    error: RoundError::Field(numerator),
+                    grind: 0,
+                });
+            }
+        }
+        for p in &self.pcs {
+            out.push(Round {
+                line: if p.tensor.is_some() {
+                    "PCS tensor"
+                } else {
+                    "PCS column"
+                },
+                name: p.name.clone(),
+                error: match p.tensor {
+                    Some(n) => RoundError::Field(n),
+                    None => RoundError::Pow2(p.target),
+                },
+                grind: p.grind,
+            });
+        }
+        out
+    }
+    /// The round with the largest error after grinding (the first on ties), and
+    /// its security in 1/1024 bits, rounded down.
+    pub fn worst(&self) -> Option<(Round, u64)> {
+        self.rounds()
+            .into_iter()
+            .map(|r| {
+                let b = round_bits(&r);
+                (r, b)
+            })
+            .fold(None, |w, (r, b)| match w {
+                Some((w, wb)) if wb <= b => Some((w, wb)),
+                _ => Some((r, b)),
+            })
+    }
+    /// `−log2` of the floor `Σ ε_i·2^-k_i` over every round, in 1/1024 bits, rounded
+    /// down. `|K| = p^4` is replaced by `2^124`, which understates each error by a
+    /// factor below `1 + 2^-28`. That is far below the 1/1024-bit resolution, and the
+    /// rounding absorbs it except at an exact tie; (C1)–(C4) are decided exactly by
+    /// `stele_verifier::accounting::admit`, not by these printed values.
+    pub fn floor_bits(&self) -> u64 {
+        // Common denominator 2^(124 + 32): k ≤ 32 and column targets ≤ 156.
+        let sum: u128 = self
+            .rounds()
+            .iter()
+            .map(|r| match r.error {
+                RoundError::Field(n) => u128::from(n) << (32 - u32::from(r.grind)),
+                RoundError::Pow2(c) => 1u128 << (156 - c - u32::from(r.grind)),
+            })
+            .sum();
+        (1024 * 156u64).saturating_sub(log2_1024(sum) + 1)
+    }
+}
+/// `−log2` of one round's error after grinding, in 1/1024 bits, rounded down, with
+/// `2^124` for `p^4` as in [`Ledger::floor_bits`] (display only).
+fn round_bits(r: &Round) -> u64 {
+    let k = u64::from(r.grind);
+    match r.error {
+        RoundError::Field(n) => (1024 * (124 + k)).saturating_sub(log2_1024(u128::from(n)) + 1),
+        RoundError::Pow2(c) => 1024 * (u64::from(c) + k),
+    }
+}
+/// `⌊1024·log2 n⌋` for `n ≥ 1` (`n = 0` reads as 1), by repeated squaring of a
+/// Q62 mantissa.
+fn log2_1024(n: u128) -> u64 {
+    let n = n.max(1);
+    let i = u64::from(127 - n.leading_zeros());
+    let mut y = if i >= 62 {
+        n >> (i - 62)
+    } else {
+        n << (62 - i)
+    };
+    let mut fraction = 0;
+    for _ in 0..10 {
+        y = (y * y) >> 62;
+        fraction <<= 1;
+        if y >= 2u128 << 62 {
+            y >>= 1;
+            fraction |= 1;
+        }
+    }
+    1024 * i + fraction
 }
 impl fmt::Display for Ledger {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1489,9 +1660,20 @@ impl Opening<'_> {
             reader.take(size)?,
         )
         .map_err(|f| Error::Pcs(f.cause))?;
-        ledger.add(Line::Rlc, name, reduction.rlc.numerator);
-        ledger.add(Line::Sc, name, reduction.sc.numerator);
+        ledger.add(
+            Line::Rlc,
+            name,
+            reduction.rlc.numerator,
+            reduction.rlc.numerator,
+        );
+        ledger.add(
+            Line::Sc,
+            name,
+            reduction.sc.numerator,
+            u64::from(reduction.sc.degree),
+        );
         ledger.pcs_sources += 1;
+        ledger.opening(name, certificate.record().source());
         Ok(())
     }
 }
@@ -1511,6 +1693,10 @@ pub fn verify(
     let plan = plan(relation, sources)?;
     model_check(&plan, model)?;
     let mut ledger = Ledger::default();
+    for (k, certificate) in model.iter().enumerate() {
+        // A5: the caller verified each model certificate; its rounds are charged here.
+        ledger.certificate(&alloc::format!("model {k}"), certificate.record().source());
+    }
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
     // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
@@ -1529,6 +1715,7 @@ pub fn verify(
             verify_certificate(source, reader.take(size)?).map_err(|f| Error::Pcs(f.cause))?;
         reader.end()?;
         t.absorb(AbsorbLabel::RelationRoots, &root)?;
+        ledger.certificate("stack", &source);
         stacked = Some(handle);
     }
     sections.end()?;
@@ -1550,6 +1737,7 @@ pub fn verify(
         t.absorb(AbsorbLabel::RelationRoots, &root)?;
         mu.push(handle);
         ledger.pcs_sources += 1;
+        ledger.certificate(&check.name, &source);
     }
     sections.end()?;
     // Step 4.
@@ -1583,12 +1771,21 @@ pub fn verify(
             claims.push(r, &claim.point, claim.value);
         }
         let name = alloc::format!("identities/{m}");
-        ledger.add(Line::Rlc, &name, lambdas.len() as u64);
-        ledger.add(
-            Line::Sc,
-            &name,
-            reduction.sc.iter().map(|s| s.numerator).sum(),
-        );
+        let lambdas = lambdas.len() as u64;
+        ledger.add(Line::Rlc, &name, lambdas, lambdas);
+        // One entry per phase, so each is an exact enumeration: the `τ` run is one
+        // round of its `j` draws, the skip one round of `D`, and the tail `j` rounds of
+        // `δ` each (#367 review).
+        let [weights, skip, tail] = reduction.sc;
+        for (numerator, round) in [
+            (weights.numerator, weights.numerator),
+            (skip.numerator, skip.numerator),
+            (tail.numerator, u64::from(tail.degree)),
+        ] {
+            if numerator > 0 {
+                ledger.add(Line::Sc, &name, numerator, round);
+            }
+        }
     }
     sections.end()?;
     // Step 5.
@@ -1635,8 +1832,13 @@ pub fn verify(
             out_value,
             &mut claims,
         );
-        ledger.add(Line::Sz, &mm.name, u64::from(mm.free));
-        ledger.add(Line::Sc, &mm.name, reduction.sc.numerator);
+        ledger.add(Line::Sz, &mm.name, u64::from(mm.free), u64::from(mm.free));
+        ledger.add(
+            Line::Sc,
+            &mm.name,
+            reduction.sc.numerator,
+            u64::from(reduction.sc.degree),
+        );
     }
     sections.end()?;
     // Step 7.

@@ -338,7 +338,11 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
             "{}",
             zk::verify(&public, &statement, &proof, commitment, *index).map_err(reject)?
         ),
-        None => println!("{}", verify(&public, &statement, &proof).map_err(reject)?),
+        None => {
+            let ledger = verify(&public, &statement, &proof).map_err(reject)?;
+            println!("{ledger}");
+            println!("{}", stele_cli::admission(&ledger));
+        }
     }
     Ok("YES".into())
 }

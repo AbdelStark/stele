@@ -3575,3 +3575,78 @@ Consequences:
 Status: Accepted (owner authorisation for autonomous gating decisions). Independent
 review: FIX-THEN-MERGE on #368 (kernels, parity and ceilings reproduced); this text
 carries its fixes (the post-#364 estimate, the decision wording, rounds-only `M`).
+
+## ADR-124: Non-ZK standard admission does not wait on Q29; E8-05 depends on E8-05b and E8-05c instead of E8-05a (RFC-0002 §8, RFC-0012 A17; tasks E8-05, E8-05c)
+
+Numbering: ADR-121 is #363's, ADR-122 is #364's and ADR-123 is #368's (the GPU device
+benchmark, E16-35).
+
+Context:
+- E8-05 (soundness ledger generator and accounting gate) depends on E8-05a.
+- E8-05a is `blocked(RFC-0013 A1)`. Its first acceptance line asks for "Accepted
+  complete Q12 query/FS/hash and Q29 privacy composition before profile admission".
+- Q29 is commitment privacy, a zero-knowledge question. RFC-0002 §8 (Accepted, not
+  changed by A1) makes ZK optional for `standard` and mandatory for `treaty`.
+- So a `standard` proof that claims no zero knowledge does not need Q29 to be sound.
+  E8-05a's blocker holds back the soundness work that is ready: Q12 is Accepted
+  (RFC-0012 A17, RFC-0002 A1, RFC-0010 A14).
+
+Decision (Proposed):
+- **Scope.** A non-ZK `standard` admission needs Q12 and not Q29. A ZK `standard`
+  admission and every `treaty` admission still need Q29 (RFC-0013 A1), as E8-05a says.
+- **Graph.** E8-05 depends on E8-02, E8-05b and E8-05c, not on E8-05a:
+  - E8-05b is the exact (C1)–(C4) decision (`stele_verifier::accounting::admit`, #366);
+  - E8-05c enumerates a development proof's rounds and prints the verdict in
+    `verify-dev`.
+
+  E8-05a stays `blocked(RFC-0013 A1)` for ZK and treaty admission. Those move to a
+  new task, E8-05e, which depends on E8-05 and E8-05a, so treaty cannot close without
+  Q29. E8-05 is retitled to the non-ZK standard profile.
+- **What E8-05 still owes for non-ZK standard.** These are E8-05a's other acceptance
+  lines, now E8-05's for that profile:
+  - the canonical ledger derived from the plan and instance geometry;
+  - every challenge, query, failed attempt and lifetime obligation kept;
+  - `no_std` derivation with an independent exact enumeration;
+  - NC-0804/0805 and NC-1205 through the verifier entry point;
+  - LU lines from `LookupParameters::identity_term` of an actual verified lookup
+    record (ADR-072);
+  - no final passport or accepted inference proof as a derivation input.
+- **No MASK term.** A non-ZK standard proof has no masked rounds, so E8-05a's "no MASK
+  term" is met trivially. A ZK proof's MASK rounds are in its ledger (E12-26) and are
+  admitted only with Q29.
+- **What does not change.**
+  - `standard-unproven` stays until E8-05 adds the composed check at the verifier
+    entry point (ADR-108).
+  - No proof claims a level, and development proofs claim none (RFC-0026 §1.2).
+
+Consequences:
+- No proof byte, pin or ledger line moves.
+- E8-05 can proceed on non-ZK standard without RFC-0013 A1.
+- Today's development proofs fail the rule, so the verdict line `verify-dev` now prints
+  is informational. On the synthetic eight-layer window (T = 64):
+  - the worst round is LU range_16 at 2^-101.9;
+  - the floor is 2^-99.6 on Policy 1 sources and 2^-99.4 on Policy 2 sources;
+  - the verdict is FAIL (C4), because LU rounds are not ground.
+- On study.py's recorded stories42M ledger, the same code gives LU range_8 at
+  2^-96.99999 (printed 2^-96.9) and a floor of 2^-95.6, as in PARAMETERS.md §4.
+
+Independent review of #367: FIX-THEN-MERGE.
+- **Confirmed.**
+  - Every draw maps to exactly one round.
+  - Sum and max are exact; independent exact-rational sums reproduce the pins.
+  - `Q_V = 2^64 − 1` is sound.
+  - The RFC-0002 §8 basis holds.
+- **Fixes applied.**
+  - The moved E8-05a lines are in E8-05's acceptance, scoped "(non-ZK standard)",
+    and E8-05e holds ZK and treaty.
+  - A zerocheck is three entries: `τ` (j, j), skip (D, D) and tail (j·δ, δ). The
+    eight-layer window now has 11,687 rounds, not 11,647; its worst round and floor
+    are unchanged.
+  - The `2^124`-for-`p^4` display rounding is documented as display only.
+  - An unknown round line fails the verdict instead of reading as MASK.
+  - The verdict notes that Policy 1 sources always fail (C4).
+  - The test checks each entry's rounds, not each name's.
+
+Status: Accepted (governance; no protocol change). Independent review of #367:
+FIX-THEN-MERGE (RFC-0002 §8 basis holds); fixes applied at e2d8092, including the moved
+acceptance lines in E8-05 and the E8-05e split for ZK and treaty.

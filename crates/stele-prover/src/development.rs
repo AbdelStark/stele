@@ -16,7 +16,9 @@ use alloc::vec::Vec;
 pub use stele_proof::development as container;
 use stele_proof::development::Container;
 use stele_reductions::parallel;
-use stele_reductions::relation::{self, Ledger, Proof, Sources};
+use stele_reductions::relation::{self, Proof, Sources};
+/// The RFC-0026 §6 ledger and its enumerated rounds (E8-05c), for verifier callers.
+pub use stele_reductions::relation::{Entry, Ledger, Line, Round, RoundError};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{
     ArtifactLayout, Bounds, Model, NumericalIdentity, Registry, Role, Scales,

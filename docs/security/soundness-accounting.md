@@ -2011,3 +2011,26 @@ range_8), floor 2^-95.6
 decision over an enumerated round list is `stele_verifier::accounting::admit` (E8-05b):
 exact integers, PCS column rounds entered at their A14 target `2^-92` with `k_q`, and the
 floor taken as the sum over every round, an upper bound on `ε_floor`.
+
+**Development proofs, enumerated (E8-05c).** The development ledger now records each
+entry's largest single round and every PCS round, model sources included:
+- a certificate's tensor and column rounds;
+- one column round per opening.
+
+`Ledger::rounds` lists the rounds. `verify-dev` prints the worst round, the floor and the
+`admit` verdict under the standard profile, labelled informational.
+- **Round convention.** An entry splits into rounds of its largest round, so the maximum
+  and the sum are exact. Those are what (C1) and (C2) read. The other conventions:
+  - a zerocheck's `τ` run is one round;
+  - each Gamma and Fold draw is a round of 1;
+  - LU is the `(β, α)` round `c·(N + t) − 1`.
+- **Results.** Every development proof today is FAIL (C4), because LU rounds are not
+  ground.
+
+  | Input | Worst round | Floor |
+  |---|---|---|
+  | synthetic eight-layer window, T = 64 | LU range_16, `2^-101.9` | `2^-99.6` (Policy 1), `2^-99.4` (Policy 2) |
+  | `study.py`'s recorded stories42M ledger | LU range_8, `2^-96.9` | `2^-95.6` |
+
+  The stories42M worst round is `2^-96.99999`, printed toward the larger error;
+  [PARAMETERS.md §4](../../research/fs-pcs/PARAMETERS.md) rounds it to `2^-97.0`.
