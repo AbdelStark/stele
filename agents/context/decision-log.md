@@ -3419,6 +3419,163 @@ confined to `controls`, all three mutations reproduced, each turning only its ow
 red; coverage 63/109, 131/232). Follow-ups: derive `pad_factor`'s `Z` index from the
 `compact_terms` layout; gate the `Substitute` re-export behind `controls`.
 
+## ADR-122: CPU prover speedups with identical bytes; lazy-reduction QM31 product, base-field masked rounds, one dev-zk plain check, blake3 std (task E16-34)
+
+Numbered after ADR-120 (#362) and ADR-121 (#363).
+
+Context: E16-22's stories42M profile ranked the dev-zk masked and ZK-GKR products (QM31)
+first among the CPU stages. It also listed BLAKE3 SIMD and dev-zk's second plain check.
+
+Decision (four commits; every pin byte-identical):
+- **Lazy-reduction QM31 product** (stele-field).
+  - Limb products are summed in u64, with at most four per sum (`< 4p² < 2^64`), and
+    each output limb is reduced once. A subtracted product `x·y` is added as
+    `x·(p − y)`.
+  - It is the same element as RFC-0003 §2's Karatsuba product. That product is kept as
+    `QM31::karatsuba`, and a test pins the two equal on 10^6 random pairs and on every
+    edge-limb pair. The existing schoolbook-oracle tests pass.
+  - CM31 and OM31 keep Karatsuba; OM31 benefits through its QM31 sub-products.
+- **Base-field masked rounds** (stele-reductions).
+  - A dev-zk masked round treats as base field every factor whose tables are all
+    base-field: occurrences and masks before a challenge is folded in. `κ(t)` is an
+    integer at integer nodes.
+  - Those factors are stepped and multiplied in M31, and the product is applied once
+    with `mul_m31`.
+  - Rounds with no base factor keep the old path.
+- **One dev-zk plain check** (stele-prover). The committed relation keeps every
+  constraint of the layout relation over the same values and adds the record encodings,
+  so checking it alone rejects every false witness the first check did.
+  `rejects_false_witness_with_check_under_dev_zk` pins it: a false next token and a
+  false checked token are each rejected with `Check` by `zk::window` and `zk::prove`.
+  With the check replaced by a no-op, the test fails.
+- **blake3 `std`** (stele-code, under the prover-side `std`) adds runtime AVX2 and
+  AVX-512 detection on x86_64.
+  - On aarch64, blake3's build script already enables NEON, so this host gains
+    nothing from the change.
+  - Correction: an earlier draft of this record and of #362 said blake3 ran portable
+    on aarch64. That was wrong. #362 merged with the corrected line (ADR-120 and
+    `research/gpu-gating/STORIES42M-STAGES.md` §4 item 4), so neither needs an edit.
+  - `no_std` builds and every digest are unchanged.
+- **Not done: stele-simd in the round loops.** deny.toml lets only stele-code and
+  stele-poly import stele-simd, and the scalar lazy product already gives most of the
+  gain.
+
+Measured (M4 Max 48 GB; before = main 0298d88, after = 5670be3). Each row is the
+median prove run and that run's verify, as the ledgers record:
+
+| Workload | Before | After |
+|---|---|---|
+| synthetic eight-layer dev-zk byte 4 (median of three) | prove 27.66 s, verify 2.96 s, peak RSS 7.16 GB | prove 21.05 s (1.31×), verify 2.04 s, peak RSS 7.31 GB |
+| synthetic eight-layer plain dev (median of three) | prove 8.62 s, verify 0.87 s | prove 6.60 s (1.31×), verify 0.78 s |
+| stories42M dev-zk `T = 32` (single runs) | prove 475.6 s, verify 32.3 s, peak RSS 31.9 GB | prove 369.7 s (1.29×), verify 21.6 s, peak RSS 32.5 GB |
+
+- Peak RSS rises by about 2% in these runs (7.16 → 7.31 GB synthetic, 31.9 → 32.5 GB
+  stories42M). The cause is not separated from run-to-run variation.
+- The stories42M plain dev `T = 64` single runs (175.5 s before, 181.7 s after, same
+  bytes) are in the `host_context` of the `e16-34-dev-zk-stories42m-t32` ledgers. That
+  run is bound by main's sequential plain checker, which E16-22's parallel checker
+  (#362) removes.
+
+Ledgers: `bench/ledger/e16-34-*-mac-{before,after}.json`.
+
+Status: Accepted (performance only; no protocol, byte or admission change). Independent
+review: FIX-THEN-MERGE at 6c27032 (lazy QM31 product proven exact and 6/6 mutants caught;
+base-field rounds decided per factor at runtime, 3/3 mutants caught; the single dev-zk plain
+check covers the dropped one); fixes applied, including the dev-zk false-witness test.
+
+## ADR-123: dev-zk GPU: NO-GO lifted for the masked and ZK-GKR rounds; GO pending E16-36's re-profile and device source-preparation measurement; development stays NO-GO (RFC-0014 §1, §5, task E16-35, ADR-103 and ADR-120 follow-up)
+
+Context: ADR-120 left dev-zk open. Its ceiling was 3.8×–4.2× with resident tables and
+2.0×–3.6× with E16-21's upload-inclusive ratios, and a GO first needed a device
+benchmark of the masked and GKR rounds with resident, device-built tables.
+
+Measurement (`research/gpu-gating/DEV-ZK-DEVICE.md`,
+`bench/ledger/e16-35-dev-zk-gpu-masked.json`):
+- **Kernels.** `research/gpu-gating/masked`: one `Occurrences` round (RFC-0013 A5
+  item 2) for any term list, generated per round shape and compiled by NVRTC at run
+  time; M31 tables stepped in M31; folds in place; tables built on the device (`eq`,
+  tiles, layer halves, mask tables); one round polynomial copied back per round.
+  Opt-in (`--features cuda`), CUDA loaded at run time (cudarc 0.19.10,
+  `dynamic-loading`); CPU only by default.
+- **Shapes.** A masked identity relation (degree 4) and a ZK-GKR layer step (RFC-0008
+  A7 item 4, nine inputs, degree 5), `2^20..2^27` entries. The shapes are hand-built:
+  parity shows the device equals the CPU on them, not that they cover every production
+  relation or step.
+- **Bit equality.** Every round polynomial and every folded table equals the
+  production CPU summand's (`stele_reductions::zk::claims::bench`, feature `bench`)
+  at every round: 10 of 10 cases in `tests/parity.rs` and 10 of 10 in the bench's
+  check mode.
+- **Host.** Rented RTX 4090 with an AMD EPYC 7B13 (61 threads), same box for CPU and
+  GPU; CPU = PR #364's tree, faster than main's in every cell.
+- **Results at `2^24..2^27`.**
+  - Full sumcheck, rounds only (production code on both sides): relation 31–38×,
+    GKR layer 14.8–16.5× (e.g. GKR `2^27`: 5.03 s CPU, 0.34 s GPU).
+  - With table construction and uploads at the bus rate (17.7 GB/s pageable,
+    measured): 38–61×. The CPU construction is part production (`eq_table`,
+    `block_table`) and part sequential research-crate loops, so this overstates the
+    production CPU's construction cost.
+  - The bench's measured upload phase (host staging, about 1.3 GB/s) gives 7–11×.
+- **Ceiling.** E16-22's laps (single run), with the stage speedups re-measured against
+  the Mac CPU that took them (rounds only, 39.7–83.4×):
+  - the other offloadable stages `R` at E16-21's rounds-only ratios: 3.93×–4.16×;
+  - `R` at E16-21's upload-inclusive ratios: 2.83×–3.90×;
+  - the masked and GKR rounds alone, `R` on the CPU: 1.8×;
+  - every stage re-uploading its tables at the bench's staging rate: 2.60×–2.96×.
+  Every ceiling above 3× assumes `R`, and in it source preparation (Circle encoding,
+  salts, Merkle; 103.5 s), gets a device speedup that was not measured.
+- **After PR #364** (estimate; no stage laps): if its 105.9 s all came out of the masked
+  stages, the unbounded ceiling is 359.8 / 107.47 = 3.35× (3.44× on the 369.7 s wall),
+  and 3× needs all of `R` at about 12× on the device even with `M` free, about 17×
+  with `M` at 26.6×.
+
+Decision:
+- **dev-zk: NO-GO lifted for the masked and GKR rounds; GO pending E16-36's re-profile
+  and device source-preparation measurement.** ADR-120's open question is closed: on
+  the device the masked relations and ZK-GKR (208 s of 466 s) cost 2.5–8 s. Whether
+  ADR-103's 3× gate holds now depends on the rest of the offloadable work, chiefly
+  source preparation, which this task did not measure. A backend that offloads only
+  the masked and GKR rounds stays below 1.8×: NO-GO for that partial scope.
+- **Development: NO-GO stands** (ADR-120; ceiling 2.80× even at unbounded device
+  speed). Tasks E16-21a..e stay blocked.
+- **No GPU binding and no RFC-0014 amendment here.** The kernels stay in `research/`;
+  `crates/stele-gpu` stays the scaffold under the parity guard (task E10-01).
+
+E16-36 decides GO or NO-GO by a new ADR. It is a NO-GO if either:
+- device source preparation at stories42M sizes is below the source-preparation ratio
+  the E16-36 re-profile requires for 3× (same host's CPU);
+- the re-profile on current main puts the ceiling below 3× even with every
+  offloadable stage free.
+
+What full integration needs (task E16-37, after a GO from E16-36):
+1. Workflow 02: an RFC-0014 amendment for a dev-zk backend (opt-in feature, run-time
+   CUDA, CPU default, verifier and `no_std` builds free of GPU code), RFC-0026 §7
+   cross-reference; an ADR for cudarc with run-time loading.
+2. E16-21a's backend trait, op table and parity harness, and E10-01's parity gate wired
+   for `crates/stele-gpu` (byte-identical proofs on randomised inputs, INV-3), with a
+   GPU CI runner or a recorded manual parity run per PR.
+3. Device stages with state resident across them: the committed witness uploaded once
+   through pinned staging; hiding-source encoding and Merkle; LogUp trees and tops;
+   the masked relations and ZK-GKR steps (these kernels, extended to first and leaf
+   steps and compact leaves); claim batches. The transcript stays on the host; each
+   round sends back only its polynomial.
+4. A stories42M dev-zk T = 32 GPU ledger against the same host's CPU, with identical
+   proof bytes.
+
+Consequences:
+- `stele-reductions` gains the off-by-default `bench` feature (prover-side access to
+  the masked summand for the benchmark); no proof byte, transcript or verifier path
+  changes. The native gate pins it, and the feature quarantine keeps it out of the
+  default workspace build and of stele-cli, stele-prover and stele-verifier.
+- `research/gpu-gating/masked` is a standalone crate (own `[workspace]` and lock);
+  the workspace jobs do not build it. The research inventory group `gpu-gating-masked`
+  runs its CPU tests and checks the `cuda` build; that group runs when a PR touches
+  `research/` (or shared build files), not on a change to `stele-reductions` alone.
+  No CI host has a GPU, so the device test only runs on a rented host.
+
+Status: Accepted (owner authorisation for autonomous gating decisions). Independent
+review: FIX-THEN-MERGE on #368 (kernels, parity and ceilings reproduced); this text
+carries its fixes (the post-#364 estimate, the decision wording, rounds-only `M`).
+
 ## ADR-124: Non-ZK standard admission does not wait on Q29; E8-05 depends on E8-05b and E8-05c instead of E8-05a (RFC-0002 §8, RFC-0012 A17; tasks E8-05, E8-05c)
 
 Numbering: ADR-121 is #363's and ADR-122 is #364's. ADR-123 is left to the GPU device

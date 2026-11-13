@@ -191,3 +191,31 @@ fn matches_reference_canonical_basis_order() {
     assert_eq!(limbs(&value.0.to_le_bytes()), (1..=4).collect::<Vec<_>>());
     assert_eq!(limbs(&value.0 .0.to_le_bytes()), vec![1, 2]);
 }
+
+/// E16-34: QM31's lazy-reduction product equals RFC-0003 §2's Karatsuba product on
+/// random pairs and on every combination of the edge limbs 0, 1, p − 2 and p − 1.
+#[test]
+fn matches_reference_qm31_lazy_product() {
+    use stele_field::{CM31, M31};
+    let mut state = 34;
+    let random = |state: &mut u64| {
+        let mut l = || M31::from_u64(next(state) % P);
+        QM31(CM31(l(), l()), CM31(l(), l()))
+    };
+    for _ in 0..CASES {
+        let (x, y) = (random(&mut state), random(&mut state));
+        assert_eq!(x * y, x.karatsuba(y));
+    }
+    let edges = [0, 1, P - 2, P - 1].map(M31::from_u64);
+    let all: Vec<QM31> = (0..256)
+        .map(|k: usize| {
+            let e = |j: usize| edges[(k >> (2 * j)) & 3];
+            QM31(CM31(e(0), e(1)), CM31(e(2), e(3)))
+        })
+        .collect();
+    for x in &all {
+        for y in &all {
+            assert_eq!(*x * *y, x.karatsuba(*y));
+        }
+    }
+}
