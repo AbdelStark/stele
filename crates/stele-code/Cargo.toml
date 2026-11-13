@@ -16,7 +16,9 @@ rayon = { version = "=1.10.0", optional = true }
 # ADR-108: the standard-profile path of `registry::resolve_pcs` (RFC-0010 A14). Only
 # tests and negative controls enable it until E8-05 checks a composed standard proof.
 standard-unproven = []
-std = ["dep:rayon"]
+# E16-34: blake3's `std` adds runtime SIMD detection (AVX2/AVX-512 on x86_64). aarch64
+# already gets NEON from blake3's build script. Same digests.
+std = ["dep:rayon", "blake3/std"]
 
 [lints]
 workspace = true
