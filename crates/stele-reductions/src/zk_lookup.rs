@@ -320,6 +320,12 @@ fn terms<K: ChallengeField>(
     out
 }
 
+/// NC-0931's adversary: the compact factor index of a padded leaf's `Z` (after the
+/// head, the `s = 1` inputs and `mult`).
+pub(super) fn pad_factor(step: &GkrStep, lp: &LookupPlan) -> Option<usize> {
+    (step.leaf && lp.pad).then_some(if step.first { 4 } else { 6 })
+}
+
 /// A complex leaf's compact factors: head, the `s = 1` inputs, `mult`, `Z?`, `S?`,
 /// one combined `X_i` per tuple entry (shift included), the table.
 fn compact_terms<K: ChallengeField>(
@@ -791,10 +797,12 @@ enum Expanded<K> {
     /// A compact factor's final.
     Compact(usize),
     /// A product of compact finals and, when `bits` is not empty, `B_m`: `eq` of
-    /// the block bits on the leading x-coordinates.
+    /// the block bits on the leading x-coordinates. `ghost` adds `δ·B_g` (NC-0930's
+    /// adversary only).
     Product {
         factors: Vec<usize>,
         bits: Vec<u8>,
+        ghost: Option<(Vec<u8>, K)>,
         xo: usize,
     },
     /// A member occurrence's masked value, from its column and block.
@@ -825,9 +833,18 @@ impl<K: ChallengeField> Expand<K> {
             .iter()
             .map(|e| match e {
                 Expanded::Compact(i) => Ok(compact[*i]),
-                Expanded::Product { factors, bits, xo } => Ok(factors
-                    .iter()
-                    .fold(weight(bits, &self.point[*xo..]), |p, i| p * compact[*i])),
+                Expanded::Product {
+                    factors,
+                    bits,
+                    ghost,
+                    xo,
+                } => {
+                    let x = &self.point[*xo..];
+                    let b = ghost.as_ref().map_or(weight(bits, x), |(g, d)| {
+                        weight(bits, x) + *d * weight(g, x)
+                    });
+                    Ok(factors.iter().fold(b, |p, i| p * compact[*i]))
+                }
                 Expanded::Claim {
                     column,
                     coords,
@@ -873,9 +890,21 @@ fn block_bits(lp: &LookupPlan, member: &MemberPlan) -> Vec<u8> {
         .collect()
 }
 
+/// NC-0930's substitution (controls only): member `member`'s weight becomes
+/// `(B_m + δ·B_g)·S`, with `B_g` the indicator of the aligned `2^{m'}` block at
+/// `offset`. The block must lie off every member (`S = 0` there), so the leaf's sum
+/// over the cube is unchanged.
+#[derive(Clone, Copy)]
+pub(super) struct Ghost {
+    pub(super) member: usize,
+    pub(super) offset: usize,
+    pub(super) delta: i64,
+}
+
 /// The prover's input tables over the step's domain (MSB-first, `s` first), and
-/// for a several-member leaf its compact terms and expansion.
-#[allow(clippy::type_complexity)]
+/// for a several-member leaf its compact terms and expansion. `ghost` is NC-0930's
+/// adversary; honest provers pass `None`.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub(super) fn factors<K: ChallengeField + CodeField>(
     plan: &Plan<K>,
     step: &GkrStep,
@@ -884,8 +913,14 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
     data: &[Vec<K>],
     shared: &[M31],
     block_of: &dyn Fn(&Occurrence) -> Vec<M31>,
+    ghost: Option<Ghost>,
 ) -> Result<(Vec<Factor<K>>, Option<Vec<Term<K>>>, Option<Expand<K>>), Error> {
     let lp = &plan.lookups[step.lookup];
+    let ghost = match ghost {
+        Some(g) if step.leaf && lp.expand => Some((g, ghost_bits(lp, g)?)),
+        Some(_) => return Err(Error::Statement),
+        None => None,
+    };
     let n = step.num_vars as usize;
     let half = 1usize << step.k;
     let both = |table: Vec<K>| -> Vec<K> {
@@ -955,6 +990,10 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
                 map.push(Expanded::Product {
                     factors: s_index.into_iter().collect(),
                     bits: block_bits(lp, &lp.members[*m]),
+                    ghost: ghost
+                        .as_ref()
+                        .filter(|(g, _)| g.member == *m)
+                        .map(|(g, bits)| (bits.clone(), K::from_i64(g.delta))),
                     xo: step.xo,
                 });
                 continue;
@@ -983,6 +1022,7 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
                 map.push(Expanded::Product {
                     factors: vec![0, out.len()],
                     bits: Vec::new(),
+                    ghost: None,
                     xo: step.xo,
                 });
                 out.push(public(both(
@@ -998,7 +1038,14 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
             }
             Gin::Table => {
                 if compact {
-                    out.extend(combined(step, lp, data, &members, block_of)?);
+                    out.extend(combined(
+                        step,
+                        lp,
+                        data,
+                        &members,
+                        block_of,
+                        ghost.as_ref().map(|g| g.0),
+                    )?);
                 }
                 public(both(table(lp, run.beta, run.alpha)))
             }
@@ -1020,15 +1067,43 @@ pub(super) fn factors<K: ChallengeField + CodeField>(
     ))
 }
 
+/// NC-0930's ghost block bits on the leading `n − m'` x-coordinates. The block is
+/// aligned, inside the lookup half and off every member, so `S = 0` on it.
+fn ghost_bits(lp: &LookupPlan, g: Ghost) -> Result<Vec<u8>, Error> {
+    let member = lp.members.get(g.member).ok_or(Error::Statement)?;
+    let size = 1usize << member.m;
+    let off = |x: usize| {
+        lp.members
+            .iter()
+            .all(|m| x < m.offset || x >= m.offset + (1 << m.m))
+    };
+    if !g.offset.is_multiple_of(size)
+        || g.offset + size > 1usize << lp.n
+        || !(g.offset..g.offset + size).all(off)
+    {
+        return Err(Error::Statement);
+    }
+    let ghost = MemberPlan {
+        offset: g.offset,
+        tuple: Vec::new(),
+        shifts: Vec::new(),
+        selector: None,
+        ..*member
+    };
+    Ok(block_bits(lp, &ghost))
+}
+
 /// The combined factors `X_i = Σ_m B_m·(x̂_m + shift)` with masks `Σ_m B_m·r̂_m`
 /// over the step's domain; `members` are the member occurrences in input order
-/// (member-major), all with one `v` and `u` = the last `c_D` variables.
+/// (member-major), all with one `v` and `u` = the last `c_D` variables. `ghost`
+/// adds `δ·B_g·(x̂_m + shift)` and `δ·B_g·r̂_m` (NC-0930's adversary only).
 fn combined<K: ChallengeField + CodeField>(
     step: &GkrStep,
     lp: &LookupPlan,
     data: &[Vec<K>],
     members: &[&Occurrence],
     block_of: &dyn Fn(&Occurrence) -> Vec<M31>,
+    ghost: Option<Ghost>,
 ) -> Result<Vec<Factor<K>>, Error> {
     let n = step.num_vars as usize;
     let v = members.first().map(|o| o.v).ok_or(Error::Statement)?;
@@ -1045,18 +1120,36 @@ fn combined<K: ChallengeField + CodeField>(
             *slot = Some(index);
         }
     }
+    // NC-0930's ghost block (off every member): `(member, range, δ)`.
+    let ghost = ghost.map(|g| {
+        let size = 1usize << lp.members[g.member].m;
+        (g.member, g.offset..g.offset + size, K::from_i64(g.delta))
+    });
     let mut out = Vec::new();
-    for (i, x) in tuple(lp, data).into_iter().enumerate() {
+    for (i, mut x) in tuple(lp, data).into_iter().enumerate() {
         let blocks: Vec<Vec<M31>> = (0..lp.members.len())
             .map(|m| block_of(members[m * lp.c + i]))
             .collect();
         let entries = dim::<K>();
+        if let Some((m, range, delta)) = &ghost {
+            let member = &lp.members[*m];
+            let (column, coords) = &member.tuple[i];
+            for at in range.clone() {
+                let value = data[*column][MemberPlan::index(coords, at, lp.n)];
+                x[at] = *delta * (value + K::from_i64(member.shifts[i]));
+            }
+        }
         let r = (0..1usize << n)
             .map(|index| {
                 let position = index & mask;
-                owner[position].map_or(zero::<K>(), |m| {
-                    element::<K>(blocks[m][position & (entries - 1)])
-                })
+                match &ghost {
+                    Some((m, range, delta)) if range.contains(&position) => {
+                        *delta * element::<K>(blocks[*m][position & (entries - 1)])
+                    }
+                    _ => owner[position].map_or(zero::<K>(), |m| {
+                        element::<K>(blocks[m][position & (entries - 1)])
+                    }),
+                }
             })
             .collect();
         let table = if step.first {

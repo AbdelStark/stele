@@ -2478,6 +2478,71 @@ enum Forgery {
     /// Lookup `l`: the true top `p, q`, but `h` shifted so that `Σ h = 0`, with the
     /// top identity `h·q − p = 0` forged (free rounds, `μ` solved last).
     Ratio(usize),
+    /// NC-0930..0932: one public input replaced by `δ` (honest rounds and `μ`).
+    #[cfg_attr(not(feature = "controls"), allow(dead_code))]
+    Substitute(Substitute, i64),
+}
+
+/// NC-0930..0932's target: one public input of the true statement that the
+/// adversary replaces. Every statement message, round and `μ` is honest for the
+/// substitute, whose sum over the cube equals the true one; only the verifier's
+/// own evaluation of that final rejects it (`ClaimMismatch`).
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Substitute {
+    /// Lookup `lookup`'s leaf: member `member`'s weight `B_m·S` becomes
+    /// `(B_m + δ·B_g)·S`, `B_g` the aligned block at `offset`, off every member
+    /// (`S = 0` there).
+    Member {
+        lookup: usize,
+        member: usize,
+        offset: usize,
+    },
+    /// Lookup `lookup`'s leaf: its `eq·Z` with `Z` moved by `δ` at cube points that
+    /// leave the sum.
+    Pad(usize),
+    /// Relation `relation`'s `eq(ρ_shared, ·)` moved by `δ` likewise.
+    Shared(usize),
+}
+
+/// Move public factor `f` by `delta` on the cube and keep the summand's sum: at a
+/// point where `f`'s cofactor vanishes, else at two points `p, q` weighted by
+/// each other's cofactor (`Δ = δ·(G(q)·G(p) − G(p)·G(q)) = 0`).
+fn substitute<K: ChallengeField + Eq>(
+    factors: &mut [Factor<K>],
+    terms: &[Term<K>],
+    f: usize,
+    delta: K,
+) -> Result<(), Error> {
+    let target = f as u32;
+    if terms
+        .iter()
+        .any(|t| t.factors.iter().filter(|g| **g == target).count() > 1)
+    {
+        return Err(Error::Statement);
+    }
+    // The cofactor of `f` at cube point `x` (masks vanish on the cube).
+    let cofactor = |x: usize| {
+        terms
+            .iter()
+            .filter(|t| t.factors.contains(&target))
+            .fold(zero::<K>(), |s, t| {
+                s + t
+                    .factors
+                    .iter()
+                    .filter(|g| **g != target)
+                    .fold(t.coefficient, |p, g| p * factors[*g as usize].x[x])
+            })
+    };
+    let g: Vec<K> = (0..factors[f].x.len()).map(cofactor).collect();
+    let x = &mut factors[f].x;
+    match g.iter().position(|v| *v == zero::<K>()) {
+        Some(p) => x[p] = x[p] + delta,
+        None => {
+            x[0] = x[0] + delta * g[1];
+            x[1] = x[1] - delta * g[0];
+        }
+    }
+    Ok(())
 }
 
 /// NC-0917 and NC-0918's adversary, never a verifier input: the honest prover,
@@ -2518,6 +2583,25 @@ where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
     let forgery = Some(Forgery::Unchecked(relation));
+    prove_with(statement, columns, &seed.0, t, true, forgery, None).map(|p| p.0)
+}
+
+/// NC-0930..0932's adversary, never a verifier input: the honest prover, except
+/// that `target`'s public input is replaced (by `delta`; `0` is the honest proof).
+/// The plan, so every statement message, is the true statement's.
+#[cfg(feature = "controls")]
+pub fn forge_substitute<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: Seed,
+    t: &mut Transcript<K>,
+    target: Substitute,
+    delta: i64,
+) -> Result<Proof<K>, Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
+    let forgery = Some(Forgery::Substitute(target, delta));
     prove_with(statement, columns, &seed.0, t, true, forgery, None).map(|p| p.0)
 }
 
@@ -2972,6 +3056,14 @@ where
             });
         }
         let i = step_instance(step, &gammas);
+        if let Some(Forgery::Substitute(Substitute::Shared(x), delta)) = forgery {
+            if x == j {
+                if step.eq.is_none() {
+                    return Err(Error::Statement);
+                }
+                substitute(&mut factors, &i.terms, 0, K::from_i64(delta))?;
+            }
+        }
         let summand = Occurrences {
             factors,
             terms: i.terms.clone(),
@@ -3027,16 +3119,57 @@ where
         let (terms, claimed) = lookup::start(step, &plan.lookups[l], run, t)?;
         let i = instance(step.id, step.num_vars, terms, claimed);
         let layers: &[Vec<[K; 2]>] = tree.as_ref().map_or(&[], |(_, layers)| layers);
-        let (factors, compact, expand) =
-            lookup::factors(&plan, step, run, layers, &data, &shared_message, &block_of)?;
-        let summand = Occurrences {
-            factors,
-            terms: compact.unwrap_or_else(|| i.terms.clone()),
-            degree: step.degree,
-            num_vars: step.num_vars,
-            bound: 0,
-            expand,
+        // NC-0930, NC-0931: this lookup's leaf takes the substitute.
+        let substituted = match forgery {
+            Some(Forgery::Substitute(
+                Substitute::Member { lookup, .. } | Substitute::Pad(lookup),
+                _,
+            )) if lookup == l && step.is_leaf() => forgery,
+            _ => None,
         };
+        let ghost = match substituted {
+            Some(Forgery::Substitute(Substitute::Member { member, offset, .. }, delta)) => {
+                Some(lookup::Ghost {
+                    member,
+                    offset,
+                    delta,
+                })
+            }
+            _ => None,
+        };
+        let build = |ghost| -> Result<Occurrences<K>, Error> {
+            let (factors, compact, expand) = lookup::factors(
+                &plan,
+                step,
+                run,
+                layers,
+                &data,
+                &shared_message,
+                &block_of,
+                ghost,
+            )?;
+            Ok(Occurrences {
+                factors,
+                terms: compact.unwrap_or_else(|| i.terms.clone()),
+                degree: step.degree,
+                num_vars: step.num_vars,
+                bound: 0,
+                expand,
+            })
+        };
+        let mut summand = build(ghost)?;
+        if let Some(Forgery::Substitute(Substitute::Pad(_), delta)) = substituted {
+            let z = lookup::pad_factor(step, &plan.lookups[l]).ok_or(Error::Statement)?;
+            substitute(
+                &mut summand.factors,
+                &summand.terms.clone(),
+                z,
+                K::from_i64(delta),
+            )?;
+        }
+        // The substitute's honest twin, folded at the same point after the proof:
+        // the producer routes the true finals (claims are equal, publics differ).
+        let twin = substituted.map(|_| build(None)).transpose()?;
         let tweak = match forgery {
             Some(Forgery::Layer(x)) if x == g => lookup::first_layer(step),
             Some(Forgery::Final(x, input)) if x == g => Some(input),
@@ -3068,6 +3201,15 @@ where
                 tweak,
                 t,
             )?
+        };
+        let truth = match twin {
+            Some(mut twin) => {
+                for c in &point {
+                    twin.fold(*c).map_err(Error::Sumcheck)?;
+                }
+                twin.final_values().map_err(Error::Sumcheck)?
+            }
+            None => truth,
         };
         lookup::aborts(step, run, &point)?;
         let finals = lookup::finals(&plan, step, run, &point, &truth)?;

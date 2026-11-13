@@ -3372,6 +3372,53 @@ review: FIX-THEN-MERGE at 86a4a75; fixes verified at 22f0d6f.
 - Fixes applied: the two pinning tests, the CI sequential path, the stele-ir feature
   pin, the upload-inclusive ceiling, and the stage laps in the ledgers.
 
+
+## ADR-121: dev-zk substitution adversary; NC-0930..0932 executed (RFC-0013 A5, RFC-0008 A7, task E12-31)
+
+Context: NC-0930..0932 pin three public finals that the dev-zk verifier evaluates
+itself: a leaf's member weight `B_m·S`, a leaf's `eq·Z`, and a contraction's
+`eq(ρ_shared, ·)`. E12-14a's first controls tweaked these finals by one, with free
+rounds and `μ` solved last. The independent review found that they did not
+discriminate, because the shared batch's `μ` binding rejects any solved `μ`. They went
+back to `todo` (ADR-101). NC-0928/0929's adversary, an honest proof of a relation with
+one public column changed, cannot reach these three. They come from the statement's
+structure (member offsets, the valid row count, shared bits), and changing that
+structure changes the A5 statement messages, so the transcript diverges before the
+final.
+
+Decision: a controls-only substitution adversary, `zk::claims::forge_substitute`.
+- It proves the true statement's plan, so every statement message is unchanged.
+- It replaces one public input with a substitute that has the same sum over the cube.
+  The rounds, finals and `μ` are therefore honest for the substitute, and only the
+  verifier's evaluation of that final differs.
+  - Member weight: `(B_m + δ·B_g)·S`, where `B_g` is an aligned block off every member
+    (`S = 0`). It enters the producer's combined factors and masks, which stay
+    multilinear, so the declared degree holds.
+  - `Z` and `eq(ρ_shared, ·)`: moved by `δ` at a cube point where the factor's cofactor
+    vanishes, else at two points weighted by each other's cofactor.
+- The producer routes the true finals, from an honest twin folded at the same point.
+  The verifier is not touched.
+- These are substitution controls. On the cube, the substitutes prove the true
+  statement, so they test that the verifier pins each public final, not a false
+  witness. The final is the only binding of these inputs: a verifier that skipped it
+  would accept any polynomial with the same cube sum.
+
+Evidence (synthetic relation fixture, release build):
+- `δ = 0` is accepted for all three (M0), and `δ = 1` is rejected with `ClaimMismatch`.
+- Removing the member-weight check (`zk_lookup::finals`, `Gin::Member`) turns only
+  NC-0930 red. Removing the `eq·Z` check (`Gin::Pad`) turns only NC-0931 red. Removing
+  the step's `eq` final check (`zk_claims::public_finals`) turns only NC-0932 red. In
+  each case the forged proof is accepted (`unexpected: Ok(())`). The mutations are not
+  committed.
+
+No RFC amendment: no label, byte, order or verifier check changes. RFC-0013 A5 gains
+implementation notes. Coverage rises by three controls.
+
+Status: Accepted (development tier). Independent review: MERGE at bae3215 (adversary
+confined to `controls`, all three mutations reproduced, each turning only its own control
+red; coverage 63/109, 131/232). Follow-ups: derive `pad_factor`'s `Z` index from the
+`compact_terms` layout; gate the `Substitute` re-export behind `controls`.
+
 ## ADR-122: CPU prover speedups with identical bytes; lazy-reduction QM31 product, base-field masked rounds, one dev-zk plain check, blake3 std (task E16-34)
 
 Numbered after ADR-120 (#362) and ADR-121 (#363).
@@ -3431,6 +3478,8 @@ median prove run and that run's verify, as the ledgers record:
 
 Ledgers: `bench/ledger/e16-34-*-mac-{before,after}.json`.
 
-Status: Proposed (performance only; no protocol, byte or admission change), pending
-independent review.
+Status: Accepted (performance only; no protocol, byte or admission change). Independent
+review: FIX-THEN-MERGE at 6c27032 (lazy QM31 product proven exact and 6/6 mutants caught;
+base-field rounds decided per factor at runtime, 3/3 mutants caught; the single dev-zk plain
+check covers the dropped one); fixes applied, including the dev-zk false-witness test.
 
