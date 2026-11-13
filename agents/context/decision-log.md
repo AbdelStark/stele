@@ -3647,7 +3647,9 @@ Independent review of #367: FIX-THEN-MERGE.
   - The verdict notes that Policy 1 sources always fail (C4).
   - The test checks each entry's rounds, not each name's.
 
-Status: Proposed (governance; no protocol change). Review requested.
+Status: Accepted (governance; no protocol change). Independent review of #367:
+FIX-THEN-MERGE (RFC-0002 §8 basis holds); fixes applied at e2d8092, including the moved
+acceptance lines in E8-05 and the E8-05e split for ZK and treaty.
 
 ## ADR-125: Development proofs with ground lookup (β, α) rounds, profile byte 5 (RFC-0026 A14, task E8-05d)
 
