@@ -89,7 +89,16 @@ target/release/stele verify-dev --public /tmp/dev-e2e/public.bin \
 ```
 
 The last line of `verify-dev` is the verdict, `YES` or `NO: <reason>`. `prove-dev` ends
-with `PROOF WRITTEN`, which is not a verdict. Exit codes are 0 for accepted or written,
+with `PROOF WRITTEN`, which is not a verdict.
+
+`verify-dev --admit` (RFC-0016 A5, Draft, task E8-05f) adds an admission gate. YES
+requires both the replay and RFC-0012 A17 (C1)–(C4) under the standard parameters on
+the proof's rounds. Otherwise the verdict is `NO: admission FAIL (Cn): …`.
+- It is a development-tier gate. No level is claimed, and `standard-unproven` stays.
+- Today only `--dev-profile 5` proofs pass it.
+- It is refused on dev-zk bundles with a usage error, because ZK admission needs Q29.
+- Without `--admit`, the admission lines are informational and do not change the
+  verdict. Exit codes are 0 for accepted or written,
 1 for rejected and 2 for a usage or I/O error. An option given twice is a usage error.
 
 ## dev-zk (tasks E12-14b, E12-25, E12-27, E12-14)

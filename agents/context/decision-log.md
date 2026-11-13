@@ -3750,8 +3750,9 @@ Decision (Proposed):
 - **Not lifted.** `standard-unproven` stays. A `standard` claim needs five things, none
   ready:
   1. E8-02: the `no_std` plan derivation and replay in `stele-verifier`. deny.toml keeps
-     `stele-reductions` and `stele-prover` out of it, so the RFC-0026 replay cannot be
-     the entry point.
+     `stele-reductions` and `stele-prover` out of it, and also `stele-pcs`,
+     `stele-sumcheck` and `stele-lookup`. E8-02 is therefore a re-implementation, not a
+     move.
   2. E8-01: container v1, which carries the profile byte and ledger hash for NC-0804
      and NC-0805.
   3. Standard A5 lookups with `LookupRecord`s, for `identity_term` (ADR-072).
@@ -3768,9 +3769,40 @@ Decision (Proposed):
   - End to end, `verify-dev --admit` refuses the eight-layer byte-3 proof with (C4) and
     accepts the byte-5 proof.
 
+- **Transitive blockers (#370 review).** E8-02 depends on E8-01, which depends on:
+  - E8-05a, blocked on Q29 (RFC-0013 A1);
+  - E7-03, E7-04, E7-05, E7-07 and E7-08, blocked on RFC-0004 A3, A6, A7, A8 and A9,
+    RFC-0007 A8, RFC-0003 A3 and RFC-0008 Q31;
+  - E6-03, through E6-00 and E4-05.
+
+  So the non-ZK standard path still runs through Q29, which conflicts with ADR-124.
+  This is recorded as an **open item**, not rewired. E8-01 is the W8 full-model
+  orchestrator, and its E7 and E6 blockers would remain even without E8-05a. Rewiring
+  only E8-05a would not unblock it. E8-01 and E8-02 are marked `blocked` in the graph
+  instead of `ready`.
+- **What is unblocked.**
+  - Independent `no_std` re-implementations of verifier primitives whose RFCs are
+    Accepted, against their corpora: the A1 sumcheck (E8-02a, started), zerocheck,
+    batching, Merkle, the codes, the PCS and the lookup trees.
+  - The RFC-0026 relation replay, which is development tier and Accepted.
+  - The W8 and full-model plan path (CQIS E6 and E7) is not unblocked.
+- **NC definitions corrected.**
+  - NC-0804: a ledger-hash mismatch (`LedgerMismatch`), because rounds come from the
+    plan and never from the header. Above-cap plans are NC-0810's.
+  - NC-0805: the expected profile comes from the caller or the passport.
+- **CLI.** `--admit` is refused on dev-zk bundles before verifying them (a usage
+  error, with a binary-level test). Under `--admit`, the verdict line reads "admission
+  gate (development tier, no level claimed)".
+
 Consequences:
 - No proof byte, pin or ledger line moves. `verify-dev` without `--admit` is unchanged.
 - E8-05's acceptance lines for the entry point stay open.
 - A new task, E8-05f, records this step and its remaining list.
+
+Independent review of #370: FIX-THEN-MERGE (the gate logic is right; no YES path
+without both checks). Fixes applied: the dev-zk refusal, the NC-0804/0805 definitions,
+the transitive blockers and the open conflict, "three cases", the plan-provenance
+sentence, re-implementation not a move, the gate label, the `--admit` docs and the CLI
+test.
 
 Status: Proposed (development tier; no protocol change). Review requested with RFC-0016 A5.

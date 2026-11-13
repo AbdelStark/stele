@@ -313,6 +313,10 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
         })
         .transpose()?;
     let bytes = read(get(o, "public")?)?;
+    // E8-05f review: `--admit` is refused on dev-zk bundles before any verification.
+    if admit && !stele_cli::admit_applies(&bytes) {
+        return Err(usage(stele_cli::ADMIT_NOT_ZK));
+    }
     let (public, statement, profile) = bundle::decode_profile(&bytes).map_err(reject)?;
     let proof = read(get(o, "proof")?)?;
     let (cqis_id, development_model) = model_identity(&public).map_err(reject)?;
@@ -354,7 +358,7 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
                 }
             };
             println!("{ledger}");
-            println!("{}", stele_cli::admission(&ledger));
+            println!("{}", stele_cli::admission_gated(&ledger));
         }
         None => {
             let ledger = verify(&public, &statement, &proof).map_err(reject)?;

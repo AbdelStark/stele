@@ -1873,7 +1873,8 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-prover+stele-proof
-  status: ready
+  # ADR-126: transitively blocked; the non-ZK path still meets Q29 here (open item).
+  status: blocked(E8-05a: RFC-0013 A1; E7-03/04/05/07/08: RFC-0004 A3, A6, A7, A8, A9)
   acceptance:
   - W8 proof produced
   - size matches plan
@@ -1888,7 +1889,7 @@ tasks:
   - RFC-0012 §4
   skill: soundness-auditor
   crate: stele-verifier
-  status: ready
+  status: blocked(E8-01)
   acceptance:
   - W8 verifies
   - NC-1200/1201/1202

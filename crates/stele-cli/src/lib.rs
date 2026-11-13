@@ -53,6 +53,28 @@ fn round(r: &Round) -> Option<accounting::Round> {
 /// `Q_V` is taken as `2^64 − 1`, an upper bound on any verification's hash calls;
 /// (C3) holds there for the standard profile.
 pub fn admission(ledger: &Ledger) -> String {
+    report(ledger, "informational, development claims no level")
+}
+
+/// [`admission`] as `verify-dev --admit` prints it: the verdict decides the answer.
+pub fn admission_gated(ledger: &Ledger) -> String {
+    report(
+        ledger,
+        "admission gate (development tier, no level claimed)",
+    )
+}
+
+/// `verify-dev --admit` refuses a dev-zk bundle before verifying it.
+pub const ADMIT_NOT_ZK: &str =
+    "--admit applies to non-ZK development proofs only (ZK admission needs Q29, E8-05e)";
+
+/// Whether `--admit` applies to this public-input file: not to a dev-zk bundle
+/// (`stele-dev-zk-public-*`), whose MASK rounds need Q29 (ADR-124, E8-05e).
+pub fn admit_applies(public: &[u8]) -> bool {
+    !public.starts_with(b"stele-dev-zk-public")
+}
+
+fn report(ledger: &Ledger, label: &str) -> String {
     let rounds = ledger.rounds();
     let Some(checked) = rounds.iter().map(round).collect::<Option<Vec<_>>>() else {
         return "admission\tFAIL: a round of an unknown line".to_string();
@@ -78,8 +100,7 @@ pub fn admission(ledger: &Ledger) -> String {
         ""
     };
     format!(
-        "admission\tstandard (lambda 100, g 8, Q_cap 2^80), RFC-0012 A17 item 4; \
-         informational, development claims no level\n\
+        "admission\tstandard (lambda 100, g 8, Q_cap 2^80), RFC-0012 A17 item 4; {label}\n\
          rounds\t{}\n{worst}floor\t{}{}\n{note}\
          verdict\t{verdict}",
         rounds.len(),
@@ -174,6 +195,19 @@ mod tests {
     /// E8-05f: the gate accepts only replay-accepted proofs whose rounds pass `admit`.
     /// Mutation check: with `gate` returning the replay's result alone, the second
     /// assertion fails (an ungrinded LU round above the cap would be accepted).
+    #[test]
+    fn admit_refuses_dev_zk_bundles_only() {
+        assert!(!admit_applies(b"stele-dev-zk-public-v1..."));
+        assert!(!admit_applies(b"stele-dev-zk-public-v2..."));
+        for magic in [
+            &b"stele-dev-public-v1"[..],
+            b"stele-dev-public-v3",
+            b"stele-dev-public-v4",
+        ] {
+            assert!(admit_applies(magic));
+        }
+    }
+
     #[test]
     fn gate_requires_both_the_replay_and_admission() {
         assert_eq!(gate::<()>(Ok(ledger(65_535))).map(|_| ()), Ok(()));

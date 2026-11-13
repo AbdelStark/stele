@@ -201,11 +201,22 @@ item 4, RFC-0002 A1, RFC-0012 §6.
 >    claim is never made on the replay alone.
 
 **What an entry point needs before `standard` (none ready).**
-1. **E8-02.** The `no_std` plan derivation and replay in `stele-verifier` (§3). The
-   RFC-0026 replay is in `stele-reductions` and `stele-prover`, which `stele-verifier`
-   may not depend on (deny.toml).
+1. **E8-02.** The `no_std` plan derivation and replay in `stele-verifier` (§3).
+   deny.toml bars `stele-verifier` from `stele-reductions` and `stele-prover`, and also
+   from `stele-pcs`, `stele-sumcheck` and `stele-lookup`. E8-02 is therefore a
+   re-implementation of the verification code, not a move (ADR-127).
 2. **E8-01.** Container v1, whose §1 header carries the profile byte and the ledger hash
    that NC-0804 and NC-0805 tamper.
+   - **Transitive blockers.** In the task graph, E8-02 depends on E8-01, which
+     depends on:
+     - E8-05a (`blocked(RFC-0013 A1)`, Q29);
+     - E7-03, E7-04, E7-05, E7-07 and E7-08, blocked on RFC-0004 A3, A6, A7, A8 and
+       A9, RFC-0007 A8, RFC-0003 A3 and RFC-0008 Q31;
+     - E6-03, through E6-00 and E4-05 (RFC-0010 A7, RFC-0013 A1).
+   - **Open conflict.** The non-ZK standard path therefore still runs through Q29.
+     That contradicts ADR-124, which took Q29 off that path for E8-05 only. ADR-126
+     records it as an open item. It is not rewired here, because E8-01's E7 and E6
+     blockers stand regardless.
 3. **Standard A5 lookups.** `lookup::Descriptor::standard` with `LookupRecord`s, so
    each LU round is `identity_term`. RFC-0026 checks recompute it from the plan, which
    is the same number but not the ADR-072 provenance.
@@ -221,23 +232,32 @@ proofs: `stele_cli::gate` and `stele verify-dev --admit`.
 - The replay runs, and its plan-derived rounds go to `admit` under `standard`.
 - YES requires both. Otherwise the result is `NO: admission FAIL (Cn): …` or the
   replay's error.
-- It is a development-tier gate, not a standard entry point. It runs after the replay,
-  because RFC-0026's rounds are enumerated during it (item 1). It claims no level.
+- It is a development-tier gate, not a standard entry point. It claims no level.
+- Rounds are enumerated during the replay, from the plan the bundle names. An expected
+  plan and profile independent of the proof is E8-02's.
+- It refuses `--admit` on dev-zk bundles before verifying them. ZK admission needs Q29
+  (E8-05e).
 
 **Controls (exact, entered when items 1–4 exist).**
 
 | NC | Tamper | Expected |
 |---|---|---|
-| 0804 | container v1's ledger hash replaced by the hash of a ledger with one LU round's grinding bits lowered | `ProfileBound` (C4), before the transcript |
-| 0805 | container v1's profile byte changed from standard to development, with the header restamped | `ProfileMismatch` |
+| 0804 | container v1's ledger hash replaced by any other hash. Step 2 derives the rounds from the plan, never from the header, so the tamper can only make the header disagree with the derived ledger | `LedgerMismatch`, before the transcript |
+| 0805 | container v1's profile byte changed from standard to development, with the header restamped. The expected profile comes from the caller or the passport, not from the header | `ProfileMismatch` |
 | 1205 | the passport's minimum profile is treaty and the proof claims standard | `ProfileMismatch` |
 
+A plan with a round above the cap is NC-0810's (RFC-0030), not NC-0804's.
+
 **Gate tests (no NC credit).** `gate_requires_both_the_replay_and_admission` in
-stele-cli checks four cases:
+stele-cli checks three cases:
 - a passing ledger is accepted;
 - a ledger with one ungrinded LU round above the cap is refused with (C4);
 - a replay error passes through.
 - Mutation check: with `gate` returning the replay's result alone, the test goes red.
+
+`rejects_admit_on_dev_zk_bundles_before_verifying` runs the binary. `--admit` on a
+dev-zk magic is a usage error (exit 2) before parsing; without `--admit` the same bytes
+reach the parser (exit 1).
 
 End to end on the eight-layer synthetic window:
 - the byte-3 proof under `--admit` gives `NO: admission FAIL (C4): round 63 (LU sign/8)`;
