@@ -3342,4 +3342,7 @@ Evidence (synthetic relation fixture, release build):
 No RFC amendment: no label, byte, order or verifier check changes. RFC-0013 A5 gains
 implementation notes. Coverage rises by three controls.
 
-Status: Proposed (development tier; independent review requested before merge).
+Status: Accepted (development tier). Independent review: MERGE at bae3215 (adversary
+confined to `controls`, all three mutations reproduced, each turning only its own control
+red; coverage 63/109, 131/232). Follow-ups: derive `pad_factor`'s `Z` index from the
+`compact_terms` layout; gate the `Substitute` re-export behind `controls`.
