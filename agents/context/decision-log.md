@@ -3300,3 +3300,46 @@ Decision: RFC-0013 A10 (Draft) extends A9's admission to `T ≤ 64`.
 Status: Accepted (development tier) with RFC-0013 A10. Independent review: FIX-THEN-MERGE
 at 9930b11; fixes applied.
 
+
+## ADR-121: dev-zk substitution adversary; NC-0930..0932 executed (RFC-0013 A5, RFC-0008 A7, task E12-31)
+
+Context: NC-0930..0932 pin three public finals that the dev-zk verifier evaluates
+itself: a leaf's member weight `B_m·S`, a leaf's `eq·Z`, and a contraction's
+`eq(ρ_shared, ·)`. E12-14a's first controls tweaked these finals by one, with free
+rounds and `μ` solved last. The independent review found that they did not
+discriminate, because the shared batch's `μ` binding rejects any solved `μ`. They went
+back to `todo` (ADR-101). NC-0928/0929's adversary, an honest proof of a relation with
+one public column changed, cannot reach these three. They come from the statement's
+structure (member offsets, the valid row count, shared bits), and changing that
+structure changes the A5 statement messages, so the transcript diverges before the
+final.
+
+Decision: a controls-only substitution adversary, `zk::claims::forge_substitute`.
+- It proves the true statement's plan, so every statement message is unchanged.
+- It replaces one public input with a substitute that has the same sum over the cube.
+  The rounds, finals and `μ` are therefore honest for the substitute, and only the
+  verifier's evaluation of that final differs.
+  - Member weight: `(B_m + δ·B_g)·S`, where `B_g` is an aligned block off every member
+    (`S = 0`). It enters the producer's combined factors and masks, which stay
+    multilinear, so the declared degree holds.
+  - `Z` and `eq(ρ_shared, ·)`: moved by `δ` at a cube point where the factor's cofactor
+    vanishes, else at two points weighted by each other's cofactor.
+- The producer routes the true finals, from an honest twin folded at the same point.
+  The verifier is not touched.
+- These are substitution controls. On the cube, the substitutes prove the true
+  statement, so they test that the verifier pins each public final, not a false
+  witness. The final is the only binding of these inputs: a verifier that skipped it
+  would accept any polynomial with the same cube sum.
+
+Evidence (synthetic relation fixture, release build):
+- `δ = 0` is accepted for all three (M0), and `δ = 1` is rejected with `ClaimMismatch`.
+- Removing the member-weight check (`zk_lookup::finals`, `Gin::Member`) turns only
+  NC-0930 red. Removing the `eq·Z` check (`Gin::Pad`) turns only NC-0931 red. Removing
+  the step's `eq` final check (`zk_claims::public_finals`) turns only NC-0932 red. In
+  each case the forged proof is accepted (`unexpected: Ok(())`). The mutations are not
+  committed.
+
+No RFC amendment: no label, byte, order or verifier check changes. RFC-0013 A5 gains
+implementation notes. Coverage rises by three controls.
+
+Status: Proposed (development tier; independent review requested before merge).
