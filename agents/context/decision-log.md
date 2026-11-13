@@ -3578,8 +3578,8 @@ carries its fixes (the post-#364 estimate, the decision wording, rounds-only `M`
 
 ## ADR-124: Non-ZK standard admission does not wait on Q29; E8-05 depends on E8-05b and E8-05c instead of E8-05a (RFC-0002 §8, RFC-0012 A17; tasks E8-05, E8-05c)
 
-Numbering: ADR-121 is #363's and ADR-122 is #364's. ADR-123 is left to the GPU device
-benchmark (E16-35), which is in progress.
+Numbering: ADR-121 is #363's, ADR-122 is #364's and ADR-123 is #368's (the GPU device
+benchmark, E16-35).
 
 Context:
 - E8-05 (soundness ledger generator and accounting gate) depends on E8-05a.
