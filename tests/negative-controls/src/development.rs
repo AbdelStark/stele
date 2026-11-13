@@ -1156,6 +1156,131 @@ mod privacy {
         assert!(chi2 < 377, "10·χ² {chi2}");
     }
 
+    /// E12-31 (RFC-0013 A9, A10): [`two_proofs`] on a real checkpoint read from
+    /// `STELE_ZK_CHECKPOINT` (a directory with `model.bin`, `preparation.bin`,
+    /// `scales.bin`, `artifact.bin`). The window is the E16-11 prompt (24 tokens),
+    /// greedily extended to `STELE_ZK_LENGTH` (default 32) and checked from position 23,
+    /// as in the E12-29 and E16-33 runs. It commits at that length (byte 4, `P = 3`),
+    /// then makes two proofs (indices 0 and 1). Each must verify and reveal no bare
+    /// evaluation (exact, every occurrence), and the two must be χ²-homogeneous.
+    /// Release build only, about 30 GB per proof.
+    #[test]
+    #[ignore = "a real checkpoint: STELE_ZK_CHECKPOINT=dir, release, --ignored"]
+    fn rejects_bare_evaluations_and_accepts_two_proofs_on_a_supplied_checkpoint() {
+        use stele_prover::development::model_identity;
+        use stele_reductions::zk::claims::Lifetime;
+        let dir = std::path::PathBuf::from(
+            std::env::var("STELE_ZK_CHECKPOINT").expect("STELE_ZK_CHECKPOINT"),
+        );
+        let length: usize = std::env::var("STELE_ZK_LENGTH")
+            .map_or(Ok(32), |v| v.parse())
+            .expect("STELE_ZK_LENGTH");
+        let read = |name: &str| std::fs::read(dir.join(name)).expect(name);
+        let (m, p, s, a) = (
+            read("model.bin"),
+            read("preparation.bin"),
+            read("scales.bin"),
+            read("artifact.bin"),
+        );
+        let model = Model::decode(&m).expect("model");
+        let prep = Preparation::decode(&model, &p).expect("prep");
+        let scales = Scales::decode(&model, &s).expect("scales");
+        let id = artifact_id(&a);
+        let mut exec = Executor::new(&model, &prep, &scales, &a, &id, 1 << 36).expect("executor");
+        let mut tokens: Vec<u32> = vec![
+            1, 9038, 2501, 263, 931, 29892, 727, 471, 263, 2217, 7826, 4257, 365, 2354, 29889,
+            2296, 18012, 304, 1708, 5377, 297, 278, 14089, 29889,
+        ];
+        let (mut cache, mut next) = (None, 0);
+        for i in 0..length {
+            let (step, c) = exec.step(tokens[i], cache.as_ref()).expect("step");
+            cache = Some(c);
+            let max = step.logits().iter().max().expect("logits");
+            let y = step.logits().iter().position(|v| v == max).expect("argmax") as u32;
+            if i + 1 == tokens.len() && tokens.len() < length {
+                tokens.push(y);
+            }
+            next = y;
+        }
+        let statement = Statement {
+            tokens,
+            start: 23,
+            end: length as u32,
+            next: Some(next),
+        };
+        let weights = Weights::from_artifact(&model, &a).expect("weights");
+        let base = Public {
+            model: m.clone(),
+            scales: s.clone(),
+            preparation: p.clone(),
+            vectors: zk::published(&m, &weights.vectors).expect("published"),
+            commitment: Vec::new(),
+            sources: Sources::Expander,
+        };
+        let (commitment, mut state) = zk::commit(
+            &base,
+            &mut exec,
+            &weights,
+            length,
+            3,
+            [41; 32],
+            zk::PROFILE_BALANCED,
+        )
+        .expect("commit");
+        let zk_public = Public {
+            commitment: vec![(commitment.root, Vec::new())],
+            ..base
+        };
+        let (relation, values) =
+            zk::window(&zk_public, &mut exec, &weights, &statement).expect("window");
+        let (cqis_id, _) = model_identity(&zk_public).expect("identity");
+        let mut finals = Vec::new();
+        for seed in [42, 43] {
+            let (proof, index) = zk_prove(
+                &zk_public,
+                &mut exec,
+                &weights,
+                &statement,
+                &commitment,
+                &mut state,
+                seed,
+            )
+            .expect("prove");
+            zk::verify(&zk_public, &statement, &proof, &commitment, index).expect("verify");
+            let header = b"stele-dev-zk-v1".len() + 64;
+            let decoded =
+                stele_reductions::zk::claims::decode::<QM31>(&proof[header..]).expect("decode");
+            let lifetime = Lifetime {
+                geometry: commitment.geometry(),
+                source: zk_relation::WEIGHTS,
+                proofs: commitment.proofs as usize,
+                index: index as usize,
+                blocks: commitment.blocks.iter().map(|b| *b as usize).collect(),
+            };
+            let input = zk::public_input(&zk_public, &cqis_id, &statement, &commitment, index);
+            let mut tr = Transcript::new(&input).expect("transcript");
+            let (total, equal) =
+                zk_relation::leaks_lifetime(&mut tr, &relation, &values, &lifetime, &decoded)
+                    .expect("accepted");
+            eprintln!(
+                "proof index {index}: {} bytes, {total} masked finals, {equal} equal to the bare evaluation",
+                proof.len()
+            );
+            assert!(total > 1000, "{total} occurrences");
+            assert_eq!(
+                equal, 0,
+                "{equal} of {total} finals equal the bare evaluation"
+            );
+            finals.push(decoded);
+        }
+        let (h0, h1) = (histogram(&finals[0]), histogram(&finals[1]));
+        let chi2 = chi2_same_x10(&h0, &h1);
+        eprintln!(
+            "histograms {h0:?} {h1:?}; 10·χ² {chi2} (15 degrees of freedom; bound 377, χ² < 37.7)"
+        );
+        assert!(chi2 < 377, "10·χ² {chi2}");
+    }
+
     #[test]
     fn accepts_two_independent_proofs_against_one_commitment() {
         two_proofs("one-layer", 4, zk::PROFILE);
