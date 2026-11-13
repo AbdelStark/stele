@@ -286,7 +286,9 @@ pub fn prove_next(
         public, executor, weights, statement, seed, commitment, state, index,
     )
     .and_then(|(proof, revealed)| {
+        let mut laps = stele_reductions::parallel::Laps::start();
         verify(public, statement, &proof, commitment, index)?;
+        laps.lap("zk/self_verify");
         Ok((proof, revealed))
     });
     match result {
@@ -579,17 +581,21 @@ fn window_values(
     if public.vectors != published(&public.model, &weights.vectors)? {
         return Err(Error::StatementMismatch);
     }
+    let mut laps = stele_reductions::parallel::Laps::start(); // E16-22
     let published_relation = zk_relation_of(public, statement)?;
+    laps.lap("witness/zk_published_relation");
     let real = Public {
         vectors: weights.vectors.clone(),
         ..public.clone()
     };
     let d = decode(&real)?;
     let layout = layout_for(&d, &real, statement, true)?;
+    laps.lap("witness/zk_layout");
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let values = layout.assign(&capture, &weights.codes)?;
+    laps.lap("witness/zk_capture_assign");
     // E16-34: one plain check. The committed relation below keeps every constraint of
     // `layout.relation` over the same values (the records only change kind) and adds
     // the record encodings, so checking it alone rejects every false witness the first
@@ -598,9 +604,11 @@ fn window_values(
     let (relation, values) =
         commit_records(&layout.relation, Some((&values, &layout.relation)), width)?;
     let values = values.ok_or(Error::Witness)?;
+    laps.lap("witness/zk_commit_records");
     if checked {
         check(&relation, &values).map_err(Error::Check)?;
     }
+    laps.lap("witness/zk_plain_check_2");
     // The committed relation depends on no gain value: it is the verifier's.
     if relation::digest(&relation) != relation::digest(&published_relation) {
         return Err(Error::StatementMismatch);
@@ -708,7 +716,9 @@ pub fn prove(
         return Err(budget());
     }
     let d = decode(public)?;
+    let mut laps = stele_reductions::parallel::Laps::start();
     let (relation, values) = window(public, executor, weights, statement)?;
+    laps.lap("witness/zk_window_capture_check");
     let input = public_input(public, &d.cqis_id, statement, commitment, index);
     let mut t = Transcript::<K>::new(&input).map_err(|e| Error::Engine(e.into()))?;
     let model = ModelSecret {

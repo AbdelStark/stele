@@ -2800,6 +2800,7 @@ where
     {
         return Err(Error::Statement);
     }
+    let mut laps = stele_sumcheck::parallel::Laps::start(); // E16-22
     let mut data: Vec<Vec<K>> = columns
         .iter()
         .map(|column| column.iter().map(|x| element::<K>(*x)).collect())
@@ -2816,6 +2817,7 @@ where
     })
     .into_iter()
     .collect::<Result<Vec<_>, _>>()?;
+    laps.lap("zk/source_messages");
     let masks = plan
         .masks
         .iter()
@@ -2884,6 +2886,7 @@ where
         verified.push(v);
     }
     let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
+    laps.lap("zk/sources_prepare_certify");
     t.absorb(AbsorbLabel::FieldSources, &sources.concat())
         .map_err(fail)?;
     // RFC-0008 A7 items 1–3: β and α after the multiplicities, then the top. Only the
@@ -2903,6 +2906,7 @@ where
         data.extend([p, q, h]);
         runs.push(lookup::Run::new(beta, alpha));
     }
+    laps.lap("zk/logup_trees_and_tops");
     let top_message = if plan.lookups.is_empty() {
         Vec::new()
     } else {
@@ -2932,6 +2936,7 @@ where
     }
     t.absorb(AbsorbLabel::FieldSources, &sources[early..].concat())
         .map_err(fail)?;
+    laps.lap("zk/top_and_shared_sources");
     let shared_index = plan.layouts.len();
     let binding = sources[shared_index].clone();
     let mut all: Vec<&[M31]> = messages.iter().map(Vec::as_slice).collect();
@@ -3002,6 +3007,7 @@ where
         mus.push(mask_claim(&plan, j, &point, mu)?);
         relations.push(proof);
     }
+    laps.lap("zk/relations_masked_sumcheck");
     let mut gkr = Vec::new();
     // E16-33: one lookup's tree at a time, rebuilt from its own `β, α` (the columns it
     // reads precede the appended tops, so it is the same tree), and dropped before
@@ -3073,6 +3079,7 @@ where
         lookup::advance(step, run, &point, &finals, t)?;
         gkr.push(proof);
     }
+    laps.lap("zk/logup_gkr");
     let mut batches = Vec::new();
     let mut revealed = None;
     for (b, source) in plan.batched.iter().enumerate() {
@@ -3096,6 +3103,7 @@ where
         }
         batches.push(batch);
     }
+    laps.lap("zk/claim_batches_and_openings");
     let shared = &prepared[shared_index];
     let gammas = coefficients(t, mus.len())?;
     let weights = weight_table(shared.source(), &mus, &gammas)?;
@@ -3115,6 +3123,7 @@ where
         )
         .map_err(|f| Error::Pcs(f.cause))?
         .0;
+    laps.lap("zk/shared_batch_and_opening");
     Ok((
         Proof {
             sources,
