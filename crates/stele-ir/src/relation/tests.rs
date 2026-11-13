@@ -229,6 +229,26 @@ fn rejects_selected_lookup_tamper_and_skips_unselected_rows() {
     );
 }
 
+/// E16-22: with several failures the checker reports the first in sequential order,
+/// both sequentially and on the pool (`std`): category order (the identity before the
+/// matmul), then the least failing point (2 before 3).
+#[test]
+fn reports_the_sequential_first_failure() {
+    let mut f = fixture();
+    let (a, y, z) = (f.a, f.y, f.z);
+    tamper(&mut f, y, 3, 1);
+    tamper(&mut f, z, 3, 2);
+    tamper(&mut f, a, 3, 1);
+    tamper(&mut f, a, 2, 1);
+    assert_eq!(
+        check(&f.relation, &f.values),
+        Err(Violation::Identity {
+            relation: "product".to_string(),
+            point: 2
+        })
+    );
+}
+
 #[test]
 fn rejects_matmul_tamper() {
     let mut f = fixture();
