@@ -1143,7 +1143,8 @@ pub fn prove(
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
 ) -> Result<Proof, Error> {
-    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
+    // E16-22: stage timing, off unless STELE_STAGE_TIMES.
+    let mut laps = parallel::Laps::start();
     let plan = plan(relation, sources)?;
     laps.lap("dev/plan");
     prove_plan(t, relation, &plan, values, values, model)
@@ -1169,8 +1170,9 @@ fn prove_plan(
     }
     let mut proof = Proof::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
-    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
-                                            // Step 1.
+    // E16-22: stage timing, off unless STELE_STAGE_TIMES.
+    let mut laps = parallel::Laps::start();
+    // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
     absorb_model(t, &certificates)?;
     // Step 2: the stacked source (A4), signed embedding; group blocks largest first,

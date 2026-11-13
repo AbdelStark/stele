@@ -25,7 +25,7 @@
    "token": "Engine(Sumcheck(RoundSumMismatch))",
    "weight": "Commitment(Transcript(GrindMismatch))"
   },
-  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build; BSD /usr/bin/time -l. Task E16-22 before/after pair: six prove-dev runs of stories42M T = 64 (profile byte 3, checked 23..64), before and after alternating, each started at 1-minute load < 3 (load.log: 2.64 to 2.97 at start; other agents' sessions open). Prove walls: before 165.75, 167.64, 207.52 s (median 167.64); after 111.57, 124.35, 123.64 s (median 123.64). All six proofs byte-identical (deterministic). Stage laps (STELE_STAGE_TIMES): the plain checker took 155.90 s beside a 96.66 s engine before (a lap run of the before code with timers only), and 19.02, 21.66, 22.49 s after. Controls ran once on the shared proof bytes. This record is the median prove run. after: 21e027b (parallel plain checker; stage timers off).",
+  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build; BSD /usr/bin/time -l. Task E16-22 before/after pair: six prove-dev runs of stories42M T = 64 (profile byte 3, checked 23..64), before and after alternating, each started at 1-minute load < 3 (load.log: 2.64 to 2.97 at start; other agents' sessions open). Prove walls: before 165.75, 167.64, 207.52 s (median 167.64); after 111.57, 124.35, 123.64 s (median 123.64). All six proofs byte-identical (deterministic). Stage laps (STELE_STAGE_TIMES): the plain checker took 155.90 s beside a 96.66 s engine before (a lap run of the before code with timers only), and 19.02, 21.66, 22.49 s after. Controls ran once on the shared proof bytes. This record is the median prove run. after: 21e027b (parallel plain checker; stage timers off). Stage laps (stage_times_ns lap_*) are from this run.",
   "model": {
    "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
    "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
@@ -67,6 +67,17 @@
  "prover_time_ns": 123640000000,
  "schema_version": 1,
  "stage_times_ns": {
+  "lap_dev_batch_and_openings": 19060000000,
+  "lap_dev_check_and_engine": 101953000000,
+  "lap_dev_logup": 46713000000,
+  "lap_dev_matmul": 1632000000,
+  "lap_dev_model_sources": 1167000000,
+  "lap_dev_plain_check": 22487000000,
+  "lap_dev_plan": 110000000,
+  "lap_dev_sources_and_counts": 22712000000,
+  "lap_dev_zerocheck": 11459000000,
+  "lap_witness_decode_extend_weights": 7160000000,
+  "lap_witness_layout_capture_assign": 11432000000,
   "prove_dev_wall": 123640000000
  },
  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",

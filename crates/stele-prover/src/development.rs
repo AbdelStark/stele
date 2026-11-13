@@ -491,7 +491,8 @@ fn prove_inner(
     statement: &Statement,
     hook: Option<Hook<'_>>,
 ) -> Result<Vec<u8>, Error> {
-    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
+    // E16-22: stage timing, off unless STELE_STAGE_TIMES.
+    let mut laps = parallel::Laps::start();
     let d = decode(public)?;
     let mut layout = layout(&d, public, statement)?;
     let capture = executor
@@ -655,7 +656,8 @@ pub fn prove_window_profile(
         .map_err(|_| Error::StatementMismatch)?;
     let s = Scales::decode(&m, scales).map_err(|_| Error::StatementMismatch)?;
     let id = artifact_id(artifact);
-    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
+    // E16-22: stage timing, off unless STELE_STAGE_TIMES.
+    let mut laps = parallel::Laps::start();
     let mut executor =
         Executor::new(&m, &p, &s, artifact, &id, 1 << 36).map_err(|_| Error::Witness)?;
     if statement.tokens.len() < length {

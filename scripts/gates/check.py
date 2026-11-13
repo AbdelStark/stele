@@ -689,6 +689,7 @@ def field_sources(root):
             'pubfnprove_measured' + producer_parameters + '->Result<(Vec<u8>,Usage,Work),Failure>{']
         and not re.search(r'\bimpl\b|\b(?:include|include_str|include_bytes|macro_rules)\s*!', matmul_producer))
     oracle = root / 'tests/negative-controls/lookup_corpus.py'
+    ir_manifest = tomllib.loads((root / 'crates/stele-ir/Cargo.toml').read_text())
     if (actual != allowed or (crate / 'src/lib.rs').read_text() != library
             or manifest.get('dependencies') != dependencies
             or any(k in manifest for k in ('dev-dependencies', 'build-dependencies', 'target'))
@@ -700,6 +701,10 @@ def field_sources(root):
                     'controls': ['stele-sumcheck/controls'],
                     # ADR-108: the standard-profile lookup, for tests and controls only.
                     'standard-unproven': ['stele-pcs/standard-unproven']}
+            # E16-22 (ADR-120): stele-ir's only feature is the pool for its plain checker,
+            # with rayon optional behind it.
+            or ir_manifest.get('features') != {'std': ['dep:rayon']}
+            or ir_manifest.get('dependencies', {}).get('rayon') != {'version': '=1.10.0', 'optional': True}
             or 'build' in manifest.get('package', {})
             or declarations != [('enum', 'Error'), ('struct', 'Failure'), ('', 'cause'), ('', 'usage'),
                                 ('struct', 'FieldSourceRecord'), ('fn', 'sc'), ('fn', 'openings'),

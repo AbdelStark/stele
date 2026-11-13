@@ -61,7 +61,12 @@ dev-zk, byte 4, `T = 32`:
 | **ZK-GKR** | **177.7 s** | **173.2 s** |
 | claim batches and openings | 27.2 s | 21.4 s |
 | self-verify | 31.0 s | 30.6 s |
-| **prove wall** (one run each) | **562.5 s** | **465.7 s** |
+| **prove wall** (one run each; single runs, not medians) | **562.5 s** | **465.7 s** |
+
+The source-preparation stage was 19 s slower after (84.5 → 103.5 s). These are single
+runs on a shared host. That stage runs no checker code, the proof bytes are the same,
+and the checker now competes with nothing at that point, so the difference is host
+noise, not a regression.
 
 ZK-GKR is the top dev-zk stage. The masked factor products dominate it (QM31
 `TermPlan::sum` in the CPU samples).
@@ -85,15 +90,19 @@ CPU samples, all threads, after:
 
 `T' = r + O/s`. `O` is the offloadable work: encoding, Merkle, dense, zerocheck,
 masked and GKR rounds, LogUp levels and claim batches. `r` is the rest. `s` is a
-device speedup from `bench/ledger/e16-21-gpu-gating.json`:
-- rounds only: 25×–76×;
-- with the upload: 2.9×–16×.
+device speedup from `bench/ledger/e16-21-gpu-gating.json`, all four sizes for both
+workloads:
+- rounds only (CPU total over GPU rounds): 25.4×, 41.8×, 71.9× and 76.1×;
+- with the upload (CPU total over GPU total): 15.9×, 8.2×, 7.4× and 2.9×.
+
+For development, the engine runs beside the checker, so `T' = 21.6 s + max(22.5 s,
+101.7 s/s)`. 21.6 s is the witness, model sources and the rest; 22.5 s is the checker.
 
 | Workload | Wall | Offloadable | Ceiling at `s = ∞` | At the rounds-only ratios | At the upload-inclusive ratios |
 |---|---:|---:|---:|---:|---:|
 | development before (checker-bound) | 167.6 s | engine (beside a 156 s checker) | about 1.0× | about 1.0× | about 1.0× |
-| development after | 123.6 s | ≤ 101.7 s (the whole engine) | **≤ 2.80×** | ≤ 2.7× | ≤ 2.5× |
-| dev-zk after | 465.7 s | 358.3 s | 4.34× | 3.8×–4.2× | 2.0×–3.0× |
+| development after | 123.6 s | ≤ 101.7 s (the whole engine) | **2.80×** | 2.80× (checker-bound) | 2.19×–2.80× |
+| dev-zk after | 465.7 s | 358.3 s | 4.34× | 3.83×–4.15× | **2.02×–3.58×** |
 
 - **Development.**
   - After the checker change, the floor is witness, model sources, the checker (now
@@ -104,18 +113,20 @@ device speedup from `bench/ledger/e16-21-gpu-gating.json`:
     the CPU checker.
 - **dev-zk.**
   - The offloadable share is 77%.
-  - The ceiling crosses 3× only if the tables stay resident on the device (rounds-only
-    ratios).
+  - With resident tables (rounds-only ratios) the ceiling is above 3× at every
+    measured size.
+  - With the measured upload cost, it is above 3× only at the smallest size's ratio
+    (15.9×, `2^16` entries). It falls to 2.02× at the largest (2.9×, `2^24`), and
+    stories42M's tables are near that size.
   - It also needs the masked factor tables built on the device; they are counted as
     offloadable here, which is optimistic.
-  - With the measured upload cost it is 2.0×–3.0×.
 
 ## 4. CPU optimisations, by expected gain
 
 1. **Parallel plain checker. Done (ADR-120).**
    - Development: 167.6 → 123.6 s (1.36× end to end; the checker went from 156 to
      22 s).
-   - dev-zk: 562 → 466 s (1.21×; the checks went from 125 to 13 s).
+   - dev-zk: 562 → 466 s (1.21×, single runs; the checks went from 125 to 13 s).
 2. **ZK-GKR and masked products** (dev-zk 173 + 35 s; 63% of dev-zk CPU):
    - SIMD QM31 (`stele-simd` has `PackedQM31`) in `TermPlan::sum` and the folds;
    - M31 factor tables where the values are base-field (leaf tuple and multiplicity
@@ -123,9 +134,8 @@ device speedup from `bench/ledger/e16-21-gpu-gating.json`:
    - expected 1.3×–2× on the stage.
 3. **Hiding-source encoding** (dev-zk 103.5 s): SIMD M31 Circle butterflies
    (`PackedM31`); expected about 1.5× on the stage.
-4. **BLAKE3 NEON.** Every crate uses `blake3` with `default-features = false`, so the
-   portable code runs on aarch64. Merkle, mask streams (21.6 s) and grinding would all
-   gain from the `neon` feature, a one-line change.
+4. **BLAKE3.** On aarch64, blake3's build script already enables NEON. Its `std`
+   feature adds runtime AVX2 and AVX-512 detection, which helps only x86_64 hosts.
 5. **Development LogUp** (46.7 s, now the top development stage) and the engine's
    sources and counts (22.7 s): the leaf preparation and counts are CPU-bound table
    work.
