@@ -2,9 +2,12 @@
 //! claims on one virtual tensor (mode 1), each one sumcheck under a random linear
 //! combination (RFC-0006 A2, task E8-02b).
 //!
-//! An independent re-implementation, held to `research/batching/corpus.jsonl` and
-//! the production decisions recorded beside it. No code is shared with
-//! `stele-sumcheck`.
+//! Provenance (#373 review): this module was derived from `stele-sumcheck`'s
+//! verifiers. Mode 0's `shape` transcribes production condition for condition. It was
+//! then checked against the RFC-0006 A2 text by a non-author review, and it is held to
+//! `research/batching/corpus.jsonl` and the production decisions recorded beside it.
+//! It shares no code with `stele-sumcheck`, but it is not an independent derivation.
+//! ADR-128 records that, and writes later pieces from the RFC alone.
 
 use crate::sumcheck::{
     bytes_of, degree, evaluate, instance_bytes, message, mle_at, step, Bytes, Error, Instance,
@@ -38,15 +41,21 @@ fn field_degree<K: ChallengeField>() -> u8 {
     (bytes_of(&K::from_i64(0)) / 4) as u8
 }
 
-/// `γ^0, γ^1, …` for `n` members, and `Σ γ^k·x_k`.
-fn powers<K: ChallengeField>(gamma: K, xs: impl Iterator<Item = K>) -> (Vec<K>, K) {
-    let (mut w, mut sum, mut out) = (K::from_i64(1), K::from_i64(0), Vec::new());
+/// `γ^0, γ^1, …` for the members, and `Σ γ^k·x_k`.
+fn powers<K: ChallengeField>(
+    gamma: K,
+    xs: impl ExactSizeIterator<Item = K>,
+) -> Result<(Vec<K>, K), Error> {
+    let mut out = Vec::new();
+    out.try_reserve_exact(xs.len())
+        .map_err(|_| Error::Capacity)?;
+    let (mut w, mut sum) = (K::from_i64(1), K::from_i64(0));
     for x in xs {
         out.push(w);
         sum = sum + w * x;
         w = w * gamma;
     }
-    (out, sum)
+    Ok((out, sum))
 }
 
 /// Mode 0: ordered instances, sized to the largest; a smaller instance is a suffix of
@@ -63,6 +72,8 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
             return Err(Error::InvalidBatch);
         }
         let (mut m, mut d, mut inputs) = (0u32, 0usize, 0usize);
+        // RFC-0006 A2: ids distinct from each other and from the batch; an input shared
+        // by two instances only between instances of one size.
         for (b, i) in self.instances.iter().enumerate() {
             d = d.max(degree(i).map_err(|_| Error::InvalidBatch)?);
             m = m.max(i.num_vars);
@@ -86,6 +97,9 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
     pub fn encode(&self) -> Result<Vec<u8>, Error> {
         let (m, d, _) = self.shape()?;
         let mut parts = Vec::new();
+        parts
+            .try_reserve_exact(self.instances.len())
+            .map_err(|_| Error::Capacity)?;
         let mut size = 23usize;
         for i in self.instances {
             let bytes = instance_bytes(i, degree(i)?)?;
@@ -106,6 +120,8 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
 
     pub fn verify(&self, proof: &Proof<K>, t: &mut Transcript<K>) -> Result<Reduction<K>, Error> {
         let (m, d, inputs) = self.shape()?;
+        // RFC-0006 A2: exactly m rounds of degree + 1 values and one final value per
+        // member input; never more or fewer.
         if proof.rounds.len() != m as usize
             || proof.final_values.len() != inputs
             || proof.rounds.iter().any(|r| r.len() != d + 1)
@@ -114,7 +130,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         }
         t.absorb(AbsorbLabel::Batch, &self.encode()?)?;
         let gamma = t.challenge(ChallengeLabel::BatchCoefficient)?;
-        let (weights, mut claim) = powers(gamma, self.instances.iter().map(|i| i.claimed_sum));
+        let (weights, mut claim) = powers(gamma, self.instances.iter().map(|i| i.claimed_sum))?;
         let mut point = Vec::new();
         point
             .try_reserve_exact(m as usize)
@@ -125,6 +141,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
             point.push(r);
         }
         let mut tail = Vec::new();
+        tail.try_reserve_exact(13).map_err(|_| Error::Capacity)?;
         tail.extend_from_slice(&self.id.to_le_bytes());
         tail.push(0);
         tail.extend_from_slice(&(self.instances.len() as u32).to_le_bytes());
@@ -137,9 +154,13 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
                 selector = selector * (K::from_i64(1) - *r);
             }
             sum = sum + *w * selector * evaluate(i, values);
-            tail.extend_from_slice(&message(i.id, i.inputs.len() as u32, values)?);
+            let part = message(i.id, i.inputs.len() as u32, values)?;
+            tail.try_reserve_exact(part.len())
+                .map_err(|_| Error::Capacity)?;
+            tail.extend_from_slice(&part);
             at += i.inputs.len();
         }
+        // RFC-0006 A2: Σ γ^k·selector_k·P_k(finals) is the last claim.
         if sum != claim {
             return Err(Error::FinalEvaluationMismatch);
         }
@@ -151,9 +172,14 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         for i in self.instances {
             let lead = (m - i.num_vars) as usize;
             for tensor in &i.inputs {
+                let mut suffix = Vec::new();
+                suffix
+                    .try_reserve_exact(point.len() - lead)
+                    .map_err(|_| Error::Capacity)?;
+                suffix.extend_from_slice(&point[lead..]);
                 claims.push(Claim {
                     tensor: *tensor,
-                    point: point[lead..].to_vec(),
+                    point: suffix,
                     value: proof.final_values[claims.len()],
                 });
             }
@@ -188,6 +214,8 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         t: &mut Transcript<K>,
     ) -> Result<Reduction<K>, Error> {
         self.shape()?;
+        // RFC-0006 A2: one table group per instance, one table per input, and a shared
+        // input's tables equal.
         if tables.len() != self.instances.len() {
             return Err(Error::PublicShape);
         }
@@ -209,6 +237,7 @@ impl<K: ChallengeField + Eq> Batch<'_, K> {
         }
         let result = self.verify(proof, t)?;
         for (claim, table) in result.claims.iter().zip(tables.iter().flatten()) {
+            // RFC-0006 A2: each claim is its table's MLE at the claim's point suffix.
             if mle_at(table, &claim.point) != claim.value {
                 return Err(Error::ClaimMismatch);
             }
@@ -239,6 +268,7 @@ fn eq<K: ChallengeField>(z: &[K], r: &[K]) -> Result<K, Error> {
 
 impl<K: ChallengeField + Eq> ClaimBatch<'_, K> {
     fn validate(&self) -> Result<(), Error> {
+        // RFC-0006 A2 mode 1: a non-empty batch, every point of num_vars coordinates.
         if self.claims.is_empty()
             || u32::try_from(self.claims.len()).is_err()
             || self
@@ -259,7 +289,12 @@ impl<K: ChallengeField + Eq> ClaimBatch<'_, K> {
         let size = self
             .claims
             .len()
-            .checked_mul((self.num_vars as usize + 1) * width)
+            .checked_mul(
+                (self.num_vars as usize)
+                    .checked_add(1)
+                    .and_then(|n| n.checked_mul(width))
+                    .ok_or(Error::Capacity)?,
+            )
             .and_then(|n| n.checked_add(27))
             .ok_or(Error::Capacity)?;
         let mut out = Bytes::with(size)?;
@@ -278,6 +313,7 @@ impl<K: ChallengeField + Eq> ClaimBatch<'_, K> {
 
     pub fn verify(&self, proof: &Proof<K>, t: &mut Transcript<K>) -> Result<Reduction<K>, Error> {
         self.validate()?;
+        // RFC-0006 A2 mode 1: num_vars degree-2 rounds (3 values) and one final value.
         if proof.rounds.len() != self.num_vars as usize
             || proof.rounds.iter().any(|r| r.len() != 3)
             || proof.final_values.len() != 1
@@ -286,7 +322,7 @@ impl<K: ChallengeField + Eq> ClaimBatch<'_, K> {
         }
         t.absorb(AbsorbLabel::Batch, &self.encode()?)?;
         let gamma = t.challenge(ChallengeLabel::BatchCoefficient)?;
-        let (_, mut claim) = powers(gamma, self.claims.iter().map(|(_, v)| *v));
+        let (_, mut claim) = powers(gamma, self.claims.iter().map(|(_, v)| *v))?;
         let mut point = Vec::new();
         point
             .try_reserve_exact(self.num_vars as usize)
@@ -303,6 +339,7 @@ impl<K: ChallengeField + Eq> ClaimBatch<'_, K> {
             coefficient = coefficient + w * eq(z, &point)?;
             w = w * gamma;
         }
+        // RFC-0006 A2 mode 1: T(r)·Σ γ^k eq(z_k, r) is the last claim.
         if value * coefficient != claim {
             return Err(Error::FinalEvaluationMismatch);
         }
@@ -345,13 +382,91 @@ impl<K: ChallengeField + Eq> ClaimBatch<'_, K> {
         t: &mut Transcript<K>,
     ) -> Result<Reduction<K>, Error> {
         self.validate()?;
+        // RFC-0006 A2 mode 1: the tensor's table has 2^num_vars entries.
         if !table.len().is_power_of_two() || table.len().trailing_zeros() != self.num_vars {
             return Err(Error::PublicShape);
         }
         let result = self.verify(proof, t)?;
+        // RFC-0006 A2 mode 1: the final value is the table's MLE at the point.
         if mle_at(table, &result.point) != result.claims[0].value {
             return Err(Error::ClaimMismatch);
         }
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sumcheck::Term;
+    use stele_field::{Field, QM31};
+
+    fn shape_of(r: Result<Reduction<QM31>, Error>) -> Result<(), Error> {
+        r.map(|_| ())
+    }
+
+    /// Mode 0's upper bounds: a round row one value too long, an extra round and an
+    /// extra final value are each `ProofShape`.
+    #[test]
+    fn rejects_overlong_instance_batch_proofs() {
+        let one = QM31::from_i64(1);
+        let instances = [Instance {
+            id: 5,
+            num_vars: 1,
+            inputs: alloc::vec![11],
+            terms: alloc::vec![Term {
+                coefficient: one,
+                factors: alloc::vec![0],
+            }],
+            claimed_sum: one,
+        }];
+        let batch = Batch {
+            id: 9,
+            instances: &instances,
+        };
+        let honest = || Proof {
+            rounds: alloc::vec![alloc::vec![one; 2]],
+            final_values: alloc::vec![one],
+        };
+        let mut long = [honest(), honest(), honest()];
+        long[0].rounds[0].push(one);
+        long[1].rounds.push(alloc::vec![one; 2]);
+        long[2].final_values.push(one);
+        for proof in long {
+            let mut t = Transcript::new(b"stele/test/a2-shape").expect("transcript");
+            assert_eq!(
+                shape_of(batch.verify(&proof, &mut t)),
+                Err(Error::ProofShape)
+            );
+        }
+    }
+
+    /// Mode 1's upper bounds: a round row of 4 values, an extra round and a second final
+    /// value are each `ProofShape`.
+    #[test]
+    fn rejects_overlong_claim_batch_proofs() {
+        let one = QM31::from_i64(1);
+        let claims = [(alloc::vec![one], one)];
+        let batch = ClaimBatch {
+            id: 9,
+            tensor: 11,
+            num_vars: 1,
+            claims: &claims,
+        };
+        let honest = || Proof {
+            rounds: alloc::vec![alloc::vec![one; 3]],
+            final_values: alloc::vec![one],
+        };
+        let mut long = [honest(), honest(), honest()];
+        long[0].rounds[0].push(one);
+        long[1].rounds.push(alloc::vec![one; 3]);
+        long[2].final_values.push(one);
+        for proof in long {
+            let mut t = Transcript::new(b"stele/test/a2-shape").expect("transcript");
+            assert_eq!(
+                shape_of(batch.verify(&proof, &mut t)),
+                Err(Error::ProofShape)
+            );
+        }
     }
 }

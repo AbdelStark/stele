@@ -129,6 +129,12 @@ fn matches_reference_a3_corpus_decisions_and_receipts() {
         let mut output = result.unwrap_or_else(|error| json!({ "error": error }));
         output["name"] = c["name"].clone();
         assert_eq!(output, expected, "case {}", c["name"]);
+        // The corpus's own expectation agrees too.
+        let decision = output
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or("accept");
+        assert_eq!(decision, c["expected"].as_str().expect("expected"));
         accepted += usize::from(output.get("error").is_none());
     }
     assert_eq!(accepted, 314 - 174);

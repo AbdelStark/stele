@@ -3882,4 +3882,17 @@ Consequences:
   corpus that both production verifiers share. A synthetic proof's A1 sections become
   parity inputs once E8-02f can parse them.
 
+**Provenance and the writing rule (#372/#373 review).**
+- The A1 module was written from the RFC text.
+- The A3 zerocheck (`zerocheck.rs`) and A2 batches (`batch.rs`) were derived from
+  `stele-sumcheck`'s verifiers: their `shape` rules transcribe production condition
+  for condition. They were then checked against the RFC-0006 A2/A3 text by a
+  non-author review. They share no code with production, but they are not independent
+  derivations, and their module docs say so.
+- From E8-02c on, each module is written from the RFC text without production code
+  open, then checked for parity. The Circle code (E8-02c) follows the RFC-0010 A2
+  basis and the Python reference's recursive form.
+- Each check carries its RFC annotation (RFC-0016 §3). Each proof-shape bound, upper
+  and lower, has its own test, because the corpora hold only short proofs.
+
 Status: Proposed (verifier architecture; no protocol change). Review requested.

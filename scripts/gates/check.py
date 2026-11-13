@@ -94,11 +94,11 @@ ACCOUNTING = {
     # the parity test's dev-dependency), needs its pin moved in review.
     'pins': {
         'src/accounting.rs': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
-        'src/sumcheck.rs': 'b314ae2786d9bf249a9d303894d15ae9107796d985f29d78a49f2121b864e2ed',
-        'src/zerocheck.rs': '16a1c3adf74486e8c15d52f5317274a2ddfc62db46d91b31031e35592995917e',
-        'src/batch.rs': '99b98c455bea40f0c9b9f8c341827cb2ad612a3fc8a187e2930f11b41120f5f1',
-        'tests/zerocheck_corpus.rs': '14ba181df23313dc9139ccec9471e6d1ab0b6fa3be441998fbf680ca88f1fe43',
-        'tests/batch_corpus.rs': '601a21bfe09c9c62755de2b584bb6c50daed0b3c6b5ac047fe9d9f134d2c28ba',
+        'src/sumcheck.rs': '48a06ac3d0f8e85bdd163d3b1644e38788043d9bad860418483804a4af208a35',
+        'src/zerocheck.rs': 'a82b783675819269f079de56cb1964076780068b0331cb3263d34ee540421df2',
+        'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
+        'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
+        'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
     },
