@@ -7,9 +7,9 @@ const ROW: &str = "| NC-0001 | binding | 0002 §7 | change cell | ExactError | t
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 234);
+    assert_eq!(catalog.len(), 236);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
-    assert_eq!(catalog.last().map(|entry| entry.id), Some(1322));
+    assert_eq!(catalog.last().map(|entry| entry.id), Some(1324));
     assert!(
         report(&catalog, &[]).is_err(),
         "done requires executed registration"
@@ -17,7 +17,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
     assert!(
-        coverage.contains("64/110 bindings; 133/234 controls"),
+        coverage.contains("64/110 bindings; 135/236 controls"),
         "{coverage}"
     );
     assert_eq!(coverage.matches("MISSING").count(), 101);
@@ -26,7 +26,7 @@ fn accepts_repository_catalog_without_crediting_stub() {
         318, 400, 401, 402, 403, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 603, 605, 609,
         611, 612, 613, 614, 806, 807, 808, 809, 813, 814, 815, 816, 817, 902, 903, 904, 905, 906,
         907, 908, 909, 910, 911, 913, 914, 915, 916, 930, 931, 932, 1300, 1301, 1304, 1305, 1309,
-        1310, 1311, 1312, 1313, 1314, 1315, 1316, 1317, 1318, 1319, 1320, 1321, 1322,
+        1310, 1311, 1312, 1313, 1314, 1315, 1316, 1317, 1318, 1319, 1320, 1321, 1322, 1323, 1324,
     ] {
         assert!(
             catalog

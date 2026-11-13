@@ -34,6 +34,11 @@
 //!   because the prover sends the least valid nonce (`GrindMismatch`). NC-1322 reads
 //!   the A14 proof with byte 3, header restamped (`RoundSumMismatch`: the transcript
 //!   input differs before any nonce is read).
+//! - NC-1323 (A14 review, the counterpart of NC-0816): a ground check's nonce replaced
+//!   by the next valid nonce above it, found with the verifier's own predicate. The
+//!   predicate passes, the new nonce is absorbed, and every later challenge moves
+//!   (`RoundSumMismatch`). NC-1324 reads an A12 (byte 3) proof as byte 5, header
+//!   restamped (`RoundSumMismatch`).
 //!
 //! NC-1310 (`run_width`) runs on a minimal relation through the relation-engine
 //! prover and verifier (RFC-0026 A10), as a documented INV-4 exception (ADR-110).
@@ -372,7 +377,7 @@ pub fn run(id: u16) -> Result<(), String> {
     // NC-1311..1316 test A11 (byte 2) proofs; every other control the default (A12).
     let set = match id {
         1311..=1316 => Sources::Circle,
-        1321 | 1322 => Sources::CircleAllGrind,
+        1321..=1323 => Sources::CircleAllGrind,
         _ => Sources::CircleAll,
     };
     let weights =
@@ -847,6 +852,53 @@ pub fn run(id: u16) -> Result<(), String> {
             let nonce = u64::from_le_bytes(section[..8].try_into().map_err(|_| "nonce")?);
             section[..8].copy_from_slice(&(nonce - 1).to_le_bytes());
             ("GrindMismatch", verify(&public, &honest, &c.encode()).err())
+        }
+        1323 => {
+            // The ground check with the fewest bits keeps the search short.
+            let lu = stele_reductions::relation::Line::Lu;
+            let bits: Vec<u8> = ledger
+                .entries
+                .iter()
+                .filter(|e| e.line == lu)
+                .map(|e| e.grind)
+                .collect();
+            let (i, _) = bits
+                .iter()
+                .enumerate()
+                .filter(|(_, k)| **k > 0)
+                .min_by_key(|(_, k)| **k)
+                .ok_or("no ground check")?;
+            let c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
+            let honest_nonce =
+                u64::from_le_bytes(c.lookups[i][..8].try_into().map_err(|_| "nonce")?);
+            let with = |n: u64| {
+                let mut c = c.clone();
+                c.lookups[i][..8].copy_from_slice(&n.to_le_bytes());
+                verify(&public, &honest, &c.encode()).err()
+            };
+            // The verifier's predicate rejects every candidate before the next valid
+            // nonce with `GrindMismatch`; that nonce is the first it lets through.
+            let mut found = None;
+            for n in honest_nonce + 1..honest_nonce + (1 << 16) {
+                match with(n) {
+                    Some(e) if name(&e) == "GrindMismatch" => continue,
+                    other => {
+                        found = Some(other);
+                        break;
+                    }
+                }
+            }
+            (
+                "RoundSumMismatch",
+                found.ok_or("no valid nonce within 2^16")?,
+            )
+        }
+        1324 => {
+            let a14 = Public {
+                sources: Sources::CircleAllGrind,
+                ..public.clone()
+            };
+            ("RoundSumMismatch", restamped(&a14, &honest, &proof)?)
         }
         1322 => {
             let a12 = Public {
@@ -1378,8 +1430,8 @@ fn rejects_nc_1310_out_of_width() {
 
 #[cfg(test)]
 #[test]
-fn rejects_nc_1321_and_nc_1322_lookup_grinding() {
-    for id in [1321, 1322] {
+fn rejects_nc_1321_to_nc_1324_lookup_grinding() {
+    for id in [1321, 1322, 1323, 1324] {
         assert_eq!(run(id), Ok(()), "NC-{id}");
     }
 }

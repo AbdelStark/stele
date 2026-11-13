@@ -2039,5 +2039,10 @@ entry's largest single round and every PCS round, model sources included:
 check's `(β, α)` round at the least `k_LU` meeting (C1). The nonce is placed as in
 RFC-0008 A8, and the LU round carries `k_LU`.
 - On the synthetic eight-layer window, `verify-dev` prints PASS (C1)–(C4).
-- The worst round is LU silu_q at exactly `2^-108.0` after 2 bits.
-- The floor is `2^-101.9`.
+  - The worst rounds are the PCS column rounds, at exactly `2^-108`.
+  - The largest LU round, silu_q, is at `2^-108.0000055` after 2 bits. The two tie at the
+    printed resolution, and `verify-dev` names silu_q, the first in ledger order.
+  - The floor is `2^-101.9`.
+- On stories42M at T = 64 (`bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json`),
+  `verify-dev` also prints PASS. The worst round is a PCS column round at `2^-108`, and
+  the floor is `2^-101.9`.

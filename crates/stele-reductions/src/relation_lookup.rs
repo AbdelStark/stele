@@ -219,6 +219,26 @@ pub(super) enum Nonce<'a, 'b> {
     Verify(&'a mut Reader<'b>),
 }
 
+/// The `(β, α)` round. A14: as RFC-0008 A8 item 5, a ground round's nonce follows
+/// `Repetition(id, 0, 0)` and precedes `Beta`, and its absorb is in the state both
+/// challenges are drawn from. It is the section's first 8 bytes, u64le; `grind` comes
+/// from the plan. The verifier checks the predicate, not leastness: any valid nonce
+/// is sound.
+fn pair(t: &mut Transcript<K>, grind: u8, nonce: Nonce<'_, '_>) -> Result<(K, K), Error> {
+    if grind > 0 {
+        match nonce {
+            Nonce::Prove(out) => out.extend_from_slice(&t.grind(grind)?.to_le_bytes()),
+            Nonce::Verify(reader) => {
+                let bytes: [u8; 8] = reader.take(8)?.try_into().map_err(|_| Error::ProofShape)?;
+                t.verify_grind(grind, u64::from_le_bytes(bytes))?;
+            }
+        }
+    }
+    let beta = t.challenge(ChallengeLabel::LookupBeta)?;
+    let alpha = t.challenge(ChallengeLabel::LookupAlpha)?;
+    Ok((beta, alpha))
+}
+
 fn start(
     t: &mut Transcript<K>,
     check: &Check,
@@ -235,19 +255,7 @@ fn start(
     bundle.extend_from_slice(&mu.record().id());
     t.absorb(AbsorbLabel::LookupMultiplicities, &bundle)?;
     t.absorb(AbsorbLabel::LookupRepetition, &phase(check.id, 0, 0))?;
-    // A14: as RFC-0008 A8 item 5, the nonce follows `Repetition(id, 0, 0)` and precedes
-    // `Beta`; it is the section's first 8 bytes, u64le. k comes from the plan.
-    if check.grind > 0 {
-        match nonce {
-            Nonce::Prove(out) => out.extend_from_slice(&t.grind(check.grind)?.to_le_bytes()),
-            Nonce::Verify(reader) => {
-                let bytes: [u8; 8] = reader.take(8)?.try_into().map_err(|_| Error::ProofShape)?;
-                t.verify_grind(check.grind, u64::from_le_bytes(bytes))?;
-            }
-        }
-    }
-    let beta = t.challenge(ChallengeLabel::LookupBeta)?;
-    let alpha = t.challenge(ChallengeLabel::LookupAlpha)?;
+    let (beta, alpha) = pair(t, check.grind, nonce)?;
     t.absorb(AbsorbLabel::LookupRepetition, &phase(check.id, 0, 1))?;
     let (tree, leaf) = (4 * check.id, 8 * check.id);
     let m = u32::from(check.m);
@@ -523,4 +531,43 @@ pub(super) fn verify(
         u64::from(selected.sc.degree),
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod pair_tests {
+    use super::*;
+
+    /// The same state each time: the round's pre-nonce transcript.
+    fn fresh() -> Transcript<K> {
+        let mut t = Transcript::<K>::new(b"stele/test/a14-pair").expect("transcript");
+        t.absorb(AbsorbLabel::LookupRepetition, &[0; 9])
+            .expect("absorb");
+        t
+    }
+
+    /// A14 / RFC-0012 A17 item 5: β and α are drawn after the nonce's absorb, so two
+    /// valid nonces give different challenges (white-box; no NC credit). With the
+    /// absorb moved after `Beta`, β repeats and this fails.
+    #[test]
+    fn draws_beta_and_alpha_after_the_nonce() {
+        let valid: Vec<u64> = (0..64u64)
+            .filter(|n| fresh().verify_grind(2, *n).is_ok())
+            .take(2)
+            .collect();
+        assert_eq!(valid.len(), 2, "two valid 2-bit nonces below 64");
+        let draw = |n: u64| {
+            let bytes = n.to_le_bytes();
+            let mut reader = Reader(&bytes);
+            pair(&mut fresh(), 2, Nonce::Verify(&mut reader)).expect("valid nonce")
+        };
+        let ((b0, a0), (b1, a1)) = (draw(valid[0]), draw(valid[1]));
+        assert!(b0 != b1 && a0 != a1);
+        // The prover's least nonce is the first valid one, and gives the same pair.
+        let mut out = Vec::new();
+        assert_eq!(
+            pair(&mut fresh(), 2, Nonce::Prove(&mut out)).expect("grind"),
+            (b0, a0)
+        );
+        assert_eq!(out, valid[0].to_le_bytes());
+    }
 }

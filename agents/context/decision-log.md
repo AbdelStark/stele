@@ -3492,7 +3492,8 @@ Decision (Proposed, with RFC-0026 A14 Draft):
   come from the plan only.
 - **Nonce.** It is placed as in RFC-0008 A8 (after `Repetition(id, 0, 0)`, before
   `Beta`), and on the wire it is the first 8 bytes of the lookup section.
-- **Least nonce.** The prover sends the least valid nonce.
+- **Least nonce.** The prover sends the least valid nonce. The verifier does not check
+  leastness; any valid nonce is sound.
 - **Ledger.** LU entries carry `k_LU`, so E8-05c's `rounds()` and `verify-dev`'s
   verdict count it.
 - **CLI.** `stele prove-dev --dev-profile 5` selects byte 5, and byte 3 stays the
@@ -3507,12 +3508,41 @@ Consequences:
 - **Pins.** Byte 0–4 pins are unchanged. New pins: one-layer T = 16 at byte 5
   (`0x59ee_67e3_9aa2_5d4b`) and eight-layer T = 64 (`0xf66d_7640_b9de_788e`,
   7,024,665 bytes, which is byte 3 plus 144).
-- **Synthetic eight-layer verdict.** `verify-dev` prints PASS (C1)–(C4): worst LU
-  silu_q at `2^-108.0` after 2 bits, floor `2^-101.9`.
-- **Controls.** NC-1321 (`GrindMismatch`) and NC-1322 (`RoundSumMismatch`), with a
-  mutation check on NC-1321.
+- **Synthetic eight-layer verdict.** `verify-dev` prints PASS (C1)–(C4):
+  - the worst rounds are the PCS column rounds, at exactly `2^-108`;
+  - the largest LU round, silu_q, is at `2^-108.0000055` after 2 bits, a tie at the
+    printed resolution (`verify-dev` names silu_q, the first in ledger order);
+  - the floor is `2^-101.9`.
+- **stories42M T = 64 at byte 5** (`bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json`):
+  - PASS;
+  - worst round: a PCS column round at `2^-108` (the 19 ground LU rounds are below it);
+  - floor `2^-101.9` (study.py predicted `2^-108.0` and `2^-102.2`);
+  - 15,554,913 bytes, byte 3 plus 152;
+  - 137.8 s prove, an upper bound because the load rose to 20.
+- **Controls.**
+  - NC-1321: `GrindMismatch`.
+  - NC-1322 and NC-1324, bytes 5 and 3 read as each other: `RoundSumMismatch`.
+  - NC-1323, another valid nonce: `RoundSumMismatch`.
+  - Mutation checks:
+    - NC-1321 goes red with the predicate skipped;
+    - NC-1323 goes red with the nonce not absorbed;
+    - the "absorb after `beta`" mutant is caught only by the white-box test
+      `draws_beta_and_alpha_after_the_nonce`. No accept-or-reject control can see it.
 - **No level claimed.** Nothing is `proven: true`. The composed check at the verifier
   entry point is E8-05's (ADR-108).
 - **stories42M.** The T = 64 measurement at byte 5 is pending a quiet host.
+
+Independent review of #369: FIX-THEN-MERGE.
+- **Confirmed.** Placement, plan-derived k, least k via `admit` (C4), and identical
+  bytes 0–4. All 11,647 eight-layer rounds were recomputed exactly; none is above
+  `2^-108`, and the floor is `2^-101.989`.
+- **Fixes applied.**
+  - RFC-0008 A8 item 1 replacement text (A14 item 9);
+  - NC-1323 with its mutation checks;
+  - NC-1324;
+  - the leastness sentence;
+  - the silu_q wording;
+  - "Cells, lookups: none added";
+  - `--dev-profile` checked against 3 and 5.
 
 Status: Proposed (development tier). Review requested with RFC-0026 A14.

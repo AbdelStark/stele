@@ -240,12 +240,11 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     if !zk {
         let [m, p, s, a] = read_files()?;
         // RFC-0026 A14 (Draft): `--dev-profile 5` grinds each check's (β, α) round.
-        let profile = o
-            .get("dev-profile")
-            .map(|v| number(v))
-            .transpose()?
-            .unwrap_or(3);
-        let profile = u8::try_from(profile).map_err(|_| usage("--dev-profile is 3 or 5"))?;
+        let profile = match o.get("dev-profile").copied().unwrap_or("3") {
+            "3" => 3,
+            "5" => 5,
+            _ => return Err(usage("--dev-profile is 3 or 5")),
+        };
         let (public, statement, proof) =
             prove_window_development(&m, &p, &s, &a, statement, length, profile).map_err(reject)?;
         write("public", &bundle::encode(&public, &statement))?;

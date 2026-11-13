@@ -1343,7 +1343,7 @@ Task: E8-05d. Decision: ADR-125 (Proposed). Companion: RFC-0012 A17 item 5, RFC-
 5. **Least nonce.** The prover sends the least valid nonce (`Transcript::grind`), so
    the proof is deterministic (INV-8). The verifier makes one PoW query
    (`Transcript::verify_grind`). An invalid nonce is `GrindMismatch` and a missing one
-   is `ProofShape`.
+   is `ProofShape`. The verifier does not check leastness; any valid nonce is sound.
 6. **Ledger.** The LU line is unchanged (A13). Its round carries `k_LU` and is charged
    `(c·(2^m + t) − 1)·2^-k_LU/|K|` under RFC-0012 A17's FS row. Nothing is summed into
    a claimed level.
@@ -1354,14 +1354,42 @@ Task: E8-05d. Decision: ADR-125 (Proposed). Companion: RFC-0012 A17 item 5, RFC-
 8. **Old proofs.** Bytes 0 to 4 are the same bytes and still verify, with their pins.
    Byte 3 stays the default for new development proofs. `prove-dev --dev-profile 5`
    selects byte 5.
+9. **RFC-0008 A8 item 1.** Exact replacement of its second sentence ("An A5 lookup with
+   no profile (`Descriptor::new`), the RFC-0026 development checks (A6) and the dev-zk
+   trees (A7) have k = 0, carry no nonce and keep Policy 1."):
+
+   > An A5 lookup with no profile (`Descriptor::new`), the RFC-0026 development checks
+   > (A6) and the dev-zk trees (A7) have k = 0 and carry no nonce, except under
+   > RFC-0026 A14 (profile byte 5), whose checks grind as A14 items 3–4 specify. Their
+   > source policy is the one their profile fixes (RFC-0026 A11, A12, A14; RFC-0013 A8).
+
+   The third sentence ("Their bytes are unchanged.") stands for every profile other
+   than byte 5.
+
+**Cells, lookups.** None added.
 
 **Soundness.** No challenge, label or order changes, except the A17 nonce before each
 ground check's `β`.
 - **Per round.** A ground round's FS term is its RBR error times `2^-k_LU`. That is
   `≤ 2^-108` by item 3, which is RFC-0012 A17's Theorem 1 with counted grinding.
-- **Synthetic eight-layer window (T = 64, E8-05c enumeration).** The worst round goes
-  from LU range_16 at `2^-101.9` to LU silu_q at exactly `2^-108.0` after 2 bits. The
-  floor goes from `2^-99.4` to `2^-101.9`. `admit` returns PASS.
+- **Synthetic eight-layer window (T = 64, E8-05c enumeration).**
+  - The largest LU round goes from range_16 at `2^-101.9` to silu_q at
+    `2^-108.0000055` after 2 bits.
+  - The worst rounds are now the PCS column rounds, at exactly `2^-108` (their
+    `2^-92` target after `k_q = 16`).
+  - At the ledger's 1/1024-bit resolution the two tie, and `verify-dev` prints the
+    first in ledger order: LU silu_q, `2^-108.0`.
+  - The floor goes from `2^-99.4` to `2^-101.9`. `admit` returns PASS.
+- **stories42M T = 64** (`bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json`).
+  - 19 checks grind, so the proof is 15,554,913 bytes: byte 3's 15,554,761 plus 152.
+  - Of 14,480 rounds, the worst is a PCS column round at exactly `2^-108`. The ground
+    LU rounds are below it.
+  - The floor is `2^-101.9`, and `verify-dev` prints PASS (C1)–(C4).
+  - Against `research/fs-pcs/study.py`'s prediction (worst `2^-108.0`, floor `2^-102.2`):
+    the worst round matches. The floor here counts each column round at its
+    `2^-108` bound, not its exact query error, so it is the more conservative of the
+    two.
+  - The prediction's 18.3 MB assumed other source shapes.
 - **Grinding interacts with nothing else.** A nonce is absorbed before the challenges
   it protects, and the A3/A5 interactive bounds are unchanged.
 
@@ -1371,17 +1399,30 @@ ground check's `β`.
   noise here, because the host was shared during the run.
 - **Verifier.** One PoW query per ground check.
 - **Proof.** 8 bytes per ground check: +144 bytes on the eight-layer window.
-- stories42M at T = 64 is measured separately (E8-05d): prove time, size and verdict,
-  against the study's 2^-108.0 worst round and 2^-102.2 floor.
+- stories42M at T = 64: a 137.8 s prove (byte 3: 157.3 s in A12's table) and a 6.32 s
+  verify, with a 27.6 GB peak RSS. The load rose from 2.9 to 20 during the run, so the
+  prove time is an upper bound and no speed claim is made.
 
 **Controls.**
 - **NC-1321:** the first nonzero `(β, α)` nonce `n` replaced by `n − 1`, which fails
   the predicate because `n` is the least valid nonce: `GrindMismatch`.
 - **NC-1322:** a byte-5 proof read as byte 3, header restamped: `RoundSumMismatch`,
   because the transcript input differs before any nonce is read.
-- **Mutation check.** With `verify_grind`'s predicate skipped and its absorb kept,
-  NC-1321 goes red: the replaced nonce is absorbed, and a later fraction sumcheck
-  rejects with `RoundSumMismatch` instead of `GrindMismatch`.
+- **NC-1323** (counterpart of NC-0816): a ground check's nonce replaced by the next
+  valid nonce above it, found with the verifier's own predicate. The nonce is
+  absorbed, so the later challenges move: `RoundSumMismatch`.
+- **NC-1324:** a byte-3 proof read as byte 5, header restamped: `RoundSumMismatch`.
+- **Mutation checks.**
+  - With `verify_grind`'s predicate skipped and its absorb kept, NC-1321 goes red:
+    the replaced nonce is absorbed, and a later fraction sumcheck rejects with
+    `RoundSumMismatch` instead of `GrindMismatch`.
+  - With the nonce not absorbed on either side, NC-1323 goes red: the tamper is
+    accepted.
+  - With the absorb moved after `lookup/beta` on both sides, every control stays
+    green. Only α and the later challenges move with the nonce, and an honest prover
+    runs the same order, so no accept-or-reject control can see it. The white-box test
+    `draws_beta_and_alpha_after_the_nonce` (`relation_lookup.rs`, no NC credit) goes
+    red there: two valid nonces must give different `β`.
 
 **Affected tasks.** E8-05d (implements it), E8-05 (admission at the entry point).
 Promotion to `standard`: not granted (Workflow 10).

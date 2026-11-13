@@ -252,7 +252,8 @@ fn accepts_eight_layer_window_on_a14_sources() {
     let summary = enumerated(&ledger);
     eprintln!("{summary:?}");
     assert_eq!(hash, 0xf66d_7640_b9de_788e);
-    // Worst round LU silu_q at exactly 2^-108.0 after its grinding; floor 2^-101.9.
+    // The PCS column rounds are exactly 2^-108; LU silu_q, at 2^-108.0000055 after 2 bits,
+    // ties with them at 1/1024 bit (110,592) and comes first in ledger order. Floor 2^-101.9.
     assert_eq!(summary, (11_647, "LU silu_q".to_string(), 110_592, 104_436));
 }
 
