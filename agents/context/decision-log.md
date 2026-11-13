@@ -3300,9 +3300,9 @@ Decision: RFC-0013 A10 (Draft) extends A9's admission to `T ≤ 64`.
 Status: Accepted (development tier) with RFC-0013 A10. Independent review: FIX-THEN-MERGE
 at 9930b11; fixes applied.
 
-## ADR-121: CPU prover speedups with identical bytes; lazy-reduction QM31 product, base-field masked rounds, one dev-zk plain check, blake3 std (task E16-34)
+## ADR-122: CPU prover speedups with identical bytes; lazy-reduction QM31 product, base-field masked rounds, one dev-zk plain check, blake3 std (task E16-34)
 
-Numbered after ADR-120, which #362 holds.
+Numbered after ADR-120 (#362) and ADR-121 (#363).
 
 Context: E16-22's stories42M profile ranked the dev-zk masked and ZK-GKR products (QM31)
 first among the CPU stages. It also listed BLAKE3 SIMD and dev-zk's second plain check.
@@ -3315,7 +3315,6 @@ Decision (four commits; every pin byte-identical):
   - It is the same element as RFC-0003 §2's Karatsuba product. That product is kept as
     `QM31::karatsuba`, and a test pins the two equal on 10^6 random pairs and on every
     edge-limb pair. The existing schoolbook-oracle tests pass.
-  - It is about 2.2–2.7× faster per product.
   - CM31 and OM31 keep Karatsuba; OM31 benefits through its QM31 sub-products.
 - **Base-field masked rounds** (stele-reductions).
   - A dev-zk masked round treats as base field every factor whose tables are all
@@ -3327,6 +3326,9 @@ Decision (four commits; every pin byte-identical):
 - **One dev-zk plain check** (stele-prover). The committed relation keeps every
   constraint of the layout relation over the same values and adds the record encodings,
   so checking it alone rejects every false witness the first check did.
+  `rejects_false_witness_with_check_under_dev_zk` pins it: a false next token and a
+  false checked token are each rejected with `Check` by `zk::window` and `zk::prove`.
+  With the check replaced by a no-op, the test fails.
 - **blake3 `std`** (stele-code, under the prover-side `std`) adds runtime AVX2 and
   AVX-512 detection on x86_64.
   - On aarch64, blake3's build script already enables NEON. ADR-120's "portable on
@@ -3336,17 +3338,21 @@ Decision (four commits; every pin byte-identical):
   stele-poly import stele-simd, and the scalar lazy product already gives most of the
   gain.
 
-Measured (M4 Max 48 GB; before = main 0298d88, after = 5670be3):
+Measured (M4 Max 48 GB; before = main 0298d88, after = 5670be3). Each row is the
+median prove run and that run's verify, as the ledgers record:
 
 | Workload | Before | After |
 |---|---|---|
-| synthetic eight-layer dev-zk byte 4 (median of three) | prove 27.66 s, verify 2.92 s | prove 21.05 s (1.31×), verify 2.04 s (1.43×) |
-| synthetic eight-layer plain dev (median of three) | prove 8.62 s, verify 0.85 s | prove 6.60 s (1.31×), verify 0.78 s |
-| stories42M dev-zk `T = 32` (single runs) | prove 475.6 s, verify 32.3 s | prove 369.7 s (1.29×), verify 21.6 s |
-| stories42M plain dev `T = 64` (single runs) | 175.5 s | 181.7 s |
+| synthetic eight-layer dev-zk byte 4 (median of three) | prove 27.66 s, verify 2.96 s, peak RSS 7.16 GB | prove 21.05 s (1.31×), verify 2.04 s, peak RSS 7.31 GB |
+| synthetic eight-layer plain dev (median of three) | prove 8.62 s, verify 0.87 s | prove 6.60 s (1.31×), verify 0.78 s |
+| stories42M dev-zk `T = 32` (single runs) | prove 475.6 s, verify 32.3 s, peak RSS 31.9 GB | prove 369.7 s (1.29×), verify 21.6 s, peak RSS 32.5 GB |
 
-The stories42M plain-dev run is bound by main's sequential plain checker; E16-22's
-parallel checker (#362) removes that bound.
+- Peak RSS rises by about 2% in these runs (7.16 → 7.31 GB synthetic, 31.9 → 32.5 GB
+  stories42M). The cause is not separated from run-to-run variation.
+- The stories42M plain dev `T = 64` single runs (175.5 s before, 181.7 s after, same
+  bytes) are in the `host_context` of the `e16-34-dev-zk-stories42m-t32` ledgers. That
+  run is bound by main's sequential plain checker, which E16-22's parallel checker
+  (#362) removes.
 
 Ledgers: `bench/ledger/e16-34-*-mac-{before,after}.json`.
 
