@@ -69,6 +69,45 @@ DEVELOPMENT = {
 }
 
 
+# RFC-0012 A17 item 4 (task E8-05b): the profile admission decision is admitted by exact
+# surface. The rest of the verifier scaffold (plan, ledger, entry point) stays guarded
+# until E8-05 wires the gate with its producer.
+ACCOUNTING = {
+    'files': ('src/accounting.rs',),
+    'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
+               'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\npub mod accounting;\n',
+    'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
+              'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
+              'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
+              'floor_counts_the_setup_term', 'hash_endpoints_hold_for_standard_and_treaty_and_fail_past_them',
+              'rejects_a_field_degree_above_eight'),
+}
+
+
+def accounting_surface(crate, actual, expected):
+    """Strip the admitted accounting module; any other verifier change stays guarded."""
+    if ((crate / 'src/lib.rs').read_text() != ACCOUNTING['library']
+            or set(actual) != set(expected) | set(ACCOUNTING['files'])
+            or actual.get('Cargo.toml') != expected['Cargo.toml']):
+        return actual
+    kept = {path: digest for path, digest in actual.items() if path not in ACCOUNTING['files']}
+    kept['src/lib.rs'] = expected['src/lib.rs']
+    return kept
+
+
+def accounting_admission(root):
+    """E8-05b: the (C1)-(C4) decision's boundary tests run and pass, each by name."""
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--lib', 'accounting::', '--locked', '--offline'],
+                            cwd=root, text=True, capture_output=True)
+    lines = result.stdout.splitlines()
+    missing = [n for n in ACCOUNTING['tests'] if f'test accounting::tests::{n} ... ok' not in lines]
+    if result.returncode or missing:
+        raise ValueError(f'accounting admission checks failed: {missing} {result.stderr[-2000:]}')
+    print('gate accounting: exact (C1)-(C4) admission decision at its boundaries (E8-05b); '
+          'no round enumeration, profile or NC-0804/0805 credit')
+
+
 def development_surface(crate, name, actual, expected):
     """Strip the admitted RFC-0026 development module; anything else stays guarded."""
     spec = DEVELOPMENT[name]
@@ -94,6 +133,8 @@ def bootstrap_guard(root, gate):
                   for p in crate.rglob('*') if p.is_file()}
         if gate == 'digest' and name in DEVELOPMENT:
             actual = development_surface(crate, name, actual, expected)
+        if name == 'verifier':
+            actual = accounting_surface(crate, actual, expected)
         if actual != expected:
             raise ValueError(f'{gate}: validator not wired for changed {crate.relative_to(root)}; '
                              f'implement the gate with its producer (task {OWNERS[gate]})')
@@ -1857,6 +1898,7 @@ def main():
                 masked_sumcheck_quarantine(ROOT)
                 standard_quarantine(ROOT)
                 controls_quarantine(ROOT)
+                accounting_admission(ROOT)
                 sumcheck_corpus(ROOT)
                 fraction_reductions(ROOT)
                 small_strategy(ROOT)
