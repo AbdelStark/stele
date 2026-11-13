@@ -11,6 +11,33 @@ use alloc::vec::Vec;
 use rayon::prelude::*;
 use stele_hash::ChallengeField;
 
+/// Prover stage timing (task E16-22): with `std` and the environment variable
+/// `STELE_STAGE_TIMES` set, each [`Laps::lap`] prints `stage <name> <ms>` (the wall time
+/// since the previous lap) to stderr. Otherwise it does nothing. It never touches a
+/// transcript, a value or a byte.
+pub struct Laps {
+    #[cfg(feature = "std")]
+    last: Option<std::time::Instant>,
+}
+
+impl Laps {
+    /// Start timing if `STELE_STAGE_TIMES` is set.
+    pub fn start() -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            last: std::env::var_os("STELE_STAGE_TIMES").map(|_| std::time::Instant::now()),
+        }
+    }
+    /// Report the stage that just ended and start the next.
+    pub fn lap(&mut self, _name: &str) {
+        #[cfg(feature = "std")]
+        if let Some(last) = &mut self.last {
+            std::eprintln!("stage {_name} {}", last.elapsed().as_millis());
+            *last = std::time::Instant::now();
+        }
+    }
+}
+
 /// Below this many items a split costs more than it saves.
 #[cfg(feature = "std")]
 const MIN_CHUNK: usize = 1 << 8;

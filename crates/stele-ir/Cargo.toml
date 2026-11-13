@@ -7,6 +7,12 @@ description = "Stele — stele-ir (see RFC-0005)"
 
 [dependencies]
 stele-cqis = { path = "../stele-cqis" }
+rayon = { version = "=1.10.0", optional = true }
+
+[features]
+# E16-22: the plain checker runs its constraints and points on rayon's pool. The result
+# (pass, or the first failure in order) is the same as the sequential checker's.
+std = ["dep:rayon"]
 
 [lints]
 workspace = true
