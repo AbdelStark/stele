@@ -2785,7 +2785,7 @@ tasks:
   crate: negative-controls
   status: in_progress
   agent: claude-code
-  branch: task/E12-32-dev-zk-privacy-stories42m
+  branch: task/E12-31-dev-zk-privacy-stories42m
   acceptance:
   - the bare-evaluation and chi-square privacy tests run on stories42M T = 32 (two proofs under one commitment, sequential)
   - the chi-square tests use masked revealed finals only (public finals excluded), with a per-proof uniformity test beside the two-proof homogeneity test
