@@ -164,6 +164,9 @@ pub const CIRCLE_PROFILE: u8 = 2;
 /// RFC-0026 A12: the profile byte of a development proof whose multiplicity sources
 /// are Circle rate 1/4 too (`Sources::CircleAll`).
 pub const CIRCLE_ALL_PROFILE: u8 = 3;
+/// RFC-0026 A14 (Draft): the profile byte of a development proof on A12 sources whose
+/// lookup `(β, α)` rounds grind (`Sources::CircleAllGrind`).
+pub const GRIND_PROFILE: u8 = 5;
 const STATEMENT_TAG: &[u8] = b"stele/v0.1/dev-e2e/statement";
 
 /// Canonical RFC-0026 §1.1 public input (as amended by A2), the transcript's first frame.
@@ -200,6 +203,7 @@ pub fn public_input(public: &Public, cqis_id: &[u8; 32], statement: &Statement) 
         Sources::Expander => {}
         Sources::Circle => out.push(CIRCLE_PROFILE),
         Sources::CircleAll => out.push(CIRCLE_ALL_PROFILE),
+        Sources::CircleAllGrind => out.push(GRIND_PROFILE),
     }
     out
 }
@@ -649,9 +653,61 @@ pub fn prove_window_profile(
     preparation: &[u8],
     scales: &[u8],
     artifact: &[u8],
+    statement: Statement,
+    length: usize,
+    zk: Option<zk::Window<'_>>,
+) -> Result<(Public, Statement, Vec<u8>), Error> {
+    prove_window_sources(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        zk,
+        Sources::CircleAll,
+    )
+}
+
+/// [`prove_window_profile`] for a development proof under `profile`:
+/// [`CIRCLE_ALL_PROFILE`] (A12) or [`GRIND_PROFILE`] (A14). Any other byte is
+/// `StatementMismatch`.
+pub fn prove_window_development(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
+    statement: Statement,
+    length: usize,
+    profile: u8,
+) -> Result<(Public, Statement, Vec<u8>), Error> {
+    let sources = match profile {
+        CIRCLE_ALL_PROFILE => Sources::CircleAll,
+        GRIND_PROFILE => Sources::CircleAllGrind,
+        _ => return Err(Error::StatementMismatch),
+    };
+    prove_window_sources(
+        model,
+        preparation,
+        scales,
+        artifact,
+        statement,
+        length,
+        None,
+        sources,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prove_window_sources(
+    model: &[u8],
+    preparation: &[u8],
+    scales: &[u8],
+    artifact: &[u8],
     mut statement: Statement,
     length: usize,
     zk: Option<zk::Window<'_>>,
+    sources: Sources,
 ) -> Result<(Public, Statement, Vec<u8>), Error> {
     let m = Model::decode(model).map_err(|_| Error::StatementMismatch)?;
     let p = stele_reductions::stele_cqis::model::Preparation::decode(&m, preparation)
@@ -689,7 +745,7 @@ pub fn prove_window_profile(
         let max = last.iter().max().ok_or(Error::Witness)?;
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
-    let weights = Weights::from_artifact(&m, artifact)?;
+    let weights = Weights::from_artifact_sources(&m, artifact, sources)?;
     laps.lap("witness/decode_extend_weights");
     if let Some(window) = zk {
         // E12-27: the 1-D records are committed weights; the public input names

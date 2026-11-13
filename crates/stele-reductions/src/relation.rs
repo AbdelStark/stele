@@ -101,6 +101,8 @@ pub struct Entry {
     pub name: String,
     pub numerator: u64,
     pub round: u64,
+    /// Grinding bits of each of its rounds: an A14 LU round's `k_LU`, else 0.
+    pub grind: u8,
 }
 /// One PCS round of a source (E8-05c): a certificate's tensor round
 /// `2·ell·(e + 1)/|K|` before `2^k_t`, or a certificate or opening column round at
@@ -152,6 +154,7 @@ impl Ledger {
             name: name.into(),
             numerator,
             round,
+            grind: 0,
         });
     }
     /// A certificate's tensor and column rounds under `source`'s parameters.
@@ -187,7 +190,7 @@ impl Ledger {
     /// Every round of the proof, in ledger order (E8-05c). An entry of numerator `n`
     /// whose largest round is `r` becomes `⌊n/r⌋` rounds of `r` and one of the
     /// remainder: its largest round and its sum are exact, which is all (C1) and (C2)
-    /// read. No algebraic development round grinds.
+    /// read. Only an A14 LU round grinds.
     pub fn rounds(&self) -> Vec<Round> {
         let mut out = Vec::new();
         for e in &self.entries {
@@ -207,7 +210,7 @@ impl Ledger {
                     line,
                     name: e.name.clone(),
                     error: RoundError::Field(numerator),
-                    grind: 0,
+                    grind: e.grind,
                 });
             }
         }
@@ -375,11 +378,18 @@ pub enum Sources {
     Circle,
     /// A12: `Circle`, with every multiplicity source at Circle rate 1/4 too.
     CircleAll,
+    /// A14 (Draft): `CircleAll`, with each check's `(β, α)` round ground at the
+    /// least bits meeting RFC-0012 A17 (C1) (profile byte 5).
+    CircleAllGrind,
 }
 impl Sources {
     /// Stacked and model sources are A11's Circle rate-1/4 sources (A11, A12).
     fn circle(self) -> bool {
         self != Sources::Expander
+    }
+    /// Every multiplicity source is Circle rate 1/4 (A12, A14).
+    fn quarter_mu(self) -> bool {
+        matches!(self, Sources::CircleAll | Sources::CircleAllGrind)
     }
     /// The verifier's source of `(id, ell, code)` under this set's policy.
     pub fn source(self, id: u64, ell: u8, code: &[u8], root: [u8; 32]) -> Result<Source<K>, Error> {
@@ -459,6 +469,9 @@ pub(crate) struct Check {
     t: usize,
     k: u8,
     layout: Layout,
+    /// A14: the `(β, α)` round's grinding bits, from the expected context only;
+    /// 0 (no nonce) outside `Sources::CircleAllGrind`.
+    grind: u8,
     /// Test-only malicious-prover seam: added to the committed count of row 0.
     #[cfg(test)]
     skew: i64,
@@ -554,7 +567,7 @@ fn smallest(
 /// at `ell = k/2` (A5, A11), or under A12 Circle rate 1/4 at the `ell` that
 /// [`smallest`] picks.
 fn mu_layout(id: u64, k: u8, sources: Sources) -> Result<Layout, Error> {
-    if sources != Sources::CircleAll {
+    if !sources.quarter_mu() {
         return Ok(Layout {
             id,
             ell: k / 2,
@@ -614,6 +627,13 @@ fn check(
     let k = ceil_log2(t);
     entries.resize(c << k, 0);
     let layout = mu_layout(source_id, k, sources)?;
+    // A14: the least k_LU with (c(2^m + t) − 1)·2^108 ≤ p^4·2^k_LU (RFC-0008 A8 item 2's
+    // rule, with the recorded A13 numerator); above 32 bits the check is unsupported.
+    let grind = if sources == Sources::CircleAllGrind {
+        crate::lookup::lu_grind_bits(c, 1u64 << m, t, 4).ok_or(Error::Unsupported)?
+    } else {
+        0
+    };
     Ok(Check {
         id,
         name,
@@ -624,6 +644,7 @@ fn check(
         t,
         k,
         layout,
+        grind,
         #[cfg(test)]
         skew: 0,
         #[cfg(test)]

@@ -10,6 +10,8 @@
 //! Policy 2 sources (`Sources::Circle`); `stele-dev-public-v1` stays the pre-A11
 //! `Sources::Expander` file, so old inputs still decode and verify. RFC-0026 A12:
 //! `stele-dev-public-v3` is the same layout for `Sources::CircleAll` (profile byte 3).
+//! RFC-0026 A14 (Draft): `stele-dev-public-v4` is the same layout for
+//! `Sources::CircleAllGrind` (profile byte 5).
 use super::{Error, Public, Statement};
 use alloc::vec::Vec;
 use stele_reductions::relation::Sources;
@@ -19,6 +21,8 @@ const MAGIC: &[u8] = b"stele-dev-public-v1";
 const CIRCLE_MAGIC: &[u8] = b"stele-dev-public-v2";
 /// The A12 input file (profile byte 3, multiplicity sources at rate 1/4): the same layout.
 const CIRCLE_ALL_MAGIC: &[u8] = b"stele-dev-public-v3";
+/// The A14 input file (profile byte 5, ground lookup rounds): the same layout.
+const GRIND_MAGIC: &[u8] = b"stele-dev-public-v4";
 /// The dev-zk profile's input file (RFC-0026 A9 profile byte 1): the same layout.
 const ZK_MAGIC: &[u8] = b"stele-dev-zk-public-v1";
 /// RFC-0013 A8's input file (profile byte 4): the same layout.
@@ -40,6 +44,7 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
         (0, Sources::Expander) => MAGIC.to_vec(),
         (0, Sources::Circle) => CIRCLE_MAGIC.to_vec(),
         (0, Sources::CircleAll) => CIRCLE_ALL_MAGIC.to_vec(),
+        (0, Sources::CircleAllGrind) => GRIND_MAGIC.to_vec(),
         (super::zk::PROFILE_BALANCED, _) => ZK_BALANCED_MAGIC.to_vec(),
         _ => ZK_MAGIC.to_vec(),
     };
@@ -168,6 +173,8 @@ fn parse(bytes: &[u8]) -> Result<(Public, Statement, u8, &[u8]), Error> {
         (0, CIRCLE_MAGIC, Sources::Circle)
     } else if bytes.starts_with(CIRCLE_ALL_MAGIC) {
         (0, CIRCLE_ALL_MAGIC, Sources::CircleAll)
+    } else if bytes.starts_with(GRIND_MAGIC) {
+        (0, GRIND_MAGIC, Sources::CircleAllGrind)
     } else {
         (0, MAGIC, Sources::Expander)
     };

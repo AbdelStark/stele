@@ -3650,3 +3650,79 @@ Independent review of #367: FIX-THEN-MERGE.
 Status: Accepted (governance; no protocol change). Independent review of #367:
 FIX-THEN-MERGE (RFC-0002 §8 basis holds); fixes applied at e2d8092, including the moved
 acceptance lines in E8-05 and the E8-05e split for ZK and treaty.
+
+## ADR-125: Development proofs with ground lookup (β, α) rounds, profile byte 5 (RFC-0026 A14, task E8-05d)
+
+Context:
+- E8-05c's enumeration found that the only development rounds above `2^-108` are the
+  checks' ungrinded `(β, α)` rounds.
+- RFC-0012 A17 item 5 allows grinding there, and ADR-108 implemented it for the
+  standard A5 consumer only.
+- `research/fs-pcs/PARAMETERS.md` §4 predicts that Policy 2 Circle rate-1/4 sources
+  with ground LU rounds meet (C1)–(C4) on stories42M: worst `2^-108.0`, floor
+  `2^-102.2`, 18.3 MB.
+
+Decision (Proposed, with RFC-0026 A14 Draft):
+- **New source set and byte.** `Sources::CircleAllGrind` has A12's sources and profile
+  byte 5, with input file `stele-dev-public-v4`.
+- **Grinding bits.** Each relation-engine check grinds its `(β, α)` round at the least
+  `k_LU` meeting (C1), given by `lookup::lu_grind_bits` on A13's numerator. The bits
+  come from the plan only.
+- **Nonce.** It is placed as in RFC-0008 A8 (after `Repetition(id, 0, 0)`, before
+  `Beta`), and on the wire it is the first 8 bytes of the lookup section.
+- **Least nonce.** The prover sends the least valid nonce. The verifier does not check
+  leastness; any valid nonce is sound.
+- **Ledger.** LU entries carry `k_LU`, so E8-05c's `rounds()` and `verify-dev`'s
+  verdict count it.
+- **CLI.** `stele prove-dev --dev-profile 5` selects byte 5, and byte 3 stays the
+  default.
+- **Code placement.**
+  - The gate's development pattern already covers the new variant
+    (`Sources::Circle\w*`).
+  - The CLI selects the profile by byte (`prove_window_development`), so the
+    variant name stays on the development path.
+
+Consequences:
+- **Pins.** Byte 0–4 pins are unchanged. New pins: one-layer T = 16 at byte 5
+  (`0x59ee_67e3_9aa2_5d4b`) and eight-layer T = 64 (`0xf66d_7640_b9de_788e`,
+  7,024,665 bytes, which is byte 3 plus 144).
+- **Synthetic eight-layer verdict.** `verify-dev` prints PASS (C1)–(C4):
+  - the worst rounds are the PCS column rounds, at exactly `2^-108`;
+  - the largest LU round, silu_q, is at `2^-108.0000055` after 2 bits, a tie at the
+    printed resolution (`verify-dev` names silu_q, the first in ledger order);
+  - the floor is `2^-101.9`.
+- **stories42M T = 64 at byte 5** (`bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json`):
+  - PASS;
+  - worst round: a PCS column round at `2^-108` (the 19 ground LU rounds are below it);
+  - floor `2^-101.9` (study.py predicted `2^-108.0` and `2^-102.2`);
+  - 15,554,913 bytes, byte 3 plus 152;
+  - 137.8 s prove, an upper bound because the load rose to 20.
+- **Controls.**
+  - NC-1321: `GrindMismatch`.
+  - NC-1322 and NC-1324, bytes 5 and 3 read as each other: `RoundSumMismatch`.
+  - NC-1323, another valid nonce: `RoundSumMismatch`.
+  - Mutation checks:
+    - NC-1321 goes red with the predicate skipped;
+    - NC-1323 goes red with the nonce not absorbed;
+    - the "absorb after `beta`" mutant is caught only by the white-box test
+      `draws_beta_and_alpha_after_the_nonce`. No accept-or-reject control can see it.
+- **No level claimed.** Nothing is `proven: true`. The composed check at the verifier
+  entry point is E8-05's (ADR-108).
+- **stories42M.** The T = 64 measurement at byte 5 is pending a quiet host.
+
+Independent review of #369: FIX-THEN-MERGE.
+- **Confirmed.** Placement, plan-derived k, least k via `admit` (C4), and identical
+  bytes 0–4. All 11,647 eight-layer rounds (11,687 after #367 split each zerocheck into its phases) were recomputed exactly; none is above
+  `2^-108`, and the floor is `2^-101.989`.
+- **Fixes applied.**
+  - RFC-0008 A8 item 1 replacement text (A14 item 9);
+  - NC-1323 with its mutation checks;
+  - NC-1324;
+  - the leastness sentence;
+  - the silu_q wording;
+  - "Cells, lookups: none added";
+  - `--dev-profile` checked against 3 and 5.
+
+Status: Accepted (development tier) with RFC-0026 A14. Independent review: FIX-THEN-MERGE
+at 0439aa9; fixes applied. No security level is claimed; `proven: true` waits on E8-05's
+verifier entry point.

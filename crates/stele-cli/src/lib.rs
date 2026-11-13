@@ -129,6 +129,7 @@ mod tests {
             name: "check".into(),
             numerator,
             round: numerator,
+            grind: 0,
         });
         l
     }
@@ -176,6 +177,7 @@ mod tests {
                 name,
                 numerator,
                 round: numerator,
+                grind: 0,
             });
         }
         assert_eq!(l.entries.len(), 1792);
