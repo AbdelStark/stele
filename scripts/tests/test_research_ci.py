@@ -27,6 +27,10 @@ class ResearchCiTests(unittest.TestCase):
             argv = shlex.split(command)
             if argv[0] == 'curl':
                 continue
+            if argv[0] == 'cargo':
+                # E16-35: a standalone research crate, checked by its manifest path.
+                self.assertTrue((ROOT / argv[argv.index('--manifest-path') + 1]).is_file(), command)
+                continue
             script = ROOT / argv[4 if argv[0] == 'uv' else 1]
             self.assertTrue(script.is_file(), command)
             if argv[0] == 'uv':
@@ -46,11 +50,11 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_native_selection_and_command_union(self):
         groups = ci.load_groups()
         commands = [c for group in groups.values() for c in group]
-        self.assertEqual((len(groups), len(commands), len(set(commands))), (76, 190, 190))
+        self.assertEqual((len(groups), len(commands), len(set(commands))), (77, 192, 192))
         legacy = [c for name, group in groups.items() if name != 'model-contract' for c in group]
-        self.assertEqual(len(legacy), 189)
+        self.assertEqual(len(legacy), 191)
         self.assertEqual(hashlib.sha256(json.dumps(sorted(legacy), separators=(',', ':')).encode()).hexdigest(),
-                         'd00b084ae83fbbf6c8b11f26b717eeb1c8ba1394456a107df1d92043b8e9efd0')
+                         '809258a3987838d07c897f37507b4118591d0fb9bf97a0e72b7bfa1cb2b3321f')
         selected = groups['native-comparisons']
         self.assertEqual(len(selected), 9)
         self.assertEqual([shlex.split(c)[4] for c in selected[:6]], [
@@ -167,7 +171,7 @@ class ResearchCiTests(unittest.TestCase):
     def test_matches_reference_consolidated_inventories(self):
         # Migration snapshots include group names and ordered command sequences.
         for manifest, expected in (
-            (ci.MANIFEST, '2810b7ad13036d862cc656464e07c2b40fc79cc310d011233dcd252a18a0c35e'),
+            (ci.MANIFEST, '34d242b523596037270c878a1eba2ff055c795cd4f29ac5668e2d5f5fd00f049'),
             (ci.FULL_MANIFEST, '0195261794103b7ebcc33aa5be6315d05d2a1a9fd43a209306aa3722cfb877ec'),
         ):
             groups = ci.load_groups(manifest)

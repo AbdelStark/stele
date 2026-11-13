@@ -4525,3 +4525,56 @@ tasks:
   - perf profile of one stele prove-dev run of stories42M at T = 64 on the 24-thread host class of bench/ledger/e16-18-dev-stories42m.json, release build with debuginfo
   - wall-time shares of dense and zerocheck rounds, LogUp levels, v2 encoding, Merkle hashing and the residual, with the parallel and sequential split, recorded in a bench/ledger entry
   - ADR-103 confirmed (residual above one third) or reversed (residual at most one third) in a new ADR
+- id: E16-35
+  epic: E16
+  title: dev-zk GPU decision from a device benchmark of the masked and ZK-GKR rounds with resident, device-built tables
+  depends:
+  - E16-22
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0013 A5
+  - RFC-0008 A7
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-35-dev-zk-gpu-bench
+  acceptance:
+  - CUDA kernels for one masked-sumcheck round (QM31, M31 tables) and one ZK-GKR layer round, opt-in (feature cuda, CUDA loaded at run time), tables built and folded in place on the device, one round polynomial copied back per round
+  - round polynomials and folded tables equal the production CPU summand's at every round, 2^20..2^27 entries, in a test that runs when a GPU is present and skips otherwise
+  - CPU (all cores) against GPU on one rented host, per round and per full sumcheck, upload apart; the dev-zk stories42M ceiling recomputed from the measured ratio and E16-22's stage laps
+  - GO or NO-GO for dev-zk in a new ADR with bench/ledger entries; on GO, what full integration needs
+- id: E16-36
+  epic: E16
+  title: dev-zk GPU decision from a stories42M re-profile on current main and a device source-preparation (encoding, Merkle) measurement
+  depends:
+  - E16-35
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0013 A8
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: research
+  status: blocked(E16-35 in review, PR #368)
+  acceptance:
+  - stage laps of stories42M dev-zk T = 32 on current main (after E16-34); ADR-123's ceiling recomputed and the source-preparation ratio needed for 3x derived
+  - device Circle encoding and Merkle hashing of the hiding sources at stories42M sizes, bit-equal to the CPU, measured against the same host's CPU with the upload apart
+  - GO or NO-GO for dev-zk in a new ADR, with bench/ledger entries
+- id: E16-37
+  epic: E16
+  title: dev-zk GPU backend with resident state
+  depends:
+  - E16-36
+  - E10-01
+  rfc:
+  - RFC-0014 §1,§2,§5
+  - RFC-0013 A5
+  - RFC-0008 A7
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(E16-36 GO; E10-01)
+  acceptance:
+  - RFC-0014 amendment (Workflow 02) and an ADR for cudarc with run-time loading; GPU behind an opt-in feature, CPU default, verifier and no_std builds free of GPU code
+  - byte-identical proofs against the CPU on randomised inputs through the parity gate (INV-3)
+  - a stories42M dev-zk T = 32 GPU ledger against the same host's CPU
