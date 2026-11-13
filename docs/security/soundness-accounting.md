@@ -2043,6 +2043,9 @@ RFC-0008 A8, and the LU round carries `k_LU`.
   - The largest LU round, silu_q, is at `2^-108.0000055` after 2 bits. The two tie at the
     printed resolution, and `verify-dev` names silu_q, the first in ledger order.
   - The floor is `2^-101.9`.
+- `stele verify-dev --admit` (RFC-0016 A5, Draft, E8-05f) refuses a proof unless the
+  replay and `admit` both pass. It is a development-tier gate, and no level is claimed.
+  The standard lift's prerequisites are listed in RFC-0016 A5 and ADR-126.
 - On stories42M at T = 64 (`bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json`),
   `verify-dev` also prints PASS. The worst round is a PCS column round at `2^-108`, and
   the floor is `2^-101.9`.
