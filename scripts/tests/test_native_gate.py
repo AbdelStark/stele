@@ -111,11 +111,21 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                     gate.accounting_admission(ROOT)
         crate = ROOT / 'crates/stele-verifier'
         expected = json.loads((ROOT / 'scripts/gates/bootstrap-sources.json').read_text())['stele-verifier']
-        actual = {'Cargo.toml': expected['Cargo.toml'], 'src/lib.rs': 'changed', 'src/accounting.rs': 'x'}
+        actual = {'Cargo.toml': expected['Cargo.toml'], 'src/lib.rs': 'changed',
+                  'src/accounting.rs': gate.ACCOUNTING['sha256']}
         self.assertEqual(gate.accounting_surface(crate, actual, expected), expected)
-        for extra in ({'src/other.rs': 'y'}, {'Cargo.toml': 'changed'}):
+        for extra in ({'src/other.rs': 'y'}, {'Cargo.toml': 'changed'}, {'src/accounting.rs': 'edited'}):
             changed = {**actual, **extra}
             self.assertEqual(gate.accounting_surface(crate, changed, expected), changed)
+        # A path module or include hidden in the admitted file is refused even at the pin.
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory)
+            (fake / 'src').mkdir()
+            (fake / 'src/lib.rs').write_text(gate.ACCOUNTING['library'])
+            source = (crate / 'src/accounting.rs').read_text()
+            for hidden in ('#[path = "x.rs"]\nmod x;\n', 'include!("x.rs");\n', 'mod extra {}\n'):
+                (fake / 'src/accounting.rs').write_text(source + hidden)
+                self.assertEqual(gate.accounting_surface(fake, actual, expected), actual)
 
     def test_rejects_missing_actual_zerocheck_point_receipt(self):
         names=['matches_reference_zerocheck_bytes_and_accounting','matches_reference_retained_tail_and_failed_prefix',

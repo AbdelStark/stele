@@ -3,7 +3,16 @@
 //!
 //! The caller enumerates the rounds (a round is a maximal run of challenges with no
 //! absorb between them, A17 item 3) and their errors; this module only decides. Every
-//! comparison is exact integer arithmetic. Round enumeration from a plan is E8-05.
+//! comparison is exact integer arithmetic, and every intermediate is checked: a value
+//! out of range is `Reject::Overflow`, never a panic. Round enumeration from a plan is
+//! E8-05.
+//!
+//! - **Authority.** Accepted RFC-0012 A17 item 4 governs here. The security-accounting
+//!   draft's `λ_min` reading (its §4, not Accepted) does not; where they differ, A17
+//!   holds.
+//! - **Completeness is the caller's.** The list must hold every round of one
+//!   verification. `admit` cannot see a missing round: `admit(&STANDARD, &[], None, q)`
+//!   is `Ok` whenever the H* endpoints hold.
 
 use core::cmp::Ordering;
 
@@ -110,7 +119,10 @@ pub fn admit(
     setup: Option<Bound>,
     verifier_queries: u64,
 ) -> Result<(), Reject> {
-    let target = profile.lambda + profile.slack;
+    let target = profile
+        .lambda
+        .checked_add(profile.slack)
+        .ok_or(Reject::Overflow)?;
     for (i, r) in rounds.iter().enumerate() {
         let k = r.grind_bits;
         if k > MAX_GRIND_BITS {
@@ -156,7 +168,8 @@ pub fn admit(
 /// `ε·2^-k ≤ 2^-target`, that is `n·2^target ≤ p^d·2^(s+k)`.
 fn within(e: &Bound, k: u32, target: u32) -> Result<bool, Reject> {
     let lhs = Big::from(e.numerator).shl(target)?;
-    let rhs = pow_p(e.field_degree)?.shl(e.log2_denominator + k)?;
+    let s = e.log2_denominator.checked_add(k).ok_or(Reject::Overflow)?;
+    let rhs = pow_p(e.field_degree)?.shl(s)?;
     Ok(lhs <= rhs)
 }
 
@@ -169,11 +182,16 @@ fn floor(lambda: u32, rounds: &[Round], setup: Option<Bound>) -> Result<(), Reje
     let (mut d, mut s) = (0u8, 0u32);
     for (b, k) in terms.clone() {
         d = d.max(b.field_degree);
-        s = s.max(b.log2_denominator + k);
+        s = s.max(b.log2_denominator.checked_add(k).ok_or(Reject::Overflow)?);
     }
     let mut sum = Big::ZERO;
     for (b, k) in terms {
-        let scale = pow_p(d - b.field_degree)?.shl(s - b.log2_denominator - k)?;
+        // s ≥ log2_denominator + k and d ≥ field_degree by the loop above.
+        let shift = s
+            .checked_sub(b.log2_denominator)
+            .and_then(|v| v.checked_sub(k))
+            .ok_or(Reject::Overflow)?;
+        let scale = pow_p(d - b.field_degree)?.shl(shift)?;
         sum = sum.add(&Big::from(b.numerator).mul(&scale)?)?;
     }
     if sum.shl(lambda)? <= pow_p(d)?.shl(s)? {
@@ -481,6 +499,40 @@ mod tests {
             ..treaty
         };
         assert_eq!(admit(&wide, &[], None, 0), Err(Reject::Hash));
+    }
+
+    /// Guardrail: out-of-range inputs reject as `Overflow` and never panic, even with
+    /// overflow checks on.
+    #[test]
+    fn rejects_overflowing_exponents_without_panicking() {
+        let far = Round {
+            error: Bound {
+                numerator: 1,
+                field_degree: 0,
+                log2_denominator: u32::MAX - 10,
+            },
+            ..COLUMN
+        };
+        assert_eq!(admit(&STANDARD, &[far], None, 1), Err(Reject::Overflow));
+        let lambda = Profile {
+            lambda: u32::MAX,
+            ..STANDARD
+        };
+        assert_eq!(admit(&lambda, &[], None, 1), Err(Reject::Overflow));
+    }
+
+    /// (C4): `k ≤ 32` holds even when a profile names more column bits.
+    #[test]
+    fn rejects_grinding_above_32_bits_for_any_profile() {
+        let wide = Profile {
+            column_grind_bits: 33,
+            ..STANDARD
+        };
+        let r = Round {
+            grind_bits: 33,
+            ..COLUMN
+        };
+        assert_eq!(admit(&wide, &[r], None, 1), Err(Reject::Grinding(0)));
     }
 
     #[test]
