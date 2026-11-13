@@ -218,7 +218,6 @@ not authentication, and replay cannot add a weight pass. No challenge, loss or
 measured constant changes. Same-author reviews approve the contract, not an
 independent audit, actual memory measurement or task completion. Status: Accepted.
 
-
 ## ADR-030 — Deterministic encoder implementation before PCS admission
 
 Context: E4-08/E4-01, RFC-0010 A4 and Q23. Decision: accept the exact v2 map,
@@ -324,7 +323,6 @@ Q12 and inference remain unfinished. No measured constant, cut or weight-pass
 change. Review: agents/reviews/field-pcs-acceptance.md records internal agent
 skill and owner sign-offs; independent audit is not claimed. Status: Accepted.
 
-
 ## ADR-037: Consolidated delivery and scoped CI
 
 Context: E0-06 and the owner's instruction to consolidate existing work and
@@ -340,7 +338,6 @@ full-size experiments, copied-source gate mutations, upstream regeneration and
 throughput measurements in an explicit manual workflow. Full-size Draft
 acceptance claims still require their own evidence. No protocol, challenge,
 sample-count, cost-model constant or weight-pass change. Status: Accepted.
-
 
 ADR-037 execution note: required CI runs on PR events only. Verify the tested
 merge tree against current main before each sequential merge; direct
@@ -760,7 +757,6 @@ random-oracle assumption on BLAKE3, is a separate ledger term that is never fold
 into query or hash terms. NC-0612 reserves identity/evidence substitution under
 the first expander PCS consumer. No profile, challenge, cost constant, committed
 intermediate or weight-pass change. Status: Accepted.
-
 
 ## ADR-060: Take the RFC-0004 §8 wide residual knob after the first G7 measurement
 
@@ -1749,7 +1745,6 @@ Consequences:
 - Prover-side speed now depends on core count. The verifier is unchanged.
 
 Status: Accepted.
-
 
 ## ADR-088: Single-pass dense rounds and a public prover work-splitting module (RFC-0006 A1, RFC-0008 A3, task E16-16)
 
@@ -3299,4 +3294,63 @@ Decision: RFC-0013 A10 (Draft) extends A9's admission to `T ≤ 64`.
 
 Status: Accepted (development tier) with RFC-0013 A10. Independent review: FIX-THEN-MERGE
 at 9930b11; fixes applied.
+
+## ADR-120: stories42M stage profile; the GPU NO-GO stands for development, and dev-zk is open at 2.0×–3.8×; parallel plain checker (task E16-22, ADR-103 follow-up)
+
+Numbered after ADR-119, which #360 holds.
+
+Context: ADR-103 set a provisional GPU NO-GO from fixture stage shares, with a ceiling of
+about 2.57× against a 3× gate. It asked for a stories42M profile. The owner asked for it
+on the Mac, since no rented host was available.
+
+Measurement (`research/gpu-gating/STORIES42M-STAGES.md`):
+- Stage wall times come from `parallel::Laps` (`STELE_STAGE_TIMES`, off by default, no
+  byte effect), split by work kind with macOS `sample` (`stage_profile.py`).
+- Development, byte 3, `T = 64`:
+  - the plain checker was the critical path, 156 s, sequential, beside a 97 s engine;
+  - prove 167.6 s (median of three).
+- dev-zk, byte 4, `T = 32` (562.5 s):
+  - ZK-GKR 178 s;
+  - two sequential plain checks 125 s;
+  - source preparation 85 s;
+  - masked relations 35 s.
+
+Decision:
+- **The parallel plain checker.**
+  - With `std`, `stele_ir::relation::check` runs its constraints and points on rayon's
+    pool (`stele-ir/std` via `stele-reductions/std`).
+  - It returns the same result as the sequential checker: pass, or the first failure in
+    order. A test pins that in both modes. `no_std` builds are unchanged.
+  - rayon is optional, as in stele-code, stele-pcs and stele-sumcheck. The crate-import
+    rules (deny.toml) and rust-policy pass.
+  - Results:
+    - development `T = 64`: 167.6 → 123.6 s (1.36×; the checker went from 156 to 22 s);
+    - dev-zk `T = 32`: 562.5 → 465.7 s (1.21×);
+    - every proof byte-identical.
+- **GPU, development: NO-GO stands.**
+  - After this change, even an infinitely fast device that took the whole engine leaves
+    witness, model sources and the 22.5 s checker: a ceiling of **≤ 2.80×**, below 3×.
+  - Before it, the ceiling was about 1.0×, because the CPU checker was the critical path.
+- **GPU, dev-zk: not decided.**
+  - The offloadable share is 77% (358 of 466 s).
+  - The ceiling is 4.3× unbounded, and **3.8×–4.2× at E16-21's rounds-only ratios with
+    resident tables**.
+  - It is **2.0×–3.0× at its upload-inclusive ratios**, and it assumes the masked
+    factor tables are built on the device.
+  - A GO needs a dev-zk device benchmark of the masked and GKR rounds with resident
+    tables and device-side factor construction (follow-up). Until then, no GPU binding
+    and no RFC-0014 amendment.
+
+Consequences:
+- Ledgers: `bench/ledger/e16-22-dev-stories42m-t64-mac-before.json` and `-after.json`.
+- CPU work ranked by expected gain:
+  - SIMD QM31 and M31-typed tables in the masked and GKR products (dev-zk's top stage);
+  - SIMD Circle encoding;
+  - BLAKE3 `neon` (it runs portable code today);
+  - development LogUp leaf preparation;
+  - a single dev-zk plain check.
+- These change no bytes.
+
+Status: Proposed (development tier; measurement and a performance change), pending
+independent review.
 

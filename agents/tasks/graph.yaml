@@ -4467,7 +4467,9 @@ tasks:
   - RFC-0018 A1
   skill: benchmark-runner
   crate: stele-bench
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-22-stage-profile
   acceptance:
   - perf profile of one stele prove-dev run of stories42M at T = 64 on the 24-thread host class of bench/ledger/e16-18-dev-stories42m.json, release build with debuginfo
   - wall-time shares of dense and zerocheck rounds, LogUp levels, v2 encoding, Merkle hashing and the residual, with the parallel and sequential split, recorded in a bench/ledger entry
