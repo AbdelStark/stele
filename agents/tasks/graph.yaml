@@ -1928,7 +1928,10 @@ tasks:
   title: Soundness ledger generator + accounting gate; first ledger for W8 both profiles
   depends:
   - E8-02
-  - E8-05a
+  # ADR-124 (Proposed): non-ZK standard admission waits on E8-05b/E8-05c, not on
+  # E8-05a's Q29 blocker; ZK and treaty admission still need E8-05a.
+  - E8-05b
+  - E8-05c
   rfc:
   - RFC-0012 §4-5
   - RFC-0012 A15
@@ -1984,6 +1987,25 @@ tasks:
   - no_std `accounting::admit` decides (C1)-(C4) with exact integers over a round list, the A7 setup term and Q_V, for the standard profile (lambda 100, g 8, Q_cap 2^80, k_q 16)
   - tests pin each condition at its exact boundary (one round above, one grinding bit off, 256 rounds at 2^-108, the H* endpoints)
   - round enumeration from a plan, NC-0804/0805 and lifting `standard-unproven` stay with E8-05
+- id: E8-05c
+  epic: E8
+  title: Round enumeration of a development proof and the (C1)-(C4) verdict in verify-dev (informational)
+  depends:
+  - E8-05b
+  rfc:
+  - RFC-0012 A17 items 3-4
+  - RFC-0026 §6
+  skill: soundness-auditor
+  crate: stele-reductions
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-05c-round-enumeration
+  acceptance:
+  - every ledger entry carries its largest single round; every certificate's tensor and column rounds and every opening's column round are recorded, model sources included
+  - Ledger::rounds lists every Fiat-Shamir round (an entry splits into rounds of its largest round, so max and sum are exact); worst round and floor in 1/1024 bits
+  - verify-dev prints the stele_verifier::accounting::admit verdict under the standard profile, labelled informational
+  - study.py's recorded stories42M ledger gives its worst round and floor (2^-97.0, 2^-95.6) and FAIL; the synthetic eight-layer window's worst round and floor are pinned
+  - ADR-124 (Proposed) relaxes E8-05's dependency on E8-05a for non-ZK standard
 - id: E8-06
   epic: E8
   title: Digest gate with recorded W8 digests

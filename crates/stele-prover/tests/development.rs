@@ -7,6 +7,7 @@ use stele_prover::development::{
     bundle, model_identity, prove, public_input, statement_digest_for, verify, Committed, Error,
     Public, Statement, Weights,
 };
+use stele_prover::development::{Ledger, RoundError};
 use stele_reductions::relation::{Line, Sources};
 use stele_reductions::stele_cqis::execution::Executor;
 use stele_reductions::stele_cqis::model::{Model, Preparation, Scales};
@@ -119,6 +120,11 @@ fn fnv(bytes: &[u8]) -> u64 {
 }
 
 fn run(name: &str, t: usize, sources: Sources) -> u64 {
+    proved(name, t, sources).0
+}
+
+/// The proof's FNV and the verifier's ledger.
+fn proved(name: &str, t: usize, sources: Sources) -> (u64, Ledger) {
     let case = load(name);
     let mut executor = case.executor(&case.artifact);
     let statement = greedy(&mut executor, t);
@@ -152,7 +158,77 @@ fn run(name: &str, t: usize, sources: Sources) -> u64 {
         // Identity check across prover-side changes (INV-8): any byte change moves it.
         fnv(&proof)
     );
-    fnv(&proof)
+    (fnv(&proof), ledger)
+}
+
+/// E8-05c: the enumerated rounds carry every ledger numerator, each entry's largest
+/// round, and a tensor round per certificate. Returns (rounds, worst round's line and
+/// name, its bits, floor bits), bits in 1/1024.
+fn enumerated(ledger: &Ledger) -> (usize, String, u64, u64) {
+    let rounds = ledger.rounds();
+    let field = |r: &stele_prover::development::Round| match r.error {
+        RoundError::Field(n) => n,
+        RoundError::Pow2(_) => 0,
+    };
+    let algebraic: u64 = rounds
+        .iter()
+        .filter(|r| !r.line.starts_with("PCS"))
+        .map(field)
+        .sum();
+    assert_eq!(algebraic, ledger.interactive());
+    for e in &ledger.entries {
+        let largest = rounds
+            .iter()
+            .filter(|r| !r.line.starts_with("PCS") && r.name == e.name)
+            .map(field)
+            .max();
+        assert!(largest >= Some(e.round.min(e.numerator)), "{e:?}");
+    }
+    let tensors = rounds.iter().filter(|r| r.line == "PCS tensor").count();
+    // The stack, each check's multiplicity source and at least one model source.
+    let checks = ledger.entries.iter().filter(|e| e.line == Line::Lu).count();
+    assert!(
+        tensors > 1 + checks,
+        "{tensors} tensor rounds, {checks} checks"
+    );
+    let (worst, bits) = ledger.worst().expect("rounds");
+    (
+        rounds.len(),
+        format!("{} {}", worst.line, worst.name),
+        bits,
+        ledger.floor_bits(),
+    )
+}
+
+#[test]
+fn enumerates_every_round_of_the_one_layer_window() {
+    for (sources, k_q) in [(Sources::Expander, 0), (Sources::CircleAll, 16)] {
+        let (_, ledger) = proved("one-layer", 4, sources);
+        let (rounds, worst, bits, floor) = enumerated(&ledger);
+        eprintln!("{sources:?}: {rounds} rounds, worst {worst} {bits}/1024, floor {floor}/1024");
+        // Policy 1 column rounds never grind; Policy 2 ones grind k_q = 16.
+        assert!(ledger
+            .rounds()
+            .iter()
+            .filter(|r| r.line == "PCS column")
+            .all(|r| r.grind == k_q));
+        assert!(floor < bits, "the floor is at least the worst round");
+    }
+}
+
+/// The eight-layer acceptance window's worst round and floor (E8-05c); `verify-dev`
+/// prints FAIL for both. Release build only.
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn enumerates_every_round_of_the_eight_layer_window() {
+    // Worst round LU range_16, 2^-101.9; floor 2^-99.6 (Policy 1) and 2^-99.4
+    // (Policy 2, whose 2^-108 column rounds add up), both above 2^-100.
+    for (sources, floor) in [(Sources::Expander, 102_066), (Sources::CircleAll, 101_844)] {
+        let (_, ledger) = proved("eight-layer", 64, sources);
+        let summary = enumerated(&ledger);
+        eprintln!("{sources:?}: {summary:?}");
+        assert_eq!(summary, (11_647, "LU range_16".to_string(), 104_425, floor));
+    }
 }
 
 // Pinned proof bytes. The default sources are RFC-0026 A12's: every source,
