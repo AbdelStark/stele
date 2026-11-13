@@ -2784,7 +2784,7 @@ tasks:
   - RFC-0026 A9
   skill: soundness-auditor
   crate: stele-reductions+negative-controls
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-31-substitution-controls
   acceptance:
