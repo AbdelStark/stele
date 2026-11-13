@@ -81,15 +81,24 @@ ACCOUNTING = {
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
               'floor_counts_the_setup_term', 'hash_endpoints_hold_for_standard_and_treaty_and_fail_past_them',
+              'rejects_overflowing_exponents_without_panicking', 'rejects_grinding_above_32_bits_for_any_profile',
               'rejects_a_field_degree_above_eight'),
+    # The admitted content: any edit to the module needs this pin moved in review.
+    'sha256': '20a6ecc6d71a381600e57e0e2526eb73c2a36841a7e4ba784b91ba23917be7fd',
 }
 
 
 def accounting_surface(crate, actual, expected):
     """Strip the admitted accounting module; any other verifier change stays guarded."""
+    module = crate / 'src/accounting.rs'
+    text = module.read_text() if module.is_file() else ''
     if ((crate / 'src/lib.rs').read_text() != ACCOUNTING['library']
             or set(actual) != set(expected) | set(ACCOUNTING['files'])
-            or actual.get('Cargo.toml') != expected['Cargo.toml']):
+            or actual.get('Cargo.toml') != expected['Cargo.toml']
+            or actual.get('src/accounting.rs') != ACCOUNTING['sha256']
+            # No other module may hide behind the admitted file.
+            or '#[path' in text or 'include!' in text
+            or re.findall(r'\bmod\s+(\w+)', text) != ['tests']):
         return actual
     kept = {path: digest for path, digest in actual.items() if path not in ACCOUNTING['files']}
     kept['src/lib.rs'] = expected['src/lib.rs']

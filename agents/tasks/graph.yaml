@@ -1929,6 +1929,7 @@ tasks:
   depends:
   - E8-02
   - E8-05a
+  - E8-05b
   rfc:
   - RFC-0012 §4-5
   - RFC-0012 A15
