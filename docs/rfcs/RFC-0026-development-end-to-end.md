@@ -1300,3 +1300,88 @@ lines are charged once per check."):
   A11's and A12's statement "the worst round is still the ungrinded LU round" holds.
 
 **Affected tasks.** E16-32. Promotion to `standard`: not granted (Workflow 10).
+
+### A14 — Ground lookup (β, α) rounds for development proofs (profile byte 5)
+
+Status: Draft. Needs one independent reviewer from another lane before acceptance.
+Task: E8-05d. Decision: ADR-125 (Proposed). Companion: RFC-0012 A17 item 5, RFC-0008 A8.
+
+**Motivation.**
+- E8-05c's enumeration shows the only development rounds above `2^-108` are the
+  ungrinded LU `(β, α)` rounds, as A11 and A12 noted. On the synthetic eight-layer
+  window (T = 64) the worst is LU range_16 at `2^-101.9`. On stories42M it is
+  range_8 at `2^-97.0` (`research/fs-pcs/PARAMETERS.md` §4).
+- RFC-0012 A17 item 5 lets exactly these rounds grind. RFC-0008 A8 placed the nonce
+  for the standard A5 consumer (`lookup::Descriptor::standard`, ADR-108), but the
+  relation engine's checks (`relation_lookup.rs`) never ground.
+- This amendment applies the same rule to the engine's checks. It makes no level claim.
+
+**Exact change.**
+
+1. **Profile byte 5.** A9's profile tag gains the value 5: "development proof on A14
+   sources". An A14 public input is the development bytes followed by `u8(5)`. The
+   encodings (no byte, `1`, `2`, `3`, `4`, `5`) are distinct and self-delimiting.
+   The verifier's input file is `stele-dev-public-v4`, with the
+   `stele-dev-public-v1` layout. The container stays `stele-dev-e2e-v1`.
+2. **Sources under byte 5.** They are A12's, byte for byte: the stacked, model and
+   multiplicity sources at Circle rate 1/4 under Policy 2. A model commitment is
+   the same under bytes 2, 3 and 5.
+3. **Grinding bits.** For each check (A3: one table or one range width, concatenated
+   domain `2^m`, `t` table rows, arity `c`), `k_LU` is the least `k ∈ [0, 32]` with
+   `(c·(2^m + t) − 1)·2^108 ≤ p^4·2^k`.
+   - This is RFC-0008 A8 item 2's rule (`lookup::lu_grind_bits`) applied to A13's
+     numerator.
+   - The verifier derives `k_LU` from the plan only, never from a proof byte.
+   - If no `k ≤ 32` meets it, the relation is `Unsupported`.
+4. **Nonce placement.** As RFC-0008 A8 item 5:
+   - Placement: when `k_LU ≥ 1`, the nonce follows the check's
+     `Repetition(id, 0, 0)` absorb and precedes `lookup/beta`.
+   - Predicate and absorb: RFC-0012 A17 item 5's predicate and absorb, label
+     `stele/v0.1/grind`.
+   - Wire: the nonce is u64le, the first 8 bytes of the check's lookup section.
+   - `k_LU = 0` means no nonce and no bytes.
+5. **Least nonce.** The prover sends the least valid nonce (`Transcript::grind`), so
+   the proof is deterministic (INV-8). The verifier makes one PoW query
+   (`Transcript::verify_grind`). An invalid nonce is `GrindMismatch` and a missing one
+   is `ProofShape`.
+6. **Ledger.** The LU line is unchanged (A13). Its round carries `k_LU` and is charged
+   `(c·(2^m + t) − 1)·2^-k_LU/|K|` under RFC-0012 A17's FS row. Nothing is summed into
+   a claimed level.
+7. **No level is claimed**, as A11 item 4 says. Byte 5 meets RFC-0012 A17 (C1)–(C4)
+   under the standard parameters, and `verify-dev` prints that verdict as
+   information. Admission still needs E8-05's composed check at the verifier entry
+   point and ADR-108's lift of `standard-unproven` (Workflow 10).
+8. **Old proofs.** Bytes 0 to 4 are the same bytes and still verify, with their pins.
+   Byte 3 stays the default for new development proofs. `prove-dev --dev-profile 5`
+   selects byte 5.
+
+**Soundness.** No challenge, label or order changes, except the A17 nonce before each
+ground check's `β`.
+- **Per round.** A ground round's FS term is its RBR error times `2^-k_LU`. That is
+  `≤ 2^-108` by item 3, which is RFC-0012 A17's Theorem 1 with counted grinding.
+- **Synthetic eight-layer window (T = 64, E8-05c enumeration).** The worst round goes
+  from LU range_16 at `2^-101.9` to LU silu_q at exactly `2^-108.0` after 2 bits. The
+  floor goes from `2^-99.4` to `2^-101.9`. `admit` returns PASS.
+- **Grinding interacts with nothing else.** A nonce is absorbed before the challenges
+  it protects, and the A3/A5 interactive bounds are unchanged.
+
+**Cost.**
+- **Prover.** About `2^k_LU` BLAKE3 calls per ground check. The eight-layer window
+  grinds 18 checks at 1 to 12 bits. Its prove time was not separated from host-load
+  noise here, because the host was shared during the run.
+- **Verifier.** One PoW query per ground check.
+- **Proof.** 8 bytes per ground check: +144 bytes on the eight-layer window.
+- stories42M at T = 64 is measured separately (E8-05d): prove time, size and verdict,
+  against the study's 2^-108.0 worst round and 2^-102.2 floor.
+
+**Controls.**
+- **NC-1321:** the first nonzero `(β, α)` nonce `n` replaced by `n − 1`, which fails
+  the predicate because `n` is the least valid nonce: `GrindMismatch`.
+- **NC-1322:** a byte-5 proof read as byte 3, header restamped: `RoundSumMismatch`,
+  because the transcript input differs before any nonce is read.
+- **Mutation check.** With `verify_grind`'s predicate skipped and its absorb kept,
+  NC-1321 goes red: the replaced nonce is absorbed, and a later fraction sumcheck
+  rejects with `RoundSumMismatch` instead of `GrindMismatch`.
+
+**Affected tasks.** E8-05d (implements it), E8-05 (admission at the entry point).
+Promotion to `standard`: not granted (Workflow 10).

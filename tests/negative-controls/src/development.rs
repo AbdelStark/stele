@@ -28,6 +28,12 @@
 //!   NC-1316 (`RoundSumMismatch`). NC-1320 replaces the first multiplicity
 //!   certificate's column-round nonce with one that fails the k_q = 16 predicate
 //!   (`GrindMismatch`).
+//! - NC-1321..1322 (RFC-0026 A14, Draft, task E8-05d): the honest proof is on A14
+//!   sources (profile byte 5: every check's `(β, α)` round ground). NC-1321 replaces
+//!   the first nonzero `(β, α)` nonce `n` with `n − 1`, which fails the predicate
+//!   because the prover sends the least valid nonce (`GrindMismatch`). NC-1322 reads
+//!   the A14 proof with byte 3, header restamped (`RoundSumMismatch`: the transcript
+//!   input differs before any nonce is read).
 //!
 //! NC-1310 (`run_width`) runs on a minimal relation through the relation-engine
 //! prover and verifier (RFC-0026 A10), as a documented INV-4 exception (ADR-110).
@@ -366,6 +372,7 @@ pub fn run(id: u16) -> Result<(), String> {
     // NC-1311..1316 test A11 (byte 2) proofs; every other control the default (A12).
     let set = match id {
         1311..=1316 => Sources::Circle,
+        1321 | 1322 => Sources::CircleAllGrind,
         _ => Sources::CircleAll,
     };
     let weights =
@@ -381,7 +388,7 @@ pub fn run(id: u16) -> Result<(), String> {
     };
     let proof = prove(&public, &mut exec, &weights, &committed, &honest)
         .map_err(|e| format!("honest prover: {e:?}"))?;
-    verify(&public, &honest, &proof).map_err(|e| format!("honest rejected: {e:?}"))?;
+    let ledger = verify(&public, &honest, &proof).map_err(|e| format!("honest rejected: {e:?}"))?;
 
     let mut noop = |_: &mut Relation, _: &mut Values| {};
     let (expected, rejection) = match id {
@@ -819,6 +826,36 @@ pub fn run(id: u16) -> Result<(), String> {
                 "GrindMismatch",
                 verify(&tampered, &honest, &c.encode()).err(),
             )
+        }
+        1321 => {
+            // Lookup section i is check i, whose LU entry carries its grinding bits; a
+            // ground section starts with its u64le nonce (A14).
+            let ground = ledger
+                .entries
+                .iter()
+                .filter(|e| e.line == stele_reductions::relation::Line::Lu)
+                .map(|e| e.grind > 0);
+            let mut c = container::decode(&proof).map_err(|e| format!("{e:?}"))?;
+            let section = c
+                .lookups
+                .iter_mut()
+                .zip(ground)
+                .filter(|(_, g)| *g)
+                .map(|(s, _)| s)
+                .find(|s| s[..8] != [0; 8])
+                .ok_or("no ground check with a nonzero nonce")?;
+            let nonce = u64::from_le_bytes(section[..8].try_into().map_err(|_| "nonce")?);
+            section[..8].copy_from_slice(&(nonce - 1).to_le_bytes());
+            ("GrindMismatch", verify(&public, &honest, &c.encode()).err())
+        }
+        1322 => {
+            let a12 = Public {
+                sources: Sources::CircleAll,
+                ..public.clone()
+            };
+            // The public input's trailing byte differs, so the first zerocheck rejects
+            // before any lookup section (with or without a nonce) is read.
+            ("RoundSumMismatch", restamped(&a12, &honest, &proof)?)
         }
         _ => return Err(format!("unknown development control {id}")),
     };
@@ -1337,4 +1374,12 @@ impl crate::ProverHook<bool> for Tamper1310 {
 #[test]
 fn rejects_nc_1310_out_of_width() {
     run_width().expect("NC-1310");
+}
+
+#[cfg(test)]
+#[test]
+fn rejects_nc_1321_and_nc_1322_lookup_grinding() {
+    for id in [1321, 1322] {
+        run(id).unwrap_or_else(|e| panic!("NC-{id}: {e}"));
+    }
 }

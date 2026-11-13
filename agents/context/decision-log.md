@@ -3472,3 +3472,47 @@ Consequences:
   2^-96.99999 (printed 2^-96.9) and a floor of 2^-95.6, as in PARAMETERS.md §4.
 
 Status: Proposed (governance; no protocol change). Review requested.
+
+## ADR-125: Development proofs with ground lookup (β, α) rounds, profile byte 5 (RFC-0026 A14, task E8-05d)
+
+Context:
+- E8-05c's enumeration found that the only development rounds above `2^-108` are the
+  checks' ungrinded `(β, α)` rounds.
+- RFC-0012 A17 item 5 allows grinding there, and ADR-108 implemented it for the
+  standard A5 consumer only.
+- `research/fs-pcs/PARAMETERS.md` §4 predicts that Policy 2 Circle rate-1/4 sources
+  with ground LU rounds meet (C1)–(C4) on stories42M: worst `2^-108.0`, floor
+  `2^-102.2`, 18.3 MB.
+
+Decision (Proposed, with RFC-0026 A14 Draft):
+- **New source set and byte.** `Sources::CircleAllGrind` has A12's sources and profile
+  byte 5, with input file `stele-dev-public-v4`.
+- **Grinding bits.** Each relation-engine check grinds its `(β, α)` round at the least
+  `k_LU` meeting (C1), given by `lookup::lu_grind_bits` on A13's numerator. The bits
+  come from the plan only.
+- **Nonce.** It is placed as in RFC-0008 A8 (after `Repetition(id, 0, 0)`, before
+  `Beta`), and on the wire it is the first 8 bytes of the lookup section.
+- **Least nonce.** The prover sends the least valid nonce.
+- **Ledger.** LU entries carry `k_LU`, so E8-05c's `rounds()` and `verify-dev`'s
+  verdict count it.
+- **CLI.** `stele prove-dev --dev-profile 5` selects byte 5, and byte 3 stays the
+  default.
+- **Code placement.**
+  - The gate's development pattern already covers the new variant
+    (`Sources::Circle\w*`).
+  - The CLI selects the profile by byte (`prove_window_development`), so the
+    variant name stays on the development path.
+
+Consequences:
+- **Pins.** Byte 0–4 pins are unchanged. New pins: one-layer T = 16 at byte 5
+  (`0x59ee_67e3_9aa2_5d4b`) and eight-layer T = 64 (`0xf66d_7640_b9de_788e`,
+  7,024,665 bytes, which is byte 3 plus 144).
+- **Synthetic eight-layer verdict.** `verify-dev` prints PASS (C1)–(C4): worst LU
+  silu_q at `2^-108.0` after 2 bits, floor `2^-101.9`.
+- **Controls.** NC-1321 (`GrindMismatch`) and NC-1322 (`RoundSumMismatch`), with a
+  mutation check on NC-1321.
+- **No level claimed.** Nothing is `proven: true`. The composed check at the verifier
+  entry point is E8-05's (ADR-108).
+- **stories42M.** The T = 64 measurement at byte 5 is pending a quiet host.
+
+Status: Proposed (development tier). Review requested with RFC-0026 A14.

@@ -2006,6 +2006,25 @@ tasks:
   - verify-dev prints the stele_verifier::accounting::admit verdict under the standard profile, labelled informational
   - study.py's recorded stories42M ledger gives its worst round and floor (2^-97.0, 2^-95.6) and FAIL; the synthetic eight-layer window's worst round and floor are pinned
   - ADR-124 (Proposed) relaxes E8-05's dependency on E8-05a for non-ZK standard
+- id: E8-05d
+  epic: E8
+  title: Development proofs with ground lookup (beta, alpha) rounds (profile byte 5) whose verify-dev admission verdict is PASS
+  depends:
+  - E8-05c
+  rfc:
+  - RFC-0026 A14
+  - RFC-0012 A17 item 5
+  - RFC-0008 A8
+  skill: soundness-auditor
+  crate: stele-reductions
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-05d-development-lu-grinding
+  acceptance:
+  - RFC-0026 A14 (Draft) and ADR-125 (Proposed); byte 5 grinds every check's (beta, alpha) round at the least bits meeting (C1), nonce placed as RFC-0008 A8
+  - byte 0-4 pins unchanged; byte 5 pins (one-layer T = 16, eight-layer T = 64)
+  - NC-1321 (failing nonce, GrindMismatch) with a mutation check; NC-1322 (byte 5 read as 3)
+  - verify-dev prints PASS on the synthetic eight-layer window; stories42M T = 64 at byte 5 measured on a quiet host (prove time, size, verdict) against study.py's prediction
 - id: E8-06
   epic: E8
   title: Digest gate with recorded W8 digests

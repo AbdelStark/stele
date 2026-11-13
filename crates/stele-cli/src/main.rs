@@ -35,14 +35,14 @@
 use std::collections::BTreeMap;
 use std::process::ExitCode;
 use stele_prover::development::{
-    bundle, model_identity, prove_window_profile, verify, zk, Statement,
+    bundle, model_identity, prove_window_development, prove_window_profile, verify, zk, Statement,
 };
 
 const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --scales S \
 --artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
-[--zk --commitment FILE --secret FILE] | \
+[--dev-profile 3|5 | --zk --commitment FILE --secret FILE] | \
 stele verify-dev --public FILE --proof FILE [--expect-model HEX]";
 
 enum Failure {
@@ -239,8 +239,15 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     let length = o.get("length").map(|t| number(t)).transpose()?.unwrap_or(0) as usize;
     if !zk {
         let [m, p, s, a] = read_files()?;
+        // RFC-0026 A14 (Draft): `--dev-profile 5` grinds each check's (β, α) round.
+        let profile = o
+            .get("dev-profile")
+            .map(|v| number(v))
+            .transpose()?
+            .unwrap_or(3);
+        let profile = u8::try_from(profile).map_err(|_| usage("--dev-profile is 3 or 5"))?;
         let (public, statement, proof) =
-            prove_window_profile(&m, &p, &s, &a, statement, length, None).map_err(reject)?;
+            prove_window_development(&m, &p, &s, &a, statement, length, profile).map_err(reject)?;
         write("public", &bundle::encode(&public, &statement))?;
         write("proof", &proof)?;
         println!("profile development");
@@ -372,6 +379,8 @@ fn main() -> ExitCode {
             .concat();
             if zk {
                 allowed.extend(["commitment", "secret"]);
+            } else {
+                allowed.push("dev-profile");
             }
             options(&rest, &allowed).and_then(|o| prove_dev(&o, zk))
         }

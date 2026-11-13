@@ -231,6 +231,28 @@ fn enumerates_every_round_of_the_eight_layer_window() {
     }
 }
 
+/// RFC-0026 A14 (Draft): byte 5 grinds every check's `(β, α)` round to `2^-108`,
+/// so no round is above `2^-(λ+g)` and the floor is below `2^-100` (`verify-dev`
+/// prints PASS). Only the nonces differ from byte 3: 8 bytes per ground check.
+#[test]
+fn accepts_one_layer_window_on_a14_sources() {
+    let (hash, ledger) = proved("one-layer", 16, Sources::CircleAllGrind);
+    assert_eq!(hash, 0x59ee_67e3_9aa2_5d4b);
+    let (_, _, worst, floor) = enumerated(&ledger);
+    assert!(worst >= 108 * 1024 && floor >= 100 * 1024, "{worst} {floor}");
+}
+
+#[test]
+#[ignore = "8 layers at T=64: run with --release -- --ignored"]
+fn accepts_eight_layer_window_on_a14_sources() {
+    let (hash, ledger) = proved("eight-layer", 64, Sources::CircleAllGrind);
+    let summary = enumerated(&ledger);
+    eprintln!("{summary:?}");
+    assert_eq!(hash, 0xf66d_7640_b9de_788e);
+    // Worst round LU silu_q at exactly 2^-108.0 after its grinding; floor 2^-101.9.
+    assert_eq!(summary, (11_647, "LU silu_q".to_string(), 110_592, 104_436));
+}
+
 // Pinned proof bytes. The default sources are RFC-0026 A12's: every source,
 // multiplicity sources included, Circle rate 1/4 under Policy 2 (new pins, E16-31).
 // A11 (profile byte 2, E16-30) and pre-A11 expander sources keep their pins

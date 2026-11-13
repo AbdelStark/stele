@@ -203,6 +203,8 @@
 | NC-1318 | development profile byte | 0026 A12 | verify an A11 proof with profile byte 3 in place of 2, header restamped: the verifier derives the A12 rate-1/4 multiplicity sources | `ProofShape` | done |
 | NC-1319 | development profile byte transcript | 0026 A12 | replay the engine with the plan fixed at one of the A11 and A12 source sets and the transcript input of the other (trailing byte 2 for 3, and 3 for 2): no source shape differs | `RoundSumMismatch` | done |
 | NC-1320 | development multiplicity grinding | 0026 A12, 0010 A14 | replace the first rate-1/4 multiplicity certificate's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
+| NC-1321 | development lookup grinding | 0026 A14 (Draft), 0012 A17 item 5 | replace the first nonzero `(β, α)` nonce n of a byte-5 proof with n − 1, which fails the predicate (the prover sends the least valid nonce), every other byte unchanged | `GrindMismatch` | done |
+| NC-1322 | development profile byte | 0026 A14 (Draft) | verify an A14 (byte 5) proof with profile byte 3, header restamped: the transcript input differs before any `(β, α)` nonce is read | `RoundSumMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -255,7 +257,8 @@ that selects the source set (NC-1316 for its transcript binding alone), and the 
 column nonces of the stacked certificate, the stacked opening and the model certificate. RFC-0026
 A12 (Proposed, task E16-31) adds NC-1317..1320: profile byte 3 against byte 2 both ways
 (NC-1319 for its transcript binding alone), and the column nonce of a rate-1/4
-multiplicity certificate.
+multiplicity certificate. RFC-0026 A14 (Draft, task E8-05d) adds NC-1321..1322: a
+failing `(β, α)` nonce, and byte 5 read as byte 3.
 
 The registry-collision entry checks the actual registry validator (configuration control, RFC-0012 A1). It does not establish a proof-statement binding. Early-challenge and missing-final-claim controls require real protocol consumers; primitive sensitivity tests earn no credit.
 

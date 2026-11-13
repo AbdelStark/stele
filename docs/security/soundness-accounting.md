@@ -2034,3 +2034,10 @@ entry's largest single round and every PCS round, model sources included:
 
   The stories42M worst round is `2^-96.99999`, printed toward the larger error;
   [PARAMETERS.md §4](../../research/fs-pcs/PARAMETERS.md) rounds it to `2^-97.0`.
+
+**Ground lookup rounds (RFC-0026 A14, Draft, E8-05d).** Profile byte 5 grinds each
+check's `(β, α)` round at the least `k_LU` meeting (C1). The nonce is placed as in
+RFC-0008 A8, and the LU round carries `k_LU`.
+- On the synthetic eight-layer window, `verify-dev` prints PASS (C1)–(C4).
+- The worst round is LU silu_q at exactly `2^-108.0` after 2 bits.
+- The floor is `2^-101.9`.

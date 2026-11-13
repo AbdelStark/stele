@@ -212,10 +212,18 @@ struct Phase {
 }
 
 /// A5 prefix: statement, (empty) units, multiplicity bundle, beta/alpha, phase 1.
+/// The A14 `(β, α)` nonce: the prover grinds and writes it; the verifier reads and
+/// checks it. Either way it is absorbed before `lookup/beta` (RFC-0012 A17 item 5).
+pub(super) enum Nonce<'a, 'b> {
+    Prove(&'a mut Vec<u8>),
+    Verify(&'a mut Reader<'b>),
+}
+
 fn start(
     t: &mut Transcript<K>,
     check: &Check,
     mu: &VerifiedCertificate<K>,
+    nonce: Nonce<'_, '_>,
 ) -> Result<Phase, Error> {
     t.absorb(AbsorbLabel::LookupStatement, &statement(check))?;
     t.absorb(AbsorbLabel::LookupUnits, &phase(check.id, 0, 0)[..9])?;
@@ -227,6 +235,17 @@ fn start(
     bundle.extend_from_slice(&mu.record().id());
     t.absorb(AbsorbLabel::LookupMultiplicities, &bundle)?;
     t.absorb(AbsorbLabel::LookupRepetition, &phase(check.id, 0, 0))?;
+    // A14: as RFC-0008 A8 item 5, the nonce follows `Repetition(id, 0, 0)` and precedes
+    // `Beta`; it is the section's first 8 bytes, u64le. k comes from the plan.
+    if check.grind > 0 {
+        match nonce {
+            Nonce::Prove(out) => out.extend_from_slice(&t.grind(check.grind)?.to_le_bytes()),
+            Nonce::Verify(reader) => {
+                let bytes: [u8; 8] = reader.take(8)?.try_into().map_err(|_| Error::ProofShape)?;
+                t.verify_grind(check.grind, u64::from_le_bytes(bytes))?;
+            }
+        }
+    }
     let beta = t.challenge(ChallengeLabel::LookupBeta)?;
     let alpha = t.challenge(ChallengeLabel::LookupAlpha)?;
     t.absorb(AbsorbLabel::LookupRepetition, &phase(check.id, 0, 1))?;
@@ -338,7 +357,7 @@ pub(super) fn prove(
     out: &mut Vec<u8>,
     claims: &mut Claims,
 ) -> Result<(), Error> {
-    let p = start(t, check, mu.1)?;
+    let p = start(t, check, mu.1, Nonce::Prove(out))?;
     let xs = originals(check, relation, values)?;
     let sigma = sigma(check, relation);
     let one = K::from_i64(1);
@@ -423,7 +442,7 @@ pub(super) fn verify(
     claims: &mut Claims,
     ledger: &mut Ledger,
 ) -> Result<(), Error> {
-    let p = start(t, check, mu)?;
+    let p = start(t, check, mu, Nonce::Verify(reader))?;
     let bytes = reader.take(p.left.proof_size().map_err(FRACTION)?)?;
     let left = fraction::Proof::decode(&p.left, bytes).map_err(FRACTION)?;
     let lookup = p.left.verify(&left, t).map_err(FRACTION)?;
@@ -479,6 +498,9 @@ pub(super) fn verify(
     let (n, c) = (1u64 << check.m, check.c as u64);
     let lu = c * (n + check.t as u64) - 1;
     ledger.add(Line::Lu, &check.name, lu, lu);
+    if let Some(e) = ledger.entries.last_mut() {
+        e.grind = check.grind;
+    }
     for tree in [&lookup, &table] {
         let a = &tree.accounting;
         // Each Gamma and Fold draw follows an absorb: one round of 1 each (RFC-0008 A3).
