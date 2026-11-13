@@ -2773,6 +2773,24 @@ tasks:
   - reductions with identical proof bytes (every pin unchanged)
   - T = 32 peak footprint before and after, three runs each; stories42M T = 64 proved on the 48 GB host; ledgers in bench/ledger
   - RFC-0013 A10 (Draft) extends A9's admission to T <= 64, with the hiding re-check at that geometry
+- id: E12-31
+  epic: E12
+  title: dev-zk substitution adversary; NC-0930..0932 (member weight, eq·Z, shared-bit finals) executed
+  depends:
+  - E12-14
+  rfc:
+  - RFC-0013 A5
+  - RFC-0008 A7
+  - RFC-0026 A9
+  skill: soundness-auditor
+  crate: stele-reductions+negative-controls
+  status: done
+  agent: claude-code
+  branch: task/E12-31-substitution-controls
+  acceptance:
+  - a controls-only adversary proves the true statement's plan (its statement messages unchanged), with one public input replaced by a substitute of the same sum over the cube; honest rounds, finals and μ
+  - NC-0930..0932 are executed through the dev-zk verifier with `ClaimMismatch`; δ = 0 is accepted (M0); removing each final check turns exactly its control red, with the forgery accepted
+  - catalog and harness counts updated; RFC-0013 A5 implementation notes and ADR-121
 - id: E12-30
   epic: E12
   title: dev-zk tamper suite on a stored real-checkpoint proof (verify only)

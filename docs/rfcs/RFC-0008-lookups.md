@@ -593,6 +593,9 @@ form or challenge changes.
 - **Controls.** NC-0920..0923 cover members, selector, shift and padding. NC-0929
   covers the `S` final. NC-0930 (`W_m`) and NC-0931 (`eq·Z`) are `todo` (see the
   RFC-0013 A5 E12-14a notes).
+  - *E12-31 implementation note.* NC-0930 and NC-0931 are done (ADR-121): a
+    controls-only substitution of the public `W_m` and `eq·Z` factors is rejected with
+    `ClaimMismatch`.
 
 ### A8 — Standard-profile LU (β, α) nonce: bits, byte offset and multiplicity policy (companion of RFC-0012 A17)
 

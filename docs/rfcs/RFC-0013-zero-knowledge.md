@@ -618,6 +618,31 @@ ledger. No label, loss form, order or byte changes.
     that LU round.
   No level is claimed for either byte.
 
+**Implementation notes (E12-31, ADR-121; development tier).** The substitution
+adversary for NC-0930..0932. No label, loss form, order, byte or verifier check
+changes.
+- **Adversary** (`zk::claims::forge_substitute`, under the `controls` feature). It
+  proves the true statement's plan, so every `relation/statement`, `LookupStatement`
+  and `LookupUnits` message is the true one. One public input is replaced by a
+  substitute with the same sum over the cube. Its rounds, finals and `μ` are then
+  honest, and only the verifier's own evaluation of that final rejects it
+  (`ClaimMismatch`).
+  - NC-0930: a leaf's `W_m = B_m·S` becomes `(B_m + B_g)·S`, where `B_g` is an aligned
+    block off every member, so `S = 0` there. The producer adds `B_g` to the combined
+    factors and their masks. It runs on the signed 8-bit range of the relation
+    controls' fixture.
+  - NC-0931: a leaf's `Z`, and so `eq·Z`, moves by one at a cube point where its
+    cofactor vanishes (else at two points weighted by each other's cofactor).
+  - NC-0932: a contraction's `eq(ρ_shared, ·)` moves in the same way.
+  - The producer routes the true finals, from an honest twin folded at the same point.
+- **Mutation evidence.** `δ = 0` is the honest proof and is accepted (M0). Removing the
+  verifier's member-weight, `eq·Z` or shared-eq final check turns exactly NC-0930,
+  NC-0931 or NC-0932 red, with the forged proof accepted.
+- This executes the three controls that the E12-14a notes and the Admission paragraph
+  list as `todo`, and that RFC-0008 A7's E12-14 notes list for `W_m` and `eq·Z`. The
+  Admission's "What it does not claim" item on them no longer applies. Nothing else in
+  the Admission changes.
+
 ### A6 — Lifetime hiding weight source for dev-zk (P proofs against one published commitment)
 
 Status: **Accepted** (development tier, Workflow 02 development-tier path).
