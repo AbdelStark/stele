@@ -1367,7 +1367,7 @@ ground check's `β`.
 
 **Cost.**
 - **Prover.** About `2^k_LU` BLAKE3 calls per ground check. The eight-layer window
-  grinds 18 checks at 1 to 12 bits. Its prove time was not separated from host-load
+  grinds 18 of its 21 checks, at 1 to 7 bits. Its prove time was not separated from host-load
   noise here, because the host was shared during the run.
 - **Verifier.** One PoW query per ground check.
 - **Proof.** 8 bytes per ground check: +144 bytes on the eight-layer window.
