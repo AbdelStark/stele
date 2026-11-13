@@ -491,12 +491,14 @@ fn prove_inner(
     statement: &Statement,
     hook: Option<Hook<'_>>,
 ) -> Result<Vec<u8>, Error> {
+    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
     let d = decode(public)?;
     let mut layout = layout(&d, public, statement)?;
     let capture = executor
         .capture(&statement.tokens)
         .map_err(|_| Error::Witness)?;
     let mut values = layout.assign(&capture, &weights.codes)?;
+    laps.lap("witness/layout_capture_assign");
     let checked = hook.is_none();
     if let Some(hook) = hook {
         hook(&mut layout.relation, &mut values);
@@ -512,15 +514,19 @@ fn prove_inner(
     // with `Check` even if the engine errs or panics on it (E16-23).
     let proof = parallel::gated(
         || {
-            if checked {
+            let mut laps = parallel::Laps::start();
+            let result = if checked {
                 check(&layout.relation, &values).map_err(Error::Check)
             } else {
                 Ok(())
-            }
+            };
+            laps.lap("dev/plain_check (beside the engine)");
+            result
         },
         || relation::prove(&mut t, &layout.relation, &values, &model, public.sources),
     )?
     .map_err(Error::Engine)?;
+    laps.lap("dev/check_and_engine");
     let digest = statement_digest(&input, &relation::digest(&layout.relation));
     Ok(sections(proof, d.cqis_id, digest).encode())
 }
@@ -649,6 +655,7 @@ pub fn prove_window_profile(
         .map_err(|_| Error::StatementMismatch)?;
     let s = Scales::decode(&m, scales).map_err(|_| Error::StatementMismatch)?;
     let id = artifact_id(artifact);
+    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
     let mut executor =
         Executor::new(&m, &p, &s, artifact, &id, 1 << 36).map_err(|_| Error::Witness)?;
     if statement.tokens.len() < length {
@@ -679,6 +686,7 @@ pub fn prove_window_profile(
         statement.next = last.iter().position(|v| v == max).map(|i| i as u32);
     }
     let weights = Weights::from_artifact(&m, artifact)?;
+    laps.lap("witness/decode_extend_weights");
     if let Some(window) = zk {
         // E12-27: the 1-D records are committed weights; the public input names
         // only their shapes.
@@ -735,6 +743,7 @@ pub fn prove_window_profile(
         return Ok((public, statement, proof));
     }
     let committed = Committed::new(&weights)?;
+    laps.lap("dev/model_sources");
     let public = Public {
         model: model.to_vec(),
         scales: scales.to_vec(),

@@ -1143,7 +1143,9 @@ pub fn prove(
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
     sources: Sources,
 ) -> Result<Proof, Error> {
+    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
     let plan = plan(relation, sources)?;
+    laps.lap("dev/plan");
     prove_plan(t, relation, &plan, values, values, model)
 }
 
@@ -1167,7 +1169,8 @@ fn prove_plan(
     }
     let mut proof = Proof::default();
     let mut claims = Claims(vec![Vec::new(); relation.columns.len()]);
-    // Step 1.
+    let mut laps = parallel::Laps::start(); // E16-22: off unless STELE_STAGE_TIMES
+                                            // Step 1.
     t.absorb(AbsorbLabel::RelationStatement, &plan.digest)?;
     absorb_model(t, &certificates)?;
     // Step 2: the stacked source (A4), signed embedding; group blocks largest first,
@@ -1240,6 +1243,7 @@ fn prove_plan(
         Ok((p, handle))
     })
     .collect::<Result<Vec<_>, Error>>()?;
+    laps.lap("dev/sources_and_counts");
     // Step 4: one zerocheck per identity domain size.
     for &m in &plan.sizes {
         let lambdas = identity_lambdas(t, relation, m)?;
@@ -1270,6 +1274,7 @@ fn prove_plan(
         }
         proof.identities.push(out);
     }
+    laps.lap("dev/zerocheck");
     // Step 5.
     for ((check, (p, handle)), counts) in plan.checks.iter().zip(&mu).zip(&counts) {
         let mut out = Vec::new();
@@ -1285,6 +1290,7 @@ fn prove_plan(
         )?;
         proof.lookups.push(out);
     }
+    laps.lap("dev/logup");
     // Step 6.
     for (i, mm) in relation.matmuls.iter().enumerate() {
         let shape = MatmulShape::new(t, mm)?;
@@ -1312,6 +1318,7 @@ fn prove_plan(
         shape.route(mm, &sc, &sp.final_values, out_value, &mut claims);
         proof.matmuls.push(out);
     }
+    laps.lap("dev/matmul");
     // Step 7: one claim batch and one opening of the stack, then per weight source.
     if let (Some(stack), Some((prepared, handle))) = (&plan.stack, &stacked) {
         let batch = group_claims(plan, stack, &claims);
@@ -1345,6 +1352,7 @@ fn prove_plan(
                 .push(opening.prove(t, table, prepared, certificate)?);
         }
     }
+    laps.lap("dev/batch_and_openings");
     Ok(proof)
 }
 
