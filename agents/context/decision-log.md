@@ -3710,7 +3710,7 @@ Consequences:
 
 Independent review of #369: FIX-THEN-MERGE.
 - **Confirmed.** Placement, plan-derived k, least k via `admit` (C4), and identical
-  bytes 0–4. All 11,647 eight-layer rounds were recomputed exactly; none is above
+  bytes 0–4. All 11,647 eight-layer rounds (11,687 after #367 split each zerocheck into its phases) were recomputed exactly; none is above
   `2^-108`, and the floor is `2^-101.989`.
 - **Fixes applied.**
   - RFC-0008 A8 item 1 replacement text (A14 item 9);
