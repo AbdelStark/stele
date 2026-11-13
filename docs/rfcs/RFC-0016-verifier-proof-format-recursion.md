@@ -177,7 +177,9 @@ Affected tasks: E5-03b, E6, E8, E12-05/06 and E14.
 
 ### A5 — Profile admission at the verifier entry point (§2 steps 2 and 4 exact)
 
-Status: Draft. Task: E8-05f. Decision: ADR-126 (Proposed). Companions: RFC-0012 A17
+Status: Accepted (the composition rule and its prerequisites; NC-0804/0805/1205 remain
+`todo` and `standard-unproven` stays). Independent review: FIX-THEN-MERGE at 7b6a73a; fixes
+applied at 1cdd903. Task: E8-05f. Decision: ADR-126. Companions: RFC-0012 A17
 item 4, RFC-0002 A1, RFC-0012 §6.
 
 **Motivation.**

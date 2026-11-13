@@ -3805,4 +3805,6 @@ the transitive blockers and the open conflict, "three cases", the plan-provenanc
 sentence, re-implementation not a move, the gate label, the `--admit` docs and the CLI
 test.
 
-Status: Proposed (development tier; no protocol change). Review requested with RFC-0016 A5.
+Status: Accepted (development tier; no protocol change) with RFC-0016 A5. Independent
+review: FIX-THEN-MERGE at 7b6a73a; fixes applied at 1cdd903 (`--admit` refused on dev-zk,
+NC-0804 expects `LedgerMismatch`, transitive blockers of E8-01/E8-02 stated).
