@@ -1908,6 +1908,58 @@ impl<K: ChallengeField> TermPlan<K> {
             None => outer,
         }
     }
+    /// [`Self::sum`] where the factors with `base[f]` hold M31 values in `small`
+    /// (E16-34). Their product is taken in M31 and applied once with `mul_m31`. The
+    /// field is exact, so this is the same element as [`Self::sum`] on the embedded
+    /// values.
+    fn sum_mixed(
+        terms: &[(Coefficient<K>, Vec<u32>)],
+        values: &[K],
+        small: &[M31],
+        base: &[bool],
+    ) -> K {
+        terms.iter().fold(zero::<K>(), |s, (c, factors)| {
+            let (mut m, mut k) = (M31::from_u64(1), None::<K>);
+            for f in factors {
+                let f = *f as usize;
+                if base[f] {
+                    m = m * small[f];
+                } else {
+                    k = Some(k.map_or(values[f], |p| p * values[f]));
+                }
+            }
+            let p = match k {
+                Some(k) => k.mul_m31(m),
+                None => K::from_i64(i64::from(m.as_u32())),
+            };
+            match c {
+                Coefficient::One => s + p,
+                Coefficient::MinusOne => s - p,
+                Coefficient::Other(c) => s + *c * p,
+            }
+        })
+    }
+    fn evaluate_mixed(&self, values: &[K], small: &[M31], base: &[bool]) -> K {
+        let outer = Self::sum_mixed(&self.outer, values, small, base);
+        match &self.common {
+            Some((g, inner)) => {
+                let rest = Self::sum_mixed(inner, values, small, base);
+                let g = *g as usize;
+                outer
+                    + if base[g] {
+                        rest.mul_m31(small[g])
+                    } else {
+                        values[g] * rest
+                    }
+            }
+            None => outer,
+        }
+    }
+}
+
+/// The M31 value of a base-field element of `K` (`to_i64_signed` is `Some`).
+fn small<K: ChallengeField>(v: K) -> M31 {
+    <M31 as stele_field::Field>::from_i64(v.to_i64_signed().unwrap_or(0))
 }
 
 impl<K: ChallengeField> Summand<K> for Occurrences<K> {
@@ -1933,6 +1985,84 @@ impl<K: ChallengeField> Summand<K> for Occurrences<K> {
         let products: usize = self.terms.iter().map(|t| t.factors.len() + 1).sum();
         let cost = nodes * (self.factors.len() + products);
         let plan = TermPlan::new(&self.terms);
+        // E16-34: factors whose tables are all base-field (most occurrences before any
+        // challenge is folded in) are stepped and multiplied in M31; κ(t) at an integer
+        // node is an integer, so a masked base factor stays base at every node.
+        let base: Vec<bool> = self
+            .factors
+            .iter()
+            .map(|f| f.x.iter().chain(&f.r).all(|v| v.to_i64_signed().is_some()))
+            .collect();
+        if base.iter().any(|b| *b) {
+            let small_kappas: Vec<M31> = (0..nodes)
+                .map(|t| <M31 as stele_field::Field>::from_i64(t as i64 * (1 - t as i64)))
+                .collect();
+            stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
+                let width = self.factors.len();
+                let mut x = vec![zero::<K>(); width];
+                let mut dx = vec![zero::<K>(); width];
+                let mut r = vec![zero::<K>(); width];
+                let mut dr = vec![zero::<K>(); width];
+                let mut values = vec![zero::<K>(); width];
+                let zero_m = M31::from_u64(0);
+                let mut xs = vec![zero_m; width];
+                let mut dxs = vec![zero_m; width];
+                let mut rs = vec![zero_m; width];
+                let mut drs = vec![zero_m; width];
+                let mut smalls = vec![zero_m; width];
+                for column in range {
+                    for (k, f) in self.factors.iter().enumerate() {
+                        if base[k] {
+                            xs[k] = small(f.x[column]);
+                            dxs[k] = small(f.x[column + half]) - xs[k];
+                            if masked[k] {
+                                rs[k] = small(f.r[column]);
+                                drs[k] = small(f.r[column + half]) - rs[k];
+                            }
+                        } else {
+                            x[k] = f.x[column];
+                            dx[k] = f.x[column + half] - x[k];
+                            if masked[k] {
+                                r[k] = f.r[column];
+                                dr[k] = f.r[column + half] - r[k];
+                            }
+                        }
+                    }
+                    for (node, result) in out.iter_mut().enumerate() {
+                        for k in 0..width {
+                            if base[k] {
+                                if node > 0 {
+                                    xs[k] = xs[k] + dxs[k];
+                                    if masked[k] {
+                                        rs[k] = rs[k] + drs[k];
+                                    }
+                                }
+                                smalls[k] = if masked[k] && node > 1 {
+                                    xs[k] + small_kappas[node] * rs[k]
+                                } else {
+                                    xs[k]
+                                };
+                            } else {
+                                if node > 0 {
+                                    x[k] = x[k] + dx[k];
+                                    if masked[k] {
+                                        r[k] = r[k] + dr[k];
+                                    }
+                                }
+                                values[k] = if masked[k] && node > 1 {
+                                    x[k] + kappas[node] * r[k]
+                                } else {
+                                    x[k]
+                                };
+                            }
+                        }
+                        *result = *result + plan.evaluate_mixed(&values, &smalls, &base);
+                    }
+                }
+                Ok(())
+            })?;
+            return Ok(out);
+        }
         stele_sumcheck::parallel::sum_ranges_weighted(half, cost, &mut out, |range, out| {
             let width = self.factors.len();
             let mut x = vec![zero::<K>(); width];
@@ -3436,19 +3566,31 @@ where
     })
 }
 
+/// What [`leaks`] finds in an accepted proof (privacy tests only).
+#[cfg(feature = "controls")]
+#[derive(Clone, Debug)]
+pub struct Leaks<K> {
+    /// Masked revealed finals counted.
+    pub total: usize,
+    /// How many of them equal their bare evaluation.
+    pub equal: usize,
+    /// The masked revealed finals themselves, in count order. Public finals, which
+    /// the verifier recomputes, are not among them (E12-32 review).
+    pub masked: Vec<K>,
+}
+
 /// The privacy tests' exact leak count (RFC-0013 A5 item 7): for every masked
 /// occurrence (statement columns and the lookups' committed tops `p, q, h`) and
 /// every masked GKR layer child in an accepted proof, whether its revealed final
-/// equals the bare evaluation at its point. Returns
-/// `(occurrences, equal)`; masks make `equal` zero except with probability
-/// `≈ occurrences/|K|`. Replays [`verify`] on `t`.
+/// equals the bare evaluation at its point. Masks make `equal` zero except with
+/// probability `≈ total/|K|`. Replays [`verify`] on `t`.
 #[cfg(feature = "controls")]
 pub fn leaks<K: ChallengeField + CodeField + Eq>(
     statement: &Statement<K>,
     columns: &[Vec<M31>],
     proof: &Proof<K>,
     t: &mut Transcript<K>,
-) -> Result<(usize, usize), Error>
+) -> Result<Leaks<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -3464,7 +3606,7 @@ pub fn leaks_lifetime<K: ChallengeField + CodeField + Eq>(
     columns: &[Vec<M31>],
     proof: &Proof<K>,
     t: &mut Transcript<K>,
-) -> Result<(usize, usize), Error>
+) -> Result<Leaks<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -3489,7 +3631,16 @@ where
             .zip(&w)
             .fold(zero::<K>(), |s, (x, e)| s + *x * *e))
     };
-    let (mut total, mut equal) = (0, 0);
+    let mut out = Leaks {
+        total: 0,
+        equal: 0,
+        masked: Vec::new(),
+    };
+    let mut count = |revealed: K, bare: K| {
+        out.total += 1;
+        out.equal += usize::from(revealed == bare);
+        out.masked.push(revealed);
+    };
     for (j, step) in plan.steps.iter().enumerate() {
         let point = &verified.reductions[j].point;
         for (k, o) in step.occurrences.iter().enumerate() {
@@ -3497,23 +3648,20 @@ where
                 &data[o.column],
                 column_point(&o.coords, point, &verified.draws[j]),
             )?;
-            total += 1;
-            equal += usize::from(proof.relations[j].final_values[step.first() + k] == x);
+            count(proof.relations[j].final_values[step.first() + k], x);
         }
     }
     for (g, step) in plan.gkr.iter().enumerate() {
         let point = &verified.reductions[plan.steps.len() + g].point;
         for (input, o) in lookup::occurrences(step) {
             let x = mle(&data[o.column], column_point(&o.coords, point, &[]))?;
-            total += 1;
-            equal += usize::from(proof.gkr[g].final_values[input] == x);
+            count(proof.gkr[g].final_values[input], x);
         }
         for (input, x) in lookup::layer_values(step, &trees[step.lookup_index()], point)? {
-            total += 1;
-            equal += usize::from(proof.gkr[g].final_values[input] == x);
+            count(proof.gkr[g].final_values[input], x);
         }
     }
-    Ok((total, equal))
+    Ok(out)
 }
 
 /// The `stele-dev-zk-proof-v1` bytes of a claims proof (E12-14b): every count is a
@@ -3663,6 +3811,90 @@ where
     match c.0.is_empty() {
         true => Ok(proof),
         false => Err(shape),
+    }
+}
+
+/// Prover-side access to the masked summand for the GPU benchmark (task E16-35,
+/// `research/gpu-gating/masked`): the same [`Occurrences`] rounds and folds the dev-zk
+/// relations and ZK-GKR steps run. Off by default; never a verifier input.
+#[cfg(feature = "bench")]
+pub mod bench {
+    use super::{block_table, kappa, Factor, Occurrences};
+    use alloc::vec::Vec;
+    use stele_field::M31;
+    use stele_hash::ChallengeField;
+    use stele_sumcheck::{Instance, Summand, Term};
+
+    /// One masked factor table: `x`, its mask table `r` (empty for a public
+    /// factor) and the vanishing variable `v`.
+    pub struct Table<K> {
+        /// Values over the remaining variables.
+        pub x: Vec<K>,
+        /// Mask values, or empty.
+        pub r: Vec<K>,
+        /// Vanishing variable of a masked factor.
+        pub v: Option<usize>,
+    }
+
+    /// A masked summand over `2^n`-entry tables.
+    pub struct Masked<K>(Occurrences<K>);
+
+    impl<K: ChallengeField> Masked<K> {
+        /// `Σ_k c_k·Π_{f ∈ F_k} V̇_f` at round degree `degree` (A5 item 3).
+        pub fn new(tables: Vec<Table<K>>, terms: Vec<(K, Vec<u32>)>, degree: usize) -> Self {
+            let num_vars = tables.first().map_or(0, |t| t.x.len().trailing_zeros());
+            Self(Occurrences {
+                factors: tables
+                    .into_iter()
+                    .map(|t| Factor {
+                        x: t.x,
+                        r: t.r,
+                        v: t.v,
+                    })
+                    .collect(),
+                terms: terms
+                    .into_iter()
+                    .map(|(coefficient, factors)| Term {
+                        coefficient,
+                        factors,
+                    })
+                    .collect(),
+                degree,
+                num_vars,
+                bound: 0,
+                expand: None,
+            })
+        }
+        /// The next round polynomial at nodes `0..=degree`.
+        pub fn round(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+            // `Occurrences::round` reads nothing from the instance.
+            let instance = Instance {
+                id: 0,
+                num_vars: 0,
+                inputs: Vec::new(),
+                terms: Vec::new(),
+                claimed_sum: K::from_i64(0),
+            };
+            self.0.round(&instance)
+        }
+        /// Bind the leading variable to `challenge`.
+        pub fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
+            self.0.fold(challenge)
+        }
+        /// The current `(x, r)` tables in factor order.
+        pub fn tables(&self) -> impl Iterator<Item = (&[K], &[K])> {
+            self.0.factors.iter().map(|f| (&f.x[..], &f.r[..]))
+        }
+    }
+
+    /// `r̂(X) = r̃(X_u)` over `2^n` entries, as the producer builds a mask table.
+    pub fn mask_table<K: ChallengeField>(block: &[M31], u: &[usize], n: usize) -> Vec<K> {
+        block_table(block, u, n)
+    }
+
+    /// `κ(t) = t·(1 − t)`.
+    pub fn mask_weight<K: ChallengeField>(t: K) -> K {
+        kappa(t)
     }
 }
 

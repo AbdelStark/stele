@@ -596,10 +596,10 @@ fn window_values(
         .map_err(|_| Error::Witness)?;
     let values = layout.assign(&capture, &weights.codes)?;
     laps.lap("witness/zk_capture_assign");
-    if checked {
-        check(&layout.relation, &values).map_err(Error::Check)?;
-    }
-    laps.lap("witness/zk_plain_check_1");
+    // E16-34: one plain check. The committed relation below keeps every constraint of
+    // `layout.relation` over the same values (the records only change kind) and adds
+    // the record encodings, so checking it alone rejects every false witness the first
+    // check did.
     let width = usize::from(d.model.shape().width());
     let (relation, values) =
         commit_records(&layout.relation, Some((&values, &layout.relation)), width)?;

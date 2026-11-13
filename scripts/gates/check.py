@@ -750,7 +750,9 @@ def field_sources(root):
                 != {'std': ['stele-sumcheck/std', 'stele-pcs/std', 'stele-ir/std'],
                     'controls': ['stele-sumcheck/controls'],
                     # ADR-108: the standard-profile lookup, for tests and controls only.
-                    'standard-unproven': ['stele-pcs/standard-unproven']}
+                    'standard-unproven': ['stele-pcs/standard-unproven'],
+                    # E16-35 (ADR-123): the masked summand for the GPU benchmark, prover-side.
+                    'bench': []}
             # E16-22 (ADR-120): stele-ir's only feature is the pool for its plain checker,
             # with rayon optional behind it.
             or ir_manifest.get('features') != {'std': ['dep:rayon']}
@@ -1787,16 +1789,20 @@ def controls_quarantine(root):
             raise ValueError(f'standard quarantine: cargo tree failed: {tree.stderr.strip()}')
         if re.search(r'feature "standard-unproven"', tree.stdout):
             raise ValueError(f'standard quarantine: {crate} builds with the standard-unproven feature')
+        # E16-35 (ADR-123): the benchmark access stays out of the shipped crates too.
+        if re.search(r'stele-reductions[^\n]*feature "bench"', tree.stdout):
+            raise ValueError(f'bench quarantine: {crate} builds with stele-reductions/bench')
     print('gate standard quarantine: stele-cli, stele-prover and stele-verifier build without standard-unproven')
     # ADR-108: a workspace build with no features selected unifies neither feature.
     tree = subprocess.run(['cargo', 'tree', '--workspace', '-e', 'features', '--locked', '--offline'],
                           cwd=root, capture_output=True, text=True)
     if tree.returncode != 0:
         raise ValueError(f'feature quarantine: cargo tree failed: {tree.stderr.strip()}')
-    for feature in ('controls', 'standard-unproven'):
+    # E16-35 (ADR-123): nor the masked-summand benchmark access.
+    for feature in ('controls', 'standard-unproven', 'bench'):
         if re.search(rf'feature "{feature}"', tree.stdout):
             raise ValueError(f'feature quarantine: the default workspace build enables {feature}')
-    print('gate feature quarantine: the default workspace build enables neither controls nor standard-unproven')
+    print('gate feature quarantine: the default workspace build enables none of controls, standard-unproven, bench')
 
 
 def masked_sumcheck_quarantine(root):
