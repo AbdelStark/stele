@@ -6,4 +6,6 @@
 extern crate alloc;
 
 pub mod accounting;
+pub mod batch;
 pub mod sumcheck;
+pub mod zerocheck;

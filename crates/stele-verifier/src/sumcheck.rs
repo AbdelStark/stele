@@ -18,6 +18,11 @@ pub enum Error {
     /// More than four factors, a factor ordinal out of range, a repeated input id,
     /// or a count that does not fit the canonical encoding.
     InvalidInstance,
+    /// An A2 batch descriptor that is empty, repeats an id, or shares an input
+    /// across instances of different sizes (E8-02b).
+    InvalidBatch,
+    /// An A3 zerocheck whose skip, degree or claimed sum is out of its rules (E8-02b).
+    InvalidZerocheck,
     /// Round count, round width or final-value count differs from the instance.
     ProofShape,
     /// Public tables differ in count or size from the instance.
@@ -87,12 +92,12 @@ pub struct Reduction<K> {
     pub sc: ScRecord,
 }
 
-fn bytes_of<K: ChallengeField>(x: &K) -> usize {
+pub(crate) fn bytes_of<K: ChallengeField>(x: &K) -> usize {
     x.to_le_bytes().as_ref().len()
 }
 
 /// Checks the instance and returns its degree, the largest factor count.
-fn degree<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
+pub(crate) fn degree<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
     // RFC-0006 A1: input and term counts fit the u32 encoding.
     if u32::try_from(i.inputs.len()).is_err() || u32::try_from(i.terms.len()).is_err() {
         return Err(Error::InvalidInstance);
@@ -115,15 +120,15 @@ fn degree<K: ChallengeField>(i: &Instance<K>) -> Result<usize, Error> {
 }
 
 /// A growable byte buffer whose allocation failures are `Capacity`.
-struct Bytes(Vec<u8>);
+pub(crate) struct Bytes(pub(crate) Vec<u8>);
 
 impl Bytes {
-    fn with(size: usize) -> Result<Self, Error> {
+    pub(crate) fn with(size: usize) -> Result<Self, Error> {
         let mut v = Vec::new();
         v.try_reserve_exact(size).map_err(|_| Error::Capacity)?;
         Ok(Bytes(v))
     }
-    fn put(&mut self, b: &[u8]) -> &mut Self {
+    pub(crate) fn put(&mut self, b: &[u8]) -> &mut Self {
         self.0.extend_from_slice(b);
         self
     }
@@ -132,7 +137,10 @@ impl Bytes {
 /// The canonical A1 instance payload (RFC-0006 A1): `u8 1`, `u8` field limbs / 4,
 /// `u64 id`, `u32 num_vars`, `u8 degree`, `u32` input and term counts, the input
 /// ids, each term (coefficient, `u8` factor count, `u32` ordinals), and the sum.
-fn instance_bytes<K: ChallengeField>(i: &Instance<K>, degree: usize) -> Result<Vec<u8>, Error> {
+pub(crate) fn instance_bytes<K: ChallengeField>(
+    i: &Instance<K>,
+    degree: usize,
+) -> Result<Vec<u8>, Error> {
     let k = bytes_of(&i.claimed_sum);
     let mut size = i
         .inputs
@@ -168,7 +176,11 @@ fn instance_bytes<K: ChallengeField>(i: &Instance<K>, degree: usize) -> Result<V
 }
 
 /// A round or final message: `u64 id || u32 index || values`.
-fn message<K: ChallengeField>(id: u64, index: u32, values: &[K]) -> Result<Vec<u8>, Error> {
+pub(crate) fn message<K: ChallengeField>(
+    id: u64,
+    index: u32,
+    values: &[K],
+) -> Result<Vec<u8>, Error> {
     let k = values.first().map_or(0, bytes_of);
     let size = values
         .len()
@@ -186,7 +198,7 @@ fn message<K: ChallengeField>(id: u64, index: u32, values: &[K]) -> Result<Vec<u
 /// The degree-`n − 1` polynomial through `(j, values[j])`, `j = 0..n`, at `x`, by
 /// Lagrange's formula over the field. `n` is at most 5 here; the field holds every
 /// node difference, so no denominator is zero.
-fn lagrange<K: ChallengeField>(values: &[K], x: K) -> Result<K, Error> {
+pub(crate) fn lagrange<K: ChallengeField>(values: &[K], x: K) -> Result<K, Error> {
     let n = values.len() as i64;
     let mut sum = K::from_i64(0);
     for (j, v) in (0i64..).zip(values) {
@@ -201,7 +213,7 @@ fn lagrange<K: ChallengeField>(values: &[K], x: K) -> Result<K, Error> {
 }
 
 /// `P` at the final values: `Σ_t coefficient_t · Π values[factors_t]`.
-fn evaluate<K: ChallengeField>(i: &Instance<K>, values: &[K]) -> K {
+pub(crate) fn evaluate<K: ChallengeField>(i: &Instance<K>, values: &[K]) -> K {
     let mut sum = K::from_i64(0);
     for t in &i.terms {
         let mut product = t.coefficient;
@@ -211,6 +223,35 @@ fn evaluate<K: ChallengeField>(i: &Instance<K>, values: &[K]) -> K {
         sum = sum + product;
     }
     sum
+}
+
+/// One A1 round: `g(0) + g(1)` must equal the running claim (a constant round has
+/// the one node `g(0)` twice); absorb the round, draw `r`, and return `(r, g(r))`.
+pub(crate) fn step<K: ChallengeField + Eq>(
+    id: u64,
+    index: u32,
+    g: &[K],
+    claim: K,
+    t: &mut Transcript<K>,
+) -> Result<(K, K), Error> {
+    // RFC-0006 §1: g(0) + g(1) is the running claim.
+    let at_one = if g.len() > 1 { g[1] } else { g[0] };
+    if g[0] + at_one != claim {
+        return Err(Error::RoundSumMismatch);
+    }
+    // RFC-0006 A1: the round message is absorbed, then r is drawn; g(r) is next.
+    t.absorb(AbsorbLabel::Round, &message(id, index, g)?)?;
+    let r = t.challenge(ChallengeLabel::Sumcheck)?;
+    Ok((r, lagrange(g, r)?))
+}
+
+/// `Σ_x table[x]·eq(point, x)`: a public table's multilinear value at `point`.
+pub(crate) fn mle_at<K: ChallengeField>(table: &[K], point: &[K]) -> K {
+    let mut at = K::from_i64(0);
+    for (x, entry) in table.iter().enumerate() {
+        at = at + *entry * eq_at(point, x);
+    }
+    at
 }
 
 /// Verify one A1 reduction on `t`, which already holds everything absorbed before
@@ -236,16 +277,8 @@ pub fn verify<K: ChallengeField + Eq>(
     point.try_reserve_exact(m).map_err(|_| Error::Capacity)?;
     let mut claim = i.claimed_sum;
     for (index, g) in (0u32..).zip(&proof.rounds) {
-        // RFC-0006 §1: g(0) + g(1) is the running claim; a constant round (degree 0)
-        // has the one node g(0) twice.
-        let at_one = if g.len() > 1 { g[1] } else { g[0] };
-        if g[0] + at_one != claim {
-            return Err(Error::RoundSumMismatch);
-        }
-        // RFC-0006 A1: the round message is absorbed, then r is drawn; g(r) is next.
-        t.absorb(AbsorbLabel::Round, &message(i.id, index, g)?)?;
-        let r = t.challenge(ChallengeLabel::Sumcheck)?;
-        claim = lagrange(g, r)?;
+        let r;
+        (r, claim) = step(i.id, index, g, claim, t)?;
         point.push(r);
     }
     // RFC-0006 §1: P at the final values is the last running claim.
@@ -282,7 +315,7 @@ pub fn verify<K: ChallengeField + Eq>(
 
 /// `eq(point, x)` for the Boolean `x` with index `x`, the first coordinate being the
 /// most significant bit.
-fn eq_at<K: ChallengeField>(point: &[K], x: usize) -> K {
+pub(crate) fn eq_at<K: ChallengeField>(point: &[K], x: usize) -> K {
     let n = point.len();
     let mut w = K::from_i64(1);
     for (j, r) in point.iter().enumerate() {
@@ -308,12 +341,8 @@ pub fn verify_public<K: ChallengeField + Eq>(
     }
     let reduction = verify(i, proof, t)?;
     for (table, (_, value)) in tables.iter().zip(&reduction.claims) {
-        let mut at = K::from_i64(0);
-        for (x, entry) in table.iter().enumerate() {
-            at = at + *entry * eq_at(&reduction.point, x);
-        }
         // RFC-0006 §2: each final value is its public table's MLE at the point.
-        if at != *value {
+        if mle_at(table, &reduction.point) != *value {
             return Err(Error::ClaimMismatch);
         }
     }

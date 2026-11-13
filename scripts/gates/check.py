@@ -73,13 +73,17 @@ DEVELOPMENT = {
 # surface. The rest of the verifier scaffold (plan, ledger, entry point) stays guarded
 # until E8-05 wires the gate with its producer.
 ACCOUNTING = {
-    # E8-05b's admission decision, E8-02a's independent A1 sumcheck and its parity test.
-    'files': ('src/accounting.rs', 'src/sumcheck.rs', 'tests/sumcheck_corpus.rs'),
+    # E8-05b's admission decision; the independent verifier primitives (ADR-128) and
+    # their parity tests: E8-02a's A1 sumcheck, E8-02b's A3 zerocheck and A2 batches.
+    'files': ('src/accounting.rs', 'src/sumcheck.rs', 'tests/sumcheck_corpus.rs',
+              'src/zerocheck.rs', 'src/batch.rs', 'tests/zerocheck_corpus.rs', 'tests/batch_corpus.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
-               'pub mod accounting;\npub mod sumcheck;\n',
-    'parity': ('matches_reference_a1_corpus_decisions_and_receipts',),
+               'pub mod accounting;\npub mod batch;\npub mod sumcheck;\npub mod zerocheck;\n',
+    'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
+               'matches_reference_a3_corpus_decisions_and_receipts',
+               'matches_reference_a2_corpus_decisions_and_receipts'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -90,7 +94,11 @@ ACCOUNTING = {
     # the parity test's dev-dependency), needs its pin moved in review.
     'pins': {
         'src/accounting.rs': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
-        'src/sumcheck.rs': 'e830f2691b22f41e1e64363354ef5259a1ac860d2ab89b8539a6b8fc30214973',
+        'src/sumcheck.rs': 'b314ae2786d9bf249a9d303894d15ae9107796d985f29d78a49f2121b864e2ed',
+        'src/zerocheck.rs': '16a1c3adf74486e8c15d52f5317274a2ddfc62db46d91b31031e35592995917e',
+        'src/batch.rs': '99b98c455bea40f0c9b9f8c341827cb2ad612a3fc8a187e2930f11b41120f5f1',
+        'tests/zerocheck_corpus.rs': '14ba181df23313dc9139ccec9471e6d1ab0b6fa3be441998fbf680ca88f1fe43',
+        'tests/batch_corpus.rs': '601a21bfe09c9c62755de2b584bb6c50daed0b3c6b5ac047fe9d9f134d2c28ba',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
     },
@@ -128,12 +136,14 @@ def accounting_admission(root):
           'no round enumeration, profile or NC-0804/0805 credit')
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
     result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
+                             '--test', 'zerocheck_corpus', '--test', 'batch_corpus',
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
-    print('gate verifier: independent no_std A1 sumcheck matches every corpus decision and receipt (E8-02a)')
+    print('gate verifier: independent no_std A1 sumcheck, A3 zerocheck and A2 batches match every '
+          'corpus decision and receipt (E8-02a, E8-02b)')
 
 
 def development_surface(crate, name, actual, expected):
@@ -1508,6 +1518,10 @@ def batch_corpus(root):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
         raise ValueError('batch corpus decisions/obligations/accounting mismatch')
+    # E8-02b: the recorded production receipts the independent verifier is held to.
+    if outputs[0] != [json.loads(line) for line in
+                      (root / 'research/batching/corpus-receipts.jsonl').read_text().splitlines()]:
+        raise ValueError('batch corpus receipts differ from the recorded file (E8-02b)')
     for case, result in zip(cases, outputs[0]):
         if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
             raise ValueError('batch corpus expected rejection mismatch')
@@ -1654,6 +1668,10 @@ def zero_corpus(root):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
         raise ValueError('zerocheck corpus decisions/claims/accounting mismatch')
+    # E8-02b: the recorded production receipts the independent verifier is held to.
+    if outputs[0] != [json.loads(line) for line in
+                      (root / 'research/zerocheck/corpus-receipts.jsonl').read_text().splitlines()]:
+        raise ValueError('zerocheck corpus receipts differ from the recorded file (E8-02b)')
     for case, result in zip(cases, outputs[0]):
         if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
             raise ValueError('zerocheck corpus expected rejection mismatch')
