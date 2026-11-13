@@ -3726,3 +3726,85 @@ Independent review of #369: FIX-THEN-MERGE.
 Status: Accepted (development tier) with RFC-0026 A14. Independent review: FIX-THEN-MERGE
 at 0439aa9; fixes applied. No security level is claimed; `proven: true` waits on E8-05's
 verifier entry point.
+
+## ADR-126: Admission at the verifier entry point is a conjunction; `standard-unproven` stays until E8-02, E8-01, standard lookups and the passport exist (RFC-0016 A5 Draft, task E8-05f)
+
+Context:
+- E8-05 item 4 asks for the verifier entry point that composes three things: the
+  plan-derived ledger, `accounting::admit`, and verification. It accepts under
+  `standard` only on both passing, lifts `standard-unproven` (ADR-108), and runs
+  NC-0804, NC-0805 and NC-1205 there.
+- Byte 5 (RFC-0026 A14) is the first configuration whose rounds PASS (C1)–(C4),
+  measured on the synthetic eight-layer window and on stories42M T = 64.
+
+Decision (Proposed):
+- **Exact §2 text.** RFC-0016 A5 (Draft) makes §2 steps 2 and 4 exact: rounds come
+  from the plan and profile only, `admit` decides, LU rounds come from `identity_term`
+  of verified lookup records, and the proof is accepted iff the replay and the
+  admission both pass.
+- **Implemented now** (development tier):
+  - `stele_cli::gate`: replay, then `admit` under `standard` on the replay's
+    plan-derived rounds; the proof is refused unless both pass.
+  - `stele verify-dev --admit`.
+  - The development tier still claims no level.
+- **Not lifted.** `standard-unproven` stays. A `standard` claim needs five things, none
+  ready:
+  1. E8-02: the `no_std` plan derivation and replay in `stele-verifier`. deny.toml keeps
+     `stele-reductions` and `stele-prover` out of it, and also `stele-pcs`,
+     `stele-sumcheck` and `stele-lookup`. E8-02 is therefore a re-implementation, not a
+     move.
+  2. E8-01: container v1, which carries the profile byte and ledger hash for NC-0804
+     and NC-0805.
+  3. Standard A5 lookups with `LookupRecord`s, for `identity_term` (ADR-072).
+  4. The RFC-0011 passport minimum profile, for NC-1205.
+  5. RFC-0026 Q33's formal uniqueness statements and the RFC-0030 §5 item 3a argument.
+- **A standard proof path is distinct from byte 5.** It needs items 1–3: standard A5
+  lookup consumers in place of the relation engine's checks, the RFC-0016 container,
+  and a `no_std` verifier. Byte 5 is the development-tier configuration that shows the
+  accounting can PASS.
+- **Controls.** NC-0804, NC-0805 and NC-1205 have exact tamper definitions in A5 and
+  stay `todo` until items 1, 2 and 4 exist.
+  - The gate's own test (no NC credit) is mutation-checked: skipping admission turns
+    it red.
+  - End to end, `verify-dev --admit` refuses the eight-layer byte-3 proof with (C4) and
+    accepts the byte-5 proof.
+
+- **Transitive blockers (#370 review).** E8-02 depends on E8-01, which depends on:
+  - E8-05a, blocked on Q29 (RFC-0013 A1);
+  - E7-03, E7-04, E7-05, E7-07 and E7-08, blocked on RFC-0004 A3, A6, A7, A8 and A9,
+    RFC-0007 A8, RFC-0003 A3 and RFC-0008 Q31;
+  - E6-03, through E6-00 and E4-05.
+
+  So the non-ZK standard path still runs through Q29, which conflicts with ADR-124.
+  This is recorded as an **open item**, not rewired. E8-01 is the W8 full-model
+  orchestrator, and its E7 and E6 blockers would remain even without E8-05a. Rewiring
+  only E8-05a would not unblock it. E8-01 and E8-02 are marked `blocked` in the graph
+  instead of `ready`.
+- **What is unblocked.**
+  - Independent `no_std` re-implementations of verifier primitives whose RFCs are
+    Accepted, against their corpora: the A1 sumcheck (E8-02a, started), zerocheck,
+    batching, Merkle, the codes, the PCS and the lookup trees.
+  - The RFC-0026 relation replay, which is development tier and Accepted.
+  - The W8 and full-model plan path (CQIS E6 and E7) is not unblocked.
+- **NC definitions corrected.**
+  - NC-0804: a ledger-hash mismatch (`LedgerMismatch`), because rounds come from the
+    plan and never from the header. Above-cap plans are NC-0810's.
+  - NC-0805: the expected profile comes from the caller or the passport.
+- **CLI.** `--admit` is refused on dev-zk bundles before verifying them (a usage
+  error, with a binary-level test). Under `--admit`, the verdict line reads "admission
+  gate (development tier, no level claimed)".
+
+Consequences:
+- No proof byte, pin or ledger line moves. `verify-dev` without `--admit` is unchanged.
+- E8-05's acceptance lines for the entry point stay open.
+- A new task, E8-05f, records this step and its remaining list.
+
+Independent review of #370: FIX-THEN-MERGE (the gate logic is right; no YES path
+without both checks). Fixes applied: the dev-zk refusal, the NC-0804/0805 definitions,
+the transitive blockers and the open conflict, "three cases", the plan-provenance
+sentence, re-implementation not a move, the gate label, the `--admit` docs and the CLI
+test.
+
+Status: Accepted (development tier; no protocol change) with RFC-0016 A5. Independent
+review: FIX-THEN-MERGE at 7b6a73a; fixes applied at 1cdd903 (`--admit` refused on dev-zk,
+NC-0804 expects `LedgerMismatch`, transitive blockers of E8-01/E8-02 stated).

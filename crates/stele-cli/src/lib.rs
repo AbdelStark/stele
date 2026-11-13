@@ -53,39 +53,37 @@ fn round(r: &Round) -> Option<accounting::Round> {
 /// `Q_V` is taken as `2^64 − 1`, an upper bound on any verification's hash calls;
 /// (C3) holds there for the standard profile.
 pub fn admission(ledger: &Ledger) -> String {
+    report(ledger, "informational, development claims no level")
+}
+
+/// [`admission`] as `verify-dev --admit` prints it: the verdict decides the answer.
+pub fn admission_gated(ledger: &Ledger) -> String {
+    report(
+        ledger,
+        "admission gate (development tier, no level claimed)",
+    )
+}
+
+/// `verify-dev --admit` refuses a dev-zk bundle before verifying it.
+pub const ADMIT_NOT_ZK: &str =
+    "--admit applies to non-ZK development proofs only (ZK admission needs Q29, E8-05e)";
+
+/// Whether `--admit` applies to this public-input file: not to a dev-zk bundle
+/// (`stele-dev-zk-public-*`), whose MASK rounds need Q29 (ADR-124, E8-05e).
+pub fn admit_applies(public: &[u8]) -> bool {
+    !public.starts_with(b"stele-dev-zk-public")
+}
+
+fn report(ledger: &Ledger, label: &str) -> String {
     let rounds = ledger.rounds();
     let Some(checked) = rounds.iter().map(round).collect::<Option<Vec<_>>>() else {
         return "admission\tFAIL: a round of an unknown line".to_string();
     };
+    let verdict = verdict(&rounds, &checked, admit(ledger, &checked));
     // Policy 1 column rounds carry no k_q nonce; RFC-0010 A14 admits only Policy 2.
     let policy1 = checked
         .iter()
         .any(|r| r.family == Family::PcsColumn && r.grind_bits == 0);
-    let setup = ledger.setup.then_some(Bound {
-        numerator: 200_431_782,
-        field_degree: 0,
-        log2_denominator: 160,
-    });
-    let name = |i: usize| {
-        rounds
-            .get(i)
-            .map_or_else(String::new, |r| format!("{} {}", r.line, r.name))
-    };
-    let verdict = match accounting::admit(&STANDARD, &checked, setup, u64::MAX) {
-        Ok(()) => "PASS (C1)-(C4)".to_string(),
-        Err(Reject::Round(i)) => format!(
-            "FAIL (C1): round {i} ({}) exceeds 2^-108 at every grinding its family allows",
-            name(i)
-        ),
-        Err(Reject::Grinding(i)) => format!(
-            "FAIL (C4): round {i} ({}) grinds {} bits, not the bits the rule requires",
-            name(i),
-            checked[i].grind_bits
-        ),
-        Err(Reject::Floor) => "FAIL (C2): floor above 2^-100".to_string(),
-        Err(Reject::Hash) => "FAIL (C3): an H* endpoint fails".to_string(),
-        Err(Reject::Overflow) => "FAIL: exact arithmetic overflow".to_string(),
-    };
     let worst = ledger.worst().map_or_else(String::new, |(r, bits)| {
         format!(
             "worst round\t{} {}\t{} after {} grinding bits\n",
@@ -102,8 +100,7 @@ pub fn admission(ledger: &Ledger) -> String {
         ""
     };
     format!(
-        "admission\tstandard (lambda 100, g 8, Q_cap 2^80), RFC-0012 A17 item 4; \
-         informational, development claims no level\n\
+        "admission\tstandard (lambda 100, g 8, Q_cap 2^80), RFC-0012 A17 item 4; {label}\n\
          rounds\t{}\n{worst}floor\t{}{}\n{note}\
          verdict\t{verdict}",
         rounds.len(),
@@ -114,6 +111,67 @@ pub fn admission(ledger: &Ledger) -> String {
             ""
         },
     )
+}
+
+/// `admit` under `STANDARD` on the ledger's rounds, with the A7 setup term when a v2
+/// J ≥ 4 source is present and `Q_V = 2^64 − 1`.
+fn admit(ledger: &Ledger, checked: &[accounting::Round]) -> Result<(), Reject> {
+    let setup = ledger.setup.then_some(Bound {
+        numerator: 200_431_782,
+        field_degree: 0,
+        log2_denominator: 160,
+    });
+    accounting::admit(&STANDARD, checked, setup, u64::MAX)
+}
+
+fn verdict(rounds: &[Round], checked: &[accounting::Round], result: Result<(), Reject>) -> String {
+    let name = |i: usize| {
+        rounds
+            .get(i)
+            .map_or_else(String::new, |r| format!("{} {}", r.line, r.name))
+    };
+    match result {
+        Ok(()) => "PASS (C1)-(C4)".to_string(),
+        Err(Reject::Round(i)) => format!(
+            "FAIL (C1): round {i} ({}) exceeds 2^-108 at every grinding its family allows",
+            name(i)
+        ),
+        Err(Reject::Grinding(i)) => format!(
+            "FAIL (C4): round {i} ({}) grinds {} bits, not the bits the rule requires",
+            name(i),
+            checked[i].grind_bits
+        ),
+        Err(Reject::Floor) => "FAIL (C2): floor above 2^-100".to_string(),
+        Err(Reject::Hash) => "FAIL (C3): an H* endpoint fails".to_string(),
+        Err(Reject::Overflow) => "FAIL: exact arithmetic overflow".to_string(),
+    }
+}
+
+/// Why [`gate`] refused a proof.
+#[derive(Debug, PartialEq)]
+pub enum Refusal<E> {
+    /// RFC-0016 §2 step 3: the replay rejected.
+    Verify(E),
+    /// RFC-0016 §2 step 2: the replay accepted, but the configuration's rounds fail
+    /// RFC-0012 A17 (C1)–(C4) (or carry an unknown line); the verdict text says which.
+    Admission(String),
+}
+
+/// E8-05f (RFC-0016 A5, Draft): RFC-0016 §2 steps 2–4 for a development proof. It is
+/// accepted only if the replay accepts **and** `admit` passes on the replay's
+/// plan-derived rounds. This is the conjunction a standard entry point makes; it is
+/// not one. The development tier still claims no level (RFC-0026 §1.2): no proof is
+/// `proven: true`, and `standard-unproven` stays (ADR-126).
+pub fn gate<E>(verified: Result<Ledger, E>) -> Result<Ledger, Refusal<E>> {
+    let ledger = verified.map_err(Refusal::Verify)?;
+    let rounds = ledger.rounds();
+    let Some(checked) = rounds.iter().map(round).collect::<Option<Vec<_>>>() else {
+        return Err(Refusal::Admission("a round of an unknown line".to_string()));
+    };
+    match admit(&ledger, &checked) {
+        Ok(()) => Ok(ledger),
+        Err(reject) => Err(Refusal::Admission(verdict(&rounds, &checked, Err(reject)))),
+    }
 }
 
 #[cfg(test)]
@@ -132,6 +190,38 @@ mod tests {
             grind: 0,
         });
         l
+    }
+
+    /// E8-05f: the gate accepts only replay-accepted proofs whose rounds pass `admit`.
+    /// Mutation check: with `gate` returning the replay's result alone, the second
+    /// assertion fails (an ungrinded LU round above the cap would be accepted).
+    #[test]
+    fn admit_refuses_dev_zk_bundles_only() {
+        assert!(!admit_applies(b"stele-dev-zk-public-v1..."));
+        assert!(!admit_applies(b"stele-dev-zk-public-v2..."));
+        for magic in [
+            &b"stele-dev-public-v1"[..],
+            b"stele-dev-public-v3",
+            b"stele-dev-public-v4",
+        ] {
+            assert!(admit_applies(magic));
+        }
+    }
+
+    #[test]
+    fn gate_requires_both_the_replay_and_admission() {
+        assert_eq!(gate::<()>(Ok(ledger(65_535))).map(|_| ()), Ok(()));
+        assert_eq!(
+            gate::<()>(Ok(ledger(65_536))).map(|_| ()),
+            Err(Refusal::Admission(
+                "FAIL (C4): round 0 (LU check) grinds 0 bits, not the bits the rule requires"
+                    .to_string()
+            ))
+        );
+        assert_eq!(
+            gate(Err::<Ledger, _>("replay")).map(|_| ()),
+            Err(Refusal::Verify("replay"))
+        );
     }
 
     #[test]
