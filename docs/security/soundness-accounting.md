@@ -2007,5 +2007,7 @@ range_8), floor 2^-95.6
 ([parameter study §4](../../research/fs-pcs/PARAMETERS.md)).
 
 **Open:** QROM; ZK composition (Q29); the native generator's exact round enumeration
-and its (C1)–(C4) checks (E8-05); and the Policy 2 and grinding consumers (E12-23,
-NC-0806/0807).
+(E8-05); and the Policy 2 and grinding consumers (E12-23, NC-0806/0807). The (C1)–(C4)
+decision over an enumerated round list is `stele_verifier::accounting::admit` (E8-05b):
+exact integers, PCS column rounds entered at their A14 target `2^-92` with `k_q`, and the
+floor taken as the sum over every round, an upper bound on `ε_floor`.
