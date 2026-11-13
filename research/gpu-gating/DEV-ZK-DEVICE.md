@@ -29,6 +29,9 @@ Ledger: `bench/ledger/e16-35-dev-zk-gpu-masked.json`. Raw outputs:
 - **Opt-in:** CPU only by default; `--features cuda` adds the device path. cudarc
   0.19.10 with `dynamic-loading` opens the driver and NVRTC at run time, so the crate
   builds without CUDA and the device test skips without a driver.
+- **Scope of parity:** the two shapes are hand-built from `zk_claims` and `zk_lookup`.
+  Parity shows the device equals the CPU summand on these shapes, not that the shapes
+  match every production relation or step (first and leaf GKR steps, compact leaves).
 - **Why not `crates/stele-gpu`:** that crate is the empty scaffold under the parity
   gate's guard (`scripts/gates/check.py`, task E10-01), and touching it schedules the
   self-hosted `gpu-parity` CI job. A GPU binding belongs there after a GO and E16-21a's
@@ -47,7 +50,8 @@ summand's, element for element:
 ## 3. Measurements
 
 Host: Vast.ai RTX 4090 (24 GB, PCIe 4.0 x16) with an AMD EPYC 7B13; the process sees
-61 threads. Medians of three runs. A full sumcheck is every round and fold
+61 threads. Each cell is the run with the median rounds total of three; its upload and
+build times are that run's. A full sumcheck is every round and fold
 (`n` rounds). "Build" is table construction from the inputs; on the CPU it is the
 production `eq_table` and `block_table`.
 
@@ -71,9 +75,13 @@ the ledger and `results.txt`; `2^20` and `2^22` are there too.
   copies and allocation) and runs at about 1.3 GB/s. The bus itself moves 1 GiB in
   60.6 ms pageable (17.7 GB/s) and 40.2 ms pinned (26.7 GB/s). "Bus-bound" charges the
   uploaded bytes at the pageable rate.
-- **CPU construction dominates the CPU stage.** `block_table` is sequential; table
-  construction takes 2–4× the CPU rounds. The device builds the same tables in
-  milliseconds.
+- **CPU construction dominates the CPU "build" column.** It is partly production code
+  and partly research-crate code (`masked/src/lib.rs`, `Source::cpu`): the `eq` tables
+  (`parallel::eq_table`, plus a sequential scale-and-place copy) and the mask tables
+  (`block_table`, sequential) are production; the column embedding, the tiled blocks
+  and the duplicated layer halves are sequential research loops. So the build-inclusive
+  ratios overstate the production CPU's construction cost; the rounds-only ratios use
+  production code only, and §4 leads with them.
 - **Mac calibration.** E16-22's laps come from an Apple M4 Max (16 threads). On it the
   same CPU benchmark is slower in rounds and faster in construction than on the box.
   Stage speedups against the Mac CPU at `2^24..2^27`: 39.7–83.4× rounds-only,
@@ -82,42 +90,49 @@ the ledger and `results.txt`; `2^20` and `2^22` are there too.
 
 ## 4. Ceiling (Amdahl, E16-22 laps)
 
-`T' = r + M/s + R/s_rest`, from `bench/ledger/e16-22-dev-zk-stories42m-t32-mac-after.json`:
+`T' = r + M/s + R/s_rest`, from `bench/ledger/e16-22-dev-zk-stories42m-t32-mac-after.json`
+(single run):
 - `M` = masked relations + ZK-GKR = 35.17 + 173.24 s (measured here);
 - `R` = LogUp trees and tops + claim batches + source preparation = 24.96 + 21.35 +
   103.53 s (not measured here);
 - `r` = the rest, 107.47 s, of a 465.72 s prove.
 
 `s` uses the Mac-calibrated stage speedups at `2^24..2^27` (the box CPU gives
-slightly higher ceilings; `masked/summarize.py` prints both).
+slightly higher ceilings; `masked/summarize.py` prints both). The first row uses
+rounds only, which is production code on both sides; the others add table
+construction (part research code on the CPU, §3).
 
-| Upload model for `M` | `R` at the same `s` | `R` at E16-21 rounds-only (25.4–76.1×) | `R` at E16-21 upload-inclusive (2.9–15.9×) | `R` on the CPU |
+| `s` for `M` | `R` at the same `s` | `R` at E16-21 rounds-only (25.4–76.1×) | `R` at E16-21 upload-inclusive (2.9–15.9×) | `R` on the CPU |
 |---|---:|---:|---:|---:|
-| resident, no upload | 4.01–4.13× | 3.93–4.14× | 2.84–3.88× | 1.78–1.79× |
-| bus-bound upload | **3.85–4.01×** | **3.84–4.07×** | 2.79–3.82× | 1.76–1.78× |
-| measured upload phase | 2.60–2.96× | 3.00–3.37× | 2.32–3.19× | 1.56–1.63× |
+| rounds only, resident (39.7–83.4×) | 4.00–4.17× | **3.93–4.16×** | 2.83–3.90× | 1.77–1.79× |
+| build + rounds, no upload | 4.01–4.13× | 3.93–4.14× | 2.84–3.88× | 1.78–1.79× |
+| build + rounds, bus-bound upload | 3.85–4.01× | 3.84–4.07× | 2.79–3.82× | 1.76–1.78× |
+| build + rounds, measured upload phase | 2.60–2.96× | 3.00–3.37× | 2.32–3.19× | 1.56–1.63× |
 
 Unbounded (every offloadable stage free): 4.33×.
 
 - The masked and GKR rounds are no longer the question: at any measured ratio they
-  cost 5–8 s of device time against 208 s of CPU time.
-- **The ceiling clears 3× when `R` is also on the device with resident data.** Hiding-
-  source preparation (encoding and Merkle, 103.5 s) is the deciding stage: with `M`
-  bus-bound at the lowest measured `s` (26.6×) and trees and batches at E16-21's
-  lowest rounds-only ratio, 3× needs source preparation at **≥ 2.7×** on the device
-  (≥ 4.3× if trees and batches only reach 2.9×).
+  cost 2.5–8 s of device time against 208 s of CPU time.
+- **Every ceiling above 3× assumes `R` also runs on the device, at a speedup this task
+  did not measure.** Source preparation (encoding and Merkle, 103.5 s) is the deciding
+  stage. On E16-22's laps, with `M` at the lowest rounds-only `s` (39.7×) and trees and
+  batches at E16-21's lowest rounds-only ratio, 3× needs source preparation at about
+  2.5× on the device.
 - With `M` alone on the device the ceiling is 1.8×: a partial backend is a NO-GO.
 - Re-uploading every stage's tables at the bench's staging rate (bottom row) leaves
   2.6–3.0×. A resident design uploads the committed witness once, through pinned
   staging.
 
 **PR #364** (merged after this measurement; the CPU figures above already use its
-tree) took the Mac stories42M dev-zk prove from
-475.6 to 369.7 s (single runs) by speeding up the masked products, so it shrinks `M` on
-the CPU. Its stage laps are not recorded. If the whole 106 s came out of the
-offloadable stages, the unbounded ceiling falls to about 3.7× and `R` needs about 8×
-on the device. That is an estimate, not a measurement: the first integration step
-re-profiles on the then-current main.
+tree) took the Mac stories42M dev-zk prove from 475.6 to 369.7 s (single runs) by
+speeding up the masked products, so it shrinks `M` on the CPU. Its stage laps are not
+recorded. If its 105.9 s all came out of `M` (`r` unchanged at 107.47 s):
+- the unbounded ceiling falls to 359.8 / 107.47 = **3.35×** (3.44× on the 369.7 s wall);
+- 3× then needs all of `R` at about **12×** on the device even with `M` free, and
+  about **17×** with `M` at 26.6× (15× at 39.7×).
+
+That is an estimate, not a measurement. E16-36 re-profiles on current main and
+measures device source preparation against the ratio its profile requires.
 
 ## 5. Reproduce
 

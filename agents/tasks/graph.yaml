@@ -4546,9 +4546,25 @@ tasks:
   - GO or NO-GO for dev-zk in a new ADR with bench/ledger entries; on GO, what full integration needs
 - id: E16-36
   epic: E16
-  title: dev-zk GPU backend with resident state (ADR-123 GO, behind its kill criteria)
+  title: dev-zk GPU decision from a stories42M re-profile on current main and a device source-preparation (encoding, Merkle) measurement
   depends:
   - E16-35
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0013 A8
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: research
+  status: blocked(E16-35 in review, PR #368)
+  acceptance:
+  - stage laps of stories42M dev-zk T = 32 on current main (after E16-34); ADR-123's ceiling recomputed and the source-preparation ratio needed for 3x derived
+  - device Circle encoding and Merkle hashing of the hiding sources at stories42M sizes, bit-equal to the CPU, measured against the same host's CPU with the upload apart
+  - GO or NO-GO for dev-zk in a new ADR, with bench/ledger entries
+- id: E16-37
+  epic: E16
+  title: dev-zk GPU backend with resident state
+  depends:
+  - E16-36
   - E10-01
   rfc:
   - RFC-0014 §1,§2,§5
@@ -4557,10 +4573,8 @@ tasks:
   - RFC-0026 §7
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: ready
+  status: blocked(E16-36 GO; E10-01)
   acceptance:
-  - a stage re-profile of stories42M dev-zk T = 32 on the then-current main; ADR-123's resident ceiling recomputed, NO-GO by ADR if below 3x
-  - device hiding-source preparation (encoding, Merkle) at stories42M sizes measured against the same host's CPU, NO-GO by ADR if below 2.7x
   - RFC-0014 amendment (Workflow 02) and an ADR for cudarc with run-time loading; GPU behind an opt-in feature, CPU default, verifier and no_std builds free of GPU code
   - byte-identical proofs against the CPU on randomised inputs through the parity gate (INV-3)
   - a stories42M dev-zk T = 32 GPU ledger against the same host's CPU

@@ -120,6 +120,7 @@
   "plan": {
    "challenges": "E16-21's fixed r_i (no transcript)",
    "cpu": "stele_reductions::zk::claims::bench::Masked (the production Occurrences round and fold, feature bench) on rayon's global pool; tables built by the production eq_table and block_table; cpu_main = tree at commit (main), cpu_pr364 = PR #364 head 045a6dea24de578c454cfdc64d03c5a657afe3fd with the same research crate; cpu_mac = main tree on the Apple M4 Max (16 threads) where E16-22's stage laps were taken",
+   "cpu_build": "CPU build = Source::cpu in research/gpu-gating/masked/src/lib.rs: eq tables (production parallel::eq_table plus a sequential scale-and-place copy) and mask tables (production block_table, sequential) are production code; column embedding, tiled blocks and duplicated layer halves are sequential research loops",
    "fnv_gpu_equals_cpu": {
     "gkr_logn20": "92accf86fa557392",
     "gkr_logn22": "834ba2bc4e759967",
@@ -139,8 +140,9 @@
     "gkr": "ZK-GKR layer step (not first, not leaf): head, two selected claims and two tiled blocks (QM31), four masked QM31 children p0,p1,q0,q1 with M31 mask tables, degree 5",
     "relation": "identity step eq(tau,x)*(Va*Vb - Vc): QM31 eq, three masked M31 columns with M31 mask tables, degree 4"
    },
+   "shapes_scope": "hand-built from zk_claims and zk_lookup; parity shows device equals CPU on these shapes, not that they cover every production relation or GKR step",
    "sizes": "2^20, 2^22, 2^24, 2^26, 2^27 entries per table",
-   "timing": "median of three runs per cell (by rounds total); upload = host staging and pageable copies; build = device construction; rounds = sum over rounds of round + fold, each fold synchronized"
+   "timing": "per cell, the run with the median rounds total of three; that run's upload, build and per-round times are recorded (not separate medians). upload = host staging and pageable copies; build = device construction; rounds = sum over rounds of round + fold, each fold synchronized"
   },
   "projection": {
    "ceiling_x100": {
@@ -161,19 +163,29 @@
      260,
      296
     ],
+    "post_e16_34_estimate_unbounded": 335,
     "resident_no_upload_all_offloadable_at_s": [
      401,
      413
     ],
+    "rounds_only_resident_rest_at_e16_21_rounds_only": [
+     393,
+     416
+    ],
+    "rounds_only_resident_rest_at_e16_21_upload_inclusive": [
+     283,
+     390
+    ],
     "unbounded": 433
    },
    "gate": "GO needs a projected ceiling >= 3x (ADR-103)",
-   "method": "Amdahl on bench/ledger/e16-22-dev-zk-stories42m-t32-mac-after.json laps: T' = r + (relations + ZK-GKR)/s + (trees + batches + sources)/s_rest; r = 107.47 s of 465.72 s; s = CPU (build + rounds) over GPU (build + rounds + upload variant) at 2^24..2^27, CPU = the Mac laps host (box-CPU figures in summarize.py)",
-   "verdict": "GO for dev-zk, resident design, conditional (ADR-123)"
+   "method": "Amdahl on bench/ledger/e16-22-dev-zk-stories42m-t32-mac-after.json laps (single run): T' = r + M/s + R/s_rest, M = relations + ZK-GKR (208.41 s), R = trees + batches + sources (149.84 s), r = 107.47 s of 465.72 s; s against the Mac laps host's CPU at 2^24..2^27, rounds only (production code on both sides) or build + rounds with an upload model",
+   "post_e16_34_estimate": "if E16-34's 105.9 s all came out of M (no stage laps): unbounded 359.8/107.47 = 3.35x (3.44x on the 369.7 s wall); 3x needs all of R at about 12x with M free, about 17x with M at 26.6x",
+   "verdict": "NO-GO lifted for the masked and GKR rounds; GO pending E16-36's re-profile and device source-preparation measurement (ADR-123). Every ceiling above 3x assumes an unmeasured device speedup for source preparation."
   },
   "raw": "research/gpu-gating/masked/results.txt"
  },
- "note": "E16-35 dev-zk GPU decision benchmark (RFC-0014 §1, §5; ADR-123). prover_time_ns is the sum of the GPU medians (upload + build + rounds) over both shapes and five sizes; per-cell GPU times are in stage_times_ns, CPU times in kernel_counters (ns). Device round polynomials and folded tables equal the CPU's at every round and size. plan_digest is the SHA-256 of research/gpu-gating/masked/results.txt. The commit is main's base the box tree was built on; the PR adds only the bench feature and the research crate. The projection is an estimate, not a GPU prover measurement. Micro schema proof, verifier and control fields are zero: no inference evidence is claimed. Not a cost-model fit input.",
+ "note": "E16-35 dev-zk GPU decision benchmark (RFC-0014 §1, §5; ADR-123). prover_time_ns is the sum, over both shapes and five sizes, of upload + build + rounds from each cell's median-rounds run (of three; upload and build are that run's, not separate medians); per-cell GPU times are in stage_times_ns, CPU times in kernel_counters (ns). Device round polynomials and folded tables equal the CPU's at every round and size. plan_digest is the SHA-256 of research/gpu-gating/masked/results.txt. The commit is main's base the box tree was built on; the PR adds only the bench feature and the research crate. The projection is an estimate, not a GPU prover measurement. Micro schema proof, verifier and control fields are zero: no inference evidence is claimed. Not a cost-model fit input.",
  "plan_digest": "eff0292fb2928d7d2131f5508fd0600f5161b092f4c15c7e15bc958994076fa2",
  "profile": "standard",
  "prompt_tokens": 0,

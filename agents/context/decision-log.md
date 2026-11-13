@@ -3483,7 +3483,7 @@ review: FIX-THEN-MERGE at 6c27032 (lazy QM31 product proven exact and 6/6 mutant
 base-field rounds decided per factor at runtime, 3/3 mutants caught; the single dev-zk plain
 check covers the dropped one); fixes applied, including the dev-zk false-witness test.
 
-## ADR-123: dev-zk GPU GO (resident design, conditional) from a device benchmark of the masked and ZK-GKR rounds; development stays NO-GO (RFC-0014 §1, §5, task E16-35, ADR-103 and ADR-120 follow-up)
+## ADR-123: dev-zk GPU: NO-GO lifted for the masked and ZK-GKR rounds; GO pending E16-36's re-profile and device source-preparation measurement; development stays NO-GO (RFC-0014 §1, §5, task E16-35, ADR-103 and ADR-120 follow-up)
 
 Context: ADR-120 left dev-zk open. Its ceiling was 3.8×–4.2× with resident tables and
 2.0×–3.6× with E16-21's upload-inclusive ratios, and a GO first needed a device
@@ -3498,7 +3498,9 @@ Measurement (`research/gpu-gating/DEV-ZK-DEVICE.md`,
   Opt-in (`--features cuda`), CUDA loaded at run time (cudarc 0.19.10,
   `dynamic-loading`); CPU only by default.
 - **Shapes.** A masked identity relation (degree 4) and a ZK-GKR layer step (RFC-0008
-  A7 item 4, nine inputs, degree 5), `2^20..2^27` entries.
+  A7 item 4, nine inputs, degree 5), `2^20..2^27` entries. The shapes are hand-built:
+  parity shows the device equals the CPU on them, not that they cover every production
+  relation or step.
 - **Bit equality.** Every round polynomial and every folded table equals the
   production CPU summand's (`stele_reductions::zk::claims::bench`, feature `bench`)
   at every round: 10 of 10 cases in `tests/parity.rs` and 10 of 10 in the bench's
@@ -3506,44 +3508,45 @@ Measurement (`research/gpu-gating/DEV-ZK-DEVICE.md`,
 - **Host.** Rented RTX 4090 with an AMD EPYC 7B13 (61 threads), same box for CPU and
   GPU; CPU = PR #364's tree, faster than main's in every cell.
 - **Results at `2^24..2^27`.**
-  - Full sumcheck, rounds only: relation 31–38×, GKR layer 14.8–16.5× (e.g. GKR `2^27`:
-    5.03 s CPU, 0.34 s GPU).
-  - With table construction, uploads at the bus rate (17.7 GB/s pageable, measured):
-    38–61×. CPU construction (`block_table` is sequential) costs 2–4× the CPU rounds;
-    the device builds the same tables in milliseconds.
+  - Full sumcheck, rounds only (production code on both sides): relation 31–38×,
+    GKR layer 14.8–16.5× (e.g. GKR `2^27`: 5.03 s CPU, 0.34 s GPU).
+  - With table construction and uploads at the bus rate (17.7 GB/s pageable,
+    measured): 38–61×. The CPU construction is part production (`eq_table`,
+    `block_table`) and part sequential research-crate loops, so this overstates the
+    production CPU's construction cost.
   - The bench's measured upload phase (host staging, about 1.3 GB/s) gives 7–11×.
-- **Ceiling.** E16-22's laps, with the stage speedups re-measured against the Mac CPU
-  that took them (26.6–41.8× bus-bound):
-  - every offloadable stage resident, `M` at the measured ratio: **3.85×–4.01×**;
-  - the other offloadable stages at E16-21's rounds-only ratios: 3.84×–4.07×;
-  - the other stages at E16-21's upload-inclusive ratios: 2.79×–3.82×;
-  - the masked and GKR rounds alone, everything else on the CPU: 1.8×;
+- **Ceiling.** E16-22's laps (single run), with the stage speedups re-measured against
+  the Mac CPU that took them (rounds only, 39.7–83.4×):
+  - the other offloadable stages `R` at E16-21's rounds-only ratios: 3.93×–4.16×;
+  - `R` at E16-21's upload-inclusive ratios: 2.83×–3.90×;
+  - the masked and GKR rounds alone, `R` on the CPU: 1.8×;
   - every stage re-uploading its tables at the bench's staging rate: 2.60×–2.96×.
+  Every ceiling above 3× assumes `R`, and in it source preparation (Circle encoding,
+  salts, Merkle; 103.5 s), gets a device speedup that was not measured.
+- **After PR #364** (estimate; no stage laps): if its 105.9 s all came out of the masked
+  stages, the unbounded ceiling is 359.8 / 107.47 = 3.35× (3.44× on the 369.7 s wall),
+  and 3× needs all of `R` at about 12× on the device even with `M` free, about 17×
+  with `M` at 26.6×.
 
 Decision:
-- **dev-zk: GO, for a resident backend, conditional.** ADR-120's open question is
-  closed: on the device the masked relations and ZK-GKR (208 s of 466 s) cost 5–8 s.
-  ADR-103's 3× gate holds when the rest of the offloadable work also runs on the
-  device and the committed witness is uploaded once:
-  - hiding-source preparation (Circle encoding, salts, Merkle; 103.5 s) is the deciding
-    stage; 3× needs it at **≥ 2.7×** on the device (≥ 4.3× if LogUp trees and claim
-    batches only reach 2.9×);
-  - a backend that offloads only the masked and GKR rounds stays below 1.8×: NO-GO for
-    any partial scope.
+- **dev-zk: NO-GO lifted for the masked and GKR rounds; GO pending E16-36's re-profile
+  and device source-preparation measurement.** ADR-120's open question is closed: on
+  the device the masked relations and ZK-GKR (208 s of 466 s) cost 2.5–8 s. Whether
+  ADR-103's 3× gate holds now depends on the rest of the offloadable work, chiefly
+  source preparation, which this task did not measure. A backend that offloads only
+  the masked and GKR rounds stays below 1.8×: NO-GO for that partial scope.
 - **Development: NO-GO stands** (ADR-120; ceiling 2.80× even at unbounded device
   speed). Tasks E16-21a..e stay blocked.
 - **No GPU binding and no RFC-0014 amendment here.** The kernels stay in `research/`;
   `crates/stele-gpu` stays the scaffold under the parity guard (task E10-01).
 
-Kill criteria (any one reverts to NO-GO, by ADR):
-- a device hiding-source preparation at stories42M sizes below 2.7× of the same host's
-  CPU;
-- a stage re-profile on the then-current main (PR #364 or later) whose resident
-  ceiling is below 3×. #364 took the prove from 475.6 to 369.7 s (Mac, single runs)
-  without stage laps; if all of it came out of offloadable work, the unbounded ceiling
-  is about 3.7× and the rest needs about 8× on the device. That is an estimate.
+E16-36 decides GO or NO-GO by a new ADR. It is a NO-GO if either:
+- device source preparation at stories42M sizes is below the source-preparation ratio
+  the E16-36 re-profile requires for 3× (same host's CPU);
+- the re-profile on current main puts the ceiling below 3× even with every
+  offloadable stage free.
 
-What full integration needs (task E16-36, not done here):
+What full integration needs (task E16-37, after a GO from E16-36):
 1. Workflow 02: an RFC-0014 amendment for a dev-zk backend (opt-in feature, run-time
    CUDA, CPU default, verifier and `no_std` builds free of GPU code), RFC-0026 §7
    cross-reference; an ADR for cudarc with run-time loading.
@@ -3555,17 +3558,20 @@ What full integration needs (task E16-36, not done here):
    the masked relations and ZK-GKR steps (these kernels, extended to first and leaf
    steps and compact leaves); claim batches. The transcript stays on the host; each
    round sends back only its polynomial.
-4. Re-profile first, then measure source preparation on the device against the kill
-   criteria before building the rest.
-5. A stories42M dev-zk T = 32 GPU ledger against the same host's CPU, with identical
+4. A stories42M dev-zk T = 32 GPU ledger against the same host's CPU, with identical
    proof bytes.
 
 Consequences:
 - `stele-reductions` gains the off-by-default `bench` feature (prover-side access to
   the masked summand for the benchmark); no proof byte, transcript or verifier path
-  changes.
+  changes. The native gate pins it, and the feature quarantine keeps it out of the
+  default workspace build and of stele-cli, stele-prover and stele-verifier.
 - `research/gpu-gating/masked` is a standalone crate (own `[workspace]` and lock);
-  workspace CI does not build it. Its CPU tests run with `cargo test` there.
+  the workspace jobs do not build it. The research inventory group `gpu-gating-masked`
+  runs its CPU tests and checks the `cuda` build; that group runs when a PR touches
+  `research/` (or shared build files), not on a change to `stele-reductions` alone.
+  No CI host has a GPU, so the device test only runs on a rented host.
 
-Status: Accepted (owner authorisation for autonomous gating decisions; independent
-review requested in the E16-35 PR).
+Status: Accepted (owner authorisation for autonomous gating decisions). Independent
+review: FIX-THEN-MERGE on #368 (kernels, parity and ceilings reproduced); this text
+carries its fixes (the post-#364 estimate, the decision wording, rounds-only `M`).
