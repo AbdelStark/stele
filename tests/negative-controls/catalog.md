@@ -162,9 +162,9 @@
 | NC-0927 | dev-zk model commitment | 0013 A5 item 7 | one bit of the public weight-source root changed | `RootMismatch` | done |
 | NC-0928 | dev-zk public operand final | 0026 §3.2, A9 | an honest proof of the identity with its public coefficient column substituted, under the true relation digest | `ClaimMismatch` | done |
 | NC-0929 | dev-zk leaf selector final | 0008 A7, 0026 §3.3 | an honest proof with the selected check's selector substituted (an out-of-table entry unselected), under the true relation digest | `ClaimMismatch` | done |
-| NC-0930 | dev-zk member weight final | 0026 A3, 0008 A7 | a leaf's member weight final B_m·S substituted; needs a substitution adversary that keeps the A5 statement message (reworked after review) | `ClaimMismatch` | todo |
-| NC-0931 | dev-zk table padding final | 0026 A9, 0008 A7 | a leaf's eq·Z final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
-| NC-0932 | dev-zk shared-bit final | 0026 §3.5, A9 | a contraction's eq(ρ_shared, ·) final substituted; needs a substitution adversary (reworked after review) | `ClaimMismatch` | todo |
+| NC-0930 | dev-zk member weight final | 0026 A3, 0008 A7, 0013 A5 (E12-31) | a leaf's member weight B_m·S substituted by (B_m + B_g)·S, B_g a block off every member (S = 0), true statement messages, honest rounds and μ | `ClaimMismatch` | done |
+| NC-0931 | dev-zk table padding final | 0026 A9, 0008 A7, 0013 A5 (E12-31) | a leaf's Z (so eq·Z) substituted with the same sum over the cube, true statement messages, honest rounds and μ | `ClaimMismatch` | done |
+| NC-0932 | dev-zk shared-bit final | 0026 §3.5, A9, 0013 A5 (E12-31) | a contraction's eq(ρ_shared, ·) substituted with the same sum over the cube, true statement messages, honest rounds and μ | `ClaimMismatch` | done |
 | NC-0933 | dev-zk model commitment pin | 0013 A6 | a proof made against one published commitment, verified against another of the same weights (another model seed): the pinned model digests differ | `StatementMismatch` | done |
 | NC-0934 | dev-zk lifetime counter | 0013 A6 | prover-side refusal: a third proof past a budget of two, and an index whose earlier opening is missing from the model state | `MaskBudget` | done |
 | NC-0935 | dev-zk gain encoding flip | 0013 A7, 0026 A2 | a committed flipH of −1 with σH = 0; the gain identities sent with honest rounds and the true μ, unchecked | `RoundSumMismatch` | done |
@@ -243,6 +243,10 @@ on a lookup statement; each fails when its check is removed. The control for 091
 remains for E12-14. E12-18 also adds
 the control for 0916, from the independent review: A4's 0908 attack on a composed
 relation, rejected only by binding each relation's `μ` in the shared batch.
+E12-31 (RFC-0013 A5 notes, ADR-121) runs 0930..0932 through `zk::claims::forge_substitute`.
+That adversary keeps the true statement messages and replaces one public input with a
+substitute of the same sum over the cube. Each control accepts `δ = 0` (M0), and each
+goes red, with the forged proof accepted, when its own final check is removed.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit. RFC-0026 A11

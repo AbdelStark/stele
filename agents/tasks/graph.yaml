@@ -2773,6 +2773,22 @@ tasks:
   - byte-4 dev-zk proofs on balanced Policy 2 sources, byte 1 still verified; pinned proofs, χ² privacy tests and the eight-layer bare-evaluation test on byte 4
   - controls for a hiding-source grind mismatch, a cross-byte model commitment and a wrong profile byte
   - eight-layer ledger, byte 1 against byte 4, three runs each at the same commit (byte 1 through commit-model --zk-profile 1)
+- id: E16-34
+  epic: E16
+  title: CPU prover speedups with identical bytes (QM31 product, base-field masked rounds, one dev-zk check, blake3 std)
+  depends:
+  - E16-22
+  rfc:
+  - RFC-0003 §2
+  - RFC-0018 A1
+  skill: benchmark-runner
+  crate: stele-field+stele-reductions+stele-prover+stele-code
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-34-cpu-simd
+  acceptance:
+  - each optimisation in its own commit, every pin byte-identical
+  - synthetic eight-layer dev-zk and plain dev, three runs each before and after; stories42M dev-zk T = 32 and plain dev T = 64 one run each; ledgers in bench/ledger
 - id: E16-33
   epic: E16
   title: dev-zk prover peak memory so stories42M T = 64 fits a 48 GB laptop (bytes identical)
@@ -2791,6 +2807,41 @@ tasks:
   - reductions with identical proof bytes (every pin unchanged)
   - T = 32 peak footprint before and after, three runs each; stories42M T = 64 proved on the 48 GB host; ledgers in bench/ledger
   - RFC-0013 A10 (Draft) extends A9's admission to T <= 64, with the hiding re-check at that geometry
+- id: E12-31
+  epic: E12
+  title: dev-zk substitution adversary; NC-0930..0932 (member weight, eq·Z, shared-bit finals) executed
+  depends:
+  - E12-14
+  rfc:
+  - RFC-0013 A5
+  - RFC-0008 A7
+  - RFC-0026 A9
+  skill: soundness-auditor
+  crate: stele-reductions+negative-controls
+  status: done
+  agent: claude-code
+  branch: task/E12-31-substitution-controls
+  acceptance:
+  - a controls-only adversary proves the true statement's plan (its statement messages unchanged), with one public input replaced by a substitute of the same sum over the cube; honest rounds, finals and μ
+  - NC-0930..0932 are executed through the dev-zk verifier with `ClaimMismatch`; δ = 0 is accepted (M0); removing each final check turns exactly its control red, with the forgery accepted
+  - catalog and harness counts updated; RFC-0013 A5 implementation notes and ADR-121
+- id: E12-32
+  epic: E12
+  title: dev-zk privacy tests (bare evaluations, chi-square) on the real stories42M checkpoint at T = 32
+  depends:
+  - E12-29
+  rfc:
+  - RFC-0013 A5
+  - RFC-0013 A9
+  skill: soundness-auditor
+  crate: negative-controls
+  status: done
+  agent: claude-code
+  branch: task/E12-31-dev-zk-privacy-stories42m
+  acceptance:
+  - the bare-evaluation and chi-square privacy tests run on stories42M T = 32 (two proofs under one commitment, sequential)
+  - the chi-square tests use masked revealed finals only (public finals excluded), with a per-proof uniformity test beside the two-proof homogeneity test
+  - results in docs/development-e2e.md and a bench/ledger record
 - id: E12-30
   epic: E12
   title: dev-zk tamper suite on a stored real-checkpoint proof (verify only)
@@ -4485,8 +4536,63 @@ tasks:
   - RFC-0018 A1
   skill: benchmark-runner
   crate: stele-bench
-  status: ready
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-22-stage-profile
   acceptance:
   - perf profile of one stele prove-dev run of stories42M at T = 64 on the 24-thread host class of bench/ledger/e16-18-dev-stories42m.json, release build with debuginfo
   - wall-time shares of dense and zerocheck rounds, LogUp levels, v2 encoding, Merkle hashing and the residual, with the parallel and sequential split, recorded in a bench/ledger entry
   - ADR-103 confirmed (residual above one third) or reversed (residual at most one third) in a new ADR
+- id: E16-35
+  epic: E16
+  title: dev-zk GPU decision from a device benchmark of the masked and ZK-GKR rounds with resident, device-built tables
+  depends:
+  - E16-22
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0013 A5
+  - RFC-0008 A7
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-35-dev-zk-gpu-bench
+  acceptance:
+  - CUDA kernels for one masked-sumcheck round (QM31, M31 tables) and one ZK-GKR layer round, opt-in (feature cuda, CUDA loaded at run time), tables built and folded in place on the device, one round polynomial copied back per round
+  - round polynomials and folded tables equal the production CPU summand's at every round, 2^20..2^27 entries, in a test that runs when a GPU is present and skips otherwise
+  - CPU (all cores) against GPU on one rented host, per round and per full sumcheck, upload apart; the dev-zk stories42M ceiling recomputed from the measured ratio and E16-22's stage laps
+  - GO or NO-GO for dev-zk in a new ADR with bench/ledger entries; on GO, what full integration needs
+- id: E16-36
+  epic: E16
+  title: dev-zk GPU decision from a stories42M re-profile on current main and a device source-preparation (encoding, Merkle) measurement
+  depends:
+  - E16-35
+  rfc:
+  - RFC-0014 §1,§5
+  - RFC-0013 A8
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: research
+  status: blocked(E16-35 in review, PR #368)
+  acceptance:
+  - stage laps of stories42M dev-zk T = 32 on current main (after E16-34); ADR-123's ceiling recomputed and the source-preparation ratio needed for 3x derived
+  - device Circle encoding and Merkle hashing of the hiding sources at stories42M sizes, bit-equal to the CPU, measured against the same host's CPU with the upload apart
+  - GO or NO-GO for dev-zk in a new ADR, with bench/ledger entries
+- id: E16-37
+  epic: E16
+  title: dev-zk GPU backend with resident state
+  depends:
+  - E16-36
+  - E10-01
+  rfc:
+  - RFC-0014 §1,§2,§5
+  - RFC-0013 A5
+  - RFC-0008 A7
+  - RFC-0026 §7
+  skill: cuda-kernel-author
+  crate: stele-gpu
+  status: blocked(E16-36 GO; E10-01)
+  acceptance:
+  - RFC-0014 amendment (Workflow 02) and an ADR for cudarc with run-time loading; GPU behind an opt-in feature, CPU default, verifier and no_std builds free of GPU code
+  - byte-identical proofs against the CPU on randomised inputs through the parity gate (INV-3)
+  - a stories42M dev-zk T = 32 GPU ledger against the same host's CPU

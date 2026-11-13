@@ -1,0 +1,30 @@
+# E16-35 (ADR-123): dev-zk masked-sumcheck and ZK-GKR layer rounds on a CUDA device.
+# Research crate outside the workspace (like E16-21's sources in research/gpu-gating):
+# crates/stele-gpu stays the empty scaffold under the parity gate (task E10-01).
+# CPU only by default; `--features cuda` adds the device path. The CUDA driver and
+# NVRTC are loaded at run time (cudarc dynamic-loading), so no CUDA toolkit is needed
+# to build, and the device test skips without a driver.
+[package]
+name = "stele-masked-gpu-bench"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+stele-reductions = { path = "../../../crates/stele-reductions", features = ["std", "bench"] }
+cudarc = { version = "=0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "dynamic-loading", "cuda-12040"], optional = true }
+
+[features]
+cuda = ["dep:cudarc"]
+
+# The workspace's release profile, so the CPU reference is built as the prover is.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+
+[profile.test]
+opt-level = 2

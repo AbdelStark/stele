@@ -337,5 +337,9 @@
     "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/config.json -o \"$RUNNER_TEMP/causal-config.json\"",
     "curl -fsSL --retry 3 --max-time 60 https://huggingface.co/trl-internal-testing/tiny-random-LlamaForCausalLM/resolve/2c542e4731d42d3bb68324c4eca16df9f93b8b33/model.safetensors -o \"$RUNNER_TEMP/causal-model.safetensors\"",
     "uv run --locked --script research/cqis-checkpoint/check_causal_model.py --checkpoint \"$RUNNER_TEMP/causal\""
+  ],
+  "gpu-gating-masked": [
+    "cargo test --manifest-path research/gpu-gating/masked/Cargo.toml --locked",
+    "cargo check --manifest-path research/gpu-gating/masked/Cargo.toml --features cuda --all-targets --locked"
   ]
 }

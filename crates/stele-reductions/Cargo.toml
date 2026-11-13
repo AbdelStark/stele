@@ -20,11 +20,13 @@ stele-ir = { path = "../stele-ir" }
 # Prover-side threads for dense sumcheck rounds (RFC-0006 A1 prover only; E16-15).
 # Off by default: the crate and its verifiers stay no_std.
 [features]
-std = ["stele-sumcheck/std", "stele-pcs/std"]
+std = ["stele-sumcheck/std", "stele-pcs/std", "stele-ir/std"]
 # Negative controls' and privacy tests' adversaries (never a verifier input).
 controls = ["stele-sumcheck/controls"]
 # ADR-108: the standard-profile lookup (RFC-0008 A8). Only tests and controls enable it.
 standard-unproven = ["stele-pcs/standard-unproven"]
+# E16-35: the masked summand for the GPU benchmark (research/gpu-gating/masked); prover-side only.
+bench = []
 
 [lints]
 workspace = true

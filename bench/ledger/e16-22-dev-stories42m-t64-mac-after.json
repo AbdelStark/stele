@@ -1,0 +1,90 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "21e027b7342816d505edc5baed7e83df6cde8765",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 40,
+ "kernel_counters": {
+  "checked_positions": 41,
+  "prove_peak_rss_bytes": 29266952192,
+  "public_bytes": 2329123,
+  "verify_peak_rss_bytes": 8755052544
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Transcript(GrindMismatch))"
+  },
+  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build; BSD /usr/bin/time -l. Task E16-22 before/after pair: six prove-dev runs of stories42M T = 64 (profile byte 3, checked 23..64), before and after alternating, each started at 1-minute load < 3 (load.log: 2.64 to 2.97 at start; other agents' sessions open). Prove walls: before 165.75, 167.64, 207.52 s (median 167.64); after 111.57, 124.35, 123.64 s (median 123.64). All six proofs byte-identical (deterministic). Stage laps (STELE_STAGE_TIMES): the plain checker took 155.90 s beside a 96.66 s engine before (a lap run of the before code with timers only), and 19.02, 21.66, 22.49 s after. Controls ran once on the shared proof bytes. This record is the median prove run. after: 21e027b (parallel plain checker; stage timers off). Stage laps (stage_times_ns lap_*) are from this run.",
+  "model": {
+   "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+   "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+   "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+   "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+   "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+   "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+   "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+   "shape": {
+    "context": 1024,
+    "d": 512,
+    "head_width": 64,
+    "heads": 8,
+    "hidden": 1376,
+    "kv_heads": 8,
+    "layers": 8,
+    "vocabulary": 32000
+   },
+   "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+  },
+  "proof_sha256": "4a71a15461b1f3cd72cdb0229c9969e25f452bb0bd9cdd83454edee97a5ff425",
+  "public_sha256": "a35bf34a459eca055bae8ffa7ec00040e6319dd2ea38b3482984d5400b8f2444",
+  "rung": "L2a",
+  "statement": {
+   "T": "64",
+   "checked": "23..64",
+   "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+   "model": "512dcd1c83b7b63a795ea13770322b07eb4f674a2ab1291d1254d71c341dbf1f",
+   "next": "376",
+   "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892,2654,6411,417,265,297,278,14744,29889,2296,5131,372,577,1568,29892,541,372,471,2086,1880,363,902,304,6159,29889,13,29931,2354,4433,902,16823,1357,29892"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "5eed8291f6c815254b57176927d4ead0048d83b8cb896f572f3817acd9b0ce63",
+ "profile": "development",
+ "prompt_tokens": 24,
+ "proof_size_bytes": 15554761,
+ "prover_time_ns": 123640000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "lap_dev_batch_and_openings": 19060000000,
+  "lap_dev_check_and_engine": 101953000000,
+  "lap_dev_logup": 46713000000,
+  "lap_dev_matmul": 1632000000,
+  "lap_dev_model_sources": 1167000000,
+  "lap_dev_plain_check": 22487000000,
+  "lap_dev_plan": 110000000,
+  "lap_dev_sources_and_counts": 22712000000,
+  "lap_dev_zerocheck": 11459000000,
+  "lap_witness_decode_extend_weights": 7160000000,
+  "lap_witness_layout_capture_assign": 11432000000,
+  "prove_dev_wall": 123640000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 6080000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/stories42m-t64"
+}

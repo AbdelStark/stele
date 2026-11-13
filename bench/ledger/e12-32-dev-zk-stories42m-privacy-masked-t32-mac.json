@@ -1,0 +1,86 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "9253ae2346cf05e0c188a0628289ad1e3df3e0a1",
+ "controls": {
+  "failed": 0,
+  "passed": 5,
+  "total": 5
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 8,
+ "kernel_counters": {
+  "bare_equal_proof_0": 0,
+  "bare_equal_proof_1": 0,
+  "checked_positions": 9,
+  "chi2_uniform_x10_proof_0": 127,
+  "chi2_uniform_x10_proof_1": 129,
+  "chi2_x10": 104,
+  "masked_finals_per_proof": 14673,
+  "test_peak_rss_bytes": 30867668992,
+  "verify_peak_rss_bytes": 17646026752
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "cargo test --release -p stele-negative-controls --features \"controls standard-unproven\" --lib -- --ignored --exact development::privacy::rejects_bare_evaluations_and_accepts_two_proofs_on_a_supplied_checkpoint (masked finals only; STELE_ZK_CHECKPOINT = the E16-11 prepared stories42M files, STELE_ZK_LENGTH = 32)",
+  "controls": {
+   "bare_evaluations_proof_0": "0 of 14673 masked finals equal the bare evaluation",
+   "bare_evaluations_proof_1": "0 of 14673 masked finals equal the bare evaluation",
+   "chi2_homogeneity": "10 chi2 = 104 < 377 (15 degrees of freedom), masked finals only",
+   "uniformity_proof_0": "10 chi2 = 127 < 377 against uniform (15 degrees of freedom); masked finals, byte 0 mod 16: [973, 915, 955, 948, 894, 904, 898, 894, 904, 899, 911, 959, 894, 897, 888, 940]",
+   "uniformity_proof_1": "10 chi2 = 129 < 377 against uniform (15 degrees of freedom); masked finals, byte 0 mod 16: [978, 895, 924, 884, 867, 938, 935, 921, 929, 945, 920, 897, 914, 879, 937, 910]"
+  },
+  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build of 9253ae2. One run of the test, started at 1-minute load 2.91 and ended at 5.59 (5-minute load 10.40): other agents' sessions ran during it, so the wall time is an upper bound. The test commits once at T = 32 (byte 4, P = 3), makes two proofs (indices 0 and 1, 21,411,006 bytes each), verifies both, replays each to count masked revealed finals equal to their bare evaluation and collect them (zk_relation::leaks_lifetime), tests each proof's masked finals against uniform and the two proofs against each other (chi-square, byte 0 mod 16). Public finals, which the verifier recomputes, are excluded; with them out, bin 1 is flat (the all-finals excess of bench/ledger/e12-32-dev-zk-stories42m-privacy-t32-mac.json came from public constant-1 operands). prover_time_ns is the whole test wall time (commit, window, two proofs, two verifies, two replays), not one prove. Peak RSS is BSD /usr/bin/time -l on the cargo process (its largest child is the test). The verifier time (32.44 s, 17.6 GB) is the separate verify-dev of the all-finals record at 451d1e6; 9253ae2 changes only controls-feature test code, not the verifier.",
+  "model": {
+   "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+   "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+   "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+   "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+   "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+   "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+   "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+   "shape": {
+    "context": 1024,
+    "d": 512,
+    "head_width": 64,
+    "heads": 8,
+    "hidden": 1376,
+    "kv_heads": 8,
+    "layers": 8,
+    "vocabulary": 32000
+   },
+   "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+  },
+  "profile_byte": 4,
+  "proof_index": 0,
+  "proofs": 3,
+  "rung": "L2a",
+  "statement": {
+   "T": "32",
+   "checked": "23..32",
+   "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+   "model": "the test commitment (seed [41; 32], P = 3, byte 4); its digest is internal to the test and not recorded",
+   "next": "2654",
+   "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk byte 4 privacy tests (RFC-0013 A5 item 7, A6; A9/A10 admission) on the real llama2.c stories42M checkpoint at T = 32, checked 23..32, on masked revealed finals only: in each of two proofs under one commitment no masked final equals its bare evaluation (exact), each proof's masked finals pass a chi-square uniformity test, and the two proofs are chi-square homogeneous. These are tests of the hiding argument's observable consequences, not a proof of zero knowledge. Wall time is an upper bound (busy host). Verifier time is a separate verify-dev of a same-window proof (host_context). Not a cost-model fit input.",
+ "plan_digest": "f9e73db086bef28c77dbf2fb78826d5e4077cef5bced82a5d51c6ca99610f325",
+ "profile": "development",
+ "prompt_tokens": 24,
+ "proof_size_bytes": 21411006,
+ "prover_time_ns": 1540680000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "privacy_test_wall": 1540680000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 32440000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/stories42m-zk-privacy-masked-t32"
+}
