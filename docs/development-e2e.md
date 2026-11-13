@@ -221,8 +221,8 @@ The claim, its limits and its leaks:
 - **Limits.**
   - Before E16-33, `T = 64` did not fit the 48 GB laptop: the prove was killed at
     about 31 GB RSS, twice. It proves since E16-33 (above).
-  - The privacy tests run on the synthetic windows only. The tamper suite also runs on
-    the real proof (E12-30, below).
+  - The privacy tests now also run on stories42M at `T = 32` (E12-31, below); the
+    tamper suite runs on the real proof too (E12-30, below).
 
 ```sh
 P=$D/prepared   # the E16-11 prepared files
@@ -261,6 +261,42 @@ E16-33 ledgers record it as `prove_peak_footprint_bytes`.
 
 Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.json`,
 `e16-33-dev-zk-stories42m-t64-mac.json`.
+
+### dev-zk privacy tests on stories42M (task E12-31)
+
+RFC-0013 A5 item 7's two privacy tests, which ran only on the synthetic windows, now also
+run on the real checkpoint. `rejects_bare_evaluations_and_accepts_two_proofs_on_a_supplied_checkpoint`
+(stele-negative-controls, `controls` feature, ignored) reads the prepared files from
+`STELE_ZK_CHECKPOINT`. It then does the following:
+- extends the E16-11 prompt greedily to `T = 32`, checked `23..32`, as in the E12-29
+  runs;
+- commits once (byte 4, `P = 3`) and makes two proofs, indices 0 and 1;
+- verifies both proofs;
+- replays each proof to count the revealed finals that equal their bare evaluation;
+- compares the two proofs' finals with a two-sample χ².
+
+Result (`bench/ledger/e12-31-dev-zk-stories42m-privacy-t32-mac.json`; one run, 1,414 s,
+31.1 GB peak RSS; two 30 GB proofs run one after the other on a quiet host):
+
+| Test | Result |
+|---|---|
+| bare evaluations, proof 0 | 0 of 14,673 masked finals |
+| bare evaluations, proof 1 | 0 of 14,673 masked finals |
+| χ² homogeneity of the two proofs (byte 0 mod 16, 15 degrees of freedom) | χ² = 11.6 < 37.7 |
+
+- Both proofs are 21,411,006 bytes and verify.
+- Bin 1 is high in both histograms (1,729 and 1,641 against about 1,430). The likely
+  cause is public finals that are always 1, such as an all-ones selector or padding
+  indicator; the cause was not measured. The two proofs share the bias, so it does not
+  separate them.
+- These tests check observable consequences of the hiding argument. They are not a
+  proof of zero knowledge.
+
+```sh
+STELE_ZK_CHECKPOINT=$D/prepared STELE_ZK_LENGTH=32 cargo test --release -p stele-negative-controls \
+  --features "controls standard-unproven" --lib -- --ignored --exact \
+  development::privacy::rejects_bare_evaluations_and_accepts_two_proofs_on_a_supplied_checkpoint --nocapture
+```
 
 ### dev-zk tamper suite on the real proof (task E12-30)
 

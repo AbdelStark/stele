@@ -2773,6 +2773,22 @@ tasks:
   - reductions with identical proof bytes (every pin unchanged)
   - T = 32 peak footprint before and after, three runs each; stories42M T = 64 proved on the 48 GB host; ledgers in bench/ledger
   - RFC-0013 A10 (Draft) extends A9's admission to T <= 64, with the hiding re-check at that geometry
+- id: E12-31
+  epic: E12
+  title: dev-zk privacy tests (bare evaluations, chi-square) on the real stories42M checkpoint at T = 32
+  depends:
+  - E12-29
+  rfc:
+  - RFC-0013 A5
+  - RFC-0013 A9
+  skill: soundness-auditor
+  crate: negative-controls
+  status: in_progress
+  agent: claude-code
+  branch: task/E12-31-dev-zk-privacy-stories42m
+  acceptance:
+  - the bare-evaluation and chi-square privacy tests run on stories42M T = 32 (two proofs under one commitment, sequential, quiet host)
+  - results in docs/development-e2e.md and a bench/ledger record
 - id: E12-30
   epic: E12
   title: dev-zk tamper suite on a stored real-checkpoint proof (verify only)
