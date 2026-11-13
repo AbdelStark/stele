@@ -62,7 +62,7 @@
   },
   "threads": 16
  },
- "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk byte 4 privacy tests (RFC-0013 A5 item 7, A6; A9/A10 admission) on the real llama2.c stories42M checkpoint at T = 32, checked 23..32: in each of two proofs under one commitment no revealed final equals its bare evaluation (exact, every masked occurrence), and the two proofs' finals (all of them, masked and public) are chi-square homogeneous. This run predates the E12-32 review fix: the masked-only histograms and the per-proof uniformity test are pending a re-run. These are tests of the hiding argument's observable consequences, not a proof of zero knowledge. Verifier time is a separate verify-dev of a same-window proof (host_context). Not a cost-model fit input.",
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk byte 4 privacy tests (RFC-0013 A5 item 7, A6; A9/A10 admission) on the real llama2.c stories42M checkpoint at T = 32, checked 23..32: in each of two proofs under one commitment no revealed final equals its bare evaluation (exact, every masked occurrence), and the two proofs' finals (all of them, masked and public) are chi-square homogeneous. This run predates the E12-32 review fix; the masked-only histograms and per-proof uniformity tests are in bench/ledger/e12-32-dev-zk-stories42m-privacy-masked-t32-mac.json. These are tests of the hiding argument's observable consequences, not a proof of zero knowledge. Verifier time is a separate verify-dev of a same-window proof (host_context). Not a cost-model fit input.",
  "plan_digest": "8f957db52bdfd4e781fa9eb3685036199446d7db9266f3281a13562a69d43be8",
  "profile": "development",
  "prompt_tokens": 24,

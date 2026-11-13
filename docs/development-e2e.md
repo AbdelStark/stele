@@ -279,21 +279,24 @@ run on the real checkpoint. `rejects_bare_evaluations_and_accepts_two_proofs_on_
 
 The synthetic windows share this path (`check_two_proofs`).
 
-Result (`bench/ledger/e12-32-dev-zk-stories42m-privacy-t32-mac.json`; one run at
-`451d1e6`, 1,414 s; 31.1 GB is the test's peak RAM, not a proof size; the two proofs
-ran one after the other, and other agents' sessions resumed during the run, so the host
-was not quiet throughout):
+Result (`bench/ledger/e12-32-dev-zk-stories42m-privacy-masked-t32-mac.json`; one run
+at `9253ae2`, 1,541 s, 30.9 GB peak RAM, which is not a proof size). The two proofs ran
+one after the other. The 1-minute load was 2.91 at the start, and the 5-minute load
+reached 10.4 as other agents' sessions ran, so the time is an upper bound.
 
-| Test | Result |
+| Test (masked finals only, byte 0 mod 16, 15 degrees of freedom) | Result |
 |---|---|
 | bare evaluations, proof 0 | 0 of 14,673 masked finals |
 | bare evaluations, proof 1 | 0 of 14,673 masked finals |
-| χ² homogeneity of the two proofs, over every final (masked and public) | χ² = 11.6 < 37.7 |
-| χ² against uniform, masked finals only, each proof | pending a quiet-host re-run |
-| χ² homogeneity, masked finals only | pending a quiet-host re-run |
+| χ² against uniform, proof 0 | χ² = 12.7 < 37.7 |
+| χ² against uniform, proof 1 | χ² = 12.9 < 37.7 |
+| χ² homogeneity of the two proofs | χ² = 10.4 < 37.7 |
 
 - Both proofs are 21,411,006 bytes and verify.
-- Bin 1 is high in both all-finals histograms (1,729 and 1,641 against about 1,430).
+- With public finals excluded, bin 1 is flat (915 and 895 against an expected 917).
+- The earlier run at `451d1e6` (`bench/ledger/e12-32-dev-zk-stories42m-privacy-t32-mac.json`,
+  1,414 s) histogrammed every final, masked and public: homogeneity χ² = 11.6, but bin 1
+  was high in both proofs (1,729 and 1,641 against about 1,430).
   The cause is measured: public constant-1 operands (`Operand::Public`). About 297 of
   the 1,063 relation finals are exactly 1, and the verifier recomputes those finals
   itself (`public_finals`); they carry no mask. No masked final is 0 or 1. The tests
