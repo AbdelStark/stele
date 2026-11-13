@@ -7,8 +7,9 @@
 //! out of range is `Reject::Overflow`, never a panic. Round enumeration from a plan is
 //! E8-05.
 //!
-//! - **Authority.** Accepted RFC-0012 A17 item 4 governs here. Draft RFC-0030 §4's
-//!   `λ_min` reading does not; where they differ, A17 holds.
+//! - **Authority.** Accepted RFC-0012 A17 item 4 governs here. The security-accounting
+//!   draft's `λ_min` reading (its §4, not Accepted) does not; where they differ, A17
+//!   holds.
 //! - **Completeness is the caller's.** The list must hold every round of one
 //!   verification. `admit` cannot see a missing round: `admit(&STANDARD, &[], None, q)`
 //!   is `Ok` whenever the H* endpoints hold.

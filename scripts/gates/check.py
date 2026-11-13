@@ -84,7 +84,7 @@ ACCOUNTING = {
               'rejects_overflowing_exponents_without_panicking', 'rejects_grinding_above_32_bits_for_any_profile',
               'rejects_a_field_degree_above_eight'),
     # The admitted content: any edit to the module needs this pin moved in review.
-    'sha256': '20a6ecc6d71a381600e57e0e2526eb73c2a36841a7e4ba784b91ba23917be7fd',
+    'sha256': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
 }
 
 
