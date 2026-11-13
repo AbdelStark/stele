@@ -700,7 +700,9 @@ def field_sources(root):
                 != {'std': ['stele-sumcheck/std', 'stele-pcs/std', 'stele-ir/std'],
                     'controls': ['stele-sumcheck/controls'],
                     # ADR-108: the standard-profile lookup, for tests and controls only.
-                    'standard-unproven': ['stele-pcs/standard-unproven']}
+                    'standard-unproven': ['stele-pcs/standard-unproven'],
+                    # E16-35 (ADR-123): the masked summand for the GPU benchmark, prover-side.
+                    'bench': []}
             # E16-22 (ADR-120): stele-ir's only feature is the pool for its plain checker,
             # with rayon optional behind it.
             or ir_manifest.get('features') != {'std': ['dep:rayon']}

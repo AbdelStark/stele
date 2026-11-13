@@ -25,6 +25,8 @@ std = ["stele-sumcheck/std", "stele-pcs/std", "stele-ir/std"]
 controls = ["stele-sumcheck/controls"]
 # ADR-108: the standard-profile lookup (RFC-0008 A8). Only tests and controls enable it.
 standard-unproven = ["stele-pcs/standard-unproven"]
+# E16-35: the masked summand for the GPU benchmark (research/gpu-gating/masked); prover-side only.
+bench = []
 
 [lints]
 workspace = true

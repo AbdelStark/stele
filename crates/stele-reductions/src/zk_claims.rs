@@ -3814,6 +3814,90 @@ where
     }
 }
 
+/// Prover-side access to the masked summand for the GPU benchmark (task E16-35,
+/// `research/gpu-gating/masked`): the same [`Occurrences`] rounds and folds the dev-zk
+/// relations and ZK-GKR steps run. Off by default; never a verifier input.
+#[cfg(feature = "bench")]
+pub mod bench {
+    use super::{block_table, kappa, Factor, Occurrences};
+    use alloc::vec::Vec;
+    use stele_field::M31;
+    use stele_hash::ChallengeField;
+    use stele_sumcheck::{Instance, Summand, Term};
+
+    /// One masked factor table: `x`, its mask table `r` (empty for a public
+    /// factor) and the vanishing variable `v`.
+    pub struct Table<K> {
+        /// Values over the remaining variables.
+        pub x: Vec<K>,
+        /// Mask values, or empty.
+        pub r: Vec<K>,
+        /// Vanishing variable of a masked factor.
+        pub v: Option<usize>,
+    }
+
+    /// A masked summand over `2^n`-entry tables.
+    pub struct Masked<K>(Occurrences<K>);
+
+    impl<K: ChallengeField> Masked<K> {
+        /// `Σ_k c_k·Π_{f ∈ F_k} V̇_f` at round degree `degree` (A5 item 3).
+        pub fn new(tables: Vec<Table<K>>, terms: Vec<(K, Vec<u32>)>, degree: usize) -> Self {
+            let num_vars = tables.first().map_or(0, |t| t.x.len().trailing_zeros());
+            Self(Occurrences {
+                factors: tables
+                    .into_iter()
+                    .map(|t| Factor {
+                        x: t.x,
+                        r: t.r,
+                        v: t.v,
+                    })
+                    .collect(),
+                terms: terms
+                    .into_iter()
+                    .map(|(coefficient, factors)| Term {
+                        coefficient,
+                        factors,
+                    })
+                    .collect(),
+                degree,
+                num_vars,
+                bound: 0,
+                expand: None,
+            })
+        }
+        /// The next round polynomial at nodes `0..=degree`.
+        pub fn round(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+            // `Occurrences::round` reads nothing from the instance.
+            let instance = Instance {
+                id: 0,
+                num_vars: 0,
+                inputs: Vec::new(),
+                terms: Vec::new(),
+                claimed_sum: K::from_i64(0),
+            };
+            self.0.round(&instance)
+        }
+        /// Bind the leading variable to `challenge`.
+        pub fn fold(&mut self, challenge: K) -> Result<(), stele_sumcheck::Error> {
+            self.0.fold(challenge)
+        }
+        /// The current `(x, r)` tables in factor order.
+        pub fn tables(&self) -> impl Iterator<Item = (&[K], &[K])> {
+            self.0.factors.iter().map(|f| (&f.x[..], &f.r[..]))
+        }
+    }
+
+    /// `r̂(X) = r̃(X_u)` over `2^n` entries, as the producer builds a mask table.
+    pub fn mask_table<K: ChallengeField>(block: &[M31], u: &[usize], n: usize) -> Vec<K> {
+        block_table(block, u, n)
+    }
+
+    /// `κ(t) = t·(1 − t)`.
+    pub fn mask_weight<K: ChallengeField>(t: K) -> K {
+        kappa(t)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
