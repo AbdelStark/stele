@@ -3809,15 +3809,20 @@ Status: Accepted (development tier; no protocol change) with RFC-0016 A5. Indepe
 review: FIX-THEN-MERGE at 7b6a73a; fixes applied at 1cdd903 (`--admit` refused on dev-zk,
 NC-0804 expects `LedgerMismatch`, transitive blockers of E8-01/E8-02 stated).
 
-## ADR-127: The no_std verifier is an independent re-implementation in stele-verifier, piece by piece against the shared corpora; first piece the A1 sumcheck (RFC-0016 §3, task E8-02a)
+## ADR-128: The no_std verifier is an independent re-implementation in stele-verifier, piece by piece against the shared corpora; first piece the A1 sumcheck (RFC-0016 §3, task E8-02a)
 
-Numbering: ADR-126 is #370's.
+Numbering: ADR-126 is #370's and ADR-127 is #371's.
 
 Context:
 - E8-02 is the `no_std` verifier that RFC-0016 §3 requires: `no_std` + `alloc`, under
   15k LoC, no dependency beyond `stele-field` and `stele-hash`, every check annotated
   with its RFC, and no panics.
 - It is the largest prerequisite of a `standard` claim (ADR-126 item 1).
+- **Scope after #370's review.** E8-02 as defined (the W8 full-model verifier) is
+  transitively blocked: through E8-01 by Q29 and by the E7 RFC-0004 amendments
+  (ADR-126). These pieces are the *unblocked verifier primitives*. Their milestone is
+  `stele-verifier` verifying RFC-0026 byte-5 proofs on its own, independent of the
+  prover crates. The full-model path stays blocked.
 - Today's verification code lives in `stele-sumcheck`, `stele-lookup`, `stele-gkr`,
   `stele-pcs`, `stele-code`, `stele-ir`, `stele-cqis`, `stele-reductions` and
   `stele-prover`. deny.toml lets `stele-verifier` import none of them.

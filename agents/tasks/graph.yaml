@@ -1900,7 +1900,7 @@ tasks:
   - the plan verifier calls `check_source` (or obtains the handle via `verify_certificate(expected)`) before accepting any PCS opening; NC-0612 runs through it and fails if the call is removed
 - id: E8-02a
   epic: E8
-  title: no_std verifier, first piece - independent A1 sumcheck in stele-verifier with corpus parity (ADR-127 plan for E8-02)
+  title: Verifier primitives (unblocked) - first piece, independent no_std A1 sumcheck in stele-verifier with corpus parity (ADR-128 plan)
   depends:
   - E8-05b
   rfc:
@@ -1912,7 +1912,7 @@ tasks:
   agent: claude-code
   branch: task/E8-02a-verifier-sumcheck
   acceptance:
-  - ADR-127 (Proposed) fixes the E8-02 plan - independent re-implementation, module order, size estimate
+  - ADR-128 (Proposed) fixes the plan for the independent verifier primitives - independent re-implementation, module order, size estimate
   - stele_verifier::sumcheck verify/verify_public match every decision and receipt of research/sumcheck/corpus.jsonl (196 cases, QM31 and OM31)
   - the recorded production receipts are checked against the production verifier by the sumcheck gate; mutation-checked parity test
 - id: E8-03
