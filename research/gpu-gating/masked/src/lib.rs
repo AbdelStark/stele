@@ -17,6 +17,9 @@ use stele_reductions::zk::claims::bench::{mask_table, Masked, Table};
 
 #[cfg(feature = "cuda")]
 pub mod gpu;
+#[cfg(feature = "cuda")]
+pub mod gpu_source;
+pub mod source;
 
 /// The challenge field.
 pub type K = QM31;

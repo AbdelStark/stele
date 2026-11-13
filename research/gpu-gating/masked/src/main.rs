@@ -15,6 +15,9 @@ use stele_masked_gpu_bench::{challenge, cpu, fnv, shape, FNV_START};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("source") {
+        return source_mode(&args[1..]);
+    }
     #[cfg(feature = "cuda")]
     if args.first().map(String::as_str) == Some("h2d") {
         return device::h2d(args.get(1).and_then(|a| a.parse().ok()).unwrap_or(28));
@@ -208,4 +211,97 @@ mod device {
         }
         equal
     }
+}
+
+/// `source <ell> <m> <cpu|gpu|check> [seed]` (E16-36): one hiding source of `2^ell`
+/// data rows and `2^m` columns. `cpu` times the production preparation and
+/// certificate; `gpu` the device preparation (upload, encode, Merkle); `check` both,
+/// comparing the roots.
+fn source_mode(args: &[String]) -> ExitCode {
+    use stele_masked_gpu_bench::source::{cpu as prepare_cpu, Shape};
+    let (Some(ell), Some(m), Some(mode)) = (
+        args.first().and_then(|a| a.parse::<u8>().ok()),
+        args.get(1).and_then(|a| a.parse::<u8>().ok()),
+        args.get(2).map(String::as_str),
+    ) else {
+        eprintln!("usage: stele-masked-gpu-bench source <ell> <m> <cpu|gpu|check> [seed]");
+        return ExitCode::from(2);
+    };
+    let seed = args
+        .get(3)
+        .and_then(|a| a.parse::<u64>().ok())
+        .unwrap_or(36);
+    let shape = Shape::new(ell, m, seed);
+    let start = Instant::now();
+    let message = shape.message();
+    println!("source_ell={ell}\nsource_m={m}\nmessage_rows={}\ncodeword_len={}\nseed={seed}\nhost_message_ns={}",
+        shape.rows(), 1usize << (shape.log_n() + 2), start.elapsed().as_nanos());
+    let mut expected = None;
+    if mode == "cpu" || mode == "check" {
+        println!(
+            "cpu_threads={}",
+            std::thread::available_parallelism().map_or(0, |n| n.get())
+        );
+        let Some((root, prepare, certify)) = prepare_cpu(&shape, &message) else {
+            eprintln!("production preparation failed");
+            return ExitCode::from(1);
+        };
+        println!(
+            "cpu_prepare_ns={}\ncpu_certify_ns={}\ncpu_root={}",
+            prepare.as_nanos(),
+            certify.as_nanos(),
+            hex(&root)
+        );
+        expected = Some(root);
+    }
+    if mode == "gpu" || mode == "check" {
+        #[cfg(feature = "cuda")]
+        {
+            use stele_masked_gpu_bench::gpu::{available, Device};
+            use stele_masked_gpu_bench::gpu_source::prepare;
+            if !available() {
+                eprintln!("no CUDA driver or NVRTC on this host");
+                return ExitCode::from(2);
+            }
+            let result = Device::new().and_then(|dev| {
+                println!("device={}", dev.name);
+                // One untimed pass loads the module and warms the allocator.
+                prepare(&dev, &shape, &message)?;
+                prepare(&dev, &shape, &message)
+            });
+            match result {
+                Ok((root, t)) => {
+                    println!(
+                        "gpu_upload_ns={}\ngpu_encode_ns={}\ngpu_merkle_ns={}\ngpu_root={}",
+                        t.upload.as_nanos(),
+                        t.encode.as_nanos(),
+                        t.merkle.as_nanos(),
+                        hex(&root)
+                    );
+                    if let Some(e) = expected {
+                        println!("bit_equal={}", e == root);
+                        if e != root {
+                            return ExitCode::from(1);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("device error: {e:?}");
+                    return ExitCode::from(1);
+                }
+            }
+        }
+        #[cfg(not(feature = "cuda"))]
+        {
+            eprintln!("mode {mode} needs --features cuda");
+            return ExitCode::from(2);
+        }
+    }
+    // Read only by the device comparison.
+    let _ = expected;
+    ExitCode::SUCCESS
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
