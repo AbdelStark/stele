@@ -3566,19 +3566,31 @@ where
     })
 }
 
+/// What [`leaks`] finds in an accepted proof (privacy tests only).
+#[cfg(feature = "controls")]
+#[derive(Clone, Debug)]
+pub struct Leaks<K> {
+    /// Masked revealed finals counted.
+    pub total: usize,
+    /// How many of them equal their bare evaluation.
+    pub equal: usize,
+    /// The masked revealed finals themselves, in count order. Public finals, which
+    /// the verifier recomputes, are not among them (E12-32 review).
+    pub masked: Vec<K>,
+}
+
 /// The privacy tests' exact leak count (RFC-0013 A5 item 7): for every masked
 /// occurrence (statement columns and the lookups' committed tops `p, q, h`) and
 /// every masked GKR layer child in an accepted proof, whether its revealed final
-/// equals the bare evaluation at its point. Returns
-/// `(occurrences, equal)`; masks make `equal` zero except with probability
-/// `≈ occurrences/|K|`. Replays [`verify`] on `t`.
+/// equals the bare evaluation at its point. Masks make `equal` zero except with
+/// probability `≈ total/|K|`. Replays [`verify`] on `t`.
 #[cfg(feature = "controls")]
 pub fn leaks<K: ChallengeField + CodeField + Eq>(
     statement: &Statement<K>,
     columns: &[Vec<M31>],
     proof: &Proof<K>,
     t: &mut Transcript<K>,
-) -> Result<(usize, usize), Error>
+) -> Result<Leaks<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -3594,7 +3606,7 @@ pub fn leaks_lifetime<K: ChallengeField + CodeField + Eq>(
     columns: &[Vec<M31>],
     proof: &Proof<K>,
     t: &mut Transcript<K>,
-) -> Result<(usize, usize), Error>
+) -> Result<Leaks<K>, Error>
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
@@ -3619,7 +3631,16 @@ where
             .zip(&w)
             .fold(zero::<K>(), |s, (x, e)| s + *x * *e))
     };
-    let (mut total, mut equal) = (0, 0);
+    let mut out = Leaks {
+        total: 0,
+        equal: 0,
+        masked: Vec::new(),
+    };
+    let mut count = |revealed: K, bare: K| {
+        out.total += 1;
+        out.equal += usize::from(revealed == bare);
+        out.masked.push(revealed);
+    };
     for (j, step) in plan.steps.iter().enumerate() {
         let point = &verified.reductions[j].point;
         for (k, o) in step.occurrences.iter().enumerate() {
@@ -3627,23 +3648,20 @@ where
                 &data[o.column],
                 column_point(&o.coords, point, &verified.draws[j]),
             )?;
-            total += 1;
-            equal += usize::from(proof.relations[j].final_values[step.first() + k] == x);
+            count(proof.relations[j].final_values[step.first() + k], x);
         }
     }
     for (g, step) in plan.gkr.iter().enumerate() {
         let point = &verified.reductions[plan.steps.len() + g].point;
         for (input, o) in lookup::occurrences(step) {
             let x = mle(&data[o.column], column_point(&o.coords, point, &[]))?;
-            total += 1;
-            equal += usize::from(proof.gkr[g].final_values[input] == x);
+            count(proof.gkr[g].final_values[input], x);
         }
         for (input, x) in lookup::layer_values(step, &trees[step.lookup_index()], point)? {
-            total += 1;
-            equal += usize::from(proof.gkr[g].final_values[input] == x);
+            count(proof.gkr[g].final_values[input], x);
         }
     }
-    Ok((total, equal))
+    Ok(out)
 }
 
 /// The `stele-dev-zk-proof-v1` bytes of a claims proof (E12-14b): every count is a

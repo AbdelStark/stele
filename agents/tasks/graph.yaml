@@ -2807,6 +2807,23 @@ tasks:
   - a controls-only adversary proves the true statement's plan (its statement messages unchanged), with one public input replaced by a substitute of the same sum over the cube; honest rounds, finals and μ
   - NC-0930..0932 are executed through the dev-zk verifier with `ClaimMismatch`; δ = 0 is accepted (M0); removing each final check turns exactly its control red, with the forgery accepted
   - catalog and harness counts updated; RFC-0013 A5 implementation notes and ADR-121
+- id: E12-32
+  epic: E12
+  title: dev-zk privacy tests (bare evaluations, chi-square) on the real stories42M checkpoint at T = 32
+  depends:
+  - E12-29
+  rfc:
+  - RFC-0013 A5
+  - RFC-0013 A9
+  skill: soundness-auditor
+  crate: negative-controls
+  status: done
+  agent: claude-code
+  branch: task/E12-31-dev-zk-privacy-stories42m
+  acceptance:
+  - the bare-evaluation and chi-square privacy tests run on stories42M T = 32 (two proofs under one commitment, sequential)
+  - the chi-square tests use masked revealed finals only (public finals excluded), with a per-proof uniformity test beside the two-proof homogeneity test
+  - results in docs/development-e2e.md and a bench/ledger record
 - id: E12-30
   epic: E12
   title: dev-zk tamper suite on a stored real-checkpoint proof (verify only)

@@ -73,7 +73,10 @@ The zero knowledge is conditional and computational, and there is no security le
     (accepted, development tier). stories42M is a public
   checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
   15 tampers of the real proof (every proof section and public field) are each rejected with their pinned error
-  (`bench/dev_zk_tamper.py`).
+  (`bench/dev_zk_tamper.py`). The privacy tests pass on stories42M at T = 32: across two proofs under one
+  commitment, no masked revealed final equals its bare evaluation, and the masked finals pass a two-proof χ²
+  homogeneity test and a uniformity test
+  ([ledger](bench/ledger/e12-32-dev-zk-stories42m-privacy-masked-t32-mac.json)).
 - **Soundness:** `verify-dev` prints a soundness ledger (worst round `2^-95.4` on stories42M; FS unproven, PCS
   conjectural).
 
