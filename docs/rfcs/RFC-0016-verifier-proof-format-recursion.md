@@ -174,3 +174,99 @@ No new challenge, absorb, loss, profile, cut or weight pass. H/signature/evidenc
 accounting and NC-0804/0805/1201/1203..1206 remain real-consumer gates.
 Derivation/verification is T_misc/registration work without a measured constant.
 Affected tasks: E5-03b, E6, E8, E12-05/06 and E14.
+
+### A5 — Profile admission at the verifier entry point (§2 steps 2 and 4 exact)
+
+Status: Accepted (the composition rule and its prerequisites; NC-0804/0805/1205 remain
+`todo` and `standard-unproven` stays). Independent review: FIX-THEN-MERGE at 7b6a73a; fixes
+applied at 1cdd903. Task: E8-05f. Decision: ADR-126. Companions: RFC-0012 A17
+item 4, RFC-0002 A1, RFC-0012 §6.
+
+**Motivation.**
+- §2 step 2 says to "recompute ... the error ledger (RFC-0012 §4); reject if out of
+  profile", and step 4 to accept iff all checks pass.
+- RFC-0012 A17 replaced §4's total with (C1)–(C4), and `stele_verifier::accounting::admit`
+  decides them exactly (E8-05b).
+- E8-05c enumerates the rounds of an RFC-0026 proof from its plan, and RFC-0026 A14
+  (byte 5) is the first configuration whose rounds PASS.
+- This amendment states the composition exactly. It also says what an entry point
+  must stand on before a `standard` claim can be made.
+
+**Exact replacement of §2 steps 2 and 4.**
+
+> 2. Derive, from the expected plan and profile only (never from proof bytes), every
+>    Fiat–Shamir round of the verification with its RBR error and grinding bits
+>    (RFC-0012 A17 item 3), the A7 setup term and `Q_V`. Reject unless
+>    `accounting::admit(profile, rounds, setup, Q_V)` passes. Every LU round is the
+>    `identity_term` of its verified lookup record (ADR-072).
+> 4. Accept iff step 3's replay accepts **and** step 2's admission passes. A profile
+>    claim is never made on the replay alone.
+
+**What an entry point needs before `standard` (none ready).**
+1. **E8-02.** The `no_std` plan derivation and replay in `stele-verifier` (§3).
+   deny.toml bars `stele-verifier` from `stele-reductions` and `stele-prover`, and also
+   from `stele-pcs`, `stele-sumcheck` and `stele-lookup`. E8-02 is therefore a
+   re-implementation of the verification code, not a move (ADR-127).
+2. **E8-01.** Container v1, whose §1 header carries the profile byte and the ledger hash
+   that NC-0804 and NC-0805 tamper.
+   - **Transitive blockers.** In the task graph, E8-02 depends on E8-01, which
+     depends on:
+     - E8-05a (`blocked(RFC-0013 A1)`, Q29);
+     - E7-03, E7-04, E7-05, E7-07 and E7-08, blocked on RFC-0004 A3, A6, A7, A8 and
+       A9, RFC-0007 A8, RFC-0003 A3 and RFC-0008 Q31;
+     - E6-03, through E6-00 and E4-05 (RFC-0010 A7, RFC-0013 A1).
+   - **Open conflict.** The non-ZK standard path therefore still runs through Q29.
+     That contradicts ADR-124, which took Q29 off that path for E8-05 only. ADR-126
+     records it as an open item. It is not rewired here, because E8-01's E7 and E6
+     blockers stand regardless.
+3. **Standard A5 lookups.** `lookup::Descriptor::standard` with `LookupRecord`s, so
+   each LU round is `identity_term`. RFC-0026 checks recompute it from the plan, which
+   is the same number but not the ADR-072 provenance.
+4. **The RFC-0011 passport and its minimum profile**, for NC-1205.
+5. **RFC-0026 Q33's other promotion items**: the uniqueness lemmas' formal statements
+   and the RFC-0030 §5 item 3a argument.
+
+Until all five hold, `standard-unproven` stays (ADR-108), and no proof is
+`proven: true`.
+
+**What this change implements (E8-05f).** The conjunction of steps 2 and 4, for RFC-0026
+proofs: `stele_cli::gate` and `stele verify-dev --admit`.
+- The replay runs, and its plan-derived rounds go to `admit` under `standard`.
+- YES requires both. Otherwise the result is `NO: admission FAIL (Cn): …` or the
+  replay's error.
+- It is a development-tier gate, not a standard entry point. It claims no level.
+- Rounds are enumerated during the replay, from the plan the bundle names. An expected
+  plan and profile independent of the proof is E8-02's.
+- It refuses `--admit` on dev-zk bundles before verifying them. ZK admission needs Q29
+  (E8-05e).
+
+**Controls (exact, entered when items 1–4 exist).**
+
+| NC | Tamper | Expected |
+|---|---|---|
+| 0804 | container v1's ledger hash replaced by any other hash. Step 2 derives the rounds from the plan, never from the header, so the tamper can only make the header disagree with the derived ledger | `LedgerMismatch`, before the transcript |
+| 0805 | container v1's profile byte changed from standard to development, with the header restamped. The expected profile comes from the caller or the passport, not from the header | `ProfileMismatch` |
+| 1205 | the passport's minimum profile is treaty and the proof claims standard | `ProfileMismatch` |
+
+A plan with a round above the cap is NC-0810's (RFC-0030), not NC-0804's.
+
+**Gate tests (no NC credit).** `gate_requires_both_the_replay_and_admission` in
+stele-cli checks three cases:
+- a passing ledger is accepted;
+- a ledger with one ungrinded LU round above the cap is refused with (C4);
+- a replay error passes through.
+- Mutation check: with `gate` returning the replay's result alone, the test goes red.
+
+`rejects_admit_on_dev_zk_bundles_before_verifying` runs the binary. `--admit` on a
+dev-zk magic is a usage error (exit 2) before parsing; without `--admit` the same bytes
+reach the parser (exit 1).
+
+End to end on the eight-layer synthetic window:
+- the byte-3 proof under `--admit` gives `NO: admission FAIL (C4): round 63 (LU sign/8)`;
+- the byte-5 proof gives YES.
+
+**Soundness.** No challenge, label, byte or ledger line changes, and every pin stands.
+The gate can only refuse a proof the replay accepts.
+
+**Affected tasks.** E8-05f, E8-02, E8-01, E8-05 (its NC-0804/0805/1205 lines),
+E8-05e.

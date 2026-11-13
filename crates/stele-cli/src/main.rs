@@ -43,7 +43,7 @@ const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
 [--dev-profile 3|5 | --zk --commitment FILE --secret FILE] | \
-stele verify-dev --public FILE --proof FILE [--expect-model HEX]";
+stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit]";
 
 enum Failure {
     Usage(String),
@@ -299,7 +299,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     Ok("PROOF WRITTEN".into())
 }
 
-fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
+fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> {
     let expected = o
         .get("expect-model")
         .map(|h| {
@@ -313,6 +313,10 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
         })
         .transpose()?;
     let bytes = read(get(o, "public")?)?;
+    // E8-05f review: `--admit` is refused on dev-zk bundles before any verification.
+    if admit && !stele_cli::admit_applies(&bytes) {
+        return Err(usage(stele_cli::ADMIT_NOT_ZK));
+    }
     let (public, statement, profile) = bundle::decode_profile(&bytes).map_err(reject)?;
     let proof = read(get(o, "proof")?)?;
     let (cqis_id, development_model) = model_identity(&public).map_err(reject)?;
@@ -344,6 +348,18 @@ fn verify_dev(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
             "{}",
             zk::verify(&public, &statement, &proof, commitment, *index).map_err(reject)?
         ),
+        None if admit => {
+            // E8-05f: RFC-0016 §2 steps 2-4; YES only if the replay and admission pass.
+            let ledger = match stele_cli::gate(verify(&public, &statement, &proof)) {
+                Ok(ledger) => ledger,
+                Err(stele_cli::Refusal::Verify(e)) => return Err(reject(e)),
+                Err(stele_cli::Refusal::Admission(v)) => {
+                    return Err(Failure::Reject(format!("admission {v}")))
+                }
+            };
+            println!("{ledger}");
+            println!("{}", stele_cli::admission_gated(&ledger));
+        }
         None => {
             let ledger = verify(&public, &statement, &proof).map_err(reject)?;
             println!("{ledger}");
@@ -384,7 +400,10 @@ fn main() -> ExitCode {
             options(&rest, &allowed).and_then(|o| prove_dev(&o, zk))
         }
         Some("verify-dev") if !zk => {
-            options(&rest, &["public", "proof", "expect-model"]).and_then(|o| verify_dev(&o))
+            // `--admit` (E8-05f): refuse unless RFC-0012 A17 (C1)-(C4) also pass.
+            let admit = rest.iter().any(|a| a == "--admit");
+            let rest: Vec<String> = rest.iter().filter(|a| *a != "--admit").cloned().collect();
+            options(&rest, &["public", "proof", "expect-model"]).and_then(|o| verify_dev(&o, admit))
         }
         _ => Err(usage(USAGE)),
     };

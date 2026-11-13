@@ -1873,7 +1873,8 @@ tasks:
   - RFC-0025 §2,§6,§7.1
   skill: gkr-reduction-author
   crate: stele-prover+stele-proof
-  status: ready
+  # ADR-126: transitively blocked; the non-ZK path still meets Q29 here (open item).
+  status: blocked(E8-05a: RFC-0013 A1; E7-03/04/05/07/08: RFC-0004 A3, A6, A7, A8, A9)
   acceptance:
   - W8 proof produced
   - size matches plan
@@ -1888,7 +1889,7 @@ tasks:
   - RFC-0012 §4
   skill: soundness-auditor
   crate: stele-verifier
-  status: ready
+  status: blocked(E8-01)
   acceptance:
   - W8 verifies
   - NC-1200/1201/1202
@@ -2048,6 +2049,23 @@ tasks:
   - byte 0-4 pins unchanged; byte 5 pins (one-layer T = 16, eight-layer T = 64)
   - NC-1321 (failing nonce, GrindMismatch) with a mutation check; NC-1322 (byte 5 read as 3)
   - verify-dev prints PASS on the synthetic eight-layer window; stories42M T = 64 at byte 5 measured on a quiet host (prove time, size, verdict) against study.py's prediction
+- id: E8-05f
+  epic: E8
+  title: Verifier entry-point admission (RFC-0016 §2 steps 2 and 4 exact); development-tier gate now, standard lift after E8-02/E8-01
+  depends:
+  - E8-05d
+  rfc:
+  - RFC-0016 A5
+  - RFC-0012 A17 item 4
+  skill: soundness-auditor
+  crate: stele-cli
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-05f-standard-entry
+  acceptance:
+  - RFC-0016 A5 (Draft) and ADR-126 (Proposed) state the composition and the five prerequisites of a standard claim
+  - stele_cli::gate and verify-dev --admit accept only if the replay and admit both pass; mutation-checked; byte 3 refused (C4), byte 5 accepted on the synthetic eight-layer window
+  - standard-unproven stays; NC-0804/0805/1205 defined exactly and left todo until E8-02, E8-01 and the passport exist
 - id: E8-06
   epic: E8
   title: Digest gate with recorded W8 digests
