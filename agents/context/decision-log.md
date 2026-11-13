@@ -3363,8 +3363,8 @@ Consequences:
   - a single dev-zk plain check.
 - These change no bytes.
 
-Status: Proposed (development tier; measurement and a performance change). Independent
-review: FIX-THEN-MERGE at 86a4a75.
+Status: Accepted (development tier; measurement and a performance change). Independent
+review: FIX-THEN-MERGE at 86a4a75; fixes verified at 22f0d6f.
 - The checker logic is correct; native is green; the ceilings were recomputed.
 - The soundness-auditor pass covered the timing-only `Laps` in
   `stele-sumcheck/src/parallel.rs`: stderr only, under `std` and `STELE_STAGE_TIMES`,
