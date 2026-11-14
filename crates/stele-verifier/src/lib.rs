@@ -8,6 +8,8 @@ extern crate alloc;
 pub mod accounting;
 pub mod batch;
 pub mod circle;
+pub mod fraction;
+pub mod logup;
 pub mod pcs;
 pub mod sumcheck;
 pub mod zerocheck;
