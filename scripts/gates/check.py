@@ -77,17 +77,22 @@ ACCOUNTING = {
     # their parity tests: E8-02a's A1 sumcheck, E8-02b's A3 zerocheck and A2 batches.
     'files': ('src/accounting.rs', 'src/sumcheck.rs', 'tests/sumcheck_corpus.rs',
               'src/zerocheck.rs', 'src/batch.rs', 'tests/zerocheck_corpus.rs', 'tests/batch_corpus.rs',
-              'src/circle.rs', 'tests/circle_vectors.rs'),
+              'src/circle.rs', 'tests/circle_vectors.rs',
+              'src/pcs.rs', 'tests/pcs_vectors.rs', 'tests/fixtures/policy2-full.jsonl'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
-               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod sumcheck;\npub mod zerocheck;\n',
+               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod pcs;\npub mod sumcheck;\n'
+               'pub mod zerocheck;\n',
     'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
                'matches_reference_a3_corpus_decisions_and_receipts',
                'matches_reference_a2_corpus_decisions_and_receipts',
                'matches_reference_shared_circle_vectors', 'matches_direct_evaluation_of_the_basis',
                'matches_matrix_solve_interpolation', 'encodes_extension_elements_limb_by_limb',
-               'rejects_other_characteristics'),
+               'rejects_other_characteristics',
+               'matches_reference_policy1_certificates_and_openings',
+               'matches_reference_policy2_certificates_openings_and_continuations',
+               'rejects_failing_nonces', 'rejects_column_mismatch_and_noncanonical_columns'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -103,6 +108,9 @@ ACCOUNTING = {
         'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
         'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
         'src/circle.rs': 'bae6b90f986ce0310db55f7ec171027b072bdf05a6f0f61e72bb139e1076ae43',
+        'src/pcs.rs': '60cc34a8c0c31abb0b6603b6789e8e7acfb2d3e9c5f75d4476178d5452f90fb3',
+        'tests/pcs_vectors.rs': 'c75f1103a74973981bbcf41f90f10602ea9479c7caa974dfbe5d1b9ca14b96b8',
+        'tests/fixtures/policy2-full.jsonl': 'b8e51fc1606f4a77e33702a712c3c0d0f67197d36ddcb4ff7fefb78ff706d7c9',
         'tests/circle_vectors.rs': '6df8664f3f24cb707cde7349d82cfbcd1601966ef283f339367c7553221cfd48',
         'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
@@ -143,14 +151,20 @@ def accounting_admission(root):
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
     result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
                              '--test', 'zerocheck_corpus', '--test', 'batch_corpus', '--test', 'circle_vectors',
+                             '--test', 'pcs_vectors',
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
+    # E8-02d: the Policy 2 full-byte fixture is the Python oracle's current output.
+    result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/merkle-oracle/dump_policy2_full.py'],
+                            cwd=root, text=True, capture_output=True)
+    if result.returncode:
+        raise ValueError(f'accounting admission: verifier Policy 2 fixture drift {result.stderr[-2000:]}')
     print('gate verifier: independent no_std A1 sumcheck, A3 zerocheck and A2 batches match every '
-          'corpus decision and receipt; the Circle code matches the shared vectors and direct evaluation '
-          '(E8-02a..c)')
+          'corpus decision and receipt; the Circle code matches the shared vectors and direct evaluation; '
+          'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes (E8-02a..d)')
 
 
 def development_surface(crate, name, actual, expected):
