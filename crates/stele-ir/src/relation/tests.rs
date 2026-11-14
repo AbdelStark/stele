@@ -570,3 +570,47 @@ fn rejects_fixed_bits_outside_matmuls() {
     f.relation.matmuls[0].out.vars = vec![0, 0xFD];
     assert!(matches!(f.relation.validate(), Err(Invalid::Ref { .. })));
 }
+
+/// #379 review: a tamper at the last domain point is found (identity and lookup), so a
+/// gather that skipped the last row would fail here.
+#[test]
+fn rejects_tamper_at_the_last_point() {
+    let mut f = fixture();
+    let a = f.a;
+    tamper(&mut f, a, 3, 1);
+    assert_eq!(
+        check(&f.relation, &f.values),
+        Err(Violation::Identity {
+            relation: "product".to_string(),
+            point: 3
+        })
+    );
+    let mut f = fixture();
+    let square = f.square;
+    tamper(&mut f, square, 3, 1);
+    assert_eq!(
+        check(&f.relation, &f.values),
+        Err(Violation::Lookup {
+            relation: "squares".to_string(),
+            point: 3
+        })
+    );
+}
+
+/// The matmul's per-entry path (no summed-index table) gives the same results as the
+/// table path: accept the honest fixture, and report the same tampered point.
+#[test]
+fn matmul_without_the_summed_table_matches() {
+    let f = fixture();
+    assert_eq!(check::check_with(&f.relation, &f.values, &[], 0), Ok(()));
+    let mut f = fixture();
+    let (y, z) = (f.y, f.z);
+    tamper(&mut f, y, 3, 1);
+    tamper(&mut f, z, 3, 2);
+    let expected = Err(Violation::Matmul {
+        relation: "xw".to_string(),
+        point: 3,
+    });
+    assert_eq!(check::check_with(&f.relation, &f.values, &[], 0), expected);
+    assert_eq!(check(&f.relation, &f.values), expected);
+}

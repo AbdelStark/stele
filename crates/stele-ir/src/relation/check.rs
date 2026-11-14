@@ -64,7 +64,8 @@ impl Gather {
     }
 }
 
-/// Matmul operands precompute their summed-bit indices when `2^summed` is at most this.
+/// Matmul operands precompute their summed-bit indices when `summed` is at most this:
+/// at most 2^20 index pairs, 16 MB per matmul, about 256 MB with 16 matmuls in parallel.
 const SUMMED_TABLE: u8 = 20;
 
 /// The least `x < n` with `failed(x)`.
@@ -85,6 +86,17 @@ pub fn check(relation: &Relation, values: &Values) -> Result<(), Violation> {
 /// `skip` left unevaluated (after a full `validate`). It is not a verifier mode; no
 /// proof path calls it.
 pub fn check_except(relation: &Relation, values: &Values, skip: &[&str]) -> Result<(), Violation> {
+    check_with(relation, values, skip, SUMMED_TABLE)
+}
+
+/// [`check_except`] with the matmul summed-index table limit as a parameter, so tests
+/// can force the per-entry path (`summed_table = 0` with any `summed >= 1`).
+pub(crate) fn check_with(
+    relation: &Relation,
+    values: &Values,
+    skip: &[&str],
+    summed_table: u8,
+) -> Result<(), Violation> {
     let kept = |name: &str| !skip.contains(&name);
     relation.validate()?;
     let columns: Vec<&[i64]> = (0..relation.columns.len())
@@ -187,7 +199,7 @@ pub fn check_except(relation: &Relation, values: &Values, skip: &[&str]) -> Resu
         let (lg, rg, og) = (Gather::new(lhs), Gather::new(rhs), Gather::new(out));
         // index(x | y << free) = index(x) | index(y << free): x reads only the free bits.
         let summed = 0..1u64 << matmul.summed;
-        let ys: Vec<(usize, usize)> = match matmul.summed <= SUMMED_TABLE {
+        let ys: Vec<(usize, usize)> = match matmul.summed <= summed_table {
             true => summed
                 .clone()
                 .map(|y| (lg.index(y << matmul.free), rg.index(y << matmul.free)))
