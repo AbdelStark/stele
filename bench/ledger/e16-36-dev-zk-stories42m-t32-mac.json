@@ -1,0 +1,99 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "8aa97afc873062e5b655aa81d4d8829985a519a5",
+ "controls": {
+  "failed": 0,
+  "passed": 1,
+  "total": 1
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 8,
+ "kernel_counters": {
+  "checked_positions": 9,
+  "commit_peak_rss_bytes": 26551042048,
+  "model_commitment_bytes": 638,
+  "prove_peak_footprint_bytes": 92221904112,
+  "prove_peak_rss_bytes": 30191222784,
+  "public_bytes": 243863,
+  "verify_peak_rss_bytes": 17489313792
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele commit-model --zk / prove-dev --zk / verify-dev --expect-model",
+  "controls": {
+   "pin": "model differs from --expect-model"
+  },
+  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build at commit; BSD /usr/bin/time -l. Task E16-36: one stage-lap run (STELE_STAGE_TIMES=1) of dev-zk byte 4 stories42M T = 32 on main after E16-34 (#364). SINGLE RUN, not a median. Steps started at 1-minute load < 3 (load.log: commit { 1.44 1.16 1.71 }; prove { 2.77 1.74 1.87 }; prove exit 0); other agents' sessions were open and the load rose during the prove. One commitment (P = 8) made immediately before by commit-model --zk (not timed in prover_time_ns; model_commitment_once); proof index 0. verify-dev timed afterwards, at load about 4.",
+  "model": {
+   "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+   "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+   "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+   "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+   "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+   "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+   "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+   "shape": {
+    "context": 1024,
+    "d": 512,
+    "head_width": 64,
+    "heads": 8,
+    "hidden": 1376,
+    "kv_heads": 8,
+    "layers": 8,
+    "vocabulary": 32000
+   },
+   "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+  },
+  "profile_byte": 4,
+  "proof_index": 0,
+  "proof_sha256": "7fc51fa3b4d550751eb754da8bfe8b7e00a47b6a8736c511edadda3d496a8bc0",
+  "proofs": 8,
+  "public_sha256": "6856cedb112889034d38f7bdaa01ad3bd82e920b14e7ddde5ebe34363aa65cce",
+  "rung": "L2a",
+  "statement": {
+   "T": "32",
+   "checked": "23..32",
+   "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+   "model": "e0fb5527b94132e5af8139077bff6cbeed2c949f9947b4da82a8ee9fb58b8896",
+   "next": "2654",
+   "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development tier (RFC-0018 A1): no security level, FS unproven, PCS conjectural. dev-zk profile byte 4 (balanced policy-2 hiding sources, RFC-0013 A8; RFC-0026 A9), development tier; zero knowledge is conditional and computational (seed-derived masks). The weights and the 1-D records (RFC-0013 A7) are committed once by commit-model as one published commitment for P = 8 proofs (A6), recorded as stage model_commitment_once and not part of the prove time. Prover time is the prove-dev --zk process wall time of proof index 0 with STELE_STAGE_TIMES=1 (stderr laps only; no value, transcript or byte effect): Artifact decode, executor capture, plain check and proof (witness_recompute_ns 0). stage_times_ns holds the laps (lap_*), the commitment and the wall. Verifier time is verify-dev with --expect-model. The control is verify-dev of the proof pinned to another model digest (refused: model differs from --expect-model). Soundness ledger (verify-dev): eps_interactive <= 731241032/p^4; worst round LU+ZD check 5, 2^-95.4, grinding 0 bits. CPU only, no GPU. Not a cost-model fit input. The E16-36 GPU decision (ADR-127) reads these laps.",
+ "plan_digest": "ee76ccdd744a0a9781b0cc48366f8d7f51fb4eb0389aa6be937e5e70d7c7cdd7",
+ "profile": "development",
+ "prompt_tokens": 24,
+ "proof_size_bytes": 21411006,
+ "prover_time_ns": 306160000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "lap_witness_decode_extend_weights": 3361000000,
+  "lap_witness_zk_capture_assign": 4679000000,
+  "lap_witness_zk_commit_records": 99000000,
+  "lap_witness_zk_layout": 1525000000,
+  "lap_witness_zk_plain_check_2": 5929000000,
+  "lap_witness_zk_published_relation": 1480000000,
+  "lap_witness_zk_window_capture_check": 13815000000,
+  "lap_zk_claim_batches_and_openings": 9332000000,
+  "lap_zk_logup_gkr": 153188000000,
+  "lap_zk_logup_trees_and_tops": 7410000000,
+  "lap_zk_relations_masked_sumcheck": 22452000000,
+  "lap_zk_self_verify": 20136000000,
+  "lap_zk_shared_batch_and_opening": 37000000,
+  "lap_zk_source_messages": 20679000000,
+  "lap_zk_sources_prepare_certify": 28341000000,
+  "lap_zk_top_and_shared_sources": 107000000,
+  "model_commitment_once": 66410000000,
+  "prove_dev_wall": 306160000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 21310000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/stories42m-zk-balanced-t32"
+}

@@ -3809,6 +3809,95 @@ Status: Accepted (development tier; no protocol change) with RFC-0016 A5. Indepe
 review: FIX-THEN-MERGE at 7b6a73a; fixes applied at 1cdd903 (`--admit` refused on dev-zk,
 NC-0804 expects `LedgerMismatch`, transitive blockers of E8-01/E8-02 stated).
 
+## ADR-127: dev-zk GPU backend: NO-GO at this measurement; measured 2.67×–2.71× (box-calibrated) on current main (RFC-0014 §1, §5, task E16-36, ADR-123 follow-up)
+
+Context: ADR-123 lifted the NO-GO for the masked and ZK-GKR rounds. It left the dev-zk
+decision to E16-36: a stage re-profile on main after E16-34, and a device measurement of
+hiding-source preparation. GO only if the measured resident ceiling is at least 3×.
+
+Measurement (`research/gpu-gating/DEV-ZK-E16-36.md`):
+- **Profile** (`bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json`). One stage-lap prove
+  of stories42M dev-zk byte 4 at `T = 32` on `8aa97af`, M4 Max, started at load 2.77:
+  - 306.2 s (E16-22: 465.7 s);
+  - ZK-GKR 153.2 s, relations 22.5 s, source preparation and certification 28.3 s
+    (E16-22: 103.5 s), LogUp trees 7.4 s, claim batches 9.3 s;
+  - residual outside ADR-120's offloadable set 85.4 s: source messages 20.7 s,
+    self-verify 20.1 s, witness 30.9 s, the rest.
+- **Device source preparation** (`bench/ledger/e16-36-dev-zk-gpu-sources.json`):
+  - Kernels in `research/gpu-gating/masked`: transpose, Circle levels (RFC-0010 A2),
+    BLAKE3 leaves with device-computed keyed-XOF salts, and the RFC-0012 A3 tree. Opt-in,
+    CUDA loaded at run time.
+  - Bit equality: the device roots equal the production `PreparedSource` roots at
+    `(ell, m)` = (4, 10), (6, 12), (11, 15), (11, 16), (11, 17). The same algorithm in
+    plain Rust matches the production root in a CPU test, including multi-chunk leaves
+    at (8, 10) and (9, 11).
+  - RTX 4090 against 61 EPYC threads at the witness shape (`ell = 11`, `C = 2^16`):
+    16.47 s on the CPU against 0.77 s on the device (encode and Merkle on the device,
+    the certificate on the CPU), 21.5×. Against the Mac that took the laps: 13.3×.
+    The upload phase moves 2 GiB at the bench's staging rate (1.53 s); the bus moves
+    1 GiB in 61 ms pageable.
+- **Masked rounds**, re-timed against E16-34's CPU on the box, rounds only: relations
+  31.7–57.7×, ZK-GKR layer 15.9–18.4×.
+  - The Mac calibration did not run (host load 8–11), so these ratios are against the
+    box CPU.
+  - In E16-35 the Mac ran these rounds slower than such a box, so box-calibrated ratios
+    understate the device's gain on the laps host. They bias the ceiling toward NO-GO.
+
+Ceiling: `T' = r + rel/s_rel + gkr/s_gkr + S/s_src + L/s_L` over the laps, each stage at
+its own ratio. `S` is source preparation (28.3 s); `L` is LogUp trees and claim batches
+(16.7 s).
+- every offloadable stage free: 3.58×;
+- relations, ZK-GKR and `S` free, `L` on the CPU: 2.996×;
+- **measured (box-calibrated): 2.67×–2.71×** (`L` on the CPU);
+- `L` at E16-21's ratios, which were not measured for those stages: 3.11×–3.17×
+  rounds-only, 2.95×–3.14× upload-inclusive.
+
+Decision:
+- **dev-zk: NO-GO at this measurement.** The measured ceiling is 2.67–2.71×
+  (box-calibrated), below the 3× gate of ADR-103 and E16-36.
+  - The 2.996× bound assumes trees and batches stay on the CPU. ADR-123 item 3 puts them
+    on the device, so the bound does not cap a full backend.
+  - The bound is 0.19 s (0.06% of one loaded run) short of 3×, which is within
+    single-run noise.
+- **Against ADR-123's two criteria:**
+  - (b), "the re-profile's ceiling below 3× even with every offloadable stage free", is
+    not met: that ceiling is 3.58×.
+  - (a), "device source preparation below the ratio the re-profile requires for 3×",
+    holds only because, with trees and batches on the CPU, no `s_src` reaches 3×.
+- **Development: NO-GO stands** (ADR-120).
+- E16-37 stays blocked. Tasks E16-21a..e stay blocked. No GPU binding, no RFC-0014
+  amendment, no change to `crates/stele-gpu`.
+- The research kernels stay as evidence: the masked and GKR rounds and source
+  preparation, each bit-equal to the production CPU code.
+
+Reopen (a new task and ADR) when both hold:
+- **Laps-host calibration.** The masked rounds are calibrated on the laps host's CPU (the
+  Mac), on a quiet host, so `s_rel` and `s_gkr` are not box proxies.
+- **Trees and batches measured.** LogUp trees and tops and claim batches are measured on
+  the device at `s_L ≥ L / (T/3 − r − rel/s_rel − gkr/s_gkr − S/s_src)` on the
+  then-current laps.
+  - At this measurement that is 2.9–4.0× with the box-calibrated ratios.
+  - It is 1.35–1.66× with ADR-123's Mac-calibrated 39.7–83.4× (before E16-34).
+  - This is not a fixed threshold: it moves with every re-profile and calibration.
+
+Separately, source messages (20.7 s of keyed-XOF mask draws) and self-verify (20.1 s)
+are CPU work outside ADR-120's offloadable set. Moving the mask draws to the device or
+dropping a self-verify would change `r`; that is a separate decision.
+
+Consequences:
+- Ledgers: `bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json` (inference, single run)
+  and `bench/ledger/e16-36-dev-zk-gpu-sources.json` (micro).
+- `research/gpu-gating/masked` gains `source.rs` (the plain-Rust reference, CPU-tested),
+  `source.cu`, `gpu_source.rs`, a `source` bench mode, `tests/source_parity.rs`,
+  `run36.sh` and `summarize36.py`. The research inventory group `gpu-gating-masked`
+  runs the CPU test and the `cuda` check.
+- No proof byte, transcript, verifier or `crates/` change.
+
+Status: Accepted (owner authorisation for autonomous gating decisions). Independent
+review: FIX-THEN-MERGE on #371 (kernels, salts, BLAKE3, Merkle and the 3.583×, 2.996× and
+13.31× figures reproduced); this text carries its fixes (per-stage `M`, the reopen
+threshold, the bound's scope).
+
 ## ADR-128: The no_std verifier is an independent re-implementation in stele-verifier, piece by piece against the shared corpora; first piece the A1 sumcheck (RFC-0016 §3, task E8-02a)
 
 Numbering: ADR-126 is #370's and ADR-127 is #371's.
