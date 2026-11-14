@@ -4027,4 +4027,6 @@ Consequences:
 - Once A15 is accepted, a difference between the text and the code is a bug, and the
   golden vectors decide which bytes are meant.
 
-Status: Proposed. Needs one independent review of A15.
+Status: Accepted with RFC-0026 A15. Independent review: FIX-THEN-MERGE at d198d1f; fixes
+applied at 7fdabe5. E8-02f1 is written from A15 alone by an author who has not read the
+production engine.

@@ -1431,8 +1431,9 @@ Promotion to `standard`: not granted (Workflow 10).
 
 ### A15 — Byte formats of development proofs (transcribed from code)
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Needs one independent
-review before acceptance. Task: E8-02f0. Decision: ADR-129 (Proposed).
+Status: Accepted (development tier) with ADR-129. Independent review: FIX-THEN-MERGE at
+d198d1f (§§2–5 match production field by field; a decoder written from this text alone
+decoded the real one-layer files); fixes applied at 7fdabe5. Task: E8-02f0. Decision: ADR-129.
 
 **Motivation.**
 - RFC-0026 §4.1, ADR-075 and ADR-085 name the development proof's byte formats, but
