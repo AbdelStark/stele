@@ -3988,3 +3988,45 @@ Status: Accepted (verifier architecture; no protocol change). Independent review
 and #373: FIX-THEN-MERGE (dependency set, `no_std`, parity on 196/314/276 cases, live
 receipts, strict pins and a 400k-case fuzz verified); fixes applied at e13044d and 2001244,
 including the upper-bound tests and the stated provenance of the zerocheck and batch modules.
+
+## ADR-129: The development proof's byte formats are specified in text, transcribed from code and pinned by golden vectors (RFC-0026 A15 Draft, task E8-02f0)
+
+Numbering: ADR-128 is #372's.
+
+Context:
+- E8-02f replays RFC-0026 byte-5 proofs in the independent `no_std` verifier
+  (ADR-128).
+- The formats it parses were fixed in code by E16-02 and E16-10: the
+  verifier's input file, the transcript public input, the container, the relation
+  encoding, and the engine's ids, sections and claim routing. RFC-0026 §4.1, ADR-075
+  and ADR-085 name them without field order or widths.
+- ADR-128's writing rule (no production code open) could not be met for these
+  formats.
+
+Decision (Proposed):
+- **The gap is closed in the specification, not by disclosure.** RFC-0026 A15
+  (Draft) specifies the formats normatively, field by field. It says plainly that the
+  text was transcribed from the production encoders at `10f3d44f`.
+- **Golden vectors.** `crates/stele-prover/tests/development.rs` holds encoders
+  written from the A15 text:
+  - `matches_a15_small_codec_vectors`: production reproduces small hand-built vectors
+    covering every field kind, whose hex is printed in A15.
+  - `matches_a15_codecs_on_the_one_layer_byte5_window`: production reproduces the
+    one-layer byte-5 window's public file, public input, statement digest, container
+    and relation encoding. The section counts follow from the relation by A15 §6.
+- **Order of work.** E8-02f0 (this text), then E8-02f1 (decoders and engine replay
+  written from A15 without production open, dump-fed parity against `verify-dev`),
+  then E8-02f2 (plan derivation).
+- **Independence caveat.** A15's author read the production engine to transcribe it.
+  E8-02f1 written by the same author is therefore not an independent derivation of
+  the engine. The parity corpus and the A15 review are the checks. A different
+  author for E8-02f1, or a non-author review against A15 alone, restores it.
+
+Consequences:
+- No proof byte, challenge, label or pin moves.
+- Once A15 is accepted, a difference between the text and the code is a bug, and the
+  golden vectors decide which bytes are meant.
+
+Status: Accepted with RFC-0026 A15. Independent review: FIX-THEN-MERGE at d198d1f; fixes
+applied at 7fdabe5. E8-02f1 is written from A15 alone by an author who has not read the
+production engine.
