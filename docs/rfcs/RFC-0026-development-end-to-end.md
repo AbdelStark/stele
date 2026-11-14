@@ -1428,3 +1428,359 @@ ground check's `β`.
 
 **Affected tasks.** E8-05d (implements it), E8-05 (admission at the entry point).
 Promotion to `standard`: not granted (Workflow 10).
+
+### A15 — Byte formats of development proofs (transcribed from code)
+
+Status: Draft (development-tier amendment under RFC-0027 §2). Needs one independent
+review before acceptance. Task: E8-02f0. Decision: ADR-129 (Proposed).
+
+**Motivation.**
+- RFC-0026 §4.1, ADR-075 and ADR-085 name the development proof's byte formats, but
+  leave their exact field order and widths to code (E16-02, E16-10).
+- The independent `no_std` verifier (ADR-128, E8-02f) must be written from text,
+  without the production code open. Every format it parses must therefore be
+  specified here.
+
+**Provenance.** This text was transcribed from the production code at `10f3d44f`:
+- `stele_prover::development::bundle::encode` (the verifier's input file);
+- `public_input`, `statement_digest` and `model_identity` in `stele_prover::development`;
+- `stele_proof::development` (the container);
+- `stele_reductions::relation::{encode, digest}` (`relation_codec.rs`);
+- and, for §6, the engine's plan and sections in `stele_reductions::relation` and
+  `relation_lookup.rs`.
+
+It changes no byte. From acceptance on it is normative: a difference between this
+text and the code is a bug in one of them, and the golden-vector tests below decide
+which bytes are meant.
+
+#### 1. Conventions
+
+- Every integer is little endian: `u8`, `u16`, `u32`, `u64`, `i16`, `i64`.
+- `blob(x)` is `u32(len x) ‖ x`. `str(s)` is `blob` of the UTF-8 bytes of `s`.
+- `[n] X` is `n` copies of `X` with no count, and `list X` is `u32(n) ‖ [n] X`.
+- A `K` value is 16 bytes: the canonical QM31 encoding (RFC-0003 A1), four `u32`
+  M31 limbs, each below `p`. A non-canonical limb is `NoncanonicalField`.
+- `root` and `digest` are 32 bytes.
+
+#### 2. The verifier's input file `stele-dev-public-v4`
+
+The file is the following fields, in order, and nothing after them:
+
+| Field | Bytes |
+|---|---|
+| magic | the 19 ASCII bytes `stele-dev-public-v4` |
+| Model | `blob` (RFC-0025 §2.7 canonical bytes) |
+| Scales | `blob` |
+| Preparation | `blob` |
+| 1-D records | `list (u16 ordinal ‖ blob(codes))`, each code an `i16`, in artifact record order (A2) |
+| model commitment | `list (root ‖ blob(certificate))`, one per model source in split order (A5) |
+| tokens | `list u32` (`T` tokens) |
+| checked range | `u32 r ‖ u32 e` |
+| next token | `u8 0`, or `u8 1 ‖ u32 y` |
+
+- The magic names the source set (A11, A12, A14). `stele-dev-public-v1`, `-v2` and
+  `-v3` have the same layout for profile bytes 0 (omitted), 2 and 3; `-v4` is byte 5.
+- Any truncation, a presence byte other than 0 or 1, or a trailing byte is
+  `StatementMismatch`.
+- After decoding, the verifier decodes Model, Scales and Preparation (RFC-0025). It
+  requires the records to be exactly the Model's 1-D records: same ordinals, order
+  and lengths, and each code within the record's format bits. It requires
+  `T`, `[r, e)` and `y` to satisfy §1.1. Each failure is `StatementMismatch`.
+- `cqis_id` is not in the file. The verifier computes it as the RFC-0025 §2.7
+  `NumericalIdentity` of the Model, Scales, Registry and Bounds.
+
+#### 3. The transcript public input and the statement digest
+
+The argument of `Transcript::new` (§4 step 1, A2) is, in order:
+
+| Field | Bytes |
+|---|---|
+| tag | the 31 ASCII bytes `stele/v0.1/dev-e2e/public-input` |
+| `cqis_id` | 32 bytes |
+| Model, Scales, Preparation, 1-D records | exactly as in §2 |
+| model roots | `list root` (roots only, no certificates) |
+| tokens, checked range, next token | exactly as in §2 |
+| profile byte | none for byte 0; `u8 2`, `u8 3` or `u8 5` (A11, A12, A14) |
+
+- **Statement digest.** BLAKE3 of the 28 ASCII bytes `stele/v0.1/dev-e2e/statement`,
+  then `u64(len input)`, the input, and the 32-byte relation digest (§5).
+- **Model identity.** It is printed, not absorbed. It is BLAKE3 of the 24 ASCII bytes
+  `stele/v0.1/dev-e2e/model`, then `cqis_id`, `list root`, and `list (u16 ordinal ‖
+  u32 len ‖ [len] i16)` over the records.
+
+#### 4. The container `stele-dev-e2e-v1`
+
+| Field | Bytes |
+|---|---|
+| magic | the 16 ASCII bytes `stele-dev-e2e-v1` |
+| version | `u16 1` |
+| `cqis_id` | 32 bytes |
+| statement digest | 32 bytes (§3) |
+| six section lists | `list blob`, in order: groups, multiplicities, identities, lookups, matmuls, openings |
+
+- A wrong magic or version is `Header`.
+- A truncated field or list, or a trailing byte, is `ProofShape`. A list count larger
+  than the remaining bytes divided by 4 is `ProofShape` before any section is read.
+- `cqis_id` other than the computed one, or a statement digest other than the
+  verifier's, is `StatementMismatch`. This only fails fast: the binding is the
+  transcript (E2).
+- Section counts and lengths are derived by the verifier (§6). A missing, extra,
+  short or long section is `ProofShape`.
+
+#### 5. The relation's canonical encoding
+
+Ids are positions: column `i` is `ColumnId(i)`, and likewise groups and tables.
+
+- `width` is `u8 signed (0 or 1) ‖ u8 bits`.
+- `ref` is `u32 column ‖ u8 n ‖ [n] u8 vars`. A matmul ref's fixed bit is `0xFE` (0)
+  or `0xFF` (1) (A6).
+
+The encoding is, in order:
+
+1. the 31 ASCII bytes `stele/v0.1/relation/encoding/v1`;
+2. groups: `list (str name ‖ u8 log_len)`;
+3. columns: `list (str name ‖ kind ‖ width ‖ u8 log_len)`, where `kind` is `u8 0 ‖
+   u32 group` (witness), `u8 1` (weight), or `u8 2 ‖ list i64` (public values);
+4. tables: `list (str name ‖ list width ‖ list (list i64))` (rows);
+5. identities: `list (str name ‖ u8 vars ‖ list term)`, `term = i64 coeff ‖ u8 n ‖
+   [n] ref`;
+6. lookups: `list (str name ‖ u8 vars ‖ selector ‖ list ref ‖ u32 table)`, where
+   `selector` is `u8 0` or `u8 1 ‖ ref`;
+7. ranges: `list (str name ‖ u32 column ‖ width)`;
+8. matmuls: `list (str name ‖ u8 free ‖ u8 summed ‖ ref out ‖ ref lhs ‖ ref rhs)`;
+9. composes: `list (str name ‖ u32 column ‖ list (u32 limb ‖ u8 shift))`.
+
+The relation digest is BLAKE3 of the encoding. It is absorbed with
+`relation/statement` (§4 step 1) and enters the statement digest (§3).
+
+#### 6. Engine replay: derived quantities and section contents (byte 5)
+
+Everything below is derived from the relation and the profile byte, never from a
+proof byte. `ceil_log2(n)` is the least `b` with `2^b ≥ n`.
+
+**6.1 Identifiers.**
+
+| Object | Id |
+|---|---|
+| stacked source | 2 |
+| check `i` (A3) | A5 identity `i`; multiplicity source id `3 + i` |
+| model source `k` (A5) | `2^32 + k` |
+| zerocheck of domain size `m` | `2^62 + m` |
+| matmul `i` (relation order) | `2^62 + 2^48 + i` |
+| stacked batch; model batch `k` | `2^62 + 2^49`; `2^62 + 2^49 + 1 + k` |
+| tuple column `j` of check `i` | `2^62 + 3·2^48 + 4i + j` |
+| fraction trees of check `i` | left `4i`, right `4i + 1` |
+| tree leaves of check `i` | left `8i`, `8i + 1`; right `8i + 2`, `8i + 3` |
+
+ADR-075's group ids `2 + g` and multiplicity ids `2 + #groups + i` were replaced by
+the stacked source (A4). This table is the current assignment.
+
+**6.2 Sources (byte 5: Circle, blow-up exponent 2, Policy 2; A11, A12).**
+
+- **Groups.**
+  - Group `g`'s columns are the witness columns of group `g`, in `ColumnId` order.
+  - `c = ceil_log2(max(1, count))` and the block size is `2^(n+c)`.
+  - Blocks are placed by `n + c`, largest first, with ties in `GroupId` order, at
+    cumulative offsets. Any `n + c > 30` is `Unsupported`.
+- **Stacked source.**
+  - It exists when there is at least one group.
+  - `S = ceil_log2(total)`. `S > 30` is `Unsupported`. Its message has
+    `bits = max(S, 6)` variables.
+  - Column `j` of a group at offset `o` maps a claim at `ρ` to the stacked claim at
+    `(bits(o/2^n + j) ‖ ρ)`, with `bits − n` Boolean leading coordinates, MSB-first.
+- **Geometry rule.**
+  - Over `ell ∈ [max(0, bits − 28), min(bits, 30)]`, keep each `ell` for which
+    `(m = bits − ell, b = 2)` is a valid Circle code.
+  - Pick the one whose certificate size plus opening size (RFC-0010 A9 wires with
+    A14's counts and nonces) is smallest. Ties go to the smallest `ell`.
+- **Model sources.** As A5: weights in `ColumnId` order are split greedily at `2^30`
+  entries per source, and blocks are placed largest first with ties in order. Each
+  source has `bits = max(ceil_log2(total), 6)` and the geometry rule above.
+- **Multiplicity source of a check with `2^k` rows.**
+  - Its layout is `(id, ell, blowup = 2)`, with RFC-0008 A5's source shape
+    (`formal/native-lookup.md`).
+  - `ell ∈ [0, k]` minimises certificate plus opening size, with ties going to the
+    smallest `ell` (A12).
+
+**6.3 Checks (A3, A13, A14).**
+
+- **Ordering.**
+  - Checks are keyed by `TableId` for lookups and by `width.bits` for ranges, in
+    order of first use: every lookup in relation order, then every range in relation
+    order.
+  - A range is named `range_{bits}`. Its table is the rows `0..2^bits` in one column.
+  - A range's member reads the column through the identity ref (`vars = 0..log_len`),
+    shifted by `−width.min()`, with no selector.
+- **Members.**
+  - Members keep relation order, then are stably sorted by `m_i` descending.
+  - Offsets are cumulative, and `m = ceil_log2(Σ 2^m_i)`.
+  - `m > 30`, an arity outside `{1, 2}`, or a row count `t` outside `[1, 2^16]` is
+    `Unsupported`.
+- **Table.**
+  - `k = ceil_log2(t)`, and rows `t..2^k` are zero rows.
+- **Grinding (byte 5).**
+  - `k_LU` is A14 item 3's least `k` for `(c, 2^m, t)`.
+  - No such `k ≤ 32` is `Unsupported`.
+
+**6.4 Sections and their transcript order.** The order follows the replay of §4.
+
+1. **Statement and model roots.** `Transcript::new(input)` (§3). Absorb
+   `relation/statement` with the relation digest. Then, for each model source in
+   split order, absorb `relation/roots` with its root (A5). The model certificates
+   come from the file (§2), one per derived model layout. A different count is
+   `StatementMismatch`. Each certificate is verified on its own transcript
+   (RFC-0010 A9) under its derived layout and root; a failure is the PCS error
+   (`Commitment`).
+2. **Groups.** There is one section if the relation has a group, and none otherwise.
+   - The section is `root ‖ certificate`, with the certificate exactly the stacked
+     source's certificate size.
+   - The certificate is verified on its own transcript. Then absorb `relation/roots`
+     with the root.
+3. **Multiplicities.** One section per check, in check order.
+   - Each is `root ‖ certificate`, with the length checked against the derived size
+     before parsing (A12 item 5).
+   - Verify the certificate, then absorb `relation/roots` with the root.
+4. **Identities.** One section per domain size, in increasing order.
+   - **Sizes.** The sizes are the distinct values of every identity's `vars` and every
+     compose column's `log_len`.
+   - **Polynomial for size `m`.**
+     - Take the identities of that size in relation order, then each compose of that
+       size as the identity `1·column − Σ 2^shift·limb`, each factor an identity ref.
+     - Draw one `relation/identity` challenge `λ` per identity, in that order.
+     - The inputs are the distinct refs in first-appearance order (term order, then
+       factor order). Each term coefficient is `λ·coeff`.
+   - **Instance.** It is RFC-0006 A3 with id `2^62 + m`, `m` variables, `skip = 0` and
+     claimed sum 0.
+   - **Section.** `[m] ([D + 1] K)` rounds, with `D` the largest factor count, then one
+     final `K` per input.
+   - **Claims.** Input `r`'s claim is at the zerocheck point restricted to `r`.
+   - **Restriction.** A ref with `n` vars read at the MSB-first domain point `x ∈ K^m`
+     has column point `y ∈ K^n`. `y[n−1−j]` is `x[m−1−vars[j]]`, or the fixed bit's
+     value (A6).
+5. **Lookups.** One section per check, in check order. With `i` the check index:
+   - **Statement and units.**
+     - Absorb `lookup/statement` with: `u8 1 ‖ u8 4 ‖ u64 i ‖ u8 m ‖ u8 min(m,30) ‖
+       u8 1 ‖ u8 c ‖ u32 t ‖ u8 k ‖ u64 mu_id ‖ u8 ell ‖ u8 blowup ‖ u32 #members ‖
+       [#members] u8 m_j ‖ [c] u64 tuple_id`.
+     - Absorb `lookup/units` with `u64 i ‖ u8 0`.
+   - **Multiplicity bundle and β, α.**
+     - Absorb `lookup/multiplicities` with `u64 i ‖ u8 1 ‖ u8 0 ‖ source bytes ‖
+       certificate id`: the multiplicity source's RFC-0010 A9 §1 canonical bytes,
+       then its certificate's 32-byte identity.
+     - Absorb `lookup/repetition` with `u64 i ‖ u8 0 ‖ u8 0`.
+     - If `k_LU ≥ 1`: the section's first 8 bytes are the `u64` nonce. Check it with
+       `verify_grind(k_LU, ·)` (A14 item 4).
+     - Draw `β` (`lookup/beta`), then `α` (`lookup/alpha`).
+     - Absorb `lookup/repetition` with `u64 i ‖ u8 0 ‖ u8 1`.
+   - **Trees.**
+     - The left tree's RFC-0008 A3 proof (descriptor id `4i`, `m`, `b = min(m,30)`,
+       leaves `8i`, `8i+1`, no θ; exactly `2 + 2m² + 3m` values). Then the right
+       tree's (id `4i+1`, `m = b = k`, leaves `8i+2`, `8i+3`).
+     - Each is verified as A3 specifies. Then the A3 item 4 root equation holds
+       between the left and right roots.
+   - **Table claim.** Let `(T_c, V)` be the table columns and the valid-row indicator
+     (row index `< t`) evaluated at the right tree's point. The right tree's second
+     claim must equal `1 + (α − 1)·V − compress(T, β)`, with
+     `compress(x, β) = Σ_j β^j·x_j`. Otherwise it is `TableDenominatorMismatch`.
+   - **Leaf.**
+     - Next comes the selected-product leaf proof (A3 item 5) over the left tree's
+       reduction: tuple ids `tuple_id(j)`, and the concatenated selector `σ`. `σ` is
+       each member's public selector, or ones, on its block, and 0 on the padding.
+     - Its length is exactly `4m + c + 2` values.
+   - **Member values.** `[#members] ([c] K)`, member-major. Check A3's member split
+     (`MemberSumMismatch`). Each value plus `width.min()` for a range, or the value
+     itself for a lookup, becomes a claim on the member's column. That claim is at
+     the member's `Ref` read at the last `m_j` coordinates of the leaf point.
+   - **Multiplicity pieces.**
+     - One `K` per prefix-mask piece of the multiplicity source at the right tree's
+       point with `t` rows (`formal/native-lookup.md` §2). Their sum must equal the
+       right tree's first claim (`PieceSumMismatch`).
+     - Absorb `lookup/multiplicity-claims` with: `u64 i ‖ u8 0 ‖ u8 #pieces`, the
+       right tree's point and first claim as `K` values, then `u8 piece id ‖ K value`
+       per piece.
+     - Then, per piece, an RFC-0010 A9 §4 functional opening with id `piece id`, each
+       exactly the source's opening size.
+6. **Matmuls.** One section per matmul, in relation order.
+   - **Point and shape.**
+     - Draw `free` `relation/point` challenges `ρ`. `ρ` is MSB-first over the free
+       bits: bit `d` is `ρ[free − 1 − d]`.
+     - The shared bits are the free bits read by both `lhs` and `rhs`. The sumcheck
+       variables are the shared bits and the summed bits `free..free+summed`, in
+       descending bit order.
+   - **Section.** `K out~(ρ)`, then one round per variable of 3 `K` values (no shared
+     bit) or 4 (shared bits), then the finals: `eq`, `lhs`, `rhs` when shared, else
+     `lhs`, `rhs`.
+   - **Instance.** It is RFC-0006 A1 with id `2^62 + 2^48 + i`. It has one term of
+     coefficient 1 over the inputs, and claimed sum `out~(ρ)`.
+   - **Checks.** With shared bits, the `eq` final must equal
+     `Π_d eq(ρ_d, r_d)` (`EqMismatch`).
+   - **Claims.**
+     - `out` is claimed at its ref restricted to `ρ`.
+     - `lhs` and `rhs` are claimed at the column point whose coordinate for var `d` is
+       the sumcheck point's value when `d` is a sumcheck variable, else the fixed
+       bit's value or `ρ_d`.
+7. **Openings.**
+   - **Which.** First the stacked source, if it exists and has a claim. Then each model
+     source `k` with a claim, in split order.
+   - **Claims.** A source's claims are its columns' claims mapped as in 6.2:
+     - stacked: groups in `GroupId` order, columns in group order;
+     - model: weights in `ColumnId` order.
+
+     Each column's claims keep the order the replay emits them: step 4 in size order,
+     then step 5, then step 6 (`out`, `lhs`, `rhs`).
+   - **Section.** An RFC-0006 A2 mode-1 claim batch (A8) over the source's `bits`
+     variables: `[bits] ([3] K)` rounds and 1 final `K`. Then the RFC-0010 A9
+     `verify_point` opening at the batch's reduced point, exactly the source's
+     opening size.
+8. **Public claims.** Last, every public column's claims are checked against the MLE
+   of its values (`PublicMismatch`).
+
+**Golden vectors.** `crates/stele-prover/tests/development.rs` holds encoders written
+from §§2–5. Production must reproduce them byte for byte.
+- `matches_a15_small_codec_vectors`: a relation with one of every field kind (one
+  group; witness, weight and public columns; a table; an identity; a selected lookup;
+  a range; a matmul with a fixed bit; a compose); the public file and public input of
+  `Model = "MDL"`, `Scales = "SC"`, `Preparation = "P"`, record `(3, [−1, 2])`, root
+  `0xab…ab` with certificate `010203`, tokens `[5, 6]`, `[0, 2)`, `y = 7`,
+  `cqis_id = 0x11…11`; and a container with lists of 1, 0, 1, 0, 0 and 1 sections.
+
+  ```
+  relation:      7374656c652f76302e312f72656c6174696f6e2f656e636f64696e672f763101000000
+                 05000000472f782f31010300000001000000770000000000010801010000006b010104
+                 01010000007002020000000100000000000000feffffffffffffff0103010100000001
+                 0000007401000000000202000000010000000000000000000000010000000300000000
+                 0000000100000001000000690101000000fdffffffffffffff02000000000100020000
+                 00010001000000010000006c0101020000000100010000000000000001000000000001
+                 000000010000007200000000010801000000010000006d010000000000010001000000
+                 01ff02000000010001000000010000006300000000010000000100000004
+  public file:   7374656c652d6465762d7075626c69632d7634030000004d444c020000005343010000
+                 005001000000030004000000ffff020001000000ababababababababababababababab
+                 ababababababababababababababababab030000000102030200000005000000060000
+                 0000000000020000000107000000
+  public input:  7374656c652f76302e312f6465762d6532652f7075626c69632d696e70757411111111
+                 11111111111111111111111111111111111111111111111111111111030000004d444c
+                 020000005343010000005001000000030004000000ffff020001000000abababababab
+                 abababababababababababababababababababababababababab020000000500000006
+                 0000000000000002000000010700000005
+  statement digest, with relation digest 0x22…22:
+                 a8f02660942bce4421ee7b2e1af127e560a859f3cfefac9d721a8477e209ff8b
+  container:     7374656c652d6465762d6532652d763101000101010101010101010101010101010101
+                 0101010101010101010101010101010202020202020202020202020202020202020202
+                 0202020202020202020202020100000002000000030400000000010000000100000005
+                 00000000000000000100000003000000060708
+  ```
+
+- `matches_a15_codecs_on_the_one_layer_byte5_window`: the one-layer synthetic window
+  (T = 16) at byte 5.
+  - The public file is 186,425 bytes (BLAKE3 `ba827bf4…2cbb937b`).
+  - The public input is 4,505 bytes (`a40ce6e3…73e44872`).
+  - The relation encoding is 3,503,903 bytes (digest `8d5be712…480294ae`).
+  - The section counts are `[1, 21, 6, 21, 127, 2]`.
+  - The 82-byte container header is `stele-dev-e2e-v1 ‖ 0100 ‖ cqis_id dbc4ca04…9baa01ed
+    ‖ statement 802c4c4c…54838c3c`.
+  - The test also derives the six section counts from the relation by 6.3 and 6.4.
+
+**Soundness.** None: no challenge, label, order or byte changes.
+**Cost model.** None.
+**Affected tasks.** E8-02f0 (this text), E8-02f1 (the independent decoders and replay,
+written from it), E8-02f2 (plan derivation).

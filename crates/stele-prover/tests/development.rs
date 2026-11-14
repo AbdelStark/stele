@@ -1144,3 +1144,491 @@ fn accepts_eight_layer_window_under_dev_zk() {
         (0x1ae4_d78e_9daa_dc92, 57_662_822)
     );
 }
+
+// ---------------------------------------------------------------------------------
+// RFC-0026 A15 (Draft, task E8-02f0): the byte formats of development proofs, as the
+// amendment text states them. Each `a15_*` encoder below is written from the A15 text
+// and must reproduce production byte for byte: on small hand-built vectors that touch
+// every field kind (their hex is A15's golden vectors), and on the one-layer byte-5
+// window (its public file, transcript public input, statement digest, container
+// header, relation encoding and section counts).
+
+use stele_prover::development::{Layout, PlanData};
+use stele_reductions::stele_ir::relation::{
+    Column, ColumnId, Compose, Group, GroupId, Identity, Kind, Lookup, Matmul, Range, Ref,
+    Relation, Table, TableId, Term, Width,
+};
+
+fn a15_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// A15 §1: `blob(x) = u32le(len x) ‖ x`; `str(s) = blob(UTF-8 bytes of s)`.
+fn a15_blob(out: &mut Vec<u8>, bytes: &[u8]) {
+    out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+    out.extend_from_slice(bytes);
+}
+
+/// A15 §2 and §3: the fields the verifier file and the transcript public input share
+/// after their leading bytes, up to the statement.
+fn a15_records(out: &mut Vec<u8>, p: &Public) {
+    a15_blob(out, &p.model);
+    a15_blob(out, &p.scales);
+    a15_blob(out, &p.preparation);
+    out.extend_from_slice(&(p.vectors.len() as u32).to_le_bytes());
+    for (ordinal, codes) in &p.vectors {
+        out.extend_from_slice(&ordinal.to_le_bytes());
+        let raw: Vec<u8> = codes.iter().flat_map(|c| c.to_le_bytes()).collect();
+        a15_blob(out, &raw);
+    }
+}
+
+fn a15_statement(out: &mut Vec<u8>, s: &Statement) {
+    out.extend_from_slice(&(s.tokens.len() as u32).to_le_bytes());
+    for x in &s.tokens {
+        out.extend_from_slice(&x.to_le_bytes());
+    }
+    out.extend_from_slice(&s.start.to_le_bytes());
+    out.extend_from_slice(&s.end.to_le_bytes());
+    match s.next {
+        Some(y) => {
+            out.push(1);
+            out.extend_from_slice(&y.to_le_bytes());
+        }
+        None => out.push(0),
+    }
+}
+
+/// A15 §2: the verifier's input file `stele-dev-public-v4` (profile byte 5).
+fn a15_public_file(p: &Public, s: &Statement) -> Vec<u8> {
+    let mut out = b"stele-dev-public-v4".to_vec();
+    a15_records(&mut out, p);
+    out.extend_from_slice(&(p.commitment.len() as u32).to_le_bytes());
+    for (root, certificate) in &p.commitment {
+        out.extend_from_slice(root);
+        a15_blob(&mut out, certificate);
+    }
+    a15_statement(&mut out, s);
+    out
+}
+
+/// A15 §3: the transcript public input under profile byte 5.
+fn a15_public_input(p: &Public, cqis_id: &[u8; 32], s: &Statement) -> Vec<u8> {
+    let mut out = b"stele/v0.1/dev-e2e/public-input".to_vec();
+    out.extend_from_slice(cqis_id);
+    a15_records(&mut out, p);
+    out.extend_from_slice(&(p.commitment.len() as u32).to_le_bytes());
+    for (root, _) in &p.commitment {
+        out.extend_from_slice(root);
+    }
+    a15_statement(&mut out, s);
+    out.push(5);
+    out
+}
+
+/// A15 §3: the container's statement digest.
+fn a15_statement_digest(input: &[u8], relation_digest: &[u8; 32]) -> [u8; 32] {
+    let mut h = blake3::Hasher::new();
+    h.update(b"stele/v0.1/dev-e2e/statement");
+    h.update(&(input.len() as u64).to_le_bytes());
+    h.update(input);
+    h.update(relation_digest);
+    *h.finalize().as_bytes()
+}
+
+/// A15 §4: the container `stele-dev-e2e-v1`.
+fn a15_container(c: &container::Container) -> Vec<u8> {
+    let mut out = b"stele-dev-e2e-v1".to_vec();
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&c.cqis_id);
+    out.extend_from_slice(&c.statement);
+    for list in [
+        &c.groups,
+        &c.multiplicities,
+        &c.identities,
+        &c.lookups,
+        &c.matmuls,
+        &c.openings,
+    ] {
+        out.extend_from_slice(&(list.len() as u32).to_le_bytes());
+        for section in list {
+            a15_blob(&mut out, section);
+        }
+    }
+    out
+}
+
+/// A15 §5: the canonical relation encoding.
+fn a15_relation(rel: &Relation) -> Vec<u8> {
+    let width = |out: &mut Vec<u8>, w: Width| out.extend_from_slice(&[u8::from(w.signed), w.bits]);
+    let reference = |out: &mut Vec<u8>, r: &Ref| {
+        out.extend_from_slice(&r.column.0.to_le_bytes());
+        out.push(r.vars.len() as u8);
+        out.extend_from_slice(&r.vars);
+    };
+    let count = |out: &mut Vec<u8>, n: usize| out.extend_from_slice(&(n as u32).to_le_bytes());
+    let mut out = b"stele/v0.1/relation/encoding/v1".to_vec();
+    count(&mut out, rel.groups.len());
+    for g in &rel.groups {
+        a15_blob(&mut out, g.name.as_bytes());
+        out.push(g.log_len);
+    }
+    count(&mut out, rel.columns.len());
+    for c in &rel.columns {
+        a15_blob(&mut out, c.name.as_bytes());
+        match &c.kind {
+            Kind::Witness(g) => {
+                out.push(0);
+                out.extend_from_slice(&g.0.to_le_bytes());
+            }
+            Kind::Weight => out.push(1),
+            Kind::Public(values) => {
+                out.push(2);
+                count(&mut out, values.len());
+                for v in values {
+                    out.extend_from_slice(&v.to_le_bytes());
+                }
+            }
+        }
+        width(&mut out, c.width);
+        out.push(c.log_len);
+    }
+    count(&mut out, rel.tables.len());
+    for t in &rel.tables {
+        a15_blob(&mut out, t.name.as_bytes());
+        count(&mut out, t.widths.len());
+        for w in &t.widths {
+            width(&mut out, *w);
+        }
+        count(&mut out, t.rows.len());
+        for row in &t.rows {
+            count(&mut out, row.len());
+            for v in row {
+                out.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+    }
+    count(&mut out, rel.identities.len());
+    for i in &rel.identities {
+        a15_blob(&mut out, i.name.as_bytes());
+        out.push(i.vars);
+        count(&mut out, i.terms.len());
+        for term in &i.terms {
+            out.extend_from_slice(&term.coeff.to_le_bytes());
+            out.push(term.factors.len() as u8);
+            for f in &term.factors {
+                reference(&mut out, f);
+            }
+        }
+    }
+    count(&mut out, rel.lookups.len());
+    for l in &rel.lookups {
+        a15_blob(&mut out, l.name.as_bytes());
+        out.push(l.vars);
+        match &l.selector {
+            None => out.push(0),
+            Some(s) => {
+                out.push(1);
+                reference(&mut out, s);
+            }
+        }
+        count(&mut out, l.tuple.len());
+        for r in &l.tuple {
+            reference(&mut out, r);
+        }
+        out.extend_from_slice(&l.table.0.to_le_bytes());
+    }
+    count(&mut out, rel.ranges.len());
+    for r in &rel.ranges {
+        a15_blob(&mut out, r.name.as_bytes());
+        out.extend_from_slice(&r.column.0.to_le_bytes());
+        width(&mut out, r.width);
+    }
+    count(&mut out, rel.matmuls.len());
+    for m in &rel.matmuls {
+        a15_blob(&mut out, m.name.as_bytes());
+        out.extend_from_slice(&[m.free, m.summed]);
+        for r in [&m.out, &m.lhs, &m.rhs] {
+            reference(&mut out, r);
+        }
+    }
+    count(&mut out, rel.composes.len());
+    for c in &rel.composes {
+        a15_blob(&mut out, c.name.as_bytes());
+        out.extend_from_slice(&c.column.0.to_le_bytes());
+        count(&mut out, c.limbs.len());
+        for (limb, shift) in &c.limbs {
+            out.extend_from_slice(&limb.0.to_le_bytes());
+            out.push(*shift);
+        }
+    }
+    out
+}
+
+/// A15's small vectors: one of every relation field kind, a two-token public input,
+/// and a container with empty and non-empty lists.
+fn a15_small() -> (Relation, Public, Statement, container::Container) {
+    let r = |column: u32, vars: Vec<u8>| Ref {
+        column: ColumnId(column),
+        vars,
+    };
+    let relation = Relation {
+        groups: vec![Group {
+            name: "G/x/1".into(),
+            log_len: 1,
+        }],
+        columns: vec![
+            Column {
+                name: "w".into(),
+                kind: Kind::Witness(GroupId(0)),
+                width: Width {
+                    signed: true,
+                    bits: 8,
+                },
+                log_len: 1,
+            },
+            Column {
+                name: "k".into(),
+                kind: Kind::Weight,
+                width: Width {
+                    signed: true,
+                    bits: 4,
+                },
+                log_len: 1,
+            },
+            Column {
+                name: "p".into(),
+                kind: Kind::Public(vec![1, -2]),
+                width: Width {
+                    signed: true,
+                    bits: 3,
+                },
+                log_len: 1,
+            },
+        ],
+        tables: vec![Table {
+            name: "t".into(),
+            widths: vec![Width {
+                signed: false,
+                bits: 2,
+            }],
+            rows: vec![vec![0], vec![3]],
+        }],
+        identities: vec![Identity {
+            name: "i".into(),
+            vars: 1,
+            terms: vec![Term {
+                coeff: -3,
+                factors: vec![r(0, vec![0]), r(2, vec![0])],
+            }],
+        }],
+        lookups: vec![Lookup {
+            name: "l".into(),
+            vars: 1,
+            selector: Some(r(2, vec![0])),
+            tuple: vec![r(0, vec![0])],
+            table: TableId(0),
+        }],
+        ranges: vec![Range {
+            name: "r".into(),
+            column: ColumnId(0),
+            width: Width {
+                signed: true,
+                bits: 8,
+            },
+        }],
+        matmuls: vec![Matmul {
+            name: "m".into(),
+            free: 1,
+            summed: 0,
+            out: r(0, vec![0]),
+            lhs: r(1, vec![Ref::FIXED_1]),
+            rhs: r(2, vec![0]),
+        }],
+        composes: vec![Compose {
+            name: "c".into(),
+            column: ColumnId(0),
+            limbs: vec![(ColumnId(1), 4)],
+        }],
+    };
+    let public = Public {
+        model: b"MDL".to_vec(),
+        scales: b"SC".to_vec(),
+        preparation: b"P".to_vec(),
+        vectors: vec![(3, vec![-1, 2])],
+        commitment: vec![([0xab; 32], vec![1, 2, 3])],
+        sources: Sources::CircleAllGrind,
+    };
+    let statement = Statement {
+        tokens: vec![5, 6],
+        start: 0,
+        end: 2,
+        next: Some(7),
+    };
+    let c = container::Container {
+        cqis_id: [1; 32],
+        statement: [2; 32],
+        groups: vec![vec![3, 4]],
+        multiplicities: vec![],
+        identities: vec![vec![5]],
+        lookups: vec![],
+        matmuls: vec![],
+        openings: vec![vec![6, 7, 8]],
+    };
+    (relation, public, statement, c)
+}
+
+/// RFC-0026 A15: production reproduces the amendment's small golden vectors, and the
+/// amendment's encoders reproduce production on them.
+#[test]
+fn matches_a15_small_codec_vectors() {
+    let (relation, public, statement, c) = a15_small();
+    let cqis_id = [0x11; 32];
+    let produced = [
+        stele_reductions::relation::encode(&relation),
+        bundle::encode(&public, &statement),
+        public_input(&public, &cqis_id, &statement),
+        c.encode(),
+    ];
+    let written = [
+        a15_relation(&relation),
+        a15_public_file(&public, &statement),
+        a15_public_input(&public, &cqis_id, &statement),
+        a15_container(&c),
+    ];
+    for (name, (p, w)) in ["relation", "public file", "public input", "container"]
+        .iter()
+        .zip(produced.iter().zip(&written))
+    {
+        eprintln!("A15 {name}: {}", a15_hex(p));
+        assert_eq!(a15_hex(p), a15_hex(w), "{name}");
+    }
+    assert_eq!(a15_hex(&produced[0]), A15_RELATION);
+    assert_eq!(a15_hex(&produced[1]), A15_PUBLIC_FILE);
+    assert_eq!(a15_hex(&produced[2]), A15_PUBLIC_INPUT);
+    assert_eq!(a15_hex(&produced[3]), A15_CONTAINER);
+    assert_eq!(
+        a15_hex(&a15_statement_digest(&produced[2], &[0x22; 32])),
+        A15_STATEMENT_DIGEST
+    );
+}
+
+const A15_RELATION: &str = "7374656c652f76302e312f72656c6174696f6e2f656e636f64696e672f76310100000005000000472f782f31010300000001000000770000000000010801010000006b01010401010000007002020000000100000000000000feffffffffffffff010301010000000100000074010000000002020000000100000000000000000000000100000003000000000000000100000001000000690101000000fdffffffffffffff0200000000010002000000010001000000010000006c0101020000000100010000000000000001000000000001000000010000007200000000010801000000010000006d01000000000001000100000001ff02000000010001000000010000006300000000010000000100000004";
+const A15_PUBLIC_FILE: &str = "7374656c652d6465762d7075626c69632d7634030000004d444c020000005343010000005001000000030004000000ffff020001000000abababababababababababababababababababababababababababababababab0300000001020302000000050000000600000000000000020000000107000000";
+const A15_PUBLIC_INPUT: &str = "7374656c652f76302e312f6465762d6532652f7075626c69632d696e7075741111111111111111111111111111111111111111111111111111111111111111030000004d444c020000005343010000005001000000030004000000ffff020001000000abababababababababababababababababababababababababababababababab0200000005000000060000000000000002000000010700000005";
+const A15_CONTAINER: &str = "7374656c652d6465762d6532652d7631010001010101010101010101010101010101010101010101010101010101010101010202020202020202020202020202020202020202020202020202020202020202010000000200000003040000000001000000010000000500000000000000000100000003000000060708";
+const A15_STATEMENT_DIGEST: &str =
+    "a8f02660942bce4421ee7b2e1af127e560a859f3cfefac9d721a8477e209ff8b";
+
+/// RFC-0026 A15 on the one-layer byte-5 window (T = 16): the amendment's encoders
+/// reproduce the production public file, transcript public input, statement digest,
+/// container header and relation encoding, and A15 §6's section counts hold.
+#[test]
+fn matches_a15_codecs_on_the_one_layer_byte5_window() {
+    let case = load("one-layer");
+    let mut executor = case.executor(&case.artifact);
+    let statement = greedy(&mut executor, 16);
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, Sources::CircleAllGrind)
+            .expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let public = case.public(&committed, &weights);
+    let proof = prove(&public, &mut executor, &weights, &committed, &statement).expect("prove");
+    let (cqis_id, _) = model_identity(&public).expect("identity");
+    let layout = Layout::declare(
+        &PlanData {
+            model: &case.model,
+            scales: &case.scales,
+            vectors: &public.vectors,
+            zk: false,
+        },
+        &statement,
+    )
+    .expect("layout");
+    let rel = &layout.relation;
+    // §5: the relation encoding and its digest.
+    let encoding = a15_relation(rel);
+    assert!(
+        encoding == stele_reductions::relation::encode(rel),
+        "relation encoding"
+    );
+    let relation_digest = *blake3::hash(&encoding).as_bytes();
+    assert_eq!(relation_digest, stele_reductions::relation::digest(rel));
+    // §2, §3: the file, the transcript input and the statement digest.
+    let file = a15_public_file(&public, &statement);
+    assert!(file == bundle::encode(&public, &statement), "public file");
+    let input = a15_public_input(&public, &cqis_id, &statement);
+    assert!(
+        input == public_input(&public, &cqis_id, &statement),
+        "public input"
+    );
+    let digest = a15_statement_digest(&input, &relation_digest);
+    assert_eq!(
+        digest,
+        statement_digest_for(&public, &statement).expect("digest")
+    );
+    // §4: the container, header first.
+    let c = container::decode(&proof).expect("container");
+    assert_eq!((c.cqis_id, c.statement), (cqis_id, digest));
+    assert!(a15_container(&c) == proof, "container");
+    // §6: section counts from the relation alone.
+    let mut targets: Vec<(bool, u32)> = Vec::new();
+    for t in rel
+        .lookups
+        .iter()
+        .map(|l| (true, l.table.0))
+        .chain(rel.ranges.iter().map(|r| (false, u32::from(r.width.bits))))
+    {
+        if !targets.contains(&t) {
+            targets.push(t);
+        }
+    }
+    let mut sizes: Vec<u8> = rel.identities.iter().map(|i| i.vars).collect();
+    sizes.extend(
+        rel.composes
+            .iter()
+            .map(|k| rel.columns[k.column.0 as usize].log_len),
+    );
+    sizes.sort_unstable();
+    sizes.dedup();
+    let counts = [
+        c.groups.len(),
+        c.multiplicities.len(),
+        c.identities.len(),
+        c.lookups.len(),
+        c.matmuls.len(),
+        c.openings.len(),
+    ];
+    assert_eq!(
+        counts,
+        [
+            usize::from(!rel.groups.is_empty()),
+            targets.len(),
+            sizes.len(),
+            targets.len(),
+            rel.matmuls.len(),
+            1 + public.commitment.len(),
+        ]
+    );
+    let pins = [
+        (
+            "public file",
+            file.len(),
+            a15_hex(blake3::hash(&file).as_bytes()),
+        ),
+        (
+            "public input",
+            input.len(),
+            a15_hex(blake3::hash(&input).as_bytes()),
+        ),
+        ("relation", encoding.len(), a15_hex(&relation_digest)),
+        ("header", 82, a15_hex(&proof[..82])),
+    ];
+    for (name, len, value) in &pins {
+        eprintln!("A15 one-layer {name}: {len} bytes, {value}");
+    }
+    eprintln!("A15 one-layer counts: {counts:?}");
+    assert_eq!(A15_ONE_LAYER, format!("{pins:?} {counts:?}"));
+}
+
+const A15_ONE_LAYER: &str = r#"[("public file", 186425, "ba827bf43eb106898d4aeeedbff8d5dbd55c677ac17e3fbc16acbaaa2cbb937b"), ("public input", 4505, "a40ce6e36583f69cfed8afdd786e694d7e0099545a5b0bebddc6fd1573e44872"), ("relation", 3503903, "8d5be7124d20e9989bc23ec60c39dc3cfe9ea9fc50a0685e62817073480294ae"), ("header", 82, "7374656c652d6465762d6532652d76310100dbc4ca0489fdf0360e673f4dad6e4456d08dc2e8a78211ea1660dd392f7e8c0f9baa01ed802c4c4c38dcf8daf8604c931e98f30ced92de39c1d2b92354838c3c")] [1, 21, 6, 21, 127, 2]"#;
