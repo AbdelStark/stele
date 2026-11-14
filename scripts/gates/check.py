@@ -83,12 +83,14 @@ ACCOUNTING = {
               'src/pcs.rs', 'tests/pcs_vectors.rs', 'tests/fixtures/policy2-full.jsonl',
               'tests/fixtures/pcs-parameters.txt', 'tests/fixtures/policy1-continuations.txt',
               'tests/fixtures/single-mismatch.jsonl',
-              'src/fraction.rs', 'src/logup.rs', 'tests/fraction_corpus.rs', 'tests/logup_round.rs'),
+              'src/fraction.rs', 'src/logup.rs', 'tests/fraction_corpus.rs', 'tests/logup_round.rs',
+              # E8-02f1: the RFC-0026 A15 byte-5 replay and its verify-dev parity test.
+              'src/development.rs', 'src/plan.rs', 'src/relation.rs', 'tests/development_replay.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
-               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod fraction;\npub mod logup;\n'
-               'pub mod pcs;\npub mod sumcheck;\npub mod zerocheck;\n',
+               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod development;\npub mod fraction;\n'
+               'pub mod logup;\npub mod pcs;\npub mod plan;\npub mod relation;\npub mod sumcheck;\npub mod zerocheck;\n',
     'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
                'matches_reference_a3_corpus_decisions_and_receipts',
                'matches_reference_a2_corpus_decisions_and_receipts',
@@ -104,7 +106,14 @@ ACCOUNTING = {
                'matches_reference_lu_grind_bits', 'draws_beta_and_alpha_after_the_nonce',
                'rejects_failing_missing_and_extra_nonces',
                'rejects_shifted_leaf_claims_without_the_leaf_consumer',
-               'rejects_empty_checks_and_other_degrees'),
+               'rejects_empty_checks_and_other_degrees',
+               'matches_reference_verify_dev_on_byte5_windows_and_tampers'),
+    'replay': ('development::tests::matches_reference_a15_small_codec_vectors',
+               'development::tests::eq_table_matches_eq_bits',
+               'development::tests::rejects_short_headers_and_counts_past_the_input',
+               'plan::tests::ceil_log2_matches_its_definition',
+               'plan::tests::places_blocks_largest_first_with_ties_in_order',
+               'relation::tests::covers_split_blocks_and_rejects_one_block'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -177,13 +186,21 @@ def accounting_admission(root):
     missing = [n for n in ACCOUNTING['tests'] if f'test accounting::tests::{n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission checks failed: {missing} {result.stderr[-2000:]}')
+    # E8-02f1: the A15 codecs reproduce the RFC's golden vectors, and the plan helpers hold.
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--lib', '--locked', '--offline', '--',
+                             'development::', 'plan::', 'relation::'], cwd=root, text=True, capture_output=True)
+    lines = result.stdout.splitlines()
+    missing = [n for n in ACCOUNTING['replay'] if f'test {n} ... ok' not in lines]
+    if result.returncode or missing:
+        raise ValueError(f'development replay unit checks failed: {missing} {result.stderr[-2000:]}')
     print('gate accounting: exact (C1)-(C4) admission decision at its boundaries (E8-05b); '
           'no round enumeration, profile or NC-0804/0805 credit')
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
     result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
                              '--test', 'zerocheck_corpus', '--test', 'batch_corpus', '--test', 'circle_vectors',
                              '--test', 'pcs_vectors', '--test', 'fraction_corpus', '--test', 'logup_round',
-                             '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+                             '--test', 'development_replay', '--locked', '--offline'],
+                            cwd=root, text=True, capture_output=True)
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
