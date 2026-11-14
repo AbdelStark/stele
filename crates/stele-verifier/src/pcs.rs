@@ -304,7 +304,7 @@ fn eq_table<K: ChallengeField>(point: &[K]) -> Result<Vec<K>, Error> {
 }
 
 /// A9 §2: one column index in `[0, N)`, from at most 64 draws under `label`. A draw's
-/// first M31 limb `x` is accepted as `x mod N` only when `x < ⌊p/N⌋·N`.
+/// first M31 limb `x` is accepted as `x modulo N` only when `x < ⌊p/N⌋·N`.
 fn column<K: ChallengeField>(
     t: &mut Transcript<K>,
     label: ChallengeLabel,
@@ -326,7 +326,7 @@ fn column<K: ChallengeField>(
     Err(Error::ColumnSamplingExhausted)
 }
 
-/// A9 §2's pure candidate decoder: `x mod N` when `x < ⌊p/N⌋·N`, else `None` (the
+/// A9 §2's pure candidate decoder: `x modulo N` when `x < ⌊p/N⌋·N`, else `None` (the
 /// rejected tail). `N` is a power of two in `[2, 2^30]`.
 fn decode_index(x: u64, n: u64) -> Option<u64> {
     let threshold = u64::from(M31::MODULUS) / n * n;
@@ -570,7 +570,7 @@ mod tests {
     use super::*;
 
     /// A9 §2: the threshold `T = ⌊p/N⌋·N = p − (N − 1)` is exact: `T − 1` maps to
-    /// `(T − 1) mod N` and every `x ≥ T` is rejected, so each index has `T/N`
+    /// `(T − 1) modulo N` and every `x ≥ T` is rejected, so each index has `T/N`
     /// preimages.
     #[test]
     fn decodes_column_candidates_at_the_threshold() {

@@ -108,7 +108,7 @@ ACCOUNTING = {
         'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
         'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
         'src/circle.rs': 'bae6b90f986ce0310db55f7ec171027b072bdf05a6f0f61e72bb139e1076ae43',
-        'src/pcs.rs': '60cc34a8c0c31abb0b6603b6789e8e7acfb2d3e9c5f75d4476178d5452f90fb3',
+        'src/pcs.rs': '9119a9f055ad256d31f54b84b5e389ac10904afb6639b5524c22d42845398f56',
         'tests/pcs_vectors.rs': 'c75f1103a74973981bbcf41f90f10602ea9479c7caa974dfbe5d1b9ca14b96b8',
         'tests/fixtures/policy2-full.jsonl': 'b8e51fc1606f4a77e33702a712c3c0d0f67197d36ddcb4ff7fefb78ff706d7c9',
         'tests/circle_vectors.rs': '6df8664f3f24cb707cde7349d82cfbcd1601966ef283f339367c7553221cfd48',
