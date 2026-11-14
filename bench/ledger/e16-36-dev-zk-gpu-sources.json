@@ -1,0 +1,114 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "8aa97afc873062e5b655aa81d4d8829985a519a5",
+ "controls": {
+  "failed": 0,
+  "passed": 0,
+  "total": 0
+ },
+ "device": "NVIDIA GeForce RTX 4090 (24 GB, PCIe 4.0 x16) on a rented Vast.ai container (instance 60543385; AMD EPYC 7C13 host, 61 threads visible to the process, 503 GB RAM)",
+ "driver": "NVIDIA 615.71.09 (CUDA 13.4 driver); NVRTC 12.4 (nvidia/cuda:12.4.1-devel-ubuntu22.04), loaded at run time by cudarc 0.19.10",
+ "generated_tokens": 0,
+ "kernel_counters": {
+  "cpu_box/gkr_logn24/rounds_ns": 802165803,
+  "cpu_box/gkr_logn26/rounds_ns": 2969650675,
+  "cpu_box/gkr_logn27/rounds_ns": 5458454533,
+  "cpu_box/relation_logn24/rounds_ns": 672753420,
+  "cpu_box/relation_logn26/rounds_ns": 1859338796,
+  "cpu_box/relation_logn27/rounds_ns": 3477095644,
+  "cpu_box/source_ell11_m15/certify_ns": 84372287,
+  "cpu_box/source_ell11_m15/prepare_ns": 8324854669,
+  "cpu_box/source_ell11_m16/certify_ns": 147566324,
+  "cpu_box/source_ell11_m16/prepare_ns": 16324298280,
+  "cpu_box/source_ell11_m17/certify_ns": 313271539,
+  "cpu_box/source_ell11_m17/prepare_ns": 33200630223,
+  "cpu_mac/source_ell11_m16/certify_ns": 266514416,
+  "cpu_mac/source_ell11_m16/prepare_ns": 11527062458,
+  "h2d/bytes": 1073741824,
+  "h2d/pageable_ns": 60858535,
+  "h2d/pinned_ns": 40256765
+ },
+ "kind": "micro",
+ "model_config": {
+  "plan": {
+   "cpu": "production stele_pcs PreparedSource::hiding_with (Policy::Two, blowup 2) then certificate() and verify_certificate(), on rayon's pool; the masked rounds as in E16-35 (stele_reductions::zk::claims::bench, now with E16-34's base-field rounds and lazy QM31 product)",
+   "device_roots": {
+    "m15": "2d1b998ea753c15df60d1102a7b68c6b5ac9fb83455a5ba5874a7babbfa2bce8",
+    "m16": "83ff2e3d15464ac0502113ce5bb03e664891787a74263ec49de6ed5bbfd1ab19",
+    "m17": "b40452939986f90abbc68cb41794996bcfe5c0605116ffe0c12004b3b0c08a85"
+   },
+   "gpu": "research/gpu-gating/masked/src/source.cu: M' uploaded, transposed to symbol-major on the device, inverse Circle levels on the head, bit reversal and 1/n scale, forward levels on the whole (twiddles from the host, RFC-0010 A2), leaves hashed one per thread with the keyed-XOF salts computed on the device, one launch per tree level; only the root is read back. The certificate stays on the CPU. One untimed warm-up pass per process.",
+   "operation": "hiding-source preparation (RFC-0013 A2/A8 policy 2, rate 1/4): M' (2R x 2C) Circle-encoded row by row (RFC-0010 A2), leaves salt || column hashed with BLAKE3 under the RFC-0012 A3 domain, the tree to its root; and the E16-35 masked rounds re-timed on main after E16-34",
+   "parity": "device roots equal the production PreparedSource roots: tests/source_parity.rs at (ell, m) = (4, 10), (6, 12), (11, 16) and the check mode at (11, 15), (11, 16), (11, 17); on the Mac the plain-Rust reference matches the production root at (3, 9), (4, 10), (8, 10), (9, 11), the last two multi-chunk leaves; the masked parity test (2^20) also passed on this box",
+   "source_shapes": "ell 11 (2R = 4096 rows, the row exponent 12 of stories42M's two large sources) with m 15, 16 (the witness, C = 2^16) and 17; codewords of 2^(m + 3) symbols",
+   "timing": "per cell, the run with the median key (source: encode; masked: rounds total) of three; that run's other phases recorded"
+  },
+  "projection": {
+   "ceiling_x1000": {
+    "m_and_sources_free_trees_batches_on_cpu": 2996,
+    "measured_trees_batches_on_cpu": [
+     2670,
+     2708
+    ],
+    "trees_batches_at_e16_21_rounds_only_unmeasured": [
+     3110,
+     3170
+    ],
+    "trees_batches_at_e16_21_upload_inclusive_unmeasured": [
+     2950,
+     3140
+    ],
+    "unbounded": 3583
+   },
+   "gate": "GO only if the measured resident ceiling is at least 3x (E16-36)",
+   "method": "Amdahl on bench/ledger/e16-36-dev-zk-stories42m-t32-mac.json laps (single run, 306.16 s): T' = r + rel/s_rel + gkr/s_gkr + S/s_src + L/s_L; r = 85.44 s outside ADR-120's offloadable set; relations 22.45 s at s_rel, ZK-GKR 153.19 s at s_gkr, each at its own measured ratio; source preparation S = 28.34 s at s_src; LogUp trees and tops + claim batches L = 16.74 s. s_src is the Mac CPU's (prepare + certificate) over (device encode + Merkle + the Mac's certificate) at the witness shape (13.31x). s_rel (31.7-57.7x) and s_gkr (15.9-18.4x) are against the box CPU: the Mac masked calibration did not run (host load 8-11). The Mac ran these rounds slower than such a box in E16-35, so box-calibrated ratios understate the device's gain on the laps host and bias the ceiling toward NO-GO.",
+   "trees_batches_ratio_needed_for_3x": "s_L >= L / (T/3 - r - rel/s_rel - gkr/s_gkr - S/s_src): 2.91x-4.05x with the box-calibrated s_rel, s_gkr; 1.35x-1.66x with ADR-123's Mac-calibrated 39.7-83.4x (before E16-34) over all of M",
+   "verdict": "NO-GO at this measurement (ADR-127): measured 2.67x-2.71x (box-calibrated); the 2.996x bound assumes LogUp trees and claim batches on the CPU and is within single-run noise of 3x (0.19 s of a 306 s prove)"
+  },
+  "raw": "research/gpu-gating/masked/results36.txt"
+ },
+ "note": "E16-36 dev-zk GPU decision benchmark (RFC-0014 §1, §5; ADR-127). prover_time_ns is the sum of the GPU phases (upload + encode + Merkle for the three source shapes; upload + build + rounds for the six masked cells) from each cell's median run; per-cell GPU times are in stage_times_ns, CPU times in kernel_counters (ns). Device roots equal the production roots at every source shape. plan_digest is the SHA-256 of research/gpu-gating/masked/results36.txt. The commit is the main the box tree was copied from. The projection is an estimate, not a GPU prover measurement. Micro schema proof, verifier and control fields are zero: no inference evidence is claimed. Not a cost-model fit input.",
+ "plan_digest": "47e43d7b7c66b5097f6f813a8b35a1fd977be7959784ed477323ba3f8b9434d9",
+ "profile": "standard",
+ "prompt_tokens": 0,
+ "proof_size_bytes": 0,
+ "prover_time_ns": 15006532590,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "gpu/gkr_logn24/build": 11637587,
+  "gpu/gkr_logn24/rounds": 43708643,
+  "gpu/gkr_logn24/upload": 395678301,
+  "gpu/gkr_logn26/build": 46099060,
+  "gpu/gkr_logn26/rounds": 174372023,
+  "gpu/gkr_logn26/upload": 1475623152,
+  "gpu/gkr_logn27/build": 93251639,
+  "gpu/gkr_logn27/rounds": 343517557,
+  "gpu/gkr_logn27/upload": 2812843948,
+  "gpu/relation_logn24/build": 6264104,
+  "gpu/relation_logn24/rounds": 11657488,
+  "gpu/relation_logn24/upload": 159031370,
+  "gpu/relation_logn26/build": 25194572,
+  "gpu/relation_logn26/rounds": 53676550,
+  "gpu/relation_logn26/upload": 573666399,
+  "gpu/relation_logn27/build": 50926576,
+  "gpu/relation_logn27/rounds": 109774538,
+  "gpu/relation_logn27/upload": 1120459044,
+  "gpu/source_ell11_m15/encode": 275661954,
+  "gpu/source_ell11_m15/merkle": 17974026,
+  "gpu/source_ell11_m15/upload": 757878183,
+  "gpu/source_ell11_m16/encode": 583460285,
+  "gpu/source_ell11_m16/merkle": 36023703,
+  "gpu/source_ell11_m16/upload": 1529930165,
+  "gpu/source_ell11_m17/encode": 1236580284,
+  "gpu/source_ell11_m17/merkle": 71243630,
+  "gpu/source_ell11_m17/upload": 2990397809
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14); NVRTC 12.4 at run time",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 0
+ },
+ "witness_recompute_ns": 0,
+ "workload": "micro/gpu-dev-zk-source-preparation"
+}

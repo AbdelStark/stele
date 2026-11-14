@@ -4635,7 +4635,7 @@ tasks:
   - RFC-0008 A7
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-35-dev-zk-gpu-bench
   acceptance:
@@ -4654,7 +4654,9 @@ tasks:
   - RFC-0026 §7
   skill: cuda-kernel-author
   crate: research
-  status: blocked(E16-35 in review, PR #368)
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-36-dev-zk-gpu-decision
   acceptance:
   - stage laps of stories42M dev-zk T = 32 on current main (after E16-34); ADR-123's ceiling recomputed and the source-preparation ratio needed for 3x derived
   - device Circle encoding and Merkle hashing of the hiding sources at stories42M sizes, bit-equal to the CPU, measured against the same host's CPU with the upload apart
@@ -4672,7 +4674,7 @@ tasks:
   - RFC-0026 §7
   skill: cuda-kernel-author
   crate: stele-gpu
-  status: blocked(E16-36 GO; E10-01)
+  status: blocked(ADR-127 NO-GO: measured dev-zk ceiling below 3x; E10-01)
   acceptance:
   - RFC-0014 amendment (Workflow 02) and an ADR for cudarc with run-time loading; GPU behind an opt-in feature, CPU default, verifier and no_std builds free of GPU code
   - byte-identical proofs against the CPU on randomised inputs through the parity gate (INV-3)

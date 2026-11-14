@@ -20,7 +20,8 @@ use std::time::{Duration, Instant};
 use stele_reductions::stele_field::Field;
 use stele_reductions::zk::claims::bench::mask_weight;
 
-const KERNELS: &str = include_str!("kernels.cu");
+// E16-36: the source-preparation kernels share the module (and the field code).
+const KERNELS: &str = concat!(include_str!("kernels.cu"), "\n", include_str!("source.cu"));
 const THREADS: u32 = 256;
 
 /// `(x, r)` per factor, read back from the device.
@@ -148,7 +149,7 @@ impl Device {
         Ok(ctx.load_module(ptx)?)
     }
 
-    fn function(&self, name: &str) -> Result<CudaFunction, Error> {
+    pub(crate) fn function(&self, name: &str) -> Result<CudaFunction, Error> {
         Ok(self.kernels.load_function(name)?)
     }
 
@@ -162,13 +163,23 @@ impl Device {
         Ok(f)
     }
 
-    fn grid(&self, n: usize) -> LaunchConfig {
-        let blocks = n.div_ceil(THREADS as usize).clamp(1, self.sms as usize * 8) as u32;
+    pub(crate) fn grid(&self, n: usize) -> LaunchConfig {
+        self.grid_with(n, THREADS)
+    }
+
+    /// A grid-stride launch over `n` items, `threads` per block.
+    pub(crate) fn grid_with(&self, n: usize, threads: u32) -> LaunchConfig {
+        let blocks = n.div_ceil(threads as usize).clamp(1, self.sms as usize * 8) as u32;
         LaunchConfig {
             grid_dim: (blocks, 1, 1),
-            block_dim: (THREADS, 1, 1),
+            block_dim: (threads, 1, 1),
             shared_mem_bytes: 0,
         }
+    }
+
+    /// The one stream.
+    pub(crate) fn stream(&self) -> &Arc<CudaStream> {
+        &self.stream
     }
 
     /// Host-to-device copy of `words` u32s from pageable and from pinned host memory:
@@ -198,7 +209,7 @@ impl Device {
         Ok(self.stream.synchronize()?)
     }
 
-    fn ptr(&self, s: &CudaSlice<u32>) -> u64 {
+    pub(crate) fn ptr<T>(&self, s: &CudaSlice<T>) -> u64 {
         s.device_ptr(&self.stream).0
     }
 
