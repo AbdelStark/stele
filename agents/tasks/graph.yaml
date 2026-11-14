@@ -1987,6 +1987,22 @@ tasks:
   - stele_verifier::logup::bits matches the 180 rows of lu-grind-bits.txt; round checks the nonce before lookup/beta and refuses failing, missing and extra nonces
   - the recorded production receipts are checked against the production producer by the fraction corpus gate; upper-shape-bound and mutation-checked tests
   - fraction::decode_leaf takes exactly 4d(4m+c+2) canonical bytes; the leaf's selector check is tested without the tree's leaf consumer (the shifted claim (p+1, q+alpha-1) is SelectorMismatch)
+- id: E8-02f1a
+  epic: E8
+  title: Test-only dump of the byte-5 one-layer and eight-layer windows (public.bin, proof.bin, relation.bin) for the independent E8-02f1 verifier
+  depends:
+  - E8-02e
+  rfc:
+  - RFC-0026 A14
+  - RFC-0016 §3
+  skill: benchmark-runner
+  crate: stele-prover
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02f1a-dev-dump
+  acceptance:
+  - an ignored test, off by default and gated on STELE_DUMP_DIR, writes <dir>/<window>/{public.bin, proof.bin, relation.bin} for the one-layer T = 16 and eight-layer T = 64 byte-5 windows, each proof verified first
+  - no new API surface, no pin change
 - id: E8-03
   epic: E8
   title: Python differential verifier
