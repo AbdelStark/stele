@@ -247,11 +247,32 @@ pub(crate) fn step<K: ChallengeField + Eq>(
 
 /// `Σ_x table[x]·eq(point, x)`: a public table's multilinear value at `point`.
 pub(crate) fn mle_at<K: ChallengeField>(table: &[K], point: &[K]) -> K {
+    // E8-02f1: a full table folds in O(2^n) with no allocation; the same sum.
+    if u32::try_from(point.len())
+        .ok()
+        .and_then(|n| 1usize.checked_shl(n))
+        == Some(table.len())
+    {
+        return fold(table, point);
+    }
     let mut at = K::from_i64(0);
     for (x, entry) in table.iter().enumerate() {
         at = at + *entry * eq_at(point, x);
     }
     at
+}
+
+/// The MLE of a table of exactly `2^len(point)` entries: the first (most significant)
+/// coordinate splits it into halves, `(1 − r)·low + r·high`.
+fn fold<K: ChallengeField>(table: &[K], point: &[K]) -> K {
+    match point.split_first() {
+        None => table[0],
+        Some((r, rest)) => {
+            let (low, high) = table.split_at(table.len() / 2);
+            let (a, b) = (fold(low, rest), fold(high, rest));
+            a + *r * (b - a)
+        }
+    }
 }
 
 /// Verify one A1 reduction on `t`, which already holds everything absorbed before
