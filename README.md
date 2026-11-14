@@ -68,8 +68,9 @@ The zero knowledge is conditional and computational, and there is no security le
 - **Real checkpoint:** llama2.c `stories42M` (profile byte 4) proves on a 16-thread, 48 GB laptop:
   - at T = 32 in 519 s, verifying in 34 s, with a 21.4 MB proof
     ([ledger](bench/ledger/e16-33-dev-zk-stories42m-t32-mac-after.json); RFC‑0013 A9);
-  - at T = 64 in 923 s, verifying in 47 s, with a 25.7 MB proof and a 107 GB peak memory footprint
-    ([ledger](bench/ledger/e16-33-dev-zk-stories42m-t64-mac.json)). Admission at T = 64 is RFC‑0013 A10
+  - at T = 64 in 539 s, verifying in 30 s, with a 25.7 MB proof and a 106 GB peak memory footprint
+    ([ledger](bench/ledger/e16-39-dev-zk-stories42m-t64-mac.json); 923 s when first proved,
+    [E16-33](bench/ledger/e16-33-dev-zk-stories42m-t64-mac.json)). Admission at T = 64 is RFC‑0013 A10
     (accepted, development tier). stories42M is a public
   checkpoint that shows the mechanics and costs; a real deployment must not publish hashes of its hidden weights.
   15 tampers of the real proof (every proof section and public field) are each rejected with their pinned error
