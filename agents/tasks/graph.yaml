@@ -1997,13 +1997,29 @@ tasks:
   - RFC-0016 §3
   skill: soundness-auditor
   crate: docs
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E8-02f0-dev-codecs-spec
   acceptance:
   - RFC-0026 A15 (Draft) specifies stele-dev-public-v4, the transcript public input and statement digest, the stele-dev-e2e-v1 container and the relation encoding field by field, plus the engine's derived ids, sources, checks, section contents and transcript order for byte 5
   - golden vectors - encoders written from the A15 text reproduce production byte for byte on small hand-built vectors (hex in A15) and on the one-layer byte-5 window
   - one independent review of A15 before acceptance; ADR-129 (Proposed)
+- id: E8-02f1a
+  epic: E8
+  title: Test-only dump of the byte-5 one-layer and eight-layer windows (public.bin, proof.bin, relation.bin) for the independent E8-02f1 verifier
+  depends:
+  - E8-02e
+  rfc:
+  - RFC-0026 A14
+  - RFC-0016 §3
+  skill: benchmark-runner
+  crate: stele-prover
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02f1a-dev-dump
+  acceptance:
+  - an ignored test, off by default and gated on STELE_DUMP_DIR, writes <dir>/<window>/{public.bin, proof.bin, relation.bin} for the one-layer T = 16 and eight-layer T = 64 byte-5 windows, each proof verified first
+  - no new API surface, no pin change
 - id: E8-03
   epic: E8
   title: Python differential verifier

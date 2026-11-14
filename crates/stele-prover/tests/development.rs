@@ -671,6 +671,55 @@ fn matches_reference_model_commitment_of_a_supplied_proof() {
     eprintln!("model commitment: {ns} ns");
 }
 
+/// E8-02f1a, test-only and off by default: with `STELE_DUMP_DIR=<dir>`, write the
+/// one-layer (T = 16) and eight-layer (T = 64) byte-5 windows to `<dir>/<window>/` as
+/// `public.bin`, `proof.bin` and `relation.bin` (RFC-0026 A15 §5), the parity inputs of
+/// the independent verifier. Each proof is verified before it is written.
+#[test]
+#[ignore = "dump: STELE_DUMP_DIR=<dir> cargo test --release -p stele-prover --test development dumps_byte5_windows -- --ignored"]
+fn dumps_byte5_windows_for_the_independent_verifier() {
+    let Some(dir) = std::env::var_os("STELE_DUMP_DIR").map(std::path::PathBuf::from) else {
+        return;
+    };
+    for (name, t) in [("one-layer", 16), ("eight-layer", 64)] {
+        let case = load(name);
+        let mut executor = case.executor(&case.artifact);
+        let statement = greedy(&mut executor, t);
+        let weights =
+            Weights::from_artifact_sources(&case.model, &case.artifact, Sources::CircleAllGrind)
+                .expect("weights");
+        let committed = Committed::new(&weights).expect("commitment");
+        let public = case.public(&committed, &weights);
+        let proof = prove(&public, &mut executor, &weights, &committed, &statement).expect("prove");
+        verify(&public, &statement, &proof).expect("verify");
+        let layout = stele_prover::development::Layout::declare(
+            &stele_prover::development::PlanData {
+                model: &case.model,
+                scales: &case.scales,
+                vectors: &public.vectors,
+                zk: false,
+            },
+            &statement,
+        )
+        .expect("layout");
+        let out = dir.join(name);
+        std::fs::create_dir_all(&out).expect("dump directory");
+        std::fs::write(out.join("public.bin"), bundle::encode(&public, &statement))
+            .expect("public.bin");
+        std::fs::write(out.join("proof.bin"), &proof).expect("proof.bin");
+        std::fs::write(
+            out.join("relation.bin"),
+            stele_reductions::relation::encode(&layout.relation),
+        )
+        .expect("relation.bin");
+        eprintln!(
+            "{name}: T={t}, {} proof bytes -> {}",
+            proof.len(),
+            out.display()
+        );
+    }
+}
+
 /// Research census for formal/zk-claims.md §4.4 (no protocol change): per
 /// committed column, the masked claims a dev-zk proof would reveal (one per
 /// distinct (zerocheck domain, column, vars map), lookup tuple ref, range, matmul
