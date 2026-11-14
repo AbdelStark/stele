@@ -2020,6 +2020,26 @@ tasks:
   acceptance:
   - an ignored test, off by default and gated on STELE_DUMP_DIR, writes <dir>/<window>/{public.bin, proof.bin, relation.bin} for the one-layer T = 16 and eight-layer T = 64 byte-5 windows, each proof verified first
   - no new API surface, no pin change
+- id: E8-02f1
+  epic: E8
+  title: Verifier primitives (unblocked) - independent no_std replay of RFC-0026 byte-5 development proofs from the A15 text (public file, container, relation encoding, engine replay), relation and cqis_id as inputs
+  depends:
+  - E8-02f0
+  - E8-02f1a
+  rfc:
+  - RFC-0026 A15
+  - RFC-0026 A3
+  - RFC-0026 A14
+  - RFC-0016 §3
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02f1-verifier-replay
+  acceptance:
+  - written from RFC-0026 A15 and the texts it cites without stele-prover, stele-reductions, stele-pcs, stele-sumcheck, stele-lookup, stele-code or stele-cli source open (ADR-128); spec gaps listed in the PR
+  - accepts the honest one-layer (T = 16) and eight-layer (T = 64) byte-5 windows from production's test-only dump, and rejects every one-byte tamper of each container section, the public file and the relation, with verify-dev's decision on every proof and public-file case
+  - reproduces the A15 small codec vectors; no_std, no panics, fallible allocation, dependencies stele-field and stele-hash only; mutation-checked
 - id: E8-03
   epic: E8
   title: Python differential verifier

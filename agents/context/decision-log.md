@@ -4030,3 +4030,39 @@ Consequences:
 Status: Accepted with RFC-0026 A15. Independent review: FIX-THEN-MERGE at d198d1f; fixes
 applied at 7fdabe5. E8-02f1 is written from A15 alone by an author who has not read the
 production engine.
+
+## ADR-130: The independent byte-5 replay takes the relation and cqis_id as inputs, and resolves A15's gaps by the most natural reading checked against verify-dev (RFC-0026 A15, task E8-02f1)
+
+Context:
+- E8-02f1 is the `stele-verifier` replay of RFC-0026 byte-5 development proofs. It was
+  written from RFC-0026 A15 and the texts A15 cites, with no production crate open
+  (ADR-128). Parity inputs come from production's test-only dump (E8-02f1a), used as a
+  black box.
+- Plan derivation from the model bytes is E8-02f2, so this verifier cannot yet compute
+  the relation or `cqis_id` itself.
+
+Decision (Proposed):
+- **Interface.** `development::verify(public, container, relation, cqis_id)`. The
+  relation (A15 §5 bytes) and `cqis_id` are inputs from the caller. Everything else is
+  derived as A15 §6 says. E8-02f2 replaces both inputs with values derived from the
+  Model, Scales and Preparation. Until then, the A15 §2 record and `NumericalIdentity`
+  checks are not made, and a caller that takes `cqis_id` from the container gets no
+  model binding beyond the transcript.
+- **BLAKE3.** `stele-hash` exports `blake3_digest`, plain BLAKE3, for A15's relation
+  and statement digests. The verifier keeps its two dependencies.
+- **Spec gaps** (listed in the PR) are resolved by the most natural reading of the text.
+  The honest windows and every tamper were then checked against `verify-dev`. The main
+  ones:
+  - each opening section is one source's claim batch followed by its opening;
+  - the multiplicity geometry is sized with one opening;
+  - relation decode errors are `StatementMismatch`;
+  - table rows must fit their widths at validation.
+- **`sumcheck::mle_at`** folds a full table in O(2^n), with no allocation, in place of
+  `Σ entry·eq_at`. The selected-product leaf evaluates its selector through it. The
+  eight-layer replay went from 14.6 s to 0.8 s. Its pin moves, and the A1, A2 and A3
+  corpora are unchanged.
+
+Consequences:
+- Production's §6 bytes are now pinned by an independent decoder (A15: "until
+  E8-02f1's parity corpus lands, production decides the §6 bytes").
+- No proof byte, challenge, label or ledger line moves.
