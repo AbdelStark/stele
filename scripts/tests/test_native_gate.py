@@ -124,9 +124,18 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
             (fake / 'src').mkdir()
             (fake / 'src/lib.rs').write_text(gate.ACCOUNTING['library'])
             source = (crate / 'src/accounting.rs').read_text()
-            for hidden in ('#[path = "x.rs"]\nmod x;\n', 'include!("x.rs");\n', 'mod extra {}\n'):
+            for hidden in ('#[path = "x.rs"]\nmod x;\n', 'include!("x.rs");\n', 'mod extra {}\n',
+                           '    pub mod extra;\n', 'pub(crate) mod extra {}\n'):
                 (fake / 'src/accounting.rs').write_text(source + hidden)
                 self.assertEqual(gate.accounting_surface(fake, actual, expected), actual)
+            # Comments and prose that mention "mod" are not module items.
+            for prose in ('/// accepted as `x mod N`\n', '// see mod tests\n', '//! x mod N, mod p\n'):
+                (fake / 'src/accounting.rs').write_text(source + prose)
+                self.assertEqual(gate.accounting_surface(fake, actual, expected), expected)
+
+    def test_mod_item_pattern_matches_items_only(self):
+        self.assertEqual(gate.MOD_ITEM.findall('mod a;\n  pub mod b {}\npub(crate) mod c;\n'), ['a', 'b', 'c'])
+        self.assertEqual(gate.MOD_ITEM.findall('/// x mod N\n// mod d\nlet y = x mod n;\n'), [])
 
     def test_rejects_missing_actual_zerocheck_point_receipt(self):
         names=['matches_reference_zerocheck_bytes_and_accounting','matches_reference_retained_tail_and_failed_prefix',

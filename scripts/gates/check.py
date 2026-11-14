@@ -105,6 +105,11 @@ ACCOUNTING = {
 }
 
 
+# A real `mod` item: the keyword at the start of a line (after indentation and an
+# optional visibility), so comments and prose such as "x mod N" do not match.
+MOD_ITEM = re.compile(r'^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?mod[ \t]+(\w+)', re.M)
+
+
 def accounting_surface(crate, actual, expected):
     """Strip the admitted verifier modules; any other verifier change stays guarded."""
     def hidden(path):
@@ -112,7 +117,7 @@ def accounting_surface(crate, actual, expected):
         module = crate / path
         text = module.read_text() if module.is_file() else ''
         return ('#[path' in text or 'include!' in text
-                or not set(re.findall(r'\bmod\s+(\w+)', text)) <= {'tests'})
+                or not set(MOD_ITEM.findall(text)) <= {'tests'})
     if ((crate / 'src/lib.rs').read_text() != ACCOUNTING['library']
             or set(actual) != set(expected) | set(ACCOUNTING['files'])
             or any(actual.get(path) != pin for path, pin in ACCOUNTING['pins'].items())
