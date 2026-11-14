@@ -1967,6 +1967,26 @@ tasks:
   - written from RFC-0010 A9/A14, formal/native-field-pcs.md and the Python oracle, without stele-pcs open (ADR-128)
   - matches the six Policy 1 full-byte cases (certificate IDs) and four Policy 2 full-byte cases from research/merkle-oracle/dump_policy2_full.py (certificate IDs and continuation challenges), with ProofShape, Merkle, ValueMismatch, FunctionalShape, GrindMismatch, ColumnMismatch and NoncanonicalField tampers
   - upper-bound and mutation checks; fallible allocation; row shards (A13) and hiding sources (A15) out of scope
+- id: E8-02e
+  epic: E8
+  title: Verifier primitives (unblocked) - independent no_std RFC-0008 A3 fraction tree, selected-product leaf and LogUp (beta, alpha) round with byte-5 nonce
+  depends:
+  - E8-02a
+  rfc:
+  - RFC-0016 §3
+  - RFC-0008 A3
+  - RFC-0008 A8
+  - RFC-0026 A14
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02e-verifier-fraction
+  acceptance:
+  - stele_verifier::fraction matches every decision and receipt of research/logup-characteristic/corpus.jsonl (162 cases, QM31 and OM31), tree and leaf points, claims, records and continuation included
+  - stele_verifier::logup::bits matches the 180 rows of lu-grind-bits.txt; round checks the nonce before lookup/beta and refuses failing, missing and extra nonces
+  - the recorded production receipts are checked against the production producer by the fraction corpus gate; upper-shape-bound and mutation-checked tests
+  - fraction::decode_leaf takes exactly 4d(4m+c+2) canonical bytes; the leaf's selector check is tested without the tree's leaf consumer (the shifted claim (p+1, q+alpha-1) is SelectorMismatch)
 - id: E8-03
   epic: E8
   title: Python differential verifier

@@ -74,18 +74,21 @@ DEVELOPMENT = {
 # until E8-05 wires the gate with its producer.
 ACCOUNTING = {
     # E8-05b's admission decision; the independent verifier primitives (ADR-128) and
-    # their parity tests: E8-02a's A1 sumcheck, E8-02b's A3 zerocheck and A2 batches.
+    # their parity tests: E8-02a's A1 sumcheck, E8-02b's A3 zerocheck and A2 batches,
+    # E8-02c's Circle code, E8-02d's PCS consumer, E8-02e's RFC-0008 A3 fraction tree
+    # and LogUp (beta, alpha) round.
     'files': ('src/accounting.rs', 'src/sumcheck.rs', 'tests/sumcheck_corpus.rs',
               'src/zerocheck.rs', 'src/batch.rs', 'tests/zerocheck_corpus.rs', 'tests/batch_corpus.rs',
               'src/circle.rs', 'tests/circle_vectors.rs',
               'src/pcs.rs', 'tests/pcs_vectors.rs', 'tests/fixtures/policy2-full.jsonl',
               'tests/fixtures/pcs-parameters.txt', 'tests/fixtures/policy1-continuations.txt',
-              'tests/fixtures/single-mismatch.jsonl'),
+              'tests/fixtures/single-mismatch.jsonl',
+              'src/fraction.rs', 'src/logup.rs', 'tests/fraction_corpus.rs', 'tests/logup_round.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
-               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod pcs;\npub mod sumcheck;\n'
-               'pub mod zerocheck;\n',
+               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod fraction;\npub mod logup;\n'
+               'pub mod pcs;\npub mod sumcheck;\npub mod zerocheck;\n',
     'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
                'matches_reference_a3_corpus_decisions_and_receipts',
                'matches_reference_a2_corpus_decisions_and_receipts',
@@ -96,7 +99,12 @@ ACCOUNTING = {
                'matches_reference_policy2_certificates_openings_and_continuations',
                'rejects_failing_nonces', 'rejects_column_mismatch_and_noncanonical_columns',
                'matches_reference_pcs_parameters', 'rejects_a_single_mismatched_column_first_and_last',
-               'rejects_unsupported_sources_and_mismatched_fields'),
+               'rejects_unsupported_sources_and_mismatched_fields',
+               'matches_reference_fraction_corpus_decisions_and_receipts',
+               'matches_reference_lu_grind_bits', 'draws_beta_and_alpha_after_the_nonce',
+               'rejects_failing_missing_and_extra_nonces',
+               'rejects_shifted_leaf_claims_without_the_leaf_consumer',
+               'rejects_empty_checks_and_other_degrees'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -116,6 +124,10 @@ ACCOUNTING = {
         'tests/pcs_vectors.rs': '92fafca1b60e0dd05532393e8a3622b004d8b94dc2e630a93c5ffdca5a449eaa',
         'tests/fixtures/pcs-parameters.txt': 'afdec8d4b886dcf6505e2a0c74bed061344209b8a0c2d9a534a7089c4009f4d1',
         'tests/fixtures/policy1-continuations.txt': 'dc6058deeb36a001205181329f3c3d46de2e3ba25c274cd9ab5f832a09c3614d',
+        'src/fraction.rs': '185321c569746754d532e50869a12056c51323c206d082e851c6d365d80368fd',
+        'src/logup.rs': '09d932ba5bebc9c5fad93e115b035a699d78493bc7727a881c8a67c4ccdc17f2',
+        'tests/fraction_corpus.rs': 'd58856015cc0caa70d25b5a261385a639d9499c636ca3a8758176ca41a2dc07b',
+        'tests/logup_round.rs': '3a1e8db13715da2908cd8154946b7999eea31e05e2750bb579acfa7295f53953',
         'tests/fixtures/single-mismatch.jsonl': '38ded05667c711a327eb86ba9b3d514d7db0c343c053be04c750e119ee2987de',
         'tests/fixtures/policy2-full.jsonl': 'b8e51fc1606f4a77e33702a712c3c0d0f67197d36ddcb4ff7fefb78ff706d7c9',
         'tests/circle_vectors.rs': '6df8664f3f24cb707cde7349d82cfbcd1601966ef283f339367c7553221cfd48',
@@ -170,7 +182,7 @@ def accounting_admission(root):
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
     result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
                              '--test', 'zerocheck_corpus', '--test', 'batch_corpus', '--test', 'circle_vectors',
-                             '--test', 'pcs_vectors',
+                             '--test', 'pcs_vectors', '--test', 'fraction_corpus', '--test', 'logup_round',
                              '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
@@ -184,7 +196,9 @@ def accounting_admission(root):
         raise ValueError(f'accounting admission: verifier PCS fixture drift {result.stderr[-2000:]}')
     print('gate verifier: independent no_std A1 sumcheck, A3 zerocheck and A2 batches match every '
           'corpus decision and receipt; the Circle code matches the shared vectors and direct evaluation; '
-          'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes (E8-02a..d)')
+          'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes; RFC-0008 A3 fraction trees '
+          'match every corpus decision and receipt, and the LogUp grinding bits and nonce round are '
+          'checked (E8-02a..e)')
 
 
 def development_surface(crate, name, actual, expected):
@@ -1319,6 +1333,10 @@ def fraction_corpus(root):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if len(cases) != 162 or len(outputs[0]) != len(cases) or outputs[0] != outputs[1]:
         raise ValueError('fraction corpus decisions/claims/accounting/continuation mismatch')
+    # E8-02e: the recorded production receipts the independent verifier is held to.
+    if outputs[0] != [json.loads(line) for line in
+                      (root / 'research/logup-characteristic/corpus-receipts.jsonl').read_text().splitlines()]:
+        raise ValueError('fraction corpus receipts differ from the recorded file (E8-02e)')
     for c, result in zip(cases,outputs[0]):
         if result['name'] != c['name'] or result.get('error','accept') != c['expected']:
             raise ValueError('fraction corpus expected rejection mismatch')
