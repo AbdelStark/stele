@@ -1,0 +1,91 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "664475cccb85e8529696072da0178b135549d2ed",
+ "controls": {
+  "failed": 0,
+  "passed": 4,
+  "total": 4
+ },
+ "device": "arm64 Apple M4 Max (16 hardware threads)",
+ "driver": "not-applicable",
+ "generated_tokens": 40,
+ "kernel_counters": {
+  "admission_rounds": 14480,
+  "checked_positions": 41,
+  "ground_lookup_checks": 19,
+  "prove_peak_rss_bytes": 31647350784,
+  "prove_user_cpu_ns": 479610000000,
+  "public_bytes": 2329123,
+  "verify_peak_rss_bytes": 8756183040
+ },
+ "kind": "inference",
+ "model_config": {
+  "command": "stele prove-dev / verify-dev",
+  "controls": {
+   "gain": "Engine(Sumcheck(RoundSumMismatch))",
+   "next": "Engine(Sumcheck(RoundSumMismatch))",
+   "token": "Engine(Sumcheck(RoundSumMismatch))",
+   "weight": "Commitment(Transcript(GrindMismatch))"
+  },
+  "host_context": "Apple M4 Max laptop (48 GB), macOS, release build of 664475cc (E16-38: plain checker gather tables). Profile byte 5 (RFC-0026 A14). Three runs alternating with the other build, each started at a 1-minute load below 3 (2.65, 2.63, 2.74); other agents shared the host. Walls 79.46 s, 78.64 s, 80.08 s (median recorded as prover_time_ns); user CPU 477 s, 482 s, 480 s (their median recorded as prove_user_cpu_ns); plain check (beside the engine) 9.7 s, 8.5 s, 10.7 s. Every proof is byte-identical to bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json (sha256 11a4c6136cbb87de5d7e29d718bd97c07812a387ddd66036d304f93038aab888). Stage laps are STELE_STAGE_TIMES of the median run; plain_check runs beside the engine and is inside check_and_engine. Verify-dev and the four supplied-proof controls were run once on an after-build proof (the proof is the same bytes for both builds).",
+  "model": {
+   "artifact_sha256": "288a2f4afe96d5e3a67b95a448ce4b3964d2fe2f9a4c28c9ab745b62d91e41a4",
+   "cqis": "int8 matrices, int16 gains (G=8), F=7, A15 groups of 128 on norm-fed inputs and head, direct exp",
+   "fidelity": "agents/reviews/e16-11-stories42m/fidelity.json",
+   "model_sha256": "1931128e41f4464c4bae040ca3fef679f39ebd491258c15151b37b535c50b10c",
+   "name": "llama2.c stories42M (MIT), converted by research/cqis-model-contract/stories42m.py",
+   "preparation_sha256": "0531cd643cdd8f6e53ac00a36b61242b0cda2893908de7375a4b367ae207a46e",
+   "scales_sha256": "873266cd4103a0f1a0f35c8d592c0507e0f7311657657860caf7c3297d50c4d8",
+   "shape": {
+    "context": 1024,
+    "d": 512,
+    "head_width": 64,
+    "heads": 8,
+    "hidden": 1376,
+    "kv_heads": 8,
+    "layers": 8,
+    "vocabulary": 32000
+   },
+   "source": "huggingface.co/karpathy/tinyllamas@0bd21da7698eaf29a0d7de3992de8a46ef624add stories42M.bin sha256 9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b"
+  },
+  "proof_sha256": "11a4c6136cbb87de5d7e29d718bd97c07812a387ddd66036d304f93038aab888",
+  "public_sha256": "3e82a062acc9fc8c85827e4a5aec1a274f3566ec2c9da55a051e16af9bec4c12",
+  "rung": "L2a",
+  "statement": {
+   "T": "64",
+   "checked": "23..64",
+   "cqis_id": "551b6f3e0a5518bf66dabd6c31dc9bbdf603684013f99322e7bdd78178ef3b14",
+   "model": "512dcd1c83b7b63a795ea13770322b07eb4f674a2ab1291d1254d71c341dbf1f",
+   "next": "376",
+   "tokens": "1,9038,2501,263,931,29892,727,471,263,2217,7826,4257,365,2354,29889,2296,18012,304,1708,5377,297,278,14089,29889,3118,2462,29892,1183,4446,263,4802,29892,2654,6411,417,265,297,278,14744,29889,2296,5131,372,577,1568,29892,541,372,471,2086,1880,363,902,304,6159,29889,13,29931,2354,4433,902,16823,1357,29892"
+  },
+  "threads": 16
+ },
+ "note": "RFC-0026 development profile (RFC-0018 A1): no security level, FS unproven, PCS conjectural, no zero-knowledge. Prover time is the prove-dev process wall time: Artifact decode, weight commitment, executor capture (witness), plain check and proof; the witness is not timed separately (witness_recompute_ns 0). Stage model_commitment, when present, is Artifact decode plus model commitment timed in a separate test process; it is part of prove_dev_wall. Verifier time is the verify-dev process wall time. CPU only, no GPU; threads is the hardware thread count available to the process. Peak RSS is the BSD /usr/bin/time -l maximum resident set size. Controls are the four statement tampers of rejects_tampers_on_a_supplied_proof against this proof, each rejected by the verifier with the header restamped. Not comparable to W1-W8 records; not a cost-model fit input.",
+ "plan_digest": "5eed8291f6c815254b57176927d4ead0048d83b8cb896f572f3817acd9b0ce63",
+ "profile": "development",
+ "prompt_tokens": 24,
+ "proof_size_bytes": 15554913,
+ "prover_time_ns": 79460000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "dev_batch_and_openings": 11302000000,
+  "dev_check_and_engine": 59346000000,
+  "dev_logup": 25263000000,
+  "dev_matmul": 1034000000,
+  "dev_plain_check": 9738000000,
+  "dev_sources_and_counts": 13340000000,
+  "dev_zerocheck": 7919000000,
+  "prove_dev_wall": 79460000000,
+  "witness_decode_extend_weights": 6590000000,
+  "witness_layout_capture_assign": 10709000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 5130000000
+ },
+ "witness_recompute_ns": 0,
+ "workload": "dev/stories42m-t64-byte5"
+}

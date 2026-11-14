@@ -4801,3 +4801,20 @@ tasks:
   - RFC-0014 amendment (Workflow 02) and an ADR for cudarc with run-time loading; GPU behind an opt-in feature, CPU default, verifier and no_std builds free of GPU code
   - byte-identical proofs against the CPU on randomised inputs through the parity gate (INV-3)
   - a stories42M dev-zk T = 32 GPU ledger against the same host's CPU
+- id: E16-38
+  epic: E16
+  title: Development prover CPU speedup, bytes identical - the plain checker reads columns through byte-indexed gather tables (matmul summed indices precomputed), from a byte-5 stories42M T = 64 profile on current main
+  depends:
+  - E16-34
+  rfc:
+  - RFC-0026 §3.7
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-ir
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-38-dev-plain-check-gather
+  acceptance:
+  - a sampled profile of the byte-5 stories42M T = 64 prove names the top CPU cost (the plain checker's per-entry Ref::index, about a third of busy samples)
+  - check() returns the same first violation and value as before; Gather::index equals Ref::index on permuted, broadcast and fixed-bit refs; every proof byte-identical to the recorded byte-5 proof
+  - three alternating before/after runs each at 1-minute load below 3, with bench/ledger entries
