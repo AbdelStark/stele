@@ -1949,6 +1949,24 @@ tasks:
   - stele_verifier::circle encode/eval_row as the recursive circle and x transforms on the canonical coset (not stele-code's iterative butterflies)
   - matches the twelve shared vectors (also checked by stele-code and check_circle.py), direct evaluation of the A2 basis for m <= 7 at both rates, and limb-wise extension encoding; mutation-checked
   - the v2 expander is left for a later piece (byte 5 uses Circle sources only)
+- id: E8-02d
+  epic: E8
+  title: Verifier primitives (unblocked) - independent no_std PCS consumer for version-1 Circle sources, Policies 1 and 2 (certificates and functional/point openings)
+  depends:
+  - E8-02c
+  rfc:
+  - RFC-0016 §3
+  - RFC-0010 A9
+  - RFC-0010 A14
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02d-verifier-pcs
+  acceptance:
+  - written from RFC-0010 A9/A14, formal/native-field-pcs.md and the Python oracle, without stele-pcs open (ADR-128)
+  - matches the six Policy 1 full-byte cases (certificate IDs) and four Policy 2 full-byte cases from research/merkle-oracle/dump_policy2_full.py (certificate IDs and continuation challenges), with ProofShape, Merkle, ValueMismatch, FunctionalShape, GrindMismatch, ColumnMismatch and NoncanonicalField tampers
+  - upper-bound and mutation checks; fallible allocation; row shards (A13) and hiding sources (A15) out of scope
 - id: E8-03
   epic: E8
   title: Python differential verifier
