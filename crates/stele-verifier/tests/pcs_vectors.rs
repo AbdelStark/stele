@@ -4,6 +4,9 @@
 //! - Policy 2: the four full-byte A14 cases of `tests/fixtures/policy2-full.jsonl`, from
 //!   `research/merkle-oracle/dump_policy2_full.py`. One case grinds the tensor round.
 //!
+//! - `tests/fixtures/pcs-parameters.txt`, `policy1-continuations.txt` and
+//!   `single-mismatch.jsonl`, from the same script (see there).
+//!
 //! Each certificate must verify with the oracle's certificate ID. Each opening must
 //! verify, and under Policy 2 leave the same continuation challenge. Each tamper must
 //! give its exact error, and each wire must be refused one byte longer or shorter.
@@ -14,6 +17,11 @@ use stele_verifier::pcs::{verify_certificate, verify_opening, Error, Source};
 
 const POLICY1: &str = include_str!("../../stele-pcs/tests/fixtures/field-wire.jsonl");
 const POLICY2: &str = include_str!("fixtures/policy2-full.jsonl");
+const PARAMETERS: &str = include_str!("fixtures/pcs-parameters.txt");
+const OPENING_CONTINUATIONS: &str =
+    include_str!("../../stele-pcs/tests/fixtures/opening-continuation.txt");
+const CONTINUATIONS: &str = include_str!("fixtures/policy1-continuations.txt");
+const SINGLE: &str = include_str!("fixtures/single-mismatch.jsonl");
 
 fn hex(v: &Value) -> Vec<u8> {
     let s = v.as_str().expect("hex");
@@ -48,8 +56,8 @@ fn source(c: &Value, policy: u8) -> Source {
     s
 }
 
-/// The certificate and opening of `c` verify; returns the continuation challenge.
-fn honest<K: ChallengeField + Eq>(c: &Value, s: &Source) -> Vec<u8>
+/// The certificate and opening of `c` verify; returns the next two challenges.
+fn honest<K: ChallengeField + Eq>(c: &Value, s: &Source) -> [Vec<u8>; 2]
 where
     K::Bytes: for<'a> TryFrom<&'a [u8]>,
 {
@@ -59,8 +67,11 @@ where
     let v = values::<K>(&hex(&c["value"]))[0];
     let mut t = Transcript::<K>::new(b"field wire oracle").expect("transcript");
     verify_opening(&mut t, 12, &cert, &a, &b, v, &hex(&c["opening"])).expect("opening");
-    let next = t.challenge(ChallengeLabel::Sumcheck).expect("continuation");
-    next.to_le_bytes().as_ref().to_vec()
+    let mut next = || {
+        let x = t.challenge(ChallengeLabel::Sumcheck).expect("continuation");
+        x.to_le_bytes().as_ref().to_vec()
+    };
+    [next(), next()]
 }
 
 /// The tampers of `c` each give their exact error.
@@ -78,10 +89,20 @@ where
     ] {
         assert_eq!(verify(bad, s), Err(Error::ProofShape));
     }
-    // The last path byte: the Merkle path no longer reaches the root.
-    let mut bad = cert.clone();
-    *bad.last_mut().expect("byte") ^= 1;
-    assert!(matches!(verify(&bad, s), Err(Error::Merkle(_))));
+    // The last path byte of the first, middle and last response: that path no longer
+    // reaches the root. The block follows every index draw, so the draws are unchanged.
+    let p = s.parameters().expect("parameters");
+    let count = usize::from(p.certificate_queries);
+    let stride = (4usize << s.ell) + 32 * usize::from(s.m + s.blowup);
+    let start = cert.len() - count * stride;
+    for q in [0, count / 2, count - 1] {
+        let mut bad = cert.clone();
+        bad[start + (q + 1) * stride - 1] ^= 1;
+        assert!(
+            matches!(verify(&bad, s), Err(Error::Merkle(_))),
+            "response {q}"
+        );
+    }
     // Another root. It changes the source bytes the transcript starts from: under
     // Policy 1 the paths miss the root; under Policy 2 a nonce fails its predicate first.
     let mut other = *s;
@@ -95,36 +116,42 @@ where
     let opening = hex(&c["opening"]);
     let (a, b) = (values::<K>(&hex(&c["a"])), values::<K>(&hex(&c["b"])));
     let v = values::<K>(&hex(&c["value"]))[0];
-    let open = |bytes: &[u8], v: K, a: &[K]| {
+    let open = |bytes: &[u8], v: K, a: &[K], b: &[K]| {
         let mut t = Transcript::<K>::new(b"field wire oracle").expect("transcript");
-        verify_opening(&mut t, 12, &honest, a, &b, v, bytes)
+        verify_opening(&mut t, 12, &honest, a, b, v, bytes)
     };
     for bad in [
         &opening[..opening.len() - 1],
         &[opening.as_slice(), &[0]].concat(),
     ] {
-        assert_eq!(open(bad, v, &a), Err(Error::ProofShape));
+        assert_eq!(open(bad, v, &a, &b), Err(Error::ProofShape));
     }
     assert_eq!(
-        open(&opening, v + K::from_i64(1), &a),
+        open(&opening, v + K::from_i64(1), &a, &b),
         Err(Error::ValueMismatch)
     );
-    assert_eq!(open(&opening, v, &a[1..]), Err(Error::FunctionalShape));
+    assert_eq!(open(&opening, v, &a[1..], &b), Err(Error::FunctionalShape));
+    assert_eq!(open(&opening, v, &a, &b[1..]), Err(Error::FunctionalShape));
 }
 
 #[test]
 fn matches_reference_policy1_certificates_and_openings() {
     let mut count = 0;
-    for line in POLICY1.lines() {
+    let expected = OPENING_CONTINUATIONS.lines().zip(CONTINUATIONS.lines());
+    for (line, (first, second)) in POLICY1.lines().zip(expected) {
         let c: Value = serde_json::from_str(line).expect("case");
         let s = source(&c, 1);
-        if s.degree == 4 {
-            honest::<QM31>(&c, &s);
+        // The oracle's first challenge after the opening (its own replay), and the one
+        // drawn from the state it recorded after that first draw.
+        let next = if s.degree == 4 {
             tampers::<QM31>(&c, &s);
+            honest::<QM31>(&c, &s)
         } else {
-            honest::<OM31>(&c, &s);
             tampers::<OM31>(&c, &s);
-        }
+            honest::<OM31>(&c, &s)
+        };
+        assert_eq!(next[0], hex(&Value::from(first)), "continuation");
+        assert_eq!(next[1], hex(&Value::from(second)), "recorded state");
         count += 1;
     }
     assert_eq!(count, 6);
@@ -148,7 +175,7 @@ fn matches_reference_policy2_certificates_openings_and_continuations() {
             tampers::<OM31>(&c, &s);
             honest::<OM31>(&c, &s)
         };
-        assert_eq!(next, hex(&c["continuation"]), "continuation");
+        assert_eq!(next[0], hex(&c["continuation"]), "continuation");
         count += 1;
     }
     assert_eq!(count, 4);
@@ -206,6 +233,73 @@ fn rejects_column_mismatch_and_noncanonical_columns() {
         verify_certificate::<QM31>(&malformed, &hex(&c["noncanonical"])).map(|_| ()),
         Err(Error::NoncanonicalField)
     );
+}
+
+/// A9 §1 / A14 items 2 and 4: (N, D, e, q_c, q_o) for every Circle code under both
+/// policies, and k_t for every ell and both fields, equal the oracle's table.
+#[test]
+fn matches_reference_pcs_parameters() {
+    let mut rows = 0;
+    for line in PARAMETERS.lines() {
+        let f: Vec<u64> = line
+            .split(' ')
+            .map(|x| x.parse().expect("number"))
+            .collect();
+        let (policy, m, blowup) = (f[0] as u8, f[1] as u8, f[2] as u8);
+        for (i, degree) in [4u8, 8].into_iter().enumerate() {
+            for ell in 0..=30u8 {
+                let s = Source {
+                    degree,
+                    id: 41,
+                    ell,
+                    m,
+                    blowup,
+                    policy,
+                    root: [0; 32],
+                };
+                let p = s.parameters().expect("parameters");
+                let got = [
+                    p.n,
+                    p.d,
+                    p.e,
+                    u64::from(p.certificate_queries),
+                    u64::from(p.opening_queries),
+                    u64::from(p.tensor_bits),
+                    u64::from(p.column_bits),
+                ];
+                let column = if policy == 2 { 16 } else { 0 };
+                let want = [
+                    f[3],
+                    f[4],
+                    f[5],
+                    f[6],
+                    f[7],
+                    f[8 + 31 * i + ell as usize],
+                    column,
+                ];
+                assert_eq!(got, want, "{line} degree {degree} ell {ell}");
+                rows += 1;
+            }
+        }
+    }
+    assert_eq!(rows, 118 * 62);
+}
+
+/// A9 §3: a committed matrix that differs from the honest encoding in one limb of one
+/// column, drawn exactly once (first query, then last): ColumnMismatch.
+#[test]
+fn rejects_a_single_mismatched_column_first_and_last() {
+    let mut positions = Vec::new();
+    for line in SINGLE.lines() {
+        let c: Value = serde_json::from_str(line).expect("case");
+        let s = source(&c, 1);
+        assert_eq!(
+            verify_certificate::<QM31>(&s, &hex(&c["certificate"])).map(|_| ()),
+            Err(Error::ColumnMismatch)
+        );
+        positions.push(c["position"].as_str().expect("position").to_string());
+    }
+    assert_eq!(positions, ["first", "last"]);
 }
 
 #[test]

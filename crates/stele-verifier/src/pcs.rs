@@ -241,9 +241,18 @@ impl Source {
         }
     }
 
-    fn response_size(&self) -> usize {
-        (4usize << self.ell) + 32 * (self.m + self.blowup) as usize
+    /// One response: `R` M31 limbs, then `m + b` siblings (formal §6: overflow is Capacity).
+    fn response_size(&self) -> Result<usize, Error> {
+        pow2(self.ell)?
+            .checked_mul(4)
+            .and_then(|n| n.checked_add(32 * (usize::from(self.m) + usize::from(self.blowup))))
+            .ok_or(Error::Capacity)
     }
+}
+
+/// `2^k` as a usize; a shift past the word is Capacity (formal §6).
+fn pow2(k: u8) -> Result<usize, Error> {
+    1usize.checked_shl(u32::from(k)).ok_or(Error::Capacity)
 }
 
 /// A certificate that passed full verification (A9 §3). It can only be built by
@@ -296,7 +305,9 @@ fn put_fields<K: ChallengeField>(out: &mut Vec<u8>, values: &[K]) -> Result<(), 
 
 /// The MSB-first eq table of `point`: entry `x` is `eq(point, x)`.
 fn eq_table<K: ChallengeField>(point: &[K]) -> Result<Vec<K>, Error> {
-    let n = 1usize << point.len();
+    let n = u8::try_from(point.len())
+        .map_err(|_| Error::Capacity)
+        .and_then(pow2)?;
     let mut out = Vec::new();
     out.try_reserve_exact(n).map_err(|_| Error::Capacity)?;
     out.extend((0..n).map(|x| eq_at(point, x)));
@@ -347,11 +358,13 @@ fn responses<K: ChallengeField + Eq>(
 ) -> Result<(), Error> {
     let tree = source.tree();
     let encoded = source.code()?.encode(u)?;
-    let stride = source.response_size();
-    let rows = 1usize << source.ell;
+    let stride = source.response_size()?;
+    let rows = pow2(source.ell)?;
     for q in 0..count {
         let index = column(t, label, tree.count)?;
-        let response = &block[q * stride..(q + 1) * stride];
+        let response = block
+            .get(q * stride..(q + 1) * stride)
+            .ok_or(Error::ProofShape)?;
         let (payload, path) = response.split_at(4 * rows);
         let mut siblings: Vec<Digest> = Vec::new();
         siblings
@@ -381,7 +394,7 @@ fn responses<K: ChallengeField + Eq>(
             combined = combined + w.mul_m31(M31::from_i64(i64::from(x)));
         }
         // RFC-0010 A9 §3: the encoded row agrees with the column's combination.
-        if encoded[index as usize] != combined {
+        if encoded.get(index as usize) != Some(&combined) {
             return Err(Error::ColumnMismatch);
         }
     }
@@ -412,15 +425,18 @@ where
         return Err(Error::CertificateContext);
     }
     let public_source = source.bytes()?;
-    let columns = 1usize << source.m;
+    let columns = pow2(source.m)?;
     let tensor = usize::from(p.tensor_bits > 0) * 8;
     let column_nonce = usize::from(p.column_bits > 0) * 8;
-    let row_end = 1 + tensor + columns * width;
+    let row_end = columns
+        .checked_mul(width)
+        .and_then(|n| n.checked_add(1 + tensor))
+        .ok_or(Error::Capacity)?;
     let count = usize::from(p.certificate_queries);
     // RFC-0010 A9 §3 / A14 items 3–4: `u8(1) || [n_t] || t || [n_q] || responses`,
     // every length derived from the expected context.
     let expected = count
-        .checked_mul(source.response_size())
+        .checked_mul(source.response_size()?)
         .and_then(|n| n.checked_add(row_end + column_nonce))
         .ok_or(Error::Capacity)?;
     if proof.len() != expected || proof[0] != 1 {
@@ -488,13 +504,16 @@ where
     let source = &certificate.source;
     let p = source.parameters()?;
     let width = bytes_of(&v);
-    let columns = 1usize << source.m;
+    let columns = pow2(source.m)?;
     let column_nonce = usize::from(p.column_bits > 0) * 8;
-    let row_end = 1 + columns * width;
+    let row_end = columns
+        .checked_mul(width)
+        .and_then(|n| n.checked_add(1))
+        .ok_or(Error::Capacity)?;
     let count = usize::from(p.opening_queries);
     // RFC-0010 A9 §4 / A14 item 3: `u8(1) || u || [n_q] || responses`.
     let expected = count
-        .checked_mul(source.response_size())
+        .checked_mul(source.response_size()?)
         .and_then(|n| n.checked_add(row_end + column_nonce))
         .ok_or(Error::Capacity)?;
     if proof.len() != expected || proof[0] != 1 {
@@ -502,7 +521,7 @@ where
     }
     let u = decode::<K>(&proof[1..row_end], columns)?;
     // RFC-0010 A9 §4: the coefficient vectors have R and C entries.
-    if a.len() != 1usize << source.ell || b.len() != columns {
+    if a.len() != pow2(source.ell)? || b.len() != columns {
         return Err(Error::FunctionalShape);
     }
     // RFC-0010 A9 §4: u64le(opening id) || source || certificate ID || a || b || v.
