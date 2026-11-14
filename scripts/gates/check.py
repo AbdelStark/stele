@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 import tomllib
 from urllib.parse import unquote, urlsplit
 
@@ -106,8 +107,7 @@ ACCOUNTING = {
                'matches_reference_lu_grind_bits', 'draws_beta_and_alpha_after_the_nonce',
                'rejects_failing_missing_and_extra_nonces',
                'rejects_shifted_leaf_claims_without_the_leaf_consumer',
-               'rejects_empty_checks_and_other_degrees',
-               'matches_reference_verify_dev_on_byte5_windows_and_tampers'),
+               'rejects_empty_checks_and_other_degrees'),
     'replay': ('development::tests::matches_reference_a15_small_codec_vectors',
                'development::tests::eq_table_matches_eq_bits',
                'development::tests::rejects_short_headers_and_counts_past_the_input',
@@ -199,12 +199,29 @@ def accounting_admission(root):
     result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
                              '--test', 'zerocheck_corpus', '--test', 'batch_corpus', '--test', 'circle_vectors',
                              '--test', 'pcs_vectors', '--test', 'fraction_corpus', '--test', 'logup_round',
-                             '--test', 'development_replay', '--locked', '--offline'],
-                            cwd=root, text=True, capture_output=True)
+                             '--locked', '--offline'], cwd=root, text=True, capture_output=True)
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
+    # E8-02f1: production's test-only dump (E8-02f1a) writes the byte-5 windows, each
+    # verified by production first; the independent replay must accept both and reject
+    # each window's one-byte tampers.
+    with tempfile.TemporaryDirectory() as windows:
+        env = dict(os.environ, STELE_DUMP_DIR=windows)
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-prover', '--test', 'development',
+                                 'dumps_byte5', '--locked', '--offline', '--', '--ignored'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        if result.returncode or 'test dumps_byte5' not in result.stdout:
+            raise ValueError(f'development replay: production dump failed {result.stderr[-2000:]}')
+        env = dict(os.environ, STELE_DEV_REPLAY_DIR=windows)
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-verifier', '--test',
+                                 'development_replay', '--locked', '--offline', '--', '--nocapture'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        name = 'matches_reference_verify_dev_on_byte5_windows_and_tampers'
+        windows_seen = result.stderr.count('tampers rejected')
+        if result.returncode or f'test {name} ... ok' not in result.stdout.splitlines() or windows_seen != 2:
+            raise ValueError(f'development replay: parity failed ({windows_seen} windows) {result.stderr[-2000:]}')
     # E8-02d: the PCS fixtures (Policy 2 full bytes, parameter table, Policy 1
     # continuations, single-position mismatches) are the Python oracle's current output.
     result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/merkle-oracle/dump_policy2_full.py'],
@@ -215,7 +232,8 @@ def accounting_admission(root):
           'corpus decision and receipt; the Circle code matches the shared vectors and direct evaluation; '
           'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes; RFC-0008 A3 fraction trees '
           'match every corpus decision and receipt, and the LogUp grinding bits and nonce round are '
-          'checked (E8-02a..e)')
+          'checked (E8-02a..e); the RFC-0026 A15 byte-5 replay accepts the dumped one- and eight-layer '
+          'windows and rejects their one-byte tampers (E8-02f1)')
 
 
 def development_surface(crate, name, actual, expected):

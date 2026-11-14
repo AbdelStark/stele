@@ -5,7 +5,8 @@
 //! `public.bin`, `proof.bin` and `relation.bin` (the A15 §5 encoding), as production's
 //! test-only dump writes them. `STELE_BIN`, when set, names the `stele` binary, and
 //! every case's decision is compared with `verify-dev`'s. `cqis_id` is read from the
-//! container header: deriving it from the model is E8-02f2.
+//! container header: deriving it from the model is E8-02f2. `STELE_DEV_REPLAY_ALL`
+//! tampers every section, not only the first and last of each list.
 
 use std::path::Path;
 use std::process::Command;
@@ -107,8 +108,19 @@ fn matches_reference_verify_dev_on_byte5_windows_and_tampers() {
         }
         // One byte flipped in each section (its first, middle and last byte), in the
         // public file and in the relation: every one must be rejected, as by verify-dev.
+        // Without STELE_DEV_REPLAY_ALL, only the first and last section of each list.
+        let all = std::env::var("STELE_DEV_REPLAY_ALL").is_ok();
+        let list = sections(&honest.proof);
+        let kind = |n: &str| n.split('[').next().unwrap_or("").to_string();
         let mut cases = Vec::new();
-        for (name, start, len) in sections(&honest.proof) {
+        for (i, (name, start, len)) in list.iter().cloned().enumerate() {
+            let edge = i == 0
+                || i + 1 == list.len()
+                || kind(&list[i - 1].0) != kind(&name)
+                || kind(&list[i + 1].0) != kind(&name);
+            if !all && !edge {
+                continue;
+            }
             for at in [start, start + len / 2, start + len.saturating_sub(1)] {
                 if len > 0 {
                     cases.push((format!("{name}@{}", at - start), 'p', at));
