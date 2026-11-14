@@ -105,9 +105,16 @@ ACCOUNTING = {
 }
 
 
-# A real `mod` item: the keyword at the start of a line (after indentation and an
-# optional visibility), so comments and prose such as "x mod N" do not match.
-MOD_ITEM = re.compile(r'^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?mod[ \t]+(\w+)', re.M)
+# Literals are kept verbatim and comments (line, block, doc) are blanked. Only comments
+# are removed, so a `//` inside a string cannot hide the code after it. Nested block
+# comments end early, which only leaves more text to match (the safe side).
+LEXEME = re.compile(r'''r(#*)".*?"\1|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])'|//[^\n]*|/\*.*?\*/''', re.S)
+
+
+def mod_items(text):
+    """Every `mod` keyword outside comments (prose such as "x mod N" in docs is not code)."""
+    code = LEXEME.sub(lambda m: ' ' if m.group(0)[0] == '/' else m.group(0), text)
+    return re.findall(r'\bmod\s+(\w+)', code)
 
 
 def accounting_surface(crate, actual, expected):
@@ -117,7 +124,7 @@ def accounting_surface(crate, actual, expected):
         module = crate / path
         text = module.read_text() if module.is_file() else ''
         return ('#[path' in text or 'include!' in text
-                or not set(MOD_ITEM.findall(text)) <= {'tests'})
+                or not set(mod_items(text)) <= {'tests'})
     if ((crate / 'src/lib.rs').read_text() != ACCOUNTING['library']
             or set(actual) != set(expected) | set(ACCOUNTING['files'])
             or any(actual.get(path) != pin for path, pin in ACCOUNTING['pins'].items())

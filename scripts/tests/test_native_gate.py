@@ -125,7 +125,8 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
             (fake / 'src/lib.rs').write_text(gate.ACCOUNTING['library'])
             source = (crate / 'src/accounting.rs').read_text()
             for hidden in ('#[path = "x.rs"]\nmod x;\n', 'include!("x.rs");\n', 'mod extra {}\n',
-                           '    pub mod extra;\n', 'pub(crate) mod extra {}\n'):
+                           '    pub mod extra;\n', 'pub(crate) mod extra {}\n',
+                           '#[cfg(test)] mod hidden;\n', '/* c */ mod hidden;\n', 'fn f(){} mod hidden;\n'):
                 (fake / 'src/accounting.rs').write_text(source + hidden)
                 self.assertEqual(gate.accounting_surface(fake, actual, expected), actual)
             # Comments and prose that mention "mod" are not module items.
@@ -133,9 +134,17 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                 (fake / 'src/accounting.rs').write_text(source + prose)
                 self.assertEqual(gate.accounting_surface(fake, actual, expected), expected)
 
-    def test_mod_item_pattern_matches_items_only(self):
-        self.assertEqual(gate.MOD_ITEM.findall('mod a;\n  pub mod b {}\npub(crate) mod c;\n'), ['a', 'b', 'c'])
-        self.assertEqual(gate.MOD_ITEM.findall('/// x mod N\n// mod d\nlet y = x mod n;\n'), [])
+    def test_mod_items_skip_comments_only(self):
+        items = 'mod a;\n  pub mod b {}\npub(crate) mod c;\n#[cfg(test)] mod d;\n/* c */ mod e;\nfn f(){} mod g;\n'
+        self.assertEqual(gate.mod_items(items), ['a', 'b', 'c', 'd', 'e', 'g'])
+        self.assertEqual(gate.mod_items('/// x mod N\n// mod d\n/* mod e\n mod f */\n//! y mod p\n'), [])
+        # A comment opener inside a literal does not start a comment.
+        self.assertEqual(gate.mod_items('let s = "//"; mod h;\nlet c = \'"\'; let t = "//"; mod i;\n'
+                                        'let r = r#"/*"#; mod j; // */\n'), ['h', 'i', 'j'])
+        # Strings that mention "mod" are a safe false positive; a nested or unclosed
+        # block comment leaves the rest visible.
+        self.assertEqual(gate.mod_items('let s = "mod x";\n'), ['x'])
+        self.assertEqual(gate.mod_items('/* a /* b */ mod k; */\n/* open mod l;\n'), ['k', 'l'])
 
     def test_rejects_missing_actual_zerocheck_point_receipt(self):
         names=['matches_reference_zerocheck_bytes_and_accounting','matches_reference_retained_tail_and_failed_prefix',
