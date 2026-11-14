@@ -1,11 +1,15 @@
 //! E8-02c parity for the Circle code. The checks are:
 //! - the twelve shared canonical vectors, which `stele-code`'s own test and
 //!   `research/circle-code/check_circle.py` also check;
-//! - direct evaluation of the RFC-0010 A2 basis on the coset, a third formulation, for
-//!   `m ≤ 7` at both rates;
+//! - the RFC-0010 A2 basis evaluated point by point (`direct`, the same formula as the
+//!   Python vector generator, so not an independent formulation), for `m ≤ 7` at both
+//!   rates;
+//! - a matrix-solve oracle: interpolation by Gaussian elimination over M31, then
+//!   evaluation in the basis, for `m ≤ 5` at both rates. It shares no step with the
+//!   transforms;
 //! - extension elements encoded limb by limb;
-//! - the size rules.
-use stele_field::{Field, Serialize, M31, QM31};
+//! - the size and field rules.
+use stele_field::{Field, KoalaBear, Serialize, M31, QM31};
 use stele_verifier::circle::{Circle, Error};
 
 const P: u64 = (1 << 31) - 1;
@@ -110,6 +114,72 @@ fn matches_direct_evaluation_of_the_basis() {
     }
 }
 
+/// `a^(p−2)`, the inverse of a nonzero `a` modulo p.
+fn inverse(a: u64) -> u64 {
+    let (mut r, mut b, mut e) = (1u64, a % P, P - 2);
+    while e > 0 {
+        if e & 1 == 1 {
+            r = r * b % P;
+        }
+        b = b * b % P;
+        e >>= 1;
+    }
+    r
+}
+
+/// Solve `B·c = r` modulo p by Gauss–Jordan elimination; `B` is square and invertible.
+fn solve(mut b: Vec<Vec<u64>>, mut r: Vec<u64>) -> Vec<u64> {
+    let n = r.len();
+    for col in 0..n {
+        let pivot = (col..n).find(|&i| b[i][col] != 0).expect("invertible");
+        b.swap(col, pivot);
+        r.swap(col, pivot);
+        let inv = inverse(b[col][col]);
+        for j in 0..n {
+            b[col][j] = b[col][j] * inv % P;
+        }
+        r[col] = r[col] * inv % P;
+        for i in 0..n {
+            if i != col && b[i][col] != 0 {
+                let f = b[i][col];
+                for j in 0..n {
+                    b[i][j] = (b[i][j] + P - f * b[col][j] % P) % P;
+                }
+                r[i] = (r[i] + P - f * r[col] % P) % P;
+            }
+        }
+    }
+    r
+}
+
+#[test]
+fn matches_matrix_solve_interpolation() {
+    for m in 0..=5u32 {
+        let n = 1usize << m;
+        let unit = |j: usize| -> Vec<u64> { (0..n).map(|k| u64::from(k == j)).collect() };
+        // B[i][j] is basis function j at the i-th point of D_m.
+        let basis: Vec<Vec<u64>> = (0..n as u64)
+            .map(|i| (0..n).map(|j| direct(&unit(j), point(m, i))).collect())
+            .collect();
+        let row: Vec<u64> = (0..n as u64).map(|i| (i * i * 7919 + 13) % P).collect();
+        let coefficients = solve(basis, row.clone());
+        for b in 1..=2 {
+            let word: Vec<M31> = (0..1u64 << (m + b))
+                .map(|i| m31(direct(&coefficients, point(m + b, i))))
+                .collect();
+            let row: Vec<M31> = row.iter().map(|v| m31(*v)).collect();
+            assert_eq!(
+                Circle::new(m, b)
+                    .expect("code")
+                    .encode(&row)
+                    .expect("encode"),
+                word,
+                "m {m} b {b}"
+            );
+        }
+    }
+}
+
 #[test]
 fn encodes_extension_elements_limb_by_limb() {
     let code = Circle::new(4, 2).expect("code");
@@ -136,6 +206,15 @@ fn encodes_extension_elements_limb_by_limb() {
             word.iter().map(part).collect::<Vec<_>>()
         );
     }
+}
+
+/// RFC-0010 A2: a field of another characteristic is FieldMismatch.
+#[test]
+fn rejects_other_characteristics() {
+    let code = Circle::new(2, 1).expect("code");
+    let row = [KoalaBear::from_i64(1); 4];
+    assert_eq!(code.encode(&row), Err(Error::FieldMismatch));
+    assert_eq!(code.eval_row(&row, &[0]), Err(Error::FieldMismatch));
 }
 
 #[test]
