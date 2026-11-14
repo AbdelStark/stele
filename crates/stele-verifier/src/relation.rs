@@ -572,6 +572,86 @@ mod tests {
         bits.to_vec()
     }
 
+    fn unsigned(bits: u8) -> Width {
+        Width {
+            signed: false,
+            bits,
+        }
+    }
+
+    fn whole(column: u32) -> Ref {
+        Ref {
+            column,
+            vars: alloc::vec![0],
+        }
+    }
+
+    /// A witness `w` (unsigned 8, ranged) equal to a public `c`: `w − c = 0`.
+    fn small() -> Relation {
+        Relation {
+            groups: alloc::vec![1],
+            columns: alloc::vec![
+                Column {
+                    kind: Kind::Witness(0),
+                    width: unsigned(8),
+                    log_len: 1,
+                },
+                Column {
+                    kind: Kind::Public(alloc::vec![3, 200]),
+                    width: unsigned(8),
+                    log_len: 1,
+                },
+            ],
+            identities: alloc::vec![Identity {
+                vars: 1,
+                terms: alloc::vec![
+                    Term {
+                        coeff: 1,
+                        factors: alloc::vec![whole(0)],
+                    },
+                    Term {
+                        coeff: -1,
+                        factors: alloc::vec![whole(1)],
+                    },
+                ],
+            }],
+            ranges: alloc::vec![Range {
+                column: 0,
+                width: unsigned(8),
+            }],
+            ..Relation::default()
+        }
+    }
+
+    /// §3.6: each rule, one change at a time, on a relation that validates.
+    #[test]
+    fn rejects_each_section_3_6_rule() {
+        assert_eq!(small().validate(), Ok(()));
+        let bad: [fn(&mut Relation); 9] = [
+            // item 3: the witness is no longer enforced.
+            |r| r.ranges.clear(),
+            // item 3: a range wider than the column does not enforce it.
+            |r| r.ranges[0].width = unsigned(9),
+            // item 1: a zero coefficient.
+            |r| r.identities[0].terms[0].coeff = 0,
+            // item 2: B = Σ|c|·Π mag ≥ p.
+            |r| r.identities[0].terms[0].coeff = 1 << 24,
+            // item 1: a ref of the wrong arity, and a fixed bit outside a matmul.
+            |r| r.identities[0].terms[0].factors[0].vars.push(0),
+            |r| r.identities[0].terms[0].factors[0].vars[0] = FIXED_0,
+            // item 1: a public value outside its width, and a range on a public column.
+            |r| r.columns[1].kind = Kind::Public(alloc::vec![3, 256]),
+            |r| r.ranges[0].column = 1,
+            // item 1: a witness whose group has another length.
+            |r| r.groups[0] = 2,
+        ];
+        for (i, f) in bad.iter().enumerate() {
+            let mut r = small();
+            f(&mut r);
+            assert_eq!(r.validate(), Err(Error::StatementMismatch), "rule {i}");
+        }
+    }
+
     #[test]
     fn covers_split_blocks_and_rejects_one_block() {
         let both = [pat(&[(3, false)]), pat(&[(3, true)])];
