@@ -1632,3 +1632,46 @@ fn matches_a15_codecs_on_the_one_layer_byte5_window() {
 }
 
 const A15_ONE_LAYER: &str = r#"[("public file", 186425, "ba827bf43eb106898d4aeeedbff8d5dbd55c677ac17e3fbc16acbaaa2cbb937b"), ("public input", 4505, "a40ce6e36583f69cfed8afdd786e694d7e0099545a5b0bebddc6fd1573e44872"), ("relation", 3503903, "8d5be7124d20e9989bc23ec60c39dc3cfe9ea9fc50a0685e62817073480294ae"), ("header", 82, "7374656c652d6465762d6532652d76310100dbc4ca0489fdf0360e673f4dad6e4456d08dc2e8a78211ea1660dd392f7e8c0f9baa01ed802c4c4c38dcf8daf8604c931e98f30ced92de39c1d2b92354838c3c")] [1, 21, 6, 21, 127, 2]"#;
+
+/// RFC-0026 A15's second small vector: a lookup with no selector, a matmul ref fixing
+/// a bit to 0 (`0xFE`), and a statement with `next` absent (`e < T`).
+#[test]
+fn matches_a15_second_small_codec_vectors() {
+    let (mut relation, public, mut statement, _) = a15_small();
+    relation.lookups[0].selector = None;
+    relation.matmuls[0].lhs.vars = vec![Ref::FIXED_0];
+    statement.end = 1;
+    statement.next = None;
+    let cqis_id = [0x11; 32];
+    let produced = [
+        stele_reductions::relation::encode(&relation),
+        bundle::encode(&public, &statement),
+        public_input(&public, &cqis_id, &statement),
+    ];
+    let written = [
+        a15_relation(&relation),
+        a15_public_file(&public, &statement),
+        a15_public_input(&public, &cqis_id, &statement),
+    ];
+    for (name, (p, w)) in ["relation", "public file", "public input"]
+        .iter()
+        .zip(produced.iter().zip(&written))
+    {
+        eprintln!("A15b {name}: {}", a15_hex(p));
+        assert_eq!(a15_hex(p), a15_hex(w), "{name}");
+    }
+    assert_eq!(
+        [
+            a15_hex(&produced[0]),
+            a15_hex(&produced[1]),
+            a15_hex(&produced[2])
+        ],
+        A15_SECOND
+    );
+}
+
+const A15_SECOND: [&str; 3] = [
+    "7374656c652f76302e312f72656c6174696f6e2f656e636f64696e672f76310100000005000000472f782f31010300000001000000770000000000010801010000006b01010401010000007002020000000100000000000000feffffffffffffff010301010000000100000074010000000002020000000100000000000000000000000100000003000000000000000100000001000000690101000000fdffffffffffffff0200000000010002000000010001000000010000006c0100010000000000000001000000000001000000010000007200000000010801000000010000006d01000000000001000100000001fe02000000010001000000010000006300000000010000000100000004",
+    "7374656c652d6465762d7075626c69632d7634030000004d444c020000005343010000005001000000030004000000ffff020001000000abababababababababababababababababababababababababababababababab03000000010203020000000500000006000000000000000100000000",
+    "7374656c652f76302e312f6465762d6532652f7075626c69632d696e7075741111111111111111111111111111111111111111111111111111111111111111030000004d444c020000005343010000005001000000030004000000ffff020001000000abababababababababababababababababababababababababababababababab02000000050000000600000000000000010000000005",
+];
