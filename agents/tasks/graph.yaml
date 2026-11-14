@@ -1987,6 +1987,23 @@ tasks:
   - stele_verifier::logup::bits matches the 180 rows of lu-grind-bits.txt; round checks the nonce before lookup/beta and refuses failing, missing and extra nonces
   - the recorded production receipts are checked against the production producer by the fraction corpus gate; upper-shape-bound and mutation-checked tests
   - fraction::decode_leaf takes exactly 4d(4m+c+2) canonical bytes; the leaf's selector check is tested without the tree's leaf consumer (the shifted claim (p+1, q+alpha-1) is SelectorMismatch)
+- id: E8-02f0
+  epic: E8
+  title: Verifier primitives (unblocked) - RFC-0026 A15 (Draft) specifies the development proof's byte formats (public file, public input, container, relation encoding, engine sections) transcribed from code, pinned by golden vectors
+  depends:
+  - E8-02a
+  rfc:
+  - RFC-0026 A15
+  - RFC-0016 §3
+  skill: soundness-auditor
+  crate: docs
+  status: done
+  agent: claude-code
+  branch: task/E8-02f0-dev-codecs-spec
+  acceptance:
+  - RFC-0026 A15 (Draft) specifies stele-dev-public-v4, the transcript public input and statement digest, the stele-dev-e2e-v1 container and the relation encoding field by field, plus the engine's derived ids, sources, checks, section contents and transcript order for byte 5
+  - golden vectors - encoders written from the A15 text reproduce production byte for byte on small hand-built vectors (hex in A15) and on the one-layer byte-5 window
+  - one independent review of A15 before acceptance; ADR-129 (Proposed)
 - id: E8-02f1a
   epic: E8
   title: Test-only dump of the byte-5 one-layer and eight-layer windows (public.bin, proof.bin, relation.bin) for the independent E8-02f1 verifier
