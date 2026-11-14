@@ -206,7 +206,7 @@ item 4, RFC-0002 A1, RFC-0012 §6.
 1. **E8-02.** The `no_std` plan derivation and replay in `stele-verifier` (§3).
    deny.toml bars `stele-verifier` from `stele-reductions` and `stele-prover`, and also
    from `stele-pcs`, `stele-sumcheck` and `stele-lookup`. E8-02 is therefore a
-   re-implementation of the verification code, not a move (ADR-127).
+   re-implementation of the verification code, not a move (ADR-128).
 2. **E8-01.** Container v1, whose §1 header carries the profile byte and the ledger hash
    that NC-0804 and NC-0805 tamper.
    - **Transitive blockers.** In the task graph, E8-02 depends on E8-01, which

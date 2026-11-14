@@ -1898,6 +1898,40 @@ tasks:
   - plan derivation calls lookup::admit for every RFC-0023/0024 lookup consumer before the first transcript absorb; NC-0420..0424 run through the verifier entry point and fail if the call is removed
   - plan derivation fixes one RFC-0010 A6 message embedding per source context and rejects a plan whose consumers name two or none (NC-1207/1208)
   - the plan verifier calls `check_source` (or obtains the handle via `verify_certificate(expected)`) before accepting any PCS opening; NC-0612 runs through it and fails if the call is removed
+- id: E8-02a
+  epic: E8
+  title: Verifier primitives (unblocked) - first piece, independent no_std A1 sumcheck in stele-verifier with corpus parity (ADR-128 plan)
+  depends:
+  - E8-05b
+  rfc:
+  - RFC-0016 §3
+  - RFC-0006 A1
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02a-verifier-sumcheck
+  acceptance:
+  - ADR-128 (Proposed) fixes the plan for the independent verifier primitives - independent re-implementation, module order, size estimate
+  - stele_verifier::sumcheck verify/verify_public match every decision and receipt of research/sumcheck/corpus.jsonl (196 cases, QM31 and OM31)
+  - the recorded production receipts are checked against the production verifier by the sumcheck gate; mutation-checked parity test
+- id: E8-02b
+  epic: E8
+  title: Verifier primitives (unblocked) - independent no_std A3 zerocheck and A2 batches (instances and claim batches) with corpus parity
+  depends:
+  - E8-02a
+  rfc:
+  - RFC-0016 §3
+  - RFC-0006 A2
+  - RFC-0006 A3
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02b-verifier-zerocheck-batch
+  acceptance:
+  - stele_verifier::zerocheck and ::batch (mode 0 instances, mode 1 ClaimBatch) match every decision and receipt of research/zerocheck/corpus.jsonl (314 cases) and research/batching/corpus.jsonl (276 cases), QM31 and OM31, continuations included
+  - the recorded production receipts are checked against the production verifiers by the zerocheck and batching gates; mutation-checked parity tests
 - id: E8-03
   epic: E8
   title: Python differential verifier

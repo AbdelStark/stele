@@ -3897,3 +3897,94 @@ Status: Accepted (owner authorisation for autonomous gating decisions). Independ
 review: FIX-THEN-MERGE on #371 (kernels, salts, BLAKE3, Merkle and the 3.583×, 2.996× and
 13.31× figures reproduced); this text carries its fixes (per-stage `M`, the reopen
 threshold, the bound's scope).
+
+## ADR-128: The no_std verifier is an independent re-implementation in stele-verifier, piece by piece against the shared corpora; first piece the A1 sumcheck (RFC-0016 §3, task E8-02a)
+
+Numbering: ADR-126 is #370's and ADR-127 is #371's.
+
+Context:
+- E8-02 is the `no_std` verifier that RFC-0016 §3 requires: `no_std` + `alloc`, under
+  15k LoC, no dependency beyond `stele-field` and `stele-hash`, every check annotated
+  with its RFC, and no panics.
+- It is the largest prerequisite of a `standard` claim (ADR-126 item 1).
+- **Scope after #370's review.** E8-02 as defined (the W8 full-model verifier) is
+  transitively blocked: through E8-01 by Q29 and by the E7 RFC-0004 amendments
+  (ADR-126). These pieces are the *unblocked verifier primitives*. Their milestone is
+  `stele-verifier` verifying RFC-0026 byte-5 proofs on its own, independent of the
+  prover crates. The full-model path stays blocked.
+- Today's verification code lives in `stele-sumcheck`, `stele-lookup`, `stele-gkr`,
+  `stele-pcs`, `stele-code`, `stele-ir`, `stele-cqis`, `stele-reductions` and
+  `stele-prover`. deny.toml lets `stele-verifier` import none of them.
+
+Decision (Proposed): **re-implement, do not share.**
+- **Options.**
+  - (a) A shared lower `no_std` crate that both prover and verifier import. This would
+    change RFC-0016 §3's dependency rule and deny.toml. It also makes a protocol bug
+    common to both sides, so no test can find it.
+  - (b) An independent re-implementation in `stele-verifier`, written from the RFC text,
+    importing only `stele-field` and `stele-hash`. Parity comes from the shared corpora
+    that the Rust and Python verifiers already agree on. A disagreement is then a
+    finding.
+- **(b) is chosen.** It is what §3 says, and independence is a stated verifier value.
+- **Modules and order** (each is its own PR and pin; estimate in LoC):
+
+  | Piece | Module | Parity oracle | Estimate |
+  |---|---|---|---:|
+  | E8-02a (this) | `sumcheck`: A1 verify and public-table claims | `research/sumcheck/corpus.jsonl` (196 cases) | 300 |
+  | E8-02b | `zerocheck` (A3), `batch` (A2 claim batching) | `research/zerocheck`, `research/batching` corpora | 700 |
+  | E8-02c | `merkle`, `circle`, `expander`: column trees and the two codes' encoders | `research/merkle-oracle`, `research/code-provenance` vectors | 1,800 |
+  | E8-02d | `pcs`: certificates and openings, Policies 1 and 2 with grinding | `research/fs-pcs`, the PCS corpus | 1,500 |
+  | E8-02e | `lookup`: fraction trees, leaf/selected product, LogUp checks, A8 nonces | `lookup_corpus.py` corpora | 1,500 |
+  | E8-02f | `relation`: the RFC-0026 plan from Model/Scales/Preparation bytes, the claim graph and the §8 replay | the synthetic development proofs (pins), cross-checked against `stele-prover`'s verifier | 3,500 |
+  | E8-02g | `ledger`: plan-derived rounds before the first absorb, then `accounting::admit` at the entry point | E8-05c's replay ledger | 500 |
+
+  The total is about 9,800 lines, inside §3's 15k.
+  - E8-02f is the largest and least certain piece. It re-derives the RFC-0026 relation
+    from the model bytes, which `stele-prover`'s plan does today across about 5k lines.
+  - The model files' CQIS parsing (`stele-cqis`) is needed only up to the fields the
+    plan reads.
+- **E8-02a, this change.**
+  - `stele_verifier::sumcheck`: `verify` and `verify_public`, with typed errors and no
+    shared code. It covers the canonical instance and message bytes, Lagrange
+    interpolation at `0..=δ`, the final evaluation, and the MSB-first `eq` table.
+  - The parity test `matches_reference_a1_corpus_decisions_and_receipts` runs all 196
+    corpus cases in QM31 and OM31. Each case gives the same decision as the production
+    verifier: 54 accepted with identical points, claims and SC records, and 142 rejected
+    with identical error names.
+  - The production receipts are recorded in `research/sumcheck/corpus-receipts.jsonl`,
+    and the sumcheck gate checks that file against the production output on every run.
+    If production changes, the independent verifier must follow, or the gate goes red.
+  - Mutation checks, each turning the parity test red:
+    - the round-sum check removed;
+    - the `eq` table read LSB-first;
+    - the final message absorbed into another transcript;
+    - the instance's degree byte replaced by the term count.
+  - The gate admits exactly the new files by sha256 pin, the library text with
+    `extern crate alloc`, and a manifest whose only addition is the parity test's
+    dev-dependency `serde_json` (`=1.0.154`, already in the lockfile). The runtime
+    dependency rule of §3 is unchanged. A source file may still declare no module but
+    `tests`.
+
+Consequences:
+- No proof byte or pin moves, and no production code changes.
+- "Against the current replay on synthetic proofs" is met for the A1 family through the
+  corpus that both production verifiers share. A synthetic proof's A1 sections become
+  parity inputs once E8-02f can parse them.
+
+**Provenance and the writing rule (#372/#373 review).**
+- The A1 module was written from the RFC text.
+- The A3 zerocheck (`zerocheck.rs`) and A2 batches (`batch.rs`) were derived from
+  `stele-sumcheck`'s verifiers: their `shape` rules transcribe production condition
+  for condition. They were then checked against the RFC-0006 A2/A3 text by a
+  non-author review. They share no code with production, but they are not independent
+  derivations, and their module docs say so.
+- From E8-02c on, each module is written from the RFC text without production code
+  open, then checked for parity. The Circle code (E8-02c) follows the RFC-0010 A2
+  basis and the Python reference's recursive form.
+- Each check carries its RFC annotation (RFC-0016 §3). Each proof-shape bound, upper
+  and lower, has its own test, because the corpora hold only short proofs.
+
+Status: Accepted (verifier architecture; no protocol change). Independent review of #372
+and #373: FIX-THEN-MERGE (dependency set, `no_std`, parity on 196/314/276 cases, live
+receipts, strict pins and a 400k-case fuzz verified); fixes applied at e13044d and 2001244,
+including the upper-bound tests and the stated provenance of the zerocheck and batch modules.

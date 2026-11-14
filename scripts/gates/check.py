@@ -73,35 +73,54 @@ DEVELOPMENT = {
 # surface. The rest of the verifier scaffold (plan, ledger, entry point) stays guarded
 # until E8-05 wires the gate with its producer.
 ACCOUNTING = {
-    'files': ('src/accounting.rs',),
+    # E8-05b's admission decision; the independent verifier primitives (ADR-128) and
+    # their parity tests: E8-02a's A1 sumcheck, E8-02b's A3 zerocheck and A2 batches.
+    'files': ('src/accounting.rs', 'src/sumcheck.rs', 'tests/sumcheck_corpus.rs',
+              'src/zerocheck.rs', 'src/batch.rs', 'tests/zerocheck_corpus.rs', 'tests/batch_corpus.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
-               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\npub mod accounting;\n',
+               '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
+               'pub mod accounting;\npub mod batch;\npub mod sumcheck;\npub mod zerocheck;\n',
+    'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
+               'matches_reference_a3_corpus_decisions_and_receipts',
+               'matches_reference_a2_corpus_decisions_and_receipts'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
               'floor_counts_the_setup_term', 'hash_endpoints_hold_for_standard_and_treaty_and_fail_past_them',
               'rejects_overflowing_exponents_without_panicking', 'rejects_grinding_above_32_bits_for_any_profile',
               'rejects_a_field_degree_above_eight'),
-    # The admitted content: any edit to the module needs this pin moved in review.
-    'sha256': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
+    # The admitted content: any edit to these files, or to the manifest (which adds only
+    # the parity test's dev-dependency), needs its pin moved in review.
+    'pins': {
+        'src/accounting.rs': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
+        'src/sumcheck.rs': '48a06ac3d0f8e85bdd163d3b1644e38788043d9bad860418483804a4af208a35',
+        'src/zerocheck.rs': 'a82b783675819269f079de56cb1964076780068b0331cb3263d34ee540421df2',
+        'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
+        'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
+        'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
+        'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
+        'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
+    },
 }
 
 
 def accounting_surface(crate, actual, expected):
-    """Strip the admitted accounting module; any other verifier change stays guarded."""
-    module = crate / 'src/accounting.rs'
-    text = module.read_text() if module.is_file() else ''
+    """Strip the admitted verifier modules; any other verifier change stays guarded."""
+    def hidden(path):
+        # No other module may hide behind an admitted source file.
+        module = crate / path
+        text = module.read_text() if module.is_file() else ''
+        return ('#[path' in text or 'include!' in text
+                or not set(re.findall(r'\bmod\s+(\w+)', text)) <= {'tests'})
     if ((crate / 'src/lib.rs').read_text() != ACCOUNTING['library']
             or set(actual) != set(expected) | set(ACCOUNTING['files'])
-            or actual.get('Cargo.toml') != expected['Cargo.toml']
-            or actual.get('src/accounting.rs') != ACCOUNTING['sha256']
-            # No other module may hide behind the admitted file.
-            or '#[path' in text or 'include!' in text
-            or re.findall(r'\bmod\s+(\w+)', text) != ['tests']):
+            or any(actual.get(path) != pin for path, pin in ACCOUNTING['pins'].items())
+            or any(hidden(path) for path in ACCOUNTING['files'] if path.startswith('src/'))):
         return actual
     kept = {path: digest for path, digest in actual.items() if path not in ACCOUNTING['files']}
     kept['src/lib.rs'] = expected['src/lib.rs']
+    kept['Cargo.toml'] = expected['Cargo.toml']
     return kept
 
 
@@ -115,6 +134,16 @@ def accounting_admission(root):
         raise ValueError(f'accounting admission checks failed: {missing} {result.stderr[-2000:]}')
     print('gate accounting: exact (C1)-(C4) admission decision at its boundaries (E8-05b); '
           'no round enumeration, profile or NC-0804/0805 credit')
+    # E8-02a: the independent A1 verifier gives the production decisions and receipts.
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--test', 'sumcheck_corpus',
+                             '--test', 'zerocheck_corpus', '--test', 'batch_corpus',
+                             '--locked', '--offline'], cwd=root, text=True, capture_output=True)
+    lines = result.stdout.splitlines()
+    missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
+    if result.returncode or missing:
+        raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
+    print('gate verifier: independent no_std A1 sumcheck, A3 zerocheck and A2 batches match every '
+          'corpus decision and receipt (E8-02a, E8-02b)')
 
 
 def development_surface(crate, name, actual, expected):
@@ -1418,6 +1447,12 @@ def sumcheck_corpus(root, path='research/sumcheck/corpus.jsonl', features=()):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
         raise ValueError('sumcheck corpus decisions/accounting mismatch')
+    # E8-02a: the A1 corpus's recorded production receipts, which the independent
+    # verifier is held to. A missing file fails; the other A1 corpora have none.
+    if path == 'research/sumcheck/corpus.jsonl':
+        receipts = root / 'research/sumcheck/corpus-receipts.jsonl'
+        if outputs[0] != [json.loads(line) for line in receipts.read_text().splitlines()]:
+            raise ValueError('sumcheck corpus receipts differ from the recorded file (E8-02a)')
     for case, result in zip(cases, outputs[0]):
         if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
             raise ValueError('sumcheck corpus expected rejection mismatch')
@@ -1483,6 +1518,10 @@ def batch_corpus(root):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
         raise ValueError('batch corpus decisions/obligations/accounting mismatch')
+    # E8-02b: the recorded production receipts the independent verifier is held to.
+    if outputs[0] != [json.loads(line) for line in
+                      (root / 'research/batching/corpus-receipts.jsonl').read_text().splitlines()]:
+        raise ValueError('batch corpus receipts differ from the recorded file (E8-02b)')
     for case, result in zip(cases, outputs[0]):
         if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
             raise ValueError('batch corpus expected rejection mismatch')
@@ -1629,6 +1668,10 @@ def zero_corpus(root):
     cases = [json.loads(line) for line in (root / path).read_text().splitlines()]
     if not cases or outputs[0] != outputs[1] or len(outputs[0]) != len(cases):
         raise ValueError('zerocheck corpus decisions/claims/accounting mismatch')
+    # E8-02b: the recorded production receipts the independent verifier is held to.
+    if outputs[0] != [json.loads(line) for line in
+                      (root / 'research/zerocheck/corpus-receipts.jsonl').read_text().splitlines()]:
+        raise ValueError('zerocheck corpus receipts differ from the recorded file (E8-02b)')
     for case, result in zip(cases, outputs[0]):
         if result['name'] != case['name'] or result.get('error', 'accept') != case['expected']:
             raise ValueError('zerocheck corpus expected rejection mismatch')
