@@ -4818,3 +4818,19 @@ tasks:
   - a sampled profile of the byte-5 stories42M T = 64 prove names the top CPU cost (the plain checker's per-entry Ref::index, about a third of busy samples)
   - check() returns the same first violation and value as before; Gather::index equals Ref::index on permuted, broadcast and fixed-bit refs; every proof byte-identical to the recorded byte-5 proof
   - three alternating before/after runs each at 1-minute load below 3, with bench/ledger entries
+- id: E16-39
+  epic: E16
+  title: Re-measure stories42M dev-zk byte 4 T = 64 on current main (after E16-34, #362 and E16-38) for an up-to-date ledger
+  depends:
+  - E16-38
+  rfc:
+  - RFC-0026 §7
+  - RFC-0013 A10
+  skill: benchmark-runner
+  crate: bench
+  status: in_progress
+  agent: claude-code
+  branch: task/E16-39-dev-zk-t64-remeasure
+  acceptance:
+  - three proves under one commitment, each verified with --expect-model, each started at a 1-minute load below 3; prove, verify, peak footprint and proof bytes recorded; the wrong-model control rejected
+  - bench/ledger entry, scoreboard, README and docs/development-e2e.md updated

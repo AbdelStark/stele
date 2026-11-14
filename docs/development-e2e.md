@@ -182,8 +182,11 @@ index, read from `verify.out`, is recorded), `verify1.out` and `pin.out`.
 
 ### dev-zk on stories42M (task E12-29, RFC-0013 A9; `T = 64`: task E16-33, A10)
 
-Since E16-33, `T = 64` (checked `23..64`, `y = 376`) also proves on the 48 GB laptop:
-prove 923.1 s, verify 46.5 s, 25,667,970 bytes (memory note below). Its admission is
+Since E16-33, `T = 64` (checked `23..64`, `y = 376`) also proves on the 48 GB laptop.
+On current main (E16-39, after E16-34 and E16-38) it proves in 538.6 s and verifies in
+30.1 s, with 25,667,970 proof bytes and a 105.9 GB peak footprint (medians of three;
+`bench/ledger/e16-39-dev-zk-stories42m-t64-mac.json`). E16-33 measured 923.1 s and
+46.5 s (memory note below). Its admission is
 RFC-0013 A10 (development tier). At `T = 64` a proof shows all 41 greedy choices at
 positions 23..63.
 
@@ -270,6 +273,20 @@ E16-33 ledgers record it as `prove_peak_footprint_bytes`.
 
 Ledgers: `bench/ledger/e16-33-dev-zk-stories42m-t32-mac-before.json`, `-after.json`,
 `e16-33-dev-zk-stories42m-t64-mac.json`.
+
+**Re-measured on current main (E16-39, `85f289a`).** The same `T = 64` window, after
+E16-34's lazy products and base-field masked rounds and E16-38's checker tables. The
+proof bytes and the soundness ledger are unchanged.
+
+| Window | Prove | Peak footprint | Verify | Proof bytes |
+|---|---:|---:|---:|---:|
+| `T = 64`, E16-33 (`a87e071`) | 923.1 s | 107.1 GB | 46.5 s | 25,667,970 |
+| `T = 64`, E16-39 (`85f289a`) | 538.6 s | 105.9 GB | 30.1 s | 25,667,970 |
+
+The prove time fell by 42% and the verify time by 35%; the peak footprint is unchanged.
+The `commit-model --zk` step takes 86.4 s. Ledger:
+`bench/ledger/e16-39-dev-zk-stories42m-t64-mac.json` (medians of three, each run at a
+1-minute load below 3).
 
 ### dev-zk privacy tests on stories42M (task E12-32)
 
