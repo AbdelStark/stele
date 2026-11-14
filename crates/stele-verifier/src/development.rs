@@ -971,6 +971,40 @@ mod tests {
             .collect()
     }
 
+    /// §1.1 through A15 §2: the checked range and the next token.
+    #[test]
+    fn rejects_statements_outside_section_1_1() {
+        let good = hex(PUBLIC_1);
+        let n = good.len();
+        assert!(Public::decode(&good).is_ok());
+        let set = |at: usize, v: &[u8]| {
+            let mut b = good.clone();
+            b[at..at + v.len()].copy_from_slice(v);
+            b
+        };
+        // e = 3 > T = 2; r = e = 2; next absent although e = T; presence byte 2.
+        for bad in [
+            set(n - 9, &3u32.to_le_bytes()),
+            set(n - 13, &2u32.to_le_bytes()),
+            set(n - 5, &[0]),
+            set(n - 5, &[2]),
+        ] {
+            assert!(matches!(
+                Public::decode(&bad),
+                Err(Error::StatementMismatch)
+            ));
+        }
+        let mut long = good.clone();
+        long.push(0);
+        assert!(matches!(
+            Public::decode(&long),
+            Err(Error::StatementMismatch)
+        ));
+        // A byte-5 verifier accepts only the v4 magic.
+        let v3 = set(18, b"3");
+        assert!(matches!(Public::decode(&v3), Err(Error::StatementMismatch)));
+    }
+
     #[test]
     fn matches_reference_a15_small_codec_vectors() {
         for (relation, public, input) in [
