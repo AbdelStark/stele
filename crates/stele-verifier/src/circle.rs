@@ -175,6 +175,7 @@ fn transform<K: Field>(
 impl Circle {
     /// `C(m, b)` with `b ∈ {1, 2}` and `m + b ≤ 30`.
     pub fn new(log_message: u32, log_blowup: u32) -> Result<Self, Error> {
+        // RFC-0010 A2: blowup 1 or 2, and m + b ≤ 30.
         if !(1..=2).contains(&log_blowup) || log_message > 30 - log_blowup {
             return Err(Error::InvalidSize);
         }
@@ -204,6 +205,7 @@ impl Circle {
     /// The codeword of `row`: interpolate on `D_m`, zero-extend the coefficients,
     /// evaluate on `D_{m+b}`.
     pub fn encode<K: Field>(&self, row: &[K]) -> Result<Vec<K>, Error> {
+        // RFC-0010 A2: a message row has exactly 2^m values.
         if row.len() != self.message_len() {
             return Err(Error::RowShape);
         }
@@ -218,6 +220,7 @@ impl Circle {
 
     /// The codeword at `columns`, in order and with repeats.
     pub fn eval_row<K: Field>(&self, row: &[K], columns: &[usize]) -> Result<Vec<K>, Error> {
+        // RFC-0010 A2: every requested column is inside the codeword.
         if columns.iter().any(|c| *c >= self.codeword_len()) {
             return Err(Error::Column);
         }

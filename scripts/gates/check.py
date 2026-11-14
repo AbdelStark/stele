@@ -101,7 +101,7 @@ ACCOUNTING = {
         'src/zerocheck.rs': 'a82b783675819269f079de56cb1964076780068b0331cb3263d34ee540421df2',
         'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
         'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
-        'src/circle.rs': 'b8d5c0cc6fabe1842c658cb83fe431daa1ea103f36067df50b414f8462bd28d1',
+        'src/circle.rs': '0b8afff4794d899652a6e8ca8cbe6203ff5bc43df1ede32d780655e7b9f455f4',
         'tests/circle_vectors.rs': '15675d311a9558979f34c1c8d4f461cd1e93d9b1131bdd0a01bcf3a630a19403',
         'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
