@@ -149,7 +149,7 @@ ACCOUNTING = {
         'src/development.rs': 'a418b53962620f96eda20c460f0000850054c976902d0d89d9cb5b4b49a02e0f',
         'src/plan.rs': 'a904cf69e5e20926727c2903c4a4b3ff46396528a21d78bce9a0be097a164037',
         'src/relation.rs': '8c806fde3b4f405724de609afe467d5b0911209bad68be9b8448d9d4368bee7f',
-        'tests/development_replay.rs': '66ebe06e778f9c208b6591701c261950426533080275604141172daf7577d130',
+        'tests/development_replay.rs': '7c26641e813722378de71b06aa256be0d9b28094ed4fbcb127e3116d4215be8d',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
     },
 }
@@ -222,13 +222,22 @@ def accounting_admission(root):
                                 cwd=root, text=True, capture_output=True, env=env)
         if result.returncode or 'test dumps_byte5' not in result.stdout:
             raise ValueError(f'development replay: production dump failed {result.stderr[-2000:]}')
+        # E8-02f1b: the forged one-layer windows, one per check no one-value tamper reaches.
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-negative-controls', '--features',
+                                 'controls', '--lib', 'dumps_forged', '--locked', '--offline', '--', '--ignored'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        if result.returncode or 'dumps_forged' not in result.stdout:
+            raise ValueError(f'development replay: forged dump failed {result.stderr[-2000:]}')
         env = dict(os.environ, STELE_DEV_REPLAY_DIR=windows)
         result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-verifier', '--test',
                                  'development_replay', '--locked', '--offline', '--', '--nocapture'],
                                 cwd=root, text=True, capture_output=True, env=env)
         name = 'matches_reference_verify_dev_on_byte5_windows_and_tampers'
         windows_seen = result.stderr.count('tampers rejected')
-        if result.returncode or f'test {name} ... ok' not in result.stdout.splitlines() or windows_seen != 2:
+        forged = (result.stderr.count('forged-table: forged Err(TableDenominatorMismatch)')
+                  + result.stderr.count('forged-public: forged Err(PublicMismatch)'))
+        if (result.returncode or f'test {name} ... ok' not in result.stdout.splitlines() or windows_seen != 2
+                or forged != 2):
             raise ValueError(f'development replay: parity failed ({windows_seen} windows) {result.stderr[-2000:]}')
     # E8-02d: the PCS fixtures (Policy 2 full bytes, parameter table, Policy 1
     # continuations, single-position mismatches) are the Python oracle's current output.
@@ -241,7 +250,7 @@ def accounting_admission(root):
           'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes; RFC-0008 A3 fraction trees '
           'match every corpus decision and receipt, and the LogUp grinding bits and nonce round are '
           'checked (E8-02a..e); the RFC-0026 A15 byte-5 replay accepts the dumped one- and eight-layer '
-          'windows and rejects their one-byte tampers (E8-02f1)')
+          'windows, rejects their one-byte tampers and the two forged windows (E8-02f1)')
 
 
 def development_surface(crate, name, actual, expected):

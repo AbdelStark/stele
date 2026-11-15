@@ -6,7 +6,9 @@
 //! test-only dump writes them. `STELE_BIN`, when set, names the `stele` binary, and
 //! every case's decision is compared with `verify-dev`'s. `cqis_id` is read from the
 //! container header: deriving it from the model is E8-02f2. `STELE_DEV_REPLAY_ALL`
-//! tampers every section, not only the first and last of each list.
+//! tampers every section, not only the first and last of each list. Windows named
+//! `forged-table` and `forged-public` (production's forged dump) must be rejected with
+//! `TableDenominatorMismatch` and `PublicMismatch`.
 
 use std::path::Path;
 use std::process::Command;
@@ -280,6 +282,22 @@ fn matches_reference_verify_dev_on_byte5_windows_and_tampers() {
             proof: read("proof.bin"),
             relation: read("relation.bin"),
         };
+        // Forged windows (production's lying-prover dump, E8-02f1b): each must fail at
+        // the one check its forgery reaches, A15 §6.4 steps 5 and 8.
+        let forged = match dir.file_name().and_then(|n| n.to_str()) {
+            Some("forged-table") => Some(Error::TableDenominatorMismatch),
+            Some("forged-public") => Some(Error::PublicMismatch),
+            _ => None,
+        };
+        if let Some(expected) = forged {
+            let decision = ours(&honest);
+            eprintln!("{}: forged {decision:?}", dir.display());
+            assert_eq!(decision, Err(expected), "{}", dir.display());
+            if let Some(yes) = production(&honest, &scratch) {
+                assert!(!yes, "{}: verify-dev accepted", dir.display());
+            }
+            continue;
+        }
         let start = Instant::now();
         let decision = ours(&honest);
         eprintln!(
