@@ -402,6 +402,13 @@ impl Claims {
 /// Verify a byte-5 development proof (RFC-0026 A15): the public file, the container,
 /// and the relation in its §5 encoding, with the `cqis_id` the caller derived from
 /// the model. `Ok` is acceptance.
+///
+/// # Security
+///
+/// `Ok` means only that the container proves *this* relation; until E8-02f2 the
+/// relation must come from a trusted derivation, never from the prover. The
+/// statement digest covers BLAKE3(relation), but the prover writes that digest, and
+/// the model, the tokens and `y` reach the statement only through the relation.
 pub fn verify(
     public: &[u8],
     container: &[u8],
@@ -409,9 +416,9 @@ pub fn verify(
     cqis_id: &[u8; 32],
 ) -> Result<(), Error> {
     let file = Public::decode(public)?;
-    // A15 §6.0: the relation is decoded and validated before any proof byte is read.
+    // A15 §6.0: the relation is decoded and validated (in `Plan::derive`) before any
+    // proof byte is read. Against a caller-chosen relation this is the only §3.6 check.
     let rel = Relation::decode(relation)?;
-    rel.validate()?;
     let plan = Plan::derive(&rel)?;
     let relation_digest = stele_hash::blake3_digest(relation);
     let input = file.input(cqis_id)?;
@@ -710,6 +717,8 @@ fn lookup(
         return Err(Error::TableDenominatorMismatch);
     }
     // Leaf: σ is each member's selector (or ones) on its block, 0 on the padding.
+    // shortcut: σ is dense, about 16 GB at m = 30 for a caller-chosen relation; it goes
+    // away once relations are derived from the plan (E8-02f2), whose checks are small.
     let size = pow2(check.m).ok_or(Error::Capacity)?;
     let mut sigma = reserve(size)?;
     sigma.resize(size, K::from_i64(0));
@@ -1003,6 +1012,20 @@ mod tests {
         // A byte-5 verifier accepts only the v4 magic.
         let v3 = set(18, b"3");
         assert!(matches!(Public::decode(&v3), Err(Error::StatementMismatch)));
+    }
+
+    /// A15 §6.0: a relation whose witness names a missing group is refused as
+    /// StatementMismatch by `verify`, before any plan indexing (review of #381).
+    #[test]
+    fn rejects_a_witness_of_a_missing_group_through_verify() {
+        let mut rel = b"stele/v0.1/relation/encoding/v1".to_vec();
+        // One group "g" of log_len 1, one witness column "w" in group 7.
+        rel.extend_from_slice(&[1, 0, 0, 0, 1, 0, 0, 0, b'g', 1]);
+        rel.extend_from_slice(&[1, 0, 0, 0, 1, 0, 0, 0, b'w', 0, 7, 0, 0, 0, 0, 8, 1]);
+        rel.extend_from_slice(&[0; 4 * 6]);
+        assert!(Relation::decode(&rel).is_ok());
+        let result = verify(&hex(PUBLIC_1), &hex(CONTAINER_1), &rel, &[1; 32]);
+        assert_eq!(result, Err(Error::StatementMismatch));
     }
 
     #[test]

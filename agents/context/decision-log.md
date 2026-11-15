@@ -4046,8 +4046,22 @@ Decision (Proposed):
   relation (A15 §5 bytes) and `cqis_id` are inputs from the caller. Everything else is
   derived as A15 §6 says. E8-02f2 replaces both inputs with values derived from the
   Model, Scales and Preparation. Until then, the A15 §2 record and `NumericalIdentity`
-  checks are not made, and a caller that takes `cqis_id` from the container gets no
-  model binding beyond the transcript.
+  checks are not made.
+- **The relation input is unbound (#381 review, blocking).** `Ok` means only that the
+  container proves *this* relation. Until E8-02f2, the relation must come from a
+  trusted derivation, never from the prover. The statement digest covers
+  BLAKE3(relation), but the prover writes that digest, and the model, the tokens and
+  `y` reach the statement only through the relation. A prover-supplied relation
+  therefore guarantees nothing about them. `verify`'s `# Security` section says the
+  same.
+- **Validation is load-bearing.** Against a caller-chosen relation and digest,
+  `Relation::validate` is the only §3.6 check. `Plan::derive` runs it first, because
+  the derivation indexes groups, tables and columns as validation guarantees.
+  Following the review's spec readings (an A15 erratum is to follow):
+  - a matmul with `free = 0` is not rejected;
+  - the matmul cover search is capped at 16 fixed positions, and past that the column
+    is undisciplined;
+  - empty identities and duplicate group names are rejected.
 - **BLAKE3.** `stele-hash` exports `blake3_digest`, plain BLAKE3, for A15's relation
   and statement digests. The verifier keeps its two dependencies.
 - **Spec gaps** (listed in the PR) are resolved by the most natural reading of the text.

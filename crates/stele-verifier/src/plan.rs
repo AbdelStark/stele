@@ -176,7 +176,10 @@ fn place(sizes: &[u8]) -> Result<(Vec<u64>, u64), Error> {
 }
 
 impl Plan {
+    /// The plan of a relation, validated first (A15 §6.0): the derivation indexes
+    /// groups, tables and columns as validation guarantees (review of #381).
     pub fn derive(rel: &Relation) -> Result<Self, Error> {
+        rel.validate()?;
         let mut homes = reserve(rel.columns.len())?;
         homes.resize(rel.columns.len(), None);
         let mut sources = Vec::new();
@@ -410,6 +413,31 @@ mod tests {
             (1 << 30, 30),
         ] {
             assert_eq!(ceil_log2(n), b);
+        }
+    }
+
+    /// The tie rule ("ties go to the smallest ell") is never exercised: no stacked or
+    /// model source of 6..=30 bits and no multiplicity source of 0..=16 bits has two
+    /// valid geometries of equal least size (review of #381).
+    #[test]
+    fn no_geometry_ties_at_any_reachable_size() {
+        let unique = |id: u64, ells: core::ops::RangeInclusive<u8>, m: &dyn Fn(u8) -> u8| {
+            let sizes: Vec<usize> = ells
+                .filter_map(|ell| sized(id, ell, m(ell)))
+                .map(|g| g.certificate + g.opening)
+                .collect();
+            let least = *sizes.iter().min().expect("a valid geometry");
+            sizes.iter().filter(|s| **s == least).count() == 1
+        };
+        for bits in 6..=30u8 {
+            assert!(unique(
+                STACKED_ID,
+                bits.saturating_sub(28)..=bits.min(30),
+                &|ell| bits - ell
+            ));
+        }
+        for k in 0..=16u8 {
+            assert!(unique(3, 0..=k, &|ell| k - ell + 2));
         }
     }
 

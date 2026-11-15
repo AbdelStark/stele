@@ -263,7 +263,8 @@ pub(crate) fn mle_at<K: ChallengeField>(table: &[K], point: &[K]) -> K {
 }
 
 /// The MLE of a table of exactly `2^len(point)` entries: the first (most significant)
-/// coordinate splits it into halves, `(1 − r)·low + r·high`.
+/// coordinate splits it into halves, `(1 − r)·low + r·high`. Recursive, depth
+/// `len(point)` (at most 30 for the replay's tables).
 fn fold<K: ChallengeField>(table: &[K], point: &[K]) -> K {
     match point.split_first() {
         None => table[0],

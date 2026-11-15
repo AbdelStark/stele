@@ -125,6 +125,8 @@ pub struct Compose {
 pub struct Relation {
     /// Each group's `log_len`.
     pub groups: Vec<u8>,
+    /// Each group's name (§2.3: names are distinct).
+    pub group_names: Vec<Vec<u8>>,
     pub columns: Vec<Column>,
     pub tables: Vec<Table>,
     pub identities: Vec<Identity>,
@@ -175,10 +177,16 @@ impl Relation {
         if r.take(MAGIC.len())? != MAGIC {
             return Err(Error::StatementMismatch);
         }
-        let groups = list(r, 5, |r| {
-            r.blob()?;
-            r.u8()
+        let named = list(r, 5, |r| {
+            let name = r.blob()?;
+            let mut owned = reserve(name.len())?;
+            owned.extend_from_slice(name);
+            Ok((owned, r.u8()?))
         })?;
+        let mut groups = reserve(named.len())?;
+        groups.extend(named.iter().map(|(_, n)| *n));
+        let mut group_names = reserve(named.len())?;
+        group_names.extend(named.into_iter().map(|(name, _)| name));
         let columns = list(r, 8, |r| {
             r.blob()?;
             let kind = match r.u8()? {
@@ -257,6 +265,7 @@ impl Relation {
         r.end()?;
         Ok(Relation {
             groups,
+            group_names,
             columns,
             tables,
             identities,
@@ -320,8 +329,15 @@ impl Relation {
                 }
             }
         }
+        // §2.3 group naming: names are deterministic and distinct (review of #381).
+        for (n, name) in self.group_names.iter().enumerate() {
+            if self.group_names[n + 1..].contains(name) {
+                return Err(bad);
+            }
+        }
         for i in &self.identities {
-            if i.vars > MAX_VARS {
+            // An identity with no term (review of #381).
+            if i.vars > MAX_VARS || i.terms.is_empty() {
                 return Err(bad);
             }
             let mut bound = 0u128;
@@ -376,8 +392,8 @@ impl Relation {
         }
         for m in &self.matmuls {
             let domain = m.free.checked_add(m.summed).ok_or(bad)?;
-            // §3.1 / A6: 1 ≤ free and free + summed ≤ MAX_VARS.
-            if m.free == 0 || domain > MAX_VARS {
+            // §3.1: free + summed ≤ MAX_VARS.
+            if domain > MAX_VARS {
                 return Err(bad);
             }
             self.check_ref(&m.out, m.free, true)?;
@@ -533,9 +549,28 @@ fn slice(r: &Ref) -> Result<Vec<(usize, bool)>, Error> {
     Ok(out)
 }
 
-/// Whether the slices cover every index: split on a fixed bit until some slice has
-/// no constraint left (covered) or none remains (a gap).
+/// Most distinct fixed positions [`covers`] searches; past it the column is not
+/// disciplined (review of #381: bounds the search at 2^16 leaves).
+const MAX_COVER_BITS: usize = 16;
+
+/// Whether the slices cover every index. Past [`MAX_COVER_BITS`] distinct fixed
+/// positions the answer is "no", so the column stays undisciplined.
 fn covers(patterns: &[Vec<(usize, bool)>]) -> Result<bool, Error> {
+    let mut positions = 0u64;
+    for p in patterns {
+        for (j, _) in p {
+            positions |= 1u64.checked_shl(*j as u32).unwrap_or(0);
+        }
+    }
+    if positions.count_ones() as usize > MAX_COVER_BITS {
+        return Ok(false);
+    }
+    split(patterns)
+}
+
+/// Split on a fixed bit until some slice has no constraint left (covered) or none
+/// remains (a gap).
+fn split(patterns: &[Vec<(usize, bool)>]) -> Result<bool, Error> {
     let Some(first) = patterns.first() else {
         return Ok(false);
     };
@@ -552,7 +587,7 @@ fn covers(patterns: &[Vec<(usize, bool)>]) -> Result<bool, Error> {
                 branch.push(rest);
             }
         }
-        if !covers(&branch)? {
+        if !split(&branch)? {
             return Ok(false);
         }
     }
@@ -590,6 +625,7 @@ mod tests {
     fn small() -> Relation {
         Relation {
             groups: alloc::vec![1],
+            group_names: alloc::vec![b"g".to_vec()],
             columns: alloc::vec![
                 Column {
                     kind: Kind::Witness(0),
@@ -627,7 +663,13 @@ mod tests {
     #[test]
     fn rejects_each_section_3_6_rule() {
         assert_eq!(small().validate(), Ok(()));
-        let bad: [fn(&mut Relation); 9] = [
+        let bad: [fn(&mut Relation); 11] = [
+            // An empty identity, and two groups of one name.
+            |r| r.identities[0].terms.clear(),
+            |r| {
+                r.groups.push(1);
+                r.group_names = alloc::vec![b"g".to_vec(), b"g".to_vec()];
+            },
             // item 3: the witness is no longer enforced.
             |r| r.ranges.clear(),
             // item 3: a range wider than the column does not enforce it.
@@ -665,5 +707,10 @@ mod tests {
         assert_eq!(covers(&four), Ok(true));
         assert_eq!(covers(&four[1..]), Ok(false));
         assert_eq!(covers(&[pat(&[])]), Ok(true));
+        // 17 distinct fixed positions are past the cap, even when they cover.
+        let mut wide = alloc::vec![pat(&[(0, false)]), pat(&[(0, true)])];
+        wide.extend((1..17).map(|j| pat(&[(j, false), (0, false)])));
+        assert_eq!(covers(&wide[..2]), Ok(true));
+        assert_eq!(covers(&wide), Ok(false));
     }
 }
