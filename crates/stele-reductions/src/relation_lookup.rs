@@ -398,6 +398,13 @@ pub(super) fn prove(
             }
         }
     });
+    // Malicious-prover seam: a zero-count row's denominator moved (sum unchanged).
+    #[cfg(any(test, feature = "controls"))]
+    if check.shift != 0 {
+        if let Some(i) = (0..check.t).find(|i| counts[*i] == 0) {
+            right[i][1] = right[i][1] + K::from_i64(check.shift);
+        }
+    }
     let (right_proof, table) = p.right.prove(&right, t).map_err(FRACTION)?;
     out.extend_from_slice(&right_proof.encode(&p.right).map_err(FRACTION)?);
     let ids: Vec<u64> = (0..check.c).map(|i| check.tuple_id(i)).collect();
