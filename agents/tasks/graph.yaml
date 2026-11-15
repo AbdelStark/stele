@@ -2020,6 +2020,22 @@ tasks:
   acceptance:
   - an ignored test, off by default and gated on STELE_DUMP_DIR, writes <dir>/<window>/{public.bin, proof.bin, relation.bin} for the one-layer T = 16 and eight-layer T = 64 byte-5 windows, each proof verified first
   - no new API surface, no pin change
+- id: E8-02f1b
+  epic: E8
+  title: Forged byte-5 windows for the independent verifier's parity (a zero-count table row's denominator shifted; a public column read with one entry +1), dumped under STELE_DUMP_DIR
+  depends:
+  - E8-02f1a
+  rfc:
+  - RFC-0026 A15
+  - RFC-0008 A5
+  skill: negative-control-author
+  crate: tests
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02f1b-forged-windows
+  acceptance:
+  - stele-reductions relation::prove_forged (feature controls only, beside the skew/split seams) proves with the honest plan and relation digest and one forge applied
+  - forged-table and forged-public one-layer byte-5 windows, each rejected by production verify with TableDenominatorMismatch and PublicMismatch(30); dumped as public/proof/relation.bin under STELE_DUMP_DIR (ignored test) and checked by a regular controls test; the seam mutation-checked
 - id: E8-03
   epic: E8
   title: Python differential verifier

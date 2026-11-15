@@ -1543,3 +1543,166 @@ fn rejects_nc_1321_to_nc_1324_lookup_grinding() {
         assert_eq!(run(id), Ok(()), "NC-{id}");
     }
 }
+
+/// E8-02f1b (controls only): forged one-layer byte-5 windows (T = 16) for the independent
+/// verifier's parity. Each is proved by `relation::prove_forged`: the plan and absorbed
+/// relation digest are the honest relation's, and the container header is the honest one,
+/// so only the named replay check can reject it. Production `verify` must reject each with
+/// its error. Writes `<dir>/<name>/` as `public.bin`, `proof.bin` and `relation.bin`.
+/// - `forged-table`: check 0's first zero-count table row has its denominator shifted by
+///   one (the fraction sum is unchanged): `TableDenominatorMismatch`.
+/// - `forged-public`: public column 30 is read with entry `j` plus one: `PublicMismatch(30)`.
+#[cfg(feature = "controls")]
+pub fn forged_windows(dir: &std::path::Path, public_entry: usize) -> Result<(), String> {
+    use stele_reductions::stele_ir::relation::ColumnId;
+    use stele_reductions::stele_pcs::VerifiedCertificate;
+    let e = |e: &dyn core::fmt::Debug| format!("{e:?}");
+    let model = Model::decode(span("model")?).map_err(|x| e(&x))?;
+    let prep = Preparation::decode(&model, span("preparation")?).map_err(|x| e(&x))?;
+    let scales = Scales::decode(&model, span("scales")?).map_err(|x| e(&x))?;
+    let artifact = span("artifact")?;
+    let id = artifact_id(artifact);
+    let mut exec =
+        Executor::new(&model, &prep, &scales, artifact, &id, 1 << 34).map_err(|x| e(&x))?;
+    let mut tokens = vec![1u32];
+    let mut cache = None;
+    let next = loop {
+        let (step, c) = exec
+            .step(*tokens.last().ok_or("tokens")?, cache.as_ref())
+            .map_err(|x| e(&x))?;
+        cache = Some(c);
+        let max = step.logits().iter().max().ok_or("logits")?;
+        let y = step
+            .logits()
+            .iter()
+            .position(|v| v == max)
+            .ok_or("argmax")? as u32;
+        if tokens.len() == 16 {
+            break y;
+        }
+        tokens.push(y);
+    };
+    let statement = Statement {
+        tokens,
+        start: 0,
+        end: 16,
+        next: Some(next),
+    };
+    let set = Sources::CircleAllGrind;
+    let weights = Weights::from_artifact_sources(&model, artifact, set).map_err(|x| e(&x))?;
+    let committed = Committed::new(&weights).map_err(|x| e(&x))?;
+    let public = Public {
+        model: span("model")?.to_vec(),
+        scales: span("scales")?.to_vec(),
+        preparation: span("preparation")?.to_vec(),
+        vectors: weights.vectors.clone(),
+        commitment: committed.commitment.clone(),
+        sources: weights.sources(),
+    };
+    // The honest relation and witness, taken from the prover without changing them.
+    let mut honest: Option<(Relation, Values)> = None;
+    let mut hook = |r: &mut Relation, v: &mut Values| honest = Some((r.clone(), v.clone()));
+    prove_tampered(
+        &public, &mut exec, &weights, &committed, &statement, &mut hook,
+    )
+    .map_err(|x| e(&x))?;
+    let (rel, values) = honest.ok_or("hook")?;
+    // The model sources the prover committed, rebuilt from the relation (A5).
+    let layouts = relation::model_layout(&rel, set).map_err(|x| e(&x))?;
+    let messages = relation::model_messages(&rel, &values).map_err(|x| e(&x))?;
+    let mut prepared = Vec::new();
+    for (l, m) in layouts.iter().zip(&messages) {
+        prepared.push(set.prepare(l.id, l.ell, &l.code, m).map_err(|x| e(&x))?);
+    }
+    let mut certificates: Vec<VerifiedCertificate<relation::K>> = Vec::new();
+    for (p, (root, _)) in prepared.iter().zip(&public.commitment) {
+        if p.source().root() != *root {
+            return Err("model root differs from the commitment".into());
+        }
+        let (bytes, _) = p.certificate().map_err(|f| e(&f.cause))?;
+        certificates.push(
+            verify_certificate(*p.source(), &bytes)
+                .map_err(|f| e(&f.cause))?
+                .0,
+        );
+    }
+    let model_sources: Vec<_> = prepared.iter().zip(&certificates).collect();
+    let (cqis_id, _) = stele_prover::development::model_identity(&public).map_err(|x| e(&x))?;
+    let digest = statement_digest_for(&public, &statement).map_err(|x| e(&x))?;
+    for (name, forge, expected) in [
+        (
+            "forged-table",
+            relation::Forge {
+                table: Some(0),
+                public: None,
+            },
+            "TableDenominatorMismatch",
+        ),
+        (
+            "forged-public",
+            relation::Forge {
+                table: None,
+                public: Some((ColumnId(30), public_entry)),
+            },
+            "PublicMismatch(ColumnId(30))",
+        ),
+    ] {
+        let input = public_input(&public, &cqis_id, &statement);
+        let mut t = Transcript::<relation::K>::new(&input).map_err(|x| e(&x))?;
+        let p = relation::prove_forged(&mut t, &rel, &values, &model_sources, set, &forge)
+            .map_err(|x| e(&x))?;
+        let proof = container::Container {
+            cqis_id,
+            statement: digest,
+            groups: p.groups,
+            multiplicities: p.multiplicities,
+            identities: p.identities,
+            lookups: p.lookups,
+            matmuls: p.matmuls,
+            openings: p.openings,
+        }
+        .encode();
+        let got = verify(&public, &statement, &proof)
+            .err()
+            .map(|x| format!("{x:?}"));
+        if !got.as_deref().is_some_and(|g| g.contains(expected)) {
+            return Err(format!("{name}: expected {expected}, got {got:?}"));
+        }
+        let out = dir.join(name);
+        std::fs::create_dir_all(&out).map_err(|x| e(&x))?;
+        std::fs::write(
+            out.join("public.bin"),
+            stele_prover::development::bundle::encode(&public, &statement),
+        )
+        .map_err(|x| e(&x))?;
+        std::fs::write(out.join("proof.bin"), &proof).map_err(|x| e(&x))?;
+        std::fs::write(out.join("relation.bin"), relation::encode(&rel)).map_err(|x| e(&x))?;
+        eprintln!("{name}: rejected with {got:?} -> {}", out.display());
+    }
+    Ok(())
+}
+
+/// E8-02f1b: with `STELE_DUMP_DIR`, write the forged one-layer byte-5 windows
+/// (`forged_windows`); off by default.
+#[cfg(all(test, feature = "controls"))]
+#[test]
+#[ignore = "dump: STELE_DUMP_DIR=<dir> cargo test --release -p stele-negative-controls --features controls --lib dumps_forged -- --ignored"]
+fn dumps_forged_byte5_windows() {
+    if let Some(dir) = std::env::var_os("STELE_DUMP_DIR") {
+        forged_windows(std::path::Path::new(&dir), FORGED_PUBLIC_ENTRY).expect("forged windows");
+    }
+}
+
+/// The entry of public column 30 the `forged-public` window reads plus one.
+#[cfg(all(test, feature = "controls"))]
+const FORGED_PUBLIC_ENTRY: usize = 0;
+
+/// E8-02f1b: the forged windows are rejected with their named errors (no dump kept).
+#[cfg(all(test, feature = "controls"))]
+#[test]
+fn rejects_forged_table_and_public_windows() {
+    let dir = std::env::temp_dir().join(format!("stele-forged-{}", std::process::id()));
+    let result = forged_windows(&dir, FORGED_PUBLIC_ENTRY);
+    let _ = std::fs::remove_dir_all(&dir);
+    result.expect("forged windows");
+}

@@ -478,6 +478,11 @@ pub(crate) struct Check {
     /// Test-only malicious-prover seam: member evaluations taken from these values.
     #[cfg(test)]
     split: Option<Values>,
+    /// Malicious-prover seam (tests and the `controls` feature): added to the
+    /// denominator of the first table row with a zero count. The fraction sum is
+    /// unchanged, so only the table-claim check sees it.
+    #[cfg(any(test, feature = "controls"))]
+    shift: i64,
 }
 impl Check {
     fn tuple_id(&self, i: usize) -> u64 {
@@ -649,6 +654,8 @@ fn check(
         skew: 0,
         #[cfg(test)]
         split: None,
+        #[cfg(any(test, feature = "controls"))]
+        shift: 0,
     })
 }
 
@@ -1340,6 +1347,41 @@ pub fn prove(
     let plan = plan(relation, sources)?;
     laps.lap("dev/plan");
     prove_plan(t, relation, &plan, values, values, model)
+}
+
+/// A malicious prover for controls (feature `controls`; never a verifier input).
+#[cfg(feature = "controls")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Forge {
+    /// Shift the denominator of check `i`'s first zero-count table row by one.
+    pub table: Option<usize>,
+    /// Read public column `c`'s entry `j` plus one while proving.
+    pub public: Option<(ColumnId, usize)>,
+}
+
+/// [`prove`] as a malicious prover: the plan and the absorbed relation digest are
+/// `relation`'s, but the proof is made with `forge` applied (controls only).
+#[cfg(feature = "controls")]
+pub fn prove_forged(
+    t: &mut Transcript<K>,
+    relation: &Relation,
+    values: &Values,
+    model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    sources: Sources,
+    forge: &Forge,
+) -> Result<Proof, Error> {
+    let mut plan = plan(relation, sources)?;
+    if let Some(i) = forge.table {
+        plan.checks.get_mut(i).ok_or(Error::Unsupported)?.shift = 1;
+    }
+    let mut read = relation.clone();
+    if let Some((c, j)) = forge.public {
+        match read.columns.get_mut(c.0 as usize).map(|c| &mut c.kind) {
+            Some(Kind::Public(v)) if j < v.len() => v[j] += 1,
+            _ => return Err(Error::Unsupported),
+        }
+    }
+    prove_plan(t, &read, &plan, values, values, model)
 }
 
 /// The prover. `committed` fills the group messages (step 2); `values` drives every
