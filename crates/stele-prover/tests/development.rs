@@ -1724,3 +1724,139 @@ const A15_SECOND: [&str; 3] = [
     "7374656c652d6465762d7075626c69632d7634030000004d444c020000005343010000005001000000030004000000ffff020001000000abababababababababababababababababababababababababababababababab03000000010203020000000500000006000000000000000100000000",
     "7374656c652f76302e312f6465762d6532652f7075626c69632d696e7075741111111111111111111111111111111111111111111111111111111111111111030000004d444c020000005343010000005001000000030004000000ffff020001000000abababababababababababababababababababababababababababababababab02000000050000000600000000000000010000000005",
 ];
+
+/// RFC-0026 A15 erratum E1 (task E8-02f0b): `Relation::validate` outcomes the replay
+/// relies on, each pinned with the BLAKE3 digest of the relation's A15 §5 encoding
+/// (built from A15's first small vector, or as described in the erratum).
+#[test]
+fn matches_a15_erratum_validation_vectors() {
+    use stele_reductions::stele_ir::relation::Invalid;
+    let shape = |name: &str| {
+        Err(Invalid::Shape {
+            relation: name.to_string(),
+        })
+    };
+    let base = || a15_small().0;
+    let mut vectors: Vec<(&str, Relation, Result<(), Invalid>)> = Vec::new();
+    // Group names are distinct.
+    let mut r = base();
+    r.groups.push(r.groups[0].clone());
+    vectors.push(("duplicate group name", r, shape("G/x/1")));
+    // An identity has at least one term.
+    let mut r = base();
+    r.identities[0].terms.clear();
+    vectors.push(("empty identity", r, shape("i")));
+    // Every table row has the table's arity.
+    let mut r = base();
+    r.tables[0].rows[0] = vec![0, 1];
+    vectors.push(("table row arity", r, shape("t")));
+    // Every table entry fits its column's width (unsigned 2: 0..=3).
+    let mut r = base();
+    r.tables[0].rows[1] = vec![4];
+    vectors.push(("table entry width", r, shape("t")));
+    // free = 0 is not a matmul rule: with the lookup's (non-0/1) selector removed, the
+    // matmul passes its own checks and validation stops later, at discipline (the
+    // weight column `k` is enforced by nothing).
+    let mut r = base();
+    r.lookups[0].selector = None;
+    r.matmuls[0].free = 0;
+    r.matmuls[0].summed = 1;
+    r.matmuls[0].out.vars = vec![Ref::FIXED_0];
+    r.matmuls[0].lhs.vars = vec![0];
+    vectors.push((
+        "matmul free = 0",
+        r,
+        Err(Invalid::Undisciplined(ColumnId(1))),
+    ));
+    // `covers` enumerates at most 16 fixed positions: 34 one-bit row blocks that cover
+    // every entry of a 17-bit out are still undisciplined.
+    vectors.push((
+        "covers cap",
+        a15_covers(),
+        Err(Invalid::Undisciplined(ColumnId(0))),
+    ));
+    let mut got = Vec::new();
+    for (name, relation, expected) in &vectors {
+        assert_eq!(&relation.validate(), expected, "{name}");
+        let digest = a15_hex(blake3::hash(&a15_relation(relation)).as_bytes());
+        assert!(
+            a15_relation(relation) == stele_reductions::relation::encode(relation),
+            "{name}"
+        );
+        eprintln!("A15 erratum {name}: {digest}");
+        got.push(digest);
+    }
+    assert_eq!(got, A15_ERRATUM_DIGESTS);
+}
+
+/// The `covers` vector: a 17-bit witness out `o` (signed 8, group `G/o/17`), the public
+/// one-entry column `one = [1]` (signed 2), ranges on `o` only through its row blocks:
+/// for each bit `j` in 0..17 and value `b` in {0, 1}, matmul `o/j{b}` with `free = 16`,
+/// `summed = 0`, out ref fixing bit `j` to `b` and reading domain bits 0..16 on the other
+/// positions in order, and `lhs = rhs = one` (no vars).
+fn a15_covers() -> Relation {
+    let r = |column: u32, vars: Vec<u8>| Ref {
+        column: ColumnId(column),
+        vars,
+    };
+    let mut matmuls = Vec::new();
+    for j in 0..17u8 {
+        for b in 0..2u8 {
+            let mut domain = 0u8;
+            let vars = (0..17u8)
+                .map(|k| match k == j {
+                    true => [Ref::FIXED_0, Ref::FIXED_1][usize::from(b)],
+                    false => {
+                        domain += 1;
+                        domain - 1
+                    }
+                })
+                .collect();
+            matmuls.push(Matmul {
+                name: format!("o/{j}{b}"),
+                free: 16,
+                summed: 0,
+                out: r(0, vars),
+                lhs: r(1, vec![]),
+                rhs: r(1, vec![]),
+            });
+        }
+    }
+    Relation {
+        groups: vec![Group {
+            name: "G/o/17".into(),
+            log_len: 17,
+        }],
+        columns: vec![
+            Column {
+                name: "o".into(),
+                kind: Kind::Witness(GroupId(0)),
+                width: Width {
+                    signed: true,
+                    bits: 8,
+                },
+                log_len: 17,
+            },
+            Column {
+                name: "one".into(),
+                kind: Kind::Public(vec![1]),
+                width: Width {
+                    signed: true,
+                    bits: 2,
+                },
+                log_len: 0,
+            },
+        ],
+        matmuls,
+        ..Relation::default()
+    }
+}
+
+const A15_ERRATUM_DIGESTS: [&str; 6] = [
+    "448785546a67956f62d3d5a3bab1fb0c52926d0296a7062e5c296e414927c58b",
+    "eecc2147a22a713950f6aa231f93115587c26d8d00b18000568acbc639722a1a",
+    "6434bf92d72792ebee722f43ef4de63b43ddeacb6fba0c4ffadfe754fe5fc3e2",
+    "c410668dde7a0cf0ca6ef223b4867458b260119f3fec8a8f485826f79259717b",
+    "d0dbdaf26c2ab77539c1d6d13fb9e00fce7ce89c17a593d28cb6edcec75ec48f",
+    "7c0070e1b1b3cedc38c43791841ed91eaf22d88a130fcbe35803d144f62aae8a",
+];
