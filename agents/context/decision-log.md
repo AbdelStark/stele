@@ -4030,3 +4030,64 @@ Consequences:
 Status: Accepted with RFC-0026 A15. Independent review: FIX-THEN-MERGE at d198d1f; fixes
 applied at 7fdabe5. E8-02f1 is written from A15 alone by an author who has not read the
 production engine.
+
+## ADR-131: Plan derivation in the independent verifier: an interim plan registry now, spec-first independent derivation as the goal (RFC-0026 §8, RFC-0016 §3, task E8-02f2)
+
+Context:
+- #381's independent replay takes the relation and `cqis_id` from the caller. Whether
+  a proof binds the model, the tokens or `y` therefore depends on a relation the
+  verifier does not derive. This is the largest remaining soundness gap of the
+  independent verifier.
+- RFC-0026 §8 step 2 has the verifier run every module's `declare`.
+- The design note `docs/research/e8-02f2-plan-derivation.md` sizes that work:
+  - about 2,100 lines of `declare` across 11 §5 modules, plus about 1,300 of
+    planning and shared-pattern helpers, plus about 2,500 of CQIS decoding, identity
+    and tables;
+  - about 6,000–7,000 verifier lines in all, which brings `stele-verifier` to about
+    12,000–13,000 of RFC-0016 §3's 15k limit. ADR-128's E8-02f estimate (3,500) was
+    low by about two times.
+- The CQIS formats and tables are specified in text (RFC-0025 §2.7 and appendices,
+  RFC-0021). The modules' semantics are too (RFC-0026 §5, ADR-076–ADR-083). Each
+  module's exact declaration (order, names, widths, terms) exists only in code, and
+  the relation digest covers all of it.
+
+Numbering: ADR-130 is #381's.
+
+Decision (Accepted as a direction: the registry is interim; each module's independent
+derivation replaces it as it lands):
+- **Interim (B), next.** A trusted, versioned plan registry, plus independent
+  statement columns.
+  - The verifier recomputes the statement-dependent public columns itself: the
+    embedding's token one-hot and gathered token mantissas, and argmax's `onehot`,
+    `below` and `rows`.
+  - It then checks the rest of the relation against a published *template digest*
+    for (`cqis_id`, model digest, `T`, profile byte). The template is the relation
+    with those columns zeroed.
+  - A short RFC-0026 amendment (A16) fixes the column list, the zeroing rule, the
+    entry format and pinned template digests. `stele plan-digest` publishes entries.
+  - About 300–500 verifier lines. The tokens, the checked range and `y` become
+    independently bound on every proof. The model and the plan are bound to a
+    published object made once per (model, `T`) by the production plan; that trust
+    is stated in the verifier's output.
+- **Goal (A), E8-02f2.**
+  - Spec-first: one A15-style amendment per module, transcribed from `declare` with
+    golden vectors and reviewed.
+  - A fresh author then derives each module from text alone (ADR-128's writing
+    rule).
+  - Each module so derived leaves the template, so (A) lands module by module and
+    ends the registry.
+- **Rejected (C).** A per-window relation digest attested by a trusted party. It
+  cannot be published ahead of time, because it changes with every token window,
+  and it binds less than (B).
+
+Consequences:
+- No proof byte, pin or production code changes now.
+- The verifier budget is tight after (A); E8-02g and the full-model path must be
+  sized against it.
+- Open for review: where registry entries live and who signs them; the order of the
+  per-module amendments (small modules first: argmax, residual, RoPE).
+
+Status: Accepted as a direction decision (coordinator, on the design note in #385):
+option B now, option A as the long-term goal. The registry is interim; each module's
+independent derivation replaces it as it lands. A16 and the registry follow as a Draft
+amendment with review; the per-module amendments start with argmax, residual and RoPE.
