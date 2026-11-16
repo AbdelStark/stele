@@ -4258,3 +4258,15 @@ The controls call the unchanged public verification entry points, with exact
 errors and no bypass. Publisher correctness and registry distribution remain
 the A16 trust premises. No external dependency, challenge, proof byte or measured
 cost-model constant is introduced by this test-harness edge.
+
+Status: Accepted (development-tier dependency decision). The soundness-auditor
+and lane C reviewer approved `f487909d`; the independent standards and lane B/P
+reviewer approved the same implementation and exact inventory correction.
+Records: `agents/reviews/e8-02f3b-spec.md` and
+`agents/reviews/e8-02f3b-standards.md`. Lane V owner `codex-root` accepts this exact
+external-harness edge. All ten actual controls, both rebuilt A15 acceptances,
+L0/L1 pinned registered replay, twelve declaration variants, no_std and forbidden
+core-edge regressions passed independent targeted review. The fresh-author
+sequence is recorded in `agents/reviews/e8-02f3b-author.md`. Complete native,
+workspace and current-base/merge-tree validation remain required before merging;
+this decision does not waive them or grant profile admission.
