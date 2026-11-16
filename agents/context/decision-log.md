@@ -4031,7 +4031,7 @@ Status: Accepted with RFC-0026 A15. Independent review: FIX-THEN-MERGE at d198d1
 applied at 7fdabe5. E8-02f1 is written from A15 alone by an author who has not read the
 production engine.
 
-## ADR-130: Plan derivation in the independent verifier: an interim plan registry now, spec-first independent derivation as the goal (RFC-0026 §8, RFC-0016 §3, task E8-02f2)
+## ADR-131: Plan derivation in the independent verifier: an interim plan registry now, spec-first independent derivation as the goal (RFC-0026 §8, RFC-0016 §3, task E8-02f2)
 
 Context:
 - #381's independent replay takes the relation and `cqis_id` from the caller. Whether
@@ -4051,7 +4051,10 @@ Context:
   module's exact declaration (order, names, widths, terms) exists only in code, and
   the relation digest covers all of it.
 
-Decision (Proposed):
+Numbering: ADR-130 is #381's.
+
+Decision (Accepted as a direction: the registry is interim; each module's independent
+derivation replaces it as it lands):
 - **Interim (B), next.** A trusted, versioned plan registry, plus independent
   statement columns.
   - The verifier recomputes the statement-dependent public columns itself: the
@@ -4084,4 +4087,7 @@ Consequences:
 - Open for review: where registry entries live and who signs them; the order of the
   per-module amendments (small modules first: argmax, residual, RoPE).
 
-Status: Proposed. Needs review with the design note.
+Status: Accepted as a direction decision (coordinator, on the design note in #385):
+option B now, option A as the long-term goal. The registry is interim; each module's
+independent derivation replaces it as it lands. A16 and the registry follow as a Draft
+amendment with review; the per-module amendments start with argmax, residual and RoPE.

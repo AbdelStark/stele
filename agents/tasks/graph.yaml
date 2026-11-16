@@ -2038,7 +2038,7 @@ tasks:
   - forged-table and forged-public one-layer byte-5 windows, each rejected by production verify with TableDenominatorMismatch and PublicMismatch(30); dumped as public/proof/relation.bin under STELE_DUMP_DIR (ignored test) and checked by a regular controls test; the seam mutation-checked
 - id: E8-02f2
   epic: E8
-  title: Plan derivation in the independent verifier - design note and ADR-130 (interim plan registry with independent statement columns; spec-first per-module derivation as the goal)
+  title: Plan derivation in the independent verifier - design note and ADR-131 (interim plan registry with independent statement columns; spec-first per-module derivation as the goal)
   depends:
   - E8-02f1
   rfc:
@@ -2051,7 +2051,7 @@ tasks:
   branch: task/E8-02f2-design
   acceptance:
   - docs/research/e8-02f2-plan-derivation.md - scope per §5 module, spec coverage, size estimate, options, a recommendation and the interim proposal
-  - ADR-130 (Proposed), reviewed
+  - ADR-131 (Accepted as a direction decision)
 - id: E8-03
   epic: E8
   title: Python differential verifier

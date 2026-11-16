@@ -1,6 +1,6 @@
 # Plan derivation in the independent verifier (E8-02f2): design note
 
-Status: design only, no code. Decision: ADR-130 (Proposed). Task: E8-02f2.
+Status: design only, no code. Decision: ADR-131 (Accepted as a direction). Task: E8-02f2.
 
 ## 1. The gap
 
