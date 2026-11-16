@@ -2027,3 +2027,206 @@ The replay follows the reference validation rules; honest proof bytes are unchan
 **Cost model.** No term or constant changes; no performance claim.
 **Promotion to `standard`.** Not granted (Workflow 10).
 **Affected tasks.** E8-02f0b (this text), E8-02f1 (the replay, which follows it).
+
+### A16 — Interim trusted plan registry with independent request columns
+
+Status: Accepted (development tier; full path). Task: E8-02f3a. Decision: ADR-133.
+Reviews: [soundness and lane C](../../agents/reviews/e8-02f3a-spec.md),
+[RFC-author and lanes B/P](../../agents/reviews/e8-02f3a-standards.md),
+and lane V owner acceptance in ADR-133.
+Motivation: A15 replay currently accepts a caller-derived relation and `cqis_id`.
+It does not establish that a prover-supplied relation describes the public request.
+The registry authenticates the static declaration; the verifier recomputes every
+request-dependent column. This is an interim trust boundary, not independent
+model decoding or plan derivation, and grants no `standard` or `treaty` admission.
+
+**Exact addition to §8 and A15 §§2,6, for the registered byte-5 entry point only:**
+
+#### 1. Trusted input and entry format
+
+The caller supplies one trusted entry, obtained independently of the prover's
+per-proof files, for the expected `(cqis_id, model identity, T, profile)` key.
+A matching entry supplied by the prover is not authentication. The publisher is
+trusted to derive the correct CQIS identity, model metadata and static relation
+from the intended model and commitment using §8. This amendment specifies no
+signature scheme or registry service. Local pinning of reviewed entry bytes is
+sufficient. The existing low-level A15 replay retains its trusted-relation contract.
+
+All integers are little endian; A15 §1's `list` and byte conventions apply. An entry
+is exactly these fields in order, without padding or trailing bytes:
+
+| Field | Encoding |
+|---|---|
+| magic/version | ASCII `stele-dev-plan-v1` |
+| `cqis_id`, model identity | two 32-byte digests |
+| `T`, profile | `u32`, `u8` (profile must be 5) |
+| static digest, template digest | two 32-byte digests, defined below |
+| canonical relation byte length | `u64`, at least 63 (the A15 tag and eight list counts) |
+| vocabulary `V`, model width `d` | `u32`, `u16` |
+| embedding exponent `ee`, first residual fraction `f0` | `i16`, `u8` |
+| embedding row mantissas `m_v` | `list u16`, exactly `V` entries in vocabulary order |
+
+Reject with `RegistryEncoding` for a wrong magic, truncation, trailing byte,
+profile other than 5, non-power-of-two `T`, zero `V` or `d`, a mantissa count other
+than `V`, any zero mantissa, or a relation byte length below 63. Let `lt = log2(T)`, `lv = ceil_log2(V)`,
+`ld = ceil_log2(d)`. Also require `lt+lv ≤ 30`, `lt+ld ≤ 30`, `ld+lv ≤ 30`.
+Check counts against remaining bytes before allocation, and use checked size
+arithmetic and fallible allocation; a capacity failure is `Capacity`.
+The entry is `171 + 2V` bytes. Its metadata is trusted, not extracted from
+unauthenticated Scales. The publisher must obtain it from the Model and the
+Token scale row in the exact static bytes authenticated below.
+
+#### 2. Bind the public file and key
+
+Parse the public file under A15 §2, including the exact range/presence rules.
+Here the registry replaces CQIS decoding/derivation, not the public byte parser
+or certificate verification. Every token and present `y` must be less than `V`;
+a violation is `StatementMismatch`.
+
+Let `D` be the exact public bytes from the first Model blob length through the end
+of the 1-D record list, excluding the magic. Let `R` be `list root` in public-file
+order, excluding certificates. The static digest is:
+
+`BLAKE3(ASCII("stele/v0.1/dev-e2e/plan-static/v1") ‖ u64(len D) ‖ D ‖ R)`.
+
+Recompute the model identity exactly as A15 §3: tag, trusted `cqis_id`, `R`, then
+`list (u16 ordinal ‖ u32 code_count ‖ [code_count] i16)` from the public records.
+The public record's blob length counts **bytes**; divide it by two to obtain
+`code_count`. Reject `RegistryKeyMismatch` if this model identity differs from
+the entry or the public token count differs from entry `T`. Reject
+`RegistryStaticMismatch` if the static digest differs. These checks pin Model,
+Scales, Preparation, all 1-D records and every ordered model root to the entry.
+Certificates remain untrusted and are fully verified by A15 replay.
+
+#### 3. Recompute the request columns
+
+The input relation is untrusted A15 §5 canonical bytes. Before decoding it, require
+its byte length to equal the trusted entry's length (`RegistryTemplateMismatch`).
+All relation counts must be checked against remaining encoding bytes before
+allocation; use checked size arithmetic and fallible allocation (`Capacity`).
+The decoder must not expand domains from untrusted `log_len` values. Thus decode
+storage is bounded by the trusted relation length, and request computation by
+trusted `T` and `V`; plan derivation runs only after the template comparison.
+The following is the
+complete request-column list. Each listed name must occur exactly once among all
+columns, must have public kind, and must have exactly the stated length, values,
+unsigned width and `log_len`. A mismatch is `RegistryRequestMismatch`.
+Names beginning `G/embedding/O`, the exact names `G/embedding/m` and
+`G/embedding/mm`, and the three argmax names below are reserved: any such column
+not on the expected list, including a noncanonical block suffix, is the same
+error. Other columns are checked by the template digest, never normalized.
+
+Let `s = i32(ee) + i32(f0)`, `lb = min(lt, 30-ld-lv)`, `B = 2^lb`,
+`Vp = 2^lv`; indices are row-major, row index high. A decimal block suffix has
+no leading zero except `0` itself.
+
+| Name | Values, length and log length | Width |
+|---|---|---|
+| `G/embedding/O{b}`, for `b=0..T/B-1` | at index `i*Vp+v`, `[v = x_(b*B+i)]`, for `0≤i<B`, `0≤v<Vp`; length `B*Vp`, log `lb+lv` | unsigned 1 |
+| `G/embedding/m`, only if `s<0` | `m_(x_i)` for `0≤i<T`; length `T`, log `lt` | unsigned `max(1, bit_length(max(values)))` |
+| `G/embedding/mm`, only if `s≥0` | `min(m_(x_i)*2^s, 65536)`; for `s≥17` the value is exactly `65536`, without evaluating the shift; length `T`, log `lt` | unsigned `max(1, bit_length(max(values)))` |
+| `G/argmax/onehot` | `[r≤i<e] * [v=c_i] * [v<V]`, length `T*Vp`, log `lt+lv` | unsigned 1 |
+| `G/argmax/below` | `[r≤i<e] * [v<c_i] * [v<V]`, length `T*Vp`, log `lt+lv` | unsigned 1 |
+| `G/argmax/rows` | `[r≤i<e]`, length `T`, log `lt` | unsigned 1 |
+
+For a checked row, `c_i = x_(i+1)` when `i<T-1`, and `c_(T-1)=y` otherwise.
+Unchecked rows have zero onehot/below values, so no `c_i` is read there. The
+public parser guarantees that a checked last row has `y`. All padded vocabulary
+entries are zero. `bit_length(a)` is the least `b` with `a < 2^b`.
+The width is checked **before** normalization; retaining the selected mantissa's
+width would make a template depend on the token window. Argmax widths stay 1
+even when their entire value array is zero.
+
+#### 4. Normalize the template and replay
+
+After all request checks, form the A15 §5 encoding with exactly two substitutions
+in the listed columns: every public `i64` value becomes zero, and the width becomes
+unsigned 1. Retain names, ids, order, public kind, value counts and log lengths.
+Every other byte is unchanged. Call the resulting bytes `N`. The template digest is:
+
+`BLAKE3(ASCII("stele/v0.1/dev-e2e/plan-template/v1") ‖ u64(len N) ‖ N)`.
+
+A disagreement with the entry is `RegistryTemplateMismatch`. `N` is a hash
+preimage, not a relation to validate or prove. In particular, the normalized
+mantissa width need not satisfy the original relation's arithmetic bounds.
+Validate and replay the **original** relation, using the entry's `cqis_id`, with
+all A15/E1 checks, certificates, public evaluations and openings unchanged.
+The original relation digest enters the transcript; no registry bytes do.
+
+Error precedence for the registered entry point is: entry decoding; public parsing
+and token bounds; key comparison; static digest comparison; relation length comparison; relation decoding;
+request columns; template comparison; existing A15 replay (including validation
+before any proof parsing). A15 errors retain their existing names. No proof byte
+is read before the registry preflight succeeds. An implementation may share parsed
+data with replay if it preserves the same checks and order.
+
+Success is scoped to the exact decoded public request. Callers expecting a
+particular request must compare its tokens, range and `y` with their own expected
+values; the wrapper does not authenticate the source of that expectation.
+CLI/API documentation and the success verdict must state both **trusted plan
+registry** and **development: no security level**. No verdict may claim independent
+model/plan derivation, ZK replay or profile admission. Byte 4 is outside A16.
+
+#### 5. Publisher, evidence and serial implementation
+
+`stele plan-digest` publishes an entry from a production-validated model,
+commitment and window size, with profile 5. It uses the same §3 metadata and
+normalization; a sample request is allowed because the result must be invariant
+under tokens, checked range and next token for that key. It must not read a model
+secret. Publication is not trust: the verifier caller pins an entry separately.
+A usable verification path takes public, proof and untrusted relation files plus
+the trusted entry; exporting the relation changes no public/proof byte.
+
+The [golden vectors](../../research/plan-registry/README.md) accompanying this amendment
+cover both signs of `s`, saturation,
+different selected mantissa widths under the same entry, checked-range and next-token
+changes, malformed/duplicate/relabelled columns, and one/eight-layer template pins.
+E8-02f3b implements the independent wrapper from Accepted text by a fresh author
+(ADR-128/131), with every new binding's executed control in that change.
+E8-02f3c then implements the production publisher and CLI path. They merge serially.
+
+#### 6. Soundness, cost and controls
+
+Conditional on a correct trusted entry and BLAKE3 binding (RFC-0002 §4 assumption A1),
+a passing preflight fixes every non-request declaration byte and forces every
+request column to the integer values above. It establishes no correctness theorem
+for the trusted static declaration. The registry trust is an explicit premise;
+it cannot be converted into a probability or erased by a digest match.
+There are no new random challenges, SC/SZ/RLC/LU/PCS/MASK terms or transcript rounds.
+Static, model and template digest computations add three BLAKE3 invocations per
+successful wrapper call to the global `H` query population, plus the publisher's
+and adversary's queries. Count their compression work under RFC-0012 A15/A17 as
+well; repeated attempts and pre-publication queries are not free. This is not a
+claim that `Q_V` is three compression calls or that a concrete security level holds.
+The existing development-tier restrictions remain.
+
+No committed cells, lookups, proof bytes, weight passes or prover constants change.
+For `n=T` and `Vp<2V`, request computation/comparison visits `3nVp+2n` values;
+hashing is linear in `|D| + |R| + |records| + |N|`. This adds verifier work to
+`T_misc`; it does not move `T_weights`, `T_act`, `T_attn` or `T_cuts`.
+The entry adds `171+2V` external bytes and the relation is supplied separately.
+These are formulas, not measured benchmark claims.
+
+Reserve the following controls; a reservation earns no executed coverage. Each
+changes one semantic value/edge, with any subsequent proof rebuilt honestly.
+All run through the registered verifier, and assert the named pre-replay error.
+
+| Control | Tamper | Expected error |
+|---|---|---|
+| NC-1325 | one entry key model-identity byte against the same public file | `RegistryKeyMismatch` |
+| NC-1326 | one Scales byte in the public file, keeping the trusted entry | `RegistryStaticMismatch` |
+| NC-1327 | one ordered model root byte in the public file | `RegistryKeyMismatch` |
+| NC-1328 | one embedding onehot value in the supplied relation | `RegistryRequestMismatch` |
+| NC-1329 | one gathered mantissa value in the supplied relation | `RegistryRequestMismatch` |
+| NC-1330 | one gathered mantissa width in the supplied relation | `RegistryRequestMismatch` |
+| NC-1331 | one argmax onehot value in the supplied relation | `RegistryRequestMismatch` |
+| NC-1332 | one argmax below value in the supplied relation | `RegistryRequestMismatch` |
+| NC-1333 | one argmax rows value in the supplied relation | `RegistryRequestMismatch` |
+| NC-1334 | one static declaration coefficient, keeping the trusted entry | `RegistryTemplateMismatch` |
+
+At least NC-1328 and NC-1334 must include a composed proof accepted by the low-level
+A15 replay with its supplied relation, then rejected by the registered entry point.
+Use a producer-side construction, never a verifier bypass. Existing transcript
+failures on a stale proof do not demonstrate this new binding. Parser, duplicate,
+missing, extra, relabelled, wrong-kind/length, invalid-token and unsupported-profile
+cases are required tests in addition to these controls.

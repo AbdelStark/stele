@@ -1956,3 +1956,69 @@ const A15_ERRATUM_DIGESTS: [&str; 10] = [
     "dd43e76fa354e25e82b42c9776ca9a6dd2d16af8297cdee31ce3319f6c7f8672",
     "e02337c958a1f50528aaac9b2b1b7323429b855ce8a1105a3651a9b7c56185f4",
 ];
+
+/// RFC-0026 §8 declaration vectors across request values; no proof or new runtime API.
+#[test]
+#[ignore = "dump: STELE_DUMP_DIR=<dir> cargo test --release -p stele-prover --test development matches_reference_request_layout_variants -- --ignored"]
+fn matches_reference_request_layout_variants() {
+    let Some(dir) = std::env::var_os("STELE_DUMP_DIR").map(std::path::PathBuf::from) else {
+        return;
+    };
+    for (name, t) in [("one-layer", 16), ("eight-layer", 64)] {
+        let case = load(name);
+        let weights = Weights::from_artifact(&case.model, &case.artifact).expect("weights");
+        for (branch, exponent) in [("positive", -3i16), ("negative", -10)] {
+            let mut bytes = case.bytes[1].to_vec();
+            // RFC-0025 Scales: tag, model digest, first ordinal, then its exponent.
+            let at = b"stele/v0.1/cqis/scales".len() + 32 + 2;
+            bytes[at..at + 2].copy_from_slice(&exponent.to_le_bytes());
+            let scales = Scales::decode(&case.model, &bytes).expect("scales");
+            let scale = scales.matrix(0).expect("Token is first");
+            let ms = scale.mantissas();
+            let minimum = ms.iter().min().expect("nonempty scales");
+            let maximum = ms.iter().max().expect("nonempty scales");
+            let lo = ms.iter().position(|m| m == minimum).expect("min") as u32;
+            let hi = ms.iter().position(|m| m == maximum).expect("max") as u32;
+            for (variant, token, end, next) in [
+                (0, lo, t, Some(lo)),
+                (1, hi, t, Some(hi)),
+                (2, lo, t - 1, None),
+            ] {
+                let statement = Statement {
+                    tokens: vec![token; t],
+                    start: 0,
+                    end: end as u32,
+                    next,
+                };
+                let layout = stele_prover::development::Layout::declare(
+                    &stele_prover::development::PlanData {
+                        model: &case.model,
+                        scales: &scales,
+                        vectors: &weights.vectors,
+                        zk: false,
+                    },
+                    &statement,
+                )
+                .expect("layout");
+                layout.relation.validate().expect("valid relation");
+                let out = dir.join(format!("{name}-{branch}-{variant}"));
+                std::fs::create_dir_all(&out).expect("directory");
+                std::fs::write(
+                    out.join("relation.bin"),
+                    stele_reductions::relation::encode(&layout.relation),
+                )
+                .expect("relation");
+                let metadata = serde_json::json!({
+                    "V": case.model.shape().vocabulary(), "d": case.model.shape().width(),
+                    "ee": exponent, "f0": case.model.initial_fraction(), "mantissas": ms,
+                    "tokens": statement.tokens, "start": 0, "end": end, "next": next,
+                });
+                std::fs::write(
+                    out.join("request.json"),
+                    serde_json::to_vec(&metadata).expect("json"),
+                )
+                .expect("metadata");
+            }
+        }
+    }
+}
