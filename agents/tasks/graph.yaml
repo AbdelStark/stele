@@ -2128,7 +2128,7 @@ tasks:
   - RFC-0016 §3
   skill: soundness-auditor
   crate: stele-verifier+stele-negative-controls
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E8-02f3b-registered-verifier
   acceptance:
@@ -2146,7 +2146,9 @@ tasks:
   - RFC-0026 A16
   skill: soundness-auditor
   crate: stele-prover+stele-cli
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E8-02f3c-registry-cli
   acceptance:
   - plan-digest derives and publishes canonical entries from validated public model data and commitments without loading secret state; changing tokens, checked range or next token preserves the entry for the same key
   - the CLI exports the untrusted relation and runs the independent registered entry point with an explicitly caller-trusted entry; success reports trusted plan registry and development with no security level
