@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 import tomllib
 from urllib.parse import unquote, urlsplit
 
@@ -83,12 +84,14 @@ ACCOUNTING = {
               'src/pcs.rs', 'tests/pcs_vectors.rs', 'tests/fixtures/policy2-full.jsonl',
               'tests/fixtures/pcs-parameters.txt', 'tests/fixtures/policy1-continuations.txt',
               'tests/fixtures/single-mismatch.jsonl',
-              'src/fraction.rs', 'src/logup.rs', 'tests/fraction_corpus.rs', 'tests/logup_round.rs'),
+              'src/fraction.rs', 'src/logup.rs', 'tests/fraction_corpus.rs', 'tests/logup_round.rs',
+              # E8-02f1: the RFC-0026 A15 byte-5 replay and its verify-dev parity test.
+              'src/development.rs', 'src/plan.rs', 'src/relation.rs', 'tests/development_replay.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
-               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod fraction;\npub mod logup;\n'
-               'pub mod pcs;\npub mod sumcheck;\npub mod zerocheck;\n',
+               'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod development;\npub mod fraction;\n'
+               'pub mod logup;\npub mod pcs;\npub mod plan;\npub mod relation;\npub mod sumcheck;\npub mod zerocheck;\n',
     'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
                'matches_reference_a3_corpus_decisions_and_receipts',
                'matches_reference_a2_corpus_decisions_and_receipts',
@@ -105,6 +108,17 @@ ACCOUNTING = {
                'rejects_failing_missing_and_extra_nonces',
                'rejects_shifted_leaf_claims_without_the_leaf_consumer',
                'rejects_empty_checks_and_other_degrees'),
+    'replay': ('development::tests::matches_reference_a15_small_codec_vectors',
+               'development::tests::rejects_non_utf8_relation_names',
+               'development::tests::eq_table_matches_eq_bits',
+               'development::tests::rejects_short_headers_and_counts_past_the_input',
+               'development::tests::rejects_statements_outside_section_1_1',
+               'relation::tests::rejects_each_section_3_6_rule',
+               'development::tests::rejects_a_witness_of_a_missing_group_through_verify',
+               'plan::tests::no_geometry_ties_at_any_reachable_size',
+               'plan::tests::ceil_log2_matches_its_definition',
+               'plan::tests::places_blocks_largest_first_with_ties_in_order',
+               'relation::tests::covers_split_blocks_and_rejects_one_block'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -115,7 +129,7 @@ ACCOUNTING = {
     # the parity test's dev-dependency), needs its pin moved in review.
     'pins': {
         'src/accounting.rs': '2eebb2c5e4a9a8aac66df062bac5046771d4fe30480186784c4ca099d1bb468f',
-        'src/sumcheck.rs': '48a06ac3d0f8e85bdd163d3b1644e38788043d9bad860418483804a4af208a35',
+        'src/sumcheck.rs': 'f348dd925f600c1c6bcc368100f61959a4c16d8e41f4ec6820e754a0bf99704c',
         'src/zerocheck.rs': 'a82b783675819269f079de56cb1964076780068b0331cb3263d34ee540421df2',
         'src/batch.rs': '1ab0ee6979e11cf195a86d561b28e2ddbf54e90aac3c5da5b9d6a8f0ab0fab18',
         'tests/zerocheck_corpus.rs': '665ff0cdc69b7503b6b25ee0b0415f79a5ac2061917a5d42a730cd51fa125417',
@@ -133,6 +147,10 @@ ACCOUNTING = {
         'tests/circle_vectors.rs': '6df8664f3f24cb707cde7349d82cfbcd1601966ef283f339367c7553221cfd48',
         'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
+        'src/development.rs': 'b16cc18a6c7fc2c2e102481be79756c285f85a7fa7fa3d5951495c0526502f49',
+        'src/plan.rs': 'a904cf69e5e20926727c2903c4a4b3ff46396528a21d78bce9a0be097a164037',
+        'src/relation.rs': '7bfe3348c6e894dd961d655af7d88b0e073bde2fbd844d5ae8e8e38861a5ed1d',
+        'tests/development_replay.rs': '7c26641e813722378de71b06aa256be0d9b28094ed4fbcb127e3116d4215be8d',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
     },
 }
@@ -177,6 +195,13 @@ def accounting_admission(root):
     missing = [n for n in ACCOUNTING['tests'] if f'test accounting::tests::{n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission checks failed: {missing} {result.stderr[-2000:]}')
+    # E8-02f1: the A15 codecs reproduce the RFC's golden vectors, and the plan helpers hold.
+    result = subprocess.run(['cargo', 'test', '-p', 'stele-verifier', '--lib', '--locked', '--offline', '--',
+                             'development::', 'plan::', 'relation::'], cwd=root, text=True, capture_output=True)
+    lines = result.stdout.splitlines()
+    missing = [n for n in ACCOUNTING['replay'] if f'test {n} ... ok' not in lines]
+    if result.returncode or missing:
+        raise ValueError(f'accounting admission: development replay unit checks failed: {missing} {result.stderr[-2000:]}')
     print('gate accounting: exact (C1)-(C4) admission decision at its boundaries (E8-05b); '
           'no round enumeration, profile or NC-0804/0805 credit')
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
@@ -188,6 +213,33 @@ def accounting_admission(root):
     missing = [n for n in ACCOUNTING['parity'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
         raise ValueError(f'accounting admission: verifier parity checks failed: {missing} {result.stderr[-2000:]}')
+    # E8-02f1: production's test-only dump (E8-02f1a) writes the byte-5 windows, each
+    # verified by production first; the independent replay must accept both and reject
+    # each window's one-byte tampers.
+    with tempfile.TemporaryDirectory() as windows:
+        env = dict(os.environ, STELE_DUMP_DIR=windows)
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-prover', '--test', 'development',
+                                 'dumps_byte5', '--locked', '--offline', '--', '--ignored'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        if result.returncode or 'test dumps_byte5' not in result.stdout:
+            raise ValueError(f'accounting admission: development replay dump failed {result.stderr[-2000:]}')
+        # E8-02f1b: the forged one-layer windows, one per check no one-value tamper reaches.
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-negative-controls', '--features',
+                                 'controls', '--lib', 'dumps_forged', '--locked', '--offline', '--', '--ignored'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        if result.returncode or 'dumps_forged' not in result.stdout:
+            raise ValueError(f'accounting admission: development replay forged dump failed {result.stderr[-2000:]}')
+        env = dict(os.environ, STELE_DEV_REPLAY_DIR=windows)
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-verifier', '--test',
+                                 'development_replay', '--locked', '--offline', '--', '--nocapture'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        name = 'matches_reference_verify_dev_on_byte5_windows_and_tampers'
+        windows_seen = result.stderr.count('tampers rejected')
+        forged = (result.stderr.count('forged-table: forged Err(TableDenominatorMismatch)')
+                  + result.stderr.count('forged-public: forged Err(PublicMismatch)'))
+        if (result.returncode or f'test {name} ... ok' not in result.stdout.splitlines() or windows_seen != 2
+                or forged != 2):
+            raise ValueError(f'accounting admission: development replay parity failed ({windows_seen} windows) {result.stderr[-2000:]}')
     # E8-02d: the PCS fixtures (Policy 2 full bytes, parameter table, Policy 1
     # continuations, single-position mismatches) are the Python oracle's current output.
     result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/merkle-oracle/dump_policy2_full.py'],
@@ -198,7 +250,8 @@ def accounting_admission(root):
           'corpus decision and receipt; the Circle code matches the shared vectors and direct evaluation; '
           'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes; RFC-0008 A3 fraction trees '
           'match every corpus decision and receipt, and the LogUp grinding bits and nonce round are '
-          'checked (E8-02a..e)')
+          'checked (E8-02a..e); the RFC-0026 A15 byte-5 replay accepts the dumped one- and eight-layer '
+          'windows, rejects their one-byte tampers and the two forged windows (E8-02f1)')
 
 
 def development_surface(crate, name, actual, expected):

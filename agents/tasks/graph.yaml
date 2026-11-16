@@ -2047,12 +2047,51 @@ tasks:
   skill: rfc-author
   crate: docs
   status: in_progress
-  agent: claude-code
+  agent: codex-root
   branch: task/E8-02f0b-a15-erratum
   acceptance:
   - A15 erratum E1 (Draft) gives the exact replacement or addition text for gaps 2, 3, 4, 5, 12 and 13, the covers cap, the absent free >= 1 rule (with A6's sentence corrected), empty identities and duplicate group names
   - matches_a15_erratum_validation_vectors pins six validate outcomes and encoding digests; the covers-cap vector mutation-checked
   - one independent review before acceptance
+- id: E8-02f1
+  epic: E8
+  title: Verifier primitives (unblocked) - independent no_std replay of RFC-0026 byte-5 development proofs from the A15 text (public file, container, relation encoding, engine replay), relation and cqis_id as inputs
+  depends:
+  - E8-02f0
+  - E8-02f1a
+  - E8-02f1b
+  rfc:
+  - RFC-0026 A15
+  - RFC-0026 A3
+  - RFC-0026 A14
+  - RFC-0016 §3
+  skill: soundness-auditor
+  crate: stele-verifier
+  status: in_progress
+  agent: codex-root
+  branch: task/E8-02f1-verifier-replay
+  acceptance:
+  - written from RFC-0026 A15 and the texts it cites without stele-prover, stele-reductions, stele-pcs, stele-sumcheck, stele-lookup, stele-code or stele-cli source open (ADR-128); spec gaps listed in the PR
+  - accepts the honest one-layer (T = 16) and eight-layer (T = 64) byte-5 windows from production's test-only dump, and rejects every one-byte tamper of each container section, the public file and the relation, with verify-dev's decision on every proof and public-file case
+  - rejects production's forged one-layer windows at the table-denominator (TableDenominatorMismatch) and public-column (PublicMismatch) checks, and either window passes with its check removed
+  - reproduces the A15 small codec vectors; no_std, no panics, fallible allocation, dependencies stele-field and stele-hash only; mutation-checked
+- id: E8-02f2
+  epic: E8
+  title: Plan derivation in the independent verifier - design note and ADR-131 (interim plan registry with independent statement columns; spec-first per-module derivation as the goal)
+  # Follows E8-02f1 (#381, not yet on main); depend on it here once it lands.
+  depends:
+  - E8-02f0
+  rfc:
+  - RFC-0026 §8
+  - RFC-0016 §3
+  skill: soundness-auditor
+  crate: docs
+  status: in_progress
+  agent: claude-code
+  branch: task/E8-02f2-design
+  acceptance:
+  - docs/research/e8-02f2-plan-derivation.md - scope per §5 module, spec coverage, size estimate, options, a recommendation and the interim proposal
+  - ADR-131 (Accepted as a direction decision)
 - id: E8-03
   epic: E8
   title: Python differential verifier

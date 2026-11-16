@@ -4030,3 +4030,120 @@ Consequences:
 Status: Accepted with RFC-0026 A15. Independent review: FIX-THEN-MERGE at d198d1f; fixes
 applied at 7fdabe5. E8-02f1 is written from A15 alone by an author who has not read the
 production engine.
+
+## ADR-130: The independent byte-5 replay takes the relation and cqis_id as inputs, and resolves A15's gaps by the most natural reading checked against verify-dev (RFC-0026 A15, task E8-02f1)
+
+Context:
+- E8-02f1 is the `stele-verifier` replay of RFC-0026 byte-5 development proofs. It was
+  written from RFC-0026 A15 and the texts A15 cites, with no production crate open
+  (ADR-128). Parity inputs come from production's test-only dump (E8-02f1a), used as a
+  black box.
+- Plan derivation from the model bytes is E8-02f2, so this verifier cannot yet compute
+  the relation or `cqis_id` itself.
+
+Decision:
+- **Interface.** `development::verify(public, container, relation, cqis_id)`. The
+  relation (A15 §5 bytes) and `cqis_id` are inputs from the caller. Everything else is
+  derived as A15 §6 says. E8-02f2 replaces both inputs with values derived from the
+  Model, Scales and Preparation. Until then, the A15 §2 record and `NumericalIdentity`
+  checks are not made.
+- **The relation input is unbound (#381 review, blocking).** `Ok` means only that the
+  container proves *this* relation. Until E8-02f2, the relation must come from a
+  trusted derivation, never from the prover. The statement digest covers
+  BLAKE3(relation), but the prover writes that digest, and the model, the tokens and
+  `y` reach the statement only through the relation. A prover-supplied relation
+  therefore guarantees nothing about them. `verify`'s `# Security` section says the
+  same.
+- **Validation is load-bearing.** Against a caller-chosen relation and digest,
+  `Relation::validate` is the only §3.6 check. `Plan::derive` runs it first, because
+  the derivation indexes groups, tables and columns as validation guarantees.
+  Following the review's spec readings (an A15 erratum is to follow):
+  - a matmul with `free = 0` is not rejected;
+  - the matmul cover search is capped at 16 fixed positions, and past that the column
+    is undisciplined;
+  - empty identities and duplicate group names are rejected.
+- **BLAKE3.** `stele-hash` exports `blake3_digest`, plain BLAKE3, for A15's relation
+  and statement digests. The verifier keeps its two dependencies.
+- **Spec gaps** (listed in the PR) are resolved by the most natural reading of the text.
+  The honest windows and every tamper were then checked against `verify-dev`. The main
+  ones:
+  - each opening section is one source's claim batch followed by its opening;
+  - the multiplicity geometry is sized with one opening;
+  - relation decode errors are `StatementMismatch`;
+  - table rows must fit their widths at validation.
+- **`sumcheck::mle_at`** folds a full table in O(2^n), with no allocation, in place of
+  `Σ entry·eq_at`. The selected-product leaf evaluates its selector through it. The
+  eight-layer replay went from 14.6 s to 0.8 s. Its pin moves, and the A1, A2 and A3
+  corpora are unchanged.
+
+Consequences:
+- Production's §6 bytes are now pinned by an independent decoder (A15: "until
+  E8-02f1's parity corpus lands, production decides the §6 bytes").
+- No proof byte, challenge, label or ledger line moves.
+
+Status: Accepted (development tier; no protocol change). Independent review: FIX-THEN-MERGE
+at 1fe62e3 (no soundness bug; every production check has a replay counterpart in order;
+43k-case fuzz clean); fixes applied, including the unbound-relation warning and the forged
+table and public windows (#383) that the replay must reject. The relation stays a trusted
+input until E8-02f2 (ADR-131).
+
+## ADR-131: Plan derivation in the independent verifier: an interim plan registry now, spec-first independent derivation as the goal (RFC-0026 §8, RFC-0016 §3, task E8-02f2)
+
+Context:
+- #381's independent replay takes the relation and `cqis_id` from the caller. Whether
+  a proof binds the model, the tokens or `y` therefore depends on a relation the
+  verifier does not derive. This is the largest remaining soundness gap of the
+  independent verifier.
+- RFC-0026 §8 step 2 has the verifier run every module's `declare`.
+- The design note `docs/research/e8-02f2-plan-derivation.md` sizes that work:
+  - about 2,100 lines of `declare` across 11 §5 modules, plus about 1,300 of
+    planning and shared-pattern helpers, plus about 2,500 of CQIS decoding, identity
+    and tables;
+  - about 6,000–7,000 verifier lines in all, which brings `stele-verifier` to about
+    12,000–13,000 of RFC-0016 §3's 15k limit. ADR-128's E8-02f estimate (3,500) was
+    low by about two times.
+- The CQIS formats and tables are specified in text (RFC-0025 §2.7 and appendices,
+  RFC-0021). The modules' semantics are too (RFC-0026 §5, ADR-076–ADR-083). Each
+  module's exact declaration (order, names, widths, terms) exists only in code, and
+  the relation digest covers all of it.
+
+Numbering: ADR-130 is #381's.
+
+Decision (Accepted as a direction: the registry is interim; each module's independent
+derivation replaces it as it lands):
+- **Interim (B), next.** A trusted, versioned plan registry, plus independent
+  statement columns.
+  - The verifier recomputes the statement-dependent public columns itself: the
+    embedding's token one-hot and gathered token mantissas, and argmax's `onehot`,
+    `below` and `rows`.
+  - It then checks the rest of the relation against a published *template digest*
+    for (`cqis_id`, model digest, `T`, profile byte). The template is the relation
+    with those columns zeroed.
+  - A short RFC-0026 amendment (A16) fixes the column list, the zeroing rule, the
+    entry format and pinned template digests. `stele plan-digest` publishes entries.
+  - About 300–500 verifier lines. The tokens, the checked range and `y` become
+    independently bound on every proof. The model and the plan are bound to a
+    published object made once per (model, `T`) by the production plan; that trust
+    is stated in the verifier's output.
+- **Goal (A), E8-02f2.**
+  - Spec-first: one A15-style amendment per module, transcribed from `declare` with
+    golden vectors and reviewed.
+  - A fresh author then derives each module from text alone (ADR-128's writing
+    rule).
+  - Each module so derived leaves the template, so (A) lands module by module and
+    ends the registry.
+- **Rejected (C).** A per-window relation digest attested by a trusted party. It
+  cannot be published ahead of time, because it changes with every token window,
+  and it binds less than (B).
+
+Consequences:
+- No proof byte, pin or production code changes now.
+- The verifier budget is tight after (A); E8-02g and the full-model path must be
+  sized against it.
+- Open for review: where registry entries live and who signs them; the order of the
+  per-module amendments (small modules first: argmax, residual, RoPE).
+
+Status: Accepted as a direction decision (coordinator, on the design note in #385):
+option B now, option A as the long-term goal. The registry is interim; each module's
+independent derivation replaces it as it lands. A16 and the registry follow as a Draft
+amendment with review; the per-module amendments start with argmax, residual and RoPE.

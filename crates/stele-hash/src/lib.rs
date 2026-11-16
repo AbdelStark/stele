@@ -21,6 +21,12 @@ pub mod merkle;
 mod pcs;
 pub use pcs::certificate_id;
 
+/// Plain BLAKE3 of `bytes`: RFC-0026 A15's relation digest (§5) and statement digest
+/// (§3), which the independent verifier recomputes (E8-02f1).
+pub fn blake3_digest(bytes: &[u8]) -> [u8; 32] {
+    *blake3::hash(bytes).as_bytes()
+}
+
 mod usage;
 pub use usage::HashUsage;
 
