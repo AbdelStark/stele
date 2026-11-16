@@ -4041,7 +4041,7 @@ Context:
 - Plan derivation from the model bytes is E8-02f2, so this verifier cannot yet compute
   the relation or `cqis_id` itself.
 
-Decision (Proposed):
+Decision:
 - **Interface.** `development::verify(public, container, relation, cqis_id)`. The
   relation (A15 §5 bytes) and `cqis_id` are inputs from the caller. Everything else is
   derived as A15 §6 says. E8-02f2 replaces both inputs with values derived from the
@@ -4080,3 +4080,9 @@ Consequences:
 - Production's §6 bytes are now pinned by an independent decoder (A15: "until
   E8-02f1's parity corpus lands, production decides the §6 bytes").
 - No proof byte, challenge, label or ledger line moves.
+
+Status: Accepted (development tier; no protocol change). Independent review: FIX-THEN-MERGE
+at 1fe62e3 (no soundness bug; every production check has a replay counterpart in order;
+43k-case fuzz clean); fixes applied, including the unbound-relation warning and the forged
+table and public windows (#383) that the replay must reject. The relation stays a trusted
+input until E8-02f2 (ADR-131).
