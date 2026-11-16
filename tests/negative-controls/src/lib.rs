@@ -63,12 +63,6 @@ extern crate self as stele_negative_controls;
 mod nc_0602;
 #[path = "../transcript/nc_0801.rs"]
 mod nc_0801;
-#[cfg(test)]
-#[path = "../development/nc_1303.rs"]
-mod nc_1303;
-#[cfg(test)]
-#[path = "../development/nc_1307.rs"]
-mod nc_1307;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
