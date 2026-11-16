@@ -108,6 +108,7 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                  + [f'test {n} ... ok' for n in gate.ACCOUNTING['registered']]
                  + [f'test {n} ... ok' for n in gate.ACCOUNTING['registered_units']]
                  + ['test dumps_byte5 ... ok', 'test dumps_forged ... ok',
+                    'test matches_reference_registered_cli_windows ... ok',
                     'test matches_reference_request_layout_variants ... ok', 'A16 reference vectors match',
                     'test matches_reference_verify_dev_on_byte5_windows_and_tampers ... ok'])
         output = '\n'.join(lines)
@@ -119,6 +120,9 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
         stderr += ''.join(f'A16 declaration {rung}-{sign}-{i}: request/template matched\n'
                           for rung in ('one-layer', 'eight-layer')
                           for sign in ('positive', 'negative') for i in range(3))
+        stderr += ''.join(f'A16 CLI {rung}: published pinned entry, identical proof, registered acceptance, wrong entry rejected\n'
+                          for rung in ('one-layer', 'eight-layer'))
+        stderr += 'STELE_REGISTERED_CLI_PASSED\n'
         def fixtures(command, **kwargs):
             env = kwargs.get('env', {})
             if 'matches_reference_request_layout_variants' in command:

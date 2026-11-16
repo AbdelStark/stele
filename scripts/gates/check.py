@@ -43,7 +43,7 @@ ARTIFACTS = {
 DEVELOPMENT = {
     'prover': {
         'files': ('src/development.rs', 'src/development/plan.rs', 'src/development/bundle.rs',
-                  'src/development/zk.rs',
+                  'src/development/zk.rs', 'src/development/registry.rs',
                   'tests/development.rs', 'tests/fixtures/synthetic-e2e.bin',
                   'tests/fixtures/synthetic-e2e.json'),
         'library': '//! stele-prover — governed by RFC-0007 §4 RFC-0014 §4 and, for `development`, '
@@ -280,6 +280,17 @@ def accounting_admission(root):
             missing += [r for r in receipts if result.stderr.splitlines().count(r) != 1]
             if result.returncode or missing:
                 raise ValueError(f'accounting admission: A16 registered replay failed: {missing} {result.stderr[-2000:]}')
+        # E8-02f3c: actual publication, unchanged CLI proofs and independent replay.
+        name = 'matches_reference_registered_cli_windows'
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-cli', '--test', 'registered',
+                                 name, '--locked', '--offline', '--', '--ignored', '--exact', '--nocapture'],
+                                cwd=root, text=True, capture_output=True,
+                                env=dict(os.environ, STELE_DUMP_DIR=windows))
+        receipts = [f'A16 CLI {rung}: published pinned entry, identical proof, registered acceptance, wrong entry rejected'
+                    for rung in ('one-layer', 'eight-layer')] + ['STELE_REGISTERED_CLI_PASSED']
+        if (result.returncode or f'test {name} ... ok' not in result.stdout.splitlines()
+                or any(result.stderr.splitlines().count(r) != 1 for r in receipts)):
+            raise ValueError(f'accounting admission: A16 CLI replay failed {result.stderr[-2000:]}')
     # E8-02d: the PCS fixtures (Policy 2 full bytes, parameter table, Policy 1
     # continuations, single-position mismatches) are the Python oracle's current output.
     result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/merkle-oracle/dump_policy2_full.py'],
@@ -293,6 +304,7 @@ def accounting_admission(root):
           'checked (E8-02a..e); the RFC-0026 A15 byte-5 replay accepts the dumped one- and eight-layer '
           'windows, rejects their one-byte tampers and the two forged windows (E8-02f1); A16 registered '
           'replay accepts both pinned proofs and matches all twelve declaration variants (E8-02f3b); '
+          'the publisher and CLI reproduce both windows and reject wrong entries (E8-02f3c); '
           'trusted plan registry; development: no security level')
 
 
@@ -2068,6 +2080,7 @@ def standard_quarantine(root):
                    'crates/stele-reductions/src/relation.rs', 'crates/stele-reductions/src/relation_tests.rs',
                    'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',
                    'crates/stele-prover/src/development/zk.rs', 'crates/stele-prover/tests/development.rs',
+                   'crates/stele-prover/src/development/registry.rs',  # A16 byte-5 publisher
                    'tests/negative-controls/src/development.rs',
                    'tests/negative-controls/src/registry.rs',  # A16 actual byte-5 controls
                    # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.

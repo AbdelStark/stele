@@ -101,6 +101,60 @@ the proof's rounds. Otherwise the verdict is `NO: admission FAIL (Cn): …`.
   verdict. Exit codes are 0 for accepted or written,
 1 for rejected and 2 for a usage or I/O error. An option given twice is a usage error.
 
+## Registered byte-5 verification (RFC-0026 A16)
+
+`plan-digest` publishes a canonical plan entry from a public file. It validates
+the Model, Scales, Preparation, public records, declaration and model-commitment
+certificates; it reads no model secret. Changing the sample tokens, checked range
+or next token preserves the entry for the same model, window size and profile.
+The sample request must be well formed but need not have true greedy claims.
+
+The entry is a trust input: obtain it independently of the prover's per-proof
+files and pin it for the intended model. Publishing an entry does not authenticate
+its publisher. A matching entry delivered with an untrusted proof is insufficient.
+
+`prove-dev --dev-profile 5 --relation FILE` exports the original declaration
+without changing public or proof bytes. `verify-registered` takes that untrusted
+relation and a caller-controlled `--trusted-entry`, then calls the independent
+registered verifier. Its success line is
+`trusted plan registry; development: no security level`, followed by `YES`.
+Compare its printed tokens, checked range and next token with the expected request;
+`--expect-model` additionally rejects a different model identity. This path does
+not claim independent model/plan derivation, ZK replay or profile admission.
+Existing `verify-dev` and dev-zk commands retain their behavior.
+
+This executable L0/L1 example uses the reviewed synthetic fixtures as the trusted
+registration input. The process test also checks the pinned entry and unchanged
+public/proof/relation bytes, and rejects a wrong entry with `RegistryKeyMismatch`.
+
+```sh
+STELE_DUMP_DIR=/tmp/stele-registry-reference cargo test --release -p stele-prover \
+  --test development dumps_byte5_windows_for_the_independent_verifier \
+  --locked --offline -- --ignored --exact
+cargo build --release -p stele-cli
+for spec in one-layer:16 eight-layer:64; do
+  name=${spec%:*}
+  length=${spec#*:}
+  work=/tmp/stele-registered-$name
+  python3 research/cqis-model-contract/synthetic_extract.py \
+    crates/stele-prover/tests/fixtures "$name" "$work"
+  target/release/stele plan-digest \
+    --public /tmp/stele-registry-reference/"$name"/public.bin --entry "$work/trusted.entry"
+  target/release/stele prove-dev --dev-profile 5 \
+    --model "$work/model.bin" --preparation "$work/preparation.bin" \
+    --scales "$work/scales.bin" --artifact "$work/artifact.bin" \
+    --tokens 1 --length "$length" --public "$work/public.bin" \
+    --proof "$work/proof.bin" --relation "$work/relation.bin"
+  target/release/stele verify-registered --public "$work/public.bin" \
+    --proof "$work/proof.bin" --relation "$work/relation.bin" \
+    --trusted-entry "$work/trusted.entry"
+done
+# Exact byte comparisons and wrong-entry process rejection on both rungs:
+STELE_DUMP_DIR=/tmp/stele-registry-reference cargo test --release -p stele-cli \
+  --test registered matches_reference_registered_cli_windows \
+  --locked --offline -- --ignored --exact --nocapture
+```
+
 ## dev-zk (tasks E12-14b, E12-25, E12-27, E12-14)
 
 dev-zk (RFC-0013 A5, RFC-0026 A9, profile byte 1) proves a window against one
