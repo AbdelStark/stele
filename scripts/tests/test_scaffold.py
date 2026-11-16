@@ -56,6 +56,12 @@ class ScaffoldTests(unittest.TestCase):
                 (crate / 'src').mkdir(parents=True)
                 shutil.copy(manifest, crate / 'Cargo.toml')
                 (crate / 'src/lib.rs').write_text('')
+            # A16 controls call the real independent verifier from the separate harness.
+            controls = root / 'tests/negative-controls/Cargo.toml'
+            original = controls.read_text()
+            if 'stele-verifier' not in tomllib.loads(original).get('dependencies', {}):
+                controls.write_text(original.replace('[dependencies]', '[dependencies]\n'
+                    'stele-verifier = { path = "../../crates/stele-verifier" }'))
             command = ['cargo', 'deny', '--offline', 'check', 'bans']
             result = subprocess.run(command, cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)

@@ -61,7 +61,7 @@ const RAW: &[u8] = include_bytes!("../../../crates/stele-prover/tests/fixtures/s
 const JSON: &str = include_str!("../../../crates/stele-prover/tests/fixtures/synthetic-e2e.json");
 
 /// `[offset, length]` of `key` in the first fixture case (`one-layer`).
-fn span(key: &str) -> Result<&'static [u8], String> {
+pub(crate) fn span(key: &str) -> Result<&'static [u8], String> {
     span_of("one-layer", key)
 }
 

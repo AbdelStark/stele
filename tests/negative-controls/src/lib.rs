@@ -35,6 +35,8 @@ pub mod pcs_opening_field;
 #[doc(hidden)]
 pub mod pcs_policy2;
 #[doc(hidden)]
+pub mod registry;
+#[doc(hidden)]
 pub mod requant;
 #[doc(hidden)]
 pub mod small;
@@ -62,6 +64,66 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    catalog::RegisteredControl {
+        id: 1325,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryKeyMismatch",
+        run: || registry::run(1325),
+    },
+    catalog::RegisteredControl {
+        id: 1326,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryStaticMismatch",
+        run: || registry::run(1326),
+    },
+    catalog::RegisteredControl {
+        id: 1327,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryKeyMismatch",
+        run: || registry::run(1327),
+    },
+    catalog::RegisteredControl {
+        id: 1328,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryRequestMismatch",
+        run: || registry::run(1328),
+    },
+    catalog::RegisteredControl {
+        id: 1329,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryRequestMismatch",
+        run: || registry::run(1329),
+    },
+    catalog::RegisteredControl {
+        id: 1330,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryRequestMismatch",
+        run: || registry::run(1330),
+    },
+    catalog::RegisteredControl {
+        id: 1331,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryRequestMismatch",
+        run: || registry::run(1331),
+    },
+    catalog::RegisteredControl {
+        id: 1332,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryRequestMismatch",
+        run: || registry::run(1332),
+    },
+    catalog::RegisteredControl {
+        id: 1333,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryRequestMismatch",
+        run: || registry::run(1333),
+    },
+    catalog::RegisteredControl {
+        id: 1334,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RegistryTemplateMismatch",
+        run: || registry::run(1334),
+    },
     catalog::RegisteredControl {
         id: 316,
         kind: catalog::ControlKind::Proof,

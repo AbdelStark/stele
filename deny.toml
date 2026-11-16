@@ -29,6 +29,6 @@ deny = [
   { name = "stele-reductions", wrappers = ["stele-negative-controls", "stele-prover"] },
   { name = "stele-simd", wrappers = ["stele-code", "stele-poly"] },
   { name = "stele-sumcheck", wrappers = ["stele-reductions", "stele-lookup", "stele-gkr", "stele-negative-controls"] },
-  { name = "stele-verifier", wrappers = ["stele-cli", "stele-py", "stele-wrapper"] },
+  { name = "stele-verifier", wrappers = ["stele-cli", "stele-py", "stele-wrapper", "stele-negative-controls"] },
   { name = "stele-wrapper", wrappers = ["stele-passport"] },
 ]

@@ -207,16 +207,16 @@
 | NC-1322 | development profile byte | 0026 A14 (Draft) | verify an A14 (byte 5) proof with profile byte 3, header restamped: the transcript input differs before any `(β, α)` nonce is read | `RoundSumMismatch` | done |
 | NC-1323 | development lookup grinding | 0026 A14 (Draft), 0012 A17 item 5 | replace a ground check's `(β, α)` nonce with the next valid nonce above it (found with the verifier's predicate), every other byte unchanged: the nonce is absorbed before `β` (counterpart of NC-0816) | `RoundSumMismatch` | done |
 | NC-1324 | development profile byte | 0026 A14 (Draft) | verify an A12 (byte 3) proof with profile byte 5, header restamped | `RoundSumMismatch` | done |
-| NC-1325 | registry key | 0026 A16 | change one entry model-identity byte against the same public file | `RegistryKeyMismatch` | todo |
-| NC-1326 | registry static public data | 0026 A16 | change one public Scales byte, retaining the trusted entry | `RegistryStaticMismatch` | todo |
-| NC-1327 | registry model roots | 0026 A16 | change one ordered public model root byte | `RegistryKeyMismatch` | todo |
-| NC-1328 | registry embedding onehot | 0026 A16 | change one embedding onehot value; include a rebuilt proof accepted by A15 replay | `RegistryRequestMismatch` | todo |
-| NC-1329 | registry embedding mantissa | 0026 A16 | change one gathered mantissa value | `RegistryRequestMismatch` | todo |
-| NC-1330 | registry embedding width | 0026 A16 | change one gathered mantissa width | `RegistryRequestMismatch` | todo |
-| NC-1331 | registry argmax onehot | 0026 A16 | change one argmax onehot value | `RegistryRequestMismatch` | todo |
-| NC-1332 | registry argmax below | 0026 A16 | change one argmax below value | `RegistryRequestMismatch` | todo |
-| NC-1333 | registry argmax rows | 0026 A16 | change one argmax rows value | `RegistryRequestMismatch` | todo |
-| NC-1334 | registry template | 0026 A16 | change one static declaration coefficient; include a rebuilt proof accepted by A15 replay | `RegistryTemplateMismatch` | todo |
+| NC-1325 | registry key | 0026 A16 | change one entry model-identity byte against the same public file | `RegistryKeyMismatch` | done |
+| NC-1326 | registry static public data | 0026 A16 | change one public Scales byte, retaining the trusted entry | `RegistryStaticMismatch` | done |
+| NC-1327 | registry model roots | 0026 A16 | change one ordered public model root byte | `RegistryKeyMismatch` | done |
+| NC-1328 | registry embedding onehot | 0026 A16 | change one embedding onehot value; include a rebuilt proof accepted by A15 replay | `RegistryRequestMismatch` | done |
+| NC-1329 | registry embedding mantissa | 0026 A16 | change one gathered mantissa value | `RegistryRequestMismatch` | done |
+| NC-1330 | registry embedding width | 0026 A16 | change one gathered mantissa width | `RegistryRequestMismatch` | done |
+| NC-1331 | registry argmax onehot | 0026 A16 | change one argmax onehot value | `RegistryRequestMismatch` | done |
+| NC-1332 | registry argmax below | 0026 A16 | change one argmax below value | `RegistryRequestMismatch` | done |
+| NC-1333 | registry argmax rows | 0026 A16 | change one argmax rows value | `RegistryRequestMismatch` | done |
+| NC-1334 | registry template | 0026 A16 | change one static declaration coefficient; include a rebuilt proof accepted by A15 replay | `RegistryTemplateMismatch` | done |
 Coverage report: `scripts/gates/negative-controls.sh --coverage` lists claim-graph edges, PCS checks and ledger lines without a control.
 
 The RFC-0025 reservations NC-0110..0126, NC-0704..0710 and NC-1204..1206
@@ -394,8 +394,11 @@ A3 final; exactly its physical zero equation fails, reaching
 FinalEvaluationMismatch. These 16 variants require accepted complete native
 baselines and add no catalog IDs or complete resource evidence.
 
-RFC-0026 A16 (Accepted, task E8-02f3a) reserves NC-1325..1334 for E8-02f3b's
+RFC-0026 A16 (Accepted, task E8-02f3b) executes NC-1325..1334 through the
 registered byte-5 entry point. Each keeps the caller-trusted entry fixed except
 control NC-1325, which tampers one key byte. NC-1328/1334 additionally rebuild a composed
 proof that low-level A15 replay accepts; the registry check must reject it before
-replay. No verifier bypass is permitted. Reservations add no executed coverage.
+replay. The synthetic model has a zero Token row for NC-1328; NC-1334 changes one
+coefficient on a zero public factor. Both retain full plain checks, normal proof
+production and low-level A15 acceptance. Each invocation reruns honest and tampered
+verification; only genuine producer outputs are cached. No verifier bypass is used.

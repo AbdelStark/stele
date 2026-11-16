@@ -151,8 +151,9 @@ fn width(r: &mut Reader) -> Result<Width, Error> {
 fn reference(r: &mut Reader) -> Result<Ref, Error> {
     let column = r.u32()?;
     let n = usize::from(r.u8()?);
+    let bytes = r.take(n)?;
     let mut vars = reserve(n)?;
-    vars.extend_from_slice(r.take(n)?);
+    vars.extend_from_slice(bytes);
     Ok(Ref { column, vars })
 }
 
@@ -222,6 +223,7 @@ impl Relation {
                 terms: list(r, 9, |r| {
                     let coeff = r.i64()?;
                     let n = usize::from(r.u8()?);
+                    r.check_count(n, 5)?;
                     let mut factors = reserve(n)?;
                     for _ in 0..n {
                         factors.push(reference(r)?);
