@@ -2039,8 +2039,9 @@ tasks:
 - id: E8-02f2
   epic: E8
   title: Plan derivation in the independent verifier - design note and ADR-131 (interim plan registry with independent statement columns; spec-first per-module derivation as the goal)
+  # Follows E8-02f1 (#381, not yet on main); depend on it here once it lands.
   depends:
-  - E8-02f1
+  - E8-02f0
   rfc:
   - RFC-0026 §8
   - RFC-0016 §3
