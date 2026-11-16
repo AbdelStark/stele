@@ -394,8 +394,8 @@ A3 final; exactly its physical zero equation fails, reaching
 FinalEvaluationMismatch. These 16 variants require accepted complete native
 baselines and add no catalog IDs or complete resource evidence.
 
-RFC-0026 A16 (Draft, task E8-02f3a) reserves NC-1325..1334 for E8-02f3b's
+RFC-0026 A16 (Accepted, task E8-02f3a) reserves NC-1325..1334 for E8-02f3b's
 registered byte-5 entry point. Each keeps the caller-trusted entry fixed except
-NC-1325, which tampers one key byte. NC-1328/1334 additionally rebuild a composed
+control NC-1325, which tampers one key byte. NC-1328/1334 additionally rebuild a composed
 proof that low-level A15 replay accepts; the registry check must reject it before
 replay. No verifier bypass is permitted. Reservations add no executed coverage.

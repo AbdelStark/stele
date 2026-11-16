@@ -227,4 +227,9 @@ for name in ['one-layer','eight-layer']:
         public_blake3=digest(raw).hex(),proof_blake3=digest(proof).hex(),relation_blake3=digest(relation).hex(),
         normalized_blake3=digest(norm).hex(),static_digest=static.hex(),template_digest=template(norm).hex(),
         model_identity=model_id.hex(),entry_hex=ent.hex()))
-print(json.dumps(result,sort_keys=True,separators=(',', ':')))
+encoded = json.dumps(result,sort_keys=True,separators=(',', ':'))+'\n'
+if len(sys.argv) == 4 and sys.argv[3] == '--check':
+    assert encoded == Path(__file__).with_name('vectors.json').read_text(), 'A16 vector drift'
+    print('A16 reference vectors match')
+else:
+    print(encoded,end='')

@@ -1959,8 +1959,8 @@ const A15_ERRATUM_DIGESTS: [&str; 10] = [
 
 /// RFC-0026 §8 declaration vectors across request values; no proof or new runtime API.
 #[test]
-#[ignore = "dump: STELE_DUMP_DIR=<dir> cargo test --release -p stele-prover --test development dumps_request_layout_variants -- --ignored"]
-fn dumps_request_layout_variants() {
+#[ignore = "dump: STELE_DUMP_DIR=<dir> cargo test --release -p stele-prover --test development matches_reference_request_layout_variants -- --ignored"]
+fn matches_reference_request_layout_variants() {
     let Some(dir) = std::env::var_os("STELE_DUMP_DIR").map(std::path::PathBuf::from) else {
         return;
     };

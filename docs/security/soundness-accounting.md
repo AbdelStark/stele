@@ -2050,7 +2050,7 @@ RFC-0008 A8, and the LU round carries `k_LU`.
   `verify-dev` also prints PASS. The worst round is a PCS column round at `2^-108`, and
   the floor is `2^-101.9`.
 
-## RFC-0026 A16: interim trusted plan registry (Draft)
+## RFC-0026 A16: interim trusted plan registry (Accepted, development tier)
 
 A16 is a deterministic preflight before the unchanged byte-5 replay. A correct
 caller-trusted entry is a premise, not a soundness error term. It authenticates

@@ -1,6 +1,6 @@
 # RFC-0026 A16 reference vectors
 
-`vectors.json` pins the Draft A16 entry encoding, request columns, static and
+`vectors.json` pins the Accepted A16 entry encoding, request columns, static and
 template digests. This is spec-author reference work, not independent verifier
 implementation or executed negative-control coverage.
 
@@ -28,7 +28,7 @@ Reproduce from the repository root:
 
 ```sh
 STELE_DUMP_DIR=/tmp/stele-a16-windows cargo test --release -p stele-prover --test development dumps_byte5_windows_for_the_independent_verifier --locked --offline -- --ignored --exact
-STELE_DUMP_DIR=/tmp/stele-a16-windows cargo test --release -p stele-prover --test development dumps_request_layout_variants --locked --offline -- --ignored --exact
+STELE_DUMP_DIR=/tmp/stele-a16-windows cargo test --release -p stele-prover --test development matches_reference_request_layout_variants --locked --offline -- --ignored --exact
 uv run --script research/plan-registry/vectors.py . /tmp/stele-a16-windows > /tmp/stele-a16-vectors.json
 cmp research/plan-registry/vectors.json /tmp/stele-a16-vectors.json
 ```
@@ -41,3 +41,7 @@ length mismatch first. `preflight_cases` explicitly test wrapper precedence.
 E8-02f3b must consume these vectors through the fresh independent implementation
 and execute NC-1325..1334 with the actual registered entry point. Those controls
 remain `todo` until then.
+
+The native digest/control/accounting union runs both dumps, this locked generator
+with `--check`, and the existing independent replay on the same temporary windows.
+A missing declaration test, generator failure or vector drift fails the gate.

@@ -2030,7 +2030,10 @@ The replay follows the reference validation rules; honest proof bytes are unchan
 
 ### A16 — Interim trusted plan registry with independent request columns
 
-Status: Draft (development tier). Task: E8-02f3a. Direction: ADR-131.
+Status: Accepted (development tier; full path). Task: E8-02f3a. Decision: ADR-133.
+Reviews: [soundness and lane C](../../agents/reviews/e8-02f3a-spec.md),
+[RFC-author and lanes B/P](../../agents/reviews/e8-02f3a-standards.md),
+and lane V owner acceptance in ADR-133.
 Motivation: A15 replay currently accepts a caller-derived relation and `cqis_id`.
 It does not establish that a prover-supplied relation describes the public request.
 The registry authenticates the static declaration; the verifier recomputes every

@@ -4223,3 +4223,14 @@ E8-02f3a accepts text and vectors only. After its validated merge, E8-02f3b uses
 fresh RFC-only author under ADR-128/131 and executes every new binding's control,
 including composed forgeries. E8-02f3c then publishes entries and exposes the CLI
 path. These are serial changes, not a parallel PR stack.
+
+Status: Accepted (development tier; Workflow 02 full path). The soundness-auditor
+and lane C reviewer approved at ae956599; the RFC-author and affected lane B/P
+reviewer approved that source plus required gate wiring and the test-name fix.
+Records: `agents/reviews/e8-02f3a-spec.md` and
+`agents/reviews/e8-02f3a-standards.md`. The lane V owner (`codex-root`) accepts the
+specified trust boundary, typed error order and serial independent-author plan.
+Reference vector reproduction and three targeted mutants passed review; current
+one/eight-layer proofs were regenerated and verified with unchanged byte hashes.
+The catalog snapshot passed with all ten new controls still reserved, not credited.
+This accepts only the contract; E8-02f3b/c runtime behavior remains unimplemented.

@@ -229,6 +229,17 @@ def accounting_admission(root):
                                 cwd=root, text=True, capture_output=True, env=env)
         if result.returncode or 'test dumps_byte5' not in result.stdout:
             raise ValueError(f'accounting admission: development replay dump failed {result.stderr[-2000:]}')
+        # A16 spec vectors reuse these verified windows and vary only declarations.
+        name = 'matches_reference_request_layout_variants'
+        result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-prover', '--test', 'development',
+                                 name, '--locked', '--offline', '--', '--ignored', '--exact'],
+                                cwd=root, text=True, capture_output=True, env=env)
+        if result.returncode or f'test {name} ... ok' not in result.stdout.splitlines():
+            raise ValueError(f'accounting admission: A16 declaration vectors failed {result.stderr[-2000:]}')
+        result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/plan-registry/vectors.py',
+                                 str(root), windows, '--check'], cwd=root, text=True, capture_output=True)
+        if result.returncode or 'A16 reference vectors match' not in result.stdout.splitlines():
+            raise ValueError(f'accounting admission: A16 vector drift {result.stderr[-2000:]}')
         # E8-02f1b: the forged one-layer windows, one per check no one-value tamper reaches.
         result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-negative-controls', '--features',
                                  'controls', '--lib', 'dumps_forged', '--locked', '--offline', '--', '--ignored'],

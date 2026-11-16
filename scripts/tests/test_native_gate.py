@@ -106,6 +106,7 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                  + [f'test {n} ... ok' for n in gate.ACCOUNTING['parity']]
                  + [f'test {n} ... ok' for n in gate.ACCOUNTING['replay']]
                  + ['test dumps_byte5 ... ok', 'test dumps_forged ... ok',
+                    'test matches_reference_request_layout_variants ... ok', 'A16 reference vectors match',
                     'test matches_reference_verify_dev_on_byte5_windows_and_tampers ... ok'])
         output = '\n'.join(lines)
         stderr = ('one-layer: 42 tampers rejected\neight-layer: 42 tampers rejected\n'
