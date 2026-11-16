@@ -100,14 +100,24 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
                 self.assertEqual(calls[-1][0], validator)
 
     def test_rejects_missing_accounting_receipt_and_unadmitted_verifier_surface(self):
+        # E8-02f1: the replay's unit checks, the two dumps and the parity test, whose
+        # stderr names both honest windows and both forged rejections.
         lines = ([f'test accounting::tests::{n} ... ok' for n in gate.ACCOUNTING['tests']]
-                 + [f'test {n} ... ok' for n in gate.ACCOUNTING['parity']])
+                 + [f'test {n} ... ok' for n in gate.ACCOUNTING['parity']]
+                 + [f'test {n} ... ok' for n in gate.ACCOUNTING['replay']]
+                 + ['test dumps_byte5 ... ok', 'test dumps_forged ... ok',
+                    'test matches_reference_verify_dev_on_byte5_windows_and_tampers ... ok'])
         output = '\n'.join(lines)
-        with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, '')):
+        stderr = ('one-layer: 42 tampers rejected\neight-layer: 42 tampers rejected\n'
+                  'forged-table: forged Err(TableDenominatorMismatch)\n'
+                  'forged-public: forged Err(PublicMismatch)\n')
+        with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, stderr)):
             gate.accounting_admission(ROOT)
-        for code, text in [(1, output)] + [(0, output.replace(line, '')) for line in lines]:
-            with self.subTest(code=code, output=text), patch.object(gate.subprocess, 'run',
-                    return_value=subprocess.CompletedProcess([], code, text, '')):
+        missing = [stderr.replace(line + '\n', '') for line in stderr.splitlines()]
+        for code, text, err in ([(1, output, stderr)] + [(0, output.replace(line, ''), stderr) for line in lines]
+                                + [(0, output, e) for e in missing]):
+            with self.subTest(code=code, output=text, stderr=err), patch.object(gate.subprocess, 'run',
+                    return_value=subprocess.CompletedProcess([], code, text, err)):
                 with self.assertRaisesRegex(ValueError, 'accounting admission'):
                     gate.accounting_admission(ROOT)
         crate = ROOT / 'crates/stele-verifier'
