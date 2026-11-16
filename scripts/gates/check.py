@@ -86,12 +86,14 @@ ACCOUNTING = {
               'tests/fixtures/single-mismatch.jsonl',
               'src/fraction.rs', 'src/logup.rs', 'tests/fraction_corpus.rs', 'tests/logup_round.rs',
               # E8-02f1: the RFC-0026 A15 byte-5 replay and its verify-dev parity test.
-              'src/development.rs', 'src/plan.rs', 'src/relation.rs', 'tests/development_replay.rs'),
+              'src/development.rs', 'src/plan.rs', 'src/relation.rs', 'tests/development_replay.rs',
+              # E8-02f3b: A16 registered replay and independently authored comparisons.
+              'src/registered.rs', 'src/registered/tests.rs', 'tests/registered.rs'),
     'library': '//! stele-verifier — governed by RFC-0016. No behaviour exists here that is not '
                'specified there (INV-1).\n#![forbid(unsafe_code)]\n#![no_std]\n'
                '#![cfg_attr(not(test), deny(clippy::float_arithmetic))]\n\nextern crate alloc;\n\n'
                'pub mod accounting;\npub mod batch;\npub mod circle;\npub mod development;\npub mod fraction;\n'
-               'pub mod logup;\npub mod pcs;\npub mod plan;\npub mod relation;\npub mod sumcheck;\npub mod zerocheck;\n',
+               'pub mod logup;\npub mod pcs;\npub mod plan;\npub mod registered;\npub mod relation;\npub mod sumcheck;\npub mod zerocheck;\n',
     'parity': ('matches_reference_a1_corpus_decisions_and_receipts',
                'matches_reference_a3_corpus_decisions_and_receipts',
                'matches_reference_a2_corpus_decisions_and_receipts',
@@ -125,6 +127,8 @@ ACCOUNTING = {
                'plan::tests::ceil_log2_matches_its_definition',
                'plan::tests::places_blocks_largest_first_with_ties_in_order',
                'relation::tests::covers_split_blocks_and_rejects_one_block'),
+    'registered': ('accepts_spec_request_columns_and_original_relation_replay', 'rejects_registry_encodings_before_public_parsing', 'rejects_public_tokens_and_key_before_static_and_relation', 'rejects_relation_length_before_decoding_and_decoding_before_requests', 'rejects_request_names_kinds_lengths_values_widths_and_logs', 'rejects_template_before_validation_and_validation_before_proof', 'matches_reference_a16_vectors', 'matches_reference_registered_windows', 'rejects_malformed_public_and_relation_before_request_checks', 'rejects_reordered_columns_and_preserves_nonreserved_names'),
+    'registered_units': ('registered::tests::matches_reference_a16_declaration_variants', 'registered::tests::matches_reference_a16_blocked_embedding'),
     'tests': ('big_arithmetic_matches_u128', 'admits_rounds_at_the_c1_boundary_and_rejects_one_above',
               'lookup_and_tensor_rounds_grind_at_exactly_the_least_bits',
               'column_rounds_grind_at_the_profile_bits', 'floor_admits_exactly_two_to_the_minus_lambda',
@@ -153,9 +157,12 @@ ACCOUNTING = {
         'tests/circle_vectors.rs': '6df8664f3f24cb707cde7349d82cfbcd1601966ef283f339367c7553221cfd48',
         'tests/batch_corpus.rs': '88bddab116ec2780662969298e3c711b018f1779efa747f4685380b1f84ac351',
         'tests/sumcheck_corpus.rs': '931e06e732761c902ef53b8874e0767d93883a083e33f3521478011ceb66ea81',
-        'src/development.rs': 'f8d2e36a179e0ae1ee274f9636311f353de03109a991c585924b14e90e31e7d3',
+        'src/registered.rs': 'c410db7323627016a1525d336dbf21d3be4245c6821326657c6dd91c7246f243',
+        'src/registered/tests.rs': '5ca11ac71c28b955561c8df07b62a9a409f6d0652d7b850532746cd0a03f0ab5',
+        'tests/registered.rs': 'ae587a7ad73258a98cbc00d41d8b5e234e2b3a633824cef832a7640c83fd96f5',
+        'src/development.rs': '80142206f81352fa26d8e85d21065f004af4050d9e6091b1dfa72d7169f6be39',
         'src/plan.rs': '238109b62d1a286749c5ed5293f5dfcc0f5f606bfd9036624a3df8bc1a9c0872',
-        'src/relation.rs': 'cf7cc80dd9051daf7b55cd4b8236eeb785dcb5e3dd6c1d59a03c51caefe82ab1',
+        'src/relation.rs': 'd4224966c641bd3e1bb9849066f68f2ebc662e4f80616a3556b857b2518a905b',
         'tests/development_replay.rs': '7c26641e813722378de71b06aa256be0d9b28094ed4fbcb127e3116d4215be8d',
         'Cargo.toml': 'd97170ff0f0f3818854b9905e9093099e163cc7b3cdd68802164a29c3a104f94',
     },
@@ -258,6 +265,21 @@ def accounting_admission(root):
                                  str(root), windows, '--check'], cwd=root, text=True, capture_output=True)
         if result.returncode or 'A16 reference vectors match' not in result.stdout.splitlines():
             raise ValueError(f'accounting admission: A16 vector drift {result.stderr[-2000:]}')
+        # A16: run only after all complete proofs and declaration variants exist.
+        env = dict(os.environ, STELE_DEV_REPLAY_DIR=windows)
+        for target, names, receipts in (
+                (['--test', 'registered'], ACCOUNTING['registered'],
+                 [f'A16 registered {name}: accepted pinned proof' for name in ('one-layer', 'eight-layer')]),
+                (['--lib', 'registered::tests'], ACCOUNTING['registered_units'],
+                 [f'A16 declaration {rung}-{sign}-{i}: request/template matched'
+                  for rung in ('one-layer', 'eight-layer') for sign in ('positive', 'negative') for i in range(3)])):
+            result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-verifier', *target,
+                                     '--locked', '--offline', '--', '--nocapture'],
+                                    cwd=root, text=True, capture_output=True, env=env)
+            missing = [n for n in names if f'test {n} ... ok' not in result.stdout.splitlines()]
+            missing += [r for r in receipts if result.stderr.splitlines().count(r) != 1]
+            if result.returncode or missing:
+                raise ValueError(f'accounting admission: A16 registered replay failed: {missing} {result.stderr[-2000:]}')
     # E8-02d: the PCS fixtures (Policy 2 full bytes, parameter table, Policy 1
     # continuations, single-position mismatches) are the Python oracle's current output.
     result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/merkle-oracle/dump_policy2_full.py'],
@@ -269,7 +291,9 @@ def accounting_admission(root):
           'the PCS consumer matches the Policy 1 and Policy 2 oracle bytes; RFC-0008 A3 fraction trees '
           'match every corpus decision and receipt, and the LogUp grinding bits and nonce round are '
           'checked (E8-02a..e); the RFC-0026 A15 byte-5 replay accepts the dumped one- and eight-layer '
-          'windows, rejects their one-byte tampers and the two forged windows (E8-02f1)')
+          'windows, rejects their one-byte tampers and the two forged windows (E8-02f1); A16 registered '
+          'replay accepts both pinned proofs and matches all twelve declaration variants (E8-02f3b); '
+          'trusted plan registry; development: no security level')
 
 
 def development_surface(crate, name, actual, expected):
@@ -1840,7 +1864,7 @@ def controls_layout(root):
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
-                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
+                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover','verifier')}
     dependencies['stele-sumcheck']['features'] = ['std']
     # E12-14a, ADR-108: the dev-zk adversaries and the standard-profile entry points are
     # this crate's own off-by-default features, never a dependency-line feature that a
@@ -1853,7 +1877,7 @@ def controls_layout(root):
                                             'standard-unproven': ['stele-reductions/standard-unproven']}
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/registry.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
@@ -2045,6 +2069,7 @@ def standard_quarantine(root):
                    'crates/stele-prover/src/development.rs', 'crates/stele-prover/src/development/bundle.rs',
                    'crates/stele-prover/src/development/zk.rs', 'crates/stele-prover/tests/development.rs',
                    'tests/negative-controls/src/development.rs',
+                   'tests/negative-controls/src/registry.rs',  # A16 actual byte-5 controls
                    # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
                    'crates/stele-pcs/src/producer_tests.rs'}

@@ -48,6 +48,16 @@ pub enum Error {
     EqMismatch,
     /// A15 §6.4 step 8: a public column's MLE differs from its claim.
     PublicMismatch,
+    /// A16 §1: the trusted entry is not canonically encoded or has invalid metadata.
+    RegistryEncoding,
+    /// A16 §2: the public model identity or token count differs from the trusted key.
+    RegistryKeyMismatch,
+    /// A16 §2: static public data or ordered roots differ from the trusted entry.
+    RegistryStaticMismatch,
+    /// A16 §§3–4: relation length or normalized declaration differs from the entry.
+    RegistryTemplateMismatch,
+    /// A16 §3: a request column is missing, extra, duplicated or incorrectly declared.
+    RegistryRequestMismatch,
     Capacity,
     Sumcheck(sumcheck::Error),
     Pcs(pcs::Error),
@@ -118,7 +128,7 @@ impl<'a> Reader<'a> {
         self.at = end;
         Ok(out)
     }
-    fn array<const N: usize>(&mut self) -> Result<[u8; N], Error> {
+    pub(crate) fn array<const N: usize>(&mut self) -> Result<[u8; N], Error> {
         self.take(N)?.try_into().map_err(|_| self.err)
     }
     pub(crate) fn u8(&mut self) -> Result<u8, Error> {
@@ -137,10 +147,17 @@ impl<'a> Reader<'a> {
     /// A `u32` count of elements of at least `min` bytes each, bounded by what remains.
     pub(crate) fn count(&mut self, min: usize) -> Result<usize, Error> {
         let n = self.u32()? as usize;
+        self.check_count(n, min)?;
+        Ok(n)
+    }
+    pub(crate) fn check_count(&self, n: usize, min: usize) -> Result<(), Error> {
         if n > (self.bytes.len() - self.at) / min.max(1) {
             return Err(self.err);
         }
-        Ok(n)
+        Ok(())
+    }
+    pub(crate) fn position(&self) -> usize {
+        self.at
     }
     pub(crate) fn end(&self) -> Result<(), Error> {
         if self.at == self.bytes.len() {
@@ -183,18 +200,18 @@ const CONTAINER_MAGIC: &[u8; 16] = b"stele-dev-e2e-v1";
 const PROFILE: u8 = 5;
 
 /// The decoded `stele-dev-public-v4` file (A15 §2).
-struct Public<'a> {
+pub(crate) struct Public<'a> {
     /// Model, Scales, Preparation and the 1-D records, exactly as in the file.
-    data: &'a [u8],
-    roots: Vec<[u8; 32]>,
+    pub(crate) data: &'a [u8],
+    pub(crate) roots: Vec<[u8; 32]>,
     certificates: Vec<&'a [u8]>,
     /// Tokens, checked range and next token, exactly as in the file.
-    statement: &'a [u8],
+    pub(crate) statement: &'a [u8],
 }
 
 impl<'a> Public<'a> {
     /// A15 §2. Every failure is `StatementMismatch`.
-    fn decode(bytes: &'a [u8]) -> Result<Self, Error> {
+    pub(crate) fn decode(bytes: &'a [u8]) -> Result<Self, Error> {
         let r = &mut Reader::new(bytes, Error::StatementMismatch);
         // A15 §2: a byte-5 verifier accepts only `stele-dev-public-v4`.
         if r.take(PUBLIC_MAGIC.len())? != PUBLIC_MAGIC {

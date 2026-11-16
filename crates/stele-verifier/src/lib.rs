@@ -13,6 +13,7 @@ pub mod fraction;
 pub mod logup;
 pub mod pcs;
 pub mod plan;
+pub mod registered;
 pub mod relation;
 pub mod sumcheck;
 pub mod zerocheck;

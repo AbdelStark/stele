@@ -105,13 +105,20 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
         lines = ([f'test accounting::tests::{n} ... ok' for n in gate.ACCOUNTING['tests']]
                  + [f'test {n} ... ok' for n in gate.ACCOUNTING['parity']]
                  + [f'test {n} ... ok' for n in gate.ACCOUNTING['replay']]
+                 + [f'test {n} ... ok' for n in gate.ACCOUNTING['registered']]
+                 + [f'test {n} ... ok' for n in gate.ACCOUNTING['registered_units']]
                  + ['test dumps_byte5 ... ok', 'test dumps_forged ... ok',
                     'test matches_reference_request_layout_variants ... ok', 'A16 reference vectors match',
                     'test matches_reference_verify_dev_on_byte5_windows_and_tampers ... ok'])
         output = '\n'.join(lines)
         stderr = ('one-layer: 42 tampers rejected\neight-layer: 42 tampers rejected\n'
                   'forged-table: forged Err(TableDenominatorMismatch)\n'
-                  'forged-public: forged Err(PublicMismatch)\n')
+                  'forged-public: forged Err(PublicMismatch)\n'
+                  'A16 registered one-layer: accepted pinned proof\n'
+                  'A16 registered eight-layer: accepted pinned proof\n')
+        stderr += ''.join(f'A16 declaration {rung}-{sign}-{i}: request/template matched\n'
+                          for rung in ('one-layer', 'eight-layer')
+                          for sign in ('positive', 'negative') for i in range(3))
         def fixtures(command, **kwargs):
             env = kwargs.get('env', {})
             if 'matches_reference_request_layout_variants' in command:
@@ -138,7 +145,8 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
         actual = {'src/lib.rs': 'changed', **gate.ACCOUNTING['pins']}
         self.assertEqual(gate.accounting_surface(crate, actual, expected), expected)
         for extra in ({'src/other.rs': 'y'}, {'Cargo.toml': 'changed'}, {'src/accounting.rs': 'edited'},
-                      {'src/sumcheck.rs': 'edited'}):
+                      {'src/sumcheck.rs': 'edited'}, {'src/registered.rs': 'edited'},
+                      {'src/registered/tests.rs': 'edited'}, {'tests/registered.rs': 'edited'}):
             changed = {**actual, **extra}
             self.assertEqual(gate.accounting_surface(crate, changed, expected), changed)
         # A path module or include hidden in the admitted file is refused even at the pin.

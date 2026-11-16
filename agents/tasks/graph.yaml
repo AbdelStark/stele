@@ -91,7 +91,7 @@ program:
   - E23
   legacy_active:
   - E5-05h
-  - E8-02f3a
+  - E8-02f3b
   rule: E16 stays active for development-profile work. Tasks of epics E3 to E15 that are not done are the treaty backlog. Pick one only if it is in legacy_active, or if it was added after RFC-0027 by a change that says which lane owns it. RFC-0027 §6 says what supersedes, parks or resumes each.
   gates:
     M1: E22-04
@@ -2108,7 +2108,7 @@ tasks:
   - RFC-0016 §3
   skill: rfc-author
   crate: docs+stele-prover-tests
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E8-02f3a-registry-contract
   acceptance:
@@ -2128,7 +2128,9 @@ tasks:
   - RFC-0016 §3
   skill: soundness-auditor
   crate: stele-verifier+stele-negative-controls
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E8-02f3b-registered-verifier
   acceptance:
   - a fresh author derives the no_std wrapper from Accepted A16 and existing independent verifier only, without reading production declarations; reference comparison follows implementation under ADR-128 and ADR-131
   - canonical entry parsing, trusted length bound, key/static joins, exact request columns and widths, template comparison and unchanged original-relation replay match all A16 vectors and precedence cases

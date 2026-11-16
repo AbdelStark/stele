@@ -4234,3 +4234,39 @@ Reference vector reproduction and three targeted mutants passed review; current
 one/eight-layer proofs were regenerated and verified with unchanged byte hashes.
 The catalog snapshot passed with all ten new controls still reserved, not credited.
 This accepts only the contract; E8-02f3b/c runtime behavior remains unimplemented.
+
+## ADR-134: Exercise the registered verifier from the separate control harness (RFC-0026 A16, task E8-02f3b)
+
+Status: Proposed; adversarial review and complete gates pending.
+
+A16 requires NC-1325..1334 to call the actual registered verifier, including two
+rebuilt proofs that pass low-level A15 replay. The separate negative-control
+harness already owns production fixtures and prover hooks, but its dependency
+policy currently prevents calling `stele-verifier` directly.
+
+Decision: permit exactly `stele-negative-controls -> stele-verifier`, with a local
+workspace dependency and the matching `deny.toml` caller entry. This is the
+external test harness of RFC-0020 §1, not a core dependency exception. No core
+crate may import the harness; `stele-prover -> stele-verifier` stays forbidden,
+including through aliases. The verifier retains only field/hash dependencies
+and is independently implemented from Accepted text under ADR-128/131.
+
+The dependency-policy regression first constructs this harness edge and requires
+`cargo deny` to accept it, then rejects every existing forbidden core edge. It
+failed under the original policy with the verifier dependency explicitly banned.
+The controls call the unchanged public verification entry points, with exact
+errors and no bypass. Publisher correctness and registry distribution remain
+the A16 trust premises. No external dependency, challenge, proof byte or measured
+cost-model constant is introduced by this test-harness edge.
+
+Status: Accepted (development-tier dependency decision). The soundness-auditor
+and lane C reviewer approved `f487909d`; the independent standards and lane B/P
+reviewer approved the same implementation and exact inventory correction.
+Records: `agents/reviews/e8-02f3b-spec.md` and
+`agents/reviews/e8-02f3b-standards.md`. Lane V owner `codex-root` accepts this exact
+external-harness edge. All ten actual controls, both rebuilt A15 acceptances,
+L0/L1 pinned registered replay, twelve declaration variants, no_std and forbidden
+core-edge regressions passed independent targeted review. The fresh-author
+sequence is recorded in `agents/reviews/e8-02f3b-author.md`. Complete native,
+workspace and current-base/merge-tree validation remain required before merging;
+this decision does not waive them or grant profile admission.

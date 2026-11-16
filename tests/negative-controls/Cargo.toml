@@ -85,6 +85,8 @@ stele-sumcheck = { path = "../../crates/stele-sumcheck", features = ["std"] }
 stele-field = { path = "../../crates/stele-field" }
 stele-hash = { path = "../../crates/stele-hash" }
 stele-prover = { path = "../../crates/stele-prover" }
+# ADR-134: actual A16 controls in the separate harness; never a prover dependency.
+stele-verifier = { path = "../../crates/stele-verifier" }
 # E12-23: the independent A17 predicate in pcs_policy2.rs; never linked into a prover or verifier.
 blake3 = { version = "=1.8.7", default-features = false }
 

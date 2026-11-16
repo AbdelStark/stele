@@ -19,7 +19,18 @@ The accounting gate compares the production transcript registry and actual sumch
 SC receipts against the independent corpus and descriptors. Mutations of the SC
 numerator or Final label fail. This covers the implemented reduction, not complete
 inference accounting or a profile budget. Remaining unimplemented protocol crates
-must match the empty bootstrap snapshots, with no unvalidated artifacts:
+must match the empty bootstrap snapshots, with no unvalidated artifacts.
+
+The admitted independent verifier surface is pinned separately. A15 validation
+requires actual one/eight-layer proof replay, byte tampers and both forged-window
+rejections. A16 adds registered replay of both pinned proofs and all twelve
+request/template declaration comparisons. The gate requires each named receipt,
+so missing exports or skipped comparisons fail. NC-1325..1334 execute against the
+registered entry point; NC-1328/1334 also require low-level A15 acceptance of their
+rebuilt proofs. This is a trusted plan registry in the development tier, with no
+security level or profile admission.
+
+The remaining replacement contracts are:
 
 | Gate | Replacement task | Required validator |
 |---|---|---|
