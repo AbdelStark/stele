@@ -66,7 +66,7 @@ pub(crate) fn span(key: &str) -> Result<&'static [u8], String> {
 }
 
 /// A byte span of synthetic fixture case `name`.
-fn span_of(name: &str, key: &str) -> Result<&'static [u8], String> {
+pub(crate) fn span_of(name: &str, key: &str) -> Result<&'static [u8], String> {
     let case = JSON
         .split("\"name\": \"")
         .find(|c| c.starts_with(&format!("{name}\"")))
