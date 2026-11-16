@@ -1088,6 +1088,38 @@ mod tests {
     }
 
     #[test]
+    fn rejects_non_utf8_relation_names() {
+        // RFC-0026 A15 §§1,5: every name is a length-prefixed UTF-8 string.
+        let relation = hex(RELATION_1);
+        for name in ["G/x/1", "w", "k", "p", "t", "i", "l", "r", "m", "c"] {
+            let mut encoded = (name.len() as u32).to_le_bytes().to_vec();
+            encoded.extend_from_slice(name.as_bytes());
+            let offsets: Vec<_> = relation
+                .windows(encoded.len())
+                .enumerate()
+                .filter_map(|(at, bytes)| (bytes == encoded).then_some(at + 4))
+                .collect();
+            assert_eq!(offsets.len(), 1, "fixture name {name}");
+            let mut invalid = relation.clone();
+            invalid[offsets[0]] = 0xff;
+            assert_eq!(
+                Relation::decode(&invalid),
+                Err(Error::StatementMismatch),
+                "name {name}"
+            );
+            assert_eq!(
+                verify(&hex(PUBLIC_1), &[], &invalid, &[0x11; 32]),
+                Err(Error::StatementMismatch),
+                "name {name} must fail before reading the proof"
+            );
+        }
+        let mut unicode = relation;
+        let at = 31 + 4 + 4; // A15 §5 tag, group count, name length.
+        unicode[at..at + 5].copy_from_slice("é/x1".as_bytes());
+        assert!(Relation::decode(&unicode).is_ok());
+    }
+
+    #[test]
     fn eq_table_matches_eq_bits() {
         let z = [K::from_i64(3), K::from_i64(7), K::from_i64(11)];
         let table = eq_table(&z).expect("test vector");

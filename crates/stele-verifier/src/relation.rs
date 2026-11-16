@@ -156,6 +156,13 @@ fn reference(r: &mut Reader) -> Result<Ref, Error> {
     Ok(Ref { column, vars })
 }
 
+/// RFC-0026 A15 §§1,5: names are UTF-8 even when only their encoded digest is used.
+fn name<'a>(r: &mut Reader<'a>) -> Result<&'a [u8], Error> {
+    let bytes = r.blob()?;
+    core::str::from_utf8(bytes).map_err(|_| Error::StatementMismatch)?;
+    Ok(bytes)
+}
+
 /// `list X`, with each element at least `min` bytes so a count cannot outrun the input.
 fn list<T>(
     r: &mut Reader,
@@ -178,7 +185,7 @@ impl Relation {
             return Err(Error::StatementMismatch);
         }
         let named = list(r, 5, |r| {
-            let name = r.blob()?;
+            let name = name(r)?;
             let mut owned = reserve(name.len())?;
             owned.extend_from_slice(name);
             Ok((owned, r.u8()?))
@@ -188,7 +195,7 @@ impl Relation {
         let mut group_names = reserve(named.len())?;
         group_names.extend(named.into_iter().map(|(name, _)| name));
         let columns = list(r, 8, |r| {
-            r.blob()?;
+            name(r)?;
             let kind = match r.u8()? {
                 0 => Kind::Witness(r.u32()?),
                 1 => Kind::Weight,
@@ -202,14 +209,14 @@ impl Relation {
             })
         })?;
         let tables = list(r, 12, |r| {
-            r.blob()?;
+            name(r)?;
             Ok(Table {
                 widths: list(r, 2, width)?,
                 rows: list(r, 4, |r| list(r, 8, |r| r.i64()))?,
             })
         })?;
         let identities = list(r, 9, |r| {
-            r.blob()?;
+            name(r)?;
             Ok(Identity {
                 vars: r.u8()?,
                 terms: list(r, 9, |r| {
@@ -224,7 +231,7 @@ impl Relation {
             })
         })?;
         let lookups = list(r, 14, |r| {
-            r.blob()?;
+            name(r)?;
             let vars = r.u8()?;
             let selector = match r.u8()? {
                 0 => None,
@@ -239,14 +246,14 @@ impl Relation {
             })
         })?;
         let ranges = list(r, 10, |r| {
-            r.blob()?;
+            name(r)?;
             Ok(Range {
                 column: r.u32()?,
                 width: width(r)?,
             })
         })?;
         let matmuls = list(r, 21, |r| {
-            r.blob()?;
+            name(r)?;
             Ok(Matmul {
                 free: r.u8()?,
                 summed: r.u8()?,
@@ -256,7 +263,7 @@ impl Relation {
             })
         })?;
         let composes = list(r, 12, |r| {
-            r.blob()?;
+            name(r)?;
             Ok(Compose {
                 column: r.u32()?,
                 limbs: list(r, 5, |r| Ok((r.u32()?, r.u8()?)))?,
