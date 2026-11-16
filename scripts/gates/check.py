@@ -200,7 +200,7 @@ def accounting_admission(root):
     lines = result.stdout.splitlines()
     missing = [n for n in ACCOUNTING['replay'] if f'test {n} ... ok' not in lines]
     if result.returncode or missing:
-        raise ValueError(f'development replay unit checks failed: {missing} {result.stderr[-2000:]}')
+        raise ValueError(f'accounting admission: development replay unit checks failed: {missing} {result.stderr[-2000:]}')
     print('gate accounting: exact (C1)-(C4) admission decision at its boundaries (E8-05b); '
           'no round enumeration, profile or NC-0804/0805 credit')
     # E8-02a: the independent A1 verifier gives the production decisions and receipts.
@@ -221,13 +221,13 @@ def accounting_admission(root):
                                  'dumps_byte5', '--locked', '--offline', '--', '--ignored'],
                                 cwd=root, text=True, capture_output=True, env=env)
         if result.returncode or 'test dumps_byte5' not in result.stdout:
-            raise ValueError(f'development replay: production dump failed {result.stderr[-2000:]}')
+            raise ValueError(f'accounting admission: development replay dump failed {result.stderr[-2000:]}')
         # E8-02f1b: the forged one-layer windows, one per check no one-value tamper reaches.
         result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-negative-controls', '--features',
                                  'controls', '--lib', 'dumps_forged', '--locked', '--offline', '--', '--ignored'],
                                 cwd=root, text=True, capture_output=True, env=env)
         if result.returncode or 'dumps_forged' not in result.stdout:
-            raise ValueError(f'development replay: forged dump failed {result.stderr[-2000:]}')
+            raise ValueError(f'accounting admission: development replay forged dump failed {result.stderr[-2000:]}')
         env = dict(os.environ, STELE_DEV_REPLAY_DIR=windows)
         result = subprocess.run(['cargo', 'test', '--release', '-p', 'stele-verifier', '--test',
                                  'development_replay', '--locked', '--offline', '--', '--nocapture'],
@@ -238,7 +238,7 @@ def accounting_admission(root):
                   + result.stderr.count('forged-public: forged Err(PublicMismatch)'))
         if (result.returncode or f'test {name} ... ok' not in result.stdout.splitlines() or windows_seen != 2
                 or forged != 2):
-            raise ValueError(f'development replay: parity failed ({windows_seen} windows) {result.stderr[-2000:]}')
+            raise ValueError(f'accounting admission: development replay parity failed ({windows_seen} windows) {result.stderr[-2000:]}')
     # E8-02d: the PCS fixtures (Policy 2 full bytes, parameter table, Policy 1
     # continuations, single-position mismatches) are the Python oracle's current output.
     result = subprocess.run(['uv', 'run', '--locked', '--script', 'research/merkle-oracle/dump_policy2_full.py'],
