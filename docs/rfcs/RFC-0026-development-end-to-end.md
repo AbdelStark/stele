@@ -1849,7 +1849,7 @@ written from it), E8-02f2 (plan derivation).
 
 #### A15 erratum E1 — gaps found by the independent E8-02f1 author
 
-Status: Draft (development tier). Needs one independent review. Task: E8-02f0b.
+Status: Accepted (development tier; ADR-132). Independent review: `agents/reviews/e8-02f0b-a15-erratum.md`. Task: E8-02f0b.
 
 **Motivation.**
 - The E8-02f1 author wrote the replay from A15 alone (#381) and found 13 gaps.

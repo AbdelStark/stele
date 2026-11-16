@@ -2014,7 +2014,7 @@ tasks:
   - RFC-0016 §3
   skill: benchmark-runner
   crate: stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E8-02f1a-dev-dump
   acceptance:
@@ -2030,7 +2030,7 @@ tasks:
   - RFC-0008 A5
   skill: negative-control-author
   crate: tests
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E8-02f1b-forged-windows
   acceptance:
@@ -2038,9 +2038,10 @@ tasks:
   - forged-table and forged-public one-layer byte-5 windows, each rejected by production verify with TableDenominatorMismatch and PublicMismatch(30); dumped as public/proof/relation.bin under STELE_DUMP_DIR (ignored test) and checked by a regular controls test; the seam mutation-checked
 - id: E8-02f0b
   epic: E8
-  title: RFC-0026 A15 erratum E1 (Draft) - exact text for the gaps the independent E8-02f1 author found (openings, multiplicity size rule, validation rules, selector positions, statement-digest comparison, malformed encoding), with validation golden vectors
+  title: RFC-0026 A15 erratum E1 (Accepted) - exact text for the gaps the independent E8-02f1 author found (openings, multiplicity size rule, validation rules, selector positions, statement-digest comparison, malformed encoding), with validation golden vectors
   depends:
   - E8-02f0
+  - E8-02f1
   rfc:
   - RFC-0026 A15
   - RFC-0026 A6
@@ -2050,9 +2051,9 @@ tasks:
   agent: codex-root
   branch: task/E8-02f0b-a15-erratum
   acceptance:
-  - A15 erratum E1 (Draft) gives the exact replacement or addition text for gaps 2, 3, 4, 5, 12 and 13, the covers cap, the absent free >= 1 rule (with A6's sentence corrected), empty identities and duplicate group names
+  - A15 erratum E1 (Accepted) gives the exact replacement or addition text for gaps 2, 3, 4, 5, 12 and 13, the covers cap, the absent free >= 1 rule (with A6's sentence corrected), empty identities and duplicate group names
   - matches_a15_erratum_validation_vectors pins six validate outcomes and encoding digests; the covers-cap vector mutation-checked
-  - one independent review before acceptance
+  - independent review in agents/reviews/e8-02f0b-a15-erratum.md; acceptance recorded by ADR-132 and the RFC index
 - id: E8-02f1
   epic: E8
   title: Verifier primitives (unblocked) - independent no_std replay of RFC-0026 byte-5 development proofs from the A15 text (public file, container, relation encoding, engine replay), relation and cqis_id as inputs
@@ -2067,7 +2068,7 @@ tasks:
   - RFC-0016 §3
   skill: soundness-auditor
   crate: stele-verifier
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E8-02f1-verifier-replay
   acceptance:
@@ -2078,15 +2079,15 @@ tasks:
 - id: E8-02f2
   epic: E8
   title: Plan derivation in the independent verifier - design note and ADR-131 (interim plan registry with independent statement columns; spec-first per-module derivation as the goal)
-  # Follows E8-02f1 (#381, not yet on main); depend on it here once it lands.
   depends:
   - E8-02f0
+  - E8-02f1
   rfc:
   - RFC-0026 §8
   - RFC-0016 §3
   skill: soundness-auditor
   crate: docs
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E8-02f2-design
   acceptance:

@@ -4147,3 +4147,34 @@ Status: Accepted as a direction decision (coordinator, on the design note in #38
 option B now, option A as the long-term goal. The registry is interim; each module's
 independent derivation replaces it as it lands. A16 and the registry follow as a Draft
 amendment with review; the per-module amendments start with argmax, residual and RoPE.
+
+
+## ADR-132: Accept RFC-0026 A15 erratum E1 with validation vectors (task E8-02f0b)
+
+Context:
+- The independent replay author found rules missing from or misstated in A15.
+  PR #384 supplied exact appended replacements and six validation vectors.
+- The independent review by codex-root used the soundness-auditor skill and checked
+  the text against the production plan and the independent replay. Raising only
+  the fixed-position cover cap from 16 to 17 made its golden-vector test fail.
+- The malformed-name review found that #381 did not enforce A15's existing UTF-8
+  rule. The correction landed in #381 at `bad479ab`, after local gates, Lucid H100
+  replay/parity validation and CI run 889 on the exact merge tree passed.
+
+Decision (Accepted, development tier):
+- Accept A15 erratum E1 through Workflow 02's development-tier path. The full
+  checklist and rejection experiment are in `agents/reviews/e8-02f0b-a15-erratum.md`.
+- The appended text specifies opening-section concatenation, the one-opening
+  multiplicity-source objective, validation restrictions and the cover cap,
+  selector positions, required statement-digest equality and malformed encodings.
+- Keep the original Accepted text intact; the erratum identifies each replacement.
+  No challenge, source, binding, proof byte, ledger line or cost-model constant changes.
+- Mark the already merged dump, forged-window, independent-replay and design-note
+  tasks done (#380, #383, #381 and #385). E8-02f2's completed scope is the design
+  note and ADR-131; independent plan derivation remains unfinished.
+
+Consequences:
+- The independent replay still requires a trusted relation and `cqis_id`.
+  This erratum grants no standard or treaty admission and makes no performance claim.
+- A16 and its implementation must close the request/plan binding under ADR-131;
+  this acceptance does not authorize behavior from that unwritten amendment.
