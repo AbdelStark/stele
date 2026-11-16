@@ -1,8 +1,8 @@
 # E16-10a — independent lane-C spec/soundness review
 
-Reviewed implementation: `f31aaeee7c8c07cf247e897d840e1d08eafdb527`.
+Reviewed implementation: `ca6fb9125f8f8d817484437f0cd325869ff8dcc4`.
 Fixed base: `65f35281b7771c26b2a3209092345df7f45d1c04`.
-Diff: `git diff 65f35281...f31aaeee` (commits `59100e66`, `2a32a72a`, `f31aaeee`).
+Diff: `git diff 65f35281...ca6fb912` (commits `59100e66`, `2a32a72a`, `f31aaeee`, `c706812b`, `ca6fb912`). Initial runtime review covered `f31aaeee`; focused follow-up independently inspected `c706812b...ca6fb912` and reran the new standalone targets.
 Reviewer: `composed_messages_spec_review`, using `soundness-auditor` and the Spec axis of `code-review`.
 
 ## Spec finding summary
@@ -13,7 +13,7 @@ RFC-0026 §9 requires: “Each must run through the actual E16-10 verifier.” B
 
 NC-1303 changes one canonical certificate-row limb to `p`; its offset includes the plan-derived tensor nonce and is checked against `Source::parse`. NC-1307 increments the first limb of the first QM31 matmul output claim modulo `p`, exactly field addition by one. The unchanged first sumcheck message consequently fails its round-sum equation. Restoring the limb restores the entire container; canonical encoding preserves every remaining proof byte. Public inputs remain immutable borrows outside the mutation hook. Full nested error equality excludes wrong rejection and producer failure.
 
-Both registrations are mandatory proof controls. Native runs direct tests, catalog tests and executed coverage. The shared width binding is counted once; NC-1302/1306/1308 remain unregistered `todo` entries, with follow-up E16-10b recorded. No production code or Accepted RFC changes.
+Both registrations are mandatory proof controls. Native runs the explicit `nc-1303`/`nc-1307` Cargo targets, catalog tests and executed coverage. The final wiring fix removes duplicate library tests and adds exactly `src/development_messages.rs` to the layout inventory, without broadening it. The layout regression rejects deletion of each new file and either new target. This resolves the original tooling-gate failure. The shared width binding is counted once; NC-1302/1306/1308 remain unregistered `todo` entries, with follow-up E16-10b recorded. No prover/verifier or Accepted RFC changes.
 
 ## Workflow 03 checklist
 
@@ -38,7 +38,7 @@ Both registrations are mandatory proof controls. Native runs direct tests, catal
 
 ## Checks performed
 
-All cargo checks used `CARGO_TARGET_DIR=/tmp/stele-e16-10a-spec-target`, independently of the author's target:
+All cargo checks used `CARGO_TARGET_DIR=/tmp/stele-e16-10a-spec-target`, independently of the author's target. Initial checks at `f31aaeee`:
 
 ```text
 cargo test -p stele-negative-controls --all-features --locked --offline --lib nc_130 -- --nocapture
@@ -49,6 +49,16 @@ git diff --check 65f35281...f31aaeee
 ```
 
 Passed: 2 direct controls, 27 plain-checker tests, 3 harness failure-path tests, and the registered-control test. Diff check passed. Added-line forbidden-pattern search found no match. Read the author's tests-first red and targeted green logs; those are corroboration, not reviewer-run checks.
+
+Focused follow-up at final implementation `ca6fb912`:
+
+```text
+cargo test -p stele-negative-controls --all-features --locked --offline --test nc-1303 --test nc-1307 -- --nocapture
+python3.12 -m unittest scripts.tests.test_field_pcs_bench.FieldPcsBenchTests.test_rejects_production_benchmark_dependency_and_undeclared_example -v
+git diff --check 65f35281...ca6fb912
+```
+
+Both standalone targets passed on all four fixtures with their full typed errors; the focused layout regression and diff check passed. An initial attempt using system `python3` failed before test execution because that interpreter lacks `tomllib`; rerunning with available Python 3.12 resolved it. Read the original tooling failure log identifying the three missing inventory entries. The control module and catalog are unchanged since the initial review; no full-suite result is claimed for this follow-up.
 
 I tried to break it by replacing one certificate-row limb with `p` and incrementing one matmul output claim by one, and the control NC-1303/NC-1307 rejected it with `Engine(Pcs(NoncanonicalField))`/`Engine(Sumcheck(RoundSumMismatch))` respectively on all four fixtures.
 

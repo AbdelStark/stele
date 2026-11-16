@@ -1,14 +1,15 @@
 # E16-10a standards review
 
 Reviewer: Codex, independent lane B reviewer of lane V work, 2026-11-16.
-Implementation reviewed: `f31aaeee7c8c07cf247e897d840e1d08eafdb527`.
+Implementation reviewed: `ca6fb9125f8f8d817484437f0cd325869ff8dcc4`.
 Fixed base and verified merge base: `65f35281b7771c26b2a3209092345df7f45d1c04`.
-Diff: `git diff 65f35281...f31aaeee`; commits `59100e66`, `2a32a72a`, `f31aaeee`.
+Diff: `git diff 65f35281...ca6fb912`; implementation commits `59100e66`,
+`2a32a72a`, `f31aaeee`, `ca6fb912`; `c706812b` records the initial reviews.
 
 ## Decision
 
-Standards approval. No documented-standard violations and no discretionary smell
-findings. This approval does not substitute for the integrator's required gates
+Standards approval. No outstanding documented-standard violations or discretionary
+smell findings. This approval does not substitute for the integrator's required gates
 on the intended merge tree.
 
 I tried to break it by replacing one canonical certificate-row limb with `p` and
@@ -24,9 +25,10 @@ Read `AGENTS.md`, `agents/context/{invariants,glossary}.md`,
 01, 03, 08 and 12, and task E16-10a. Applied the code-review skill's Fowler smell
 baseline as discretionary heuristics, subordinate to repository rules.
 
-Inspected all eight changed files and the relevant existing callers, harness,
+Inspected the initial eight-file change, the four-file integration correction,
+and the relevant existing callers, harness,
 catalog execution, fixture parser, production prover, container codec, PCS parser,
-matmul producer/consumer and native-gate registration. The only shared helper
+matmul producer/consumer, exact source inventory and native-gate registration. The only shared helper
 change exposes `span_of` within the crate; existing behavior and fixture bytes
 are preserved. E8-02f3c's completed status matches base PR #389's merge.
 
@@ -38,11 +40,18 @@ then restores that limb and compares the entire container. Exact typed errors
 are compared before formatting. The row offset is checked against the production
 source parser; the matmul prefix is its production output claim.
 
-The two direct tests are compiled through `#[cfg(test)]` library modules. The
-native gate runs package tests with all features and executes catalog coverage.
+The two direct tests are explicit standalone Cargo test targets, `nc-1303` and
+`nc-1307`; their former library-test inclusions are removed. The native gate runs
+package tests with all features and executes catalog coverage.
 The catalog also explicitly invokes both registered controls. Coverage adds two
 controls and one distinct binding because width already has NC-1310; NC-1302,
 NC-1306 and NC-1308 remain unregistered and `todo`.
+
+The initial review missed the exact source inventory, and the tooling gate caught
+that integration omission. Commit `ca6fb912` adds only the helper's exact path to
+the inventory; standalone control paths must still come from Cargo targets.
+Regression coverage deletes each new file and each test target separately and
+requires rejection. No inventory wildcard, check bypass or runtime change was added.
 
 ## Review checklist
 
@@ -76,7 +85,16 @@ ran `catalog rejects_composed_message_tampers --exact --nocapture` and
 clones of existing test binaries in `/tmp/stele-e16-10a-standards-bins`; both passed.
 The latter checks honest values and perturbations including +1 and -1. These
 were prebuilt binaries, not an independent recompilation. Verified reviewed
-control/crate sources still match the implementation SHA after execution.
+control/crate sources matched `f31aaeee` after execution. The control module,
+catalog and direct test bodies are unchanged through `ca6fb912`.
+
+For the integration correction, inspected the authoritative tooling failure in
+`/Users/abdel/dev/stele-validation/e16-10a-tooling-layout-red.log` and independently ran
+`python3.12 -B -m unittest scripts.tests.test_field_pcs_bench.FieldPcsBenchTests.test_rejects_production_benchmark_dependency_and_undeclared_example -v`;
+it passed, including the new file/target deletions. An earlier three-test attempt
+used local Python 3.9 and failed importing `tomllib`; the two unaffected tests
+passed, one invoking its existing benchmark Cargo build. The corrected focused
+run uses Python 3.12, as CI does, and invokes no Cargo commands.
 
 Skipped duplicate full suites, formatting/lint checks, accounting, digest and GPU
 gates while integration owns them. Remaining merge risk: their final results
