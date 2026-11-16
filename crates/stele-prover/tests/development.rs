@@ -1957,6 +1957,177 @@ const A15_ERRATUM_DIGESTS: [&str; 10] = [
     "e02337c958a1f50528aaac9b2b1b7323429b855ce8a1105a3651a9b7c56185f4",
 ];
 
+/// RFC-0026 A16: publication validates the original declaration, then normalizes
+/// exactly the request columns. Existing vectors are the oracle, never refreshed here.
+#[test]
+fn matches_reference_published_entries_and_request_invariance() {
+    use stele_prover::development::registry::publish;
+    let vectors: serde_json::Value =
+        serde_json::from_str(include_str!("../../../research/plan-registry/vectors.json"))
+            .expect("A16 vectors");
+    for (name, t) in [("one-layer", 16), ("eight-layer", 64)] {
+        let case = load(name);
+        let weights =
+            Weights::from_artifact_sources(&case.model, &case.artifact, Sources::CircleAllGrind)
+                .expect("weights");
+        let committed = Committed::new(&weights).expect("commitment");
+        let mut public = case.public(&committed, &weights);
+        let statement = greedy(&mut case.executor(&case.artifact), t);
+        let (entry, declaration) = publish(&public, &statement).expect("publish");
+        let pin = vectors["production_pins"]
+            .as_array()
+            .expect("pins")
+            .iter()
+            .find(|p| p["name"] == name)
+            .expect("rung pin");
+        assert_eq!(a15_hex(&entry), pin["entry_hex"], "{name}");
+        assert_eq!(
+            blake3::hash(&declaration).to_hex().as_str(),
+            pin["relation_blake3"].as_str().expect("relation pin")
+        );
+        for (branch, exponent) in [("positive", -3i16), ("negative", -10)] {
+            let at = b"stele/v0.1/cqis/scales".len() + 32 + 2;
+            public.scales[at..at + 2].copy_from_slice(&exponent.to_le_bytes());
+            let mut entries = Vec::new();
+            for variant in 0..3 {
+                let label = format!("{name}-{branch}-{variant}");
+                let pin = vectors["declaration_variants"]
+                    .as_array()
+                    .expect("variants")
+                    .iter()
+                    .find(|p| p["name"] == label)
+                    .expect("variant pin");
+                let request = &pin["request"];
+                let statement = Statement {
+                    tokens: request["tokens"]
+                        .as_array()
+                        .expect("tokens")
+                        .iter()
+                        .map(|n| n.as_u64().expect("token") as u32)
+                        .collect(),
+                    start: request["start"].as_u64().expect("start") as u32,
+                    end: request["end"].as_u64().expect("end") as u32,
+                    next: request["next"].as_u64().map(|n| n as u32),
+                };
+                let (entry, relation) = publish(&public, &statement).expect("publish variant");
+                assert_eq!(
+                    blake3::hash(&relation).to_hex().as_str(),
+                    pin["relation_blake3"].as_str().expect("relation pin"),
+                    "{label}"
+                );
+                let template = b"stele-dev-plan-v1".len() + 64 + 4 + 1 + 32;
+                assert_eq!(
+                    a15_hex(&entry[template..template + 32]),
+                    pin["template_digest"]
+                );
+                entries.push(entry);
+            }
+            assert!(entries.windows(2).all(|p| p[0] == p[1]), "{name}-{branch}");
+            let shifted = Statement {
+                tokens: vec![0; t],
+                start: 1,
+                end: t as u32,
+                next: Some(1),
+            };
+            assert_eq!(
+                publish(&public, &shifted).expect("changed request").0,
+                entries[0]
+            );
+        }
+    }
+}
+
+#[test]
+fn accepts_registry_saturation_without_request_dependent_entry_bytes() {
+    use stele_prover::development::registry::publish;
+    let case = load("one-layer");
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, Sources::CircleAllGrind)
+            .expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let mut public = case.public(&committed, &weights);
+    let at = b"stele/v0.1/cqis/scales".len() + 32 + 2;
+    let exponent = 17 - i16::from(case.model.initial_fraction());
+    public.scales[at..at + 2].copy_from_slice(&exponent.to_le_bytes());
+    let mut request = Statement {
+        tokens: vec![0; 4],
+        start: 0,
+        end: 4,
+        next: Some(0),
+    };
+    let first = publish(&public, &request).expect("saturated embedding").0;
+    request.tokens.fill(1);
+    request.start = 1;
+    request.next = Some(2);
+    assert_eq!(
+        publish(&public, &request)
+            .expect("other saturated request")
+            .0,
+        first
+    );
+}
+
+#[test]
+fn rejects_invalid_registry_model_commitment_profile_and_request() {
+    use stele_prover::development::registry::publish;
+    let case = load("one-layer");
+    let weights =
+        Weights::from_artifact_sources(&case.model, &case.artifact, Sources::CircleAllGrind)
+            .expect("weights");
+    let committed = Committed::new(&weights).expect("commitment");
+    let public = case.public(&committed, &weights);
+    let statement = greedy(&mut case.executor(&case.artifact), 4);
+    publish(&public, &statement).expect("valid baseline");
+    for change in 0..7 {
+        let mut bad = public.clone();
+        match change {
+            0 => bad.model[0] ^= 1,
+            1 => bad.scales[0] ^= 1,
+            2 => bad.preparation[0] ^= 1,
+            3 => bad.vectors[0].0 ^= 1,
+            4 => {
+                bad.commitment.pop();
+            }
+            5 => bad.sources = Sources::CircleAll,
+            _ => bad.sources = Sources::Expander,
+        }
+        assert_eq!(
+            publish(&bad, &statement),
+            Err(Error::StatementMismatch),
+            "{change}"
+        );
+    }
+    for root in [false, true] {
+        let mut bad = public.clone();
+        if root {
+            bad.commitment[0].0[0] ^= 1;
+        } else {
+            *bad.commitment[0].1.last_mut().expect("certificate") ^= 1;
+        }
+        assert!(
+            matches!(publish(&bad, &statement), Err(Error::Commitment(_))),
+            "{root}"
+        );
+    }
+    for change in 0..5 {
+        let mut bad = statement.clone();
+        match change {
+            0 => bad.tokens[0] = case.model.shape().vocabulary(),
+            1 => bad.next = Some(case.model.shape().vocabulary()),
+            2 => bad.next = None,
+            3 => bad.start = bad.end,
+            _ => {
+                bad.tokens.pop();
+            }
+        }
+        assert_eq!(
+            publish(&public, &bad),
+            Err(Error::StatementMismatch),
+            "{change}"
+        );
+    }
+}
+
 /// RFC-0026 §8 declaration vectors across request values; no proof or new runtime API.
 #[test]
 #[ignore = "dump: STELE_DUMP_DIR=<dir> cargo test --release -p stele-prover --test development matches_reference_request_layout_variants -- --ignored"]

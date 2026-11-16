@@ -38,10 +38,13 @@ columns. `negative_cases` specify either a replacement relation or one byte edit
 `offset` refers to the relation. For a changed-length column case the independent
 unit test checks the column routine; the full wrapper must reject the trusted
 length mismatch first. `preflight_cases` explicitly test wrapper precedence.
-E8-02f3b must consume these vectors through the fresh independent implementation
-and execute NC-1325..1334 with the actual registered entry point. Those controls
-remain `todo` until then.
+E8-02f3b consumes these vectors through the fresh independent implementation and
+executes NC-1325..1334 with the actual registered entry point. E8-02f3c compares the
+production publisher and CLI against the same pinned entries and original proofs;
+see the [executable CLI examples](../../docs/development-e2e.md#registered-byte-5-verification-rfc-0026-a16).
 
 The native digest/control/accounting union runs both dumps, this locked generator
 with `--check`, and the existing independent replay on the same temporary windows.
 A missing declaration test, generator failure or vector drift fails the gate.
+The gate also requires both L0/L1 CLI receipts: entry publication, a byte-identical
+proof, independent registered acceptance and actual-process wrong-entry rejection.

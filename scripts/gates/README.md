@@ -29,6 +29,10 @@ so missing exports or skipped comparisons fail. NC-1325..1334 execute against th
 registered entry point; NC-1328/1334 also require low-level A15 acceptance of their
 rebuilt proofs. This is a trusted plan registry in the development tier, with no
 security level or profile admission.
+The publisher/CLI gate runs actual L0/L1 processes on those reference windows:
+publish the pinned entry, produce unchanged public/proof/relation bytes, accept
+with independent registered replay, and reject a changed entry key. Both rung
+receipts and the process harness completion marker are mandatory.
 
 The remaining replacement contracts are:
 

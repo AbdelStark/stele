@@ -48,15 +48,7 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
         (super::zk::PROFILE_BALANCED, _) => ZK_BALANCED_MAGIC.to_vec(),
         _ => ZK_MAGIC.to_vec(),
     };
-    blob(&mut out, &public.model);
-    blob(&mut out, &public.scales);
-    blob(&mut out, &public.preparation);
-    out.extend_from_slice(&(public.vectors.len() as u32).to_le_bytes());
-    for (ordinal, codes) in &public.vectors {
-        out.extend_from_slice(&ordinal.to_le_bytes());
-        let raw: Vec<u8> = codes.iter().flat_map(|c| c.to_le_bytes()).collect();
-        blob(&mut out, &raw);
-    }
+    out.extend_from_slice(&static_data(public));
     out.extend_from_slice(&(public.commitment.len() as u32).to_le_bytes());
     for (root, certificate) in &public.commitment {
         out.extend_from_slice(root);
@@ -74,6 +66,21 @@ pub fn encode_profile(public: &Public, statement: &Statement, profile: u8) -> Ve
             out.extend_from_slice(&y.to_le_bytes());
         }
         None => out.push(0),
+    }
+    out
+}
+
+/// RFC-0026 A16 §2: exact bytes from Model length through the 1-D record list.
+pub(super) fn static_data(public: &Public) -> Vec<u8> {
+    let mut out = Vec::new();
+    blob(&mut out, &public.model);
+    blob(&mut out, &public.scales);
+    blob(&mut out, &public.preparation);
+    out.extend_from_slice(&(public.vectors.len() as u32).to_le_bytes());
+    for (ordinal, codes) in &public.vectors {
+        out.extend_from_slice(&ordinal.to_le_bytes());
+        let raw: Vec<u8> = codes.iter().flat_map(|c| c.to_le_bytes()).collect();
+        blob(&mut out, &raw);
     }
     out
 }

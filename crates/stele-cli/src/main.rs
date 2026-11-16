@@ -7,6 +7,9 @@
 //!                 [--checked R..E] [--next Y] --public OUT --proof OUT
 //!                 [--zk --commitment FILE --secret FILE]
 //! stele verify-dev --public FILE --proof FILE [--expect-model HEX]
+//! stele plan-digest --public FILE --entry OUT
+//! stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE
+//!                         [--expect-model HEX]
 //! ```
 //! `commit-model --zk` commits the model once for at most `N` dev-zk proofs
 //! (RFC-0013 A6): a hiding weight source from a model seed drawn from the
@@ -33,19 +36,29 @@
 //! so `--expect-model` pins a proof to it. The verdict is the last line: `YES`, or
 //! `NO: <reason>`. `prove-dev` ends with `PROOF WRITTEN`, which is not a verdict.
 //! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.
+//! RFC-0026 A16: `prove-dev --dev-profile 5 --relation OUT` exports the untrusted
+//! declaration. `plan-digest` validates public model data and certificates without
+//! secret state. Pin its entry separately from the prover's files before using
+//! `verify-registered`, which calls the independent verifier and prints the exact
+//! public request. Its trust premise is a trusted plan registry; development: no
+//! security level. No independent model derivation, ZK replay or admission is claimed.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use stele_prover::development::{
-    bundle, model_identity, prove_window_development, prove_window_profile, verify, zk, Statement,
+    bundle, model_identity, prove_window_development, prove_window_profile, registry, verify, zk,
+    Statement,
 };
 
 const USAGE: &str = "usage: stele commit-model --zk --model M --preparation P --scales S \
 --artifact A --length T --proofs N --commitment OUT --secret OUT [--zk-profile 4|1] | \
 stele prove-dev --model M --preparation P --scales S --artifact A \
 --tokens x0,x1,... [--length T] [--checked R..E] [--next Y] --public OUT --proof OUT \
-[--dev-profile 3|5 | --zk --commitment FILE --secret FILE] | \
-stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit]";
+[--dev-profile 3|5 [--relation OUT] | --zk --commitment FILE --secret FILE] | \
+stele verify-dev --public FILE --proof FILE [--expect-model HEX] [--admit] | \
+stele plan-digest --public FILE --entry OUT | \
+stele verify-registered --public FILE --proof FILE --relation FILE --trusted-entry FILE \
+[--expect-model HEX]";
 
 enum Failure {
     Usage(String),
@@ -297,6 +310,9 @@ fn commit_model(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
 }
 
 fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
+    if o.contains_key("relation") && o.get("dev-profile") != Some(&"5") {
+        return Err(usage("--relation needs --dev-profile 5"));
+    }
     let statement = window(o)?;
     let write = |key: &str, bytes: &[u8]| -> Result<(), Failure> {
         let path = get(o, key)?;
@@ -321,8 +337,16 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         };
         let (public, statement, proof) =
             prove_window_development(&m, &p, &s, &a, statement, length, profile).map_err(reject)?;
+        let relation = o
+            .get("relation")
+            .map(|_| registry::publish(&public, &statement).map(|(_, relation)| relation))
+            .transpose()
+            .map_err(reject)?;
         write("public", &bundle::encode(&public, &statement))?;
         write("proof", &proof)?;
+        if let Some(relation) = relation {
+            write("relation", &relation)?;
+        }
         println!("profile development");
         // RFC-0026 A11: the source set the public input binds.
         println!("sources {:?}", public.sources);
@@ -376,9 +400,8 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     Ok("PROOF WRITTEN".into())
 }
 
-fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> {
-    let expected = o
-        .get("expect-model")
+fn expected_model(o: &BTreeMap<&str, &str>) -> Result<Option<Vec<u8>>, Failure> {
+    o.get("expect-model")
         .map(|h| {
             let bytes: Option<Vec<u8>> = (0..h.len())
                 .step_by(2)
@@ -388,7 +411,40 @@ fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> 
                 .filter(|b| b.len() == 32)
                 .ok_or_else(|| usage("--expect-model is 64 hex digits"))
         })
-        .transpose()?;
+        .transpose()
+}
+
+fn plan_digest(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
+    let output = get(o, "entry")?;
+    let (public, statement) = bundle::decode(&read(get(o, "public")?)?).map_err(reject)?;
+    let (entry, _) = registry::publish(&public, &statement).map_err(reject)?;
+    std::fs::write(output, entry).map_err(|e| usage(format!("write {output}: {e}")))?;
+    Ok("PLAN ENTRY WRITTEN".into())
+}
+
+fn verify_registered(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
+    let expected = expected_model(o)?;
+    let public_bytes = read(get(o, "public")?)?;
+    let verdict = stele_verifier::registered::verify(
+        &public_bytes,
+        &read(get(o, "proof")?)?,
+        &read(get(o, "relation")?)?,
+        &read(get(o, "trusted-entry")?)?,
+    )
+    .map_err(reject)?;
+    // Display only the public bytes already authenticated by independent replay.
+    let (public, statement) = bundle::decode(&public_bytes).map_err(reject)?;
+    let (cqis_id, model) = model_identity(&public).map_err(reject)?;
+    identity(&cqis_id, &model, &statement);
+    if expected.is_some_and(|e| e != model) {
+        return Err(Failure::Reject("model differs from --expect-model".into()));
+    }
+    println!("{verdict}");
+    Ok("YES".into())
+}
+
+fn verify_dev(o: &BTreeMap<&str, &str>, admit: bool) -> Result<String, Failure> {
+    let expected = expected_model(o)?;
     let bytes = read(get(o, "public")?)?;
     // E8-05f review: `--admit` is refused on dev-zk bundles before any verification.
     if admit && !stele_cli::admit_applies(&bytes) {
@@ -472,7 +528,7 @@ fn main() -> ExitCode {
             if zk {
                 allowed.extend(["commitment", "secret"]);
             } else {
-                allowed.push("dev-profile");
+                allowed.extend(["dev-profile", "relation"]);
             }
             options(&rest, &allowed).and_then(|o| prove_dev(&o, zk))
         }
@@ -482,6 +538,20 @@ fn main() -> ExitCode {
             let rest: Vec<String> = rest.iter().filter(|a| *a != "--admit").cloned().collect();
             options(&rest, &["public", "proof", "expect-model"]).and_then(|o| verify_dev(&o, admit))
         }
+        Some("plan-digest") if !zk => {
+            options(&rest, &["public", "entry"]).and_then(|o| plan_digest(&o))
+        }
+        Some("verify-registered") if !zk => options(
+            &rest,
+            &[
+                "public",
+                "proof",
+                "relation",
+                "trusted-entry",
+                "expect-model",
+            ],
+        )
+        .and_then(|o| verify_registered(&o)),
         _ => Err(usage(USAGE)),
     };
     match result {

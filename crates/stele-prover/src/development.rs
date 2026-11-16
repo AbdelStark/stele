@@ -30,6 +30,7 @@ use stele_reductions::stele_pcs::{verify_certificate, PreparedSource, VerifiedCe
 
 pub mod bundle;
 mod plan;
+pub mod registry;
 pub mod zk;
 pub use plan::{Layout, PlanData};
 
