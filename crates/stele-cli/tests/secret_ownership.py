@@ -10,7 +10,7 @@ import tempfile
 import time
 
 
-def reader(fifo, process):
+def open_fifo_writer(fifo, process):
     deadline = time.monotonic() + 30
     while True:
         try:
@@ -95,7 +95,7 @@ def main(cli, repository):
                                      env=env, stdout=log, stderr=subprocess.STDOUT)
             try:
                 # File input begins after the state has been loaded. Keep the owner here.
-                writer = reader(fifo, first)
+                writer = open_fifo_writer(fifo, first)
                 output = run(prove('blocked'), expected=2)
                 assert 'secret state is locked' in output, output
                 assert not (work / 'blocked.proof').exists()
