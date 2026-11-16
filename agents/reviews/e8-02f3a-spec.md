@@ -119,3 +119,26 @@ Remaining risk: a malicious or incorrect trusted publisher can authenticate an
 incorrect static declaration. A16 states that premise; only independent plan
 derivation removes it. Runtime implementation, live controls and full gates were
 not duplicated in this specification review.
+
+## PR #387 follow-up: gate ordering
+
+Reviewed the uncommitted integration fix against `5f0ec821`: only
+`scripts/gates/check.py` and `scripts/tests/test_native_gate.py` change. Approve
+the fix. A15 replay discovers every directory containing relation.bin and requires
+public.bin and proof.bin in each; A16's declaration-only exports must therefore be
+created after that replay. Resetting STELE_DUMP_DIR restores the export environment
+after the replay's separate STELE_DEV_REPLAY_DIR environment.
+
+All complete-window requirements remain: production-verified honest dumps, both
+forged dumps, the exact independent replay test receipt, two honest tamper receipts
+and both named forged-rejection receipts. Both A16 checks also remain mandatory:
+the exact declaration-test receipt and pinned-vector comparison. No verifier check,
+protocol behavior, proof byte or corpus requirement is removed.
+
+Using Python 3.12, I ran all seven `scripts.tests.test_native_gate` tests successfully.
+I also loaded check.py from `5f0ec821` in memory and ran the new regression against
+it: the old ordering failed specifically at the missing proof.bin assertion.
+I tried to break it by restoring declaration export before complete-proof replay,
+and the control `test_rejects_missing_accounting_receipt_and_unadmitted_verifier_surface`
+rejected it. The full native rerun remains owned by the integration owner and was
+not duplicated here; the original registry trust boundary is unchanged.

@@ -42,3 +42,16 @@ Workflow 03 checklist:
 
 Full gates and fresh runtime controls were not rerun here. Correct registry
 publication and distribution remain explicit trust premises.
+
+## PR #387 integration follow-up
+
+Lane B approval for the gate reorder against `5f0ec821`: no findings. A15 honest
+and forged-window replay completes before declaration-only directories appear.
+The A16 dump, locked vector check, exact receipts and failure checks all remain;
+`STELE_DUMP_DIR` is restored explicitly. No gate coverage is removed.
+
+The focused receipt/fixture regression passed under Python 3.12. I tried to break
+it by restoring the preceding gate implementation in memory, and the control
+`test_rejects_missing_accounting_receipt_and_unadmitted_verifier_surface` rejected
+it at the missing `proof.bin` assertion. No repository source was mutated.
+Protocol and runtime behavior are unchanged; the owner retains the full native rerun.

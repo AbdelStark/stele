@@ -112,7 +112,19 @@ sys.exit(37 if phase == os.environ['STELE_GATE_FAIL_PHASE'] else 0)
         stderr = ('one-layer: 42 tampers rejected\neight-layer: 42 tampers rejected\n'
                   'forged-table: forged Err(TableDenominatorMismatch)\n'
                   'forged-public: forged Err(PublicMismatch)\n')
-        with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, stderr)):
+        def fixtures(command, **kwargs):
+            env = kwargs.get('env', {})
+            if 'matches_reference_request_layout_variants' in command:
+                declaration = Path(env['STELE_DUMP_DIR']) / 'one-layer-positive-0'
+                declaration.mkdir()
+                (declaration / 'relation.bin').write_bytes(b'declaration only')
+            if 'development_replay' in command:
+                # Replay reads every relation-bearing directory as a complete proof.
+                for relation in Path(env['STELE_DEV_REPLAY_DIR']).glob('*/relation.bin'):
+                    self.assertTrue(relation.with_name('proof.bin').is_file())
+                    self.assertTrue(relation.with_name('public.bin').is_file())
+            return subprocess.CompletedProcess([], 0, output, stderr)
+        with patch.object(gate.subprocess, 'run', side_effect=fixtures):
             gate.accounting_admission(ROOT)
         missing = [stderr.replace(line + '\n', '') for line in stderr.splitlines()]
         for code, text, err in ([(1, output, stderr)] + [(0, output.replace(line, ''), stderr) for line in lines]
