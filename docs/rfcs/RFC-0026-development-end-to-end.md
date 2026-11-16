@@ -1846,3 +1846,184 @@ from §§2–5. Production must reproduce them byte for byte.
 **Promotion to `standard`.** Not granted (Workflow 10).
 **Affected tasks.** E8-02f0 (this text), E8-02f1 (the independent decoders and replay,
 written from it), E8-02f2 (plan derivation).
+
+#### A15 erratum E1 — gaps found by the independent E8-02f1 author
+
+Status: Accepted (development tier; ADR-132). Independent review: `agents/reviews/e8-02f0b-a15-erratum.md`. Task: E8-02f0b.
+
+**Motivation.**
+- The E8-02f1 author wrote the replay from A15 alone (#381) and found 13 gaps.
+- #381's review confirmed that gaps 2, 3 and 5–12 match production. Each is a statement
+  the code already makes and A15 leaves out or states loosely.
+- This erratum gives the exact text for each. No byte, challenge, label or order changes.
+- Each replacement quotes the Accepted A15 text it replaces.
+- Rules that can be pinned get golden vectors (below).
+
+**1. Openings (gap 2).** Addition to §6.4 step 7, as its first bullet:
+
+> - **Sections.** There is one opening section per opened source, in the order of
+>   **Which**. Each section is exactly that source's claim batch followed by its
+>   opening, and nothing else.
+
+**2. Multiplicity-source size rule (gap 3).** It replaces §6.2's "`ell ∈ [0, k]` minimises
+certificate plus opening size, with ties going to the smallest `ell` (A12)." with:
+
+> - Over the `ell ∈ [0, k]` for which the source exists, pick the one that minimises the
+>   certificate size plus **one** opening size. One opening is counted even though a
+>   check opens one or two prefix pieces. Ties go to the smallest `ell` (A12).
+
+**3. Validation rules the replay relies on (gap 5, and the review's additions).**
+Addition to §6.0, after its first sentence:
+
+> Among §3.6's rules, these are each `Invalid::Shape`, and so `StatementMismatch`:
+> - Two groups have the same name.
+> - An identity has no terms.
+> - A table has no widths or no rows, a width outside `1..=30` bits, or a row whose
+>   length is not the table's arity (its number of widths). A row entry outside its
+>   column's width is the same error.
+>
+> There is no `free ≥ 1` rule for matmuls. A matmul with `free = 0` passes its own
+> checks: its `out` ref reads only fixed bits.
+>
+> **Range-discipline schedule (§3.6 item 3, A6).** Initially enforce the public
+> columns and the columns enforced by a range or an unselected lookup under §3.6
+> item 3. Repeat the following iteration until it adds no enforced column:
+>
+> 1. Visit the composes in declaration order. Immediately enforce a compose's
+>    output when all its limbs are enforced and its composed range lies within
+>    the output's width. Later composes in this iteration see these additions.
+> 2. Snapshot the enforced columns after the compose pass. A matmul is eligible
+>    in this iteration exactly when its output is not in that snapshot, both
+>    operands are in that snapshot, and its worst-case product bound satisfies
+>    the inequalities of the A6 matmul discipline rule. For each output column,
+>    collect **all** eligible matmuls' `out` refs before enforcing any matmul
+>    output. An output newly enforced in this pass cannot make another matmul
+>    eligible until the next iteration.
+> 3. For each collected set, its *fixed positions* are the column-bit positions
+>    fixed by at least one ref in that set. A set with more than 16 fixed positions
+>    does not enforce its output in this iteration, even if the refs cover it.
+>    Otherwise it enforces the output exactly when every one of the
+>    `2^positions` patterns agrees with the fixed bits of at least one ref in the
+>    set. A ref's non-fixed positions impose no restriction on a pattern.
+>
+> Once enforced, a column stays enforced and its matmul refs are not reconsidered.
+> After the iterations stop, the first witness or weight column in `ColumnId`
+> order that is still unenforced is `Invalid::Undisciplined`, hence
+> `StatementMismatch`. The cap applies only to the collected eligible set in
+> that iteration; it does not reject an independently enforced column.
+
+and the matching correction to A6's "Row-block split" paragraph. It replaces "A matmul
+with `a = 0` is not split, and `validate` rejects it." with "A matmul with `a = 0` is not
+split; `validate` has no `a ≥ 1` rule (RFC-0026 A15 erratum E1)."
+
+Every column is subject to this additional §6.0 rule (an `Invalid::Column` case,
+not an `Invalid::Shape` case):
+
+> Every column, of any kind, has `log_len <= MAX_VARS = 30`. A column whose
+> `log_len` exceeds 30 fails validation with `Invalid::Column`, hence
+> `StatementMismatch`, before source planning. Validation failure takes
+> precedence over every later `Unsupported` condition in §§6.2–6.3.
+
+In §6.2's Model sources bullet, replace "A weight with `n > 30` is `Unsupported`."
+with:
+
+> A weight with `n > 30` has already failed §6.0 validation with
+> `StatementMismatch` and does not reach source planning.
+
+**4. Selector positions (gap 12).** It replaces §6.4 step 5's "`σ` is each member's public
+selector, or ones, on its block, and 0 on the padding." with:
+
+> `σ` has `2^m` entries. For member `i` at offset `o_i` with `m_i` domain bits, and
+> `x ∈ [0, 2^m_i)`:
+> - `σ[o_i + x]` is the selector column's entry at the selector ref's index of `x`
+>   (§3.1: bit `j` of the index is bit `vars[j]` of `x`), or 1 if the member has no
+>   selector;
+> - every position past the last member block is 0.
+
+**5. The statement-digest comparison is required (gap 13).** It replaces §4's "This only
+fails fast: the binding is the transcript (E2)." with:
+
+> The comparison is required. The container's statement digest is not absorbed, so
+> without the comparison its 32 bytes would be unbound and a proof would have many
+> accepted encodings. The statement itself is bound by the transcript (E2).
+
+**6. A malformed relation encoding (gap 4).** Addition to §5, after its last paragraph:
+
+> A verifier that reads this encoding instead of deriving the relation (E8-02f1's
+> parity input) rejects bytes that do not decode exactly with `StatementMismatch`, as
+> for a derived relation that fails §6.0. This covers:
+> - a wrong tag or truncation;
+> - a kind byte outside `0..=2` or a selector flag outside `0..=1`;
+> - a signed flag outside `0..=1`;
+> - a string that is not UTF-8;
+> - trailing bytes.
+
+**Golden vectors.** `matches_reference_a15_erratum_validation_vectors` in
+`crates/stele-prover/tests/development.rs`:
+- **Construction.** Each vector is A15's first small vector with one change, except the
+  two matmul-cover relations described below.
+- **Pins.** The test pins each vector's `validate` result and the BLAKE3 digest of its
+  §5 encoding. Production `encode` must equal the A15 encoder on each.
+
+| Vector | Change to the first small vector | `validate` | Encoding BLAKE3 |
+|---|---|---|---|
+| duplicate group name | the group `G/x/1` declared twice | `Shape("G/x/1")` | `44878554…4927c58b` |
+| empty identity | identity `i` with no terms | `Shape("i")` | `eecc2147…39722a1a` |
+| table row arity | table `t`'s row 0 is `[0, 1]` | `Shape("t")` | `6434bf92…fe5fc3e2` |
+| table entry width | table `t`'s row 1 is `[4]` (unsigned 2) | `Shape("t")` | `c410668d…9259717b` |
+| matmul `free = 0` | lookup `l` without selector; matmul `m` with `free = 0`, `summed = 1`, `out` vars `[0xFE]`, `lhs` vars `[0]` | `Undisciplined(1)` (the weight `k`; the matmul itself passes) | `d0dbdaf2…c75ec48f` |
+| covers cap | its own relation (below) | `Undisciplined(0)` | `7c0070e1…f62aae8a` |
+| empty table widths | table `t` has no widths and one empty row | `Shape("t")` | `26506798…1e868b9` |
+| empty table rows | table `t` has no rows | `Shape("t")` | `4b8d2b2e…0db1b99c` |
+| matmul enforcement snapshot | its own relation (below) | `Ok(())` | `dd43e76f…6c7f8672` |
+| column domain cap | weight `k` has `log_len = 31` | `Column(1)` | `e02337c9…7c56185f4` |
+
+The covers-cap relation has:
+- group `G/o/17` (17 bits);
+- column 0, `o`: witness of that group, signed 8, 17 bits;
+- column 1, `one`: public `[1]`, signed 2, 0 bits;
+- 34 matmuls `o/{j}{b}` for `j ∈ 0..17` and `b ∈ {0, 1}`, in that order. Each has
+  `free = 16` and `summed = 0`. Its `out` ref fixes bit `j` to `b` and reads domain
+  bits `0..16` in order at the other positions. `lhs` and `rhs` are `one` with no vars.
+
+Together the blocks cover every entry of `o`. They fix 17 positions, though, so `o` is
+undisciplined. With the cap raised to 17, the vector turns red (checked).
+
+The matmul-enforcement-snapshot relation has, in declaration order:
+- groups `d` (0 bits) and `o` (17 bits);
+- column 0, `d`: witness of group 0, signed 8, 0 bits;
+- column 1, `o`: witness of group 1, signed 10, 17 bits;
+- column 2, `one`: public `[1]`, signed 2, 0 bits;
+- matmul `d`: `free = summed = 0`, output `d`, both operands `one`, all refs with no vars;
+- matmul `o`: `free = 17`, `summed = 0`, output `o` with vars `0..17`, both operands `one` with no vars;
+- 17 matmuls `slice{j}` for `j ∈ 0..17`, in order: `free = 16`, `summed = 0`,
+  output `o` fixes bit `j` to zero and reads bits `0..16` in order elsewhere,
+  `lhs = d` and `rhs = one`, both with no vars.
+
+The first matmul pass enforces `d` and `o` using only public operands. The 17 slices
+are ineligible in its snapshot. Enforcing `d` immediately before collecting `o`'s
+refs would incorrectly include those slices and make the cap reject `o`.
+
+Full digests:
+- duplicate group name `448785546a67956f62d3d5a3bab1fb0c52926d0296a7062e5c296e414927c58b`;
+- empty identity `eecc2147a22a713950f6aa231f93115587c26d8d00b18000568acbc639722a1a`;
+- table row arity `6434bf92d72792ebee722f43ef4de63b43ddeacb6fba0c4ffadfe754fe5fc3e2`;
+- table entry width `c410668dde7a0cf0ca6ef223b4867458b260119f3fec8a8f485826f79259717b`;
+- matmul `free = 0` `d0dbdaf26c2ab77539c1d6d13fb9e00fce7ce89c17a593d28cb6edcec75ec48f`;
+- covers cap `7c0070e1b1b3cedc38c43791841ed91eaf22d88a130fcbe35803d144f62aae8a`;
+- empty table widths `265067986dd37837a6582d1ac26e9a0f38ee690ec15a6a02b005c94f81e868b9`;
+- empty table rows `4b8d2b2e44ff2eaf77cb730c5939aed7b3a102a6e058574565cdfa590db1b99c`;
+- matmul enforcement snapshot `dd43e76fa354e25e82b42c9776ca9a6dd2d16af8297cdee31ce3319f6c7f8672`;
+- column domain cap `e02337c958a1f50528aaac9b2b1b7323429b855ce8a1105a3651a9b7c56185f4`.
+
+Items 1, 2, 4 and 5 restate production's existing behaviour, and #381's review
+confirmed them. Items 3 and 6 are pinned by the vectors above where a vector can show
+them.
+
+**Soundness.** No new challenge, label, transcript order, error term or binding.
+The replay follows the reference validation rules; honest proof bytes are unchanged.
+**Cells, lookups, bytes.** None.
+**Controls.** Validation regressions and golden vectors; no new binding or NC id.
+**Cost model.** No term or constant changes; no performance claim.
+**Promotion to `standard`.** Not granted (Workflow 10).
+**Affected tasks.** E8-02f0b (this text), E8-02f1 (the replay, which follows it).

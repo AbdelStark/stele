@@ -4147,3 +4147,45 @@ Status: Accepted as a direction decision (coordinator, on the design note in #38
 option B now, option A as the long-term goal. The registry is interim; each module's
 independent derivation replaces it as it lands. A16 and the registry follow as a Draft
 amendment with review; the per-module amendments start with argmax, residual and RoPE.
+
+
+## ADR-132: Accept RFC-0026 A15 erratum E1 with validation vectors (task E8-02f0b)
+
+Context:
+- The independent replay author found rules missing from or misstated in A15.
+  PR #384 supplied exact appended replacements and ten validation vectors.
+- The independent review by codex-root used the soundness-auditor skill and checked
+  the text against the production plan and the independent replay. Raising only
+  the fixed-position cover cap from 16 to 17 made its golden-vector test fail.
+- The malformed-name review found that #381 did not enforce A15's existing UTF-8
+  rule. The correction landed in #381 at `bad479ab`, after local gates, Lucid H100
+  replay/parity validation and CI run 889 on the exact merge tree passed.
+
+- Fresh review found replay validation gaps: unused empty tables were accepted,
+  oversized columns reached the later `Unsupported` error, and immediate matmul
+  enforcement could differ from the reference's eligible-ref snapshot under the cap.
+- The soundness-auditor (lane C) and RFC-author approved the exact schedule and
+  column-cap precedence text before the fresh replay author implemented it from
+  the RFC alone (ADR-128). The verifier lane owner is codex-root.
+
+Decision (Accepted, development tier):
+- Accept A15 erratum E1 through Workflow 02's full path for verifier semantics. The full
+  checklist and rejection experiment are in `agents/reviews/e8-02f0b-a15-erratum.md`.
+- The appended text specifies opening-section concatenation, the one-opening
+  multiplicity-source objective, validation restrictions, eligible-ref snapshot and
+  cover cap, selector positions, required statement-digest equality and malformed
+  encodings. Validation rejects column domains above 30 before source planning.
+- Correct the independent replay to follow those rules. Tests reject unused empty
+  tables before reading a proof, pin validation-before-planning error precedence,
+  and exercise the matmul snapshot and cap. The reference validator is unchanged.
+- Keep the original Accepted text intact; the erratum identifies each replacement.
+  No challenge, source, binding, proof byte, ledger line or cost-model constant changes.
+- Mark the already merged dump, forged-window, independent-replay and design-note
+  tasks done (#380, #383, #381 and #385). E8-02f2's completed scope is the design
+  note and ADR-131; independent plan derivation remains unfinished.
+
+Consequences:
+- The independent replay still requires a trusted relation and `cqis_id`.
+  This erratum grants no standard or treaty admission and makes no performance claim.
+- A16 and its implementation must close the request/plan binding under ADR-131;
+  this acceptance does not authorize behavior from that unwritten amendment.

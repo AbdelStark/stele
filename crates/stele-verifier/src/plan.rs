@@ -233,10 +233,6 @@ impl Plan {
             if c.kind != Kind::Weight {
                 continue;
             }
-            // A15 §6.2: a weight with n > 30 is Unsupported.
-            if c.log_len > 30 {
-                return Err(Error::Unsupported);
-            }
             let size = 1u64 << c.log_len;
             if split.is_empty() || total + size > 1 << 30 {
                 split.try_reserve(1).map_err(|_| Error::Capacity)?;
