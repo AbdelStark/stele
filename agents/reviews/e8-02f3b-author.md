@@ -10,7 +10,8 @@ production code, production declarations, the control preflight or `vectors.py`.
 Root separately implemented the production controls and gate wiring.
 
 Before reference comparison, the author recorded an immutable five-file snapshot
-and provenance under `stele-validation/e8-02f3b-independent-initial/`. Six
+and provenance in the coordinator's external
+`/Users/abdel/dev/stele-validation/e8-02f3b-independent-initial/` directory. Six
 spec-derived tests and the no-default-features library check passed. Initial
 `src/registered.rs` SHA-256:
 `60ec83edca25e6c2345b2a359a7186228d8b6a1b78b2f090ffc70b3c652cfc9d`.

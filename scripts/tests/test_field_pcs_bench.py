@@ -24,7 +24,7 @@ class FieldPcsBenchTests(unittest.TestCase):
             suite = root/'tests/negative-controls'
             shutil.copytree(ROOT/'tests/negative-controls', suite)
             gates.controls_layout(root)
-            for name in ('lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
+            for name in ('src/registry.rs', 'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
                          'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
                          'examples/lookup_bench.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
                          'examples/matmul_corpus.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
@@ -53,6 +53,14 @@ class FieldPcsBenchTests(unittest.TestCase):
             manifest.write_text(original.replace(target, ''))
             with self.assertRaisesRegex(ValueError, 'targets not wired'):
                 gates.controls_layout(root)
+            manifest.write_text(original)
+            edge = 'stele-verifier = { path = "../../crates/stele-verifier" }'
+            self.assertIn(edge, original)
+            for changed in (original.replace(edge, ''),
+                            original.replace(edge, edge.replace('stele-verifier', 'stele-cli'))):
+                manifest.write_text(changed)
+                with self.assertRaisesRegex(ValueError, 'dev-only'):
+                    gates.controls_layout(root)
             manifest.write_text(original)
             extra = suite/'fixtures/requant/unlisted.bin'; extra.write_bytes(b'0')
             with self.assertRaisesRegex(ValueError, 'inventory'):

@@ -1864,7 +1864,7 @@ def controls_layout(root):
     dev = {'serde_json':'=1.0.154',
            'blake3':{'version':'=1.8.7','default-features':False}}
     dependencies = {f'stele-{n}':{'path':f'../../crates/stele-{n}'}
-                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover')}
+                    for n in ('reductions','pcs','lookup','sumcheck','field','hash','gkr','poly','prover','verifier')}
     dependencies['stele-sumcheck']['features'] = ['std']
     # E12-14a, ADR-108: the dev-zk adversaries and the standard-profile entry points are
     # this crate's own off-by-default features, never a dependency-line feature that a
@@ -1877,7 +1877,7 @@ def controls_layout(root):
                                             'standard-unproven': ['stele-reductions/standard-unproven']}
             or any(k in manifest for k in ('build-dependencies','target'))):
         raise ValueError('negative-controls: benchmark dependencies must remain dev-only and example exact')
-    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
+    allowed = {'src/lib.rs', 'src/catalog.rs', 'src/main.rs', 'src/development.rs', 'src/registry.rs', 'src/sumcheck.rs', 'src/batching.rs', 'src/zerocheck.rs', 'src/small.rs', 'src/streaming.rs', 'src/fraction.rs', 'src/fraction_transcript.rs', 'src/pcs.rs', 'src/pcs_a1.rs', 'src/pcs_expander.rs', 'src/pcs_policy2.rs', 'src/lookup_grind.rs', 'src/zk.rs', 'src/zk_relation.rs', 'fixtures/field-sources.txt', 'src/pcs_opening.rs', 'src/pcs_opening_field.rs', 'src/pcs_opening_continuation.rs', 'Cargo.toml'}
     allowed.update(example['path'] for example in examples)
     allowed.update(('src/stacked.rs', 'src/stacked_certified.rs',
                     'fixtures/stacked-public.sha256', 'fixtures/stacked-certified.sha256',
