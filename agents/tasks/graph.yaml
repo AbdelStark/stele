@@ -3811,17 +3811,38 @@ tasks:
   - mutate exactly one canonical row limb to p or increment one matmul output claim by one; assert unchanged remaining proof and public inputs and require full typed NoncanonicalField or RoundSumMismatch respectively
   - the registered controls, direct tests and exact catalog coverage run in the mandatory native gate; no producer failure, wrong rejection or missing execution earns credit
   - existing proof pins and native gates stay green; this closes two composed-control gaps left by E16-02 and E16-10, and grants no execution credit to NC-1302, NC-1306 or NC-1308
+- id: E16-10b0
+  epic: E16
+  title: Clarify the composed root control's rejection under ground source policies
+  lane: V
+  depends:
+  - E16-10
+  - E8-02f3c
+  rfc:
+  - RFC-0026 §9, A4, A11-A14, A17 (Draft)
+  - RFC-0010 A14
+  skill: rfc-author
+  crate: spec
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-10b0-root-control-erratum
+  acceptance:
+  - append a development-tier erratum for NC-1306 with an exact policy-specific rejection and unchanged single-root substitution; preserve the Policy 1 Merkle-root expectation
+  - explain the ground source certificate's rejection order from Accepted text and actual L0/L1 public-proof qualification; no verifier change, weakened predicate or new executed-control credit
+  - obtain independent review from another lane and update the RFC index, ADR and catalog on acceptance; E16-10b remains blocked on RFC-0026 A17 until acceptance
 - id: E16-10b
   epic: E16
   title: Complete the identity, root and column-routing composed controls
   lane: V
   depends:
   - E16-10a
+  - E16-10b0
   rfc:
   - RFC-0026 §2.3, §4, §9, A4
   skill: soundness-auditor
   crate: stele-negative-controls+stele-reductions
-  status: ready
+  status: blocked
+  blocked_by: RFC-0026 A17 (Draft)
   acceptance:
   - execute NC-1302, NC-1306 and NC-1308 through the actual composed window verifier with declared single semantic tampers and exact typed rejections; engine-only analogues and producer failures earn no coverage
   - preserve Accepted contracts where feasible; any observed source-profile rejection-precedence disagreement requires a reviewed append-only RFC erratum before implementation claims that contract
