@@ -91,6 +91,7 @@ program:
   - E23
   legacy_active:
   - E5-05h
+  - E12-25a
   rule: E16 stays active for development-profile work. Tasks of epics E3 to E15 that are not done are the treaty backlog. Pick one only if it is in legacy_active, or if it was added after RFC-0027 by a change that says which lane owns it. RFC-0027 §6 says what supersedes, parks or resumes each.
   gates:
     M1: E22-04
@@ -2047,7 +2048,7 @@ tasks:
   - RFC-0026 A6
   skill: rfc-author
   crate: stele-verifier
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E8-02f0b-a15-erratum
   acceptance:
@@ -2969,7 +2970,7 @@ tasks:
   - RFC-0008 A7
   skill: soundness-auditor
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-14a-dev-zk-relations
   acceptance:
@@ -2986,7 +2987,7 @@ tasks:
   - RFC-0026 A9
   skill: soundness-auditor
   crate: stele-prover+stele-cli
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-14b-dev-zk-e2e
   acceptance:
@@ -3009,6 +3010,26 @@ tasks:
   - one hiding weight source per model, published once, with P·t_W claim-mask blocks and a lifetime counter; the prover refuses past either budget
   - --expect-model pins a dev-zk proof to the published commitment; RFC-0013 A6 drafted for the lifetime source
   - gate for admitting dev-zk (RFC-0013 A5 item 8); controls for a reused block set and a run past the budget
+- id: E12-25a
+  epic: E12
+  title: Serialize dev-zk CLI model-state ownership through durable persistence
+  lane: Z
+  depends:
+  - E12-25
+  rfc:
+  - RFC-0013 A6 item 5
+  - RFC-0026 §8
+  skill: soundness-auditor
+  crate: stele-cli+stele-prover
+  status: in_progress
+  agent: codex-root
+  branch: task/E12-25a-secret-ownership
+  acceptance:
+  - commit-model and prove-dev acquire one stable exclusive sidecar lock before loading commitment or secret state and retain it through proving, rollback and durable persistence; lock failures reject before secret state is read
+  - lock, read and atomic replacement use the same canonical secret path; ordinary path aliases share ownership, pre-existing hard links fail closed, private permissions are preserved and the live sidecar is never unlinked
+  - a real-process CLI regression rejects a competing reader while the first is paused, then proves and verifies sequential indices 0 and 1 against one commitment; existing persistence and rollback checks remain green
+  - lock lifetime across atomic replacement, release and alias handling are tested; the process regression fails before the fix and passes after
+  - CLI and Persist API docs state the ownership requirement and the existing A6 manual-copy limit; L0 and L1 checks and native gates pass, with no proof format, challenge or ledger change
 - id: E12-27
   epic: E12
   title: Commit the 1-D records (norm gains and vectors) in the dev-zk weight source, with their CQIS well-formedness relations
@@ -3186,7 +3207,7 @@ tasks:
   - RFC-0013 A5
   skill: soundness-auditor
   crate: stele-reductions+stele-prover
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E12-14-dev-zk-admission
   acceptance:

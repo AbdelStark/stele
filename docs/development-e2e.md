@@ -128,6 +128,14 @@ zero knowledge is conditional and computational.
 - `prove-dev --zk --commitment C --secret S` takes the next proof index and
   writes the advanced counter back before it proves. It refuses once the budget
   is spent. Each proof's own seed also comes from `/dev/urandom`.
+- Both commands lock `S.lock` (mode 0600) before reading the commitment or secret
+  and hold it through proof generation, persistence and rollback. A competing
+  command exits with `secret state is locked`; retry after the owner finishes.
+  The CLI resolves file and directory symlinks to one canonical secret path and
+  rejects pre-existing hard links. The sidecar remains after exit: never delete
+  or replace it, move the secret, or change its links while a command is running.
+  The lock cannot protect separately copied or restored state. Keep one current
+  secret file per commitment, including when using the prover library directly.
 - The public file is `stele-dev-zk-public-v1`. It carries the commitment and the
   proof index. `verify-dev` prints `profile dev-zk`, `proof index j of P` and the
   model digest of the commitment. `--expect-model` pins a proof to it.

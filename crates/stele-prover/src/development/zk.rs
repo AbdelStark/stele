@@ -258,7 +258,8 @@ pub enum Window<'a> {
     },
 }
 
-/// Saves the model state (the CLI writes the secret file).
+/// Saves the model state (the CLI writes the secret file). Persistence alone does
+/// not serialize owners: the caller must hold exclusive ownership as in [`prove_next`].
 pub type Persist<'a> = dyn FnMut(&ModelState) -> Result<(), Error> + 'a;
 
 /// Prove the next index of `state` against `commitment` (RFC-0013 A6 item 5),
@@ -268,6 +269,10 @@ pub type Persist<'a> = dyn FnMut(&ModelState) -> Result<(), Error> + 'a;
 /// - on any error, no proof bytes left the process, so restore and persist the
 ///   prior state (the index is not spent);
 /// - on success, record the opening and persist.
+///
+/// The caller must own the model state exclusively from before loading the
+/// commitment and state until this call and every persistence operation finish,
+/// including rollback. Restoring or concurrently using a copy reuses hiding masks.
 #[allow(clippy::too_many_arguments)]
 pub fn prove_next(
     public: &Public,
