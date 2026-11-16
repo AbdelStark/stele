@@ -12,7 +12,8 @@
 //! (RFC-0013 A6): a hiding weight source from a model seed drawn from the
 //! OS RNG (`/dev/urandom`). The published `--commitment` file names it; the
 //! `--secret` file (seed, proof counter, earlier openings) must stay private. It is
-//! written with owner-only permissions.
+//! written with owner-only permissions. Both commands hold an exclusive sidecar
+//! lock from before reading the commitment or secret until the operation finishes.
 //!
 //! The commitment's profile byte is 4 (RFC-0013 A8, balanced policy-2 sources) unless
 //! `--zk-profile 1` asks for the A5/A6/A7 sources; each commitment draws a fresh seed.
@@ -33,6 +34,7 @@
 //! `NO: <reason>`. `prove-dev` ends with `PROOF WRITTEN`, which is not a verdict.
 //! Exit codes: 0 accepted or proof written, 1 rejected, 2 usage or I/O error.
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use stele_prover::development::{
     bundle, model_identity, prove_window_development, prove_window_profile, verify, zk, Statement,
@@ -124,13 +126,84 @@ fn os_bytes() -> Result<[u8; 32], Failure> {
     Ok(bytes)
 }
 
+/// RFC-0013 A6 item 5: one owner from state loading through persistence or rollback.
+fn lock_secret(path: &str) -> Result<(PathBuf, std::fs::File), Failure> {
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+    let requested = Path::new(path);
+    let fail = |e: std::io::Error| usage(format!("lock {path}: {e}"));
+    let canonical = match std::fs::symlink_metadata(requested) {
+        Ok(_) => requested.canonicalize().map_err(fail)?,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            let parent = requested
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .unwrap_or_else(|| Path::new("."));
+            parent.canonicalize().map_err(fail)?.join(
+                requested
+                    .file_name()
+                    .ok_or_else(|| usage("secret path needs a file name"))?,
+            )
+        }
+        Err(e) => return Err(fail(e)),
+    };
+    match std::fs::metadata(&canonical) {
+        Ok(m) if !m.is_file() => return Err(usage("secret state must be a regular file")),
+        Ok(m) if m.nlink() != 1 => return Err(usage("hard-linked secret state is not supported")),
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
+        _ => {}
+    }
+    // Lock the stable sidecar, since every state update replaces the secret inode.
+    let mut sidecar = canonical.as_os_str().to_os_string();
+    sidecar.push(".lock");
+    let valid = |m: &std::fs::Metadata| m.is_file() && m.nlink() == 1;
+    match std::fs::symlink_metadata(&sidecar) {
+        Ok(m) if !valid(&m) => {
+            return Err(usage("secret lock must be a singly linked regular file"))
+        }
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
+        _ => {}
+    }
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .open(&sidecar)
+        .map_err(fail)?;
+    match lock.try_lock() {
+        Ok(()) => {}
+        Err(std::fs::TryLockError::WouldBlock) => {
+            return Err(usage(format!(
+                "secret state is locked: {}",
+                canonical.display()
+            )))
+        }
+        Err(e) => return Err(usage(format!("lock {path}: {e}"))),
+    }
+    let opened = lock.metadata().map_err(fail)?;
+    let named = std::fs::symlink_metadata(&sidecar).map_err(fail)?;
+    if !valid(&opened)
+        || !valid(&named)
+        || (opened.dev(), opened.ino()) != (named.dev(), named.ino())
+    {
+        return Err(usage("secret lock changed during acquisition"));
+    }
+    lock.set_permissions(std::fs::Permissions::from_mode(0o600))
+        .map_err(fail)?;
+    // Never unlink the sidecar: another owner must lock this same inode.
+    Ok((canonical, lock))
+}
+
 /// Write the secret model state with owner-only permissions, replacing the file
 /// atomically, so a crash never leaves a counter behind a published proof.
-fn write_secret(path: &str, state: &zk::ModelState) -> Result<(), Failure> {
+/// The caller holds `lock_secret` for this canonical path throughout the operation.
+fn write_secret(path: &Path, state: &zk::ModelState) -> Result<(), Failure> {
     use std::io::Write;
     use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-    let temporary = format!("{path}.tmp");
-    let fail = |e: std::io::Error| usage(format!("write {path}: {e}"));
+    let mut temporary = path.as_os_str().to_os_string();
+    temporary.push(".tmp");
+    let fail = |e: std::io::Error| usage(format!("write {}: {e}", path.display()));
     // A stale temporary from a crash is replaced, never reused.
     match std::fs::remove_file(&temporary) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
@@ -148,10 +221,10 @@ fn write_secret(path: &str, state: &zk::ModelState) -> Result<(), Failure> {
     file.sync_all().map_err(fail)?;
     std::fs::rename(&temporary, path).map_err(fail)?;
     // The rename is durable only once the directory entry is.
-    let parent = std::path::Path::new(path)
+    let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or_else(|| std::path::Path::new("."));
+        .unwrap_or_else(|| Path::new("."));
     std::fs::File::open(parent)
         .and_then(|d| d.sync_all())
         .map_err(fail)
@@ -181,6 +254,7 @@ fn window(o: &BTreeMap<&str, &str>) -> Result<Statement, Failure> {
 }
 
 fn commit_model(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
+    let (secret, _ownership) = lock_secret(get(o, "secret")?)?;
     let length = number(get(o, "length")?)?;
     let mut out = None;
     // RFC-0013 A8: new commitments are byte 4 (balanced policy-2 sources), from a
@@ -213,7 +287,7 @@ fn commit_model(o: &BTreeMap<&str, &str>) -> Result<String, Failure> {
     )
     .map_err(reject)?;
     let (commitment, state) = out.ok_or_else(|| reject("no commitment"))?;
-    write_secret(get(o, "secret")?, &state)?;
+    write_secret(&secret, &state)?;
     let path = get(o, "commitment")?;
     std::fs::write(path, commitment.encode()).map_err(|e| usage(format!("write {path}: {e}")))?;
     let model = zk::model_digest(&public, &commitment).map_err(reject)?;
@@ -257,10 +331,13 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
         println!("proof {} bytes", proof.len());
         return Ok("PROOF WRITTEN".into());
     }
+    // Ownership covers both reads, the counter update, proof, and any rollback (A6.5).
+    let (secret, _ownership) = lock_secret(get(o, "secret")?)?;
     // Read and validate every input before the index is taken (RFC-0013 A6 item 5).
     let commitment = zk::ModelCommitment::decode(&read(get(o, "commitment")?)?).map_err(reject)?;
-    let secret = get(o, "secret")?;
-    let mut state = zk::ModelState::decode(&read(secret)?).map_err(reject)?;
+    let bytes =
+        std::fs::read(&secret).map_err(|e| usage(format!("read {}: {e}", secret.display())))?;
+    let mut state = zk::ModelState::decode(&bytes).map_err(reject)?;
     let [m, p, s, a] = read_files()?;
     for key in ["public", "proof"] {
         get(o, key)?;
@@ -269,7 +346,7 @@ fn prove_dev(o: &BTreeMap<&str, &str>, zk: bool) -> Result<String, Failure> {
     let mut index = 0;
     let mut saved = Ok(());
     let mut persist = |state: &zk::ModelState| {
-        saved = write_secret(secret, state);
+        saved = write_secret(&secret, state);
         saved
             .as_ref()
             .map(|_| ())
