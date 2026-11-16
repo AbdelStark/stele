@@ -4189,3 +4189,37 @@ Consequences:
   This erratum grants no standard or treaty admission and makes no performance claim.
 - A16 and its implementation must close the request/plan binding under ADR-131;
   this acceptance does not authorize behavior from that unwritten amendment.
+
+
+## ADR-133: Bound independent request columns with an interim trusted registry (RFC-0026 A16, task E8-02f3a)
+
+Proposal (full-path review pending): implement ADR-131's interim registry before
+independent per-module plan derivation. The entry pins the CQIS/model/T/profile key,
+exact static public bytes and ordered roots, a normalized relation digest, its byte
+length, and the small trusted metadata needed for embedding and argmax columns.
+The verifier recomputes those columns and their original widths, then zeroes values
+and normalizes widths for hashing. It validates and replays the original relation.
+
+A relation byte length is necessary because A16 makes the relation untrusted:
+reject a length mismatch before decoding and bound allocations by trusted data.
+A static-data pin prevents untrusted Scales from determining values hidden by
+normalization. Normalizing values alone is insufficient because gathered mantissa
+widths change with the token window. These refine ADR-131's direction; Accepted
+RFC text is not edited in place.
+
+The binary entry needs no new core dependency or registry service. Distribution
+and correctness of the reviewed entry are explicit trust premises. The wrapper
+covers byte 5 only, grants no security level and makes no independent full-plan
+or ZK replay claim. Publisher output alone is not authentication.
+
+Reference vectors cover entry codecs, both shift branches, changing selected
+widths, saturation, checked range, next token, block mapping and current one/eight
+layer pins. They are spec-author work, not independent implementation or executed
+control credit. NC-1325..1334 remain reservations until E8-02f3b. Three digest
+invocations and their compression work belong to global H query accounting;
+existing proof rounds and bytes remain unchanged.
+
+E8-02f3a accepts text and vectors only. After its validated merge, E8-02f3b uses a
+fresh RFC-only author under ADR-128/131 and executes every new binding's control,
+including composed forgeries. E8-02f3c then publishes entries and exposes the CLI
+path. These are serial changes, not a parallel PR stack.

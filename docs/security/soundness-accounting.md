@@ -2049,3 +2049,20 @@ RFC-0008 A8, and the LU round carries `k_LU`.
 - On stories42M at T = 64 (`bench/ledger/e8-05d-dev-stories42m-t64-byte5-mac.json`),
   `verify-dev` also prints PASS. The worst round is a PCS column round at `2^-108`, and
   the floor is `2^-101.9`.
+
+## RFC-0026 A16: interim trusted plan registry (Draft)
+
+A16 is a deterministic preflight before the unchanged byte-5 replay. A correct
+caller-trusted entry is a premise, not a soundness error term. It authenticates
+static Model/Scales/Preparation/record bytes, ordered model roots and the normalized
+relation; the verifier recomputes request columns before normalization. Entry
+publication does not authenticate the entry to the caller.
+
+No challenge, transcript round or algebraic/PCS loss changes. Three BLAKE3
+invocations per successful wrapper call (model identity, static digest, template
+digest) enter the existing H population under RFC-0002 §4 assumption A1 and
+RFC-0012 A15/A17. Their compression calls, publisher queries, all rejected
+attempts and adversary pre-publication queries must be counted in that global
+population; three invocations is not three compression calls. No concrete security
+level or new profile admission follows. The spec-only E8-02f3a adds no runtime
+accounting instance; E8-02f3b implements the wrapper and its controls.

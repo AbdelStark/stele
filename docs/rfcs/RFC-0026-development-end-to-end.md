@@ -2058,17 +2058,18 @@ is exactly these fields in order, without padding or trailing bytes:
 | `cqis_id`, model identity | two 32-byte digests |
 | `T`, profile | `u32`, `u8` (profile must be 5) |
 | static digest, template digest | two 32-byte digests, defined below |
+| canonical relation byte length | `u64`, at least 63 (the A15 tag and eight list counts) |
 | vocabulary `V`, model width `d` | `u32`, `u16` |
 | embedding exponent `ee`, first residual fraction `f0` | `i16`, `u8` |
 | embedding row mantissas `m_v` | `list u16`, exactly `V` entries in vocabulary order |
 
 Reject with `RegistryEncoding` for a wrong magic, truncation, trailing byte,
 profile other than 5, non-power-of-two `T`, zero `V` or `d`, a mantissa count other
-than `V`, or any zero mantissa. Let `lt = log2(T)`, `lv = ceil_log2(V)`,
+than `V`, any zero mantissa, or a relation byte length below 63. Let `lt = log2(T)`, `lv = ceil_log2(V)`,
 `ld = ceil_log2(d)`. Also require `lt+lv ≤ 30`, `lt+ld ≤ 30`, `ld+lv ≤ 30`.
 Check counts against remaining bytes before allocation, and use checked size
 arithmetic and fallible allocation; a capacity failure is `Capacity`.
-The entry is `163 + 2V` bytes. Its metadata is trusted, not extracted from
+The entry is `171 + 2V` bytes. Its metadata is trusted, not extracted from
 unauthenticated Scales. The publisher must obtain it from the Model and the
 Token scale row in the exact static bytes authenticated below.
 
@@ -2096,7 +2097,14 @@ Certificates remain untrusted and are fully verified by A15 replay.
 
 #### 3. Recompute the request columns
 
-The input relation is untrusted A15 §5 canonical bytes. The following is the
+The input relation is untrusted A15 §5 canonical bytes. Before decoding it, require
+its byte length to equal the trusted entry's length (`RegistryTemplateMismatch`).
+All relation counts must be checked against remaining encoding bytes before
+allocation; use checked size arithmetic and fallible allocation (`Capacity`).
+The decoder must not expand domains from untrusted `log_len` values. Thus decode
+storage is bounded by the trusted relation length, and request computation by
+trusted `T` and `V`; plan derivation runs only after the template comparison.
+The following is the
 complete request-column list. Each listed name must occur exactly once among all
 columns, must have public kind, and must have exactly the stated length, values,
 unsigned width and `log_len`. A mismatch is `RegistryRequestMismatch`.
@@ -2143,7 +2151,7 @@ all A15/E1 checks, certificates, public evaluations and openings unchanged.
 The original relation digest enters the transcript; no registry bytes do.
 
 Error precedence for the registered entry point is: entry decoding; public parsing
-and token bounds; key comparison; static digest comparison; relation decoding;
+and token bounds; key comparison; static digest comparison; relation length comparison; relation decoding;
 request columns; template comparison; existing A15 replay (including validation
 before any proof parsing). A15 errors retain their existing names. No proof byte
 is read before the registry preflight succeeds. An implementation may share parsed
@@ -2166,7 +2174,8 @@ secret. Publication is not trust: the verifier caller pins an entry separately.
 A usable verification path takes public, proof and untrusted relation files plus
 the trusted entry; exporting the relation changes no public/proof byte.
 
-The golden vectors accompanying this amendment cover both signs of `s`, saturation,
+The [golden vectors](../../research/plan-registry/README.md) accompanying this amendment
+cover both signs of `s`, saturation,
 different selected mantissa widths under the same entry, checked-range and next-token
 changes, malformed/duplicate/relabelled columns, and one/eight-layer template pins.
 E8-02f3b implements the independent wrapper from Accepted text by a fresh author
@@ -2175,7 +2184,7 @@ E8-02f3c then implements the production publisher and CLI path. They merge seria
 
 #### 6. Soundness, cost and controls
 
-Conditional on a correct trusted entry and BLAKE3 binding (RFC-0002 assumption A1),
+Conditional on a correct trusted entry and BLAKE3 binding (RFC-0002 §4 assumption A1),
 a passing preflight fixes every non-request declaration byte and forces every
 request column to the integer values above. It establishes no correctness theorem
 for the trusted static declaration. The registry trust is an explicit premise;
@@ -2192,7 +2201,7 @@ No committed cells, lookups, proof bytes, weight passes or prover constants chan
 For `n=T` and `Vp<2V`, request computation/comparison visits `3nVp+2n` values;
 hashing is linear in `|D| + |R| + |records| + |N|`. This adds verifier work to
 `T_misc`; it does not move `T_weights`, `T_act`, `T_attn` or `T_cuts`.
-The entry adds `163+2V` external bytes and the relation is supplied separately.
+The entry adds `171+2V` external bytes and the relation is supplied separately.
 These are formulas, not measured benchmark claims.
 
 Reserve the following controls; a reservation earns no executed coverage. Each

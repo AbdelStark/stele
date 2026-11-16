@@ -7,9 +7,9 @@ const ROW: &str = "| NC-0001 | binding | 0002 §7 | change cell | ExactError | t
 #[test]
 fn accepts_repository_catalog_without_crediting_stub() {
     let catalog = parse(include_str!("../catalog.md")).expect("valid repository catalog");
-    assert_eq!(catalog.len(), 236);
+    assert_eq!(catalog.len(), 246);
     assert_eq!(catalog.first().map(|entry| entry.id), Some(1));
-    assert_eq!(catalog.last().map(|entry| entry.id), Some(1324));
+    assert_eq!(catalog.last().map(|entry| entry.id), Some(1334));
     assert!(
         report(&catalog, &[]).is_err(),
         "done requires executed registration"
@@ -17,10 +17,10 @@ fn accepts_repository_catalog_without_crediting_stub() {
     let coverage =
         report(&catalog, stele_negative_controls::CONTROLS).expect("executed production controls");
     assert!(
-        coverage.contains("64/110 bindings; 135/236 controls"),
+        coverage.contains("64/120 bindings; 135/246 controls"),
         "{coverage}"
     );
-    assert_eq!(coverage.matches("MISSING").count(), 101);
+    assert_eq!(coverage.matches("MISSING").count(), 111);
     for id in [
         203, 210, 211, 212, 213, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317,
         318, 400, 401, 402, 403, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 603, 605, 609,
@@ -39,7 +39,11 @@ fn accepts_repository_catalog_without_crediting_stub() {
             line.starts_with(&format!("NC-{id:04} |")) && line.ends_with("passed")
         }));
     }
-    for id in (100..=126).chain(704..=710).chain(1204..=1206) {
+    for id in (100..=126)
+        .chain(704..=710)
+        .chain(1204..=1206)
+        .chain(1325..=1334)
+    {
         assert!(
             !catalog
                 .iter()

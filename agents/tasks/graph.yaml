@@ -2107,7 +2107,7 @@ tasks:
   - RFC-0026 A16
   - RFC-0016 §3
   skill: rfc-author
-  crate: docs
+  crate: docs+stele-prover-tests
   status: in_progress
   agent: codex-root
   branch: task/E8-02f3a-registry-contract
@@ -2115,7 +2115,40 @@ tasks:
   - append-only A16 fixes the trusted entry encoding and key, static public data and ordered root authentication, exact request columns and widths, template normalization, error precedence and trust boundary for byte-5 development proofs
   - golden vectors cover entry bytes and hashes, both embedding shift branches and changed selected mantissa widths, checked ranges and next tokens, with one-layer and eight-layer template pins
   - full-path soundness-auditor, rfc-author and affected lane-owner reviews precede acceptance; the index, ADR, accounting note and exact negative-control reservations agree
-  - no runtime behavior or honest proof bytes change; catalog, documentation and native gates pass; follow-up tasks implement the fresh RFC-only verifier and then the production publisher with composed controls, serially
+  - no runtime behavior or honest proof bytes change; catalog, documentation and native gates pass; follow-up tasks implement the fresh RFC-only verifier with composed controls and then the production publisher, serially
+- id: E8-02f3b
+  epic: E8
+  title: Independently implement registered byte-5 verification from Accepted A16
+  lane: V
+  depends:
+  - E8-02f3a
+  rfc:
+  - RFC-0026 A16
+  - RFC-0026 A15
+  - RFC-0016 §3
+  skill: soundness-auditor
+  crate: stele-verifier+stele-negative-controls
+  status: ready
+  acceptance:
+  - a fresh author derives the no_std wrapper from Accepted A16 and existing independent verifier only, without reading production declarations; reference comparison follows implementation under ADR-128 and ADR-131
+  - canonical entry parsing, trusted length bound, key/static joins, exact request columns and widths, template comparison and unchanged original-relation replay match all A16 vectors and precedence cases
+  - execute NC-1325 through NC-1334 at the actual registered entry point in this change; 1328 and 1334 include honestly rebuilt composed proofs accepted by low-level A15 replay and rejected by the wrapper for the specified reason
+  - L0 and L1 registered proofs pass with their pinned entries, proof bytes stay identical, no_std and native gates pass, and API documentation states the trusted registry and no-security-level boundary
+- id: E8-02f3c
+  epic: E8
+  title: Publish trusted plan entries and expose registered verification through the CLI
+  lane: V
+  depends:
+  - E8-02f3b
+  rfc:
+  - RFC-0026 A16
+  skill: soundness-auditor
+  crate: stele-prover+stele-cli
+  status: ready
+  acceptance:
+  - plan-digest derives and publishes canonical entries from validated public model data and commitments without loading secret state; changing tokens, checked range or next token preserves the entry for the same key
+  - the CLI exports the untrusted relation and runs the independent registered entry point with an explicitly caller-trusted entry; success reports trusted plan registry and development with no security level
+  - executable L0 and L1 publish-prove-verify examples and a real-process wrong-entry rejection pass; honest proof bytes, existing verification APIs and all native gates remain unchanged
 - id: E8-03
   epic: E8
   title: Python differential verifier
