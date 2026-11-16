@@ -1,5 +1,5 @@
 //! The relation of a development proof: its canonical decoding (RFC-0026 A15 §5) and
-//! `Relation::validate` (RFC-0026 §3.6 with A6), task E8-02f1.
+//! `Relation::validate` (RFC-0026 §3.6 with A6 and A15 E1), tasks E8-02f1/E8-02f0b.
 //!
 //! Written from the RFC-0026 text only (ADR-128): no production crate was opened.
 //! Every failure here is `StatementMismatch`, raised before any proof byte is read
@@ -289,15 +289,15 @@ impl Relation {
             .ok_or(Error::StatementMismatch)
     }
 
-    /// RFC-0026 §3.6 (with A6): shapes, the bound rule and range discipline. Any
+    /// RFC-0026 §3.6 (with A6 and A15 E1): shapes, bound rule and range discipline. Any
     /// failure is `StatementMismatch` (A15 §6.0).
     pub fn validate(&self) -> Result<(), Error> {
         let bad = Error::StatementMismatch;
         let p = u128::from(M31::MODULUS);
         let ok_width = |w: &Width| (1..=30).contains(&w.bits);
         for c in &self.columns {
-            // §3.6 item 1: a width outside 1..=30.
-            if !ok_width(&c.width) {
+            // §3.6 item 1 / A15 E1 item 3: every column's width and domain are capped.
+            if !ok_width(&c.width) || c.log_len > MAX_VARS {
                 return Err(bad);
             }
             match &c.kind {
@@ -320,9 +320,13 @@ impl Relation {
             }
         }
         for t in &self.tables {
-            // §3.6 item 1: at most 2^16 rows; widths valid; every row of the table's
-            // arity and inside its widths (E8-02f1 reading, spec gap 3).
-            if t.rows.len() > 1 << 16 || !t.widths.iter().all(ok_width) {
+            // §3.6 item 1 / A15 E1 item 3: nonempty widths and rows, with at most
+            // 2^16 rows, each of the table's arity and inside its valid widths.
+            if t.widths.is_empty()
+                || t.rows.is_empty()
+                || t.rows.len() > 1 << 16
+                || !t.widths.iter().all(ok_width)
+            {
                 return Err(bad);
             }
             for row in &t.rows {
@@ -466,8 +470,8 @@ impl Relation {
         Ok(())
     }
 
-    /// §3.6 item 3 (A6): the least fixed point of the enforcement rules; then every
-    /// witness and weight column is enforced.
+    /// §3.6 item 3 (A6, A15 E1): seed, compose, snapshot and matmul passes until
+    /// unchanged; then every witness and weight column is enforced.
     fn discipline(&self) -> Result<(), Error> {
         let n = self.columns.len();
         let mut enforced = reserve::<bool>(n)?;
@@ -476,6 +480,21 @@ impl Relation {
                 .iter()
                 .map(|c| matches!(c.kind, Kind::Public(_))),
         );
+        for r in &self.ranges {
+            if r.width.within(&self.columns[r.column as usize].width) {
+                enforced[r.column as usize] = true;
+            }
+        }
+        for l in self.lookups.iter().filter(|l| l.selector.is_none()) {
+            let table = &self.tables[l.table as usize];
+            for (r, w) in l.tuple.iter().zip(&table.widths) {
+                if w.within(&self.columns[r.column as usize].width) {
+                    enforced[r.column as usize] = true;
+                }
+            }
+        }
+        let mut snapshot = reserve(n)?;
+        snapshot.resize(n, false);
         loop {
             let mut changed = false;
             let mut mark = |id: u32, e: &mut Vec<bool>| {
@@ -484,19 +503,6 @@ impl Relation {
                     changed = true;
                 }
             };
-            for r in &self.ranges {
-                if r.width.within(&self.columns[r.column as usize].width) {
-                    mark(r.column, &mut enforced);
-                }
-            }
-            for l in self.lookups.iter().filter(|l| l.selector.is_none()) {
-                let table = &self.tables[l.table as usize];
-                for (r, w) in l.tuple.iter().zip(&table.widths) {
-                    if w.within(&self.columns[r.column as usize].width) {
-                        mark(r.column, &mut enforced);
-                    }
-                }
-            }
             for c in &self.composes {
                 let (mut lo, mut hi) = (0i64, 0i64);
                 let mut all = true;
@@ -511,16 +517,18 @@ impl Relation {
                     mark(c.column, &mut enforced);
                 }
             }
+            // A15 E1 item 3: new matmul outputs cannot change this pass's eligible sets.
+            snapshot.copy_from_slice(&enforced);
             for (id, column) in self.columns.iter().enumerate() {
-                if enforced[id] {
+                if snapshot[id] {
                     continue;
                 }
                 let mut patterns = Vec::new();
                 for m in self.matmuls.iter().filter(|m| m.out.column as usize == id) {
                     let bp = self.product_bound(m)?;
                     let w = column.width;
-                    if enforced[m.lhs.column as usize]
-                        && enforced[m.rhs.column as usize]
+                    if snapshot[m.lhs.column as usize]
+                        && snapshot[m.rhs.column as usize]
                         && bp <= w.max() as u128
                         && bp <= w.min().unsigned_abs() as u128
                     {
@@ -557,7 +565,7 @@ fn slice(r: &Ref) -> Result<Vec<(usize, bool)>, Error> {
 }
 
 /// Most distinct fixed positions [`covers`] searches; past it the column is not
-/// disciplined (review of #381: bounds the search at 2^16 leaves).
+/// disciplined (RFC-0026 A15 E1 item 3: bounds the search at 2^16 leaves).
 const MAX_COVER_BITS: usize = 16;
 
 /// Whether the slices cover every index. Past [`MAX_COVER_BITS`] distinct fixed
@@ -699,6 +707,209 @@ mod tests {
             f(&mut r);
             assert_eq!(r.validate(), Err(Error::StatementMismatch), "rule {i}");
         }
+    }
+
+    #[test]
+    fn rejects_a15_empty_table_widths() {
+        let mut r = small();
+        // A15 E1 item 3 applies even when no lookup reads the table.
+        r.tables.push(Table {
+            widths: alloc::vec![unsigned(2)],
+            rows: alloc::vec![alloc::vec![0]],
+        });
+        assert_eq!(r.validate(), Ok(()));
+        r.tables[0].widths.clear();
+        r.tables[0].rows[0].clear();
+        assert_eq!(r.validate(), Err(Error::StatementMismatch));
+    }
+
+    #[test]
+    fn rejects_a15_empty_table_rows() {
+        for used in [false, true] {
+            let mut r = small();
+            r.tables.push(Table {
+                widths: alloc::vec![unsigned(8)],
+                rows: alloc::vec![alloc::vec![3], alloc::vec![200]],
+            });
+            if used {
+                r.lookups.push(Lookup {
+                    vars: 1,
+                    selector: None,
+                    tuple: alloc::vec![whole(0)],
+                    table: 0,
+                });
+            }
+            assert_eq!(r.validate(), Ok(()));
+            r.tables[0].rows.clear();
+            assert_eq!(r.validate(), Err(Error::StatementMismatch), "used={used}");
+        }
+    }
+
+    #[test]
+    fn rejects_a15_column_domains_above_thirty_before_planning() {
+        for kind in [Kind::Weight, Kind::Witness(0)] {
+            let witness = matches!(kind, Kind::Witness(_));
+            let mut r = Relation {
+                groups: if witness { alloc::vec![30] } else { Vec::new() },
+                group_names: if witness {
+                    alloc::vec![b"g".to_vec()]
+                } else {
+                    Vec::new()
+                },
+                columns: alloc::vec![Column {
+                    kind,
+                    width: unsigned(8),
+                    log_len: 30,
+                }],
+                ranges: alloc::vec![Range {
+                    column: 0,
+                    width: unsigned(8),
+                }],
+                ..Relation::default()
+            };
+            assert_eq!(r.validate(), Ok(()));
+            r.columns[0].log_len = 31;
+            if witness {
+                r.groups[0] = 31;
+            }
+            // A15 E1 item 3: Column/StatementMismatch precedes source Unsupported.
+            assert_eq!(
+                (r.validate(), crate::plan::Plan::derive(&r).map(|_| ())),
+                (Err(Error::StatementMismatch), Err(Error::StatementMismatch)),
+                "kind={:?}",
+                r.columns[0].kind
+            );
+        }
+        let mut public = Relation {
+            columns: alloc::vec![Column {
+                kind: Kind::Public(alloc::vec![0]),
+                width: unsigned(1),
+                log_len: 0,
+            }],
+            ..Relation::default()
+        };
+        assert_eq!(public.validate(), Ok(()));
+        public.columns[0].log_len = 31;
+        assert_eq!(public.validate(), Err(Error::StatementMismatch));
+        assert_eq!(
+            crate::plan::Plan::derive(&public),
+            Err(Error::StatementMismatch)
+        );
+    }
+
+    #[test]
+    fn accepts_a15_matmul_enforcement_snapshot() {
+        // A15 E1's golden relation: d is unavailable to o's slices in this pass.
+        let mut r = Relation {
+            groups: alloc::vec![0, 17],
+            group_names: alloc::vec![b"d".to_vec(), b"o".to_vec()],
+            columns: alloc::vec![
+                Column {
+                    kind: Kind::Witness(0),
+                    width: Width {
+                        signed: true,
+                        bits: 8
+                    },
+                    log_len: 0,
+                },
+                Column {
+                    kind: Kind::Witness(1),
+                    width: Width {
+                        signed: true,
+                        bits: 10
+                    },
+                    log_len: 17,
+                },
+                Column {
+                    kind: Kind::Public(alloc::vec![1]),
+                    width: Width {
+                        signed: true,
+                        bits: 2
+                    },
+                    log_len: 0,
+                },
+            ],
+            ..Relation::default()
+        };
+        let one = Ref {
+            column: 2,
+            vars: Vec::new(),
+        };
+        for (column, free) in [(0, 0), (1, 17)] {
+            r.matmuls.push(Matmul {
+                free,
+                summed: 0,
+                out: Ref {
+                    column,
+                    vars: (0..free).collect(),
+                },
+                lhs: one.clone(),
+                rhs: one.clone(),
+            });
+        }
+        for j in 0..17 {
+            let mut vars: Vec<u8> = (0..16).collect();
+            vars.insert(j, FIXED_0);
+            r.matmuls.push(Matmul {
+                free: 16,
+                summed: 0,
+                out: Ref { column: 1, vars },
+                lhs: Ref {
+                    column: 0,
+                    vars: Vec::new(),
+                },
+                rhs: one.clone(),
+            });
+        }
+        assert_eq!(r.validate(), Ok(()));
+    }
+
+    #[test]
+    fn rejects_a15_matmul_cover_past_sixteen_fixed_positions() {
+        // A15 E1's covers-cap golden relation covers o, but fixes 17 positions.
+        let mut r = Relation {
+            groups: alloc::vec![17],
+            group_names: alloc::vec![b"G/o/17".to_vec()],
+            columns: alloc::vec![
+                Column {
+                    kind: Kind::Witness(0),
+                    width: Width {
+                        signed: true,
+                        bits: 8
+                    },
+                    log_len: 17,
+                },
+                Column {
+                    kind: Kind::Public(alloc::vec![1]),
+                    width: Width {
+                        signed: true,
+                        bits: 2
+                    },
+                    log_len: 0,
+                },
+            ],
+            ..Relation::default()
+        };
+        let one = Ref {
+            column: 1,
+            vars: Vec::new(),
+        };
+        for j in 0..17 {
+            for fixed in [FIXED_0, FIXED_1] {
+                let mut vars: Vec<u8> = (0..16).collect();
+                vars.insert(j, fixed);
+                r.matmuls.push(Matmul {
+                    free: 16,
+                    summed: 0,
+                    out: Ref { column: 0, vars },
+                    lhs: one.clone(),
+                    rhs: one.clone(),
+                });
+            }
+        }
+        assert_eq!(r.validate(), Err(Error::StatementMismatch));
+        r.matmuls.truncate(2);
+        assert_eq!(r.validate(), Ok(()));
     }
 
     #[test]

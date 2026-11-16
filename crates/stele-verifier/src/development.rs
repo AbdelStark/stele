@@ -1120,6 +1120,42 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unused_empty_tables_before_reading_proof() {
+        // A15 §5 encoding of an otherwise empty relation with one unused table.
+        let encoded = |widths: &[(u8, u8)], rows: &[&[i64]]| {
+            let mut out = b"stele/v0.1/relation/encoding/v1".to_vec();
+            for count in [0u32, 0, 1] {
+                out.extend_from_slice(&count.to_le_bytes());
+            }
+            out.extend_from_slice(&1u32.to_le_bytes());
+            out.push(b't');
+            out.extend_from_slice(&(widths.len() as u32).to_le_bytes());
+            for &(signed, bits) in widths {
+                out.extend_from_slice(&[signed, bits]);
+            }
+            out.extend_from_slice(&(rows.len() as u32).to_le_bytes());
+            for row in rows {
+                out.extend_from_slice(&(row.len() as u32).to_le_bytes());
+                for value in *row {
+                    out.extend_from_slice(&value.to_le_bytes());
+                }
+            }
+            out.extend_from_slice(&[0; 5 * 4]); // The five remaining relation lists.
+            out
+        };
+        let check = |relation: Vec<u8>| {
+            Relation::decode(&relation).expect("canonical relation encoding");
+            verify(&hex(PUBLIC_1), &[], &relation, &[0x11; 32])
+        };
+        // An unused nonempty table is valid and reaches the deliberately absent proof.
+        assert_eq!(check(encoded(&[(0, 1)], &[&[0]])), Err(Error::Header));
+        assert_eq!(
+            [check(encoded(&[], &[&[]])), check(encoded(&[(0, 1)], &[]))],
+            [Err(Error::StatementMismatch); 2]
+        );
+    }
+
+    #[test]
     fn eq_table_matches_eq_bits() {
         let z = [K::from_i64(3), K::from_i64(7), K::from_i64(11)];
         let table = eq_table(&z).expect("test vector");

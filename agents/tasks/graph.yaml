@@ -2038,7 +2038,7 @@ tasks:
   - forged-table and forged-public one-layer byte-5 windows, each rejected by production verify with TableDenominatorMismatch and PublicMismatch(30); dumped as public/proof/relation.bin under STELE_DUMP_DIR (ignored test) and checked by a regular controls test; the seam mutation-checked
 - id: E8-02f0b
   epic: E8
-  title: RFC-0026 A15 erratum E1 (Accepted) - exact text for the gaps the independent E8-02f1 author found (openings, multiplicity size rule, validation rules, selector positions, statement-digest comparison, malformed encoding), with validation golden vectors
+  title: RFC-0026 A15 erratum E1 (Accepted) - close specification gaps and align independent validation, with golden vectors
   depends:
   - E8-02f0
   - E8-02f1
@@ -2046,14 +2046,15 @@ tasks:
   - RFC-0026 A15
   - RFC-0026 A6
   skill: rfc-author
-  crate: docs
+  crate: stele-verifier
   status: in_progress
   agent: codex-root
   branch: task/E8-02f0b-a15-erratum
   acceptance:
   - A15 erratum E1 (Accepted) gives the exact replacement or addition text for gaps 2, 3, 4, 5, 12 and 13, the covers cap, the absent free >= 1 rule (with A6's sentence corrected), empty identities and duplicate group names
-  - matches_a15_erratum_validation_vectors pins six validate outcomes and encoding digests; the covers-cap vector mutation-checked
-  - independent review in agents/reviews/e8-02f0b-a15-erratum.md; acceptance recorded by ADR-132 and the RFC index
+  - matches_reference_a15_erratum_validation_vectors pins ten validate outcomes and encoding digests; the covers-cap vector mutation-checked
+  - independent validation rejects unused empty tables and oversized columns before proof decoding, and follows E1's matmul eligibility snapshot; regressions fail before the fix and pass after
+  - full-path soundness-auditor and rfc-author review in agents/reviews/e8-02f0b-a15-erratum.md; acceptance recorded by ADR-132 and the RFC index
 - id: E8-02f1
   epic: E8
   title: Verifier primitives (unblocked) - independent no_std replay of RFC-0026 byte-5 development proofs from the A15 text (public file, container, relation encoding, engine replay), relation and cqis_id as inputs

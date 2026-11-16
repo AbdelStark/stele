@@ -1729,7 +1729,7 @@ const A15_SECOND: [&str; 3] = [
 /// relies on, each pinned with the BLAKE3 digest of the relation's A15 §5 encoding
 /// (built from A15's first small vector, or as described in the erratum).
 #[test]
-fn matches_a15_erratum_validation_vectors() {
+fn matches_reference_a15_erratum_validation_vectors() {
     use stele_reductions::stele_ir::relation::Invalid;
     let shape = |name: &str| {
         Err(Invalid::Shape {
@@ -1775,6 +1775,17 @@ fn matches_a15_erratum_validation_vectors() {
         a15_covers(),
         Err(Invalid::Undisciplined(ColumnId(0))),
     ));
+    let mut r = base();
+    r.tables[0].widths.clear();
+    r.tables[0].rows = vec![vec![]];
+    vectors.push(("empty table widths", r, shape("t")));
+    let mut r = base();
+    r.tables[0].rows.clear();
+    vectors.push(("empty table rows", r, shape("t")));
+    vectors.push(("matmul enforcement snapshot", a15_cover_snapshot(), Ok(())));
+    let mut r = base();
+    r.columns[1].log_len = 31;
+    vectors.push(("column domain cap", r, Err(Invalid::Column(ColumnId(1)))));
     let mut got = Vec::new();
     for (name, relation, expected) in &vectors {
         assert_eq!(&relation.validate(), expected, "{name}");
@@ -1852,11 +1863,96 @@ fn a15_covers() -> Relation {
     }
 }
 
-const A15_ERRATUM_DIGESTS: [&str; 6] = [
+/// E1's matmul pass uses one eligibility snapshot for all outputs. The redundant
+/// slices become eligible only after both outputs have already been enforced.
+fn a15_cover_snapshot() -> Relation {
+    let rf = |column, vars| Ref {
+        column: ColumnId(column),
+        vars,
+    };
+    let mut r = Relation {
+        groups: vec![
+            Group {
+                name: "d".into(),
+                log_len: 0,
+            },
+            Group {
+                name: "o".into(),
+                log_len: 17,
+            },
+        ],
+        columns: vec![
+            Column {
+                name: "d".into(),
+                kind: Kind::Witness(GroupId(0)),
+                width: Width::signed(8),
+                log_len: 0,
+            },
+            Column {
+                name: "o".into(),
+                kind: Kind::Witness(GroupId(1)),
+                width: Width::signed(10),
+                log_len: 17,
+            },
+            Column {
+                name: "one".into(),
+                kind: Kind::Public(vec![1]),
+                width: Width::signed(2),
+                log_len: 0,
+            },
+        ],
+        ..Relation::default()
+    };
+    r.matmuls.push(Matmul {
+        name: "d".into(),
+        free: 0,
+        summed: 0,
+        out: rf(0, vec![]),
+        lhs: rf(2, vec![]),
+        rhs: rf(2, vec![]),
+    });
+    r.matmuls.push(Matmul {
+        name: "o".into(),
+        free: 17,
+        summed: 0,
+        out: rf(1, (0..17).collect()),
+        lhs: rf(2, vec![]),
+        rhs: rf(2, vec![]),
+    });
+    for j in 0..17u8 {
+        let mut next = 0;
+        let vars = (0..17u8)
+            .map(|k| {
+                if k == j {
+                    Ref::FIXED_0
+                } else {
+                    let bit = next;
+                    next += 1;
+                    bit
+                }
+            })
+            .collect();
+        r.matmuls.push(Matmul {
+            name: format!("slice{j}"),
+            free: 16,
+            summed: 0,
+            out: rf(1, vars),
+            lhs: rf(0, vec![]),
+            rhs: rf(2, vec![]),
+        });
+    }
+    r
+}
+
+const A15_ERRATUM_DIGESTS: [&str; 10] = [
     "448785546a67956f62d3d5a3bab1fb0c52926d0296a7062e5c296e414927c58b",
     "eecc2147a22a713950f6aa231f93115587c26d8d00b18000568acbc639722a1a",
     "6434bf92d72792ebee722f43ef4de63b43ddeacb6fba0c4ffadfe754fe5fc3e2",
     "c410668dde7a0cf0ca6ef223b4867458b260119f3fec8a8f485826f79259717b",
     "d0dbdaf26c2ab77539c1d6d13fb9e00fce7ce89c17a593d28cb6edcec75ec48f",
     "7c0070e1b1b3cedc38c43791841ed91eaf22d88a130fcbe35803d144f62aae8a",
+    "265067986dd37837a6582d1ac26e9a0f38ee690ec15a6a02b005c94f81e868b9",
+    "4b8d2b2e44ff2eaf77cb730c5939aed7b3a102a6e058574565cdfa590db1b99c",
+    "dd43e76fa354e25e82b42c9776ca9a6dd2d16af8297cdee31ce3319f6c7f8672",
+    "e02337c958a1f50528aaac9b2b1b7323429b855ce8a1105a3651a9b7c56185f4",
 ];
