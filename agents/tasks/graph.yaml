@@ -2146,7 +2146,7 @@ tasks:
   - RFC-0026 A16
   skill: soundness-auditor
   crate: stele-prover+stele-cli
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E8-02f3c-registry-cli
   acceptance:
@@ -3790,6 +3790,43 @@ tasks:
   - rayon only behind the prover std features; verifier and no_std builds free of it (cargo tree, --no-default-features)
   - identical proof bytes on the pinned E16-10 fixtures
   - 8-layer prove time measured before and after, with the core count
+- id: E16-10a
+  epic: E16
+  title: Execute the composed certificate-field and matmul-claim controls
+  lane: V
+  depends:
+  - E16-10
+  - E8-02f3c
+  rfc:
+  - RFC-0026 §3.6, §4 steps 2 and 6, §8-9
+  - RFC-0026 A12, A14
+  - RFC-0010 A9, A14
+  skill: soundness-auditor
+  crate: stele-negative-controls
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-10a-composed-messages
+  acceptance:
+  - close NC-1303 and NC-1307 through the actual development verifier on L0 one-layer T=16 and L1 eight-layer T=64 under source profiles 3 and 5, with honest production proofs accepted first
+  - mutate exactly one canonical row limb to p or increment one matmul output claim by one; assert unchanged remaining proof and public inputs and require full typed NoncanonicalField or RoundSumMismatch respectively
+  - the registered controls, direct tests and exact catalog coverage run in the mandatory native gate; no producer failure, wrong rejection or missing execution earns credit
+  - existing proof pins and native gates stay green; this closes two composed-control gaps left by E16-02 and E16-10, and grants no execution credit to NC-1302, NC-1306 or NC-1308
+- id: E16-10b
+  epic: E16
+  title: Complete the identity, root and column-routing composed controls
+  lane: V
+  depends:
+  - E16-10a
+  rfc:
+  - RFC-0026 §2.3, §4, §9, A4
+  skill: soundness-auditor
+  crate: stele-negative-controls+stele-reductions
+  status: ready
+  acceptance:
+  - execute NC-1302, NC-1306 and NC-1308 through the actual composed window verifier with declared single semantic tampers and exact typed rejections; engine-only analogues and producer failures earn no coverage
+  - preserve Accepted contracts where feasible; any observed source-profile rejection-precedence disagreement requires a reviewed append-only RFC erratum before implementation claims that contract
+  - require honest acceptance, genuine dependent proof construction and protected-check sensitivity where practical; no verifier bypass or weakened binding
+  - reconcile the original E16-02 execution claim against actual catalog evidence and keep L0, L1, all proof pins and native gates green
 - id: E16-11
   epic: E16
   title: Development-profile performance and a real small Llama run
