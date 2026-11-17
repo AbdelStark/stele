@@ -49,6 +49,10 @@ use stele_sumcheck::{Dense, Instance, Reduction, Summand, Term};
 #[path = "zk_lookup.rs"]
 mod lookup;
 
+#[cfg(feature = "bench")]
+#[path = "zk_gkr_bench.rs"]
+mod gkr_bench;
+
 /// The source set of a dev-zk proof: its sources' geometry and PCS policy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Geometry {
@@ -2919,6 +2923,34 @@ fn prove_with<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
+    prove_observed(
+        statement,
+        columns,
+        seed,
+        t,
+        claim_masks,
+        forgery,
+        lifetime,
+        #[cfg(feature = "bench")]
+        None,
+    )
+}
+
+// RFC-0014 §6: the bench callback observes CPU results, never replaces them.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
+fn prove_observed<K: ChallengeField + CodeField + Eq>(
+    statement: &Statement<K>,
+    columns: &[Vec<M31>],
+    seed: &[u8; 32],
+    t: &mut Transcript<K>,
+    claim_masks: bool,
+    forgery: Option<Forgery>,
+    lifetime: Option<(&Lifetime, ModelSecret<'_, K>)>,
+    #[cfg(feature = "bench")] mut observer: Option<&mut gkr_bench::Observer<'_, K>>,
+) -> Result<(Proof<K>, Option<Vec<K>>), Error>
+where
+    for<'a> K::Bytes: TryFrom<&'a [u8]>,
+{
     let plan = plan_with(statement, lifetime.as_ref().map(|(l, _)| *l))?;
     let (life_source, model) = match lifetime {
         Some((l, secret)) => (Some(l.source), Some(secret)),
@@ -3306,6 +3338,24 @@ where
         };
         lookup::aborts(step, run, &point)?;
         let finals = lookup::finals(&plan, step, run, &point, &truth)?;
+        #[cfg(feature = "bench")]
+        if let Some(observer) = observer.as_deref_mut() {
+            let reference = || build(None);
+            let route =
+                |values: &[K]| lookup::finals(&plan, step, run, &point, values).map(Into::into);
+            observer(&gkr_bench::GkrCase {
+                step: g,
+                lookup: l,
+                first: step.is_first(),
+                leaf: step.is_leaf(),
+                instance: &i,
+                point: &point,
+                finals: &truth,
+                routed: finals.clone().into(),
+                build: &reference,
+                route: &route,
+            })?;
+        }
         for (source, claim) in finals.claims.iter().cloned() {
             claims[source].push(claim);
         }
@@ -3922,6 +3972,7 @@ mod batch_bench;
 #[cfg(feature = "bench")]
 pub mod bench {
     pub use super::batch_bench::BatchInputs;
+    pub use super::gkr_bench::{observe_gkr, GkrCase, GkrClaims};
     pub use super::lookup::bench::{LookupCase, LookupInputs, LookupTree};
     use super::{block_table, kappa, Factor, Occurrences};
     use alloc::vec::Vec;
@@ -3941,7 +3992,7 @@ pub mod bench {
     }
 
     /// A masked summand over `2^n`-entry tables.
-    pub struct Masked<K>(Occurrences<K>);
+    pub struct Masked<K>(pub(super) Occurrences<K>);
 
     impl<K: ChallengeField> Masked<K> {
         /// `Σ_k c_k·Π_{f ∈ F_k} V̇_f` at round degree `degree` (A5 item 3).
@@ -3988,6 +4039,69 @@ pub mod bench {
         /// The current `(x, r)` tables in factor order.
         pub fn tables(&self) -> impl Iterator<Item = (&[K], &[K])> {
             self.0.factors.iter().map(|f| (&f.x[..], &f.r[..]))
+        }
+
+        /// Original number of variables in the production summand.
+        pub fn variables(&self) -> u32 {
+            self.0.num_vars
+        }
+
+        /// Declared round degree, including each vanishing mask.
+        pub fn degree(&self) -> usize {
+            self.0.degree
+        }
+
+        /// Actual compact producer terms, in production order.
+        pub fn terms(&self) -> &[Term<K>] {
+            &self.0.terms
+        }
+
+        /// Original vanishing-variable coordinate per factor; `None` denotes public factors.
+        pub fn vanishing(&self) -> impl Iterator<Item = Option<usize>> + '_ {
+            self.0.factors.iter().map(|f| f.v)
+        }
+
+        /// Whether the producer expands compact leaf finals into member claims.
+        pub fn is_compact(&self) -> bool {
+            self.0.expand.is_some()
+        }
+
+        /// Production expanded finals after all variables have been folded.
+        pub fn final_values(&self) -> Result<Vec<K>, stele_sumcheck::Error> {
+            if self.0.bound != self.0.num_vars as usize
+                || self.0.factors.iter().any(|f| f.x.len() != 1)
+            {
+                return Err(stele_sumcheck::Error::InvalidInstance);
+            }
+            self.0.final_values()
+        }
+
+        /// Consume an unfolded reference and expand externally computed compact
+        /// finals at `point`. This does not authenticate those supplied values.
+        /// Member claims are recomputed from columns/masks; some compact slots are
+        /// unused here. Parity also requires every round and folded factor to match.
+        pub fn expand_at(
+            mut self,
+            point: &[K],
+            compact: &[K],
+        ) -> Result<Vec<K>, stele_sumcheck::Error> {
+            if self.0.bound != 0
+                || point.len() != self.0.num_vars as usize
+                || compact.len() != self.0.factors.len()
+            {
+                return Err(stele_sumcheck::Error::InvalidInstance);
+            }
+            match &mut self.0.expand {
+                Some(expand) => {
+                    for challenge in point {
+                        expand.record(*challenge);
+                    }
+                    expand
+                        .finals(compact)
+                        .map_err(|_| stele_sumcheck::Error::InvalidInstance)
+                }
+                None => Ok(compact.to_vec()),
+            }
         }
     }
 
