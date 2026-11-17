@@ -1,6 +1,6 @@
 # Fixed-code masked rounds (E16-40l)
 
-Research only under ADR-123 and proposed ADR-137. The question is whether one
+Research only under ADR-123 and ADR-137. The question is whether one
 fixed CUDA program can finish the original E16-40d production inventory after
 the shape-generated programs failed preparation at shapes 9 and 11. The
 unchanged inventory, seeds, coefficients and reference checks are required.

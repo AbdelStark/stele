@@ -39,7 +39,8 @@ manifest SHA-256 is
 Raw files and the replayable verification script are retained at
 `/Users/abdel/dev/stele-validation/e16-40l-qualification/`; scheduler and binary
 readback are in the sibling `e16-40l-terminal.log`. Independent post-execution
-review and mandatory current-main/intended-tree gates remain pending.
+reviews passed as [recorded here](e16-40l-h100-review.md). Mandatory
+current-main/intended-tree gates remain pending.
 
 This closes the original reduced-inventory preparation question for this source.
 The old failures remain evidence; neither archived failed candidate was retried.
