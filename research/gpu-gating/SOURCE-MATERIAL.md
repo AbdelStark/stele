@@ -97,3 +97,28 @@ The raw measurement archive has SHA-256
 All 85 payload hashes were verified after download; the ledgers also identify
 the source, binary, capture script, host, load observations and parity manifest.
 No integrated certificate path or full CPU/GPU proof parity is claimed.
+
+## Host assembly candidate (E16-40f)
+
+The candidate splits complete column payloads through the existing prover work
+pool. Each worker reads disjoint salt offsets and writes disjoint columns. Word
+validation, allocation failures and the complete salt-range check precede the
+workers. Complete payload/path comparisons against `PreparedSource` also run in
+fresh processes with one, three and sixteen threads, including the balanced
+shared-mask shape `ell6/m12`. The tests retain the one-word `RootMismatch` check.
+
+`host_assembly_descriptor_bytes` reports the temporary vector capacity used to
+partition whole columns. It overlaps the downloaded encoding, node vectors and
+new payload allocation, and is freed before assembly returns. It is excluded
+from `host_material_owned_bytes`, which still counts only the returned vectors.
+Whole-process RSS and wall time must include that temporary host storage; this
+counter gives no complete device-budget credit. Every prior output field and
+the root-only mode remain unchanged.
+
+The hypothesis is at least a twofold host-assembly improvement and lower complete
+cold GPU-command wall time in every one of three alternating baseline/candidate
+H100 pairs at `ell11/m16`, with the same pinned CPU threads. Required-CUDA complete
+source parity and explicit `ell3/m9`, `ell6/m12`, `ell11/m16` material checks precede
+measurement. These are acceptance targets, not results. If the hypothesis fails,
+revert the candidate and retain the measurements under Workflow 09. No H100
+result or integrated prover speedup is established by the local CPU tests.

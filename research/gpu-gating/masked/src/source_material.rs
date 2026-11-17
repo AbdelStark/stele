@@ -1,6 +1,7 @@
 //! RFC-0010 A9: complete research source storage; no verifier authority.
 use super::{encode_rows, tree_nodes, Shape, BLOWUP};
 use crate::M31;
+use stele_reductions::parallel::for_each_chunk_weighted;
 use stele_reductions::stele_hash::mask::{MaskStream, SOURCE_SALT};
 use stele_reductions::stele_hash::merkle::Digest;
 
@@ -18,6 +19,7 @@ pub struct Material {
     nodes: Vec<u32>,
     width: usize,
     leaves: usize,
+    assembly_descriptor_bytes: usize,
 }
 
 impl Material {
@@ -34,27 +36,37 @@ impl Material {
             return None;
         }
         let bytes = leaves.checked_mul(width)?;
+        // RFC-0013 A2: prevalidate the complete salt range before disjoint workers.
+        u64::try_from(leaves.checked_mul(32)?).ok()?;
         let mut columns = Vec::new();
         columns.try_reserve_exact(bytes).ok()?;
         columns.resize(bytes, 0);
         let salts = MaskStream::new(&shape.seed, SOURCE_SALT, shape.id);
-        for (index, column) in columns.chunks_exact_mut(width).enumerate() {
-            salts.fill_at(
-                u64::try_from(index.checked_mul(32)?).ok()?,
-                &mut column[..32],
-            );
-            for (bytes, word) in column[32..]
-                .chunks_mut(4)
-                .zip(&encoded[index * rows..(index + 1) * rows])
-            {
-                bytes.copy_from_slice(&word.to_le_bytes());
+        let mut payloads = Vec::new();
+        payloads.try_reserve_exact(leaves).ok()?;
+        payloads.extend(columns.chunks_exact_mut(width));
+        let assembly_descriptor_bytes = payloads
+            .capacity()
+            .checked_mul(core::mem::size_of::<&mut [u8]>())?;
+        for_each_chunk_weighted(&mut payloads, rows, |start, chunk| {
+            for (local, column) in chunk.iter_mut().enumerate() {
+                let index = start + local;
+                salts.fill_at((index * 32) as u64, &mut column[..32]);
+                for (bytes, word) in column[32..]
+                    .chunks_mut(4)
+                    .zip(&encoded[index * rows..(index + 1) * rows])
+                {
+                    bytes.copy_from_slice(&word.to_le_bytes());
+                }
             }
-        }
+        });
+        drop(payloads);
         Some(Self {
             columns,
             nodes,
             width,
             leaves,
+            assembly_descriptor_bytes,
         })
     }
 
@@ -66,6 +78,11 @@ impl Material {
     /// Owned vector capacities only; excludes runtime and caller storage.
     pub fn owned_bytes(&self) -> usize {
         self.columns.capacity() + self.nodes.capacity() * 4
+    }
+
+    /// Temporary descriptor vector capacity during assembly; not a process peak.
+    pub fn assembly_descriptor_bytes(&self) -> usize {
+        self.assembly_descriptor_bytes
     }
 
     /// Canonical payload and full bottom-up path for a real column.
