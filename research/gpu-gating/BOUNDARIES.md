@@ -36,10 +36,14 @@ compares every payload/path with production preparation over its original corpus
 ## Work and qualification
 
 The duplicate kernel now writes the original half as well as its copied half:
-16 additional bytes per QM31 entry in the original half. Normalization adds no
-other global reads or writes to the affected kernels. No measured speedup follows;
-future costs in `c_sc`, `c_c` and `T_misc` must include these operations. Hash bytes
-must never be reduced modulo p to save work or force field-looking outputs.
+16 additional bytes per QM31 entry in the original half. Bit reversal now reads
+and writes each previously untouched fixed point: four bytes each way, per row.
+A `log`-bit index is fixed when its bits form a palindrome, giving
+`2^ceil(log/2)` fixed points (one at `log = 0`). Its additional logical traffic is
+therefore `8 * rows * 2^ceil(log/2)` bytes. Other normalization changes add no
+global reads or writes. These are logical counts, not measured HBM traffic or a
+speedup; future costs in `c_sc`, `c_c` and `T_misc` must include them. Hash bytes
+must never be reduced modulo p to force field-looking outputs.
 
 Budget: one reviewed implementation and one bounded H100 campaign after the
 preceding GKR qualification. Hardware, current-main/intended-merge-tree gates and
