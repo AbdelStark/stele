@@ -263,8 +263,8 @@ substitute of the same sum over the cube. Each control accepts `δ = 0` (M0), an
 goes red, with the forged proof accepted, when its own final check is removed.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
-actual development verifier; plain-checker tests earn no control credit. RFC-0026 A11
-is unchanged by A17's NC-1306 erratum: Policy 1 retains the Merkle-root rejection;
+actual development verifier; plain-checker tests earn no control credit. Under
+RFC-0026 A17, NC-1306 retains the Merkle-root rejection for Policy 1;
 Policy 2 requires the exact nonce rejection in the substituted stacked certificate.
 The byte-5 qualification is not catalog execution. NC-1306 remains `todo`, so the
 reservation and execution snapshots are unchanged. RFC-0026 A11
