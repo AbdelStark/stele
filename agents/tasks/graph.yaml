@@ -5211,7 +5211,7 @@ tasks:
   - run exactly 1000 seeded complete round/fold comparisons on an H100 with base and extension inputs and canonical edge values; absent CUDA, skipped cases, compilation failure or any unequal table or polynomial must fail rather than count as parity
   - count cold setup and compilation in the complete campaign, retain source, inventory, host and case receipts, and publish measured numbers only with a validated ledger; no actual-size factor construction, compact-final expansion, full-proof parity, complete device-budget or GO credit follows
   - bounded spike for c_sc implementation coverage and cold compilation risk; one CPU campaign and one H100 campaign before reporting; any divergence, unsupported generated kernel or failed allocation ends this candidate campaign with a recorded failure and no backend promotion
-  - obtain owning lane V GPU review and another lane review; keep production code, kernels, transcript and proof bytes unchanged, with mandatory gates after the preceding stack; this independent successor to E16-40c uses only the E16-35 and E16-40a interfaces already on main, not the source-material or unmerged lookup and batch reference interfaces
+  - obtain owning lane V GPU review and another lane review; keep production code, kernels, transcript and proof bytes unchanged, with mandatory gates after the preceding stack; this independent successor to E16-40g uses only the E16-35 and E16-40a interfaces already on main, not the unmerged lookup, batch or GKR reference interfaces
 
 - id: E16-40e
   epic: E16
