@@ -3803,7 +3803,7 @@ tasks:
   - RFC-0010 A9, A14
   skill: soundness-auditor
   crate: stele-negative-controls
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10a-composed-messages
   acceptance:
