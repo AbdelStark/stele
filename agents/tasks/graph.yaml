@@ -5459,3 +5459,27 @@ tasks:
   - account any additional reads and writes in c_sc, c_c and T_misc; make no speedup, complete-memory, integrated-proof or ADR-127 GO claim without the required evidence
   - one reviewed implementation and one bounded H100 campaign after the preceding qualification; fail closed on missing receipts, deadlines or mismatches, preserve failed evidence and obtain owning-GPU and another-lane reviews
   - research only in the same lane stack; no production interface, dependency, challenge, commitment or verifier changes; mandatory gates and current-main/intended-tree validation precede merge
+- id: E16-40o
+  epic: E16
+  title: Record current quiet-Mac development-ZK stage costs
+  lane: V
+  depends:
+  - E16-36
+  - E16-40a
+  rfc:
+  - RFC-0018 A1, A2
+  - RFC-0027 §3, §5
+  - RFC-0013 A6, A8, A9
+  skill: benchmark-runner
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40o-mac-stage-profile
+  acceptance:
+  - record three sequential instrumented stories42M T32 CPU proofs on the original M4 Max 48 GiB laps host with 16 explicit Rayon threads, one fresh P8 commitment and indices 0 through 2; never copy or restore secret state
+  - start each measured command below one-minute load 3, bound waiting and execution, retain every attempted command and failure, and record load, memory pressure and swap observations before and after commands
+  - pin clean source, actual executable, Rust toolchain, exact public input hashes and capture scripts; retain every output, command, exit, process resource report, proof and public bundle hash; keep private model state out of published evidence
+  - independently verify every proof against the expected commitment and reject its wrong-model control; parse the complete actual stage inventory with the existing parser and preserve construction, rounds, claim routing, remainders and CPU-only stages separately
+  - validate all three ledgers through the existing development recorder and stele-bench validator, regenerate the scoreboard and report this T32 calibration below L2a T64 without a cross-host speed comparison or matched-seed claim
+  - retire the stale-Mac-stage-profile risk for ADR-127; no kernel, protocol, dependency, production interface or runtime changes, no whole-stage inference from legacy round templates and no ADR-127 GO or integrated-GPU-proof credit
+  - obtain another-lane and spec reviews and mandatory gates in lane-stack order; this successor to E16-40n consumes only the already merged E16-40a instrumentation
