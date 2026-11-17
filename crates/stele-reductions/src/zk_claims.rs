@@ -3912,11 +3912,17 @@ where
     }
 }
 
+#[cfg(feature = "bench")]
+#[path = "zk_batch_bench.rs"]
+mod batch_bench;
+
 /// Prover-side access to the masked summand for the GPU benchmark (task E16-35,
 /// `research/gpu-gating/masked`): the same [`Occurrences`] rounds and folds the dev-zk
 /// relations and ZK-GKR steps run. Off by default; never a verifier input.
 #[cfg(feature = "bench")]
 pub mod bench {
+    pub use super::batch_bench::BatchInputs;
+    pub use super::lookup::bench::{LookupCase, LookupInputs, LookupTree};
     use super::{block_table, kappa, Factor, Occurrences};
     use alloc::vec::Vec;
     use stele_field::M31;

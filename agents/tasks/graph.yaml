@@ -3909,7 +3909,7 @@ tasks:
   - RFC-0026 §2.3, §4, §9, A4, A17, A18
   skill: soundness-auditor
   crate: stele-negative-controls+stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b-composed-bindings
   acceptance:
@@ -5160,3 +5160,53 @@ tasks:
   - measure cold context/module setup, upload, encoding, Merkle, complete material download and any host assembly separately on the same H100 allocation as the CPU reference; preserve all samples and validate ledgers
   - report retained storage, transition overlap and transfer bytes without mistaking tracked buffers or host RSS for the complete RFC-0014 A1 device peak; do not claim integrated certificates, full-proof GPU parity or a GO decision
   - keep core prover and verifier code unchanged; obtain owning lane E review and mandatory gates before merging this independent lane-V successor to E16-40a, whose new instrumentation is not used
+
+- id: E16-40c
+  epic: E16
+  title: Expose production lookup and claim-batch references for GPU qualification
+  lane: V
+  depends:
+  - E16-36
+  rfc:
+  - RFC-0008 A7 items 2, 3 and implementation notes
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40c-lookup-reference
+  acceptance:
+  - provide an off-by-default bench-only adapter to the actual production lookup tree and committed-top construction, retaining exact field elements, layout and DenominatorZero behavior
+  - expose the production-normalized shifted tuples, selectors, table denominators and multiplicities needed for a subsequent device consumer without changing the production algorithm or verifier; keep host preparation distinct from tree and top work
+  - validate statement, column lengths and selected lookup before use; cover single and multiple members, selectors, shifts, padding, malformed inputs and zero denominators with honest and near-miss reference tests
+  - make no timing, device-memory, GPU parity, source acceleration or ADR-127 GO claim; the consumer and its H100 measurements are a separate task after this interface merges
+  - obtain owning lane P review and keep default, bench, no_std, L0/L1 and mandatory gates green; this independent lane-V successor to E16-10b uses only interfaces already on main
+  - provide E16-40e's off-by-default bench-only adapter calling the actual production batch instance, weight-table and Y=0 face builders; expose their field-valued outputs for a subsequent device comparison without changing production behavior
+  - reject non-hiding sources, mismatched claim/coefficient counts and out-of-data-face weight positions; preserve repeated positions, extension coefficients, zero weights on w=1 and source row/column order
+  - test honest weighted sums and production Dense rounds/finals, a one-value near miss and malformed inputs; keep source preparation, table construction, rounds and authenticated openings distinct, with no full-batch or proof credit from tables alone
+  - no new challenge, binding, proof byte, dependency, GPU code or performance claim; both later consumers must wait for this interface-only change to merge and measure all host work and transfers
+  - retain E16-40e's acceptance history as superseded; close it only when this task is done and every carried acceptance line has evidence, under RFC-0027 §6
+
+- id: E16-40e
+  epic: E16
+  title: Production claim-batch reference acceptance carried by E16-40c
+  lane: V
+  depends:
+  - E16-35
+  rfc:
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §5, A1
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-reductions
+  status: blocked(RFC-0027 §6 acceptance carried by E16-40c)
+  agent: codex-root
+  branch: task/E16-40e-batch-reference
+  acceptance:
+  - provide an off-by-default bench-only adapter calling the actual production batch instance, weight-table and Y=0 face builders; expose their field-valued outputs for a subsequent device comparison without changing production behavior
+  - reject non-hiding sources, mismatched claim/coefficient counts and out-of-data-face weight positions; preserve repeated positions, extension coefficients, zero weights on w=1 and source row/column order
+  - test honest weighted sums and production Dense rounds/finals, a one-value near miss and malformed inputs; keep source preparation, table construction, rounds and authenticated openings distinct, with no full-batch or proof credit from tables alone
+  - no new challenge, binding, proof byte, dependency, GPU code or performance claim; the later consumer must wait for this interface to merge and measure all host work and transfers
+  - obtain owning lane P review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; E16-40c now carries this full acceptance contract in its interface-only change before either device consumer
