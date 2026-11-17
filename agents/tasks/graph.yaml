@@ -5174,7 +5174,7 @@ tasks:
   - RFC-0026 §7
   skill: benchmark-runner
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40c-lookup-reference
   acceptance:
@@ -5201,7 +5201,7 @@ tasks:
   - RFC-0026 §7
   skill: benchmark-runner
   crate: stele-reductions
-  status: blocked(RFC-0027 §6 acceptance carried by E16-40c)
+  status: done
   agent: codex-root
   branch: task/E16-40e-batch-reference
   acceptance:
