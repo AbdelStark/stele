@@ -1,0 +1,12 @@
+{
+  "source": "753020550ba21a6d803dba3fc39105f448179543",
+  "files": {
+    "source.tar.gz": "1a5ad307232aa2758a9a08c4c32997a01079adef4c5b69edcf8dd2dbf3760713",
+    "shapes.txt": "f48869074e88abf2ab29fa8e3792b46beb998abc5aeb262f5908e536cd043868",
+    "capture.py": "18bfb8fa6016d8a8ce4d8cc7c6df7ff9de4b5d4ca777b3b8116c26c639691c7e",
+    "campaign.sbatch": "0dd632f000bd8f5d70313adaffb2bec79d783baf9ccfde598351634034f6c87b",
+    "inventory_capture.py": "07515fff3081be5a50ccade1378717f5c3cf8d22c6dc4c53b95099f147634802",
+    "diagnostic_capture.py": "d5a40e0840cfac11a9da953d46d115999009be3989e8c88999e72e57188a5f3b",
+    "test_capture.py": "2ff819e67671a49e7875e3a89fdede569bc032febc4da2d590d27301e454369c"
+  }
+}

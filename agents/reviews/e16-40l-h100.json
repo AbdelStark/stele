@@ -1,0 +1,120 @@
+{
+  "source": "753020550ba21a6d803dba3fc39105f448179543",
+  "job": "6732",
+  "status": "passed",
+  "archive_sha256": "1a5ad307232aa2758a9a08c4c32997a01079adef4c5b69edcf8dd2dbf3760713",
+  "capture_sha256": "18bfb8fa6016d8a8ce4d8cc7c6df7ff9de4b5d4ca777b3b8116c26c639691c7e",
+  "pins_sha256": "8fecfb2a8f4f46301ad0067282d24e1a9a6efc19f9c8786c71fcc4912dfa3faf",
+  "manifest_sha256": "442b0b388ce59b7786825d8564dd342f66e96ddafabd64342368722119a06f7f",
+  "raw_archive_sha256": "cb38fbef215723c590eb11bf9bbb80ff0a5dc67b324dc6e45c200df1c05591e2",
+  "terminal_sha256": "734d435a9132086f211c5389b8dd6293f56c1e07240e72695582bb63d991c8b0",
+  "host": {
+    "hostname": "h100-nvl-1-1-cc",
+    "job": "6732",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cuda_visible_devices": "0"
+  },
+  "device": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB\n",
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.90.0\nLLVM version: 20.1.8\n",
+  "binary_sha256": {
+    "inventory": "e837cd6a0103f673bc3ca6cc41370dc1b28f0e68aac5118ce662484d7e9d8687",
+    "prepare": "be49aa27ce6682e967b18cd707b67a1c7e30dbabedece78270c1b7f6efe0e9d8",
+    "parity": "61e80c348b6926180fd3896f4f56cdddbea7e3fe1ec80cfc697ac42ae8b6967e",
+    "stele_masked_gpu_bench": "9bbe32191dfd9ca4a97448ac75e8a231836d636bce7cd590bf58374be84b24e2"
+  },
+  "tests": {
+    "prepare": {
+      "stdout": "\nrunning 1 test\ntest matches_reference_production_shape_after_bounded_preparation ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.48s\n\n",
+      "stderr": "production_prepare_case=9 seed=67960851 rounds=2 device=NVIDIA H100 NVL\nproduction_prepare_case=11 seed=67960855 rounds=3 device=NVIDIA H100 NVL\n"
+    },
+    "parity": {
+      "stdout": "\nrunning 1 test\ntest matches_reference_masked_rounds_on_device ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.51s\n\n",
+      "stderr": "bit-equal: relation 2^8 (case 1), 8 rounds\nbit-equal: gkr 2^8 (case 2), 8 rounds\nbit-equal: relation 2^12 (case 1), 12 rounds\nbit-equal: gkr 2^12 (case 2), 12 rounds\nbit-equal: relation 2^16 (case 1), 16 rounds\nbit-equal: gkr 2^16 (case 2), 16 rounds\nbit-equal: relation 2^20 (case 1), 20 rounds\nbit-equal: gkr 2^20 (case 2), 20 rounds\n"
+    },
+    "descriptor": {
+      "stdout": "\nrunning 1 test\ntest gpu::round_tests::matches_reference_descriptor_rounds_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 11.24s\n\n",
+      "stderr": "descriptor_device_cases=1000 raw_descriptor_cases=1000 seed=4198401 device=NVIDIA H100 NVL\n"
+    },
+    "batch": {
+      "stdout": "\nrunning 1 test\ntest gpu::batch::tests::matches_reference_batch_on_h100 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 19 filtered out; finished in 32.08s\n\n",
+      "stderr": "batch_device_cases=1000 source_cases=1000 raw_weight_cases=1000 raw_face_cases=1000 dense_cases=1000 raw_dense_cases=1000 near_miss_cases=1 seed=275414777857 device=NVIDIA H100 NVL\n"
+    }
+  },
+  "inventory": {
+    "completed_cpu": 1000,
+    "completed_gpu": 1000,
+    "campaign_fnv": "7ea9b7292ce49e96",
+    "matches_original_cpu_6730": true,
+    "descriptor_and_retained_accounting": "all cases checked"
+  },
+  "files": {
+    "build-inventory.json": "d8682f73abc88da8ac7b06c810b4ceb338b2e9389f8822daeec25a35c3d7bfe5",
+    "build-tests.time": "44add3bc4a738f828f3d47e491a138fc897c78b9380980f87a480833ee1c2ebd",
+    "parity.out": "f0d1231b66a14b8f8fe052ec86130128176daef0f058089008b0cdb7de99bbea",
+    "extract.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.json": "0c347b8a6f1a5355e2908bf9b24052eb8f1910be830acebfaf9d2e6c90b6dd57",
+    "check.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "prepare.time": "2884a18e38ea778b6a8f5d7f85546875eafccda5a11653700114c14391547d71",
+    "prepare.err": "2a36cc0e130c0576135c1efbb9dfd7583e3f5903b9936575422f84cbcdc47be6",
+    "gpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolchain.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "2b4ab0eccf1d3b7334cd8b97caee2438b0a446eb949bd5ded2d1aac41b035477",
+    "toolchain.out": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+    "extract.json": "89eeee81f3c80f6698c17261be6448f9d2c73a7bf800723277d9569ac71fcab9",
+    "extract.time": "b396e779f1bc31389ed41441556b55b291edd86677f79b3c1a4cbee0dc5c8fdb",
+    "batch.err": "841c595fd45f8196796013d87befd64c0d32a7fb94601f96e929a059b95d3f6e",
+    "gpu.out": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+    "build-tests.err": "d3d80296fc5899fa2d9b0aa4561ba9a583b8b56bba7eaef1387c02035e1aff0f",
+    "fetch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gpu.json": "cf319bbfcded1676a40e3b2e715741c9ae501cb56aba2d237d48f0aaf7274855",
+    "parity.err": "6fabc628ec2ef5341b461ecd2b26b09dc8b5f4de6364ac62149f43f199c5a02d",
+    "build-tests.json": "7b2dfbb617c1d037f37efeecf00726d5c99122db2d16aaad92b6d6d418f5e659",
+    "batch.time": "57f36fd33ae319002a66cd15a8ebd8b5896e47d8094641742644c1331e6246ff",
+    "prepare.out": "b677c223427d952f70f83cb500261a868bfef49bece094d68e9fb737438c6161",
+    "build-tests.out": "95fb9387c1cac83af64f82a797f89fbc008d0f474178e9e6cdd5be24ef2d1bcd",
+    "check.out": "ab2e337d1cf47b1f22347939c06bd6d1e002d909a1d1b4732696ea8091329be5",
+    "prepare.json": "eee6c2d41ee9b4e2dbc4c1d2586bad3799687f4fbef94a7b7ec074ca0d74cdfd",
+    "gpu.time": "1adff0b33e2862b9243a6a29963c7d4e845b7830ff52541a3be9690b8fdbffb7",
+    "build-inventory.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "parity.json": "0407a6890297e40ed0c7159b9837e65d6e6d1090efe519aee8979a63121a00ec",
+    "toolchain.time": "d584b14d42dc61363feff432c4aa88c3ecaa57fcca29500bf8e34e2be2863b3d",
+    "descriptor.json": "fa6e67ccb768f0a8b53a6086636fe2074111739773af2c6695171e4b846584e9",
+    "descriptor.err": "4e5739647d8296112664f41f1a2ae52457cd77517d4590ac05e0564fe7d3ad16",
+    "cpu.json": "5fd0f285dcb772f571902d5dd516c008aa735fd9bd762cab70fb11bed417d26a",
+    "host.json": "813e6aae0b569e22ec01c7a2581b8112c16f8cda391a73de8cf7305c70f7facd",
+    "extract.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "check.json": "64aba05e4fecd0e9cf1ba6bc087d7d9670f6168e80f60d8f43105d069eac565b",
+    "cpu.time": "e39ae911032ac72550f94e49cbf025e8c0964e11ab925ffd6f774acaa6891566",
+    "cpu.out": "a7c604266c2b8d1be118f3f648157edd549fce59a7c7038e8ca49ea04d9a61a4",
+    "check.time": "f43feaa66b995b30d0c7b8ef00521478b5dd86e2838673bd96582e7dd707ac0f",
+    "fetch.time": "ebafd7a7b5d38461822c6375b180ea9398a58292c0a907fb23f21b72ac32a111",
+    "cpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolchain.json": "26a0ef99d77116f0f197e3678d39eaaae8f778bb19735fddb42bd6dfecacb0ec",
+    "descriptor.out": "c45098ba435956ef826ac58af3b10da26cec9f2cad3cd04f906f2aff5963ce97",
+    "descriptor.time": "e1cb10e7c56bb068f62036e4fffa19bb140fd421b74526a3b5d5a1269333afb1",
+    "batch.json": "9a5987ed6142295c27f3646430c32d9185643f0a91d7b7b9046cc0ace836755f",
+    "build-inventory.err": "2f2ea7175c8bb3700d90744b7841b3a394d543952ba68c517fe6034b8bdf71f4",
+    "batch.out": "5770c572f3f7ac2b26f2b67c68330e87d53b5beee5fdc313f7ca2192cad9bfcc",
+    "build-inventory.time": "c54a8016cfc61a014e7c19e542ac70d5871ab3c0320ec29a89f6480c67d5f013",
+    "parity.time": "97497f034ebe10f59b6b73cb6ab7c9bb7d7da87d6d83a5b279481377c2eaf563",
+    "fetch.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope": "Reduced production geometry with synthetic values; no compact-final, actual-size, full-proof, performance, complete-budget or ADR-127 GO credit."
+}

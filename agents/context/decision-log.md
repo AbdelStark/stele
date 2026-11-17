@@ -4374,3 +4374,13 @@ Decision:
 
 Status: Proposed research disposition, pending independent review with E16-40l.
 No acceptance or performance claim follows from this planning record.
+
+Disposition after independent implementation and capture reviews: accepted as a
+research-only successor. Both owning-GPU/spec and another-lane standards reviews
+passed before the single H100 submission. Job 6732 completed the unchanged full
+reduced inventory, both preparation regressions, canonical/lazy descriptors and
+the affected batch path at source `75302055`; provenance and exclusions are in
+`agents/reviews/e16-40l-qualification.md`. This retires the demonstrated reduced-
+inventory preparation failure for the candidate, not the remaining full prover
+or actual-size risk. Post-execution review and mandatory merge gates remain due;
+all three tasks stay in progress until their remaining acceptance is met.

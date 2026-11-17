@@ -5,8 +5,10 @@ fixed CUDA program can finish the original E16-40d production inventory after
 the shape-generated programs failed preparation at shapes 9 and 11. The
 unchanged inventory, seeds, coefficients and reference checks are required.
 This candidate has one reviewed implementation and one bounded H100 campaign;
-failure must be reported before another optimization. Device qualification is
-pending. No performance result or complete-proof parity is claimed.
+failure must be reported before another optimization. The one H100 qualification
+passed at source `75302055`; its [receipt and scope](../../agents/reviews/e16-40l-qualification.md)
+retain the exact original inventory and affected-path checks. Mandatory merge
+gates remain pending. No performance result or complete-proof parity is claimed.
 
 `round.rs` checks node/count/index bounds before device allocation, including
 indices in zero-coefficient terms. Offsets preserve empty and repeated products.
