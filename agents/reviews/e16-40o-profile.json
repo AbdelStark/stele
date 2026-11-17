@@ -1,0 +1,96 @@
+{
+  "archive_sha256": "3bffbf5154a86aa3259bf59149f3b37d6a36dc3469a9f6461f04f4948c254aba",
+  "import": {
+    "samples": [
+      {
+        "index": 0,
+        "raw_sha256": "7b425c9e0bae0f5cc2806131b12c2e2eab121a07217b5aea0a7dd50193fd7389",
+        "repository_path": "bench/ledger/e16-40o-dev-zk-stories42m-t32-mac-0.json",
+        "repository_sha256": "6bdc5ee0a6d535707792e1edb6901d531d15c1e1ff16623580f0f750faf4eaf2"
+      },
+      {
+        "index": 1,
+        "raw_sha256": "27b30125881e00735756878cd1b1085b1c82fbd8f6aa2dc3c3ec615c7ae60adb",
+        "repository_path": "bench/ledger/e16-40o-dev-zk-stories42m-t32-mac-1.json",
+        "repository_sha256": "617297a49699de58a8362d1d2413de67aada65b57a7fb493354a1128a6e58aa6"
+      },
+      {
+        "index": 2,
+        "raw_sha256": "91793636a7dddde428db8f29545fbdbe871bb78e439077444260ba42fc1bf190",
+        "repository_path": "bench/ledger/e16-40o-dev-zk-stories42m-t32-mac-2.json",
+        "repository_sha256": "02030d33eb15ec46a1152844fe4b517e2f0200effd6993d11eff0ea2ae083145"
+      }
+    ],
+    "transformation": "JSON whitespace only; parsed objects identical"
+  },
+  "manifest_sha256": "84ed82d0bbccd81c14e20fd2512aa1e8f42c3dc8d3f4930e2fde0001d476288a",
+  "pins_sha256": "e5b43b9b0fb0ed31ff12390e17a14432b44e894c72dad40c0b891cd54db795d8",
+  "pre_execution": {
+    "command": [
+      "/Users/abdel/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/bin/python3",
+      "-B",
+      "/Users/abdel/dev/stele-validation/e16-40o-mac-profile/capture.py"
+    ],
+    "pins_sha256": "e5b43b9b0fb0ed31ff12390e17a14432b44e894c72dad40c0b891cd54db795d8",
+    "preflight_sha256": "1a225c0718db2e6e6984e6fc8c697a92c4d0a6e384ecdbb9f056d3587cfe6fd5",
+    "resolved_finding": "Quiet and observation failure paths preserve attempted-command metadata; seven controls passed.",
+    "reviews": {
+      "spec": {
+        "agent": "mac_profile_spec_review",
+        "verdict": "PASS for bounded capture execution"
+      },
+      "standards": {
+        "agent": "mac_profile_standards_review",
+        "lane": "B",
+        "verdict": "PASS for pre-measurement capture review"
+      }
+    },
+    "scope": "Three CPU proofs only; no GO or integrated GPU credit",
+    "utc": "2026-11-17T22:35:33.811990+00:00"
+  },
+  "raw_payload_files": 101,
+  "samples": [
+    {
+      "index": 0,
+      "inventory": {
+        "batches": 3,
+        "field": 4,
+        "gkr": 385,
+        "lookups": 21,
+        "relations": 876
+      },
+      "ledger_sha256": "7b425c9e0bae0f5cc2806131b12c2e2eab121a07217b5aea0a7dd50193fd7389",
+      "proof_sha256": "ad6474f4f7e149b223cfb22723d0e1f582945eb2b1d49c12ef83a572a1d7a670",
+      "public_sha256": "f3bbb663b605b8a840c9c7977f9f0839173bcda97af01aec8182277bda43bebf"
+    },
+    {
+      "index": 1,
+      "inventory": {
+        "batches": 3,
+        "field": 4,
+        "gkr": 385,
+        "lookups": 21,
+        "relations": 876
+      },
+      "ledger_sha256": "27b30125881e00735756878cd1b1085b1c82fbd8f6aa2dc3c3ec615c7ae60adb",
+      "proof_sha256": "29af0346e1e2799f78c2b435e7db510018ed87ee57e1fd0c59e9783812088a87",
+      "public_sha256": "e6e1fa4b9dae29c0453b80b9c049dc8548126e716120d1633a28c292b2ee0d19"
+    },
+    {
+      "index": 2,
+      "inventory": {
+        "batches": 3,
+        "field": 4,
+        "gkr": 385,
+        "lookups": 21,
+        "relations": 876
+      },
+      "ledger_sha256": "91793636a7dddde428db8f29545fbdbe871bb78e439077444260ba42fc1bf190",
+      "proof_sha256": "0b221a9218c413c176d11aefdd33087bfe7b9bed12ad962aa65f861726ee84af",
+      "public_sha256": "077ca77fb46bee6468fa7d7d3727f48cd33df820ef6ab22c174b49f5ef572851"
+    }
+  ],
+  "scope": "Three genuine CPU proofs; T32 calibration below L2a T64, no integrated GPU, cross-host speedup or ADR-127 GO credit.",
+  "source": "60f2a39af07e749d6a85ba0dbfa10d34556b2157",
+  "status": "passed"
+}
