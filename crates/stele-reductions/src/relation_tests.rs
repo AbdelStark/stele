@@ -271,6 +271,180 @@ fn rejects_invalid_forged_witness_selectors() {
     }
 }
 
+#[cfg(feature = "controls")]
+#[test]
+fn rejects_forged_column_claim_with_unchanged_sources() {
+    let (rel, mut values) = composed();
+    let limbs = vec![0, 1, 17, 1024];
+    values.set(&rel, ColumnId(0), limbs.clone()).expect("lo");
+    values.set(&rel, ColumnId(1), limbs.clone()).expect("hi");
+    values
+        .set(
+            &rel,
+            ColumnId(2),
+            limbs.iter().map(|v| v + (v << 12)).collect(),
+        )
+        .expect("v");
+    assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+    let saved = values.clone();
+    for extra in [
+        Forge {
+            table: Some(0),
+            ..Forge::default()
+        },
+        Forge {
+            public: Some((ColumnId(0), 0)),
+            ..Forge::default()
+        },
+        Forge {
+            witness: Some((ColumnId(2), 0)),
+            ..Forge::default()
+        },
+    ] {
+        let mut t = Transcript::new(PUBLIC).expect("public input");
+        assert_eq!(
+            prove_forged(
+                &mut t,
+                &rel,
+                &values,
+                &[],
+                Sources::CircleAll,
+                &Forge {
+                    column_claim: Some(ColumnId(0)),
+                    ..extra
+                }
+            )
+            .err(),
+            Some(Error::Unsupported),
+            "column routing must be the only mutation",
+        );
+        assert_eq!(
+            t.usage(),
+            Transcript::<K>::new(PUBLIC).expect("public input").usage()
+        );
+    }
+    for set in [Sources::CircleAll, Sources::CircleAllGrind] {
+        let ordinary = prove(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &values,
+            &[],
+            set,
+        )
+        .expect("honest proof");
+        let restored = prove_forged(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &values,
+            &[],
+            set,
+            &Forge::default(),
+        )
+        .expect("unchanged selector");
+        assert_eq!(restored, ordinary, "every ordinary proof byte is retained");
+        verify(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &[],
+            &ordinary,
+            set,
+        )
+        .expect("honest acceptance");
+        let routed = prove_forged(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &values,
+            &[],
+            set,
+            &Forge {
+                column_claim: Some(ColumnId(0)),
+                ..Forge::default()
+            },
+        )
+        .expect("genuine dependent batch and opening");
+        assert_eq!(values, saved, "witness and sources stay unchanged");
+        assert_eq!(routed.groups, ordinary.groups);
+        assert_eq!(routed.multiplicities, ordinary.multiplicities);
+        assert_eq!(routed.identities, ordinary.identities);
+        assert_eq!(routed.lookups, ordinary.lookups);
+        assert_eq!(routed.matmuls, ordinary.matmuls);
+        assert_ne!(routed.openings, ordinary.openings);
+        assert_eq!(
+            verify(
+                &mut Transcript::new(PUBLIC).expect("public input"),
+                &rel,
+                &[],
+                &routed,
+                set,
+            )
+            .err(),
+            Some(Error::Sumcheck(stele_sumcheck::Error::RoundSumMismatch)),
+        );
+    }
+}
+
+#[cfg(feature = "controls")]
+#[test]
+fn rejects_invalid_forged_column_claim_selectors() {
+    let (mut rel, values) = composed();
+    let public = rel.add_column("public", Kind::Public(vec![0; 4]), Width::unsigned(1), 2);
+    let weight = rel.add_column("weight", Kind::Weight, Width::signed(8), 2);
+    rel.ranges.push(Range {
+        name: "weight".to_string(),
+        column: weight,
+        width: Width::signed(8),
+    });
+    for selector in [
+        ColumnId(u32::MAX),
+        ColumnId(0),
+        ColumnId(3),
+        ColumnId(4),
+        public,
+        weight,
+    ] {
+        let mut t = Transcript::new(PUBLIC).expect("public input");
+        assert_eq!(
+            prove_forged(
+                &mut t,
+                &rel,
+                &values,
+                &[],
+                Sources::CircleAll,
+                &Forge {
+                    column_claim: Some(selector),
+                    ..Forge::default()
+                }
+            )
+            .err(),
+            Some(Error::Unsupported),
+            "missing column, unequal neighbour, last column, public or weight selector",
+        );
+        assert_eq!(
+            t.usage(),
+            Transcript::<K>::new(PUBLIC).expect("public input").usage()
+        );
+    }
+}
+
+#[cfg(feature = "controls")]
+#[test]
+fn rejects_unused_forged_column_claim_selector() {
+    let (rel, _) = composed();
+    let plan = plan(&rel, Sources::CircleAll).expect("plan");
+    let claims = Claims(vec![Vec::new(); rel.columns.len()]);
+    assert_eq!(
+        route_column_claim(
+            &plan,
+            plan.stack.as_ref().expect("stack"),
+            &claims,
+            ColumnId(0),
+            &mut []
+        )
+        .err(),
+        Some(Error::Unsupported),
+    );
+}
+
 #[test]
 fn rejects_identity_column_claim_on_a_false_commitment() {
     // (a) v is committed +1 but the Compose zerocheck is proven from the true v.

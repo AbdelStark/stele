@@ -503,6 +503,9 @@ struct Plan {
     model: Vec<Stack>,
     sizes: Vec<u8>,
     sources: Sources,
+    /// Controls-only step-7 routing; never consulted by the verifier (A18).
+    #[cfg(feature = "controls")]
+    column_claim: Option<ColumnId>,
 }
 
 fn ceil_log2(n: usize) -> u8 {
@@ -781,6 +784,8 @@ fn plan(relation: &Relation, sources: Sources) -> Result<Plan, Error> {
         model,
         sizes,
         sources,
+        #[cfg(feature = "controls")]
+        column_claim: None,
     })
 }
 
@@ -1120,6 +1125,38 @@ fn group_claims(plan: &Plan, stack: &Stack, claims: &Claims) -> Vec<(Vec<K>, K)>
     out
 }
 
+/// Change exactly the first selected claim's Boolean prefix (RFC-0026 A18).
+#[cfg(feature = "controls")]
+fn route_column_claim(
+    plan: &Plan,
+    stack: &Stack,
+    claims: &Claims,
+    column: ColumnId,
+    batch: &mut [(Vec<K>, K)],
+) -> Result<(), Error> {
+    let mut index = 0;
+    for group in &plan.groups {
+        for (j, &c) in group.columns.iter().enumerate() {
+            if c != column {
+                index += claims.0[c.0 as usize].len();
+                continue;
+            }
+            let (tail, _) = claims.0[c.0 as usize].first().ok_or(Error::Unsupported)?;
+            let honest = batch.to_vec();
+            let prefix = usize::from(stack.bits - group.n);
+            batch[index].0 = bits_point((group.offset >> group.n) + j + 1, prefix as u8, tail);
+            assert_eq!(batch[index].1, honest[index].1);
+            assert_eq!(batch[index].0[prefix..], honest[index].0[prefix..]);
+            assert_eq!(batch.iter().zip(&honest).filter(|(a, b)| a != b).count(), 1);
+            let routed = core::mem::replace(&mut batch[index].0, honest[index].0.clone());
+            assert_eq!(batch, honest, "restoring the prefix restores every claim");
+            batch[index].0 = routed;
+            return Ok(());
+        }
+    }
+    Err(Error::Unsupported)
+}
+
 /// One model source's derived layout (RFC-0026 A5); the model owner commits the
 /// matching [`model_messages`] entry with `sources.prepare(id, ell, &code, ..)`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1361,6 +1398,9 @@ pub struct Forge {
     /// the changed values, but use reference values for the zerocheck rounds
     /// (RFC-0026 §9 NC-1302); final evaluations come from the changed values.
     pub witness: Option<(ColumnId, usize)>,
+    /// Route this witness column's first claim to the next real, equal-valued
+    /// column in its group (RFC-0026 A18). Cannot combine with other mutations.
+    pub column_claim: Option<ColumnId>,
 }
 
 /// [`prove`] as a malicious prover: the plan and the absorbed relation digest are
@@ -1375,6 +1415,28 @@ pub fn prove_forged(
     forge: &Forge,
 ) -> Result<Proof, Error> {
     let mut plan = plan(relation, sources)?;
+    if let Some(c) = forge.column_claim {
+        if forge.table.is_some() || forge.public.is_some() || forge.witness.is_some() {
+            return Err(Error::Unsupported);
+        }
+        let group = plan
+            .groups
+            .iter()
+            .find(|g| g.columns.contains(&c))
+            .ok_or(Error::Unsupported)?;
+        let j = group
+            .columns
+            .iter()
+            .position(|&id| id == c)
+            .ok_or(Error::Unsupported)?;
+        let next = *group.columns.get(j + 1).ok_or(Error::Unsupported)?;
+        let selected = values.get(relation, c).ok_or(Error::Unsupported)?;
+        let adjacent = values.get(relation, next).ok_or(Error::Unsupported)?;
+        if selected != adjacent {
+            return Err(Error::Unsupported);
+        }
+        plan.column_claim = Some(c);
+    }
     if let Some(i) = forge.table {
         plan.checks.get_mut(i).ok_or(Error::Unsupported)?.shift = 1;
     }
@@ -1611,6 +1673,14 @@ fn prove_plan(
     // Step 7: one claim batch and one opening of the stack, then per weight source.
     if let (Some(stack), Some((prepared, handle))) = (&plan.stack, &stacked) {
         let batch = group_claims(plan, stack, &claims);
+        #[cfg(feature = "controls")]
+        let batch = {
+            let mut batch = batch;
+            if let Some(column) = plan.column_claim {
+                route_column_claim(plan, stack, &claims, column, &mut batch)?;
+            }
+            batch
+        };
         if !batch.is_empty() {
             let opening = Opening {
                 id: BATCH,

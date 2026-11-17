@@ -3864,7 +3864,7 @@ tasks:
   - RFC-0006 A2
   skill: rfc-author
   crate: spec
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b2-column-control-erratum
   acceptance:
@@ -3872,6 +3872,29 @@ tasks:
   - retain the same witness, roots, claim value and tail; assert the exact one-claim prefix change and honest acceptance, and record the complete typed rejection with reproducible producer-only qualification material
   - if batching rejects before the specified ValueMismatch, append and independently review an exact development-tier erratum before granting that contract; no weakened predicate or new catalog execution credit
   - keep the existing proof pins and required gates green; this retires a control-contract ambiguity and does not use the unmerged E16-10b1 producer interface
+- id: E16-10b3
+  epic: E16
+  title: Expose a producer-only adjacent-column claim-routing adversary
+  lane: V
+  depends:
+  - E16-10
+  - E8-02f3c
+  - E16-10b1
+  rfc:
+  - RFC-0026 §2.3, §4 step 7, §9 NC-1308, A18
+  - RFC-0006 A2
+  - RFC-0027 §5
+  skill: soundness-auditor
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-10b3-routed-claim-producer
+  acceptance:
+  - use the independently Accepted A18 contract carried by the same-lane E16-10b2 base; merge after that base and before dependent composed-control implementation
+  - add only a controls-feature producer selector for the first claim of a witness column, routed to its next real equal-valued column in the same group; reject invalid or unused selectors
+  - preserve the witness, roots, public inputs, tail/value, other claims and pre-opening proof sections; assert exact one-prefix mutation and restoration, then generate genuine batches and openings
+  - unchanged selector matches ordinary proof bytes; the actual engine rejects a genuine routed proof with exact RoundSumMismatch under profiles 3 and 5; verifier source and ordinary producer behavior remain unchanged
+  - obtain owning lane P review, keep default/no_std and mandatory gates green, and grant no composed NC-1308 catalog credit until E16-10b
 - id: E16-10b
   epic: E16
   title: Complete the identity, root and column-routing composed controls
@@ -3881,6 +3904,7 @@ tasks:
   - E16-10b0
   - E16-10b1
   - E16-10b2
+  - E16-10b3
   rfc:
   - RFC-0026 §2.3, §4, §9, A4, A17, A18
   skill: soundness-auditor
