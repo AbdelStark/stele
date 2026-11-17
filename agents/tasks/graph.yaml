@@ -3843,7 +3843,7 @@ tasks:
   - RFC-0027 §5
   skill: soundness-auditor
   crate: stele-sumcheck+stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b1-adversarial-finals
   acceptance:
@@ -3852,6 +3852,26 @@ tasks:
   - both table shapes and witness selectors are checked; unchanged verifier and ordinary producer behavior, transcript derivation, ledger lines, no_std boundary and proof pins
   - obtain lane E and P ownership review before dependent composed-control implementation; this interface merges first under Workflow 12
   - retire the producer-self-check obstruction to testing the final-evaluation binding, keep L0/L1 and mandatory gates green, and grant no composed NC-1302 catalog credit until E16-10b
+- id: E16-10b2
+  epic: E16
+  title: Qualify the composed column-routing control's rejection under claim batching
+  lane: V
+  depends:
+  - E16-10
+  - E8-02f3c
+  rfc:
+  - RFC-0026 §2.3, §4 step 7, §9 NC-1308, A4, A18
+  - RFC-0006 A2
+  skill: rfc-author
+  crate: spec
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-10b2-column-control-erratum
+  acceptance:
+  - qualify one column claim routed to its distinct adjacent real column through genuine production batches and openings on L0 and L1, with the ordinary composed verifier unchanged
+  - retain the same witness, roots, claim value and tail; assert the exact one-claim prefix change and honest acceptance, and record the complete typed rejection with reproducible producer-only qualification material
+  - if batching rejects before the specified ValueMismatch, append and independently review an exact development-tier erratum before granting that contract; no weakened predicate or new catalog execution credit
+  - keep the existing proof pins and required gates green; this retires a control-contract ambiguity and does not use the unmerged E16-10b1 producer interface
 - id: E16-10b
   epic: E16
   title: Complete the identity, root and column-routing composed controls
@@ -3860,8 +3880,9 @@ tasks:
   - E16-10a
   - E16-10b0
   - E16-10b1
+  - E16-10b2
   rfc:
-  - RFC-0026 §2.3, §4, §9, A4, A17
+  - RFC-0026 §2.3, §4, §9, A4, A17, A18
   skill: soundness-auditor
   crate: stele-negative-controls+stele-reductions
   status: ready
