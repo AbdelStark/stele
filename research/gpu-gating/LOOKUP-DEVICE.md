@@ -43,8 +43,16 @@ cargo test --manifest-path research/gpu-gating/masked/Cargo.toml --features cuda
 cargo test --manifest-path research/gpu-gating/masked/Cargo.toml --features cuda --release --lib gpu_lookup::tests::matches_reference_lookup_inverse_on_h100 -- --ignored --exact --nocapture
 ```
 
-H100 execution and mandatory stack-order gates are pending. No ledger, timing,
-speedup, full-proof GPU parity or completed task is claimed by this implementation.
+Lucid job 6683 passed all seven exact tests on H100 NVL at source
+`b6f094b297e687cd7901fcb693437e9ef663bbd9`. The
+[captured receipt](../../agents/reviews/e16-40i-h100.json) retains provenance,
+binary hashes and exact outputs. The coordinator verified every manifest payload,
+command, sequential completion and current remote binary hash. The later
+E16-40f host-assembly rollback changes only the source-material implementation and
+its example counter; lookup kernels and tests remain byte-identical. The captured
+source-material regression is evidence for the pinned source before that rollback.
+Mandatory merge-tree gates remain pending. No timing, speedup, full-proof GPU
+parity or completed task is claimed by this component qualification.
 
 Future timing must charge `LookupCase` construction separately and `inputs()` to
 the GPU path. The CPU reference already includes normalization. The returned phase

@@ -30,4 +30,11 @@ The allocation is one H100 NVL, 16 CPUs, 64G, 75 minutes, with a 4,200-second
 capture deadline. Supply `--dependency=afterany:6667` at submission; it is not
 embedded in the reviewed sbatch file. Earlier queued archives remain unchanged.
 A compile, allocation or parity failure stops for a report under the task budget.
-Actual H100 receipts, binary hashes and mandatory stack-order gates remain pending.
+Job 6683 completed successfully. The [hardware receipt](e16-40i-h100.json) records
+all seven exact tests. The coordinator checked all 41 hashed payload files, exact
+commands, successful sequential completion and all three remote binary hashes.
+Manifest SHA-256 is
+`ad17fd351585683976385894db66e10b1037ef18ca914b0ad63c44ad99682346`.
+The later host-assembly rollback leaves lookup kernels and tests unchanged.
+Independent evidence review and mandatory merge-tree gates remain separate;
+no performance or full-proof result follows.
