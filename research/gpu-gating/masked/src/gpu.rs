@@ -616,7 +616,9 @@ pub fn round_source(
 ) -> String {
     let one = K::from_i64(1);
     let minus = K::from_i64(-1);
-    let mut s = String::new();
+    // RFC-0014 §5 / E16-40k: bound compiler expansion without changing products.
+    let mut s =
+        String::from("__device__ __noinline__ Q round_mul(Q x, Q y) { return qmul(x, y); }\n");
     let _ = writeln!(
         s,
         "extern \"C\" __global__ void round_kernel(const u64 *xs, const u64 *rs, const u32 *coef, u64 half, u32 *partials) {{"
@@ -687,7 +689,7 @@ pub fn round_source(
                 .iter()
                 .filter(|f| !vbase[**f as usize])
                 .map(|f| format!("v{f}"))
-                .reduce(|a, b| format!("qmul({a}, {b})"));
+                .reduce(|a, b| format!("round_mul({a}, {b})"));
             let p = match (m, q) {
                 (Some(m), Some(q)) => format!("qmulm({q}, {m})"),
                 (Some(m), None) => format!("qembed({m})"),
@@ -699,7 +701,7 @@ pub fn round_source(
             } else if *c == minus {
                 writeln!(s, "      acc{t} = qsub(acc{t}, {p});")
             } else {
-                writeln!(s, "      acc{t} = qadd(acc{t}, qmul(c{i}, {p}));")
+                writeln!(s, "      acc{t} = qadd(acc{t}, round_mul(c{i}, {p}));")
             };
         }
         let _ = writeln!(s, "    }}");

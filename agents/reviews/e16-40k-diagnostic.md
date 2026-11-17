@@ -50,3 +50,37 @@ archive. Local controls reject absent CUDA and a mismatched generated case.
 Remote Python 3.12.3 ran the six controls and verified all input hashes before
 submission. The launcher disables requeue. Full repository and proof gates are
 not supplied by this diagnostic review.
+
+## Observed outcome
+
+Job 6726 is terminal `COMPLETED`, scheduler exit `0:0`, with diagnostic result
+`stall_reproduced`. Both case-0 controls completed. Case 9 round 0 completed its
+isolated compilation/loading, then exceeded the original `actual_prepare` phase
+deadline. Case 9 round 1 produced PTX, then exceeded the `module` phase deadline.
+Both were phase timeouts, not campaign or whole-probe exhaustion.
+
+Both independent reviewers approved the diagnostic evidence after checking all
+36 payload hashes, the complete output sequences, metadata, input pins, command
+ordering and classification. The root agent separately read back the terminal
+scheduler state and binary/manifest hashes from the remote filesystem. Digest
+pins and outcomes are in
+[e16-40k-diagnostic-result.json](e16-40k-diagnostic-result.json).
+
+The module phase includes context creation and capability inspection before
+module loading. This identifies the failing phase, not uniquely driver JIT.
+The aggregate preparation phase includes code generation, NVRTC and loading over
+both rounds. Compiler expansion from forced multiplication inlining remains a
+hypothesis; alternative explanations include register allocation pressure and
+shared-module composition. Only the first is tested by the candidate change:
+keep existing QM31 multiplication out of line in generated round kernels while
+preserving the factor, coefficient and reduction order. This follows the
+[NVIDIA compiler guidance](https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/compile-time.html)
+on excessive inlining; it does not establish a speedup or acceptable execution
+cost. The exact failing production shape is retained as an ignored H100
+regression with CPU table/round checks and an external deadline requirement.
+
+No generator fix is accepted by this diagnostic. The separately reviewed
+candidate must still complete the original 1,000-case CPU/H100 campaign and the
+required repository gates. Exhaustive shape reduction was not attempted: the
+single scoped diagnostic retained the production factor/term/mask structure and
+isolated its second-round preparation instead.
