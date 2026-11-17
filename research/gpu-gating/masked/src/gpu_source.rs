@@ -1,8 +1,9 @@
 //! E16-36: hiding-source preparation on the device (feature `cuda`): `M'` uploaded,
 //! transposed to symbol-major, Circle-encoded in place, leaves `salt || column` and
-//! the Merkle tree hashed on the device; only the 32-byte root comes back.
+//! the Merkle tree hashed on the device. The E16-40b material path also retains and
+//! downloads the encoding and every node for complete response comparison.
 use crate::gpu::{Device, Error};
-use crate::source::{prefix, salt_block, twiddles, Shape, BLOWUP};
+use crate::source::{prefix, salt_block, twiddles, Material, Shape, BLOWUP};
 use crate::{Field, M31};
 use cudarc::driver::{CudaSlice, LaunchConfig, PushKernelArg};
 use std::time::{Duration, Instant};
@@ -15,15 +16,65 @@ pub struct Timing {
     pub encode: Duration,
     /// Leaf digests and the tree.
     pub merkle: Duration,
+    /// Complete encoded symbols and retained non-root nodes to the host.
+    pub download: Duration,
+    /// Canonical payload assembly, including CPU salt generation.
+    pub assemble: Duration,
+    /// Bytes uploaded by this operation, excluding context/modules.
+    pub upload_bytes: usize,
+    /// All D2H bytes, including the root charged to `merkle`.
+    pub download_bytes: usize,
+    /// Encoded symbols plus all device Merkle nodes in material mode.
+    pub retained_bytes: usize,
+    /// Peak explicitly allocated device buffer bytes, NOT the full device peak.
+    pub buffer_peak_bytes: usize,
 }
 
 /// Prepare `shape` from its row-major `M'` on `dev`: the root and the phase times.
 pub fn prepare(dev: &Device, shape: &Shape, message: &[M31]) -> Result<([u8; 32], Timing), Error> {
+    run(dev, shape, message, false).map(|(root, time, _)| (root, time))
+}
+
+/// Retain/download complete source material; certificates/openings are not produced.
+pub fn prepare_material(
+    dev: &Device,
+    shape: &Shape,
+    message: &[M31],
+) -> Result<(Material, Timing), Error> {
+    let (_, time, material) = run(dev, shape, message, true)?;
+    Ok((material.ok_or(Error::Value)?, time))
+}
+
+fn run(
+    dev: &Device,
+    shape: &Shape,
+    message: &[M31],
+    keep: bool,
+) -> Result<([u8; 32], Timing, Option<Material>), Error> {
     let source = shape.source().ok_or(Error::Value)?;
     let desc = source.descriptor();
     let (rows, log_n) = (shape.rows(), shape.log_n());
     let log_big = log_n + u32::from(BLOWUP);
     let (n, big) = (1usize << log_n, 1usize << log_big);
+    let count = n.checked_mul(rows).ok_or(Error::Value)?;
+    let encoded_words = big.checked_mul(rows).ok_or(Error::Value)?;
+    let node_words = big
+        .checked_mul(2)
+        .and_then(|v| v.checked_sub(1))
+        .and_then(|v| v.checked_mul(8))
+        .ok_or(Error::Value)?;
+    let checked_bytes = |words: usize| {
+        words
+            .checked_mul(4)
+            .filter(|v| *v <= isize::MAX as usize)
+            .ok_or(Error::Value)
+    };
+    let message_bytes = checked_bytes(count)?;
+    let encoded_bytes = checked_bytes(encoded_words)?;
+    let node_bytes = checked_bytes(node_words)?;
+    if message.len() != count {
+        return Err(Error::Value);
+    }
     if desc.count != big as u64 || desc.width != 32 + 4 * rows as u64 {
         return Err(Error::Value);
     }
@@ -38,6 +89,23 @@ pub fn prepare(dev: &Device, shape: &Shape, message: &[M31]) -> Result<([u8; 32]
         .chunks(4)
         .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect();
+    let metadata_bytes = checked_bytes(
+        inv.iter().chain(&fwd).map(Vec::len).sum::<usize>() + key.len() + sblock.len(),
+    )?
+    .checked_add(2 * 43)
+    .ok_or(Error::Value)?;
+    let upload_bytes = metadata_bytes
+        .checked_add(message_bytes)
+        .ok_or(Error::Value)?;
+    let peak_nodes = if keep {
+        node_bytes
+    } else {
+        checked_bytes(big.checked_mul(12).ok_or(Error::Value)?)?
+    };
+    let buffer_peak_bytes = metadata_bytes
+        .checked_add(encoded_bytes)
+        .and_then(|v| v.checked_add(message_bytes.max(peak_nodes)))
+        .ok_or(Error::Value)?;
 
     // Upload.
     let start = Instant::now();
@@ -60,7 +128,7 @@ pub fn prepare(dev: &Device, shape: &Shape, message: &[M31]) -> Result<([u8; 32]
     // Encode: transpose into the head of the codeword buffer, inverse on the head,
     // forward on the whole (the tail stays zero).
     let start = Instant::now();
-    let x = dev.stream().alloc_zeros::<u32>(big * rows)?;
+    let x = dev.stream().alloc_zeros::<u32>(encoded_words)?;
     let (xp, mp) = (dev.ptr(&x), dev.ptr(&msg));
     let (rows64, n64) = (rows as u64, n as u64);
     {
@@ -148,6 +216,7 @@ pub fn prepare(dev: &Device, shape: &Shape, message: &[M31]) -> Result<([u8; 32]
     let f = dev.function("node_kernel")?;
     let np = dev.ptr(&node_prefix);
     let (mut width, mut level_no) = (big, 1u32);
+    let mut retained = Vec::new();
     while width > 1 {
         let parents = dev.stream().alloc_zeros::<u32>(width / 2 * 8)?;
         let (cp, pp, count) = (dev.ptr(&digests), dev.ptr(&parents), (width / 2) as u64);
@@ -155,23 +224,56 @@ pub fn prepare(dev: &Device, shape: &Shape, message: &[M31]) -> Result<([u8; 32]
         b.arg(&cp).arg(&pp).arg(&count).arg(&level_no).arg(&np);
         // SAFETY: `digests` has 2·count digests, `parents` count.
         unsafe { b.launch(dev.grid_with(width / 2, 128)) }?;
+        if keep {
+            retained.push(digests);
+        }
         digests = parents;
         width /= 2;
         level_no += 1;
     }
     let root_words = dev.stream().clone_dtoh(&digests)?;
     let merkle = start.elapsed();
-    drop(x);
     let mut root = [0u8; 32];
-    for (o, w) in root.chunks_mut(4).zip(root_words) {
+    for (o, w) in root.chunks_mut(4).zip(&root_words) {
         o.copy_from_slice(&w.to_le_bytes());
     }
+    let mut download = Duration::ZERO;
+    let mut assemble = Duration::ZERO;
+    let material = if keep {
+        let start = Instant::now();
+        let encoded = dev.stream().clone_dtoh(&x)?;
+        let mut nodes = Vec::new();
+        nodes
+            .try_reserve_exact(node_words)
+            .map_err(|_| Error::Value)?;
+        for level in &retained {
+            nodes.extend(dev.stream().clone_dtoh(level)?);
+        }
+        nodes.extend(root_words);
+        download = start.elapsed();
+        let start = Instant::now();
+        let material = Material::new(shape, &encoded, nodes).ok_or(Error::Value)?;
+        assemble = start.elapsed();
+        if material.root() != root {
+            return Err(Error::Value);
+        }
+        Some(material)
+    } else {
+        None
+    };
     Ok((
         root,
         Timing {
             upload,
             encode,
             merkle,
+            download,
+            assemble,
+            upload_bytes,
+            download_bytes: if keep { encoded_bytes + node_bytes } else { 32 },
+            retained_bytes: if keep { encoded_bytes + node_bytes } else { 0 },
+            buffer_peak_bytes,
         },
+        material,
     ))
 }
