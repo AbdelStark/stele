@@ -71,3 +71,9 @@ were rejected by `rejects_batch_bench_invalid_weights_and_source` with
 
 Skipped cumulative workspace/native/L0/L1 suites and hardware execution as assigned.
 Remaining risk: table equality alone does not establish masking, authenticated openings or integrated GPU proof parity.
+
+Coordinator ancestry note: this independent interface was reordered before
+E16-40d, onto E16-40c `6abc98cb`. Adapter, tests and method documentation are
+byte-identical to reviewed `947efb52`; only task ancestry wording changed.
+The review's pinned endpoints remain available in `task/E16-40e-before-reorder`.
+Current-main and intended-merge-tree gates remain required after this reorder.

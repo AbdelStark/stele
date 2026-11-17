@@ -49,3 +49,7 @@ I tried to break it by changing one claimed value by one, and the control in
 Skipped workspace/native/parity gates and duplicate style checks. Risk: owning-lane
 approval and mandatory current-main L0/L1 gates must cover the intended merge tree;
 this review grants no GPU, proof-parity or GO credit.
+
+Coordinator ancestry note: E16-40e now precedes E16-40d and is based on E16-40c
+`6abc98cb`. Reviewed adapter, tests and method documentation are byte-identical;
+only the task's predecessor wording changed. Current-main gates remain required.
