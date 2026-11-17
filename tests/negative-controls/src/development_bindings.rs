@@ -90,6 +90,8 @@ fn root(public: &Public, statement: &Statement, proof: &Container) -> Result<(),
     Ok(())
 }
 
+/// Check the named RFC-0026 identity, root or column claim on honest and tampered
+/// L0/L1 window proofs; success requires the exact A17/A18 rejection for each profile.
 pub fn run(id: u16) -> Result<(), String> {
     if ![1302, 1306, 1308].contains(&id) {
         return Err(format!("unknown binding control {id}"));
