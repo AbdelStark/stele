@@ -16,6 +16,41 @@ gate = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(gate)
 
 
+class FieldSourcesLayoutTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        for name in ('crates/stele-reductions', 'crates/stele-ir', 'tests/negative-controls'):
+            shutil.copytree(ROOT / name, self.root / name)
+
+    def test_accepts_reviewed_reductions_inventory(self):
+        # Stop after layout admission; the native gate runs the real evidence checks.
+        with mock.patch.object(gate, 'requant_fixtures', side_effect=RuntimeError('layout admitted')):
+            with self.assertRaisesRegex(RuntimeError, 'layout admitted'):
+                gate.field_sources(self.root)
+
+    def test_rejects_missing_or_unreviewed_benchmark_files(self):
+        crate = self.root / 'crates/stele-reductions'
+        with mock.patch.object(gate, 'requant_fixtures') as fixtures:
+            for name in ('src/zk_lookup_bench.rs', 'src/zk_batch_bench.rs',
+                         'tests/lookup_bench.rs', 'tests/batch_bench.rs',
+                         'src/zk_gkr_bench.rs', 'tests/gkr_bench.rs'):
+                path = crate / name
+                saved = path.read_bytes()
+                path.unlink()
+                with self.subTest(missing=name), self.assertRaisesRegex(ValueError, 'reductions API not wired'):
+                    gate.field_sources(self.root)
+                path.write_bytes(saved)
+            for name in ('src/unreviewed_bench.rs', 'tests/unreviewed_bench.rs'):
+                path = crate / name
+                path.write_text('pub fn unreviewed() {}\n')
+                with self.subTest(extra=name), self.assertRaisesRegex(ValueError, 'reductions API not wired'):
+                    gate.field_sources(self.root)
+                path.unlink()
+            fixtures.assert_not_called()
+
+
 class FieldSourceGateTests(unittest.TestCase):
     def test_accepts_actual_source_codec(self):
         gate.field_source_codec(ROOT)
