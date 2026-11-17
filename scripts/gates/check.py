@@ -725,6 +725,11 @@ def field_sources(root):
                'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
+               # E16-40c: reviewed, opt-in production lookup and claim-batch references.
+               'src/zk_lookup_bench.rs', 'tests/lookup_bench.rs',
+               'src/zk_batch_bench.rs', 'tests/batch_bench.rs',
+               # E16-40g: reviewed, opt-in production factor and routing observer.
+               'src/zk_gkr_bench.rs', 'tests/gkr_bench.rs',
                # RFC-0026 A9 (E12-14a): any development relation as one dev-zk statement.
                'src/zk_relation.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
@@ -2058,6 +2063,7 @@ def standard_quarantine(root):
     # resolve Development (proven: false) and stay on the development path (below); the
     # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
     policy_two_only = {'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+                       'crates/stele-reductions/tests/batch_bench.rs',
                        'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
                          r'|\bpolicy::\{[^}]*\bTwo\b|\bPolicy::\{[^}]*\bTwo\b')
@@ -2086,6 +2092,8 @@ def standard_quarantine(root):
                    'tests/negative-controls/src/registry.rs',  # A16 actual byte-5 controls
                    # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
+                   'crates/stele-reductions/tests/batch_bench.rs',
+                   'crates/stele-reductions/tests/gkr_bench.rs',
                    'crates/stele-pcs/src/producer_tests.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)

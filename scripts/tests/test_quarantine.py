@@ -13,6 +13,18 @@ class QuarantineTests(unittest.TestCase):
     def test_accepts_repository(self):
         check.standard_quarantine(ROOT)
 
+    def test_rejects_standard_entry_points_in_batch_benchmark(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            source = root / 'crates/stele-reductions/tests/batch_bench.rs'
+            source.parent.mkdir(parents=True)
+            source.write_text('PreparedSource::hiding_with(Policy::Two);\n')
+            check.standard_quarantine(root)
+            for call in ('resolve_pcs(Profile::Standard)', 'Descriptor::standard()'):
+                source.write_text(f'let policy = Policy::Two; {call};\n')
+                with self.subTest(call=call), self.assertRaisesRegex(ValueError, 'standard-profile entry point'):
+                    check.standard_quarantine(root)
+
     def test_rejects_development_entry_point_in_forbidden_crate(self):
         for call in ('Source::<K>::from_code_id_development(0, 0, &c, r)',
                      'resolve_pcs_like(Profile::Development)', 'let s = Sources::Circle;',
@@ -23,6 +35,18 @@ class QuarantineTests(unittest.TestCase):
                 verifier.parent.mkdir(parents=True)
                 verifier.write_text(f'fn f() {{ {call} }}\n')
                 with self.assertRaisesRegex(ValueError, 'development Policy 2 entry point'):
+                    check.standard_quarantine(root)
+
+    def test_rejects_standard_entry_points_in_gkr_benchmark(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            source = root / 'crates/stele-reductions/tests/gkr_bench.rs'
+            source.parent.mkdir(parents=True)
+            source.write_text('let geometry = Geometry::Balanced;\n')
+            check.standard_quarantine(root)
+            for call in ('resolve_pcs(Profile::Standard)', 'Descriptor::standard()', 'Policy::Two'):
+                source.write_text(f'let geometry = Geometry::Balanced; {call};\n')
+                with self.subTest(call=call), self.assertRaisesRegex(ValueError, 'standard-profile entry point'):
                     check.standard_quarantine(root)
 
 
