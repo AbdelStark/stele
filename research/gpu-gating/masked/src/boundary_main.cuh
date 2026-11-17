@@ -34,6 +34,7 @@ int main() {
         else node_kernel(in.data()+43,out.data(),a,b,prefix);
         break;
       }
+      case 10: eq_kernel(out.data(),in.data()+4,a,in[0],in[1],in[2],in[3],1ULL<<a);break;
       default:return 4;
     }
     if(std::fwrite(out.data(),4,out.size(),stdout)!=out.size())return 5;

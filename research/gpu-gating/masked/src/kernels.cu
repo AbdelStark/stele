@@ -69,7 +69,11 @@ extern "C" __global__ void tile_kernel(u32 *out, const u32 *period, u64 mask, u6
 
 // x[half + i] = x[i] (zk_lookup's `both`).
 extern "C" __global__ void dup_kernel(u32 *x, u64 half) {
-  GRID_STRIDE(i, half) qstore(x, half + i, qload(x, i));
+  GRID_STRIDE(i, half) {
+    Q v = qload(x, i);
+    qstore(x, i, v);
+    qstore(x, half + i, v);
+  }
 }
 
 // The mask table r̂(X) = r̃(X_u) (zk_claims block_table): entry bits from u, MSB first.
@@ -77,7 +81,7 @@ extern "C" __global__ void mask_kernel(u32 *out, const u32 *block, const u32 *u,
   GRID_STRIDE(i, count) {
     u64 e = 0;
     for (int k = 0; k < ulen; k++) e |= ((i >> (n - 1 - (int)u[k])) & 1) << (ulen - 1 - k);
-    out[i] = block[e];
+    out[i] = mcanon(block[e]);
   }
 }
 

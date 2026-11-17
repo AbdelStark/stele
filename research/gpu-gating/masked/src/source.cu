@@ -13,7 +13,7 @@ extern "C" __global__ void transpose_kernel(const u32 *msg, u32 *x, u64 rows, u6
   __syncthreads();
   for (int k = threadIdx.y; k < 32; k += blockDim.y) {
     u64 c = c0 + k, r = r0 + threadIdx.x;
-    if (r < rows && c < n) x[c * rows + r] = tile[threadIdx.x][k];
+    if (r < rows && c < n) x[c * rows + r] = mcanon(tile[threadIdx.x][k]);
   }
 }
 
@@ -21,11 +21,13 @@ extern "C" __global__ void transpose_kernel(const u32 *msg, u32 *x, u64 rows, u6
 extern "C" __global__ void bitrev_kernel(u32 *x, u64 rows, int log) {
   GRID_STRIDE(t, ((u64)1 << log) * rows) {
     u64 i = t / rows, r = t % rows;
-    u64 j = __brevll(i) >> (64 - log);
+    u64 j = log ? __brevll(i) >> (64 - log) : 0;
     if (i < j) {
-      u32 a = x[i * rows + r];
-      x[i * rows + r] = x[j * rows + r];
+      u32 a = mcanon(x[i * rows + r]);
+      x[i * rows + r] = mcanon(x[j * rows + r]);
       x[j * rows + r] = a;
+    } else if (i == j) {
+      x[i * rows + r] = mcanon(x[i * rows + r]);
     }
   }
 }
@@ -137,7 +139,7 @@ extern "C" __global__ void leaf_kernel(const u32 *enc, u64 rows, u64 leaves, con
         for (int k = 0; k < 16; k++) {
           u64 w = off / 4 + k;
           u32 v = 0;
-          if (4 * (u64)k < blen) v = w < 13 ? hw[w] : (w < 21 ? salt[w - 13] : col[w - 21]);
+          if (4 * (u64)k < blen) v = w < 13 ? hw[w] : (w < 21 ? salt[w - 13] : mcanon(col[w - 21]));
           block[k] = v;
         }
         u32 flags = b == 0 ? CHUNK_START : 0;

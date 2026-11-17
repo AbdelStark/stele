@@ -36,6 +36,7 @@ fn matches_reference_copy_and_source_boundaries_on_h100() {
                     Op::Scale => "scale_kernel",
                     Op::Leaf => "leaf_kernel",
                     Op::Node => "node_kernel",
+                    Op::Eq => "eq_kernel",
                 };
                 let function = dev.function(name).unwrap();
                 let mut launch = dev.stream.launch_builder(&function);
@@ -52,6 +53,16 @@ fn matches_reference_copy_and_source_boundaries_on_h100() {
                 // all pointers stay live through the single ordered stream/readback.
                 unsafe {
                     match op {
+                        Op::Eq => launch
+                            .arg(&dst)
+                            .arg(&(src + 16))
+                            .arg(&(a as i32))
+                            .arg(&c.input[0])
+                            .arg(&c.input[1])
+                            .arg(&c.input[2])
+                            .arg(&c.input[3])
+                            .arg(&(1u64 << a))
+                            .launch(dev.grid(1usize << a)),
                         Op::Mask => launch
                             .arg(&dst)
                             .arg(&(src + 4 * b))
@@ -124,7 +135,7 @@ fn matches_reference_copy_and_source_boundaries_on_h100() {
         eprintln!("boundary_case_pass={case}");
     }
     eprintln!(
-        "boundary_device_cases={CASES} operations=10 representations=2 seed={SEED} device={}",
+        "boundary_device_cases={CASES} operations=11 representations=2 seed={SEED} device={}",
         dev.name
     );
 }

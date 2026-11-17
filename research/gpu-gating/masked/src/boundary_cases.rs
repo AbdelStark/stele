@@ -22,8 +22,9 @@ pub(crate) enum Op {
     Scale,
     Leaf,
     Node,
+    Eq,
 }
-pub(crate) const OPS: [Op; 10] = [
+pub(crate) const OPS: [Op; 11] = [
     Op::Mask,
     Op::Tile,
     Op::Duplicate,
@@ -34,6 +35,7 @@ pub(crate) const OPS: [Op; 10] = [
     Op::Scale,
     Op::Leaf,
     Op::Node,
+    Op::Eq,
 ];
 
 pub(crate) struct Case {
@@ -78,7 +80,7 @@ pub(crate) fn fixture(op: Op, case: usize, raw: bool) -> Case {
         Op::Mask => {
             let u: Vec<_> = (0..log)
                 .rev()
-                .filter(|v| (case + v) % 3 != 0)
+                .filter(|v| !(case + v).is_multiple_of(3))
                 .map(|v| v as u32)
                 .collect();
             let block = field(1 << u.len());
@@ -181,6 +183,33 @@ pub(crate) fn fixture(op: Op, case: usize, raw: bool) -> Case {
             input.extend(encoded);
             ([rows as u32, leaves as u32, 0], input, expected)
         }
+        Op::Eq => {
+            let input = field(4 * (log + 1));
+            let values: Vec<_> = input
+                .chunks_exact(4)
+                .map(|w| {
+                    let m = |i| M31::from_lazy(w[i]).unwrap();
+                    crate::QM31(crate::CM31(m(0), m(1)), crate::CM31(m(2), m(3)))
+                })
+                .collect();
+            let expected = crate::Source::Eq {
+                point: values[1..].to_vec(),
+                scale: Some(values[0]),
+                offset: 0,
+            }
+            .cpu(log)
+            .iter()
+            .flat_map(|q| {
+                [
+                    q.0 .0.as_u32(),
+                    q.0 .1.as_u32(),
+                    q.1 .0.as_u32(),
+                    q.1 .1.as_u32(),
+                ]
+            })
+            .collect();
+            ([log as u32, 0, 0], input, expected)
+        }
         Op::Node => {
             let parents = 1 + case % 4;
             let level = 1 + case % 8;
@@ -269,5 +298,5 @@ fn matches_reference_copy_and_source_kernels_on_host() {
         failed.len(),
         &failed[..failed.len().min(20)]
     );
-    eprintln!("boundary_host_cases={CASES} operations=10 representations=2 seed={SEED}");
+    eprintln!("boundary_host_cases={CASES} operations=11 representations=2 seed={SEED}");
 }
