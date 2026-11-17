@@ -20,6 +20,8 @@ mod batch;
 #[cfg(test)]
 mod batch_cases;
 #[cfg(test)]
+mod boundary_cases;
+#[cfg(test)]
 mod field_cases;
 #[cfg(any(test, feature = "cuda"))]
 pub mod gkr;

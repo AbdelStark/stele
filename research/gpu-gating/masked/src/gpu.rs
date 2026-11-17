@@ -35,6 +35,10 @@ const THREADS: u32 = 256;
 pub mod batch;
 
 #[cfg(test)]
+#[path = "gpu_boundary_tests.rs"]
+mod boundary_tests;
+
+#[cfg(test)]
 #[path = "gpu_field_tests.rs"]
 mod field_tests;
 
