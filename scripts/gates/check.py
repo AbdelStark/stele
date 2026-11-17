@@ -2093,6 +2093,7 @@ def standard_quarantine(root):
                    # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
                    'crates/stele-reductions/tests/batch_bench.rs',
+                   'crates/stele-reductions/tests/gkr_bench.rs',
                    'crates/stele-pcs/src/producer_tests.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
