@@ -5126,7 +5126,7 @@ tasks:
   - RFC-0018 A1, A2
   skill: benchmark-runner
   crate: stele-reductions+research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40a-dev-zk-stage-inventory
   acceptance:
