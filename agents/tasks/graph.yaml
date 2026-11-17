@@ -5205,4 +5205,26 @@ tasks:
   - run exactly 1000 seeded complete round/fold comparisons on an H100 with base and extension inputs and canonical edge values; absent CUDA, skipped cases, compilation failure or any unequal table or polynomial must fail rather than count as parity
   - count cold setup and compilation in the complete campaign, retain source, inventory, host and case receipts, and publish measured numbers only with a validated ledger; no actual-size factor construction, compact-final expansion, full-proof parity, complete device-budget or GO credit follows
   - bounded spike for c_sc implementation coverage and cold compilation risk; one CPU campaign and one H100 campaign before reporting; any divergence, unsupported generated kernel or failed allocation ends this candidate campaign with a recorded failure and no backend promotion
-  - obtain owning lane V GPU review and another lane review; keep production code, kernels, transcript and proof bytes unchanged, with mandatory gates after the preceding stack; this independent successor uses only the E16-35 and E16-40a interfaces already on main, not the unmerged E16-40b or E16-40c interfaces
+  - obtain owning lane V GPU review and another lane review; keep production code, kernels, transcript and proof bytes unchanged, with mandatory gates after the preceding stack; this independent successor to E16-40e uses only the E16-35 and E16-40a interfaces already on main, not the unmerged E16-40b, E16-40c or E16-40e interfaces
+
+- id: E16-40e
+  epic: E16
+  title: Expose production claim-batch tables for GPU qualification
+  lane: V
+  depends:
+  - E16-35
+  rfc:
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §5, A1
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40e-batch-reference
+  acceptance:
+  - provide an off-by-default bench-only adapter calling the actual production batch instance, weight-table and Y=0 face builders; expose their field-valued outputs for a subsequent device comparison without changing production behavior
+  - reject non-hiding sources, mismatched claim/coefficient counts and out-of-data-face weight positions; preserve repeated positions, extension coefficients, zero weights on w=1 and source row/column order
+  - test honest weighted sums and production Dense rounds/finals, a one-value near miss and malformed inputs; keep source preparation, table construction, rounds and authenticated openings distinct, with no full-batch or proof credit from tables alone
+  - no new challenge, binding, proof byte, dependency, GPU code or performance claim; the later consumer must wait for this interface to merge and measure all host work and transfers
+  - obtain owning lane P review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; this independent lane-V successor to E16-40c uses only interfaces already on main
