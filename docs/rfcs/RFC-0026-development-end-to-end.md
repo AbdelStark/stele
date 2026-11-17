@@ -2233,8 +2233,11 @@ cases are required tests in addition to these controls.
 
 ### A17 — Root-substitution control under Policy 2
 
-Status: Draft (development-tier amendment under RFC-0027 §2).
+Status: Accepted (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
 Task: E16-10b0. Decision: ADR-135.
+Independent lane C specification/soundness and lane B standards reviews approved
+`5c8694f6`; records: `agents/reviews/e16-10b0-spec.md` and
+`agents/reviews/e16-10b0-standards.md`. This acceptance changes no implementation.
 
 **Motivation.** A4's NC-1306 expects `RootMismatch` after substituting a
 multiplicity root for the stacked root. A11 introduced Policy 2: the root is in

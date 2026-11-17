@@ -4292,3 +4292,14 @@ This retires the mismatch between the old control's expected error and the
 Accepted ground certificate's check order. It adds no protocol behavior, ledger
 term, dependency, performance claim or control coverage. E16-10b must separately
 implement the composed cases; NC-1302 and NC-1308 remain unchanged.
+
+Status: Accepted (development-tier erratum). Independent lane C
+specification/soundness and lane B standards reviewers approved `5c8694f6` with
+no open findings, recorded in `agents/reviews/e16-10b0-spec.md` and
+`agents/reviews/e16-10b0-standards.md`. Lane V owner `codex-root` accepts that
+exact contract. The reviewer independently verified the byte-5 L0/L1 artifacts,
+hashes and root-only mutations. A wording correction confines the precedence
+claim to the substituted stacked-source certificate; model certificates have
+already been verified. Full gates and current-main merge-tree validation remain
+required before merge. NC-1306 stays `todo`; no other profile inherits the
+qualification and no catalog execution is granted by this decision.
