@@ -1177,10 +1177,11 @@ fn combined<K: ChallengeField + CodeField>(
 /// What a step's finals leave: claims on claim sources, block claims on the shared
 /// source, and the layer values `[[p(0), p(1)], [q(0), q(1)]]`. Public finals are
 /// checked (`ClaimMismatch`).
+#[derive(Clone)]
 pub(super) struct Finals<K> {
     pub(super) claims: Vec<(usize, Claim<K>)>,
     pub(super) blocks: Vec<Claim<K>>,
-    layers: [[K; 2]; 2],
+    pub(super) layers: [[K; 2]; 2],
 }
 
 /// Check the public finals and route every other final.
