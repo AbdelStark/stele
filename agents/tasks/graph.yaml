@@ -3909,7 +3909,7 @@ tasks:
   - RFC-0026 §2.3, §4, §9, A4, A17, A18
   skill: soundness-auditor
   crate: stele-negative-controls+stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b-composed-bindings
   acceptance:
