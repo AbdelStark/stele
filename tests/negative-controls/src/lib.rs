@@ -6,6 +6,9 @@ pub mod batching;
 pub mod catalog;
 #[doc(hidden)]
 pub mod development;
+#[cfg(feature = "controls")]
+#[doc(hidden)]
+pub mod development_bindings;
 #[doc(hidden)]
 pub mod development_messages;
 #[doc(hidden)]
@@ -66,6 +69,27 @@ mod nc_0801;
 
 /// Executable controls; configuration passes do not earn statement-binding credit.
 pub const CONTROLS: &[catalog::RegisteredControl] = &[
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1302,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "FinalEvaluationMismatch",
+        run: || development_bindings::run(1302),
+    },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1306,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Policy 1: RootMismatch; Policy 2: GrindMismatch",
+        run: || development_bindings::run(1306),
+    },
+    #[cfg(feature = "controls")]
+    catalog::RegisteredControl {
+        id: 1308,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "Profiles 3/5: RoundSumMismatch; other profiles: ValueMismatch",
+        run: || development_bindings::run(1308),
+    },
     catalog::RegisteredControl {
         id: 1325,
         kind: catalog::ControlKind::Proof,

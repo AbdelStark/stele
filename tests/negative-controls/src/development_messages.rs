@@ -11,15 +11,17 @@ fn err(e: impl core::fmt::Debug) -> String {
     format!("{e:?}")
 }
 
-struct Fixture {
-    public: Public,
-    statement: Statement,
-    proof: Container,
+pub(crate) struct Fixture {
+    #[cfg(feature = "controls")]
+    pub(crate) case: &'static str,
+    pub(crate) public: Public,
+    pub(crate) statement: Statement,
+    pub(crate) proof: Container,
     row_at: usize,
-    profile: u8,
+    pub(crate) profile: u8,
 }
 
-fn fixtures() -> Result<Vec<Fixture>, String> {
+fn build() -> Result<Vec<Fixture>, String> {
     let mut out = Vec::new();
     for (case, length) in [("one-layer", 16), ("eight-layer", 64)] {
         for profile in [development::CIRCLE_ALL_PROFILE, development::GRIND_PROFILE] {
@@ -72,6 +74,8 @@ fn fixtures() -> Result<Vec<Fixture>, String> {
                 parsed.row_bytes()
             );
             out.push(Fixture {
+                #[cfg(feature = "controls")]
+                case,
                 public,
                 statement,
                 proof,
@@ -81,6 +85,11 @@ fn fixtures() -> Result<Vec<Fixture>, String> {
         }
     }
     Ok(out)
+}
+
+pub(crate) fn fixtures() -> Result<&'static [Fixture], String> {
+    static FIXTURES: std::sync::OnceLock<Result<Vec<Fixture>, String>> = std::sync::OnceLock::new();
+    FIXTURES.get_or_init(build).as_deref().map_err(Clone::clone)
 }
 
 struct Change {
@@ -122,12 +131,7 @@ pub fn run(id: u16) -> Result<(), String> {
         )),
         _ => return Err(format!("unknown message control {id}")),
     };
-    static FIXTURES: std::sync::OnceLock<Result<Vec<Fixture>, String>> = std::sync::OnceLock::new();
-    for f in FIXTURES
-        .get_or_init(fixtures)
-        .as_ref()
-        .map_err(Clone::clone)?
-    {
+    for f in fixtures()? {
         check_proof_control(
             || Ok::<_, Error>(f.proof.clone()),
             &Change {
