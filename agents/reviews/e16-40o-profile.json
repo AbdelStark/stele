@@ -54,6 +54,19 @@
     "reason": "After successful capture and terminal audit, workspace gates reused the target and replaced debug/stele-bench. The original exact pinned executable remained in Cargo deps; preserved that existing artifact and both unchanged release executables. No rebuild or proof rerun.",
     "utc": "2026-11-17T23:06:52.719579+00:00"
   },
+  "post_execution_reviews": {
+    "reviewed_head": "48184a9a7e81c164c4f5a87a6c4885d6a75d6055",
+    "scope": "Independent evidence review only; mandatory gates and current-main/intended-tree validation remain required.",
+    "spec": {
+      "agent": "mac_profile_results_spec_review",
+      "verdict": "PASS for post-execution evidence"
+    },
+    "standards": {
+      "agent": "mac_profile_results_standards_review",
+      "lane": "B",
+      "verdict": "PASS for post-execution evidence"
+    }
+  },
   "pre_execution": {
     "command": [
       "/Users/abdel/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/bin/python3",

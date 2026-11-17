@@ -50,6 +50,12 @@ receipt maps original paths to their identical retained bytes. Historical pins,
 raw records and the public archive are unchanged; no binary was rebuilt to repair
 evidence and no proof was rerun.
 
-Post-execution Spec and another-lane Standards reviews and mandatory branch
-gates are pending. Current-main/intended-merge-tree validation still precedes
-merge in lane-stack order. The task remains in progress until then.
+Fresh post-execution reviewers `mac_profile_results_spec_review` and
+`mac_profile_results_standards_review` (lane B) both approved the evidence at
+`48184a9a`, including the executable-preservation record. Each independently
+replayed the source/archive, command, proof, resource and import checks above.
+
+Workspace/research formatting and workspace all-target/all-feature Clippy passed.
+Workspace tests, the full native gate and the parity scaffold guard are still
+running or queued in one branch gate sequence. Current-main/intended-merge-tree
+validation precedes merge in lane-stack order. The task remains in progress.
