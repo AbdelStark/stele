@@ -5379,3 +5379,29 @@ tasks:
   - after any preparation fix, complete all original 1000 production-inventory CPU and H100 cases with every round and folded table equal, including base, extension and mixed storage and canonical edges; retain compact-final, raw-kernel and actual-size exclusions until separately qualified
   - count cold compilation, construction, transfers, retained allocations and whole-command costs; publish measured numbers only in validated ledgers and evaluate any speed hypothesis under Workflow 09, without claiming the full prover or ADR-127 gate
   - obtain independent owning-GPU and another-lane reviews, H100 evidence and mandatory gates in lane-stack order; research only under ADR-123, no new core backend, protocol binding, challenge, committed tensor, proof byte, production dependency or GO
+
+- id: E16-40l
+  epic: E16
+  title: Qualify fixed-code masked rounds over production term descriptors
+  lane: V
+  depends:
+  - E16-35
+  - E16-40a
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0013 A5 item 3
+  - RFC-0008 A7 item 4
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40l-masked-descriptors
+  acceptance:
+  - carry every unresolved complete-inventory requirement from E16-40d and E16-40k after terminal failed job 6730 and its exact generator rollback; preserve the failed evidence and do not retry either archived candidate
+  - replace shape-sized generated round code with fixed CUDA code driven by checked term offsets, factor indices, coefficients and per-round storage/mask descriptors; preserve every original factor, term, coefficient, seed, mask coordinate, degree and output, including empty products, repeated factors and zero coefficients
+  - write descriptor boundary controls and actual-expression host differential tests before implementation; compare canonical and raw lazy inputs, all storage combinations, mask events, both failed production shapes and mixed coefficients with the production CPU Masked reference; invalid factor indices must fail even for zero coefficients
+  - retain the existing fixed block reduction, fold algorithm, canonical readback rejection and CPU default; validate descriptor counts and node bounds before allocation or launch, and do not add a production interface, backend dependency, challenge or proof binding
+  - qualify the exact new CUDA path on the unchanged original 1000 seeded inventory cases, with initial tables, every round polynomial and every folded table equal; include explicit H100 regression cases 9 and 11 and representative larger masked rounds; absent CUDA, missing cases, compilation failure or any mismatch fails
+  - count descriptor upload bytes, per-round pointer/type transfers and retained explicit device buffers; report repeated factor reads and host staging, cold context/module compilation, construction and whole-command costs separately from module/allocator overhead and complete pipeline memory; publish performance numbers only in validated ledgers
+  - one reviewed implementation and one bounded H100 qualification campaign; phase or case deadlines kill descendants and retain failure evidence; reject and report the candidate before another optimization if complete qualification fails
+  - obtain independent owning-GPU and another-lane reviews and mandatory current-main/intended-tree gates in lane-stack order; research only under ADR-123, no compact-final, actual-size, full-proof, complete-budget or ADR-127 GO credit from reduced inventory parity

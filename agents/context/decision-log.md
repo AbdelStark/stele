@@ -4342,3 +4342,35 @@ eight CLI verdicts and checked the unchanged public and pre-opening bytes;
 the standards reviewer checked source/patch/artifact hashes and ran the plain
 checker tests. NC-1308 remains `todo`; accepted text is not execution credit.
 Required catalog, native and current-main merge-tree gates remain mandatory.
+
+## ADR-137: Carry failed production-shape GPU preparation into a fixed-code research successor (task E16-40l)
+
+Context: E16-40d job 6685 timed out after starting production shape 9.
+E16-40k diagnostic 6726 localized preparation phases without establishing a
+unique driver/compiler cause. Its one candidate moved QM31 products out of line;
+qualification 6730 passed the case-9 regression and representative rounds, then
+timed out at shape 11. The candidate was reported and reverted exactly. Complete
+inventory qualification remains unmet. Raw evidence and independent negative-result
+reviews are retained in `agents/reviews/e16-40k-qualification-failure.md`.
+
+Decision:
+- E16-40l is a separately scoped lane-V research successor in the existing stack.
+  Its fixed CUDA program consumes checked term/factor descriptors, avoiding code
+  growth with the term list. It preserves every factor, term, coefficient, mask,
+  seed, field operation and fixed reduction order of the CPU statement.
+- E16-40d and E16-40k remain unfinished. E16-40l carries their original complete
+  1,000-case acceptance and preparation/cost-accounting requirements; neither
+  predecessor can be closed until those requirements have evidence. Their old
+  campaign budgets do not reopen and their archives are not retried.
+- The successor has one reviewed implementation and one bounded H100 campaign.
+  A failed candidate is reported and rejected before any further optimization.
+  Host expression/reference tests and malformed-descriptor controls precede it.
+- This trades shape-specialized code for descriptor and repeated factor reads.
+  Account for those reads, descriptor transfers, retained buffers and cold
+  setup in `c_sc`/`T_misc`; no speedup or complete device budget is assumed.
+- No protocol amendment is required: the Accepted arithmetic, challenge schedule,
+  verifier, proof bytes and production interfaces are unchanged. Research-only
+  execution remains under ADR-123; ADR-127's core-backend NO-GO is unchanged.
+
+Status: Proposed research disposition, pending independent review with E16-40l.
+No acceptance or performance claim follows from this planning record.
