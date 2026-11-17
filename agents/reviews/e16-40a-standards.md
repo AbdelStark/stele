@@ -103,3 +103,46 @@ Correction evidence and checklist updates:
 
 Skipped full gates, ladder, GPU, and duplicate no_std/Clippy runs for this correction.
 Remaining risk: H100 measurement and current-main validation are pending; this approval grants no GPU GO, speedup, or fitted-cost credit.
+
+## Hardware evidence review at 4afef8c1
+
+Reviewer: Codex, independent standards review. Fixed evidence diff:
+`b8e89a376b5e10dbefa3848636f0ea9ff853102c...1573f3faf618aa582f3fa1231b1cd2e944169940`;
+correction reviewed through `4afef8c19838c5a92c80edebbbf916c3366a69b1`.
+Scope: three generated ledgers, scoreboard and baseline documentation. Runtime
+approved at `a9fd51f8` is unchanged.
+
+**Focused standards and evidence integrity approved. No outstanding standards
+breach or discretionary smell finding.** At `1573f3fa`, the new prove-time table
+cited only ledgers, contrary to RFC-0018 A2 rule 6's scoreboard-row citation
+requirement. The doc-only correction names and links all three scoreboard rows;
+verified resolved. Tooling-enforced issues are excluded.
+
+Read AGENTS, invariants, glossary, all guardrails, Workflows 03/04/09/12,
+benchmark-runner, RFC-0018 A1/A2 and RFC-0014 A1. No CONTRIBUTING or
+CODING_STANDARDS file exists. E17-01 remains `ready`, so A2 rule 7's future
+counter requirement is not yet active. The pre-existing runtime checklist
+carries forward; evidence-specific checks follow:
+
+- Provenance: independently matched all 75 manifest payload hashes, transport
+  archive, importer, proof/public identities and reported command exits.
+- Measurements: all three process times, RSS values, summed laps and parent
+  remainders match raw files exactly. The three 64-shape inventories agree;
+  declared relation/GKR/lookup/batch counts and the documented table agree.
+- Acceptance/controls: raw outputs show each proof accepted against its expected
+  model and each wrong-model control rejected for the stated reason; these
+  verifier executions were inspected, not rerun.
+- Determinism: the failed fresh-OS-seed CLI equality assertion remains disclosed;
+  the separate fixed-seed library pass is recorded. No CLI byte-parity credit.
+- Tier/resources: T32 is explicitly below L2a, with CPU-only measurements,
+  nested timing scopes, self-verification and CPU remainder retained. No ladder
+  attainment, security level, GPU memory, speedup, integrated GPU proof or GO
+  credit follows. Index-zero state reuse provides no privacy qualification
+  (RFC-0013 A6 item 5).
+
+I tried to break it by inflating a GKR child beyond its parent, and the control
+`child times exceed parent wall time` rejected it.
+
+Skipped cumulative suites, hardware, schema and verifier reruns; current-main
+integration gates remain separate. Risk: this approval covers CPU calibration
+evidence only, not merge readiness or privacy/deployment qualification.
