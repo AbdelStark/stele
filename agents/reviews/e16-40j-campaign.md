@@ -30,5 +30,13 @@ and the claimed-value near miss. No absent-device or skipped result can pass.
 One H100 NVL, 16 CPUs, 64G, 75 minutes; capture deadline 4,200 seconds. Supply
 `--dependency=afterany:6683` at submission. Earlier archives remain unchanged.
 Frozen compilation follows separate locked provisioning. Compile, allocation or
-comparison failure stops for a report under the task budget. Actual H100 receipts,
-compiled-binary hashes and full mandatory stack-order gates remain pending.
+comparison failure stops for a report under the task budget.
+
+Job 6684 completed successfully. The [hardware receipt](e16-40j-h100.json) retains
+all eleven exact tests. The coordinator checked all 53 hashed payload files,
+commands, successful sequential completion and all three remote binary hashes.
+Manifest SHA-256 is
+`d6d028b466c9986e2db7edc27bc0d4f0a9302a39c2c9e11b2f010ccd64b556ea`.
+The later host-assembly rollback leaves batch construction, dense kernels and
+tests unchanged. Independent evidence review and mandatory merge-tree gates
+remain separate; no performance or full-proof claim follows.

@@ -47,8 +47,17 @@ live limb must be canonical. Absence of CUDA or a non-H100 device fails the test
 cargo test --manifest-path research/gpu-gating/masked/Cargo.toml --features cuda --release --lib gpu::batch::tests::matches_reference_batch_on_h100 -- --ignored --exact --nocapture
 ```
 
-H100 execution and mandatory stack-order gates are pending. Host execution and
-Rust compilation establish no device parity, performance or full-proof result.
+Lucid job 6684 passed all eleven exact tests on H100 NVL at source
+`ffdf611cb3a38dfcc5a1bdae478d708ad5e5be94`. The
+[captured receipt](../../agents/reviews/e16-40j-h100.json) retains provenance,
+binary hashes and exact outputs, including distinct-source batch construction
+and every dense round/fold in canonical and raw representations. The coordinator
+checked every manifest payload, command, sequential completion and current remote
+binary hash. The later E16-40f rollback changes only host source-material assembly
+and its example counter; batch construction, dense kernels and tests remain
+byte-identical. The captured source-material regression belongs to the pinned
+source before that rollback. Mandatory merge-tree gates remain pending. These
+results establish no performance, full masked-batch or full-proof parity claim.
 
 Staging time includes ordered grouping and packing. Upload time includes explicit
 output allocation; build time covers both kernels, and round setup covers the
