@@ -77,8 +77,8 @@ inference records only. Ranges below span all three repetitions, in seconds;
 | 16 | 18.773–19.702 | 15.898–15.983 | 5.094–5.132 | 22.20–23.32 | 27.84–28.03 |
 | 17 | 38.762–38.887 | 31.667–31.768 | 5.076–5.128 | 45.47–45.56 | 46.84–47.10 |
 
-The standalone GPU commands are slower in every pair despite faster isolated
-encoding and Merkle kernels. Complete download and CPU assembly matter: at
+The standalone GPU commands are slower in every pair despite short device
+encoding and Merkle times. Complete download and CPU assembly matter: at
 `m = 17` they take 6.980–7.052 s and 20.497–20.640 s respectively, both already
 inside GPU material time. That parent excludes cold setup; whole-process time
 also includes input generation, allocation and cleanup. CPU process time includes
