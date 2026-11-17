@@ -5354,3 +5354,28 @@ tasks:
   - expose staging and device build times, transfer bytes and complete explicit construction buffer overlap separately from round scratch, first base-field fold, retained capacities, context/module/allocator and whole-pipeline costs; source preparation, host grouping, compilation, downloads and authenticated openings cannot be omitted from later cost measurements
   - work budget is one bounded implementation and one H100 qualification campaign; stop and report on device divergence, compile or allocation failure before further optimization; prototype only in research under ADR-123 and leave the earlier queued archives unchanged
   - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; no production interface, core backend, protocol binding, challenge, proof byte, external dependency, full masked-batch/proof parity, performance, complete-device-budget or ADR-127 GO change
+
+- id: E16-40k
+  epic: E16
+  title: Bound production-shape masked GPU preparation and finish its qualification
+  lane: V
+  depends:
+  - E16-35
+  - E16-40a
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0013 A5 item 3
+  - RFC-0008 A7 item 4
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40k-masked-prepare
+  acceptance:
+  - diagnose the E16-40d production-inventory preparation stall with a bounded single-shape reproducer that distinguishes input construction, NVRTC compilation, driver module loading and round execution; preserve the original source, inventory, seeds and terminal campaign evidence
+  - make no generator change and run no replacement device campaign until job 6685 is terminal and its outcome is reported; this successor is not an automatic retry or a relaxation of E16-40d acceptance
+  - write the actual-path reproducer and reference checks before any fix; preserve every factor, term, mask coordinate, degree, coefficient, seeded case, error and canonical output; use fixed reduction order and no atomics on transcript-bound values
+  - work budget is one bounded diagnostic campaign and one reviewed implementation followed by one bounded H100 qualification campaign; phase deadlines must reject incomplete preparation and kill descendants, with no partial-case or absent-device success; report any failed candidate before another optimization
+  - after any preparation fix, complete all original 1000 production-inventory CPU and H100 cases with every round and folded table equal, including base, extension and mixed storage and canonical edges; retain compact-final, raw-kernel and actual-size exclusions until separately qualified
+  - count cold compilation, construction, transfers, retained allocations and whole-command costs; publish measured numbers only in validated ledgers and evaluate any speed hypothesis under Workflow 09, without claiming the full prover or ADR-127 gate
+  - obtain independent owning-GPU and another-lane reviews, H100 evidence and mandatory gates in lane-stack order; research only under ADR-123, no new core backend, protocol binding, challenge, committed tensor, proof byte, production dependency or GO
