@@ -19,6 +19,7 @@ use stele_reductions::zk::claims::bench::{mask_table, Masked, Table};
 pub mod gpu;
 #[cfg(feature = "cuda")]
 pub mod gpu_source;
+pub mod inventory;
 pub mod source;
 
 /// The challenge field.
