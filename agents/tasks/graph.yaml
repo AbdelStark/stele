@@ -3864,7 +3864,7 @@ tasks:
   - RFC-0006 A2
   skill: rfc-author
   crate: spec
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b2-column-control-erratum
   acceptance:
