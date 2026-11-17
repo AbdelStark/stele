@@ -5431,3 +5431,31 @@ tasks:
   - report host reconstruction/conversion/expansion/routing and upload/download work separately from resident rounds; account explicit retained device capacities and host copies without claiming complete pipeline memory or performance without a validated ledger
   - one reviewed implementation and one bounded H100 campaign; deadline cleanup kills descendants and preserves failures; report and reject a failed candidate before further optimization
   - obtain owning-GPU and another-lane reviews, hardware evidence and mandatory gates in lane-stack order; this research successor to E16-40l consumes only already merged production interfaces and changes no core backend, dependency, challenge, binding, committed tensor, proof bytes or ADR-127 decision
+
+- id: E16-40n
+  epic: E16
+  title: Canonicalize and qualify remaining field-copy and source-kernel boundaries
+  lane: V
+  depends:
+  - E16-35
+  - E16-36
+  rfc:
+  - RFC-0014 §1, §5, §7
+  - RFC-0003 §1, §6
+  - RFC-0010 A2
+  - RFC-0012 A3
+  - RFC-0013 A8
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40n-copy-boundaries
+  acceptance:
+  - audit remaining field-copy and source kernels against gpu-parity guardrail 4; distinguish field words from arbitrary digest, salt, key and descriptor bytes before changing a boundary
+  - write canonical/raw lazy honest and edge controls before changes; cover mask coordinate order, duplicate halves, tile boundaries, transpose edges, bit-reversal swaps and fixed points, Circle butterfly/scale and source leaf/node hashing
+  - use the existing CPU field, polynomial, source and Merkle references; execute actual CUDA expressions on the host where possible and require explicit actual H100 execution with no absent-device or skipped-case credit
+  - canonicalize field outputs and canonical field serialization while preserving arbitrary digest and metadata bits; include full-width non-field words that must not be reduced modulo p, and leave hash compression unchanged
+  - compare every affected kernel on 1000 seeded cases with 0, 1, p-1, p and values in [p,2p); verify complete source material against production preparation on representative original sizes and preserve all proof bytes
+  - account any additional reads and writes in c_sc, c_c and T_misc; make no speedup, complete-memory, integrated-proof or ADR-127 GO claim without the required evidence
+  - one reviewed implementation and one bounded H100 campaign after the preceding qualification; fail closed on missing receipts, deadlines or mismatches, preserve failed evidence and obtain owning-GPU and another-lane reviews
+  - research only in the same lane stack; no production interface, dependency, challenge, commitment or verifier changes; mandatory gates and current-main/intended-tree validation precede merge
