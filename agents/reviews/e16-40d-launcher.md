@@ -35,3 +35,14 @@ order, assertion environment and return to staging. Build failure and missing
 toolchain controls stop before capture. These are launcher controls, not hardware
 evidence. Fresh independent review precedes submission; mandatory merge-tree
 gates and the validated inventory evidence remain pending.
+
+Fresh independent Spec and Standards reviews both PASS `c50c5f6b` and the exact
+launcher hash above, with zero actionable findings. Both verified every recorded
+artifact/failure hash and passed the launcher controls, shell syntax, capture
+self-check under Python 3.12 and diff checks. No production behavior or protocol
+changes. Neither reviewer ran SSH, hardware or full suites. The unchanged capture
+requires Python 3.10 or newer; target interpreter selection is a submission
+preflight. The outer allocation cap remains 90 minutes, even though individual
+step maxima sum higher. A truncated run or incomplete evidence remains failure;
+the capture requires both complete campaigns and matching receipts for success.
+These reviews authorize only the scoped attempt, not parity, merge or GO.
