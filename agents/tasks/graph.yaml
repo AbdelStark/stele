@@ -3843,7 +3843,7 @@ tasks:
   - RFC-0027 §5
   skill: soundness-auditor
   crate: stele-sumcheck+stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b1-adversarial-finals
   acceptance:
