@@ -10,21 +10,27 @@ pub(crate) const SEED: u64 = 0x40_2000_0001;
 pub(crate) const ELL: u8 = 3;
 pub(crate) const M: u8 = 9;
 
-pub(crate) fn message() -> Vec<M31> {
-    let mut rng = Rng::new(SEED);
-    let mut data: Vec<_> = (0..1usize << (ELL + M)).map(|_| rng.m31()).collect();
-    data[..3].copy_from_slice(&[M31::ZERO, M31::ONE, -M31::ONE]);
-    hiding_message(73, ELL, M, &data, &[17; 32]).unwrap()
+fn source_seed(seed: u64) -> [u8; 32] {
+    let mut rng = Rng::new(seed);
+    core::array::from_fn(|_| rng.next() as u8)
 }
 
-pub(crate) fn prepared(message: &[M31]) -> PreparedSource<'_, K> {
+pub(crate) fn message(seed: u64) -> Vec<M31> {
+    let mut rng = Rng::new(seed);
+    let mut data: Vec<_> = (0..1usize << (ELL + M)).map(|_| rng.m31()).collect();
+    data[..3].copy_from_slice(&[M31::ZERO, M31::ONE, -M31::ONE]);
+    data[3] = M31::from_u64(seed);
+    hiding_message(73, ELL, M, &data, &source_seed(seed)).unwrap()
+}
+
+pub(crate) fn prepared(message: &[M31], seed: u64) -> PreparedSource<'_, K> {
     PreparedSource::hiding_with(
         73,
         ELL,
         M,
         2,
         message,
-        &[17; 32],
+        &source_seed(seed),
         &mut HashUsage::default(),
         Policy::Two,
     )
@@ -70,8 +76,8 @@ pub(crate) fn claims(message: &[M31], seed: u64) -> (Vec<Claim<K>>, Vec<K>) {
 
 #[test]
 fn accepts_batch_staging_and_rejects_outside_data_face() {
-    let message = message();
-    let prepared = prepared(&message);
+    let message = message(SEED);
+    let prepared = prepared(&message, SEED);
     let (claims, gammas) = claims(&message, SEED);
     let p = crate::batch::Prepared::new(prepared.source(), &message, &claims, &gammas)
         .expect("staging");
@@ -109,8 +115,8 @@ fn accepts_batch_staging_and_rejects_outside_data_face() {
 
 #[test]
 fn rejects_batch_claim_near_miss_by_ordinary_round_sum() {
-    let message = message();
-    let prepared = prepared(&message);
+    let message = message(SEED);
+    let prepared = prepared(&message, SEED);
     let (mut claims, gammas) = claims(&message, SEED);
     let honest = BatchInputs::new(7, &prepared, &claims, &gammas).unwrap();
     let dense = Dense::new(
@@ -140,11 +146,25 @@ fn rejects_batch_claim_near_miss_by_ordinary_round_sum() {
 
 #[test]
 fn matches_reference_batch_kernels_on_host() {
-    let message = message();
-    let prepared = prepared(&message);
     let mut input = Vec::new();
+    let mut expected = Vec::new();
+    let mut sources = std::collections::BTreeSet::new();
+    let len = 2usize << (ELL + M);
     for case in 0..CASES {
-        let (claims, gammas) = claims(&message, SEED + 2 * case as u64);
+        let seed = SEED + 2 * case as u64;
+        let message = message(seed);
+        assert!(sources.insert(message[3].as_u32()), "duplicate face input");
+        let prepared = prepared(&message, seed);
+        let (claims, gammas) = claims(&message, seed);
+        let reference = BatchInputs::new(7, &prepared, &claims, &gammas).unwrap();
+        expected.push(
+            reference
+                .weights
+                .iter()
+                .flat_map(|v| crate::lookup::words(*v))
+                .chain(reference.face.iter().map(|x| crate::lookup::words(*x)[0]))
+                .collect::<Vec<_>>(),
+        );
         let p = crate::batch::Prepared::new(prepared.source(), &message, &claims, &gammas).unwrap();
         assert_eq!(
             p.upload_bytes(),
@@ -163,20 +183,12 @@ fn matches_reference_batch_kernels_on_host() {
     }
     let source = format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(j,n) for(u64 j=0;j<(n);++j)\n{}\n{}", crate::host_probe::helpers(), include_str!("batch.cu"), include_str!("batch_host.cuh"));
     let output = crate::host_probe::run(&source, &input);
-    let len = message.len() / 2;
+    assert_eq!(sources.len(), CASES);
     assert_eq!(output.len(), CASES * 2 * len * 5);
-    for case in 0..CASES {
-        let (claims, gammas) = claims(&message, SEED + 2 * case as u64);
-        let reference = BatchInputs::new(7, &prepared, &claims, &gammas).unwrap();
-        let expected: Vec<u32> = reference
-            .weights
-            .iter()
-            .flat_map(|v| crate::lookup::words(*v))
-            .chain(reference.face.iter().map(|x| crate::lookup::words(*x)[0]))
-            .collect();
+    for (case, expected) in expected.iter().enumerate() {
         for raw in 0..2 {
             let at = (2 * case + raw) * len * 5;
-            assert_eq!(output[at..at + len * 5], expected, "case {case} raw={raw}");
+            assert_eq!(output[at..at + len * 5], *expected, "case {case} raw={raw}");
         }
     }
 }

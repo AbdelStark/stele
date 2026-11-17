@@ -14,10 +14,13 @@ fn matches_reference_batch_on_h100() {
     );
     let dev = Device::new().expect("CUDA device");
     assert!(dev.name.contains("H100"), "H100 required: {}", dev.name);
-    let message = message();
-    let source = prepared(&message);
+    let mut sources = std::collections::BTreeSet::new();
     for case in 0..CASES {
-        let (claims, gammas) = claims(&message, SEED + 2 * case as u64);
+        let seed = SEED + 2 * case as u64;
+        let message = message(seed);
+        assert!(sources.insert(message[3].as_u32()), "duplicate face input");
+        let source = prepared(&message, seed);
+        let (claims, gammas) = claims(&message, seed);
         let reference = BatchInputs::new(7, &source, &claims, &gammas).unwrap();
         for raw in [false, true] {
             let (mut state, sum, timing) = if raw {
@@ -95,10 +98,13 @@ fn matches_reference_batch_on_h100() {
             );
         }
     }
+    assert_eq!(sources.len(), CASES);
+    let message = message(SEED);
+    let source = prepared(&message, SEED);
     let (mut claims, gammas) = claims(&message, SEED);
     claims[0].value = claims[0].value + K::from_i64(1);
     let (mut state, sum, _) = prepare(&dev, &source, &claims, &gammas).unwrap();
     let round = state.round().unwrap();
     assert_ne!(sum, round[0] + round[1], "one claimed value near miss");
-    eprintln!("batch_device_cases={CASES} raw_weight_cases={CASES} raw_face_cases={CASES} dense_cases={CASES} raw_dense_cases={CASES} near_miss_cases=1 seed={SEED} device={}", dev.name);
+    eprintln!("batch_device_cases={CASES} source_cases={CASES} raw_weight_cases={CASES} raw_face_cases={CASES} dense_cases={CASES} raw_dense_cases={CASES} near_miss_cases=1 seed={SEED} device={}", dev.name);
 }

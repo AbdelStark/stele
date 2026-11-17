@@ -31,8 +31,9 @@ The existing stele-sumcheck crate is a research dev-dependency solely to use the
 production Dense reference; no external package is added.
 
 Host tests compile the actual CUDA construction expressions as C++ and compare
-all outputs with BatchInputs on 1,000 deterministic cases, each canonical and raw
-lazy. They cover repeated/cancelling positions, extension coefficients, empty
+all outputs with BatchInputs on 1,000 deterministic cases, each using a freshly
+seeded prepared source and both canonical and raw lazy representations. An
+explicit distinct-face input check prevents repeated-source coverage. They cover repeated/cancelling positions, extension coefficients, empty
 claims, zero coefficients, field boundaries and row/data-face boundaries.
 Malformed source/shape/count/position controls reject. A changed claimed value
 fails ordinary stele_sumcheck::prove with RoundSumMismatch.
@@ -60,8 +61,8 @@ these explicit lifetimes; CUDA context, module and allocator retention are separ
 
 Later measurements must charge source preparation, cold shared-module compilation,
 host scratch/CSR construction, round compilation, every download, whole-process
-wall/RSS, observed device peak, bound masks and authenticated openings. Host tests
-reuse one prepared source across coefficient cases solely to qualify kernels;
-that reuse supplies no source-preparation or lifetime-policy performance credit.
+wall/RSS, observed device peak, bound masks and authenticated openings. Each case
+prepares its own source and reuses it only for the two representations. These
+qualification runs supply no source-preparation or lifetime-policy performance credit.
 No complete pipeline memory budget or RFC-0014 A1 40% claim follows from these
 operation buffer counts.
