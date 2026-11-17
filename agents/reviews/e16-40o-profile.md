@@ -42,6 +42,14 @@ ledger commands, time/RSS records, source and binary pins, complete stage
 hierarchies and every public archive payload. It reran the ledger validator,
 without rerunning proofs. No measured command was retried or discarded.
 
+After capture and its terminal audit, workspace gates reused the target directory
+and replaced `debug/stele-bench`. The exact originally pinned executable remained
+in Cargo's `deps` directory; it and both unchanged release executables are now
+preserved separately under the package's `executables/`. The attached preservation
+receipt maps original paths to their identical retained bytes. Historical pins,
+raw records and the public archive are unchanged; no binary was rebuilt to repair
+evidence and no proof was rerun.
+
 Post-execution Spec and another-lane Standards reviews and mandatory branch
 gates are pending. Current-main/intended-merge-tree validation still precedes
 merge in lane-stack order. The task remains in progress until then.

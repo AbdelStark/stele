@@ -25,6 +25,35 @@
   },
   "manifest_sha256": "84ed82d0bbccd81c14e20fd2512aa1e8f42c3dc8d3f4930e2fde0001d476288a",
   "pins_sha256": "e5b43b9b0fb0ed31ff12390e17a14432b44e894c72dad40c0b891cd54db795d8",
+  "post_capture_binary_preservation": {
+    "audit_exit_sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "executables": [
+      {
+        "copied_from": "/Users/abdel/dev/stele-validation/e16-40o-target/debug/deps/stele_bench-c0f70a5dde7f4962",
+        "current_original_path_sha256": "008b6e229d5eccba075148bbb0c28584391b5841168219ccb6e2ad25d34f8994",
+        "original_pinned_path": "/Users/abdel/dev/stele-validation/e16-40o-target/debug/stele-bench",
+        "retained_path": "/Users/abdel/dev/stele-validation/e16-40o-mac-profile/executables/debug-stele-bench",
+        "sha256": "1be1e20352ac7e5fd0a1fed12c12342b6d4c8f018711d72986559c249ca61614"
+      },
+      {
+        "copied_from": "/Users/abdel/dev/stele-validation/e16-40o-target/release/stele",
+        "current_original_path_sha256": "46149440b371b9cc07875d4cdcb0c55c152c2c3fb55e573590281f047aab9972",
+        "original_pinned_path": "/Users/abdel/dev/stele-validation/e16-40o-target/release/stele",
+        "retained_path": "/Users/abdel/dev/stele-validation/e16-40o-mac-profile/executables/release-stele",
+        "sha256": "46149440b371b9cc07875d4cdcb0c55c152c2c3fb55e573590281f047aab9972"
+      },
+      {
+        "copied_from": "/Users/abdel/dev/stele-validation/e16-40o-target/release/stele-bench",
+        "current_original_path_sha256": "28dcce960297e8bcbed5c59ea5c42b9b325bdbadcca30f4b9fbbc5961c8b4185",
+        "original_pinned_path": "/Users/abdel/dev/stele-validation/e16-40o-target/release/stele-bench",
+        "retained_path": "/Users/abdel/dev/stele-validation/e16-40o-mac-profile/executables/release-stele-bench",
+        "sha256": "28dcce960297e8bcbed5c59ea5c42b9b325bdbadcca30f4b9fbbc5961c8b4185"
+      }
+    ],
+    "pins_sha256": "e5b43b9b0fb0ed31ff12390e17a14432b44e894c72dad40c0b891cd54db795d8",
+    "reason": "After successful capture and terminal audit, workspace gates reused the target and replaced debug/stele-bench. The original exact pinned executable remained in Cargo deps; preserved that existing artifact and both unchanged release executables. No rebuild or proof rerun.",
+    "utc": "2026-11-17T23:06:52.719579+00:00"
+  },
   "pre_execution": {
     "command": [
       "/Users/abdel/.local/share/uv/python/cpython-3.12.12-macos-aarch64-none/bin/python3",
