@@ -1,0 +1,385 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "a8b2c6f3566a04c87250a5fb795f77de2703eac5",
+ "controls": {
+  "failed": 0,
+  "passed": 0,
+  "total": 0
+ },
+ "device": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB",
+ "driver": "NVIDIA 570.211.01; NVRTC loaded at runtime",
+ "generated_tokens": 0,
+ "kernel_counters": {
+  "device_buffer_peak_bytes": 10740039854,
+  "device_retained_bytes": 8623488992,
+  "download_bytes": 8623488992,
+  "host_material_owned_bytes": 8640266208,
+  "process_peak_rss_bytes": 21665341440,
+  "upload_bytes": 2150105262
+ },
+ "kind": "micro",
+ "model_config": {
+  "benchmark_plan": {
+   "capture_sha256": "b31c0a867cb291aed2ab911d124d1458b95e12c304fd1bae6ac1d5e19f2a6e5d",
+   "checks": [
+    [
+     3,
+     9,
+     1
+    ],
+    [
+     6,
+     12,
+     1
+    ],
+    [
+     11,
+     16,
+     1
+    ]
+   ],
+   "command_order": [
+    "build-baseline",
+    "build-candidate",
+    "threads",
+    "parity",
+    "check-3-9",
+    "check-6-12",
+    "check-11-16",
+    "baseline-1",
+    "candidate-1",
+    "candidate-2",
+    "baseline-2",
+    "baseline-3",
+    "candidate-3"
+   ],
+   "host_class": "H100 NVL",
+   "hypothesis": "every pair: 2*candidate.host_assemble_ns <= baseline.host_assemble_ns and candidate.wall_ns < baseline.wall_ns",
+   "measurement_seeds": [
+    1,
+    3,
+    5
+   ],
+   "measurement_shape": [
+    11,
+    16
+   ],
+   "operation": "complete-source-assembly",
+   "required_cuda_cases": 1000,
+   "sbatch_sha256": "e25b9e1049018999a9cc51409063128387aedd8fd21a70ea796112b339ef43c6",
+   "sources": {
+    "baseline": [
+     "a8b2c6f3566a04c87250a5fb795f77de2703eac5",
+     "06989c4f47f00a1c69912f4b5006823f881874f34e936a1f97c4b532a182a579"
+    ],
+    "candidate": [
+     "458186d944660befae928dca8c6736d57a150889",
+     "a95552304f7ae5d85b8a90d06f8bd732a953921b43daffdd8491f18f825c2ada"
+    ]
+   },
+   "task": "E16-40f",
+   "threads": 16
+  },
+  "binaries": {
+   "baseline": "95eb8708a8c0f1e0ead16c22e0f9173fee04078be71f71c9757597e3be0d41d6",
+   "candidate": "c69b6a487fc0a865bab2b657dace47dc904fdfae9ef606d1642f18a377e53937"
+  },
+  "checks": {
+   "check-11-16": [
+    {
+     "monotonic_ns": 44360041103,
+     "rss_bytes": 30397177856,
+     "values": {
+      "bit_equal": "true",
+      "columns_and_paths_compared": 524288,
+      "cpu_certify_ns": 214594988,
+      "cpu_prepare_ns": 19345020943,
+      "cpu_root": "f63d50b27f1e472a6c19fcaab485e1304501b96c7d78736da69f5d3b7c7f182a",
+      "device": "NVIDIA H100 NVL",
+      "device_buffer_peak_bytes": 10740039854,
+      "device_retained_bytes": 8623488992,
+      "download_bytes": 8623488992,
+      "gpu_download_ns": 3457454244,
+      "gpu_encode_ns": 175445153,
+      "gpu_material_ns": 10911389956,
+      "gpu_merkle_ns": 14195153,
+      "gpu_root": "f63d50b27f1e472a6c19fcaab485e1304501b96c7d78736da69f5d3b7c7f182a",
+      "gpu_setup_ns": 5080645348,
+      "gpu_upload_ns": 1646928456,
+      "host_assemble_ns": 5334062747,
+      "host_assembly_descriptor_bytes": 8388608,
+      "host_material_owned_bytes": 8640266208,
+      "host_message_ns": 3248627995,
+      "seed": 1,
+      "source_ell": 11,
+      "source_m": 16,
+      "upload_bytes": 2150105262
+     },
+     "wall_ns": 44300000000
+    },
+    {
+     "command": [
+      "/clusterhome/abdel_bakhta/stele-codex/e16-40f-assembly-458186d9/candidate/research/gpu-gating/masked/target/release/examples/source_material",
+      "11",
+      "16",
+      "check",
+      "1"
+     ],
+     "elapsed_ns": 44360041103,
+     "exit_code": 0,
+     "load_after": [
+      "2.92919921875",
+      "1.85302734375",
+      "1.11962890625"
+     ],
+     "load_before": [
+      "2.12841796875",
+      "1.47412109375",
+      "0.96337890625"
+     ],
+     "started_utc": "2026-11-17T18:39:46.356737+00:00",
+     "timed_out": false,
+     "timeout_seconds": 600
+    }
+   ],
+   "check-3-9": [
+    {
+     "monotonic_ns": 9707262975,
+     "rss_bytes": 128266240,
+     "values": {
+      "bit_equal": "true",
+      "columns_and_paths_compared": 4096,
+      "cpu_certify_ns": 6187992,
+      "cpu_prepare_ns": 4397201,
+      "cpu_root": "07dab9b04cb7e1e98f61701f5f52744a34e22faf6f6131ba34019ff8814cf428",
+      "device": "NVIDIA H100 NVL",
+      "device_buffer_peak_bytes": 544910,
+      "device_retained_bytes": 524256,
+      "download_bytes": 524256,
+      "gpu_download_ns": 531466,
+      "gpu_encode_ns": 592573,
+      "gpu_material_ns": 321050828,
+      "gpu_merkle_ns": 601745,
+      "gpu_root": "07dab9b04cb7e1e98f61701f5f52744a34e22faf6f6131ba34019ff8814cf428",
+      "gpu_setup_ns": 5422409645,
+      "gpu_upload_ns": 315603829,
+      "host_assemble_ns": 3393663,
+      "host_assembly_descriptor_bytes": 65536,
+      "host_material_owned_bytes": 655328,
+      "host_message_ns": 3684996,
+      "seed": 1,
+      "source_ell": 3,
+      "source_m": 9,
+      "upload_bytes": 86190
+     },
+     "wall_ns": 9690000000
+    },
+    {
+     "command": [
+      "/clusterhome/abdel_bakhta/stele-codex/e16-40f-assembly-458186d9/candidate/research/gpu-gating/masked/target/release/examples/source_material",
+      "3",
+      "9",
+      "check",
+      "1"
+     ],
+     "elapsed_ns": 9707262975,
+     "exit_code": 0,
+     "load_after": [
+      "2.15966796875",
+      "1.45654296875",
+      "0.95166015625"
+     ],
+     "load_before": [
+      "2.2763671875",
+      "1.455078125",
+      "0.9453125"
+     ],
+     "started_utc": "2026-11-17T18:39:27.433723+00:00",
+     "timed_out": false,
+     "timeout_seconds": 600
+    }
+   ],
+   "check-6-12": [
+    {
+     "monotonic_ns": 9207409953,
+     "rss_bytes": 222261248,
+     "values": {
+      "bit_equal": "true",
+      "columns_and_paths_compared": 32768,
+      "cpu_certify_ns": 21849162,
+      "cpu_prepare_ns": 59449657,
+      "cpu_root": "ef35144ce1eb06a9cca1825226458d7d716dddd91c442a1beb820fdf1523eb2c",
+      "device": "NVIDIA H100 NVL",
+      "device_buffer_peak_bytes": 21135534,
+      "device_retained_bytes": 18874336,
+      "download_bytes": 18874336,
+      "gpu_download_ns": 10549833,
+      "gpu_encode_ns": 613453,
+      "gpu_material_ns": 303478587,
+      "gpu_merkle_ns": 610057,
+      "gpu_root": "ef35144ce1eb06a9cca1825226458d7d716dddd91c442a1beb820fdf1523eb2c",
+      "gpu_setup_ns": 5208022369,
+      "gpu_upload_ns": 274239097,
+      "host_assemble_ns": 16467251,
+      "host_assembly_descriptor_bytes": 524288,
+      "host_material_owned_bytes": 19922912,
+      "host_message_ns": 13596448,
+      "seed": 1,
+      "source_ell": 6,
+      "source_m": 12,
+      "upload_bytes": 4358318
+     },
+     "wall_ns": 9180000000
+    },
+    {
+     "command": [
+      "/clusterhome/abdel_bakhta/stele-codex/e16-40f-assembly-458186d9/candidate/research/gpu-gating/masked/target/release/examples/source_material",
+      "6",
+      "12",
+      "check",
+      "1"
+     ],
+     "elapsed_ns": 9207409953,
+     "exit_code": 0,
+     "load_after": [
+      "2.12841796875",
+      "1.47412109375",
+      "0.96337890625"
+     ],
+     "load_before": [
+      "2.15966796875",
+      "1.45654296875",
+      "0.95166015625"
+     ],
+     "started_utc": "2026-11-17T18:39:37.144897+00:00",
+     "timed_out": false,
+     "timeout_seconds": 600
+    }
+   ]
+  },
+  "command": {
+   "command": [
+    "/clusterhome/abdel_bakhta/stele-codex/e16-40f-assembly-458186d9/baseline/research/gpu-gating/masked/target/release/examples/source_material",
+    "11",
+    "16",
+    "gpu",
+    "3"
+   ],
+   "elapsed_ns": 28885339562,
+   "exit_code": 0,
+   "load_after": [
+    "1.4091796875",
+    "1.625",
+    "1.11083984375"
+   ],
+   "load_before": [
+    "1.58984375",
+    "1.6748046875",
+    "1.11083984375"
+   ],
+   "started_utc": "2026-11-17T18:41:46.019254+00:00",
+   "timed_out": false,
+   "timeout_seconds": 600
+  },
+  "evidence_manifest_sha256": "7c050b871d0b22ef5aee75a48639fbbd1ed7b89c3ebd1602113561d367570f70",
+  "host": {
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           52 bits physical, 57 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  28\nOn-line CPU(s) list:                     0-27\nVendor ID:                               GenuineIntel\nModel name:                              06/cf\nCPU family:                              6\nModel:                                   207\nThread(s) per core:                      1\nCore(s) per socket:                      28\nSocket(s):                               1\nStepping:                                2\nBogoMIPS:                                7200.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat clflush dts mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc bts rep_good nopl tsc_reliable nonstop_tsc cpuid tsc_known_freq pni pclmulqdq dtes64 ds_cpl ssse3 fma cx16 pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tdx_guest fsgsbase bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               896 KiB (28 instances)\nL1i cache:                               896 KiB (28 instances)\nL2 cache:                                112 MiB (28 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-27\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+   "cuda_visible_devices": "0",
+   "gpu": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB\n",
+   "hostname": "h100-nvl-1-1-cc",
+   "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+   "sbatch_sha256": "e25b9e1049018999a9cc51409063128387aedd8fd21a70ea796112b339ef43c6",
+   "script_sha256": "b31c0a867cb291aed2ab911d124d1458b95e12c304fd1bae6ac1d5e19f2a6e5d",
+   "slurm_job_id": "6643",
+   "sources": {
+    "baseline": [
+     "a8b2c6f3566a04c87250a5fb795f77de2703eac5",
+     "06989c4f47f00a1c69912f4b5006823f881874f34e936a1f97c4b532a182a579"
+    ],
+    "candidate": [
+     "458186d944660befae928dca8c6736d57a150889",
+     "a95552304f7ae5d85b8a90d06f8bd732a953921b43daffdd8491f18f825c2ada"
+    ]
+   },
+   "threads": 16,
+   "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.90.0\nLLVM version: 20.1.8\n"
+  },
+  "hypothesis_met": false,
+  "packaging_script_sha256": "06bef87cbbeee3efb0d7753a54fb9a88791d8593f81a3512227f0a789b078262",
+  "pair_qualifies": false,
+  "parity_cases": 1000,
+  "raw_directory": "/Users/abdel/dev/stele-validation/e16-40f-campaign/run-6643",
+  "repetition": 2,
+  "repetitions": 3,
+  "sample": {
+   "monotonic_ns": 28885339562,
+   "rss_bytes": 21665341440,
+   "values": {
+    "device": "NVIDIA H100 NVL",
+    "device_buffer_peak_bytes": 10740039854,
+    "device_retained_bytes": 8623488992,
+    "download_bytes": 8623488992,
+    "gpu_download_ns": 3491141549,
+    "gpu_encode_ns": 172734690,
+    "gpu_material_ns": 16152377350,
+    "gpu_merkle_ns": 14549830,
+    "gpu_root": "335121ffd088bcf726d9e46b7d52043604018fa7aeff0f4768cbdd07ff14a4cd",
+    "gpu_setup_ns": 5362765870,
+    "gpu_upload_ns": 1769414408,
+    "host_assemble_ns": 10407728478,
+    "host_material_owned_bytes": 8640266208,
+    "host_message_ns": 3412971143,
+    "seed": 3,
+    "source_ell": 11,
+    "source_m": 16,
+    "upload_bytes": 2150105262
+   },
+   "wall_ns": 28850000000
+  },
+  "variant": "baseline"
+ },
+ "note": "Research source-material operation only, outside inference. Three alternating baseline/candidate cold GPU pairs; 16 pinned CPU threads. The hypothesis requires at least 2x lower host assembly and lower whole command wall in every pair; false is retained negative evidence, not a pass. prover_time_ns is this single command wall, including synthetic input generation, CUDA/NVRTC setup and cleanup. Phase parents and children overlap; do not sum. The required 1000 complete-source cases and three full-shape payload/path checks precede timings. No integrated certificate/opening, GPU proof, full-proof parity, security, GO or complete-device-budget claim. Buffer counters exclude driver/module/runtime allocations; host RSS is not device memory. The micro schema standard profile grants no inference admission. Proof, verifier and control counts are zero. GNU time has 10ms resolution; monotonic timing is retained separately.",
+ "plan_digest": "afbfaad73ab8f730a2b4d3ca33d2cb32832cd444bb5a08efb27e3984966e1379",
+ "profile": "standard",
+ "prompt_tokens": 0,
+ "proof_size_bytes": 0,
+ "prover_time_ns": 28850000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "gpu_download_ns": 3491141549,
+  "gpu_encode_ns": 172734690,
+  "gpu_material_ns": 16152377350,
+  "gpu_merkle_ns": 14549830,
+  "gpu_setup_ns": 5362765870,
+  "gpu_upload_ns": 1769414408,
+  "host_assemble_ns": 10407728478,
+  "host_message_ns": 3412971143,
+  "process_wall_ns": 28850000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)\nbinary: rustc\ncommit-hash: 1159e78c4747b02ef996e55082b704c09b970588\ncommit-date: 2025-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.90.0\nLLVM version: 20.1.8",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 0
+ },
+ "witness_recompute_ns": 0,
+ "workload": "micro/h100-complete-source-assembly"
+}
