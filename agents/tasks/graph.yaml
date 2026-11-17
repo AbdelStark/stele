@@ -3886,7 +3886,7 @@ tasks:
   - RFC-0027 §5
   skill: soundness-auditor
   crate: stele-reductions
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b3-routed-claim-producer
   acceptance:

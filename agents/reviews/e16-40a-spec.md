@@ -130,3 +130,45 @@ finding is now resolved. No full gates were rerun in this focused pass. The
 H100 baseline/validated ledger, current-base L0/L1, mandatory gates and bottom-up
 stack integration remain pending acceptance work; this review grants no GPU GO,
 speedup, parity or ledger credit.
+
+## Hardware evidence review — owning lane P
+
+Reviewed `b8e89a376b5e10dbefa3848636f0ea9ff853102c` →
+`1573f3faf618aa582f3fa1231b1cd2e944169940`, then the documentation-only
+follow-up `4afef8c19838c5a92c80edebbbf916c3366a69b1`.
+**APPROVED for owning-lane P hardware-evidence review.** No measurement defect
+or scope creep remains; runtime instrumentation retains its earlier approval.
+
+Independently hashed the transport archive, manifest and all 75 payloads;
+archive contents equal the downloaded files. The source archive hash matches,
+and all 2,252 source files equal commit `a9fd51f8`. Inspected capture, continuation
+and import scripts, CPU affinity, Rayon configuration, toolchain, binary/input
+hashes and command metadata. Each prove started below load 3.
+
+All three ledgers match the actual proof/public hashes, whole-process GNU times,
+RSS, statements and index-specific receipts. Prove/verify exit successfully;
+the one-digit wrong-model pin exits 1 with the stated rejection. This satisfies
+RFC-0018 A1's requirement that controls run “against the recorded proof”.
+All three actual ledger validators and the scoreboard freshness check pass.
+
+Reparsed every raw stage log and checked every imported lap. Public geometry
+agrees across samples and with verifier counts: 876 relations, 385 GKR steps,
+21 lookups, three source batches plus the separately measured shared batch.
+Inspected timer boundaries: factor construction, masked rounds, final routing,
+tree rebuilds and authenticated openings measure their stated CPU work.
+Children are disjoint within parents; reporting/rounding and unlabelled work
+remain CPU remainders. Witness laps are preserved despite the legacy
+`witness_recompute_ns: 0` sentinel; self-verification remains included.
+
+The failed CLI equality assertion and separate fixed-seed library parity pass
+are preserved accurately. The copied index-zero experiment supplies no
+matched-seed CLI parity or lifetime-privacy evidence. T32 is explicitly below
+L2a; no speedup, fit, device-budget or GPU GO claim appears. RFC-0014 A1 says
+host measurements do not “approve a GPU implementation”.
+
+The initial documentation nit is resolved by `4afef8c1`: the prove-time table
+now names and links its scoreboard rows, as RFC-0018 A2 requires (“cites the
+scoreboard row”). No ledger or runtime changed in that follow-up.
+
+Skipped full gates and hardware reruns as assigned. Current-main L0/L1 and
+mandatory gates remain pending; this evidence approval is not merge clearance.
