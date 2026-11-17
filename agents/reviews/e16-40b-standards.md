@@ -86,3 +86,59 @@ establish that coverage. Owning lane E review is separate from this lane B revie
 
 Skipped full workspace/native suites, hardware runs and tooling-enforced style
 checks. No integrated GPU backend, certificate or full-proof parity was validated.
+
+## Hardware-evidence addendum — cf9d3956
+
+Fresh lane B standards review of
+`9a6e7028fae59e52f50a037a9c37894cf3445b8f...cf9d3956c1eaa1c935e67d86b950662e681f0c38`.
+Scope: three generated microledgers and `SOURCE-MATERIAL.md`; runtime code is
+unchanged. This supersedes the earlier hardware-pending statements only.
+
+**Documented-standard breaches:** none found. RFC-0018 §1 requires “never compare
+across statements without saying so”; the CPU certificate/verification work
+absent from the GPU command is explicit. RFC-0014 A1 requires “actual device
+allocation and transfer lifetimes, including host/device overlap”; the report
+correctly disclaims complete device-peak and 40% evidence.
+
+**Baseline heuristics:** no actionable smell. The changed hunk says “Ranges below
+span all three repetitions”; repeated generated records preserve evidence and
+do not warrant extracting a new abstraction.
+
+Independently reconciled all 21 commands, 85 measurement hashes, seven parity
+hashes, the archive and its payloads, exact packaged-ledger bytes, decimal load
+strings, timestamps, phase sums, storage formulas, nine paired roots and every
+reported range. Cold GPU process time is greater in every pair. I tried to break
+it by changing one in-memory payload byte, and the control comparing its SHA-256
+with the recorded manifest rejected it.
+
+Required checklist:
+
+1. Public items: unchanged.
+2. Challenges/absorb order: unchanged.
+3. Claims/consumers: unchanged.
+4. Bindings: unchanged; recorded device test checks `RootMismatch`.
+5. Soundness accounting: unchanged.
+6. Static bounds: unchanged.
+7. Padding/masks: unchanged; canonical-field cases recorded.
+8. Determinism: nine matching CPU/GPU roots; no proof claim.
+9. Parity: 1,000 complete operations, not per-kernel/full-proof certification.
+10. Cost: source preparation/transfer/assembly observations; no fitted constant.
+11. Verifier: unchanged.
+12. Glossary: no violation.
+13. Tier: research only; schema tag grants no admission.
+14. Commit rule: unchanged.
+15. Plain checker: unchanged; not rerun.
+16. Segments: unchanged.
+17. Proof bytes: unchanged production code; merge gates remain pending.
+18. Ladder: explicitly micro-only; inference scoreboard exclusion is appropriate.
+
+Read AGENTS, invariants/glossary, all guardrails, Workflows 03/04/09/12,
+benchmark-runner, cuda-kernel-author, RFC-0018 A1/A2 and RFC-0014 A1.
+No CONTRIBUTING/CODING_STANDARDS file found. E17-01 remains ready; its future
+counter requirement is not an outstanding breach here.
+
+Standards approved for this evidence diff. ADR-127 remains NO-GO. Current-main
+and intended-merge-tree gates remain required in stack order.
+
+Skipped full suites, hardware reruns and tooling-enforced checks. Hash consistency
+does not independently authenticate the remote execution; no integration approval.

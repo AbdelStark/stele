@@ -51,3 +51,47 @@ Workflow 03 checklist:
 
 Skipped duplicate workspace/native gates and hardware execution. Merge risk remains
 unresolved until the pending evidence covers the intended merge tree.
+
+## Hardware-evidence follow-up — 2026-11-17
+
+Reviewed fixed diff `9a6e7028fae59e52f50a037a9c37894cf3445b8f...cf9d3956c1eaa1c935e67d86b950662e681f0c38`
+and wording correction `3fc00aa0d0cfe9d275668da74209264002d70756` as owning lane E,
+using `benchmark-runner`, `cuda-kernel-author`, RFC-0018 A1/A2, RFC-0014 A1 and
+Workflows 04/09. This review covers measured evidence only; runtime was previously
+approved and has no executable change.
+
+**Evidence approved.** E16-40b's requirement to “preserve all samples and validate
+ledgers” is satisfied. No missing requirement, incorrect accounting or extra
+implementation scope remains in this diff.
+
+Independently verified all 85 measurement payload hashes, all seven parity
+payload hashes, both manifests, the transport archive, and the source archive
+against all 2,258 tracked blobs at `59f9a18b`. Capture/packaging script fingerprints,
+host, affinity, toolchain and ledger provenance agree. The parity evidence records
+exactly 1,000 completed cases; the three large checks compare every payload/path.
+All 21 command exits, raw observations, process walls/RSS, nine paired roots,
+stage/counter maps and external/repository ledger copies reconcile. All three
+actual ledger validators and scoreboard freshness passed.
+
+Recomputed disjoint child sums within material time, cold setup/process bounds,
+retained encoding/tree bytes, upload/download totals, host salt storage and
+maximum transition overlap. Every table range matches its three repetitions.
+CPU certificate production/verification is disclosed; GPU processes remain
+slower in every pair despite omitting that work. Correction `3fc00aa0` removes
+the unsupported isolated CPU-kernel comparison.
+
+RFC-0014 A1 says “A caller's workspace budget alone cannot establish the 40%
+condition.” The report correctly distinguishes tracked buffers and host RSS
+from complete device allocation lifetimes; no 40%, integrated certificate,
+full-proof parity, fitted constant or GO claim follows. These are micro records,
+not inference ladder records or profile promotion. The cost observations concern
+source preparation and transfer/assembly, not an integrated speedup.
+
+The original 18-item implementation checklist remains applicable; its hardware
+evidence items are now substantiated within this complete-source scope.
+
+I tried to break it by changing one manifest digest in memory, and the checksum
+control rejected it at `gpu-17-3.out`.
+
+Skipped duplicate hardware execution and full suites. Current-base/current-merge-tree
+mandatory gates remain a separate merge condition; this review does not approve them.
