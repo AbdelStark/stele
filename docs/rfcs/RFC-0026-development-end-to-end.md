@@ -2285,3 +2285,58 @@ E16-10b executes the cases through the mandatory harness. The qualification is
 evidence for rejection precedence, not catalog execution. NC-1302 and NC-1308
 are unchanged. E16-10b is blocked on acceptance of this erratum. Promotion to
 `standard` or `treaty` is not granted (Workflow 10).
+
+### A18 — Column-routing control under claim batching
+
+Status: Draft (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
+Task: E16-10b2. Proposed decision: ADR-136.
+
+**Motivation.** Section 9's NC-1308 names PCS `ValueMismatch` after routing one
+column claim to its neighbour. Section 4 step 7 and RFC-0006 A2 first batch the
+derived source points. A2 absorbs every point and value before drawing the
+batch coefficient. A producer that changes a column prefix therefore proves
+against a different batch transcript. On the declared current-profile L0/L1
+fixtures, the unchanged verifier rejects a round sum before reaching the PCS
+opening. The qualification in `agents/reviews/e16-10b2-qualification.md` produces
+complete proofs and observes that exact error; it is not catalog execution.
+
+**Replacement text, §9 NC-1308 for source profiles 3 and 5:**
+
+> Accept an honest composed window proof. In a separate producer execution,
+> route exactly one claim from a real witness column to the next real column
+> in the same commitment group: change only its Boolean column-index prefix
+> in the step-7 stacked-source claim list. Keep its tail point and value, every
+> other claim, the witness, public inputs and committed sources unchanged.
+> Use a declared deterministic fixture whose two adjacent columns have equal
+> assigned values, so the rerouted claim remains numerically true. Generate
+> genuine dependent claim batches and source openings through the ordinary
+> transcript and producer operations. Require the unchanged actual development
+> window verifier to return exactly `Engine(Sumcheck(RoundSumMismatch))`.
+> Producer failure, an altered opening scalar, an arbitrary rejection or an
+> alternate verifier mapping earns no credit. Assert that only the selected
+> claim prefix changes, and that restoring it restores the complete claim list.
+> Compare honest and rerouted proofs: the header, group and multiplicity
+> certificates, identities, lookups and matmuls must be byte-identical; only
+> dependent opening sections may differ. Run L0/T=16 and L1/T=64 separately
+> under profiles 3 and 5. These cases grant no other source profile credit.
+
+**Soundness.** No challenge, round, query, error term, absorb order or verifier
+predicate changes. RFC-0006 A2's point/value descriptor binding, round-sum
+equations, final equation and PCS authentication all remain mandatory. Equal
+neighbouring values isolate the routing/descriptor binding without asking an
+honest batch producer to prove a false scalar claim. A fixed example's early
+rejection does not replace PCS value-authentication controls or prove that every
+wrong routing fails at this same check. The prior NC-1308 contract for other
+source profiles is unchanged; they receive no execution credit here.
+
+**Cells, lookups, bytes and cost-model terms.** No production algorithm,
+commitment, source geometry, honest proof byte, ledger line or cost term changes.
+The qualification changes only the adversarial producer's one claim prefix and
+regenerates its dependent opening sections. No benchmark or security level is
+claimed.
+
+**Controls and affected tasks.** NC-1308 remains reserved and `todo` until
+E16-10b executes the accepted contract through the mandatory harness. E16-10b
+is blocked on acceptance of A18. NC-1302 and NC-1306 are unchanged. This text
+neither supplies a production adversarial-producer interface nor uses the
+unmerged E16-10b1 interface. Promotion to `standard` or `treaty` is not granted.

@@ -4303,3 +4303,32 @@ claim to the substituted stacked-source certificate; model certificates have
 already been verified. Full gates and current-main merge-tree validation remain
 required before merge. NC-1306 stays `todo`; no other profile inherits the
 qualification and no catalog execution is granted by this decision.
+
+## ADR-136: Preserve claim-batch rejection for the current column-routing control (RFC-0026 A18, task E16-10b2)
+
+Status: Proposed; independent review pending.
+
+NC-1308 specifies routing one column claim to its neighbour and expects PCS
+`ValueMismatch`. The current step-7 batch first absorbs the complete derived
+point/value list. Changing one Boolean column prefix changes that transcript
+before the PCS opening is checked. A producer-only qualification on L0/T16 and
+L1/T64, profiles 3/5, creates complete genuine batches/openings and the unchanged
+production verifier rejects each with `Engine(Sumcheck(RoundSumMismatch))`.
+
+The experiment selects equal-valued adjacent real columns. The rerouted scalar
+claim is true, so no producer truth check needs to be omitted. The unchanged
+witness and sources, one changed claim prefix, restoration equality, identical
+public inputs and pre-opening proof sections are checked. Honest proofs accept.
+The qualification and isolated patch are recorded in
+`agents/reviews/e16-10b2-qualification.md`; no verifier mapping is changed.
+
+Proposed decision: accept A18's exact current-profile control contract, keeping
+all batch and PCS checks. It grants no other source-profile credit and leaves
+their prior contract unchanged. Early batch rejection is not a substitute for
+PCS value-authentication controls or a claim about every possible wrong routing.
+
+No round, error term, honest proof byte, committed cell, cost-model term or
+production interface changes. NC-1308 remains `todo`; E16-10b must implement the
+accepted control in the mandatory harness after a separately reviewed producer
+interface. This retires a control-contract ambiguity, without claiming GPU
+integration, a security level or profile promotion.
