@@ -7,6 +7,9 @@ use stele_reductions::zk::claims::{
 };
 use stele_reductions::zk::{Error, Seed};
 
+#[path = "common/gkr_construction.rs"]
+mod construction;
+
 fn case(compact: bool) -> (Statement<QM31>, Vec<Vec<M31>>) {
     if !compact {
         let mut counts = vec![M31::ZERO; 64];
@@ -95,10 +98,17 @@ fn transcript() -> Transcript<QM31> {
 
 #[test]
 fn matches_reference_gkr_observation_and_complete_finals() {
-    for (compact, balanced, byte) in [(false, false, 17), (true, false, 29), (true, true, 41)] {
+    let mut constructed = [false; 8];
+    for (compact, geometry, byte) in [
+        (false, None, 17),
+        (true, None, 29),
+        (true, Some(Geometry::Balanced), 41),
+        (true, Some(Geometry::Narrow), 53),
+    ] {
+        let balanced = geometry.is_some();
         let (statement, columns) = case(compact);
         let life = Lifetime {
-            geometry: Geometry::Balanced,
+            geometry: geometry.unwrap_or(Geometry::Balanced),
             source: 0,
             proofs: 1,
             index: 0,
@@ -154,6 +164,19 @@ fn matches_reference_gkr_observation_and_complete_finals() {
                     1
                 }] += 1;
                 let mut reference = step.reference()?;
+                let inputs = step.construction()?;
+                let mut rebuilt = construction::materialize(&inputs, &mut constructed);
+                assert_eq!(inputs.num_vars, reference.variables());
+                assert_eq!(inputs.degree, reference.degree());
+                assert_eq!(rebuilt.terms(), reference.terms());
+                assert_eq!(
+                    rebuilt.vanishing().collect::<Vec<_>>(),
+                    reference.vanishing().collect::<Vec<_>>()
+                );
+                assert_eq!(
+                    rebuilt.tables().collect::<Vec<_>>(),
+                    reference.tables().collect::<Vec<_>>()
+                );
                 compact_seen += usize::from(reference.is_compact());
                 assert_eq!(reference.variables() as usize, step.point.len());
                 assert_eq!(reference.tables().count(), reference.vanishing().count());
@@ -163,15 +186,26 @@ fn matches_reference_gkr_observation_and_complete_finals() {
                     Err(stele_sumcheck::Error::InvalidInstance)
                 );
                 for point in step.point {
+                    assert_eq!(rebuilt.round(), reference.round());
                     assert_eq!(
                         reference.round().expect("production round").len(),
                         reference.degree() + 1
                     );
                     reference.fold(*point).expect("production fold");
+                    rebuilt.fold(*point).expect("constructed fold");
+                    assert_eq!(
+                        rebuilt.tables().collect::<Vec<_>>(),
+                        reference.tables().collect::<Vec<_>>()
+                    );
                 }
                 let finals = reference.final_values().expect("expanded finals");
                 assert_eq!(&finals, step.finals);
                 let compact_values = reference.tables().map(|(x, _)| x[0]).collect::<Vec<_>>();
+                let mut changed_compact =
+                    rebuilt.final_values().expect("constructed compact finals");
+                assert_eq!(changed_compact, compact_values);
+                changed_compact[0] = changed_compact[0] + QM31::ONE;
+                assert_ne!(changed_compact, compact_values);
                 assert_eq!(
                     reference.expand_at(step.point, &compact_values),
                     Err(stele_sumcheck::Error::InvalidInstance),
@@ -251,6 +285,7 @@ fn matches_reference_gkr_observation_and_complete_finals() {
             assert_eq!(calls, 0);
         }
     }
+    assert!(constructed.into_iter().all(|seen| seen));
 }
 
 #[test]
