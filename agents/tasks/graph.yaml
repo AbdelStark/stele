@@ -5210,3 +5210,27 @@ tasks:
   - test honest weighted sums and production Dense rounds/finals, a one-value near miss and malformed inputs; keep source preparation, table construction, rounds and authenticated openings distinct, with no full-batch or proof credit from tables alone
   - no new challenge, binding, proof byte, dependency, GPU code or performance claim; the later consumer must wait for this interface to merge and measure all host work and transfers
   - obtain owning lane P review; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; E16-40c now carries this full acceptance contract in its interface-only change before either device consumer
+
+- id: E16-40g
+  epic: E16
+  title: Expose production GKR factor construction and compact final references
+  lane: V
+  depends:
+  - E16-40a
+  rfc:
+  - RFC-0014 §1, §5, §6
+  - RFC-0008 A7
+  - RFC-0013 A5 items 1-6, A8
+  skill: benchmark-runner
+  crate: stele-reductions+research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40g-gkr-reference
+  acceptance:
+  - add an off-by-default bench observer over genuine CPU GKR steps; expose read-only production inputs, actual challenge point and finals, and callable references for factor construction, compact expansion and final claim routing
+  - reuse the actual private helpers and masked summand, including first, interior and leaf steps, selectors, shifts, heterogeneous members, padding and compact finals; retain ordinary validation and public aborts
+  - callback values cannot replace proof values or alter the transcript; callback failure stops the benchmark operation; ordinary and observed proofs, transcript continuation and lifetime disclosure remain byte-identical
+  - test complete production factor folding and expanded finals against the genuine proof, routed claims against the ordinary helpers, premature finals and a one-value public-final near miss; test malformed input, observer failure, narrow and balanced geometry
+  - no new challenge, binding, proof byte, committed tensor, dependency, CUDA code, performance claim or ADR-127 GO; observer inputs include private witness material and must never be emitted as public inventory
+  - record reconstruction, cloning, observation and host routing as benchmark overhead in later consumers; no whole-stage acceleration credit from rounds alone and no consumer before this interface merges
+  - obtain owning lane P and independent standards reviews; keep default, bench, no_std and mandatory L0/L1 gates green in stack order; this independent lane-V successor consumes only already merged production helpers
