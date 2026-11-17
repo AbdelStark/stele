@@ -109,6 +109,9 @@ proof hashes, input/binary/archive hashes and host provenance are in the ledgers
 | 1 | 487.36 | 109.590 | 103.692 | 25.221 | [sample 1](../../bench/ledger/e16-40a-dev-zk-stories42m-t32-h100-1.json) |
 | 2 | 489.91 | 108.267 | 106.513 | 25.030 | [sample 2](../../bench/ledger/e16-40a-dev-zk-stories42m-t32-h100-2.json) |
 
+Whole-process results also appear in the [scoreboard](../../bench/scoreboard.md),
+in the three `e16-40a-dev-zk-stories42m-t32-h100-{0,1,2}` rows.
+
 The same public inventory appears in every sample: 876 relations, 385 GKR steps
 (21 first, 343 interior, 21 leaf), 21 lookups and three source batches, represented
 by 64 distinct shapes. Factor construction and final routing are substantial
