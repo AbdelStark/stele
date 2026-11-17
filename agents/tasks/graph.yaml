@@ -5054,7 +5054,7 @@ tasks:
   - RFC-0026 §7
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-36-dev-zk-gpu-decision
   acceptance:
@@ -5089,7 +5089,7 @@ tasks:
   - RFC-0026 §7
   skill: benchmark-runner
   crate: stele-ir
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-38-dev-plain-check-gather
   acceptance:
@@ -5106,9 +5106,32 @@ tasks:
   - RFC-0013 A10
   skill: benchmark-runner
   crate: bench
-  status: in_progress
+  status: done
   agent: claude-code
   branch: task/E16-39-dev-zk-t64-remeasure
   acceptance:
   - three proves under one commitment, each verified with --expect-model, each started at a 1-minute load below 3; prove, verify, peak footprint and proof bytes recorded; the wrong-model control rejected
   - bench/ledger entry, scoreboard, README and docs/development-e2e.md updated
+
+- id: E16-40a
+  epic: E16
+  title: Separate development-ZK GPU-candidate CPU stage costs and shape inventory
+  lane: V
+  depends:
+  - E16-36
+  - E16-39
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0026 §7
+  - RFC-0018 A1, A2
+  skill: benchmark-runner
+  crate: stele-reductions+research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40a-dev-zk-stage-inventory
+  acceptance:
+  - preserve the existing coarse stage laps and add opt-in disjoint inner measurements for lookup tree rebuilds, factors, masked rounds, claim routing, batch weights/face and authenticated openings; state parent-child timing relationships so totals are not double-counted
+  - record the actual production relation and first/interior/leaf GKR shape inventory as public geometry only, without witness values, masks, seeds or field challenges
+  - ordinary and instrumented same-input proofs remain byte-identical; default and no_std builds, all bindings, self-verification and source lifetimes remain unchanged
+  - collect a current H100 CPU baseline with explicit host, thread affinity, commit, toolchain, run count and verified proof hashes in a validated ledger; this qualifies costs for ADR-127 reopening and grants no GPU integration or GO decision
+  - obtain owning lane P review and keep L0/L1 and mandatory gates green; this independent lane-V stack does not use the preceding column-routing producer interface
