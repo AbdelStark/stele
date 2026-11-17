@@ -22,7 +22,8 @@ count agrees with the top-tree phase; add rejection tests for these mutations.
 
 Preserve the legitimate single-step case: `plan_lookup` permits `n == k0`, so
 the step is both first and leaf and this profiler labels it `gkr_leaf`.
-The [preserved independent probe](/Users/abdel/dev/stele-validation/e16-40a-spec-one-step/README.md)
+The preserved independent probe at
+`/Users/abdel/dev/stele-validation/e16-40a-spec-one-step/README.md`
 uses the existing lookup fixture with `extra=1`, proved and verified this case,
 and asserted exactly one GKR step. Thus a tree's
 labels are either `[leaf]` or `[first, interior*, leaf]`.
