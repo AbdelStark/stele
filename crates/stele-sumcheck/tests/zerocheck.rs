@@ -8,6 +8,166 @@ use stele_sumcheck::{
 };
 pub mod support;
 use support::{array, field, number, values};
+
+#[cfg(feature = "controls")]
+fn forged_finals<K: ChallengeField + Eq + core::fmt::Debug>() {
+    use stele_hash::AbsorbLabel;
+    for (m, skip) in [(0, 0), (2, 0), (2, 1)] {
+        let one = K::from_i64(1);
+        let instance = Instance {
+            id: 2302,
+            num_vars: m,
+            inputs: vec![7, 8],
+            terms: vec![
+                Term {
+                    coefficient: one,
+                    factors: vec![0, 0],
+                },
+                Term {
+                    coefficient: -one,
+                    factors: vec![1],
+                },
+            ],
+            claimed_sum: K::from_i64(0),
+        };
+        let x: Vec<_> = (0..1 << m).map(K::from_i64).collect();
+        let tables = vec![x.clone(), x.iter().map(|v| *v * *v).collect()];
+        let z = Zerocheck {
+            instance: &instance,
+            skip,
+        };
+        let (mut ordinary_t, mut restored_t) = (transcript(), transcript());
+        let ordinary = z
+            .prove_with_point(&tables, &mut ordinary_t)
+            .expect("honest");
+        let restored = z
+            .prove_forged_finals(&tables, &tables, &mut restored_t)
+            .expect("restored");
+        assert_eq!(
+            ordinary, restored,
+            "same tables retain every proof value and point"
+        );
+        assert_eq!(ordinary_t.usage(), restored_t.usage());
+        assert_eq!(
+            ordinary_t.challenge(ChallengeLabel::Sumcheck),
+            restored_t.challenge(ChallengeLabel::Sumcheck)
+        );
+        let honest = z
+            .verify_public(&restored.0, &tables, &mut transcript())
+            .expect("honest source claims");
+        assert_eq!(honest.claims.len(), tables.len() * (1 << skip));
+
+        let mut changed = tables.clone();
+        changed[1][0] = changed[1][0] + one;
+        assert_eq!(
+            changed
+                .iter()
+                .flatten()
+                .zip(tables.iter().flatten())
+                .filter(|(a, b)| a != b)
+                .count(),
+            1
+        );
+        let mut producer = transcript();
+        let (proof, tail) = z
+            .prove_forged_finals(&tables, &changed, &mut producer)
+            .expect("adversary emits genuine finals");
+        assert_eq!(proof.skip_values, ordinary.0.skip_values);
+        assert_eq!(proof.rounds, ordinary.0.rounds);
+        assert_eq!(tail, ordinary.1);
+        assert_ne!(proof.final_values, ordinary.0.final_values);
+        assert_eq!(
+            z.verify(&proof, &mut transcript()).err(),
+            Some(Error::FinalEvaluationMismatch)
+        );
+        let slices = 1 << skip;
+        for (i, table) in changed.iter().enumerate() {
+            for b in 0..slices {
+                let mut point: Vec<_> = (0..skip)
+                    .map(|bit| K::from_i64(((b >> (skip - bit - 1)) & 1) as i64))
+                    .collect();
+                point.extend_from_slice(&tail);
+                let weights = stele_poly::eq_table(&point).expect("point");
+                let actual = table
+                    .iter()
+                    .zip(weights)
+                    .fold(K::from_i64(0), |v, (x, w)| v + *x * w);
+                assert_eq!(
+                    proof.final_values[i * slices + b],
+                    actual,
+                    "true changed-table evaluation"
+                );
+            }
+        }
+        // RFC-0006 A3: independently replay the emitted frames, including changed finals.
+        let mut replay = transcript::<K>();
+        replay
+            .absorb(AbsorbLabel::Zero, &z.encode().expect("descriptor"))
+            .expect("zero");
+        for _ in 0..m - u32::from(skip) {
+            replay.challenge(ChallengeLabel::ZeroWeight).expect("alpha");
+        }
+        if skip > 0 {
+            let bytes = stele_sumcheck::message_bytes(
+                instance.id,
+                proof.skip_values.len() as u32,
+                &proof.skip_values,
+            )
+            .expect("skip");
+            replay.absorb(AbsorbLabel::ZeroSkip, &bytes).expect("skip");
+            replay.challenge(ChallengeLabel::Sumcheck).expect("u");
+        }
+        for (h, row) in proof.rounds.iter().enumerate() {
+            let bytes = stele_sumcheck::message_bytes(instance.id, h as u32, row).expect("row");
+            replay.absorb(AbsorbLabel::Round, &bytes).expect("row");
+            assert_eq!(
+                replay.challenge(ChallengeLabel::Sumcheck).expect("tail"),
+                tail[h]
+            );
+        }
+        let mut finals = instance.id.to_le_bytes().to_vec();
+        finals.extend_from_slice(&(tables.len() as u32).to_le_bytes());
+        finals.extend_from_slice(&(slices as u32).to_le_bytes());
+        for value in &proof.final_values {
+            finals.extend_from_slice(value.to_le_bytes().as_ref());
+        }
+        replay
+            .absorb(AbsorbLabel::ZeroFinal, &finals)
+            .expect("finals");
+        assert_eq!(producer.usage(), replay.usage());
+        assert_eq!(
+            producer.challenge(ChallengeLabel::Sumcheck),
+            replay.challenge(ChallengeLabel::Sumcheck)
+        );
+
+        let mut missing_table = tables.clone();
+        missing_table.pop();
+        let mut short_table = tables.clone();
+        short_table[0].pop();
+        for bad in [missing_table, short_table] {
+            for (rounds, finals) in [(&bad, &tables), (&tables, &bad)] {
+                let mut rejected = transcript::<K>();
+                assert_eq!(
+                    z.prove_forged_finals(rounds, finals, &mut rejected).err(),
+                    Some(Error::PublicShape)
+                );
+                assert_eq!(
+                    rejected.usage(),
+                    transcript::<K>().usage(),
+                    "shape rejected before transcript work"
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "controls")]
+#[test]
+fn rejects_forged_finals_from_one_changed_table_entry() {
+    forged_finals::<QM31>();
+    forged_finals::<OM31>();
+}
+
 fn transcript<K: ChallengeField>() -> Transcript<K> {
     Transcript::new(b"zerocheck").expect("public")
 }

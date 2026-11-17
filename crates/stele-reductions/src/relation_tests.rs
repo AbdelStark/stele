@@ -36,7 +36,7 @@ fn squares() -> (Relation, Values) {
 
 fn attempt(rel: &Relation, values: &Values, plan: &Plan) -> Result<Ledger, Error> {
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, rel, plan, values, values, &[])?;
+    let proof = prove_plan(&mut t, rel, plan, values, values, &[], None)?;
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     verify(&mut t, rel, &[], &proof, Sources::Expander)
 }
@@ -81,7 +81,7 @@ fn rejects_committed_multiplicities_differing_from_the_tree() {
 fn lie(rel: &Relation, committed: &Values, values: &Values) -> Result<Ledger, Error> {
     let plan = plan(rel, Sources::Expander).expect("plan");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, rel, &plan, committed, values, &[])
+    let proof = prove_plan(&mut t, rel, &plan, committed, values, &[], None)
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     verify(&mut t, rel, &[], &proof, Sources::Expander)
@@ -150,6 +150,125 @@ fn accepts_honest_composed() {
     let (rel, values) = composed();
     assert!(stele_ir::relation::check(&rel, &values).is_ok());
     assert!(lie(&rel, &values, &values).is_ok());
+}
+
+#[cfg(feature = "controls")]
+#[test]
+fn rejects_forged_identity_finals_after_honest_recommitment() {
+    let (rel, values) = composed();
+    let changed = tampered(&rel, &values, ColumnId(2), 0);
+    assert_eq!(stele_ir::relation::check(&rel, &values), Ok(()));
+    assert_eq!(
+        stele_ir::relation::check(&rel, &changed),
+        Err(stele_ir::relation::Violation::Compose {
+            relation: "v".to_string(),
+            index: 0,
+        })
+    );
+    let saved = values.clone();
+    for set in [
+        Sources::Expander,
+        Sources::CircleAll,
+        Sources::CircleAllGrind,
+    ] {
+        let ordinary = prove(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &values,
+            &[],
+            set,
+        )
+        .expect("honest proof");
+        let restored = prove_forged(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &values,
+            &[],
+            set,
+            &Forge::default(),
+        )
+        .expect("restored witness proof");
+        assert_eq!(
+            restored, ordinary,
+            "default forgery retains every proof byte"
+        );
+        verify(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &[],
+            &restored,
+            set,
+        )
+        .expect("honest acceptance");
+        let forge = Forge {
+            witness: Some((ColumnId(2), 0)),
+            ..Forge::default()
+        };
+        let false_proof = prove_forged(
+            &mut Transcript::new(PUBLIC).expect("public input"),
+            &rel,
+            &values,
+            &[],
+            set,
+            &forge,
+        )
+        .expect("producer must emit the false witness proof");
+        assert_eq!(values, saved, "the reference witness stays unchanged");
+        assert_ne!(
+            &false_proof.groups[0][..32],
+            &ordinary.groups[0][..32],
+            "changed witness must be recommitted"
+        );
+        assert_eq!(
+            verify(
+                &mut Transcript::new(PUBLIC).expect("public input"),
+                &rel,
+                &[],
+                &false_proof,
+                set
+            )
+            .err(),
+            Some(Error::Sumcheck(
+                stele_sumcheck::Error::FinalEvaluationMismatch
+            ))
+        );
+    }
+}
+
+#[cfg(feature = "controls")]
+#[test]
+fn rejects_invalid_forged_witness_selectors() {
+    let (mut rel, values) = composed();
+    let public = rel.add_column("public", Kind::Public(vec![0; 4]), Width::unsigned(1), 2);
+    for selector in [
+        (ColumnId(u32::MAX), 0),
+        (ColumnId(2), 4),
+        (ColumnId(2), 1),
+        (ColumnId(3), 0),
+        (public, 0),
+    ] {
+        let mut t = Transcript::new(PUBLIC).expect("public input");
+        assert_eq!(
+            prove_forged(
+                &mut t,
+                &rel,
+                &values,
+                &[],
+                Sources::Expander,
+                &Forge {
+                    witness: Some(selector),
+                    ..Forge::default()
+                }
+            )
+            .err(),
+            Some(Error::Unsupported),
+            "missing column/entry, out-of-range increment, non-identity or public column"
+        );
+        assert_eq!(
+            t.usage(),
+            Transcript::<K>::new(PUBLIC).expect("public input").usage()
+        );
+    }
 }
 
 #[test]
@@ -319,7 +438,7 @@ fn rejects_member_values_that_do_not_sum_to_the_batched_claim() {
     assert_eq!(forged.checks.len(), 1);
     forged.checks[0].split = Some(committed.clone());
     let mut t = Transcript::new(PUBLIC).expect("transcript");
-    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, &[])
+    let proof = prove_plan(&mut t, &rel, &forged, &committed, &values, &[], None)
         .expect("a lying prover still produces bytes");
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
@@ -512,7 +631,7 @@ fn rejects_a_missing_or_foreign_model_certificate() {
     );
     let mut t = Transcript::new(PUBLIC).expect("transcript");
     assert_eq!(
-        prove_plan(&mut t, &rel, &plan, &values, &values, &[]).err(),
+        prove_plan(&mut t, &rel, &plan, &values, &values, &[], None).err(),
         Some(Error::Weights)
     );
 }
@@ -549,7 +668,7 @@ fn rejects_any_forged_weight_among_several() {
     for forged in 0..lengths.len() {
         let values = tampered(&rel, &owner, ColumnId(forged as u32), 1);
         let mut t = Transcript::new(PUBLIC).expect("transcript");
-        let proof = prove_plan(&mut t, &rel, &plan, &values, &values, &model)
+        let proof = prove_plan(&mut t, &rel, &plan, &values, &values, &model, None)
             .expect("a lying prover still produces bytes");
         let mut t = Transcript::new(PUBLIC).expect("transcript");
         assert_eq!(

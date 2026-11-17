@@ -280,8 +280,31 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
         tables: &[Vec<K>],
         t: &mut Transcript<K>,
     ) -> Result<(Proof<K>, Vec<K>), Error> {
+        self.prove_tables(tables, None, t)
+    }
+    /// Controls only: use honest round tables but emit genuine evaluations of
+    /// `final_tables` (RFC-0026 §9 NC-1302). Only this producer's final truth
+    /// check is omitted; the unchanged A3 verifier must reject the false identity.
+    #[cfg(feature = "controls")]
+    pub fn prove_forged_finals(
+        &self,
+        tables: &[Vec<K>],
+        final_tables: &[Vec<K>],
+        t: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Vec<K>), Error> {
+        self.prove_tables(tables, Some(final_tables), t)
+    }
+    fn prove_tables(
+        &self,
+        tables: &[Vec<K>],
+        final_tables: Option<&[Vec<K>]>,
+        t: &mut Transcript<K>,
+    ) -> Result<(Proof<K>, Vec<K>), Error> {
         let (degree, s, j, count) = self.shape()?;
         check_tables(self.instance, tables)?;
+        if let Some(actual) = final_tables {
+            check_tables(self.instance, actual)?;
+        }
         let width = 1usize.checked_shl(j).ok_or(Error::Capacity)?;
         let alpha = self.start(t, j)?;
         let eq = crate::parallel::eq_table(&alpha)?;
@@ -315,7 +338,7 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
             &mut final_values,
             tables.len().checked_mul(s).ok_or(Error::Capacity)?,
         )?;
-        for table in tables {
+        for table in final_tables.unwrap_or(tables) {
             for slice in table.chunks_exact(width) {
                 let mut scratch = zeros(width)?;
                 scratch.copy_from_slice(slice);
@@ -325,7 +348,17 @@ impl<K: ChallengeField + Eq> Zerocheck<'_, K> {
                 final_values.push(scratch[0]);
             }
         }
-        self.finish(t, &final_values, &weights, running)?;
+        if final_tables.is_some() {
+            // RFC-0006 A3: bind the actual emitted finals, never the reference values.
+            let mut bytes = message_bytes::<K>(self.instance.id, tables.len() as u32, &[])?;
+            append(&mut bytes, &(s as u32).to_le_bytes())?;
+            for value in &final_values {
+                append(&mut bytes, value.to_le_bytes().as_ref())?;
+            }
+            t.absorb(AbsorbLabel::ZeroFinal, &bytes)?;
+        } else {
+            self.finish(t, &final_values, &weights, running)?;
+        }
         Ok((
             Proof {
                 skip_values,

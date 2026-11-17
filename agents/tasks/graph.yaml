@@ -3823,13 +3823,35 @@ tasks:
   - RFC-0010 A14
   skill: rfc-author
   crate: spec
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b0-root-control-erratum
   acceptance:
   - append a development-tier erratum for NC-1306 with an exact policy-specific rejection and unchanged single-root substitution; preserve the Policy 1 Merkle-root expectation
   - explain the ground source certificate's rejection order from Accepted text and actual L0/L1 public-proof qualification; no verifier change, weakened predicate or new executed-control credit
   - obtain independent review from another lane and update the RFC index, ADR and catalog on acceptance; E16-10b remains blocked on RFC-0026 A17 until acceptance
+- id: E16-10b1
+  epic: E16
+  title: Expose a producer-only adversary with honest rounds and genuine changed finals
+  lane: V
+  depends:
+  - E16-10
+  - E8-02f3c
+  rfc:
+  - RFC-0006 A3
+  - RFC-0026 §3.2, §4 step 4, §9 NC-1302
+  - RFC-0027 §5
+  skill: soundness-auditor
+  crate: stele-sumcheck+stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-10b1-adversarial-finals
+  acceptance:
+  - introduce only a controls-feature producer interface that computes zerocheck rounds from honest reference tables and actual finals from a single changed witness, with every later message absorbing those emitted finals
+  - unchanged witness through the interface matches ordinary proof bytes; the plain checker rejects the one-entry near miss and the real primitive/engine verifier rejects genuine changed finals with exact FinalEvaluationMismatch
+  - both table shapes and witness selectors are checked; unchanged verifier and ordinary producer behavior, transcript derivation, ledger lines, no_std boundary and proof pins
+  - obtain lane E and P ownership review before dependent composed-control implementation; this interface merges first under Workflow 12
+  - retire the producer-self-check obstruction to testing the final-evaluation binding, keep L0/L1 and mandatory gates green, and grant no composed NC-1302 catalog credit until E16-10b
 - id: E16-10b
   epic: E16
   title: Complete the identity, root and column-routing composed controls
@@ -3837,6 +3859,7 @@ tasks:
   depends:
   - E16-10a
   - E16-10b0
+  - E16-10b1
   rfc:
   - RFC-0026 §2.3, §4, §9, A4, A17
   skill: soundness-auditor

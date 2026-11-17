@@ -1346,7 +1346,7 @@ pub fn prove(
     let mut laps = parallel::Laps::start();
     let plan = plan(relation, sources)?;
     laps.lap("dev/plan");
-    prove_plan(t, relation, &plan, values, values, model)
+    prove_plan(t, relation, &plan, values, values, model, None)
 }
 
 /// A malicious prover for controls (feature `controls`; never a verifier input).
@@ -1357,6 +1357,10 @@ pub struct Forge {
     pub table: Option<usize>,
     /// Read public column `c`'s entry `j` plus one while proving.
     pub public: Option<(ColumnId, usize)>,
+    /// Increment one in-range witness entry used by an identity. Commit and open
+    /// the changed values, but use reference values for the zerocheck rounds
+    /// (RFC-0026 §9 NC-1302); final evaluations come from the changed values.
+    pub witness: Option<(ColumnId, usize)>,
 }
 
 /// [`prove`] as a malicious prover: the plan and the absorbed relation digest are
@@ -1381,11 +1385,50 @@ pub fn prove_forged(
             _ => return Err(Error::Unsupported),
         }
     }
-    prove_plan(t, &read, &plan, values, values, model)
+    let changed = forge
+        .witness
+        .map(|(c, j)| {
+            let column = read.columns.get(c.0 as usize).ok_or(Error::Unsupported)?;
+            if !matches!(column.kind, Kind::Witness(_))
+                || !plan.sizes.iter().any(|&m| {
+                    identities(&read, m).iter().any(|identity| {
+                        identity
+                            .terms
+                            .iter()
+                            .any(|term| term.factors.iter().any(|r| r.column == c))
+                    })
+                })
+            {
+                return Err(Error::Unsupported);
+            }
+            let mut entries = values.get(&read, c).ok_or(Error::Unsupported)?.to_vec();
+            let entry = entries.get_mut(j).ok_or(Error::Unsupported)?;
+            *entry = entry
+                .checked_add(1)
+                .filter(|v| column.width.contains(*v))
+                .ok_or(Error::Unsupported)?;
+            let mut changed = values.clone();
+            changed
+                .set(&read, c, entries)
+                .map_err(|_| Error::Unsupported)?;
+            Ok::<_, Error>(changed)
+        })
+        .transpose()?;
+    let actual = changed.as_ref().unwrap_or(values);
+    prove_plan(
+        t,
+        &read,
+        &plan,
+        actual,
+        actual,
+        model,
+        changed.as_ref().map(|_| values),
+    )
 }
 
 /// The prover. `committed` fills the group messages (step 2); `values` drives every
-/// later message and claim. They differ only in malicious-prover controls.
+/// later message and claim. Controls alone may supply `round_values` for zerocheck
+/// rounds while retaining genuine `values` finals (RFC-0026 §9 NC-1302).
 fn prove_plan(
     t: &mut Transcript<K>,
     relation: &Relation,
@@ -1393,6 +1436,7 @@ fn prove_plan(
     committed: &Values,
     values: &Values,
     model: &[(&PreparedSource<'_, K>, &VerifiedCertificate<K>)],
+    round_values: Option<&Values>,
 ) -> Result<Proof, Error> {
     let certificates: Vec<&VerifiedCertificate<K>> = model.iter().map(|(_, c)| *c).collect();
     model_check(plan, &certificates)?;
@@ -1484,22 +1528,31 @@ fn prove_plan(
     for &m in &plan.sizes {
         let lambdas = identity_lambdas(t, relation, m)?;
         let (inputs, instance) = combine(relation, m, &lambdas);
-        let mut tables = Vec::new();
-        for r in &inputs {
-            let col = column(relation, values, r.column)?;
-            let mut table = vec![K::from_i64(0); 1 << m];
-            stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
-                for (j, out) in chunk.iter_mut().enumerate() {
-                    *out = K::from_i64(col[r.index((start + j) as u64)]);
-                }
-            });
-            tables.push(table);
-        }
+        let tables_for = |values: &Values| -> Result<Vec<Vec<K>>, Error> {
+            let mut tables = Vec::new();
+            for r in &inputs {
+                let col = column(relation, values, r.column)?;
+                let mut table = vec![K::from_i64(0); 1 << m];
+                stele_sumcheck::parallel::for_each_chunk(&mut table, |start, chunk| {
+                    for (j, out) in chunk.iter_mut().enumerate() {
+                        *out = K::from_i64(col[r.index((start + j) as u64)]);
+                    }
+                });
+                tables.push(table);
+            }
+            Ok(tables)
+        };
+        let tables = tables_for(values)?;
+        let reference = round_values.map(tables_for).transpose()?;
         let z = zerocheck::Zerocheck {
             instance: &instance,
             skip: 0,
         };
-        let (zp, point) = z.prove_with_point(&tables, t)?;
+        let (zp, point) = match reference.as_deref() {
+            #[cfg(feature = "controls")]
+            Some(original) => z.prove_forged_finals(original, &tables, t),
+            _ => z.prove_with_point(&tables, t),
+        }?;
         let mut out = Vec::new();
         for row in &zp.rounds {
             put(&mut out, row);
