@@ -4056,7 +4056,7 @@ pub mod bench {
             &self.0.terms
         }
 
-        /// Remaining vanishing variable per factor; `None` also denotes public factors.
+        /// Original vanishing-variable coordinate per factor; `None` denotes public factors.
         pub fn vanishing(&self) -> impl Iterator<Item = Option<usize>> + '_ {
             self.0.factors.iter().map(|f| f.v)
         }
