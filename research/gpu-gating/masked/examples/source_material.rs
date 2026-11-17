@@ -1,4 +1,4 @@
-//! E16-40b: cold complete source preparation, including downloads and host salts.
+//! RFC-0014 §4/A1 (E16-40b): cold source preparation, downloads and host salts.
 use std::process::ExitCode;
 use std::time::Instant;
 use stele_masked_gpu_bench::source::{Shape, BLOWUP};

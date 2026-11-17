@@ -1,4 +1,4 @@
-//! E16-36: hiding-source preparation on the device (feature `cuda`): `M'` uploaded,
+//! RFC-0014 §4/A1: hiding-source preparation on the device (feature `cuda`): `M'` uploaded,
 //! transposed to symbol-major, Circle-encoded in place, leaves `salt || column` and
 //! the Merkle tree hashed on the device. The E16-40b material path also retains and
 //! downloads the encoding and every node for complete response comparison.
