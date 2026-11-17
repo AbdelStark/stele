@@ -55,7 +55,10 @@ Fresh post-execution reviewers `mac_profile_results_spec_review` and
 `48184a9a`, including the executable-preservation record. Each independently
 replayed the source/archive, command, proof, resource and import checks above.
 
-Workspace/research formatting and workspace all-target/all-feature Clippy passed.
-Workspace tests, the full native gate and the parity scaffold guard are still
-running or queued in one branch gate sequence. Current-main/intended-merge-tree
-validation precedes merge in lane-stack order. The task remains in progress.
+The local gate sequence exited zero: workspace/research formatting, workspace
+all-target/all-feature Clippy, workspace tests, the full native gate, parity
+scaffold guard, documentation links, generated scoreboard and diff checks passed.
+It began at `c49f6290`; subsequent changes record evidence and reviews only.
+The parity script checks remaining scaffolds and grants no device-proof credit.
+Current-main/intended-merge-tree validation still precedes merge in lane-stack
+order. The task remains in progress.
