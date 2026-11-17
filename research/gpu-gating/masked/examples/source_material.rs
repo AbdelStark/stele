@@ -79,10 +79,6 @@ fn run() -> Result<(), String> {
             start.elapsed().as_nanos(), hex(&material.root()), t.upload.as_nanos(), t.encode.as_nanos(), t.merkle.as_nanos(), t.download.as_nanos(), t.assemble.as_nanos());
         println!("upload_bytes={}\ndownload_bytes={}\ndevice_retained_bytes={}\ndevice_buffer_peak_bytes={}\nhost_material_owned_bytes={}",
             t.upload_bytes, t.download_bytes, t.retained_bytes, t.buffer_peak_bytes, material.owned_bytes());
-        println!(
-            "host_assembly_descriptor_bytes={}",
-            material.assembly_descriptor_bytes()
-        );
         if let Some(expected) = reference {
             if material.root() != expected.source().root() {
                 return Err("root mismatch".into());
