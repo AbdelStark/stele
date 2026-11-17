@@ -123,11 +123,12 @@ logs are `/tmp/e16-10b-spec-sensitivity-{1302,1306,1308}.{patch,log}`; their
 SHA-256 manifest, also covering the original-verifier log, is
 `/tmp/e16-10b-spec-sensitivity.sha256`.
 
-Accounting-gate attempt: system Python 3.9 first failed on `tomllib`, then a
-Python-3.12 top-level retry found a nested Python-3.9 `zip(strict=True)` failure.
-The corrected run with Python 3.12 on PATH is still executing the existing
-`stele-reductions --lib` validation; session 95850, log
-`/tmp/e16-10b-spec-accounting.log`. No successful full-gate result is claimed here.
+Accounting gate passed: the existing corrected run with Python 3.12 on PATH
+completed with gate return code 0 and session 95850 terminal exit code 0.
+The reviewer consumed that original session and inspected the complete log at
+`/tmp/e16-10b-spec-accounting.log`; no gate was restarted. Its built-in independent
+verifier/Python parity checks also passed; no separate parity-suite run is
+claimed. Earlier Python-3.9 environment failures were superseded by this run.
 
 Full workspace/native, digest/ladder CI, Python-verifier parity and GPU parity
 were not duplicated by this reviewer. Integration must still verify required
