@@ -1,6 +1,6 @@
 // E16-35 (ADR-123): device kernels for the dev-zk masked rounds (RFC-0013 A5 item 2,
-// RFC-0008 A7 item 4). Compiled at run time by NVRTC; the round kernel is generated per
-// round shape by gpu.rs and appended to this source. Integer arithmetic only; every
+// RFC-0008 A7 item 4). Compiled at run time by NVRTC with the fixed descriptor round
+// program in round.cuh/round.cu. Integer arithmetic only; every
 // value leaving a kernel is canonical in [0, p). E16-40h extends the field helpers
 // to raw lazy limbs; older E16-21 measurements retain their original source.
 typedef unsigned int u32;
