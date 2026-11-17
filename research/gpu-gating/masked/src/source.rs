@@ -8,6 +8,10 @@ use crate::M31;
 use stele_reductions::stele_hash::mask::SOURCE_SALT;
 use stele_reductions::stele_hash::merkle::Descriptor;
 
+#[path = "source_material.rs"]
+mod material;
+pub use material::{material, Material};
+
 const P: u32 = 0x7fff_ffff;
 
 fn mul(a: (M31, M31), b: (M31, M31)) -> (M31, M31) {
@@ -320,6 +324,11 @@ pub fn salt(key: &[u32; 8], block: &[u32; 16], len: u32, i: usize) -> [u32; 8] {
 /// The root of the tree over the symbol-major codewords `enc` (`leaves × rows`), each
 /// leaf `salt || column`; leaves are a power of two, all real.
 pub fn root(desc: &Descriptor, enc: &[u32], rows: usize, seed: &[u8; 32]) -> [u8; 32] {
+    let nodes = tree_nodes(desc, enc, rows, seed);
+    material::digest(&nodes[nodes.len() - 8..])
+}
+
+fn tree_nodes(desc: &Descriptor, enc: &[u32], rows: usize, seed: &[u8; 32]) -> Vec<u32> {
     let leaves = desc.count as usize;
     let mut head = prefix(desc, desc.kind as u8);
     let key: [u32; 8] = core::array::from_fn(|i| le_words(seed)[i]);
@@ -339,6 +348,7 @@ pub fn root(desc: &Descriptor, enc: &[u32], rows: usize, seed: &[u8; 32]) -> [u8
             })
         })
         .collect();
+    let mut nodes: Vec<u32> = level.iter().flatten().copied().collect();
     let node_prefix = prefix(desc, 1);
     let mut height = 0u32;
     while level.len() > 1 {
@@ -360,12 +370,9 @@ pub fn root(desc: &Descriptor, enc: &[u32], rows: usize, seed: &[u8; 32]) -> [u8
                 hash_words(len, &|i| w[i])
             })
             .collect();
+        nodes.extend(level.iter().flatten());
     }
-    let mut out = [0u8; 32];
-    for (o, w) in out.chunks_mut(4).zip(level[0]) {
-        o.copy_from_slice(&w.to_le_bytes());
-    }
-    out
+    nodes
 }
 
 use crate::{Rng, QM31};

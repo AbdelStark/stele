@@ -5126,7 +5126,7 @@ tasks:
   - RFC-0018 A1, A2
   skill: benchmark-runner
   crate: stele-reductions+research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40a-dev-zk-stage-inventory
   acceptance:
@@ -5135,3 +5135,26 @@ tasks:
   - ordinary and instrumented same-input proofs remain byte-identical; default and no_std builds, all bindings, self-verification and source lifetimes remain unchanged
   - collect a current H100 CPU baseline with explicit host, thread affinity, commit, toolchain, run count and verified proof hashes in a validated ledger; this qualifies costs for ADR-127 reopening and grants no GPU integration or GO decision
   - obtain owning lane P review and keep L0/L1 and mandatory gates green; this independent lane-V stack does not use the preceding column-routing producer interface
+
+- id: E16-40b
+  epic: E16
+  title: Measure complete device-prepared source material and transfer cost
+  lane: V
+  depends:
+  - E16-36
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0010 A9
+  - RFC-0012 A3
+  - RFC-0013 A8
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40b-source-material
+  acceptance:
+  - extend the existing research source benchmark to retain every encoded column and Merkle level; keep the existing root-only benchmark scope explicit and unchanged
+  - compare complete salted column payloads and authentication paths with production PreparedSource on seeded small cases, including one-word tampering rejected by the ordinary Merkle verifier; refuse absent CUDA and empty case inventories in the new device check
+  - measure cold context/module setup, upload, encoding, Merkle, complete material download and any host assembly separately on the same H100 allocation as the CPU reference; preserve all samples and validate ledgers
+  - report retained storage, transition overlap and transfer bytes without mistaking tracked buffers or host RSS for the complete RFC-0014 A1 device peak; do not claim integrated certificates, full-proof GPU parity or a GO decision
+  - keep core prover and verifier code unchanged; obtain owning lane E review and mandatory gates before merging this independent lane-V successor to E16-40a, whose new instrumentation is not used
