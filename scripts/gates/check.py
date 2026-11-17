@@ -2063,6 +2063,7 @@ def standard_quarantine(root):
     # resolve Development (proven: false) and stay on the development path (below); the
     # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
     policy_two_only = {'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+                       'crates/stele-reductions/tests/batch_bench.rs',
                        'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'
                          r'|\bpolicy::\{[^}]*\bTwo\b|\bPolicy::\{[^}]*\bTwo\b')
@@ -2091,6 +2092,7 @@ def standard_quarantine(root):
                    'tests/negative-controls/src/registry.rs',  # A16 actual byte-5 controls
                    # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
+                   'crates/stele-reductions/tests/batch_bench.rs',
                    'crates/stele-pcs/src/producer_tests.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
