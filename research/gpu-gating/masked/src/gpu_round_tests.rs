@@ -2,7 +2,7 @@
 use super::*;
 use crate::{challenge, cpu, round_cases::synthetic, Rng};
 
-fn lift(dev: &Device, words: &mut CudaSlice<u32>, used: usize) {
+pub(super) fn lift(dev: &Device, words: &mut CudaSlice<u32>, used: usize) {
     let mut host = dev.stream.clone_dtoh(words).unwrap();
     for word in &mut host[..used] {
         assert!(*word < M31::MODULUS);

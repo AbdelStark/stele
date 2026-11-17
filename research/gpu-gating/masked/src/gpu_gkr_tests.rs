@@ -1,0 +1,113 @@
+//! RFC-0008 A7 / RFC-0014 §5: actual GKR domains, rounds and all compact finals.
+//! The observed proof uses CPU values; CUDA comparisons supply no GPU-proof credit.
+use super::*;
+use crate::{
+    gkr,
+    gkr_cases::{observe, CASES, SEED},
+};
+use stele_reductions::zk::claims::bench::Masked;
+
+fn tables(reference: &Masked<K>) -> Tables {
+    reference
+        .tables()
+        .map(|(x, r)| (x.to_vec(), r.to_vec()))
+        .collect()
+}
+
+fn table_bytes(state: &DeviceMasked<'_>) -> usize {
+    4 * state
+        .factors
+        .iter()
+        .map(|f| f.x.slice().len() + f.r.as_ref().map_or(0, |r| r.slice().len()))
+        .sum::<usize>()
+}
+
+fn read_tables(state: &DeviceMasked<'_>, downloaded: &mut usize) -> Tables {
+    *downloaded += table_bytes(state);
+    state.tables().expect("canonical device tables")
+}
+
+#[test]
+#[ignore = "requires an explicitly allocated H100 and an external deadline"]
+fn matches_reference_genuine_gkr_on_h100() {
+    assert!(available(), "required CUDA driver and NVRTC absent");
+    let dev = Device::new().expect("CUDA device");
+    assert!(dev.name.contains("H100"), "H100 required");
+    let mut totals = [0; 4];
+    let mut representations = 0;
+    let mut rounds = 0;
+    for case in 0..CASES {
+        eprintln!("gkr_case_start={case} seed={}", SEED + 2 * case as u64);
+        let seen = observe(case, |step| {
+            let shape = gkr::shape(&step.reference()?).expect("genuine production tables");
+            let input_bytes: usize = shape
+                .factors
+                .iter()
+                .flat_map(|f| std::iter::once(&f.x).chain(f.mask.as_ref().map(|(r, _)| r)))
+                .map(|s| match s {
+                    Source::Column { values } => 4 * values.len(),
+                    Source::Tile { period } => 16 * period.len(),
+                    _ => unreachable!("the production adapter only packs existing tables"),
+                })
+                .sum();
+            for raw in [false, true] {
+                let mut reference = step.reference()?;
+                let (mut state, _, _) = dev.build(&shape).expect("upload production factors");
+                let initial = state.device_buffer_bytes();
+                let mut retained = initial;
+                let mut downloaded = 0;
+                let mut raw_transfers = 0;
+                assert_eq!(read_tables(&state, &mut downloaded), tables(&reference));
+                if raw {
+                    let used = state.coef.len();
+                    raw_transfers += 8 * used;
+                    super::round_tests::lift(&dev, &mut state.coef, used);
+                }
+                for point in step.point {
+                    if raw {
+                        raw_transfers += 2 * table_bytes(&state);
+                        for factor in &mut state.factors {
+                            for table in std::iter::once(&mut factor.x).chain(factor.r.iter_mut()) {
+                                let used = state.len * if table.is_base() { 1 } else { 4 };
+                                let (Buf::Base(words) | Buf::Ext(words)) = table;
+                                super::round_tests::lift(&dev, words, used);
+                            }
+                        }
+                    }
+                    assert_eq!(
+                        state.round().unwrap(),
+                        reference.round().unwrap(),
+                        "case={case} step={} raw={raw}",
+                        step.step
+                    );
+                    state.fold(*point).unwrap();
+                    reference.fold(*point).unwrap();
+                    retained = retained.max(state.device_buffer_bytes());
+                    assert_eq!(read_tables(&state, &mut downloaded), tables(&reference));
+                    rounds += 1;
+                }
+                let expected: Vec<_> = reference.tables().map(|(x, _)| x[0]).collect();
+                let actual: Vec<_> = read_tables(&state, &mut downloaded)
+                    .iter()
+                    .map(|(x, _)| x[0])
+                    .collect();
+                gkr::check_finals(step, &expected, &actual)
+                    .expect("all compact/expanded/routed finals");
+                eprintln!("gkr_state case={case} step={} raw={raw} variables={} input_bytes={input_bytes} descriptor_upload_bytes={} round_upload_bytes={} table_download_bytes={downloaded} round_download_bytes={} raw_transfer_bytes={raw_transfers} initial_buffer_bytes={initial} max_retained_bytes={retained}", step.step, shape.n, state.descriptor_upload_bytes(), shape.n * state.round_upload_bytes(), 16 * shape.n * (shape.degree + 1));
+                representations += 1;
+            }
+            Ok(())
+        });
+        for (total, n) in totals.iter_mut().zip(seen) {
+            *total += n;
+        }
+        eprintln!(
+            "gkr_case_pass={case} first={} interior={} leaf={} compact={}",
+            seen[0], seen[1], seen[2], seen[3]
+        );
+    }
+    assert!(totals.iter().all(|n| *n > 0));
+    assert_eq!(representations, 2 * totals[..3].iter().sum::<usize>());
+    assert!(rounds > representations);
+    eprintln!("gkr_device_statements={CASES} first={} interior={} leaf={} compact={} representations={representations} rounds={rounds} seed={SEED} device={}", totals[0],totals[1],totals[2],totals[3],dev.name);
+}

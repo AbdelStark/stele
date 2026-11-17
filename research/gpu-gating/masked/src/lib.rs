@@ -21,6 +21,10 @@ mod batch;
 mod batch_cases;
 #[cfg(test)]
 mod field_cases;
+#[cfg(any(test, feature = "cuda"))]
+pub mod gkr;
+#[cfg(test)]
+mod gkr_cases;
 #[cfg(feature = "cuda")]
 pub mod gpu;
 #[cfg(feature = "cuda")]

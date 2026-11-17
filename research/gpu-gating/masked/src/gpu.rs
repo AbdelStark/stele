@@ -42,6 +42,10 @@ mod field_tests;
 #[path = "gpu_round_tests.rs"]
 mod round_tests;
 
+#[cfg(test)]
+#[path = "gpu_gkr_tests.rs"]
+mod gkr_tests;
+
 /// `(x, r)` per factor, read back from the device.
 pub type Tables = Vec<(Vec<K>, Vec<K>)>;
 
