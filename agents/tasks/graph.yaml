@@ -5405,3 +5405,29 @@ tasks:
   - count descriptor upload bytes, per-round pointer/type transfers and retained explicit device buffers; report repeated factor reads and host staging, cold context/module compilation, construction and whole-command costs separately from module/allocator overhead and complete pipeline memory; publish performance numbers only in validated ledgers
   - one reviewed implementation and one bounded H100 qualification campaign; phase or case deadlines kill descendants and retain failure evidence; reject and report the candidate before another optimization if complete qualification fails
   - obtain independent owning-GPU and another-lane reviews and mandatory current-main/intended-tree gates in lane-stack order; research only under ADR-123, no compact-final, actual-size, full-proof, complete-budget or ADR-127 GO credit from reduced inventory parity
+
+- id: E16-40m
+  epic: E16
+  title: Qualify resident CUDA GKR rounds and compact finals on genuine production inputs
+  lane: V
+  depends:
+  - E16-35
+  - E16-40g
+  rfc:
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0008 A7
+  - RFC-0013 A5 items 1-6, A8
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40m-gkr-device
+  acceptance:
+  - retire the untested production compact-GKR consumer risk in docs/plan.md §9 using the already merged GkrCase interface; preserve every factor, term, mask coordinate, degree, actual challenge and original table dimension
+  - adapt genuine production Masked tables to the existing research device path with checked dimensions and metadata; keep host factor construction and compact expansion explicit and counted, with no device-construction or whole-stage acceleration credit for uploaded CPU-built tables
+  - write honest, malformed-input and near-miss tests before implementation; compare every initial table, round polynomial, folded table and compact final before expansion; a changed compact slot must fail even when production expansion ignores it
+  - compare expanded finals and all routed source/block/child claims with the genuine CPU step, including first, interior and leaf steps, heterogeneous members, selectors, shifts, padding, extension coefficients, narrow and balanced lifetime geometry
+  - qualify all GKR steps from 1000 seeded synthetic production statements on actual H100, using canonical and raw lazy table/coefficient representations and unchanged actual transcript challenges; verify each ordinary observed CPU proof, fail on absent CUDA or any missing case, and never count observer CUDA work as an integrated GPU proof
+  - report host reconstruction/conversion/expansion/routing and upload/download work separately from resident rounds; account explicit retained device capacities and host copies without claiming complete pipeline memory or performance without a validated ledger
+  - one reviewed implementation and one bounded H100 campaign; deadline cleanup kills descendants and preserves failures; report and reject a failed candidate before further optimization
+  - obtain owning-GPU and another-lane reviews, hardware evidence and mandatory gates in lane-stack order; this research successor to E16-40l consumes only already merged production interfaces and changes no core backend, dependency, challenge, binding, committed tensor, proof bytes or ADR-127 decision
