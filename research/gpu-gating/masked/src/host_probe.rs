@@ -1,4 +1,4 @@
-//! Execute actual CUDA expressions as C++ for CPU-only differential tests.
+//! RFC-0014 §5: execute actual CUDA expressions as C++ for CPU differential tests.
 use std::{
     fs,
     process::{Command, Stdio},
