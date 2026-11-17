@@ -3823,7 +3823,7 @@ tasks:
   - RFC-0010 A14
   skill: rfc-author
   crate: spec
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-10b0-root-control-erratum
   acceptance:
