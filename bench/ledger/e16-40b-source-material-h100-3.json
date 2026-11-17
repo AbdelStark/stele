@@ -35,6 +35,78 @@
  },
  "kind": "micro",
  "model_config": {
+  "benchmark_plan": {
+   "capture_sha256": "816c6e6f629ab3c0dd00145ad524176b7d1cd9de8c494024e155f611e67c5adb",
+   "checks": [
+    [
+     11,
+     15,
+     "check",
+     40
+    ],
+    [
+     11,
+     16,
+     "check",
+     40
+    ],
+    [
+     11,
+     17,
+     "check",
+     40
+    ]
+   ],
+   "command_order": [
+    "check-15",
+    "check-16",
+    "check-17",
+    "cpu-15-1",
+    "gpu-15-1",
+    "cpu-16-1",
+    "gpu-16-1",
+    "cpu-17-1",
+    "gpu-17-1",
+    "gpu-15-2",
+    "cpu-15-2",
+    "gpu-16-2",
+    "cpu-16-2",
+    "gpu-17-2",
+    "cpu-17-2",
+    "cpu-15-3",
+    "gpu-15-3",
+    "cpu-16-3",
+    "gpu-16-3",
+    "cpu-17-3",
+    "gpu-17-3"
+   ],
+   "host_class": "H100 NVL",
+   "measurement_seeds": [
+    41,
+    42,
+    43
+   ],
+   "measurement_shapes": [
+    [
+     11,
+     15
+    ],
+    [
+     11,
+     16
+    ],
+    [
+     11,
+     17
+    ]
+   ],
+   "operation": "complete-source-material",
+   "process_scope": "cold process per command",
+   "required_complete_source_parity_cases": 1000,
+   "source": "59f9a18ba0db3dd096912bbe4fa130f25fddad16",
+   "source_archive_sha256": "327fe7c7333eedd740eb946700589f22203328fe06b3bba0a298a09badc89e16",
+   "threads": 16
+  },
   "checks": [
    {
     "args": [
@@ -213,6 +285,11 @@
   "parity_job": 6607,
   "parity_manifest_sha256": "6c8030d7242d6f8e139e3e7725800da7961702c6d4d16f53e76b6e32d9288c41",
   "parity_raw_directory": "/Users/abdel/dev/stele-validation/e16-40b-parity-6607",
+  "plan_metadata_repair": {
+   "previous_plan_digest": "1b2c9c20f7e3a78ec1e3182b667131a56a8e1ecc338ff576b283842448f75fd1",
+   "script_sha256": "2dc586be0e54952a88ce48461bd27b6046d3d4b4267f8ee2f7e7efd190f9a61f",
+   "task": "E16-40f"
+  },
   "raw_directory": "/Users/abdel/dev/stele-validation/e16-40b-material-6609",
   "repetition": 3,
   "repetitions": 3,
@@ -438,8 +515,8 @@
    }
   ]
  },
- "note": "Research source-material operation only; not an integrated prover, proof, GO decision or security claim. All three repetitions retained, alternating CPU/GPU order; 16 pinned CPU threads. prover_time_ns sums the three cold GPU command process walls for this repetition. Process wall includes synthetic input generation, CUDA/NVRTC context/module setup and cleanup; gpu_material_ns includes preparation, downloads and CPU salt assembly. stage_times_ns includes overlapping parent/child and CPU/GPU fields; never sum them. CPU certification includes verification; GPU produces no certificate/opening and those costs stay CPU work. Complete payload/path checks are separate commands, not performance samples. Device buffer counters exclude driver/module/runtime allocations and do not establish RFC-0014 A1 40% peak. Host material, input/conversion/download buffers overlap; RSS is host memory. The micro schema profile standard follows the existing research convention and grants no inference admission. bindings_all_on concerns this measured operation; proof/verifier/control fields are zero. No full-proof parity, cost-model fit or weight-pass claim. GNU time has 10ms wall resolution.",
- "plan_digest": "1b2c9c20f7e3a78ec1e3182b667131a56a8e1ecc338ff576b283842448f75fd1",
+ "note": "Research source-material operation only; not an integrated prover, proof, GO decision or security claim. All three repetitions retained, alternating CPU/GPU order; 16 pinned CPU threads. prover_time_ns sums the three cold GPU command process walls for this repetition. Process wall includes synthetic input generation, CUDA/NVRTC context/module setup and cleanup; gpu_material_ns includes preparation, downloads and CPU salt assembly. stage_times_ns includes overlapping parent/child and CPU/GPU fields; never sum them. CPU certification includes verification; GPU produces no certificate/opening and those costs stay CPU work. Complete payload/path checks are separate commands, not performance samples. Device buffer counters exclude driver/module/runtime allocations and do not establish RFC-0014 A1 40% peak. Host material, input/conversion/download buffers overlap; RSS is host memory. The micro schema profile standard follows the existing research convention and grants no inference admission. bindings_all_on concerns this measured operation; proof/verifier/control fields are zero. No full-proof parity, cost-model fit or weight-pass claim. GNU time has 10ms wall resolution. E16-40f repairs plan_digest to hash the embedded canonical benchmark_plan (sorted keys, compact JSON, UTF-8, no newline); the original evidence hash and every measurement remain unchanged.",
+ "plan_digest": "ddd2b02629ae4a88f2f1488158debe3503a310fd21589108864fa0db820c64f2",
  "profile": "standard",
  "prompt_tokens": 0,
  "proof_size_bytes": 0,

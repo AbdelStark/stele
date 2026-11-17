@@ -100,6 +100,13 @@ No integrated certificate path or full CPU/GPU proof parity is claimed.
 
 ## Host assembly candidate (E16-40f)
 
+The baseline records now embed their canonical `benchmark_plan`; `plan_digest`
+hashes its sorted-key, compact UTF-8 JSON without a trailing newline. The earlier
+value hashed the evidence manifest instead. That evidence hash remains separately
+recorded, together with the previous digest and repair provenance. Every original
+measurement, source/binary hash and sample is unchanged. This metadata repair
+does not supply another measurement or change the NO-GO decision.
+
 The candidate splits complete column payloads through the existing prover work
 pool. Each worker reads disjoint salt offsets and writes disjoint columns. Word
 validation, allocation failures and the complete salt-range check precede the
