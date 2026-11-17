@@ -1,7 +1,8 @@
 // E16-35 (ADR-123): device kernels for the dev-zk masked rounds (RFC-0013 A5 item 2,
 // RFC-0008 A7 item 4). Compiled at run time by NVRTC; the round kernel is generated per
 // round shape by gpu.rs and appended to this source. Integer arithmetic only; every
-// value leaving a kernel is canonical in [0, p). Field code as E16-21's dense_gpu.cu.
+// value leaving a kernel is canonical in [0, p). E16-40h extends the field helpers
+// to raw lazy limbs; older E16-21 measurements retain their original source.
 typedef unsigned int u32;
 typedef unsigned long long u64;
 #define P 0x7fffffffu
@@ -9,17 +10,19 @@ typedef unsigned long long u64;
 // QM31 = CM31[u]/(u^2 - (2 + i)), limbs (a0, a1, b0, b1) as stele-field's to_le_bytes.
 struct Q { u32 a0, a1, b0, b1; };
 
-__device__ __forceinline__ u32 madd(u32 a, u32 b) { u32 s = a + b; s = (s & P) + (s >> 31); return s == P ? 0 : s; }
-__device__ __forceinline__ u32 mneg(u32 a) { return a == 0 ? 0 : P - a; }
+// INV: lazy — inputs are in [0,2p). Keep the carry and first product fold in
+// u64; the last fold is below 2p. Canonicalise stored limbs (RFC-0003 §1).
+__device__ __forceinline__ u32 mcanon(u32 a) { return a >= P ? a - P : a; }
+__device__ __forceinline__ u32 madd(u32 a, u32 b) { u64 s = (u64)a + b; return mcanon((u32)(s & P) + (u32)(s >> 31)); }
+__device__ __forceinline__ u32 mneg(u32 a) { a = mcanon(a); return a == 0 ? 0 : P - a; }
 __device__ __forceinline__ u32 msub(u32 a, u32 b) { return madd(a, mneg(b)); }
 __device__ __forceinline__ u32 mmul(u32 a, u32 b) {
   u64 x = (u64)a * b;
-  u32 s = (u32)(x & P) + (u32)(x >> 31);
-  s = (s & P) + (s >> 31);
-  return s == P ? 0 : s;
+  u64 s = (x & P) + (x >> 31);
+  return mcanon((u32)(s & P) + (u32)(s >> 31));
 }
 __device__ __forceinline__ Q qzero() { Q z = {0, 0, 0, 0}; return z; }
-__device__ __forceinline__ Q qembed(u32 a) { Q z = {a, 0, 0, 0}; return z; }
+__device__ __forceinline__ Q qembed(u32 a) { Q z = {mcanon(a), 0, 0, 0}; return z; }
 __device__ __forceinline__ Q qadd(Q x, Q y) { Q z = {madd(x.a0, y.a0), madd(x.a1, y.a1), madd(x.b0, y.b0), madd(x.b1, y.b1)}; return z; }
 __device__ __forceinline__ Q qsub(Q x, Q y) { Q z = {msub(x.a0, y.a0), msub(x.a1, y.a1), msub(x.b0, y.b0), msub(x.b1, y.b1)}; return z; }
 // x · m for m in M31: coefficient-wise (stele-field mul_m31).
@@ -40,7 +43,7 @@ __device__ __forceinline__ Q qmul(Q x, Q y) {
   return z;
 }
 __device__ __forceinline__ Q qload(const u32 *t, u64 i) { const Q *q = (const Q *)t; return q[i]; }
-__device__ __forceinline__ void qstore(u32 *t, u64 i, Q v) { Q *q = (Q *)t; q[i] = v; }
+__device__ __forceinline__ void qstore(u32 *t, u64 i, Q v) { Q *q = (Q *)t; Q c = {mcanon(v.a0), mcanon(v.a1), mcanon(v.b0), mcanon(v.b1)}; q[i] = c; }
 #define GRID_STRIDE(j, n) for (u64 j = blockIdx.x * (u64)blockDim.x + threadIdx.x; j < (n); j += (u64)gridDim.x * blockDim.x)
 
 // out[i] = scale · eq(point, i), variable 0 the most significant bit of i

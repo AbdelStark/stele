@@ -24,6 +24,10 @@ use stele_reductions::zk::claims::bench::mask_weight;
 const KERNELS: &str = concat!(include_str!("kernels.cu"), "\n", include_str!("source.cu"));
 const THREADS: u32 = 256;
 
+#[cfg(test)]
+#[path = "gpu_field_tests.rs"]
+mod field_tests;
+
 /// `(x, r)` per factor, read back from the device.
 pub type Tables = Vec<(Vec<K>, Vec<K>)>;
 
