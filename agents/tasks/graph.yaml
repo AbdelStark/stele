@@ -5151,7 +5151,7 @@ tasks:
   - RFC-0013 A8
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40b-source-material
   acceptance:
