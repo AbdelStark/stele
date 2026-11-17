@@ -34,6 +34,10 @@ pub mod inventory;
 pub mod lookup;
 #[cfg(test)]
 mod lookup_cases;
+#[cfg(any(test, feature = "cuda"))]
+mod round;
+#[cfg(test)]
+mod round_cases;
 pub mod source;
 
 /// The challenge field.

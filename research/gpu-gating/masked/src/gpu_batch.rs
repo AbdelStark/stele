@@ -44,6 +44,8 @@ pub fn prepare<'a>(
 }
 
 fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing), Error> {
+    let coefficients = vec![(K::from_i64(1), vec![0, 1])];
+    let terms = crate::round::Terms::new(2, &coefficients, 3).map_err(Error::Shape)?;
     let start = Instant::now();
     let message = dev.stream.clone_htod(&p.message)?;
     let pairs = dev.stream.clone_htod(&p.pairs)?;
@@ -90,12 +92,10 @@ fn build<'a>(dev: &'a Device, p: &Prepared) -> Result<(DeviceMasked<'a>, Timing)
             v: None,
         },
     ];
-    let state = dev.summand(factors, vec![(K::from_i64(1), vec![0, 1])], 3, p.len)?;
+    let state = dev.summand(factors, &coefficients, terms, 3, p.len)?;
     dev.sync()?;
     let round_setup = start.elapsed();
-    let scratch = 8 * (state.xs.len() + state.rs.len())
-        + 4 * (state.coef.len() + state.partials.len() + state.out.len());
-    let initial_round_buffer_bytes = 20 * p.len + scratch;
+    let initial_round_buffer_bytes = state.device_buffer_bytes();
     Ok((
         state,
         Timing {

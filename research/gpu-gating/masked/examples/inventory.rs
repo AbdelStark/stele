@@ -131,6 +131,12 @@ mod device {
             build.as_nanos(),
             compile.elapsed().as_nanos()
         );
+        println!(
+            "gpu_initial_buffer_bytes={} gpu_descriptor_upload_bytes={} gpu_round_upload_bytes={}",
+            device.device_buffer_bytes(),
+            device.descriptor_upload_bytes(),
+            device.round_upload_bytes()
+        );
         let mut reference = cpu(shape);
         tables_equal(&reference, &device)?;
         let mut digest = FNV_START;
@@ -147,6 +153,10 @@ mod device {
                 .fold(challenge(round))
                 .map_err(|e| format!("{e:?}"))?;
             tables_equal(&reference, &device).map_err(|e| format!("round {round}: {e}"))?;
+            println!(
+                "gpu_fold={round} gpu_retained_buffer_bytes={}",
+                device.device_buffer_bytes()
+            );
         }
         let tables = device.tables().map_err(|e| format!("{e:?}"))?;
         let finals: Vec<_> = tables.iter().map(|(x, _)| x[0]).collect();
