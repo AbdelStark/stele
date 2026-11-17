@@ -2288,8 +2288,11 @@ are unchanged. E16-10b is blocked on acceptance of this erratum. Promotion to
 
 ### A18 — Column-routing control under claim batching
 
-Status: Draft (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
-Task: E16-10b2. Proposed decision: ADR-136.
+Status: Accepted (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
+Task: E16-10b2. Decision: ADR-136.
+Independent lane C specification/soundness and lane B standards reviews approved
+`548ae549`; records: `agents/reviews/e16-10b2-spec.md` and
+`agents/reviews/e16-10b2-standards.md`. This acceptance changes no implementation.
 
 **Motivation.** Section 9's NC-1308 names PCS `ValueMismatch` after routing one
 column claim to its neighbour. Section 4 step 7 and RFC-0006 A2 first batch the

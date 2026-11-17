@@ -3885,7 +3885,7 @@ tasks:
   - RFC-0026 §2.3, §4, §9, A4, A17, A18
   skill: soundness-auditor
   crate: stele-negative-controls+stele-reductions
-  status: blocked(RFC-0026 A18)
+  status: ready
   acceptance:
   - execute NC-1302, NC-1306 and NC-1308 through the actual composed window verifier with declared single semantic tampers and exact typed rejections; engine-only analogues and producer failures earn no coverage
   - preserve Accepted contracts where feasible; any observed source-profile rejection-precedence disagreement requires a reviewed append-only RFC erratum before implementation claims that contract

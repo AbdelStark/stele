@@ -190,7 +190,7 @@
 | NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `RoundSumMismatch` | done |
 | NC-1306 | development root substitution | 0026 §2.3, A17 | replace only the stacked root with a distinct multiplicity root; retain every other byte and use declared policy-specific fixtures | Policy 1: RootMismatch; Policy 2: GrindMismatch | todo |
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | done |
-| NC-1308 | development column claim | 0026 §2.3 | route one column claim to the neighbouring column index | `ValueMismatch` | todo |
+| NC-1308 | development column claim | 0026 §2.3, A18 | route one claim to the next real column; profiles 3/5 use declared equal-column fixtures and genuine dependent batches/openings | Profiles 3/5: RoundSumMismatch; other profiles: ValueMismatch | todo |
 | NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `RoundSumMismatch` | done |
 | NC-1310 | development width | 0026 §3.6 | commit one ranged witness value as 2^30, outside its width, with every identity recomputed (RFC-0026 A10: relation-engine level; INV-4 exception, ADR-110: a second, in-width value rebalances the identity) | `RootMismatch` | done |
 | NC-1311 | development profile byte | 0026 A11 | verify an A11 (Circle, Policy 2) proof with the profile byte omitted, header restamped: the verifier derives the pre-A11 model sources | `ProofShape` | done |
@@ -266,8 +266,13 @@ RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit. Under
 RFC-0026 A17, NC-1306 retains the Merkle-root rejection for Policy 1;
 Policy 2 requires the exact nonce rejection in the substituted stacked certificate.
-The byte-5 qualification is not catalog execution. NC-1306 remains `todo`, so the
-reservation and execution snapshots are unchanged. RFC-0026 A11
+The byte-5 qualification is not catalog execution. Under A18, NC-1308 requires
+the exact round-sum rejection on declared L0/L1 profiles 3/5 after rerouting one
+claim prefix between equal-valued real adjacent columns. The witness, sources,
+claim tail/value and all other claims remain unchanged; only genuine dependent
+opening sections change. No altered opening scalar or other profile earns credit.
+Both qualifications leave NC-1306/1308 `todo`, so reservation and execution
+snapshots are unchanged. RFC-0026 A11
 (Accepted, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
 that selects the source set (NC-1316 for its transcript binding alone), and the Policy 2
 column nonces of the stacked certificate, the stacked opening and the model certificate. RFC-0026

@@ -4332,3 +4332,13 @@ production interface changes. NC-1308 remains `todo`; E16-10b must implement the
 accepted control in the mandatory harness after a separately reviewed producer
 interface. This retires a control-contract ambiguity, without claiming GPU
 integration, a security level or profile promotion.
+
+Status: Accepted (development-tier erratum). Independent lane C
+specification/soundness and lane B standards reviewers approved `548ae549`
+without findings, recorded in `agents/reviews/e16-10b2-spec.md` and
+`agents/reviews/e16-10b2-standards.md`. Lane V owner `codex-root` accepts that
+exact current-profile contract. The spec reviewer independently replayed all
+eight CLI verdicts and checked the unchanged public and pre-opening bytes;
+the standards reviewer checked source/patch/artifact hashes and ran the plain
+checker tests. NC-1308 remains `todo`; accepted text is not execution credit.
+Required catalog, native and current-main merge-tree gates remain mandatory.
