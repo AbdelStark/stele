@@ -98,7 +98,7 @@ All 85 payload hashes were verified after download; the ledgers also identify
 the source, binary, capture script, host, load observations and parity manifest.
 No integrated certificate path or full CPU/GPU proof parity is claimed.
 
-## Host assembly candidate (E16-40f)
+## Host assembly experiment (E16-40f)
 
 The baseline records now embed their canonical `benchmark_plan`; `plan_digest`
 hashes its sorted-key, compact UTF-8 JSON without a trailing newline. The earlier
@@ -107,14 +107,14 @@ recorded, together with the previous digest and repair provenance. Every origina
 measurement, source/binary hash and sample is unchanged. This metadata repair
 does not supply another measurement or change the NO-GO decision.
 
-The candidate splits complete column payloads through the existing prover work
-pool. Each worker reads disjoint salt offsets and writes disjoint columns. Word
-validation, allocation failures and the complete salt-range check precede the
+The measured candidate split complete column payloads through the existing prover work
+pool. Each worker read disjoint salt offsets and wrote disjoint columns. Word
+validation, allocation failures and the complete salt-range check preceded the
 workers. Complete payload/path comparisons against `PreparedSource` also run in
 fresh processes with one, three and sixteen threads, including the balanced
 shared-mask shape `ell6/m12`. The tests retain the one-word `RootMismatch` check.
 
-`host_assembly_descriptor_bytes` reports the temporary vector capacity used to
+The candidate counter `host_assembly_descriptor_bytes` reports the capacity used to
 partition whole columns. It overlaps the downloaded encoding, node vectors and
 new payload allocation, and is freed before assembly returns. It is excluded
 from `host_material_owned_bytes`, which still counts only the returned vectors.
@@ -122,10 +122,25 @@ Whole-process RSS and wall time must include that temporary host storage; this
 counter gives no complete device-budget credit. Every prior output field and
 the root-only mode remain unchanged.
 
-The hypothesis is at least a twofold host-assembly improvement and lower complete
+The predefined hypothesis required at least a twofold host-assembly improvement and lower complete
 cold GPU-command wall time in every one of three alternating baseline/candidate
 H100 pairs at `ell11/m16`, with the same pinned CPU threads. Required-CUDA complete
 source parity and explicit `ell3/m9`, `ell6/m12`, `ell11/m16` material checks precede
-measurement. These are acceptance targets, not results. If the hypothesis fails,
-revert the candidate and retain the measurements under Workflow 09. No H100
-result or integrated prover speedup is established by the local CPU tests.
+measurement.
+
+**Result: drop the candidate.** Job 6643 completed the required comparisons and
+all three measured pairs. The whole command was faster in each pair, but host
+assembly missed the predefined twofold threshold in every pair. Under Workflow
+09 the implementation and its candidate-only counter are reverted; the thread
+parity tests and negative evidence remain. No threshold was relaxed after seeing
+the result. The six imported records passed the native ledger validator:
+
+- Seed 1: [baseline](../../bench/ledger/e16-40f-source-assembly-h100-baseline-1.json), [candidate](../../bench/ledger/e16-40f-source-assembly-h100-candidate-1.json).
+- Seed 3: [baseline](../../bench/ledger/e16-40f-source-assembly-h100-baseline-2.json), [candidate](../../bench/ledger/e16-40f-source-assembly-h100-candidate-2.json).
+- Seed 5: [baseline](../../bench/ledger/e16-40f-source-assembly-h100-baseline-3.json), [candidate](../../bench/ledger/e16-40f-source-assembly-h100-candidate-3.json).
+
+The importer rechecked the complete manifest, exact required-CUDA receipts,
+source/script/binary provenance, command order, same-seed roots, phase versus
+whole-process timings and both halves of the acceptance predicate. These are
+source-material micro measurements; no integrated certificate/opening, whole
+proof, complete device budget or ADR-127 GO result follows.

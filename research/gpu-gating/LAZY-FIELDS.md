@@ -38,7 +38,18 @@ the reference. Its completed receipt is `field_device_cases=1000000`, with the s
 and device name. The H100 campaign must also rerun the existing canonical masked
 round and complete-source device tests, checking their explicit case receipts.
 
-Hardware evidence is pending. This is qualification of the listed primitive
+Lucid job 6667 passed all four required tests on H100 NVL at source
+`87cae62494ebbb9337954fe60003eebbce563c75`. The
+[captured receipt](../../agents/reviews/e16-40h-h100.json) records the source,
+archive, binary and manifest hashes, device identity and exact test output.
+The coordinator checked every manifest payload, command, completion, chronological
+order and current remote binary hash. The later E16-40f rollback changes only
+host source-material assembly and its example counter; field helpers, CUDA
+kernels and qualification tests remain byte-identical to the tested source.
+Final merge-tree gates remain pending, and the captured source-material regression
+belongs to the pinned source, before that host rollback.
+
+This is qualification of the listed primitive
 helpers only: it does not qualify every actual kernel on raw inputs, establish a
 complete field backend (inverse/Frobenius operations are absent here), move a
 scoreboard cell or establish full CPU/GPU proof parity, device budgets, speedup or
