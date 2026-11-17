@@ -69,3 +69,28 @@ and the failing `check` command rejected it. I also changed one lookup value;
 
 Skipped full suites and hardware execution as assigned; remaining risk is
 unqualified generated-kernel compilation/allocation/parity on the H100.
+
+## Numeric canonicality follow-up
+
+Reviewed `bd4bd5b1..8038e131e93d59c08328c7c94a979f3c551058e1` independently.
+**PASS for this parser fix; no new finding.** E16-40d requires “validate the
+complete nonempty inventory, refuse unsupported fields, malformed terms, masks
+and counts.” Rejecting leading zeros in the shared `number()` parser closes the
+numeric-alias route around string-based duplicate detection. All its callers
+(declared count, variables, degree, mask coordinates and term indices) receive
+the same validation. Canonical `0` remains accepted where the caller permits it;
+empty/non-ASCII/signed strings and overflow retain their rejection behavior.
+Generated cases, CUDA kernels and production code are unchanged.
+
+Independently reran all four Rust inventory tests and the fixed-diff whitespace
+check; both pass. I tried to break it by replacing `vars=28` with `vars=028`, and
+the control `rejects_incomplete_or_malformed_inventory` rejected it. The previous
+Workflow 03 checklist and research-only approval limits otherwise stand.
+
+The coordinator reports job 6630 was cancelled before allocation with zero
+elapsed time and no assigned node. It supplies no campaign or parity evidence;
+H100 execution, matching CPU/device receipts, validated ledger and current-main
+merge gates remain pending. No campaign was executed by this reviewer.
+
+Skipped full suites and hardware execution; H100 compilation, allocation and
+parity remain unqualified by this follow-up.

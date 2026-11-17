@@ -52,3 +52,9 @@ failed-campaign disposition); ADR-127 remains NO-GO.
 
 Skipped full workspace/native suites, H100 and tooling-enforced checks here.
 Synthetic reduced parity cannot establish production integration readiness.
+
+Follow-up `8038e131e93d59c08328c7c94a979f3c551058e1` against `bd4bd5b1`:
+standards approved. Shared `number()` rejects leading-zero aliases, preserving
+canonical zero; `vars=028` covers the bypass. No new breach/smell; checklist
+unchanged. Tests were not repeated. Hardware remains pending; cancelled job 6630
+consumed no campaign, per primary-agent report.
