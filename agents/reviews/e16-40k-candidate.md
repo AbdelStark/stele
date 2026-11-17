@@ -40,5 +40,6 @@ seed and all diagnostic digest pins were independently verified.
 Default research tests, CUDA all-target Clippy with warnings denied, workspace
 and research formatting pass. Candidate hardware execution, mandatory full
 workspace/native/parity gates, and qualification of acceptable runtime remain
-open. All original 1,000-case requirements and compact-final, raw-kernel,
-actual-size, allocation-accounting and full-proof exclusions remain in force.
+open. All original 1,000-case and allocation-accounting requirements remain.
+Compact finals, raw-kernel qualification, actual-size coverage and full-proof
+parity remain outside this candidate qualification.
