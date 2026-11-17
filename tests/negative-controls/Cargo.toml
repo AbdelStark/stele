@@ -447,3 +447,18 @@ required-features = ["controls"]
 name = "nc-0919"
 path = "sumcheck/nc_0919.rs"
 required-features = ["controls"]
+
+[[test]]
+name = "nc-1302"
+path = "development/nc_1302.rs"
+required-features = ["controls"]
+
+[[test]]
+name = "nc-1306"
+path = "development/nc_1306.rs"
+required-features = ["controls"]
+
+[[test]]
+name = "nc-1308"
+path = "development/nc_1308.rs"
+required-features = ["controls"]

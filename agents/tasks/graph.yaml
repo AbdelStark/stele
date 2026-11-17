@@ -3549,7 +3549,7 @@ tasks:
   - stele_reductions::relation proves and verifies any validated Relation in the RFC-0026 §4 order
   - accepts exactly what stele_ir::relation::check accepts on randomised small relations; rejects one tamper per kind with the primitive error
   - RFC-0012 A16 labels registered in stele-hash and docs/security/transcript-labels.json; ledger printed per RFC-0026 §6
-  - column-of-group claims (RFC-0026 §2.3) route lookup originals and openings; NC-1302, NC-1303, NC-1306, NC-1307, NC-1308, NC-1310 executed
+  - column-of-group claims (RFC-0026 §2.3) route lookup originals and openings; original E16-02 tests were engine analogues, not composed NC execution; E16-10a implements NC-1303/1307, E16-10b implements NC-1302/1306/1308, and NC-1310 retains the Accepted A10/ADR-110 engine-level exception
 - id: E16-03
   epic: E16
   title: Witness capture, the executor emits every intermediate column
@@ -3909,7 +3909,9 @@ tasks:
   - RFC-0026 §2.3, §4, §9, A4, A17, A18
   skill: soundness-auditor
   crate: stele-negative-controls+stele-reductions
-  status: ready
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-10b-composed-bindings
   acceptance:
   - execute NC-1302, NC-1306 and NC-1308 through the actual composed window verifier with declared single semantic tampers and exact typed rejections; engine-only analogues and producer failures earn no coverage
   - preserve Accepted contracts where feasible; any observed source-profile rejection-precedence disagreement requires a reviewed append-only RFC erratum before implementation claims that contract
@@ -5149,7 +5151,7 @@ tasks:
   - RFC-0013 A8
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40b-source-material
   acceptance:

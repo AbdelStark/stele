@@ -184,13 +184,13 @@
 | NC-1208 | message embedding | 0010 A6 | plan whose consumers name no embedding for a committed source context | `MissingEmbedding` | todo |
 | NC-1300 | development statement token | 0026 §5 row 13 | change one checked token | `RootMismatch` | done |
 | NC-1301 | development next token | 0026 §1.1 | change the next token y | `RootMismatch` | done |
-| NC-1302 | development witness column | 0026 §3.2, §4 | +1 on one witness value, group recommitted honestly | `FinalEvaluationMismatch` | todo |
+| NC-1302 | development witness column | 0026 §3.2, §4 | +1 on one witness value, group recommitted honestly | `FinalEvaluationMismatch` | done |
 | NC-1303 | development width | 0026 §3.6 | send one group message element as the noncanonical limb p | `NoncanonicalField` | done |
 | NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RoundSumMismatch` | done |
 | NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `RoundSumMismatch` | done |
-| NC-1306 | development root substitution | 0026 §2.3, A17 | replace only the stacked root with a distinct multiplicity root; retain every other byte and use declared policy-specific fixtures | Policy 1: RootMismatch; Policy 2: GrindMismatch | todo |
+| NC-1306 | development root substitution | 0026 §2.3, A17 | replace only the stacked root with a distinct multiplicity root; retain every other byte and use declared policy-specific fixtures | Policy 1: RootMismatch; Policy 2: GrindMismatch | done |
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | done |
-| NC-1308 | development column claim | 0026 §2.3, A18 | route one claim to the next real column; profiles 3/5 use declared equal-column fixtures and genuine dependent batches/openings | Profiles 3/5: RoundSumMismatch; other profiles: ValueMismatch | todo |
+| NC-1308 | development column claim | 0026 §2.3, A18 | route one claim to the next real column; profiles 3/5 use declared equal-column fixtures and genuine dependent batches/openings | Profiles 3/5: RoundSumMismatch; other profiles: ValueMismatch | done |
 | NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `RoundSumMismatch` | done |
 | NC-1310 | development width | 0026 §3.6 | commit one ranged witness value as 2^30, outside its width, with every identity recomputed (RFC-0026 A10: relation-engine level; INV-4 exception, ADR-110: a second, in-width value rebalances the identity) | `RootMismatch` | done |
 | NC-1311 | development profile byte | 0026 A11 | verify an A11 (Circle, Policy 2) proof with the profile byte omitted, header restamped: the verifier derives the pre-A11 model sources | `ProofShape` | done |
@@ -203,10 +203,10 @@
 | NC-1318 | development profile byte | 0026 A12 | verify an A11 proof with profile byte 3 in place of 2, header restamped: the verifier derives the A12 rate-1/4 multiplicity sources | `ProofShape` | done |
 | NC-1319 | development profile byte transcript | 0026 A12 | replay the engine with the plan fixed at one of the A11 and A12 source sets and the transcript input of the other (trailing byte 2 for 3, and 3 for 2): no source shape differs | `RoundSumMismatch` | done |
 | NC-1320 | development multiplicity grinding | 0026 A12, 0010 A14 | replace the first rate-1/4 multiplicity certificate's column-round nonce with one failing the k_q = 16 predicate, every other byte unchanged | `GrindMismatch` | done |
-| NC-1321 | development lookup grinding | 0026 A14 (Draft), 0012 A17 item 5 | replace the first nonzero `(β, α)` nonce n of a byte-5 proof with n − 1, which fails the predicate (the prover sends the least valid nonce), every other byte unchanged | `GrindMismatch` | done |
-| NC-1322 | development profile byte | 0026 A14 (Draft) | verify an A14 (byte 5) proof with profile byte 3, header restamped: the transcript input differs before any `(β, α)` nonce is read | `RoundSumMismatch` | done |
-| NC-1323 | development lookup grinding | 0026 A14 (Draft), 0012 A17 item 5 | replace a ground check's `(β, α)` nonce with the next valid nonce above it (found with the verifier's predicate), every other byte unchanged: the nonce is absorbed before `β` (counterpart of NC-0816) | `RoundSumMismatch` | done |
-| NC-1324 | development profile byte | 0026 A14 (Draft) | verify an A12 (byte 3) proof with profile byte 5, header restamped | `RoundSumMismatch` | done |
+| NC-1321 | development lookup grinding | 0026 A14 (Accepted), 0012 A17 item 5 | replace the first nonzero `(β, α)` nonce n of a byte-5 proof with n − 1, which fails the predicate (the prover sends the least valid nonce), every other byte unchanged | `GrindMismatch` | done |
+| NC-1322 | development profile byte | 0026 A14 (Accepted) | verify an A14 (byte 5) proof with profile byte 3, header restamped: the transcript input differs before any `(β, α)` nonce is read | `RoundSumMismatch` | done |
+| NC-1323 | development lookup grinding | 0026 A14 (Accepted), 0012 A17 item 5 | replace a ground check's `(β, α)` nonce with the next valid nonce above it (found with the verifier's predicate), every other byte unchanged: the nonce is absorbed before `β` (counterpart of NC-0816) | `RoundSumMismatch` | done |
+| NC-1324 | development profile byte | 0026 A14 (Accepted) | verify an A12 (byte 3) proof with profile byte 5, header restamped | `RoundSumMismatch` | done |
 | NC-1325 | registry key | 0026 A16 | change one entry model-identity byte against the same public file | `RegistryKeyMismatch` | done |
 | NC-1326 | registry static public data | 0026 A16 | change one public Scales byte, retaining the trusted entry | `RegistryStaticMismatch` | done |
 | NC-1327 | registry model roots | 0026 A16 | change one ordered public model root byte | `RegistryKeyMismatch` | done |
@@ -266,19 +266,32 @@ RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
 actual development verifier; plain-checker tests earn no control credit. Under
 RFC-0026 A17, NC-1306 retains the Merkle-root rejection for Policy 1;
 Policy 2 requires the exact nonce rejection in the substituted stacked certificate.
-The byte-5 qualification is not catalog execution. Under A18, NC-1308 requires
+E16-10b executes both L0 (T = 16) and L1 (T = 64) with Expander Policy 1 and
+profiles 3/5 Policy 2. Only the stacked root is replaced by the first distinct
+multiplicity root; restoration asserts that every other proof byte is unchanged.
+The early Policy-2 nonce rejection is not exhaustive Merkle-binding evidence.
+Under A18, NC-1308 executes
 the exact round-sum rejection on declared L0/L1 profiles 3/5 after rerouting one
 claim prefix between equal-valued real adjacent columns. The witness, sources,
 claim tail/value and all other claims remain unchanged; only genuine dependent
 opening sections change. No altered opening scalar or other profile earns credit.
-Both qualifications leave NC-1306/1308 `todo`, so reservation and execution
-snapshots are unchanged. RFC-0026 A11
+E16-10b also executes NC-1302 on both rungs and profiles 3/5: entry 0 of
+`L0/norm1/S_0` (ColumnId 19) changes from 0 to 1 within unsigned width 8.
+The plain checker identifies `L0/norm1/S/0` at point 0; the controls producer
+honestly recommits the changed witness and emits its genuine final evaluations
+against reference zerocheck rounds. The composed verifier must return exactly
+`FinalEvaluationMismatch`. NC-1308 selects columns 147/148 (`L0/norm1/Z0`/`Z1`),
+whose assigned vectors are equal; the reviewed producer asserts a single changed
+Boolean prefix with unchanged tail/value and regenerates dependent messages.
+Honest regenerated proof bytes match the ordinary window prover in both controls.
+The original E16-02 engine analogues were not this composed execution; NC-1310
+retains its explicit A10/ADR-110 exception. RFC-0026 A11
 (Accepted, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
 that selects the source set (NC-1316 for its transcript binding alone), and the Policy 2
 column nonces of the stacked certificate, the stacked opening and the model certificate. RFC-0026
-A12 (Proposed, task E16-31) adds NC-1317..1320: profile byte 3 against byte 2 both ways
+A12 (Accepted, task E16-31) adds NC-1317..1320: profile byte 3 against byte 2 both ways
 (NC-1319 for its transcript binding alone), and the column nonce of a rate-1/4
-multiplicity certificate. RFC-0026 A14 (Draft, task E8-05d) adds NC-1321..1324: a
+multiplicity certificate. RFC-0026 A14 (Accepted, task E8-05d) adds NC-1321..1324: a
 failing `(β, α)` nonce, another valid nonce (absorbed), and bytes 5 and 3 read as each
 other.
 
