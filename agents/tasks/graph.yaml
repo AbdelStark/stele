@@ -5329,3 +5329,27 @@ tasks:
   - retain and return all layers and p/q/h; report operation input/output bytes and complete explicit device buffer overlap, separately from context, module and allocator overhead; expose phase timing without publishing performance numbers
   - work budget is one bounded implementation and one H100 qualification campaign; stop on a device divergence, compile or allocation failure and report it before further GPU optimization; no production backend, binding, proof byte, challenge, dependency, complete-memory-budget or ADR-127 GO change
   - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; the consumer uses only the E16-40c interface already merged in main, and leaves the earlier queued source archives unchanged
+
+- id: E16-40j
+  epic: E16
+  title: Qualify production claim-batch table construction and resident dense rounds on CUDA
+  lane: V
+  depends:
+  - E16-40c
+  rfc:
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0003 §1, §2
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40j-batch-tables
+  acceptance:
+  - answer whether the merged production BatchInputs reference can be matched by device weight accumulation and Y=0 face construction feeding the existing resident round/fold path; retire this part of the untested-GPU risk in docs/plan.md §9, concerning c_sc and T_misc without a speed claim
+  - use actual prepared hiding sources and production BatchInputs and Dense references; preserve repeated positions in claim order, the zero w=1 weight half, source row/column order, extension coefficients, empty claims and zero coefficients; keep the face M31 until its first fold
+  - write honest, near-miss and malformed-input tests before implementation; reject non-hiding sources, count mismatches and positions outside the data face even with zero weight; a one-value claim change must still fail the ordinary round-sum check
+  - qualify both actual construction kernels on 1000 seeded canonical and raw lazy cases including 0, 1, p-1, p and 2p-1, and compare all resident dense rounds and final values against production Dense; explicit required-H100 execution must fail without CUDA and never pass skipped cases
+  - expose staging and device build times, transfer bytes and complete explicit construction buffer overlap separately from round scratch, first base-field fold, retained capacities, context/module/allocator and whole-pipeline costs; source preparation, host grouping, compilation, downloads and authenticated openings cannot be omitted from later cost measurements
+  - work budget is one bounded implementation and one H100 qualification campaign; stop and report on device divergence, compile or allocation failure before further optimization; prototype only in research under ADR-123 and leave the earlier queued archives unchanged
+  - obtain independent review, required H100 receipts and mandatory gates in stack order before merge; no production interface, core backend, protocol binding, challenge, proof byte, external dependency, full masked-batch/proof parity, performance, complete-device-budget or ADR-127 GO change
