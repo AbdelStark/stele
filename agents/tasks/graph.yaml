@@ -5248,7 +5248,7 @@ tasks:
   - RFC-0013 A5 items 1-6, A8
   skill: benchmark-runner
   crate: stele-reductions+research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40g-gkr-reference
   acceptance:
