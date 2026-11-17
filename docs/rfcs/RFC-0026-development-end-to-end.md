@@ -2239,7 +2239,7 @@ Task: E16-10b0. Decision: ADR-135.
 **Motivation.** A4's NC-1306 expects `RootMismatch` after substituting a
 multiplicity root for the stacked root. A11 introduced Policy 2: the root is in
 the certificate's public input (RFC-0010 A9, `formal/native-field-pcs.md` §3),
-and A14 items 3–4 check grinding
+and RFC-0010 A14 items 3–4 check grinding
 before authenticating queried columns. An unchanged certificate can therefore
 fail its nonce predicate first. Actual byte-5 L0 and L1 proofs do so; qualification
 and reproduction instructions are in `agents/reviews/e16-10b0-qualification.md`.
@@ -2255,8 +2255,9 @@ order. This erratum changes the control contract, not the verifier.
 > `Engine(Pcs(Merkle(RootMismatch)))`. Under Policy 2, use a declared deterministic
 > fixture for which an existing certificate nonce fails after the substitution,
 > and require `Engine(Pcs(Transcript(GrindMismatch)))`. The Policy 2 fixture must
-> fail at its first invalid nonce before any Merkle-path check; do not accept an
-> arbitrary rejection or either error interchangeably. Restore the root and
+> fail at its first invalid nonce before any Merkle-path check in the substituted
+> stacked-source certificate; do not accept an arbitrary rejection or either
+> error interchangeably. Restore the root and
 > require equality with the entire original proof. Run the actual development
 > window verifier on L0 and L1. Cover pre-A11 Policy 1 and current unmasked
 > Policy 2 source profiles 3 and 5 separately; another source profile earns no
