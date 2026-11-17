@@ -188,7 +188,7 @@
 | NC-1303 | development width | 0026 §3.6 | send one group message element as the noncanonical limb p | `NoncanonicalField` | done |
 | NC-1304 | development model commitment | 0026 §2.2 | prove with other weights under the expected model commitment | `RoundSumMismatch` | done |
 | NC-1305 | development plan | 0026 §4 step 1 | change one plan rounding exponent on the prover side | `RoundSumMismatch` | done |
-| NC-1306 | development root substitution | 0026 §2.3 | replace the stacked root with a multiplicity root | `RootMismatch` | todo |
+| NC-1306 | development root substitution | 0026 §2.3, A17 | replace only the stacked root with a distinct multiplicity root; retain every other byte and use declared policy-specific fixtures | Policy 1: RootMismatch; Policy 2: GrindMismatch | todo |
 | NC-1307 | development matmul | 0026 §3.5, §4 step 6 | +1 on one matmul out claim value | `RoundSumMismatch` | done |
 | NC-1308 | development column claim | 0026 §2.3 | route one column claim to the neighbouring column index | `ValueMismatch` | todo |
 | NC-1309 | development checked range | 0026 §1.1 | change the checked range [r,e) | `RoundSumMismatch` | done |
@@ -263,7 +263,11 @@ substitute of the same sum over the cube. Each control accepts `δ = 0` (M0), an
 goes red, with the forged proof accepted, when its own final check is removed.
 
 RFC-0026 reserves NC-1300..1310 for E16-02 and E16-10. Each must run through the
-actual development verifier; plain-checker tests earn no control credit. RFC-0026 A11
+actual development verifier; plain-checker tests earn no control credit. Under
+RFC-0026 A17, NC-1306 retains the Merkle-root rejection for Policy 1;
+Policy 2 requires the exact nonce rejection in the substituted stacked certificate.
+The byte-5 qualification is not catalog execution. NC-1306 remains `todo`, so the
+reservation and execution snapshots are unchanged. RFC-0026 A11
 (Accepted, task E16-30) adds NC-1311..1316 through the same verifier: the profile byte
 that selects the source set (NC-1316 for its transcript binding alone), and the Policy 2
 column nonces of the stacked certificate, the stacked opening and the model certificate. RFC-0026

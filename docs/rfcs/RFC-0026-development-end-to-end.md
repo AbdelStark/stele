@@ -2230,3 +2230,58 @@ Use a producer-side construction, never a verifier bypass. Existing transcript
 failures on a stale proof do not demonstrate this new binding. Parser, duplicate,
 missing, extra, relabelled, wrong-kind/length, invalid-token and unsupported-profile
 cases are required tests in addition to these controls.
+
+### A17 — Root-substitution control under Policy 2
+
+Status: Accepted (development-tier amendment under RFC-0027 §2, Workflow 02 item 4).
+Task: E16-10b0. Decision: ADR-135.
+Independent lane C specification/soundness and lane B standards reviews approved
+`5c8694f6`; records: `agents/reviews/e16-10b0-spec.md` and
+`agents/reviews/e16-10b0-standards.md`. This acceptance changes no implementation.
+
+**Motivation.** A4's NC-1306 expects `RootMismatch` after substituting a
+multiplicity root for the stacked root. A11 introduced Policy 2: the root is in
+the certificate's public input (RFC-0010 A9, `formal/native-field-pcs.md` §3),
+and RFC-0010 A14 items 3–4 check grinding
+before authenticating queried columns. An unchanged certificate can therefore
+fail its nonce predicate first. Actual byte-5 L0 and L1 proofs do so; qualification
+and reproduction instructions are in `agents/reviews/e16-10b0-qualification.md`.
+Changing the verifier to force the old error would contradict that transcript
+order. This erratum changes the control contract, not the verifier.
+
+**Replacement text, A4's replacement of §9 NC-1306:**
+
+> Root substitution: accept an honest composed window proof, then replace only
+> its stacked root with a distinct multiplicity root already in that proof.
+> Keep the public inputs, certificate nonces, rows, paths and every other proof
+> byte unchanged. Under Policy 1, require
+> `Engine(Pcs(Merkle(RootMismatch)))`. Under Policy 2, use a declared deterministic
+> fixture for which an existing certificate nonce fails after the substitution,
+> and require `Engine(Pcs(Transcript(GrindMismatch)))`. The Policy 2 fixture must
+> fail at its first invalid nonce before any Merkle-path check in the substituted
+> stacked-source certificate; do not accept an arbitrary rejection or either
+> error interchangeably. Restore the root and
+> require equality with the entire original proof. Run the actual development
+> window verifier on L0 and L1. Cover pre-A11 Policy 1 and current unmasked
+> Policy 2 source profiles 3 and 5 separately; another source profile earns no
+> execution credit from these cases.
+
+**Soundness.** No round, challenge, query, error term or transcript order is
+added or removed. RFC-0010 A14's grinding predicates and the existing Merkle
+authentication remain mandatory. A fixed substitution's `GrindMismatch` shows
+the root's effect on this certificate transcript; it is not a demonstration that
+every root substitution fails grinding, nor a replacement for Merkle-root
+authentication controls. Policy 1 retains the stated Merkle rejection. Current
+Policy 2 PCS controls, including NC-0808's valid alternate nonce followed by
+`RootMismatch`, keep their own scope and do not count as composed NC-1306 cases.
+No development proof gains a security-level claim.
+
+**Cells, lookups, bytes and cost-model terms.** Unchanged. No producer or verifier
+algorithm, source geometry, proof encoding or committed value is changed. The
+only changed value belongs to the separate adversarial test input.
+
+**Controls and affected tasks.** NC-1306 remains reserved and `todo` until
+E16-10b executes the cases through the mandatory harness. The qualification is
+evidence for rejection precedence, not catalog execution. NC-1302 and NC-1308
+are unchanged. E16-10b is blocked on acceptance of this erratum. Promotion to
+`standard` or `treaty` is not granted (Workflow 10).

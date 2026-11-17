@@ -4270,3 +4270,36 @@ core-edge regressions passed independent targeted review. The fresh-author
 sequence is recorded in `agents/reviews/e8-02f3b-author.md`. Complete native,
 workspace and current-base/merge-tree validation remain required before merging;
 this decision does not waive them or grant profile admission.
+
+## ADR-135: Preserve the ground certificate's rejection order in NC-1306 (RFC-0026 A17, task E16-10b0)
+
+Status: Proposed; independent review pending.
+
+A4 specified a single stacked-root substitution and a Merkle `RootMismatch`.
+A11's Policy 2 certificates first check nonces on the root-bound transcript.
+The unchanged public L0 and L1 byte-5 proofs accept; replacing exactly the
+stacked root with their first multiplicity root yields the nested
+`GrindMismatch`. The qualification record identifies the proofs and reproduction
+procedure in `agents/reviews/e16-10b0-qualification.md`.
+
+Proposed decision: accept RFC-0026 A17's policy-specific control contract. Keep
+the single-root substitution and every other byte unchanged. Preserve the
+Policy 1 Merkle expectation, and require the precise Policy 2 nonce rejection
+on declared fixtures. An early grinding failure is not exhaustive evidence for
+root authentication. Existing Merkle controls and all production checks remain.
+
+This retires the mismatch between the old control's expected error and the
+Accepted ground certificate's check order. It adds no protocol behavior, ledger
+term, dependency, performance claim or control coverage. E16-10b must separately
+implement the composed cases; NC-1302 and NC-1308 remain unchanged.
+
+Status: Accepted (development-tier erratum). Independent lane C
+specification/soundness and lane B standards reviewers approved `5c8694f6` with
+no open findings, recorded in `agents/reviews/e16-10b0-spec.md` and
+`agents/reviews/e16-10b0-standards.md`. Lane V owner `codex-root` accepts that
+exact contract. The reviewer independently verified the byte-5 L0/L1 artifacts,
+hashes and root-only mutations. A wording correction confines the precedence
+claim to the substituted stacked-source certificate; model certificates have
+already been verified. Full gates and current-main merge-tree validation remain
+required before merge. NC-1306 stays `todo`; no other profile inherits the
+qualification and no catalog execution is granted by this decision.
