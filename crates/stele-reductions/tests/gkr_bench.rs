@@ -308,3 +308,61 @@ fn rejects_gkr_observer_failure_and_invalid_witness() {
     );
     assert_eq!(seen, 0);
 }
+
+#[test]
+fn rejects_lifetime_observation_without_disclosure() {
+    let (mut statement, mut columns) = case(false);
+    statement.sources = 2;
+    statement.columns.push(Column {
+        source: 1,
+        log_len: 1,
+    });
+    columns.push(vec![M31::ONE; 2]);
+    let life = Lifetime {
+        geometry: Geometry::Balanced,
+        source: 1,
+        proofs: 1,
+        index: 0,
+        blocks: vec![0],
+    };
+    let model_seed = [91; 32];
+    let root = claims::lifetime_root(&statement, &columns, &life, &model_seed)
+        .expect("unused model source");
+    let model = || ModelSecret {
+        seed: &model_seed,
+        revealed: vec![],
+        root,
+    };
+    assert_eq!(
+        claims::prove_lifetime(
+            &statement,
+            &columns,
+            Seed::new([47; 32]),
+            &mut transcript(),
+            &life,
+            model()
+        )
+        .err(),
+        Some(Error::Statement)
+    );
+    let mut calls = 0;
+    assert_eq!(
+        bench::observe_gkr(
+            &statement,
+            &columns,
+            Seed::new([47; 32]),
+            &mut transcript(),
+            Some((&life, model())),
+            &mut |_| {
+                calls += 1;
+                Ok(())
+            }
+        )
+        .err(),
+        Some(Error::Statement)
+    );
+    assert_eq!(
+        calls, 4,
+        "the postcondition is checked after genuine GKR steps"
+    );
+}

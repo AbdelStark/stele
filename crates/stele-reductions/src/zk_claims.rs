@@ -4078,6 +4078,8 @@ pub mod bench {
 
         /// Consume an unfolded reference and expand externally computed compact
         /// finals at `point`. This does not authenticate those supplied values.
+        /// Member claims are recomputed from columns/masks; some compact slots are
+        /// unused here. Parity also requires every round and folded factor to match.
         pub fn expand_at(
             mut self,
             point: &[K],

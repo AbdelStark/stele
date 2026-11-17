@@ -91,7 +91,8 @@ pub fn observe_gkr<K: ChallengeField + CodeField + Eq>(
 where
     for<'a> K::Bytes: TryFrom<&'a [u8]>,
 {
-    super::prove_observed(
+    let requires_disclosure = lifetime.is_some();
+    let result = super::prove_observed(
         statement,
         columns,
         &seed.0,
@@ -100,5 +101,10 @@ where
         None,
         lifetime,
         Some(observer),
-    )
+    )?;
+    // RFC-0013 A6: preserve prove_lifetime's required opening disclosure.
+    if requires_disclosure && result.1.is_none() {
+        return Err(Error::Statement);
+    }
+    Ok(result)
 }

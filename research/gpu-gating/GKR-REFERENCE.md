@@ -17,6 +17,13 @@ device consumer, `expand_at` consumes an unfolded reference and applies that sam
 expansion to supplied compact values at the given point. Wrong point/value lengths
 and already folded references are refused; supplied values remain untrusted.
 
+Expansion recomputes member claims from the retained columns and mask blocks.
+Consequently some combined compact slots do not contribute to the expanded
+finals: changing one can leave every expanded final and routed claim unchanged.
+A device parity test must compare every round polynomial and every folded factor,
+including all compact final slots, before expansion. Expanded/routed equality
+alone is insufficient evidence of compact device parity.
+
 `GkrCase::route` applies the ordinary public-final checks and returns source
 claims, shared mask-block claims and next-layer children. It does not authenticate
 non-public claims: their source batches and openings still do that. Compare all
