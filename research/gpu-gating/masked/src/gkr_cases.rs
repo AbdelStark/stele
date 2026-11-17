@@ -19,17 +19,17 @@ pub(crate) fn observe(
     model_seed[31] ^= 1;
     let balanced = case.is_multiple_of(2);
     let life = Lifetime {
-        geometry: Geometry::Balanced,
+        geometry: if balanced {
+            Geometry::Balanced
+        } else {
+            Geometry::Narrow
+        },
         source: 0,
         proofs: 1,
         index: 0,
         blocks: claims::occurrence_counts(&statement).unwrap(),
     };
-    let root = if balanced {
-        claims::lifetime_root(&statement, &columns, &life, &model_seed).unwrap()
-    } else {
-        [0; 32]
-    };
+    let root = claims::lifetime_root(&statement, &columns, &life, &model_seed).unwrap();
     let model = ModelSecret {
         seed: &model_seed,
         revealed: vec![],
@@ -42,7 +42,7 @@ pub(crate) fn observe(
         &columns,
         Seed::new(proof_seed),
         &mut transcript(),
-        balanced.then_some((&life, model)),
+        Some((&life, model)),
         &mut |step| {
             assert_eq!(step.step, seen[..3].iter().sum::<usize>());
             seen[if step.leaf {
@@ -57,14 +57,11 @@ pub(crate) fn observe(
         },
     )
     .expect("complete observed CPU proof");
-    claims::verify_lifetime(
-        &statement,
-        balanced.then_some(&life),
-        &observed.0,
-        &mut transcript(),
-    )
-    .expect("ordinary observed CPU proof verifies");
-    assert_eq!(observed.1.is_some(), balanced);
+    assert!(!observed.0.gkr.is_empty());
+    assert_eq!(seen[..3].iter().sum::<usize>(), observed.0.gkr.len());
+    claims::verify_lifetime(&statement, Some(&life), &observed.0, &mut transcript())
+        .expect("ordinary observed CPU proof verifies");
+    assert!(observed.1.is_some());
     seen
 }
 
@@ -77,6 +74,18 @@ fn matches_reference_genuine_gkr_shapes_and_finals() {
             let mut reference = step.reference()?;
             let shape = gkr::shape(&reference).expect("unfolded production shape");
             assert_eq!(shape.n, step.point.len());
+            let storage: Vec<_> = shape
+                .factors
+                .iter()
+                .map(|f| {
+                    let (r, v) = f.mask.as_ref().map_or((0, shape.n), |(r, v)| {
+                        (if r.is_base() { 4 } else { 16 }, *v)
+                    });
+                    [if f.x.is_base() { 4 } else { 16 }, r, v]
+                })
+                .collect();
+            let arities: Vec<_> = shape.terms.iter().map(|(_, t)| t.len()).collect();
+            eprintln!("gkr_shape case={case} step={} variables={} degree={} factors={storage:?} terms={arities:?}", step.step, shape.n, shape.degree);
             let mut candidate = cpu(&shape);
             let tables = |s: &bench::Masked<K>| {
                 s.tables()

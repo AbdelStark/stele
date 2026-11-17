@@ -46,7 +46,9 @@ transfers, and initial/maximum retained explicit device capacities. Table reads
 include allocated capacity even after folds shorten the live prefix. Raw-test
 transfers include both readback and upload for lazy injection and are separate
 from candidate transfers. The helper's host clones and comparison vectors are
-additional host storage. None of these counts includes allocator/driver retention,
+additional host storage. The CPU receipt records each original domain, factor
+storage type, mask coordinate and term arity for independent byte accounting.
+None of these counts includes allocator/driver retention,
 cold context/module overhead or temporary staging/first-fold overlap in a complete
 pipeline peak. Existing build phase timers remain available; whole-operation
 measurements must also charge reconstruction, conversion, expansion, routing and
