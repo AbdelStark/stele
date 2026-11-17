@@ -96,17 +96,86 @@ fn transcript() -> Transcript<QM31> {
     Transcript::new(b"gkr observation reference").expect("transcript")
 }
 
+fn paired(statement: &mut Statement<QM31>, columns: &mut [Vec<M31>]) {
+    let lookup = &mut statement.lookups[0];
+    lookup.table = (1..=3)
+        .flat_map(|a| (1..=3).map(move |b| vec![a, b]))
+        .collect();
+    lookup.valid = lookup.table.len();
+    lookup.table.resize(16, vec![0, 0]);
+    columns[3] = vec![M31::ZERO; 16];
+    statement.columns[3].log_len = 4;
+    for member in &mut lookup.members {
+        let mut second = member.tuple[0].clone();
+        second.vars.reverse();
+        member.tuple.push(second);
+        member.shifts.push(member.shifts[0]);
+        for x in 0..1usize << member.vars {
+            let index = |vars: &[u32]| {
+                vars.iter()
+                    .fold(0, |at, q| (at << 1) | ((x >> (member.vars - 1 - q)) & 1))
+            };
+            if member
+                .selector
+                .as_ref()
+                .is_some_and(|s| s.values[index(&s.vars)] == 0)
+            {
+                continue;
+            }
+            let row: Vec<_> = member
+                .tuple
+                .iter()
+                .zip(&member.shifts)
+                .map(|(read, shift)| {
+                    (columns[read.column][index(&read.vars)] + M31::from_i64(*shift)).as_u32()
+                        as i64
+                })
+                .collect();
+            let at = lookup.table[..lookup.valid]
+                .iter()
+                .position(|r| *r == row)
+                .expect("tuple in table");
+            columns[3][at] =
+                columns[3][at] + M31::from_i64(1 << (3usize.saturating_sub(member.vars as usize)));
+        }
+    }
+}
+
 #[test]
 fn matches_reference_gkr_observation_and_complete_finals() {
     let mut constructed = [false; 8];
-    for (compact, geometry, byte) in [
-        (false, None, 17),
-        (true, None, 29),
-        (true, Some(Geometry::Balanced), 41),
-        (true, Some(Geometry::Narrow), 53),
+    for (compact, geometry, wide, minimal, byte) in [
+        (false, None, false, false, 17),
+        (true, None, false, false, 29),
+        (true, Some(Geometry::Balanced), false, false, 41),
+        (true, Some(Geometry::Narrow), false, false, 53),
+        (true, Some(Geometry::Balanced), true, false, 61),
+        (true, Some(Geometry::Narrow), true, false, 67),
+        (false, None, false, true, 73),
+        (true, None, false, true, 79),
     ] {
-        let balanced = geometry.is_some();
-        let (statement, columns) = case(compact);
+        let lifetime = geometry.is_some();
+        let (mut statement, mut columns) = case(compact);
+        if wide {
+            paired(&mut statement, &mut columns);
+        }
+        if !compact && !minimal {
+            statement.lookups[0].members[0].tuple[0].vars.reverse();
+        }
+        if minimal && compact {
+            statement.lookups[0].members.truncate(1);
+            columns[3] = vec![M31::from_i64(4), M31::ZERO, M31::ZERO, M31::ZERO];
+        } else if minimal {
+            statement.columns.iter_mut().for_each(|c| c.log_len = 3);
+            statement.lookups = vec![Lookup::single(
+                &[0],
+                3,
+                1,
+                (0..8).map(|i| vec![i]).collect(),
+                8,
+            )];
+            columns = vec![(0..8).map(M31::from_i64).collect(), vec![M31::ONE; 8]];
+        }
         let life = Lifetime {
             geometry: geometry.unwrap_or(Geometry::Balanced),
             source: 0,
@@ -115,7 +184,7 @@ fn matches_reference_gkr_observation_and_complete_finals() {
             blocks: claims::occurrence_counts(&statement).expect("occurrence counts"),
         };
         let model_seed = [91; 32];
-        let root = if balanced {
+        let root = if lifetime {
             claims::lifetime_root(&statement, &columns, &life, &model_seed).expect("model root")
         } else {
             [0; 32]
@@ -126,7 +195,7 @@ fn matches_reference_gkr_observation_and_complete_finals() {
             root,
         };
         let mut ordinary_t = transcript();
-        let ordinary = if balanced {
+        let ordinary = if lifetime {
             let (proof, disclosure) = claims::prove_lifetime(
                 &statement,
                 &columns,
@@ -152,7 +221,7 @@ fn matches_reference_gkr_observation_and_complete_finals() {
             &columns,
             Seed::new([byte; 32]),
             &mut observed_t,
-            balanced.then(|| (&life, model())),
+            lifetime.then(|| (&life, model())),
             &mut |step| {
                 assert_eq!(step.step, seen.iter().sum::<usize>());
                 assert_eq!(step.lookup, 0);
@@ -176,6 +245,16 @@ fn matches_reference_gkr_observation_and_complete_finals() {
                 assert_eq!(
                     rebuilt.tables().collect::<Vec<_>>(),
                     reference.tables().collect::<Vec<_>>()
+                );
+                let mut wrong_inputs = step.construction()?;
+                let bench::GkrFactor::Equality { scale, .. } = &mut wrong_inputs.factors[0] else {
+                    return Err(Error::Statement);
+                };
+                *scale = *scale + QM31::ONE;
+                let wrong = construction::materialize(&wrong_inputs, &mut constructed);
+                assert_ne!(
+                    wrong.tables().next().expect("wrong head").0,
+                    reference.tables().next().expect("reference head").0
                 );
                 compact_seen += usize::from(reference.is_compact());
                 assert_eq!(reference.variables() as usize, step.point.len());
@@ -201,11 +280,10 @@ fn matches_reference_gkr_observation_and_complete_finals() {
                 let finals = reference.final_values().expect("expanded finals");
                 assert_eq!(&finals, step.finals);
                 let compact_values = reference.tables().map(|(x, _)| x[0]).collect::<Vec<_>>();
-                let mut changed_compact =
-                    rebuilt.final_values().expect("constructed compact finals");
-                assert_eq!(changed_compact, compact_values);
-                changed_compact[0] = changed_compact[0] + QM31::ONE;
-                assert_ne!(changed_compact, compact_values);
+                assert_eq!(
+                    rebuilt.final_values().expect("constructed compact finals"),
+                    compact_values
+                );
                 assert_eq!(
                     reference.expand_at(step.point, &compact_values),
                     Err(stele_sumcheck::Error::InvalidInstance),
@@ -242,7 +320,11 @@ fn matches_reference_gkr_observation_and_complete_finals() {
             },
         )
         .expect("observed proof");
-        assert!(seen.iter().all(|n| *n > 0));
+        if minimal {
+            assert_eq!(seen, [0, 0, 1]);
+        } else {
+            assert!(seen.iter().all(|n| *n > 0));
+        }
         assert_eq!(compact_seen, usize::from(compact));
         assert_eq!(observed, ordinary);
         assert_eq!(claims::encode(&observed.0), claims::encode(&ordinary.0));
@@ -256,12 +338,12 @@ fn matches_reference_gkr_observation_and_complete_finals() {
         );
         claims::verify_lifetime(
             &statement,
-            balanced.then_some(&life),
+            lifetime.then_some(&life),
             &observed.0,
             &mut transcript(),
         )
         .expect("genuine proof verifies");
-        if balanced {
+        if lifetime {
             let mut wrong = model();
             wrong.root[0] ^= 1;
             let mut calls = 0;
