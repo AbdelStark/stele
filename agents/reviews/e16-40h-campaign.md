@@ -45,5 +45,16 @@ Lucid job 6667 was submitted once with `afterany:6640:6643`; archive/capture/sba
 hash checks and the capture self-check passed on the remote submission host.
 Submission is not device execution or parity evidence. Earlier archives are unchanged.
 
-Final findings: zero Spec, zero Standards. Required H100 evidence and mandatory
-stack gates remain incomplete; this review does not authorize merge.
+Final capture-code findings: zero Spec, zero Standards. This review does not
+authorize merge.
+
+## Completed hardware evidence
+
+Job 6667 completed successfully. The [receipt](e16-40h-h100.json) pins all four
+executed tests. The coordinator rechecked all 32 hashed payload files, exact
+commands, nonempty receipts, successful sequential completion and three remote
+test-binary hashes. Manifest SHA-256 is
+`2aa034957170a5087cf360b7ea756d2d90c746fe6d397c90d7fa2705e114a761`.
+No performance import or full-proof parity follows. The later host-assembly
+rollback changes two source-material files; helpers, kernels and tests remain
+identical. Independent evidence review and mandatory merge-tree gates are separate.
