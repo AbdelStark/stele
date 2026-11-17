@@ -57,6 +57,17 @@ Work budget: one CPU campaign and one H100 campaign before reporting. Any
 divergence, unsupported generated kernel or allocation failure ends this
 candidate campaign with a recorded failure. Production kernels and interfaces
 remain unchanged; a fix, alternative generator or selective dispatch requires
-a subsequent scoped task. Hardware execution and a validated evidence ledger
-are pending. ADR-127 remains NO-GO; full-size factors, tree/top, claim routing,
+a subsequent scoped task.
+
+The first allocated attempt, Lucid job 6640, failed before compilation: the
+launcher invoked Cargo from outside the archived source directory, where rustup
+could not select the pinned toolchain. Neither CPU nor GPU cases ran. The failure
+is retained in [the launcher disposition](../../agents/reviews/e16-40d-launcher.md).
+After reporting that failure, one bounded launcher-only correction is scoped:
+run provisioning and frozen compilation from the archived source directory,
+then use the unchanged capture, source archive and inventory. No kernel change,
+optimization or automatic retry is included. A further failure stops for a new
+report. Hardware execution and a validated evidence ledger remain pending.
+
+ADR-127 remains NO-GO; full-size factors, tree/top, claim routing,
 source policy, accepted backend design and full-proof parity remain required.
