@@ -75,6 +75,14 @@ required-features = ["controls", "standard-unproven"]
 name = "configuration"
 path = "harness/configuration.rs"
 
+[[test]]
+name = "nc-1303"
+path = "development/nc_1303.rs"
+
+[[test]]
+name = "nc-1307"
+path = "development/nc_1307.rs"
+
 [dependencies]
 stele-gkr = { path = "../../crates/stele-gkr" }
 stele-poly = { path = "../../crates/stele-poly" }

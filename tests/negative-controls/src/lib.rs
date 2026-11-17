@@ -7,6 +7,8 @@ pub mod catalog;
 #[doc(hidden)]
 pub mod development;
 #[doc(hidden)]
+pub mod development_messages;
+#[doc(hidden)]
 pub mod fraction;
 #[doc(hidden)]
 pub mod fraction_transcript;
@@ -441,6 +443,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         run: || development::run(1301),
     },
     catalog::RegisteredControl {
+        id: 1303,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "NoncanonicalField",
+        run: || development_messages::run(1303),
+    },
+    catalog::RegisteredControl {
         id: 1304,
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
@@ -451,6 +459,12 @@ pub const CONTROLS: &[catalog::RegisteredControl] = &[
         kind: catalog::ControlKind::Proof,
         expected_error: "RoundSumMismatch",
         run: || development::run(1305),
+    },
+    catalog::RegisteredControl {
+        id: 1307,
+        kind: catalog::ControlKind::Proof,
+        expected_error: "RoundSumMismatch",
+        run: || development_messages::run(1307),
     },
     catalog::RegisteredControl {
         id: 1309,

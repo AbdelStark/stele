@@ -24,7 +24,8 @@ class FieldPcsBenchTests(unittest.TestCase):
             suite = root/'tests/negative-controls'
             shutil.copytree(ROOT/'tests/negative-controls', suite)
             gates.controls_layout(root)
-            for name in ('src/registry.rs', 'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
+            for name in ('src/registry.rs', 'src/development_messages.rs', 'development/nc_1303.rs',
+                         'development/nc_1307.rs', 'lookup_corpus.py', 'lookup_corpus.py.lock', 'lookup_closed.py',
                          'src/lookup.rs', 'src/lookup_composer.rs', 'examples/support/lookup_verifier.rs',
                          'examples/lookup_bench.rs', 'src/matmul.rs', 'src/matmul_composer.rs',
                          'examples/matmul_corpus.rs', 'matmul_corpus.py', 'matmul_corpus.py.lock',
@@ -48,6 +49,13 @@ class FieldPcsBenchTests(unittest.TestCase):
                 path.write_bytes(saved)
             manifest = suite/'Cargo.toml'
             original = manifest.read_text()
+            for control in (1303, 1307):
+                target = f'[[test]]\nname = "nc-{control}"\npath = "development/nc_{control}.rs"\n'
+                self.assertIn(target, original)
+                manifest.write_text(original.replace(target, ''))
+                with self.subTest(missing_control=control), self.assertRaisesRegex(ValueError, 'not wired'):
+                    gates.controls_layout(root)
+                manifest.write_text(original)
             target = '[[test]]\nname = "requant-verifier"\npath = "requant/verifier.rs"\n'
             self.assertIn(target, original)
             manifest.write_text(original.replace(target, ''))
