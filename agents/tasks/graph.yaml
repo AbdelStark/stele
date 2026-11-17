@@ -5211,6 +5211,7 @@ tasks:
   - run exactly 1000 seeded complete round/fold comparisons on an H100 with base and extension inputs and canonical edge values; absent CUDA, skipped cases, compilation failure or any unequal table or polynomial must fail rather than count as parity
   - count cold setup and compilation in the complete campaign, retain source, inventory, host and case receipts, and publish measured numbers only with a validated ledger; no actual-size factor construction, compact-final expansion, full-proof parity, complete device-budget or GO credit follows
   - bounded spike for c_sc implementation coverage and cold compilation risk; one CPU campaign and one H100 campaign before reporting; any divergence, unsupported generated kernel or failed allocation ends this candidate campaign with a recorded failure and no backend promotion
+  - after the reported job 6640 launcher failure before compilation, permit one independently reviewed launcher-only correction using the unchanged 8038e131 archive, capture and inventory; build from the pinned source directory after separate locked provisioning with frozen compilation, preserve the failed attempt, and stop on any further failure
   - obtain owning lane V GPU review and another lane review; keep production code, kernels, transcript and proof bytes unchanged, with mandatory gates after the preceding stack; this independent successor to E16-40g uses only the E16-35 and E16-40a interfaces already on main, not the unmerged lookup, batch or GKR reference interfaces
 
 - id: E16-40e
@@ -5247,7 +5248,7 @@ tasks:
   - RFC-0013 A5 items 1-6, A8
   skill: benchmark-runner
   crate: stele-reductions+research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40g-gkr-reference
   acceptance:
