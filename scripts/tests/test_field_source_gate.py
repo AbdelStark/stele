@@ -34,7 +34,8 @@ class FieldSourcesLayoutTests(unittest.TestCase):
         crate = self.root / 'crates/stele-reductions'
         with mock.patch.object(gate, 'requant_fixtures') as fixtures:
             for name in ('src/zk_lookup_bench.rs', 'src/zk_batch_bench.rs',
-                         'tests/lookup_bench.rs', 'tests/batch_bench.rs'):
+                         'tests/lookup_bench.rs', 'tests/batch_bench.rs',
+                         'src/zk_gkr_bench.rs', 'tests/gkr_bench.rs'):
                 path = crate / name
                 saved = path.read_bytes()
                 path.unlink()

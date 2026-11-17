@@ -728,6 +728,8 @@ def field_sources(root):
                # E16-40c: reviewed, opt-in production lookup and claim-batch references.
                'src/zk_lookup_bench.rs', 'tests/lookup_bench.rs',
                'src/zk_batch_bench.rs', 'tests/batch_bench.rs',
+               # E16-40g: reviewed, opt-in production factor and routing observer.
+               'src/zk_gkr_bench.rs', 'tests/gkr_bench.rs',
                # RFC-0026 A9 (E12-14a): any development relation as one dev-zk statement.
                'src/zk_relation.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
@@ -2091,6 +2093,7 @@ def standard_quarantine(root):
                    # RFC-0013 A8 (E12-28): the policy-aware hiding constructors.
                    'crates/stele-reductions/src/zk.rs', 'crates/stele-reductions/src/zk_claims.rs',
                    'crates/stele-reductions/tests/batch_bench.rs',
+                   'crates/stele-reductions/tests/gkr_bench.rs',
                    'crates/stele-pcs/src/producer_tests.rs'}
     dev_pattern = re.compile(r'\bfrom_code_id_development\b|\bProfile\s*::\s*Development\b'
                              r'|\bSources\s*::\s*Circle\w*\b'  # Circle (A11), CircleAll (A12)
