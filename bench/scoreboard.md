@@ -57,6 +57,9 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | L2a | development (dev-zk, A8 sources) | arm64 Apple M4 Max (16 hardware threads) | 16 | 538.59 | 0.119 | 30.07 | 25.7 | 35.2 | — | — | — | none | 1/1 | [e16-39-dev-zk-stories42m-t64-mac](ledger/e16-39-dev-zk-stories42m-t64-mac.json) @ `85f289a` |
 | L2a | development | arm64 Apple M4 Max (16 hardware threads) | 16 | 137.78 | 0.465 | 6.32 | 15.6 | 27.6 | — | — | — | none | 4/4 | [e8-05d-dev-stories42m-t64-byte5-mac](ledger/e8-05d-dev-stories42m-t64-byte5-mac.json) @ `a53e0b1` |
 | L2c | development | x86_64 AMD EPYC 7532 32-Core Processor | 128 | 1978.97 | 0.032 | 69.36 | 126.8 | 109.7 | — | — | — | none | 4/4 | [e16-20-dev-stories110m](ledger/e16-20-dev-stories110m.json) @ `445c9b0` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf (CPU on Lucid h100-nvl-1-1-cc) | 16 | 489.78 | 0.065 | 56.74 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e16-40a-dev-zk-stories42m-t32-h100-0](ledger/e16-40a-dev-zk-stories42m-t32-h100-0.json) @ `a9fd51f` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf (CPU on Lucid h100-nvl-1-1-cc) | 16 | 487.36 | 0.066 | 56.72 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e16-40a-dev-zk-stories42m-t32-h100-1](ledger/e16-40a-dev-zk-stories42m-t32-h100-1.json) @ `a9fd51f` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | 06/cf (CPU on Lucid h100-nvl-1-1-cc) | 16 | 489.91 | 0.065 | 57.03 | 21.4 | 89.7 | — | — | — | none | 1/1 | [e16-40a-dev-zk-stories42m-t32-h100-2](ledger/e16-40a-dev-zk-stories42m-t32-h100-2.json) @ `a9fd51f` |
 
 Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
 

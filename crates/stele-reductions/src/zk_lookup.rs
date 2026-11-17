@@ -181,6 +181,10 @@ impl GkrStep {
     pub(super) fn is_leaf(&self) -> bool {
         self.leaf
     }
+    /// The first step consumes the committed top (RFC-0008 A7 item 4).
+    pub(super) fn is_first(&self) -> bool {
+        self.first
+    }
     /// Public draws besides the sumcheck's (E12-26): the first step's `r` (`k`,
     /// `ZeroWeight`), and every step's `λ` and, below the leaf, `t*`.
     pub(super) fn draws(&self) -> (u64, u64) {

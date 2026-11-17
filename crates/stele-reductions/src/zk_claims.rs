@@ -1706,8 +1706,11 @@ pub fn prove_batch<K: ChallengeField + CodeField + Eq>(
     binding: &[u8],
     t: &mut Transcript<K>,
 ) -> Result<(Batch<K>, Vec<K>), Error> {
+    let mut detail = stele_sumcheck::parallel::Laps::start();
     let gammas = coefficients(t, claims.len())?;
+    detail.lap("zk/detail/batch_prefix");
     let weights = weight_table(prepared.source(), claims, &gammas)?;
+    detail.lap("zk/detail/batch_weights");
     prove_weighted(
         id, prepared, verified, claims, &gammas, weights, mask, binding, t,
     )
@@ -1728,9 +1731,12 @@ pub fn prove_weighted<K: ChallengeField + CodeField + Eq>(
     binding: &[u8],
     t: &mut Transcript<K>,
 ) -> Result<(Batch<K>, Vec<K>), Error> {
+    let mut detail = stele_sumcheck::parallel::Laps::start();
     let i = batch_instance(id, prepared.source(), claims, gammas);
     let dense = Dense::new(&i, vec![weights, face(prepared)]).map_err(Error::Sumcheck)?;
+    detail.lap("zk/detail/batch_face");
     let (sumcheck, point) = masked::prove(&i, dense, mask, binding, t).map_err(Error::Sumcheck)?;
+    detail.lap("zk/detail/batch_rounds");
     // A5 item 4: w* = 0 leaves the opening without mask-row weight.
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
@@ -1746,6 +1752,7 @@ pub fn prove_weighted<K: ChallengeField + CodeField + Eq>(
         )
         .map_err(|f| Error::Pcs(f.cause))?
         .0;
+    detail.lap("zk/detail/batch_opening");
     Ok((Batch { sumcheck, opening }, point))
 }
 
@@ -1807,6 +1814,47 @@ struct Occurrences<K> {
     /// A leaf with several members: `factors` and `terms` are compact (one
     /// combined factor per tuple entry); the instance's inputs are these.
     expand: Option<lookup::Expand<K>>,
+}
+
+impl<K: ChallengeField> Occurrences<K> {
+    /// E16-40a / RFC-0014 §6: public topology only, before the first fold.
+    fn profile(&self, _kind: &str) {
+        #[cfg(feature = "std")]
+        {
+            extern crate std;
+            if std::env::var_os("STELE_STAGE_TIMES").is_some() {
+                let masks = self
+                    .factors
+                    .iter()
+                    .map(|f| f.v.map_or_else(|| "-".to_string(), |v| v.to_string()))
+                    .collect::<Vec<_>>()
+                    .join(",");
+                let terms = self
+                    .terms
+                    .iter()
+                    .map(|t| {
+                        if t.factors.is_empty() {
+                            "-".to_string()
+                        } else {
+                            t.factors
+                                .iter()
+                                .map(ToString::to_string)
+                                .collect::<Vec<_>>()
+                                .join(".")
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
+                std::eprintln!(
+                    "shape {_kind} field={} vars={} degree={} masks={masks} terms={terms} compact={}",
+                    K::DEGREE,
+                    self.num_vars,
+                    self.degree,
+                    u8::from(self.expand.is_some())
+                );
+            }
+        }
+    }
 }
 
 /// A term's coefficient, with `±1` kept apart so its product is not multiplied by it.
@@ -2885,6 +2933,20 @@ where
         return Err(Error::Statement);
     }
     let mut laps = stele_sumcheck::parallel::Laps::start(); // E16-22
+    #[cfg(feature = "std")]
+    {
+        extern crate std;
+        if std::env::var_os("STELE_STAGE_TIMES").is_some() {
+            std::eprintln!(
+                "inventory field={} relations={} gkr={} lookups={} batches={}",
+                <K as CodeField>::DEGREE,
+                plan.steps.len(),
+                plan.gkr.len(),
+                plan.lookups.len(),
+                plan.batched.len()
+            );
+        }
+    }
     let mut data: Vec<Vec<K>> = columns
         .iter()
         .map(|column| column.iter().map(|x| element::<K>(*x)).collect())
@@ -2958,7 +3020,9 @@ where
     };
     // E16-33: one source at a time. Each encoding is already parallel inside, and two
     // large sources encoded together doubled the transient peak.
+    let mut detail = stele_sumcheck::parallel::Laps::start();
     let mut prepared = (0..early).map(prepare).collect::<Result<Vec<_>, _>>()?;
+    detail.lap("zk/detail/sources_prepare");
     let mut sources = Vec::new();
     let mut certificates = Vec::new();
     let mut verified = Vec::new();
@@ -2969,6 +3033,7 @@ where
         certificates.push(certificate);
         verified.push(v);
     }
+    detail.lap("zk/detail/sources_certify");
     let fail = |e: stele_hash::Error| Error::Sumcheck(e.into());
     laps.lap("zk/sources_prepare_certify");
     t.absorb(AbsorbLabel::FieldSources, &sources.concat())
@@ -2977,12 +3042,16 @@ where
     // top is kept: each tree is rebuilt, identically, for its own GKR steps (E16-33).
     let mut runs = Vec::new();
     for (l, lp) in plan.lookups.iter().enumerate() {
+        let mut detail = stele_sumcheck::parallel::Laps::start();
         lookup::messages(lp, l, t)?;
         let beta = t.challenge(ChallengeLabel::LookupBeta).map_err(fail)?;
         let alpha = t.challenge(ChallengeLabel::LookupAlpha).map_err(fail)?;
+        detail.lap("zk/detail/top_prefix");
         let layers = lookup::tree(lp, &data, beta, alpha);
+        detail.lap("zk/detail/top_tree");
         let [p, q, mut h] = lookup::top(lp, &layers)?;
         drop(layers);
+        detail.lap("zk/detail/top_values");
         if forgery == Some(Forgery::Ratio(l)) {
             let total = h.iter().fold(zero::<K>(), |s, v| s + *v);
             h[0] = h[0] - total;
@@ -2991,12 +3060,14 @@ where
         runs.push(lookup::Run::new(beta, alpha));
     }
     laps.lap("zk/logup_trees_and_tops");
+    let mut detail = stele_sumcheck::parallel::Laps::start();
     let top_message = if plan.lookups.is_empty() {
         Vec::new()
     } else {
         source_message(&plan, early, &data, seed, claim_masks)?
     };
     let shared_message = self::shared_message(&plan, &masks, seed, claim_masks)?;
+    detail.lap("zk/detail/top_messages");
     let (top, shared) = stele_sumcheck::parallel::join(
         || {
             (!plan.lookups.is_empty()).then(|| {
@@ -3010,6 +3081,7 @@ where
         prepared.push(top?);
     }
     prepared.push(shared?);
+    detail.lap("zk/detail/top_prepare");
     let certified =
         stele_sumcheck::parallel::map(prepared.len() - early, |i| certify(&prepared[early + i]));
     for (p, c) in prepared[early..].iter().zip(certified) {
@@ -3020,6 +3092,7 @@ where
     }
     t.absorb(AbsorbLabel::FieldSources, &sources[early..].concat())
         .map_err(fail)?;
+    detail.lap("zk/detail/top_certify");
     laps.lap("zk/top_and_shared_sources");
     let shared_index = plan.layouts.len();
     let binding = sources[shared_index].clone();
@@ -3030,8 +3103,10 @@ where
     let mut mus = Vec::new();
     let mut relations = Vec::new();
     for (j, step) in plan.steps.iter().enumerate() {
+        let mut detail = stele_sumcheck::parallel::Laps::start();
         let gammas = step_draws(t, step)?;
         let free = draws(t, step.label, step.draws)?;
+        detail.lap("zk/detail/relation_prefix");
         let n = step.num_vars as usize;
         let mut factors = Vec::new();
         if step.eq.is_some() {
@@ -3078,11 +3153,15 @@ where
                 .iter()
                 .enumerate()
                 .any(|(l, lp)| forgery == Some(Forgery::Ratio(l)) && lp.identity == Some(j));
+        detail.lap("zk/detail/relation_factors");
+        summand.profile("relation");
+        detail.lap("zk/detail/relation_setup");
         let (proof, point, truth, mu) = if forgery == Some(Forgery::Unchecked(j)) {
             unchecked(&i, summand, &masks[j], &binding, t)?
         } else {
             masked_instance(&i, step.degree, summand, &masks[j], &binding, here, None, t)?
         };
+        detail.lap("zk/detail/relation_rounds");
         let first = step.first();
         for (k, o) in step.occurrences.iter().enumerate() {
             // A5 item 4: public aborts before the claim leaves the producer.
@@ -3098,6 +3177,7 @@ where
         }
         mus.push(mask_claim(&plan, j, &point, mu)?);
         relations.push(proof);
+        detail.lap("zk/detail/relation_claims");
     }
     laps.lap("zk/relations_masked_sumcheck");
     let mut gkr = Vec::new();
@@ -3106,6 +3186,7 @@ where
     // the leaf step, the largest, which reads no layer. Proof bytes are unchanged.
     let mut tree: Option<(usize, Vec<Vec<[K; 2]>>)> = None;
     for (g, step) in plan.gkr.iter().enumerate() {
+        let mut detail = stele_sumcheck::parallel::Laps::start();
         let index = plan.steps.len() + g;
         let l = step.lookup_index();
         if step.is_leaf() {
@@ -3115,9 +3196,11 @@ where
             let lp = &plan.lookups[l];
             tree = Some((l, lookup::tree(lp, &data, runs[l].beta, runs[l].alpha)));
         }
+        detail.lap("zk/detail/gkr_tree");
         let run = &mut runs[l];
         let (terms, claimed) = lookup::start(step, &plan.lookups[l], run, t)?;
         let i = instance(step.id, step.num_vars, terms, claimed);
+        detail.lap("zk/detail/gkr_prefix");
         let layers: &[Vec<[K; 2]>] = tree.as_ref().map_or(&[], |(_, layers)| layers);
         // NC-0930, NC-0931: this lookup's leaf takes the substitute.
         let substituted = match forgery {
@@ -3176,6 +3259,15 @@ where
             _ => None,
         };
         let here = tweak.is_some();
+        detail.lap("zk/detail/gkr_factors");
+        summand.profile(if step.is_leaf() {
+            "gkr_leaf"
+        } else if step.is_first() {
+            "gkr_first"
+        } else {
+            "gkr_interior"
+        });
+        detail.lap("zk/detail/gkr_setup");
         let (proof, point, truth, mu) = if forgery == Some(Forgery::Block(g)) {
             let lambda = i.terms[1].coefficient;
             let summand = Perturb {
@@ -3202,6 +3294,7 @@ where
                 t,
             )?
         };
+        detail.lap("zk/detail/gkr_rounds");
         let truth = match twin {
             Some(mut twin) => {
                 for c in &point {
@@ -3220,6 +3313,7 @@ where
         mus.extend(finals.blocks.iter().cloned());
         lookup::advance(step, run, &point, &finals, t)?;
         gkr.push(proof);
+        detail.lap("zk/detail/gkr_claims");
     }
     laps.lap("zk/logup_gkr");
     let mut batches = Vec::new();
@@ -3246,12 +3340,15 @@ where
         batches.push(batch);
     }
     laps.lap("zk/claim_batches_and_openings");
+    let mut detail = stele_sumcheck::parallel::Laps::start();
     let shared = &prepared[shared_index];
     let gammas = coefficients(t, mus.len())?;
     let weights = weight_table(shared.source(), &mus, &gammas)?;
     let i = batch_instance(plan.shared_batch_id(), shared.source(), &mus, &gammas);
     let dense = Dense::new(&i, vec![weights, face(shared)]).map_err(Error::Sumcheck)?;
+    detail.lap("zk/detail/shared_weights_face");
     let (proof, point) = prove_at(&i, dense, seed, t, plan.policy())?;
+    detail.lap("zk/detail/shared_prove");
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
     }
@@ -3265,6 +3362,7 @@ where
         )
         .map_err(|f| Error::Pcs(f.cause))?
         .0;
+    detail.lap("zk/detail/shared_opening");
     laps.lap("zk/shared_batch_and_opening");
     Ok((
         Proof {

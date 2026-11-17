@@ -1,0 +1,50 @@
+# Synthetic one-step lookup topology; all timings replaced by zero. Not a benchmark.
+inventory field=4 relations=2 gkr=1 lookups=1 batches=2
+stage zk/source_messages 0
+stage zk/detail/sources_prepare 0
+stage zk/detail/sources_certify 0
+stage zk/sources_prepare_certify 0
+stage zk/detail/top_prefix 0
+stage zk/detail/top_tree 0
+stage zk/detail/top_values 0
+stage zk/logup_trees_and_tops 0
+stage zk/detail/top_messages 0
+stage zk/detail/top_prepare 0
+stage zk/detail/top_certify 0
+stage zk/top_and_shared_sources 0
+stage zk/detail/relation_prefix 0
+stage zk/detail/relation_factors 0
+shape relation field=4 vars=3 degree=4 masks=-,0,1,0 terms=0.1.2,0.3 compact=0
+stage zk/detail/relation_setup 0
+stage zk/detail/relation_rounds 0
+stage zk/detail/relation_claims 0
+stage zk/detail/relation_prefix 0
+stage zk/detail/relation_factors 0
+shape relation field=4 vars=3 degree=2 masks=0 terms=0 compact=0
+stage zk/detail/relation_setup 0
+stage zk/detail/relation_rounds 0
+stage zk/detail/relation_claims 0
+stage zk/relations_masked_sumcheck 0
+stage zk/detail/gkr_tree 0
+stage zk/detail/gkr_prefix 0
+stage zk/detail/gkr_factors 0
+shape gkr_leaf field=4 vars=3 degree=4 masks=-,0,0,0,1,- terms=0.1,0.2,0.5,0.3,0.3.4,0.4.5 compact=0
+stage zk/detail/gkr_setup 0
+stage zk/detail/gkr_rounds 0
+stage zk/detail/gkr_claims 0
+stage zk/logup_gkr 0
+stage zk/detail/batch_prefix 0
+stage zk/detail/batch_weights 0
+stage zk/detail/batch_face 0
+stage zk/detail/batch_rounds 0
+stage zk/detail/batch_opening 0
+stage zk/detail/batch_prefix 0
+stage zk/detail/batch_weights 0
+stage zk/detail/batch_face 0
+stage zk/detail/batch_rounds 0
+stage zk/detail/batch_opening 0
+stage zk/claim_batches_and_openings 0
+stage zk/detail/shared_weights_face 0
+stage zk/detail/shared_prove 0
+stage zk/detail/shared_opening 0
+stage zk/shared_batch_and_opening 0
