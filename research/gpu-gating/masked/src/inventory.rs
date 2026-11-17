@@ -29,7 +29,8 @@ pub struct Case {
 }
 
 fn number(s: &str) -> Result<usize, &'static str> {
-    if s.is_empty() || !s.bytes().all(|c| c.is_ascii_digit()) {
+    if s.is_empty() || (s.len() > 1 && s.starts_with('0')) || !s.bytes().all(|c| c.is_ascii_digit())
+    {
         return Err("invalid unsigned number");
     }
     s.parse().map_err(|_| "number overflow")

@@ -55,6 +55,7 @@ fn rejects_incomplete_or_malformed_inventory() {
     for (from, to) in [
         ("field=4", "field=8"),
         ("vars=28", "vars=0"),
+        ("vars=28", "vars=028"),
         ("degree=5", "degree=32"),
         ("masks=-,0,25", "masks=-,0,28"),
         ("terms=0.1.2,-", "terms=0.1.3,-"),
