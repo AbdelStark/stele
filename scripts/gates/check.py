@@ -725,6 +725,9 @@ def field_sources(root):
                'src/zk_claims.rs', 'tests/zk_claims.rs',
                # RFC-0008 A7: ZK-GKR over the A5 trees.
                'src/zk_lookup.rs', 'tests/zk_lookup.rs',
+               # E16-40c: reviewed, opt-in production lookup and claim-batch references.
+               'src/zk_lookup_bench.rs', 'tests/lookup_bench.rs',
+               'src/zk_batch_bench.rs', 'tests/batch_bench.rs',
                # RFC-0026 A9 (E12-14a): any development relation as one dev-zk statement.
                'src/zk_relation.rs',
                # RFC-0026 §5 rows 1-2 (E16-04): modules, plain-checker tests and the mutation survey.
