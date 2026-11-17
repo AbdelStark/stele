@@ -54,5 +54,46 @@ downloaded words and assembled material overlap; retain whole-process RSS and
 wall time in the hardware evidence. No 40% budget or integrated backend approval
 follows from these counters.
 
-Hardware measurements, validated ledgers and review remain pending. No source
-preparation speedup, GO decision or integrated GPU proof is claimed.
+## H100 measurements
+
+Lucid job 6607 passed the explicit 1,000-case complete-source device test and
+the small full-material example on `h100-nvl-1-1-cc` (H100 NVL). Job 6609 then
+ran three large full-material checks and three paired CPU/GPU repetitions per
+shape on the same host, with 16 pinned CPU threads and Rayon threads. All nine
+paired roots matched. The source was `59f9a18b`; each timed command used a new
+process, including cold CUDA/NVRTC setup. CPU/GPU order alternated by repetition.
+
+Every sample and the separate checks are retained in the validated
+[first](../../bench/ledger/e16-40b-source-material-h100-1.json),
+[second](../../bench/ledger/e16-40b-source-material-h100-2.json) and
+[third](../../bench/ledger/e16-40b-source-material-h100-3.json) records.
+These are microbenchmarks, outside the inference ladder; the scoreboard contains
+inference records only. Ranges below span all three repetitions, in seconds;
+`ell = 11` throughout.
+
+| m | CPU preparation | GPU material | Cold GPU setup | CPU process | GPU process |
+|---|---:|---:|---:|---:|---:|
+| 15 | 9.101–9.585 | 8.127–8.164 | 4.822–5.149 | 10.89–11.66 | 18.33–19.12 |
+| 16 | 18.773–19.702 | 15.898–15.983 | 5.094–5.132 | 22.20–23.32 | 27.84–28.03 |
+| 17 | 38.762–38.887 | 31.667–31.768 | 5.076–5.128 | 45.47–45.56 | 46.84–47.10 |
+
+The standalone GPU commands are slower in every pair despite faster isolated
+encoding and Merkle kernels. Complete download and CPU assembly matter: at
+`m = 17` they take 6.980–7.052 s and 20.497–20.640 s respectively, both already
+inside GPU material time. That parent excludes cold setup; whole-process time
+also includes input generation, allocation and cleanup. CPU process time includes
+certificate production and verification, which the GPU command does not perform;
+this difference favors the GPU in the displayed process comparison. No omitted
+certificate/opening cost is treated as accelerated.
+
+This candidate's full download/assembly policy does not establish an integrated
+source-stage speedup. Retained or selectively gathered device responses remain
+an unmeasured alternative requiring a reviewed storage interface and complete
+allocation-lifetime accounting. In particular, the buffer counters above do not
+establish the RFC-0014 A1 budget. ADR-127 remains NO-GO.
+
+The raw measurement archive has SHA-256
+`4501130f791bdb5f4f3436c4508dc8a866d32bd61fd8530c6f9b8da597dbbbc8`.
+All 85 payload hashes were verified after download; the ledgers also identify
+the source, binary, capture script, host, load observations and parity manifest.
+No integrated certificate path or full CPU/GPU proof parity is claimed.

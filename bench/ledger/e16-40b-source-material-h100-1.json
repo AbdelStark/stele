@@ -1,0 +1,496 @@
+{
+ "batch_size": 1,
+ "bindings_all_on": true,
+ "commit": "59f9a18ba0db3dd096912bbe4fa130f25fddad16",
+ "controls": {
+  "failed": 0,
+  "passed": 0,
+  "total": 0
+ },
+ "device": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB",
+ "driver": "NVIDIA 570.211.01; NVRTC loaded at runtime",
+ "generated_tokens": 0,
+ "kernel_counters": {
+  "cpu-15-1/process_peak_rss_bytes": 15080947712,
+  "cpu-16-1/process_peak_rss_bytes": 30159577088,
+  "cpu-17-1/process_peak_rss_bytes": 60316590080,
+  "gpu-15-1/device_buffer_peak_bytes": 5370020014,
+  "gpu-15-1/device_retained_bytes": 4311744480,
+  "gpu-15-1/download_bytes": 4311744480,
+  "gpu-15-1/host_material_owned_bytes": 4320133088,
+  "gpu-15-1/process_peak_rss_bytes": 10899521536,
+  "gpu-15-1/upload_bytes": 1075052718,
+  "gpu-16-1/device_buffer_peak_bytes": 10740039854,
+  "gpu-16-1/device_retained_bytes": 8623488992,
+  "gpu-16-1/download_bytes": 8623488992,
+  "gpu-16-1/host_material_owned_bytes": 8640266208,
+  "gpu-16-1/process_peak_rss_bytes": 21666099200,
+  "gpu-16-1/upload_bytes": 2150105262,
+  "gpu-17-1/device_buffer_peak_bytes": 21480079534,
+  "gpu-17-1/device_retained_bytes": 17246978016,
+  "gpu-17-1/download_bytes": 17246978016,
+  "gpu-17-1/host_material_owned_bytes": 17280532448,
+  "gpu-17-1/process_peak_rss_bytes": 43194130432,
+  "gpu-17-1/upload_bytes": 4300210350
+ },
+ "kind": "micro",
+ "model_config": {
+  "checks": [
+   {
+    "args": [
+     "11",
+     "15",
+     "check",
+     "40"
+    ],
+    "load_after": [
+     "2.486328125",
+     "3.50390625",
+     "3.32470703125"
+    ],
+    "load_before": [
+     "2.03466796875",
+     "3.51220703125",
+     "3.3203125"
+    ],
+    "name": "check-15",
+    "observations": {
+     "bit_equal": "true",
+     "columns_and_paths_compared": "262144",
+     "cpu_certify_ns": "130968298",
+     "cpu_prepare_ns": "9803114320",
+     "cpu_root": "709b11aca6154217745c34ccc245c4d2e037fdf7ccf800e74553d233a7498dba",
+     "device": "NVIDIA H100 NVL",
+     "device_buffer_peak_bytes": "5370020014",
+     "device_retained_bytes": "4311744480",
+     "download_bytes": "4311744480",
+     "gpu_download_ns": "1738432311",
+     "gpu_encode_ns": "80252727",
+     "gpu_material_ns": "8107608262",
+     "gpu_merkle_ns": "7159528",
+     "gpu_root": "709b11aca6154217745c34ccc245c4d2e037fdf7ccf800e74553d233a7498dba",
+     "gpu_setup_ns": "4998394486",
+     "gpu_upload_ns": "982421798",
+     "host_assemble_ns": "5134791050",
+     "host_material_owned_bytes": "4320133088",
+     "host_message_ns": "1582045138",
+     "seed": "40",
+     "source_ell": "11",
+     "source_m": "15",
+     "upload_bytes": "1075052718"
+    },
+    "process_peak_rss_bytes": 15262351360,
+    "started_utc": "2026-11-17T11:19:53.241296+00:00",
+    "wall_time_ns": 28960000000
+   },
+   {
+    "args": [
+     "11",
+     "16",
+     "check",
+     "40"
+    ],
+    "load_after": [
+     "2.396484375",
+     "3.3671875",
+     "3.2890625"
+    ],
+    "load_before": [
+     "2.486328125",
+     "3.50390625",
+     "3.32470703125"
+    ],
+    "name": "check-16",
+    "observations": {
+     "bit_equal": "true",
+     "columns_and_paths_compared": "524288",
+     "cpu_certify_ns": "226952515",
+     "cpu_prepare_ns": "19913358607",
+     "cpu_root": "757c67efe7a15fe6ac3681550945efc0843c59b1f78898fb8afbf0639a1c67ef",
+     "device": "NVIDIA H100 NVL",
+     "device_buffer_peak_bytes": "10740039854",
+     "device_retained_bytes": "8623488992",
+     "download_bytes": "8623488992",
+     "gpu_download_ns": "3699116212",
+     "gpu_encode_ns": "171847726",
+     "gpu_material_ns": "16147233093",
+     "gpu_merkle_ns": "14159042",
+     "gpu_root": "757c67efe7a15fe6ac3681550945efc0843c59b1f78898fb8afbf0639a1c67ef",
+     "gpu_setup_ns": "4731796428",
+     "gpu_upload_ns": "1659049559",
+     "host_assemble_ns": "10306406945",
+     "host_material_owned_bytes": "8640266208",
+     "host_message_ns": "3214562530",
+     "seed": "40",
+     "source_ell": "11",
+     "source_m": "16",
+     "upload_bytes": "2150105262"
+    },
+    "process_peak_rss_bytes": 30396731392,
+    "started_utc": "2026-11-17T11:20:22.236989+00:00",
+    "wall_time_ns": 49870000000
+   },
+   {
+    "args": [
+     "11",
+     "17",
+     "check",
+     "40"
+    ],
+    "load_after": [
+     "2.677734375",
+     "3.41748046875",
+     "3.3251953125"
+    ],
+    "load_before": [
+     "2.396484375",
+     "3.3671875",
+     "3.2890625"
+    ],
+    "name": "check-17",
+    "observations": {
+     "bit_equal": "true",
+     "columns_and_paths_compared": "1048576",
+     "cpu_certify_ns": "389090182",
+     "cpu_prepare_ns": "38498705938",
+     "cpu_root": "a6f14b8080e14e183bcdb09b70a257728cc74773c25e7b23b5cc67d68146c52d",
+     "device": "NVIDIA H100 NVL",
+     "device_buffer_peak_bytes": "21480079534",
+     "device_retained_bytes": "17246978016",
+     "download_bytes": "17246978016",
+     "gpu_download_ns": "6862677036",
+     "gpu_encode_ns": "370097916",
+     "gpu_material_ns": "31107375577",
+     "gpu_merkle_ns": "27265536",
+     "gpu_root": "a6f14b8080e14e183bcdb09b70a257728cc74773c25e7b23b5cc67d68146c52d",
+     "gpu_setup_ns": "5086679936",
+     "gpu_upload_ns": "3040281232",
+     "host_assemble_ns": "20257894617",
+     "host_material_owned_bytes": "17280532448",
+     "host_message_ns": "5635546632",
+     "seed": "40",
+     "source_ell": "11",
+     "source_m": "17",
+     "upload_bytes": "4300210350"
+    },
+    "process_peak_rss_bytes": 60661301248,
+    "started_utc": "2026-11-17T11:21:12.150122+00:00",
+    "wall_time_ns": 88110000000
+   }
+  ],
+  "evidence_manifest_sha256": "1b2c9c20f7e3a78ec1e3182b667131a56a8e1ecc338ff576b283842448f75fd1",
+  "host": {
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "binary_sha256": "40bf667a38eb02f269a912f7dfaa8d2ede2e683ea1d75b34770d948b85a097e7",
+   "cpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           52 bits physical, 57 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  28\nOn-line CPU(s) list:                     0-27\nVendor ID:                               GenuineIntel\nModel name:                              06/cf\nCPU family:                              6\nModel:                                   207\nThread(s) per core:                      1\nCore(s) per socket:                      28\nSocket(s):                               1\nStepping:                                2\nBogoMIPS:                                7200.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat clflush dts mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc bts rep_good nopl tsc_reliable nonstop_tsc cpuid tsc_known_freq pni pclmulqdq dtes64 ds_cpl ssse3 fma cx16 pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tdx_guest fsgsbase bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq la57 rdpid bus_lock_detect cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               896 KiB (28 instances)\nL1i cache:                               896 KiB (28 instances)\nL2 cache:                                112 MiB (28 instances)\nL3 cache:                                16 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-27\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Not affected\nVulnerability Vmscape:                   Not affected\n",
+   "gpu": "name, uuid, driver_version, memory.total [MiB]\nNVIDIA H100 NVL, GPU-a5b36803-847b-2400-e779-580be6c65ec3, 570.211.01, 95830 MiB\n",
+   "hostname": "h100-nvl-1-1-cc",
+   "script_sha256": "816c6e6f629ab3c0dd00145ad524176b7d1cd9de8c494024e155f611e67c5adb",
+   "source": "59f9a18ba0db3dd096912bbe4fa130f25fddad16",
+   "source_archive_sha256": "327fe7c7333eedd740eb946700589f22203328fe06b3bba0a298a09badc89e16",
+   "threads": 16,
+   "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)"
+  },
+  "packaging_script_sha256": "65154ef1fb638dc2337d8bdbb5bcf6485f6bc8f50e332f8275f38d53b38b86f3",
+  "parity_cases": 1000,
+  "parity_job": 6607,
+  "parity_manifest_sha256": "6c8030d7242d6f8e139e3e7725800da7961702c6d4d16f53e76b6e32d9288c41",
+  "parity_raw_directory": "/Users/abdel/dev/stele-validation/e16-40b-parity-6607",
+  "raw_directory": "/Users/abdel/dev/stele-validation/e16-40b-material-6609",
+  "repetition": 1,
+  "repetitions": 3,
+  "samples": [
+   {
+    "args": [
+     "11",
+     "15",
+     "cpu",
+     "41"
+    ],
+    "load_after": [
+     "3.236328125",
+     "3.517578125",
+     "3.35888671875"
+    ],
+    "load_before": [
+     "2.677734375",
+     "3.41748046875",
+     "3.3251953125"
+    ],
+    "name": "cpu-15-1",
+    "observations": {
+     "cpu_certify_ns": "127414344",
+     "cpu_prepare_ns": "9585152770",
+     "cpu_root": "709b11aca6154217745c34ccc245c4d2e037fdf7ccf800e74553d233a7498dba",
+     "host_message_ns": "1470693518",
+     "seed": "41",
+     "source_ell": "11",
+     "source_m": "15"
+    },
+    "process_peak_rss_bytes": 15080947712,
+    "started_utc": "2026-11-17T11:22:40.324120+00:00",
+    "wall_time_ns": 11430000000
+   },
+   {
+    "args": [
+     "11",
+     "15",
+     "gpu",
+     "41"
+    ],
+    "load_after": [
+     "2.6005859375",
+     "3.353515625",
+     "3.30810546875"
+    ],
+    "load_before": [
+     "3.236328125",
+     "3.517578125",
+     "3.35888671875"
+    ],
+    "name": "gpu-15-1",
+    "observations": {
+     "device": "NVIDIA H100 NVL",
+     "device_buffer_peak_bytes": "5370020014",
+     "device_retained_bytes": "4311744480",
+     "download_bytes": "4311744480",
+     "gpu_download_ns": "1751216443",
+     "gpu_encode_ns": "80354277",
+     "gpu_material_ns": "8127045162",
+     "gpu_merkle_ns": "7198909",
+     "gpu_root": "709b11aca6154217745c34ccc245c4d2e037fdf7ccf800e74553d233a7498dba",
+     "gpu_setup_ns": "4822115087",
+     "gpu_upload_ns": "982108084",
+     "host_assemble_ns": "5109010079",
+     "host_material_owned_bytes": "4320133088",
+     "host_message_ns": "1537225658",
+     "seed": "41",
+     "source_ell": "11",
+     "source_m": "15",
+     "upload_bytes": "1075052718"
+    },
+    "process_peak_rss_bytes": 10899521536,
+    "started_utc": "2026-11-17T11:22:51.803670+00:00",
+    "wall_time_ns": 18330000000
+   },
+   {
+    "args": [
+     "11",
+     "16",
+     "cpu",
+     "41"
+    ],
+    "load_after": [
+     "4.267578125",
+     "3.68701171875",
+     "3.41845703125"
+    ],
+    "load_before": [
+     "2.6005859375",
+     "3.353515625",
+     "3.30810546875"
+    ],
+    "name": "cpu-16-1",
+    "observations": {
+     "cpu_certify_ns": "224132510",
+     "cpu_prepare_ns": "19701858750",
+     "cpu_root": "757c67efe7a15fe6ac3681550945efc0843c59b1f78898fb8afbf0639a1c67ef",
+     "host_message_ns": "3013510622",
+     "seed": "41",
+     "source_ell": "11",
+     "source_m": "16"
+    },
+    "process_peak_rss_bytes": 30159577088,
+    "started_utc": "2026-11-17T11:23:10.174240+00:00",
+    "wall_time_ns": 23320000000
+   },
+   {
+    "args": [
+     "11",
+     "16",
+     "gpu",
+     "41"
+    ],
+    "load_after": [
+     "2.9794921875",
+     "3.42919921875",
+     "3.33984375"
+    ],
+    "load_before": [
+     "4.267578125",
+     "3.68701171875",
+     "3.41845703125"
+    ],
+    "name": "gpu-16-1",
+    "observations": {
+     "device": "NVIDIA H100 NVL",
+     "device_buffer_peak_bytes": "10740039854",
+     "device_retained_bytes": "8623488992",
+     "download_bytes": "8623488992",
+     "gpu_download_ns": "3506161982",
+     "gpu_encode_ns": "173194644",
+     "gpu_material_ns": "15982962831",
+     "gpu_merkle_ns": "14839148",
+     "gpu_root": "757c67efe7a15fe6ac3681550945efc0843c59b1f78898fb8afbf0639a1c67ef",
+     "gpu_setup_ns": "5093562466",
+     "gpu_upload_ns": "1693945368",
+     "host_assemble_ns": "10251837823",
+     "host_material_owned_bytes": "8640266208",
+     "host_message_ns": "2830545134",
+     "seed": "41",
+     "source_ell": "11",
+     "source_m": "16",
+     "upload_bytes": "2150105262"
+    },
+    "process_peak_rss_bytes": 21666099200,
+    "started_utc": "2026-11-17T11:23:33.527755+00:00",
+    "wall_time_ns": 28030000000
+   },
+   {
+    "args": [
+     "11",
+     "17",
+     "cpu",
+     "41"
+    ],
+    "load_after": [
+     "4.52001953125",
+     "3.78759765625",
+     "3.46484375"
+    ],
+    "load_before": [
+     "2.9794921875",
+     "3.42919921875",
+     "3.33984375"
+    ],
+    "name": "cpu-17-1",
+    "observations": {
+     "cpu_certify_ns": "372640495",
+     "cpu_prepare_ns": "38802152160",
+     "cpu_root": "a6f14b8080e14e183bcdb09b70a257728cc74773c25e7b23b5cc67d68146c52d",
+     "host_message_ns": "5617136980",
+     "seed": "41",
+     "source_ell": "11",
+     "source_m": "17"
+    },
+    "process_peak_rss_bytes": 60316590080,
+    "started_utc": "2026-11-17T11:24:01.607015+00:00",
+    "wall_time_ns": 45470000000
+   },
+   {
+    "args": [
+     "11",
+     "17",
+     "gpu",
+     "41"
+    ],
+    "load_after": [
+     "2.76611328125",
+     "3.42626953125",
+     "3.3564453125"
+    ],
+    "load_before": [
+     "4.52001953125",
+     "3.78759765625",
+     "3.46484375"
+    ],
+    "name": "gpu-17-1",
+    "observations": {
+     "device": "NVIDIA H100 NVL",
+     "device_buffer_peak_bytes": "21480079534",
+     "device_retained_bytes": "17246978016",
+     "download_bytes": "17246978016",
+     "gpu_download_ns": "7051667260",
+     "gpu_encode_ns": "370320486",
+     "gpu_material_ns": "31669949080",
+     "gpu_merkle_ns": "27609414",
+     "gpu_root": "a6f14b8080e14e183bcdb09b70a257728cc74773c25e7b23b5cc67d68146c52d",
+     "gpu_setup_ns": "5076403773",
+     "gpu_upload_ns": "3103643630",
+     "host_assemble_ns": "20497229611",
+     "host_material_owned_bytes": "17280532448",
+     "host_message_ns": "5641451616",
+     "seed": "41",
+     "source_ell": "11",
+     "source_m": "17",
+     "upload_bytes": "4300210350"
+    },
+    "process_peak_rss_bytes": 43194130432,
+    "started_utc": "2026-11-17T11:24:47.125538+00:00",
+    "wall_time_ns": 46930000000
+   }
+  ]
+ },
+ "note": "Research source-material operation only; not an integrated prover, proof, GO decision or security claim. All three repetitions retained, alternating CPU/GPU order; 16 pinned CPU threads. prover_time_ns sums the three cold GPU command process walls for this repetition. Process wall includes synthetic input generation, CUDA/NVRTC context/module setup and cleanup; gpu_material_ns includes preparation, downloads and CPU salt assembly. stage_times_ns includes overlapping parent/child and CPU/GPU fields; never sum them. CPU certification includes verification; GPU produces no certificate/opening and those costs stay CPU work. Complete payload/path checks are separate commands, not performance samples. Device buffer counters exclude driver/module/runtime allocations and do not establish RFC-0014 A1 40% peak. Host material, input/conversion/download buffers overlap; RSS is host memory. The micro schema profile standard follows the existing research convention and grants no inference admission. bindings_all_on concerns this measured operation; proof/verifier/control fields are zero. No full-proof parity, cost-model fit or weight-pass claim. GNU time has 10ms wall resolution.",
+ "plan_digest": "1b2c9c20f7e3a78ec1e3182b667131a56a8e1ecc338ff576b283842448f75fd1",
+ "profile": "standard",
+ "prompt_tokens": 0,
+ "proof_size_bytes": 0,
+ "prover_time_ns": 93290000000,
+ "schema_version": 1,
+ "stage_times_ns": {
+  "cpu-15-1/cpu_certify_ns": 127414344,
+  "cpu-15-1/cpu_prepare_ns": 9585152770,
+  "cpu-15-1/host_message_ns": 1470693518,
+  "cpu-15-1/process_wall_ns": 11430000000,
+  "cpu-16-1/cpu_certify_ns": 224132510,
+  "cpu-16-1/cpu_prepare_ns": 19701858750,
+  "cpu-16-1/host_message_ns": 3013510622,
+  "cpu-16-1/process_wall_ns": 23320000000,
+  "cpu-17-1/cpu_certify_ns": 372640495,
+  "cpu-17-1/cpu_prepare_ns": 38802152160,
+  "cpu-17-1/host_message_ns": 5617136980,
+  "cpu-17-1/process_wall_ns": 45470000000,
+  "gpu-15-1/gpu_download_ns": 1751216443,
+  "gpu-15-1/gpu_encode_ns": 80354277,
+  "gpu-15-1/gpu_material_ns": 8127045162,
+  "gpu-15-1/gpu_merkle_ns": 7198909,
+  "gpu-15-1/gpu_setup_ns": 4822115087,
+  "gpu-15-1/gpu_upload_ns": 982108084,
+  "gpu-15-1/host_assemble_ns": 5109010079,
+  "gpu-15-1/host_message_ns": 1537225658,
+  "gpu-15-1/process_wall_ns": 18330000000,
+  "gpu-16-1/gpu_download_ns": 3506161982,
+  "gpu-16-1/gpu_encode_ns": 173194644,
+  "gpu-16-1/gpu_material_ns": 15982962831,
+  "gpu-16-1/gpu_merkle_ns": 14839148,
+  "gpu-16-1/gpu_setup_ns": 5093562466,
+  "gpu-16-1/gpu_upload_ns": 1693945368,
+  "gpu-16-1/host_assemble_ns": 10251837823,
+  "gpu-16-1/host_message_ns": 2830545134,
+  "gpu-16-1/process_wall_ns": 28030000000,
+  "gpu-17-1/gpu_download_ns": 7051667260,
+  "gpu-17-1/gpu_encode_ns": 370320486,
+  "gpu-17-1/gpu_material_ns": 31669949080,
+  "gpu-17-1/gpu_merkle_ns": 27609414,
+  "gpu-17-1/gpu_setup_ns": 5076403773,
+  "gpu-17-1/gpu_upload_ns": 3103643630,
+  "gpu-17-1/host_assemble_ns": 20497229611,
+  "gpu-17-1/host_message_ns": 5641451616,
+  "gpu-17-1/process_wall_ns": 46930000000
+ },
+ "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+ "verifier_time_ns": {
+  "python": 0,
+  "rust": 0
+ },
+ "witness_recompute_ns": 0,
+ "workload": "micro/h100-complete-source-material"
+}
