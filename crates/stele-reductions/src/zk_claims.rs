@@ -3917,6 +3917,7 @@ where
 /// relations and ZK-GKR steps run. Off by default; never a verifier input.
 #[cfg(feature = "bench")]
 pub mod bench {
+    pub use super::lookup::bench::{LookupCase, LookupInputs, LookupTree};
     use super::{block_table, kappa, Factor, Occurrences};
     use alloc::vec::Vec;
     use stele_field::M31;
