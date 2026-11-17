@@ -5160,3 +5160,25 @@ tasks:
   - measure cold context/module setup, upload, encoding, Merkle, complete material download and any host assembly separately on the same H100 allocation as the CPU reference; preserve all samples and validate ledgers
   - report retained storage, transition overlap and transfer bytes without mistaking tracked buffers or host RSS for the complete RFC-0014 A1 device peak; do not claim integrated certificates, full-proof GPU parity or a GO decision
   - keep core prover and verifier code unchanged; obtain owning lane E review and mandatory gates before merging this independent lane-V successor to E16-40a, whose new instrumentation is not used
+
+- id: E16-40c
+  epic: E16
+  title: Expose production lookup tree and top reference for GPU qualification
+  lane: V
+  depends:
+  - E16-36
+  rfc:
+  - RFC-0008 A7 items 2, 3 and implementation notes
+  - RFC-0014 §1, §4, §5, A1
+  - RFC-0026 §7
+  skill: benchmark-runner
+  crate: stele-reductions
+  status: in_progress
+  agent: codex-root
+  branch: task/E16-40c-lookup-reference
+  acceptance:
+  - provide an off-by-default bench-only adapter to the actual production lookup tree and committed-top construction, retaining exact field elements, layout and DenominatorZero behavior
+  - expose the production-normalized shifted tuples, selectors, table denominators and multiplicities needed for a subsequent device consumer without changing the production algorithm or verifier; keep host preparation distinct from tree and top work
+  - validate statement, column lengths and selected lookup before use; cover single and multiple members, selectors, shifts, padding, malformed inputs and zero denominators with honest and near-miss reference tests
+  - make no timing, device-memory, GPU parity, source acceleration or ADR-127 GO claim; the consumer and its H100 measurements are a separate task after this interface merges
+  - obtain owning lane P review and keep default, bench, no_std, L0/L1 and mandatory gates green; this independent lane-V successor to E16-10b uses only interfaces already on main
