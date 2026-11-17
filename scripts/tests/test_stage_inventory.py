@@ -11,6 +11,12 @@ SMOKE = (ROOT/'research/gpu-gating/fixtures/zk-stage-smoke.log').read_text()
 
 
 class StageInventoryTests(unittest.TestCase):
+    def test_accepts_real_single_step_lookup(self):
+        log = (ROOT/'research/gpu-gating/fixtures/zk-stage-one-step.log').read_text()
+        result = INVENTORY.parse(log)
+        self.assertEqual(result['declared']['gkr'], 1)
+        self.assertEqual({s['kind'] for s in result['shapes']}, {'relation', 'gkr_leaf'})
+
     def test_accepts_actual_producer_topology_without_double_counting(self):
         log = SMOKE.replace('stage zk/logup_gkr 0', 'stage zk/logup_gkr 19')
         log = log.replace('stage zk/detail/gkr_rounds 0', 'stage zk/detail/gkr_rounds 3')
@@ -45,6 +51,24 @@ class StageInventoryTests(unittest.TestCase):
                             shape.replace('terms=', 'terms=999,'), shape.replace('compact=0', 'compact=2')):
             with self.subTest(replacement=replacement), self.assertRaises(ValueError):
                 INVENTORY.parse(SMOKE.replace(shape, replacement, 1))
+
+    def test_rejects_reordered_children_and_missing_batch(self):
+        changed = SMOKE.replace('stage zk/detail/gkr_factors 0', 'stage zk/detail/TEMP 0', 1)
+        changed = changed.replace('stage zk/detail/gkr_rounds 0', 'stage zk/detail/gkr_factors 0', 1)
+        changed = changed.replace('stage zk/detail/TEMP 0', 'stage zk/detail/gkr_rounds 0', 1)
+        with self.assertRaises(ValueError):
+            INVENTORY.parse(changed)
+        changed = SMOKE
+        for name in ('batch_prefix', 'batch_weights', 'batch_face', 'batch_rounds', 'batch_opening'):
+            changed = changed.replace(f'stage zk/detail/{name} 0\n', '', 1)
+        with self.assertRaises(ValueError):
+            INVENTORY.parse(changed)
+
+    def test_rejects_false_gkr_topology_or_degree(self):
+        with self.assertRaises(ValueError):
+            INVENTORY.parse(SMOKE.replace('shape gkr_first ', 'shape gkr_interior ').replace('shape gkr_leaf ', 'shape gkr_interior '))
+        with self.assertRaises(ValueError):
+            INVENTORY.parse(SMOKE.replace('degree=4', 'degree=0', 1))
 
 
 if __name__ == '__main__':

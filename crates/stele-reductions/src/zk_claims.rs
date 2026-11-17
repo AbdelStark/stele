@@ -2933,6 +2933,20 @@ where
         return Err(Error::Statement);
     }
     let mut laps = stele_sumcheck::parallel::Laps::start(); // E16-22
+    #[cfg(feature = "std")]
+    {
+        extern crate std;
+        if std::env::var_os("STELE_STAGE_TIMES").is_some() {
+            std::eprintln!(
+                "inventory field={} relations={} gkr={} lookups={} batches={}",
+                <K as CodeField>::DEGREE,
+                plan.steps.len(),
+                plan.gkr.len(),
+                plan.lookups.len(),
+                plan.batched.len()
+            );
+        }
+    }
     let mut data: Vec<Vec<K>> = columns
         .iter()
         .map(|column| column.iter().map(|x| element::<K>(*x)).collect())

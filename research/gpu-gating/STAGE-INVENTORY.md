@@ -67,6 +67,11 @@ existing leaf-final expansion shape. The inventory describes the actual CPU
 strategy, including its first/interior/leaf variants; it does not prove that a
 research CUDA shape implements any of them.
 
+A leading `inventory` record declares the field and the plan's relation, GKR,
+lookup and batch counts. Each lookup has either a first step, zero or more
+interior steps and a leaf, or a single step that is both first and leaf. The
+latter is reported as `gkr_leaf`. Counts and this sequence are validated together.
+
 ## Parse and validate
 
 ```sh
@@ -76,8 +81,10 @@ cargo test -p stele-reductions --features std --test zk_lookup matches_reference
 ```
 
 The parser accepts one complete development-ZK proof log with lookups. It checks
-phase order, complete child counts, relation/GKR inventory counts, shape bounds
-and timing containment, and rejects extra shape fields. The caller must still
+phase and per-instance child order, declared counts, GKR topology, positive
+dimension/degree, factor/coordinate bounds and timing containment, and rejects
+extra shape fields. It does not derive a polynomial's degree bound from this
+geometry-only log; the ordinary verifier retains that check. The caller must still
 verify the actual proof and record its hash, source, hardware, threads and full
 process costs in a validated ledger. Parsing a log does not establish acceptance.
 

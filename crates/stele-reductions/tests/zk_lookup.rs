@@ -145,9 +145,10 @@ fn accepts_masked_gkr_lookup() {
 #[test]
 fn matches_reference_stage_instrumentation() {
     const CHILD: &str = "STELE_STAGE_TEST_CHILD";
-    if std::env::var_os(CHILD).is_some() {
-        let s = statement::<QM31>(4);
-        let w = witness::<QM31>(4, |i| 5 * i + 2);
+    if let Ok(extra) = std::env::var(CHILD) {
+        let extra = extra.parse().expect("test shape");
+        let s = statement::<QM31>(extra);
+        let w = witness::<QM31>(extra, |i| 5 * i + 2);
         let proof = claims::prove(&s, &w, seed(1), &mut transcript()).expect("proof");
         claims::verify(&s, &proof, &mut transcript()).expect("accepted");
         // Hash every typed proof field, including all serialized source/opening bytes.
@@ -157,14 +158,16 @@ fn matches_reference_stage_instrumentation() {
         );
         return;
     }
-    let run = |enabled| {
+    let run = |enabled, extra: u32| {
         let mut command = std::process::Command::new(std::env::current_exe().expect("test binary"));
         command.args([
             "--exact",
             "matches_reference_stage_instrumentation",
             "--nocapture",
         ]);
-        command.env(CHILD, "1").env_remove("STELE_STAGE_TIMES");
+        command
+            .env(CHILD, extra.to_string())
+            .env_remove("STELE_STAGE_TIMES");
         if enabled {
             command.env("STELE_STAGE_TIMES", "1");
         }
@@ -179,74 +182,84 @@ fn matches_reference_stage_instrumentation() {
             String::from_utf8(output.stderr).expect("stderr"),
         )
     };
-    let (plain, quiet) = run(false);
-    let (profiled, log) = run(true);
-    assert!(!quiet
-        .lines()
-        .any(|s| s.starts_with("stage ") || s.starts_with("shape ")));
-    assert_eq!(
-        plain
-            .lines()
-            .find(|s| s.starts_with("proof-fields "))
-            .expect("plain digest"),
-        profiled
-            .lines()
-            .find(|s| s.starts_with("proof-fields "))
-            .expect("profiled digest"),
-    );
-    for (kind, count) in [
-        ("relation", 2),
-        ("gkr_first", 1),
-        ("gkr_interior", 2),
-        ("gkr_leaf", 1),
-    ] {
-        let records: Vec<_> = log
-            .lines()
-            .filter(|s| s.starts_with(&format!("shape {kind} ")))
-            .collect();
-        assert_eq!(records.len(), count, "{kind}");
-        for record in records {
-            let fields: Vec<_> = record.split_whitespace().collect();
-            assert_eq!(fields.len(), 8, "only declared public geometry is emitted");
-            for (field, key) in fields[2..]
-                .iter()
-                .zip(["field=", "vars=", "degree=", "masks=", "terms=", "compact="])
-            {
-                assert!(field.starts_with(key));
-                assert!(field[key.len()..]
-                    .chars()
-                    .all(|c| c.is_ascii_digit() || matches!(c, ',' | '.' | '-')));
+    for (extra, gkr, first, interior) in [(1, 1, 0, 0), (4, 4, 1, 2)] {
+        let (plain, quiet) = run(false, extra);
+        let (profiled, log) = run(true, extra);
+        assert_eq!(
+            log.lines()
+                .filter(|s| s.starts_with("inventory "))
+                .collect::<Vec<_>>(),
+            [format!(
+                "inventory field=4 relations=2 gkr={gkr} lookups=1 batches=2"
+            )]
+        );
+        assert!(!quiet.lines().any(|s| s.starts_with("stage ")
+            || s.starts_with("shape ")
+            || s.starts_with("inventory ")));
+        assert_eq!(
+            plain
+                .lines()
+                .find(|s| s.starts_with("proof-fields "))
+                .expect("plain digest"),
+            profiled
+                .lines()
+                .find(|s| s.starts_with("proof-fields "))
+                .expect("profiled digest"),
+        );
+        for (kind, count) in [
+            ("relation", 2),
+            ("gkr_first", first),
+            ("gkr_interior", interior),
+            ("gkr_leaf", 1),
+        ] {
+            let records: Vec<_> = log
+                .lines()
+                .filter(|s| s.starts_with(&format!("shape {kind} ")))
+                .collect();
+            assert_eq!(records.len(), count, "{kind}");
+            for record in records {
+                let fields: Vec<_> = record.split_whitespace().collect();
+                assert_eq!(fields.len(), 8, "only declared public geometry is emitted");
+                for (field, key) in fields[2..]
+                    .iter()
+                    .zip(["field=", "vars=", "degree=", "masks=", "terms=", "compact="])
+                {
+                    assert!(field.starts_with(key));
+                    assert!(field[key.len()..]
+                        .chars()
+                        .all(|c| c.is_ascii_digit() || matches!(c, ',' | '.' | '-')));
+                }
             }
         }
-    }
-    for stage in [
-        "sources_prepare",
-        "sources_certify",
-        "top_tree",
-        "top_values",
-        "top_messages",
-        "top_prepare",
-        "top_certify",
-        "relation_factors",
-        "relation_rounds",
-        "relation_claims",
-        "gkr_tree",
-        "gkr_factors",
-        "gkr_rounds",
-        "gkr_claims",
-        "batch_weights",
-        "batch_face",
-        "batch_rounds",
-        "batch_opening",
-        "shared_weights_face",
-        "shared_prove",
-        "shared_opening",
-    ] {
-        assert!(
-            log.lines()
-                .any(|s| s.starts_with(&format!("stage zk/detail/{stage} "))),
-            "missing {stage}"
-        );
+        for stage in [
+            "sources_prepare",
+            "sources_certify",
+            "top_tree",
+            "top_values",
+            "top_messages",
+            "top_prepare",
+            "top_certify",
+            "relation_factors",
+            "relation_rounds",
+            "relation_claims",
+            "gkr_tree",
+            "gkr_factors",
+            "gkr_rounds",
+            "gkr_claims",
+            "batch_weights",
+            "batch_face",
+            "batch_rounds",
+            "batch_opening",
+            "shared_weights_face",
+            "shared_prove",
+            "shared_opening",
+        ] {
+            assert!(
+                log.lines()
+                    .any(|s| s.starts_with(&format!("stage zk/detail/{stage} "))),
+                "missing {stage}"
+            );
+        }
     }
 }
 

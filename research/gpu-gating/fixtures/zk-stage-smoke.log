@@ -1,4 +1,5 @@
 # Synthetic lookup test topology; all timings replaced by zero. Not a benchmark.
+inventory field=4 relations=2 gkr=4 lookups=1 batches=2
 stage zk/source_messages 0
 stage zk/detail/sources_prepare 0
 stage zk/detail/sources_certify 0
