@@ -48,12 +48,29 @@ impl<K> LookupCase<K> {
     resident = masked / "resident_timing.rs"
     replace(resident, "gpu_lookup::select::{self, Resident}", "gpu_lookup::{compact as select, select::Resident}")
     replace(resident, "            input,\n", "            input,\n            beta,\n            alpha,\n")
-    replace(resident, "            let now = Instant::now();", """            let now = Instant::now();
-            let input = &crate::compact_lookup::Input::from_parts(input, beta, alpha);""")
+    replace(resident, "            let (t, qualification, compared, wall) =", """            let input = &crate::compact_lookup::Input::from_parts(input, beta, alpha);
+            let (t, qualification, compared, wall) =""")
+    replace(resident, "    step: usize,", "    child: &mut Option<(usize, usize, usize)>,")
+    replace(resident, """            eprintln!(
+                "t32_child step={step} id={id} views={} view_bytes={} retained_bytes={}",
+                work.layer_views,
+                work.layer_bytes,
+                tree.bytes()
+            );""", """            *child = Some((work.layer_views, work.layer_bytes, tree.bytes()));""")
+    device = masked / "t32_timing.rs"
+    replace(device, "let built = resident::build(dev,&input,step.step,step.lookup,step.leaf);", """
+    let original_inputs_ns = now.elapsed().as_nanos();
+    let mut child = None;
+    let built = resident::build(dev,&input,&mut child,step.lookup,step.leaf);""")
+    replace(device, "    let build = now.elapsed();", """    let build = now.elapsed();
+    if let Some((views, view_bytes, retained)) = child {
+        eprintln!("t32_child step={} id={} views={views} view_bytes={view_bytes} retained_bytes={retained}", step.step, step.lookup);
+    }""")
+    replace(device, "attempt_ns={} cpu_factors_ns=", "attempt_ns={} original_inputs_ns={original_inputs_ns} cpu_factors_ns=")
+    replace(device, "build_ns={} round_ns=", "build_ns={} original_inputs_ns={original_inputs_ns} round_ns=")
     with (masked / "gpu_lookup_compact.rs").open("a") as f:
         f.write('\n#[cfg(test)] #[path="gpu_compact_lookup_fixture.rs"] mod fixture;\n')
-    with (masked / "compact_lookup.rs").open("a") as f:
-        f.write("""
+    replace(masked / "compact_lookup.rs", "#[cfg(test)]\nmod tests {", """
 impl<'a> Input<'a> {
     pub fn from_parts(parts: &'a stele_reductions::zk::claims::t32_sample::CompactParts<'a>, beta: K, alpha: K) -> Self {
         Self { variables: parts.variables, top_variables: parts.top_variables, tuples: &parts.tuples,
@@ -61,7 +78,9 @@ impl<'a> Input<'a> {
             valid: parts.valid, beta, alpha }
     }
 }
-""")
+
+#[cfg(test)]
+mod tests {""")
 
 
 if __name__ == "__main__":

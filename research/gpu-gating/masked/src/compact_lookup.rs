@@ -259,6 +259,39 @@ mod tests {
             beta: K::ONE,
             alpha: K::ONE,
         };
-        assert!(Packed::new(&input).is_err());
+        assert!(matches!(
+            Packed::new(&input),
+            Err("compact lookup tuple range or mask")
+        ));
+        let mut clean_selector = [GkrSelector {
+            range: 0..4,
+            values: None,
+        }];
+        let raw = Input {
+            selectors: &clean_selector,
+            valid: 3,
+            ..input
+        };
+        assert!(matches!(Packed::new(&raw), Err("compact lookup shape")));
+        let raw = Input {
+            valid: 1,
+            variables: 31,
+            ..raw
+        };
+        assert!(matches!(Packed::new(&raw), Err("compact lookup domain")));
+        clean_selector[0].values = Some((&[0, 2], &coords));
+        let raw = Input {
+            selectors: &clean_selector,
+            valid: 1,
+            ..input
+        };
+        assert!(matches!(Packed::new(&raw), Err("compact lookup selector")));
+        clean_selector[0].values = Some((&[0, 1], &[2]));
+        let raw = Input {
+            selectors: &clean_selector,
+            valid: 1,
+            ..input
+        };
+        assert!(matches!(Packed::new(&raw), Err("compact lookup gather")));
     }
 }

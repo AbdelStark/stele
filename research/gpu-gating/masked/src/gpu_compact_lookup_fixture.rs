@@ -19,6 +19,7 @@ fn lift(p: &mut Packed) {
 fn matches_reference_compact_leaf_expressions() {
     let mut input = Vec::new();
     let mut reference = Vec::new();
+    let mut edges = [false; 3];
     for index in 0..CASES {
         let (s, columns, beta, alpha) = fixture(SEED + 2 * index as u64);
         let case = LookupCase::new(&s, &columns, 0).unwrap();
@@ -28,6 +29,9 @@ fn matches_reference_compact_leaf_expressions() {
         for raw in [false, true] {
             let mut p = Packed::new(&data).unwrap();
             if raw {
+                for (present, edge) in edges.iter_mut().zip([0, 1, M31::MODULUS - 1]) {
+                    *present |= p.fields.contains(&edge);
+                }
                 lift(&mut p)
             }
             input.extend([
@@ -54,6 +58,10 @@ fn matches_reference_compact_leaf_expressions() {
             );
         }
     }
+    assert!(
+        edges.into_iter().all(|seen| seen),
+        "missing canonical field edge"
+    );
     let program=format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(i,n) for(u64 i=0;i<(n);++i)\n{}\n{}",crate::host_probe::helpers(),include_str!("lookup_compact.cu"),include_str!("lookup_compact_host.cuh"));
     let actual = crate::host_probe::run(&program, &input);
     assert_eq!(actual.len(), reference.len());
