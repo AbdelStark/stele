@@ -150,6 +150,12 @@ impl<'d> Backend<QM31> for Session<'d> {
         for (i, chunk) in words.chunks(1 << 20).enumerate() {
             staging.clear();
             staging.extend(chunk.iter().map(|w| w.as_u32()));
+            #[cfg(test)]
+            if crate::gkr_tests::RAW.get() {
+                staging
+                    .iter_mut()
+                    .for_each(|v| *v += <M31 as stele_kernels::Field>::MODULUS);
+            }
             let start = i * (1 << 20);
             self.device.complete_transfer(stream.memcpy_htod(
                 &staging,

@@ -69,8 +69,19 @@ impl Packed {
             for l in &m.tuple {
                 desc.extend(column(l.column)?);
                 desc.extend(projection(l.coordinates)?);
-                desc.push(M31::from_i64(l.shift).as_u32());
+                let shift = M31::from_i64(l.shift).as_u32();
+                #[cfg(test)]
+                let shift = if crate::gkr_tests::RAW.get() {
+                    shift + M31::MODULUS
+                } else {
+                    shift
+                };
+                desc.push(shift);
             }
+        }
+        #[cfg(test)]
+        if crate::gkr_tests::RAW.get() {
+            fields.iter_mut().for_each(|v| *v += M31::MODULUS);
         }
         word(fields.len())?;
         word(axes.len())?;
