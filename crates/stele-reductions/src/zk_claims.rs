@@ -1753,32 +1753,26 @@ pub fn prove_weighted<K: ChallengeField + CodeField + Eq>(
     detail.lap("zk/detail/batch_face");
     let (sumcheck, point) = masked::prove(&i, dense, mask, binding, t).map_err(Error::Sumcheck)?;
     detail.lap("zk/detail/batch_rounds");
-    finish_batch(id, prepared, verified, (sumcheck, point), t)
+    finish_batch(prepared.source().rows(), (sumcheck, point), |p, value| {
+        prepared
+            .opening_point(t, verified, id, p, value)
+            .map(|o| o.0)
+            .map_err(|f| Error::Pcs(f.cause))
+    })
 }
 
-fn finish_batch<K: ChallengeField + CodeField + Eq>(
-    id: u64,
-    prepared: &PreparedSource<'_, K, impl stele_pcs::ColumnMaterial>,
-    verified: &VerifiedCertificate<K>,
+fn finish_batch<K: ChallengeField + Eq>(
+    rows: usize,
     (sumcheck, point): (masked::Proof<K>, Vec<K>),
-    t: &mut Transcript<K>,
+    open: impl FnOnce(&[K], K) -> Result<Vec<u8>, Error>,
 ) -> Result<(Batch<K>, Vec<K>), Error> {
     let mut detail = stele_sumcheck::parallel::Laps::start();
-    // A5 item 4: w* = 0 leaves the opening without mask-row weight.
+    // A5 item 4: reject the unmasked face before preparing or querying its opening tree.
     if point[0] == zero::<K>() {
         return Err(Error::BatchPoint);
     }
-    let ell = prepared.source().rows().trailing_zeros() as usize - 1;
-    let opening = prepared
-        .opening_point(
-            t,
-            verified,
-            id,
-            &opening_point(&point, ell),
-            sumcheck.final_values[1],
-        )
-        .map_err(|f| Error::Pcs(f.cause))?
-        .0;
+    let ell = rows.trailing_zeros() as usize - 1;
+    let opening = open(&opening_point(&point, ell), sumcheck.final_values[1])?;
     detail.lap("zk/detail/batch_opening");
     Ok((Batch { sumcheck, opening }, point))
 }
@@ -4363,6 +4357,20 @@ pub mod bench {
 mod tests {
     use super::*;
     use stele_field::{Field, QM31};
+
+    #[test]
+    fn rejects_zero_batch_point_before_opening_visit() {
+        let sumcheck = masked::Proof {
+            mask_sum: QM31::ZERO,
+            rounds: vec![],
+            final_values: vec![QM31::ONE, QM31::ONE],
+            mask_final: QM31::ZERO,
+        };
+        let result = finish_batch(16, (sumcheck, vec![QM31::ZERO]), |_, _| {
+            panic!("opened before nonzero face check")
+        });
+        assert!(matches!(result, Err(Error::BatchPoint)));
+    }
 
     #[test]
     fn matches_reference_source_mask_prefix_with_rejections() {
