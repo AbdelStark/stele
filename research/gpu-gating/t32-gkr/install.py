@@ -9,8 +9,8 @@ def install(root, replace):
     relation = "crates/stele-reductions/src/zk_relation.rs"
     shutil.copyfile(here / "record.rs", root / "crates/stele-reductions/src/t32_gkr.rs")
     replace(claims, "mod gkr_bench;", 'mod gkr_bench;\nextern crate std;\n#[path="t32_gkr.rs"] pub mod t32_gkr;')
-    replace(claims, "        let half = self.factors[0].x.len() / 2;", "        let t32_round = std::time::Instant::now();\n        let half = self.factors[0].x.len() / 2;")
-    replace(claims, "        Ok(out)\n    }\n    fn fold(&mut self, challenge: K)", "        t32_gkr::round(&out, t32_round.elapsed());\n        Ok(out)\n    }\n    fn fold(&mut self, challenge: K)")
+    replace(claims, "        let half = self.factors[0].x.len() / 2;", "        let t32_round = std::time::Instant::now();\n        let out = (|| -> Result<_, stele_sumcheck::Error> {\n        let half = self.factors[0].x.len() / 2;")
+    replace(claims, "        Ok(out)\n    }\n    fn fold(&mut self, challenge: K)", "        Ok(out)\n        })()?;\n        t32_gkr::round(&out, t32_round.elapsed());\n        Ok(out)\n    }\n    fn fold(&mut self, challenge: K)")
     replace(claims, "        let bound = self.bound;\n        let k = kappa(challenge);", "        let t32_fold = std::time::Instant::now();\n        let bound = self.bound;\n        let k = kappa(challenge);")
     replace(claims, "            e.record(challenge);\n        }\n        Ok(())", "            e.record(challenge);\n        }\n        t32_gkr::fold(challenge, t32_fold.elapsed());\n        Ok(())")
     replace(claims, "        match &self.expand {\n            None => Ok(compact),", "        t32_gkr::finals(&compact);\n        match &self.expand {\n            None => Ok(compact),")
