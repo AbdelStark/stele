@@ -5,6 +5,10 @@
 #[cfg(feature = "cuda")]
 mod device;
 #[cfg(feature = "cuda")]
+mod gkr;
+#[cfg(feature = "cuda")]
+mod gkr_build;
+#[cfg(feature = "cuda")]
 mod packing;
 #[cfg(feature = "cuda")]
 mod runtime;
