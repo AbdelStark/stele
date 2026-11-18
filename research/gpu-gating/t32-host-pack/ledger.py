@@ -53,9 +53,9 @@ def build(archive, checked):
             totals[phase]=int(statistics.median(sum(r[phase+"_ns"] for r in rows if r["rep"]==rep) for rep in range(4)))
         maxima = {f"maximum_single_source_{k}":max(r[k] for r in rows) for k in ("output_bytes","scratch_bytes")}
         records[method]=dict(schema_version=1,kind="micro",workload="micro/dev-zk-stories42m-t32-host-pack-"+method,
-            commit=checked["source"],plan_digest=sha(plan),profile="dev-zk",toolchain=rust,
+            commit=checked["source"],plan_digest=sha(plan),profile="standard",toolchain=rust,
             device=cpu+f' ({checked["node"]}, CPU only, 16 pinned CPUs)',driver="CPU",bindings_all_on=True,model_config=config_m,
-            batch_size=1,prompt_tokens=23,generated_tokens=0,proof_size_bytes=0,verifier_time_ns=0,witness_recompute_ns=0,
+            batch_size=1,prompt_tokens=0,generated_tokens=0,proof_size_bytes=0,verifier_time_ns=dict(rust=0,python=0),witness_recompute_ns=0,
             prover_time_ns=totals["all_three_including_source_decode_drop_and_encode"],stage_times_ns=totals,
             kernel_counters={**counter,**maxima},controls=dict(total=0,passed=0,failed=0),
             note="Paired constituent host preparation of three original T32 ordinary batches. All output words and scalars matched in a separate two-output comparison. The verifier accepted the complete CPU proof and rejected a changed expected model. Timers are nested, and the allocator may first touch zero pages during packing. The serial runs timer also packs weights; parallel has a distinct pass over the original tuples. Source capacity fields describe the inner ragged tuples. Other input byte counts describe visible borrowed slices. No GPU was allocated.")
