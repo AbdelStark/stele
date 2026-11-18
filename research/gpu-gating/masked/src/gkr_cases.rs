@@ -202,3 +202,49 @@ fn rejects_malformed_or_folded_factor_tables() {
     folded.fold(crate::challenge(0)).unwrap();
     assert!(gkr::shape(&folded).is_err());
 }
+
+#[test]
+fn matches_reference_last_child_to_the_production_schedule() {
+    use stele_reductions::zk::claims::bench::{GkrFactor, LookupCase};
+    let mut single = 0;
+    let mut transfers = 0;
+    for case in 0..24 {
+        let (statement, columns, beta, alpha) = fixture(SEED + 2 * case as u64);
+        let lookup = LookupCase::new(&statement, &columns, 0).unwrap();
+        let leaves = lookup
+            .reference(beta, alpha)
+            .unwrap()
+            .layers
+            .last()
+            .unwrap()
+            .len();
+        let mut steps = Vec::new();
+        observe(case, |step| {
+            let input = step.construction()?;
+            let widths: Vec<_> = input
+                .factors
+                .iter()
+                .filter_map(|f| match f {
+                    GkrFactor::Layer { values, .. } => Some(values.len()),
+                    _ => None,
+                })
+                .collect();
+            steps.push((step.first, step.leaf, input.layer_variables, widths));
+            Ok(())
+        });
+        for (i, (first, leaf, vars, widths)) in steps.iter().enumerate() {
+            if *leaf {
+                assert!(widths.is_empty());
+                assert_eq!(i + 1, steps.len());
+                single += usize::from(*first);
+            } else {
+                let next_leaf = steps[i + 1].1;
+                assert_eq!(next_leaf, leaves.ilog2() as usize == vars + 2);
+                assert_eq!(widths.as_slice(), [2usize << vars; 4]);
+                assert_eq!(next_leaf, widths[0] * 2 == leaves);
+                transfers += usize::from(next_leaf);
+            }
+        }
+    }
+    assert!(single > 0 && transfers > 0);
+}
