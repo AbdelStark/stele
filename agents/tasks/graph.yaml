@@ -5295,7 +5295,7 @@ tasks:
   - RFC-0014 §1, §5
   skill: cuda-kernel-author
   crate: research
-  status: in_progress
+  status: done
   agent: codex-root
   branch: task/E16-40h-lazy-field-parity
   acceptance:
