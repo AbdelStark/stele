@@ -4846,6 +4846,52 @@ mod tests {
     }
 
     #[test]
+    fn matches_reference_interleaved_lookup_source_offsets() {
+        let (mut statement, mut columns) = lookup_case();
+        statement.sources = 2;
+        // Before either referenced column, place a different-size prefix in each owner.
+        statement.columns[0].source = 1;
+        statement.columns.splice(
+            ..0,
+            [
+                Column {
+                    source: 1,
+                    log_len: 1,
+                },
+                Column {
+                    source: 0,
+                    log_len: 2,
+                },
+            ],
+        );
+        columns.splice(
+            ..0,
+            [vec![M31::from_i64(19); 2], vec![M31::from_i64(37); 4]],
+        );
+        statement.lookups[0].members[0].tuple[0].column = 2;
+        statement.lookups[0].multiplicity = 3;
+        let plan = plan(&statement).expect("plan");
+        let descriptors = lookup::source_input::descriptors(&plan, &columns).expect("descriptors");
+        let input = descriptors[0].input(QM31::from_i64(11), QM31::from_i64(23));
+        for (column, owner, offset) in [
+            (input.members[0].tuple[0].column, 1, 2),
+            (input.multiplicity, 0, 4),
+        ] {
+            assert_eq!(
+                (column.owner, column.geometry.id),
+                (owner, plan.source_id(owner))
+            );
+            assert_eq!((column.offset, column.len), (offset, 16));
+            let width = column.geometry.columns / 2;
+            for i in 0..column.len {
+                let logical = offset + i;
+                let physical = logical / width * (2 * width) + logical % width;
+                assert_eq!(column.physical(i).expect("physical"), physical);
+            }
+        }
+    }
+
+    #[test]
     fn matches_reference_ordinary_batch_execution_and_rejects_stale_session() {
         let (statement, columns) = lookup_case();
         check_live_execution(&statement, &columns);
