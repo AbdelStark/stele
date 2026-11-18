@@ -4,11 +4,31 @@ from pathlib import Path
 import runpy
 
 
+def check_resident_steps(steps, children, retained):
+    """Each lookup has one final leaf. All earlier steps have the same live tree."""
+    expected = []
+    for index, (step, on_device, lookup, held) in enumerate(steps):
+        is_leaf = index + 1 == len(steps) or steps[index + 1][2] != lookup
+        if held != (None if is_leaf else lookup):
+            raise ValueError("resident lookup lifetime differs from the GKR schedule")
+        if on_device and not is_leaf:
+            expected.append((step, lookup))
+    if [(row["step"], row["id"]) for row in children] != expected:
+        raise ValueError("missing or reordered resident child")
+    if {row["id"] for row in children} != set(range(len(retained))):
+        raise ValueError("missing qualified lookup")
+    for row in children:
+        if (row["views"] <= 0 or row["view_bytes"] <= 0
+                or retained[row["id"]] != row["retained_bytes"]):
+            raise ValueError("incomplete resident layer view")
+    return sum(r["views"] for r in children), sum(r["view_bytes"] for r in children)
+
+
 def summarize(log):
     gkr_report=runpy.run_path(str(Path(__file__).resolve().parent.parent/"t32-gkr/receipt.py"))["summarize"]
     gkr=gkr_report("\n".join(line for line in log.splitlines() if line.startswith("t32_gkr_")))
     rows=defaultdict(list)
-    accepted={}
+    steps = []
     seen=None
     for line in log.splitlines():
         if not line.startswith("t32_"):
@@ -31,7 +51,7 @@ def summarize(log):
                 raise ValueError("wrong tree release")
             seen=None
         if tag in ("t32_gkr_step","t32_gkr_skip"):
-            accepted[vals["step"]]=(tag=="t32_gkr_step",vals["lookup"],seen is not None)
+            steps.append((vals["step"], tag == "t32_gkr_step", vals["lookup"], seen))
         else:
             rows[tag].append(vals)
     batch_names=("batch","cpu_weights","cpu_face","round","fold","finals")
@@ -76,12 +96,12 @@ def summarize(log):
     if [r["retained_bytes"] for r in releases]!=[r["retained_bytes"] for r in rebuilt]:
         raise ValueError("incorrect resident release footprint")
     report["rebuild"]["gpu_ns"]+=sum(r["release_ns"] for r in releases)
-    expected=[(s,i) for s,(ok,i,held) in accepted.items() if ok and held]
-    child=rows["t32_child"]
-    if [(r["step"],r["id"]) for r in child]!=expected or any(r["views"]<=0 or r["view_bytes"]<=0 or r["retained_bytes"]!=rebuilt[r["id"]]["retained_bytes"] for r in child):
-        raise ValueError("missing or wrong resident child views")
-    if not child or set(r["id"] for r in child)!=set(range(21)):
-        raise ValueError("insufficient resident lookup coverage")
-    report["child_views"]=sum(r["views"] for r in child)
-    report["child_addressable_bytes"]=sum(r["view_bytes"] for r in child)
+    report["child_views"], report["child_addressable_bytes"] = check_resident_steps(
+        steps, rows["t32_child"], [r["retained_bytes"] for r in rebuilt]
+    )
+    # Queued asynchronous frees of transient lookup buffers can finish on the
+    # first qualification readback. Charging all readbacks bounds that cost.
+    report["rebuild"]["gpu_with_qualification_ns"] = (
+        report["rebuild"]["gpu_ns"] + report["rebuild"]["qualification_ns"]
+    )
     return report
