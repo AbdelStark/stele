@@ -73,3 +73,38 @@ pub fn observe(case: &GkrCase<'_, QM31>) -> Result<(), Error> {
     let record = STEP.with_borrow_mut(|slot| slot.take().expect("one complete GKR step"));
     OBSERVER.get().expect("required GKR observer")(case, record)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::zk::claims::bench::{Masked, Table};
+    use stele_field::{Field, CM31, M31};
+
+    #[test]
+    fn matches_reference_base_and_extension_rounds() {
+        let base = <QM31 as Field>::from_i64(1);
+        let nonbase = QM31(
+            CM31(M31::from_u64(1), M31::from_u64(2)),
+            CM31(M31::from_u64(3), M31::from_u64(4)),
+        );
+        for value in [base, nonbase] {
+            let mut state = Masked::new(
+                alloc::vec![Table {
+                    x: alloc::vec![value, base],
+                    r: Vec::new(),
+                    v: None
+                }],
+                alloc::vec![(base, alloc::vec![0])],
+                1,
+            );
+            begin(Duration::ZERO);
+            let polynomial = state.round().unwrap();
+            state.fold(nonbase).unwrap();
+            let compact = state.final_values().unwrap();
+            let got = STEP.with_borrow_mut(|s| s.take().unwrap());
+            assert_eq!(got.polynomials, [polynomial]);
+            assert_eq!(got.points, [nonbase]);
+            assert_eq!(got.compact, Some(compact));
+        }
+    }
+}

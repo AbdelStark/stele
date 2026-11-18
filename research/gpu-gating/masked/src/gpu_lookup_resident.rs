@@ -9,9 +9,11 @@ fn start<'a>(
     dev: &'a Device,
     input: &LookupInputs<K>,
     only_top: bool,
+    stage_input: impl FnOnce(&mut Prepared),
 ) -> Result<(Prepared, super::Tree<'a>, Timing), Error> {
     let since = Instant::now();
-    let p = Prepared::new(input)?;
+    let mut p = Prepared::new(input)?;
+    stage_input(&mut p);
     let upload_bytes = 4 * (p.values.len() + p.selector.len());
     let peak = upload_bytes + 4 * (p.tree_words + 5 * p.top);
     dev.require_budget(peak)?;
@@ -38,7 +40,15 @@ fn start<'a>(
 
 /// First visit: the prover commits just the top p, q, h; flag every zero denominator.
 pub fn top(dev: &Device, input: &LookupInputs<K>) -> Result<([Vec<K>; 3], Timing), Error> {
-    let (p, tree, mut t) = start(dev, input, true)?;
+    run_top(dev, input, |_| {})
+}
+
+fn run_top(
+    dev: &Device,
+    input: &LookupInputs<K>,
+    stage_input: impl FnOnce(&mut Prepared),
+) -> Result<([Vec<K>; 3], Timing), Error> {
+    let (p, tree, mut t) = start(dev, input, true, stage_input)?;
     let since = Instant::now();
     tree.divide()?;
     dev.sync()?;
@@ -80,7 +90,16 @@ pub fn resident<'a>(
     id: usize,
     input: &LookupInputs<K>,
 ) -> Result<(Resident<'a>, Timing), Error> {
-    let (p, tree, t) = start(dev, input, false)?;
+    run_resident(dev, id, input, |_| {})
+}
+
+fn run_resident<'a>(
+    dev: &'a Device,
+    id: usize,
+    input: &LookupInputs<K>,
+    stage_input: impl FnOnce(&mut Prepared),
+) -> Result<(Resident<'a>, Timing), Error> {
+    let (p, tree, t) = start(dev, input, false, stage_input)?;
     Ok((
         Resident {
             dev,
@@ -90,6 +109,29 @@ pub fn resident<'a>(
         },
         t,
     ))
+}
+
+#[cfg(test)]
+fn lift(p: &mut Prepared) {
+    crate::lookup_cases::lazy(&mut p.values);
+    crate::lookup_cases::lazy(&mut p.selector);
+}
+
+#[cfg(test)]
+pub(super) fn top_raw(
+    dev: &Device,
+    input: &LookupInputs<K>,
+) -> Result<([Vec<K>; 3], Timing), Error> {
+    run_top(dev, input, lift)
+}
+
+#[cfg(test)]
+pub(super) fn resident_raw<'a>(
+    dev: &'a Device,
+    id: usize,
+    input: &LookupInputs<K>,
+) -> Result<(Resident<'a>, Timing), Error> {
+    run_resident(dev, id, input, lift)
 }
 
 pub struct Resident<'a> {

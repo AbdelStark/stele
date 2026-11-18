@@ -5,6 +5,28 @@ import subprocess
 import sys
 
 
+def install_batch(root,replace,module):
+    claims = "crates/stele-reductions/src/zk_claims.rs"
+    # Keep the ordinary prove_batch wrapper and every borrow; this sampling copy
+    # takes Vec references so Any can retain the actual ragged claims without copying.
+    start = (root / claims).read_text().split("pub fn prove_batch<", 1)[1].split("\n}", 1)[0]
+    observed = ("fn sample_batch<" + start + "\n}").replace(
+        "claims: &[Claim<K>],", "claims: &Vec<Claim<K>>,").replace(
+        'detail.lap("zk/detail/batch_prefix");', '''detail.lap("zk/detail/batch_prefix");
+    {module}::batch(id, prepared, claims, &gammas);
+    let cpu = std::time::Instant::now();''')
+    observed = observed.replace('detail.lap("zk/detail/batch_weights");', 'std::eprintln!("t32_cpu_weights id={id} ns={}", cpu.elapsed().as_nanos());\n    detail.lap("zk/detail/batch_weights");')
+    with (root / claims).open("a") as f:
+        f.write("\n" + observed.replace("{module}",module) + "\n")
+    replace(claims, "let (batch, point) = prove_batch(\n            plan.masks[index].0,",
+            "let (batch, point) = sample_batch(\n            plan.masks[index].0,")
+    replace(claims, 'detail.lap("zk/detail/batch_face");\n    let (sumcheck, point)',
+            'detail.lap("zk/detail/batch_face");\n    let dense = {module}::Measured(dense);\n    let (sumcheck, point)'.replace("{module}",module))
+    replace(claims, "let i = batch_instance(id, prepared.source(), claims, gammas);",
+            "let cpu = std::time::Instant::now();\n    let i = batch_instance(id, prepared.source(), claims, gammas);")
+    replace(claims, 'detail.lap("zk/detail/batch_face");', 'std::eprintln!("t32_cpu_face id={id} ns={}", cpu.elapsed().as_nanos());\n    detail.lap("zk/detail/batch_face");')
+
+
 def install(root, gkr=False):
     root = Path(root).resolve()
     if (root / ".git").exists():
@@ -48,24 +70,7 @@ def install(root, gkr=False):
                 std::eprintln!("t32_cpu_lookup kind=rebuild id={l} ns={}", lookup_cpu.elapsed().as_nanos());
                 lookup::sample(l, lp, &data, runs[l].beta, runs[l].alpha, &layers, None);
                 tree = Some((l, layers));""")
-        # Keep the ordinary prove_batch wrapper and every borrow; this sampling copy
-        # takes Vec references so Any can retain the actual ragged claims without copying.
-        start = (root / claims).read_text().split("pub fn prove_batch<", 1)[1].split("\n}", 1)[0]
-        observed = ("fn sample_batch<" + start + "\n}").replace(
-            "claims: &[Claim<K>],", "claims: &Vec<Claim<K>>,").replace(
-            'detail.lap("zk/detail/batch_prefix");', '''detail.lap("zk/detail/batch_prefix");
-        t32_sample::batch(id, prepared, claims, &gammas);
-        let cpu = std::time::Instant::now();''')
-        observed = observed.replace('detail.lap("zk/detail/batch_weights");', 'std::eprintln!("t32_cpu_weights id={id} ns={}", cpu.elapsed().as_nanos());\n    detail.lap("zk/detail/batch_weights");')
-        with (root / claims).open("a") as f:
-            f.write("\n" + observed + "\n")
-        replace(claims, "let (batch, point) = prove_batch(\n            plan.masks[index].0,",
-                "let (batch, point) = sample_batch(\n            plan.masks[index].0,")
-        replace(claims, 'detail.lap("zk/detail/batch_face");\n    let (sumcheck, point)',
-                'detail.lap("zk/detail/batch_face");\n    let dense = t32_sample::Measured(dense);\n    let (sumcheck, point)')
-        replace(claims, "let i = batch_instance(id, prepared.source(), claims, gammas);",
-                "let cpu = std::time::Instant::now();\n    let i = batch_instance(id, prepared.source(), claims, gammas);")
-        replace(claims, 'detail.lap("zk/detail/batch_face");', 'std::eprintln!("t32_cpu_face id={id} ns={}", cpu.elapsed().as_nanos());\n    detail.lap("zk/detail/batch_face");')
+        install_batch(root, replace, "t32_sample")
         # std is scoped locally in the no_std reductions crate even in this executable.
         replace(claims, "\nuse alloc::vec::Vec;", "\nextern crate std;\nuse alloc::vec::Vec;")
     subprocess.run(["patch", "-p0", "-i", str(here / "cargo-lock.patch")], cwd=root, check=True)
