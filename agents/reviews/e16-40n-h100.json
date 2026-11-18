@@ -1,0 +1,129 @@
+{
+  "result": {
+    "status": "passed",
+    "source": "e192fe0b6d4ec604c4d8e922c187532049c8a5dc",
+    "pins_sha256": "90ac22ed5e35f88b29288576eb1d26f7b442591ec53bdee59d8f72eef5d1fab6",
+    "completed": [
+      "host",
+      "material",
+      "device",
+      "complete"
+    ],
+    "binary_sha256": {
+      "source_material": "0f46af5a8fde1a941be008cf56c3a0494f1af791df88d316393764f239b65929",
+      "stele_masked_gpu_bench": "a99abcfefa7f42c16def4769d5b879a2265f830d839e3d4fc4444e5b61f3eff2"
+    },
+    "boundary_cases": 1000,
+    "operations": 11,
+    "representations": 2,
+    "complete_source_cases": 1000,
+    "seed": 275951648769
+  },
+  "host": {
+    "hostname": "h100-nvl-1-1-cc",
+    "job": "6772",
+    "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "cuda_visible_devices": "0"
+  },
+  "resources": {
+    "gpu": {
+      "wall_ns": 40000000,
+      "max_rss_bytes": 21331968
+    },
+    "extract": {
+      "wall_ns": 8080000000,
+      "max_rss_bytes": 2981888
+    },
+    "toolchain": {
+      "wall_ns": 4450000000,
+      "max_rss_bytes": 28442624
+    },
+    "fetch": {
+      "wall_ns": 2780000000,
+      "max_rss_bytes": 28442624
+    },
+    "build": {
+      "wall_ns": 59610000000,
+      "max_rss_bytes": 607186944
+    },
+    "host": {
+      "wall_ns": 1200000000,
+      "max_rss_bytes": 313503744
+    },
+    "material": {
+      "wall_ns": 160000000,
+      "max_rss_bytes": 43692032
+    },
+    "device": {
+      "wall_ns": 11900000000,
+      "max_rss_bytes": 166649856
+    },
+    "complete": {
+      "wall_ns": 16600000000,
+      "max_rss_bytes": 215072768
+    }
+  },
+  "files": {
+    "host.time": "0b9629f37da0591c910a4190183fb956499b1bfdbe95339d3ecff4824794c83e",
+    "extract.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.json": "2483da9e5f9830eb63003394f342c3b13a9b83a15c812a45c7ed59f5404e8d79",
+    "machine.json": "8bcc24b75d1ecc3f9e75c57781a9e5db3a1e9b7bc15a906b68a4035de58806f5",
+    "device.json": "e933260b5ca3883aafb5f8af7abacb290baa9443cd67567bf87f79771eb10856",
+    "host.out": "bac1f721de005accf0d269c2dd544c1af104886c18766d89d9cc4fa3382dffab",
+    "device.out": "757dd47c05168661452aed2a0c0090b9917f7ea562b8284406f12f784caed58a",
+    "gpu.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolchain.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "76f63173f91f2e501e6917562384ab0eae3adf9f9d680fa67f974d943dbc48c6",
+    "toolchain.out": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+    "extract.json": "f911123776192096b3dbbeb542ccd90e9c01d3f8d8bb09e62f814cb3e877f2a1",
+    "extract.time": "27181e45ae336e761e1787c9ed8767532b320a9e3b6b48f28c1f5cf99bf1a466",
+    "device.err": "31ae07f6c537b69aad8822aba614bae6017278a4f43945ef1efdf1e21defcd70",
+    "build.out": "2c82147c84bdece2853b9a2769bc77f69c22132c4262e4c528fc85b70a5b5dcf",
+    "gpu.out": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+    "fetch.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "device.time": "7c6f2a7ad25ce18deaf6df8f6a91f52005b07d5820979e2d5f1a97d5051bd5de",
+    "material.out": "199d1a6a72d552df6a65bfe5817d6ef29e94935b020fa041f0839cb8b3e632de",
+    "gpu.json": "445fd45d0d21e1954b80ce60dbb1fd61d828b7bb77b616b7869eeefcd2478d34",
+    "host.err": "e21ab8c47b5c15ecc339f11867d2c32d45bfa3bfec5f13daeff41ceea7e71780",
+    "gpu.time": "4212955e7e8fa821ac545fb73607acf6c35f1854889c1adf1b18da876ffd6476",
+    "complete.out": "97203a3d7d1897a1425b40d598441d6fadd4e27e5d6ab599794ff941face0133",
+    "material.time": "492bd15bed0b103c73a792f4885e67b2b13d1c59dc40d25ecd12a2d919812535",
+    "toolchain.time": "4ce4478133b20a8216cac1b4afbbf6f903872ac30243f2ad208f0b771b94d16a",
+    "host.json": "d869e628e86cb5b4fd2bda02b5f38a9ff6f65717c80398f05aa34661ad1ac60c",
+    "extract.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "material.json": "117123790a34ec9b9975578af79d7257fa686d6e8b1a32dec2344fb57916f012",
+    "complete.json": "971eb9e2ea359ab28fbce22df22c80ae003dbfb43bcee7d387c38625ee00be84",
+    "complete.time": "012415f1c6849c1252d9ef678df836ffbf48c8777604134c2519275a7cc206ce",
+    "fetch.time": "45bb46cc72b34ec16345294152461877854db67a95782158af145750fcb325e9",
+    "toolchain.json": "200fb5a26a9fa186926e849faf2d7baf5b858676e8ee5116430190fa9347d891",
+    "build.err": "7fdefea4d3c698ad7ddaa1ce477d3cabfb981df328c2939597340bf5b71c6493",
+    "build.json": "4ad89e085b60d0ce25a48886f58f74bf74b0181ef6824e8f5a4c4926e1c37dd3",
+    "build.time": "3eee6407dd46aba17d650032f17b4f3848d0b2b25bf767f77a92d5481f309866",
+    "complete.err": "bb3c9ac7f160b048e4dbd146fa70d0c4049e4bb58b5aff4d50fa8b9a80827bef",
+    "material.err": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "fetch.out": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "manifest_sha256": "30c0bc65efee367bfb7fd6f1bcb13e79627d6d7bb9d505307da3f4ad3660c100",
+  "raw_archive_sha256": "5fa0ecd8bc1e01ec74a9e4cf759c33727baeeab0ba13332f6543ed1a2a5eb3bb",
+  "terminal_sha256": "74456bc0109b9358d5e54b184bcd298251ff1735e5389cbae094ec6b39c5b0ed",
+  "source_archive_sha256": "b4047915d25cad9c5c9050e5f90b7a8817dcb746424d7e33c4d542f547e37991",
+  "verifier_sha256": "8351bf016255075866c8152f0acc63ecd5cd337d99f7ebdb4b70d3c007ffd7d2",
+  "scope": "Field/copy/source kernel qualification only; no integrated proof, performance, complete device-memory or ADR-127 GO credit."
+}

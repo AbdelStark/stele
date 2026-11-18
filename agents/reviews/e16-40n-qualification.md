@@ -1,9 +1,10 @@
-# E16-40n boundary qualification — submitted
+# E16-40n boundary qualification — captured and reviewed
 
 Pinned source: `e192fe0b6d4ec604c4d8e922c187532049c8a5dc`.
 The [implementation reviews](e16-40n-implementation.md) and both fresh capture
 reviews pass. Job **6772** was submitted after E16-40m's actual qualification
-evidence passed both independent reviews. Actual n evidence remains pending.
+evidence passed both independent reviews. It completed successfully; both fresh
+[actual n reviews](e16-40n-h100-review.md) accept the captured evidence.
 
 Independent reviewers `boundary_capture_spec_review` and
 `boundary_capture_standards_review` verified every package hash and all 2,389
@@ -100,5 +101,6 @@ Both fresh [E16-40m actual evidence reviews](e16-40m-h100-review.md) accepted jo
 log or submitted-job record existed. The single submitted n job is **6772**;
 its readback confirms one H100, 16 CPUs, 64 GiB, the existing two-hour limit,
 feature constraint `h100|h100nvl`, zero requeues/restarts and the pinned campaign.
-`stele-validation/e16-40n-submission.log` retains that readback. Actual n terminal
-evidence, fresh review and mandatory merge gates remain pending.
+`stele-validation/e16-40n-submission.log` retains that readback. The corrected
+auditor passes all 38 actual payloads; both fresh actual-evidence reviews pass.
+Mandatory current-main/intended-merge-tree gates remain pending before merge.
