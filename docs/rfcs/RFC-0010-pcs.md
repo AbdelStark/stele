@@ -1127,7 +1127,8 @@ NC-0902 (one changed salt byte, `RootMismatch`) and NC-0903 (admission,
 
 ### A16 — Selected column material for the development hiding source producer
 
-Status: Draft (development-tier amendment under RFC-0027 §2). Task E19-07.
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E19-07.
+[Independent soundness review](../../agents/reviews/e19-07-source-material.md)
 
 **Motivation.** The byte-4 prover can prepare an A15 encoding on an accelerator.
 Certificate and opening production need its root and the individual column
