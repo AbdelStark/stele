@@ -1,0 +1,5 @@
+# E20-16 projected relation sources and checked reduction
+
+The E20-14 field reviewer independently accepted the field and reductions source at `c0092605`. The review traced the leading equality projection and the ordered private and public factors against the original A5 step. A direct gather uses distinct MSB-first domain variables. Fixed coordinates, free challenges and repeated variables use the original host projection, preserving its accumulation and broadcast behavior. Mask blocks use the source occurrence's original ordered coordinates and vanishing variable.
+
+The independent checks covered 1,000 scalar comparisons with direct polynomial evaluation, malformed degree, coordinate and mask extent, and projected columns evaluated with fixed, free, repeated and permuted coordinates. A complete proof through the three selected families matched the CPU reference on the shifted and selected aliased lookup case. The same original input count reaches the checked A4 sumcheck. The verifier, transcript challenges and rank and routed-opening checks keep their original authority. Device provenance, complete hardware byte pairs and T32 timings have independent gates.
