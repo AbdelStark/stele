@@ -72,6 +72,9 @@ Rungs and columns: RFC-0027 §3, RFC-0018 A2. One row per inference record.
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 232.93 | 0.137 | 15.30 | 21.4 | 35.5 | — | — | — | none | 1/1 | [e16-44-dev-zk-stories42m-t32-mac-0](ledger/e16-44-dev-zk-stories42m-t32-mac-0.json) @ `392afda` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 243.11 | 0.132 | 15.26 | 21.4 | 30.5 | — | — | — | none | 1/1 | [e16-44-dev-zk-stories42m-t32-mac-1](ledger/e16-44-dev-zk-stories42m-t32-mac-1.json) @ `392afda` |
 | dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 240.10 | 0.133 | 14.88 | 21.4 | 30.8 | — | — | — | none | 1/1 | [e16-44-dev-zk-stories42m-t32-mac-2](ledger/e16-44-dev-zk-stories42m-t32-mac-2.json) @ `392afda` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 220.08 | 0.145 | 11.01 | 21.4 | 34.7 | — | — | — | none | 1/1 | [e16-45-dev-zk-stories42m-t32-mac-0](ledger/e16-45-dev-zk-stories42m-t32-mac-0.json) @ `da0da77` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 221.23 | 0.145 | 11.11 | 21.4 | 35.4 | — | — | — | none | 1/1 | [e16-45-dev-zk-stories42m-t32-mac-1](ledger/e16-45-dev-zk-stories42m-t32-mac-1.json) @ `da0da77` |
+| dev/stories42m-t32 | development (dev-zk, A8 sources) | Apple M4 Max (48 GiB) | 16 | 220.50 | 0.145 | 10.76 | 21.4 | 35.2 | — | — | — | none | 1/1 | [e16-45-dev-zk-stories42m-t32-mac-2](ledger/e16-45-dev-zk-stories42m-t32-mac-2.json) @ `da0da77` |
 
 Rungs with no record: L2b, L3a, L3b, L3c, L4, L5, L6.
 
