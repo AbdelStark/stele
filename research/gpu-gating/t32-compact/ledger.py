@@ -41,7 +41,12 @@ def build(archive, baseline, verified):
     embedded = dict(result["stages"])
     embedded["batch_prepare"] = {k: v for k, v in embedded["batch_prepare"].items()
                                  if k not in ("runs","run_checks","host_pack_bytes","device_build_bytes")}
-    if report != embedded:
+    # The later replay also authenticates the two actual allocator high waters
+    # emitted in the frozen batch-final records.
+    comparison = dict(report)
+    comparison["batch_packing"] = {k:v for k,v in report["batch_packing"].items()
+                                  if k not in ("pool_used_high_through_batches","pool_reserved_high_through_batches")}
+    if comparison != embedded:
         raise ValueError("stage replay differs")
     times = {"gpu_context_compile": report["gkr"]["cold_ns"]}
     counters = {}
