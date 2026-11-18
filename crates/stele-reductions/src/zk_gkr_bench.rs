@@ -11,6 +11,8 @@ use stele_field::M31;
 use stele_hash::{ChallengeField, Transcript};
 use stele_pcs::CodeField;
 
+pub use lookup::construction::{GkrConstruction, GkrFactor, GkrMask, GkrMember, GkrSelector};
+
 pub(super) type Observer<'a, K> = dyn FnMut(&GkrCase<'_, K>) -> Result<(), Error> + 'a;
 
 /// A genuine CPU step after its rounds and public aborts, before its claims leave.
@@ -34,6 +36,7 @@ pub struct GkrCase<'a, K> {
     /// Actual production claim routing; cloning this receipt is observation work.
     pub routed: GkrClaims<K>,
     pub(super) build: &'a dyn Fn() -> Result<Occurrences<K>, Error>,
+    pub(super) construct: &'a dyn Fn() -> Result<GkrConstruction<'a, K>, Error>,
     #[allow(clippy::type_complexity)]
     pub(super) route: &'a dyn Fn(&[K]) -> Result<GkrClaims<K>, Error>,
 }
@@ -59,7 +62,14 @@ impl<K> From<lookup::Finals<K>> for GkrClaims<K> {
     }
 }
 
-impl<K: ChallengeField> GkrCase<'_, K> {
+impl<'a, K: ChallengeField> GkrCase<'a, K> {
+    /// Borrow original inputs without materializing full factor tables. Descriptor
+    /// and small mask-block copies are host preparation, not device construction.
+    /// Returned references expire with this observed step and cannot alter it.
+    pub fn construction(&self) -> Result<GkrConstruction<'a, K>, Error> {
+        (self.construct)()
+    }
+
     /// Rebuild actual production factors and compact expansion state. No synthetic
     /// shape substitutes for the plan, columns, layer values or claim-mask blocks.
     pub fn reference(&self) -> Result<Masked<K>, Error> {
