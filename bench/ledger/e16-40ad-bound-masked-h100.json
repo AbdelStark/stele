@@ -1,0 +1,68 @@
+{
+  "batch_size": 1,
+  "bindings_all_on": true,
+  "commit": "39ebbaf4af91d791c48d3e9c2d278b128a92f88f",
+  "controls": {
+    "failed": 0,
+    "passed": 0,
+    "total": 0
+  },
+  "device": "NVIDIA H100 NVL",
+  "driver": "570.211.01",
+  "generated_tokens": 0,
+  "kernel_counters": {
+    "bound_cpu_gpu_pairs": 1000,
+    "changed_round_rejections": 1,
+    "device_rounds": 13000,
+    "verified_input_obligations": 2000
+  },
+  "kind": "micro",
+  "model_config": {
+    "cpu_gpu_complete_inference_pairs": 0,
+    "kernel_source": "unchanged resident masked dense; device polynomial and device final inputs consumed directly",
+    "node": "h100-nvl-1-1-cc",
+    "plan": {
+      "case_seed": 275414777857,
+      "cases": 1000,
+      "ell": 3,
+      "m": 9,
+      "seed_stride": 2,
+      "stage": "bound masked sumcheck"
+    },
+    "public_receipt_sha256": {
+      "SHA256SUMS": "d593886bf142d70042e653b1489f344a22b57427268783cc361cd088942c0a42",
+      "campaign.sbatch": "2082896af6ea754b20b80508d5203e864d80ed7b49d85a500c4451d06062267b",
+      "commit.txt": "e4b0a8fe571bf8c3233f6da770a20b875b93ee1e002e600bb13fad1ded0e3b53",
+      "job-6792/binary.sha256": "8d8e0cb2f91fe13b180e2f0d8b4bc64d0819903dc30324e876045d60bde81ac6",
+      "job-6792/gpu.txt": "d34ee2cdb823d5397408734aef8b15ea8104016a97db8986818f6c792b3055ca",
+      "job-6792/test.err": "9438957a5e6e548db3fbef93f89c513737885fb9ffe04f4e022f34f00a38fea7",
+      "job-6792/test.out": "accc0bc92b43cdbae6eb9fe6e953ddd95c81e3943ec6c0de6b082cc257b6e6e1",
+      "job-6792/test.time": "d0031d2fc8bfdf9abb4c31eed49b42ff2cdae2603eeab5bde21c77d4e93cab9b",
+      "job-6792/toolchain.txt": "938db28b83089ab88301ca425f99fa1d8b61ee66e0371babe1db6373ae9810a3",
+      "slurm-6792.out": "1f683000036ea55a31b6306b28cbbd69c2a6cd2c689a53c47f2988db6acc4a61",
+      "slurm.txt": "8d94e2026ba47c5b2c4ded7fd3d050a7d2da294056ca59a5b1fd33cbee0a7304"
+    },
+    "scheduler_state": "COMPLETED",
+    "slurm_job": 6792,
+    "source": "39ebbaf4af91d791c48d3e9c2d278b128a92f88f",
+    "source_archive_sha256": "208bf8a800e3bb2123ae1461a53fdf0034cf7f207151cf64091eaf0633de1dc3",
+    "test_binary_sha256": "45a1f856093f704348bf934921279627118fa9c2cea59a15127790e514c380a6"
+  },
+  "note": "Component qualification for RFC-0013 A4. Every pair compares the complete typed CPU and H100 masked sumcheck proofs, including the certificate and opening bytes. The ordinary A4 verifier checks the device proof and the test discharges both resulting final input obligations. The timer covers both producers, comparisons and controls. The schema profile is for micro measurements. Full inference proofs require their own parity evidence.",
+  "plan_digest": "8d474a7f909195e0d5892f516683a846301175ed12820071c5f385f1ba2840a3",
+  "profile": "standard",
+  "prompt_tokens": 0,
+  "proof_size_bytes": 0,
+  "prover_time_ns": 36150000000,
+  "schema_version": 1,
+  "stage_times_ns": {
+    "paired_test_process": 36150000000
+  },
+  "toolchain": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "verifier_time_ns": {
+    "python": 0,
+    "rust": 0
+  },
+  "witness_recompute_ns": 0,
+  "workload": "micro/bound-masked-sumcheck-h100"
+}
