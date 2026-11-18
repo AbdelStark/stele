@@ -15,10 +15,16 @@ thread_local! {static TREE:RefCell<Option<Resident<'static>>>=const{RefCell::new
 pub(super) fn install() {
     assert!(OBSERVER.set(observe).is_ok());
 }
+pub(super) struct Child {
+    pub views: usize,
+    pub view_bytes: usize,
+    pub retained: usize,
+    pub released: bool,
+}
 pub(super) fn build<'a>(
     dev: &'a Device,
     input: &GkrConstruction<'_, K>,
-    step: usize,
+    child: &mut Option<Child>,
     id: usize,
     leaf: bool,
 ) -> Result<(DeviceMasked<'a>, ConstructionWork), Error> {
@@ -37,11 +43,12 @@ pub(super) fn build<'a>(
         };
         if let Ok((_, work)) = &built {
             assert!(work.layer_views > 0, "nonleaf step did not use a resident child");
-            eprintln!("t32_child step={step} id={id} views={} view_bytes={} retained_bytes={retained}", work.layer_views, work.layer_bytes);
-            if final_child {
-                // Release, stream synchronization and its budget recheck are in the GKR build timer.
-                eprintln!("t32_lookup_release id={id} retained_bytes={retained} release_ns=0 after_child_step={step}");
-            }
+            *child = Some(Child {
+                views: work.layer_views,
+                view_bytes: work.layer_bytes,
+                retained,
+                released: final_child,
+            });
         }
         built
     })

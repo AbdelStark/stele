@@ -42,7 +42,16 @@ def install(root):
     shutil.copyfile(here/"device.rs",root/"research/gpu-gating/masked/src/resident_timing.rs")
     replace(device,"static DEVICE:",'#[path="resident_timing.rs"] mod resident;\nstatic DEVICE:')
     replace(device,'    eprintln!("t32_gkr_cold', '    resident::install();\n    eprintln!("t32_gkr_cold')
-    replace(device,"let built = dev.build_gkr_bounded(&input);","let built = resident::build(dev,&input,step.step,step.lookup,step.leaf);")
+    replace(device, "let built = dev.build_gkr_bounded(&input);", """let mut child = None;
+    let built = resident::build(dev,&input,&mut child,step.lookup,step.leaf);""")
+    replace(device, "    let build = now.elapsed();", """    let build = now.elapsed();
+    if let Some(child) = child {
+        eprintln!("t32_child step={} id={} views={} view_bytes={} retained_bytes={}", step.step, step.lookup, child.views, child.view_bytes, child.retained);
+        if child.released {
+            // Release and synchronization were charged once in the preceding build interval.
+            eprintln!("t32_lookup_release id={} retained_bytes={} release_ns=0 after_child_step={}", step.lookup, child.retained, step.step);
+        }
+    }""")
     # The existing 40s batch observer gets the same Device and actual source
     # as the GKR observer. Construct the device context exactly once.
     stages["install_batch"](root,replace,"t32_batch_sample")

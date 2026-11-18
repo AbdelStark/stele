@@ -16,6 +16,11 @@ pub struct ConstructionWork {
     pub descriptor_bytes: usize,
     /// Conservative explicit allocation peak for this step, including promotion.
     pub peak_bytes: usize,
+    /// Construction and first-fold peaks of the GKR state, excluding its parent tree.
+    pub construction_bytes: usize,
+    pub fold_bytes: usize,
+    /// Device tree freed between synchronized factor copies and the first fold.
+    pub released_bytes: usize,
     /// Child-layer views consumed and their addressable bytes across all factors.
     pub layer_views: usize,
     pub layer_bytes: usize,
@@ -118,11 +123,14 @@ impl Device {
             return Err(Error::Shape("unused final lookup child"));
         }
         // build_gkr_plan synchronized after copying every child on this stream.
+        work.released_bytes = tree.bytes();
         drop(tree);
         self.sync()?;
         // Point-in-time driver counters now cover the constructed state; only
         // first-fold overlap beyond that resident state requires additional room.
         self.require_budget(peak.fold.saturating_sub(state.device_buffer_bytes()))?;
+        work.construction_bytes = peak.construction;
+        work.fold_bytes = peak.fold;
         work.peak_bytes = peak.construction.max(peak.fold);
         Ok((state, work))
     }
@@ -137,10 +145,11 @@ impl Device {
         let peak = plan
             .peak(self.grid(plan.len / 2).grid_dim.0 as usize)
             .map_err(Error::Shape)?;
-        let peak = peak.construction.max(peak.fold);
-        self.require_budget(peak)?;
+        self.require_budget(peak.construction.max(peak.fold))?;
         let (state, mut work) = self.build_gkr_plan(plan, raw, resident)?;
-        work.peak_bytes = peak;
+        work.construction_bytes = peak.construction;
+        work.fold_bytes = peak.fold;
+        work.peak_bytes = peak.construction.max(peak.fold);
         Ok((state, work))
     }
 
