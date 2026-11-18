@@ -21,7 +21,13 @@ use stele_reductions::stele_field::Field;
 use stele_reductions::zk::claims::bench::mask_weight;
 
 // E16-36: the source-preparation kernels share the module (and the field code).
-const KERNELS: &str = concat!(include_str!("kernels.cu"), "\n", include_str!("source.cu"));
+const KERNELS: &str = concat!(
+    include_str!("kernels.cu"),
+    "\n",
+    include_str!("source.cu"),
+    "\n",
+    include_str!("lookup.cu")
+);
 const THREADS: u32 = 256;
 
 #[cfg(test)]
@@ -36,8 +42,15 @@ pub type Tables = Vec<(Vec<K>, Vec<K>)>;
 pub enum Error {
     Driver(DriverError),
     Compile(String),
+    Lookup(crate::lookup::Error),
     /// A value read back from the device is not canonical.
     Value,
+}
+
+impl From<crate::lookup::Error> for Error {
+    fn from(e: crate::lookup::Error) -> Self {
+        Self::Lookup(e)
+    }
 }
 
 impl From<DriverError> for Error {
