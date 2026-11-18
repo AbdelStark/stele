@@ -5717,3 +5717,19 @@ tasks:
   - Measure all 385 original GKR steps of a complete balanced stories42M T32 proof on the quiet Mac with 16 threads and the same lookup geometry as the H100 run
   - Separate CPU round and fold arithmetic from masking, expansion and transcript work and retain host construction of the compact expansion map
   - Validate a pinned-model proof and changed-pin rejection with the separately built verifier, reconcile the disjoint intervals and record the calibration in a ledger
+
+- id: E16-40ab
+  epic: E16
+  title: Compare parallel host claim packing on original T32 batch weights
+  lane: V
+  depends: [E16-40v]
+  rfc: [RFC-0013 A5, RFC-0014 §5]
+  skill: benchmark-runner
+  crate: research
+  status: in_progress
+  agent: codex-integration
+  branch: task/E16-40ab-host-batch-pack
+  acceptance:
+  - compare every packed message, claim weight, gamma, run and offset on the original three T32 ordinary claim batches, under the same complete CPU proof and verifier
+  - report repeated alternating CPU-only preparations on one pinned Lucid host, including allocation, zero initialization, claim indexing, run scheduling, packing, destruction and explicit input and output bytes
+  - select the candidate only on measured improvement and retain the verified reference path otherwise
