@@ -58,6 +58,10 @@ fn matches_reference_compact_leaf_expressions() {
             );
         }
     }
+    assert!(
+        edges.into_iter().all(|seen| seen),
+        "missing canonical field edge"
+    );
     let program=format!("#include <cstdio>\n#include <vector>\n#define __device__\n#define __global__\n#define __forceinline__ inline\n{}\n#define GRID_STRIDE(i,n) for(u64 i=0;i<(n);++i)\n{}\n{}",crate::host_probe::helpers(),include_str!("lookup_compact.cu"),include_str!("lookup_compact_host.cuh"));
     let actual = crate::host_probe::run(&program, &input);
     assert_eq!(actual.len(), reference.len());
