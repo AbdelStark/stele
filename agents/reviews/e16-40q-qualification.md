@@ -49,3 +49,16 @@ third binary, build flag and expected counters. Its strict timing, scheduler,
 manifest, archive and current-readback checks remain intact. Capture pins have
 not changed. This records readiness to audit a future completed job; it is not
 actual hardware evidence, and no terminal audit has been run on an actual archive.
+
+## Strict GNU timing revision
+
+The [GNU timer revision](e16-40q-gnu-time-audit.json) supersedes the auditor hashes
+above. Review of the sibling GKR auditor found that the shared parser could
+prefer appended BSD timing or the first of duplicate GNU fields. The auditor
+now rejects mixed formats and requires unique, anchored GNU wall/RSS fields.
+Four resealed mutation cases failed before this fix; all four auditor tests now
+pass. Fresh `gkr_terminal_spec_review` and `gkr_terminal_standards_review` approve
+the same limited fix in m/n/q and independently ran every package's tests.
+Capture, source, commands and package pins remain unchanged. Actual m evidence
+has passed both reviews; q submission still waits for accepted actual n evidence
+from its single submitted job **6772**.
