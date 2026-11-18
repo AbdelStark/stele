@@ -58,6 +58,12 @@ def build(archive, baseline, verified):
     for k,v in report.items():
         if isinstance(v,int):
             counters["resident/"+k] = v
+    totals = {int(re.search(r" total_bytes=(\d+)",line)[1])
+              for line in log.splitlines() if line.startswith("t32_selected ")}
+    if len(totals) != 1:
+        raise ValueError("device memory geometry changed during the lookup schedule")
+    counters["device_total_bytes"] = totals.pop()
+    counters["resident_budget_bytes"] = 2*(counters["device_total_bytes"]//5)
     for kind in ("top","rebuild"):
         for k in ("normalize_ns","wall_ns","stage_ns","upload_ns","tree_ns","top_ns","download_ns","assemble_ns"):
             rows = [dict(word.split("=") for word in line.split()[1:]) for line in log.splitlines()
