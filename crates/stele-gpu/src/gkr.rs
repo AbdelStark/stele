@@ -7,6 +7,17 @@ use cudarc::driver::{CudaSlice, LaunchConfig, PushKernelArg};
 use stele_kernels::gkr::{plan::Plan, GkrBackend, GkrConstruction};
 use stele_kernels::QM31;
 
+/// RFC-0003 §1 uses canonical inputs in the prover. The device differential also
+/// supplies valid lazy limbs to every field operand, including launch arguments.
+pub(crate) fn device_words(x: QM31) -> [u32; 4] {
+    let limbs = words(x);
+    #[cfg(test)]
+    if crate::gkr_tests::RAW.get() {
+        return limbs.map(|w| w + <stele_kernels::M31 as stele_kernels::Field>::MODULUS);
+    }
+    limbs
+}
+
 pub(crate) struct Table {
     pub data: CudaSlice<u32>,
     pub base: bool,
@@ -64,7 +75,7 @@ impl<'d> GkrBackend<QM31> for Session<'d> {
                 .ok_or(Error::Geometry)?;
             indices.extend_from_slice(term);
             offsets.push(offset);
-            coefficients.push(words(*c));
+            coefficients.push(device_words(*c));
         }
         if indices.is_empty() {
             indices.push(0)
@@ -302,8 +313,8 @@ fn fold(
         b.arg(&src);
     }
     b.arg(&len);
-    let ch = words(c);
-    let kap = words(c * (QM31::ONE - c));
+    let ch = device_words(c);
+    let kap = device_words(c * (QM31::ONE - c));
     for limb in &ch {
         b.arg(limb);
     }

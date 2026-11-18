@@ -521,9 +521,12 @@ class ClosedStackedGateTests(unittest.TestCase):
     def test_rejects_broadened_field_backend_authority(self):
         crate = self.root / 'crates/stele-reductions'
         adapter = crate / 'src/zk_batch_backend.rs'
+        gkr = crate / 'src/zk_gkr_backend.rs'
         manifest = crate / 'Cargo.toml'
         for path, old, new in (
             (adapter, 'pub(super) fn prove(', 'pub fn prove('),
+            (gkr, 'masked::prove(i, summand', 'masked::prove_unchecked(i, summand'),
+            (gkr, 'pub(super) trait Arithmetic', 'pub trait Arithmetic'),
             (adapter, 'masked::prove(i, dense', 'masked::prove_unchecked(i, dense'),
             (manifest, 'stele-kernels = { path = "../stele-kernels" }', 'stele-gpu = { path = "../stele-gpu" }'),
         ):

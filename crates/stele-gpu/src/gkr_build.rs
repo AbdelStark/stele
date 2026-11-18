@@ -1,6 +1,6 @@
 //! RFC-0014 A3. Construct genuine RFC-0008 A7 factors from the checked host spans.
+use crate::gkr::device_words;
 use crate::gkr::{Factor, Table};
-use crate::packing::words;
 use crate::{Cuda, Error};
 use cudarc::driver::{CudaSlice, DevicePtr, PushKernelArg};
 use std::mem::size_of_val;
@@ -107,7 +107,7 @@ fn layer(
         let end = (start + CHUNK).min(width);
         staging.clear();
         for i in start..end {
-            staging.extend(words(
+            staging.extend(device_words(
                 values[2 * i + s.arg as usize / 2][s.arg as usize % 2],
             ));
         }
@@ -136,6 +136,19 @@ fn table(device: &Cuda, t: TablePlan<'_>, len: usize, work: &mut Work) -> Result
         .alloc_zeros::<u32>(count * if t.base { 1 } else { 4 })?;
     let kernel = device.kernel("gkr_build_span")?;
     for s in t.spans {
+        #[cfg(test)]
+        let s = {
+            let mut s = s;
+            if crate::gkr_tests::RAW.get() {
+                for w in &mut s.data {
+                    *w += <stele_kernels::M31 as stele_kernels::Field>::MODULUS;
+                }
+                if matches!(s.op, Op::Constant | Op::GatherBase | Op::GatherExt) {
+                    s.arg += <stele_kernels::M31 as stele_kernels::Field>::MODULUS;
+                }
+            }
+            s
+        };
         if s.op == Op::Layer {
             if t.base || count != len {
                 return Err(Error::Geometry);

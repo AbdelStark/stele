@@ -4451,8 +4451,11 @@ mod tests {
                     };
                     2
                 ],
-                shifts: vec![0, 0],
-                selector: None,
+                shifts: vec![-3, 4],
+                selector: Some(Public {
+                    values: vec![1, 0],
+                    vars: vec![0],
+                }),
             };
             let statement = Statement::<QM31> {
                 sources: 1,
@@ -4470,13 +4473,13 @@ mod tests {
                 lookups: vec![Lookup {
                     members: vec![member; count],
                     multiplicity: 1,
-                    table: vec![vec![1, 1], vec![2, 2], vec![0, 0], vec![0, 0]],
+                    table: vec![vec![-2, 5], vec![-1, 6], vec![0, 0], vec![0, 0]],
                     valid: 2,
                 }],
             };
             let columns = vec![
                 (0..8).map(|i| M31::from_i64(1 + i % 2)).collect(),
-                [4 * count as i64, 4 * count as i64, 0, 0]
+                [2 * count as i64, 2 * count as i64, 0, 0]
                     .map(M31::from_i64)
                     .to_vec(),
             ];
