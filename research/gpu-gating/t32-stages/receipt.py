@@ -1,5 +1,7 @@
 """Validate observed T32 stage coverage and sum matched CPU and H100 work."""
 from collections import defaultdict
+from pathlib import Path
+import runpy
 
 
 def summarize(log):
@@ -46,8 +48,8 @@ def summarize(log):
         "h2d_bytes": sum(r["h2d_bytes"] + r["term_bytes"] for r in batches),
     }
     if any("runs" in b for b in batches):
-        from packing import summarize as summarize_packing
-        summary["batch_packing"] = summarize_packing(batches)
+        packing = runpy.run_path(str(Path(__file__).with_name("packing.py")))
+        summary["batch_packing"] = packing["summarize"](batches)
     schedule = []
     descriptors = 0
     for batch, final in zip(batches, rows["finals"]):
