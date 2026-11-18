@@ -270,8 +270,8 @@ fn matches_reference_disjoint_claim_pack_and_rejects_bounds() {
                 gammas.insert(slot, K::ONE);
             }
         }
-        let reference =
-            crate::batch::Prepared::new(source.source(), &message, &claims, &gammas).unwrap();
+        let (reference, _) =
+            crate::batch::pack::<false>(source.source(), &message, &claims, &gammas).unwrap();
         let (candidate, _) =
             crate::batch::pack::<true>(source.source(), &message, &claims, &gammas).unwrap();
         assert!(reference.matches(&candidate), "case {i}");
