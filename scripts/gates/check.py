@@ -329,7 +329,7 @@ def scalar_kernel_surface(root, actual, expected):
     directory = root / 'crates' / name
     approved = json.loads((root / 'scripts/gates/scalar-kernel-sources.json').read_text())
     files = {'Cargo.toml', 'ops.toml', 'src/lib.rs', 'src/scalar.rs', 'tests/dense.rs',
-             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs'}
+             'src/gkr.rs', 'src/gkr/plan.rs', 'src/gkr/scalar.rs', 'tests/gkr.rs', 'tests/relation.rs', 'src/hiding.rs'}
     if set(actual) != files or actual != approved or actual['Cargo.toml'] != expected['Cargo.toml']:
         raise ValueError('parity: scalar kernel source differs from the admitted interface')
     contract = tomllib.loads((directory / 'ops.toml').read_text())
@@ -338,8 +338,10 @@ def scalar_kernel_surface(root, actual, expected):
     prior, added = source.split('pub trait RelationBackend', 1)
     gkr = re.findall(r'^    fn (\w+)', prior, re.M)
     relation = re.findall(r'^    fn (\w+)', added, re.M)
+    hiding = re.findall(r'^    fn (\w+)', (directory / 'src/hiding.rs').read_text(), re.M)
     if (contract != {'format': 1, 'family': 'ordinary_batch', 'operations': methods, 'gkr': {'operations': gkr},
-                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}}
+                     'relation': {'constructor': 'relation_start', 'arithmetic': gkr[1:]}, 'hiding_source': {'operations': hiding}}
+            or hiding != ['prepare_columns', 'selected_column']
             or relation != ['relation_start']
             or gkr != ['gkr_start', 'gkr_round', 'gkr_fold', 'gkr_finals']
             or methods != ['original', 'dense_batch', 'dense_round', 'dense_fold', 'dense_finals']):
@@ -1167,7 +1169,7 @@ def field_source_codec(root):
     crate = root / 'crates/stele-pcs'
     allowed = {'Cargo.toml', 'src/lib.rs', 'src/source.rs', 'src/preparation.rs', 'src/expansion.rs',
                'tests/expander_source.rs', 'tests/fixtures/expander-wire.jsonl', 'examples/expander_policy.rs',
-               'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
+               'examples/scalar_hiding_source.rs', 'src/producer.rs', 'src/producer_tests.rs', 'src/certificate.rs', 'src/certificate_tests.rs',
                'tests/fixtures/certificate-continuation.txt',
                'tests/field_source.rs', 'tests/preparation.rs',
                'src/opening.rs', 'tests/opening.rs', 'tests/fixtures/opening-continuation.txt',
@@ -2131,7 +2133,7 @@ def standard_quarantine(root):
     # RFC-0013 A8 (E12-28): these may name `Policy::Two` for dev-zk hiding sources, which
     # resolve Development (proven: false) and stay on the development path (below); the
     # standard entry points resolve_pcs and Descriptor::standard stay forbidden there.
-    policy_two_only = {'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
+    policy_two_only = {'crates/stele-pcs/examples/scalar_hiding_source.rs', 'crates/stele-reductions/src/zk_claims.rs', 'crates/stele-pcs/src/producer_tests.rs',
                        'crates/stele-reductions/tests/batch_bench.rs',
                        'crates/stele-prover/tests/development.rs'}
     pattern = re.compile(r'\bresolve_pcs\b|\bPolicy\s*::\s*Two\b|\bDescriptor\s*::\s*standard\b'

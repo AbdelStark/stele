@@ -6,6 +6,8 @@
 extern crate alloc;
 pub use stele_field::{Field, CM31, M31, QM31};
 pub mod gkr;
+mod hiding;
+pub use hiding::{HidingBackend, SourceColumn};
 mod scalar;
 pub use scalar::Scalar;
 
