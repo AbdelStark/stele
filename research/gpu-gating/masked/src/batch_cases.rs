@@ -75,6 +75,28 @@ pub(crate) fn claims(message: &[M31], seed: u64) -> (Vec<Claim<K>>, Vec<K>) {
 }
 
 #[test]
+fn matches_reference_overlapping_runs_at_tile_boundaries() {
+    use crate::batch::{Prepared, TILE};
+    let message = message(SEED);
+    let source = prepared(&message, SEED);
+    let claim = |positions: &[usize]| Claim {
+        value: K::ZERO,
+        weights: positions.iter().map(|p| (*p, K::ONE)).collect(),
+    };
+    let claims = [claim(&[TILE-1,TILE,TILE+1,TILE,TILE+1]), claim(&[TILE,TILE+1])];
+    let p = Prepared::new(source.source(), &message, &claims, &[K::ZERO,K::ONE]).unwrap();
+    assert_eq!(p.offsets[..3], [0,1,4]);
+    assert_eq!(p.runs[..], [
+        [(TILE-1) as u64,TILE as u64,0,0],
+        [TILE as u64,(TILE+2) as u64,1,0],
+        [TILE as u64,(TILE+2) as u64,3,0],
+        [TILE as u64,(TILE+2) as u64,5,1],
+    ]);
+    assert_eq!(p.weights.len(), 7);
+    assert_eq!(p.gammas.len(), 2);
+}
+
+#[test]
 fn accepts_batch_staging_and_rejects_outside_data_face() {
     let message = message(SEED);
     let prepared = prepared(&message, SEED);

@@ -5613,3 +5613,24 @@ tasks:
   - retain the rebuilt tree on H100, use checked geometry and device identity to construct GKR child factors directly from the resident layer, and release before the leaf
   - enforce the combined device budget before allocation and separately charge packing, transfers, allocation lifetimes and qualification-only readback
   - compare all required tops, rebuild pairs, actual round polynomials and finals against the ordinary CPU prover on seeded cases and the complete T32 workload; preserve its independent verifier and control
+
+- id: E16-40v
+  epic: E16
+  title: Pack contiguous claim weights into ordered runs for H100 batch preparation
+  lane: V
+  depends:
+  - E16-40j
+  - E16-40s
+  rfc:
+  - RFC-0013 A5 item 5
+  - RFC-0014 §1, §5, A1
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-resident
+  branch: task/E16-40v-batch-weight-runs
+  acceptance:
+  - pack each weight once and each claim coefficient once, using bounded contiguous runs per destination tile and preserving order for overlaps and duplicates
+  - compare actual and lazy H100 outputs, dense rounds and finals to the reference across 1000 seeded sources, retaining invalid-position and wrong-value controls
+  - capture the real stories42M T32 proof with ordinary independent verification and the wrong-model control; measure host packing, transfers, schedule, allocations and complete preparation against job 6776
+
