@@ -201,7 +201,7 @@ fn matches_reference_selected_top_and_resident_layers_on_h100() {
         // Transfer the actual bottom owner, with deliberately wrong host pairs.
         // Both raw and canonical lookups must supply identical child values
         // after the owner has already been released.
-        let last = expected.layers.len() - 1;
+        let last = expected.layers.len() - 2; // Parents of raw paired branch leaves.
         let bottom = &expected.layers[last];
         let poison = vec![[K::ZERO; 2]; bottom.len()];
         let last_input = GkrConstruction {

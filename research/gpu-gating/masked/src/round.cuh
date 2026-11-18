@@ -1,5 +1,6 @@
 // RFC-0013 A5 item 3: each table is interpolated in the current leading variable.
 // Flags: bit 0 = base x, bit 1 = mask active now, bit 2 = base mask.
+// Higher bits encode 1 + log2(native period) for an unmasked tiled extension.
 __device__ __forceinline__ u32 round_base(const u32 *x, u64 j, u64 half, u32 t) {
   return madd(x[j], mmul(msub(x[j + half], x[j]), t));
 }
@@ -21,7 +22,12 @@ __device__ __forceinline__ Q round_entry(const u64 *xs, const u64 *rs, const u32
       u32 k = indices[i], flag = flags[k];
       const u32 *x = (const u32 *)xs[k];
       bool xb = flag & 1u, masked = flag & 2u, rb = flag & 4u;
-      if (xb && (!masked || rb)) {
+      u32 period_code = flag >> 3;
+      if (period_code) {
+        // Both leading-bit branches equal this cell for the entire current round.
+        u64 mask = (1ull << (period_code - 1)) - 1;
+        qp = qmul(qp, qload(x, j & mask));
+      } else if (xb && (!masked || rb)) {
         u32 v = round_base(x, j, half, t);
         if (masked && t > 1) v = madd(v, mmul(kap, round_base((const u32 *)rs[k], j, half, t)));
         mp = mmul(mp, v);

@@ -2,7 +2,7 @@
 //! transposed to symbol-major, Circle-encoded in place, leaves `salt || column` and
 //! the Merkle tree hashed on the device. Retained material supports either complete
 //! download (E16-40b) or selected response downloads (E16-40q).
-use crate::gpu::{Device, Error};
+use crate::gpu::{Device, Error, OriginalMessage};
 use crate::source::{prefix, salt_block, twiddles, Material, Shape, BLOWUP};
 use crate::{Field, M31};
 use cudarc::driver::{CudaSlice, LaunchConfig, PushKernelArg};
@@ -36,7 +36,7 @@ pub struct Timing {
 
 /// Prepare `shape` from its row-major `M'` on `dev`: the root and the phase times.
 pub fn prepare(dev: &Device, shape: &Shape, message: &[M31]) -> Result<([u8; 32], Timing), Error> {
-    run(dev, shape, message, false).map(|(root, time, _)| (root, time))
+    run(dev, shape, Input::Host(message), false).map(|(root, time, _)| (root, time))
 }
 
 /// Retain/download complete source material; certificates/openings are not produced.
@@ -56,14 +56,29 @@ pub fn prepare_resident<'a>(
     shape: &'a Shape,
     message: &[M31],
 ) -> Result<(Resident<'a>, Timing), Error> {
-    let (_, time, resident) = run(dev, shape, message, true)?;
+    let (_, time, resident) = run(dev, shape, Input::Host(message), true)?;
     Ok((resident.ok_or(Error::Value)?, time))
+}
+
+/// Reconstruct a selected-response encoding from an immutable on-device original.
+pub fn prepare_from_original<'a>(
+    dev: &'a Device,
+    shape: &'a Shape,
+    message: &OriginalMessage<'_>,
+) -> Result<(Resident<'a>, Timing), Error> {
+    let (_, timing, state) = run(dev, shape, Input::Resident(message), true)?;
+    Ok((state.ok_or(Error::Value)?, timing))
+}
+
+enum Input<'a> {
+    Host(&'a [M31]),
+    Resident(&'a OriginalMessage<'a>),
 }
 
 fn run<'a>(
     dev: &'a Device,
     shape: &'a Shape,
-    message: &[M31],
+    input: Input<'_>,
     keep: bool,
 ) -> Result<([u8; 32], Timing, Option<Resident<'a>>), Error> {
     let source = shape.source().ok_or(Error::Value)?;
@@ -87,9 +102,12 @@ fn run<'a>(
     let message_bytes = checked_bytes(count)?;
     let encoded_bytes = checked_bytes(encoded_words)?;
     let node_bytes = checked_bytes(node_words)?;
-    if message.len() != count {
-        return Err(Error::Value);
-    }
+    let original = match input {
+        Input::Host(message) if message.len() != count => return Err(Error::Value),
+        Input::Host(_) => None,
+        Input::Resident(owner) => Some(owner.words(dev, shape.id, rows, n)?),
+    };
+    let uploaded_message = if original.is_some() { 0 } else { message_bytes };
     if desc.count != big as u64 || desc.width != 32 + 4 * rows as u64 {
         return Err(Error::Value);
     }
@@ -110,7 +128,7 @@ fn run<'a>(
     .checked_add(2 * 43)
     .ok_or(Error::Value)?;
     let upload_bytes = metadata_bytes
-        .checked_add(message_bytes)
+        .checked_add(uploaded_message)
         .ok_or(Error::Value)?;
     let peak_nodes = if keep {
         node_bytes
@@ -119,13 +137,19 @@ fn run<'a>(
     };
     let buffer_peak_bytes = metadata_bytes
         .checked_add(encoded_bytes)
-        .and_then(|v| v.checked_add(message_bytes.max(peak_nodes)))
+        .and_then(|v| v.checked_add(uploaded_message.max(peak_nodes)))
         .ok_or(Error::Value)?;
 
     // Upload.
     let start = Instant::now();
-    let host: Vec<u32> = message.iter().map(|v| v.as_u32()).collect();
-    let msg = dev.stream().clone_htod(&host)?;
+    let temporary = match input {
+        Input::Host(message) => {
+            let host: Vec<u32> = message.iter().map(|v| v.as_u32()).collect();
+            Some(dev.stream().clone_htod(&host)?)
+        }
+        Input::Resident(_) => None,
+    };
+    let msg = original.or(temporary.as_ref()).ok_or(Error::Value)?;
     let upload_levels = |levels: &[Vec<u32>]| -> Result<Vec<CudaSlice<u32>>, Error> {
         levels
             .iter()
@@ -144,7 +168,7 @@ fn run<'a>(
     // forward on the whole (the tail stays zero).
     let start = Instant::now();
     let x = dev.stream().alloc_zeros::<u32>(encoded_words)?;
-    let (xp, mp) = (dev.ptr(&x), dev.ptr(&msg));
+    let (xp, mp) = (dev.ptr(&x), dev.ptr(msg));
     let (rows64, n64) = (rows as u64, n as u64);
     {
         let f = dev.function("transpose_kernel")?;
@@ -202,7 +226,7 @@ fn run<'a>(
     level(&fwd_rev, &fwd_h, big, 0)?;
     dev.sync()?;
     let encode = start.elapsed();
-    drop(msg);
+    drop(temporary);
 
     // Merkle: leaves, then each level up to the root.
     let start = Instant::now();

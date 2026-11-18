@@ -66,6 +66,15 @@ fn span(period: u32, range: Range<usize>, op: Op, arg: u32, data: Vec<u32>) -> B
 }
 
 impl TablePlan {
+    /// Unmasked Gin::Block depends only on the low bits of its tiled block.
+    /// All other tables retain the full logical domain.
+    pub(crate) fn storage_len(&self, domain: usize) -> usize {
+        match self.spans.as_slice() {
+            [s] if matches!(s.op, Op::Block) => s.arg as usize,
+            _ => domain,
+        }
+    }
+
     fn single(span: Span) -> Self {
         let base = matches!(span.op, Op::GatherBase | Op::Constant);
         Self {
@@ -341,7 +350,9 @@ pub(crate) struct Peak {
 impl Plan {
     pub fn peak(&self, blocks: usize) -> Build<Peak> {
         let len = self.len as u128;
-        let table_bytes = |table: &TablePlan| len * if table.base { 4 } else { 16 };
+        let table_bytes = |table: &TablePlan| {
+            table.storage_len(self.len) as u128 * if table.base { 4 } else { 16 }
+        };
         let mut live = 0;
         let mut construction = 0;
         for f in &self.factors {
@@ -530,6 +541,71 @@ mod tests {
         let released = plan.peak(1).unwrap().fold;
         plan.factors.reverse();
         assert_eq!(plan.peak(1).unwrap().fold, released + 32);
+    }
+
+    #[test]
+    fn matches_reference_large_t32_allocation_phases() {
+        // Job 6781 steps 96/97: nine extension x tables and four delayed base
+        // masks, followed by a leaf with a coordinate-zero base mask and one
+        // delayed mask. Construct only field-width and lifetime metadata.
+        let table = |base| TablePlan {
+            base,
+            spans: Vec::new(),
+        };
+        let factors = |masks: &[Option<usize>], base_indices: &[usize]| {
+            masks
+                .iter()
+                .enumerate()
+                .map(|(i, v)| FactorPlan {
+                    values: table(base_indices.contains(&i)),
+                    mask: v.map(|v| (table(true), v)),
+                })
+                .collect()
+        };
+        let mut p = Plan {
+            len: 1 << 27,
+            degree: 5,
+            terms: Vec::new(),
+            factors: factors(
+                &[
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some(1),
+                    Some(1),
+                    Some(2),
+                    Some(2),
+                ],
+                &[],
+            ),
+        };
+        let peak = p.peak(1024).unwrap();
+        let fixed = 20 * p.factors.len() + 8 + 16 + 16 * 6 * 1025;
+        assert_eq!(peak.construction, fixed + 160 * p.len);
+        assert_eq!(peak.fold, fixed + 180 * p.len);
+        p.len = 1 << 28;
+        p.degree = 6;
+        p.factors = factors(
+            &[
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some(0),
+                None,
+                None,
+                Some(25),
+                None,
+            ],
+            &[5, 6, 7, 8],
+        );
+        let peak = p.peak(1024).unwrap();
+        let fixed = 20 * p.factors.len() + 8 + 16 + 16 * 7 * 1025;
+        assert_eq!(peak.construction, fixed + 120 * p.len);
+        assert_eq!(peak.fold, fixed + 140 * p.len);
     }
 
     #[test]
