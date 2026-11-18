@@ -4217,9 +4217,10 @@ mod tests {
 
     #[test]
     fn matches_reference_sparse_batch_weight() {
-        let q = |n| basis::<QM31>(1).unwrap() + QM31::from_i64(n);
+        let q = |n| basis::<QM31>(1).expect("extension basis") + QM31::from_i64(n);
         for ell in [3, 4] {
-            let source = Source::<QM31>::hiding(0, ell, MIN_M, BLOWUP, [0; 32]).unwrap();
+            let source =
+                Source::<QM31>::hiding(0, ell, MIN_M, BLOWUP, [0; 32]).expect("hiding source");
             let last = (source.rows() / 2) * (source.columns() / 2) - 1;
             let claims = [
                 Claim {
@@ -4236,11 +4237,11 @@ mod tests {
                 },
             ];
             let gammas = [q(23), q(29), q(31)];
-            let table = weight_table(&source, &claims, &gammas).unwrap();
+            let table = weight_table(&source, &claims, &gammas).expect("dense weights");
             let mut point: Vec<_> = (0..table.len().ilog2()).map(|i| q(i64::from(i))).collect();
             for w in [QM31::from_i64(0), QM31::from_i64(1), q(37)] {
                 point[0] = w;
-                let eq = stele_poly::eq_table(&point).unwrap();
+                let eq = stele_poly::eq_table(&point).expect("dense equality table");
                 let dense = eq
                     .iter()
                     .zip(&table)
