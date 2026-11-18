@@ -2218,41 +2218,51 @@ fn bit(index: usize, var: usize, n: usize) -> usize {
 /// `x̂` over the domain: the column at its `Free` coordinates, broadcast over the
 /// variables it does not read.
 fn domain_table<K: ChallengeField>(column: &[K], coords: &[Coord], free: &[K], n: usize) -> Vec<K> {
-    let len = coords.len();
-    let mut partial = vec![zero::<K>(); 1 << n];
-    let mut read = 0usize;
-    for c in coords {
-        if let Coord::Var(q) = c {
-            read |= 1 << (n - 1 - q);
+    use alloc::borrow::Cow;
+    // Fold bound axes once. Axes to the right retain their original stride
+    // because we remove coordinates from left to right (RFC-0013 A5 item 2).
+    let mut table = Cow::Borrowed(column);
+    let mut vars = Vec::new();
+    for (j, coord) in coords.iter().enumerate() {
+        if let Coord::Var(axis) = coord {
+            vars.push(*axis);
+            continue;
         }
-    }
-    for (index, value) in column.iter().enumerate() {
-        let mut weight = K::from_i64(1);
-        let mut target = 0usize;
-        for (j, c) in coords.iter().enumerate() {
-            let b = bit(index, j, len);
-            match c {
-                Coord::Var(q) => target |= b << (n - 1 - q),
-                Coord::Free(i) => {
-                    weight = weight
-                        * if b == 1 {
-                            free[*i]
-                        } else {
-                            K::from_i64(1) - free[*i]
-                        }
-                }
-                Coord::Fixed(bit) => {
-                    if b != usize::from(*bit) {
-                        weight = zero::<K>();
-                    }
-                }
+        let stride = 1 << (coords.len() - j - 1);
+        let mut next = vec![zero::<K>(); table.len() / 2];
+        stele_sumcheck::parallel::for_each_chunk(&mut next, |start, chunk| {
+            for (i, value) in (start..).zip(chunk) {
+                // Insert a zero at the removed axis. The other child is stride away.
+                let left = i + (i & !(stride - 1));
+                *value = match coord {
+                    Coord::Fixed(b) => table[left + usize::from(*b) * stride],
+                    Coord::Free(q) => table[left] + free[*q] * (table[left + stride] - table[left]),
+                    Coord::Var(_) => unreachable!(),
+                };
             }
-        }
-        partial[target] = partial[target] + weight * *value;
+        });
+        table = Cow::Owned(next);
     }
-    (0..1usize << n)
-        .map(|index| partial[index & read])
-        .collect()
+    let len = 1 << n;
+    let Some(&last) = vars.last() else {
+        return vec![table[0]; len];
+    };
+    let contiguous = vars.windows(2).all(|pair| pair[1] == pair[0] + 1);
+    if contiguous && table.len() == len {
+        return table.into_owned();
+    }
+    let mut out = vec![zero::<K>(); len];
+    stele_sumcheck::parallel::for_each_chunk(&mut out, |start, chunk| {
+        for (i, value) in (start..).zip(chunk) {
+            let index = if contiguous {
+                (i >> (n - 1 - last)) & (table.len() - 1)
+            } else {
+                vars.iter().fold(0, |index, q| (index << 1) | bit(i, *q, n))
+            };
+            *value = table[index];
+        }
+    });
+    out
 }
 
 /// `r̂(X) = r̃_x(a, X_u)` over the domain.
@@ -4218,24 +4228,50 @@ mod tests {
     #[test]
     fn matches_reference_projected_relation_columns() {
         // Project each input axis independently. Variable axes cannot repeat (the plan validates distinct).
-        let choices = [Coord::Var(0), Coord::Var(2), Coord::Free(1), Coord::Free(0), Coord::Fixed(0), Coord::Fixed(1)];
-        let q = |i| basis::<QM31>(2).unwrap() + QM31::from_i64(i);
+        let choices = [
+            Coord::Var(0),
+            Coord::Var(1),
+            Coord::Var(2),
+            Coord::Free(1),
+            Coord::Free(0),
+            Coord::Fixed(0),
+            Coord::Fixed(1),
+        ];
+        let q = |i: i64| {
+            basis::<QM31>(2).unwrap() * QM31::from_i64(i * i + 1) + QM31::from_i64(i.pow(3) - i + 1)
+        };
         for ncoords in 0..=3 {
-            let column: Vec<_> = (0..1usize << ncoords).map(|i| q(1 + 3 * i as i64)).collect();
+            let column: Vec<_> = (0..1usize << ncoords)
+                .map(|i| q(1 + 3 * i as i64))
+                .collect();
             for mut code in 0..choices.len().pow(ncoords as u32) {
                 let mut coords = Vec::new();
                 for _ in 0..ncoords {
                     coords.push(choices[code % choices.len()].clone());
                     code /= choices.len();
                 }
-                if [0,2].iter().any(|v| coords.iter().filter(|c| matches!(c, Coord::Var(i) if i == v)).count() > 1) { continue; }
-                for free in [[q(7),q(-3)], [zero::<QM31>(),QM31::from_i64(1)]] {
+                if [0, 1, 2].iter().any(|v| {
+                    coords
+                        .iter()
+                        .filter(|c| matches!(c, Coord::Var(i) if i == v))
+                        .count()
+                        > 1
+                }) {
+                    continue;
+                }
+                for free in [[q(7), q(-3)], [zero::<QM31>(), QM31::from_i64(1)]] {
                     let got = domain_table(&column, &coords, &free, 3);
                     assert_eq!(got.len(), 8);
                     for (i, value) in got.into_iter().enumerate() {
-                        let point: Vec<_> = (0..3).map(|j| QM31::from_i64(bit(i,j,3) as i64)).collect();
-                        let w = stele_poly::eq_table(&column_point(&coords, &point, &free)).unwrap();
-                        let expected = column.iter().zip(w).fold(zero::<QM31>(), |s,(x,w)| s + *x*w);
+                        let point: Vec<_> = (0..3)
+                            .map(|j| QM31::from_i64(bit(i, j, 3) as i64))
+                            .collect();
+                        let w =
+                            stele_poly::eq_table(&column_point(&coords, &point, &free)).unwrap();
+                        let expected = column
+                            .iter()
+                            .zip(w)
+                            .fold(zero::<QM31>(), |s, (x, w)| s + *x * w);
                         assert_eq!(value, expected);
                     }
                 }
