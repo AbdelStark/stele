@@ -38,6 +38,10 @@ class ScaffoldTests(unittest.TestCase):
             reductions = tomllib.loads((root / 'crates/stele-reductions/Cargo.toml').read_text())
             self.assertEqual(set(reductions['dependencies']), {f'stele-{n}' for n in ('field', 'kernels', 'hash', 'sumcheck', 'gkr', 'lookup', 'pcs', 'ir', 'cqis', 'poly')})
             self.assertIn('#![no_std]', (root / 'crates/stele-reductions/src/lib.rs').read_text())
+            cli = tomllib.loads((root / 'crates/stele-cli/Cargo.toml').read_text())
+            self.assertTrue(cli['dependencies']['stele-gpu']['optional'])
+            gpu = tomllib.loads((root / 'crates/stele-gpu/Cargo.toml').read_text())
+            self.assertTrue(gpu['dependencies']['cudarc']['optional'])
             source = root / 'crates/stele-field/src/lib.rs'
             source.write_text(source.read_text() + '\n// preserved implementation\n')
             before = source.read_bytes()
@@ -56,6 +60,13 @@ class ScaffoldTests(unittest.TestCase):
                 (crate / 'src').mkdir(parents=True)
                 shutil.copy(manifest, crate / 'Cargo.toml')
                 (crate / 'src/lib.rs').write_text('')
+                # Cargo metadata resolves explicit targets before checking dependency bans.
+                package = tomllib.loads(manifest.read_text())
+                for kind, directory in (('test', 'tests'), ('example', 'examples'), ('bin', 'src/bin')):
+                    for entry in package.get(kind, []):
+                        path = crate / entry.get('path', f'{directory}/{entry["name"]}.rs')
+                        path.parent.mkdir(exist_ok=True, parents=True)
+                        path.touch()
             # A16 controls call the real independent verifier from the separate harness.
             controls = root / 'tests/negative-controls/Cargo.toml'
             original = controls.read_text()
@@ -78,6 +89,7 @@ class ScaffoldTests(unittest.TestCase):
                 ('stele-lookup', 'stele-verifier', 'dev-dependencies'),
                 ('stele-prover', 'stele-verifier', 'dependencies'),
                 ('stele-verifier', 'stele-proof', 'dependencies'),
+                ('stele-verifier', 'stele-gpu', 'dependencies'),
                 ('stele-verifier', 'stele-cqis', 'build-dependencies'),
                 ('stele-verifier', 'stele-cqis', 'dev-dependencies'),
                 ('stele-dist', 'stele-cli', 'dependencies'),

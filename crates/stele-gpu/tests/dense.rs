@@ -26,8 +26,8 @@ fn matches_reference_cuda_dense_batches() {
         let mut seed = Seed(0x68cc0a48u64 + case);
         let g = SourceGeometry {
             id: 7,
-            rows: 2usize << (seed.next() % 3),
-            columns: 2usize << (seed.next() % 7),
+            rows: 2usize << (seed.next() % 4),
+            columns: 2usize << (seed.next() % 8),
         };
         let n = g.word_count().expect("valid seeded batch");
         let half = n / 4;
@@ -43,7 +43,7 @@ fn matches_reference_cuda_dense_batches() {
             .collect();
         let a = reference.original(g, &message).expect("valid seeded batch");
         let b = session.original(g, &message).expect("valid seeded batch");
-        let mut pairs: Vec<_> = (0..half.min((seed.next() % 300) as usize))
+        let mut pairs: Vec<_> = (0..half.min((seed.next() % 400) as usize))
             .map(|i| (i, seed.field()))
             .collect();
         pairs.extend([
