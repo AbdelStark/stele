@@ -5733,3 +5733,20 @@ tasks:
   - compare every packed message, claim weight, gamma, run and offset on the original three T32 ordinary claim batches, under the same complete CPU proof and verifier
   - report repeated alternating CPU-only preparations on one pinned Lucid host, including allocation, zero initialization, claim indexing, run scheduling, packing, destruction and explicit input and output bytes
   - select the candidate only on measured improvement and retain the verified reference path otherwise
+
+- id: E16-40ac
+  epic: E16
+  title: Reuse immutable source messages across PCS, GKR and claim batches within the device budget
+  lane: V
+  depends: [E16-40ab, E16-40z]
+  rfc: [RFC-0008 A7, RFC-0013 A5/A6, RFC-0014 §5 and A1]
+  skill: cuda-kernel-author
+  crate: research
+  status: in_progress
+  agent: codex-resident
+  branch: task/E16-40ac-resident-original-messages
+  acceptance:
+  - Store unmasked periodic block factors on their native low-axis domain and compare all messages and folds to the CPU, including the transition to the first varying coordinate
+  - Upload each actual hiding-source message once through pinned staging and borrow validated source owners for selected authenticated responses and the ordinary batch face
+  - Qualify 1000 seeded canonical/raw cases and the complete T32 source, lookup, GKR and batch schedule with normal/wrong-model verification, exact identity/transfer charges and physically measured simultaneous memory below 40 percent
+  - Evaluate the identity and address geometry of GKR and lookup original columns and leave any remaining host uploads explicit
