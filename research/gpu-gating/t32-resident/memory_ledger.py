@@ -83,7 +83,8 @@ for k,v in st['batch_packing'].items():
     (times if k.endswith('_ns') else counters)['batch_packing/'+k]=v
 plan = dict(baseline['model_config']['plan'], stages=['compact_lookup_top_and_resident_rebuild','last_child_gkr_and_ordered_promotions','ordinary_batch_runs_and_dense'])
 model = dict(workload=result['workload'],profile=result['profile'],plan=plan,affinity=result['affinity'],inputs=result['inputs'],
-             job=result['job'],evidence_location=f"lucid-cluster:~/stele-codex/e16-40z-gkr-memory-schedule/public-{result['job']}.tar.gz",
+             job=result['job'],evidence_location=f"lucid-cluster:~/stele-codex/e16-40z-gkr-memory-retry/public-{result['job']}.tar.gz",
+             seeded_gkr_job='6785', seeded_gkr_evidence_sha256=pins['failed-6785-public.tar.gz'],
              source_archive_sha256=verified['source_sha256'],evidence_sha256=verified['archive_sha256'],
              public_receipt_sha256={name:digest(contents) for name,contents in raw.items() if name.startswith(('run/','machine/'))},
              baseline=baseline_name,proof_sha256=result['proof_sha256'],public_sha256=result['public_sha256'],
