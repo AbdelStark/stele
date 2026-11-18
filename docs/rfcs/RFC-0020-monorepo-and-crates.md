@@ -196,3 +196,27 @@ borrow caller-owned actual certificates and completed range objects. No source
 cache, callback, generic Reduction trait or new dependency edge is introduced.
 E7-01f updates exact API/registry guards and actual native evidence; this contract
 does not change an executable allowlist or complete top-level artifact ownership.
+
+### A10 — Development-profile field backend dependency
+
+Status: Accepted (development-tier amendment under RFC-0027 §2). Task E20-10.
+[Independent lane Z review](../../agents/reviews/e20-10-dev-zk-backend-contract.md)
+
+Add to §2 for RFC-0014 A2: `stele-reductions` may depend directly on
+`stele-kernels` for its field-only backend trait, operation descriptions and
+scalar implementations. `stele-kernels` keeps its sole production dependency
+on `stele-field`. It accepts borrowed fields, checked sizes and source-local
+positions, and has no PCS, sumcheck or transcript dependency. The caller's
+`Summand` adapter belongs in `stele-reductions`. The existing
+`stele-prover` orchestration can expose that interface to its caller through
+its existing reductions edge. `stele-cli` may select the opt-in `stele-gpu`
+implementation. Only `stele-gpu` loads the CUDA driver and NVRTC via its
+optional, pinned runtime-loaded cudarc dependency. Missing libraries or a
+required operation failure return an explicit error. CPU and verifier builds
+with default features or no default features must work without CUDA. The
+verifier has no dependency on the proving backend.
+
+Soundness, cells, lookups, honest bytes and protocol controls are unchanged.
+The edge authorizes the field execution described in RFC-0014 A2 and has no
+measured cost by itself. E20-11 and E20-12 must update exact dependency
+guards only with their implemented surface.
